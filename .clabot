@@ -1,0 +1,7 @@
+{
+  "contributors": "https://raw.githubusercontent.com/choysum-dev/choysum/main/cla/contributors.json",
+  "label": "cla-signed",
+  "onAcceptSign": "I accept the CLA",
+  "message": "Thank you for your contribution, @{{usersWithoutCLA}}! \n\nBefore we can merge this PR, we need you to sign our Contributor License Agreement (CLA):\n\n- **Individual Contributors**: Please read [cla/icla.md](https://github.com/choysum-dev/choysum/blob/main/cla/icla.md). If you agree, simply reply to this PR with the exact phrase: **I accept the CLA**.\n- **Corporate Contributors**: Your organization must complete [cla/ccla.md](https://github.com/choysum-dev/choysum/blob/main/cla/ccla.md) offline and email the signed copy to the maintainers. \n\nOnce you reply or the allowlist is updated, please comment `@cla-bot check` to refresh the status.",
+  "recheckComment": "@cla-bot check"
+}
