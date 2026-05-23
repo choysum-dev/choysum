@@ -1,0 +1,60 @@
+{
+  "records": [
+    {
+      "module": "base",
+      "external_id": "currency_cny",
+      "model": "base.Currency",
+      "values": {
+        "Name": "Chinese Yuan",
+        "Code": "CNY",
+        "Symbol": "¥",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": true
+      }
+    },
+    {
+      "module": "base",
+      "external_id": "locale_default",
+      "model": "base.Locale",
+      "values": {
+        "Name": "Chinese (China)",
+        "Code": "zh-CN",
+        "IsActive": true,
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": 1,
+        "CurrencySymbolPosition": "before",
+        "CurrencySymbolSpacing": false
+      }
+    },
+    {
+      "module": "base",
+      "external_id": "language_zh",
+      "model": "base.Language",
+      "values": {
+        "Name": "Chinese",
+        "Code": "zh",
+        "IsActive": true,
+        "Direction": "ltr",
+        "DefaultLocaleId": { "ref": "base.locale_default" }
+      }
+    },
+    {
+      "module": "base",
+      "external_id": "company_main",
+      "model": "base.Company",
+      "values": {
+        "Name": "Main Company",
+        "Code": "MAIN",
+        "Timezone": "Asia/Shanghai",
+        "CurrencyId": { "ref": "base.currency_cny" },
+        "IsActive": true,
+        "LanguageId": { "ref": "base.language_zh" },
+        "LocaleId": { "ref": "base.locale_default" }
+      }
+    }
+  ]
+}

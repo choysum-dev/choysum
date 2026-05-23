@@ -1,0 +1,62 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+
+package bootstrap;
+
+option go_package = "github.com/project-choysum/choysum/internal/bootstrap/proto/bootstrappb;bootstrappb";
+
+enum InitializationState {
+  INITIALIZATION_STATE_UNSPECIFIED = 0;
+  INITIALIZATION_STATE_PENDING = 1;
+  INITIALIZATION_STATE_RUNNING = 2;
+  INITIALIZATION_STATE_SUCCEEDED = 3;
+  INITIALIZATION_STATE_FAILED = 4;
+}
+
+enum InitializationStage {
+  INITIALIZATION_STAGE_UNSPECIFIED = 0;
+  INITIALIZATION_STAGE_ACQUIRE_LOCK = 1;
+  INITIALIZATION_STAGE_CHECK_WORKSPACE_FRESHNESS = 2;
+  INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME = 3;
+  INITIALIZATION_STAGE_VALIDATE_RUNTIME_READY = 4;
+  INITIALIZATION_STAGE_UPDATE_ADMIN = 5;
+  INITIALIZATION_STAGE_SWITCH_MODE = 6;
+  INITIALIZATION_STAGE_DONE = 7;
+}
+
+message Workspace_Initialize_Req {
+  string admin_username = 1;
+  string password = 2;
+  bool client_hashing_enabled = 3;
+  string idempotency_key = 4;
+}
+
+message Workspace_Initialize_Resp {
+  bool accepted = 1;
+  string operation_id = 2;
+  int64 next_poll_after_ms = 3;
+  InitializationState state = 4;
+}
+
+message Workspace_GetInitializationStatus_Req {
+  string operation_id = 1;
+}
+
+message Workspace_GetInitializationStatus_Resp {
+  string operation_id = 1;
+  InitializationState state = 2;
+  InitializationStage stage = 3;
+  int32 progress_percent = 4;
+  bool ready_for_login = 5;
+  string redirect_url = 6;
+  string error_code = 7;
+  string error_message = 8;
+  int64 next_poll_after_ms = 9;
+}
+
+service Workspace {
+  rpc Initialize(Workspace_Initialize_Req) returns (Workspace_Initialize_Resp);
+  rpc GetInitializationStatus(Workspace_GetInitializationStatus_Req) returns (Workspace_GetInitializationStatus_Resp);
+}

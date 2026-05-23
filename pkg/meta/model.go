@@ -1,0 +1,48 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package meta
+
+import (
+	"database/sql"
+	"time"
+
+	"github.com/rs/xid"
+	"gorm.io/gorm"
+)
+
+type BaseModel struct {
+	Id        sql.NullString `gorm:"primaryKey;type:char(20)"`
+	CreatedAt time.Time      `gorm:"index"`
+	UpdatedAt time.Time      `gorm:"index"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+func (m *BaseModel) BeforeCreate(tx *gorm.DB) error {
+	if m.Id.String == "" {
+		m.Id = sql.NullString{
+			String: xid.New().String(),
+			Valid:  true,
+		}
+	}
+	return nil
+}
+
+// Entities returns the core model set for external use.
+func Entities() []any {
+	return []any{
+		&IrApplication{},
+		&IrModule{},
+		&IrComponent{},
+		&IrModel{},
+		&IrField{},
+		&IrService{},
+		&IrTypeParameter{},
+		&IrParameter{},
+		&IrDecorator{},
+		&IrArgument{},
+		&IrUiResource{},
+		&IrUiResourceMenuRoute{},
+		&IrUiResourceRouteAction{},
+	}
+}

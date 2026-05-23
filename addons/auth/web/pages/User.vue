@@ -1,0 +1,34 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <OPage>
+    <UserFormView :key="$route.fullPath" createAction="/auth/users/new" :store="userStore" :record-id="recordId" :view-mode="viewMode" />
+  </OPage>
+</template>
+
+<script setup lang="ts">
+import { useRoute } from 'vue-router';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import OPage from '@/web/web/components/page/OPage.vue';
+import UserFormView from '@/auth/web/views/UserFormView.vue';
+import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
+import type User from '@/auth/service/models/user';
+
+const props = withDefaults(
+  defineProps<{
+    viewMode?: ViewMode;
+    recordId?: string | undefined;
+  }>(),
+  {}
+);
+
+const route = useRoute();
+const userStore = createStoreByModel<typeof User>('auth.User', {
+  storeId: `User_${route.fullPath}`,
+  scopeManager: useScopeManager().menuScopeManager,
+});
+</script>

@@ -1,0 +1,31 @@
+{
+  "name": "web",
+  "description": "",
+  "application": "web",
+  "depends": ["core"],
+  "externalDependencies": {
+    "node_module": {
+      "pinia": "^2.1.7",
+      "vue": "^3.4.29",
+      "vue-router": "^4.3.3",
+      "naive-ui": "^2.38.1",
+      "@vicons/ionicons5": "^0.12.0"
+    },
+    "binary": {}
+  },
+  "entryPoints": {
+    "web": "./web/index.ts"
+  },
+  "version": "v0.0.0",
+  "summary": "",
+  "license": "Apache 2.0",
+  "homepage": "",
+  "author": "Choysum Team",
+  "repository": "",
+  "main": "index.ts",
+  "commands": {
+    "run": "choysum run $1",
+    "build": "choysum build $1",
+    "test": ""
+  }
+}

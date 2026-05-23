@@ -1,0 +1,7 @@
+{
+  "name": "minimal_service_pb.ts",
+  "imports": ["@bufbuild/protobuf/codegenv2"],
+  "exports": ["DemoService", "file_minimal_service"],
+  "schemaExports": [],
+  "serviceExports": ["DemoService"]
+}

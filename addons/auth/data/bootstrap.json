@@ -1,0 +1,73 @@
+{
+  "records": [
+    {
+      "module": "auth",
+      "external_id": "role_base_user",
+      "model": "auth.Role",
+      "values": {
+        "Name": "Base User",
+        "Code": "base.user",
+        "Description": "Minimal baseline role for newly registered users",
+        "IsActive": true,
+        "IsSystem": true
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "role_sys_admin",
+      "model": "auth.Role",
+      "values": {
+        "Name": "System Admin",
+        "Code": "sys.admin",
+        "Description": "Break-glass role with global RPC access",
+        "IsActive": true,
+        "IsSystem": true
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "user_admin",
+      "model": "auth.User",
+      "values": {
+        "Username": "admin",
+        "Email": "admin@local",
+        "PasswordHash": "$2a$10$1W2W5vpmtQA42QRS/Pq62.vYW/suwcx7t9ZtKuQ7c1iNcGYsGocCm",
+        "IsActive": true,
+        "CompanyId": { "ref": "base.company_main" },
+        "CompanyIds": [{ "ref": "base.company_main" }]
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "userrole_admin_sys_admin",
+      "model": "auth.UserRole",
+      "values": {
+        "UserId": { "ref": "auth.user_admin" },
+        "RoleId": { "ref": "auth.role_sys_admin" }
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rma_sys_admin_global_allow",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_sys_admin" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rui_sys_admin_global_allow",
+      "model": "auth.RoleUiResource",
+      "values": {
+        "RoleId": { "ref": "auth.role_sys_admin" },
+        "IrApplicationId": null,
+        "IrUiResourceId": null,
+        "Mode": "allow"
+      }
+    }
+  ]
+}

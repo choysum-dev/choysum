@@ -1,0 +1,21 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import app from '@/web/web';
+import type { ChoysumWebApp } from '@/core/web/application';
+import { setupRouter } from './route';
+import { setupAppMenu } from './menu';
+
+/**
+ * Registers the partner router and menu tree with the shared web app.
+ */
+export function setupApp(app: ChoysumWebApp): void {
+  setupRouter(app);
+  setupAppMenu(app);
+}
+
+/**
+ * Partner web application instance.
+ */
+const partnerApp: ChoysumWebApp = app.setup(setupApp);
+export default partnerApp;

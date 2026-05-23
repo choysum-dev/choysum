@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "build": "esbuild --bundle --minify --tree-shaking=true --format=iife  --platform=browser --global-name='sfc' --outfile=dist/index.js src/index.ts",
+    "build-dev": "esbuild --bundle --format=iife  --platform=browser --global-name='sfc' --outfile=dist/index.js src/index.ts"
+  },
+  "dependencies": {
+    "@vue/compiler-core": "latest",
+    "@vue/compiler-sfc": "latest",
+    "esbuild": "latest",
+    "path-browserify": "latest",
+    "sass": "latest",
+    "url": "latest"
+  }
+}

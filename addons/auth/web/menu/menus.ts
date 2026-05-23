@@ -1,0 +1,41 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { type MenuItem } from '@/core/web/menu';
+import { UserFilled } from '@element-plus/icons-vue';
+import { defineMenu } from '@/core/web/resource';
+
+/**
+ * Auth module menu definitions.
+ *
+ * Keep menu visibility concerns separate from route registration.
+ */
+export const authMenus: MenuItem[] = [
+  defineMenu('auth.menu.root', {
+    title: 'Access Control',
+    icon: UserFilled,
+    sequence: 100,
+    children: [
+      defineMenu('auth.menu.user_list', {
+        title: 'User List',
+        path: '/auth/users',
+        sequence: 10,
+      }),
+      defineMenu('auth.menu.role_list', {
+        title: 'Role List',
+        path: '/auth/roles',
+        sequence: 30,
+      }),
+      defineMenu('auth.menu.session_list', {
+        title: 'Session List',
+        path: '/auth/sessions',
+        sequence: 40,
+      }),
+      defineMenu('auth.menu.token_list', {
+        title: 'Token List',
+        path: '/auth/tokens',
+        sequence: 50,
+      }),
+    ],
+  }),
+];

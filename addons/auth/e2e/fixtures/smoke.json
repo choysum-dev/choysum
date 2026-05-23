@@ -1,0 +1,87 @@
+{
+  "records": [
+    {
+      "module": "auth",
+      "external_id": "e2e_company_child",
+      "model": "base.Company",
+      "values": {
+        "Name": "Child Company",
+        "Code": "CHILD",
+        "Timezone": "Asia/Shanghai",
+        "CurrencyId": { "ref": "base.currency_cny" },
+        "IsActive": true,
+        "LanguageId": { "ref": "base.language_zh" },
+        "LocaleId": { "ref": "base.locale_default" },
+        "ParentId": { "ref": "base.company_main" }
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "e2e_admin_user",
+      "model": "auth.User",
+      "values": {
+        "Username": "e2e-admin",
+        "Email": "e2e-admin@local",
+        "PasswordHash": "$2a$10$h2z0MfS.MK9MA1txpgdqT.IkvUyOXGrDeL4pMI65g7w6tQ/m0DQlS",
+        "IsActive": true,
+        "CompanyId": { "ref": "base.company_main" },
+        "CompanyIds": [{ "ref": "base.company_main" }, { "ref": "auth.e2e_company_child" }]
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "e2e_role_base_user",
+      "model": "auth.Role",
+      "values": {
+        "Name": "E2E Base User",
+        "Code": "e2e.base.user",
+        "Description": "E2E role for module management tests",
+        "IsActive": true,
+        "IsSystem": false
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "e2e_role_sys_admin",
+      "model": "auth.Role",
+      "values": {
+        "Name": "E2E System Admin",
+        "Code": "e2e.sys.admin",
+        "Description": "E2E admin role for module management tests",
+        "IsActive": true,
+        "IsSystem": true
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "e2e_rma_sys_admin_global_allow",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.e2e_role_sys_admin" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "e2e_admin_userrole_base_user_main",
+      "model": "auth.UserRole",
+      "values": {
+        "UserId": { "ref": "auth.e2e_admin_user" },
+        "RoleId": { "ref": "auth.e2e_role_base_user" },
+        "CompanyId": { "ref": "base.company_main" }
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "e2e_admin_userrole_sys_admin",
+      "model": "auth.UserRole",
+      "values": {
+        "UserId": { "ref": "auth.e2e_admin_user" },
+        "RoleId": { "ref": "auth.e2e_role_sys_admin" }
+      }
+    }
+  ]
+}

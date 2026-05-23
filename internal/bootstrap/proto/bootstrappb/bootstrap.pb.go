@@ -1,0 +1,536 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package bootstrappb
+
+import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
+)
+
+const (
+	// Verify that this generated code is sufficiently up-to-date.
+	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
+	// Verify that runtime/protoimpl is sufficiently up-to-date.
+	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
+)
+
+type InitializationState int32
+
+const (
+	InitializationState_INITIALIZATION_STATE_UNSPECIFIED InitializationState = 0
+	InitializationState_INITIALIZATION_STATE_PENDING     InitializationState = 1
+	InitializationState_INITIALIZATION_STATE_RUNNING     InitializationState = 2
+	InitializationState_INITIALIZATION_STATE_SUCCEEDED   InitializationState = 3
+	InitializationState_INITIALIZATION_STATE_FAILED      InitializationState = 4
+)
+
+// Enum value maps for InitializationState.
+var (
+	InitializationState_name = map[int32]string{
+		0: "INITIALIZATION_STATE_UNSPECIFIED",
+		1: "INITIALIZATION_STATE_PENDING",
+		2: "INITIALIZATION_STATE_RUNNING",
+		3: "INITIALIZATION_STATE_SUCCEEDED",
+		4: "INITIALIZATION_STATE_FAILED",
+	}
+	InitializationState_value = map[string]int32{
+		"INITIALIZATION_STATE_UNSPECIFIED": 0,
+		"INITIALIZATION_STATE_PENDING":     1,
+		"INITIALIZATION_STATE_RUNNING":     2,
+		"INITIALIZATION_STATE_SUCCEEDED":   3,
+		"INITIALIZATION_STATE_FAILED":      4,
+	}
+)
+
+func (x InitializationState) Enum() *InitializationState {
+	p := new(InitializationState)
+	*p = x
+	return p
+}
+
+func (x InitializationState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (InitializationState) Descriptor() protoreflect.EnumDescriptor {
+	return file_bootstrap_proto_enumTypes[0].Descriptor()
+}
+
+func (InitializationState) Type() protoreflect.EnumType {
+	return &file_bootstrap_proto_enumTypes[0]
+}
+
+func (x InitializationState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use InitializationState.Descriptor instead.
+func (InitializationState) EnumDescriptor() ([]byte, []int) {
+	return file_bootstrap_proto_rawDescGZIP(), []int{0}
+}
+
+type InitializationStage int32
+
+const (
+	InitializationStage_INITIALIZATION_STAGE_UNSPECIFIED               InitializationStage = 0
+	InitializationStage_INITIALIZATION_STAGE_ACQUIRE_LOCK              InitializationStage = 1
+	InitializationStage_INITIALIZATION_STAGE_CHECK_WORKSPACE_FRESHNESS InitializationStage = 2
+	InitializationStage_INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME    InitializationStage = 3
+	InitializationStage_INITIALIZATION_STAGE_VALIDATE_RUNTIME_READY    InitializationStage = 4
+	InitializationStage_INITIALIZATION_STAGE_UPDATE_ADMIN              InitializationStage = 5
+	InitializationStage_INITIALIZATION_STAGE_SWITCH_MODE               InitializationStage = 6
+	InitializationStage_INITIALIZATION_STAGE_DONE                      InitializationStage = 7
+)
+
+// Enum value maps for InitializationStage.
+var (
+	InitializationStage_name = map[int32]string{
+		0: "INITIALIZATION_STAGE_UNSPECIFIED",
+		1: "INITIALIZATION_STAGE_ACQUIRE_LOCK",
+		2: "INITIALIZATION_STAGE_CHECK_WORKSPACE_FRESHNESS",
+		3: "INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME",
+		4: "INITIALIZATION_STAGE_VALIDATE_RUNTIME_READY",
+		5: "INITIALIZATION_STAGE_UPDATE_ADMIN",
+		6: "INITIALIZATION_STAGE_SWITCH_MODE",
+		7: "INITIALIZATION_STAGE_DONE",
+	}
+	InitializationStage_value = map[string]int32{
+		"INITIALIZATION_STAGE_UNSPECIFIED":               0,
+		"INITIALIZATION_STAGE_ACQUIRE_LOCK":              1,
+		"INITIALIZATION_STAGE_CHECK_WORKSPACE_FRESHNESS": 2,
+		"INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME":    3,
+		"INITIALIZATION_STAGE_VALIDATE_RUNTIME_READY":    4,
+		"INITIALIZATION_STAGE_UPDATE_ADMIN":              5,
+		"INITIALIZATION_STAGE_SWITCH_MODE":               6,
+		"INITIALIZATION_STAGE_DONE":                      7,
+	}
+)
+
+func (x InitializationStage) Enum() *InitializationStage {
+	p := new(InitializationStage)
+	*p = x
+	return p
+}
+
+func (x InitializationStage) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (InitializationStage) Descriptor() protoreflect.EnumDescriptor {
+	return file_bootstrap_proto_enumTypes[1].Descriptor()
+}
+
+func (InitializationStage) Type() protoreflect.EnumType {
+	return &file_bootstrap_proto_enumTypes[1]
+}
+
+func (x InitializationStage) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use InitializationStage.Descriptor instead.
+func (InitializationStage) EnumDescriptor() ([]byte, []int) {
+	return file_bootstrap_proto_rawDescGZIP(), []int{1}
+}
+
+type Workspace_Initialize_Req struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	AdminUsername        string                 `protobuf:"bytes,1,opt,name=admin_username,json=adminUsername,proto3" json:"admin_username,omitempty"`
+	Password             string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	ClientHashingEnabled bool                   `protobuf:"varint,3,opt,name=client_hashing_enabled,json=clientHashingEnabled,proto3" json:"client_hashing_enabled,omitempty"`
+	IdempotencyKey       string                 `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *Workspace_Initialize_Req) Reset() {
+	*x = Workspace_Initialize_Req{}
+	mi := &file_bootstrap_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Workspace_Initialize_Req) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Workspace_Initialize_Req) ProtoMessage() {}
+
+func (x *Workspace_Initialize_Req) ProtoReflect() protoreflect.Message {
+	mi := &file_bootstrap_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Workspace_Initialize_Req.ProtoReflect.Descriptor instead.
+func (*Workspace_Initialize_Req) Descriptor() ([]byte, []int) {
+	return file_bootstrap_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *Workspace_Initialize_Req) GetAdminUsername() string {
+	if x != nil {
+		return x.AdminUsername
+	}
+	return ""
+}
+
+func (x *Workspace_Initialize_Req) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *Workspace_Initialize_Req) GetClientHashingEnabled() bool {
+	if x != nil {
+		return x.ClientHashingEnabled
+	}
+	return false
+}
+
+func (x *Workspace_Initialize_Req) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type Workspace_Initialize_Resp struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Accepted        bool                   `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	OperationId     string                 `protobuf:"bytes,2,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	NextPollAfterMs int64                  `protobuf:"varint,3,opt,name=next_poll_after_ms,json=nextPollAfterMs,proto3" json:"next_poll_after_ms,omitempty"`
+	State           InitializationState    `protobuf:"varint,4,opt,name=state,proto3,enum=bootstrap.InitializationState" json:"state,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Workspace_Initialize_Resp) Reset() {
+	*x = Workspace_Initialize_Resp{}
+	mi := &file_bootstrap_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Workspace_Initialize_Resp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Workspace_Initialize_Resp) ProtoMessage() {}
+
+func (x *Workspace_Initialize_Resp) ProtoReflect() protoreflect.Message {
+	mi := &file_bootstrap_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Workspace_Initialize_Resp.ProtoReflect.Descriptor instead.
+func (*Workspace_Initialize_Resp) Descriptor() ([]byte, []int) {
+	return file_bootstrap_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *Workspace_Initialize_Resp) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *Workspace_Initialize_Resp) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *Workspace_Initialize_Resp) GetNextPollAfterMs() int64 {
+	if x != nil {
+		return x.NextPollAfterMs
+	}
+	return 0
+}
+
+func (x *Workspace_Initialize_Resp) GetState() InitializationState {
+	if x != nil {
+		return x.State
+	}
+	return InitializationState_INITIALIZATION_STATE_UNSPECIFIED
+}
+
+type Workspace_GetInitializationStatus_Req struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Workspace_GetInitializationStatus_Req) Reset() {
+	*x = Workspace_GetInitializationStatus_Req{}
+	mi := &file_bootstrap_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Workspace_GetInitializationStatus_Req) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Workspace_GetInitializationStatus_Req) ProtoMessage() {}
+
+func (x *Workspace_GetInitializationStatus_Req) ProtoReflect() protoreflect.Message {
+	mi := &file_bootstrap_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Workspace_GetInitializationStatus_Req.ProtoReflect.Descriptor instead.
+func (*Workspace_GetInitializationStatus_Req) Descriptor() ([]byte, []int) {
+	return file_bootstrap_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *Workspace_GetInitializationStatus_Req) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+type Workspace_GetInitializationStatus_Resp struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OperationId     string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	State           InitializationState    `protobuf:"varint,2,opt,name=state,proto3,enum=bootstrap.InitializationState" json:"state,omitempty"`
+	Stage           InitializationStage    `protobuf:"varint,3,opt,name=stage,proto3,enum=bootstrap.InitializationStage" json:"stage,omitempty"`
+	ProgressPercent int32                  `protobuf:"varint,4,opt,name=progress_percent,json=progressPercent,proto3" json:"progress_percent,omitempty"`
+	ReadyForLogin   bool                   `protobuf:"varint,5,opt,name=ready_for_login,json=readyForLogin,proto3" json:"ready_for_login,omitempty"`
+	RedirectUrl     string                 `protobuf:"bytes,6,opt,name=redirect_url,json=redirectUrl,proto3" json:"redirect_url,omitempty"`
+	ErrorCode       string                 `protobuf:"bytes,7,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
+	ErrorMessage    string                 `protobuf:"bytes,8,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	NextPollAfterMs int64                  `protobuf:"varint,9,opt,name=next_poll_after_ms,json=nextPollAfterMs,proto3" json:"next_poll_after_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) Reset() {
+	*x = Workspace_GetInitializationStatus_Resp{}
+	mi := &file_bootstrap_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Workspace_GetInitializationStatus_Resp) ProtoMessage() {}
+
+func (x *Workspace_GetInitializationStatus_Resp) ProtoReflect() protoreflect.Message {
+	mi := &file_bootstrap_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Workspace_GetInitializationStatus_Resp.ProtoReflect.Descriptor instead.
+func (*Workspace_GetInitializationStatus_Resp) Descriptor() ([]byte, []int) {
+	return file_bootstrap_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetState() InitializationState {
+	if x != nil {
+		return x.State
+	}
+	return InitializationState_INITIALIZATION_STATE_UNSPECIFIED
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetStage() InitializationStage {
+	if x != nil {
+		return x.Stage
+	}
+	return InitializationStage_INITIALIZATION_STAGE_UNSPECIFIED
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetProgressPercent() int32 {
+	if x != nil {
+		return x.ProgressPercent
+	}
+	return 0
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetReadyForLogin() bool {
+	if x != nil {
+		return x.ReadyForLogin
+	}
+	return false
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetRedirectUrl() string {
+	if x != nil {
+		return x.RedirectUrl
+	}
+	return ""
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetErrorCode() string {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ""
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *Workspace_GetInitializationStatus_Resp) GetNextPollAfterMs() int64 {
+	if x != nil {
+		return x.NextPollAfterMs
+	}
+	return 0
+}
+
+var File_bootstrap_proto protoreflect.FileDescriptor
+
+const file_bootstrap_proto_rawDesc = "" +
+	"\n" +
+	"\x0fbootstrap.proto\x12\tbootstrap\"\xbc\x01\n" +
+	"\x18Workspace_Initialize_Req\x12%\n" +
+	"\x0eadmin_username\x18\x01 \x01(\tR\radminUsername\x12\x1a\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x124\n" +
+	"\x16client_hashing_enabled\x18\x03 \x01(\bR\x14clientHashingEnabled\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\xbd\x01\n" +
+	"\x19Workspace_Initialize_Resp\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\x12!\n" +
+	"\foperation_id\x18\x02 \x01(\tR\voperationId\x12+\n" +
+	"\x12next_poll_after_ms\x18\x03 \x01(\x03R\x0fnextPollAfterMs\x124\n" +
+	"\x05state\x18\x04 \x01(\x0e2\x1e.bootstrap.InitializationStateR\x05state\"J\n" +
+	"%Workspace_GetInitializationStatus_Req\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\"\x9e\x03\n" +
+	"&Workspace_GetInitializationStatus_Resp\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x124\n" +
+	"\x05state\x18\x02 \x01(\x0e2\x1e.bootstrap.InitializationStateR\x05state\x124\n" +
+	"\x05stage\x18\x03 \x01(\x0e2\x1e.bootstrap.InitializationStageR\x05stage\x12)\n" +
+	"\x10progress_percent\x18\x04 \x01(\x05R\x0fprogressPercent\x12&\n" +
+	"\x0fready_for_login\x18\x05 \x01(\bR\rreadyForLogin\x12!\n" +
+	"\fredirect_url\x18\x06 \x01(\tR\vredirectUrl\x12\x1d\n" +
+	"\n" +
+	"error_code\x18\a \x01(\tR\terrorCode\x12#\n" +
+	"\rerror_message\x18\b \x01(\tR\ferrorMessage\x12+\n" +
+	"\x12next_poll_after_ms\x18\t \x01(\x03R\x0fnextPollAfterMs*\xc4\x01\n" +
+	"\x13InitializationState\x12$\n" +
+	" INITIALIZATION_STATE_UNSPECIFIED\x10\x00\x12 \n" +
+	"\x1cINITIALIZATION_STATE_PENDING\x10\x01\x12 \n" +
+	"\x1cINITIALIZATION_STATE_RUNNING\x10\x02\x12\"\n" +
+	"\x1eINITIALIZATION_STATE_SUCCEEDED\x10\x03\x12\x1f\n" +
+	"\x1bINITIALIZATION_STATE_FAILED\x10\x04*\xe4\x02\n" +
+	"\x13InitializationStage\x12$\n" +
+	" INITIALIZATION_STAGE_UNSPECIFIED\x10\x00\x12%\n" +
+	"!INITIALIZATION_STAGE_ACQUIRE_LOCK\x10\x01\x122\n" +
+	".INITIALIZATION_STAGE_CHECK_WORKSPACE_FRESHNESS\x10\x02\x12/\n" +
+	"+INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME\x10\x03\x12/\n" +
+	"+INITIALIZATION_STAGE_VALIDATE_RUNTIME_READY\x10\x04\x12%\n" +
+	"!INITIALIZATION_STAGE_UPDATE_ADMIN\x10\x05\x12$\n" +
+	" INITIALIZATION_STAGE_SWITCH_MODE\x10\x06\x12\x1d\n" +
+	"\x19INITIALIZATION_STAGE_DONE\x10\a2\xe4\x01\n" +
+	"\tWorkspace\x12W\n" +
+	"\n" +
+	"Initialize\x12#.bootstrap.Workspace_Initialize_Req\x1a$.bootstrap.Workspace_Initialize_Resp\x12~\n" +
+	"\x17GetInitializationStatus\x120.bootstrap.Workspace_GetInitializationStatus_Req\x1a1.bootstrap.Workspace_GetInitializationStatus_RespBQZOgithub.com/choysum-dev/choysum/internal/bootstrap/proto/bootstrappb;bootstrappbb\x06proto3"
+
+var (
+	file_bootstrap_proto_rawDescOnce sync.Once
+	file_bootstrap_proto_rawDescData []byte
+)
+
+func file_bootstrap_proto_rawDescGZIP() []byte {
+	file_bootstrap_proto_rawDescOnce.Do(func() {
+		file_bootstrap_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_bootstrap_proto_rawDesc), len(file_bootstrap_proto_rawDesc)))
+	})
+	return file_bootstrap_proto_rawDescData
+}
+
+var file_bootstrap_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_bootstrap_proto_goTypes = []any{
+	(InitializationState)(0),                       // 0: bootstrap.InitializationState
+	(InitializationStage)(0),                       // 1: bootstrap.InitializationStage
+	(*Workspace_Initialize_Req)(nil),               // 2: bootstrap.Workspace_Initialize_Req
+	(*Workspace_Initialize_Resp)(nil),              // 3: bootstrap.Workspace_Initialize_Resp
+	(*Workspace_GetInitializationStatus_Req)(nil),  // 4: bootstrap.Workspace_GetInitializationStatus_Req
+	(*Workspace_GetInitializationStatus_Resp)(nil), // 5: bootstrap.Workspace_GetInitializationStatus_Resp
+}
+var file_bootstrap_proto_depIdxs = []int32{
+	0, // 0: bootstrap.Workspace_Initialize_Resp.state:type_name -> bootstrap.InitializationState
+	0, // 1: bootstrap.Workspace_GetInitializationStatus_Resp.state:type_name -> bootstrap.InitializationState
+	1, // 2: bootstrap.Workspace_GetInitializationStatus_Resp.stage:type_name -> bootstrap.InitializationStage
+	2, // 3: bootstrap.Workspace.Initialize:input_type -> bootstrap.Workspace_Initialize_Req
+	4, // 4: bootstrap.Workspace.GetInitializationStatus:input_type -> bootstrap.Workspace_GetInitializationStatus_Req
+	3, // 5: bootstrap.Workspace.Initialize:output_type -> bootstrap.Workspace_Initialize_Resp
+	5, // 6: bootstrap.Workspace.GetInitializationStatus:output_type -> bootstrap.Workspace_GetInitializationStatus_Resp
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
+}
+
+func init() { file_bootstrap_proto_init() }
+func file_bootstrap_proto_init() {
+	if File_bootstrap_proto != nil {
+		return
+	}
+	type x struct{}
+	out := protoimpl.TypeBuilder{
+		File: protoimpl.DescBuilder{
+			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_bootstrap_proto_rawDesc), len(file_bootstrap_proto_rawDesc)),
+			NumEnums:      2,
+			NumMessages:   4,
+			NumExtensions: 0,
+			NumServices:   1,
+		},
+		GoTypes:           file_bootstrap_proto_goTypes,
+		DependencyIndexes: file_bootstrap_proto_depIdxs,
+		EnumInfos:         file_bootstrap_proto_enumTypes,
+		MessageInfos:      file_bootstrap_proto_msgTypes,
+	}.Build()
+	File_bootstrap_proto = out.File
+	file_bootstrap_proto_goTypes = nil
+	file_bootstrap_proto_depIdxs = nil
+}

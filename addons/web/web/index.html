@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- 基本信息 -->
+    <title>Choysum</title>
+    <meta name="description" content="Choysum - 企业资源计划管理系统" />
+
+    <!-- 图标 -->
+    <link rel="icon" href="assets/favicon.ico" />
+
+    <!-- 初始样式 -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+          sans-serif;
+      }
+
+      #app {
+        height: 100%;
+      }
+
+      .app-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background-color: #f5f7fa;
+      }
+
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(64, 158, 255, 0.1);
+        border-radius: 50%;
+        border-top-color: #409eff;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+
+    <!-- 主题预加载 -->
+    <script>
+      (function () {
+        const savedTheme = localStorage.getItem('choysum.theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <!-- 初始加载提示 -->
+    <div id="app">
+      <div class="app-loading">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
+  </body>
+</html>

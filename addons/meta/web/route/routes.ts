@@ -1,0 +1,52 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { RouteRecordRaw } from 'vue-router';
+import { defineRoute } from '@/core/web/resource';
+
+/**
+ * Route table for the meta module management surfaces.
+ */
+export const metaRoutes: RouteRecordRaw[] = [
+  defineRoute('meta.route.module_board', {
+    sequence: 10,
+    title: '模块管理',
+    path: 'meta/modules',
+    name: 'MetaModuleList',
+    component: () => import('../pages/ModuleList.vue'),
+    actions: ['meta.action.module_install', 'meta.action.module_upgrade', 'meta.action.module_uninstall', 'meta.action.module_sync_index'],
+    requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('meta.route.module_list', {
+    sequence: 20,
+    title: '模块列表',
+    path: 'meta/modules/list',
+    name: 'MetaModuleListTable',
+    component: () => import('../pages/ModuleListTable.vue'),
+    actions: ['meta.action.module_sync_index', 'meta.action.ir_module_index_delete'],
+    requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('meta.route.module_history', {
+    sequence: 30,
+    title: '操作历史',
+    path: 'meta/modules/history',
+    name: 'MetaModuleHistory',
+    component: () => import('../pages/ModuleHistory.vue'),
+    actions: ['meta.action.module_management_log_delete'],
+    requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.IrModule' }, { model: 'meta.IrModuleIndex' }],
+    meta: { requiresAuth: true },
+  }),
+  defineRoute('meta.route.module_detail', {
+    sequence: 40,
+    title: '模块详情',
+    path: 'meta/modules/:id',
+    name: 'MetaModuleDetail',
+    component: () => import('../pages/ModuleDetail.vue'),
+    props: route => ({ recordId: route.params.id, viewMode: 'display' }),
+    actions: ['meta.action.ir_module_index_edit', 'meta.action.ir_module_index_delete', 'meta.action.ir_module_index_copy'],
+    requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
+    meta: { requiresAuth: true },
+  }),
+];

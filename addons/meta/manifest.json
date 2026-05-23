@@ -1,0 +1,27 @@
+{
+  "name": "meta",
+  "description": "Metadata and module management",
+  "application": "meta",
+  "category": "Platform/Metadata",
+  "depends": ["core", "web", "task"],
+  "externalDependencies": {
+    "application": {},
+    "node_module": {},
+    "binary": {}
+  },
+  "entryPoints": {
+    "service": "./service/index.ts",
+    "web": "./web/index.ts"
+  },
+  "e2e": {
+    "specs": "e2e",
+    "scenarios": {
+      "default": {
+        "fixtures": ["e2e/fixtures/smoke.json"]
+      }
+    }
+  },
+  "version": "v0.1.0",
+  "license": "Apache 2.0",
+  "author": "Choysum Team"
+}

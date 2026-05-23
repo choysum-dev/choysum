@@ -1,0 +1,32 @@
+# Sample local overrides.
+# This file is not loaded automatically; copy it to config.yaml or pass --config
+# when you want file-based overrides instead of env-only setup.
+#
+# Keep secrets in the environment, not in tracked YAML.
+# Common env names:
+#   CHOYSUM_DEFAULT_CHOYSUM_PATH
+#   CHOYSUM_AUTH_INTERNAL_KEY
+#   CHOYSUM_DB_DIALECT
+#   CHOYSUM_DB_DSN
+#   CHOYSUM_COMPILE_MINIFY
+#   CHOYSUM_COMPILE_SOURCEMAP
+#   CHOYSUM_SERVER_HOT_RELOAD
+
+# Common workspace-local state root.
+default_choysum_path: ./.choysum
+
+# Common local dev toggles. Uncomment only when needed.
+# log:
+#   format: devslog
+#   level: info
+# compile:
+#   minify: false
+#   sourcemap: true
+# server:
+#   hotReload: true
+#   enabledTLS: true
+#   tlsCaFile: /absolute/path/to/.choysum/cert/ca.crt
+#   tlsCertFile: /absolute/path/to/.choysum/cert/server.crt
+#   tlsKeyFile: /absolute/path/to/.choysum/cert/server.key
+# Generate those local TLS files with ./scripts/dev/generate-local-tls-certs.sh.
+# The script defaults to $HOME/.choysum/cert; pass a custom output dir if needed.

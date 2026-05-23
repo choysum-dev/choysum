@@ -1,0 +1,6 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+test('sanity: basic expect works', () => {
+  expect(1 + 1).toBe(2);
+});

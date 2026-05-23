@@ -1,0 +1,1240 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package backendbuilder
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/choysum-dev/choysum/internal/esbplugins"
+	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
+	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	"github.com/choysum-dev/choysum/internal/parser"
+	"github.com/choysum-dev/choysum/internal/testing/scopetest"
+	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/jsexecutor"
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/evanw/esbuild/pkg/api"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+)
+
+type builderTestScope struct {
+	ctx     context.Context
+	cfg     *config.Config
+	logger  *slog.Logger
+	session *scope.Session
+}
+
+type builderTestTransaction struct {
+	ctx     context.Context
+	session *scope.Session
+}
+
+func withParserResults(result *module.BuildResult, parserResults ...*parser.ParserResult) *module.BuildResult {
+	return module.WithParserResults(result, parserResults)
+}
+
+func parserResultsOf(result *module.BuildResult) []*parser.ParserResult {
+	return module.ParserResults(result)
+}
+
+func (e *builderTestScope) Run(fn func(runtimeScope scope.Scope) error) error { return fn(e) }
+func (e *builderTestScope) Transactor() scope.Transactor {
+	return scopetest.NewPassthroughTransactor(e)
+}
+func (e *builderTestScope) Session() *scope.Session {
+	if e == nil {
+		return nil
+	}
+	if tx, ok := scope.TransactionFromContext(e.ctx); ok {
+		if sess := tx.Session(); sess != nil {
+			return sess
+		}
+	}
+	if sess, ok := scope.SessionFromContext(e.ctx); ok {
+		return sess
+	}
+	return e.session
+}
+func (e *builderTestScope) WithContext(ctx context.Context) scope.Scope {
+	clone := *e
+	clone.ctx = ctx
+	return &clone
+}
+func (e *builderTestScope) Context() context.Context { return e.ctx }
+func (e *builderTestScope) Logger() *slog.Logger     { return e.logger }
+func (e *builderTestScope) Config() *config.Config   { return e.cfg }
+
+func (e *builderTestScope) FactoryInput() scope.FactoryInput {
+	return scopetest.FactoryInputFromConfig(e.Config())
+}
+
+func (tx *builderTestTransaction) Context() context.Context {
+	if tx == nil {
+		return nil
+	}
+	return tx.ctx
+}
+
+func (tx *builderTestTransaction) Session() *scope.Session {
+	if tx == nil {
+		return nil
+	}
+	return tx.session
+}
+
+func (tx *builderTestTransaction) Savepoint(string) error           { return nil }
+func (tx *builderTestTransaction) RollbackToSavepoint(string) error { return nil }
+func (tx *builderTestTransaction) ReleaseSavepoint(string) error    { return nil }
+
+type stubEsbPlugin struct {
+	name          string
+	parserResults []*parser.ParserResult
+	entryImports  []string
+}
+
+type fixedParser struct {
+	result *parser.ParserResult
+	err    error
+}
+
+func (p *stubEsbPlugin) DefinePlugins(_ scope.Scope, _ jsexecutor.ScriptExecutor, _ *meta.IrModule, options ...esbplugins.EsbPluginOptions) []api.Plugin {
+	for _, opt := range options {
+		if opt != nil {
+			opt(p)
+		}
+	}
+	return []api.Plugin{{Name: p.name, Setup: func(api.PluginBuild) {}}}
+}
+
+func (p *stubEsbPlugin) GetParserResults() ([]*parser.ParserResult, error) {
+	return p.parserResults, nil
+}
+
+func (p *stubEsbPlugin) SetParserResults(parserResults []*parser.ParserResult) error {
+	p.parserResults = parserResults
+	return nil
+}
+
+func (p *stubEsbPlugin) SetEntryPointImports(imports []string) {
+	p.entryImports = append([]string(nil), imports...)
+}
+
+func (p fixedParser) Parse(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error) {
+	return p.result, p.err
+}
+
+func normalizedAbsImportPath(path string) string {
+	absPath := path
+	if resolved, err := filepath.Abs(path); err == nil {
+		absPath = resolved
+	}
+	return filepath.ToSlash(filepath.Clean(absPath))
+}
+
+func newBuilderTestScope() *builderTestScope {
+	return &builderTestScope{
+		ctx: context.Background(),
+		cfg: &config.Config{
+			AddonsPath:         "/virtual/addons",
+			DistPath:           "/virtual/dist",
+			DefaultChoysumPath: filepath.Join(os.TempDir(), "choysum-backendbuilder-default"),
+			Compile: &config.CompileConfig{
+				BundleMode:  string(config.BundleModeBundle),
+				Minify:      true,
+				TreeShaking: false,
+				SourceMap:   true,
+			},
+			Auth: &config.AuthConfig{
+				GrpcAuthentication: false,
+				GrpcMethodAccess:   true,
+				GrpcRecordRule:     false,
+				GrpcCompanyFilter:  true,
+				GrpcFieldRule:      false,
+				AuthzDecisionLog:   "deny",
+				AuthzDecisionAudit: true,
+			},
+			Task: &config.TaskConfig{
+				Dispatch: &config.TaskDispatchConfig{DefaultMaxAttempts: 7},
+			},
+			BackendEnv: map[string]any{"CUSTOM_FLAG": "present"},
+		},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+}
+
+func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
+	testRuntimeScope := newBuilderTestScope()
+	builder := &ModuleBuilder{
+		runtimeScope:   testRuntimeScope,
+		module:         &meta.IrModule{ApplicationStr: "auth"},
+		entryPoint:     "/virtual/addons/auth/service/index.ts",
+		prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
+		buildPlugin:    &stubEsbPlugin{name: "build"},
+		outFileName:    "bundle.js",
+		globalName:     "AuthApp",
+	}
+
+	prebuildOpts := builder.buildOptions(true)
+	if got, want := prebuildOpts.Outfile, filepath.Join("/virtual/dist", "apps", "auth", "bundle.js"); got != want {
+		t.Fatalf("prebuild outfile = %q, want %q", got, want)
+	}
+	if len(prebuildOpts.Plugins) != 1 || prebuildOpts.Plugins[0].Name != "prebuild" {
+		t.Fatalf("unexpected prebuild plugins: %#v", prebuildOpts.Plugins)
+	}
+	if prebuildOpts.Write {
+		t.Fatal("expected prebuild buildOptions to disable direct writes")
+	}
+	if prebuildOpts.Sourcemap != api.SourceMapInline || prebuildOpts.TreeShaking != api.TreeShakingFalse {
+		t.Fatalf("unexpected sourcemap/tree shaking config: sourcemap=%v treeShaking=%v", prebuildOpts.Sourcemap, prebuildOpts.TreeShaking)
+	}
+	if prebuildOpts.GlobalName != "AuthApp" || !prebuildOpts.MinifyWhitespace || !prebuildOpts.MinifyIdentifiers || !prebuildOpts.MinifySyntax {
+		t.Fatalf("unexpected build flags: %#v", prebuildOpts)
+	}
+
+	var injected map[string]any
+	if err := json.Unmarshal([]byte(prebuildOpts.Define["import.meta.env"]), &injected); err != nil {
+		t.Fatalf("unmarshal define env: %v", err)
+	}
+	if injected["CUSTOM_FLAG"] != "present" || injected["CHOYSUM_AUTHZ_DECISION_LOG"] != "deny" {
+		t.Fatalf("unexpected injected env payload: %#v", injected)
+	}
+	for key, want := range map[string]bool{
+		"CHOYSUM_GRPC_AUTHENTICATION_ENABLED":  false,
+		"CHOYSUM_GRPC_METHOD_ACCESS_ENABLED":   true,
+		"CHOYSUM_GRPC_RECORD_RULE_ENABLED":     false,
+		"CHOYSUM_GRPC_COMPANY_FILTER_ENABLED":  true,
+		"CHOYSUM_GRPC_FIELD_RULE_ENABLED":      false,
+		"CHOYSUM_AUTHZ_DECISION_AUDIT_ENABLED": true,
+	} {
+		got, ok := injected[key].(bool)
+		if !ok || got != want {
+			t.Fatalf("env[%q] = %#v, want %v", key, injected[key], want)
+		}
+	}
+	if got := injected["CHOYSUM_TASK_DEFAULT_MAX_ATTEMPTS"]; got != float64(7) {
+		t.Fatalf("unexpected task attempts value: %#v", got)
+	}
+
+	builder.distAppDirOverride = "/tmp/staged/auth"
+	buildOpts := builder.buildOptions(false)
+	if got, want := buildOpts.Outfile, filepath.Join("/tmp/staged/auth", "bundle.js"); got != want {
+		t.Fatalf("build outfile = %q, want %q", got, want)
+	}
+	if len(buildOpts.Plugins) != 1 || buildOpts.Plugins[0].Name != "build" {
+		t.Fatalf("unexpected build plugins: %#v", buildOpts.Plugins)
+	}
+
+	builder.module.ApplicationStr = ""
+	if buildOpts := builder.buildOptions(false); buildOpts.Write {
+		t.Fatal("expected modules without application string to keep writes disabled")
+	}
+}
+
+func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:backendbuilder-entry-imports?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("auto migrate modules: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.session = &scope.Session{DB: db}
+	expectedByApp := map[string]string{}
+	for _, app := range []string{"crm", "hr"} {
+		_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, app, testRuntimeScope.cfg.DefaultChoysumPath)
+		if err != nil {
+			t.Fatalf("WorkspaceGeneratedAPITargets(%s) error = %v", app, err)
+		}
+		serviceIndex := filepath.Join(serviceDir, "index.ts")
+		expectedByApp[app] = normalizedAbsImportPath(serviceIndex)
+		if err := os.MkdirAll(filepath.Dir(serviceIndex), 0o755); err != nil {
+			t.Fatalf("mkdir service index dir for %s: %v", app, err)
+		}
+		if err := os.WriteFile(serviceIndex, []byte("export * from './service';\n"), 0o644); err != nil {
+			t.Fatalf("write service index for %s: %v", app, err)
+		}
+	}
+
+	for _, mod := range []*meta.IrModule{
+		{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"},
+		{Name: "hr_mod", ApplicationStr: "hr", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"},
+		{Name: "missing_entry", ApplicationStr: "missing", Status: meta.Installed},
+		{Name: "draft", ApplicationStr: "draft", Status: meta.Uninstalled, ServiceEntryPoint: "./service/index.ts"},
+	} {
+		if err := db.Create(mod).Error; err != nil {
+			t.Fatalf("create module %s: %v", mod.Name, err)
+		}
+	}
+
+	b := &ModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth")},
+	}
+
+	imports := b.entryPointImports()
+	importSet := make(map[string]bool, len(imports))
+	for _, item := range imports {
+		importSet[item] = true
+	}
+
+	if !importSet[expectedByApp["crm"]] {
+		t.Fatalf("expected workspace generated service import, got %#v", imports)
+	}
+	if !importSet[expectedByApp["hr"]] {
+		t.Fatalf("expected installed app alias import, got %#v", imports)
+	}
+	_, _, missingDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "missing", testRuntimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets(missing) error = %v", err)
+	}
+	missingImportPath := normalizedAbsImportPath(filepath.Join(missingDir, "index.ts"))
+	if importSet[missingImportPath] {
+		t.Fatalf("expected module without service entrypoint to be skipped, got %#v", imports)
+	}
+	_, _, draftDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "draft", testRuntimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets(draft) error = %v", err)
+	}
+	draftImportPath := normalizedAbsImportPath(filepath.Join(draftDir, "index.ts"))
+	if importSet[draftImportPath] {
+		t.Fatalf("expected uninstalled module to be skipped, got %#v", imports)
+	}
+}
+
+func TestBuildOptionsPassesEntryPointImportsToPlugins(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:backendbuilder-entry-options?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("auto migrate modules: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.session = &scope.Session{DB: db}
+	_, _, crmServiceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
+	}
+	crmServiceIndex := filepath.Join(crmServiceDir, "index.ts")
+	expectedImport := normalizedAbsImportPath(crmServiceIndex)
+	if err := os.MkdirAll(filepath.Dir(crmServiceIndex), 0o755); err != nil {
+		t.Fatalf("mkdir crm service index dir: %v", err)
+	}
+	if err := os.WriteFile(crmServiceIndex, []byte("export * from './service';\n"), 0o644); err != nil {
+		t.Fatalf("write crm service index: %v", err)
+	}
+
+	if err := db.Create(&meta.IrModule{Name: "crm_mod", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "./service/index.ts"}).Error; err != nil {
+		t.Fatalf("create module: %v", err)
+	}
+
+	prebuildPlugin := &stubEsbPlugin{name: "prebuild"}
+	buildPlugin := &stubEsbPlugin{name: "build"}
+	builder := &ModuleBuilder{
+		runtimeScope:   testRuntimeScope,
+		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth"},
+		entryPoint:     filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth", "service", "index.ts"),
+		prebuildPlugin: prebuildPlugin,
+		buildPlugin:    buildPlugin,
+	}
+
+	_ = builder.buildOptions(true)
+	if len(prebuildPlugin.entryImports) != 1 || prebuildPlugin.entryImports[0] != expectedImport {
+		t.Fatalf("expected prebuild plugin to receive service entrypoint imports, got %#v", prebuildPlugin.entryImports)
+	}
+
+	_ = builder.buildOptions(false)
+	if len(buildPlugin.entryImports) != 1 || buildPlugin.entryImports[0] != expectedImport {
+		t.Fatalf("expected build plugin to receive service entrypoint imports, got %#v", buildPlugin.entryImports)
+	}
+}
+
+func TestNormalizeImportHelpers(t *testing.T) {
+	if got := normalizeModuleSpecPath("  /virtual/a.ts  "); got != "/virtual/a" {
+		t.Fatalf("normalizeModuleSpecPath() = %q", got)
+	}
+
+	imports := map[string]*parser.Import{
+		"Parent": {ReferenceIdent: "default", ModuleSpecPath: "/virtual/parent.ts"},
+		"Named":  {ReferenceIdent: "Named", ModuleSpecPath: "/virtual/other"},
+	}
+	if ident, found, hasDefault := findDefaultImportIdentifierByModulePath(imports, "/virtual/parent"); ident != "Parent" || !found || !hasDefault {
+		t.Fatalf("unexpected default import lookup result: ident=%q found=%v hasDefault=%v", ident, found, hasDefault)
+	}
+	if ident, found, hasDefault := findDefaultImportIdentifierByModulePath(imports, "/virtual/other.ts"); ident != "" || !found || hasDefault {
+		t.Fatalf("unexpected named import lookup result: ident=%q found=%v hasDefault=%v", ident, found, hasDefault)
+	}
+	if ident, found, hasDefault := findDefaultImportIdentifierByModulePath(nil, "/virtual/missing"); ident != "" || found || hasDefault {
+		t.Fatalf("unexpected empty import lookup result: ident=%q found=%v hasDefault=%v", ident, found, hasDefault)
+	}
+
+	if got := insertImportIntoImportRegion("export const x = 1\n", nil, "import Foo from './foo';"); !strings.HasPrefix(got, "import Foo from './foo';\n") {
+		t.Fatalf("expected import to be inserted at top, got %q", got)
+	}
+	withLeadingNewline := insertImportIntoImportRegion("\nexport const x = 1\n", nil, "import Bar from './bar';")
+	if !strings.HasPrefix(withLeadingNewline, "import Bar from './bar';\n") {
+		t.Fatalf("expected leading newline content to receive import prefix, got %q", withLeadingNewline)
+	}
+}
+
+func TestValidateInheritanceAndCircularDependencies(t *testing.T) {
+	builder := &ModuleBuilder{}
+	root := &meta.IrModel{Name: "Partner", Path: "/models/root"}
+	child := &meta.IrModel{Name: "Partner", Path: "/models/child", Extends: "/models/root"}
+	orphan := &meta.IrModel{Name: "Partner", Path: "/models/orphan", Extends: "/models/missing"}
+	if err := builder.checkInheritanceChain([]*meta.IrModel{root, child, orphan}, map[string]*meta.IrModel{
+		root.Path:  root,
+		child.Path: child,
+	}); err == nil || !strings.Contains(err.Error(), "not in the same inheritance component") {
+		t.Fatalf("expected disconnected inheritance chain error, got %v", err)
+	}
+
+	cyclicA := &meta.IrModel{Name: "Partner", Path: "/models/a", Extends: "/models/b"}
+	cyclicB := &meta.IrModel{Name: "Partner", Path: "/models/b", Extends: "/models/a"}
+	if err := builder.checkCircularDependency(cyclicA, map[string]*meta.IrModel{
+		cyclicA.Path: cyclicA,
+		cyclicB.Path: cyclicB,
+	}, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "circular dependency") {
+		t.Fatalf("expected circular dependency error, got %v", err)
+	}
+
+	buildResult := withParserResults(&module.BuildResult{},
+		&parser.ParserResult{Model: cyclicA},
+		&parser.ParserResult{Model: cyclicB},
+	)
+	if err := builder.validate(buildResult); err == nil || !strings.Contains(err.Error(), "circular dependency detected") {
+		t.Fatalf("expected validate to surface circular dependency, got %v", err)
+	}
+
+	buildResult = withParserResults(&module.BuildResult{}, &parser.ParserResult{Model: root}, &parser.ParserResult{Model: child})
+	if err := builder.validate(buildResult); err != nil {
+		t.Fatalf("validate() unexpected error = %v", err)
+	}
+}
+
+func TestMergeCloneAndMaterializedHelpers(t *testing.T) {
+	parentFields := []*meta.IrField{
+		{
+			Name: "Code",
+			Decorators: []*meta.IrDecorator{{
+				Name:      "Field",
+				Arguments: []*meta.IrArgument{{Value: "'parent-code'", Type: "Literal"}},
+			}},
+		},
+		{Name: "Shared"},
+	}
+	childFields := []*meta.IrField{
+		{Name: "Shared", Decorators: []*meta.IrDecorator{{Name: "Field", Arguments: []*meta.IrArgument{{Value: "'child-shared'", Type: "Literal"}}}}},
+		{Name: "Extra"},
+	}
+	mergedFields := mergeOrderedFields(parentFields, childFields, "/models/base", "/models/child")
+	if len(mergedFields) != 3 || mergedFields[0].Name != "Code" || mergedFields[1].Name != "Shared" || mergedFields[2].Name != "Extra" {
+		t.Fatalf("unexpected merged fields order: %#v", mergedFields)
+	}
+	if mergedFields[0].OriginModelPath != "/models/base" || mergedFields[1].OriginModelPath != "/models/child" || mergedFields[2].OriginModelPath != "/models/child" {
+		t.Fatalf("unexpected field origin paths: %#v", mergedFields)
+	}
+	mergedFields[0].Decorators[0].Arguments[0].Value = "'mutated'"
+	if parentFields[0].Decorators[0].Arguments[0].Value != "'parent-code'" {
+		t.Fatalf("expected merged fields to deep clone decorators, got %#v", parentFields[0].Decorators)
+	}
+
+	parentServices := []*meta.IrService{{
+		Name:           "List",
+		TypeParameters: []*meta.IrTypeParameter{{Name: "T"}},
+		Parameters:     []*meta.IrParameter{{Name: "query"}},
+		Decorators:     []*meta.IrDecorator{{Name: "Service", Arguments: []*meta.IrArgument{{Value: "'parent-service'", Type: "Literal"}}}},
+	}, {Name: "Shared"}}
+	childServices := []*meta.IrService{{
+		Name:       "Shared",
+		Decorators: []*meta.IrDecorator{{Name: "Service", Arguments: []*meta.IrArgument{{Value: "'child-service'", Type: "Literal"}}}},
+	}, {Name: "Create"}}
+	mergedServices := mergeOrderedServices(parentServices, childServices, "/models/base", "/models/child")
+	if len(mergedServices) != 3 || mergedServices[0].Name != "List" || mergedServices[1].Name != "Shared" || mergedServices[2].Name != "Create" {
+		t.Fatalf("unexpected merged services order: %#v", mergedServices)
+	}
+	if mergedServices[0].OriginModelPath != "/models/base" || mergedServices[1].OriginModelPath != "/models/child" {
+		t.Fatalf("unexpected service origin paths: %#v", mergedServices)
+	}
+	mergedServices[0].Decorators[0].Arguments[0].Value = "'mutated-service'"
+	if parentServices[0].Decorators[0].Arguments[0].Value != "'parent-service'" {
+		t.Fatalf("expected merged services to deep clone decorators, got %#v", parentServices[0].Decorators)
+	}
+
+	builder := &ModuleBuilder{}
+	if builder.isAlreadyMaterialized(&meta.IrModel{Fields: []*meta.IrField{{Name: "Code"}}}) {
+		t.Fatal("expected model without origin metadata to be treated as non-materialized")
+	}
+	if !builder.isAlreadyMaterialized(&meta.IrModel{Services: []*meta.IrService{{Name: "List", OriginModelPath: "/models/base"}}}) {
+		t.Fatal("expected origin metadata to mark model as materialized")
+	}
+
+	if cloneField(nil) != nil || cloneService(nil) != nil || cloneDecorator(nil) != nil {
+		t.Fatal("expected clone helpers to preserve nil inputs")
+	}
+
+	moduleRef := &meta.IrModule{Models: []*meta.IrModel{
+		{
+			Name:     "Partner",
+			Path:     "/models/base",
+			Fields:   []*meta.IrField{{Name: "Code"}},
+			Services: []*meta.IrService{{Name: "List"}},
+		},
+		{
+			Name:     "Partner",
+			Path:     "/models/child",
+			Extends:  "/models/base",
+			Fields:   []*meta.IrField{{Name: "Extra"}},
+			Services: []*meta.IrService{{Name: "Create"}},
+		},
+	}}
+	if err := builder.materializeEffectiveModels(moduleRef); err != nil {
+		t.Fatalf("materializeEffectiveModels() error = %v", err)
+	}
+	childModel := moduleRef.Models[1]
+	if len(childModel.Fields) != 2 || childModel.Fields[0].OriginModelPath != "/models/base" || childModel.Fields[1].OriginModelPath != "/models/child" {
+		t.Fatalf("unexpected materialized child fields: %#v", childModel.Fields)
+	}
+	if len(childModel.Services) != 2 || childModel.Services[0].OriginModelPath != "/models/base" || childModel.Services[1].OriginModelPath != "/models/child" {
+		t.Fatalf("unexpected materialized child services: %#v", childModel.Services)
+	}
+
+	_, err := builder.computeEffectiveMeta(
+		&meta.IrModel{Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
+		map[string]*meta.IrModel{
+			"/models/cycle-a": {Name: "Partner", Path: "/models/cycle-a", Extends: "/models/cycle-b"},
+			"/models/cycle-b": {Name: "Partner", Path: "/models/cycle-b", Extends: "/models/cycle-a"},
+		},
+		map[string]*effectiveMeta{},
+		map[string]bool{},
+	)
+	if err == nil || !strings.Contains(err.Error(), "circular dependency detected while materializing") {
+		t.Fatalf("expected materialize cycle error, got %v", err)
+	}
+}
+
+func TestGetNewExtendsAndUpdatePrebuildResult(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:backendbuilder-more?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.IrModel{}); err != nil {
+		t.Fatalf("auto migrate models: %v", err)
+	}
+	rows := []*meta.IrModel{
+		{Name: "Partner", Path: "/models/base", BaseModel: meta.BaseModel{Id: sql.NullString{String: "base", Valid: true}}},
+		{Name: "Partner", Path: "/models/latest", BaseModel: meta.BaseModel{Id: sql.NullString{String: "latest", Valid: true}}},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatalf("seed models: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.session = &scope.Session{DB: db}
+	builder := &ModuleBuilder{
+		runtimeScope: testRuntimeScope,
+		module:       &meta.IrModule{ApplicationStr: "auth"},
+		tsPathAlias:  map[string]string{},
+	}
+
+	current := &meta.IrModel{Name: "Partner", Path: "/models/current", Extends: "/models/base"}
+	latest, err := builder.getNewExtends(current)
+	if err != nil {
+		t.Fatalf("getNewExtends() error = %v", err)
+	}
+	if latest == nil || latest.Path != "/models/latest" {
+		t.Fatalf("unexpected latest extends model: %#v", latest)
+	}
+
+	rawContent := "export default class Partner extends BaseModel {}\n"
+	extendsStart := strings.Index(rawContent, "extends BaseModel")
+	if extendsStart < 0 {
+		t.Fatal("failed to locate extends clause in test fixture")
+	}
+	builder.tsParser = fixedParser{result: &parser.ParserResult{
+		ModelExtendsProperty: &parser.PropertyNode{Text: "extends BaseModel", Start: extendsStart, End: extendsStart + len("extends BaseModel")},
+		Imports:              map[string]*parser.Import{},
+	}}
+	buildResult := withParserResults(&module.BuildResult{}, &parser.ParserResult{
+		Path:       "/models/current.ts",
+		RawContent: rawContent,
+		Model: &meta.IrModel{
+			Name:       "Partner",
+			Path:       "/models/current",
+			RawExtends: "/models/base",
+			Extends:    "/models/base",
+		},
+	})
+	if err := builder.updatePrebuildResult(buildResult); err != nil {
+		t.Fatalf("updatePrebuildResult() error = %v", err)
+	}
+	updated := parserResultsOf(buildResult)[0]
+	if updated.Model.Extends != "/models/latest" {
+		t.Fatalf("expected model extends to be rewritten to latest path, got %q", updated.Model.Extends)
+	}
+	if !strings.Contains(updated.Content, "from '/models/latest';") || !strings.Contains(updated.Content, "extends model_") {
+		t.Fatalf("expected updated content to import latest model, got %q", updated.Content)
+	}
+}
+
+func TestRefreshModelExtendsPropertyErrors(t *testing.T) {
+	builder := &ModuleBuilder{
+		runtimeScope: newBuilderTestScope(),
+		module:       &meta.IrModule{ApplicationStr: "auth"},
+		tsPathAlias:  map[string]string{},
+	}
+	parseResult := &parser.ParserResult{Path: "/models/partner.ts", Model: &meta.IrModel{Name: "Partner"}, Content: "export default class Partner extends BaseModel {}"}
+
+	builder.tsParser = fixedParser{result: nil}
+	if err := builder.refreshModelExtendsProperty(parseResult); err == nil || !strings.Contains(err.Error(), "returned nil result") {
+		t.Fatalf("expected nil parser result error, got %v", err)
+	}
+
+	builder.tsParser = fixedParser{result: &parser.ParserResult{Imports: map[string]*parser.Import{}}}
+	if err := builder.refreshModelExtendsProperty(parseResult); err == nil || !strings.Contains(err.Error(), "model extends property missing") {
+		t.Fatalf("expected missing extends property error, got %v", err)
+	}
+}
+
+func TestPersistHelpersAndBuild(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:backendbuilder-persist?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&meta.IrApplication{}, &meta.IrModule{}, &meta.IrModel{}, &meta.IrField{}, &meta.IrService{}, &meta.IrTypeParameter{}, &meta.IrParameter{}, &meta.IrDecorator{}, &meta.IrArgument{}); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.session = &scope.Session{DB: db}
+	builder := &ModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", Path: "/virtual/addons/base"}}
+
+	result, err := builder.Build()
+	if err != nil {
+		t.Fatalf("Build() error = %v", err)
+	}
+	if result == nil || result.Module == nil || !result.Module.Id.Valid {
+		t.Fatalf("expected Build to persist module metadata, got %#v", result)
+	}
+
+	seedModel := &meta.IrModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "stale", Valid: true}}, Name: "Stale", Path: "/models/stale", ModuleId: sql.NullString{String: "module-1", Valid: true}}
+	if err := db.Create(seedModel).Error; err != nil {
+		t.Fatalf("seed stale model: %v", err)
+	}
+	models := []*meta.IrModel{
+		{Name: "PartnerOld", Path: "/models/partner"},
+		{Name: "Partner", Path: "/models/partner"},
+		nil,
+		{Name: "Order", Path: "/models/order"},
+	}
+	if err := builder.persistModuleModels("module-1", models); err != nil {
+		t.Fatalf("persistModuleModels() error = %v", err)
+	}
+	var persisted []*meta.IrModel
+	if err := db.Where("module_id = ?", "module-1").Order("path ASC").Find(&persisted).Error; err != nil {
+		t.Fatalf("query persisted models: %v", err)
+	}
+	if len(persisted) != 2 || persisted[0].Path != "/models/order" || persisted[1].Name != "Partner" {
+		t.Fatalf("unexpected persisted models: %#v", persisted)
+	}
+
+	older := &meta.IrModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "aaa", Valid: true}}, Name: "Partner", Path: "/models/history"}
+	latest := &meta.IrModel{BaseModel: meta.BaseModel{Id: sql.NullString{String: "zzz", Valid: true}}, Name: "Partner", Path: "/models/history"}
+	if err := db.Create(older).Error; err != nil {
+		t.Fatalf("seed older history model: %v", err)
+	}
+	if err := db.Create(latest).Error; err != nil {
+		t.Fatalf("seed latest history model: %v", err)
+	}
+	field := &meta.IrField{BaseModel: meta.BaseModel{Id: sql.NullString{String: "field1", Valid: true}}, Name: "Name", ModelId: latest.Id}
+	if err := db.Create(field).Error; err != nil {
+		t.Fatalf("seed field: %v", err)
+	}
+	fieldDec := &meta.IrDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "fielddec", Valid: true}}, Name: "Field", FieldId: field.Id}
+	if err := db.Create(fieldDec).Error; err != nil {
+		t.Fatalf("seed field decorator: %v", err)
+	}
+	if err := db.Create(&meta.IrArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg1", Valid: true}}, Type: "Literal", Value: "'name'", DecoratorId: fieldDec.Id}).Error; err != nil {
+		t.Fatalf("seed field argument: %v", err)
+	}
+	service := &meta.IrService{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svc1", Valid: true}}, Name: "List", ModelId: latest.Id}
+	if err := db.Create(service).Error; err != nil {
+		t.Fatalf("seed service: %v", err)
+	}
+	serviceDec := &meta.IrDecorator{BaseModel: meta.BaseModel{Id: sql.NullString{String: "svcdec", Valid: true}}, Name: "Service", ServiceId: service.Id}
+	if err := db.Create(serviceDec).Error; err != nil {
+		t.Fatalf("seed service decorator: %v", err)
+	}
+	if err := db.Create(&meta.IrArgument{BaseModel: meta.BaseModel{Id: sql.NullString{String: "arg2", Valid: true}}, Type: "Literal", Value: "'list'", DecoratorId: serviceDec.Id}).Error; err != nil {
+		t.Fatalf("seed service argument: %v", err)
+	}
+	if err := db.Create(&meta.IrTypeParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "tp1", Valid: true}}, Name: "T", ServiceId: service.Id}).Error; err != nil {
+		t.Fatalf("seed type parameter: %v", err)
+	}
+	if err := db.Create(&meta.IrParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param1", Valid: true}}, Name: "this", ServiceId: service.Id}).Error; err != nil {
+		t.Fatalf("seed this parameter: %v", err)
+	}
+	if err := db.Create(&meta.IrParameter{BaseModel: meta.BaseModel{Id: sql.NullString{String: "param2", Valid: true}}, Name: "query", ServiceId: service.Id}).Error; err != nil {
+		t.Fatalf("seed query parameter: %v", err)
+	}
+
+	loaded, err := builder.loadLatestModelByPath("/models/history")
+	if err != nil {
+		t.Fatalf("loadLatestModelByPath() error = %v", err)
+	}
+	if loaded == nil || loaded.Id.String != "zzz" || len(loaded.Fields) != 1 || len(loaded.Fields[0].Decorators) != 1 || len(loaded.Fields[0].Decorators[0].Arguments) != 1 {
+		t.Fatalf("unexpected loaded model fields: %#v", loaded)
+	}
+	if len(loaded.Services) != 1 || len(loaded.Services[0].Decorators) != 1 || len(loaded.Services[0].TypeParameters) != 1 || len(loaded.Services[0].Parameters) != 1 || loaded.Services[0].Parameters[0].Name != "query" {
+		t.Fatalf("unexpected loaded model services: %#v", loaded.Services)
+	}
+}
+
+func TestGetTsParserAndPathAliasParsesTsconfig(t *testing.T) {
+	addonsDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(addonsDir, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+	builder := &ModuleBuilder{
+		runtimeScope: &builderTestScope{
+			ctx:    context.Background(),
+			cfg:    &config.Config{AddonsPath: addonsDir},
+			logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		},
+		module:   &meta.IrModule{ApplicationStr: "auth"},
+		tsParser: fixedParser{},
+	}
+
+	parsed, alias, err := builder.getTsParserAndPathAlias()
+	if err != nil {
+		t.Fatalf("getTsParserAndPathAlias() error = %v", err)
+	}
+	if parsed != builder.tsParser || alias["@/*"] != filepath.Join(addonsDir, "*") {
+		t.Fatalf("unexpected parser/path alias result: parser=%T alias=%#v", parsed, alias)
+	}
+}
+
+func TestNewModuleBuilderOptionsAndBundleToDirCtx(t *testing.T) {
+	testRuntimeScope := newBuilderTestScope()
+	moduleRef := &meta.IrModule{ApplicationStr: "auth"}
+	prebuildPlugin := &stubEsbPlugin{name: "prebuild"}
+	buildPlugin := &stubEsbPlugin{name: "build"}
+
+	configured, ok := NewModuleBuilder(testRuntimeScope, nil, moduleRef, "service/index.ts",
+		WithPrebuildPlugin(prebuildPlugin),
+		WithBuildPlugin(buildPlugin),
+		WithPublishDist(false),
+		WithOutFileName("bundle.js"),
+		WithGlobalName("AuthApp"),
+	).(*ModuleBuilder)
+	if !ok {
+		t.Fatalf("expected *ModuleBuilder, got %T", configured)
+	}
+	configuredPrebuild, ok := configured.prebuildPlugin.(*stubEsbPlugin)
+	if !ok {
+		t.Fatalf("expected configured prebuild plugin concrete type, got %T", configured.prebuildPlugin)
+	}
+	configuredBuild, ok := configured.buildPlugin.(*stubEsbPlugin)
+	if !ok {
+		t.Fatalf("expected configured build plugin concrete type, got %T", configured.buildPlugin)
+	}
+	if configuredPrebuild != prebuildPlugin || configuredBuild != buildPlugin || configured.publishDist || configured.outFileName != "bundle.js" || configured.globalName != "AuthApp" {
+		t.Fatalf("unexpected configured builder: %#v", configured)
+	}
+
+	defaults, ok := NewModuleBuilder(testRuntimeScope, nil, moduleRef, "service/index.ts").(*ModuleBuilder)
+	if !ok {
+		t.Fatalf("expected *ModuleBuilder, got %T", defaults)
+	}
+	if defaults.prebuildPlugin == nil || defaults.buildPlugin == nil || !defaults.publishDist || defaults.outFileName != "index.js" || defaults.globalName != "auth" {
+		t.Fatalf("unexpected default builder configuration: %#v", defaults)
+	}
+
+	bundleBuilder := &ModuleBuilder{module: &meta.IrModule{ApplicationStr: "auth"}}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := bundleBuilder.BundleToDirCtx(canceled, "/tmp/staged/auth"); err == nil {
+		t.Fatal("expected canceled context to abort BundleToDirCtx")
+	}
+	if bundleBuilder.distAppDirOverride != "" {
+		t.Fatalf("expected canceled BundleToDirCtx to leave override unchanged, got %q", bundleBuilder.distAppDirOverride)
+	}
+
+	result, err := bundleBuilder.BundleToDirCtx(context.TODO(), "/tmp/staged/auth")
+	if err != nil {
+		t.Fatalf("BundleToDirCtx(nil) error = %v", err)
+	}
+	if result == nil || bundleBuilder.distAppDirOverride != "" {
+		t.Fatalf("expected BundleToDirCtx to restore override, result=%#v override=%q", result, bundleBuilder.distAppDirOverride)
+	}
+}
+
+func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
+	baseDB, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "backendbuilder_base.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open base sqlite: %v", err)
+	}
+	runtimeDB, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "backendbuilder_runtime.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open runtime sqlite: %v", err)
+	}
+	if err := baseDB.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("migrate base modules: %v", err)
+	}
+	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("migrate runtime modules: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.session = &scope.Session{DB: baseDB}
+	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
+	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(testRuntimeScope.cfg.AddonsPath, 0o755); err != nil {
+		t.Fatalf("mkdir addons path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.AddonsPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+	modulePath := filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth")
+	entryPoint := filepath.Join(modulePath, "service", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
+		t.Fatalf("mkdir entry dir: %v", err)
+	}
+	if err := os.WriteFile(entryPoint, []byte("export const answer = 42\n"), 0o644); err != nil {
+		t.Fatalf("write entry point: %v", err)
+	}
+
+	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
+	}
+	serviceIndex := filepath.Join(serviceDir, "index.ts")
+	if err := os.MkdirAll(filepath.Dir(serviceIndex), 0o755); err != nil {
+		t.Fatalf("mkdir service index dir: %v", err)
+	}
+	if err := os.WriteFile(serviceIndex, []byte("export * from './service';\n"), 0o644); err != nil {
+		t.Fatalf("write service index: %v", err)
+	}
+	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", Status: meta.Installed, ApplicationStr: "crm", ServiceEntryPoint: "service/index.ts"}).Error; err != nil {
+		t.Fatalf("seed runtime installed module: %v", err)
+	}
+
+	prebuildPlugin := &stubEsbPlugin{name: "prebuild"}
+	buildPlugin := &stubEsbPlugin{name: "build"}
+	var parserRuntimeScope scope.Scope
+	builder := &ModuleBuilder{
+		runtimeScope:   testRuntimeScope,
+		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: modulePath},
+		entryPoint:     entryPoint,
+		prebuildPlugin: prebuildPlugin,
+		buildPlugin:    buildPlugin,
+		publishDist:    false,
+		outFileName:    "index.js",
+		globalName:     "AuthApp",
+		tsParserFactory: func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+			parserRuntimeScope = runtimeScope
+			return fixedParser{}
+		},
+	}
+
+	runtimeScope := &builderTestScope{ctx: context.Background(), cfg: testRuntimeScope.cfg, logger: testRuntimeScope.logger, session: &scope.Session{DB: runtimeDB}}
+	ctx := scope.ContextWithScope(context.Background(), runtimeScope)
+	if _, err := builder.BundleToDirCtx(ctx, filepath.Join(t.TempDir(), "stage")); err != nil {
+		t.Fatalf("BundleToDirCtx(runtime scope) error = %v", err)
+	}
+
+	wantImport := normalizedAbsImportPath(serviceIndex)
+	if len(prebuildPlugin.entryImports) != 1 || prebuildPlugin.entryImports[0] != wantImport {
+		t.Fatalf("prebuild entry imports = %#v, want [%q]", prebuildPlugin.entryImports, wantImport)
+	}
+	if len(buildPlugin.entryImports) != 1 || buildPlugin.entryImports[0] != wantImport {
+		t.Fatalf("build entry imports = %#v, want [%q]", buildPlugin.entryImports, wantImport)
+	}
+	if parserRuntimeScope == nil || parserRuntimeScope.Session() == nil || parserRuntimeScope.Session().DB != runtimeDB {
+		t.Fatalf("expected runtime parser env to use runtime DB, got %#v", parserRuntimeScope)
+	}
+}
+
+func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransaction(t *testing.T) {
+	baseDB, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "backendbuilder_base_fallback.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open base sqlite: %v", err)
+	}
+	runtimeDB, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "backendbuilder_runtime_fallback.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open runtime sqlite: %v", err)
+	}
+	if err := baseDB.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("migrate base modules: %v", err)
+	}
+	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("migrate runtime modules: %v", err)
+	}
+
+	testRuntimeScope := newBuilderTestScope()
+	testRuntimeScope.session = &scope.Session{DB: baseDB}
+	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
+	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(testRuntimeScope.cfg.AddonsPath, 0o755); err != nil {
+		t.Fatalf("mkdir addons path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.AddonsPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+	modulePath := filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth")
+	entryPoint := filepath.Join(modulePath, "service", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
+		t.Fatalf("mkdir entry dir: %v", err)
+	}
+	if err := os.WriteFile(entryPoint, []byte("export const answer = 42\n"), 0o644); err != nil {
+		t.Fatalf("write entry point: %v", err)
+	}
+
+	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
+	}
+	serviceIndex := filepath.Join(serviceDir, "index.ts")
+	if err := os.MkdirAll(filepath.Dir(serviceIndex), 0o755); err != nil {
+		t.Fatalf("mkdir service index dir: %v", err)
+	}
+	if err := os.WriteFile(serviceIndex, []byte("export * from './service';\n"), 0o644); err != nil {
+		t.Fatalf("write service index: %v", err)
+	}
+	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", Status: meta.Installed, ApplicationStr: "crm", ServiceEntryPoint: "service/index.ts"}).Error; err != nil {
+		t.Fatalf("seed runtime installed module: %v", err)
+	}
+
+	prebuildPlugin := &stubEsbPlugin{name: "prebuild"}
+	buildPlugin := &stubEsbPlugin{name: "build"}
+	var parserRuntimeScope scope.Scope
+	builder := &ModuleBuilder{
+		runtimeScope:   testRuntimeScope,
+		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: modulePath},
+		entryPoint:     entryPoint,
+		prebuildPlugin: prebuildPlugin,
+		buildPlugin:    buildPlugin,
+		publishDist:    false,
+		outFileName:    "index.js",
+		globalName:     "AuthApp",
+		tsParserFactory: func(runtimeScope scope.Scope, module *meta.IrModule) parser.Parser {
+			parserRuntimeScope = runtimeScope
+			return fixedParser{}
+		},
+	}
+
+	txSession := &scope.Session{DB: runtimeDB}
+	tx := &builderTestTransaction{session: txSession}
+	tx.ctx = scope.ContextWithTransaction(context.Background(), tx)
+	builder.runtimeScope = &builderTestScope{ctx: tx.ctx, cfg: testRuntimeScope.cfg, logger: testRuntimeScope.logger, session: nil}
+
+	if _, err := builder.BundleToDirCtx(context.Background(), filepath.Join(t.TempDir(), "stage")); err != nil {
+		t.Fatalf("BundleToDirCtx(background) error = %v", err)
+	}
+
+	if parserRuntimeScope == nil || parserRuntimeScope.Session() == nil || parserRuntimeScope.Session().DB != runtimeDB {
+		t.Fatalf("expected runtime parser env to preserve transaction DB, got %#v", parserRuntimeScope)
+	}
+	if len(prebuildPlugin.entryImports) != 1 || len(buildPlugin.entryImports) != 1 {
+		t.Fatalf("expected entry imports to be resolved via preserved runtime transaction, got prebuild=%#v build=%#v", prebuildPlugin.entryImports, buildPlugin.entryImports)
+	}
+}
+
+func TestUpdateModelExtends_UsesStableFieldsWithoutAstNode(t *testing.T) {
+	b := &ModuleBuilder{}
+	raw := "export default class Child extends BaseModel {}\n"
+	extendsText := "extends BaseModel"
+	start := strings.Index(raw, extendsText)
+	if start < 0 {
+		t.Fatalf("failed to find extends text in fixture")
+	}
+
+	r := &parser.ParserResult{
+		RawContent: raw,
+		Model: &meta.IrModel{
+			RawExtends: "/virtual/addons/base/models/base_model.ts",
+			Extends:    "/virtual/addons/ext/models/base_model.ts",
+		},
+		ModelExtendsProperty: &parser.PropertyNode{
+			Line:  1,
+			Text:  extendsText,
+			Start: start,
+			End:   start + len(extendsText),
+		},
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/models/base_model"}
+	if err := b.updateModelExtends(r, extendedModel); err != nil {
+		t.Fatalf("updateModelExtends failed: %v", err)
+	}
+
+	if !strings.Contains(r.Content, "extends model_") {
+		t.Fatalf("expected extends statement to be rewritten, got: %s", r.Content)
+	}
+
+	re := regexp.MustCompile(`import model_[a-z0-9]+ from '/virtual/addons/ext/models/base_model';`)
+	if !re.MatchString(r.Content) {
+		t.Fatalf("expected rewritten import statement to be appended, got: %s", r.Content)
+	}
+}
+
+func TestUpdateModelExtends_ReturnsErrorWhenOffsetsBecomeStale(t *testing.T) {
+	b := &ModuleBuilder{}
+
+	raw := "@Model('Partner')\nexport default class Partner extends PartnerBase {}\n"
+	extendsText := "extends PartnerBase"
+	start := strings.Index(raw, extendsText)
+	if start < 0 {
+		t.Fatalf("failed to find extends text in raw fixture")
+	}
+
+	// Simulate prior content edits (e.g. decorator option injection) that shift offsets.
+	content := strings.Replace(raw, "@Model('Partner')", "@Model('Partner', { application: 'partner' })", 1)
+
+	r := &parser.ParserResult{
+		RawContent: raw,
+		Content:    content,
+		Path:       "/virtual/addons/partner_commercial/service/models/partner.ts",
+		Model: &meta.IrModel{
+			RawExtends: "/virtual/addons/partner_bank/service/models/partner.ts",
+			Extends:    "/virtual/addons/partner_legacy/service/models/partner.ts",
+		},
+		ModelExtendsProperty: &parser.PropertyNode{
+			Line:  2,
+			Text:  extendsText,
+			Start: start,
+			End:   start + len(extendsText),
+		},
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/partner_bank/service/models/partner"}
+	err := b.updateModelExtends(r, extendedModel)
+	if err == nil {
+		t.Fatalf("expected stale offsets to fail without range match")
+	}
+}
+
+func TestUpdateModelExtends_ReturnsErrorOnMismatchedExtendsSnippet(t *testing.T) {
+	b := &ModuleBuilder{}
+
+	raw := "export default class Child extends OtherBase {}\n"
+	extendsText := "extends BaseModel"
+	start := strings.Index(raw, "extends OtherBase")
+	if start < 0 {
+		t.Fatalf("failed to find extends text in raw fixture")
+	}
+
+	r := &parser.ParserResult{
+		RawContent: raw,
+		Path:       "/virtual/addons/test/service/models/child.ts",
+		Model: &meta.IrModel{
+			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
+			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+		},
+		ModelExtendsProperty: &parser.PropertyNode{
+			Line:  1,
+			Text:  extendsText,
+			Start: start,
+			End:   start + len("extends OtherBase"),
+		},
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	err := b.updateModelExtends(r, extendedModel)
+	if err == nil {
+		t.Fatalf("expected mismatched extends snippet to fail rewrite")
+	}
+}
+
+func TestUpdateModelExtends_PreservesWhitespaceAroundExtendsSlice(t *testing.T) {
+	b := &ModuleBuilder{}
+	raw := "export default class Child extends BaseModel {}\n"
+	start := strings.Index(raw, " extends BaseModel")
+	if start < 0 {
+		t.Fatalf("failed to find extends text with leading whitespace in fixture")
+	}
+
+	r := &parser.ParserResult{
+		RawContent: raw,
+		Path:       "/virtual/addons/test/service/models/child.ts",
+		Model: &meta.IrModel{
+			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
+			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+		},
+		ModelExtendsProperty: &parser.PropertyNode{
+			Line:  1,
+			Text:  "extends BaseModel",
+			Start: start,
+			End:   start + len(" extends BaseModel"),
+		},
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	if err := b.updateModelExtends(r, extendedModel); err != nil {
+		t.Fatalf("updateModelExtends failed: %v", err)
+	}
+
+	if !strings.Contains(r.Content, "class Child extends model_") {
+		t.Fatalf("expected whitespace before extends to be preserved, got: %s", r.Content)
+	}
+}
+
+func TestUpdateModelExtends_UsesDeterministicAlias(t *testing.T) {
+	b := &ModuleBuilder{}
+	raw := "export default class Child extends BaseModel {}\n"
+	extendsText := "extends BaseModel"
+	start := strings.Index(raw, extendsText)
+	if start < 0 {
+		t.Fatalf("failed to find extends text in fixture")
+	}
+
+	buildInput := func() *parser.ParserResult {
+		return &parser.ParserResult{
+			RawContent: raw,
+			Path:       "/virtual/addons/test/service/models/child.ts",
+			Model: &meta.IrModel{
+				RawExtends: "/virtual/addons/base/service/models/base_model.ts",
+				Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+			},
+			ModelExtendsProperty: &parser.PropertyNode{
+				Line:  1,
+				Text:  extendsText,
+				Start: start,
+				End:   start + len(extendsText),
+			},
+		}
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+
+	r1 := buildInput()
+	if err := b.updateModelExtends(r1, extendedModel); err != nil {
+		t.Fatalf("first updateModelExtends failed: %v", err)
+	}
+	r2 := buildInput()
+	if err := b.updateModelExtends(r2, extendedModel); err != nil {
+		t.Fatalf("second updateModelExtends failed: %v", err)
+	}
+
+	re := regexp.MustCompile(`extends\s+(model_[a-f0-9]{12})`)
+	m1 := re.FindStringSubmatch(r1.Content)
+	m2 := re.FindStringSubmatch(r2.Content)
+	if len(m1) != 2 || len(m2) != 2 {
+		t.Fatalf("failed to extract deterministic model alias from rewritten content")
+	}
+	if m1[1] != m2[1] {
+		t.Fatalf("expected deterministic alias, got %s vs %s", m1[1], m2[1])
+	}
+}
+
+func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *testing.T) {
+	b := &ModuleBuilder{}
+	raw := "import ParentModel from '/virtual/addons/ext/service/models/base_model';\n\nexport default class Child extends BaseModel {}\n"
+	extendsText := "extends BaseModel"
+	start := strings.Index(raw, extendsText)
+	if start < 0 {
+		t.Fatalf("failed to find extends text in fixture")
+	}
+
+	r := &parser.ParserResult{
+		RawContent: raw,
+		Path:       "/virtual/addons/test/service/models/child.ts",
+		Model: &meta.IrModel{
+			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
+			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+		},
+		ModelExtendsProperty: &parser.PropertyNode{
+			Line:  3,
+			Text:  extendsText,
+			Start: start,
+			End:   start + len(extendsText),
+		},
+		Imports: map[string]*parser.Import{
+			"ParentModel": {
+				ReferenceIdent: "default",
+				ModuleSpecPath: "/virtual/addons/ext/service/models/base_model",
+				Start:          0,
+				End:            strings.Index(raw, "\n"),
+			},
+		},
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	if err := b.updateModelExtends(r, extendedModel); err != nil {
+		t.Fatalf("updateModelExtends failed: %v", err)
+	}
+
+	if !strings.Contains(r.Content, "class Child extends ParentModel") {
+		t.Fatalf("expected existing default import identifier to be reused, got: %s", r.Content)
+	}
+	if strings.Count(r.Content, "from '/virtual/addons/ext/service/models/base_model'") != 1 {
+		t.Fatalf("expected no duplicate import from same module path, got: %s", r.Content)
+	}
+}
+
+func TestUpdateModelExtends_InsertsImportIntoImportRegion(t *testing.T) {
+	b := &ModuleBuilder{}
+	raw := "import Foo from './foo';\n\nexport default class Child extends BaseModel {}\n"
+	extendsText := "extends BaseModel"
+	start := strings.Index(raw, extendsText)
+	if start < 0 {
+		t.Fatalf("failed to find extends text in fixture")
+	}
+
+	r := &parser.ParserResult{
+		RawContent: raw,
+		Path:       "/virtual/addons/test/service/models/child.ts",
+		Model: &meta.IrModel{
+			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
+			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+		},
+		ModelExtendsProperty: &parser.PropertyNode{
+			Line:  3,
+			Text:  extendsText,
+			Start: start,
+			End:   start + len(extendsText),
+		},
+		Imports: map[string]*parser.Import{
+			"Foo": {
+				ReferenceIdent: "default",
+				ModuleSpecPath: "/virtual/addons/test/service/models/foo",
+				Start:          0,
+				End:            strings.Index(raw, "\n"),
+			},
+		},
+	}
+
+	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	if err := b.updateModelExtends(r, extendedModel); err != nil {
+		t.Fatalf("updateModelExtends failed: %v", err)
+	}
+
+	importFooIdx := strings.Index(r.Content, "import Foo from './foo';")
+	newImportIdx := strings.Index(r.Content, "from '/virtual/addons/ext/service/models/base_model';")
+	classIdx := strings.Index(r.Content, "export default class Child")
+	if importFooIdx < 0 || newImportIdx < 0 || classIdx < 0 {
+		t.Fatalf("expected import region and class declaration to exist, got: %s", r.Content)
+	}
+	if !(importFooIdx < newImportIdx && newImportIdx < classIdx) {
+		t.Fatalf("expected new import inserted into import region before class declaration, got: %s", r.Content)
+	}
+}

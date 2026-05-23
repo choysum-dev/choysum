@@ -1,0 +1,7 @@
+{
+  "name": "service_variants_pb.ts",
+  "imports": ["@bufbuild/protobuf", "@bufbuild/protobuf/codegenv2"],
+  "exports": ["AuditTrailService", "PingReply", "PingReplySchema", "PingRequest", "PingRequestSchema", "file_service_variants", "user_session_service"],
+  "schemaExports": ["PingReplySchema", "PingRequestSchema"],
+  "serviceExports": ["AuditTrailService", "user_session_service"]
+}

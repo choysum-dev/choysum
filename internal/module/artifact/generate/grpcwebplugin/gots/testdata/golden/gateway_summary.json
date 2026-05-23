@@ -1,0 +1,7 @@
+{
+  "name": "gateway_pb.ts",
+  "imports": ["./external_pb", "@bufbuild/protobuf/codegenv2"],
+  "exports": ["GatewayService", "file_gateway"],
+  "schemaExports": [],
+  "serviceExports": ["GatewayService"]
+}

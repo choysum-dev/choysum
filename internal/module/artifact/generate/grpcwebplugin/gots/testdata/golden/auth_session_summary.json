@@ -1,0 +1,7 @@
+{
+  "name": "auth/session_pb.ts",
+  "imports": ["@bufbuild/protobuf", "@bufbuild/protobuf/codegenv2"],
+  "exports": ["LoginRequest", "LoginRequestSchema", "SessionService", "file_auth_session"],
+  "schemaExports": ["LoginRequestSchema"],
+  "serviceExports": ["SessionService"]
+}

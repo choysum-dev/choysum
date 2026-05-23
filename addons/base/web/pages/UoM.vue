@@ -1,0 +1,36 @@
+<!--
+SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<template>
+  <OPage>
+    <UoMFormView :key="$route.fullPath" createAction="/base/uoms/new" :store="uomStore" :record-id="recordId" :view-mode="viewMode" />
+  </OPage>
+</template>
+
+<script setup lang="ts">
+import { useRoute } from 'vue-router';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import OPage from '@/web/web/components/page/OPage.vue';
+import UoMFormView from '../views/UoMFormView.vue';
+import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
+import type UoM from '@/base/service/models/uom';
+
+defineOptions({ name: 'UoMPage' });
+
+withDefaults(
+  defineProps<{
+    viewMode?: ViewMode;
+    recordId?: string;
+  }>(),
+  {}
+);
+
+const route = useRoute();
+const uomStore = createStoreByModel<typeof UoM>('base.UoM', {
+  storeId: `UoM_${route.fullPath}`,
+  scopeManager: useScopeManager().menuScopeManager,
+});
+</script>

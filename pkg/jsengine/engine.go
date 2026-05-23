@@ -1,0 +1,52 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package jsengine
+
+import "context"
+
+// JsExecutionRouting contains routing hints for executor thread selection.
+type JsExecutionRouting struct {
+	ThreadID uint32 `json:"threadId,omitempty"` // Preferred thread id for routing
+}
+
+// JsRequest represents a JavaScript execution request
+type JsRequest struct {
+	Id      string                 `json:"id"`                // Unique identifier for the request
+	Service string                 `json:"service"`           // Service/function name to call
+	Args    []interface{}          `json:"args"`              // Arguments to pass to the function
+	Context map[string]interface{} `json:"context"`           // Additional context data
+	Routing *JsExecutionRouting    `json:"routing,omitempty"` // Execution routing hints
+}
+
+// JsResponse represents the result of JavaScript execution
+type JsResponse struct {
+	Id      string                 `json:"id"`                // Request ID that this response corresponds to
+	Result  interface{}            `json:"result"`            // Execution result
+	Context map[string]interface{} `json:"context"`           // Updated context data
+	Routing *JsExecutionRouting    `json:"routing,omitempty"` // Execution routing hints
+}
+
+// JsScript represents a JavaScript script, typically used for initialization.
+type JsScript struct {
+	Content  string // Script content
+	FileName string // Script file name for debugging purposes
+}
+
+// JsEngine represents a JavaScript execution engine
+type JsEngine interface {
+	// Load loads scripts into the engine
+	Load(scripts []*JsScript) error
+
+	// Execute executes a JavaScript request and returns the response
+	Execute(ctx context.Context, req *JsRequest) (*JsResponse, error)
+
+	// Close closes the engine and releases resources
+	Close() error
+}
+
+// JsEngineOption represents a configuration option for a JavaScript engine
+type JsEngineOption func(JsEngine) error
+
+// JsEngineFactory defines a function type for creating JavaScript engines
+type JsEngineFactory func() (JsEngine, error)

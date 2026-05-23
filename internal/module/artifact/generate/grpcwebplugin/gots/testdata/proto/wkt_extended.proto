@@ -1,0 +1,35 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+
+package sample.wkt;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message WktExtendedDemo {
+  google.protobuf.Empty empty = 1;
+  google.protobuf.Value value = 2;
+  google.protobuf.Struct data = 3;
+  google.protobuf.ListValue list = 4;
+  google.protobuf.NullValue null_kind = 5;
+  google.protobuf.Any details = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Duration timeout = 8;
+  google.protobuf.FieldMask field_mask = 9;
+  google.protobuf.DoubleValue double_value = 10;
+  google.protobuf.FloatValue float_value = 11;
+  google.protobuf.Int64Value int64_value = 12;
+  google.protobuf.UInt64Value uint64_value = 13;
+  google.protobuf.Int32Value int32_value = 14;
+  google.protobuf.UInt32Value uint32_value = 15;
+  google.protobuf.BoolValue bool_value = 16;
+  google.protobuf.StringValue string_value = 17;
+  google.protobuf.BytesValue bytes_value = 18;
+}

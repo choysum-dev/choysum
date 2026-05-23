@@ -1,0 +1,297 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package typecheck
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
+)
+
+func TestTypecheckApp_AdditionalPaths(t *testing.T) {
+	t.Run("requires addons path", func(t *testing.T) {
+		err := TypecheckApp(context.Background(), RunOptions{RepoRoot: t.TempDir()}, "auth")
+		if err == nil || !strings.Contains(err.Error(), "addons_path is required") {
+			t.Fatalf("expected addons path error, got %v", err)
+		}
+	})
+
+	t.Run("returns context error before doing work", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := TypecheckApp(ctx, RunOptions{AddonsPath: t.TempDir(), RepoRoot: t.TempDir()}, "auth")
+		if err != context.Canceled {
+			t.Fatalf("expected context canceled, got %v", err)
+		}
+	})
+
+	t.Run("requires app name", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		err := TypecheckApp(context.Background(), RunOptions{AddonsPath: addonsPath, RepoRoot: repoRoot, NpmPath: npmPath}, " ")
+		if err == nil || !strings.Contains(err.Error(), "missing app name") {
+			t.Fatalf("expected missing app name error, got %v", err)
+		}
+	})
+
+	t.Run("uses current working directory as repo root when omitted", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+
+		originalWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd returned error: %v", err)
+		}
+		if err := os.Chdir(repoRoot); err != nil {
+			t.Fatalf("Chdir(%q): %v", repoRoot, err)
+		}
+		defer func() {
+			_ = os.Chdir(originalWD)
+		}()
+
+		err = TypecheckApp(context.Background(), RunOptions{AddonsPath: addonsPath, NpmPath: npmPath}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+	})
+
+	t.Run("writes temp tsconfig and cleans it up on success", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		tmpPath := t.TempDir()
+		npmPath, copyPath, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
+		t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", tsconfigPathCapture)
+		t.Setenv("CHOYSUM_COPY_TSCONFIG", copyPath)
+
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			NpmPath:    npmPath,
+			RepoRoot:   repoRoot,
+			TmpPath:    tmpPath,
+			Stderr:     &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+
+		tsconfigPathRaw, err := os.ReadFile(tsconfigPathCapture)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", tsconfigPathCapture, err)
+		}
+		usedTsconfigPath := strings.TrimSpace(string(tsconfigPathRaw))
+		if usedTsconfigPath == "" {
+			t.Fatalf("expected captured tsconfig path to be non-empty")
+		}
+		wantDir, err := testingpathing.ResolveTestingTmpDir(repoRoot, tmpPath, "typecheck")
+		if err != nil {
+			t.Fatalf("ResolveTestingTmpDir(typecheck): %v", err)
+		}
+		wantDir = filepath.Join(wantDir, sanitizeAppToken("auth"))
+		if gotDir := filepath.Dir(usedTsconfigPath); gotDir != wantDir {
+			t.Fatalf("tsconfig dir = %q, want %q", gotDir, wantDir)
+		}
+
+		captured, err := os.ReadFile(copyPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", copyPath, err)
+		}
+		capturedText := string(captured)
+		for _, fragment := range []string{
+			filepath.ToSlash(filepath.Join(addonsPath, "**", "*.d.ts")),
+			filepath.ToSlash(filepath.Join(addonsPath, "auth", "*.ts")),
+			filepath.ToSlash(filepath.Join(addonsPath, "auth", "service", "**", "*.ts")),
+			filepath.ToSlash(filepath.Join(addonsPath, "auth", "web", "**", "*.tsx")),
+			filepath.ToSlash(filepath.Join(addonsPath, "auth", "web", "**", "*.vue")),
+			"\"noEmit\": true",
+		} {
+			if !strings.Contains(capturedText, fragment) {
+				t.Fatalf("expected captured tsconfig to contain %q, got %q", fragment, capturedText)
+			}
+		}
+
+		if !strings.Contains(stderr.String(), "# typecheck auth\n# typecheck auth ok\n") {
+			t.Fatalf("unexpected stderr output: %q", stderr.String())
+		}
+
+		if _, err := os.Stat(usedTsconfigPath); !os.IsNotExist(err) {
+			t.Fatalf("expected temporary tsconfig to be removed, stat err=%v", err)
+		}
+		if _, err := os.Stat(filepath.Dir(usedTsconfigPath)); !os.IsNotExist(err) {
+			t.Fatalf("expected temporary tsconfig dir to be removed, stat err=%v", err)
+		}
+	})
+
+	t.Run("includes repo vite client types for web apps", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		tmpPath := t.TempDir()
+		npmPath, copyPath, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		makeDir(t, filepath.Join(addonsPath, "auth", "web"))
+		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
+		writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare interface ImportMetaEnv {}\n")
+		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
+		t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", tsconfigPathCapture)
+		t.Setenv("CHOYSUM_COPY_TSCONFIG", copyPath)
+
+		err := TypecheckApp(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			NpmPath:    npmPath,
+			RepoRoot:   repoRoot,
+			TmpPath:    tmpPath,
+			Stderr:     &strings.Builder{},
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+
+		captured, err := os.ReadFile(copyPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", copyPath, err)
+		}
+		capturedText := string(captured)
+		viteClientPath := filepath.ToSlash(filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"))
+		if !strings.Contains(capturedText, viteClientPath) {
+			t.Fatalf("expected captured tsconfig to contain %q, got %q", viteClientPath, capturedText)
+		}
+		if strings.Contains(capturedText, `"types":`) {
+			t.Fatalf("expected captured tsconfig to omit compilerOptions.types, got %q", capturedText)
+		}
+	})
+
+	t.Run("keeps temp tsconfig when keep is enabled", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		tmpPath := t.TempDir()
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
+		t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", tsconfigPathCapture)
+
+		err := TypecheckApp(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			NpmPath:    npmPath,
+			RepoRoot:   repoRoot,
+			TmpPath:    tmpPath,
+			Keep:       true,
+			Stderr:     &strings.Builder{},
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+
+		tsconfigPathRaw, err := os.ReadFile(tsconfigPathCapture)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", tsconfigPathCapture, err)
+		}
+		usedTsconfigPath := strings.TrimSpace(string(tsconfigPathRaw))
+		if usedTsconfigPath == "" {
+			t.Fatalf("expected captured tsconfig path to be non-empty")
+		}
+		if _, err := os.Stat(usedTsconfigPath); err != nil {
+			t.Fatalf("expected temporary tsconfig to be kept, stat err=%v", err)
+		}
+		if _, err := os.Stat(filepath.Dir(usedTsconfigPath)); err != nil {
+			t.Fatalf("expected temporary tsconfig dir to be kept, stat err=%v", err)
+		}
+	})
+
+	t.Run("forwards command output and wraps command failure", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		tmpPath := t.TempDir()
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "printf 'compile failed'; exit 7\n")
+		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
+		t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", tsconfigPathCapture)
+
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			NpmPath:    npmPath,
+			RepoRoot:   repoRoot,
+			TmpPath:    tmpPath,
+			Stderr:     &stderr,
+		}, "auth")
+		if err == nil || !strings.Contains(err.Error(), "typecheck failed for auth") {
+			t.Fatalf("expected wrapped command error, got %v", err)
+		}
+		if !strings.Contains(stderr.String(), "# typecheck auth\ncompile failed\n") {
+			t.Fatalf("expected forwarded command output with newline, got %q", stderr.String())
+		}
+
+		tsconfigPathRaw, readErr := os.ReadFile(tsconfigPathCapture)
+		if readErr != nil {
+			t.Fatalf("ReadFile(%q): %v", tsconfigPathCapture, readErr)
+		}
+		usedTsconfigPath := strings.TrimSpace(string(tsconfigPathRaw))
+		if usedTsconfigPath == "" {
+			t.Fatalf("expected captured tsconfig path to be non-empty")
+		}
+		wantDir, err := testingpathing.ResolveTestingTmpDir(repoRoot, tmpPath, "typecheck")
+		if err != nil {
+			t.Fatalf("ResolveTestingTmpDir(typecheck): %v", err)
+		}
+		wantDir = filepath.Join(wantDir, sanitizeAppToken("auth"))
+		if gotDir := filepath.Dir(usedTsconfigPath); gotDir != wantDir {
+			t.Fatalf("tsconfig dir = %q, want %q", gotDir, wantDir)
+		}
+		if _, err := os.Stat(usedTsconfigPath); !os.IsNotExist(err) {
+			t.Fatalf("expected temporary tsconfig to be removed after failure, stat err=%v", err)
+		}
+		if _, err := os.Stat(filepath.Dir(usedTsconfigPath)); !os.IsNotExist(err) {
+			t.Fatalf("expected temporary tsconfig dir to be removed after failure, stat err=%v", err)
+		}
+	})
+
+	t.Run("returns clear error when web app vite client types are missing", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		makeDir(t, filepath.Join(addonsPath, "auth", "web"))
+
+		err := TypecheckApp(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			NpmPath:    npmPath,
+			RepoRoot:   repoRoot,
+			TmpPath:    t.TempDir(),
+			Stderr:     &strings.Builder{},
+		}, "auth")
+		if err == nil || !strings.Contains(err.Error(), "vite is not installed") {
+			t.Fatalf("expected vite missing error, got %v", err)
+		}
+	})
+
+	t.Run("best-effort cleanup ignores non-empty tmp directory", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		addonsPath := t.TempDir()
+		tmpPath := t.TempDir()
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "dir=$(dirname \"$4\")\nprintf 'keep' > \"$dir/sentinel.keep\"\nexit 0\n")
+
+		err := TypecheckApp(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			NpmPath:    npmPath,
+			RepoRoot:   repoRoot,
+			TmpPath:    tmpPath,
+			Stderr:     &strings.Builder{},
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+
+		workspaceDir, err := testingpathing.ResolveTestingTmpDir(repoRoot, tmpPath, "typecheck")
+		if err != nil {
+			t.Fatalf("ResolveTestingTmpDir(typecheck): %v", err)
+		}
+		sentinelPath := filepath.Join(workspaceDir, sanitizeAppToken("auth"), "sentinel.keep")
+		if _, err := os.Stat(sentinelPath); err != nil {
+			t.Fatalf("expected sentinel file to remain in workspace tmp dir, stat err=%v", err)
+		}
+	})
+}

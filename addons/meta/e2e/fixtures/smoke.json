@@ -1,0 +1,16 @@
+{
+  "records": [
+    {
+      "module": "meta",
+      "external_id": "e2e_auth_ext_module",
+      "model": "meta.IrModule",
+      "values": {
+        "Name": "auth_ext",
+        "Status": "uninstalled",
+        "ApplicationStr": "auth",
+        "Category": "User/Authentication",
+        "Summary": "E2E fixture module"
+      }
+    }
+  ]
+}

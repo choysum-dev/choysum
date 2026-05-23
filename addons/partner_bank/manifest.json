@@ -1,0 +1,14 @@
+{
+  "name": "partner_bank",
+  "description": "Partner bank account extension",
+  "application": "partner",
+  "category": "Partner",
+  "depends": ["partner", "base", "web"],
+  "entryPoints": {
+    "service": "./service/index.ts",
+    "web": "./web/index.ts"
+  },
+  "version": "v0.1.0",
+  "license": "Apache 2.0",
+  "author": "Choysum Team"
+}

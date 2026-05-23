@@ -1,0 +1,651 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package server
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
+)
+
+func TestServerHotreloadLifecycleRecreatesWatcherForReuse(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+
+	if err := srv.startHotreloadLifecycle(); err != nil {
+		t.Fatalf("startHotreloadLifecycle() first error = %v", err)
+	}
+	firstWatcher := srv.hotreloadWatcher()
+	if firstWatcher == nil || srv.hotreloadQueue() == nil {
+		t.Fatal("expected startHotreloadLifecycle to initialize watcher and queue")
+	}
+	srv.hotreloadQueue() <- "stale.ts"
+	srv.stopHotreloadLifecycle()
+
+	if err := srv.startHotreloadLifecycle(); err != nil {
+		t.Fatalf("startHotreloadLifecycle() second error = %v", err)
+	}
+	defer srv.stopHotreloadLifecycle()
+	if srv.hotreloadWatcher() == nil {
+		t.Fatal("expected second hotreload lifecycle start to recreate watcher")
+	}
+	if srv.hotreloadWatcher() == firstWatcher {
+		t.Fatal("expected second hotreload lifecycle start to create a new watcher instance")
+	}
+	select {
+	case got := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected stale queued watch event after lifecycle restart: %q", got)
+	default:
+	}
+}
+
+func TestServerWatchHelpers(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer watcher.Close()
+
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "addons", "demo")
+	nestedDir := filepath.Join(moduleDir, "sub")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{filepath.Join(root, "missing"), moduleDir}}
+	srv.hotreload = hotreloadState{watcher: watcher}
+	runtimeScope.cfg.Server.HotReload = true
+
+	if err := srv.applyRegistrationWatchPlansWithHandler(tracked.watchPlans(), tracked.watchCallback); err != nil {
+		t.Fatalf("applyRegistrationWatchPlansWithHandler() error = %v", err)
+	}
+	watchList := watcher.WatchList()
+	if len(watchList) == 0 {
+		t.Fatal("expected registerWatchDir to add directories to watcher")
+	}
+	watchSet := map[string]bool{}
+	for _, item := range watchList {
+		watchSet[item] = true
+	}
+	resolvedModuleDir, err := resolveWatchPath(moduleDir)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(moduleDir) error = %v", err)
+	}
+	resolvedNestedDir, err := resolveWatchPath(nestedDir)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(nestedDir) error = %v", err)
+	}
+	if !watchSet[resolvedModuleDir] || !watchSet[resolvedNestedDir] {
+		t.Fatalf("unexpected watch list: %#v", watchList)
+	}
+
+	changedFile := filepath.Join(nestedDir, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := srv.dispatchWatchHandler(changedFile); err != nil {
+		t.Fatalf("dispatchWatchHandler() error = %v", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+	resolvedChangedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+	firstCall, ok := tracked.firstCall()
+	if !ok {
+		t.Fatal("expected first watch callback")
+	}
+	if firstCall.module != "demo" || firstCall.file != resolvedChangedFile {
+		t.Fatalf("unexpected watch callback: %#v", firstCall)
+	}
+
+	siblingDir := filepath.Join(root, "addons", "demo-sibling")
+	if err := os.MkdirAll(siblingDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	siblingFile := filepath.Join(siblingDir, "handler.ts")
+	if err := os.WriteFile(siblingFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := srv.dispatchWatchHandler(siblingFile); err != nil {
+		t.Fatalf("dispatchWatchHandler() sibling path error = %v", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls after sibling path = %d, want 1", tracked.callCount())
+	}
+
+	tracked.watchErr = errors.New("watch failed")
+	if err := srv.dispatchWatchHandler(changedFile); err == nil {
+		t.Fatal("expected dispatchWatchHandler to propagate watch handler error")
+	}
+
+	quietSrv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{watcher: watcher}}
+	runtimeScope.cfg.Server.HotReload = false
+	if err := quietSrv.applyRegistrationWatchPlansWithHandler((&fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}).watchPlans(), nil); err != nil {
+		t.Fatalf("applyRegistrationWatchPlansWithHandler() with hot reload disabled error = %v", err)
+	}
+}
+
+func TestIsWatchedPathBoundaries(t *testing.T) {
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "addons", "demo")
+	nestedDir := filepath.Join(moduleDir, "sub")
+	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		moduleDir string
+		file      string
+		want      bool
+	}{
+		{name: "same directory event", moduleDir: moduleDir, file: moduleDir, want: true},
+		{name: "parent escape", moduleDir: nestedDir, file: filepath.Join(moduleDir, "handler.ts"), want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := isWatchedPath(tc.moduleDir, tc.file)
+			if err != nil {
+				t.Fatalf("isWatchedPath() error = %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("isWatchedPath(%q, %q) = %v, want %v", tc.moduleDir, tc.file, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestServerRegisterWatchDirAndDispatchWatchHandlerResolvesSymlinks(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer watcher.Close()
+
+	root := t.TempDir()
+	logicalAddonsDir := filepath.Join(root, "addons")
+	if err := os.MkdirAll(logicalAddonsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	realModuleDir := filepath.Join(root, "real", "demo")
+	realNestedDir := filepath.Join(realModuleDir, "sub")
+	if err := os.MkdirAll(realNestedDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	symlinkModuleDir := filepath.Join(logicalAddonsDir, "demo")
+	if err := os.Symlink(realModuleDir, symlinkModuleDir); err != nil {
+		t.Skipf("Symlink not supported: %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{symlinkModuleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{watcher: watcher}}
+
+	if err := srv.applyRegistrationWatchPlansWithHandler(tracked.watchPlans(), tracked.watchCallback); err != nil {
+		t.Fatalf("applyRegistrationWatchPlansWithHandler() error = %v", err)
+	}
+	watchSet := map[string]bool{}
+	for _, item := range watcher.WatchList() {
+		watchSet[item] = true
+	}
+	resolvedModuleDir, err := resolveWatchPath(symlinkModuleDir)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(module) error = %v", err)
+	}
+	resolvedNestedDir, err := resolveWatchPath(filepath.Join(symlinkModuleDir, "sub"))
+	if err != nil {
+		t.Fatalf("resolveWatchPath(nested) error = %v", err)
+	}
+	if !watchSet[resolvedModuleDir] || !watchSet[resolvedNestedDir] {
+		t.Fatalf("unexpected watch list for symlinked module: %#v", watcher.WatchList())
+	}
+
+	logicalChangedFile := filepath.Join(symlinkModuleDir, "sub", "handler.ts")
+	if err := os.WriteFile(logicalChangedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := srv.dispatchWatchHandler(logicalChangedFile); err != nil {
+		t.Fatalf("dispatchWatchHandler() error = %v", err)
+	}
+	firstCall, ok := tracked.firstCall()
+	if !ok {
+		t.Fatal("expected watch callback for symlinked module")
+	}
+	resolvedChangedFile, err := resolveWatchPath(logicalChangedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(file) error = %v", err)
+	}
+	if firstCall.module != "demo" || firstCall.file != resolvedChangedFile {
+		t.Fatalf("unexpected symlink watch callback: %#v", firstCall)
+	}
+}
+
+func TestServerEnqueueWatchEventDropsWhenQueueFull(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	srv.hotreloadQueue() <- "existing.ts"
+
+	if enqueued := srv.enqueueWatchEvent("dropped.ts"); enqueued {
+		t.Fatal("expected enqueueWatchEvent to drop events when the queue is full")
+	}
+	assertHotreloadCounters(t, srv, 1, 0, "enqueueWatchEvent() drops when queue is full")
+
+	select {
+	case got := <-srv.hotreloadQueue():
+		if got != "existing.ts" {
+			t.Fatalf("watch queue retained %q, want %q", got, "existing.ts")
+		}
+	default:
+		t.Fatal("expected existing watch event to remain queued")
+	}
+
+	select {
+	case got := <-srv.hotreloadQueue():
+		t.Fatalf("unexpected dropped watch event in queue: %q", got)
+	default:
+	}
+}
+
+func TestServerEnqueueWatchEventCoalescesWhileReloadPending(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+
+	if enqueued := srv.enqueueWatchEvent("first.ts"); !enqueued {
+		t.Fatal("expected first watch event to enqueue")
+	}
+	select {
+	case got := <-srv.hotreloadQueue():
+		resolvedFirst, err := resolveWatchPath("first.ts")
+		if err != nil {
+			t.Fatalf("resolveWatchPath(first) error = %v", err)
+		}
+		if got != resolvedFirst {
+			t.Fatalf("queued watch event = %q, want %q", got, resolvedFirst)
+		}
+	default:
+		t.Fatal("expected first watch event to remain queued")
+	}
+
+	if enqueued := srv.enqueueWatchEvent("second.ts"); enqueued {
+		t.Fatal("expected second watch event to be coalesced while reload is pending")
+	}
+	assertHotreloadCounters(t, srv, 0, 1, "enqueueWatchEvent() coalesces while reload is pending")
+
+	srv.finishWatchEvent()
+	if enqueued := srv.enqueueWatchEvent("third.ts"); !enqueued {
+		t.Fatal("expected third watch event to enqueue after finishing the pending reload")
+	}
+}
+
+func TestWaitForWatchDebounceHonorsContextCancel(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	runtimeScope.ctx = ctx
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	oldWindow := watchDebounceWindow
+	watchDebounceWindow = time.Second
+	t.Cleanup(func() { watchDebounceWindow = oldWindow })
+
+	cancel()
+	if err := srv.waitForWatchDebounce("demo.ts"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("waitForWatchDebounce() error = %v, want %v", err, context.Canceled)
+	}
+}
+
+func TestWatchOverlappingRoots(t *testing.T) {
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "addons", "demo")
+	nestedDir := filepath.Join(moduleDir, "sub")
+	siblingDir := filepath.Join(root, "addons", "other")
+	registeredRoots := map[string]struct{}{moduleDir: {}, nestedDir: {}, siblingDir: {}}
+
+	skip, coveredRoots, err := overlappingWatchRoots(nestedDir, registeredRoots)
+	if err != nil {
+		t.Fatalf("overlappingWatchRoots(child) error = %v", err)
+	}
+	if !skip {
+		t.Fatal("expected child watch root to be skipped when a parent root already exists")
+	}
+	if len(coveredRoots) != 0 {
+		t.Fatalf("coveredRoots for child = %#v, want empty", coveredRoots)
+	}
+
+	parentRoot := filepath.Join(root, "addons")
+	skip, coveredRoots, err = overlappingWatchRoots(parentRoot, registeredRoots)
+	if err != nil {
+		t.Fatalf("overlappingWatchRoots(parent) error = %v", err)
+	}
+	if skip {
+		t.Fatal("expected parent watch root not to be skipped")
+	}
+	coveredSet := map[string]bool{}
+	for _, coveredRoot := range coveredRoots {
+		coveredSet[coveredRoot] = true
+	}
+	if !coveredSet[moduleDir] || !coveredSet[nestedDir] || !coveredSet[siblingDir] {
+		t.Fatalf("coveredRoots = %#v, want module+nested+sibling", coveredRoots)
+	}
+}
+
+func TestServerServeRestartSuccessLogIncludesWatchCounters(t *testing.T) {
+	buf := &bytes.Buffer{}
+	baseScope := newRichServerTestScope(t)
+	baseScope.logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	runtimeScope := (&noSessionServerScope{serverTestScope: baseScope}).WithContext(context.Background()).(*noSessionServerScope)
+	runtimeScope.cfg.Auth.Enabled = false
+	runtimeScope.cfg.Server.Port = 0
+	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
+	runtimeScope.cfg.Server.HotReload = false
+
+	watchRoot := t.TempDir()
+	changedFile := filepath.Join(watchRoot, "changed.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{watchRoot}}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	t.Cleanup(func() {
+		if watcher := srv.hotreloadWatcher(); watcher != nil {
+			_ = watcher.Close()
+		}
+		if srv.httpServer != nil || srv.server != nil || srv.listener != nil || srv.grpcClientPool != nil {
+			_ = srv.stop(false)
+		}
+	})
+
+	if err := srv.start(false); err != nil {
+		t.Fatalf("start(false) error = %v", err)
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+	srv.hotreload.recordDropped()
+	srv.hotreload.recordCoalesced()
+	if err := srv.handleWatchedFileChange(changedFile); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "watch reload completed") || !strings.Contains(logOutput, "watch_dropped_count=1") || !strings.Contains(logOutput, "watch_coalesced_count=1") {
+		t.Fatalf("unexpected restart success log output: %s", logOutput)
+	}
+}
+
+func TestWatchEventLogsIncludeStructuredFields(t *testing.T) {
+	buf := &bytes.Buffer{}
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	dropSrv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	dropSrv.hotreloadQueue() <- "existing.ts"
+	if enqueued := dropSrv.enqueueWatchEvent("dropped.ts"); enqueued {
+		t.Fatal("expected dropped watch event")
+	}
+
+	coalesceSrv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
+	if enqueued := coalesceSrv.enqueueWatchEvent("first.ts"); !enqueued {
+		t.Fatal("expected first watch event to enqueue")
+	}
+	if enqueued := coalesceSrv.enqueueWatchEvent("second.ts"); enqueued {
+		t.Fatal("expected second watch event to be coalesced")
+	}
+
+	logOutput := buf.String()
+	if !strings.Contains(logOutput, "watch event dropped") || !strings.Contains(logOutput, "reason=queue_full") || !strings.Contains(logOutput, "dropped_count=1") {
+		t.Fatalf("unexpected dropped watch log output: %s", logOutput)
+	}
+	if !strings.Contains(logOutput, "watch event coalesced") || !strings.Contains(logOutput, "coalesced_count=1") {
+		t.Fatalf("unexpected coalesced watch log output: %s", logOutput)
+	}
+}
+
+func TestServerDispatchWatchHandlerResolvesSymlinkedRemovedFile(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	logicalAddonsDir := filepath.Join(root, "addons")
+	if err := os.MkdirAll(logicalAddonsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	realModuleDir := filepath.Join(root, "real", "demo")
+	realNestedDir := filepath.Join(realModuleDir, "sub")
+	if err := os.MkdirAll(realNestedDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	symlinkModuleDir := filepath.Join(logicalAddonsDir, "demo")
+	if err := os.Symlink(realModuleDir, symlinkModuleDir); err != nil {
+		t.Skipf("Symlink not supported: %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{symlinkModuleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	logicalRemovedFile := filepath.Join(symlinkModuleDir, "sub", "removed.ts")
+	if err := os.WriteFile(logicalRemovedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := os.Remove(logicalRemovedFile); err != nil {
+		t.Fatalf("Remove() error = %v", err)
+	}
+	if err := srv.dispatchWatchHandler(logicalRemovedFile); err != nil {
+		t.Fatalf("dispatchWatchHandler() error = %v", err)
+	}
+	firstCall, ok := tracked.firstCall()
+	if !ok {
+		t.Fatal("expected watch callback for symlinked removed file")
+	}
+	resolvedRemovedFile, err := resolveWatchPath(logicalRemovedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(removed file) error = %v", err)
+	}
+	if firstCall.module != "demo" || firstCall.file != resolvedRemovedFile {
+		t.Fatalf("unexpected symlink remove callback: %#v", firstCall)
+	}
+}
+
+func TestServerDispatchWatchHandlerResolvesSymlinkedRenamedOldFile(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	logicalAddonsDir := filepath.Join(root, "addons")
+	if err := os.MkdirAll(logicalAddonsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	realModuleDir := filepath.Join(root, "real", "demo")
+	realNestedDir := filepath.Join(realModuleDir, "sub")
+	if err := os.MkdirAll(realNestedDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	symlinkModuleDir := filepath.Join(logicalAddonsDir, "demo")
+	if err := os.Symlink(realModuleDir, symlinkModuleDir); err != nil {
+		t.Skipf("Symlink not supported: %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{symlinkModuleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	logicalOldFile := filepath.Join(symlinkModuleDir, "sub", "rename-old.ts")
+	logicalNewFile := filepath.Join(symlinkModuleDir, "sub", "rename-new.ts")
+	if err := os.WriteFile(logicalOldFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := os.Rename(logicalOldFile, logicalNewFile); err != nil {
+		t.Fatalf("Rename() error = %v", err)
+	}
+	if err := srv.dispatchWatchHandler(logicalOldFile); err != nil {
+		t.Fatalf("dispatchWatchHandler() error = %v", err)
+	}
+	firstCall, ok := tracked.firstCall()
+	if !ok {
+		t.Fatal("expected watch callback for symlinked renamed file")
+	}
+	resolvedOldFile, err := resolveWatchPath(logicalOldFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(old file) error = %v", err)
+	}
+	if firstCall.module != "demo" || firstCall.file != resolvedOldFile {
+		t.Fatalf("unexpected symlink rename callback: %#v", firstCall)
+	}
+}
+
+func TestServerRegisterWatchDirSkipsWalkErrors(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	if err := watcher.Close(); err != nil {
+		t.Fatalf("watcher.Close() error = %v", err)
+	}
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "nested"), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{watcher: watcher}}
+	app := &fakeWatchedService{name: "demo", watchDirs: []string{root}}
+	if err := srv.applyRegistrationWatchPlansWithHandler(app.watchPlans(), app.watchCallback); err != nil {
+		t.Fatalf("applyRegistrationWatchPlansWithHandler() error = %v, want nil on walk/add failure", err)
+	}
+}
+
+func TestServerWatchForwardsEventsAndStops(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: watcher, queue: make(chan string, 8)},
+	}
+	if err := srv.startHotreloadLifecycle(); err != nil {
+		t.Fatalf("startHotreloadLifecycle() error = %v", err)
+	}
+	t.Cleanup(func() {
+		srv.stopHotreloadLifecycle()
+	})
+
+	watchDir := t.TempDir()
+	if err := watcher.Add(watchDir); err != nil {
+		t.Fatalf("watcher.Add() error = %v", err)
+	}
+	created := filepath.Join(watchDir, "created.txt")
+	if err := os.WriteFile(created, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	select {
+	case got := <-srv.hotreloadQueue():
+		resolvedCreated, err := resolveWatchPath(created)
+		if err != nil {
+			t.Fatalf("resolveWatchPath() error = %v", err)
+		}
+		if got != resolvedCreated {
+			t.Fatalf("watch forwarded path = %q, want %q", got, resolvedCreated)
+		}
+		srv.finishWatchEvent()
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for fsnotify event")
+	}
+
+	srv.stopHotreloadLifecycle()
+}
+
+func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: watcher, queue: make(chan string, 8)},
+	}
+	if err := srv.startHotreloadLifecycle(); err != nil {
+		t.Fatalf("startHotreloadLifecycle() error = %v", err)
+	}
+	t.Cleanup(func() {
+		srv.stopHotreloadLifecycle()
+	})
+
+	root := t.TempDir()
+	if err := watcher.Add(root); err != nil {
+		t.Fatalf("watcher.Add() error = %v", err)
+	}
+	removeFile := filepath.Join(root, "remove.ts")
+	renameOld := filepath.Join(root, "rename.ts")
+	renameNew := filepath.Join(root, "rename-next.ts")
+	if err := os.WriteFile(removeFile, []byte("export const removeMe = true\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(remove.ts) error = %v", err)
+	}
+	if err := os.WriteFile(renameOld, []byte("export const renameMe = true\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(rename.ts) error = %v", err)
+	}
+	waitForExpectedEvent := func(expected ...string) string {
+		t.Helper()
+		deadline := time.After(3 * time.Second)
+		for {
+			select {
+			case name := <-srv.hotreloadQueue():
+				srv.finishWatchEvent()
+				base := filepath.Base(name)
+				for _, want := range expected {
+					if base == want {
+						return base
+					}
+				}
+			case <-deadline:
+				t.Fatalf("timed out waiting for watch event, want one of %#v", expected)
+			}
+		}
+	}
+	createFile := filepath.Join(root, "create.ts")
+	if err := os.WriteFile(createFile, []byte("export const created = true\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(create.ts) error = %v", err)
+	}
+	if got := waitForExpectedEvent("create.ts"); got != "create.ts" {
+		t.Fatalf("watch forwarded create event = %q, want %q", got, "create.ts")
+	}
+	if err := os.Remove(removeFile); err != nil {
+		t.Fatalf("Remove(remove.ts) error = %v", err)
+	}
+	if got := waitForExpectedEvent("remove.ts"); got != "remove.ts" {
+		t.Fatalf("watch forwarded remove event = %q, want %q", got, "remove.ts")
+	}
+	if err := os.Rename(renameOld, renameNew); err != nil {
+		t.Fatalf("Rename(rename.ts) error = %v", err)
+	}
+	gotRename := waitForExpectedEvent("rename.ts", "rename-next.ts")
+	if gotRename != "rename.ts" && gotRename != "rename-next.ts" {
+		t.Fatalf("watch forwarded rename event = %q, want %q or %q", gotRename, "rename.ts", "rename-next.ts")
+	}
+
+	srv.stopHotreloadLifecycle()
+}

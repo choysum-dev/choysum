@@ -1,0 +1,12 @@
+version: v1
+plugins:
+  - plugin: buf.build/protocolbuffers/go
+    out: .
+    opt:
+      - paths=source_relative
+
+  - plugin: buf.build/bufbuild/es
+    out: ../../addons/core/error
+    opt:
+      - target=ts
+      - import_extension=none

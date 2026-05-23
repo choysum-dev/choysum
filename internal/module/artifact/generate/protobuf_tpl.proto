@@ -1,0 +1,37 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+import "google/protobuf/struct.proto";
+import "google/protobuf/empty.proto";
+
+package {{.Name}};
+option go_package = "github.com/project-choysum/choysum/pkg/{{.Name}}/grpcclient/{{.Name}}pb;{{.Name}}pb";
+
+{{- range $model := .Models}}
+
+// Model: {{$model.Name}}
+service {{$model.Name}} {
+    {{- range $index, $service := $model.Services}}
+    rpc {{$service.Name}} ( {{ if $service.Parameters }}{{$model.Name}}_{{$service.Name}}_Req{{else}}google.protobuf.Empty{{end}} ) returns ( {{ if ne $service.TsTypeAnnotation "void" }}{{$model.Name}}_{{$service.Name}}_Resp{{else}}google.protobuf.Empty{{end}} ) {}
+    {{- end}}
+}
+
+    {{- range $service := $model.Services }}
+        {{- if $service.Parameters }}
+message {{$model.Name}}_{{$service.Name}}_Req {
+            {{- range $i, $param := $service.Parameters}}
+    {{$param.ProtobufType}} {{$param.Name}} = {{index $i 1}};
+            {{- end}}
+}
+        {{- end}}
+
+        {{- if ne $service.TsTypeAnnotation "void" }} 
+message {{$model.Name}}_{{$service.Name}}_Resp {
+    {{$service.ProtobufType}} result = 1;
+}
+        {{- end}}
+        
+    {{- end}}
+
+{{- end}}

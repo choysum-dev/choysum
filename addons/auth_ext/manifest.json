@@ -1,0 +1,13 @@
+{
+  "name": "auth_ext",
+  "description": "User authentication and management module",
+  "application": "auth",
+  "category": "User/Authentication",
+  "depends": ["auth"],
+  "entryPoints": {
+    "service": "./service/index.ts"
+  },
+  "version": "v0.1.0",
+  "license": "Apache 2.0",
+  "author": "Choysum Team"
+}

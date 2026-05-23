@@ -1,0 +1,10 @@
+version: v1
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_DIRECTORY_MATCH     # Relax the requirement that package names match the directory.
+    - PACKAGE_VERSION_SUFFIX      # Relax the requirement that package names include a version suffix.
+breaking:
+  use:
+    - FILE

@@ -1,0 +1,75 @@
+// Copyright 2025 The Choysum Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// ============================================
+// Element Plus变量覆盖 - 极简版
+// ============================================
+
+:root {
+  // 品牌色
+  --el-color-primary: var(--o-color-primary);
+  --el-color-success: var(--o-color-success);
+  --el-color-warning: var(--o-color-warning);
+  --el-color-danger: var(--o-color-danger);
+  --el-color-info: var(--o-color-info);
+
+  // 过渡动画
+  --el-transition-duration: var(--o-transition-duration-base);
+  --el-transition-function: var(--o-transition-timing-ease-in-out);
+}
+
+// ============================================
+// 最小化按钮样式增强
+// ============================================
+.el-button {
+  // 按钮文字与图标间距 - 适应RTL
+  [class^='el-icon'] + span {
+    margin-inline-start: 5px;
+  }
+}
+
+// ============================================
+// RTL支持 - Element Plus调整
+// ============================================
+[dir='rtl'] {
+  // 基本方向设置
+  direction: rtl;
+  text-align: right;
+
+  .el-icon.arrow-right,
+  .el-icon.arrow-left,
+  .el-icon.arrow-up,
+  .el-icon.arrow-down {
+    transform: scaleX(-1);
+  }
+
+  // Element Plus按钮图标位置修正
+  .el-button:not(.is-text):not(.is-link) {
+    &.is-icon-right [class*='el-icon'] {
+      margin-right: 0;
+      margin-left: 4px;
+    }
+
+    &:not(.is-icon-right) [class*='el-icon'] {
+      margin-left: 4px;
+      margin-right: 0;
+    }
+  }
+
+  // Element Plus下拉菜单箭头位置修正
+  .el-dropdown__popper.el-popper[role='tooltip']::before {
+    right: auto !important;
+    left: 10px !important;
+  }
+}

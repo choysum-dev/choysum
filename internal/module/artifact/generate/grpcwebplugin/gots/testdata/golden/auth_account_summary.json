@@ -1,0 +1,7 @@
+{
+  "name": "auth/account_pb.ts",
+  "imports": ["@bufbuild/protobuf/codegenv2"],
+  "exports": ["AccountService", "file_auth_account"],
+  "schemaExports": [],
+  "serviceExports": ["AccountService"]
+}
