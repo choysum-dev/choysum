@@ -7,10 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 
-	"github.com/buke/devslog"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/golang-cz/devslog"
 )
 
 const (
@@ -37,8 +38,84 @@ func replaceAttr(_ []string, a slog.Attr) slog.Attr {
 	return a
 }
 
+func replaceAttrForDevslog(_ []string, a slog.Attr) slog.Attr {
+	switch a.Value.Kind() {
+	case slog.KindAny:
+		switch v := a.Value.Any().(type) {
+		case error:
+			a.Value = slog.AnyValue(fmtErrForDevslog(v))
+		}
+	}
+	return a
+}
+
 func fmtErr(err error) slog.Value {
 	return slogValueFromErrorTrace(collectErrorTrace(err))
+}
+
+func fmtErrForDevslog(err error) error {
+	if err == nil {
+		return nil
+	}
+	trace := collectErrorTrace(err)
+	if !trace.HasFrames() {
+		return err
+	}
+
+	var wrapped error
+	for idx := len(trace.Trace) - 1; idx >= 0; idx-- {
+		entry := trace.Trace[idx]
+		wrapped = devslogTraceError{
+			msg:   formatDevslogTraceEntry(entry),
+			cause: wrapped,
+		}
+	}
+
+	return wrapped
+}
+
+type devslogTraceError struct {
+	msg   string
+	cause error
+}
+
+func (e devslogTraceError) Error() string {
+	if e.cause == nil {
+		return e.msg
+	}
+	return e.msg + ": " + e.cause.Error()
+}
+
+func (e devslogTraceError) Unwrap() error {
+	return e.cause
+}
+
+func formatDevslogTraceEntry(entry errorTraceEntry) string {
+	if len(entry.Frames) == 0 {
+		return entry.Msg
+	}
+
+	var builder strings.Builder
+	builder.WriteString(entry.Msg)
+	for index, frame := range entry.Frames {
+		builder.WriteString("\n       ")
+		builder.WriteString(strconv.Itoa(index))
+		builder.WriteString(": ")
+		builder.WriteString(formatDevslogTraceFrame(frame))
+	}
+	return builder.String()
+}
+
+func formatDevslogTraceFrame(frame errorTraceFrame) string {
+	location := strings.TrimSpace(frame.File)
+	function := strings.TrimSpace(frame.Function)
+	if function == "" {
+		return location
+	}
+	if location == "" {
+		return function
+	}
+	return location + ", " + function
 }
 
 func cloneLogConfig(cfg *config.LogConfig) *config.LogConfig {
@@ -69,8 +146,9 @@ func newHandler(logCfg *config.LogConfig, w io.Writer) slog.Handler {
 	case "devslog":
 		slogHandler = devslog.NewHandler(w, &devslog.Options{
 			HandlerOptions: &slog.HandlerOptions{
-				AddSource: true,
-				Level:     slogLevel,
+				AddSource:   true,
+				Level:       slogLevel,
+				ReplaceAttr: replaceAttrForDevslog,
 			},
 			TimeFormat:         "[2006-01-02 15:04:05.000]",
 			SortKeys:           true,

@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -61,6 +62,12 @@ func attrMap(attrs []slog.Attr) map[string]slog.Value {
 		result[attr.Key] = attr.Value
 	}
 	return result
+}
+
+var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+func stripANSI(in string) string {
+	return ansiRegexp.ReplaceAllString(in, "")
 }
 
 func TestExtractPCFromErrorAndGetFileLineFromPC(t *testing.T) {
@@ -183,6 +190,32 @@ func TestNewHandlerAndLoggerWithWriter(t *testing.T) {
 	}
 	if handler := newHandler(testLogConfig("unknown", "error"), io.Discard); handler == nil {
 		t.Fatal("expected fallback text handler")
+	}
+}
+
+func TestDevslogHandlerTraceErrorKeepsQuickJSFrames(t *testing.T) {
+	t.Setenv("NO_COLOR", "1")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	logger := NewLoggerWithWriter(testLogConfig("devslog", "error"), buf)
+	err := fmt.Errorf(
+		"failed to call function: %w",
+		quickjsErr{msg: "ChoysumError: User not found or password is incorrect", Stack: "at page.ts:10\nat helper.ts:3"},
+	)
+	logger.Error("js interpreter failed", "error", err, "code", "USER_NOT_FOUND")
+	out := stripANSI(buf.String())
+	if !strings.Contains(out, "js interpreter failed") {
+		t.Fatalf("expected devslog error message, got %q", out)
+	}
+	if !strings.Contains(out, "E error") {
+		t.Fatalf("expected devslog to keep error layout, got %q", out)
+	}
+	if !strings.Contains(out, "page.ts:10") || !strings.Contains(out, "helper.ts:3") {
+		t.Fatalf("expected quickjs stack frames in devslog output, got %q", out)
+	}
+	if strings.Contains(out, "G error") || strings.Contains(out, "S trace") || strings.Contains(out, "map[string]interface {}") {
+		t.Fatalf("expected devslog output without group/map trace artifacts, got %q", out)
 	}
 }
 
