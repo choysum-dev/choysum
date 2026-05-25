@@ -598,6 +598,45 @@ func TestMakeTestScope(t *testing.T) {
 		}
 	})
 
+	t.Run("forces non-minified compile options for unit scope", func(t *testing.T) {
+		baseWithMinify := &testStubScope{
+			ctx: context.Background(),
+			cfg: &config.Config{
+				AddonsPath: filepath.Join(t.TempDir(), "addons"),
+				DistPath:   filepath.Join(t.TempDir(), "dist"),
+				TmpPath:    filepath.Join(t.TempDir(), "tmp-root"),
+				Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
+				Compile: &config.CompileConfig{
+					BundleMode:  "application",
+					SourceMap:   true,
+					Minify:      true,
+					TreeShaking: true,
+				},
+				Server: &config.ServerConfig{Environment: envName},
+			},
+		}
+
+		childScope, cleanup, err := makeTestScope(context.Background(), baseWithMinify, "auth", "sqlite", "", "", false)
+		if err != nil {
+			t.Fatalf("makeTestScope returned error: %v", err)
+		}
+		defer cleanup()
+
+		compileOpts, hasCompileOpts := scope.CompileRuntimeOptionsFromScope(childScope)
+		if !hasCompileOpts {
+			t.Fatalf("expected child scope compile runtime options")
+		}
+		if compileOpts.Minify {
+			t.Fatalf("expected child scope minify=false, got true")
+		}
+		if compileOpts.BundleMode != "application" {
+			t.Fatalf("expected bundle mode to be preserved, got %q", compileOpts.BundleMode)
+		}
+		if !compileOpts.TreeShaking {
+			t.Fatalf("expected tree shaking to be preserved, got false")
+		}
+	})
+
 	t.Run("keeps explicit sqlite file when requested", func(t *testing.T) {
 		keepPath := filepath.Join(t.TempDir(), "keep.sqlite")
 		childScope, cleanup, err := makeTestScope(context.Background(), baseScope, "auth", "sqlite", keepPath, "", true)

@@ -92,6 +92,12 @@ func newTestRuntimeScopeInputFromScope(runtimeScope scope.Scope, dbOpts scope.Da
 			TreeShaking: compileOpts.TreeShaking,
 		}
 	}
+	if cfg.Compile == nil {
+		cfg.Compile = config.NewDefaultCompileConfig()
+	}
+	// Unit backend tests rely on stable model/constructor labels in diagnostics,
+	// so force non-minified bundles for deterministic assertions in CI and local runs.
+	cfg.Compile.Minify = false
 
 	if hasAuthOpts {
 		cfg.Auth = &config.AuthConfig{
