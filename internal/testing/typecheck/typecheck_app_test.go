@@ -43,6 +43,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 	t.Run("uses current working directory as repo root when omitted", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
+		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 
 		originalWD, err := os.Getwd()
@@ -65,6 +67,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 	t.Run("writes temp tsconfig and cleans it up on success", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
+		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		tmpPath := t.TempDir()
 		npmPath, copyPath, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
@@ -136,6 +140,7 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		tmpPath := t.TempDir()
 		npmPath, copyPath, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 		makeDir(t, filepath.Join(addonsPath, "auth", "web"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "web", "index.ts"), "export const auth = 1\n")
 		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
 		writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare interface ImportMetaEnv {}\n")
 		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
@@ -170,6 +175,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 	t.Run("keeps temp tsconfig when keep is enabled", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
+		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		tmpPath := t.TempDir()
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
@@ -206,6 +213,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 	t.Run("forwards command output and wraps command failure", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
+		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		tmpPath := t.TempDir()
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "printf 'compile failed'; exit 7\n")
 		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
@@ -255,6 +264,7 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		addonsPath := t.TempDir()
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 		makeDir(t, filepath.Join(addonsPath, "auth", "web"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "web", "index.ts"), "export const auth = 1\n")
 
 		err := TypecheckApp(context.Background(), RunOptions{
 			AddonsPath: addonsPath,
@@ -271,6 +281,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 	t.Run("best-effort cleanup ignores non-empty tmp directory", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
+		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		tmpPath := t.TempDir()
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "dir=$(dirname \"$4\")\nprintf 'keep' > \"$dir/sentinel.keep\"\nexit 0\n")
 

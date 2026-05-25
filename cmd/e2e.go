@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
@@ -17,6 +18,13 @@ import (
 
 var resolveE2EModules = pkge2e.ResolveE2EModules
 var runE2EModule = pkge2e.RunModule
+
+func isNoE2ESpecsError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "has no manifest.e2e.specs")
+}
 
 func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var scenarios []string
@@ -127,7 +135,12 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 				Stdout:          os.Stdout,
 				Stderr:          os.Stderr,
 			}
-			return runE2EModule(ctx, opts)
+			err = runE2EModule(ctx, opts)
+			if isNoE2ESpecsError(err) {
+				fmt.Fprintln(os.Stdout, "no tests found")
+				return nil
+			}
+			return err
 		},
 	}
 

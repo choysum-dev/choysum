@@ -19,16 +19,40 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("returns no apps to check when resolver finds none", func(t *testing.T) {
+	t.Run("prints no tests found when resolver finds none", func(t *testing.T) {
 		addonsPath := t.TempDir()
 		makeDir(t, filepath.Join(addonsPath, "empty"))
+		var stdout strings.Builder
 
 		err := Run(context.Background(), RunOptions{
 			AddonsPath: addonsPath,
 			Target:     "all",
+			Stdout:     &stdout,
 		})
-		if err == nil || !strings.Contains(err.Error(), "no apps to check") {
-			t.Fatalf("expected no apps to check error, got %v", err)
+		if err != nil {
+			t.Fatalf("expected no-tests-found success, got %v", err)
+		}
+		if stdout.String() != "no tests found\n" {
+			t.Fatalf("unexpected stdout: %q", stdout.String())
+		}
+	})
+
+	t.Run("prints no tests found when target has no ts inputs", func(t *testing.T) {
+		addonsPath := t.TempDir()
+		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		t.Setenv("PATH", "")
+		var stdout strings.Builder
+
+		err := Run(context.Background(), RunOptions{
+			AddonsPath: addonsPath,
+			Target:     "auth",
+			Stdout:     &stdout,
+		})
+		if err != nil {
+			t.Fatalf("expected no-tests-found success, got %v", err)
+		}
+		if stdout.String() != "no tests found\n" {
+			t.Fatalf("unexpected stdout: %q", stdout.String())
 		}
 	})
 
@@ -36,7 +60,9 @@ func TestRun(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
 		makeDir(t, filepath.Join(addonsPath, "zeta", "web"))
+		writeFile(t, filepath.Join(addonsPath, "zeta", "web", "index.ts"), "export const z = 1\n")
 		makeDir(t, filepath.Join(addonsPath, "alpha", "service"))
+		writeFile(t, filepath.Join(addonsPath, "alpha", "service", "index.ts"), "export const a = 1\n")
 		makeDir(t, filepath.Join(addonsPath, ".choysum", "service"))
 		makeDir(t, filepath.Join(addonsPath, "tmp", "web"))
 		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
@@ -67,6 +93,7 @@ func TestRun(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := filepath.Join(repoRoot, "addons")
 		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 
 		originalWD, err := os.Getwd()
@@ -103,6 +130,7 @@ func TestRun(t *testing.T) {
 		repoRoot := t.TempDir()
 		addonsPath := t.TempDir()
 		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "printf 'compile failed'; exit 7\n")
 
 		var stderr strings.Builder

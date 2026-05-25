@@ -6,8 +6,10 @@ package typecheck
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +31,10 @@ type RunOptions struct {
 	Stdout io.Writer
 	Stderr io.Writer
 }
+
+var errNoTypecheckInputs = errors.New("typecheck: no checkable ts inputs")
+
+var errTypecheckInputFound = errors.New("typecheck: input found")
 
 func Run(ctx context.Context, opts RunOptions) error {
 	if ctx == nil {
@@ -62,14 +68,23 @@ func Run(ctx context.Context, opts RunOptions) error {
 		return err
 	}
 	if len(apps) == 0 {
-		return xfmt.Errorf("typecheck: no apps to check")
+		fmt.Fprintln(opts.Stdout, "no tests found")
+		return nil
 	}
 	sort.Strings(apps)
 
+	ranAny := false
 	for _, app := range apps {
 		if err := TypecheckApp(ctx, opts, app); err != nil {
+			if errors.Is(err, errNoTypecheckInputs) {
+				continue
+			}
 			return err
 		}
+		ranAny = true
+	}
+	if !ranAny {
+		fmt.Fprintln(opts.Stdout, "no tests found")
 	}
 	return nil
 }
@@ -95,7 +110,7 @@ func ResolveApps(addonsPath string, target string) ([]string, error) {
 			return nil, err
 		}
 		if !hasTargets {
-			return nil, xfmt.Errorf("typecheck: app %q has no service/web sources", target)
+			return nil, nil
 		}
 		return []string{target}, nil
 	}
@@ -187,6 +202,13 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	app = strings.TrimSpace(app)
 	if app == "" {
 		return xfmt.Errorf("typecheck: missing app name")
+	}
+	hasInputs, err := hasTypecheckInputs(addonsRoot, app)
+	if err != nil {
+		return xfmt.Errorf("typecheck: scan inputs for %s: %w", app, err)
+	}
+	if !hasInputs {
+		return errNoTypecheckInputs
 	}
 
 	npxPath, err := resolveNpxPath(opts.NpmPath)
@@ -325,4 +347,45 @@ func resolveNpxPath(npmPath string) (string, error) {
 		return "", xfmt.Errorf("typecheck: missing npx (Node.js). Install Node/npm, then run `npm install` in repo root")
 	}
 	return "npx", nil
+}
+
+func hasTypecheckInputs(addonsPath string, app string) (bool, error) {
+	root := filepath.Join(addonsPath, app)
+	st, err := os.Stat(root)
+	if err != nil || !st.IsDir() {
+		return false, nil
+	}
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		_ = path
+		if d.IsDir() {
+			if shouldSkipTypecheckInputScanDir(d.Name()) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		name := strings.ToLower(d.Name())
+		if strings.HasSuffix(name, ".ts") || strings.HasSuffix(name, ".tsx") || strings.HasSuffix(name, ".vue") {
+			return errTypecheckInputFound
+		}
+		return nil
+	})
+	if err == nil {
+		return false, nil
+	}
+	if errors.Is(err, errTypecheckInputFound) {
+		return true, nil
+	}
+	return false, err
+}
+
+func shouldSkipTypecheckInputScanDir(name string) bool {
+	switch name {
+	case "node_modules", "dist", ".choysum", "tmp":
+		return true
+	default:
+		return false
+	}
 }

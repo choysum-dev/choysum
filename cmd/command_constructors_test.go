@@ -745,15 +745,15 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("module without e2e specs is rejected", func(t *testing.T) {
+	t.Run("module without e2e specs is skipped", func(t *testing.T) {
 		addonsPath := t.TempDir()
 		writeCommandManifest(t, addonsPath, "auth", `{"name":"Auth"}`)
 		cfg := newCommandTestConfig(addonsPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 		err := cmd.RunE(cmd, []string{"auth"})
-		if err == nil || !strings.Contains(err.Error(), `module "auth" has no manifest.e2e.specs`) {
-			t.Fatalf("expected missing specs error, got %v", err)
+		if err != nil {
+			t.Fatalf("expected missing specs to be skipped, got %v", err)
 		}
 	})
 
@@ -820,7 +820,7 @@ func TestNewTypecheckCmd_ArgsAndEarlyRunE(t *testing.T) {
 }
 
 func TestNewTypecheckCmd_AdditionalRunEPaths(t *testing.T) {
-	t.Run("all with no apps returns no apps to check", func(t *testing.T) {
+	t.Run("all with no apps returns success", func(t *testing.T) {
 		cfg := newCommandTestConfig(t.TempDir())
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newTypecheckCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
@@ -828,8 +828,8 @@ func TestNewTypecheckCmd_AdditionalRunEPaths(t *testing.T) {
 			t.Fatalf("set --all: %v", err)
 		}
 		err := cmd.RunE(cmd, nil)
-		if err == nil || !strings.Contains(err.Error(), "typecheck: no apps to check") {
-			t.Fatalf("expected no apps to check error, got %v", err)
+		if err != nil {
+			t.Fatalf("expected success for no apps to check, got %v", err)
 		}
 	})
 

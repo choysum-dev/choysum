@@ -49,10 +49,13 @@ func TestResolveApps(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects app without service or web sources", func(t *testing.T) {
-		_, err := ResolveApps(addonsPath, "empty")
-		if err == nil || !strings.Contains(err.Error(), "has no service/web sources") {
-			t.Fatalf("expected no targets error, got %v", err)
+	t.Run("returns empty list for app without service or web sources", func(t *testing.T) {
+		apps, err := ResolveApps(addonsPath, "empty")
+		if err != nil {
+			t.Fatalf("ResolveApps returned error: %v", err)
+		}
+		if len(apps) != 0 {
+			t.Fatalf("expected no apps, got %#v", apps)
 		}
 	})
 

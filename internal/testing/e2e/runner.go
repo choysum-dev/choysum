@@ -195,8 +195,12 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := manifests[opts.Module]; !ok {
+	targetManifest, ok := manifests[opts.Module]
+	if !ok {
 		return xfmt.Errorf("unknown module %q (no manifest.json under %s)", opts.Module, opts.AddonsPath)
+	}
+	if targetManifest.E2E == nil || strings.TrimSpace(targetManifest.E2E.Specs) == "" {
+		return xfmt.Errorf("module %q has no manifest.e2e.specs", opts.Module)
 	}
 
 	scenarioList := opts.Scenarios
