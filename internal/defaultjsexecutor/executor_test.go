@@ -651,6 +651,28 @@ func TestJsExecutor_ReloadRejectedDuringStop(t *testing.T) {
 	go func() {
 		stopDone <- executor.Stop()
 	}()
+
+	waitStopRequested := func() {
+		t.Helper()
+		deadline := time.After(2 * time.Second)
+		ticker := time.NewTicker(5 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			executor.controlMu.Lock()
+			requested := executor.stopRequested
+			executor.controlMu.Unlock()
+			if requested {
+				return
+			}
+			select {
+			case <-deadline:
+				t.Fatal("timeout waiting for Stop() to mark stopRequested")
+			case <-ticker.C:
+			}
+		}
+	}
+	waitStopRequested()
+
 	close(tracker.releaseReloadLoad)
 
 	if err := <-reloadDone; !errors.Is(err, errExecutorStopping) {
@@ -1043,6 +1065,27 @@ func TestJsExecutor_Start_StateBranches(t *testing.T) {
 		go func() {
 			stopDone <- executor.Stop()
 		}()
+
+		waitStopRequested := func() {
+			t.Helper()
+			deadline := time.After(2 * time.Second)
+			ticker := time.NewTicker(5 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				executor.controlMu.Lock()
+				requested := executor.stopRequested
+				executor.controlMu.Unlock()
+				if requested {
+					return
+				}
+				select {
+				case <-deadline:
+					t.Fatal("timeout waiting for Stop() to mark stopRequested")
+				case <-ticker.C:
+				}
+			}
+		}
+		waitStopRequested()
 
 		close(blocker.releaseLoad)
 

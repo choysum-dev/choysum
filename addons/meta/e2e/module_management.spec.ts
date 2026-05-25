@@ -205,6 +205,17 @@ async function waitForOperationFailure(page: Page) {
 }
 
 /**
+ * Waits for the confirmation button to finish preflight loading and become clickable.
+ */
+async function clickConfirmWhenReady(page: Page, timeout = 90000) {
+  const confirmBtn = page.getByRole('button', { name: '确认执行' });
+  await confirmBtn.waitFor({ state: 'visible', timeout });
+  await expect(confirmBtn).not.toHaveClass(/is-loading/, { timeout });
+  await expect(confirmBtn).toBeEnabled({ timeout });
+  await confirmBtn.click();
+}
+
+/**
  * Executes a module management action and waits for the board state to settle.
  */
 async function runAction(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
@@ -214,9 +225,7 @@ async function runAction(page: Page, moduleName: string, action: 'install' | 'up
 
   const dialog = page.locator('.el-dialog');
   await dialog.waitFor({ state: 'visible', timeout: 15000 });
-  const confirmBtn = page.getByRole('button', { name: '确认执行' });
-  await expect(confirmBtn).toBeEnabled({ timeout: 15000 });
-  await confirmBtn.click();
+  await clickConfirmWhenReady(page);
 
   await waitForOperationCompletion(page);
 
@@ -242,9 +251,7 @@ async function runActionExpectFailure(page: Page, moduleName: string, action: 'i
 
   const dialog = page.locator('.el-dialog');
   await dialog.waitFor({ state: 'visible', timeout: 15000 });
-  const confirmBtn = page.getByRole('button', { name: '确认执行' });
-  await expect(confirmBtn).toBeEnabled({ timeout: 15000 });
-  await confirmBtn.click();
+  await clickConfirmWhenReady(page);
 
   await waitForOperationFailure(page);
 
@@ -261,9 +268,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
 
   const dialog = page.locator('.el-dialog');
   await dialog.waitFor({ state: 'visible', timeout: 15000 });
-  const confirmBtn = page.getByRole('button', { name: '确认执行' });
-  await expect(confirmBtn).toBeEnabled({ timeout: 15000 });
-  await confirmBtn.click();
+  await clickConfirmWhenReady(page);
 
   await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
   const reloadRow = dialog.locator('.status-row', { hasText: 'Reload' });
@@ -311,8 +316,19 @@ async function pickTargetModule(page: Page) {
   }
   console.log('[e2e] module cards:', modules.map(m => `${m.name}:${m.status}`).join(', '));
 
-  const preferredTarget = modules.find(m => !m.name.startsWith('auth') && m.status.includes('未安装'));
+  // Prefer lightweight business modules with stable install/upgrade behavior in CI.
+  const preferredNames = ['partner', 'partner_bank', 'partner_commercial', 'auth_ext'];
+  for (const name of preferredNames) {
+    const target = modules.find(m => m.name === name && m.status.includes('未安装'));
+    if (target) return target;
+  }
+
+  // Keep `document` as a fallback candidate because it is slower and less stable on CI runners.
+  const preferredTarget = modules.find(m => !m.name.startsWith('auth') && m.name !== 'document' && m.status.includes('未安装'));
   if (preferredTarget) return preferredTarget;
+
+  const documentTarget = modules.find(m => m.name === 'document' && m.status.includes('未安装'));
+  if (documentTarget) return documentTarget;
 
   const uninstalled = modules.find(m => m.status.includes('未安装'));
   if (uninstalled) return uninstalled;

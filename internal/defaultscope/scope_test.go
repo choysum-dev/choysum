@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -205,6 +206,50 @@ func TestNewDefaultScopeAndNewDB(t *testing.T) {
 	}
 	if child.session != nil {
 		t.Fatal("expected child scope to start without active transaction")
+	}
+}
+
+func TestNewDefaultScopeCreatesMissingSQLiteParentDir(t *testing.T) {
+	tests := []struct {
+		name string
+		dsn  string
+	}{
+		{
+			name: "plain path",
+			dsn:  filepath.Join(t.TempDir(), "nested", "db", "choysum.db"),
+		},
+		{
+			name: "file uri",
+			dsn: func() string {
+				path := filepath.Join(t.TempDir(), "uri", "db", "choysum.db")
+				return "file:" + filepath.ToSlash(path) + "?mode=rwc&_fk=1"
+			}(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{Db: &config.DbConfig{Dialect: "sqlite", DSN: tt.dsn}}
+			runtimeScope := NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(cfg), testLogger()).(*defaultScope)
+
+			sqlDB, err := runtimeScope.db.DB()
+			if err != nil {
+				t.Fatalf("db.DB: %v", err)
+			}
+			t.Cleanup(func() { _ = sqlDB.Close() })
+
+			path, ok := sqliteFilePathFromDSN(tt.dsn)
+			if !ok {
+				t.Fatalf("expected sqlite path from dsn %q", tt.dsn)
+			}
+			st, err := os.Stat(filepath.Dir(path))
+			if err != nil {
+				t.Fatalf("Stat(parent dir): %v", err)
+			}
+			if !st.IsDir() {
+				t.Fatalf("expected parent dir for %q to exist", path)
+			}
+		})
 	}
 }
 

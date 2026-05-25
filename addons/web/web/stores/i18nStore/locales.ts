@@ -353,7 +353,7 @@ export const SUPPORTED_LOCALES: Record<string, LocaleConfig> = {
     textDirection: 'ltr',
     dayjsLocaleCode: 'nb',
     elementLocaleCode: 'nb-NO',
-    importElement: () => import('element-plus/es/locale/lang/nb-NO'),
+    importElement: () => import('element-plus/es/locale/lang/nb-no'),
     importDayjs: () => import('dayjs/locale/nb'),
   },
   fi: {

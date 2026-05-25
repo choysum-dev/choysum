@@ -5,6 +5,9 @@
 
 const fs = require('fs');
 const path = require('path');
+const { createRequire } = require('module');
+
+const requireFromCwd = createRequire(path.resolve(process.cwd(), '__choysum_coverage_require__.cjs'));
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);
@@ -57,7 +60,7 @@ async function main() {
     process.exit(2);
   }
 
-  const instrumentLib = require('istanbul-lib-instrument');
+  const instrumentLib = requireFromCwd('istanbul-lib-instrument');
   const instrumenter = instrumentLib.createInstrumenter({
     produceSourceMap: true,
     esModules: false,

@@ -7,6 +7,9 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -67,6 +70,9 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 	case "postgres":
 		gormDB, err = gorm.Open(postgres.Open(dsn), gormConfig)
 	case "sqlite":
+		if err := ensureSQLiteParentDir(dsn); err != nil {
+			panic(err)
+		}
 		gormConfig.DisableForeignKeyConstraintWhenMigrating = true // sqlite doesn't support foreign key on alter table
 		gormDB, err = gorm.Open(sqlite.Open(dsn), gormConfig)
 	default:
@@ -117,4 +123,42 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 	}
 
 	return gormDB
+}
+
+func ensureSQLiteParentDir(dsn string) error {
+	path, ok := sqliteFilePathFromDSN(dsn)
+	if !ok {
+		return nil
+	}
+	dir := filepath.Dir(path)
+	if strings.TrimSpace(dir) == "" || dir == "." {
+		return nil
+	}
+	return os.MkdirAll(dir, 0o755)
+}
+
+func sqliteFilePathFromDSN(dsn string) (string, bool) {
+	trimmed := strings.TrimSpace(dsn)
+	if trimmed == "" || strings.EqualFold(trimmed, ":memory:") {
+		return "", false
+	}
+	if strings.HasPrefix(strings.ToLower(trimmed), "file:") || strings.Contains(trimmed, "://") {
+		parsed, err := url.Parse(trimmed)
+		if err != nil {
+			return "", false
+		}
+		scheme := strings.ToLower(parsed.Scheme)
+		if scheme != "" && scheme != "file" {
+			return "", false
+		}
+		path := parsed.Path
+		if path == "" {
+			path = parsed.Opaque
+		}
+		if strings.TrimSpace(path) == "" || strings.EqualFold(strings.TrimSpace(path), ":memory:") {
+			return "", false
+		}
+		return path, true
+	}
+	return trimmed, true
 }

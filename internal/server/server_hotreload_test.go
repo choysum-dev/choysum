@@ -596,9 +596,6 @@ func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
 	})
 
 	root := t.TempDir()
-	if err := watcher.Add(root); err != nil {
-		t.Fatalf("watcher.Add() error = %v", err)
-	}
 	removeFile := filepath.Join(root, "remove.ts")
 	renameOld := filepath.Join(root, "rename.ts")
 	renameNew := filepath.Join(root, "rename-next.ts")
@@ -607,6 +604,9 @@ func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
 	}
 	if err := os.WriteFile(renameOld, []byte("export const renameMe = true\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile(rename.ts) error = %v", err)
+	}
+	if err := watcher.Add(root); err != nil {
+		t.Fatalf("watcher.Add() error = %v", err)
 	}
 	waitForExpectedEvent := func(expected ...string) string {
 		t.Helper()
@@ -626,6 +626,26 @@ func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
 			}
 		}
 	}
+	waitForQueueIdle := func(idleFor time.Duration) {
+		t.Helper()
+		idle := time.NewTimer(idleFor)
+		defer idle.Stop()
+		for {
+			select {
+			case <-idle.C:
+				return
+			case <-srv.hotreloadQueue():
+				srv.finishWatchEvent()
+				if !idle.Stop() {
+					select {
+					case <-idle.C:
+					default:
+					}
+				}
+				idle.Reset(idleFor)
+			}
+		}
+	}
 	createFile := filepath.Join(root, "create.ts")
 	if err := os.WriteFile(createFile, []byte("export const created = true\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile(create.ts) error = %v", err)
@@ -633,12 +653,15 @@ func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
 	if got := waitForExpectedEvent("create.ts"); got != "create.ts" {
 		t.Fatalf("watch forwarded create event = %q, want %q", got, "create.ts")
 	}
+	// Drain trailing create/write/chmod events so the next operation is not coalesced away.
+	waitForQueueIdle(150 * time.Millisecond)
 	if err := os.Remove(removeFile); err != nil {
 		t.Fatalf("Remove(remove.ts) error = %v", err)
 	}
 	if got := waitForExpectedEvent("remove.ts"); got != "remove.ts" {
 		t.Fatalf("watch forwarded remove event = %q, want %q", got, "remove.ts")
 	}
+	waitForQueueIdle(150 * time.Millisecond)
 	if err := os.Rename(renameOld, renameNew); err != nil {
 		t.Fatalf("Rename(rename.ts) error = %v", err)
 	}
