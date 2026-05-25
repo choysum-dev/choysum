@@ -17,6 +17,12 @@ func TestTypecheckApp_MissingVueTsc(t *testing.T) {
 
 	repoRoot := t.TempDir()
 	addonsPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(addonsPath, "auth", "service"), 0o755); err != nil {
+		t.Fatalf("mkdir auth service: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
+		t.Fatalf("write auth service ts: %v", err)
+	}
 
 	binDir := filepath.Join(t.TempDir(), "bin")
 	if err := os.MkdirAll(binDir, 0o755); err != nil {

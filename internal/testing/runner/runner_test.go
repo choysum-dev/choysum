@@ -597,6 +597,9 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(addonsPath, "auth", "service"), 0o755); err != nil {
 		t.Fatalf("MkdirAll auth service: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile auth service ts: %v", err)
+	}
 	if err := os.MkdirAll(filepath.Join(repoRoot, "node_modules", "vue-tsc"), 0o755); err != nil {
 		t.Fatalf("MkdirAll vue-tsc: %v", err)
 	}

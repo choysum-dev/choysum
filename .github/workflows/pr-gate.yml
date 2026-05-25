@@ -176,6 +176,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Run go build
+        run: go build ./...
+
       - name: Run go test
         run: go test ./... -count=1
 
