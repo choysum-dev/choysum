@@ -74,9 +74,69 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  discover-addons:
+    name: pr / discover-addons
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      modules_json: ${{ steps.discover.outputs.modules_json }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Discover addon modules
+        id: discover
+        run: |
+          modules_json=$(
+            find addons -mindepth 1 -maxdepth 1 -type d \
+              | sed 's#^addons/##' \
+              | awk '$0 != ".choysum" && $0 != "tmp"' \
+              | sort \
+              | awk 'BEGIN { printf "[" } { printf "%s\"%s\"", sep, $0; sep="," } END { print "]" }'
+          )
+          echo "modules_json=${modules_json}" >> "$GITHUB_OUTPUT"
+          echo "modules_json=${modules_json}"
+
+  prepare-root-node-modules:
+    name: pr / prepare-root-node-modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Pack root node_modules
+        run: |
+          mkdir -p .choysum/tmp
+          tar -czf .choysum/tmp/pr-root-node-modules.tar.gz node_modules
+
+      - name: Upload root node_modules
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-root-node-modules
+          path: .choysum/tmp/pr-root-node-modules.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
   go-test:
     name: pr / go-test
-    needs: prepare-embedded-assets
+    needs:
+      - prepare-embedded-assets
+      - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -94,6 +154,15 @@ jobs:
       - name: Extract embedded assets
         run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
 
+      - name: Download root node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-root-node-modules
+          path: .choysum/tmp
+
+      - name: Extract root node_modules
+        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -106,16 +175,20 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
-
-      - name: Install npm dependencies
-        run: npm ci
 
       - name: Run go test
         run: go test ./... -count=1
 
-  typecheck-all:
-    name: pr / typecheck-all
-    needs: prepare-embedded-assets
+  typecheck-shard:
+    name: pr / typecheck-shard (${{ matrix.module }})
+    needs:
+      - prepare-embedded-assets
+      - discover-addons
+      - prepare-root-node-modules
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -133,6 +206,15 @@ jobs:
       - name: Extract embedded assets
         run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
 
+      - name: Download root node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-root-node-modules
+          path: .choysum/tmp
+
+      - name: Extract root node_modules
+        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -146,15 +228,33 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install npm dependencies
-        run: npm ci
-
       - name: Run addon typecheck
-        run: go run . test typecheck --all
+        run: go run . test typecheck ${{ matrix.module }}
 
-  unit-all:
-    name: pr / unit-all
-    needs: prepare-embedded-assets
+  typecheck-all:
+    name: pr / typecheck-all
+    needs:
+      - typecheck-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify typecheck matrix result
+        run: |
+          echo "typecheck-shard result=${{ needs.typecheck-shard.result }}"
+          if [ "${{ needs.typecheck-shard.result }}" != "success" ]; then
+            exit 1
+          fi
+
+  unit-shard:
+    name: pr / unit-shard (${{ matrix.module }})
+    needs:
+      - prepare-embedded-assets
+      - discover-addons
+      - prepare-root-node-modules
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -172,6 +272,15 @@ jobs:
       - name: Extract embedded assets
         run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
 
+      - name: Download root node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-root-node-modules
+          path: .choysum/tmp
+
+      - name: Extract root node_modules
+        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -185,17 +294,35 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install npm dependencies
-        run: npm ci
-
       - name: Run unit tests
         env:
           CHOYSUM_COMPILE_MINIFY: "false"
-        run: go run . test unit --all
+        run: go run . test unit ${{ matrix.module }}
 
-  e2e-all:
-    name: pr / e2e-all
-    needs: prepare-embedded-assets
+  unit-all:
+    name: pr / unit-all
+    needs:
+      - unit-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify unit matrix result
+        run: |
+          echo "unit-shard result=${{ needs.unit-shard.result }}"
+          if [ "${{ needs.unit-shard.result }}" != "success" ]; then
+            exit 1
+          fi
+
+  e2e-shard:
+    name: pr / e2e-shard (${{ matrix.module }})
+    needs:
+      - prepare-embedded-assets
+      - discover-addons
+      - prepare-root-node-modules
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -213,6 +340,15 @@ jobs:
       - name: Extract embedded assets
         run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
 
+      - name: Download root node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-root-node-modules
+          path: .choysum/tmp
+
+      - name: Extract root node_modules
+        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
+
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -226,14 +362,31 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install npm dependencies
-        run: npm ci
+      - name: Cache Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E suite
-        run: go run . test e2e --all
+        run: go run . test e2e ${{ matrix.module }}
+
+  e2e-all:
+    name: pr / e2e-all
+    needs:
+      - e2e-shard
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify e2e matrix result
+        run: |
+          echo "e2e-shard result=${{ needs.e2e-shard.result }}"
+          if [ "${{ needs.e2e-shard.result }}" != "success" ]; then
+            exit 1
+          fi
 
   bootstrap-verify:
     name: pr / bootstrap-verify
