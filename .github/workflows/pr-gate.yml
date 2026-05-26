@@ -139,6 +139,9 @@ jobs:
       - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -180,7 +183,19 @@ jobs:
         run: go build ./...
 
       - name: Run go test
-        run: go test ./... -count=1
+        run: |
+          mkdir -p .choysum/coverage/pr
+          go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/pr/go.out
+
+      - name: Upload Go coverage to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: .choysum/coverage/pr/go.out
+          name: pr-gate-go
+          use_oidc: true
+          verbose: true
 
   typecheck-shard:
     name: pr / typecheck-shard (${{ matrix.module }})
