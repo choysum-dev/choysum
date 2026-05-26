@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  merge_group:
+    types:
+      - checks_requested
   workflow_dispatch:
     inputs:
       ref:
@@ -168,7 +171,21 @@ jobs:
 
           event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
 
-          if event_name != "pull_request":
+          if event_name == "merge_group":
+              impacted_modules = set(modules)
+              smoke_modules = {module for module in impacted_modules if has_smoke_spec(module)}
+              outputs = {
+                  "docs_only": "false",
+                  "direct_modules_json": "[]",
+                  "impacted_modules_json": sorted_json(impacted_modules),
+                  "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
+                  "run_full_matrix": "true",
+                  "run_bootstrap_verify": "true",
+                  "run_pr_smoke_e2e": "true" if smoke_modules else "false",
+                  "reason": "merge-group",
+              }
+              print("discover-impact: merge_group -> full matrix")
+          elif event_name != "pull_request":
               impacted_modules = set(modules)
               smoke_modules = {module for module in impacted_modules if has_smoke_spec(module)}
               outputs = {
