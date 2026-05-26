@@ -95,8 +95,10 @@ func newTestRuntimeScopeInputFromScope(runtimeScope scope.Scope, dbOpts scope.Da
 	if cfg.Compile == nil {
 		cfg.Compile = config.NewDefaultCompileConfig()
 	}
-	// Unit backend tests rely on stable model/constructor labels in diagnostics,
-	// so force non-minified bundles for deterministic assertions in CI and local runs.
+	// Unit backend tests rely on sourcemap remapping for coverage artifacts and on
+	// stable model/constructor labels in diagnostics, so keep sourcemaps on and
+	// minification off in the derived test scope.
+	cfg.Compile.SourceMap = true
 	cfg.Compile.Minify = false
 
 	if hasAuthOpts {

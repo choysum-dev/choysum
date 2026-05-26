@@ -598,7 +598,7 @@ func TestMakeTestScope(t *testing.T) {
 		}
 	})
 
-	t.Run("forces non-minified compile options for unit scope", func(t *testing.T) {
+	t.Run("forces sourcemap on and minify off for unit scope", func(t *testing.T) {
 		baseWithMinify := &testStubScope{
 			ctx: context.Background(),
 			cfg: &config.Config{
@@ -608,7 +608,7 @@ func TestMakeTestScope(t *testing.T) {
 				Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
 				Compile: &config.CompileConfig{
 					BundleMode:  "application",
-					SourceMap:   true,
+					SourceMap:   false,
 					Minify:      true,
 					TreeShaking: true,
 				},
@@ -625,6 +625,9 @@ func TestMakeTestScope(t *testing.T) {
 		compileOpts, hasCompileOpts := scope.CompileRuntimeOptionsFromScope(childScope)
 		if !hasCompileOpts {
 			t.Fatalf("expected child scope compile runtime options")
+		}
+		if !compileOpts.SourceMap {
+			t.Fatalf("expected child scope sourcemap=true, got false")
 		}
 		if compileOpts.Minify {
 			t.Fatalf("expected child scope minify=false, got true")

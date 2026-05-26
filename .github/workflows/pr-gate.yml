@@ -317,8 +317,6 @@ jobs:
 
       - name: Run unit tests with coverage and JUnit
         id: unit_tests
-        env:
-          CHOYSUM_COMPILE_MINIFY: "false"
         run: |
           coverage_root=".choysum/coverage/pr/unit/${{ matrix.module }}"
           junit_root=".choysum/test-results/pr/unit"
