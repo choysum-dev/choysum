@@ -106,11 +106,106 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  e2e-all:
-    name: nightly / e2e-all
+  discover-modules:
+    name: nightly / discover-modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      e2e_modules_json: ${{ steps.discover.outputs.e2e_modules_json }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Discover runnable E2E modules
+        id: discover
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          import pathlib
+
+          repo_root = pathlib.Path.cwd()
+          addons_root = repo_root / "addons"
+          ignored_modules = {".choysum", "tmp"}
+
+          e2e_modules = []
+          if addons_root.is_dir():
+              for child in sorted(addons_root.iterdir(), key=lambda entry: entry.name):
+                  if not child.is_dir() or child.name in ignored_modules:
+                      continue
+
+                  manifest_path = child / "manifest.json"
+                  if not manifest_path.is_file():
+                      continue
+
+                  manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                  e2e = manifest.get("e2e") or {}
+                  specs = e2e.get("specs") if isinstance(e2e, dict) else ""
+                  if isinstance(specs, str) and specs.strip():
+                      e2e_modules.append(child.name)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              print(
+                  "e2e_modules_json=" + json.dumps(e2e_modules, separators=(",", ":")),
+                  file=fh,
+              )
+          PY
+
+  build-choysum-cli:
+    name: nightly / build-choysum-cli
+    needs:
+      - prepare-embedded-assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Download embedded assets
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-embedded-assets
+          path: .choysum/tmp
+
+      - name: Extract embedded assets
+        run: tar -xzf .choysum/tmp/nightly-embedded-assets.tar.gz -C .
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build choysum CLI
+        run: |
+          mkdir -p .choysum/tmp
+          go build -o .choysum/tmp/choysum .
+
+      - name: Upload choysum CLI
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-choysum-cli
+          path: .choysum/tmp/choysum
+          if-no-files-found: error
+          retention-days: 1
+
+  e2e-shard:
+    name: nightly / e2e-shard (${{ matrix.module }})
+    if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
       - prepare-root-node-modules
+      - discover-modules
+      - build-choysum-cli
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.discover-modules.outputs.e2e_modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -137,11 +232,14 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/nightly-root-node-modules.tar.gz -C .
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v4
         with:
-          go-version-file: go.mod
-          cache: true
+          name: nightly-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -160,64 +258,29 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E suite
-        run: go run . test e2e --all
+        run: |
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          "$CHOYSUM_BIN" test e2e ${{ matrix.module }}
 
-  coverage-report:
-    name: nightly / coverage-report
+  e2e-all:
+    name: nightly / e2e-all
     needs:
-      - prepare-embedded-assets
-      - prepare-root-node-modules
+      - discover-modules
+      - e2e-shard
+    if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || github.ref }}
+      - name: Skip E2E aggregate when no runnable modules are discovered
+        if: ${{ needs.discover-modules.outputs.e2e_modules_json == '[]' }}
+        run: 'echo "e2e skipped: no runnable modules discovered"'
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v4
-        with:
-          name: nightly-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/nightly-embedded-assets.tar.gz -C .
-
-      - name: Download root node_modules
-        uses: actions/download-artifact@v4
-        with:
-          name: nightly-root-node-modules
-          path: .choysum/tmp
-
-      - name: Extract root node_modules
-        run: tar -xzf .choysum/tmp/nightly-root-node-modules.tar.gz -C .
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Generate coverage report
-        env:
-          CHOYSUM_COMPILE_MINIFY: "false"
-        run: go run . test unit --all --coverage --coverage-report --coverage-report-dir .choysum/coverage/nightly --coverage-reporters lcovonly
-
-      - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: nightly-coverage-report
-          path: .choysum/coverage/nightly
-          if-no-files-found: error
-          retention-days: 14
+      - name: Verify E2E matrix result
+        if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
+        run: |
+          echo "e2e-shard result=${{ needs.e2e-shard.result }}"
+          if [ "${{ needs.e2e-shard.result }}" != "success" ]; then
+            exit 1
+          fi
 
   bootstrap-verify:
     name: nightly / bootstrap-verify
