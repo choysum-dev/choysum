@@ -631,6 +631,7 @@ jobs:
           go run . test unit "${{ matrix.module }}" \
             --coverage \
             --coverage-report \
+            --fe-coverage-all \
             --coverage-report-dir "$coverage_root" \
             --coverage-reporters lcovonly \
             --junit "$junit_root/${{ matrix.module }}.{scope}.junit.xml"
@@ -638,12 +639,12 @@ jobs:
           set -e
 
           backend_coverage_file=""
-          if [ -f "$backend_lcov" ]; then
+          if [ -s "$backend_lcov" ]; then
             backend_coverage_file="$backend_lcov"
           fi
 
           frontend_coverage_file=""
-          if [ -f "$frontend_lcov" ]; then
+          if [ -s "$frontend_lcov" ]; then
             frontend_coverage_file="$frontend_lcov"
           fi
 
