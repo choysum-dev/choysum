@@ -147,7 +147,7 @@ func TestWriteTAPAndJUnit(t *testing.T) {
 		t.Fatalf("read junit: %v", err)
 	}
 	xmlText := string(xmlRaw)
-	xmlChecks := []string{"<testsuite", `name="auth"`, `tests="2"`, `failures="1"`, "<failure", "first line"}
+	xmlChecks := []string{"<testsuites", "<testsuite", `name="auth"`, `tests="2"`, `failures="1"`, `classname="auth"`, "<failure", "first line"}
 	for _, s := range xmlChecks {
 		if !strings.Contains(xmlText, s) {
 			t.Fatalf("junit output missing %q: %s", s, xmlText)

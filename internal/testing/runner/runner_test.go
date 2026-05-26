@@ -73,6 +73,10 @@ func (e *testStubScope) FactoryInput() scope.FactoryInput {
 	return scopetest.FactoryInputFromConfig(e.cfg)
 }
 
+func noopRunFrontend(context.Context, string, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
+	return false, nil
+}
+
 func TestRun(t *testing.T) {
 	newEnv := func(addonsPath string) *testStubScope {
 		return &testStubScope{
@@ -152,9 +156,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err != nil {
 			t.Fatalf("Run returned error: %v", err)
@@ -181,9 +183,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if !errors.Is(err, resolveErr) {
 			t.Fatalf("expected resolve apps error, got %v", err)
@@ -207,9 +207,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err == nil || !strings.Contains(err.Error(), "no tests found") {
 			t.Fatalf("expected no tests found error, got %v", err)
@@ -236,9 +234,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if !resolved {
 			t.Fatal("expected resolve callback to run")
@@ -265,9 +261,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err == nil || !strings.Contains(err.Error(), "typecheck requested but callback missing") {
 			t.Fatalf("expected missing typecheck callback error, got %v", err)
@@ -295,9 +289,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err == nil || !strings.Contains(err.Error(), "tests failed") {
 			t.Fatalf("expected aggregated test failure, got %v", err)
@@ -329,9 +321,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if !errors.Is(err, typecheckErr) {
 			t.Fatalf("expected typecheck failfast error, got %v", err)
@@ -357,9 +347,7 @@ func TestRun(t *testing.T) {
 				calls++
 				return true, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err == nil || !strings.Contains(err.Error(), "tests failed") {
 			t.Fatalf("expected tests failed error, got %v", err)
@@ -388,9 +376,7 @@ func TestRun(t *testing.T) {
 				keepSeen = keep
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err != nil {
 			t.Fatalf("Run returned error: %v", err)
@@ -417,9 +403,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, backendErr
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if !errors.Is(err, backendErr) {
 			t.Fatalf("expected backend error, got %v", err)
@@ -441,7 +425,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
+			RunFrontend: func(context.Context, string, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
 				return false, frontendErr
 			},
 		})
@@ -469,9 +453,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if !errors.Is(err, hasBEErr) {
 			t.Fatalf("expected has backend tests error, got %v", err)
@@ -493,9 +475,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if !errors.Is(err, hasFEErr) {
 			t.Fatalf("expected has frontend tests error, got %v", err)
@@ -523,9 +503,7 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err == nil || !strings.Contains(err.Error(), "--coverage-report requires node") {
 			t.Fatalf("expected coverage report tooling error, got %v", err)
@@ -550,14 +528,70 @@ func TestRun(t *testing.T) {
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
-			RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-				return false, nil
-			},
+			RunFrontend: noopRunFrontend,
 		})
 		if err == nil || !strings.Contains(err.Error(), "--coverage-check requires node") {
 			t.Fatalf("expected coverage check tooling error, got %v", err)
 		}
 	})
+}
+
+func TestResolveJUnitReportPath(t *testing.T) {
+	tests := []struct {
+		name      string
+		basePath  string
+		app       string
+		scope     string
+		needApp   bool
+		needScope bool
+		want      string
+	}{
+		{
+			name:      "leaves exact single-target path unchanged",
+			basePath:  "report.xml",
+			app:       "auth",
+			scope:     "backend",
+			needApp:   false,
+			needScope: false,
+			want:      "report.xml",
+		},
+		{
+			name:      "adds scope suffix when backend and frontend share base path",
+			basePath:  "report.xml",
+			app:       "auth",
+			scope:     "frontend",
+			needApp:   false,
+			needScope: true,
+			want:      "report.frontend.xml",
+		},
+		{
+			name:      "adds app and scope suffixes for all mode",
+			basePath:  ".choysum/test-results/unit.junit.xml",
+			app:       "auth",
+			scope:     "backend",
+			needApp:   true,
+			needScope: true,
+			want:      ".choysum/test-results/unit.junit.auth.backend.xml",
+		},
+		{
+			name:      "replaces placeholders without extra suffix",
+			basePath:  ".choysum/test-results/{app}.{scope}.junit.xml",
+			app:       "auth",
+			scope:     "frontend",
+			needApp:   true,
+			needScope: true,
+			want:      ".choysum/test-results/auth.frontend.junit.xml",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := resolveJUnitReportPath(tt.basePath, tt.app, tt.scope, tt.needApp, tt.needScope)
+			if got != tt.want {
+				t.Fatalf("resolveJUnitReportPath() = %q, want %q", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestRunWithDefaults(t *testing.T) {
@@ -639,9 +673,7 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 		RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 			return false, nil
 		},
-		RunFrontend: func(context.Context, string, string, string, bool, bool, bool, bool, string, int, int, int, int) (bool, error) {
-			return false, nil
-		},
+		RunFrontend: noopRunFrontend,
 	})
 	if err != nil {
 		t.Fatalf("RunWithDefaults: %v", err)

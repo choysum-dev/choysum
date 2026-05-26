@@ -465,19 +465,31 @@ func startInProcessGrpcHarness(ctx context.Context, runtimeScope scope.Scope) (*
 	return h, nil
 }
 
+type junitTestSuites struct {
+	XMLName    xml.Name         `xml:"testsuites"`
+	Name       string           `xml:"name,attr,omitempty"`
+	Tests      int              `xml:"tests,attr"`
+	Failures   int              `xml:"failures,attr"`
+	Errors     int              `xml:"errors,attr"`
+	Time       string           `xml:"time,attr"`
+	TestSuites []junitTestSuite `xml:"testsuite"`
+}
+
 type junitTestSuite struct {
-	XMLName   xml.Name        `xml:"testsuite"`
 	Name      string          `xml:"name,attr"`
 	Tests     int             `xml:"tests,attr"`
 	Failures  int             `xml:"failures,attr"`
+	Errors    int             `xml:"errors,attr"`
+	Skipped   int             `xml:"skipped,attr"`
 	Time      string          `xml:"time,attr"`
 	TestCases []junitTestCase `xml:"testcase"`
 }
 
 type junitTestCase struct {
-	Name    string        `xml:"name,attr"`
-	Time    string        `xml:"time,attr"`
-	Failure *junitFailure `xml:"failure,omitempty"`
+	ClassName string        `xml:"classname,attr,omitempty"`
+	Name      string        `xml:"name,attr"`
+	Time      string        `xml:"time,attr"`
+	Failure   *junitFailure `xml:"failure,omitempty"`
 }
 
 type junitFailure struct {
@@ -1285,9 +1297,9 @@ func writeJUnitIfNeeded(app string, report parsedReport, junitPath string) (bool
 		return report.failed > 0, nil
 	}
 
-	suite := junitTestSuite{Name: app, Tests: report.total, Failures: report.failed, Time: fmt.Sprintf("%.3f", report.totalTimeSeconds())}
+	suite := junitTestSuite{Name: app, Tests: report.total, Failures: report.failed, Errors: 0, Skipped: 0, Time: fmt.Sprintf("%.3f", report.totalTimeSeconds())}
 	for _, c := range report.cases {
-		jc := junitTestCase{Name: c.name, Time: fmt.Sprintf("%.3f", float64(c.durationMs)/1000.0)}
+		jc := junitTestCase{ClassName: app, Name: c.name, Time: fmt.Sprintf("%.3f", float64(c.durationMs)/1000.0)}
 		if !c.ok {
 			msg := "failed"
 			body := ""
@@ -1302,11 +1314,25 @@ func writeJUnitIfNeeded(app string, report parsedReport, junitPath string) (bool
 		suite.TestCases = append(suite.TestCases, jc)
 	}
 
-	out, err := xml.MarshalIndent(suite, "", "  ")
+	doc := junitTestSuites{
+		Name:       app,
+		Tests:      suite.Tests,
+		Failures:   suite.Failures,
+		Errors:     0,
+		Time:       suite.Time,
+		TestSuites: []junitTestSuite{suite},
+	}
+
+	out, err := xml.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return true, xfmt.Errorf("marshal junit: %w", err)
 	}
 	out = append([]byte(xml.Header), out...)
+	if dir := filepath.Dir(junitPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return true, xfmt.Errorf("mkdir junit dir: %w", err)
+		}
+	}
 	if err := os.WriteFile(junitPath, out, 0o644); err != nil {
 		return true, xfmt.Errorf("write junit: %w", err)
 	}

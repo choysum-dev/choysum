@@ -275,6 +275,9 @@ jobs:
         module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -312,10 +315,85 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Run unit tests
+      - name: Run unit tests with coverage and JUnit
+        id: unit_tests
         env:
           CHOYSUM_COMPILE_MINIFY: "false"
-        run: go run . test unit ${{ matrix.module }}
+        run: |
+          coverage_root=".choysum/coverage/pr/unit/${{ matrix.module }}"
+          junit_root=".choysum/test-results/pr/unit"
+          backend_lcov="$coverage_root/lcov.info"
+          frontend_lcov="$coverage_root/fe/${{ matrix.module }}/lcov.info"
+          backend_junit="$junit_root/${{ matrix.module }}.backend.junit.xml"
+          frontend_junit="$junit_root/${{ matrix.module }}.frontend.junit.xml"
+
+          mkdir -p "$coverage_root" "$junit_root"
+
+          set +e
+          go run . test unit "${{ matrix.module }}" \
+            --coverage \
+            --coverage-report \
+            --coverage-report-dir "$coverage_root" \
+            --coverage-reporters lcovonly \
+            --junit "$junit_root/${{ matrix.module }}.{scope}.junit.xml"
+          exit_code=$?
+          set -e
+
+          coverage_files=""
+          if [ -f "$backend_lcov" ]; then
+            coverage_files="$backend_lcov"
+          fi
+          if [ -f "$frontend_lcov" ]; then
+            if [ -n "$coverage_files" ]; then
+              coverage_files="$coverage_files,$frontend_lcov"
+            else
+              coverage_files="$frontend_lcov"
+            fi
+          fi
+
+          test_result_files=""
+          if [ -f "$backend_junit" ]; then
+            test_result_files="$backend_junit"
+          fi
+          if [ -f "$frontend_junit" ]; then
+            if [ -n "$test_result_files" ]; then
+              test_result_files="$test_result_files,$frontend_junit"
+            else
+              test_result_files="$frontend_junit"
+            fi
+          fi
+
+          echo "coverage_files=$coverage_files" >> "$GITHUB_OUTPUT"
+          echo "test_result_files=$test_result_files" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload unit coverage to Codecov
+        if: ${{ !cancelled() && steps.unit_tests.outputs.coverage_files != '' }}
+        uses: codecov/codecov-action@v6
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: ${{ steps.unit_tests.outputs.coverage_files }}
+          name: pr-gate-unit-${{ matrix.module }}-coverage
+          use_oidc: true
+          verbose: true
+
+      - name: Upload unit test results to Codecov
+        if: ${{ !cancelled() && steps.unit_tests.outputs.test_result_files != '' }}
+        uses: codecov/codecov-action@v6
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: ${{ steps.unit_tests.outputs.test_result_files }}
+          name: pr-gate-unit-${{ matrix.module }}-tests
+          report_type: test_results
+          use_oidc: true
+          verbose: true
+
+      - name: Fail unit shard if tests failed
+        if: ${{ steps.unit_tests.outputs.exit_code != '0' }}
+        run: exit "${{ steps.unit_tests.outputs.exit_code }}"
 
   unit-all:
     name: pr / unit-all

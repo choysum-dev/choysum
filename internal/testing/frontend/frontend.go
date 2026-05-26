@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +39,7 @@ func RunOneAppFrontendTests(
 	ctx context.Context,
 	repoRoot string,
 	app string,
+	junitPath string,
 	pattern string,
 	coverage bool,
 	coverageReport bool,
@@ -85,6 +87,16 @@ func RunOneAppFrontendTests(
 			return true, xfmt.Errorf("vitest: coverage requested but @vitest/coverage-v8 is not installed. Run `npm i -D @vitest/coverage-v8` in repo root")
 		}
 	}
+	junitPath = strings.TrimSpace(junitPath)
+	if junitPath != "" {
+		junitDir := filepath.Dir(junitPath)
+		if junitDir != "" && junitDir != "." {
+			if err := os.MkdirAll(junitDir, 0o755); err != nil {
+				return true, xfmt.Errorf("vitest: create junit dir: %w", err)
+			}
+		}
+		junitPath = filepath.ToSlash(junitPath)
+	}
 
 	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, tmpRoot, "frontend")
 	if err != nil {
@@ -120,6 +132,12 @@ func RunOneAppFrontendTests(
 	b.WriteString("    include: ['" + includeGlob + "'],\n")
 	b.WriteString("    environment: 'node',\n")
 	b.WriteString("    passWithNoTests: true,\n")
+	if junitPath != "" {
+		b.WriteString("    reporters: ['default', 'junit'],\n")
+		b.WriteString("    outputFile: {\n")
+		b.WriteString("      junit: " + strconv.Quote(junitPath) + ",\n")
+		b.WriteString("    },\n")
+	}
 	if coverage {
 		b.WriteString("    coverage: {\n")
 		b.WriteString("      provider: 'v8',\n")
@@ -138,6 +156,7 @@ func RunOneAppFrontendTests(
 		b.WriteString("        'json-summary',\n")
 		b.WriteString("        'text',\n")
 		if coverageReport {
+			b.WriteString("        'lcovonly',\n")
 			b.WriteString("        'html',\n")
 		}
 		b.WriteString("      ],\n")

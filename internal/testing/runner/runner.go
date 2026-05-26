@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
@@ -41,6 +42,7 @@ type FrontendRunnerFunc func(
 	ctx context.Context,
 	repoRoot string,
 	app string,
+	junitPath string,
 	pattern string,
 	coverage bool,
 	coverageReport bool,
@@ -170,6 +172,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 	overallFailed := false
 	ranAnyBE := false
+	needsJUnitAppDisambiguation := len(apps) > 1
 	for _, app := range apps {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -205,9 +208,11 @@ func Run(ctx context.Context, opts RunOptions) error {
 			}
 		}
 
+		needsJUnitScopeDisambiguation := hasBETests && hasFETests
 		if hasBETests {
 			ranAnyBE = true
-			appFailed, err := opts.RunBackend(ctx, opts.Env, app, opts.RepoRoot, opts.DBDialect, opts.DBFile, opts.DBDSN, opts.Keep, opts.JUnitPath, opts.Pattern, opts.FailFast, opts.Coverage)
+			backendJUnitPath := resolveJUnitReportPath(opts.JUnitPath, app, "backend", needsJUnitAppDisambiguation, needsJUnitScopeDisambiguation)
+			appFailed, err := opts.RunBackend(ctx, opts.Env, app, opts.RepoRoot, opts.DBDialect, opts.DBFile, opts.DBDSN, opts.Keep, backendJUnitPath, opts.Pattern, opts.FailFast, opts.Coverage)
 			if err != nil {
 				return err
 			}
@@ -219,7 +224,8 @@ func Run(ctx context.Context, opts RunOptions) error {
 			}
 		}
 		if hasFETests {
-			feFailed, err := opts.RunFrontend(ctx, opts.RepoRoot, app, opts.Pattern, opts.Coverage, opts.CoverageReport, opts.CoverageCheck, opts.FECoverageAll, opts.CoverageReportDir, opts.CoverageLines, opts.CoverageFunctions, opts.CoverageBranches, opts.CoverageStatements)
+			frontendJUnitPath := resolveJUnitReportPath(opts.JUnitPath, app, "frontend", needsJUnitAppDisambiguation, needsJUnitScopeDisambiguation)
+			feFailed, err := opts.RunFrontend(ctx, opts.RepoRoot, app, frontendJUnitPath, opts.Pattern, opts.Coverage, opts.CoverageReport, opts.CoverageCheck, opts.FECoverageAll, opts.CoverageReportDir, opts.CoverageLines, opts.CoverageFunctions, opts.CoverageBranches, opts.CoverageStatements)
 			if err != nil {
 				return err
 			}
@@ -249,4 +255,50 @@ func Run(ctx context.Context, opts RunOptions) error {
 		return xfmt.Errorf("tests failed")
 	}
 	return nil
+}
+
+func resolveJUnitReportPath(basePath string, app string, scope string, needApp bool, needScope bool) string {
+	basePath = strings.TrimSpace(basePath)
+	if basePath == "" {
+		return ""
+	}
+
+	hasAppPlaceholder := strings.Contains(basePath, "{app}")
+	hasScopePlaceholder := strings.Contains(basePath, "{scope}")
+	resolved := strings.ReplaceAll(basePath, "{app}", sanitizeJUnitReportToken(app))
+	resolved = strings.ReplaceAll(resolved, "{scope}", sanitizeJUnitReportToken(scope))
+
+	var suffixes []string
+	if needApp && !hasAppPlaceholder {
+		suffixes = append(suffixes, sanitizeJUnitReportToken(app))
+	}
+	if needScope && !hasScopePlaceholder {
+		suffixes = append(suffixes, sanitizeJUnitReportToken(scope))
+	}
+	if len(suffixes) == 0 {
+		return resolved
+	}
+	return insertSuffixBeforeExt(resolved, strings.Join(suffixes, "."))
+}
+
+func insertSuffixBeforeExt(path string, suffix string) string {
+	path = strings.TrimSpace(path)
+	suffix = strings.TrimSpace(suffix)
+	if path == "" || suffix == "" {
+		return path
+	}
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return path + "." + suffix
+	}
+	return strings.TrimSuffix(path, ext) + "." + suffix + ext
+}
+
+func sanitizeJUnitReportToken(raw string) string {
+	replacer := strings.NewReplacer("/", "_", "\\", "_", " ", "_")
+	token := strings.TrimSpace(replacer.Replace(raw))
+	if token == "" {
+		return "app"
+	}
+	return token
 }

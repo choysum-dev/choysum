@@ -362,7 +362,10 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 			}, nil
 		}
 
-		badJunitPath := filepath.Join(t.TempDir(), "missing", "report.xml")
+		badJunitPath := filepath.Join(t.TempDir(), "report.xml")
+		if err := os.MkdirAll(badJunitPath, 0o755); err != nil {
+			t.Fatalf("MkdirAll bad junit path: %v", err)
+		}
 		failed, err = RunOneAppBackendTests(context.Background(), baseScope, "auth", t.TempDir(), "sqlite", "", "", false, badJunitPath, "", false, false)
 		if !failed {
 			t.Fatalf("expected failed=true when junit write fails")
