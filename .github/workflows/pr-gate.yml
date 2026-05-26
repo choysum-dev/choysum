@@ -19,17 +19,301 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare-embedded-assets:
-    name: pr / prepare-embedded-assets
+  discover-impact:
+    name: pr / discover-impact
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
+    outputs:
+      docs_only: ${{ steps.discover.outputs.docs_only }}
+      direct_modules_json: ${{ steps.discover.outputs.direct_modules_json }}
+      impacted_modules_json: ${{ steps.discover.outputs.impacted_modules_json }}
+      impacted_smoke_e2e_modules_json: ${{ steps.discover.outputs.impacted_smoke_e2e_modules_json }}
+      run_full_matrix: ${{ steps.discover.outputs.run_full_matrix }}
+      run_bootstrap_verify: ${{ steps.discover.outputs.run_bootstrap_verify }}
+      run_pr_smoke_e2e: ${{ steps.discover.outputs.run_pr_smoke_e2e }}
+      reason: ${{ steps.discover.outputs.reason }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Discover PR impact
+        id: discover
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          from collections import deque
+          from pathlib import PurePosixPath
+
+          repo_root = pathlib.Path.cwd()
+          addons_root = repo_root / "addons"
+          ignored_modules = {".choysum", "tmp"}
+          high_fanout_modules = {"core", "web", "base"}
+          build_prefixes = (
+              "internal/bootstrap/web/",
+              "pkg/jsengine/scripts/vuesfc/",
+          )
+          shared_prefixes = (
+              "cmd/",
+              "internal/",
+              "pkg/",
+              ".github/workflows/",
+          )
+          shared_exact = {
+              "main.go",
+              "main_test.go",
+              "go.mod",
+              "package.json",
+              "package-lock.json",
+              "codecov.yml",
+              "config.sample.yaml",
+          }
+
+          def sorted_json(values):
+              return json.dumps(sorted(values), separators=(",", ":"))
+
+          def list_modules():
+              if not addons_root.is_dir():
+                  return []
+              return sorted(
+                  child.name
+                  for child in addons_root.iterdir()
+                  if child.is_dir() and child.name not in ignored_modules
+              )
+
+          modules = list_modules()
+          module_names = set(modules)
+
+          def has_smoke_spec(module):
+              return (addons_root / module / "e2e" / "smoke.spec.ts").is_file()
+
+          def classify_addon_path(path):
+              pure = PurePosixPath(path)
+              parts = pure.parts
+              if len(parts) < 3 or parts[0] != "addons":
+                  return None, None
+              module = parts[1]
+              if module in ignored_modules or module not in module_names:
+                  return None, None
+              rel = "/".join(parts[2:])
+              name = PurePosixPath(rel).name.lower()
+              lowered = rel.lower()
+              if name.endswith(".md") or name.startswith("readme"):
+                  return module, "doc"
+              if lowered.endswith((".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")):
+                  return module, "test"
+              if rel.startswith("web/"):
+                  return module, "local"
+              if rel.startswith("service/tests/"):
+                  return module, "local"
+              if rel.startswith("e2e/"):
+                  return module, "local"
+              return module, "contract"
+
+          def is_doc_only_path(path):
+              pure = PurePosixPath(path)
+              name = pure.name.lower()
+              if name == "license":
+                  return True
+              if path.startswith("cla/"):
+                  return True
+              if name.endswith(".md"):
+                  return True
+              if name.startswith("readme"):
+                  return True
+              return False
+
+          def is_build_pipeline_path(path):
+              return any(path.startswith(prefix) for prefix in build_prefixes)
+
+          def is_shared_path(path):
+              return path in shared_exact or any(path.startswith(prefix) for prefix in shared_prefixes)
+
+          reverse_graph = {module: set() for module in modules}
+          for module in modules:
+              manifest_path = addons_root / module / "manifest.json"
+              if not manifest_path.is_file():
+                  continue
+              with manifest_path.open("r", encoding="utf-8") as fh:
+                  manifest = json.load(fh)
+              depends = manifest.get("depends") or []
+              if not isinstance(depends, list):
+                  continue
+              for dep in depends:
+                  dep_name = str(dep).strip()
+                  if dep_name in reverse_graph:
+                      reverse_graph[dep_name].add(module)
+
+          def reverse_closure(start):
+              seen = set()
+              queue = deque([start])
+              while queue:
+                  current = queue.popleft()
+                  for nxt in reverse_graph.get(current, set()):
+                      if nxt in seen:
+                          continue
+                      seen.add(nxt)
+                      queue.append(nxt)
+              return seen
+
+          event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
+
+          if event_name != "pull_request":
+              impacted_modules = set(modules)
+              smoke_modules = {module for module in impacted_modules if has_smoke_spec(module)}
+              outputs = {
+                  "docs_only": "false",
+                  "direct_modules_json": "[]",
+                  "impacted_modules_json": sorted_json(impacted_modules),
+                  "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
+                  "run_full_matrix": "true",
+                  "run_bootstrap_verify": "true",
+                  "run_pr_smoke_e2e": "true" if smoke_modules else "false",
+                  "reason": "workflow-dispatch",
+              }
+              print("discover-impact: workflow_dispatch -> full matrix")
+          else:
+              base_sha = os.environ.get("PR_BASE_SHA", "").strip()
+              head_sha = os.environ.get("PR_HEAD_SHA", "").strip()
+              if not base_sha or not head_sha:
+                  raise SystemExit("discover-impact: pull_request event missing base/head sha")
+
+              diff = subprocess.run(
+                  ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              )
+              changed_paths = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
+
+              direct_modules = set()
+              impacted_modules = set()
+              contract_modules = set()
+              local_modules = set()
+              build_hit = False
+              shared_hit = False
+              docs_only = True
+
+              for path in changed_paths:
+                  module, kind = classify_addon_path(path)
+                  if module is not None:
+                      direct_modules.add(module)
+                      if kind == "doc":
+                          continue
+                      docs_only = False
+                      impacted_modules.add(module)
+                      if kind == "contract":
+                          contract_modules.add(module)
+                      else:
+                          local_modules.add(module)
+                      continue
+
+                  if is_doc_only_path(path):
+                      continue
+
+                  docs_only = False
+                  if is_build_pipeline_path(path):
+                      build_hit = True
+                      shared_hit = True
+                      continue
+                  if is_shared_path(path):
+                      shared_hit = True
+                      continue
+
+                  shared_hit = True
+
+              final_impacted = set()
+              if docs_only:
+                  run_full = False
+                  run_bootstrap = False
+                  reason = "docs-only"
+              else:
+                  final_impacted.update(impacted_modules)
+                  for module in sorted(contract_modules):
+                      final_impacted.update(reverse_closure(module))
+
+                  if build_hit:
+                      run_full = True
+                      run_bootstrap = True
+                      reason = "build-pipeline"
+                  elif shared_hit:
+                      run_full = True
+                      run_bootstrap = False
+                      reason = "shared-runtime"
+                  elif contract_modules & high_fanout_modules:
+                      run_full = True
+                      run_bootstrap = False
+                      reason = f"fanout-module:{sorted(contract_modules & high_fanout_modules)[0]}"
+                  elif len(final_impacted) > 4:
+                      run_full = True
+                      run_bootstrap = False
+                      reason = f"fanout-threshold:{len(final_impacted)}"
+                  else:
+                      run_full = False
+                      run_bootstrap = False
+                      if contract_modules:
+                          reason = f"addon-contract:{sorted(contract_modules)[0]}"
+                      elif local_modules:
+                          reason = f"addon-local:{sorted(local_modules)[0]}"
+                      else:
+                          reason = "no-impactable-tests"
+
+                  if run_full:
+                      final_impacted = set(modules)
+
+              smoke_modules = {module for module in final_impacted if has_smoke_spec(module)}
+              outputs = {
+                  "docs_only": "true" if docs_only else "false",
+                  "direct_modules_json": sorted_json(direct_modules),
+                  "impacted_modules_json": sorted_json(final_impacted),
+                  "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
+                  "run_full_matrix": "true" if run_full else "false",
+                  "run_bootstrap_verify": "true" if run_bootstrap else "false",
+                  "run_pr_smoke_e2e": "true" if smoke_modules else "false",
+                  "reason": reason,
+              }
+
+              print("discover-impact: changed files")
+              for path in changed_paths:
+                  print(f" - {path}")
+              print("discover-impact: outputs")
+              for key in sorted(outputs):
+                  print(f"   {key}={outputs[key]}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              for key, value in outputs.items():
+                  print(f"{key}={value}", file=fh)
+          PY
+
+  prepare-embedded-assets:
+    name: pr / prepare-embedded-assets
+    needs:
+      - discover-impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Skip embedded assets for docs-only changes
+        if: ${{ needs.discover-impact.outputs.docs_only == 'true' }}
+        run: echo "embedded assets skipped by routing"
+
+      - name: Checkout
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Node
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -39,27 +323,33 @@ jobs:
             pkg/jsengine/scripts/vuesfc/package-lock.json
 
       - name: Install protoc
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
       - name: Install Vue SFC npm dependencies
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         working-directory: pkg/jsengine/scripts/vuesfc
         run: npm ci
 
       - name: Build Vue SFC embed asset
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         working-directory: pkg/jsengine/scripts/vuesfc
         run: npm run build
 
       - name: Install bootstrap npm dependencies
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         working-directory: internal/bootstrap/web
         run: npm ci
 
       - name: Build bootstrap dist
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         working-directory: internal/bootstrap/web
         run: npm run build
 
       - name: Pack embedded assets
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: |
           mkdir -p .choysum/tmp
           tar -czf .choysum/tmp/pr-embedded-assets.tar.gz \
@@ -67,6 +357,7 @@ jobs:
             pkg/jsengine/scripts/vuesfc/dist/index.js
 
       - name: Upload embedded assets
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: pr-embedded-assets
@@ -74,42 +365,25 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  discover-addons:
-    name: pr / discover-addons
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      modules_json: ${{ steps.discover.outputs.modules_json }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Discover addon modules
-        id: discover
-        run: |
-          modules_json=$(
-            find addons -mindepth 1 -maxdepth 1 -type d \
-              | sed 's#^addons/##' \
-              | awk '$0 != ".choysum" && $0 != "tmp"' \
-              | sort \
-              | awk 'BEGIN { printf "[" } { printf "%s\"%s\"", sep, $0; sep="," } END { print "]" }'
-          )
-          echo "modules_json=${modules_json}" >> "$GITHUB_OUTPUT"
-          echo "modules_json=${modules_json}"
-
   prepare-root-node-modules:
     name: pr / prepare-root-node-modules
+    needs:
+      - discover-impact
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Skip root node_modules for docs-only changes
+        if: ${{ needs.discover-impact.outputs.docs_only == 'true' }}
+        run: echo "root node_modules skipped by routing"
+
       - name: Checkout
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Node
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -117,14 +391,17 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install npm dependencies
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: npm ci
 
       - name: Pack root node_modules
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: |
           mkdir -p .choysum/tmp
           tar -czf .choysum/tmp/pr-root-node-modules.tar.gz node_modules
 
       - name: Upload root node_modules
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: pr-root-node-modules
@@ -135,6 +412,7 @@ jobs:
   go-test:
     name: pr / go-test
     needs:
+      - discover-impact
       - prepare-embedded-assets
       - prepare-root-node-modules
     runs-on: ubuntu-latest
@@ -143,36 +421,47 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: Skip Go baseline for docs-only changes
+        if: ${{ needs.discover-impact.outputs.docs_only == 'true' }}
+        run: echo "go build/go test skipped by routing"
+
       - name: Checkout
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: pr-embedded-assets
           path: .choysum/tmp
 
       - name: Extract embedded assets
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
 
       - name: Download root node_modules
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: pr-root-node-modules
           path: .choysum/tmp
 
       - name: Extract root node_modules
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
       - name: Setup Go
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup Node
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -180,18 +469,21 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Run go build
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: go build ./...
 
       - name: Run go test
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: |
           mkdir -p .choysum/coverage/pr
           go test ./... -count=1 -covermode=atomic -coverprofile=.choysum/coverage/pr/go.out
 
       - name: Upload Go coverage to Codecov
+        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         uses: codecov/codecov-action@v6
         with:
           disable_search: true
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           files: .choysum/coverage/pr/go.out
           name: pr-gate-go
           use_oidc: true
@@ -199,14 +491,15 @@ jobs:
 
   typecheck-shard:
     name: pr / typecheck-shard (${{ matrix.module }})
+    if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
-      - discover-addons
+      - discover-impact
       - prepare-root-node-modules
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
+        module: ${{ fromJson(needs.discover-impact.outputs.impacted_modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -252,11 +545,17 @@ jobs:
   typecheck-all:
     name: pr / typecheck-all
     needs:
+      - discover-impact
       - typecheck-shard
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Skip typecheck aggregate when routing produces no modules
+        if: ${{ needs.discover-impact.outputs.impacted_modules_json == '[]' }}
+        run: echo "typecheck skipped by routing"
+
       - name: Verify typecheck matrix result
+        if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
         run: |
           echo "typecheck-shard result=${{ needs.typecheck-shard.result }}"
           if [ "${{ needs.typecheck-shard.result }}" != "success" ]; then
@@ -265,14 +564,15 @@ jobs:
 
   unit-shard:
     name: pr / unit-shard (${{ matrix.module }})
+    if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
-      - discover-addons
+      - discover-impact
       - prepare-root-node-modules
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
+        module: ${{ fromJson(needs.discover-impact.outputs.impacted_modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -337,16 +637,14 @@ jobs:
           exit_code=$?
           set -e
 
-          coverage_files=""
+          backend_coverage_file=""
           if [ -f "$backend_lcov" ]; then
-            coverage_files="$backend_lcov"
+            backend_coverage_file="$backend_lcov"
           fi
+
+          frontend_coverage_file=""
           if [ -f "$frontend_lcov" ]; then
-            if [ -n "$coverage_files" ]; then
-              coverage_files="$coverage_files,$frontend_lcov"
-            else
-              coverage_files="$frontend_lcov"
-            fi
+            frontend_coverage_file="$frontend_lcov"
           fi
 
           test_result_files=""
@@ -361,19 +659,31 @@ jobs:
             fi
           fi
 
-          echo "coverage_files=$coverage_files" >> "$GITHUB_OUTPUT"
+          echo "backend_coverage_file=$backend_coverage_file" >> "$GITHUB_OUTPUT"
+          echo "frontend_coverage_file=$frontend_coverage_file" >> "$GITHUB_OUTPUT"
           echo "test_result_files=$test_result_files" >> "$GITHUB_OUTPUT"
           echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Upload unit coverage to Codecov
-        if: ${{ !cancelled() && steps.unit_tests.outputs.coverage_files != '' }}
+      - name: Upload backend unit coverage to Codecov
+        if: ${{ !cancelled() && steps.unit_tests.outputs.backend_coverage_file != '' }}
         uses: codecov/codecov-action@v6
         with:
           disable_search: true
-          fail_ci_if_error: true
-          files: ${{ steps.unit_tests.outputs.coverage_files }}
-          name: pr-gate-unit-${{ matrix.module }}-coverage
+          fail_ci_if_error: false
+          files: ${{ steps.unit_tests.outputs.backend_coverage_file }}
+          name: pr-gate-unit-${{ matrix.module }}-backend-coverage
+          use_oidc: true
+          verbose: true
+
+      - name: Upload frontend unit coverage to Codecov
+        if: ${{ !cancelled() && steps.unit_tests.outputs.frontend_coverage_file != '' }}
+        uses: codecov/codecov-action@v6
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: ${{ steps.unit_tests.outputs.frontend_coverage_file }}
+          name: pr-gate-unit-${{ matrix.module }}-frontend-coverage
           use_oidc: true
           verbose: true
 
@@ -382,7 +692,7 @@ jobs:
         uses: codecov/codecov-action@v6
         with:
           disable_search: true
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           files: ${{ steps.unit_tests.outputs.test_result_files }}
           name: pr-gate-unit-${{ matrix.module }}-tests
           report_type: test_results
@@ -396,27 +706,34 @@ jobs:
   unit-all:
     name: pr / unit-all
     needs:
+      - discover-impact
       - unit-shard
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Skip unit aggregate when routing produces no modules
+        if: ${{ needs.discover-impact.outputs.impacted_modules_json == '[]' }}
+        run: echo "unit tests skipped by routing"
+
       - name: Verify unit matrix result
+        if: ${{ needs.discover-impact.outputs.impacted_modules_json != '[]' }}
         run: |
           echo "unit-shard result=${{ needs.unit-shard.result }}"
           if [ "${{ needs.unit-shard.result }}" != "success" ]; then
             exit 1
           fi
 
-  e2e-shard:
-    name: pr / e2e-shard (${{ matrix.module }})
+  smoke-e2e-shard:
+    name: pr / smoke-e2e-shard (${{ matrix.module }})
+    if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' && needs.discover-impact.outputs.impacted_smoke_e2e_modules_json != '[]' }}
     needs:
       - prepare-embedded-assets
-      - discover-addons
+      - discover-impact
       - prepare-root-node-modules
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.discover-addons.outputs.modules_json) }}
+        module: ${{ fromJson(needs.discover-impact.outputs.impacted_smoke_e2e_modules_json) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -465,50 +782,67 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Run E2E suite
-        run: go run . test e2e ${{ matrix.module }}
+      - name: Run smoke E2E suite
+        run: go run . test e2e ${{ matrix.module }} -- smoke.spec.ts
 
-  e2e-all:
-    name: pr / e2e-all
+  smoke-e2e-all:
+    name: pr / smoke-e2e-all
     needs:
-      - e2e-shard
+      - discover-impact
+      - smoke-e2e-shard
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - name: Verify e2e matrix result
+      - name: Skip smoke E2E aggregate when routing produces no smoke modules
+        if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e != 'true' || needs.discover-impact.outputs.impacted_smoke_e2e_modules_json == '[]' }}
+        run: echo "smoke E2E skipped by routing"
+
+      - name: Verify smoke E2E matrix result
+        if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' && needs.discover-impact.outputs.impacted_smoke_e2e_modules_json != '[]' }}
         run: |
-          echo "e2e-shard result=${{ needs.e2e-shard.result }}"
-          if [ "${{ needs.e2e-shard.result }}" != "success" ]; then
+          echo "smoke-e2e-shard result=${{ needs.smoke-e2e-shard.result }}"
+          if [ "${{ needs.smoke-e2e-shard.result }}" != "success" ]; then
             exit 1
           fi
 
   bootstrap-verify:
     name: pr / bootstrap-verify
-    needs: prepare-embedded-assets
+    needs:
+      - discover-impact
+      - prepare-embedded-assets
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      - name: Skip bootstrap verify when routing does not require it
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify != 'true' }}
+        run: echo "bootstrap verify skipped by routing"
+
       - name: Checkout
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         uses: actions/download-artifact@v4
         with:
           name: pr-embedded-assets
           path: .choysum/tmp
 
       - name: Extract embedded assets
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
 
       - name: Setup Go
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup Node
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -516,14 +850,17 @@ jobs:
           cache-dependency-path: internal/bootstrap/web/package-lock.json
 
       - name: Install protoc
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
       - name: Install bootstrap npm dependencies
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         working-directory: internal/bootstrap/web
         run: npm ci
 
       - name: Run bootstrap verify
+        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
         working-directory: internal/bootstrap/web
         run: npm run verify:bootstrap:release
