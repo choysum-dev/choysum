@@ -694,20 +694,20 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 }
 
 func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return xfmt.Errorf("module name is empty")
+	}
+	mod, err := m.Load(name)
+	if err != nil {
+		return err
+	}
+	if mod == nil {
+		return xfmt.Errorf("module %s not found", name)
+	}
+
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
-		name = strings.TrimSpace(name)
-		if name == "" {
-			return xfmt.Errorf("module name is empty")
-		}
-
-		mod, err := m.Load(name)
-		if err != nil {
-			return err
-		}
-		if mod == nil {
-			return xfmt.Errorf("module %s not found", name)
-		}
 
 		runtimeOpts := m.resolvedRuntimeOptions()
 		opCtx := newOpContext()
@@ -801,24 +801,40 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 }
 
 func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
+	input := strings.TrimSpace(name)
+	if input == "" {
+		return xfmt.Errorf("module name is empty")
+	}
+
+	parsed, err := moduleorigin.ParseInput(input)
+	if err != nil {
+		return xfmt.Errorf("error parsing module input %s: %w", input, err)
+	}
+	moduleName := strings.TrimSpace(parsed.LocalName)
+	if parsed.Kind == moduleorigin.InputKindRegistry {
+		moduleName = strings.TrimSpace(parsed.ModuleName)
+	}
+	if moduleName == "" {
+		return xfmt.Errorf("module name is empty")
+	}
+	if parsed.Kind == moduleorigin.InputKindLocal {
+		mod, loadErr := m.Load(moduleName)
+		if loadErr != nil {
+			return loadErr
+		}
+		if mod == nil {
+			return xfmt.Errorf("module %s not found (maybe uninstalled); use `install %s`", moduleName, moduleName)
+		}
+	}
+	if parsed.Kind == moduleorigin.InputKindRegistry {
+		coordinator := m.newOriginCoordinator()
+		if _, peekErr := coordinator.Peek(ctx, input); peekErr != nil {
+			return peekErr
+		}
+	}
+
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
-		input := strings.TrimSpace(name)
-		if input == "" {
-			return xfmt.Errorf("module name is empty")
-		}
-
-		parsed, err := moduleorigin.ParseInput(input)
-		if err != nil {
-			return xfmt.Errorf("error parsing module input %s: %w", input, err)
-		}
-		moduleName := strings.TrimSpace(parsed.LocalName)
-		if parsed.Kind == moduleorigin.InputKindRegistry {
-			moduleName = strings.TrimSpace(parsed.ModuleName)
-		}
-		if moduleName == "" {
-			return xfmt.Errorf("module name is empty")
-		}
 
 		originSwitch, err := m.prepareUpgradeOriginSwitch(ctx, parsed, moduleName, opid)
 		if err != nil {
