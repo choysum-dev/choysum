@@ -813,26 +813,6 @@ jobs:
       - name: Run smoke E2E suite
         run: go run . test e2e ${{ matrix.module }} -- smoke.spec.ts
 
-  smoke-e2e-all:
-    name: pr / smoke-e2e-all
-    needs:
-      - discover-impact
-      - smoke-e2e-shard
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip smoke E2E aggregate when routing produces no smoke modules
-        if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e != 'true' || needs.discover-impact.outputs.impacted_smoke_e2e_modules_json == '[]' }}
-        run: echo "smoke E2E skipped by routing"
-
-      - name: Verify smoke E2E matrix result
-        if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' && needs.discover-impact.outputs.impacted_smoke_e2e_modules_json != '[]' }}
-        run: |
-          echo "smoke-e2e-shard result=${{ needs.smoke-e2e-shard.result }}"
-          if [ "${{ needs.smoke-e2e-shard.result }}" != "success" ]; then
-            exit 1
-          fi
-
   e2e-shard-targeted:
     name: pr / e2e-shard-targeted (${{ matrix.module }})
     if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]' }}
@@ -895,14 +875,27 @@ jobs:
       - name: Run targeted E2E suite
         run: go run . test e2e ${{ matrix.module }}
 
-  e2e-targeted-all:
-    name: pr / e2e-targeted-all
+  e2e-all:
+    name: pr / e2e-all
     needs:
       - discover-impact
+      - smoke-e2e-shard
       - e2e-shard-targeted
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: Skip smoke E2E aggregate when routing produces no smoke modules
+        if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e != 'true' || needs.discover-impact.outputs.impacted_smoke_e2e_modules_json == '[]' }}
+        run: echo "smoke E2E skipped by routing"
+
+      - name: Verify smoke E2E matrix result
+        if: ${{ needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' && needs.discover-impact.outputs.impacted_smoke_e2e_modules_json != '[]' }}
+        run: |
+          echo "smoke-e2e-shard result=${{ needs.smoke-e2e-shard.result }}"
+          if [ "${{ needs.smoke-e2e-shard.result }}" != "success" ]; then
+            exit 1
+          fi
+
       - name: Skip targeted E2E aggregate when routing produces no direct E2E modules without smoke specs
         if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json == '[]' }}
         run: echo "targeted E2E skipped by routing"
