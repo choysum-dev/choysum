@@ -10,6 +10,7 @@
     "allowJs": true,
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
+    "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./*"]
     }
