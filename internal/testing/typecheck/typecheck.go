@@ -279,6 +279,8 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 			"allowJs":                      true,
 			"allowArbitraryExtensions":     true,
 			"skipLibCheck":                 true,
+			"types":                        []string{"node"},
+			"typeRoots":                    []string{filepath.ToSlash(filepath.Join(repoRoot, "node_modules", "@types"))},
 			"paths": map[string]any{
 				"@/*": []string{filepath.ToSlash(filepath.Join(addonsRoot, "*"))},
 			},
