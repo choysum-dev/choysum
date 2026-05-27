@@ -6,6 +6,7 @@ package lifecycle
 import (
 	"bytes"
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	statepkg "github.com/choysum-dev/choysum/pkg/state"
 )
 
 type testLogScope struct {
@@ -289,5 +291,23 @@ func TestLogModuleOperationStepUsesInstallAndUninstallMessages(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSyncModuleIndexAfterInstall_MetaIncludedTriggersSyncErrorIgnored(t *testing.T) {
+	called := false
+	m := &ModuleManager{
+		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
+		moduleIndexSyncLocal: func(context.Context, scope.Scope, statepkg.LockerFactory) (ModuleIndexSyncStats, error) {
+			called = true
+			return ModuleIndexSyncStats{}, errors.New("sync failed")
+		},
+	}
+
+	if err := m.syncModuleIndexAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"core", "meta"}); err != nil {
+		t.Fatalf("syncModuleIndexAfterInstall() error = %v, want nil", err)
+	}
+	if !called {
+		t.Fatal("expected sync function to be called when module plan includes meta")
 	}
 }

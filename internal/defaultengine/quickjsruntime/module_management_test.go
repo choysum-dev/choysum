@@ -81,7 +81,7 @@ func TestSanitizeModuleIndexError_PathErrorRedactsPath(t *testing.T) {
 	}
 
 	err := &os.PathError{Op: "open", Path: addonsPath + "/meta/manifest.json", Err: os.ErrNotExist}
-	got := sanitizeModuleIndexError(runtimeScope, err)
+	got := lifecycle.SanitizeModuleIndexError(runtimeScope, err)
 	if strings.Contains(got, addonsPath) {
 		t.Fatalf("expected redacted path, got %q", got)
 	}
@@ -99,7 +99,7 @@ func TestSanitizeModuleIndexError_RedactsAddonsPathInMessage(t *testing.T) {
 	}
 
 	err := errors.New("failed to read " + addonsPath + "/meta/manifest.json")
-	got := sanitizeModuleIndexError(runtimeScope, err)
+	got := lifecycle.SanitizeModuleIndexError(runtimeScope, err)
 	if strings.Contains(got, addonsPath) {
 		t.Fatalf("expected redacted path, got %q", got)
 	}
@@ -109,7 +109,7 @@ func TestSanitizeModuleIndexError_RedactsAddonsPathInMessage(t *testing.T) {
 }
 
 func TestSanitizeModuleIndexError_NilReturnsDefault(t *testing.T) {
-	got := sanitizeModuleIndexError(nil, nil)
+	got := lifecycle.SanitizeModuleIndexError(nil, nil)
 	if got != "manifest parsing failed" {
 		t.Fatalf("expected default message, got %q", got)
 	}
@@ -151,7 +151,7 @@ func TestSyncModuleIndexLocalUsesInjectedLockerFactory(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected syncModuleIndexLocal() to return lease conflict")
 	}
-	if stats.total != 0 || stats.success != 0 || stats.failed != 0 {
+	if stats.Total != 0 || stats.Success != 0 || stats.Failed != 0 {
 		t.Fatalf("unexpected stats = %+v", stats)
 	}
 	if info := err.Error(); !strings.Contains(info, "LEASE_CONFLICT") {

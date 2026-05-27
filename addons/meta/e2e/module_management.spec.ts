@@ -110,41 +110,61 @@ async function searchModuleCard(page: Page, moduleName: string) {
 /**
  * Resolves the kanban card for a module, using search and reload fallback when needed.
  */
+async function findModuleCardByName(page: Page, moduleName: string): Promise<Locator | null> {
+  const cards = page.locator('.module-card');
+  const total = await cards.count();
+  for (let i = 0; i < total; i += 1) {
+    const card = cards.nth(i);
+    const name = (
+      (await card
+        .locator('.module-card__title .name')
+        .textContent()
+        .catch(() => '')) || ''
+    ).trim();
+    if (name === moduleName) {
+      return card;
+    }
+  }
+  return null;
+}
+
 async function openModuleCard(page: Page, moduleName: string): Promise<Locator>;
 async function openModuleCard(page: Page, moduleName: string, opts: { allowMissing: true }): Promise<Locator | null>;
 async function openModuleCard(page: Page, moduleName: string, opts?: { allowMissing?: boolean }): Promise<Locator | null> {
-  const exactName = new RegExp(`^\\s*${escapeRegExp(moduleName)}\\s*$`, 'i');
-  const card = page
-    .locator('.module-card', {
-      has: page.locator('.module-card__title .name', { hasText: exactName }),
-    })
-    .first();
-  if (await card.isVisible().catch(() => false)) return card;
+  const initialCard = await findModuleCardByName(page, moduleName);
+  if (initialCard && (await initialCard.isVisible().catch(() => false))) return initialCard;
 
   await searchModuleCard(page, moduleName);
 
-  if (await card.isVisible().catch(() => false)) return card;
+  const searchedCard = await findModuleCardByName(page, moduleName);
+  if (searchedCard && (await searchedCard.isVisible().catch(() => false))) return searchedCard;
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
   await waitForModuleList(page);
   await searchModuleCard(page, moduleName);
 
-  if (await card.isVisible().catch(() => false)) return card;
+  const reloadedCard = await findModuleCardByName(page, moduleName);
+  if (reloadedCard && (await reloadedCard.isVisible().catch(() => false))) return reloadedCard;
 
   // Search filters can become stale after module install/uninstall side effects.
   // Fall back to the full board once before treating the card as missing.
   await clearSearchFilters(page);
   await waitForModuleList(page);
 
-  if (await card.isVisible().catch(() => false)) return card;
+  const fallbackCard = await findModuleCardByName(page, moduleName);
+  if (fallbackCard && (await fallbackCard.isVisible().catch(() => false))) return fallbackCard;
 
   if (opts?.allowMissing) {
     return null;
   }
 
-  await expect(card).toBeVisible({ timeout: 30000 });
-  return card;
+  const finalCard = await findModuleCardByName(page, moduleName);
+  if (!finalCard) {
+    throw new Error(`module card not found: ${moduleName}`);
+  }
+  await expect(finalCard).toBeVisible({ timeout: 30000 });
+  return finalCard;
 }
 
 /**
@@ -313,59 +333,24 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
 }
 
 /**
- * Picks a non-core target module that is safe for install or upgrade scenarios.
+ * Selects the fixed partner module as the install/upgrade e2e target.
  */
 async function pickTargetModule(page: Page) {
   await waitForModuleList(page);
 
   const cards = page.locator('.module-card');
-  let total = 0;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    total = await cards.count();
-    if (total > 0) break;
-    const emptyVisible = await page
-      .locator('.module-card__empty')
-      .isVisible()
-      .catch(() => false);
-    if (emptyVisible) {
-      await page.waitForTimeout(1000);
-    } else {
-      await page.waitForTimeout(500);
-    }
-  }
+  const total = await cards.count();
   if (total === 0) {
     throw new Error('Module list is empty; cannot run the module management regression flow');
   }
 
-  const modules: Array<{ name: string; status: string }> = [];
   for (let i = 0; i < total; i += 1) {
     const card = cards.nth(i);
     const name = (await card.locator('.module-card__title .name').innerText()).trim();
+    if (name !== 'partner') continue;
     const status = (await card.locator('.module-card__title .el-tag').innerText()).trim();
-    modules.push({ name, status });
+    return { name, status };
   }
-  console.log('[e2e] module cards:', modules.map(m => `${m.name}:${m.status}`).join(', '));
-
-  // Prefer lightweight business modules with stable install/upgrade behavior in CI.
-  const preferredNames = ['auth_ext', 'partner_bank', 'partner_commercial', 'partner'];
-  for (const name of preferredNames) {
-    const target = modules.find(m => m.name === name && m.status.includes('未安装'));
-    if (target) return target;
-  }
-
-  // Keep `document` as a fallback candidate because it is slower and less stable on CI runners.
-  const preferredTarget = modules.find(m => !m.name.startsWith('auth') && m.name !== 'document' && m.status.includes('未安装'));
-  if (preferredTarget) return preferredTarget;
-
-  const documentTarget = modules.find(m => m.name === 'document' && m.status.includes('未安装'));
-  if (documentTarget) return documentTarget;
-
-  const uninstalled = modules.find(m => m.status.includes('未安装'));
-  if (uninstalled) return uninstalled;
-
-  const blocklist = new Set(['core', 'base', 'auth', 'web', 'meta', 'api']);
-  const candidate = modules.find(m => !blocklist.has(m.name));
-  if (candidate) return candidate;
 
   return null;
 }
