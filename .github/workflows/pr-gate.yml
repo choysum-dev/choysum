@@ -29,6 +29,7 @@ jobs:
     outputs:
       docs_only: ${{ steps.discover.outputs.docs_only }}
       direct_modules_json: ${{ steps.discover.outputs.direct_modules_json }}
+      impacted_direct_e2e_no_smoke_modules_json: ${{ steps.discover.outputs.impacted_direct_e2e_no_smoke_modules_json }}
       impacted_modules_json: ${{ steps.discover.outputs.impacted_modules_json }}
       impacted_smoke_e2e_modules_json: ${{ steps.discover.outputs.impacted_smoke_e2e_modules_json }}
       run_full_matrix: ${{ steps.discover.outputs.run_full_matrix }}
@@ -177,6 +178,7 @@ jobs:
               outputs = {
                   "docs_only": "false",
                   "direct_modules_json": "[]",
+                  "impacted_direct_e2e_no_smoke_modules_json": "[]",
                   "impacted_modules_json": sorted_json(impacted_modules),
                   "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
                   "run_full_matrix": "true",
@@ -191,6 +193,7 @@ jobs:
               outputs = {
                   "docs_only": "false",
                   "direct_modules_json": "[]",
+                  "impacted_direct_e2e_no_smoke_modules_json": "[]",
                   "impacted_modules_json": sorted_json(impacted_modules),
                   "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
                   "run_full_matrix": "true",
@@ -214,6 +217,7 @@ jobs:
               changed_paths = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
 
               direct_modules = set()
+              direct_e2e_modules = set()
               impacted_modules = set()
               contract_modules = set()
               local_modules = set()
@@ -229,6 +233,8 @@ jobs:
                           continue
                       docs_only = False
                       impacted_modules.add(module)
+                        if path.startswith(f"addons/{module}/e2e/"):
+                          direct_e2e_modules.add(module)
                       if kind == "contract":
                           contract_modules.add(module)
                       else:
@@ -289,9 +295,13 @@ jobs:
                       final_impacted = set(modules)
 
               smoke_modules = {module for module in final_impacted if has_smoke_spec(module)}
+                direct_e2e_no_smoke_modules = {
+                  module for module in direct_e2e_modules if module in final_impacted and not has_smoke_spec(module)
+                }
               outputs = {
                   "docs_only": "true" if docs_only else "false",
                   "direct_modules_json": sorted_json(direct_modules),
+                  "impacted_direct_e2e_no_smoke_modules_json": sorted_json(direct_e2e_no_smoke_modules),
                   "impacted_modules_json": sorted_json(final_impacted),
                   "impacted_smoke_e2e_modules_json": sorted_json(smoke_modules),
                   "run_full_matrix": "true" if run_full else "false",
@@ -820,6 +830,88 @@ jobs:
         run: |
           echo "smoke-e2e-shard result=${{ needs.smoke-e2e-shard.result }}"
           if [ "${{ needs.smoke-e2e-shard.result }}" != "success" ]; then
+            exit 1
+          fi
+
+  e2e-shard-targeted:
+    name: pr / e2e-shard-targeted (${{ matrix.module }})
+    if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]' }}
+    needs:
+      - prepare-embedded-assets
+      - discover-impact
+      - prepare-root-node-modules
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Download embedded assets
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-embedded-assets
+          path: .choysum/tmp
+
+      - name: Extract embedded assets
+        run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
+
+      - name: Download root node_modules
+        uses: actions/download-artifact@v8
+        with:
+          name: pr-root-node-modules
+          path: .choysum/tmp
+
+      - name: Extract root node_modules
+        run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Cache Playwright browser
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run targeted E2E suite
+        run: go run . test e2e ${{ matrix.module }}
+
+  e2e-targeted-all:
+    name: pr / e2e-targeted-all
+    needs:
+      - discover-impact
+      - e2e-shard-targeted
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip targeted E2E aggregate when routing produces no direct E2E modules without smoke specs
+        if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json == '[]' }}
+        run: echo "targeted E2E skipped by routing"
+
+      - name: Verify targeted E2E matrix result
+        if: ${{ needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]' }}
+        run: |
+          echo "e2e-shard-targeted result=${{ needs.e2e-shard-targeted.result }}"
+          if [ "${{ needs.e2e-shard-targeted.result }}" != "success" ]; then
             exit 1
           fi
 
