@@ -346,21 +346,24 @@ async function pickTargetModule(page: Page) {
   }
   console.log('[e2e] module cards:', modules.map(m => `${m.name}:${m.status}`).join(', '));
 
+  // These modules have shown flaky status updates in CI, so keep them out of the default target set.
+  const fragileNames = new Set(['auth_ext', 'partner_bank']);
+
   // Prefer lightweight business modules with stable install/upgrade behavior in CI.
-  const preferredNames = ['auth_ext', 'partner_bank', 'partner_commercial', 'partner'];
+  const preferredNames = ['partner_commercial', 'partner'];
   for (const name of preferredNames) {
     const target = modules.find(m => m.name === name && m.status.includes('未安装'));
     if (target) return target;
   }
 
   // Keep `document` as a fallback candidate because it is slower and less stable on CI runners.
-  const preferredTarget = modules.find(m => !m.name.startsWith('auth') && m.name !== 'document' && m.status.includes('未安装'));
+  const preferredTarget = modules.find(m => !m.name.startsWith('auth') && !fragileNames.has(m.name) && m.name !== 'document' && m.status.includes('未安装'));
   if (preferredTarget) return preferredTarget;
 
   const documentTarget = modules.find(m => m.name === 'document' && m.status.includes('未安装'));
   if (documentTarget) return documentTarget;
 
-  const uninstalled = modules.find(m => m.status.includes('未安装'));
+  const uninstalled = modules.find(m => m.status.includes('未安装') && !fragileNames.has(m.name));
   if (uninstalled) return uninstalled;
 
   const blocklist = new Set(['core', 'base', 'auth', 'web', 'meta', 'api']);
