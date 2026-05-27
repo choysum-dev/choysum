@@ -18,6 +18,13 @@ type RuntimeInfo = {
 };
 
 /**
+ * Escapes a string so it can be used as a literal fragment in RegExp patterns.
+ */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Loads the current e2e runtime descriptor from the test harness.
  */
 function readRuntimeInfo(): RuntimeInfo {
@@ -104,7 +111,12 @@ async function searchModuleCard(page: Page, moduleName: string) {
  * Resolves the kanban card for a module, using search and reload fallback when needed.
  */
 async function openModuleCard(page: Page, moduleName: string) {
-  const card = page.locator('.module-card', { hasText: moduleName }).first();
+  const exactName = new RegExp(`^\\s*${escapeRegExp(moduleName)}\\s*$`);
+  const card = page
+    .locator('.module-card', {
+      has: page.locator('.module-card__title .name', { hasText: exactName }),
+    })
+    .first();
   if (await card.isVisible().catch(() => false)) return card;
 
   await searchModuleCard(page, moduleName);
