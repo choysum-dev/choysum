@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DatabaseConnection, ConnectionProvider, Driver } from 'kysely';
+import type { AbortableOperationOptions } from 'kysely';
 
 export class ChoysumConnectionProvider implements ConnectionProvider {
   readonly #driver: Driver;
@@ -10,7 +11,7 @@ export class ChoysumConnectionProvider implements ConnectionProvider {
     this.#driver = driver;
   }
 
-  async provideConnection<T>(consumer: (connection: DatabaseConnection) => Promise<T>): Promise<T> {
+  async provideConnection<T>(consumer: (connection: DatabaseConnection) => Promise<T>, _options?: AbortableOperationOptions): Promise<T> {
     const connection = await this.#driver.acquireConnection();
 
     try {

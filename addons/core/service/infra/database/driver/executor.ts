@@ -13,6 +13,8 @@ import {
   QueryExecutor,
   RootOperationNode,
   UnknownRow,
+  type AbortableOperationOptions,
+  type AbortableQueryOptions,
 } from 'kysely';
 import type { QueryId } from 'kysely';
 
@@ -38,8 +40,8 @@ export class ChoysumQueryExecutor extends DefaultQueryExecutor implements QueryE
     return this.#compiler.compileQuery(node, queryId);
   }
 
-  provideConnection<T>(consumer: (connection: DatabaseConnection) => Promise<T>): Promise<T> {
-    return this.#connectionProvider.provideConnection(consumer);
+  provideConnection<T>(consumer: (connection: DatabaseConnection) => Promise<T>, options?: AbortableOperationOptions): Promise<T> {
+    return this.#connectionProvider.provideConnection(consumer, options);
   }
 
   withPlugins(plugins: ReadonlyArray<KyselyPlugin>): ChoysumQueryExecutor {
@@ -58,12 +60,12 @@ export class ChoysumQueryExecutor extends DefaultQueryExecutor implements QueryE
     return new ChoysumQueryExecutor(this.#compiler, this.#adapter, this.#connectionProvider, []);
   }
 
-  async executeQuery<R>(compiledQuery: CompiledQuery, queryId?: QueryId): Promise<QueryResult<R>> {
-    const qId = (queryId ?? $choysum.xid.New()) as QueryId;
+  async executeQuery<R>(compiledQuery: CompiledQuery<unknown>, options?: AbortableQueryOptions): Promise<QueryResult<R>> {
+    const qId = compiledQuery.queryId ?? ($choysum.xid.New() as unknown as QueryId);
     return this.provideConnection(async connection => {
-      const result = await connection.executeQuery<R>(compiledQuery);
+      const result = await connection.executeQuery<R>(compiledQuery, options);
       return this.#transformResult(result, qId);
-    });
+    }, options);
   }
 
   async #transformResult<T>(result: QueryResult<T>, queryId: QueryId): Promise<QueryResult<T>> {
