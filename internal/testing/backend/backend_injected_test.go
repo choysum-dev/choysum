@@ -497,13 +497,13 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 
 	t.Run("default execute branch reaches runtime path", func(t *testing.T) {
 		baseDist := t.TempDir()
-			runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-				AddonsPath: t.TempDir(),
-				DistPath:   baseDist,
-				Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
-				Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
-				Compile:    &config.CompileConfig{BundleMode: "bundle"},
-			}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
+			AddonsPath: t.TempDir(),
+			DistPath:   baseDist,
+			Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
+			Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
+			Compile:    &config.CompileConfig{BundleMode: "bundle"},
+		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
 		}
