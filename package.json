@@ -7,7 +7,7 @@
     "@types/nprogress": "^0.2.3",
     "@types/path-browserify": "^1.0.3",
     "@vicons/material": "^0.13.0",
-    "@vueuse/core": "^13.7.0",
+    "@vueuse/core": "^14.3.0",
     "async-validator": "^4.2.5",
     "bcrypt": "^6.0.0",
     "dayjs": "^1.11.21",
