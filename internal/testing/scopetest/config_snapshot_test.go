@@ -40,7 +40,7 @@ func configSnapshotFixture() *config.Config {
 		},
 		FrontendEnv: map[string]any{"NESTED": map[string]any{"k": "v"}},
 		BackendEnv:  map[string]any{"NESTED_LIST": []any{map[string]any{"k": "v"}}},
-		Db:          &config.DbConfig{Dialect: "sqlite", DSN: "/tmp/app.db"},
+		Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file:/tmp/app.db?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL"},
 	}
 }
 
@@ -73,7 +73,7 @@ func TestConfigFromSnapshotReturnsDeepCopy(t *testing.T) {
 	if got := snap.BackendEnv["NESTED_LIST"].([]any)[0].(map[string]any)["k"]; got != "v" {
 		t.Fatalf("snapshot backend nested env mutated via ConfigFromSnapshot: got %v", got)
 	}
-	if got := snap.Db.DSN; got != "/tmp/app.db" {
+	if got := snap.Db.DSN; got != "file:/tmp/app.db?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL" {
 		t.Fatalf("snapshot db config mutated via ConfigFromSnapshot: got %q", got)
 	}
 }
