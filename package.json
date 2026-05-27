@@ -9,7 +9,7 @@
     "@vicons/material": "^0.13.0",
     "@vueuse/core": "^13.7.0",
     "async-validator": "^4.2.5",
-    "bcrypt": "^5.1.0",
+    "bcrypt": "^6.0.0",
     "dayjs": "^1.11.21",
     "decimal.js": "^10.6.0",
     "echarts": "^6.1.0",
