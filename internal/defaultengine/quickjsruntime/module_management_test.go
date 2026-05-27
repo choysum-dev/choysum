@@ -249,3 +249,23 @@ func TestWithModuleManagementProviderUsesExecContextBoundRuntimeScope(t *testing
 		t.Fatalf("expected install ctx to carry runtime marker, got %#v", installCtx)
 	}
 }
+
+func TestNormalizeModuleIndexOriginType(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "registry", in: "registry", want: "registry"},
+		{name: "trimmed uppercase local", in: "  LOCAL ", want: "local"},
+		{name: "unsupported fallback", in: "remote", want: "local"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizeModuleIndexOriginType(tt.in); got != tt.want {
+				t.Fatalf("normalizeModuleIndexOriginType(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
