@@ -25,12 +25,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -67,7 +67,7 @@ jobs:
             pkg/jsengine/scripts/vuesfc/dist/index.js
 
       - name: Upload embedded assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: main-embedded-assets
           path: .choysum/tmp/main-embedded-assets.tar.gz
@@ -80,12 +80,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -100,7 +100,7 @@ jobs:
           tar -czf .choysum/tmp/main-root-node-modules.tar.gz node_modules
 
       - name: Upload root node_modules
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: main-root-node-modules
           path: .choysum/tmp/main-root-node-modules.tar.gz
@@ -116,7 +116,7 @@ jobs:
       e2e_modules_json: ${{ steps.discover.outputs.e2e_modules_json }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -170,12 +170,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-embedded-assets
           path: .choysum/tmp
@@ -184,7 +184,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -195,7 +195,7 @@ jobs:
           go build -o .choysum/tmp/choysum .
 
       - name: Upload choysum CLI
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: main-choysum-cli
           path: .choysum/tmp/choysum
@@ -211,12 +211,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-embedded-assets
           path: .choysum/tmp
@@ -225,7 +225,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
 
       - name: Download root node_modules
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-root-node-modules
           path: .choysum/tmp
@@ -234,13 +234,13 @@ jobs:
         run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -268,12 +268,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-embedded-assets
           path: .choysum/tmp
@@ -282,7 +282,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
 
       - name: Download root node_modules
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-root-node-modules
           path: .choysum/tmp
@@ -291,7 +291,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
 
       - name: Download choysum CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-choysum-cli
           path: .choysum/tmp
@@ -300,7 +300,7 @@ jobs:
         run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -347,12 +347,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-embedded-assets
           path: .choysum/tmp
@@ -361,7 +361,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
 
       - name: Download root node_modules
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-root-node-modules
           path: .choysum/tmp
@@ -370,7 +370,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
 
       - name: Download choysum CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-choysum-cli
           path: .choysum/tmp
@@ -379,7 +379,7 @@ jobs:
         run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
@@ -426,12 +426,12 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-embedded-assets
           path: .choysum/tmp
@@ -440,7 +440,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
 
       - name: Download root node_modules
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-root-node-modules
           path: .choysum/tmp
@@ -449,7 +449,7 @@ jobs:
         run: tar -xzf .choysum/tmp/main-root-node-modules.tar.gz -C .
 
       - name: Download choysum CLI
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-choysum-cli
           path: .choysum/tmp
@@ -458,14 +458,14 @@ jobs:
         run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Cache Playwright browser
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
@@ -506,12 +506,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Download embedded assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-embedded-assets
           path: .choysum/tmp
@@ -520,13 +520,13 @@ jobs:
         run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
