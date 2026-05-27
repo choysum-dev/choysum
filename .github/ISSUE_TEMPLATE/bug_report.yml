@@ -1,0 +1,89 @@
+name: Bug report
+description: Report a reproducible bug in Choysum.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please provide enough detail to reproduce and fix the issue quickly.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A short and clear description of the problem.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List exact steps so maintainers can reproduce the issue.
+      placeholder: |
+        1. Go to ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Impact scope
+      description: Which modules, commands, or pages are affected?
+      placeholder: "Example: cmd run, addons/meta, API /auth/login"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, traces, and screenshots
+      description: Paste key logs or stack traces. Avoid secrets.
+      render: shell
+
+  - type: input
+    id: commit
+    attributes:
+      label: Reproduced on commit
+      description: Commit SHA or branch name where this was reproduced.
+      placeholder: "main@abcdef1"
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regression?
+      description: Did this work in a previous version/commit?
+      options:
+        - "Unknown"
+        - "Yes"
+        - "No"
+      default: 0
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and did not find a duplicate.
+          required: true
+        - label: I removed or masked sensitive information from logs and screenshots.
+          required: true
