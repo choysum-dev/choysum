@@ -4,11 +4,13 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 )
 
 const defaultDbDialect = "sqlite"
+const defaultSQLiteDSNParams = "mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL"
 
 type DbConfig struct {
 	Dialect         string `mapstructure:"dialect"`
@@ -33,4 +35,12 @@ func DefaultSQLitePath(defaultChoysumPath string) string {
 		return ""
 	}
 	return filepath.Clean(filepath.Join(root, "choysum.sqlite"))
+}
+
+func DefaultSQLiteDSN(defaultChoysumPath string) string {
+	path := DefaultSQLitePath(defaultChoysumPath)
+	if path == "" {
+		return ""
+	}
+	return fmt.Sprintf("file:%s?%s", filepath.ToSlash(path), defaultSQLiteDSNParams)
 }

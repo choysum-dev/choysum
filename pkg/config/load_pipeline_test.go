@@ -49,9 +49,10 @@ func TestNewConfigWithoutConfigFileUsesDefaults(t *testing.T) {
 	if got, want := cfg.Db.Dialect, "sqlite"; got != want {
 		t.Fatalf("db.dialect = %q, want %q", got, want)
 	}
-	wantDBPath, _ := filepath.Abs(filepath.Join(homeDir, ".choysum", "choysum.sqlite"))
-	if filepath.Clean(cfg.Db.DSN) != filepath.Clean(wantDBPath) {
-		t.Fatalf("db.dsn = %q, want %q", cfg.Db.DSN, wantDBPath)
+	wantDBPath, _ := filepath.Abs(filepath.Join(homeDir, ".choysum"))
+	wantDBDSN := DefaultSQLiteDSN(wantDBPath)
+	if cfg.Db.DSN != wantDBDSN {
+		t.Fatalf("db.dsn = %q, want %q", cfg.Db.DSN, wantDBDSN)
 	}
 	if got, want := cfg.Auth.InternalKey, "dev-internal-key"; got != want {
 		t.Fatalf("auth.internalKey = %q, want %q", got, want)

@@ -266,7 +266,7 @@ func (c *Config) applyDatabaseInvariants() {
 		c.Db.Dialect = defaultDbDialect
 	}
 	if c.Db.Dialect == defaultDbDialect && strings.TrimSpace(c.Db.DSN) == "" {
-		c.Db.DSN = DefaultSQLitePath(c.DefaultChoysumPath)
+		c.Db.DSN = DefaultSQLiteDSN(c.DefaultChoysumPath)
 	}
 }
 
