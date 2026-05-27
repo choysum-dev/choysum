@@ -115,11 +115,15 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 			filepath.ToSlash(filepath.Join(addonsPath, "auth", "service", "**", "*.ts")),
 			filepath.ToSlash(filepath.Join(addonsPath, "auth", "web", "**", "*.tsx")),
 			filepath.ToSlash(filepath.Join(addonsPath, "auth", "web", "**", "*.vue")),
+			filepath.ToSlash(filepath.Join(addonsPath, "*")),
 			"\"noEmit\": true",
 		} {
 			if !strings.Contains(capturedText, fragment) {
 				t.Fatalf("expected captured tsconfig to contain %q, got %q", fragment, capturedText)
 			}
+		}
+		if strings.Contains(capturedText, `"baseUrl"`) {
+			t.Fatalf("expected captured tsconfig not to contain baseUrl, got %q", capturedText)
 		}
 
 		if !strings.Contains(stderr.String(), "# typecheck auth\n# typecheck auth ok\n") {
