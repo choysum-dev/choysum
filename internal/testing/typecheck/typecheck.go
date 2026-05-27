@@ -256,8 +256,6 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		defer cleanupTmpArtifacts()
 	}
 
-	addonsBaseDir := filepath.Dir(addonsRoot)
-	addonsPatternPrefix := filepath.Base(addonsRoot)
 	include := []string{
 		filepath.ToSlash(filepath.Join(addonsRoot, "**", "*.d.ts")),
 		filepath.ToSlash(filepath.Join(addonsRoot, app, "*.ts")),
@@ -281,9 +279,10 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 			"allowJs":                      true,
 			"allowArbitraryExtensions":     true,
 			"skipLibCheck":                 true,
-			"baseUrl":                      filepath.ToSlash(addonsBaseDir),
+			"types":                        []string{"node"},
+			"typeRoots":                    []string{filepath.ToSlash(filepath.Join(repoRoot, "node_modules", "@types"))},
 			"paths": map[string]any{
-				"@/*": []string{filepath.ToSlash(filepath.Join(addonsPatternPrefix, "*"))},
+				"@/*": []string{filepath.ToSlash(filepath.Join(addonsRoot, "*"))},
 			},
 			"noEmit": true,
 		},

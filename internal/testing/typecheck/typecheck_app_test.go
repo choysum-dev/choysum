@@ -115,11 +115,17 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 			filepath.ToSlash(filepath.Join(addonsPath, "auth", "service", "**", "*.ts")),
 			filepath.ToSlash(filepath.Join(addonsPath, "auth", "web", "**", "*.tsx")),
 			filepath.ToSlash(filepath.Join(addonsPath, "auth", "web", "**", "*.vue")),
+			filepath.ToSlash(filepath.Join(addonsPath, "*")),
+			filepath.ToSlash(filepath.Join(repoRoot, "node_modules", "@types")),
+			"\"types\": [\n      \"node\"\n    ]",
 			"\"noEmit\": true",
 		} {
 			if !strings.Contains(capturedText, fragment) {
 				t.Fatalf("expected captured tsconfig to contain %q, got %q", fragment, capturedText)
 			}
+		}
+		if strings.Contains(capturedText, `"baseUrl"`) {
+			t.Fatalf("expected captured tsconfig not to contain baseUrl, got %q", capturedText)
 		}
 
 		if !strings.Contains(stderr.String(), "# typecheck auth\n# typecheck auth ok\n") {
@@ -167,8 +173,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		if !strings.Contains(capturedText, viteClientPath) {
 			t.Fatalf("expected captured tsconfig to contain %q, got %q", viteClientPath, capturedText)
 		}
-		if strings.Contains(capturedText, `"types":`) {
-			t.Fatalf("expected captured tsconfig to omit compilerOptions.types, got %q", capturedText)
+		if !strings.Contains(capturedText, `"types":`) {
+			t.Fatalf("expected captured tsconfig to include compilerOptions.types, got %q", capturedText)
 		}
 	})
 
