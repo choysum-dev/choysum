@@ -122,39 +122,18 @@ func runCLIWithStdin(t *testing.T, stdin string, args ...string) (string, int) {
 }
 
 func runCLISeparated(t *testing.T, args ...string) (string, string, int) {
+	t.Helper()
+
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
 	cmd.Args = append(cmd.Args, args...)
 	cmd.Env = cliE2EHelperEnv()
 
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("stdout pipe: %v", err)
-	}
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		t.Fatalf("stderr pipe: %v", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start: %v", err)
-	}
-
 	var stdoutBuf bytes.Buffer
 	var stderrBuf bytes.Buffer
-	stdoutDone := make(chan struct{})
-	stderrDone := make(chan struct{})
-	go func() {
-		_, _ = io.Copy(&stdoutBuf, stdoutPipe)
-		close(stdoutDone)
-	}()
-	go func() {
-		_, _ = io.Copy(&stderrBuf, stderrPipe)
-		close(stderrDone)
-	}()
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
 
-	err = cmd.Wait()
-	<-stdoutDone
-	<-stderrDone
+	err := cmd.Run()
 
 	if err == nil {
 		return stdoutBuf.String(), stderrBuf.String(), 0
