@@ -22,7 +22,6 @@ import {
   isNoResultErrorConstructor,
   NoResultError,
   QueryNode,
-  type QueryId,
 } from 'kysely';
 
 import { ChoysumConnectionProvider } from './driver/connection-provider';
@@ -86,8 +85,8 @@ export class ChoysumDatabase<DB> extends Kysely<DB> implements QueryExecutorProv
    */
   async execute<R>(query: Compilable<R>): Promise<SimplifyResult<R>[]> {
     const compiledQuery = query.compile();
-    const queryId = $choysum.xid.New() as unknown as QueryId;
-    const result = await (this.getExecutor() as ChoysumQueryExecutor).executeQuery<R>(compiledQuery, queryId);
+    const xid = $choysum.xid.New() as unknown as string;
+    const result = await (this.getExecutor() as ChoysumQueryExecutor).executeQuery<R>(compiledQuery, xid as any);
     const rows = result.rows as unknown as SimplifyResult<R>[];
 
     if (compiledQuery.query.kind === 'SelectQueryNode') {
