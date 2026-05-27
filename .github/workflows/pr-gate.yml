@@ -233,7 +233,7 @@ jobs:
                           continue
                       docs_only = False
                       impacted_modules.add(module)
-                        if path.startswith(f"addons/{module}/e2e/"):
+                      if path.startswith(f"addons/{module}/e2e/"):
                           direct_e2e_modules.add(module)
                       if kind == "contract":
                           contract_modules.add(module)
@@ -295,9 +295,9 @@ jobs:
                       final_impacted = set(modules)
 
               smoke_modules = {module for module in final_impacted if has_smoke_spec(module)}
-                direct_e2e_no_smoke_modules = {
+              direct_e2e_no_smoke_modules = {
                   module for module in direct_e2e_modules if module in final_impacted and not has_smoke_spec(module)
-                }
+              }
               outputs = {
                   "docs_only": "true" if docs_only else "false",
                   "direct_modules_json": sorted_json(direct_modules),
