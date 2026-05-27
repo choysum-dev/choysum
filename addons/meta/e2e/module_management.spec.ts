@@ -155,9 +155,10 @@ async function moduleStatusText(page: Page, moduleName: string) {
   if (!card) {
     return '';
   }
+  const statusTag = card.locator('.module-card__title .el-tag').first();
+  await statusTag.waitFor({ state: 'visible', timeout: 2000 }).catch(() => null);
   return (
-    (await card
-      .locator('.module-card__title .el-tag')
+    (await statusTag
       .textContent()
       .catch(() => '')) || ''
   ).trim();
@@ -166,22 +167,32 @@ async function moduleStatusText(page: Page, moduleName: string) {
 /**
  * Polls the module board until a module reaches the expected status label.
  */
-async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 60000) {
+async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 60000, stableSamples = 2) {
   const deadline = Date.now() + timeout;
   let lastStatus = '';
+  let stableHits = 0;
 
   while (Date.now() < deadline) {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
     await waitForModuleList(page);
     lastStatus = await moduleStatusText(page, moduleName);
+
     if (lastStatus === expectedStatus) {
-      return;
+      stableHits += 1;
+      if (stableHits >= stableSamples) {
+        return;
+      }
+    } else {
+      stableHits = 0;
     }
+
     await page.waitForTimeout(1000);
   }
 
-  throw new Error(`module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus}`);
+  throw new Error(
+    `module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus} (stable hits ${stableHits}/${stableSamples})`
+  );
 }
 
 /**
@@ -337,38 +348,33 @@ async function pickTargetModule(page: Page) {
     throw new Error('Module list is empty; cannot run the module management regression flow');
   }
 
-  const modules: Array<{ name: string; status: string }> = [];
+  const modules: Array<{ name: string; status: string; canInstall: boolean; canUpgrade: boolean; canUninstall: boolean }> = [];
   for (let i = 0; i < total; i += 1) {
     const card = cards.nth(i);
     const name = (await card.locator('.module-card__title .name').innerText()).trim();
     const status = (await card.locator('.module-card__title .el-tag').innerText()).trim();
-    modules.push({ name, status });
+    const canInstall = await card.getByRole('button', { name: '安装' }).isVisible().catch(() => false);
+    const canUpgrade = await card.getByRole('button', { name: '升级' }).isVisible().catch(() => false);
+    const canUninstall = await card.getByRole('button', { name: '卸载' }).isVisible().catch(() => false);
+    modules.push({ name, status, canInstall, canUpgrade, canUninstall });
   }
-  console.log('[e2e] module cards:', modules.map(m => `${m.name}:${m.status}`).join(', '));
+  console.log(
+    '[e2e] module cards:',
+    modules
+      .map(m => `${m.name}:${m.status}[i:${m.canInstall ? 'y' : 'n'}/u:${m.canUpgrade ? 'y' : 'n'}/x:${m.canUninstall ? 'y' : 'n'}]`)
+      .join(', ')
+  );
 
-  // These modules have shown flaky status updates in CI, so keep them out of the default target set.
-  const fragileNames = new Set(['auth_ext', 'partner_bank']);
+  // Prefer modules that clearly expose install first; this avoids relying on specific module names.
+  const installable = modules.find(m => m.status.includes('未安装') && m.canInstall);
+  if (installable) return installable;
 
-  // Prefer lightweight business modules with stable install/upgrade behavior in CI.
-  const preferredNames = ['partner_commercial', 'partner'];
-  for (const name of preferredNames) {
-    const target = modules.find(m => m.name === name && m.status.includes('未安装'));
-    if (target) return target;
-  }
+  // Fall back to already-installed modules that support upgrade/uninstall.
+  const upgradable = modules.find(m => m.status.includes('已安装') && (m.canUpgrade || m.canUninstall));
+  if (upgradable) return upgradable;
 
-  // Keep `document` as a fallback candidate because it is slower and less stable on CI runners.
-  const preferredTarget = modules.find(m => !m.name.startsWith('auth') && !fragileNames.has(m.name) && m.name !== 'document' && m.status.includes('未安装'));
-  if (preferredTarget) return preferredTarget;
-
-  const documentTarget = modules.find(m => m.name === 'document' && m.status.includes('未安装'));
-  if (documentTarget) return documentTarget;
-
-  const uninstalled = modules.find(m => m.status.includes('未安装') && !fragileNames.has(m.name));
-  if (uninstalled) return uninstalled;
-
-  const blocklist = new Set(['core', 'base', 'auth', 'web', 'meta', 'api']);
-  const candidate = modules.find(m => !blocklist.has(m.name));
-  if (candidate) return candidate;
+  const operable = modules.find(m => m.canInstall || m.canUpgrade || m.canUninstall);
+  if (operable) return operable;
 
   return null;
 }
