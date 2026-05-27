@@ -157,11 +157,7 @@ async function moduleStatusText(page: Page, moduleName: string) {
   }
   const statusTag = card.locator('.module-card__title .el-tag').first();
   await statusTag.waitFor({ state: 'visible', timeout: 2000 }).catch(() => null);
-  return (
-    (await statusTag
-      .textContent()
-      .catch(() => '')) || ''
-  ).trim();
+  return ((await statusTag.textContent().catch(() => '')) || '').trim();
 }
 
 /**
@@ -190,9 +186,7 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
     await page.waitForTimeout(1000);
   }
 
-  throw new Error(
-    `module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus} (stable hits ${stableHits}/${stableSamples})`
-  );
+  throw new Error(`module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus} (stable hits ${stableHits}/${stableSamples})`);
 }
 
 /**
@@ -353,16 +347,23 @@ async function pickTargetModule(page: Page) {
     const card = cards.nth(i);
     const name = (await card.locator('.module-card__title .name').innerText()).trim();
     const status = (await card.locator('.module-card__title .el-tag').innerText()).trim();
-    const canInstall = await card.getByRole('button', { name: '安装' }).isVisible().catch(() => false);
-    const canUpgrade = await card.getByRole('button', { name: '升级' }).isVisible().catch(() => false);
-    const canUninstall = await card.getByRole('button', { name: '卸载' }).isVisible().catch(() => false);
+    const canInstall = await card
+      .getByRole('button', { name: '安装' })
+      .isVisible()
+      .catch(() => false);
+    const canUpgrade = await card
+      .getByRole('button', { name: '升级' })
+      .isVisible()
+      .catch(() => false);
+    const canUninstall = await card
+      .getByRole('button', { name: '卸载' })
+      .isVisible()
+      .catch(() => false);
     modules.push({ name, status, canInstall, canUpgrade, canUninstall });
   }
   console.log(
     '[e2e] module cards:',
-    modules
-      .map(m => `${m.name}:${m.status}[i:${m.canInstall ? 'y' : 'n'}/u:${m.canUpgrade ? 'y' : 'n'}/x:${m.canUninstall ? 'y' : 'n'}]`)
-      .join(', ')
+    modules.map(m => `${m.name}:${m.status}[i:${m.canInstall ? 'y' : 'n'}/u:${m.canUpgrade ? 'y' : 'n'}/x:${m.canUninstall ? 'y' : 'n'}]`).join(', ')
   );
 
   // Prefer modules that clearly expose install first; this avoids relying on specific module names.
