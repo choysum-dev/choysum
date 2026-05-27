@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page, Locator } from '@playwright/test';
 import fs from 'node:fs';
 
 test.setTimeout(10 * 60 * 1000);
@@ -110,8 +110,10 @@ async function searchModuleCard(page: Page, moduleName: string) {
 /**
  * Resolves the kanban card for a module, using search and reload fallback when needed.
  */
-async function openModuleCard(page: Page, moduleName: string) {
-  const exactName = new RegExp(`^\\s*${escapeRegExp(moduleName)}\\s*$`);
+async function openModuleCard(page: Page, moduleName: string): Promise<Locator>;
+async function openModuleCard(page: Page, moduleName: string, opts: { allowMissing: true }): Promise<Locator | null>;
+async function openModuleCard(page: Page, moduleName: string, opts?: { allowMissing?: boolean }): Promise<Locator | null> {
+  const exactName = new RegExp(`^\\s*${escapeRegExp(moduleName)}\\s*$`, 'i');
   const card = page
     .locator('.module-card', {
       has: page.locator('.module-card__title .name', { hasText: exactName }),
@@ -128,6 +130,19 @@ async function openModuleCard(page: Page, moduleName: string) {
   await waitForModuleList(page);
   await searchModuleCard(page, moduleName);
 
+  if (await card.isVisible().catch(() => false)) return card;
+
+  // Search filters can become stale after module install/uninstall side effects.
+  // Fall back to the full board once before treating the card as missing.
+  await clearSearchFilters(page);
+  await waitForModuleList(page);
+
+  if (await card.isVisible().catch(() => false)) return card;
+
+  if (opts?.allowMissing) {
+    return null;
+  }
+
   await expect(card).toBeVisible({ timeout: 30000 });
   return card;
 }
@@ -136,7 +151,10 @@ async function openModuleCard(page: Page, moduleName: string) {
  * Reads the current status label shown on a module card.
  */
 async function moduleStatusText(page: Page, moduleName: string) {
-  const card = await openModuleCard(page, moduleName);
+  const card = await openModuleCard(page, moduleName, { allowMissing: true });
+  if (!card) {
+    return '';
+  }
   return (
     (await card
       .locator('.module-card__title .el-tag')
@@ -329,7 +347,7 @@ async function pickTargetModule(page: Page) {
   console.log('[e2e] module cards:', modules.map(m => `${m.name}:${m.status}`).join(', '));
 
   // Prefer lightweight business modules with stable install/upgrade behavior in CI.
-  const preferredNames = ['partner', 'partner_bank', 'partner_commercial', 'auth_ext'];
+  const preferredNames = ['auth_ext', 'partner_bank', 'partner_commercial', 'partner'];
   for (const name of preferredNames) {
     const target = modules.find(m => m.name === name && m.status.includes('未安装'));
     if (target) return target;
