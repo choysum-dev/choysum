@@ -197,7 +197,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type IrModule from '@/meta/service/models/ir_module';
 import type IrModuleIndex from '@/meta/service/models/ir_module_index';
@@ -574,7 +574,6 @@ function manifestSummary(raw: any) {
 }
 
 const syncLoading = ref(false);
-const autoSyncTriggered = ref(false);
 
 /**
  * Triggers a forced module index sync from the kanban toolbar.
@@ -591,18 +590,6 @@ async function onSyncIndex() {
     syncLoading.value = false;
   }
 }
-
-watch(
-  () => (store as any)?.state?.result,
-  result => {
-    if (autoSyncTriggered.value) return;
-    const rows = (result as any)?.rows as any[] | undefined;
-    if (!Array.isArray(rows)) return;
-    if (rows.length > 0) return;
-    autoSyncTriggered.value = true;
-    void onSyncIndex();
-  }
-);
 
 onBeforeUnmount(() => {
   clearPolling();

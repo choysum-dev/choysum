@@ -179,6 +179,7 @@ type ModuleManager struct {
 	entities                 []any
 	bootstrapOnce            sync.Once
 	lockerFactory            statepkg.LockerFactory
+	moduleIndexSyncLocal     func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleIndexSyncStats, error)
 	originCoordinatorFactory func(runtimeScope scope.Scope) OriginCoordinator
 }
 
@@ -490,6 +491,35 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 	return nil
 }
 
+func containsModuleName(moduleNames []string, target string) bool {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return false
+	}
+	for _, moduleName := range moduleNames {
+		if strings.EqualFold(strings.TrimSpace(moduleName), target) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *ModuleManager) syncModuleIndexAfterInstall(ctx context.Context, logger *slog.Logger, moduleNames []string) error {
+	if !containsModuleName(moduleNames, "meta") {
+		return nil
+	}
+	syncFn := m.moduleIndexSyncLocal
+	if syncFn == nil {
+		syncFn = SyncLocalModuleIndex
+	}
+	if _, err := syncFn(ctx, m.runtimeScope, m.lockerFactory); err != nil {
+		if logger != nil {
+			logger.Warn("module index sync after meta install failed", "error", err)
+		}
+	}
+	return nil
+}
+
 func (m *ModuleManager) Install(ctx context.Context, name string) error {
 	return m.withModuleManagerLease(ctx, func() error {
 		ctx, opid := ensureOpIDInContext(ctx)
@@ -653,6 +683,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 		}
 		if err := m.refreshModuleIndexForLocalModules(ctx, plan.ModuleOrder); err != nil {
+			return err
+		}
+		if err := m.syncModuleIndexAfterInstall(ctx, logger, plan.ModuleOrder); err != nil {
 			return err
 		}
 		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
@@ -1024,6 +1057,7 @@ func NewModuleManager(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptExec
 		lockerFactory: func(runtimeScope scope.Scope) statepkg.Locker {
 			return lease.New(runtimeScope)
 		},
+		moduleIndexSyncLocal: SyncLocalModuleIndex,
 	}
 
 	// Default entity set: shared IR, module admin/ops, and lease models.
