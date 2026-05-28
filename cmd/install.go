@@ -12,6 +12,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -80,6 +81,15 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					}
 					defer compilerExecutor.Stop()
 
+					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
+						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
+							if strings.Contains(peekErr.Error(), "not found in addons path") {
+								peekErr = xfmt.Errorf("module %s not found in addons path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
+							}
+							return peekErr
+						}
+					}
+
 					txScope.Logger().Debug("module install started", "module", moduleName)
 					moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)
 					if err := moduleLifecycle.Install(tx.Context(), lifecycle.InstallRequest{Name: moduleName, WithDemo: withDemo}); err != nil {
@@ -88,7 +98,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					txScope.Logger().Debug("module installed", "module", moduleName)
 					return nil
 				}); err != nil {
-					if parsed.Kind == internalorigin.InputKindLocal && strings.Contains(err.Error(), "not found in addons path") {
+					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && strings.Contains(err.Error(), "not found in addons path") {
 						err = xfmt.Errorf("module %s not found in addons path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
 					}
 					attrs := []any{"error", err}

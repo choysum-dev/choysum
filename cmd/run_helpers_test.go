@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -190,8 +191,9 @@ func TestValidateRunSqlite(t *testing.T) {
 		{name: "path missing", dsn: filepath.Join(tmpDir, "missing.db"), wantReason: "path does not exist"},
 		{name: "path is directory", dsn: tmpDir, wantReason: "path is a directory"},
 		{name: "path is symlink", dsn: symlinkPath, wantReason: "path is a symlink"},
-		{name: "valid file uri", dsn: "file://" + validPath, wantReason: ""},
-		{name: "valid file", dsn: validPath, wantReason: ""},
+		{name: "file uri missing sqlite pragmas", dsn: "file://" + validPath, wantReason: "sqlite dsn missing required params: _fk=1, _busy_timeout>0, _journal_mode=WAL"},
+		{name: "file path missing sqlite pragmas", dsn: validPath, wantReason: "sqlite dsn missing required params: _fk=1, _busy_timeout>0, _journal_mode=WAL"},
+		{name: "valid file uri with sqlite pragmas", dsn: fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", validPath), wantReason: ""},
 	}
 
 	for _, tt := range tests {
@@ -212,7 +214,8 @@ func TestValidateRunSqlite(t *testing.T) {
 
 func TestValidateRunSqliteAllowsDefaultCreate(t *testing.T) {
 	missingPath := filepath.Join(t.TempDir(), "state", "choysum.sqlite")
-	if err := validateRunSqlite(missingPath, true); err != nil {
+	missingDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", missingPath)
+	if err := validateRunSqlite(missingDSN, true); err != nil {
 		t.Fatalf("validateRunSqlite(default create) = %#v", err)
 	}
 }
@@ -512,9 +515,10 @@ func TestLoadRunConfig(t *testing.T) {
 		if got := loaded.scopeInput.dbOptions.dialect; got != "sqlite" {
 			t.Fatalf("db dialect = %q, want sqlite", got)
 		}
-		wantDBPath, _ := filepath.Abs(filepath.Join(homeDir, ".choysum", "choysum.sqlite"))
-		if got := loaded.scopeInput.dbOptions.dsn; filepath.Clean(got) != filepath.Clean(wantDBPath) {
-			t.Fatalf("db dsn = %q, want %q", got, wantDBPath)
+		wantDBRoot, _ := filepath.Abs(filepath.Join(homeDir, ".choysum"))
+		wantDBDSN := config.DefaultSQLiteDSN(wantDBRoot)
+		if got := loaded.scopeInput.dbOptions.dsn; got != wantDBDSN {
+			t.Fatalf("db dsn = %q, want %q", got, wantDBDSN)
 		}
 		if !loaded.scopeInput.dbOptions.allowCreate {
 			t.Fatal("expected default sqlite path to allow first-run creation")
@@ -578,12 +582,13 @@ func TestValidateRunConfig(t *testing.T) {
 		if err := os.WriteFile(dbPath, []byte("sqlite"), 0o644); err != nil {
 			t.Fatalf("write sqlite file: %v", err)
 		}
+		dbDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", dbPath)
 
 		cfg := &config.Config{
 			AddonsPath: addonsDir,
 			Db: &config.DbConfig{
 				Dialect: "sqlite",
-				DSN:     dbPath,
+				DSN:     dbDSN,
 			},
 		}
 		scopeInput := newRunRuntimeScopeInput(

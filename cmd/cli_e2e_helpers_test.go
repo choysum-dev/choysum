@@ -359,6 +359,7 @@ func writeTempConfigWithDSN(t *testing.T, dialect, dsn, addonsPath string) strin
 	tmpDir := t.TempDir()
 	defaultChoysumPath := filepath.Join(tmpDir, ".choysum")
 	distPath := filepath.Join(tmpDir, "dist")
+	dsn = normalizeConfigSQLiteDSN(dialect, dsn)
 	if addonsPath == "" {
 		addonsPath = filepath.Join(tmpDir, "addons")
 		if err := os.MkdirAll(addonsPath, 0o755); err != nil {
@@ -392,11 +393,12 @@ func writeTempInitializedRunConfig(t *testing.T, enabledTLS bool) (string, strin
 	port := findFreePort(t)
 	addr := net.JoinHostPort(bindAddress, strconv.Itoa(port))
 	configPath := filepath.Join(tmpDir, "config.yaml")
+	dbDSN := normalizeConfigSQLiteDSN("sqlite", dbPath)
 	content := fmt.Sprintf("default_choysum_path: %s\naddons_path: %s\ndist_path: %s\ndb:\n  dialect: sqlite\n  dsn: %s\nserver:\n  bindAddress: %s\n  port: %d\n  enabledTLS: %t\nauth:\n  enabled: false\n",
 		strconv.Quote(defaultChoysumPath),
 		strconv.Quote(addonsPath),
 		strconv.Quote(distPath),
-		strconv.Quote(dbPath),
+		strconv.Quote(dbDSN),
 		strconv.Quote(bindAddress),
 		port,
 		enabledTLS,
@@ -436,7 +438,25 @@ func writeRawConfig(t *testing.T, content string) string {
 
 func readConfigDbBlock(t *testing.T, dialect, dsn string) string {
 	t.Helper()
+	dsn = normalizeConfigSQLiteDSN(dialect, dsn)
 	return fmt.Sprintf("db:\n  dialect: %s\n  dsn: %s\n", dialect, strconv.Quote(dsn))
+}
+
+func normalizeConfigSQLiteDSN(dialect, dsn string) string {
+	if !strings.EqualFold(strings.TrimSpace(dialect), "sqlite") {
+		return dsn
+	}
+	trimmed := strings.TrimSpace(dsn)
+	if trimmed == "" || strings.EqualFold(trimmed, ":memory:") {
+		return dsn
+	}
+	if strings.Contains(trimmed, "?") || strings.HasPrefix(strings.ToLower(trimmed), "file:") || strings.Contains(trimmed, "://") {
+		return dsn
+	}
+	if !filepath.IsAbs(trimmed) {
+		return dsn
+	}
+	return fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", trimmed)
 }
 
 func findFreePort(t *testing.T) int {
