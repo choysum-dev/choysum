@@ -34,7 +34,7 @@ func writeTempE2EConfig(t *testing.T, addonsPath string) string {
 		"dist_path: \"" + distDir + "\"\n" +
 		"npm_path: \"\"\n" +
 		"log:\n  level: \"info\"\n" +
-		"db:\n  dialect: \"sqlite\"\n  dsn: \"file:" + filepath.Join(runDir, "db.sqlite") + "?mode=rwc&_fk=1\"\n" +
+		"db:\n  dialect: \"sqlite\"\n  dsn: \"file:" + filepath.Join(runDir, "db.sqlite") + "?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL\"\n" +
 		"server:\n  bindAddress: \"127.0.0.1\"\n  port: 18080\n  hotReload: false\n" +
 		"compile:\n  production: false\n"
 	if err := os.WriteFile(configPath, []byte(configYAML), 0o644); err != nil {

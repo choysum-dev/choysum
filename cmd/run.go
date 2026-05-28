@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -676,6 +677,9 @@ func validateRunSqlite(dsn string, allowCreate bool) *runError {
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			if allowCreate {
+				if pragmaErr := validateRunSQLitePragmas(dsn); pragmaErr != nil {
+					return pragmaErr
+				}
 				return nil
 			}
 			return &runError{
@@ -716,6 +720,9 @@ func validateRunSqlite(dsn string, allowCreate bool) *runError {
 			next:     runSqlitePathNext(allowCreate),
 		}
 	}
+	if pragmaErr := validateRunSQLitePragmas(dsn); pragmaErr != nil {
+		return pragmaErr
+	}
 	return nil
 }
 
@@ -724,6 +731,60 @@ func runSqlitePathNext(allowCreate bool) string {
 		return "choose a valid sqlite file path and retry; for run, ensure the path is absolute and accessible"
 	}
 	return "choose a valid sqlite file path and retry; for run, ensure the path is absolute and the DB file already exists and is a regular file"
+}
+
+func validateRunSQLitePragmas(dsn string) *runError {
+	params, err := sqliteDSNQueryParams(dsn)
+	if err != nil {
+		return &runError{
+			exitCode: 3,
+			errMsg:   "invalid sqlite dsn",
+			reason:   "sqlite dsn query params are invalid",
+			next:     "set sqlite dsn like file:/absolute/path/choysum.sqlite?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL and retry",
+		}
+	}
+
+	missing := make([]string, 0, 3)
+	if strings.TrimSpace(params.Get("_fk")) != "1" {
+		missing = append(missing, "_fk=1")
+	}
+
+	busyTimeoutRaw := strings.TrimSpace(params.Get("_busy_timeout"))
+	busyTimeoutMs, parseErr := strconv.Atoi(busyTimeoutRaw)
+	if busyTimeoutRaw == "" || parseErr != nil || busyTimeoutMs <= 0 {
+		missing = append(missing, "_busy_timeout>0")
+	}
+
+	if !strings.EqualFold(strings.TrimSpace(params.Get("_journal_mode")), "WAL") {
+		missing = append(missing, "_journal_mode=WAL")
+	}
+
+	if len(missing) == 0 {
+		return nil
+	}
+
+	return &runError{
+		exitCode: 3,
+		errMsg:   "invalid sqlite dsn",
+		reason:   fmt.Sprintf("sqlite dsn missing required params: %s", strings.Join(missing, ", ")),
+		next:     "set sqlite dsn like file:/absolute/path/choysum.sqlite?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL and retry",
+	}
+}
+
+func sqliteDSNQueryParams(dsn string) (url.Values, error) {
+	trimmed := strings.TrimSpace(dsn)
+	if strings.HasPrefix(strings.ToLower(trimmed), "file:") || strings.Contains(trimmed, "://") {
+		parsed, err := url.Parse(trimmed)
+		if err != nil {
+			return nil, err
+		}
+		return parsed.Query(), nil
+	}
+	queryIndex := strings.Index(trimmed, "?")
+	if queryIndex < 0 {
+		return url.Values{}, nil
+	}
+	return url.ParseQuery(trimmed[queryIndex+1:])
 }
 
 func isDefaultRunSqlitePath(dsn string, defaultPath string) bool {

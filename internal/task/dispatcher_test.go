@@ -6,6 +6,7 @@ package task
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -672,11 +673,17 @@ func TestDispatcherSelectDispatchJobsFairByApp(t *testing.T) {
 func TestDispatcherWakeupTriggersPoll(t *testing.T) {
 	ctx := context.Background()
 
-	dsn := "file:task_dispatcher_wakeup?mode=memory&cache=shared"
+	dsn := fmt.Sprintf("file:task_dispatcher_wakeup_%d?mode=memory&cache=shared&_busy_timeout=5000", time.Now().UnixNano())
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("resolve sql db: %v", err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
 	if err := db.AutoMigrate(&Job{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

@@ -500,7 +500,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
 			AddonsPath: t.TempDir(),
 			DistPath:   baseDist,
-			Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared"},
+			Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
 			Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
 			Compile:    &config.CompileConfig{BundleMode: "bundle"},
 		}}
@@ -853,7 +853,7 @@ func TestInProcessGrpcHarnessGuards(t *testing.T) {
 	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
 		AddonsPath: t.TempDir(),
 		DistPath:   t.TempDir(),
-		Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared"},
+		Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
 		Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
 		Compile:    &config.CompileConfig{BundleMode: "application"},
 	}}
@@ -889,7 +889,7 @@ func TestInProcessGrpcHarnessGuards(t *testing.T) {
 	bundleRuntimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
 		AddonsPath: t.TempDir(),
 		DistPath:   bundleDist,
-		Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared"},
+		Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
 		Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
 		Compile:    &config.CompileConfig{BundleMode: "bundle"},
 	}}
