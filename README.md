@@ -2,7 +2,7 @@
 
 English | [简体中文](README_zh-cn.md)
 
-🌱 **Choysum: An Open-Source Enterprise Application Framework**
+🌱 **Choysum: An efficient TypeScript runtime custom-built for customization and extension, featuring out-of-the-box ERP core modules.**
 
 *   **⚡ Full-Stack TypeScript Development**: Unified TypeScript for both frontend and backend. Lower development barrier, easier team collaboration.
 *   **🧩 Modular Customization**: Compile-time model-based extension architecture allows free overriding and extension of native features, with perfect isolation between core code and custom business logic.
