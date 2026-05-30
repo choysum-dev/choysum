@@ -583,6 +583,27 @@ func TestSafeStaticPathRejectsParentRoot(t *testing.T) {
 		t.Fatalf("mkdir web path: %v", err)
 	}
 
+	if got, ok := safeStaticPath(webPath, "/api/about.html", "/web/"); ok || got != "" {
+		t.Fatalf("safeStaticPath(prefix mismatch) = (%q, %v), want (\"\", false)", got, ok)
+	}
+
+	if got, ok := safeStaticPath(webPath, "/web/about.html", "/web/"); !ok {
+		t.Fatalf("safeStaticPath(valid) ok = %v, want true", ok)
+	} else {
+		want := filepath.Join(webPath, "about.html")
+		gotEval, err := filepath.Abs(got)
+		if err != nil {
+			t.Fatalf("abs got path: %v", err)
+		}
+		wantEval, err := filepath.Abs(want)
+		if err != nil {
+			t.Fatalf("abs want path: %v", err)
+		}
+		if gotEval != wantEval {
+			t.Fatalf("safeStaticPath(valid) = %q, want %q", gotEval, wantEval)
+		}
+	}
+
 	if got, ok := safeStaticPath(webPath, "/web/..", "/web/"); ok || got != "" {
 		t.Fatalf("safeStaticPath() = (%q, %v), want (\"\", false)", got, ok)
 	}

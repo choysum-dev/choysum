@@ -356,18 +356,34 @@ func (s *ApplicationService) staticFileHandler(webPath string, stripPrefix strin
 }
 
 func safeStaticPath(webPath string, requestPath string, stripPrefix string) (string, bool) {
+	if !strings.HasPrefix(requestPath, stripPrefix) {
+		return "", false
+	}
+
 	relPath := strings.TrimPrefix(requestPath, stripPrefix)
 	relPath = strings.TrimLeft(relPath, "/")
+	relPath = filepath.Clean(relPath)
 
-	basePath := filepath.Clean(webPath)
-	candidatePath := filepath.Clean(filepath.Join(basePath, relPath))
+	baseAbsPath, err := filepath.Abs(webPath)
+	if err != nil {
+		return "", false
+	}
 
-	relToBase, _ := filepath.Rel(basePath, candidatePath)
+	candidatePath := filepath.Join(baseAbsPath, relPath)
+	candidateAbsPath, err := filepath.Abs(candidatePath)
+	if err != nil {
+		return "", false
+	}
+
+	relToBase, err := filepath.Rel(baseAbsPath, candidateAbsPath)
+	if err != nil {
+		return "", false
+	}
 	if relToBase == ".." || strings.HasPrefix(relToBase, ".."+string(os.PathSeparator)) {
 		return "", false
 	}
 
-	return candidatePath, true
+	return candidateAbsPath, true
 }
 
 func (s *ApplicationService) serveAssetRequest(w http.ResponseWriter, r *http.Request, handler http.Handler) {
