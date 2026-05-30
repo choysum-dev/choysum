@@ -331,12 +331,11 @@ func (s *ApplicationService) staticFileHandler(webPath string, stripPrefix strin
 		}
 
 		if path != stripPrefix {
-			filePath, ok := safeStaticPath(webPath, path, stripPrefix)
-			fileInfo, err := os.Stat(filePath)
-
-			if ok && err == nil && fileInfo.Mode().IsRegular() {
-				fileHandler.ServeHTTP(w, r)
-				return
+			if filePath, ok := safeStaticPath(webPath, path, stripPrefix); ok {
+				if fileInfo, err := os.Stat(filePath); err == nil && fileInfo.Mode().IsRegular() {
+					fileHandler.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			indexPath := filepath.Join(webPath, "index.html")
