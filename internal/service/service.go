@@ -362,10 +362,7 @@ func safeStaticPath(webPath string, requestPath string, stripPrefix string) (str
 	basePath := filepath.Clean(webPath)
 	candidatePath := filepath.Clean(filepath.Join(basePath, relPath))
 
-	relToBase, err := filepath.Rel(basePath, candidatePath)
-	if err != nil {
-		return "", false
-	}
+	relToBase, _ := filepath.Rel(basePath, candidatePath)
 	if relToBase == ".." || strings.HasPrefix(relToBase, ".."+string(os.PathSeparator)) {
 		return "", false
 	}
