@@ -487,6 +487,17 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 		t.Fatalf("unexpected spa fallback response: code=%d body=%q", spaRR.Code, spaRR.Body.String())
 	}
 
+	secretPath := filepath.Join(distDir, "secret.txt")
+	if err := os.WriteFile(secretPath, []byte("super-secret"), 0o644); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+	traversalReq := httptest.NewRequest(http.MethodGet, "/web/../secret.txt", nil)
+	traversalRR := httptest.NewRecorder()
+	handlers["/web/"].ServeHTTP(traversalRR, traversalReq)
+	if traversalRR.Code != http.StatusOK || traversalRR.Body.String() != "<html>spa</html>" {
+		t.Fatalf("unexpected traversal response: code=%d body=%q", traversalRR.Code, traversalRR.Body.String())
+	}
+
 	rootReq := httptest.NewRequest(http.MethodGet, "/", nil)
 	rootRR := httptest.NewRecorder()
 	handlers["/"].ServeHTTP(rootRR, rootReq)
