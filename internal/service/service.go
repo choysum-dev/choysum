@@ -331,12 +331,11 @@ func (s *ApplicationService) staticFileHandler(webPath string, stripPrefix strin
 		}
 
 		if path != stripPrefix {
-			filePath := filepath.Join(webPath, strings.TrimPrefix(path, stripPrefix))
-			fileInfo, err := os.Stat(filePath)
-
-			if err == nil && fileInfo.Mode().IsRegular() {
-				fileHandler.ServeHTTP(w, r)
-				return
+			if filePath, ok := safeStaticPath(webPath, path, stripPrefix); ok {
+				if fileInfo, err := os.Stat(filePath); err == nil && fileInfo.Mode().IsRegular() {
+					fileHandler.ServeHTTP(w, r)
+					return
+				}
 			}
 
 			indexPath := filepath.Join(webPath, "index.html")
@@ -354,6 +353,37 @@ func (s *ApplicationService) staticFileHandler(webPath string, stripPrefix strin
 
 		fileHandler.ServeHTTP(w, r)
 	})
+}
+
+func safeStaticPath(webPath string, requestPath string, stripPrefix string) (string, bool) {
+	if !strings.HasPrefix(requestPath, stripPrefix) {
+		return "", false
+	}
+
+	relPath := strings.TrimPrefix(requestPath, stripPrefix)
+	relPath = strings.TrimLeft(relPath, "/")
+	relPath = filepath.Clean(relPath)
+
+	baseAbsPath, err := filepath.Abs(webPath)
+	if err != nil {
+		return "", false
+	}
+
+	candidatePath := filepath.Join(baseAbsPath, relPath)
+	candidateAbsPath, err := filepath.Abs(candidatePath)
+	if err != nil {
+		return "", false
+	}
+
+	relToBase, err := filepath.Rel(baseAbsPath, candidateAbsPath)
+	if err != nil {
+		return "", false
+	}
+	if relToBase == ".." || strings.HasPrefix(relToBase, ".."+string(os.PathSeparator)) {
+		return "", false
+	}
+
+	return candidateAbsPath, true
 }
 
 func (s *ApplicationService) serveAssetRequest(w http.ResponseWriter, r *http.Request, handler http.Handler) {

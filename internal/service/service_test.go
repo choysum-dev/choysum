@@ -487,6 +487,31 @@ func TestServiceScriptsAndWebHandlers(t *testing.T) {
 		t.Fatalf("unexpected spa fallback response: code=%d body=%q", spaRR.Code, spaRR.Body.String())
 	}
 
+	secretPath := filepath.Join(distDir, "secret.txt")
+	if err := os.WriteFile(secretPath, []byte("super-secret"), 0o644); err != nil {
+		t.Fatalf("write secret file: %v", err)
+	}
+	traversalReq := httptest.NewRequest(http.MethodGet, "/web/../secret.txt", nil)
+	traversalRR := httptest.NewRecorder()
+	handlers["/web/"].ServeHTTP(traversalRR, traversalReq)
+	if traversalRR.Code != http.StatusOK || traversalRR.Body.String() != "<html>spa</html>" {
+		t.Fatalf("unexpected traversal response: code=%d body=%q", traversalRR.Code, traversalRR.Body.String())
+	}
+
+	dirReq := httptest.NewRequest(http.MethodGet, "/web/assets", nil)
+	dirRR := httptest.NewRecorder()
+	handlers["/web/"].ServeHTTP(dirRR, dirReq)
+	if dirRR.Code != http.StatusOK || dirRR.Body.String() != "<html>spa</html>" {
+		t.Fatalf("unexpected directory fallback response: code=%d body=%q", dirRR.Code, dirRR.Body.String())
+	}
+
+	rootWebReq := httptest.NewRequest(http.MethodGet, "/web/", nil)
+	rootWebRR := httptest.NewRecorder()
+	handlers["/web/"].ServeHTTP(rootWebRR, rootWebReq)
+	if rootWebRR.Code != http.StatusOK || rootWebRR.Body.String() != "<html>spa</html>" {
+		t.Fatalf("unexpected web root response: code=%d body=%q", rootWebRR.Code, rootWebRR.Body.String())
+	}
+
 	rootReq := httptest.NewRequest(http.MethodGet, "/", nil)
 	rootRR := httptest.NewRecorder()
 	handlers["/"].ServeHTTP(rootRR, rootReq)
@@ -549,6 +574,42 @@ func TestStaticFileHandlerLogsAssetRequestOutcomes(t *testing.T) {
 	}
 	if !strings.Contains(logs, "web asset served") {
 		t.Fatalf("expected success asset debug log to remain present, got %q", logs)
+	}
+}
+
+func TestSafeStaticPathRejectsParentRoot(t *testing.T) {
+	webPath := filepath.Join(t.TempDir(), "web")
+	if err := os.MkdirAll(webPath, 0o755); err != nil {
+		t.Fatalf("mkdir web path: %v", err)
+	}
+
+	if got, ok := safeStaticPath(webPath, "/api/about.html", "/web/"); ok || got != "" {
+		t.Fatalf("safeStaticPath(prefix mismatch) = (%q, %v), want (\"\", false)", got, ok)
+	}
+
+	if got, ok := safeStaticPath(webPath, "/web/about.html", "/web/"); !ok {
+		t.Fatalf("safeStaticPath(valid) ok = %v, want true", ok)
+	} else {
+		want := filepath.Join(webPath, "about.html")
+		gotEval, err := filepath.Abs(got)
+		if err != nil {
+			t.Fatalf("abs got path: %v", err)
+		}
+		wantEval, err := filepath.Abs(want)
+		if err != nil {
+			t.Fatalf("abs want path: %v", err)
+		}
+		if gotEval != wantEval {
+			t.Fatalf("safeStaticPath(valid) = %q, want %q", gotEval, wantEval)
+		}
+	}
+
+	if got, ok := safeStaticPath(webPath, "/web/..", "/web/"); ok || got != "" {
+		t.Fatalf("safeStaticPath() = (%q, %v), want (\"\", false)", got, ok)
+	}
+
+	if got, ok := safeStaticPath(webPath, "/web/../../secret.txt", "/web/"); ok || got != "" {
+		t.Fatalf("safeStaticPath(deeper traversal) = (%q, %v), want (\"\", false)", got, ok)
 	}
 }
 
