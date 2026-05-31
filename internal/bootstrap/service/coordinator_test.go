@@ -510,3 +510,35 @@ func TestHashAdminPasswordForBootstrapAcceptsClientHash(t *testing.T) {
 		t.Fatalf("bcrypt.CompareHashAndPassword() error = %v", cmpErr)
 	}
 }
+
+func TestNormalizeWirePasswordValidations(t *testing.T) {
+	t.Run("rejects invalid hash length", func(t *testing.T) {
+		_, err := normalizeWirePassword("$CH$abcd")
+		if err == nil {
+			t.Fatal("expected invalid length error")
+		}
+		if bootstrapErrorCode(err) != bootstrapErrCodeInputInvalid || !strings.Contains(err.Error(), "invalid client hash length") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("rejects invalid hash encoding", func(t *testing.T) {
+		_, err := normalizeWirePassword("$CH$GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG")
+		if err == nil {
+			t.Fatal("expected invalid encoding error")
+		}
+		if bootstrapErrorCode(err) != bootstrapErrCodeInputInvalid || !strings.Contains(err.Error(), "invalid client hash encoding") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("normalizes uppercase hex", func(t *testing.T) {
+		got, err := normalizeWirePassword("$CH$ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD")
+		if err != nil {
+			t.Fatalf("normalizeWirePassword() error = %v", err)
+		}
+		if got != strings.ToLower("ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD") {
+			t.Fatalf("normalized hash = %q", got)
+		}
+	})
+}

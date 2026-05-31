@@ -549,6 +549,16 @@ default_choysum_path: ./.choysum-custom
 }
 
 func TestNewDefaultFrontendEnv(t *testing.T) {
+	t.Run("nil config falls back to root development env", func(t *testing.T) {
+		env := NewDefaultFrontendEnv(nil)
+		if env["BASE_URL"] != "/" {
+			t.Fatalf("BASE_URL = %#v, want /", env["BASE_URL"])
+		}
+		if env["MODE"] != "development" || env["PROD"] != false || env["DEV"] != true {
+			t.Fatalf("unexpected nil-config mode flags: %#v", env)
+		}
+	})
+
 	t.Run("development mode defaults", func(t *testing.T) {
 		cfg := &Config{
 			Compile: &CompileConfig{Production: false},
