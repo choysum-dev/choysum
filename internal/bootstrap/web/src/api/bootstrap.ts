@@ -7,7 +7,7 @@ import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { InitializationState, Workspace } from '../gen/bootstrap/internal/bootstrap/proto/bootstrap_pb';
 import type { Workspace_GetInitializationStatus_Resp, Workspace_Initialize_Req } from '../gen/bootstrap/internal/bootstrap/proto/bootstrap_pb';
 
-export type InitializeWorkspaceInput = Pick<Workspace_Initialize_Req, 'adminUsername' | 'password' | 'clientHashingEnabled' | 'idempotencyKey'>;
+export type InitializeWorkspaceInput = Pick<Workspace_Initialize_Req, 'adminUsername' | 'password' | 'idempotencyKey'>;
 
 export interface InitializeWorkspaceResult {
   accepted: boolean;
@@ -66,12 +66,32 @@ function normalizeBootstrapAPIError(error: unknown): Error {
   return new Error('unknown bootstrap rpc error');
 }
 
+async function hashPasswordForBootstrap(password: string, username: string): Promise<string> {
+  const prefixMarker = '$CH$';
+  if (password.startsWith(prefixMarker)) {
+    return password;
+  }
+
+  if (!globalThis.isSecureContext || !globalThis.crypto?.subtle) {
+    throw new Error('Client password hashing is unavailable in this browser context.');
+  }
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${password}:${username}`);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = new Uint8Array(hashBuffer);
+  const hashHex = Array.prototype.map.call(hashArray, x => x.toString(16).padStart(2, '0')).join('');
+  return `${prefixMarker}${hashHex}`;
+}
+
 export async function initializeWorkspace(input: InitializeWorkspaceInput): Promise<InitializeWorkspaceResult> {
   try {
+    const adminUsername = input.adminUsername.trim();
+    const password = await hashPasswordForBootstrap(input.password, adminUsername);
+
     const resp = await workspaceClient.initialize({
-      adminUsername: input.adminUsername.trim(),
-      password: input.password,
-      clientHashingEnabled: input.clientHashingEnabled,
+      adminUsername,
+      password,
       idempotencyKey: input.idempotencyKey,
     });
 

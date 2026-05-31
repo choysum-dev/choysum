@@ -202,14 +202,9 @@ function sha256HexFallback(input: string): string {
  * Hash a password on the client before it is sent to the backend.
  */
 export async function hashPasswordClient(password: string, username: string): Promise<string> {
-  // Client-side hashing is enabled by default unless explicitly disabled.
-  const clientHashingFlag = String(import.meta.env.CHOYSUM_CLIENT_HASHING_ENABLED ?? '')
-    .trim()
-    .toLowerCase();
-  const clientHashingEnabled = !(clientHashingFlag === 'false' || clientHashingFlag === '0' || clientHashingFlag === 'off' || clientHashingFlag === 'no');
   const prefixMarker = '$CH$';
 
-  if (!clientHashingEnabled || !isClient) return password;
+  if (!isClient) return password;
 
   const dataToHash = `${password}:${username}`;
 

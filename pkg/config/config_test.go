@@ -303,9 +303,6 @@ auth:
 	if cfg.Auth.JWT == nil {
 		t.Fatal("expected auth.jwt defaults to be initialized")
 	}
-	if !cfg.Auth.EnableClientHashing {
-		t.Fatal("expected auth.enableClientHashing to default to true when omitted")
-	}
 }
 
 func TestNewConfigAuthHttpAuthDefaultsWithPartialSection(t *testing.T) {
@@ -556,7 +553,6 @@ func TestNewDefaultFrontendEnv(t *testing.T) {
 		cfg := &Config{
 			Compile: &CompileConfig{Production: false},
 			Server:  &ServerConfig{WebBaseURL: "/portal/"},
-			Auth:    &AuthConfig{EnableClientHashing: true},
 		}
 		env := NewDefaultFrontendEnv(cfg)
 		if env["BASE_URL"] != "/portal/" {
@@ -565,16 +561,12 @@ func TestNewDefaultFrontendEnv(t *testing.T) {
 		if env["MODE"] != "development" || env["PROD"] != false || env["DEV"] != true {
 			t.Fatalf("unexpected dev mode flags: %#v", env)
 		}
-		if env["CHOYSUM_CLIENT_HASHING_ENABLED"] != true {
-			t.Fatalf("expected client hashing enabled, got %#v", env["CHOYSUM_CLIENT_HASHING_ENABLED"])
-		}
 	})
 
-	t.Run("production mode trims trailing slash and mirrors auth flag", func(t *testing.T) {
+	t.Run("production mode trims trailing slash", func(t *testing.T) {
 		cfg := &Config{
 			Compile: &CompileConfig{Production: true},
 			Server:  &ServerConfig{WebBaseURL: "/web"},
-			Auth:    &AuthConfig{EnableClientHashing: false},
 		}
 		env := NewDefaultFrontendEnv(cfg)
 		if env["BASE_URL"] != "/web/" {
@@ -582,9 +574,6 @@ func TestNewDefaultFrontendEnv(t *testing.T) {
 		}
 		if env["MODE"] != "production" || env["PROD"] != true || env["DEV"] != false {
 			t.Fatalf("unexpected prod mode flags: %#v", env)
-		}
-		if env["CHOYSUM_CLIENT_HASHING_ENABLED"] != false {
-			t.Fatalf("expected client hashing disabled, got %#v", env["CHOYSUM_CLIENT_HASHING_ENABLED"])
 		}
 	})
 }
@@ -597,8 +586,6 @@ compile:
   production: false
 server:
   webBaseUrl: /console/
-auth:
-  enableClientHashing: true
 `)
 	envOnlyCfgPath := writeTestConfig(t, `
 default_choysum_path: ./.choysum-custom

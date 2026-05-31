@@ -424,7 +424,6 @@ async function onSubmit(): Promise<void> {
     const result = await initializeWorkspace({
       adminUsername: adminUsername.value,
       password: password.value,
-      clientHashingEnabled: true,
       idempotencyKey: createIdempotencyKey(),
     });
 

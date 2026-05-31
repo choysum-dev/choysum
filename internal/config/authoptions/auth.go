@@ -27,7 +27,6 @@ type AuthConfig struct {
 	JobTokenAllowedSANs []string                      `mapstructure:"jobTokenAllowedSANs"`
 	AuthzDecisionLog    string                        `mapstructure:"authzDecisionLog"`
 	AuthzDecisionAudit  bool                          `mapstructure:"authzDecisionAudit"`
-	EnableClientHashing bool                          `mapstructure:"enableClientHashing"`
 }
 
 // HttpAuthConfig configures HTTP request authentication behavior.
@@ -81,8 +80,7 @@ func NewDefaultAuthConfigWithChoysumRoot(choysumRoot string) (*AuthConfig, error
 		JobTokenAllowedSANs: []string{
 			"task.choysum.internal",
 		},
-		GrpcEntryPolicy:     defaultGrpcEntryPolicy(),
-		EnableClientHashing: true,
+		GrpcEntryPolicy: defaultGrpcEntryPolicy(),
 	}, nil
 }
 
@@ -108,7 +106,6 @@ func ApplyViperDefaults(v *viper.Viper) error {
 	v.SetDefault("auth.httpAuth.responseFormat", httpAuth.ResponseFormat)
 	v.SetDefault("auth.httpAuth.cookieName", httpAuth.CookieName)
 	v.SetDefault("auth.httpAuth.queryParamName", httpAuth.QueryParamName)
-	v.SetDefault("auth.enableClientHashing", true)
 	v.SetDefault("auth.authzDecisionLog", "")
 	v.SetDefault("auth.authzDecisionAudit", false)
 	return nil

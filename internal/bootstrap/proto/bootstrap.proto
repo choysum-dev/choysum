@@ -29,7 +29,8 @@ enum InitializationStage {
 message Workspace_Initialize_Req {
   string admin_username = 1;
   string password = 2;
-  bool client_hashing_enabled = 3;
+  reserved 3;
+  reserved "client_hashing_enabled";
   string idempotency_key = 4;
 }
 
