@@ -103,6 +103,7 @@ import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import OViewContainer from '@/web/web/components/view/OViewContainer.vue';
+import { nextLocalToken } from '@/web/web/components/view/localToken';
 
 export type OFormSubmitMode = 'create' | 'edit';
 
@@ -235,18 +236,6 @@ const emit = defineEmits<{
 // Section 7: Cancelable emit helper
 // =============================
 const { emitCancelable } = useCancelableEmit(emit as any);
-
-let localTokenCounter = 0;
-
-function nextLocalToken(prefix: string): string {
-  if (globalThis.crypto?.randomUUID) {
-    return `${prefix}:${globalThis.crypto.randomUUID()}`;
-  }
-
-  const now = Date.now().toString(36);
-  localTokenCounter += 1;
-  return `${prefix}:${now}:${localTokenCounter.toString(36)}`;
-}
 
 // =============================
 // Section 8: Controller & view context provisioning
