@@ -163,7 +163,7 @@ async function hashPasswordForBootstrap(password: string, username: string): Pro
     return `${prefixMarker}${sha256HexFallback(`${password}:${username}`)}`;
   }
 
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
   const hashArray = new Uint8Array(hashBuffer);
   const hashHex = Array.from(hashArray, x => x.toString(16).padStart(2, '0')).join('');
   return `${prefixMarker}${hashHex}`;
