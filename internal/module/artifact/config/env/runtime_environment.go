@@ -11,7 +11,7 @@ type RuntimeEnvironmentConfig struct {
 	Backend  map[string]any `mapstructure:"backendEnv"`
 }
 
-func NewDefaultFrontendEnv(webBaseURL string, production bool, enableClientHashing bool) map[string]any {
+func NewDefaultFrontendEnv(webBaseURL string, production bool) map[string]any {
 	mode := "development"
 	if production {
 		mode = "production"
@@ -23,17 +23,16 @@ func NewDefaultFrontendEnv(webBaseURL string, production bool, enableClientHashi
 	}
 
 	return map[string]any{
-		"BASE_URL":                       baseURL,
-		"MODE":                           mode,
-		"PROD":                           production,
-		"DEV":                            !production,
-		"SSR":                            false,
-		"CHOYSUM_APP_NAME":               "Choysum",
-		"CHOYSUM_APP_VERSION":            "v0.1.0",
-		"CHOYSUM_MAINTENANCE_MODE":       false,
-		"CHOYSUM_CLIENT_HASHING_ENABLED": enableClientHashing,
-		"CHOYSUM_CSRF_ENABLED":           true,
-		"CHOYSUM_ENABLE_REGISTRATION":    true,
+		"BASE_URL":                    baseURL,
+		"MODE":                        mode,
+		"PROD":                        production,
+		"DEV":                         !production,
+		"SSR":                         false,
+		"CHOYSUM_APP_NAME":            "Choysum",
+		"CHOYSUM_APP_VERSION":         "v0.1.0",
+		"CHOYSUM_MAINTENANCE_MODE":    false,
+		"CHOYSUM_CSRF_ENABLED":        true,
+		"CHOYSUM_ENABLE_REGISTRATION": true,
 	}
 }
 

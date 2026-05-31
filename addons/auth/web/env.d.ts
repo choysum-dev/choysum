@@ -6,11 +6,6 @@
  */
 interface ImportMetaEnv {
   /**
-   * Whether client-side password hashing is enabled.
-   */
-  readonly CHOYSUM_CLIENT_HASHING_ENABLED: boolean;
-
-  /**
    * Whether CSRF protection is enabled.
    */
   readonly CHOYSUM_CSRF_ENABLED: boolean;

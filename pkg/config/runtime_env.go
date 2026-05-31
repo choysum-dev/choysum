@@ -9,12 +9,11 @@ type RuntimeEnvironmentConfig = envconfig.RuntimeEnvironmentConfig
 
 func NewDefaultFrontendEnv(c *Config) map[string]any {
 	if c == nil {
-		return envconfig.NewDefaultFrontendEnv("", false, false)
+		return envconfig.NewDefaultFrontendEnv("", false)
 	}
 
 	webBaseURL := ""
 	production := false
-	enableClientHashing := false
 
 	if c.Server != nil {
 		webBaseURL = c.Server.WebBaseURL
@@ -22,11 +21,8 @@ func NewDefaultFrontendEnv(c *Config) map[string]any {
 	if c.Compile != nil {
 		production = c.Compile.Production
 	}
-	if c.Auth != nil {
-		enableClientHashing = c.Auth.EnableClientHashing
-	}
 
-	return envconfig.NewDefaultFrontendEnv(webBaseURL, production, enableClientHashing)
+	return envconfig.NewDefaultFrontendEnv(webBaseURL, production)
 }
 
 func NewDefaultBackendEnv() map[string]any {
