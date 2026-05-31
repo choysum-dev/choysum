@@ -5,8 +5,6 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"strings"
 	"time"
@@ -47,10 +45,9 @@ var (
 )
 
 type initializeInput struct {
-	AdminUsername        string
-	Password             string
-	ClientHashingEnabled bool
-	IdempotencyKey       string
+	AdminUsername  string
+	Password       string
+	IdempotencyKey string
 }
 
 type leaseHandle struct {
@@ -502,7 +499,7 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 		return newBootstrapError(bootstrapErrCodeAdminUpdateFailed, "scope is not available", nil)
 	}
 
-	passwordHash, err := hashAdminPasswordForBootstrap(input.AdminUsername, input.Password, input.ClientHashingEnabled)
+	passwordHash, err := hashAdminPasswordForBootstrap(input.Password)
 	if err != nil {
 		return err
 	}
@@ -567,9 +564,8 @@ func (c *coordinator) defaultUpdateAdminAndMarker(ctx context.Context, input ini
 	}
 }
 
-func hashAdminPasswordForBootstrap(username, password string, clientHashingEnabled bool) (string, error) {
-	_ = clientHashingEnabled
-	clientHashHex, err := normalizeWirePassword(username, password)
+func hashAdminPasswordForBootstrap(password string) (string, error) {
+	clientHashHex, err := normalizeWirePassword(password)
 	if err != nil {
 		return "", err
 	}
@@ -581,22 +577,23 @@ func hashAdminPasswordForBootstrap(username, password string, clientHashingEnabl
 	return string(bcrypted), nil
 }
 
-func normalizeWirePassword(username, password string) (string, error) {
-	if strings.HasPrefix(password, bootstrapClientHashingPrefix) {
-		rawHex := strings.TrimPrefix(password, bootstrapClientHashingPrefix)
-		if len(rawHex) != 64 {
-			return "", newBootstrapError(bootstrapErrCodeInputInvalid, "invalid client hash length", nil)
-		}
-		decoded, err := hex.DecodeString(rawHex)
-		if err != nil || len(decoded) != sha256.Size {
-			return "", newBootstrapError(bootstrapErrCodeInputInvalid, "invalid client hash encoding", err)
-		}
-		return strings.ToLower(rawHex), nil
+func normalizeWirePassword(password string) (string, error) {
+	if !strings.HasPrefix(password, bootstrapClientHashingPrefix) {
+		return "", newBootstrapError(bootstrapErrCodeInputInvalid, "password must be client-hashed", nil)
 	}
 
-	joined := password + ":" + username
-	hash := sha256.Sum256([]byte(joined))
-	return hex.EncodeToString(hash[:]), nil
+	rawHex := strings.TrimPrefix(password, bootstrapClientHashingPrefix)
+	if len(rawHex) != 64 {
+		return "", newBootstrapError(bootstrapErrCodeInputInvalid, "invalid client hash length", nil)
+	}
+
+	for _, ch := range rawHex {
+		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+			return "", newBootstrapError(bootstrapErrCodeInputInvalid, "invalid client hash encoding", nil)
+		}
+	}
+
+	return strings.ToLower(rawHex), nil
 }
 
 func upsertBootstrapSetting(session *scope.Session, key, value string) error {

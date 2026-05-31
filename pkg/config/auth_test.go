@@ -50,9 +50,6 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if !cfg.GrpcAuthentication || !cfg.GrpcMethodAccess || !cfg.GrpcRecordRule || !cfg.GrpcCompanyFilter || !cfg.GrpcFieldRule {
 		t.Fatalf("expected grpc auth switches enabled, got %#v", cfg)
 	}
-	if !cfg.EnableClientHashing {
-		t.Fatal("expected client hashing enabled by default")
-	}
 	if !reflect.DeepEqual(cfg.JobTokenAllowedSANs, []string{"task.choysum.internal"}) {
 		t.Fatalf("unexpected JobTokenAllowedSANs: %#v", cfg.JobTokenAllowedSANs)
 	}

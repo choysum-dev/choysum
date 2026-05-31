@@ -17,6 +17,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestCoordinatorStartInitializationSuccess(t *testing.T) {
@@ -479,4 +480,65 @@ func TestCoordinatorStartInitializationSkipsAdminWhenRuntimeNotReady(t *testing.
 	if !released {
 		t.Fatal("expected lease release to be called")
 	}
+}
+
+func TestNormalizeWirePasswordRejectsRawPassword(t *testing.T) {
+	_, err := normalizeWirePassword("plain-password")
+	if err == nil {
+		t.Fatal("expected error for non-prefixed password")
+	}
+	if bootstrapErrorCode(err) != bootstrapErrCodeInputInvalid {
+		t.Fatalf("bootstrapErrorCode(err) = %q, want %q", bootstrapErrorCode(err), bootstrapErrCodeInputInvalid)
+	}
+	if !strings.Contains(err.Error(), "password must be client-hashed") {
+		t.Fatalf("error = %q, want client-hashed requirement", err.Error())
+	}
+}
+
+func TestHashAdminPasswordForBootstrapAcceptsClientHash(t *testing.T) {
+	wirePassword := "$CH$ABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCDABCD"
+	got, err := hashAdminPasswordForBootstrap(wirePassword)
+	if err != nil {
+		t.Fatalf("hashAdminPasswordForBootstrap() error = %v", err)
+	}
+	if got == "" {
+		t.Fatal("expected non-empty bcrypt hash")
+	}
+
+	wantClientHashHex := strings.ToLower(strings.TrimPrefix(wirePassword, "$CH$"))
+	if cmpErr := bcrypt.CompareHashAndPassword([]byte(got), []byte(wantClientHashHex)); cmpErr != nil {
+		t.Fatalf("bcrypt.CompareHashAndPassword() error = %v", cmpErr)
+	}
+}
+
+func TestNormalizeWirePasswordValidations(t *testing.T) {
+	t.Run("rejects invalid hash length", func(t *testing.T) {
+		_, err := normalizeWirePassword("$CH$abcd")
+		if err == nil {
+			t.Fatal("expected invalid length error")
+		}
+		if bootstrapErrorCode(err) != bootstrapErrCodeInputInvalid || !strings.Contains(err.Error(), "invalid client hash length") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("rejects invalid hash encoding", func(t *testing.T) {
+		_, err := normalizeWirePassword("$CH$GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG")
+		if err == nil {
+			t.Fatal("expected invalid encoding error")
+		}
+		if bootstrapErrorCode(err) != bootstrapErrCodeInputInvalid || !strings.Contains(err.Error(), "invalid client hash encoding") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("normalizes uppercase hex", func(t *testing.T) {
+		got, err := normalizeWirePassword("$CH$ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD")
+		if err != nil {
+			t.Fatalf("normalizeWirePassword() error = %v", err)
+		}
+		if got != strings.ToLower("ABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCDEFABCD") {
+			t.Fatalf("normalized hash = %q", got)
+		}
+	})
 }

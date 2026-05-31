@@ -23,10 +23,9 @@ func (s *workspaceServer) Initialize(ctx context.Context, req *bootstrappb.Works
 	}
 
 	op, _, err := s.coordinator.startInitialization(ctx, initializeInput{
-		AdminUsername:        req.GetAdminUsername(),
-		Password:             req.GetPassword(),
-		ClientHashingEnabled: req.GetClientHashingEnabled(),
-		IdempotencyKey:       strings.TrimSpace(req.GetIdempotencyKey()),
+		AdminUsername:  req.GetAdminUsername(),
+		Password:       req.GetPassword(),
+		IdempotencyKey: strings.TrimSpace(req.GetIdempotencyKey()),
 	})
 	if err != nil {
 		grpcErr := toGRPCError(err)
