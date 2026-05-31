@@ -302,7 +302,7 @@ provide('field-errors', fieldErrors);
 // Section 11: Onchange controller (session scoped)
 // =============================
 // Provide the session-scoped onchange controller.
-const localSessionId = props.onchangeSessionId || `${nextLocalToken(`FormView:${props.recordId ?? 'new'}`)}`;
+const localSessionId = props.onchangeSessionId || nextLocalToken(`FormView:${props.recordId ?? 'new'}`);
 const onchangeCtrl = provideOnchange(store, localSessionId, {
   debounceMs: props.onchangeDebounceMs,
   immediateFirst: props.onchangeImmediateFirst,
