@@ -236,6 +236,18 @@ const emit = defineEmits<{
 // =============================
 const { emitCancelable } = useCancelableEmit(emit as any);
 
+let localTokenCounter = 0;
+
+function nextLocalToken(prefix: string): string {
+  if (globalThis.crypto?.randomUUID) {
+    return `${prefix}:${globalThis.crypto.randomUUID()}`;
+  }
+
+  const now = Date.now().toString(36);
+  localTokenCounter += 1;
+  return `${prefix}:${now}:${localTokenCounter.toString(36)}`;
+}
+
 // =============================
 // Section 8: Controller & view context provisioning
 // =============================
@@ -254,7 +266,7 @@ const viewMode = computed<ViewMode>(() => controller.vm.mode as ViewMode);
 const loading = computed<boolean>(() => !!controller.vm.loading);
 const registerChildSubmitApi = inject<OFormChildSubmitApiRegister | null>(O_FORM_CHILD_SUBMIT_API_REGISTER_KEY, null);
 const embeddedFromHost = inject<boolean | null>(O_FORM_EMBEDDED_CONTEXT_KEY, null);
-const childSubmitRegistrationToken = `o-form-view:${Math.random().toString(36).slice(2)}`;
+const childSubmitRegistrationToken = nextLocalToken('o-form-view');
 
 const isEmbedded = computed<boolean>(() => {
   if (hasEmbeddedProp) return props.embedded === true;
@@ -290,7 +302,7 @@ provide('field-errors', fieldErrors);
 // Section 11: Onchange controller (session scoped)
 // =============================
 // Provide the session-scoped onchange controller.
-const localSessionId = props.onchangeSessionId || `FormView:${props.recordId ?? 'new'}:${Math.random().toString(36).slice(2)}`;
+const localSessionId = props.onchangeSessionId || `${nextLocalToken(`FormView:${props.recordId ?? 'new'}`)}`;
 const onchangeCtrl = provideOnchange(store, localSessionId, {
   debounceMs: props.onchangeDebounceMs,
   immediateFirst: props.onchangeImmediateFirst,
