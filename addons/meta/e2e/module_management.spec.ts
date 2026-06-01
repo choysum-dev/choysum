@@ -248,6 +248,9 @@ async function waitForOperationFailure(page: Page) {
   const dialog = page.locator('.el-dialog');
   await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
   const resultText = await waitForOperationTerminalResult(dialog);
+  if (/SUCCEEDED/i.test(resultText)) {
+    throw new Error('expected operation to fail, but it succeeded');
+  }
   if (/FAILED/i.test(resultText)) {
     await page.getByRole('button', { name: '完成' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
@@ -331,7 +334,10 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
   await clickConfirmWhenReady(page);
 
   await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
-  await waitForOperationTerminalResult(dialog);
+  const resultText = await waitForOperationTerminalResult(dialog);
+  if (/FAILED|CANCELLED/i.test(resultText)) {
+    throw new Error(`operation finished with non-success result: ${resultText}`);
+  }
   const reloadRow = dialog.locator('.status-row', { hasText: 'Reload' });
   if ((await reloadRow.count()) > 0) {
     await expect(reloadRow).toHaveText(/触发失败/);
