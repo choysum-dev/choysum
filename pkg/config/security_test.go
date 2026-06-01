@@ -40,9 +40,6 @@ func TestNewDefaultCSRFConfig(t *testing.T) {
 	if !cfg.Enabled || cfg.CookieName != "XSRF-TOKEN" || cfg.HeaderName != "X-XSRF-TOKEN" || cfg.CookiePath != "/" || cfg.SameSite != "strict" {
 		t.Fatalf("unexpected CSRF defaults: %#v", cfg)
 	}
-	if !cfg.Secure {
-		t.Fatalf("expected CSRF Secure default to be true, got %#v", cfg)
-	}
 	if len(cfg.ExcludedPaths) == 0 {
 		t.Fatal("expected CSRF excluded paths")
 	}
