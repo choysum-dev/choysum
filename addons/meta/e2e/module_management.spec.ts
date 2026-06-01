@@ -222,9 +222,7 @@ async function waitForOperationCompletion(page: Page) {
     .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10 * 60 * 1000 })
     .then(() => 'reload')
     .catch(() => 'no');
-  const resultPromise = page
-    .getByRole('button', { name: '完成' })
-    .waitFor({ timeout: 10 * 60 * 1000 })
+  const resultPromise = waitForOperationTerminalResult(dialog)
     .then(() => 'dialog')
     .catch(() => 'no');
 
@@ -246,7 +244,6 @@ async function waitForOperationCompletion(page: Page) {
  */
 async function waitForOperationFailure(page: Page) {
   const dialog = page.locator('.el-dialog');
-  await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
   const resultText = await waitForOperationTerminalResult(dialog);
   if (/SUCCEEDED/i.test(resultText)) {
     throw new Error('expected operation to fail, but it succeeded');
@@ -333,7 +330,6 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
   await dialog.waitFor({ state: 'visible', timeout: 15000 });
   await clickConfirmWhenReady(page);
 
-  await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
   const resultText = await waitForOperationTerminalResult(dialog);
   if (/FAILED|CANCELLED/i.test(resultText)) {
     throw new Error(`operation finished with non-success result: ${resultText}`);
