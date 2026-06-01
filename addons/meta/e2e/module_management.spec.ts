@@ -205,6 +205,15 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
 }
 
 /**
+ * Waits until the operation result reaches a terminal status in the dialog.
+ */
+async function waitForOperationTerminalResult(dialog: Locator, timeout = 10 * 60 * 1000): Promise<string> {
+  const resultTag = dialog.locator('.status-row .el-tag').nth(1);
+  await expect(resultTag).toHaveText(/SUCCEEDED|FAILED|CANCELLED/i, { timeout });
+  return ((await resultTag.textContent().catch(() => '')) || '').trim();
+}
+
+/**
  * Waits until an operation finishes through either a page reload or a result dialog.
  */
 async function waitForOperationCompletion(page: Page) {
@@ -221,8 +230,10 @@ async function waitForOperationCompletion(page: Page) {
 
   const winner = await Promise.race([reloadPromise, resultPromise]);
   if (winner === 'dialog') {
-    const resultTag = dialog.locator('.status-row .el-tag').nth(1);
-    await expect(resultTag).not.toHaveText(/FAILED/i);
+    const resultText = await waitForOperationTerminalResult(dialog);
+    if (/FAILED|CANCELLED/i.test(resultText)) {
+      throw new Error(`operation finished with non-success result: ${resultText}`);
+    }
     await page.getByRole('button', { name: '完成' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
   } else if (winner === 'reload') {
@@ -236,8 +247,7 @@ async function waitForOperationCompletion(page: Page) {
 async function waitForOperationFailure(page: Page) {
   const dialog = page.locator('.el-dialog');
   await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
-  const resultTag = dialog.locator('.status-row .el-tag').nth(1);
-  const resultText = (await resultTag.textContent().catch(() => '')) || '';
+  const resultText = await waitForOperationTerminalResult(dialog);
   if (/FAILED/i.test(resultText)) {
     await page.getByRole('button', { name: '完成' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
@@ -287,7 +297,7 @@ async function runAction(page: Page, moduleName: string, action: 'install' | 'up
   }
 
   const expectedStatus = '已安装';
-  await waitForModuleStatus(page, moduleName, expectedStatus);
+  await waitForModuleStatus(page, moduleName, expectedStatus, 90_000);
 }
 
 /**
@@ -305,7 +315,7 @@ async function runActionExpectFailure(page: Page, moduleName: string, action: 'i
 
   await waitForOperationFailure(page);
 
-  await waitForModuleStatus(page, moduleName, initialStatus);
+  await waitForModuleStatus(page, moduleName, initialStatus, 90_000);
 }
 
 /**
@@ -321,6 +331,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
   await clickConfirmWhenReady(page);
 
   await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
+  await waitForOperationTerminalResult(dialog);
   const reloadRow = dialog.locator('.status-row', { hasText: 'Reload' });
   if ((await reloadRow.count()) > 0) {
     await expect(reloadRow).toHaveText(/触发失败/);
@@ -329,7 +340,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
   await dialog.waitFor({ state: 'hidden', timeout: 15000 });
 
   const expectedStatus = action === 'uninstall' ? '未安装' : '已安装';
-  await waitForModuleStatus(page, moduleName, expectedStatus);
+  await waitForModuleStatus(page, moduleName, expectedStatus, 90_000);
 }
 
 /**
