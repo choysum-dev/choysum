@@ -238,6 +238,13 @@ async function waitForOperationCompletion(page: Page) {
   } else if (winner === 'reload') {
     await page.waitForLoadState('networkidle');
   } else {
+    const doneBtn = page.getByRole('button', { name: '完成' });
+    const canClose = await doneBtn.isVisible().catch(() => false);
+    if (canClose) {
+      await doneBtn.click();
+      await dialog.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => null);
+      return;
+    }
     throw new Error('operation did not complete within timeout: neither terminal result nor page reload was observed');
   }
 }
@@ -296,6 +303,7 @@ async function runAction(page: Page, moduleName: string, action: 'install' | 'up
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
     await waitForModuleList(page);
+    await waitForModuleStatus(page, moduleName, '未安装', 90_000);
     return;
   }
 
