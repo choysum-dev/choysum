@@ -124,7 +124,7 @@ func NewDefaultCSRFConfig() *CSRFConfig {
 		Enabled:    true,
 		CookieName: "XSRF-TOKEN",
 		HeaderName: "X-XSRF-TOKEN",
-		Secure:     false,
+		Secure:     true,
 		CookiePath: "/",
 		SameSite:   "strict",
 		MaxAge:     0,
