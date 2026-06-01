@@ -103,6 +103,7 @@ import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import OViewContainer from '@/web/web/components/view/OViewContainer.vue';
+import { nextLocalToken } from '@/web/web/components/view/localToken';
 
 export type OFormSubmitMode = 'create' | 'edit';
 
@@ -254,7 +255,7 @@ const viewMode = computed<ViewMode>(() => controller.vm.mode as ViewMode);
 const loading = computed<boolean>(() => !!controller.vm.loading);
 const registerChildSubmitApi = inject<OFormChildSubmitApiRegister | null>(O_FORM_CHILD_SUBMIT_API_REGISTER_KEY, null);
 const embeddedFromHost = inject<boolean | null>(O_FORM_EMBEDDED_CONTEXT_KEY, null);
-const childSubmitRegistrationToken = `o-form-view:${Math.random().toString(36).slice(2)}`;
+const childSubmitRegistrationToken = nextLocalToken('o-form-view');
 
 const isEmbedded = computed<boolean>(() => {
   if (hasEmbeddedProp) return props.embedded === true;
@@ -290,7 +291,7 @@ provide('field-errors', fieldErrors);
 // Section 11: Onchange controller (session scoped)
 // =============================
 // Provide the session-scoped onchange controller.
-const localSessionId = props.onchangeSessionId || `FormView:${props.recordId ?? 'new'}:${Math.random().toString(36).slice(2)}`;
+const localSessionId = props.onchangeSessionId || nextLocalToken(`FormView:${props.recordId ?? 'new'}`);
 const onchangeCtrl = provideOnchange(store, localSessionId, {
   debounceMs: props.onchangeDebounceMs,
   immediateFirst: props.onchangeImmediateFirst,
