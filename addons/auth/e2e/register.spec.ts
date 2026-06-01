@@ -3,6 +3,7 @@
 
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { waitForGrpcWebUnaryOk } from './utils/grpcweb';
 
 type RuntimeInfo = {
@@ -66,7 +67,7 @@ test('auth: register new user → auto login → no permission_denied on boot RP
   const runtime = readRuntimeInfo();
   const baseURL = runtime.baseURL;
 
-  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+  const suffix = `${Date.now()}-${randomUUID()}`;
   const username = `e2e-reg-${suffix}`;
   const email = `${username}@example.com`;
   const password = `e2e-pass-${suffix}`;
