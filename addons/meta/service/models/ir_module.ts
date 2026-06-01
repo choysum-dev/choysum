@@ -132,6 +132,29 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
   }
 }
 
+async function withAuthzBypass<T>(fn: () => Promise<T>): Promise<T> {
+  const root: any = (globalThis as any)?.$choysum;
+  const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
+  const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+  if (!req) return await fn();
+
+  if (!req.__choysumServiceState) req.__choysumServiceState = {};
+  const state: any = req.__choysumServiceState;
+  const prevRR = typeof state.recordRuleBypassDepth === 'number' ? state.recordRuleBypassDepth : 0;
+  const prevFR = typeof state.fieldRuleBypassDepth === 'number' ? state.fieldRuleBypassDepth : 0;
+
+  state.recordRuleBypassDepth = prevRR + 1;
+  state.fieldRuleBypassDepth = prevFR + 1;
+  try {
+    return await fn();
+  } finally {
+    if (prevRR > 0) state.recordRuleBypassDepth = prevRR;
+    else delete state.recordRuleBypassDepth;
+    if (prevFR > 0) state.fieldRuleBypassDepth = prevFR;
+    else delete state.fieldRuleBypassDepth;
+  }
+}
+
 @Model('IrModule', {
   tableName: 'meta_ir_module',
   autoMigrate: false,
@@ -493,20 +516,22 @@ export default class IrModule extends BaseModel {
       }
     }
 
-    await upsertModuleLog({
-      JobId: jobId,
-      ModuleName: name,
-      Action: action,
-      OperatorUserId: operatorUserId,
-      ResultStatus: resultStatus,
-      SummaryJson: summary,
-      ErrorDomain: errorDomain,
-      ErrorCode: errorCode,
-      LastErrorJson: bridgeResult.ok ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
-      JobCreatedAt: job?.CreatedAt,
-      JobFinishedAt: job?.FinishedAt,
-      Attempt: job?.Attempt,
-      MaxAttempts: job?.MaxAttempts,
+    await withAuthzBypass(async () => {
+      await upsertModuleLog({
+        JobId: jobId,
+        ModuleName: name,
+        Action: action,
+        OperatorUserId: operatorUserId,
+        ResultStatus: resultStatus,
+        SummaryJson: summary,
+        ErrorDomain: errorDomain,
+        ErrorCode: errorCode,
+        LastErrorJson: bridgeResult.ok ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
+        JobCreatedAt: job?.CreatedAt,
+        JobFinishedAt: job?.FinishedAt,
+        Attempt: job?.Attempt,
+        MaxAttempts: job?.MaxAttempts,
+      });
     });
 
     return {
