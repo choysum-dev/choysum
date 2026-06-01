@@ -23,7 +23,6 @@ type CSRFHandler struct {
 	sameSite      http.SameSite
 	maxAge        int
 	excludedPaths []string
-	secure        bool
 }
 
 // NewCSRFHandler creates a CSRF handler.
@@ -39,7 +38,6 @@ func NewCSRFHandler(runtimeScope scope.Scope) *CSRFHandler {
 		sameSite:      opts.sameSite,
 		maxAge:        opts.maxAge,
 		excludedPaths: opts.excludedPaths,
-		secure:        opts.secure,
 	}
 }
 
@@ -92,7 +90,7 @@ func (h *CSRFHandler) ensureCSRFCookie(w http.ResponseWriter, r *http.Request) {
 			Path:     h.cookiePath,
 			Domain:   h.cookieDomain,
 			MaxAge:   h.maxAge,
-			Secure:   h.secure,
+			Secure:   true,
 			HttpOnly: false, // JavaScript access is required.
 			SameSite: h.sameSite,
 		}

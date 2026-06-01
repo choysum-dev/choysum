@@ -19,7 +19,6 @@ type runtimeOptions struct {
 	sameSite      http.SameSite
 	maxAge        int
 	excludedPaths []string
-	secure        bool
 }
 
 func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {
@@ -48,6 +47,5 @@ func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {
 		sameSite:      sameSite,
 		maxAge:        csrfCfg.MaxAge,
 		excludedPaths: csrfCfg.ExcludedPaths,
-		secure:        csrfCfg.Secure,
 	}
 }

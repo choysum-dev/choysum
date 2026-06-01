@@ -50,7 +50,6 @@ type CSRFConfig struct {
 	HeaderName    string   `mapstructure:"headerName"`
 	CookiePath    string   `mapstructure:"cookiePath"`
 	CookieDomain  string   `mapstructure:"cookieDomain"`
-	Secure        bool     `mapstructure:"secure"`
 	SameSite      string   `mapstructure:"sameSite"`
 	MaxAge        int      `mapstructure:"maxAge"`
 	ExcludedPaths []string `mapstructure:"excludedPaths"`
@@ -124,7 +123,6 @@ func NewDefaultCSRFConfig() *CSRFConfig {
 		Enabled:    true,
 		CookieName: "XSRF-TOKEN",
 		HeaderName: "X-XSRF-TOKEN",
-		Secure:     false,
 		CookiePath: "/",
 		SameSite:   "strict",
 		MaxAge:     0,
