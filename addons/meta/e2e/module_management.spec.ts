@@ -217,12 +217,13 @@ async function waitForOperationTerminalResult(dialog: Locator, timeout = 10 * 60
  * Waits until an operation finishes through either a page reload or a result dialog.
  */
 async function waitForOperationCompletion(page: Page) {
+  const opTimeout = 3 * 60 * 1000;
   const dialog = page.locator('.el-dialog');
   const reloadPromise = page
-    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10 * 60 * 1000 })
+    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: opTimeout })
     .then(() => 'reload')
     .catch(() => 'no');
-  const resultPromise = waitForOperationTerminalResult(dialog)
+  const resultPromise = waitForOperationTerminalResult(dialog, opTimeout)
     .then(() => 'dialog')
     .catch(() => 'no');
 
@@ -236,6 +237,8 @@ async function waitForOperationCompletion(page: Page) {
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
   } else if (winner === 'reload') {
     await page.waitForLoadState('networkidle');
+  } else {
+    throw new Error('operation did not complete within timeout: neither terminal result nor page reload was observed');
   }
 }
 
