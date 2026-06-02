@@ -46,34 +46,44 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
   const loginVisible = await loginInput.isVisible().catch(() => false);
   if (page.url().includes('/web/login') || loginVisible) {
     await loginInput.waitFor({ state: 'visible', timeout: 10000 });
+
+    const fillInputStable = async (selector: string, value: string) => {
+      for (let i = 0; i < 4; i += 1) {
+        const input = page.locator(selector).first();
+        try {
+          await input.waitFor({ state: 'visible', timeout: 4000 });
+          await input.fill(value, { timeout: 4000 });
+          const actual = await input.inputValue({ timeout: 2000 }).catch(() => '');
+          if (actual === value) {
+            return true;
+          }
+        } catch {
+          // Retry on transient detach/re-render.
+        }
+        await page.waitForTimeout(250);
+      }
+      return false;
+    };
+
     const tryLogin = async (username: string, password: string) => {
-      const usernameInput = page.locator('input[autocomplete="username"], input[placeholder="用户名"], input[placeholder="Enter username"]').first();
-      const passwordInput = page
-        .locator(
-          'input[type="password"][autocomplete="current-password"], input[type="password"][placeholder="密码"], input[type="password"][placeholder="Enter password"]'
-        )
-        .first();
+      const usernameSelector = 'input[autocomplete="username"], input[placeholder*="username" i], input[placeholder*="用户名"]';
+      const passwordSelector = 'input[type="password"][autocomplete="current-password"], input[type="password"][placeholder*="password" i], input[type="password"][placeholder*="密码"]';
+      const passwordInput = page.locator(passwordSelector).first();
 
-      try {
-        await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
-        await expect(usernameInput).toBeEditable({ timeout: 10000 });
-        await usernameInput.fill(username, { timeout: 10000 });
-
-        await passwordInput.waitFor({ state: 'visible', timeout: 10000 });
-        await expect(passwordInput).toBeEditable({ timeout: 10000 });
-        await passwordInput.fill(password, { timeout: 10000 });
-      } catch {
+      const userOK = await fillInputStable(usernameSelector, username);
+      const passOK = await fillInputStable(passwordSelector, password);
+      if (!userOK || !passOK) {
         return false;
       }
 
       const submit = page.locator('button[type="submit"]');
       const canClick = await submit.isEnabled().catch(() => false);
       if (canClick) {
-        await submit.click({ timeout: 10000 }).catch(() => null);
+        await submit.click({ timeout: 5000 }).catch(() => null);
       } else {
         await passwordInput.press('Enter').catch(() => null);
       }
-      await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 15000 }).catch(() => null);
+      await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 10000 }).catch(() => null);
       return !page.url().includes('/web/login');
     };
 
@@ -98,7 +108,7 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
       }
     }
     if (!ok) {
-      throw new Error('login failed after retries for admin and e2e-admin');
+      throw new Error(`login failed after retries for admin and e2e-admin; current url=${page.url()}`);
     }
     await expect(page).not.toHaveURL(/\/web\/login/, { timeout: 15000 });
   }
