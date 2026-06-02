@@ -47,14 +47,31 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
   if (page.url().includes('/web/login') || loginVisible) {
     await loginInput.waitFor({ state: 'visible', timeout: 10000 });
     const tryLogin = async (username: string, password: string) => {
-      await page.getByPlaceholder(/用户名|username/i).fill(username);
-      await page.getByPlaceholder(/密码|password/i).fill(password);
+      const usernameInput = page
+        .locator('input[autocomplete="username"], input[placeholder="用户名"], input[placeholder="Enter username"]')
+        .first();
+      const passwordInput = page
+        .locator('input[type="password"][autocomplete="current-password"], input[type="password"][placeholder="密码"], input[type="password"][placeholder="Enter password"]')
+        .first();
+
+      try {
+        await usernameInput.waitFor({ state: 'visible', timeout: 10000 });
+        await expect(usernameInput).toBeEditable({ timeout: 10000 });
+        await usernameInput.fill(username, { timeout: 10000 });
+
+        await passwordInput.waitFor({ state: 'visible', timeout: 10000 });
+        await expect(passwordInput).toBeEditable({ timeout: 10000 });
+        await passwordInput.fill(password, { timeout: 10000 });
+      } catch {
+        return false;
+      }
+
       const submit = page.locator('button[type="submit"]');
       const canClick = await submit.isEnabled().catch(() => false);
       if (canClick) {
-        await submit.click();
+        await submit.click({ timeout: 10000 }).catch(() => null);
       } else {
-        await page.getByPlaceholder(/密码|password/i).press('Enter');
+        await passwordInput.press('Enter').catch(() => null);
       }
       await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 15000 }).catch(() => null);
       return !page.url().includes('/web/login');
