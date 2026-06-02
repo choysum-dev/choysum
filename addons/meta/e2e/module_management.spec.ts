@@ -47,9 +47,11 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
   if (page.url().includes('/web/login') || loginVisible) {
     await loginInput.waitFor({ state: 'visible', timeout: 10000 });
 
-    const fillInputStable = async (selector: string, value: string) => {
+    let lastLoginError = '';
+
+    const fillInputStable = async (placeholder: RegExp, value: string) => {
       for (let i = 0; i < 4; i += 1) {
-        const input = page.locator(selector).first();
+        const input = page.getByPlaceholder(placeholder).first();
         try {
           await input.waitFor({ state: 'visible', timeout: 4000 });
           await input.fill(value, { timeout: 4000 });
@@ -66,25 +68,24 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
     };
 
     const tryLogin = async (username: string, password: string) => {
-      const usernameSelector = 'input[autocomplete="username"], input[placeholder*="username" i], input[placeholder*="用户名"]';
-      const passwordSelector = 'input[type="password"][autocomplete="current-password"], input[type="password"][placeholder*="password" i], input[type="password"][placeholder*="密码"]';
-      const passwordInput = page.locator(passwordSelector).first();
-
-      const userOK = await fillInputStable(usernameSelector, username);
-      const passOK = await fillInputStable(passwordSelector, password);
+      await page.waitForSelector('input[placeholder*="username"]', { timeout: 5000 }).catch(() => null);
+      const userOK = await fillInputStable(/用户名|username/i, username);
+      const passOK = await fillInputStable(/密码|password/i, password);
       if (!userOK || !passOK) {
+        lastLoginError = 'login form not stable';
         return false;
       }
 
-      const submit = page.locator('button[type="submit"]');
-      const canClick = await submit.isEnabled().catch(() => false);
-      if (canClick) {
-        await submit.click({ timeout: 5000 }).catch(() => null);
-      } else {
-        await passwordInput.press('Enter').catch(() => null);
-      }
+      await page.locator('button[type="submit"]').click({ timeout: 5000 }).catch(() => null);
       await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 10000 }).catch(() => null);
-      return !page.url().includes('/web/login');
+      if (!page.url().includes('/web/login')) {
+        return true;
+      }
+
+      const formError = (await page.locator('.el-form-item__error').first().textContent().catch(() => '')) || '';
+      const toastError = (await page.locator('.el-message--error .el-message__content').last().textContent().catch(() => '')) || '';
+      lastLoginError = (formError || toastError || 'login rejected').trim();
+      return false;
     };
 
     let ok = false;
@@ -108,7 +109,7 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
       }
     }
     if (!ok) {
-      throw new Error(`login failed after retries for admin and e2e-admin; current url=${page.url()}`);
+      throw new Error(`login failed after retries for admin and e2e-admin; current url=${page.url()}; last login error=${lastLoginError || 'n/a'}`);
     }
     await expect(page).not.toHaveURL(/\/web\/login/, { timeout: 15000 });
   }
