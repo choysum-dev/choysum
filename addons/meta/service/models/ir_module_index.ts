@@ -17,7 +17,7 @@ type RequestSyncParams = {
 function getBackendEnv(): Record<string, any> {
   return {
     ...(((globalThis as any)?.__choysumBackendEnv as Record<string, any> | undefined) || {}),
-    ...((((import.meta as any)?.env as Record<string, any> | undefined) || {})),
+    ...(((import.meta as any)?.env as Record<string, any> | undefined) || {}),
   };
 }
 

@@ -61,7 +61,7 @@ type ModuleOpBridgeResult = {
 function getBackendEnv(): Record<string, any> {
   return {
     ...(((globalThis as any)?.__choysumBackendEnv as Record<string, any> | undefined) || {}),
-    ...((((import.meta as any)?.env as Record<string, any> | undefined) || {})),
+    ...(((import.meta as any)?.env as Record<string, any> | undefined) || {}),
   };
 }
 
@@ -137,6 +137,15 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
     }
     throw err;
   }
+}
+
+function isNonBlockingModuleLogError(err: any): boolean {
+  const code = String(err?.code || err?.errorCode || '').toLowerCase();
+  if (code === 'record_rule_denied') {
+    return true;
+  }
+  const msg = String(err?.message || '').toLowerCase();
+  return msg.includes('record rule denied');
 }
 
 @Model('IrModule', {
@@ -500,21 +509,27 @@ export default class IrModule extends BaseModel {
       }
     }
 
-    await upsertModuleLog({
-      JobId: jobId,
-      ModuleName: name,
-      Action: action,
-      OperatorUserId: operatorUserId,
-      ResultStatus: resultStatus,
-      SummaryJson: summary,
-      ErrorDomain: errorDomain,
-      ErrorCode: errorCode,
-      LastErrorJson: bridgeResult.ok ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
-      JobCreatedAt: job?.CreatedAt,
-      JobFinishedAt: job?.FinishedAt,
-      Attempt: job?.Attempt,
-      MaxAttempts: job?.MaxAttempts,
-    });
+    try {
+      await upsertModuleLog({
+        JobId: jobId,
+        ModuleName: name,
+        Action: action,
+        OperatorUserId: operatorUserId,
+        ResultStatus: resultStatus,
+        SummaryJson: summary,
+        ErrorDomain: errorDomain,
+        ErrorCode: errorCode,
+        LastErrorJson: bridgeResult.ok ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
+        JobCreatedAt: job?.CreatedAt,
+        JobFinishedAt: job?.FinishedAt,
+        Attempt: job?.Attempt,
+        MaxAttempts: job?.MaxAttempts,
+      });
+    } catch (err) {
+      if (!isNonBlockingModuleLogError(err)) {
+        throw err;
+      }
+    }
 
     return {
       resultStatus,

@@ -13,9 +13,9 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 
 	"github.com/buke/quickjs-go"
-	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/internal/server/reload"
 	"github.com/choysum-dev/choysum/internal/state/lease"
+	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"

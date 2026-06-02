@@ -442,6 +442,41 @@ test('meta.IrModule ExecuteUninstall falls back to E2E operator env when payload
   expect(logs?.[0]?.OperatorUserId).toBe('admin');
 });
 
+test('meta.IrModule ExecuteUninstall does not fail when module log write is denied', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const root: any = (globalThis as any).$choysum;
+  root.moduleManagement.uninstall = async () => ({ ok: true });
+  root.moduleManagement.reload = async () => ({ triggered: true, failed: false });
+
+  const jobId = uid('job_uninstall_log_denied');
+  const jsCtx = ensureRequestContext();
+  jsCtx.ctx.jobId = jobId;
+  seedJob(jobId, { moduleName: 'base', operatorUserId: 'operator_1' });
+
+  const originalSearch = (ModuleManagementLog as any).Search;
+  const originalCreate = (ModuleManagementLog as any).Create;
+  (ModuleManagementLog as any).Search = async () => [];
+  (ModuleManagementLog as any).Create = async () => {
+    const err: any = new Error('record rule denied');
+    err.code = 'record_rule_denied';
+    throw err;
+  };
+
+  try {
+    const result = await IrModule.ExecuteUninstall('base', 'operator_1');
+    expect(result.resultStatus).toBe('SUCCEEDED');
+    expect(result.reload_web).toBe(true);
+    expect(result.moduleName).toBe('base');
+    expect(result.action).toBe('uninstall');
+  } finally {
+    (ModuleManagementLog as any).Search = originalSearch;
+    (ModuleManagementLog as any).Create = originalCreate;
+  }
+});
+
 test('meta.IrModule ExecuteUpgrade returns failed result and maps error fields', async () => {
   resetRequestContext();
   ensureModuleManagementBridge();
