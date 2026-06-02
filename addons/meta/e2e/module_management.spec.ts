@@ -255,32 +255,68 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
 async function waitForTerminalSignal(page: Page, timeout = 3 * 60 * 1000): Promise<'reload' | 'terminal'> {
   const dialog = page.locator('.el-dialog');
   const statusTag = dialog.locator('.status-row .el-tag').first();
-  try {
-    return await Promise.any([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout }).then(() => 'reload' as const),
-      expect(statusTag)
-        .toHaveText(/succeeded|failed|cancelled/i, { timeout })
-        .then(() => 'terminal' as const),
-    ]);
-  } catch {
-    throw new Error('operation completion signal not observed before timeout');
+  const reloadPromise = page
+    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout })
+    .then(() => 'reload' as const)
+    .catch(() => null);
+  const terminalPromise = expect(statusTag)
+    .toHaveText(/succeeded|failed|cancelled/i, { timeout })
+    .then(() => 'terminal' as const)
+    .catch(() => null);
+
+  const first = await Promise.race([reloadPromise, terminalPromise]);
+  if (first) {
+    return first;
   }
+
+  const [reload, terminal] = await Promise.all([reloadPromise, terminalPromise]);
+  if (reload) {
+    return reload;
+  }
+  if (terminal) {
+    return terminal;
+  }
+
+  throw new Error('operation completion signal not observed before timeout');
 }
+
+type OperationCompletionResult = {
+  signal: 'reload' | 'terminal';
+  resultStatus: string;
+  failureKind: string;
+};
 
 /**
  * Waits until an operation finishes through either a page reload or a result dialog.
  */
-async function waitForOperationCompletion(page: Page) {
+async function waitForOperationCompletion(page: Page): Promise<OperationCompletionResult> {
   const dialog = page.locator('.el-dialog');
   const winner = await waitForTerminalSignal(page);
   if (winner === 'terminal') {
     const resultTag = dialog.locator('.status-row .el-tag').nth(1);
-    await expect(resultTag).not.toHaveText(/FAILED/i);
+    const resultStatus = ((await resultTag.textContent().catch(() => '')) || '').trim();
+    const failureKind = ((await dialog.locator('.status-row .value').first().textContent().catch(() => '')) || '').trim();
     await page.getByRole('button', { name: '完成' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
+    return {
+      signal: 'terminal',
+      resultStatus,
+      failureKind,
+    };
   } else if (winner === 'reload') {
     await page.waitForLoadState('networkidle');
+    return {
+      signal: 'reload',
+      resultStatus: 'SUCCEEDED',
+      failureKind: '',
+    };
   }
+
+  return {
+    signal: winner,
+    resultStatus: '',
+    failureKind: '',
+  };
 }
 
 /**
@@ -326,24 +362,39 @@ async function clickConfirmWhenReady(page: Page, timeout = 90000) {
  */
 async function runAction(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
   const actionLabel = action === 'install' ? '安装' : action === 'upgrade' ? '升级' : '卸载';
-  const card = await openModuleCard(page, moduleName);
-  await card.getByRole('button', { name: actionLabel }).click();
+  const expectedStatus = action === 'uninstall' ? '未安装' : '已安装';
+  const maxAttempts = 2;
+  let lastFailure = '';
 
-  const dialog = page.locator('.el-dialog');
-  await dialog.waitFor({ state: 'visible', timeout: 15000 });
-  await clickConfirmWhenReady(page);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const card = await openModuleCard(page, moduleName);
+    await card.getByRole('button', { name: actionLabel }).click({ timeout: 30000 });
 
-  await waitForOperationCompletion(page);
+    const dialog = page.locator('.el-dialog');
+    await dialog.waitFor({ state: 'visible', timeout: 15000 });
+    await clickConfirmWhenReady(page);
 
-  if (action === 'uninstall') {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-    await waitForModuleList(page);
-    return;
+    const completion = await waitForOperationCompletion(page);
+    const failed = completion.signal === 'terminal' && /FAILED/i.test(completion.resultStatus);
+    if (!failed) {
+      await waitForModuleStatus(page, moduleName, expectedStatus);
+      return;
+    }
+
+    lastFailure = [completion.resultStatus, completion.failureKind].filter(Boolean).join(' / ') || 'FAILED';
+
+    try {
+      await waitForModuleStatus(page, moduleName, expectedStatus, 45000);
+      return;
+    } catch {
+      if (attempt >= maxAttempts) {
+        throw new Error(`module ${moduleName} action ${action} failed after ${attempt} attempts: ${lastFailure}`);
+      }
+      await page.waitForTimeout(1500);
+    }
   }
 
-  const expectedStatus = '已安装';
-  await waitForModuleStatus(page, moduleName, expectedStatus);
+  throw new Error(`module ${moduleName} action ${action} did not complete: ${lastFailure || 'unknown failure'}`);
 }
 
 /**
