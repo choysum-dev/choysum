@@ -59,9 +59,19 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
       await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 15000 }).catch(() => null);
       return !page.url().includes('/web/login');
     };
-    const ok = await tryLogin('admin', 'admin');
+
+    let ok = false;
+    const maxAttempts = 3;
+    for (let i = 0; i < maxAttempts; i += 1) {
+      ok = await tryLogin('admin', 'admin');
+      if (ok) {
+        break;
+      }
+      await page.waitForTimeout(1000);
+      await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' }).catch(() => null);
+    }
     if (!ok) {
-      await tryLogin('e2e-admin', 'e2e-admin');
+      throw new Error('admin login failed after retries; module management e2e requires admin privileges');
     }
     await expect(page).not.toHaveURL(/\/web\/login/, { timeout: 15000 });
   }
@@ -295,7 +305,13 @@ async function waitForOperationCompletion(page: Page): Promise<OperationCompleti
   if (winner === 'terminal') {
     const resultTag = dialog.locator('.status-row .el-tag').nth(1);
     const resultStatus = ((await resultTag.textContent().catch(() => '')) || '').trim();
-    const failureKind = ((await dialog.locator('.status-row .value').first().textContent().catch(() => '')) || '').trim();
+    const failureKind = (
+      (await dialog
+        .locator('.status-row .value')
+        .first()
+        .textContent()
+        .catch(() => '')) || ''
+    ).trim();
     await page.getByRole('button', { name: '完成' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
     return {
