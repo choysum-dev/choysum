@@ -47,11 +47,11 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
   if (page.url().includes('/web/login') || loginVisible) {
     await loginInput.waitFor({ state: 'visible', timeout: 10000 });
     const tryLogin = async (username: string, password: string) => {
-      const usernameInput = page
-        .locator('input[autocomplete="username"], input[placeholder="用户名"], input[placeholder="Enter username"]')
-        .first();
+      const usernameInput = page.locator('input[autocomplete="username"], input[placeholder="用户名"], input[placeholder="Enter username"]').first();
       const passwordInput = page
-        .locator('input[type="password"][autocomplete="current-password"], input[type="password"][placeholder="密码"], input[type="password"][placeholder="Enter password"]')
+        .locator(
+          'input[type="password"][autocomplete="current-password"], input[type="password"][placeholder="密码"], input[type="password"][placeholder="Enter password"]'
+        )
         .first();
 
       try {
@@ -88,7 +88,17 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
       await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' }).catch(() => null);
     }
     if (!ok) {
-      throw new Error('admin login failed after retries; module management e2e requires admin privileges');
+      for (let i = 0; i < maxAttempts; i += 1) {
+        ok = await tryLogin('e2e-admin', 'e2e-admin');
+        if (ok) {
+          break;
+        }
+        await page.waitForTimeout(1000);
+        await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      }
+    }
+    if (!ok) {
+      throw new Error('login failed after retries for admin and e2e-admin');
     }
     await expect(page).not.toHaveURL(/\/web\/login/, { timeout: 15000 });
   }
