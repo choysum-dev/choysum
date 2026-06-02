@@ -15,6 +15,7 @@ import (
 	"time"
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
+	"github.com/choysum-dev/choysum/internal/jwtauth"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
@@ -48,7 +49,8 @@ func (e *moduleIndexTestScope) FactoryInput() scope.FactoryInput {
 }
 
 type moduleManagementTestManager struct {
-	install func(context.Context, string) error
+	install   func(context.Context, string) error
+	uninstall func(context.Context, string) error
 }
 
 func (m moduleManagementTestManager) Install(ctx context.Context, req lifecycle.InstallRequest) error {
@@ -62,7 +64,10 @@ func (moduleManagementTestManager) Upgrade(context.Context, lifecycle.UpgradeReq
 	return nil
 }
 
-func (moduleManagementTestManager) Uninstall(context.Context, lifecycle.UninstallRequest) error {
+func (m moduleManagementTestManager) Uninstall(ctx context.Context, req lifecycle.UninstallRequest) error {
+	if m.uninstall != nil {
+		return m.uninstall(ctx, req.Name)
+	}
 	return nil
 }
 
@@ -247,6 +252,79 @@ func TestWithModuleManagementProviderUsesExecContextBoundRuntimeScope(t *testing
 	}
 	if installCtx == nil || installCtx.Value(ctxKey{}) != "runtime" {
 		t.Fatalf("expected install ctx to carry runtime marker, got %#v", installCtx)
+	}
+}
+
+func TestWithModuleManagementProviderInjectsOperatorIdentity(t *testing.T) {
+	type ctxKey struct{}
+	runtimeCtx := context.WithValue(context.Background(), ctxKey{}, "runtime")
+	engineName := "module-management-provider-operator-engine"
+	registerModuleManagementTestJsEngine(engineName)
+	serverCfg := config.NewDefaultServerConfig()
+	serverCfg.JsEngineFactory = engineName
+	baseScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{Server: serverCfg},
+	}
+
+	var uninstallCtx context.Context
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.moduleLifecycleFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, _ statepkg.LockerFactory) lifecycle.Service {
+				return moduleManagementTestManager{uninstall: func(ctx context.Context, name string) error {
+					uninstallCtx = ctx
+					if name != "partner" {
+						return errors.New("unexpected module name")
+					}
+					return nil
+				}}
+			}
+		}),
+	))
+
+	evalString(t, engine, `(function() {
+		globalThis.$choysum = globalThis.$choysum || {};
+		globalThis.$choysum.__rpc__ = async function(req) {
+			return {
+				id: req.id,
+				result: await $choysum.moduleManagement.uninstall({ moduleName: req.service, operatorUserId: 'admin', jobId: 'job-operator' }),
+				context: {}
+			};
+		};
+		return "ok";
+	})()`)
+
+	resp, err := engine.Execute(runtimeCtx, &jsengine.JsRequest{Id: "req-operator", Service: "partner"})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	result, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected result object, got %#v", resp.Result)
+	}
+	if got, ok := result["ok"].(bool); !ok || !got {
+		t.Fatalf("expected successful module management result, got %#v", result)
+	}
+	if uninstallCtx == nil {
+		t.Fatal("expected uninstall ctx to be captured")
+	}
+	if got := uninstallCtx.Value(ctxKey{}); got != "runtime" {
+		t.Fatalf("expected uninstall ctx to carry runtime marker, got %#v", got)
+	}
+	identity := auth.IdentityFromContext(uninstallCtx)
+	if identity == nil {
+		t.Fatal("expected uninstall ctx to carry auth identity")
+	}
+	if identity.GetUserID() != "admin" {
+		t.Fatalf("identity user = %q, want admin", identity.GetUserID())
+	}
+	if identity.GetTokenID() != "job-operator" {
+		t.Fatalf("identity token = %q, want job-operator", identity.GetTokenID())
+	}
+	if _, ok := identity.(*jwtauth.Identity); !ok {
+		t.Fatalf("identity type = %T, want *jwtauth.Identity", identity)
 	}
 }
 

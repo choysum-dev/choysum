@@ -141,6 +141,35 @@ function seedJob(
 }
 
 /**
+ * Temporarily sets a backend env value while running an async test step.
+ */
+function withBackendEnv<T>(key: string, value: any, run: () => Promise<T>): Promise<T> {
+  const meta = import.meta as any;
+  if (!meta.env) meta.env = {};
+  const prev = meta.env[key];
+  meta.env[key] = value;
+
+  const globalAny = globalThis as any;
+  const envKey = '__choysumBackendEnv';
+  if (!globalAny[envKey]) globalAny[envKey] = {};
+  const prevGlobal = globalAny[envKey][key];
+  globalAny[envKey][key] = value;
+
+  return run().finally(() => {
+    if (typeof prev === 'undefined') {
+      delete meta.env[key];
+    } else {
+      meta.env[key] = prev;
+    }
+    if (typeof prevGlobal === 'undefined') {
+      delete globalAny[envKey][key];
+    } else {
+      globalAny[envKey][key] = prevGlobal;
+    }
+  });
+}
+
+/**
  * Ensures the module management bridge and db shim exist on the global test root.
  */
 function ensureModuleManagementBridge() {
@@ -379,6 +408,38 @@ test('meta.IrModule ExecuteUninstall uses moduleManagement bridge and writes log
   expect(logs?.[0]?.OperatorUserId).toBe('operator_1');
   expect(logs?.[0]?.JobCreatedAt).toBeTruthy();
   expect(logs?.[0]?.JobFinishedAt).toBeTruthy();
+});
+
+test('meta.IrModule ExecuteUninstall falls back to E2E operator env when payload is missing operatorUserId', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+  ensureJobMock();
+
+  const root: any = (globalThis as any).$choysum;
+  const calls: any[] = [];
+  root.moduleManagement.uninstall = async (params: any) => {
+    calls.push(params);
+    return { ok: true };
+  };
+  root.moduleManagement.reload = async () => ({ triggered: false, failed: false });
+
+  const jobId = uid('job_uninstall_env_fallback');
+  const jsCtx = ensureRequestContext();
+  jsCtx.ctx.jobId = jobId;
+  jsCtx.identity = { userId: 'e2e-admin' };
+  seedJob(jobId, { moduleName: 'base' });
+
+  await withBackendEnv('CHOYSUM_E2E_OPERATOR_USER_ID', 'admin', async () => {
+    const result = await IrModule.ExecuteUninstall('base');
+    expect(result.resultStatus).toBe('SUCCEEDED');
+  });
+
+  expect(calls.length).toBe(1);
+  expect(calls[0].operatorUserId).toBe('admin');
+
+  const logs = await ModuleManagementLog.Search(['JobId', '=', jobId] as any, { limit: 1 } as any);
+  expect(logs?.length).toBe(1);
+  expect(logs?.[0]?.OperatorUserId).toBe('admin');
 });
 
 test('meta.IrModule ExecuteUpgrade returns failed result and maps error fields', async () => {

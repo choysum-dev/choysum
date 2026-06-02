@@ -14,6 +14,13 @@ type RequestSyncParams = {
   ifStale?: boolean;
 };
 
+function getBackendEnv(): Record<string, any> {
+  return {
+    ...(((globalThis as any)?.__choysumBackendEnv as Record<string, any> | undefined) || {}),
+    ...((((import.meta as any)?.env as Record<string, any> | undefined) || {})),
+  };
+}
+
 function normalizeOriginType(value?: string): ModuleOriginType {
   const raw = String(value || '')
     .trim()
@@ -23,11 +30,11 @@ function normalizeOriginType(value?: string): ModuleOriginType {
 }
 
 function ensureCurrentUserId(): string {
-  const userId = String(getUserId() || '').trim();
-  if (userId) return userId;
-  const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv;
+  const env = getBackendEnv();
   const fallback = String((env as any)?.CHOYSUM_E2E_OPERATOR_USER_ID || (env as any)?.choysum_e2e_operator_user_id || '').trim();
   if (fallback) return fallback;
+  const userId = String(getUserId() || '').trim();
+  if (userId) return userId;
   throw new Error('current user is required');
 }
 

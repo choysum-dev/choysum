@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/jwtauth"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 
 	"github.com/buke/quickjs-go"
+	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/internal/server/reload"
 	"github.com/choysum-dev/choysum/internal/state/lease"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -211,6 +213,17 @@ func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sco
 	execCtx := jse.ExecContext()
 	if execCtx == nil {
 		execCtx = context.Background()
+	}
+	if userID := strings.TrimSpace(params.OperatorUserId); userID != "" {
+		now := time.Now()
+		tokenID := strings.TrimSpace(params.JobId)
+		if tokenID == "" {
+			tokenID = "module-management-" + action
+		}
+		execCtx = auth.ContextWithIdentity(execCtx, jwtauth.NewIdentity(userID, tokenID, map[string]any{
+			"purpose": "module-management",
+			"action":  action,
+		}, now.Add(time.Hour), now, auth.AccessToken, "choysum-module-management"))
 	}
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 

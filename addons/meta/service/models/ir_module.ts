@@ -58,6 +58,13 @@ type ModuleOpBridgeResult = {
   errorMessage?: string;
 };
 
+function getBackendEnv(): Record<string, any> {
+  return {
+    ...(((globalThis as any)?.__choysumBackendEnv as Record<string, any> | undefined) || {}),
+    ...((((import.meta as any)?.env as Record<string, any> | undefined) || {})),
+  };
+}
+
 function ensureModuleName(name?: string): string {
   const trimmed = String(name || '').trim();
   if (!trimmed) throw new Error('moduleName cannot be empty');
@@ -65,7 +72,7 @@ function ensureModuleName(name?: string): string {
 }
 
 function ensureCurrentUserId(): string {
-  const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv;
+  const env = getBackendEnv();
   const fallback = String((env as any)?.CHOYSUM_E2E_OPERATOR_USER_ID || (env as any)?.choysum_e2e_operator_user_id || '').trim();
   if (fallback) return fallback;
   const userId = String(getUserId() || '').trim();
@@ -270,7 +277,7 @@ export default class IrModule extends BaseModel {
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
     const name = ensureModuleName(moduleName);
     const userId = ensureCurrentUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
+    const env = getBackendEnv();
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
     const job = await Job.EnqueueJob(
       'meta',
@@ -301,7 +308,7 @@ export default class IrModule extends BaseModel {
   static async RequestUninstall(moduleName: string): Promise<string> {
     const name = ensureModuleName(moduleName);
     const userId = ensureCurrentUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
+    const env = getBackendEnv();
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
     const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUninstall', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
     if (forceLockConflict && (job as any)?.Id) {
@@ -323,7 +330,7 @@ export default class IrModule extends BaseModel {
   static async RequestUpgrade(moduleName: string): Promise<string> {
     const name = ensureModuleName(moduleName);
     const userId = ensureCurrentUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
+    const env = getBackendEnv();
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
     const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUpgrade', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
     if (forceLockConflict && (job as any)?.Id) {
@@ -421,11 +428,11 @@ export default class IrModule extends BaseModel {
 
   private static async executeModuleOp(action: ModuleAction, moduleName: string, opts: { withDemo?: boolean; operatorUserId?: string }): Promise<any> {
     const name = ensureModuleName(moduleName);
-    const operatorUserId = String(opts?.operatorUserId || getUserId() || '').trim();
+    const operatorUserId = String(opts?.operatorUserId || ensureCurrentUserId()).trim();
     const jobId = String(getCtxValue('jobId') || '').trim();
     const bridge = getModuleManagementBridge();
 
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
+    const env = getBackendEnv();
     const forceResultStatus = String((env as any).CHOYSUM_E2E_FORCE_RESULT_STATUS || (env as any).choysum_e2e_force_result_status || '').toUpperCase();
     const forceReloadFailed = Boolean((env as any).CHOYSUM_E2E_FORCE_RELOAD_FAILED || (env as any).choysum_e2e_force_reload_failed);
 
