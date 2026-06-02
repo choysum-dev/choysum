@@ -46,71 +46,10 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
   const loginVisible = await loginInput.isVisible().catch(() => false);
   if (page.url().includes('/web/login') || loginVisible) {
     await loginInput.waitFor({ state: 'visible', timeout: 10000 });
-
-    let lastLoginError = '';
-
-    const fillInputStable = async (placeholder: RegExp, value: string) => {
-      for (let i = 0; i < 4; i += 1) {
-        const input = page.getByPlaceholder(placeholder).first();
-        try {
-          await input.waitFor({ state: 'visible', timeout: 4000 });
-          await input.fill(value, { timeout: 4000 });
-          const actual = await input.inputValue({ timeout: 2000 }).catch(() => '');
-          if (actual === value) {
-            return true;
-          }
-        } catch {
-          // Retry on transient detach/re-render.
-        }
-        await page.waitForTimeout(250);
-      }
-      return false;
-    };
-
-    const tryLogin = async (username: string, password: string) => {
-      await page.waitForSelector('input[placeholder*="username"]', { timeout: 5000 }).catch(() => null);
-      const userOK = await fillInputStable(/用户名|username/i, username);
-      const passOK = await fillInputStable(/密码|password/i, password);
-      if (!userOK || !passOK) {
-        lastLoginError = 'login form not stable';
-        return false;
-      }
-
-      await page.locator('button[type="submit"]').click({ timeout: 5000 }).catch(() => null);
-      await page.waitForURL(/\/(web\/)?meta\/modules/, { timeout: 10000 }).catch(() => null);
-      if (!page.url().includes('/web/login')) {
-        return true;
-      }
-
-      const formError = (await page.locator('.el-form-item__error').first().textContent().catch(() => '')) || '';
-      const toastError = (await page.locator('.el-message--error .el-message__content').last().textContent().catch(() => '')) || '';
-      lastLoginError = (formError || toastError || 'login rejected').trim();
-      return false;
-    };
-
-    let ok = false;
-    const maxAttempts = 3;
-    for (let i = 0; i < maxAttempts; i += 1) {
-      ok = await tryLogin('admin', 'admin');
-      if (ok) {
-        break;
-      }
-      await page.waitForTimeout(1000);
-      await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' }).catch(() => null);
-    }
-    if (!ok) {
-      for (let i = 0; i < maxAttempts; i += 1) {
-        ok = await tryLogin('e2e-admin', 'e2e-admin');
-        if (ok) {
-          break;
-        }
-        await page.waitForTimeout(1000);
-        await page.goto(`${baseURL}/web/login`, { waitUntil: 'domcontentloaded' }).catch(() => null);
-      }
-    }
-    if (!ok) {
-      throw new Error(`login failed after retries for admin and e2e-admin; current url=${page.url()}; last login error=${lastLoginError || 'n/a'}`);
-    }
+    await page.waitForSelector('input[placeholder*="username"]', { timeout: 10000 });
+    await page.getByPlaceholder(/username/i).fill('e2e-admin');
+    await page.getByPlaceholder(/password/i).fill('e2e-admin');
+    await page.locator('button[type="submit"]').click();
     await expect(page).not.toHaveURL(/\/web\/login/, { timeout: 15000 });
   }
   await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
