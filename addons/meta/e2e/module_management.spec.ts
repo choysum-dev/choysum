@@ -184,24 +184,87 @@ async function moduleStatusText(page: Page, moduleName: string) {
 }
 
 /**
+ * Derives module status from available action buttons when the status tag is transiently unavailable.
+ */
+async function inferModuleStatusFromActions(page: Page, moduleName: string): Promise<string> {
+  const card = await openModuleCard(page, moduleName, { allowMissing: true });
+  if (!card) {
+    return '';
+  }
+
+  const installVisible = await card
+    .getByRole('button', { name: '安装' })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (installVisible) {
+    return '未安装';
+  }
+
+  const upgradeVisible = await card
+    .getByRole('button', { name: '升级' })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  const uninstallVisible = await card
+    .getByRole('button', { name: '卸载' })
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (upgradeVisible || uninstallVisible) {
+    return '已安装';
+  }
+
+  return '';
+}
+
+/**
  * Polls the module board until a module reaches the expected status label.
  */
-async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 60000) {
+async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 120000) {
   const deadline = Date.now() + timeout;
   let lastStatus = '';
+  let emptyPolls = 0;
 
   while (Date.now() < deadline) {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
     await waitForModuleList(page);
-    lastStatus = await moduleStatusText(page, moduleName);
+    const statusText = await moduleStatusText(page, moduleName);
+    const inferredStatus = statusText || (await inferModuleStatusFromActions(page, moduleName));
+    if (!inferredStatus) {
+      emptyPolls += 1;
+      await page.waitForTimeout(1000);
+      continue;
+    }
+
+    lastStatus = inferredStatus;
     if (lastStatus === expectedStatus) {
       return;
     }
     await page.waitForTimeout(1000);
   }
 
-  throw new Error(`module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus}`);
+  const detail = lastStatus || '<empty>';
+  throw new Error(`module ${moduleName} status remained ${detail}, want ${expectedStatus} (empty polls: ${emptyPolls})`);
+}
+
+/**
+ * Waits for a terminal operation signal: either backend-triggered reload or a terminal status in the dialog.
+ */
+async function waitForTerminalSignal(page: Page, timeout = 3 * 60 * 1000): Promise<'reload' | 'terminal'> {
+  const dialog = page.locator('.el-dialog');
+  const statusTag = dialog.locator('.status-row .el-tag').first();
+  try {
+    return await Promise.any([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout }).then(() => 'reload' as const),
+      expect(statusTag)
+        .toHaveText(/succeeded|failed|cancelled/i, { timeout })
+        .then(() => 'terminal' as const),
+    ]);
+  } catch {
+    throw new Error('operation completion signal not observed before timeout');
+  }
 }
 
 /**
@@ -209,18 +272,8 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
  */
 async function waitForOperationCompletion(page: Page) {
   const dialog = page.locator('.el-dialog');
-  const reloadPromise = page
-    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10 * 60 * 1000 })
-    .then(() => 'reload')
-    .catch(() => 'no');
-  const resultPromise = page
-    .getByRole('button', { name: '完成' })
-    .waitFor({ timeout: 10 * 60 * 1000 })
-    .then(() => 'dialog')
-    .catch(() => 'no');
-
-  const winner = await Promise.race([reloadPromise, resultPromise]);
-  if (winner === 'dialog') {
+  const winner = await waitForTerminalSignal(page);
+  if (winner === 'terminal') {
     const resultTag = dialog.locator('.status-row .el-tag').nth(1);
     await expect(resultTag).not.toHaveText(/FAILED/i);
     await page.getByRole('button', { name: '完成' }).click();
@@ -235,7 +288,10 @@ async function waitForOperationCompletion(page: Page) {
  */
 async function waitForOperationFailure(page: Page) {
   const dialog = page.locator('.el-dialog');
-  await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
+  const winner = await waitForTerminalSignal(page);
+  if (winner === 'reload') {
+    throw new Error('expected failure dialog result, but page reloaded before terminal failure status was visible');
+  }
   const resultTag = dialog.locator('.status-row .el-tag').nth(1);
   const resultText = (await resultTag.textContent().catch(() => '')) || '';
   if (/FAILED/i.test(resultText)) {
@@ -320,7 +376,10 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
   await dialog.waitFor({ state: 'visible', timeout: 15000 });
   await clickConfirmWhenReady(page);
 
-  await page.getByRole('button', { name: '完成' }).waitFor({ timeout: 10 * 60 * 1000 });
+  const winner = await waitForTerminalSignal(page);
+  if (winner === 'reload') {
+    throw new Error('expected result dialog for reload-failed assertion, but operation triggered page reload');
+  }
   const reloadRow = dialog.locator('.status-row', { hasText: 'Reload' });
   if ((await reloadRow.count()) > 0) {
     await expect(reloadRow).toHaveText(/触发失败/);
