@@ -110,7 +110,7 @@ func (r invocationRuntime) executeUnary(
 	start := time.Now()
 	defer func() {
 		duration := time.Since(start)
-		r.runtimeScope.Logger().Debug("unary handler executed",
+		r.runtimeScope.Logger().Info("unary handler executed",
 			"full_method", fmt.Sprintf("%s.%s.%s", packageName, serviceName, methodName),
 			"trace_id", traceID,
 			"span_id", spanID,
