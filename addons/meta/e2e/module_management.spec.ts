@@ -282,13 +282,15 @@ async function waitForOperationCompletion(page: Page): Promise<OperationCompleti
   if (winner === 'terminal') {
     const resultTag = dialog.locator('.status-row .el-tag').nth(1);
     const resultStatus = ((await resultTag.textContent().catch(() => '')) || '').trim();
-    const failureKind = (
-      (await dialog
-        .locator('.status-row .value')
-        .first()
-        .textContent()
-        .catch(() => '')) || ''
-    ).trim();
+    const failureRow = dialog.locator('.status-row', { hasText: '失败类型' });
+    const failureKind = (await failureRow.count())
+      ? (
+          (await failureRow
+            .locator('.value')
+            .textContent()
+            .catch(() => '')) || ''
+        ).trim()
+      : '';
     await page.getByRole('button', { name: '完成' }).click();
     await dialog.waitFor({ state: 'hidden', timeout: 15000 });
     return {
