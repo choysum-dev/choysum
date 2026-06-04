@@ -1443,9 +1443,12 @@ export default class User extends BaseModel {
 
     const prevRR = typeof state.recordRuleBypassDepth === 'number' ? state.recordRuleBypassDepth : 0;
     const prevFR = typeof state.fieldRuleBypassDepth === 'number' ? state.fieldRuleBypassDepth : 0;
+    const hadCompanyMode = Object.prototype.hasOwnProperty.call(req, 'companyMode');
+    const prevCompanyMode = req.companyMode;
 
     state.recordRuleBypassDepth = prevRR + 1;
     state.fieldRuleBypassDepth = prevFR + 1;
+    req.companyMode = 'skip';
     try {
       return await fn();
     } finally {
@@ -1455,6 +1458,9 @@ export default class User extends BaseModel {
       else delete state.recordRuleBypassDepth;
       if (nextFR > 0) state.fieldRuleBypassDepth = nextFR;
       else delete state.fieldRuleBypassDepth;
+
+      if (hadCompanyMode) req.companyMode = prevCompanyMode;
+      else delete req.companyMode;
     }
   }
 
