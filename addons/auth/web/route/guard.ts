@@ -143,7 +143,7 @@ function pickFirstAllowedRoutePath(state: any, ctx: { activeCompanyId?: string; 
 /**
  * Redirect unauthenticated users to the login page.
  */
-export async function authGuard(to: RouteLocationNormalized, from: RouteLocationNormalized) {
+export async function authGuard(to: RouteLocationNormalized, _from: RouteLocationNormalized) {
   if (to.meta.requiresAuth === false || to.meta.isAuthPage) {
     return true;
   }
@@ -166,7 +166,7 @@ export async function authGuard(to: RouteLocationNormalized, from: RouteLocation
 /**
  * Redirect users to the permission error page when the route resource is not allowed.
  */
-export async function permissionGuard(to: RouteLocationNormalized, from: RouteLocationNormalized) {
+export async function permissionGuard(to: RouteLocationNormalized, _from: RouteLocationNormalized) {
   // Error pages bypass the permission guard to avoid redirect loops.
   if (String(to.path || '').startsWith('/error/')) {
     return true;

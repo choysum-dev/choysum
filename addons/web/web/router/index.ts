@@ -52,7 +52,7 @@ export function createAppRouter(base = '/'): Router {
     } catch (error) {
       console.error('Navigation error:', error);
       NProgress.done();
-      return '/error/500';
+      return to.path === '/error/500' ? true : '/error/500';
     }
   });
 
