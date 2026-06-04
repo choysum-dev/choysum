@@ -373,9 +373,48 @@ async function clickConfirmWhenReady(page: Page, timeout = 90000) {
 }
 
 /**
- * Executes a module management action and waits for the board state to settle.
+ * Returns true when the operation failure looks transient and retryable.
  */
-async function runAction(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
+function shouldRetryOperationFailure(error: unknown) {
+  const message = String((error as { message?: string })?.message ?? error ?? '');
+  return /module operation finished with status (failed|cancelled)/i.test(message);
+}
+
+/**
+ * Dismisses the operation dialog when it is still visible.
+ */
+async function closeOperationDialogIfPresent(page: Page) {
+  const dialog = page.locator('.el-dialog');
+  const dialogVisible = await dialog.isVisible().catch(() => false);
+  if (!dialogVisible) {
+    return;
+  }
+
+  const doneButton = page.getByRole('button', { name: '完成' });
+  const doneVisible = await doneButton.isVisible().catch(() => false);
+  if (doneVisible) {
+    await doneButton.click().catch(() => null);
+  }
+
+  await dialog.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => null);
+}
+
+/**
+ * Waits for the expected module status and returns false instead of throwing on timeout.
+ */
+async function hasExpectedModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 30000) {
+  try {
+    await waitForModuleStatus(page, moduleName, expectedStatus, timeout);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Executes one module management action and waits for the board state to settle.
+ */
+async function runActionOnce(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
   const actionLabel = action === 'install' ? '安装' : action === 'upgrade' ? '升级' : '卸载';
   const card = await openModuleCard(page, moduleName);
   await card.getByRole('button', { name: actionLabel }).click();
@@ -395,6 +434,35 @@ async function runAction(page: Page, moduleName: string, action: 'install' | 'up
 
   const expectedStatus = '已安装';
   await waitForModuleStatus(page, moduleName, expectedStatus);
+}
+
+/**
+ * Executes a module management action and retries once for transient terminal failures.
+ */
+async function runAction(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
+  const expectedStatus = action === 'uninstall' ? '未安装' : '已安装';
+  const maxAttempts = 2;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await runActionOnce(page, moduleName, action);
+      return;
+    } catch (error) {
+      if (await hasExpectedModuleStatus(page, moduleName, expectedStatus)) {
+        return;
+      }
+
+      const canRetry = attempt < maxAttempts && shouldRetryOperationFailure(error);
+      if (!canRetry) {
+        throw error;
+      }
+
+      await closeOperationDialogIfPresent(page);
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
+      await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
+      await waitForModuleList(page);
+    }
+  }
 }
 
 /**
