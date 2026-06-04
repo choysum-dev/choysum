@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { RouteLocationNormalized, NavigationGuardNext } from 'vue-router';
+import { RouteLocationNormalized } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { canRoute } from '@/auth/web/permission';
 import { appRoutes } from './routes';
@@ -143,9 +143,9 @@ function pickFirstAllowedRoutePath(state: any, ctx: { activeCompanyId?: string; 
 /**
  * Redirect unauthenticated users to the login page.
  */
-export async function authGuard(to: RouteLocationNormalized, from: RouteLocationNormalized, next: NavigationGuardNext) {
+export async function authGuard(to: RouteLocationNormalized, from: RouteLocationNormalized) {
   if (to.meta.requiresAuth === false || to.meta.isAuthPage) {
-    return next();
+    return true;
   }
 
   const authStore = useAuthStore();
@@ -158,31 +158,31 @@ export async function authGuard(to: RouteLocationNormalized, from: RouteLocation
   }
 
   if (!authStore.isAuthenticated) {
-    return next({ path: '/login', query: { redirect: to.fullPath }, replace: true });
+    return { path: '/login', query: { redirect: to.fullPath }, replace: true };
   }
-  next();
+  return true;
 }
 
 /**
  * Redirect users to the permission error page when the route resource is not allowed.
  */
-export async function permissionGuard(to: RouteLocationNormalized, from: RouteLocationNormalized, next: NavigationGuardNext) {
+export async function permissionGuard(to: RouteLocationNormalized, from: RouteLocationNormalized) {
   // Error pages bypass the permission guard to avoid redirect loops.
   if (String(to.path || '').startsWith('/error/')) {
-    return next();
+    return true;
   }
 
   const resourceId = String((to.meta as any)?.resourceId || '').trim();
 
   if (!resourceId || to.meta.requiresAuth === false) {
-    return next();
+    return true;
   }
 
   const authStore = useAuthStore();
 
   // Let the auth guard handle unauthenticated navigation.
   if (!authStore.isAuthenticated) {
-    return next();
+    return true;
   }
 
   try {
@@ -203,11 +203,11 @@ export async function permissionGuard(to: RouteLocationNormalized, from: RouteLo
     if (to.path === '/' || to.path === '/home') {
       const fallbackPath = pickFirstAllowedRoutePath(authStore.permissionState, ctx);
       if (fallbackPath && fallbackPath !== to.path) {
-        return next({ path: fallbackPath, replace: true });
+        return { path: fallbackPath, replace: true };
       }
     }
 
-    return next({
+    return {
       path: '/error/403',
       query: {
         reason: 'permission',
@@ -215,8 +215,8 @@ export async function permissionGuard(to: RouteLocationNormalized, from: RouteLo
         from: to.fullPath,
       },
       replace: true,
-    });
+    };
   }
 
-  next();
+  return true;
 }
