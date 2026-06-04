@@ -32,19 +32,17 @@ describe('route guards', () => {
 
     const { authGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await authGuard(
+    const result = await authGuard(
       {
         path: '/auth/users',
         fullPath: '/auth/users?page=1',
         meta: { requiresAuth: true },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
     expect(mockAuthStore.ensureAuthReady).toHaveBeenCalledTimes(1);
-    expect(next).toHaveBeenCalledWith({
+    expect(result).toEqual({
       path: '/login',
       query: { redirect: '/auth/users?page=1' },
       replace: true,
@@ -62,20 +60,18 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/auth/users',
         fullPath: '/auth/users',
         meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
     expect(mockAuthStore.loadPermissionState).toHaveBeenCalledWith(false);
     expect(canRouteMock).toHaveBeenCalledWith('auth.route.user_list', mockAuthStore.permissionState, { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] });
-    expect(next).toHaveBeenCalledWith({
+    expect(result).toEqual({
       path: '/error/403',
       query: {
         reason: 'permission',
@@ -96,18 +92,16 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/public/help',
         fullPath: '/public/help',
         meta: { requiresAuth: true },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith();
+    expect(result).toBe(true);
     expect(canRouteMock).not.toHaveBeenCalled();
   });
 
@@ -121,18 +115,16 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/error/403',
         fullPath: '/error/403?from=/auth/users',
         meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith();
+    expect(result).toBe(true);
     expect(mockAuthStore.loadPermissionState).not.toHaveBeenCalled();
     expect(canRouteMock).not.toHaveBeenCalled();
   });
@@ -147,18 +139,16 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/login',
         fullPath: '/login',
         meta: { requiresAuth: false, resourceId: 'auth.route.login' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith();
+    expect(result).toBe(true);
     expect(mockAuthStore.loadPermissionState).not.toHaveBeenCalled();
     expect(canRouteMock).not.toHaveBeenCalled();
   });
@@ -173,18 +163,16 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/auth/users',
         fullPath: '/auth/users',
         meta: { requiresAuth: true, resourceId: 'auth.route.user_list' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith();
+    expect(result).toBe(true);
     expect(mockAuthStore.loadPermissionState).not.toHaveBeenCalled();
     expect(canRouteMock).not.toHaveBeenCalled();
   });
@@ -201,18 +189,16 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/home',
         fullPath: '/home',
         meta: { requiresAuth: true, resourceId: 'web.route.home' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith({ path: '/auth/users', replace: true });
+    expect(result).toEqual({ path: '/auth/users', replace: true });
   });
 
   it('permissionGuard soft-landing keeps deterministic order under same permission set', async () => {
@@ -229,19 +215,17 @@ describe('route guards', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/',
         fullPath: '/',
         meta: { requiresAuth: true, resourceId: 'web.route.home' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
     // role_list and token_list both routeSequence=10, so parent menu sequence decides (30 < 50).
     // user_create has routeSequence=30 and should never win over the two list pages.
-    expect(next).toHaveBeenCalledWith({ path: '/auth/roles', replace: true });
+    expect(result).toEqual({ path: '/auth/roles', replace: true });
   });
 });
