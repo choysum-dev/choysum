@@ -99,6 +99,9 @@ func TestCSRFHandlerSetsCookieAndBypassesSafeOrExcludedRequests(t *testing.T) {
 	if len(cookies) != 1 || cookies[0].Name != h.cookieName || cookies[0].Value == "" {
 		t.Fatalf("unexpected cookies: %#v", cookies)
 	}
+	if !cookies[0].Secure {
+		t.Fatalf("expected csrf cookie to always be secure")
+	}
 
 	excluded := httptest.NewRecorder()
 	excludedReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
