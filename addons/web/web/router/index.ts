@@ -35,7 +35,7 @@ export function createAppRouter(base = '/'): Router {
     },
   });
 
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async to => {
     NProgress.start();
 
     try {
@@ -48,11 +48,11 @@ export function createAppRouter(base = '/'): Router {
 
       useTitle(title ? `${title} - ${appName}` : appName);
 
-      next();
+      return true;
     } catch (error) {
       console.error('Navigation error:', error);
       NProgress.done();
-      next('/error/500');
+      return to.path === '/error/500' ? true : '/error/500';
     }
   });
 

@@ -52,31 +52,27 @@ describe('permission flow integration', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const nextAllowed = vi.fn();
-    await permissionGuard(
+    const allowed = await permissionGuard(
       {
         path: '/auth/allowed',
         fullPath: '/auth/allowed',
         meta: { requiresAuth: true, resourceId: 'auth.route.allowed' },
       } as any,
-      {} as any,
-      nextAllowed as any
+      {} as any
     );
 
-    expect(nextAllowed).toHaveBeenCalledWith();
+    expect(allowed).toBe(true);
 
-    const nextDenied = vi.fn();
-    await permissionGuard(
+    const denied = await permissionGuard(
       {
         path: '/auth/denied',
         fullPath: '/auth/denied',
         meta: { requiresAuth: true, resourceId: 'auth.route.denied' },
       } as any,
-      {} as any,
-      nextDenied as any
+      {} as any
     );
 
-    expect(nextDenied).toHaveBeenCalledWith({
+    expect(denied).toEqual({
       path: '/error/403',
       query: {
         reason: 'permission',
@@ -134,18 +130,16 @@ describe('permission flow integration', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/auth/c2',
         fullPath: '/auth/c2',
         meta: { requiresAuth: true, resourceId: 'auth.route.c2_only' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith();
+    expect(result).toBe(true);
 
     const menus: any[] = [
       {
@@ -185,29 +179,25 @@ describe('permission flow integration', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const nextAllowed = vi.fn();
-    await permissionGuard(
+    const allowed = await permissionGuard(
       {
         path: '/auth/tokens',
         fullPath: '/auth/tokens',
         meta: { requiresAuth: true, resourceId: 'auth.route.token_list' },
       } as any,
-      {} as any,
-      nextAllowed as any
+      {} as any
     );
-    expect(nextAllowed).toHaveBeenCalledWith();
+    expect(allowed).toBe(true);
 
-    const nextDenied = vi.fn();
-    await permissionGuard(
+    const denied = await permissionGuard(
       {
         path: '/auth/tokens/kanban',
         fullPath: '/auth/tokens/kanban',
         meta: { requiresAuth: true, resourceId: 'auth.route.token_kanban' },
       } as any,
-      {} as any,
-      nextDenied as any
+      {} as any
     );
-    expect(nextDenied).toHaveBeenCalledWith({
+    expect(denied).toEqual({
       path: '/error/403',
       query: {
         reason: 'permission',
@@ -241,18 +231,16 @@ describe('permission flow integration', () => {
 
     const { permissionGuard } = await import('./guard');
 
-    const next = vi.fn();
-    await permissionGuard(
+    const result = await permissionGuard(
       {
         path: '/home',
         fullPath: '/home',
         meta: { requiresAuth: true, resourceId: 'web.route.home' },
       } as any,
-      {} as any,
-      next as any
+      {} as any
     );
 
-    expect(next).toHaveBeenCalledWith();
+    expect(result).toBe(true);
     expect(canRoute('web.route.home', state, { activeCompanyId: 'c1', enabledCompanyIds: ['c1'] })).toBe(true);
 
     const menus = [...clone(webMenus as any), ...clone(authMenus as any)] as any[];
