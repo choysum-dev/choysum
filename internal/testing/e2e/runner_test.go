@@ -53,14 +53,14 @@ func writeExecFile(t *testing.T, path string, content string) {
 	}
 }
 
-func writeManifestFile(t *testing.T, addonsPath, app, content string) {
+func writePackageFile(t *testing.T, addonsPath, app, content string) {
 	t.Helper()
 	dir := filepath.Join(addonsPath, app)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir app dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(content), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestRunModuleInputValidation(t *testing.T) {
 	}
 
 	addonsPath := t.TempDir()
-	writeManifestFile(t, addonsPath, "auth", `{"name":"Auth","e2e":{"specs":"e2e"}}`)
+	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 	err = RunModule(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, Scenarios: []string{"Bad Name"}})
 	if err == nil || !strings.Contains(err.Error(), "invalid scenario") {
 		t.Fatalf("expected invalid scenario error, got %v", err)
@@ -93,23 +93,23 @@ func TestRunModuleInputValidation(t *testing.T) {
 	}
 }
 
-func TestDiscoverSourceManifestsAndResolveModules(t *testing.T) {
+func TestDiscoverSourcePackagesAndResolveModules(t *testing.T) {
 	addonsPath := t.TempDir()
-	writeManifestFile(t, addonsPath, "auth", `{"name":"Auth","depends":["base"],"e2e":{"specs":"e2e/specs"}}`)
-	writeManifestFile(t, addonsPath, "base", `{"name":"Base"}`)
+	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","depends":["base"],"e2e":{"specs":"e2e/specs"}}}`)
+	writePackageFile(t, addonsPath, "base", `{"name":"@choysum/addon-base","version":"0.0.0","choysum":{"moduleName":"base","application":"base"}}`)
 	if err := os.WriteFile(filepath.Join(addonsPath, "README.md"), []byte("ignored"), 0o644); err != nil {
 		t.Fatalf("write readme: %v", err)
 	}
 
-	manifests, err := discoverSourceManifests(addonsPath)
+	packages, err := discoverSourcePackages(addonsPath)
 	if err != nil {
-		t.Fatalf("discoverSourceManifests error: %v", err)
+		t.Fatalf("discoverSourcePackages error: %v", err)
 	}
-	if len(manifests) != 2 {
-		t.Fatalf("unexpected manifest count: %d", len(manifests))
+	if len(packages) != 2 {
+		t.Fatalf("unexpected package count: %d", len(packages))
 	}
-	if manifests["auth"] == nil || manifests["auth"].DirName != "auth" {
-		t.Fatalf("auth manifest not parsed correctly: %#v", manifests["auth"])
+	if packages["auth"] == nil || packages["auth"].DirName != "auth" {
+		t.Fatalf("auth package not parsed correctly: %#v", packages["auth"])
 	}
 
 	mods, err := ResolveE2EModules(addonsPath)
@@ -122,7 +122,7 @@ func TestDiscoverSourceManifestsAndResolveModules(t *testing.T) {
 }
 
 func TestTopoClosureAndScenarioFixtures(t *testing.T) {
-	manifests := map[string]*sourceManifest{
+	manifests := map[string]*sourceModulePackage{
 		"auth": {Depends: []string{"base"}},
 		"base": {},
 	}
@@ -135,17 +135,17 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 		t.Fatalf("unexpected topo order: %#v", order)
 	}
 
-	_, err = topoClosure("auth", map[string]*sourceManifest{"auth": {Depends: []string{"missing"}}})
+	_, err = topoClosure("auth", map[string]*sourceModulePackage{"auth": {Depends: []string{"missing"}}})
 	if err == nil || !strings.Contains(err.Error(), "missing dependency") {
 		t.Fatalf("expected missing dependency error, got %v", err)
 	}
 
-	_, err = topoClosure("auth", map[string]*sourceManifest{"auth": {Depends: []string{"base"}}, "base": {Depends: []string{"auth"}}})
+	_, err = topoClosure("auth", map[string]*sourceModulePackage{"auth": {Depends: []string{"base"}}, "base": {Depends: []string{"auth"}}})
 	if err == nil || !strings.Contains(err.Error(), "depends cycle") {
 		t.Fatalf("expected cycle error, got %v", err)
 	}
 
-	m := &sourceManifest{E2E: &manifestE2E{Scenarios: map[string]manifestScene{
+	m := &sourceModulePackage{E2E: &packageE2E{Scenarios: map[string]packageScene{
 		"base":   {Fixtures: []string{"fixtures/base.json"}},
 		"child":  {Extends: "base", Fixtures: []string{"fixtures/child.json"}},
 		"broken": {Extends: "missing"},
@@ -198,13 +198,13 @@ func TestE2EUtilityHelpers(t *testing.T) {
 	}
 
 	repoRoot := t.TempDir()
-	manifestPath := filepath.Join(repoRoot, "manifest.json")
-	if err := os.WriteFile(manifestPath, []byte(`{"name":"Auth","version":"1.2.3"}`), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	packagePath := filepath.Join(repoRoot, "package.json")
+	if err := os.WriteFile(packagePath, []byte(`{"name":"@choysum/addon-auth","version":"1.2.3","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
-	_, version, err := readManifestVersion(manifestPath)
+	_, version, err := readPackageVersion(packagePath)
 	if err != nil || version != "v1.2.3" {
-		t.Fatalf("readManifestVersion got version=%q err=%v", version, err)
+		t.Fatalf("readPackageVersion got version=%q err=%v", version, err)
 	}
 
 	logFile := filepath.Join(t.TempDir(), "server.log")
@@ -355,12 +355,12 @@ func TestInstallApplySeedConfigLoadErrors(t *testing.T) {
 	}
 
 	loaded := []string{}
-	err = applyScenarioFixtures(ctx, missing, []string{"auth"}, map[string]*sourceManifest{}, "default", "auth", false, io.Discard, &loaded)
+	err = applyScenarioFixtures(ctx, missing, []string{"auth"}, map[string]*sourceModulePackage{}, "default", "auth", false, io.Discard, &loaded)
 	if err == nil || !strings.Contains(err.Error(), "load temp config") {
 		t.Fatalf("expected apply fixtures config load error, got %v", err)
 	}
 
-	err = seedModuleIndexForE2E(ctx, missing, map[string]*sourceManifest{})
+	err = seedModuleIndexForE2E(ctx, missing, map[string]*sourceModulePackage{})
 	if err == nil || !strings.Contains(err.Error(), "load temp config") {
 		t.Fatalf("expected seed module index config load error, got %v", err)
 	}
@@ -388,16 +388,16 @@ func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
 	addonsPath := t.TempDir()
 	configPath := writeTempE2EConfig(t, addonsPath)
 
-	manifests := map[string]*sourceManifest{
+	manifests := map[string]*sourceModulePackage{
 		"auth": {
 			DirName: "auth",
-			E2E: &manifestE2E{Scenarios: map[string]manifestScene{
+			E2E: &packageE2E{Scenarios: map[string]packageScene{
 				"empty": {Fixtures: []string{}},
 			}},
 		},
 		"base": {
 			DirName: "base",
-			E2E:     &manifestE2E{Scenarios: map[string]manifestScene{}},
+			E2E:     &packageE2E{Scenarios: map[string]packageScene{}},
 		},
 	}
 
@@ -440,11 +440,11 @@ func TestInstallForE2EAndSeedModuleIndexRuntimeBranches(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(addonsPath, "auth"), 0o755); err != nil {
 		t.Fatalf("mkdir auth dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "manifest.json"), []byte(`{"name":"Auth","version":"1.0.0"}`), 0o644); err != nil {
-		t.Fatalf("write auth manifest: %v", err)
+	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "package.json"), []byte(`{"name":"@choysum/addon-auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+		t.Fatalf("write auth package.json: %v", err)
 	}
 
-	manifests := map[string]*sourceManifest{
+	manifests := map[string]*sourceModulePackage{
 		"auth": {DirName: "auth"},
 		"tmp":  {DirName: "tmp"},
 	}

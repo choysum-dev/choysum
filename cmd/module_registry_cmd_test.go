@@ -112,17 +112,21 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 		t.Fatalf("create addons path: %v", err)
 	}
 
-	writeCommandManifest(t, addonsPath, "auth", `{
-		"name": "auth",
+	writeCommandPackage(t, addonsPath, "auth", `{
+		"name": "@choysum/addon-auth",
+		"version": "1.2.3",
 		"description": "test module",
-		"application": "auth",
-		"category": "test",
-		"depends": [],
-		"externalDependencies": {"application": {}, "node_module": {}, "binary": {}},
-		"entryPoints": {"service": "./service/index.ts", "web": "./web/index.ts"},
-		"version": "v1.2.3",
-		"license": "Apache 2.0",
-		"author": "test"
+		"license": "Apache-2.0",
+		"author": "test",
+		"type": "module",
+		"main": "index.ts",
+		"choysum": {
+			"moduleName": "auth",
+			"application": "auth",
+			"category": "test",
+			"depends": [],
+			"entryPoints": {"service": "./service/index.ts", "web": "./web/index.ts"}
+		}
 	}`)
 
 	defaultChoysumPath := t.TempDir()

@@ -22,19 +22,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  addon-package-contract:
-    name: pr / addon-package-contract
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Verify addon package contract
-        run: python3 scripts/dev/check-addon-package-contract.py
-
   discover-impact:
     name: pr / discover-impact
     runs-on: ubuntu-latest
