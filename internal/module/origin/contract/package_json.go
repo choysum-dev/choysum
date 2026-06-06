@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/choysum-dev/choysum/pkg/meta"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"golang.org/x/mod/semver"
 )
@@ -43,6 +44,14 @@ type CompatibilityMeta struct {
 	Choysum string `json:"choysum,omitempty"`
 }
 
+// PackageToModuleResult is the canonical output of package.json parsing.
+// PeerDependencies are returned as a dedicated map because they are not part of
+// ExternalDependencies.node_module anymore.
+type PackageToModuleResult struct {
+	Module           *meta.IrModule
+	PeerDependencies map[string]string
+}
+
 // DecodePackageJSON decodes raw package.json bytes into the canonical contract.
 func DecodePackageJSON(raw []byte) (*PackageJSON, error) {
 	if len(raw) == 0 {
@@ -53,6 +62,91 @@ func DecodePackageJSON(raw []byte) (*PackageJSON, error) {
 		return nil, xfmt.Errorf("decode package.json: %w", err)
 	}
 	return pkg, nil
+}
+
+// ParsePackageJSONToIrModule decodes, validates, and converts package.json into
+// the internal meta.IrModule representation.
+func ParsePackageJSONToIrModule(raw []byte, modulePath string, binaryDependencies map[string]string) (*PackageToModuleResult, error) {
+	pkg, err := DecodePackageJSON(raw)
+	if err != nil {
+		return nil, err
+	}
+	return PackageJSONToIrModule(pkg, modulePath, binaryDependencies)
+}
+
+// PackageJSONToIrModule converts a validated PackageJSON into meta.IrModule.
+func PackageJSONToIrModule(pkg *PackageJSON, modulePath string, binaryDependencies map[string]string) (*PackageToModuleResult, error) {
+	if err := ValidatePackageJSON(pkg); err != nil {
+		return nil, err
+	}
+
+	normalizedVersion, err := NormalizeVersion(pkg.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	mod := &meta.IrModule{
+		Name:           strings.TrimSpace(pkg.Choysum.ModuleName),
+		Version:        normalizedVersion,
+		Description:    strings.TrimSpace(pkg.Description),
+		License:        strings.TrimSpace(pkg.License),
+		Author:         strings.TrimSpace(pkg.Author),
+		ApplicationStr: strings.TrimSpace(pkg.Choysum.Application),
+		Category:       strings.TrimSpace(pkg.Choysum.Category),
+		Path:           strings.TrimSpace(modulePath),
+		Status:         meta.ToInstall,
+	}
+
+	if len(pkg.Choysum.Depends) > 0 {
+		dependsJSON, err := json.Marshal(pkg.Choysum.Depends)
+		if err != nil {
+			return nil, xfmt.Errorf("marshal depends: %w", err)
+		}
+		mod.DependsStr = dependsJSON
+	}
+
+	if len(pkg.Choysum.EntryPoints) > 0 {
+		entryPointsJSON, err := json.Marshal(pkg.Choysum.EntryPoints)
+		if err != nil {
+			return nil, xfmt.Errorf("marshal entryPoints: %w", err)
+		}
+		mod.EntryPoints = entryPointsJSON
+		if webEntry, ok := pkg.Choysum.EntryPoints["web"]; ok {
+			mod.WebEntryPoint = strings.TrimSpace(webEntry)
+		}
+		if serviceEntry, ok := pkg.Choysum.EntryPoints["service"]; ok {
+			mod.ServiceEntryPoint = strings.TrimSpace(serviceEntry)
+		}
+	}
+
+	if len(pkg.Choysum.Data) > 0 {
+		dataJSON, err := json.Marshal(pkg.Choysum.Data)
+		if err != nil {
+			return nil, xfmt.Errorf("marshal data: %w", err)
+		}
+		mod.DataStr = dataJSON
+	}
+
+	if len(pkg.Choysum.Demo) > 0 {
+		demoJSON, err := json.Marshal(pkg.Choysum.Demo)
+		if err != nil {
+			return nil, xfmt.Errorf("marshal demo: %w", err)
+		}
+		mod.DemoStr = demoJSON
+	}
+
+	externalDependenciesJSON, err := json.Marshal(BuildExternalDependencies(binaryDependencies))
+	if err != nil {
+		return nil, xfmt.Errorf("marshal externalDependencies: %w", err)
+	}
+	mod.ExternalDependencies = externalDependenciesJSON
+
+	peerDependencies := CanonicalPeerDependencies(pkg.PeerDependencies)
+
+	return &PackageToModuleResult{
+		Module:           mod,
+		PeerDependencies: peerDependencies,
+	}, nil
 }
 
 // NormalizeVersion converts a SemVer version into the internal v-prefixed form.

@@ -5,6 +5,7 @@ package contract
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -161,5 +162,107 @@ func TestBuildExternalDependencies(t *testing.T) {
 	}
 	if strings.Contains(string(raw), "node_module") {
 		t.Fatalf("marshaled deps contains unexpected node_module: %s", string(raw))
+	}
+}
+
+func TestParsePackageJSONToIrModule(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+		raw := []byte(`{
+			"name":"@acme/choysum-sale",
+			"version":"0.1.0",
+			"description":"Sales addon",
+			"license":"LGPL-3.0-or-later",
+			"author":"Acme",
+			"peerDependencies":{"pinia":"^2.1.7","vue":"^3.4.29"},
+			"choysum":{
+				"moduleName":"sale",
+				"application":"sale",
+				"depends":["core","base"],
+				"entryPoints":{"service":"./service/index.ts","web":"./web/index.ts"},
+				"data":["data/bootstrap.json"],
+				"demo":["demo/demo.json"]
+			}
+		}`)
+
+		result, err := ParsePackageJSONToIrModule(raw, "/tmp/addons/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+		if err != nil {
+			t.Fatalf("ParsePackageJSONToIrModule() error = %v", err)
+		}
+		if result == nil || result.Module == nil {
+			t.Fatalf("expected non-nil conversion result")
+		}
+		if result.Module.Name != "sale" {
+			t.Fatalf("module name = %q, want %q", result.Module.Name, "sale")
+		}
+		if result.Module.Version != "v0.1.0" {
+			t.Fatalf("module version = %q, want %q", result.Module.Version, "v0.1.0")
+		}
+		if result.Module.WebEntryPoint != "./web/index.ts" || result.Module.ServiceEntryPoint != "./service/index.ts" {
+			t.Fatalf("unexpected entry points: web=%q service=%q", result.Module.WebEntryPoint, result.Module.ServiceEntryPoint)
+		}
+		if !reflect.DeepEqual(result.PeerDependencies, map[string]string{"pinia": "^2.1.7", "vue": "^3.4.29"}) {
+			t.Fatalf("unexpected peerDependencies: %#v", result.PeerDependencies)
+		}
+
+		ext := map[string]map[string]string{}
+		if err := json.Unmarshal(result.Module.ExternalDependencies, &ext); err != nil {
+			t.Fatalf("unmarshal externalDependencies: %v", err)
+		}
+		if _, ok := ext["node_module"]; ok {
+			t.Fatalf("node_module channel must not exist: %#v", ext)
+		}
+		if ext["binary"]["wkhtmltopdf"] != ">=0.12.0" {
+			t.Fatalf("unexpected binary dependencies: %#v", ext)
+		}
+	})
+
+	t.Run("type error in depends", func(t *testing.T) {
+		t.Parallel()
+		raw := []byte(`{
+			"name":"@acme/choysum-sale",
+			"version":"0.1.0",
+			"choysum":{
+				"moduleName":"sale",
+				"application":"sale",
+				"depends":[1]
+			}
+		}`)
+		if _, err := ParsePackageJSONToIrModule(raw, "", nil); err == nil {
+			t.Fatalf("expected type error for depends")
+		}
+	})
+}
+
+func TestPackageJSONToIrModuleIdempotent(t *testing.T) {
+	t.Parallel()
+
+	pkg := &PackageJSON{
+		Name:    "@acme/choysum-sale",
+		Version: "0.1.0",
+		Choysum: ChoysumMeta{
+			ModuleName:  "sale",
+			Application: "sale",
+			Depends:     []string{"core", "base"},
+			EntryPoints: map[string]string{"service": "./service/index.ts", "web": "./web/index.ts"},
+			Data:        []string{"data/bootstrap.json"},
+			Demo:        []string{"demo/demo.json"},
+		},
+		PeerDependencies: map[string]string{"vue": "^3.4.29", "pinia": "^2.1.7"},
+	}
+
+	res1, err := PackageJSONToIrModule(pkg, "/tmp/addons/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+	if err != nil {
+		t.Fatalf("first conversion error = %v", err)
+	}
+	res2, err := PackageJSONToIrModule(pkg, "/tmp/addons/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+	if err != nil {
+		t.Fatalf("second conversion error = %v", err)
+	}
+
+	if !reflect.DeepEqual(res1, res2) {
+		t.Fatalf("conversion result is not idempotent\nres1=%#v\nres2=%#v", res1, res2)
 	}
 }
