@@ -453,22 +453,22 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 		}
 		seen[name] = struct{}{}
 
-		manifestPath := filepath.Join(addonsPath, name, "manifest.json")
-		manifestData, readErr := os.ReadFile(manifestPath)
+		packageJSONPath := filepath.Join(addonsPath, name, "package.json")
+		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
 		entry := metadata.IrModuleIndex{
 			ModuleName:       name,
 			OriginType:       "local",
 			OriginRef:        "local",
 			Available:        readErr == nil,
-			ManifestJson:     manifestData,
+			ManifestJson:     packageJSONData,
 			LocalPath:        nullString(filepath.Join(addonsPath, name)),
 			LastSyncAt:       &now,
 			LastErrorMessage: nullString(""),
 		}
 		if readErr != nil {
 			entry.ManifestJson = nil
-			entry.LastErrorMessage = nullString("manifest.json not found")
+			entry.LastErrorMessage = nullString("package.json not found")
 		}
 
 		mod, loadErr := m.Load(name)

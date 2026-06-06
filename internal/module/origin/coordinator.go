@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,15 +66,6 @@ func NewCoordinator(runtimeScope scope.Scope, opts ...Option) *Coordinator {
 	return c
 }
 
-func decodeLocalManifest(r io.Reader) (*meta.IrModule, error) {
-	module := &meta.IrModule{}
-	if err := json.NewDecoder(r).Decode(module); err != nil {
-		return nil, err
-	}
-	module.Status = meta.ToInstall
-	return module, nil
-}
-
 func applyEntryPoints(module *meta.IrModule) error {
 	if module == nil {
 		return nil
@@ -95,17 +85,17 @@ func applyEntryPoints(module *meta.IrModule) error {
 	return nil
 }
 
-func validateAndNormalizeManifestSemVer(mod *meta.IrModule, manifestHint string) error {
+func validateAndNormalizeModuleSemVer(mod *meta.IrModule, sourceHint string) error {
 	if mod == nil {
 		return nil
 	}
 	ver := strings.TrimSpace(mod.Version)
 	if ver == "" {
-		return xfmt.Errorf("empty manifest version (module=%q, manifest=%q)", strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
+		return xfmt.Errorf("empty module version (module=%q, source=%q)", strings.TrimSpace(mod.Name), strings.TrimSpace(sourceHint))
 	}
 	normalized, err := contract.NormalizeVersion(ver)
 	if err != nil {
-		return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
+		return xfmt.Errorf("invalid module version %q (module=%q, source=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(sourceHint))
 	}
 	mod.Version = normalized
 	return nil
@@ -117,30 +107,33 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 		return nil, xfmt.Errorf("module name is empty")
 	}
 	moduleDir := filepath.Join(runtimeOptionsFromScope(c.runtimeScope).addonsPath, moduleName)
-	manifestPath := filepath.Join(moduleDir, "manifest.json")
-	if _, err := os.Stat(manifestPath); err != nil {
+	packageJSONPath := filepath.Join(moduleDir, "package.json")
+	if _, err := os.Stat(packageJSONPath); err != nil {
 		if os.IsNotExist(err) {
 			return nil, os.ErrNotExist
 		}
-		return nil, xfmt.Errorf("stat local module manifest failed: %w", err)
+		return nil, xfmt.Errorf("stat local module package.json failed: %w", err)
 	}
 
-	f, err := os.Open(manifestPath)
+	raw, err := os.ReadFile(packageJSONPath)
 	if err != nil {
-		return nil, xfmt.Errorf("open manifest: %w", err)
+		return nil, xfmt.Errorf("read package.json: %w", err)
 	}
-	defer f.Close()
 
-	module, err := decodeLocalManifest(f)
+	result, err := contract.ParsePackageJSONToIrModule(raw, moduleDir, nil)
 	if err != nil {
-		return nil, xfmt.Errorf("decode manifest: %w", err)
+		return nil, xfmt.Errorf("parse package.json: %w", err)
 	}
+	if result == nil || result.Module == nil {
+		return nil, xfmt.Errorf("parse package.json: empty module result")
+	}
+	module := result.Module
 	module.Name = moduleName
 	module.Path = moduleDir
 	if err := applyEntryPoints(module); err != nil {
 		return nil, err
 	}
-	if err := validateAndNormalizeManifestSemVer(module, manifestPath); err != nil {
+	if err := validateAndNormalizeModuleSemVer(module, packageJSONPath); err != nil {
 		return nil, err
 	}
 	return module, nil

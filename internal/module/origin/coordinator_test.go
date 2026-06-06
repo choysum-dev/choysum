@@ -67,18 +67,34 @@ func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleNam
 	return nil, nil
 }
 
-func writeSourceTestManifest(t *testing.T, addonsPath string, name string, mod *meta.IrModule) {
+func writeSourceTestPackageJSON(t *testing.T, addonsPath string, name string, mod *meta.IrModule) {
 	t.Helper()
 	moduleDir := filepath.Join(addonsPath, name)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
-	payload, err := json.Marshal(mod)
-	if err != nil {
-		t.Fatalf("marshal manifest: %v", err)
+	version := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(mod.Version), "v"))
+	if version == "" {
+		version = "0.1.0"
 	}
-	if err := os.WriteFile(filepath.Join(moduleDir, "manifest.json"), payload, 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	application := strings.TrimSpace(mod.ApplicationStr)
+	if application == "" {
+		application = name
+	}
+	payloadObj := map[string]any{
+		"name":    "@acme/choysum-" + name,
+		"version": version,
+		"choysum": map[string]any{
+			"moduleName":  name,
+			"application": application,
+		},
+	}
+	payload, err := json.Marshal(payloadObj)
+	if err != nil {
+		t.Fatalf("marshal package.json: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), payload, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
 }
 
@@ -96,7 +112,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 
 	t.Run("resolve local module and persist local binding", func(t *testing.T) {
-		writeSourceTestManifest(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+		writeSourceTestPackageJSON(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
 		coordinator := NewCoordinator(
 			runtimeScope,
 			WithLockStore(lockStore),
@@ -217,11 +233,11 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		WithRegistryProvider(&fakeRegistryProvider{}),
 	)
 
-	writeSourceTestManifest(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+	writeSourceTestPackageJSON(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
 	if _, err := coordinator.ResolveInstallModule(context.Background(), "auth"); err != nil {
 		t.Fatalf("ResolveInstallModule(local) error = %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(addonsPath, "auth", "manifest.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(addonsPath, "auth", "package.json")); err != nil {
 		t.Fatalf("expected local module files to exist before purge: %v", err)
 	}
 
