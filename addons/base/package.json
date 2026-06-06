@@ -1,6 +1,6 @@
 {
   "name": "@choysum/addon-base",
-  "version": "0.1.3",
+  "version": "0.0.0",
   "description": "Core master data such as companies and organizations",
   "license": "Apache-2.0",
   "author": "Choysum Team",
