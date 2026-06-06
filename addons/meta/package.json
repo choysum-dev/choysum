@@ -1,0 +1,33 @@
+{
+  "name": "@choysum/addon-meta",
+  "version": "0.1.0",
+  "description": "Metadata and module management",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "choysum": {
+    "moduleName": "meta",
+    "application": "meta",
+    "category": "Platform/Metadata",
+    "depends": [
+      "core",
+      "web",
+      "task"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts",
+      "web": "./web/index.ts"
+    },
+    "e2e": {
+      "specs": "e2e",
+      "scenarios": {
+        "default": {
+          "fixtures": [
+            "e2e/fixtures/smoke.json"
+          ]
+        }
+      }
+    }
+  }
+}

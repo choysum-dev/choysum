@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -184,6 +185,178 @@ func writeCommandManifest(t *testing.T, addonsPath string, moduleName string, ma
 	if err := os.WriteFile(filepath.Join(moduleDir, "manifest.json"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
+
+	manifestObj := map[string]any{}
+	if err := json.Unmarshal([]byte(manifest), &manifestObj); err != nil {
+		t.Fatalf("decode manifest fixture: %v", err)
+	}
+
+	version := "0.1.0"
+	if rawVersion, ok := manifestObj["version"].(string); ok {
+		trimmedVersion := strings.TrimSpace(rawVersion)
+		trimmedVersion = strings.TrimPrefix(trimmedVersion, "v")
+		if trimmedVersion != "" {
+			version = trimmedVersion
+		}
+	}
+
+	application := moduleName
+	if rawApplication, ok := manifestObj["application"].(string); ok {
+		trimmedApplication := strings.TrimSpace(rawApplication)
+		if trimmedApplication != "" {
+			application = trimmedApplication
+		}
+	}
+
+	license := "Apache-2.0"
+	if rawLicense, ok := manifestObj["license"].(string); ok {
+		trimmedLicense := strings.TrimSpace(rawLicense)
+		if trimmedLicense != "" {
+			if trimmedLicense == "Apache 2.0" {
+				trimmedLicense = "Apache-2.0"
+			}
+			license = trimmedLicense
+		}
+	}
+
+	packageObj := map[string]any{
+		"name":    "@choysum/addon-" + strings.ReplaceAll(moduleName, "_", "-"),
+		"version": version,
+		"license": license,
+		"author":  strings.TrimSpace(strOrDefault(manifestObj["author"], "test")),
+		"type":    "module",
+	}
+
+	if description, ok := manifestObj["description"].(string); ok {
+		description = strings.TrimSpace(description)
+		if description != "" {
+			packageObj["description"] = description
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join(moduleDir, "index.ts")); err == nil {
+		packageObj["main"] = "index.ts"
+	}
+
+	choysumObj := map[string]any{
+		"moduleName":  moduleName,
+		"application": application,
+	}
+
+	if category, ok := manifestObj["category"].(string); ok {
+		category = strings.TrimSpace(category)
+		if category != "" {
+			choysumObj["category"] = category
+		}
+	}
+
+	if depends, ok := normalizeStringSlice(manifestObj["depends"]); ok {
+		choysumObj["depends"] = depends
+	}
+
+	if entryPoints, ok := normalizeStringMap(manifestObj["entryPoints"]); ok && len(entryPoints) > 0 {
+		choysumObj["entryPoints"] = entryPoints
+	}
+
+	if data, ok := normalizeStringSlice(manifestObj["data"]); ok && len(data) > 0 {
+		choysumObj["data"] = data
+	}
+
+	if demo, ok := normalizeStringSlice(manifestObj["demo"]); ok && len(demo) > 0 {
+		choysumObj["demo"] = demo
+	}
+
+	if e2e, ok := manifestObj["e2e"]; ok {
+		if e2eMap, mapOK := e2e.(map[string]any); mapOK && len(e2eMap) > 0 {
+			choysumObj["e2e"] = e2eMap
+		}
+	}
+
+	if externalDependencies, ok := manifestObj["externalDependencies"].(map[string]any); ok {
+		if nodeModules, ok := normalizeStringMap(externalDependencies["node_module"]); ok && len(nodeModules) > 0 {
+			packageObj["peerDependencies"] = nodeModules
+		}
+	}
+
+	packageObj["choysum"] = choysumObj
+
+	packageData, err := json.MarshalIndent(packageObj, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal package fixture: %v", err)
+	}
+	packageData = append(packageData, '\n')
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), packageData, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+}
+
+func normalizeStringSlice(raw any) ([]string, bool) {
+	values, ok := raw.([]any)
+	if !ok {
+		return nil, false
+	}
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		text, textOK := value.(string)
+		if !textOK {
+			continue
+		}
+		text = strings.TrimSpace(text)
+		if text == "" {
+			continue
+		}
+		result = append(result, text)
+	}
+	return result, true
+}
+
+func normalizeStringMap(raw any) (map[string]string, bool) {
+	values, ok := raw.([]any)
+	if ok {
+		result := make(map[string]string, len(values))
+		for _, item := range values {
+			entry, entryOK := item.(map[string]any)
+			if !entryOK {
+				continue
+			}
+			for key, value := range entry {
+				key = strings.TrimSpace(key)
+				text, textOK := value.(string)
+				if !textOK || key == "" {
+					continue
+				}
+				result[key] = strings.TrimSpace(text)
+			}
+		}
+		return result, true
+	}
+
+	mapValues, ok := raw.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	result := make(map[string]string, len(mapValues))
+	for key, value := range mapValues {
+		key = strings.TrimSpace(key)
+		text, textOK := value.(string)
+		if !textOK || key == "" {
+			continue
+		}
+		result[key] = strings.TrimSpace(text)
+	}
+	return result, true
+}
+
+func strOrDefault(raw any, fallback string) string {
+	text, ok := raw.(string)
+	if !ok {
+		return fallback
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return fallback
+	}
+	return text
 }
 
 func TestCommandConstructorExitHelper(t *testing.T) {

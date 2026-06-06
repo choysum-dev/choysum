@@ -1,0 +1,20 @@
+{
+  "name": "@choysum/addon-core",
+  "version": "0.1.0",
+  "description": "Choysum Core Framework",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "peerDependencies": {
+    "foo": "1.0.0"
+  },
+  "choysum": {
+    "moduleName": "core",
+    "application": "core",
+    "depends": [],
+    "entryPoints": {
+      "service": "./service/index.ts"
+    }
+  }
+}

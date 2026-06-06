@@ -22,6 +22,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  addon-package-contract:
+    name: pr / addon-package-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Verify addon package contract
+        run: python3 scripts/dev/check-addon-package-contract.py
+
   discover-impact:
     name: pr / discover-impact
     runs-on: ubuntu-latest
@@ -145,12 +158,13 @@ jobs:
 
           reverse_graph = {module: set() for module in modules}
           for module in modules:
-              manifest_path = addons_root / module / "manifest.json"
-              if not manifest_path.is_file():
+              package_path = addons_root / module / "package.json"
+              if not package_path.is_file():
                   continue
-              with manifest_path.open("r", encoding="utf-8") as fh:
-                  manifest = json.load(fh)
-              depends = manifest.get("depends") or []
+              with package_path.open("r", encoding="utf-8") as fh:
+                package_json = json.load(fh)
+              choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
+              depends = choysum.get("depends") if isinstance(choysum, dict) else []
               if not isinstance(depends, list):
                   continue
               for dep in depends:
