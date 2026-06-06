@@ -14,15 +14,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	cp "github.com/otiai10/copy"
 	xfmt "golang.org/x/exp/errors/fmt"
-	"golang.org/x/mod/semver"
 )
 
 type Provider interface {
@@ -57,9 +56,6 @@ func NewProvider(runtimeScope scope.Scope, opts ...ProviderOption) *SourceRegist
 func NewLegacyFetcherProvider(runtimeScope scope.Scope) *SourceRegistryProvider {
 	return NewProvider(runtimeScope)
 }
-
-var strictSemVerV = regexp.MustCompile(`^v\d+\.\d+\.\d+([\-\+].+)?$`)
-var strictSemVerNoV = regexp.MustCompile(`^\d+\.\d+\.\d+([\-\+].+)?$`)
 
 func decodeModuleManifest(r io.Reader) (*meta.IrModule, error) {
 	module := &meta.IrModule{}
@@ -97,21 +93,12 @@ func validateAndNormalizeManifestSemVer(mod *meta.IrModule, manifestHint string)
 	if ver == "" {
 		return xfmt.Errorf("empty manifest version (module=%q, manifest=%q)", strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
 	}
-	if strings.HasPrefix(ver, "v") {
-		if !strictSemVerV.MatchString(ver) || !semver.IsValid(ver) {
-			return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-		}
-		return nil
+	normalized, err := contract.NormalizeVersion(ver)
+	if err != nil {
+		return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
 	}
-	if strictSemVerNoV.MatchString(ver) {
-		v := "v" + ver
-		if !strictSemVerV.MatchString(v) || !semver.IsValid(v) {
-			return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-		}
-		mod.Version = v
-		return nil
-	}
-	return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
+	mod.Version = normalized
+	return nil
 }
 
 func looksLikeModuleManifest(mod *meta.IrModule) bool {
