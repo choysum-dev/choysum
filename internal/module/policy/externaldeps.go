@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
 package policy
 
 import (
@@ -47,9 +50,6 @@ func CheckExternalDependencies(module *meta.IrModule) error {
 
 		return nil
 	}
-	isNodeDependencyInstalled := func(_, _ string) bool {
-		return true
-	}
 
 	if module == nil || module.ExternalDependencies == nil {
 		return nil
@@ -62,12 +62,6 @@ func CheckExternalDependencies(module *meta.IrModule) error {
 	for name, version := range externalDependencies["binary"] {
 		if err := isBinaryDependencyInstalled(name, version); err != nil {
 			return xfmt.Errorf("binary: %s not installed: %w", name, err)
-		}
-	}
-
-	for name, version := range externalDependencies["node_module"] {
-		if !isNodeDependencyInstalled(name, version) {
-			return xfmt.Errorf("node model: %s not installed", name)
 		}
 	}
 	return nil

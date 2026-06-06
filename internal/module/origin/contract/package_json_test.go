@@ -113,6 +113,31 @@ func TestValidatePackageJSON(t *testing.T) {
 	if err := ValidatePackageJSON(&emptyDep); err == nil || !strings.Contains(err.Error(), "contains empty module name") {
 		t.Fatalf("empty depends expected error, got %v", err)
 	}
+
+	absEntry := *valid
+	absEntry.Choysum.EntryPoints = map[string]string{"web": "/tmp/web/index.ts"}
+	if err := ValidatePackageJSON(&absEntry); err == nil || !strings.Contains(err.Error(), "must be a relative path") {
+		t.Fatalf("absolute entry path expected error, got %v", err)
+	}
+
+	traversalData := *valid
+	traversalData.Choysum.Data = []string{"../secret.json"}
+	if err := ValidatePackageJSON(&traversalData); err == nil || !strings.Contains(err.Error(), "cannot contain parent traversal") {
+		t.Fatalf("traversal data path expected error, got %v", err)
+	}
+
+	windowsDemo := *valid
+	windowsDemo.Choysum.Demo = []string{"C:/tmp/demo.json"}
+	if err := ValidatePackageJSON(&windowsDemo); err == nil || !strings.Contains(err.Error(), "must be a relative path") {
+		t.Fatalf("windows absolute path expected error, got %v", err)
+	}
+
+	validPaths := *valid
+	validPaths.Choysum.Data = []string{"data/bootstrap.json"}
+	validPaths.Choysum.Demo = []string{"demo/demo.json"}
+	if err := ValidatePackageJSON(&validPaths); err != nil {
+		t.Fatalf("valid paths should pass, got %v", err)
+	}
 }
 
 func TestBuildExternalDependencies(t *testing.T) {

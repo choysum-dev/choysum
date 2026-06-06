@@ -5,6 +5,8 @@ package contract
 
 import (
 	"encoding/json"
+	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -98,14 +100,56 @@ func ValidatePackageJSON(pkg *PackageJSON) error {
 			if key != "service" && key != "web" {
 				return xfmt.Errorf("unsupported choysum.entryPoints key %q; allowed keys are service and web", k)
 			}
-			if strings.TrimSpace(v) == "" {
-				return xfmt.Errorf("choysum.entryPoints.%s cannot be empty", key)
+			if err := validateAddonRelativePath(v, "choysum.entryPoints."+key); err != nil {
+				return err
 			}
+		}
+	}
+
+	for i, p := range pkg.Choysum.Data {
+		if err := validateAddonRelativePath(p, xfmt.Sprintf("choysum.data[%d]", i)); err != nil {
+			return err
+		}
+	}
+
+	for i, p := range pkg.Choysum.Demo {
+		if err := validateAddonRelativePath(p, xfmt.Sprintf("choysum.demo[%d]", i)); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
+
+func validateAddonRelativePath(raw, field string) error {
+	v := strings.TrimSpace(raw)
+	if v == "" {
+		return xfmt.Errorf("%s cannot be empty", field)
+	}
+
+	// Normalize path separators for deterministic rule checks.
+	normalized := strings.ReplaceAll(v, "\\", "/")
+
+	if strings.HasPrefix(normalized, "/") || filepath.IsAbs(v) || windowsDrivePrefix.MatchString(normalized) {
+		return xfmt.Errorf("%s must be a relative path, got %q", field, raw)
+	}
+
+	segments := strings.Split(normalized, "/")
+	for _, seg := range segments {
+		if seg == ".." {
+			return xfmt.Errorf("%s cannot contain parent traversal, got %q", field, raw)
+		}
+	}
+
+	clean := path.Clean(normalized)
+	if clean == "." || clean == "" {
+		return xfmt.Errorf("%s must point to a file path, got %q", field, raw)
+	}
+
+	return nil
+}
+
+var windowsDrivePrefix = regexp.MustCompile(`^[a-zA-Z]:[/\\]`)
 
 // CanonicalPeerDependencies returns a stable key-order copy for deterministic output.
 func CanonicalPeerDependencies(peer map[string]string) map[string]string {
