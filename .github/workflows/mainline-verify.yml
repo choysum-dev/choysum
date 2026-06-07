@@ -142,13 +142,13 @@ jobs:
                       continue
                   modules.append(child.name)
 
-                    package_path = child / "package.json"
-                    if not package_path.is_file():
+                  package_path = child / "package.json"
+                  if not package_path.is_file():
                       continue
 
-                    package_json = json.loads(package_path.read_text(encoding="utf-8"))
-                    choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
-                    e2e = choysum.get("e2e") if isinstance(choysum, dict) else {}
+                  package_json = json.loads(package_path.read_text(encoding="utf-8"))
+                  choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
+                  e2e = choysum.get("e2e") if isinstance(choysum, dict) else {}
                   specs = e2e.get("specs") if isinstance(e2e, dict) else ""
                   if isinstance(specs, str) and specs.strip():
                       e2e_modules.append(child.name)
