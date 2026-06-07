@@ -190,11 +190,10 @@ func ValidatePackageJSON(pkg *PackageJSON) error {
 
 	if len(pkg.Choysum.EntryPoints) > 0 {
 		for k, v := range pkg.Choysum.EntryPoints {
-			key := strings.TrimSpace(k)
-			if key != "service" && key != "web" {
+			if k != "service" && k != "web" {
 				return xfmt.Errorf("unsupported choysum.entryPoints key %q; allowed keys are service and web", k)
 			}
-			if err := validateAddonRelativePath(v, "choysum.entryPoints."+key); err != nil {
+			if err := validateAddonRelativePath(v, "choysum.entryPoints."+k); err != nil {
 				return err
 			}
 		}

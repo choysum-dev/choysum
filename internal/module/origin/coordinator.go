@@ -186,16 +186,23 @@ func looksLikeCatalogRegistryURL(registryURL string) bool {
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return false
 	}
-	hostLower := strings.ToLower(strings.TrimSpace(parsed.Host))
+	pathLower := strings.ToLower(parsed.Path)
+	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") || strings.HasSuffix(pathLower, "/api") {
+		return true
+	}
+
+	hostLower := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
 	if hostLower == "" {
 		return false
 	}
-	if strings.Contains(hostLower, "registry.npmjs.org") {
+	if strings.Contains(hostLower, "registry.npmjs.org") ||
+		strings.Contains(hostLower, "registry.npmmirror.com") ||
+		strings.Contains(hostLower, "registry.yarnpkg.com") ||
+		strings.Contains(hostLower, "npm.pkg.github.com") ||
+		hostLower == "localhost" ||
+		hostLower == "127.0.0.1" ||
+		hostLower == "::1" {
 		return false
-	}
-	pathLower := strings.ToLower(parsed.Path)
-	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") {
-		return true
 	}
 	if strings.Contains(hostLower, "catalog.") {
 		return true

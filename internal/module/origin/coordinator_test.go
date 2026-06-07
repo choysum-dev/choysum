@@ -72,7 +72,11 @@ func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleNam
 func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sourceIntegrity string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/modules/auth", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(strings.TrimSpace(r.URL.Path), "/api/v1/modules/auth") {
+			http.NotFound(w, r)
+			return
+		}
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -174,7 +178,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -215,7 +219,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -301,7 +305,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -360,5 +364,34 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		t.Fatalf("LookupBinding(after purge) error = %v", err)
 	} else if ok {
 		t.Fatal("expected binding to be removed after purge")
+	}
+}
+
+func TestLooksLikeCatalogRegistryURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		url      string
+		expected bool
+	}{
+		{name: "npmjs", url: "https://registry.npmjs.org", expected: false},
+		{name: "npmmirror", url: "https://registry.npmmirror.com", expected: false},
+		{name: "yarn", url: "https://registry.yarnpkg.com", expected: false},
+		{name: "github package", url: "https://npm.pkg.github.com", expected: false},
+		{name: "localhost", url: "http://localhost:4873", expected: false},
+		{name: "loopback", url: "http://127.0.0.1:4873", expected: false},
+		{name: "catalog host", url: "https://catalog.choysum.dev/v1/index.json", expected: true},
+		{name: "api path", url: "https://example.com/api/v1/modules", expected: true},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := looksLikeCatalogRegistryURL(tc.url); got != tc.expected {
+				t.Fatalf("looksLikeCatalogRegistryURL(%q) = %v, want %v", tc.url, got, tc.expected)
+			}
+		})
 	}
 }

@@ -21,6 +21,14 @@ func TestCheckExternalDependencies(t *testing.T) {
 		}
 	})
 
+	t.Run("empty initialized payload", func(t *testing.T) {
+		t.Parallel()
+		m := &meta.IrModule{ExternalDependencies: datatypes.JSON([]byte{})}
+		if err := CheckExternalDependencies(m); err != nil {
+			t.Fatalf("empty payload should be ignored, got error = %v", err)
+		}
+	})
+
 	t.Run("node_module ignored", func(t *testing.T) {
 		t.Parallel()
 		m := &meta.IrModule{

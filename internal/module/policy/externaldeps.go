@@ -51,7 +51,7 @@ func CheckExternalDependencies(module *meta.IrModule) error {
 		return nil
 	}
 
-	if module == nil || module.ExternalDependencies == nil {
+	if module == nil || len(module.ExternalDependencies) == 0 {
 		return nil
 	}
 	externalDependencies := make(map[string]map[string]string)

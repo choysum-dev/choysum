@@ -109,6 +109,12 @@ func TestValidatePackageJSON(t *testing.T) {
 		t.Fatalf("bad entry key expected error, got %v", err)
 	}
 
+	spacePaddedEntry := *valid
+	spacePaddedEntry.Choysum.EntryPoints = map[string]string{" service ": "./service/index.ts"}
+	if err := ValidatePackageJSON(&spacePaddedEntry); err == nil || !strings.Contains(err.Error(), "unsupported choysum.entryPoints key") {
+		t.Fatalf("space padded entry key expected error, got %v", err)
+	}
+
 	emptyDep := *valid
 	emptyDep.Choysum.Depends = []string{"core", ""}
 	if err := ValidatePackageJSON(&emptyDep); err == nil || !strings.Contains(err.Error(), "contains empty module name") {
