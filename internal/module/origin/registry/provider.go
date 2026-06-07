@@ -17,20 +17,16 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/origin/contract"
+	cfg "github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	cp "github.com/otiai10/copy"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-const (
-	defaultNPMRegistryURL     = "https://registry.npmjs.org"
-	officialAddonPackageScope = "@choysum/addon-"
-)
-
 type Provider interface {
-	PeekManifest(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
-	Fetch(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
+	PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
 }
 
 type SourceRegistryProvider struct {
@@ -93,17 +89,54 @@ type npmVersionEnvelope struct {
 	Dist npmVersionDist `json:"dist"`
 }
 
-func canonicalAddonPackageName(moduleName string) string {
-	return officialAddonPackageScope + strings.TrimSpace(moduleName)
+func normalizePackageName(moduleName, packageName string) (string, error) {
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return "", xfmt.Errorf("module name is empty")
+	}
+	packageName = strings.TrimSpace(packageName)
+	if packageName != "" {
+		return packageName, nil
+	}
+	return moduleName, nil
 }
 
-func normalizeRegistryMetadataBaseURL(registryURL string) (string, error) {
+func normalizeDefaultRegistryMetadataBaseURL(defaultRegistryURL string) (string, error) {
+	defaultRegistryURL = strings.TrimSpace(defaultRegistryURL)
+	if defaultRegistryURL == "" {
+		defaultRegistryURL = cfg.DefaultNPMRegistryURL
+	}
+
+	parsed, err := url.Parse(defaultRegistryURL)
+	if err != nil {
+		return "", xfmt.Errorf("invalid default npm registry url %q: %w", defaultRegistryURL, err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", xfmt.Errorf("unsupported default npm registry url: %s", defaultRegistryURL)
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return "", xfmt.Errorf("unsupported default npm registry url: %s", defaultRegistryURL)
+	}
+
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL string) (string, error) {
+	fallbackBaseURL, err := normalizeDefaultRegistryMetadataBaseURL(defaultRegistryURL)
+	if err != nil {
+		return "", err
+	}
+
 	registryURL = strings.TrimSpace(registryURL)
 	if registryURL == "" {
-		return defaultNPMRegistryURL, nil
+		return fallbackBaseURL, nil
 	}
 	if strings.HasPrefix(registryURL, "https://github.com/") {
-		return defaultNPMRegistryURL, nil
+		return fallbackBaseURL, nil
 	}
 
 	parsed, err := url.Parse(registryURL)
@@ -119,7 +152,7 @@ func normalizeRegistryMetadataBaseURL(registryURL string) (string, error) {
 
 	pathLower := strings.ToLower(parsed.Path)
 	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") {
-		return defaultNPMRegistryURL, nil
+		return fallbackBaseURL, nil
 	}
 
 	parsed.RawQuery = ""
@@ -129,22 +162,36 @@ func normalizeRegistryMetadataBaseURL(registryURL string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
-func registryPackageMetadataURL(registryURL, moduleName string) (string, string, error) {
+func registryPackageMetadataURL(registryURL, moduleName, packageName, defaultRegistryURL string) (string, string, error) {
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return "", "", xfmt.Errorf("module name is empty")
 	}
-	baseURL, err := normalizeRegistryMetadataBaseURL(registryURL)
+	baseURL, err := normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL)
 	if err != nil {
 		return "", "", err
 	}
-	packageName := canonicalAddonPackageName(moduleName)
+	packageName, err = normalizePackageName(moduleName, packageName)
+	if err != nil {
+		return "", "", err
+	}
 	metadataURL := strings.TrimRight(baseURL, "/") + "/" + url.PathEscape(packageName)
 	return metadataURL, packageName, nil
 }
 
-func (p *SourceRegistryProvider) fetchPackageMetadata(ctx context.Context, registryURL, moduleName string) (*npmPackageMetadata, string, error) {
-	metadataURL, packageName, err := registryPackageMetadataURL(registryURL, moduleName)
+func (p *SourceRegistryProvider) defaultRegistryURL() string {
+	if p == nil {
+		return cfg.DefaultNPMRegistryURL
+	}
+	configured := strings.TrimSpace(runtimeOptionsFromScope(p.runtimeScope).npmRegistryURL)
+	if configured != "" {
+		return configured
+	}
+	return cfg.DefaultNPMRegistryURL
+}
+
+func (p *SourceRegistryProvider) fetchPackageMetadata(ctx context.Context, registryURL, moduleName, packageName string) (*npmPackageMetadata, string, error) {
+	metadataURL, packageName, err := registryPackageMetadataURL(registryURL, moduleName, packageName, p.defaultRegistryURL())
 	if err != nil {
 		return nil, "", err
 	}
@@ -284,8 +331,8 @@ type packageInspection struct {
 	downloadURL string
 }
 
-func (p *SourceRegistryProvider) inspectRegistryPackage(ctx context.Context, registryURL, moduleName, version string) (*packageInspection, error) {
-	metadata, packageName, err := p.fetchPackageMetadata(ctx, registryURL, moduleName)
+func (p *SourceRegistryProvider) inspectRegistryPackage(ctx context.Context, registryURL, moduleName, packageName, version string) (*packageInspection, error) {
+	metadata, packageName, err := p.fetchPackageMetadata(ctx, registryURL, moduleName, packageName)
 	if err != nil {
 		return nil, err
 	}
@@ -480,7 +527,7 @@ func (p *SourceRegistryProvider) extractTarballToDir(ctx context.Context, downlo
 	return nil
 }
 
-func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p == nil || p.runtimeScope == nil {
 		return nil, xfmt.Errorf("registry provider env is nil")
 	}
@@ -492,7 +539,7 @@ func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, version)
+	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, packageName, version)
 	if err != nil {
 		return nil, err
 	}
@@ -502,7 +549,7 @@ func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, 
 	return inspection.module, nil
 }
 
-func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p == nil || p.runtimeScope == nil {
 		return nil, xfmt.Errorf("registry provider env is nil")
 	}
@@ -515,7 +562,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		ctx = context.Background()
 	}
 
-	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, version)
+	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, packageName, version)
 	if err != nil {
 		return nil, err
 	}

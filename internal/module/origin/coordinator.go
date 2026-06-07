@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -143,11 +144,68 @@ func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
-	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
+	registryURL, packageName, err := c.resolveRegistrySource(ctx, parsed)
 	if err != nil {
 		return nil, err
 	}
-	return c.registryProvider.PeekManifest(ctx, entry.URL, parsed.ModuleName, parsed.Version)
+	return c.registryProvider.PeekManifest(ctx, registryURL, parsed.ModuleName, packageName, parsed.Version)
+}
+
+func looksLikeCatalogRegistryURL(registryURL string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(registryURL))
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	hostLower := strings.ToLower(strings.TrimSpace(parsed.Host))
+	if hostLower == "" {
+		return false
+	}
+	if strings.Contains(hostLower, "registry.npmjs.org") {
+		return false
+	}
+	pathLower := strings.ToLower(parsed.Path)
+	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") {
+		return true
+	}
+	if strings.Contains(hostLower, "catalog.") {
+		return true
+	}
+	if hostLower == "github.com" {
+		return true
+	}
+	return true
+}
+
+func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (string, string, error) {
+	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
+	if err != nil {
+		return "", "", err
+	}
+	registryURL := strings.TrimSpace(entry.URL)
+	moduleName := strings.TrimSpace(parsed.ModuleName)
+	packageName := moduleName
+
+	if !looksLikeCatalogRegistryURL(registryURL) {
+		return registryURL, packageName, nil
+	}
+
+	catalog := registry.NewCatalog(c.runtimeScope)
+	item, err := catalog.Info(ctx, registryURL, moduleName)
+	if err != nil {
+		return "", "", xfmt.Errorf("resolve catalog source failed (registry=%s module=%s): %w", strings.TrimSpace(parsed.RegistryAlias), moduleName, err)
+	}
+	packageName = item.ResolvedNPMPackage()
+	if packageName == "" {
+		return "", "", xfmt.Errorf("catalog module %q in registry %q has empty npm package source", moduleName, strings.TrimSpace(parsed.RegistryAlias))
+	}
+	if sourceRegistry := item.ResolvedNPMRegistry(registryURL); sourceRegistry != "" {
+		registryURL = sourceRegistry
+	}
+
+	return registryURL, packageName, nil
 }
 
 func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, error) {
@@ -247,11 +305,11 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
-	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
+	registryURL, packageName, err := c.resolveRegistrySource(ctx, parsed)
 	if err != nil {
 		return nil, err
 	}
-	mod, err := c.registryProvider.Fetch(ctx, entry.URL, parsed.ModuleName, parsed.Version)
+	mod, err := c.registryProvider.Fetch(ctx, registryURL, parsed.ModuleName, packageName, parsed.Version)
 	if err != nil {
 		return nil, err
 	}

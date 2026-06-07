@@ -34,6 +34,10 @@ type NpmPathInput interface {
 	NpmPath() string
 }
 
+type NpmRegistryURLInput interface {
+	NpmRegistryURL() string
+}
+
 type CompileInput interface {
 	CompileBundleMode() string
 }
@@ -115,6 +119,7 @@ type PathsRuntimeOptions struct {
 	DefaultChoysumPath string
 	ConfigPath         string
 	NpmPath            string
+	NpmRegistryURL     string
 }
 
 type CompileRuntimeOptions struct {
@@ -207,6 +212,9 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 	}
 	if npmPathInput, ok := input.(NpmPathInput); ok {
 		options.NpmPath = npmPathInput.NpmPath()
+	}
+	if npmRegistryURLInput, ok := input.(NpmRegistryURLInput); ok {
+		options.NpmRegistryURL = npmRegistryURLInput.NpmRegistryURL()
 	}
 	return options, true
 }

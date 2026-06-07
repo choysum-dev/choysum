@@ -15,6 +15,7 @@ type runtimeScopeInputOptions struct {
 	DefaultChoysumPath string
 	ConfigPath         string
 	NpmPath            string
+	NPMRegistryURL     string
 	Log                *config.LogConfig
 	Compile            *config.CompileConfig
 	Auth               *config.AuthConfig
@@ -37,6 +38,7 @@ func newRuntimeScopeInputOptions(cfg *snapshot.ConfigSnapshot) *runtimeScopeInpu
 		DefaultChoysumPath: snap.DefaultChoysumPath,
 		ConfigPath:         snap.ConfigPath,
 		NpmPath:            snap.NpmPath,
+		NPMRegistryURL:     snap.NPMRegistryURL,
 		Log:                snap.CopyLogConfig(),
 		Compile:            snap.CopyCompileConfig(),
 		Auth:               snap.CopyAuthConfig(),
@@ -264,6 +266,13 @@ func (i runtimeScopeInput) NpmPath() string {
 		return ""
 	}
 	return i.options.NpmPath
+}
+
+func (i runtimeScopeInput) NpmRegistryURL() string {
+	if i.options == nil {
+		return ""
+	}
+	return i.options.NPMRegistryURL
 }
 
 func (i runtimeScopeInput) CompileBundleMode() string {

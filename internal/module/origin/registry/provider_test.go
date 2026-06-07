@@ -161,7 +161,7 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.PeekManifest(context.Background(), "https://github.com/acme/registry", "auth", "v1.2.3")
+	mod, err := provider.PeekManifest(context.Background(), "https://github.com/acme/registry", "auth", "@choysum/addon-auth", "v1.2.3")
 	if err != nil {
 		t.Fatalf("PeekManifest() error = %v", err)
 	}
@@ -173,6 +173,39 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 	}
 	if mod.Path != "" {
 		t.Fatalf("peek should not materialize module path, got %q", mod.Path)
+	}
+}
+
+func TestProviderPeekManifestUsesConfiguredDefaultNPMRegistryURL(t *testing.T) {
+	t.Parallel()
+
+	addonsPath := t.TempDir()
+	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: addonsPath, NPMRegistryURL: "https://registry.npmmirror.com/"}}
+
+	metadataURL := "https://registry.npmmirror.com/@choysum%2Faddon-auth"
+	metadata := buildMetadata(t, map[string]string{"latest": "1.0.0"}, map[string]any{
+		"1.0.0": map[string]any{
+			"name":    "@choysum/addon-auth",
+			"version": "1.0.0",
+			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
+			"dist":    map[string]any{"tarball": "https://registry.npmmirror.com/@choysum/addon-auth/-/addon-auth-1.0.0.tgz"},
+		},
+	})
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.String() != metadataURL {
+			t.Fatalf("unexpected request url: %s", req.URL.String())
+		}
+		return httpResponse(http.StatusOK, metadata), nil
+	})}
+
+	provider := NewProvider(runtimeScope, WithHTTPClient(client))
+	mod, err := provider.PeekManifest(context.Background(), "", "auth", "@choysum/addon-auth", "latest")
+	if err != nil {
+		t.Fatalf("PeekManifest() error = %v", err)
+	}
+	if mod == nil || mod.Name != "auth" || mod.Version != "v1.0.0" {
+		t.Fatalf("unexpected module: %#v", mod)
 	}
 }
 
@@ -206,7 +239,7 @@ func TestProviderPeekManifestResolvesLatestDistTag(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "latest")
+	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "latest")
 	if err != nil {
 		t.Fatalf("PeekManifest() error = %v", err)
 	}
@@ -257,7 +290,7 @@ func TestProviderFetchMaterializesModuleToAddons(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "v2.0.0")
+	mod, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "v2.0.0")
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
 	}
@@ -305,7 +338,7 @@ func TestProviderPeekManifestConcurrentRequests(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "latest")
+			mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "latest")
 			if err != nil {
 				errCh <- err
 				return
@@ -349,7 +382,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			return httpResponse(http.StatusOK, metadata), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "latest"); err == nil || !strings.Contains(err.Error(), "no tarball url found in npm metadata") {
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "latest"); err == nil || !strings.Contains(err.Error(), "no tarball url found in npm metadata") {
 			t.Fatalf("expected missing tarball url error, got %v", err)
 		}
 	})
@@ -380,7 +413,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			}
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "latest"); err == nil || !strings.Contains(err.Error(), "package.json not found in tarball") {
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "latest"); err == nil || !strings.Contains(err.Error(), "package.json not found in tarball") {
 			t.Fatalf("expected package.json not found error, got %v", err)
 		}
 	})
@@ -411,7 +444,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			}
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "latest"); err == nil {
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "latest"); err == nil {
 			t.Fatalf("expected unsafe tar path error")
 		}
 	})
@@ -435,8 +468,41 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			return httpResponse(http.StatusOK, metadata), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "latest"); err == nil || !strings.Contains(err.Error(), "does not match requested module") {
+		if _, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/addon-auth", "latest"); err == nil || !strings.Contains(err.Error(), "does not match requested module") {
 			t.Fatalf("expected moduleName mismatch error, got %v", err)
 		}
 	})
+}
+
+func TestProviderUsesExplicitNPMPackageName(t *testing.T) {
+	t.Parallel()
+
+	addonsPath := t.TempDir()
+	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: addonsPath}}
+
+	metadataURL := "https://registry.npmjs.org/@acme%2Fchoysum-sale"
+	metadata := buildMetadata(t, map[string]string{"latest": "0.1.0"}, map[string]any{
+		"0.1.0": map[string]any{
+			"name":    "@acme/choysum-sale",
+			"version": "0.1.0",
+			"choysum": map[string]any{"moduleName": "sale", "application": "sale"},
+			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@acme/choysum-sale/-/choysum-sale-0.1.0.tgz"},
+		},
+	})
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.String() != metadataURL {
+			t.Fatalf("unexpected request url: %s", req.URL.String())
+		}
+		return httpResponse(http.StatusOK, metadata), nil
+	})}
+
+	provider := NewProvider(runtimeScope, WithHTTPClient(client))
+	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "sale", "@acme/choysum-sale", "latest")
+	if err != nil {
+		t.Fatalf("PeekManifest() error = %v", err)
+	}
+	if mod == nil || mod.Name != "sale" || mod.Version != "v0.1.0" {
+		t.Fatalf("unexpected module: %#v", mod)
+	}
 }

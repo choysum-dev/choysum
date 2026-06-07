@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,25 +48,48 @@ func (e *sourceTestScope) FactoryInput() scope.FactoryInput {
 }
 
 type fakeRegistryProvider struct {
-	peekFn  func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
-	fetchFn func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
+	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
 }
 
-func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p.peekFn != nil {
-		return p.peekFn(ctx, registryURL, moduleName, version)
+		return p.peekFn(ctx, registryURL, moduleName, packageName, version)
 	}
 	if p.fetchFn != nil {
-		return p.fetchFn(ctx, registryURL, moduleName, version)
+		return p.fetchFn(ctx, registryURL, moduleName, packageName, version)
 	}
 	return nil, nil
 }
 
-func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p.fetchFn != nil {
-		return p.fetchFn(ctx, registryURL, moduleName, version)
+		return p.fetchFn(ctx, registryURL, moduleName, packageName, version)
 	}
 	return nil, nil
+}
+
+func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry string) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/modules/auth", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name":          "auth",
+			"latestVersion": "v2.0.0",
+			"npmPackage":    npmPackage,
+			"source": map[string]any{
+				"type":     "npm",
+				"registry": sourceRegistry,
+				"package":  npmPackage,
+			},
+		})
+	})
+	return httptest.NewServer(mux)
 }
 
 func writeSourceTestPackageJSON(t *testing.T, addonsPath string, name string, mod *meta.IrModule) {
@@ -138,19 +163,21 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 
 	t.Run("resolve registry ref and persist registry binding", func(t *testing.T) {
 		home := t.TempDir()
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org")
+		defer catalog.Close()
 		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 		cfg, err := store.Load()
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: "https://github.com/acme/registry"}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
 
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
-			if registryURL != "https://github.com/acme/registry" || moduleName != "auth" || version != "v2.0.0" {
-				t.Fatalf("unexpected provider input: url=%s module=%s version=%s", registryURL, moduleName, version)
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "@acme/choysum-auth" || version != "v2.0.0" {
+				t.Fatalf("unexpected provider input: url=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
 			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Path: filepath.Join(addonsPath, "auth")}, nil
 		}}
@@ -185,7 +212,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 
 		fetchCalls := 0
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			fetchCalls++
 			return &meta.IrModule{Name: moduleName, Version: version}, nil
 		}}
@@ -210,6 +237,37 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 		if fetchCalls != 0 {
 			t.Fatalf("expected no registry fetch fallback, got %d calls", fetchCalls)
+		}
+	})
+
+	t.Run("resolve registry ref rejects empty catalog npm package", func(t *testing.T) {
+		home := t.TempDir()
+		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org")
+		defer catalog.Close()
+
+		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+		cfg, err := store.Load()
+		if err != nil {
+			t.Fatalf("registry store load: %v", err)
+		}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL}
+		if err := store.Save(cfg); err != nil {
+			t.Fatalf("registry store save: %v", err)
+		}
+
+		fetchCalls := 0
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			fetchCalls++
+			return &meta.IrModule{Name: moduleName, Version: version}, nil
+		}}
+
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+		_, err = coordinator.ResolveInstallModule(context.Background(), "corp/auth@v2.0.0")
+		if err == nil || !strings.Contains(err.Error(), "empty npm package source") {
+			t.Fatalf("expected empty npm package source error, got %v", err)
+		}
+		if fetchCalls != 0 {
+			t.Fatalf("expected provider fetch not called, got %d calls", fetchCalls)
 		}
 	})
 }

@@ -69,6 +69,13 @@ func (i configFactoryInput) NpmPath() string {
 	return i.cfg.NpmPath
 }
 
+func (i configFactoryInput) NpmRegistryURL() string {
+	if i.cfg == nil {
+		return ""
+	}
+	return i.cfg.NPMRegistryURL
+}
+
 func (i configFactoryInput) CompileConfig() *config.CompileConfig {
 	if i.cfg == nil {
 		return nil
