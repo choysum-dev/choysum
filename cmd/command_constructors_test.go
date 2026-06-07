@@ -854,6 +854,9 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	if installCmd.Flags().Lookup("with-demo") == nil {
 		t.Fatal("expected install command to register --with-demo")
 	}
+	if got := installCmd.Flags().Lookup("with-demo").Usage; !strings.Contains(got, "package.json") || strings.Contains(strings.ToLower(got), "manifest") {
+		t.Fatalf("unexpected install --with-demo usage: %q", got)
+	}
 
 	upgradeCmd := newUpgradeCmd(envGetter)
 	if upgradeCmd.Use != "upgrade" || upgradeCmd.PreRun == nil || upgradeCmd.Run == nil {
@@ -861,6 +864,9 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	}
 	if upgradeCmd.Flags().Lookup("with-demo") == nil {
 		t.Fatal("expected upgrade command to register --with-demo")
+	}
+	if got := upgradeCmd.Flags().Lookup("with-demo").Usage; !strings.Contains(got, "package.json") || strings.Contains(strings.ToLower(got), "manifest") {
+		t.Fatalf("unexpected upgrade --with-demo usage: %q", got)
 	}
 
 	uninstallCmd := newUninstallCmd(envGetter)

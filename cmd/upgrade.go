@@ -78,6 +78,6 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 		},
 	}
-	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by manifest")
+	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	return cmd
 }
