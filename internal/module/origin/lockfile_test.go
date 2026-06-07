@@ -4,6 +4,7 @@
 package origin
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -25,6 +26,7 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 		OriginType:      OriginTypeRegistry,
 		OriginRef:       "official/auth@v1.2.3",
 		ResolvedVersion: "v1.2.3",
+		Integrity:       "sha512-auth-v1.2.3",
 		LocalPath:       "/tmp/addons/auth",
 	}); err != nil {
 		t.Fatalf("UpsertBinding() error = %v", err)
@@ -37,6 +39,9 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 	if !ok || binding.OriginRef != "official/auth@v1.2.3" {
 		t.Fatalf("unexpected binding after upsert: ok=%v binding=%#v", ok, binding)
 	}
+	if binding.Integrity != "sha512-auth-v1.2.3" {
+		t.Fatalf("unexpected integrity after upsert: %#v", binding)
+	}
 
 	if err := store.DeleteBinding(workspaceRoot, "auth"); err != nil {
 		t.Fatalf("DeleteBinding() error = %v", err)
@@ -47,6 +52,66 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 	}
 	if ok {
 		t.Fatal("expected binding to be deleted")
+	}
+}
+
+func TestLockStoreUpsertBindingSameContentDoesNotRewriteFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	workspaceRoot := t.TempDir()
+	defaultChoysumPath := t.TempDir()
+	store := NewLockStore(WithLockStoreDefaultChoysumPath(defaultChoysumPath))
+
+	binding := Binding{
+		ModuleName:      "auth",
+		OriginType:      OriginTypeRegistry,
+		OriginRef:       "corp/auth@v2.0.0",
+		ResolvedVersion: "v2.0.0",
+		Integrity:       "sha512-auth-v2",
+		LocalPath:       "/tmp/addons/auth",
+	}
+	if err := store.UpsertBinding(workspaceRoot, binding); err != nil {
+		t.Fatalf("first UpsertBinding() error = %v", err)
+	}
+
+	lockPath, err := modulesLockFilePath(workspaceRoot, defaultChoysumPath)
+	if err != nil {
+		t.Fatalf("modulesLockFilePath() error = %v", err)
+	}
+	before, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read lock file (before): %v", err)
+	}
+
+	time.Sleep(5 * time.Millisecond)
+	if err := store.UpsertBinding(workspaceRoot, binding); err != nil {
+		t.Fatalf("second UpsertBinding() error = %v", err)
+	}
+
+	after, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatalf("read lock file (after): %v", err)
+	}
+	if !bytes.Equal(before, after) {
+		t.Fatalf("expected identical lockfile after idempotent upsert\nbefore=%s\nafter=%s", string(before), string(after))
+	}
+}
+
+func TestLockStoreDeleteMissingBindingDoesNotCreateFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	workspaceRoot := t.TempDir()
+	defaultChoysumPath := t.TempDir()
+	store := NewLockStore(WithLockStoreDefaultChoysumPath(defaultChoysumPath))
+
+	if err := store.DeleteBinding(workspaceRoot, "missing"); err != nil {
+		t.Fatalf("DeleteBinding(missing) error = %v", err)
+	}
+
+	lockPath, err := modulesLockFilePath(workspaceRoot, defaultChoysumPath)
+	if err != nil {
+		t.Fatalf("modulesLockFilePath() error = %v", err)
+	}
+	if _, statErr := os.Stat(lockPath); !os.IsNotExist(statErr) {
+		t.Fatalf("expected lock file to stay absent, stat err = %v", statErr)
 	}
 }
 

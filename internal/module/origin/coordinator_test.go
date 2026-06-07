@@ -69,7 +69,7 @@ func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleNam
 	return nil, nil
 }
 
-func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry string) *httptest.Server {
+func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sourceIntegrity string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/modules/auth", func(w http.ResponseWriter, r *http.Request) {
@@ -78,15 +78,19 @@ func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry stri
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		source := map[string]any{
+			"type":     "npm",
+			"registry": sourceRegistry,
+			"package":  npmPackage,
+		}
+		if strings.TrimSpace(sourceIntegrity) != "" {
+			source["integrity"] = strings.TrimSpace(sourceIntegrity)
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"name":          "auth",
 			"latestVersion": "v2.0.0",
 			"npmPackage":    npmPackage,
-			"source": map[string]any{
-				"type":     "npm",
-				"registry": sourceRegistry,
-				"package":  npmPackage,
-			},
+			"source":        source,
 		})
 	})
 	return httptest.NewServer(mux)
@@ -163,7 +167,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 
 	t.Run("resolve registry ref and persist registry binding", func(t *testing.T) {
 		home := t.TempDir()
-		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org")
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v2")
 		defer catalog.Close()
 		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 		cfg, err := store.Load()
@@ -179,7 +183,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "@acme/choysum-auth" || version != "v2.0.0" {
 				t.Fatalf("unexpected provider input: url=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Path: filepath.Join(addonsPath, "auth")}, nil
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(addonsPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
 
@@ -196,6 +200,53 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 		if !ok || binding.OriginType != "registry" || binding.OriginRef != "corp/auth@v2.0.0" {
 			t.Fatalf("unexpected registry binding: ok=%v binding=%#v", ok, binding)
+		}
+		if binding.ResolvedVersion != "v2.0.0" || binding.Integrity != "sha512-provider-auth-v2" {
+			t.Fatalf("unexpected registry lock details: %#v", binding)
+		}
+	})
+
+	t.Run("resolve registry latest pins origin ref to resolved version", func(t *testing.T) {
+		home := t.TempDir()
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "")
+		defer catalog.Close()
+		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+		cfg, err := store.Load()
+		if err != nil {
+			t.Fatalf("registry store load: %v", err)
+		}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL}
+		if err := store.Save(cfg); err != nil {
+			t.Fatalf("registry store save: %v", err)
+		}
+
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			if version != "latest" {
+				t.Fatalf("expected provider to receive latest, got %s", version)
+			}
+			return &meta.IrModule{Name: "auth", Version: "v2.1.0", Integrity: "sha512-provider-auth-v210", Path: filepath.Join(addonsPath, "auth")}, nil
+		}}
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+
+		mod, err := coordinator.ResolveInstallModule(context.Background(), "corp/auth")
+		if err != nil {
+			t.Fatalf("ResolveInstallModule(registry latest) error = %v", err)
+		}
+		if mod == nil || mod.Version != "v2.1.0" {
+			t.Fatalf("unexpected resolved registry module: %#v", mod)
+		}
+		binding, ok, err := lockStore.LookupBinding(WorkspaceRoot(runtimeScope), "auth")
+		if err != nil {
+			t.Fatalf("LookupBinding(registry latest) error = %v", err)
+		}
+		if !ok {
+			t.Fatalf("expected registry binding to exist after latest install")
+		}
+		if binding.OriginRef != "corp/auth@v2.1.0" || binding.ResolvedVersion != "v2.1.0" {
+			t.Fatalf("expected latest ref to pin resolved version, got %#v", binding)
+		}
+		if binding.Integrity != "sha512-provider-auth-v210" {
+			t.Fatalf("unexpected integrity for latest install: %#v", binding)
 		}
 	})
 
@@ -242,7 +293,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 
 	t.Run("resolve registry ref rejects empty catalog npm package", func(t *testing.T) {
 		home := t.TempDir()
-		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org")
+		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org", "")
 		defer catalog.Close()
 
 		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))

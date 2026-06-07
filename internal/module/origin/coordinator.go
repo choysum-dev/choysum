@@ -140,15 +140,42 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 	return module, nil
 }
 
+type registrySourceResolution struct {
+	registryURL string
+	packageName string
+	integrity   string
+}
+
+func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) string {
+	if parsed.Kind != InputKindRegistry {
+		return strings.TrimSpace(parsed.LocalName)
+	}
+	if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
+		if resolvedVersion = strings.TrimSpace(resolvedVersion); resolvedVersion != "" {
+			return strings.TrimSpace(parsed.RegistryAlias) + "/" + strings.TrimSpace(parsed.ModuleName) + "@" + resolvedVersion
+		}
+	}
+	return parsed.CanonicalRef()
+}
+
+func resolveBindingIntegrity(catalogIntegrity string, mod *meta.IrModule) string {
+	if mod != nil {
+		if integrity := strings.TrimSpace(mod.Integrity); integrity != "" {
+			return integrity
+		}
+	}
+	return strings.TrimSpace(catalogIntegrity)
+}
+
 func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
-	registryURL, packageName, err := c.resolveRegistrySource(ctx, parsed)
+	resolved, err := c.resolveRegistrySource(ctx, parsed)
 	if err != nil {
 		return nil, err
 	}
-	return c.registryProvider.PeekManifest(ctx, registryURL, parsed.ModuleName, packageName, parsed.Version)
+	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
 }
 
 func looksLikeCatalogRegistryURL(registryURL string) bool {
@@ -179,33 +206,36 @@ func looksLikeCatalogRegistryURL(registryURL string) bool {
 	return true
 }
 
-func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (string, string, error) {
+func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (registrySourceResolution, error) {
 	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
 	if err != nil {
-		return "", "", err
+		return registrySourceResolution{}, err
 	}
 	registryURL := strings.TrimSpace(entry.URL)
 	moduleName := strings.TrimSpace(parsed.ModuleName)
-	packageName := moduleName
+	resolved := registrySourceResolution{registryURL: registryURL, packageName: moduleName}
 
 	if !looksLikeCatalogRegistryURL(registryURL) {
-		return registryURL, packageName, nil
+		return resolved, nil
 	}
 
 	catalog := registry.NewCatalog(c.runtimeScope)
 	item, err := catalog.Info(ctx, registryURL, moduleName)
 	if err != nil {
-		return "", "", xfmt.Errorf("resolve catalog source failed (registry=%s module=%s): %w", strings.TrimSpace(parsed.RegistryAlias), moduleName, err)
+		return registrySourceResolution{}, xfmt.Errorf("resolve catalog source failed (registry=%s module=%s): %w", strings.TrimSpace(parsed.RegistryAlias), moduleName, err)
 	}
-	packageName = item.ResolvedNPMPackage()
-	if packageName == "" {
-		return "", "", xfmt.Errorf("catalog module %q in registry %q has empty npm package source", moduleName, strings.TrimSpace(parsed.RegistryAlias))
+	resolved.packageName = item.ResolvedNPMPackage()
+	if resolved.packageName == "" {
+		return registrySourceResolution{}, xfmt.Errorf("catalog module %q in registry %q has empty npm package source", moduleName, strings.TrimSpace(parsed.RegistryAlias))
 	}
 	if sourceRegistry := item.ResolvedNPMRegistry(registryURL); sourceRegistry != "" {
-		registryURL = sourceRegistry
+		resolved.registryURL = sourceRegistry
+	}
+	if item.Source != nil {
+		resolved.integrity = strings.TrimSpace(item.Source.Integrity)
 	}
 
-	return registryURL, packageName, nil
+	return resolved, nil
 }
 
 func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, error) {
@@ -305,19 +335,21 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
-	registryURL, packageName, err := c.resolveRegistrySource(ctx, parsed)
+	resolved, err := c.resolveRegistrySource(ctx, parsed)
 	if err != nil {
 		return nil, err
 	}
-	mod, err := c.registryProvider.Fetch(ctx, registryURL, parsed.ModuleName, packageName, parsed.Version)
+	mod, err := c.registryProvider.Fetch(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
 	if err != nil {
 		return nil, err
 	}
+	resolvedVersion := strings.TrimSpace(mod.Version)
 	if err := c.lockStore.UpsertBinding(WorkspaceRoot(c.runtimeScope), Binding{
 		ModuleName:      strings.TrimSpace(parsed.ModuleName),
 		OriginType:      OriginTypeRegistry,
-		OriginRef:       parsed.CanonicalRef(),
-		ResolvedVersion: strings.TrimSpace(mod.Version),
+		OriginRef:       canonicalRegistryOriginRef(parsed, resolvedVersion),
+		ResolvedVersion: resolvedVersion,
+		Integrity:       resolveBindingIntegrity(resolved.integrity, mod),
 		LocalPath:       strings.TrimSpace(mod.Path),
 	}); err != nil {
 		return nil, err

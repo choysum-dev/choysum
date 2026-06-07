@@ -16,6 +16,7 @@ type Binding struct {
 	OriginType      string `json:"originType" yaml:"originType"`
 	OriginRef       string `json:"originRef" yaml:"originRef"`
 	ResolvedVersion string `json:"resolvedVersion,omitempty" yaml:"resolvedVersion,omitempty"`
+	Integrity       string `json:"integrity,omitempty" yaml:"integrity,omitempty"`
 	LocalPath       string `json:"localPath,omitempty" yaml:"localPath,omitempty"`
 	UpdatedAt       string `json:"updatedAt,omitempty" yaml:"updatedAt,omitempty"`
 }

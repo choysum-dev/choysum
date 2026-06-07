@@ -77,7 +77,8 @@ func (p *SourceRegistryProvider) httpGet(ctx context.Context, requestURL string)
 }
 
 type npmVersionDist struct {
-	Tarball string `json:"tarball"`
+	Tarball   string `json:"tarball"`
+	Integrity string `json:"integrity"`
 }
 
 type npmPackageMetadata struct {
@@ -314,21 +315,22 @@ func parseModuleFromPackageJSON(raw []byte, moduleName, modulePath string) (*met
 	return module, nil
 }
 
-func extractTarballURL(versionRaw json.RawMessage) (string, error) {
+func extractTarballURL(versionRaw json.RawMessage) (string, string, error) {
 	envelope := npmVersionEnvelope{}
 	if err := json.Unmarshal(versionRaw, &envelope); err != nil {
-		return "", xfmt.Errorf("decode npm version dist: %w", err)
+		return "", "", xfmt.Errorf("decode npm version dist: %w", err)
 	}
 	downloadURL := strings.TrimSpace(envelope.Dist.Tarball)
 	if downloadURL == "" {
-		return "", xfmt.Errorf("no tarball url found in npm metadata")
+		return "", "", xfmt.Errorf("no tarball url found in npm metadata")
 	}
-	return downloadURL, nil
+	return downloadURL, strings.TrimSpace(envelope.Dist.Integrity), nil
 }
 
 type packageInspection struct {
 	module      *meta.IrModule
 	downloadURL string
+	integrity   string
 }
 
 func (p *SourceRegistryProvider) inspectRegistryPackage(ctx context.Context, registryURL, moduleName, packageName, version string) (*packageInspection, error) {
@@ -344,11 +346,13 @@ func (p *SourceRegistryProvider) inspectRegistryPackage(ctx context.Context, reg
 	if err != nil {
 		return nil, xfmt.Errorf("inspect package %q version %q: %w", packageName, resolvedVersion, err)
 	}
-	downloadURL, err := extractTarballURL(versionRaw)
+	downloadURL, integrity, err := extractTarballURL(versionRaw)
 	if err != nil {
 		return nil, xfmt.Errorf("inspect package %q version %q: %w", packageName, resolvedVersion, err)
 	}
-	return &packageInspection{module: module, downloadURL: downloadURL}, nil
+	module.Tarball = downloadURL
+	module.Integrity = integrity
+	return &packageInspection{module: module, downloadURL: downloadURL, integrity: integrity}, nil
 }
 
 func isUnsafeTarPath(name string) bool {
@@ -616,5 +620,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 	if err != nil {
 		return nil, err
 	}
+	module.Tarball = inspection.downloadURL
+	module.Integrity = inspection.integrity
 	return module, nil
 }

@@ -149,7 +149,7 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 				"application": "auth",
 				"entryPoints": map[string]any{"service": "./service/main.ts"},
 			},
-			"dist": map[string]any{"tarball": tarballURL},
+			"dist": map[string]any{"tarball": tarballURL, "integrity": "sha512-auth-v123"},
 		},
 	})
 
@@ -170,6 +170,9 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 	}
 	if mod.Name != "auth" || mod.Version != "v1.2.3" || mod.ServiceEntryPoint != "./service/main.ts" {
 		t.Fatalf("unexpected module: %#v", mod)
+	}
+	if mod.Tarball != tarballURL || mod.Integrity != "sha512-auth-v123" {
+		t.Fatalf("unexpected distribution metadata: %#v", mod)
 	}
 	if mod.Path != "" {
 		t.Fatalf("peek should not materialize module path, got %q", mod.Path)
@@ -269,7 +272,7 @@ func TestProviderFetchMaterializesModuleToAddons(t *testing.T) {
 				"application": "auth",
 				"entryPoints": map[string]any{"service": "./service/main.ts", "web": "./web/index.ts"},
 			},
-			"dist": map[string]any{"tarball": tarballURL},
+			"dist": map[string]any{"tarball": tarballURL, "integrity": "sha512-auth-v200"},
 		},
 	})
 	tgz := buildTarGz(t, map[string]string{
@@ -299,6 +302,9 @@ func TestProviderFetchMaterializesModuleToAddons(t *testing.T) {
 	}
 	if mod.Name != "auth" || mod.Path != filepath.Join(addonsPath, "auth") {
 		t.Fatalf("unexpected fetched module: %#v", mod)
+	}
+	if mod.Tarball != tarballURL || mod.Integrity != "sha512-auth-v200" {
+		t.Fatalf("unexpected fetched distribution metadata: %#v", mod)
 	}
 	if _, err := os.Stat(filepath.Join(addonsPath, "auth", "service", "main.ts")); err != nil {
 		t.Fatalf("materialized module file missing: %v", err)
