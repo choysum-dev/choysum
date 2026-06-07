@@ -12,7 +12,7 @@ require (
 	github.com/ettle/strcase v0.2.0
 	github.com/evanw/esbuild v0.28.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/golang-cz/devslog v0.0.15
+	github.com/golang-cz/devslog v0.0.16
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/grandcat/zeroconf v1.0.0
