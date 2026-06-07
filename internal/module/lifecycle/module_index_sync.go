@@ -5,7 +5,6 @@ package lifecycle
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -108,8 +108,8 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		if shouldSkipModuleDir(name) {
 			continue
 		}
-		manifestPath := filepath.Join(addonsPath, name, "manifest.json")
-		info, err := os.Stat(manifestPath)
+		packageJSONPath := filepath.Join(addonsPath, name, "package.json")
+		info, err := os.Stat(packageJSONPath)
 		if err != nil {
 			continue
 		}
@@ -118,7 +118,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		seen[name] = struct{}{}
 
 		revision := fmtSyncRevision(info)
-		manifestData, version, err := readManifest(manifestPath)
+		packageJSONData, version, err := readPackageJSON(packageJSONPath)
 		if err != nil {
 			hasError = true
 			if upsertErr := upsertModuleIndexFailure(ctx, runtimeScope, name, revision, err); upsertErr != nil {
@@ -128,7 +128,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 			continue
 		}
 
-		if upsertErr := upsertModuleIndexSuccess(ctx, runtimeScope, name, revision, version, manifestData, now); upsertErr != nil {
+		if upsertErr := upsertModuleIndexSuccess(ctx, runtimeScope, name, revision, version, packageJSONData, now); upsertErr != nil {
 			hasError = true
 			runtimeScope.Logger().Warn("module index upsert failed", "module", name, "error", upsertErr)
 			stats.Failed++
@@ -214,26 +214,21 @@ func fmtSyncRevision(info os.FileInfo) string {
 	return strconv.FormatInt(info.ModTime().UnixNano(), 10) + ":" + strconv.FormatInt(info.Size(), 10)
 }
 
-func readManifest(path string) ([]byte, string, error) {
+func readPackageJSON(path string) ([]byte, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, "", err
 	}
-	manifest := make(map[string]any)
-	if err := json.Unmarshal(data, &manifest); err != nil {
+	result, err := contract.ParsePackageJSONToIrModule(data, filepath.Dir(path), nil)
+	if err != nil {
 		return data, "", err
 	}
-	version := ""
-	if raw, ok := manifest["version"]; ok {
-		if s, ok := raw.(string); ok {
-			version = strings.TrimSpace(s)
-		}
+	if result == nil || result.Module == nil {
+		return data, "", status.Error(codes.InvalidArgument, "package.json parse returned empty module")
 	}
+	version := strings.TrimSpace(result.Module.Version)
 	if version == "" {
-		return data, "", status.Error(codes.InvalidArgument, "manifest is missing version")
-	}
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
+		return data, "", status.Error(codes.InvalidArgument, "package.json is missing version")
 	}
 	return data, version, nil
 }
@@ -305,12 +300,12 @@ func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, seen
 	}
 	return query.Updates(map[string]any{
 		"available":          false,
-		"last_error_message": "manifest.json not found",
+		"last_error_message": "package.json not found",
 	}).Error
 }
 
 func SanitizeModuleIndexError(runtimeScope scope.Scope, cause error) string {
-	msg := strings.TrimSpace("manifest parsing failed")
+	msg := strings.TrimSpace("package.json parsing failed")
 	if cause == nil {
 		return msg
 	}
@@ -326,7 +321,7 @@ func SanitizeModuleIndexError(runtimeScope scope.Scope, cause error) string {
 		op := strings.TrimSpace(pathErr.Op)
 		base := strings.TrimSpace(filepath.Base(pathErr.Path))
 		if base == "" || base == "." || base == string(filepath.Separator) {
-			base = "manifest.json"
+			base = "package.json"
 		}
 		if op != "" {
 			return redactModuleIndexError(runtimeScope, op+" "+base)
@@ -344,7 +339,7 @@ func SanitizeModuleIndexError(runtimeScope scope.Scope, cause error) string {
 func redactModuleIndexError(runtimeScope scope.Scope, msg string) string {
 	msg = strings.TrimSpace(msg)
 	if msg == "" {
-		return "manifest parsing failed"
+		return "package.json parsing failed"
 	}
 	if runtimeOpts := runtimeOptionsFromScope(runtimeScope); strings.TrimSpace(runtimeOpts.addonsPath) != "" {
 		msg = strings.ReplaceAll(msg, runtimeOpts.addonsPath, "<addonsPath>")

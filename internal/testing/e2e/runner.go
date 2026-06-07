@@ -191,16 +191,16 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 		opts.StartupTimeout = 3 * time.Minute
 	}
 
-	manifests, err := discoverSourceManifests(opts.AddonsPath)
+	packages, err := discoverSourcePackages(opts.AddonsPath)
 	if err != nil {
 		return err
 	}
-	targetManifest, ok := manifests[opts.Module]
+	targetPackage, ok := packages[opts.Module]
 	if !ok {
-		return xfmt.Errorf("unknown module %q (no manifest.json under %s)", opts.Module, opts.AddonsPath)
+		return xfmt.Errorf("unknown module %q (no package.json under %s)", opts.Module, opts.AddonsPath)
 	}
-	if targetManifest.E2E == nil || strings.TrimSpace(targetManifest.E2E.Specs) == "" {
-		return xfmt.Errorf("module %q has no manifest.e2e.specs", opts.Module)
+	if targetPackage.E2E == nil || strings.TrimSpace(targetPackage.E2E.Specs) == "" {
+		return xfmt.Errorf("module %q has no package.json choysum.e2e.specs", opts.Module)
 	}
 
 	scenarioList := opts.Scenarios
@@ -219,14 +219,14 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	for _, scenario := range scenarioList {
 		if opts.Timeout > 0 {
 			perRunCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
-			err := runOneScenarioHook(perRunCtx, opts, manifests, scenario)
+			err := runOneScenarioHook(perRunCtx, opts, packages, scenario)
 			cancel()
 			if err != nil {
 				return err
 			}
 			continue
 		}
-		if err := runOneScenarioHook(ctx, opts, manifests, scenario); err != nil {
+		if err := runOneScenarioHook(ctx, opts, packages, scenario); err != nil {
 			return err
 		}
 	}
@@ -234,18 +234,18 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 }
 
 // ResolveE2EModules returns addon directory names that are runnable by `choysum test e2e`,
-// i.e. modules that have a manifest.json with a non-empty e2e.specs.
+// i.e. modules that have a package.json with a non-empty choysum.e2e.specs.
 func ResolveE2EModules(addonsPath string) ([]string, error) {
 	if strings.TrimSpace(addonsPath) == "" {
 		return nil, xfmt.Errorf("addons_path is required")
 	}
-	manifests, err := discoverSourceManifests(addonsPath)
+	packages, err := discoverSourcePackages(addonsPath)
 	if err != nil {
 		return nil, err
 	}
 	mods := make([]string, 0)
-	for name, m := range manifests {
-		if m == nil || m.E2E == nil || strings.TrimSpace(m.E2E.Specs) == "" {
+	for name, p := range packages {
+		if p == nil || p.E2E == nil || strings.TrimSpace(p.E2E.Specs) == "" {
 			continue
 		}
 		mods = append(mods, name)
@@ -254,11 +254,11 @@ func ResolveE2EModules(addonsPath string) ([]string, error) {
 	return mods, nil
 }
 
-func runOneScenario(ctx context.Context, opts RunOptions, manifests map[string]*sourceManifest, scenario string) error {
+func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
 	prepareStarted := time.Now()
 	writeE2EProgress(opts.Stderr, "# prepare runtime %s\n", opts.Module)
 
-	closure, err := topoClosure(opts.Module, manifests)
+	closure, err := topoClosure(opts.Module, packages)
 	if err != nil {
 		return err
 	}
@@ -338,7 +338,7 @@ func runOneScenario(ctx context.Context, opts RunOptions, manifests map[string]*
 	if opts.Module == "meta" {
 		authEnabled = true
 	}
-	if manifests["auth"] != nil {
+	if packages["auth"] != nil {
 		authEnabled = true
 	}
 	internalKey := randHex(16)
@@ -398,15 +398,15 @@ compile:
 	}
 
 	// Prepare specs dir for target module.
-	targetManifest := manifests[opts.Module]
-	if targetManifest.E2E == nil || strings.TrimSpace(targetManifest.E2E.Specs) == "" {
-		return xfmt.Errorf("module %q has no manifest.e2e.specs", opts.Module)
+	targetPackage := packages[opts.Module]
+	if targetPackage.E2E == nil || strings.TrimSpace(targetPackage.E2E.Specs) == "" {
+		return xfmt.Errorf("module %q has no package.json choysum.e2e.specs", opts.Module)
 	}
-	specsRel := filepath.Clean(strings.TrimSpace(targetManifest.E2E.Specs))
+	specsRel := filepath.Clean(strings.TrimSpace(targetPackage.E2E.Specs))
 	if specsRel == "." || filepath.IsAbs(specsRel) || specsRel == ".." || strings.HasPrefix(specsRel, ".."+string(filepath.Separator)) {
-		return xfmt.Errorf("invalid manifest.e2e.specs for %q: %q", opts.Module, targetManifest.E2E.Specs)
+		return xfmt.Errorf("invalid package.json choysum.e2e.specs for %q: %q", opts.Module, targetPackage.E2E.Specs)
 	}
-	specsDir := filepath.Join(opts.AddonsPath, targetManifest.DirName, specsRel)
+	specsDir := filepath.Join(opts.AddonsPath, targetPackage.DirName, specsRel)
 
 	// Install dependency closure by installing the target module (planner handles depends).
 	if err := installForE2EHook(ctx, configPath, opts.Module, opts.WithDemo); err != nil {
@@ -454,10 +454,10 @@ compile:
 		uniqueFixtures = append(uniqueFixtures, mod)
 	}
 	loadedFixtures := []string{}
-	if err := applyScenarioFixturesHook(ctx, configPath, uniqueFixtures, manifests, scenario, opts.Module, opts.Verbose, opts.Stderr, &loadedFixtures); err != nil {
+	if err := applyScenarioFixturesHook(ctx, configPath, uniqueFixtures, packages, scenario, opts.Module, opts.Verbose, opts.Stderr, &loadedFixtures); err != nil {
 		return err
 	}
-	if err := seedModuleIndexHook(ctx, configPath, manifests); err != nil {
+	if err := seedModuleIndexHook(ctx, configPath, packages); err != nil {
 		return err
 	}
 
@@ -514,7 +514,7 @@ func applyScenarioFixtures(
 	ctx context.Context,
 	configPath string,
 	closure []string,
-	manifests map[string]*sourceManifest,
+	packages map[string]*sourceModulePackage,
 	scenario string,
 	targetModule string,
 	verbose bool,
@@ -530,7 +530,7 @@ func applyScenarioFixtures(
 	}
 
 	for _, modName := range closure {
-		sm := manifests[modName]
+		sm := packages[modName]
 		paths, defined, err := resolveScenarioFixtures(sm, scenario)
 		if err != nil {
 			return xfmt.Errorf("resolve fixtures: module=%s scenario=%s: %w", modName, scenario, err)
@@ -570,7 +570,7 @@ func applyScenarioFixtures(
 	return nil
 }
 
-func seedModuleIndexForE2E(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error {
+func seedModuleIndexForE2E(ctx context.Context, configPath string, packages map[string]*sourceModulePackage) error {
 	runtimeScope, runtimeOptions, err := newE2ERuntimeScope(ctx, configPath)
 	if err != nil {
 		return xfmt.Errorf("load temp config: %w", err)
@@ -586,19 +586,19 @@ func seedModuleIndexForE2E(ctx context.Context, configPath string, manifests map
 		}
 
 		now := time.Now()
-		for name, sm := range manifests {
+		for name, sm := range packages {
 			if sm == nil || strings.TrimSpace(sm.DirName) == "" {
 				continue
 			}
 			if shouldSkipModuleDir(name) {
 				continue
 			}
-			manifestPath := filepath.Join(runtimeOptions.addonsPath, sm.DirName, "manifest.json")
-			info, err := os.Stat(manifestPath)
+			packageJSONPath := filepath.Join(runtimeOptions.addonsPath, sm.DirName, "package.json")
+			info, err := os.Stat(packageJSONPath)
 			if err != nil {
 				continue
 			}
-			data, version, err := readManifestVersion(manifestPath)
+			data, version, err := readPackageVersion(packageJSONPath)
 			if err != nil {
 				continue
 			}
@@ -655,17 +655,17 @@ func shouldSkipModuleDir(name string) bool {
 	}
 }
 
-func readManifestVersion(path string) ([]byte, string, error) {
+func readPackageVersion(path string) ([]byte, string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, "", err
 	}
-	manifest := make(map[string]any)
-	if err := json.Unmarshal(data, &manifest); err != nil {
+	packageJSON := make(map[string]any)
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
 		return data, "", err
 	}
 	version := ""
-	if raw, ok := manifest["version"]; ok {
+	if raw, ok := packageJSON["version"]; ok {
 		if s, ok := raw.(string); ok {
 			version = strings.TrimSpace(s)
 		}
@@ -915,56 +915,64 @@ func resolveRuntimeLogLevel(explicit string, verbose bool) (string, error) {
 	}
 }
 
-// --- source manifest parsing + scenario resolution ---
+// --- source package parsing + scenario resolution ---
 
-type sourceManifest struct {
-	Name    string       `json:"name"`
-	Depends []string     `json:"depends"`
-	E2E     *manifestE2E `json:"e2e"`
-	RawPath string       `json:"-"`
-	DirName string       `json:"-"`
+type sourceModulePackage struct {
+	Name    string              `json:"name"`
+	Choysum sourceModuleChoysum `json:"choysum"`
+	Depends []string            `json:"-"`
+	E2E     *packageE2E         `json:"-"`
+	RawPath string              `json:"-"`
+	DirName string              `json:"-"`
 }
 
-type manifestE2E struct {
-	Specs     string                   `json:"specs"`
-	Scenarios map[string]manifestScene `json:"scenarios"`
+type sourceModuleChoysum struct {
+	Depends []string    `json:"depends"`
+	E2E     *packageE2E `json:"e2e"`
 }
 
-type manifestScene struct {
+type packageE2E struct {
+	Specs     string                  `json:"specs"`
+	Scenarios map[string]packageScene `json:"scenarios"`
+}
+
+type packageScene struct {
 	Extends  string   `json:"extends"`
 	Fixtures []string `json:"fixtures"`
 }
 
-func discoverSourceManifests(addonsPath string) (map[string]*sourceManifest, error) {
+func discoverSourcePackages(addonsPath string) (map[string]*sourceModulePackage, error) {
 	entries, err := os.ReadDir(addonsPath)
 	if err != nil {
 		return nil, xfmt.Errorf("read addons dir: %w", err)
 	}
-	out := map[string]*sourceManifest{}
+	out := map[string]*sourceModulePackage{}
 	for _, ent := range entries {
 		if !ent.IsDir() {
 			continue
 		}
 		name := ent.Name()
-		manifestPath := filepath.Join(addonsPath, name, "manifest.json")
-		b, err := os.ReadFile(manifestPath)
+		packagePath := filepath.Join(addonsPath, name, "package.json")
+		b, err := os.ReadFile(packagePath)
 		if err != nil {
 			continue
 		}
-		var m sourceManifest
+		var m sourceModulePackage
 		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, xfmt.Errorf("parse %s: %w", manifestPath, err)
+			return nil, xfmt.Errorf("parse %s: %w", packagePath, err)
 		}
-		m.RawPath = manifestPath
+		m.RawPath = packagePath
 		m.DirName = name
+		m.Depends = m.Choysum.Depends
+		m.E2E = m.Choysum.E2E
 		// Module identity for dependency resolution is the addon directory name.
-		// manifest.name is treated as human-readable metadata and is not used as the key.
+		// package.json name is treated as metadata and is not used as the key.
 		out[name] = &m
 	}
 	return out, nil
 }
 
-func topoClosure(target string, manifests map[string]*sourceManifest) ([]string, error) {
+func topoClosure(target string, packages map[string]*sourceModulePackage) ([]string, error) {
 	vis := map[string]int{} // 0=unseen,1=visiting,2=done
 	order := []string{}
 	var dfs func(string) error
@@ -980,7 +988,7 @@ func topoClosure(target string, manifests map[string]*sourceManifest) ([]string,
 		if st == 1 {
 			return xfmt.Errorf("depends cycle detected at %s", s)
 		}
-		m := manifests[s]
+		m := packages[s]
 		if m == nil {
 			return xfmt.Errorf("missing dependency %q", s)
 		}
@@ -1004,7 +1012,7 @@ func topoClosure(target string, manifests map[string]*sourceManifest) ([]string,
 	return order, nil
 }
 
-func resolveScenarioFixtures(m *sourceManifest, scenario string) ([]string, bool, error) {
+func resolveScenarioFixtures(m *sourceModulePackage, scenario string) ([]string, bool, error) {
 	if m == nil || m.E2E == nil || len(m.E2E.Scenarios) == 0 {
 		return nil, false, nil
 	}

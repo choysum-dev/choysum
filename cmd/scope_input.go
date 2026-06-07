@@ -17,6 +17,7 @@ type scopeInputConfigOptions struct {
 	DefaultChoysumPath string
 	ConfigPath         string
 	NpmPath            string
+	NPMRegistryURL     string
 	Log                *config.LogConfig
 	Compile            *config.CompileConfig
 	Auth               *config.AuthConfig
@@ -38,6 +39,7 @@ func newScopeInputConfigOptions(snap *snapshot.ConfigSnapshot) *scopeInputConfig
 		DefaultChoysumPath: snap.DefaultChoysumPath,
 		ConfigPath:         snap.ConfigPath,
 		NpmPath:            snap.NpmPath,
+		NPMRegistryURL:     snap.NPMRegistryURL,
 		Log:                snap.CopyLogConfig(),
 		Compile:            snap.CopyCompileConfig(),
 		Auth:               snap.CopyAuthConfig(),
@@ -268,6 +270,13 @@ func (i commandRuntimeScopeInput) NpmPath() string {
 		return ""
 	}
 	return i.options.NpmPath
+}
+
+func (i commandRuntimeScopeInput) NpmRegistryURL() string {
+	if i.options == nil {
+		return ""
+	}
+	return i.options.NPMRegistryURL
 }
 
 func (i commandRuntimeScopeInput) CompileBundleMode() string {
@@ -575,6 +584,13 @@ func (i runRuntimeScopeInput) NpmPath() string {
 		return ""
 	}
 	return i.options.NpmPath
+}
+
+func (i runRuntimeScopeInput) NpmRegistryURL() string {
+	if i.options == nil {
+		return ""
+	}
+	return i.options.NPMRegistryURL
 }
 
 func (i runRuntimeScopeInput) CompileBundleMode() string {

@@ -15,11 +15,14 @@ import (
 
 var maxProcs = runtime.GOMAXPROCS(0)
 
+const DefaultNPMRegistryURL = "https://registry.npmjs.org"
+
 type Config struct {
 	ConfigPath         string `mapstructure:"-"`
 	AddonsPath         string `mapstructure:"addons_path"`
 	DistPath           string `mapstructure:"dist_path"`
 	NpmPath            string `mapstructure:"npm_path"`
+	NPMRegistryURL     string `mapstructure:"npm_registry_url"`
 	DefaultChoysumPath string `mapstructure:"default_choysum_path"`
 	TmpPath            string `mapstructure:"tmp_path"`
 
@@ -125,6 +128,11 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	c.Compile.BundleMode = string(mode)
 	if err := c.applyPathInvariants(); err != nil {
 		return stageError(LoadStageValidate, err)
+	}
+
+	c.NPMRegistryURL = strings.TrimSpace(c.NPMRegistryURL)
+	if c.NPMRegistryURL == "" {
+		c.NPMRegistryURL = DefaultNPMRegistryURL
 	}
 
 	if err := c.normalizeAndMergeAuthConfig(); err != nil {
@@ -293,6 +301,7 @@ func defaultConfig() *Config {
 		AddonsPath:         addonsPath,
 		DistPath:           "",
 		NpmPath:            npmPath,
+		NPMRegistryURL:     DefaultNPMRegistryURL,
 		DefaultChoysumPath: "",
 		TmpPath:            "",
 		Log:                NewDefaultLogConfig(),

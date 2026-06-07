@@ -21,6 +21,25 @@ type WorkspaceModulesLock struct {
 	Modules   map[string]Binding `json:"modules"`
 }
 
+func normalizeBinding(binding Binding) Binding {
+	binding.ModuleName = strings.TrimSpace(binding.ModuleName)
+	binding.OriginType = strings.TrimSpace(binding.OriginType)
+	binding.OriginRef = strings.TrimSpace(binding.OriginRef)
+	binding.ResolvedVersion = strings.TrimSpace(binding.ResolvedVersion)
+	binding.Integrity = strings.TrimSpace(binding.Integrity)
+	binding.LocalPath = strings.TrimSpace(binding.LocalPath)
+	binding.UpdatedAt = strings.TrimSpace(binding.UpdatedAt)
+	return binding
+}
+
+func equalBindingContent(a, b Binding) bool {
+	a = normalizeBinding(a)
+	b = normalizeBinding(b)
+	a.UpdatedAt = ""
+	b.UpdatedAt = ""
+	return a == b
+}
+
 func newWorkspaceModulesLock() *WorkspaceModulesLock {
 	return &WorkspaceModulesLock{
 		Version: ModulesLockVersion,
@@ -93,8 +112,12 @@ func (s *LockStore) UpsertBinding(workspaceRoot string, binding Binding) error {
 	if err != nil {
 		return err
 	}
+	binding = normalizeBinding(binding)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	binding.ModuleName = moduleName
+	if existing, ok := lock.Modules[moduleName]; ok && equalBindingContent(existing, binding) {
+		return nil
+	}
 	binding.UpdatedAt = now
 	lock.Modules[moduleName] = binding
 	lock.UpdatedAt = now
@@ -122,6 +145,9 @@ func (s *LockStore) DeleteBinding(workspaceRoot, moduleName string) error {
 	lock, err := readWorkspaceModulesLock(path)
 	if err != nil {
 		return err
+	}
+	if _, exists := lock.Modules[moduleName]; !exists {
+		return nil
 	}
 	delete(lock.Modules, moduleName)
 	lock.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)

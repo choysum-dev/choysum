@@ -31,7 +31,7 @@ type moduleIndexSyncTestScope struct {
 }
 
 func (s *moduleIndexSyncTestScope) Run(fn func(scope.Scope) error) error { return fn(s) }
-func (s *moduleIndexSyncTestScope) Session() *scope.Session               { return s.session }
+func (s *moduleIndexSyncTestScope) Session() *scope.Session              { return s.session }
 func (s *moduleIndexSyncTestScope) Transactor() scope.Transactor {
 	return scopetest.NewPassthroughTransactor(s)
 }
@@ -100,14 +100,14 @@ func newModuleIndexSyncScope(addonsPath string, db *gorm.DB) *moduleIndexSyncTes
 	}
 }
 
-func writeManifest(t *testing.T, addonsPath, moduleName, content string) {
+func writePackageJSON(t *testing.T, addonsPath, moduleName, content string) {
 	t.Helper()
 	moduleDir := filepath.Join(addonsPath, moduleName)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(moduleDir, "manifest.json"), []byte(content), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
 }
 
@@ -159,8 +159,8 @@ func TestSyncLocalModuleIndex_AddonsPathRequired(t *testing.T) {
 
 func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T) {
 	addonsPath := t.TempDir()
-	writeManifest(t, addonsPath, "partner", `{"name":"partner","version":"0.1.0"}`)
-	writeManifest(t, addonsPath, "broken", `{`)
+	writePackageJSON(t, addonsPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
+	writePackageJSON(t, addonsPath, "broken", `{`)
 	if err := os.MkdirAll(filepath.Join(addonsPath, "node_modules"), 0o755); err != nil {
 		t.Fatalf("mkdir node_modules: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 	if stale.Available {
 		t.Fatal("expected stale row to be marked unavailable")
 	}
-	if !stale.LastErrorMessage.Valid || stale.LastErrorMessage.String != "manifest.json not found" {
+	if !stale.LastErrorMessage.Valid || stale.LastErrorMessage.String != "package.json not found" {
 		t.Fatalf("unexpected stale error message = %#v", stale.LastErrorMessage)
 	}
 	if stale.LastBatchSyncAt != nil {
@@ -236,7 +236,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 
 func TestSyncLocalModuleIndex_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
 	addonsPath := t.TempDir()
-	writeManifest(t, addonsPath, "partner", `{"name":"partner","version":"0.2.0"}`)
+	writePackageJSON(t, addonsPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(addonsPath, db)
@@ -318,18 +318,18 @@ func TestModuleIndexLockTTL_FallbackCases(t *testing.T) {
 	})
 }
 
-func TestReadManifestAndHelpers(t *testing.T) {
-	manifestPath := filepath.Join(t.TempDir(), "manifest.json")
-	if err := os.WriteFile(manifestPath, []byte(`{"version":"0.1.0"}`), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+func TestReadPackageJSONAndHelpers(t *testing.T) {
+	packageJSONPath := filepath.Join(t.TempDir(), "package.json")
+	if err := os.WriteFile(packageJSONPath, []byte(`{"name":"@acme/choysum-meta","version":"0.1.0","choysum":{"moduleName":"meta","application":"meta"}}`), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
 
-	raw, version, err := readManifest(manifestPath)
+	raw, version, err := readPackageJSON(packageJSONPath)
 	if err != nil {
-		t.Fatalf("readManifest() error = %v", err)
+		t.Fatalf("readPackageJSON() error = %v", err)
 	}
 	if strings.TrimSpace(string(raw)) == "" || version != "v0.1.0" {
-		t.Fatalf("unexpected manifest parse result raw=%q version=%q", string(raw), version)
+		t.Fatalf("unexpected package.json parse result raw=%q version=%q", string(raw), version)
 	}
 
 	if shouldSkipModuleDir("tmp") != true || shouldSkipModuleDir("partner") != false {
@@ -342,15 +342,15 @@ func TestReadManifestAndHelpers(t *testing.T) {
 
 func TestSanitizeModuleIndexError_PathAndDefault(t *testing.T) {
 	runtimeScope := newModuleIndexSyncScope("/tmp/choysum/addons", nil)
-	pathErr := &os.PathError{Op: "open", Path: "/tmp/choysum/addons/meta/manifest.json", Err: os.ErrNotExist}
-	if got := SanitizeModuleIndexError(runtimeScope, pathErr); got != "open manifest.json" {
-		t.Fatalf("sanitized path error = %q, want %q", got, "open manifest.json")
+	pathErr := &os.PathError{Op: "open", Path: "/tmp/choysum/addons/meta/package.json", Err: os.ErrNotExist}
+	if got := SanitizeModuleIndexError(runtimeScope, pathErr); got != "open package.json" {
+		t.Fatalf("sanitized path error = %q, want %q", got, "open package.json")
 	}
-	if got := SanitizeModuleIndexError(runtimeScope, nil); got != "manifest parsing failed" {
+	if got := SanitizeModuleIndexError(runtimeScope, nil); got != "package.json parsing failed" {
 		t.Fatalf("SanitizeModuleIndexError(nil) = %q, want default", got)
 	}
 
-	got := SanitizeModuleIndexError(runtimeScope, errors.New(" read /tmp/choysum/addons/meta/manifest.json failed "))
+	got := SanitizeModuleIndexError(runtimeScope, errors.New(" read /tmp/choysum/addons/meta/package.json failed "))
 	if strings.Contains(got, "/tmp/choysum/addons") {
 		t.Fatalf("expected addons path to be redacted, got %q", got)
 	}

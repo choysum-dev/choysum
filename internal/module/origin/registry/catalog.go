@@ -20,10 +20,39 @@ import (
 )
 
 type CatalogModule struct {
-	Name          string   `json:"name"`
-	LatestVersion string   `json:"latestVersion,omitempty"`
-	Description   string   `json:"description,omitempty"`
-	Versions      []string `json:"versions,omitempty"`
+	Name          string         `json:"name"`
+	LatestVersion string         `json:"latestVersion,omitempty"`
+	Description   string         `json:"description,omitempty"`
+	Versions      []string       `json:"versions,omitempty"`
+	NPMPackage    string         `json:"npmPackage,omitempty"`
+	Source        *CatalogSource `json:"source,omitempty"`
+}
+
+type CatalogSource struct {
+	Type      string `json:"type,omitempty"`
+	Registry  string `json:"registry,omitempty"`
+	Package   string `json:"package,omitempty"`
+	Version   string `json:"version,omitempty"`
+	Tarball   string `json:"tarball,omitempty"`
+	Integrity string `json:"integrity,omitempty"`
+}
+
+func (m CatalogModule) ResolvedNPMPackage() string {
+	if m.Source != nil {
+		if pkg := strings.TrimSpace(m.Source.Package); pkg != "" {
+			return pkg
+		}
+	}
+	return strings.TrimSpace(m.NPMPackage)
+}
+
+func (m CatalogModule) ResolvedNPMRegistry(defaultRegistry string) string {
+	if m.Source != nil {
+		if registry := strings.TrimSpace(m.Source.Registry); registry != "" {
+			return registry
+		}
+	}
+	return strings.TrimSpace(defaultRegistry)
 }
 
 type Catalog struct {
@@ -187,7 +216,7 @@ func (c *Catalog) infoFromGitHub(ctx context.Context, registryURL, moduleName st
 	}
 	item := &CatalogModule{Name: moduleName, LatestVersion: latest, Versions: versions}
 	if c.provider != nil && latest != "" {
-		if mod, peekErr := c.provider.PeekManifest(ctx, registryURL, moduleName, latest); peekErr == nil && mod != nil {
+		if mod, peekErr := c.provider.PeekManifest(ctx, registryURL, moduleName, moduleName, latest); peekErr == nil && mod != nil {
 			item.Description = strings.TrimSpace(mod.Description)
 		}
 	}
@@ -346,6 +375,18 @@ func normalizeCatalogModule(item *CatalogModule) {
 	item.Name = strings.TrimSpace(item.Name)
 	item.LatestVersion = strings.TrimSpace(item.LatestVersion)
 	item.Description = strings.TrimSpace(item.Description)
+	item.NPMPackage = strings.TrimSpace(item.NPMPackage)
+	if item.Source != nil {
+		item.Source.Type = strings.TrimSpace(item.Source.Type)
+		item.Source.Registry = strings.TrimSpace(item.Source.Registry)
+		item.Source.Package = strings.TrimSpace(item.Source.Package)
+		item.Source.Version = strings.TrimSpace(item.Source.Version)
+		item.Source.Tarball = strings.TrimSpace(item.Source.Tarball)
+		item.Source.Integrity = strings.TrimSpace(item.Source.Integrity)
+		if item.Source.Type == "" && item.Source.Registry == "" && item.Source.Package == "" && item.Source.Version == "" && item.Source.Tarball == "" && item.Source.Integrity == "" {
+			item.Source = nil
+		}
+	}
 	if len(item.Versions) > 0 {
 		versions := make([]string, 0, len(item.Versions))
 		for _, version := range item.Versions {

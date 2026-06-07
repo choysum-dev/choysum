@@ -38,7 +38,7 @@ func newTestRuntimeScopeInput(cfg *testScopeConfigSnapshot) testRuntimeScopeInpu
 	hasAuthOpts := false
 
 	if cfg != nil {
-		pathOpts = scope.PathsRuntimeOptions{AddonsPath: cfg.AddonsPath, DistPath: cfg.DistPath, TmpPath: cfg.TmpPath}
+		pathOpts = scope.PathsRuntimeOptions{AddonsPath: cfg.AddonsPath, DistPath: cfg.DistPath, TmpPath: cfg.TmpPath, NpmRegistryURL: cfg.NPMRegistryURL}
 		hasPathOpts = true
 		if cfg.Compile != nil {
 			compileOpts = scope.CompileRuntimeOptions{BundleMode: cfg.Compile.BundleMode}
@@ -81,6 +81,7 @@ func newTestRuntimeScopeInputFromScope(runtimeScope scope.Scope, dbOpts scope.Da
 		cfg.DefaultChoysumPath = pathOpts.DefaultChoysumPath
 		cfg.ConfigPath = pathOpts.ConfigPath
 		cfg.NpmPath = pathOpts.NpmPath
+		cfg.NPMRegistryURL = pathOpts.NpmRegistryURL
 	}
 	cfg.Log = scope.LogConfigFromScope(runtimeScope)
 
@@ -233,6 +234,13 @@ func (i testRuntimeScopeInput) NpmPath() string {
 		return ""
 	}
 	return i.cfg.NpmPath
+}
+
+func (i testRuntimeScopeInput) NpmRegistryURL() string {
+	if i.cfg == nil {
+		return ""
+	}
+	return i.cfg.NPMRegistryURL
 }
 
 func (i testRuntimeScopeInput) CompileBundleMode() string {

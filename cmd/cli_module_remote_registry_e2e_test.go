@@ -221,17 +221,21 @@ func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
 		t.Fatalf("create addons path: %v", err)
 	}
 
-	writeCommandManifest(t, addonsPath, "demo", `{
-		"name": "demo",
+	writeCommandPackage(t, addonsPath, "demo", `{
+		"name": "@choysum/addon-demo",
+		"version": "0.1.0",
 		"description": "demo module",
-		"application": "demo",
-		"category": "test",
-		"depends": [],
-		"externalDependencies": {"application": {}, "node_module": {}, "binary": {}},
-		"entryPoints": {"service": "./service/index.ts", "web": "./web/index.ts"},
-		"version": "v0.1.0",
-		"license": "Apache 2.0",
-		"author": "test"
+		"license": "Apache-2.0",
+		"author": "test",
+		"type": "module",
+		"main": "index.ts",
+		"choysum": {
+			"moduleName": "demo",
+			"application": "demo",
+			"category": "test",
+			"depends": [],
+			"entryPoints": {"service": "./service/index.ts", "web": "./web/index.ts"}
+		}
 	}`)
 
 	dbPath := writeTempSqliteDB(t)
@@ -263,17 +267,21 @@ func TestCLIRegistryAddFetchUninstallPurgeFlow(t *testing.T) {
 		t.Fatalf("create addons path: %v", err)
 	}
 
-	writeCommandManifest(t, addonsPath, "demo", `{
-		"name": "demo",
+	writeCommandPackage(t, addonsPath, "demo", `{
+		"name": "@choysum/addon-demo",
+		"version": "0.1.0",
 		"description": "demo module",
-		"application": "demo",
-		"category": "test",
-		"depends": [],
-		"externalDependencies": {"application": {}, "node_module": {}, "binary": {}},
-		"entryPoints": {"service": "./service/index.ts", "web": "./web/index.ts"},
-		"version": "v0.1.0",
-		"license": "Apache 2.0",
-		"author": "test"
+		"license": "Apache-2.0",
+		"author": "test",
+		"type": "module",
+		"main": "index.ts",
+		"choysum": {
+			"moduleName": "demo",
+			"application": "demo",
+			"category": "test",
+			"depends": [],
+			"entryPoints": {"service": "./service/index.ts", "web": "./web/index.ts"}
+		}
 	}`)
 
 	dbPath := writeTempSqliteDB(t)

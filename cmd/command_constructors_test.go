@@ -175,14 +175,14 @@ func newTestUnitCmdFromScope(scopeGetter func() scope.Scope) *cobra.Command {
 	return newTestUnitCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 }
 
-func writeCommandManifest(t *testing.T, addonsPath string, moduleName string, manifest string) {
+func writeCommandPackage(t *testing.T, addonsPath string, moduleName string, packageJSON string) {
 	t.Helper()
 	moduleDir := filepath.Join(addonsPath, moduleName)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(moduleDir, "manifest.json"), []byte(manifest), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(packageJSON), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
 }
 
@@ -747,7 +747,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("module without e2e specs is skipped", func(t *testing.T) {
 		addonsPath := t.TempDir()
-		writeCommandManifest(t, addonsPath, "auth", `{"name":"Auth"}`)
+		writeCommandPackage(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth"}}`)
 		cfg := newCommandTestConfig(addonsPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
@@ -759,19 +759,19 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("module with invalid specs path is rejected", func(t *testing.T) {
 		addonsPath := t.TempDir()
-		writeCommandManifest(t, addonsPath, "auth", `{"name":"Auth","e2e":{"specs":"../specs"}}`)
+		writeCommandPackage(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"../specs"}}}`)
 		cfg := newCommandTestConfig(addonsPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 		err := cmd.RunE(cmd, []string{"auth"})
-		if err == nil || !strings.Contains(err.Error(), `invalid manifest.e2e.specs for "auth"`) {
+		if err == nil || !strings.Contains(err.Error(), `invalid package.json choysum.e2e.specs for "auth"`) {
 			t.Fatalf("expected invalid specs path error, got %v", err)
 		}
 	})
 
 	t.Run("invalid scenario name is rejected", func(t *testing.T) {
 		addonsPath := t.TempDir()
-		writeCommandManifest(t, addonsPath, "auth", `{"name":"Auth","e2e":{"specs":"specs"}}`)
+		writeCommandPackage(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"specs"}}}`)
 		cfg := newCommandTestConfig(addonsPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
@@ -854,6 +854,9 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	if installCmd.Flags().Lookup("with-demo") == nil {
 		t.Fatal("expected install command to register --with-demo")
 	}
+	if got := installCmd.Flags().Lookup("with-demo").Usage; !strings.Contains(got, "package.json") || strings.Contains(strings.ToLower(got), "manifest") {
+		t.Fatalf("unexpected install --with-demo usage: %q", got)
+	}
 
 	upgradeCmd := newUpgradeCmd(envGetter)
 	if upgradeCmd.Use != "upgrade" || upgradeCmd.PreRun == nil || upgradeCmd.Run == nil {
@@ -861,6 +864,9 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	}
 	if upgradeCmd.Flags().Lookup("with-demo") == nil {
 		t.Fatal("expected upgrade command to register --with-demo")
+	}
+	if got := upgradeCmd.Flags().Lookup("with-demo").Usage; !strings.Contains(got, "package.json") || strings.Contains(strings.ToLower(got), "manifest") {
+		t.Fatalf("unexpected upgrade --with-demo usage: %q", got)
 	}
 
 	uninstallCmd := newUninstallCmd(envGetter)

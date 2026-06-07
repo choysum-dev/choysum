@@ -39,7 +39,7 @@ func defaultConfig() *Config {
 }
 
 type Store struct {
-	homeDir          string
+	homeDir            string
 	defaultChoysumPath string
 }
 

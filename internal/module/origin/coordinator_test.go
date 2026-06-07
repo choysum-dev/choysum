@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -46,39 +48,86 @@ func (e *sourceTestScope) FactoryInput() scope.FactoryInput {
 }
 
 type fakeRegistryProvider struct {
-	peekFn  func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
-	fetchFn func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
+	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
 }
 
-func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *fakeRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p.peekFn != nil {
-		return p.peekFn(ctx, registryURL, moduleName, version)
+		return p.peekFn(ctx, registryURL, moduleName, packageName, version)
 	}
 	if p.fetchFn != nil {
-		return p.fetchFn(ctx, registryURL, moduleName, version)
+		return p.fetchFn(ctx, registryURL, moduleName, packageName, version)
 	}
 	return nil, nil
 }
 
-func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p.fetchFn != nil {
-		return p.fetchFn(ctx, registryURL, moduleName, version)
+		return p.fetchFn(ctx, registryURL, moduleName, packageName, version)
 	}
 	return nil, nil
 }
 
-func writeSourceTestManifest(t *testing.T, addonsPath string, name string, mod *meta.IrModule) {
+func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sourceIntegrity string) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasSuffix(strings.TrimSpace(r.URL.Path), "/api/v1/modules/auth") {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		source := map[string]any{
+			"type":     "npm",
+			"registry": sourceRegistry,
+			"package":  npmPackage,
+		}
+		if strings.TrimSpace(sourceIntegrity) != "" {
+			source["integrity"] = strings.TrimSpace(sourceIntegrity)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name":          "auth",
+			"latestVersion": "v2.0.0",
+			"npmPackage":    npmPackage,
+			"source":        source,
+		})
+	})
+	return httptest.NewServer(mux)
+}
+
+func writeSourceTestPackageJSON(t *testing.T, addonsPath string, name string, mod *meta.IrModule) {
 	t.Helper()
 	moduleDir := filepath.Join(addonsPath, name)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
-	payload, err := json.Marshal(mod)
-	if err != nil {
-		t.Fatalf("marshal manifest: %v", err)
+	version := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(mod.Version), "v"))
+	if version == "" {
+		version = "0.1.0"
 	}
-	if err := os.WriteFile(filepath.Join(moduleDir, "manifest.json"), payload, 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	application := strings.TrimSpace(mod.ApplicationStr)
+	if application == "" {
+		application = name
+	}
+	payloadObj := map[string]any{
+		"name":    "@acme/choysum-" + name,
+		"version": version,
+		"choysum": map[string]any{
+			"moduleName":  name,
+			"application": application,
+		},
+	}
+	payload, err := json.Marshal(payloadObj)
+	if err != nil {
+		t.Fatalf("marshal package.json: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), payload, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
 	}
 }
 
@@ -96,7 +145,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 
 	t.Run("resolve local module and persist local binding", func(t *testing.T) {
-		writeSourceTestManifest(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+		writeSourceTestPackageJSON(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
 		coordinator := NewCoordinator(
 			runtimeScope,
 			WithLockStore(lockStore),
@@ -122,21 +171,23 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 
 	t.Run("resolve registry ref and persist registry binding", func(t *testing.T) {
 		home := t.TempDir()
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v2")
+		defer catalog.Close()
 		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 		cfg, err := store.Load()
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: "https://github.com/acme/registry"}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
 
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
-			if registryURL != "https://github.com/acme/registry" || moduleName != "auth" || version != "v2.0.0" {
-				t.Fatalf("unexpected provider input: url=%s module=%s version=%s", registryURL, moduleName, version)
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "@acme/choysum-auth" || version != "v2.0.0" {
+				t.Fatalf("unexpected provider input: url=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Path: filepath.Join(addonsPath, "auth")}, nil
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(addonsPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
 
@@ -154,6 +205,53 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if !ok || binding.OriginType != "registry" || binding.OriginRef != "corp/auth@v2.0.0" {
 			t.Fatalf("unexpected registry binding: ok=%v binding=%#v", ok, binding)
 		}
+		if binding.ResolvedVersion != "v2.0.0" || binding.Integrity != "sha512-provider-auth-v2" {
+			t.Fatalf("unexpected registry lock details: %#v", binding)
+		}
+	})
+
+	t.Run("resolve registry latest pins origin ref to resolved version", func(t *testing.T) {
+		home := t.TempDir()
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "")
+		defer catalog.Close()
+		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+		cfg, err := store.Load()
+		if err != nil {
+			t.Fatalf("registry store load: %v", err)
+		}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
+		if err := store.Save(cfg); err != nil {
+			t.Fatalf("registry store save: %v", err)
+		}
+
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			if version != "latest" {
+				t.Fatalf("expected provider to receive latest, got %s", version)
+			}
+			return &meta.IrModule{Name: "auth", Version: "v2.1.0", Integrity: "sha512-provider-auth-v210", Path: filepath.Join(addonsPath, "auth")}, nil
+		}}
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+
+		mod, err := coordinator.ResolveInstallModule(context.Background(), "corp/auth")
+		if err != nil {
+			t.Fatalf("ResolveInstallModule(registry latest) error = %v", err)
+		}
+		if mod == nil || mod.Version != "v2.1.0" {
+			t.Fatalf("unexpected resolved registry module: %#v", mod)
+		}
+		binding, ok, err := lockStore.LookupBinding(WorkspaceRoot(runtimeScope), "auth")
+		if err != nil {
+			t.Fatalf("LookupBinding(registry latest) error = %v", err)
+		}
+		if !ok {
+			t.Fatalf("expected registry binding to exist after latest install")
+		}
+		if binding.OriginRef != "corp/auth@v2.1.0" || binding.ResolvedVersion != "v2.1.0" {
+			t.Fatalf("expected latest ref to pin resolved version, got %#v", binding)
+		}
+		if binding.Integrity != "sha512-provider-auth-v210" {
+			t.Fatalf("unexpected integrity for latest install: %#v", binding)
+		}
 	})
 
 	t.Run("resolve local name does not fallback to registry binding", func(t *testing.T) {
@@ -169,7 +267,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 
 		fetchCalls := 0
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			fetchCalls++
 			return &meta.IrModule{Name: moduleName, Version: version}, nil
 		}}
@@ -196,6 +294,37 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			t.Fatalf("expected no registry fetch fallback, got %d calls", fetchCalls)
 		}
 	})
+
+	t.Run("resolve registry ref rejects empty catalog npm package", func(t *testing.T) {
+		home := t.TempDir()
+		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org", "")
+		defer catalog.Close()
+
+		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+		cfg, err := store.Load()
+		if err != nil {
+			t.Fatalf("registry store load: %v", err)
+		}
+		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
+		if err := store.Save(cfg); err != nil {
+			t.Fatalf("registry store save: %v", err)
+		}
+
+		fetchCalls := 0
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			fetchCalls++
+			return &meta.IrModule{Name: moduleName, Version: version}, nil
+		}}
+
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+		_, err = coordinator.ResolveInstallModule(context.Background(), "corp/auth@v2.0.0")
+		if err == nil || !strings.Contains(err.Error(), "empty npm package source") {
+			t.Fatalf("expected empty npm package source error, got %v", err)
+		}
+		if fetchCalls != 0 {
+			t.Fatalf("expected provider fetch not called, got %d calls", fetchCalls)
+		}
+	})
 }
 
 func TestCoordinatorPurgeEndToEnd(t *testing.T) {
@@ -217,11 +346,11 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		WithRegistryProvider(&fakeRegistryProvider{}),
 	)
 
-	writeSourceTestManifest(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+	writeSourceTestPackageJSON(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
 	if _, err := coordinator.ResolveInstallModule(context.Background(), "auth"); err != nil {
 		t.Fatalf("ResolveInstallModule(local) error = %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(addonsPath, "auth", "manifest.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(addonsPath, "auth", "package.json")); err != nil {
 		t.Fatalf("expected local module files to exist before purge: %v", err)
 	}
 
@@ -235,5 +364,34 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		t.Fatalf("LookupBinding(after purge) error = %v", err)
 	} else if ok {
 		t.Fatal("expected binding to be removed after purge")
+	}
+}
+
+func TestLooksLikeCatalogRegistryURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		url      string
+		expected bool
+	}{
+		{name: "npmjs", url: "https://registry.npmjs.org", expected: false},
+		{name: "npmmirror", url: "https://registry.npmmirror.com", expected: false},
+		{name: "yarn", url: "https://registry.yarnpkg.com", expected: false},
+		{name: "github package", url: "https://npm.pkg.github.com", expected: false},
+		{name: "localhost", url: "http://localhost:4873", expected: false},
+		{name: "loopback", url: "http://127.0.0.1:4873", expected: false},
+		{name: "catalog host", url: "https://catalog.choysum.dev/v1/index.json", expected: true},
+		{name: "api path", url: "https://example.com/api/v1/modules", expected: true},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := looksLikeCatalogRegistryURL(tc.url); got != tc.expected {
+				t.Fatalf("looksLikeCatalogRegistryURL(%q) = %v, want %v", tc.url, got, tc.expected)
+			}
+		})
 	}
 }
