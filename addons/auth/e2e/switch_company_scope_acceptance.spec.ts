@@ -4,6 +4,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { createClient, type Interceptor, ConnectError, Code } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
@@ -58,7 +59,7 @@ async function loadAuthPbModule(): Promise<AuthPbModule> {
   if (!moduleFile) {
     throw new Error(`Cannot find auth_pb.ts. tried: ${candidates.join(', ')}`);
   }
-  const req = eval('require') as NodeRequire;
+  const req = createRequire(import.meta.url);
   return req(moduleFile) as AuthPbModule;
 }
 

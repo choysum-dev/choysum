@@ -20,6 +20,9 @@ func ResolveInstalledDependencies(load InstalledModuleLoader, module *meta.IrMod
 	if load == nil {
 		return nil, xfmt.Errorf("dependency loader is nil")
 	}
+	if strings.TrimSpace(string(module.DependsStr)) == "" {
+		return nil, nil
+	}
 
 	dependsArr := make([]string, 0)
 	if err := json.Unmarshal(module.DependsStr, &dependsArr); err != nil {
