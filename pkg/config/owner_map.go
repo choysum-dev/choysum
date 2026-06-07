@@ -34,6 +34,11 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		PackagePath: "cmd",
 		OptionsType: "cliRuntimeOptions",
 	},
+	"npm_registry_url": {
+		Domain:      "module",
+		PackagePath: "internal/module/origin/registry",
+		OptionsType: "runtimeOptions",
+	},
 	"default_choysum_path": {
 		Domain:      "cli",
 		PackagePath: "cmd",

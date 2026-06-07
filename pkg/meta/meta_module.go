@@ -37,6 +37,7 @@ type IrModule struct {
 	ShortDesc            string         `gorm:"type:text;" json:"name"`
 	Version              string         `gorm:"type:varchar(255);" json:"version"`
 	Tarball              string         `gorm:"type:varchar(255);" json:"tarball"`
+	Integrity            string         `gorm:"-" json:"integrity,omitempty"`
 	Summary              string         `gorm:"type:text;" json:"summary"`
 	Description          string         `gorm:"type:text;" json:"description"`
 	ApplicationStr       string         `gorm:"type:varchar(255);" json:"application"`

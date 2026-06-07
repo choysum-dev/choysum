@@ -110,7 +110,7 @@ func TestSanitizeModuleIndexError_RedactsAddonsPathInMessage(t *testing.T) {
 
 func TestSanitizeModuleIndexError_NilReturnsDefault(t *testing.T) {
 	got := lifecycle.SanitizeModuleIndexError(nil, nil)
-	if got != "manifest parsing failed" {
+	if got != "package.json parsing failed" {
 		t.Fatalf("expected default message, got %q", got)
 	}
 }

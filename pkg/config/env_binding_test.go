@@ -12,6 +12,7 @@ func TestEnvNameForPath(t *testing.T) {
 		want string
 	}{
 		{name: "snake case path", path: []string{"default_choysum_path"}, want: "CHOYSUM_DEFAULT_CHOYSUM_PATH"},
+		{name: "npm registry url", path: []string{"npm_registry_url"}, want: "CHOYSUM_NPM_REGISTRY_URL"},
 		{name: "camel case segment", path: []string{"server", "hotReload"}, want: "CHOYSUM_SERVER_HOT_RELOAD"},
 		{name: "acronym segment", path: []string{"server", "jsEngineFactory"}, want: "CHOYSUM_SERVER_JS_ENGINE_FACTORY"},
 		{name: "nested auth", path: []string{"auth", "internalKey"}, want: "CHOYSUM_AUTH_INTERNAL_KEY"},

@@ -5,7 +5,6 @@ package registry
 
 import (
 	"archive/tar"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
@@ -14,20 +13,20 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
+	cfg "github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	cp "github.com/otiai10/copy"
 	xfmt "golang.org/x/exp/errors/fmt"
-	"golang.org/x/mod/semver"
 )
 
 type Provider interface {
-	PeekManifest(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
-	Fetch(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error)
+	PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+	Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
 }
 
 type SourceRegistryProvider struct {
@@ -51,78 +50,6 @@ func NewProvider(runtimeScope scope.Scope, opts ...ProviderOption) *SourceRegist
 		opt(p)
 	}
 	return p
-}
-
-// NewLegacyFetcherProvider is kept for migration compatibility.
-func NewLegacyFetcherProvider(runtimeScope scope.Scope) *SourceRegistryProvider {
-	return NewProvider(runtimeScope)
-}
-
-var strictSemVerV = regexp.MustCompile(`^v\d+\.\d+\.\d+([\-\+].+)?$`)
-var strictSemVerNoV = regexp.MustCompile(`^\d+\.\d+\.\d+([\-\+].+)?$`)
-
-func decodeModuleManifest(r io.Reader) (*meta.IrModule, error) {
-	module := &meta.IrModule{}
-	if err := json.NewDecoder(r).Decode(module); err != nil {
-		return nil, err
-	}
-	module.Status = meta.ToInstall
-	return module, nil
-}
-
-func applyEntryPoints(module *meta.IrModule) error {
-	if module == nil {
-		return nil
-	}
-	entryPointsMap := make(map[string]string)
-	if module.EntryPoints != nil {
-		if err := json.Unmarshal(module.EntryPoints, &entryPointsMap); err != nil {
-			return xfmt.Errorf("error unmarshalling entry points: %w", err)
-		}
-		if webEntryPoint, ok := entryPointsMap["web"]; ok {
-			module.WebEntryPoint = webEntryPoint
-		}
-		if serviceEntryPoint, ok := entryPointsMap["service"]; ok {
-			module.ServiceEntryPoint = serviceEntryPoint
-		}
-	}
-	return nil
-}
-
-func validateAndNormalizeManifestSemVer(mod *meta.IrModule, manifestHint string) error {
-	if mod == nil {
-		return nil
-	}
-	ver := strings.TrimSpace(mod.Version)
-	if ver == "" {
-		return xfmt.Errorf("empty manifest version (module=%q, manifest=%q)", strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-	}
-	if strings.HasPrefix(ver, "v") {
-		if !strictSemVerV.MatchString(ver) || !semver.IsValid(ver) {
-			return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-		}
-		return nil
-	}
-	if strictSemVerNoV.MatchString(ver) {
-		v := "v" + ver
-		if !strictSemVerV.MatchString(v) || !semver.IsValid(v) {
-			return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-		}
-		mod.Version = v
-		return nil
-	}
-	return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-}
-
-func looksLikeModuleManifest(mod *meta.IrModule) bool {
-	if mod == nil {
-		return false
-	}
-	return strings.TrimSpace(mod.ApplicationStr) != "" ||
-		len(mod.DependsStr) > 0 ||
-		mod.EntryPoints != nil ||
-		strings.TrimSpace(mod.WebEntryPoint) != "" ||
-		strings.TrimSpace(mod.ServiceEntryPoint) != ""
 }
 
 func normalizeModuleNameVersion(moduleName, version string) (string, string, error) {
@@ -149,78 +76,283 @@ func (p *SourceRegistryProvider) httpGet(ctx context.Context, requestURL string)
 	return client.Do(req)
 }
 
-func registryManifestURL(registryURL, moduleName, version string) (string, error) {
+type npmVersionDist struct {
+	Tarball   string `json:"tarball"`
+	Integrity string `json:"integrity"`
+}
+
+type npmPackageMetadata struct {
+	DistTags map[string]string          `json:"dist-tags"`
+	Versions map[string]json.RawMessage `json:"versions"`
+}
+
+type npmVersionEnvelope struct {
+	Dist npmVersionDist `json:"dist"`
+}
+
+func normalizePackageName(moduleName, packageName string) (string, error) {
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return "", xfmt.Errorf("module name is empty")
+	}
+	packageName = strings.TrimSpace(packageName)
+	if packageName != "" {
+		return packageName, nil
+	}
+	return moduleName, nil
+}
+
+func normalizeDefaultRegistryMetadataBaseURL(defaultRegistryURL string) (string, error) {
+	defaultRegistryURL = strings.TrimSpace(defaultRegistryURL)
+	if defaultRegistryURL == "" {
+		defaultRegistryURL = cfg.DefaultNPMRegistryURL
+	}
+
+	parsed, err := url.Parse(defaultRegistryURL)
+	if err != nil {
+		return "", xfmt.Errorf("invalid default npm registry url %q: %w", defaultRegistryURL, err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", xfmt.Errorf("unsupported default npm registry url: %s", defaultRegistryURL)
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return "", xfmt.Errorf("unsupported default npm registry url: %s", defaultRegistryURL)
+	}
+
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return strings.TrimRight(parsed.String(), "/"), nil
+}
+
+func normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL string) (string, error) {
+	fallbackBaseURL, err := normalizeDefaultRegistryMetadataBaseURL(defaultRegistryURL)
+	if err != nil {
+		return "", err
+	}
+
 	registryURL = strings.TrimSpace(registryURL)
 	if registryURL == "" {
-		registryURL = DefaultRegistryURL
+		return fallbackBaseURL, nil
 	}
-	if !strings.HasPrefix(registryURL, "https://github.com/") {
+	if strings.HasPrefix(registryURL, "https://github.com/") {
+		return fallbackBaseURL, nil
+	}
+
+	parsed, err := url.Parse(registryURL)
+	if err != nil {
+		return "", xfmt.Errorf("invalid registry url %q: %w", registryURL, err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return "", xfmt.Errorf("unsupported registry url: %s", registryURL)
 	}
-	ownerAndRepo := strings.Split(strings.TrimPrefix(registryURL, "https://github.com/"), "/")
-	if len(ownerAndRepo) < 2 || strings.TrimSpace(ownerAndRepo[0]) == "" || strings.TrimSpace(ownerAndRepo[1]) == "" {
-		return "", xfmt.Errorf("invalid registry url: %s", registryURL)
+	if strings.TrimSpace(parsed.Host) == "" {
+		return "", xfmt.Errorf("unsupported registry url: %s", registryURL)
 	}
-	owner := strings.TrimSpace(ownerAndRepo[0])
-	repo := strings.TrimSpace(ownerAndRepo[1])
-	return "https://raw.githubusercontent.com/" + owner + "/" + repo + "/main/addons/" + moduleName + "/" + version + "/manifest.json", nil
+
+	pathLower := strings.ToLower(parsed.Path)
+	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") {
+		return fallbackBaseURL, nil
+	}
+
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
-type manifestInspection struct {
-	module      *meta.IrModule
-	downloadURL string
+func registryPackageMetadataURL(registryURL, moduleName, packageName, defaultRegistryURL string) (string, string, error) {
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return "", "", xfmt.Errorf("module name is empty")
+	}
+	baseURL, err := normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL)
+	if err != nil {
+		return "", "", err
+	}
+	packageName, err = normalizePackageName(moduleName, packageName)
+	if err != nil {
+		return "", "", err
+	}
+	metadataURL := strings.TrimRight(baseURL, "/") + "/" + url.PathEscape(packageName)
+	return metadataURL, packageName, nil
 }
 
-func (p *SourceRegistryProvider) inspectRegistryManifest(ctx context.Context, registryURL, moduleName, version string) (*manifestInspection, error) {
-	manifestURL, err := registryManifestURL(registryURL, moduleName, version)
-	if err != nil {
-		return nil, err
+func (p *SourceRegistryProvider) defaultRegistryURL() string {
+	if p == nil {
+		return cfg.DefaultNPMRegistryURL
 	}
-	resp, err := p.httpGet(ctx, manifestURL)
+	configured := strings.TrimSpace(runtimeOptionsFromScope(p.runtimeScope).npmRegistryURL)
+	if configured != "" {
+		return configured
+	}
+	return cfg.DefaultNPMRegistryURL
+}
+
+func (p *SourceRegistryProvider) fetchPackageMetadata(ctx context.Context, registryURL, moduleName, packageName string) (*npmPackageMetadata, string, error) {
+	metadataURL, packageName, err := registryPackageMetadataURL(registryURL, moduleName, packageName, p.defaultRegistryURL())
 	if err != nil {
-		return nil, xfmt.Errorf("get registry manifest: %w", err)
+		return nil, "", err
+	}
+	resp, err := p.httpGet(ctx, metadataURL)
+	if err != nil {
+		return nil, "", xfmt.Errorf("get npm metadata: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, xfmt.Errorf("error getting registry manifest url: %s status code: %d", manifestURL, resp.StatusCode)
+		return nil, "", xfmt.Errorf("error getting npm metadata url: %s status code: %d", metadataURL, resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, xfmt.Errorf("read registry manifest: %w", err)
+		return nil, "", xfmt.Errorf("read npm metadata: %w", err)
 	}
 
-	manifestMap := make(map[string]interface{})
-	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&manifestMap); err != nil {
-		return nil, xfmt.Errorf("error decoding registry manifest: %w", err)
+	metadata := &npmPackageMetadata{}
+	if err := json.Unmarshal(body, metadata); err != nil {
+		return nil, "", xfmt.Errorf("error decoding npm metadata: %w", err)
+	}
+	if len(metadata.Versions) == 0 {
+		return nil, "", xfmt.Errorf("npm metadata has no versions for package %q", packageName)
+	}
+	return metadata, packageName, nil
+}
+
+func resolveNPMVersion(metadata *npmPackageMetadata, requestedVersion string) (string, json.RawMessage, error) {
+	if metadata == nil {
+		return "", nil, xfmt.Errorf("npm metadata is nil")
+	}
+	versionKey := strings.TrimSpace(requestedVersion)
+	if versionKey == "" {
+		versionKey = "latest"
 	}
 
-	result := &manifestInspection{}
-	if modFromRegistry, err := decodeModuleManifest(bytes.NewReader(body)); err == nil && looksLikeModuleManifest(modFromRegistry) {
-		modFromRegistry.Name = moduleName
-		modFromRegistry.Path = ""
-		if err := applyEntryPoints(modFromRegistry); err != nil {
-			return nil, err
-		}
-		if err := validateAndNormalizeManifestSemVer(modFromRegistry, "registry:manifest.json"); err != nil {
-			return nil, err
-		}
-		result.module = modFromRegistry
+	if raw, ok := metadata.Versions[versionKey]; ok {
+		return versionKey, raw, nil
 	}
 
-	if v, ok := manifestMap["tarball"]; ok {
-		if s, ok := v.(string); ok {
-			result.downloadURL = strings.TrimSpace(s)
+	if trimmed := strings.TrimPrefix(versionKey, "v"); trimmed != versionKey {
+		if raw, ok := metadata.Versions[trimmed]; ok {
+			return trimmed, raw, nil
 		}
-	} else if v, ok := manifestMap["repository"]; ok {
-		if s, ok := v.(string); ok {
-			repoURL := strings.TrimSpace(s)
-			if repoURL != "" {
-				result.downloadURL = repoURL + "/archive/refs/tags/" + version + ".tar.gz"
+	}
+
+	if tagged, ok := metadata.DistTags[versionKey]; ok {
+		tagged = strings.TrimSpace(tagged)
+		if raw, ok := metadata.Versions[tagged]; ok {
+			return tagged, raw, nil
+		}
+		if raw, ok := metadata.Versions[strings.TrimPrefix(tagged, "v")]; ok {
+			return strings.TrimPrefix(tagged, "v"), raw, nil
+		}
+	}
+
+	if versionKey == "latest" {
+		if tagged := strings.TrimSpace(metadata.DistTags["latest"]); tagged != "" {
+			if raw, ok := metadata.Versions[tagged]; ok {
+				return tagged, raw, nil
+			}
+			if raw, ok := metadata.Versions[strings.TrimPrefix(tagged, "v")]; ok {
+				return strings.TrimPrefix(tagged, "v"), raw, nil
 			}
 		}
+		if len(metadata.Versions) == 1 {
+			for k, raw := range metadata.Versions {
+				return k, raw, nil
+			}
+		}
+		return "", nil, xfmt.Errorf("npm metadata missing latest dist-tag")
 	}
 
-	return result, nil
+	return "", nil, xfmt.Errorf("version %q not found in npm metadata", requestedVersion)
+}
+
+func normalizePackageAuthor(raw []byte) ([]byte, error) {
+	payload := map[string]any{}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, xfmt.Errorf("decode package.json payload: %w", err)
+	}
+	if author, ok := payload["author"]; ok {
+		switch typed := author.(type) {
+		case string:
+			payload["author"] = strings.TrimSpace(typed)
+		case map[string]any:
+			if name, ok := typed["name"].(string); ok {
+				payload["author"] = strings.TrimSpace(name)
+			} else {
+				delete(payload, "author")
+			}
+		default:
+			delete(payload, "author")
+		}
+	}
+	normalized, err := json.Marshal(payload)
+	if err != nil {
+		return nil, xfmt.Errorf("encode normalized package.json: %w", err)
+	}
+	return normalized, nil
+}
+
+func parseModuleFromPackageJSON(raw []byte, moduleName, modulePath string) (*meta.IrModule, error) {
+	normalizedRaw, err := normalizePackageAuthor(raw)
+	if err != nil {
+		return nil, err
+	}
+	result, err := contract.ParsePackageJSONToIrModule(normalizedRaw, modulePath, nil)
+	if err != nil {
+		return nil, xfmt.Errorf("parse package.json: %w", err)
+	}
+	if result == nil || result.Module == nil {
+		return nil, xfmt.Errorf("parse package.json: empty module result")
+	}
+	module := result.Module
+	if strings.TrimSpace(module.Name) != strings.TrimSpace(moduleName) {
+		return nil, xfmt.Errorf("package.json choysum.moduleName %q does not match requested module %q", strings.TrimSpace(module.Name), strings.TrimSpace(moduleName))
+	}
+	module.Name = moduleName
+	module.Path = modulePath
+	return module, nil
+}
+
+func extractTarballURL(versionRaw json.RawMessage) (string, string, error) {
+	envelope := npmVersionEnvelope{}
+	if err := json.Unmarshal(versionRaw, &envelope); err != nil {
+		return "", "", xfmt.Errorf("decode npm version dist: %w", err)
+	}
+	downloadURL := strings.TrimSpace(envelope.Dist.Tarball)
+	if downloadURL == "" {
+		return "", "", xfmt.Errorf("no tarball url found in npm metadata")
+	}
+	return downloadURL, strings.TrimSpace(envelope.Dist.Integrity), nil
+}
+
+type packageInspection struct {
+	module      *meta.IrModule
+	downloadURL string
+	integrity   string
+}
+
+func (p *SourceRegistryProvider) inspectRegistryPackage(ctx context.Context, registryURL, moduleName, packageName, version string) (*packageInspection, error) {
+	metadata, packageName, err := p.fetchPackageMetadata(ctx, registryURL, moduleName, packageName)
+	if err != nil {
+		return nil, err
+	}
+	resolvedVersion, versionRaw, err := resolveNPMVersion(metadata, version)
+	if err != nil {
+		return nil, xfmt.Errorf("inspect package %q: %w", packageName, err)
+	}
+	module, err := parseModuleFromPackageJSON(versionRaw, moduleName, "")
+	if err != nil {
+		return nil, xfmt.Errorf("inspect package %q version %q: %w", packageName, resolvedVersion, err)
+	}
+	downloadURL, integrity, err := extractTarballURL(versionRaw)
+	if err != nil {
+		return nil, xfmt.Errorf("inspect package %q version %q: %w", packageName, resolvedVersion, err)
+	}
+	module.Tarball = downloadURL
+	module.Integrity = integrity
+	return &packageInspection{module: module, downloadURL: downloadURL, integrity: integrity}, nil
 }
 
 func isUnsafeTarPath(name string) bool {
@@ -275,22 +407,25 @@ func validateTarballURL(downloadURL string) error {
 	return nil
 }
 
-func scoreManifestPath(path, moduleName string) int {
+func scorePackageJSONPath(path, moduleName string) int {
 	path = filepath.ToSlash(path)
 	score := 0
 	if strings.Contains(path, "/addons/"+moduleName+"/") {
+		score += 4
+	}
+	if strings.HasSuffix(path, "/package/package.json") {
 		score += 3
 	}
-	if strings.HasSuffix(path, "/"+moduleName+"/manifest.json") {
+	if strings.HasSuffix(path, "/"+moduleName+"/package.json") {
 		score += 2
 	}
-	if strings.Count(path, "/") <= 4 {
+	if strings.HasSuffix(path, "/package.json") {
 		score += 1
 	}
 	return score
 }
 
-func findBestManifestPath(rootDir, moduleName string) (string, error) {
+func findBestPackageJSONPath(rootDir, moduleName string) (string, error) {
 	moduleName = strings.TrimSpace(moduleName)
 	bestPath := ""
 	bestScore := -1
@@ -303,7 +438,7 @@ func findBestManifestPath(rootDir, moduleName string) (string, error) {
 		if d.IsDir() {
 			return nil
 		}
-		if filepath.Base(path) != "manifest.json" {
+		if filepath.Base(path) != "package.json" {
 			return nil
 		}
 		rel, err := filepath.Rel(rootDir, path)
@@ -311,7 +446,7 @@ func findBestManifestPath(rootDir, moduleName string) (string, error) {
 			return err
 		}
 		rel = filepath.ToSlash(rel)
-		score := scoreManifestPath(rel, moduleName)
+		score := scorePackageJSONPath(rel, moduleName)
 		depth := strings.Count(rel, "/")
 		if score > bestScore || (score == bestScore && depth < bestDepth) {
 			bestPath = path
@@ -324,7 +459,7 @@ func findBestManifestPath(rootDir, moduleName string) (string, error) {
 		return "", err
 	}
 	if bestPath == "" {
-		return "", xfmt.Errorf("manifest.json not found in tarball")
+		return "", xfmt.Errorf("package.json not found in tarball")
 	}
 	return bestPath, nil
 }
@@ -396,41 +531,7 @@ func (p *SourceRegistryProvider) extractTarballToDir(ctx context.Context, downlo
 	return nil
 }
 
-func (p *SourceRegistryProvider) peekManifestFromTarball(ctx context.Context, moduleName, downloadURL string) (*meta.IrModule, error) {
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "choysum-source-peek-")
-	if err != nil {
-		return nil, xfmt.Errorf("create temp dir failed: %w", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	if err := p.extractTarballToDir(ctx, downloadURL, tmpDir); err != nil {
-		return nil, err
-	}
-	manifestPath, err := findBestManifestPath(tmpDir, moduleName)
-	if err != nil {
-		return nil, err
-	}
-	f, err := os.Open(manifestPath)
-	if err != nil {
-		return nil, xfmt.Errorf("open manifest: %w", err)
-	}
-	defer f.Close()
-	mod, err := decodeModuleManifest(f)
-	if err != nil {
-		return nil, xfmt.Errorf("decode manifest from tar: %w", err)
-	}
-	mod.Name = moduleName
-	mod.Path = ""
-	if err := applyEntryPoints(mod); err != nil {
-		return nil, err
-	}
-	if err := validateAndNormalizeManifestSemVer(mod, "tar:manifest.json"); err != nil {
-		return nil, err
-	}
-	return mod, nil
-}
-
-func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p == nil || p.runtimeScope == nil {
 		return nil, xfmt.Errorf("registry provider env is nil")
 	}
@@ -442,20 +543,17 @@ func (p *SourceRegistryProvider) PeekManifest(ctx context.Context, registryURL, 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	inspection, err := p.inspectRegistryManifest(ctx, registryURL, moduleName, version)
+	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, packageName, version)
 	if err != nil {
 		return nil, err
 	}
-	if inspection.module != nil {
-		return inspection.module, nil
+	if inspection.module == nil {
+		return nil, xfmt.Errorf("empty package inspection result")
 	}
-	if strings.TrimSpace(inspection.downloadURL) == "" {
-		return nil, xfmt.Errorf("no download url found in registry manifest")
-	}
-	return p.peekManifestFromTarball(ctx, moduleName, inspection.downloadURL)
+	return inspection.module, nil
 }
 
-func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, version string) (*meta.IrModule, error) {
+func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 	if p == nil || p.runtimeScope == nil {
 		return nil, xfmt.Errorf("registry provider env is nil")
 	}
@@ -468,12 +566,12 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		ctx = context.Background()
 	}
 
-	inspection, err := p.inspectRegistryManifest(ctx, registryURL, moduleName, version)
+	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, packageName, version)
 	if err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(inspection.downloadURL) == "" {
-		return nil, xfmt.Errorf("no download url found in registry manifest")
+		return nil, xfmt.Errorf("no tarball url found in npm metadata")
 	}
 
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "choysum-source-fetch-")
@@ -486,11 +584,11 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, err
 	}
 
-	manifestPath, err := findBestManifestPath(tmpDir, moduleName)
+	packageJSONPath, err := findBestPackageJSONPath(tmpDir, moduleName)
 	if err != nil {
 		return nil, err
 	}
-	moduleSourcePath := filepath.Dir(manifestPath)
+	moduleSourcePath := filepath.Dir(packageJSONPath)
 
 	addonsPath := runtimeOptionsFromScope(p.runtimeScope).addonsPath
 	if strings.TrimSpace(addonsPath) == "" {
@@ -514,22 +612,15 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, xfmt.Errorf("copy module to addons failed: %w", err)
 	}
 
-	f, err := os.Open(filepath.Join(moduleTargetPath, "manifest.json"))
+	raw, err := os.ReadFile(filepath.Join(moduleTargetPath, "package.json"))
 	if err != nil {
-		return nil, xfmt.Errorf("open manifest: %w", err)
+		return nil, xfmt.Errorf("read package.json: %w", err)
 	}
-	defer f.Close()
-	mod, err := decodeModuleManifest(f)
+	module, err := parseModuleFromPackageJSON(raw, moduleName, moduleTargetPath)
 	if err != nil {
-		return nil, xfmt.Errorf("decode manifest: %w", err)
-	}
-	mod.Name = moduleName
-	mod.Path = moduleTargetPath
-	if err := applyEntryPoints(mod); err != nil {
 		return nil, err
 	}
-	if err := validateAndNormalizeManifestSemVer(mod, filepath.Join(moduleTargetPath, "manifest.json")); err != nil {
-		return nil, err
-	}
-	return mod, nil
+	module.Tarball = inspection.downloadURL
+	module.Integrity = inspection.integrity
+	return module, nil
 }

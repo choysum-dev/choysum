@@ -1,0 +1,23 @@
+{
+  "name": "@choysum/addon-partner",
+  "version": "0.0.0",
+  "description": "Partner master data management",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "choysum": {
+    "moduleName": "partner",
+    "application": "partner",
+    "category": "Partner",
+    "depends": [
+      "core",
+      "base",
+      "web"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts",
+      "web": "./web/index.ts"
+    }
+  }
+}

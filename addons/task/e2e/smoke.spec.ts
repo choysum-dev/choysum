@@ -4,6 +4,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
@@ -59,7 +60,7 @@ async function loadTaskPbModule(): Promise<TaskPbModule> {
   if (!fs.existsSync(moduleFile)) {
     throw new Error(`Cannot find task_pb.ts at run dir path: ${moduleFile}`);
   }
-  const req = eval('require') as NodeRequire;
+  const req = createRequire(import.meta.url);
   return req(moduleFile) as TaskPbModule;
 }
 

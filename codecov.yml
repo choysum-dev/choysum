@@ -18,3 +18,7 @@ coverage:
 
 ignore:
   - "**/*.pb.go"
+  - "**/*_test.go"
+  - "**/*.spec.ts"
+  - "**/*.test.ts"
+  - ".dev/**"

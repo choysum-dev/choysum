@@ -23,7 +23,7 @@ func isNoE2ESpecsError(err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.Contains(err.Error(), "has no manifest.e2e.specs")
+	return strings.Contains(err.Error(), "has no package.json choysum.e2e.specs")
 }
 
 func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
@@ -41,7 +41,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 		Use:   "e2e <module> [-- <playwrightArgs...>]",
 		Short: "Run module-scoped system E2E (choysum run + Playwright)",
 		Long: "Run module-scoped system E2E (choysum run + Playwright).\n\n" +
-			"<module> refers to the addon directory name under the addons path (e.g. addons/auth -> auth), not manifest.json's name.",
+			"<module> refers to the addon directory name under the addons path (e.g. addons/auth -> auth), not package.json's name.",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all {
 				return nil

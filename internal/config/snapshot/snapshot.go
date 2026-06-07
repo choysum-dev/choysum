@@ -13,6 +13,7 @@ type ConfigSnapshot struct {
 	DefaultChoysumPath string
 	ConfigPath         string
 	NpmPath            string
+	NPMRegistryURL     string
 	Log                *config.LogConfig
 	Compile            *config.CompileConfig
 	Auth               *config.AuthConfig
@@ -35,6 +36,7 @@ func New(cfg *config.Config) *ConfigSnapshot {
 		DefaultChoysumPath: cfg.DefaultChoysumPath,
 		ConfigPath:         cfg.ConfigPath,
 		NpmPath:            cfg.NpmPath,
+		NPMRegistryURL:     cfg.NPMRegistryURL,
 		Log:                cloneLogConfig(cfg.Log),
 		Compile:            cloneCompileConfig(cfg.Compile),
 		Auth:               cloneAuthConfig(cfg.Auth),

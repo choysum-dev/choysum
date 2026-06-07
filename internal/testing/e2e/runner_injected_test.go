@@ -40,11 +40,11 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 		installCalls++
 		return nil
 	}
-	applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+	applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 		*loadedFixtures = append(*loadedFixtures, "auth/fixtures/default.json")
 		return nil
 	}
-	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error {
+	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
 		return nil
 	}
 	startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
@@ -72,10 +72,10 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 		t.Fatalf("write spec file: %v", err)
 	}
 
-	manifests := map[string]*sourceManifest{
+	manifests := map[string]*sourceModulePackage{
 		"auth": {
 			DirName: "auth",
-			E2E:     &manifestE2E{Specs: "e2e"},
+			E2E:     &packageE2E{Specs: "e2e"},
 		},
 	}
 
@@ -117,10 +117,12 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	}()
 
 	installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error { return nil }
-	applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+	applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 		return nil
 	}
-	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error { return nil }
+	seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+		return nil
+	}
 	stopServerHook = func(cmd *exec.Cmd) {}
 
 	addonsPath := t.TempDir()
@@ -129,10 +131,10 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
 
-	manifests := map[string]*sourceManifest{
+	manifests := map[string]*sourceModulePackage{
 		"auth": {
 			DirName: "auth",
-			E2E:     &manifestE2E{Specs: "e2e"},
+			E2E:     &packageE2E{Specs: "e2e"},
 		},
 	}
 
@@ -171,11 +173,11 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 	defer func() { runOneScenarioHook = oldRunOne }()
 
 	addonsPath := t.TempDir()
-	writeManifestFile(t, addonsPath, "auth", `{"name":"Auth","e2e":{"specs":"e2e"}}`)
+	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 
 	calls := 0
 	sawDeadline := false
-	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceManifest, scenario string) error {
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceModulePackage, scenario string) error {
 		calls++
 		if _, ok := ctx.Deadline(); ok {
 			sawDeadline = true
@@ -211,10 +213,10 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 	defer func() { runOneScenarioHook = oldRunOne }()
 
 	addonsPath := t.TempDir()
-	writeManifestFile(t, addonsPath, "auth", `{"name":"Auth","e2e":{"specs":"e2e"}}`)
+	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 
 	wantErr := errors.New("scenario failed")
-	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceManifest, scenario string) error {
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceModulePackage, scenario string) error {
 		return wantErr
 	}
 
@@ -248,10 +250,12 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			installed = append(installed, moduleName)
 			return nil
 		}
-		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 			return nil
 		}
-		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error { return nil }
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
 		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
 			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
 		}
@@ -270,9 +274,9 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			t.Fatalf("write spec file: %v", err)
 		}
 
-		manifests := map[string]*sourceManifest{
-			"meta": {DirName: "meta", E2E: &manifestE2E{Specs: "e2e"}},
-			"auth": {DirName: "auth", E2E: &manifestE2E{Specs: "e2e"}},
+		manifests := map[string]*sourceModulePackage{
+			"meta": {DirName: "meta", E2E: &packageE2E{Specs: "e2e"}},
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
 		err := runOneScenario(context.Background(), RunOptions{Module: "meta", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
@@ -286,11 +290,11 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 
 	t.Run("invalid specs rel is rejected", func(t *testing.T) {
 		addonsPath := t.TempDir()
-		manifests := map[string]*sourceManifest{
-			"auth": {DirName: "auth", E2E: &manifestE2E{Specs: "../outside"}},
+		manifests := map[string]*sourceModulePackage{
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "../outside"}},
 		}
 		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
-		if err == nil || !strings.Contains(err.Error(), "invalid manifest.e2e.specs") {
+		if err == nil || !strings.Contains(err.Error(), "invalid package.json choysum.e2e.specs") {
 			t.Fatalf("expected invalid specs error, got %v", err)
 		}
 	})
@@ -331,25 +335,27 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
-		manifests := map[string]*sourceManifest{
-			"auth": {DirName: "auth", E2E: &manifestE2E{Specs: "e2e"}},
+		manifests := map[string]*sourceModulePackage{
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
 		fixtureErr := errors.New("fixture failed")
-		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 			return fixtureErr
 		}
-		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error { return nil }
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
 		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 		if !errors.Is(err, fixtureErr) {
 			t.Fatalf("expected fixture error, got %v", err)
 		}
 
-		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 			return nil
 		}
 		seedErr := errors.New("seed failed")
-		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error {
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
 			return seedErr
 		}
 		err = runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
@@ -377,10 +383,12 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}()
 
 		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error { return nil }
-		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 			return nil
 		}
-		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error { return nil }
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
 		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
 			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
 		}
@@ -398,8 +406,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
-		manifests := map[string]*sourceManifest{
-			"auth": {DirName: "auth", E2E: &manifestE2E{Specs: "e2e"}},
+		manifests := map[string]*sourceModulePackage{
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
 		var stderr strings.Builder
@@ -448,10 +456,12 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			}
 			return nil
 		}
-		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 			return nil
 		}
-		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error { return nil }
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
 		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
 			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
 		}
@@ -469,8 +479,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
-		manifests := map[string]*sourceManifest{
-			"auth": {DirName: "auth", E2E: &manifestE2E{Specs: "e2e"}},
+		manifests := map[string]*sourceModulePackage{
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
 		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, RuntimeLogLevel: "info", Stderr: io.Discard}, manifests, "default")
@@ -503,10 +513,12 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
 			return nil
 		}
-		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceManifest, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
+		applyScenarioFixturesHook = func(ctx context.Context, configPath string, closure []string, manifests map[string]*sourceModulePackage, scenario string, targetModule string, verbose bool, stderr io.Writer, loadedFixtures *[]string) error {
 			return nil
 		}
-		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceManifest) error { return nil }
+		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
+			return nil
+		}
 		startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
 			return &exec.Cmd{Process: &os.Process{Pid: 12345}}, nil
 		}
@@ -524,8 +536,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(specsDir, "sample.spec.ts"), []byte("test"), 0o644); err != nil {
 			t.Fatalf("write spec file: %v", err)
 		}
-		manifests := map[string]*sourceManifest{
-			"auth": {DirName: "auth", E2E: &manifestE2E{Specs: "e2e"}},
+		manifests := map[string]*sourceModulePackage{
+			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
 		var stderr strings.Builder

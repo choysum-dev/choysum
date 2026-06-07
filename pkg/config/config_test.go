@@ -124,6 +124,9 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 	if !filepath.IsAbs(cfg.AddonsPath) || !filepath.IsAbs(cfg.DistPath) || !filepath.IsAbs(cfg.NpmPath) || !filepath.IsAbs(cfg.DefaultChoysumPath) || !filepath.IsAbs(cfg.TmpPath) {
 		t.Fatalf("expected absolute paths, got addons=%q dist=%q npm=%q default_choysum=%q tmp=%q", cfg.AddonsPath, cfg.DistPath, cfg.NpmPath, cfg.DefaultChoysumPath, cfg.TmpPath)
 	}
+	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
+		t.Fatalf("npm_registry_url = %q, want %q", cfg.NPMRegistryURL, DefaultNPMRegistryURL)
+	}
 	if strings.TrimSpace(cfg.DefaultChoysumPath) == "" {
 		t.Fatal("expected default_choysum_path to be non-empty")
 	}
@@ -479,6 +482,9 @@ func TestDefaultConfigPrefersLocalAddonsDirectory(t *testing.T) {
 	if strings.TrimSpace(cfg.TmpPath) != "" {
 		t.Fatalf("expected tmp_path empty by default, got %q", cfg.TmpPath)
 	}
+	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
+		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
+	}
 }
 
 func TestDefaultConfigUsesRelativeAddonsWhenLocalDirMissing(t *testing.T) {
@@ -517,6 +523,9 @@ func TestDefaultConfigUsesRelativeAddonsWhenLocalDirMissing(t *testing.T) {
 	}
 	if strings.TrimSpace(cfg.TmpPath) != "" {
 		t.Fatalf("expected tmp_path empty by default, got %q", cfg.TmpPath)
+	}
+	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
+		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
 	}
 	if cfg.Log == nil || cfg.Db == nil || cfg.Compile == nil || cfg.Server == nil || cfg.Task == nil {
 		t.Fatalf("expected nested defaults to be initialized: %#v", cfg)
@@ -604,7 +613,9 @@ addons_path: from-config
 
 	t.Run("custom env prefix overrides config values", func(t *testing.T) {
 		envAddons := filepath.Join(t.TempDir(), "env-addons")
+		envNPMRegistryURL := "https://registry.npmmirror.com"
 		t.Setenv("CHOYSUM_TEST_ADDONS_PATH", envAddons)
+		t.Setenv("CHOYSUM_TEST_NPM_REGISTRY_URL", envNPMRegistryURL)
 
 		cfg := defaultConfig()
 		if err := cfg.unmarshal(cfgPath, WithEnvPrefix("CHOYSUM_TEST")); err != nil {
@@ -612,6 +623,9 @@ addons_path: from-config
 		}
 		if canonicalPath(t, cfg.AddonsPath) != canonicalPath(t, envAddons) {
 			t.Fatalf("addons path = %q, want env override %q", cfg.AddonsPath, envAddons)
+		}
+		if cfg.NPMRegistryURL != envNPMRegistryURL {
+			t.Fatalf("npm_registry_url = %q, want env override %q", cfg.NPMRegistryURL, envNPMRegistryURL)
 		}
 	})
 

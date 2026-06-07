@@ -7,17 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
+	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/module/origin/registry"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
-	"golang.org/x/mod/semver"
 )
 
 type Coordinator struct {
@@ -68,18 +67,6 @@ func NewCoordinator(runtimeScope scope.Scope, opts ...Option) *Coordinator {
 	return c
 }
 
-var strictSemVerV = regexp.MustCompile(`^v\d+\.\d+\.\d+([\-\+].+)?$`)
-var strictSemVerNoV = regexp.MustCompile(`^\d+\.\d+\.\d+([\-\+].+)?$`)
-
-func decodeLocalManifest(r io.Reader) (*meta.IrModule, error) {
-	module := &meta.IrModule{}
-	if err := json.NewDecoder(r).Decode(module); err != nil {
-		return nil, err
-	}
-	module.Status = meta.ToInstall
-	return module, nil
-}
-
 func applyEntryPoints(module *meta.IrModule) error {
 	if module == nil {
 		return nil
@@ -99,29 +86,20 @@ func applyEntryPoints(module *meta.IrModule) error {
 	return nil
 }
 
-func validateAndNormalizeManifestSemVer(mod *meta.IrModule, manifestHint string) error {
+func validateAndNormalizeModuleSemVer(mod *meta.IrModule, sourceHint string) error {
 	if mod == nil {
 		return nil
 	}
 	ver := strings.TrimSpace(mod.Version)
 	if ver == "" {
-		return xfmt.Errorf("empty manifest version (module=%q, manifest=%q)", strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
+		return xfmt.Errorf("empty module version (module=%q, source=%q)", strings.TrimSpace(mod.Name), strings.TrimSpace(sourceHint))
 	}
-	if strings.HasPrefix(ver, "v") {
-		if !strictSemVerV.MatchString(ver) || !semver.IsValid(ver) {
-			return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-		}
-		return nil
+	normalized, err := contract.NormalizeVersion(ver)
+	if err != nil {
+		return xfmt.Errorf("invalid module version %q (module=%q, source=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(sourceHint))
 	}
-	if strictSemVerNoV.MatchString(ver) {
-		v := "v" + ver
-		if !strictSemVerV.MatchString(v) || !semver.IsValid(v) {
-			return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
-		}
-		mod.Version = v
-		return nil
-	}
-	return xfmt.Errorf("invalid manifest version %q (module=%q, manifest=%q); expected SemVer like v0.1.0", ver, strings.TrimSpace(mod.Name), strings.TrimSpace(manifestHint))
+	mod.Version = normalized
+	return nil
 }
 
 func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error) {
@@ -130,44 +108,141 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 		return nil, xfmt.Errorf("module name is empty")
 	}
 	moduleDir := filepath.Join(runtimeOptionsFromScope(c.runtimeScope).addonsPath, moduleName)
-	manifestPath := filepath.Join(moduleDir, "manifest.json")
-	if _, err := os.Stat(manifestPath); err != nil {
+	packageJSONPath := filepath.Join(moduleDir, "package.json")
+	if _, err := os.Stat(packageJSONPath); err != nil {
 		if os.IsNotExist(err) {
 			return nil, os.ErrNotExist
 		}
-		return nil, xfmt.Errorf("stat local module manifest failed: %w", err)
+		return nil, xfmt.Errorf("stat local module package.json failed: %w", err)
 	}
 
-	f, err := os.Open(manifestPath)
+	raw, err := os.ReadFile(packageJSONPath)
 	if err != nil {
-		return nil, xfmt.Errorf("open manifest: %w", err)
+		return nil, xfmt.Errorf("read package.json: %w", err)
 	}
-	defer f.Close()
 
-	module, err := decodeLocalManifest(f)
+	result, err := contract.ParsePackageJSONToIrModule(raw, moduleDir, nil)
 	if err != nil {
-		return nil, xfmt.Errorf("decode manifest: %w", err)
+		return nil, xfmt.Errorf("parse package.json: %w", err)
 	}
+	if result == nil || result.Module == nil {
+		return nil, xfmt.Errorf("parse package.json: empty module result")
+	}
+	module := result.Module
 	module.Name = moduleName
 	module.Path = moduleDir
 	if err := applyEntryPoints(module); err != nil {
 		return nil, err
 	}
-	if err := validateAndNormalizeManifestSemVer(module, manifestPath); err != nil {
+	if err := validateAndNormalizeModuleSemVer(module, packageJSONPath); err != nil {
 		return nil, err
 	}
 	return module, nil
+}
+
+type registrySourceResolution struct {
+	registryURL string
+	packageName string
+	integrity   string
+}
+
+func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) string {
+	if parsed.Kind != InputKindRegistry {
+		return strings.TrimSpace(parsed.LocalName)
+	}
+	if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
+		if resolvedVersion = strings.TrimSpace(resolvedVersion); resolvedVersion != "" {
+			return strings.TrimSpace(parsed.RegistryAlias) + "/" + strings.TrimSpace(parsed.ModuleName) + "@" + resolvedVersion
+		}
+	}
+	return parsed.CanonicalRef()
+}
+
+func resolveBindingIntegrity(catalogIntegrity string, mod *meta.IrModule) string {
+	if mod != nil {
+		if integrity := strings.TrimSpace(mod.Integrity); integrity != "" {
+			return integrity
+		}
+	}
+	return strings.TrimSpace(catalogIntegrity)
 }
 
 func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
-	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
+	resolved, err := c.resolveRegistrySource(ctx, parsed)
 	if err != nil {
 		return nil, err
 	}
-	return c.registryProvider.PeekManifest(ctx, entry.URL, parsed.ModuleName, parsed.Version)
+	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
+}
+
+func looksLikeCatalogRegistryURL(registryURL string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(registryURL))
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	pathLower := strings.ToLower(parsed.Path)
+	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") || strings.HasSuffix(pathLower, "/api") {
+		return true
+	}
+
+	hostLower := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
+	if hostLower == "" {
+		return false
+	}
+	if strings.Contains(hostLower, "registry.npmjs.org") ||
+		strings.Contains(hostLower, "registry.npmmirror.com") ||
+		strings.Contains(hostLower, "registry.yarnpkg.com") ||
+		strings.Contains(hostLower, "npm.pkg.github.com") ||
+		hostLower == "localhost" ||
+		hostLower == "127.0.0.1" ||
+		hostLower == "::1" {
+		return false
+	}
+	if strings.Contains(hostLower, "catalog.") {
+		return true
+	}
+	if hostLower == "github.com" {
+		return true
+	}
+	return true
+}
+
+func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (registrySourceResolution, error) {
+	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
+	if err != nil {
+		return registrySourceResolution{}, err
+	}
+	registryURL := strings.TrimSpace(entry.URL)
+	moduleName := strings.TrimSpace(parsed.ModuleName)
+	resolved := registrySourceResolution{registryURL: registryURL, packageName: moduleName}
+
+	if !looksLikeCatalogRegistryURL(registryURL) {
+		return resolved, nil
+	}
+
+	catalog := registry.NewCatalog(c.runtimeScope)
+	item, err := catalog.Info(ctx, registryURL, moduleName)
+	if err != nil {
+		return registrySourceResolution{}, xfmt.Errorf("resolve catalog source failed (registry=%s module=%s): %w", strings.TrimSpace(parsed.RegistryAlias), moduleName, err)
+	}
+	resolved.packageName = item.ResolvedNPMPackage()
+	if resolved.packageName == "" {
+		return registrySourceResolution{}, xfmt.Errorf("catalog module %q in registry %q has empty npm package source", moduleName, strings.TrimSpace(parsed.RegistryAlias))
+	}
+	if sourceRegistry := item.ResolvedNPMRegistry(registryURL); sourceRegistry != "" {
+		resolved.registryURL = sourceRegistry
+	}
+	if item.Source != nil {
+		resolved.integrity = strings.TrimSpace(item.Source.Integrity)
+	}
+
+	return resolved, nil
 }
 
 func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, error) {
@@ -267,19 +342,21 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
 	}
-	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
+	resolved, err := c.resolveRegistrySource(ctx, parsed)
 	if err != nil {
 		return nil, err
 	}
-	mod, err := c.registryProvider.Fetch(ctx, entry.URL, parsed.ModuleName, parsed.Version)
+	mod, err := c.registryProvider.Fetch(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
 	if err != nil {
 		return nil, err
 	}
+	resolvedVersion := strings.TrimSpace(mod.Version)
 	if err := c.lockStore.UpsertBinding(WorkspaceRoot(c.runtimeScope), Binding{
 		ModuleName:      strings.TrimSpace(parsed.ModuleName),
 		OriginType:      OriginTypeRegistry,
-		OriginRef:       parsed.CanonicalRef(),
-		ResolvedVersion: strings.TrimSpace(mod.Version),
+		OriginRef:       canonicalRegistryOriginRef(parsed, resolvedVersion),
+		ResolvedVersion: resolvedVersion,
+		Integrity:       resolveBindingIntegrity(resolved.integrity, mod),
 		LocalPath:       strings.TrimSpace(mod.Path),
 	}); err != nil {
 		return nil, err

@@ -145,12 +145,13 @@ jobs:
 
           reverse_graph = {module: set() for module in modules}
           for module in modules:
-              manifest_path = addons_root / module / "manifest.json"
-              if not manifest_path.is_file():
+              package_path = addons_root / module / "package.json"
+              if not package_path.is_file():
                   continue
-              with manifest_path.open("r", encoding="utf-8") as fh:
-                  manifest = json.load(fh)
-              depends = manifest.get("depends") or []
+              with package_path.open("r", encoding="utf-8") as fh:
+                package_json = json.load(fh)
+              choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
+              depends = choysum.get("depends") if isinstance(choysum, dict) else []
               if not isinstance(depends, list):
                   continue
               for dep in depends:
