@@ -508,7 +508,7 @@ jobs:
 
       - name: Upload Go coverage to Codecov
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           disable_search: true
           fail_ci_if_error: false
@@ -696,7 +696,7 @@ jobs:
 
       - name: Upload backend unit coverage to Codecov
         if: ${{ !cancelled() && steps.unit_tests.outputs.backend_coverage_file != '' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           disable_search: true
           fail_ci_if_error: false
@@ -707,7 +707,7 @@ jobs:
 
       - name: Upload frontend unit coverage to Codecov
         if: ${{ !cancelled() && steps.unit_tests.outputs.frontend_coverage_file != '' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           disable_search: true
           fail_ci_if_error: false
@@ -718,7 +718,7 @@ jobs:
 
       - name: Upload unit test results to Codecov
         if: ${{ !cancelled() && steps.unit_tests.outputs.test_result_files != '' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           disable_search: true
           fail_ci_if_error: false
