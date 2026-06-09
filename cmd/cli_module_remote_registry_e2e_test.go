@@ -154,7 +154,7 @@ func TestCLIInstallLocalMissingGuidance(t *testing.T) {
 	if code == 0 {
 		t.Fatalf("expected install to fail for missing local module, output=%s", output)
 	}
-	if !strings.Contains(output, "module missing not found in addons path") {
+	if !strings.Contains(output, "module missing not found in modules path") {
 		t.Fatalf("expected local missing error in output, got %q", output)
 	}
 	if !strings.Contains(output, "choysum module fetch <registry>/<module>@<version>") {
@@ -216,13 +216,13 @@ func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	workspaceRoot := t.TempDir()
-	addonsPath := filepath.Join(workspaceRoot, "addons")
-	if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-		t.Fatalf("create addons path: %v", err)
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("create modules path: %v", err)
 	}
 
-	writeCommandPackage(t, addonsPath, "demo", `{
-		"name": "@choysum/addon-demo",
+	writeCommandPackage(t, modulesPath, "demo", `{
+		"name": "@choysum/module-demo",
 		"version": "0.1.0",
 		"description": "demo module",
 		"license": "Apache-2.0",
@@ -240,7 +240,7 @@ func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
 
 	dbPath := writeTempSqliteDB(t)
 	seedModuleStatusForCLI(t, dbPath, "demo", meta.Installed)
-	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, addonsPath)
+	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, modulesPath)
 
 	if output, code := runCLI(t, "module", "fetch", "demo", "--config", configPath); code != 0 {
 		t.Fatalf("module fetch failed, code=%d output=%s", code, output)
@@ -253,7 +253,7 @@ func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
 	if !strings.Contains(output, "run 'choysum uninstall demo' before purge") {
 		t.Fatalf("expected uninstall guidance in purge output, got %q", output)
 	}
-	if _, err := os.Stat(filepath.Join(addonsPath, "demo")); err != nil {
+	if _, err := os.Stat(filepath.Join(modulesPath, "demo")); err != nil {
 		t.Fatalf("expected module directory to remain after blocked purge, err=%v", err)
 	}
 }
@@ -262,13 +262,13 @@ func TestCLIRegistryAddFetchUninstallPurgeFlow(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	workspaceRoot := t.TempDir()
-	addonsPath := filepath.Join(workspaceRoot, "addons")
-	if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-		t.Fatalf("create addons path: %v", err)
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("create modules path: %v", err)
 	}
 
-	writeCommandPackage(t, addonsPath, "demo", `{
-		"name": "@choysum/addon-demo",
+	writeCommandPackage(t, modulesPath, "demo", `{
+		"name": "@choysum/module-demo",
 		"version": "0.1.0",
 		"description": "demo module",
 		"license": "Apache-2.0",
@@ -286,7 +286,7 @@ func TestCLIRegistryAddFetchUninstallPurgeFlow(t *testing.T) {
 
 	dbPath := writeTempSqliteDB(t)
 	seedModuleStatusForCLI(t, dbPath, "demo", meta.Installed)
-	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, addonsPath)
+	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, modulesPath)
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "demo", LatestVersion: "v0.1.0"}})
 	defer srv.Close()
@@ -304,7 +304,7 @@ func TestCLIRegistryAddFetchUninstallPurgeFlow(t *testing.T) {
 		t.Fatalf("module purge failed, code=%d output=%s", code, output)
 	}
 
-	if _, err := os.Stat(filepath.Join(addonsPath, "demo")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(modulesPath, "demo")); !os.IsNotExist(err) {
 		t.Fatalf("expected purged module dir to be removed, stat err=%v", err)
 	}
 	workspaceStateRoot := filepath.Dir(configPath)

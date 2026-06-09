@@ -355,22 +355,22 @@ func writeSqliteDBWithInitSetting(t *testing.T, value *string) string {
 	return path
 }
 
-func writeTempConfigWithDSN(t *testing.T, dialect, dsn, addonsPath string) string {
+func writeTempConfigWithDSN(t *testing.T, dialect, dsn, modulesPath string) string {
 	tmpDir := t.TempDir()
 	defaultChoysumPath := filepath.Join(tmpDir, ".choysum")
 	distPath := filepath.Join(tmpDir, "dist")
 	dsn = normalizeConfigSQLiteDSN(dialect, dsn)
-	if addonsPath == "" {
-		addonsPath = filepath.Join(tmpDir, "addons")
-		if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-			t.Fatalf("mkdir addons: %v", err)
+	if modulesPath == "" {
+		modulesPath = filepath.Join(tmpDir, "modules")
+		if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
 		}
 	}
 	if err := os.MkdirAll(distPath, 0o755); err != nil {
 		t.Fatalf("mkdir dist: %v", err)
 	}
 	configPath := filepath.Join(tmpDir, "config.yaml")
-	content := fmt.Sprintf("default_choysum_path: %s\naddons_path: %s\ndist_path: %s\ndb:\n  dialect: %s\n  dsn: %s\n", strconv.Quote(defaultChoysumPath), strconv.Quote(addonsPath), strconv.Quote(distPath), dialect, strconv.Quote(dsn))
+	content := fmt.Sprintf("default_choysum_path: %s\nmodules_path: %s\ndist_path: %s\ndb:\n  dialect: %s\n  dsn: %s\n", strconv.Quote(defaultChoysumPath), strconv.Quote(modulesPath), strconv.Quote(distPath), dialect, strconv.Quote(dsn))
 	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
@@ -379,9 +379,9 @@ func writeTempConfigWithDSN(t *testing.T, dialect, dsn, addonsPath string) strin
 
 func writeTempInitializedRunConfig(t *testing.T, enabledTLS bool) (string, string, string) {
 	tmpDir := t.TempDir()
-	addonsPath := filepath.Join(tmpDir, "addons")
-	if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+	modulesPath := filepath.Join(tmpDir, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
 	distPath := filepath.Join(tmpDir, "dist")
 	if err := os.MkdirAll(distPath, 0o755); err != nil {
@@ -394,9 +394,9 @@ func writeTempInitializedRunConfig(t *testing.T, enabledTLS bool) (string, strin
 	addr := net.JoinHostPort(bindAddress, strconv.Itoa(port))
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	dbDSN := normalizeConfigSQLiteDSN("sqlite", dbPath)
-	content := fmt.Sprintf("default_choysum_path: %s\naddons_path: %s\ndist_path: %s\ndb:\n  dialect: sqlite\n  dsn: %s\nserver:\n  bindAddress: %s\n  port: %d\n  enabledTLS: %t\nauth:\n  enabled: false\n",
+	content := fmt.Sprintf("default_choysum_path: %s\nmodules_path: %s\ndist_path: %s\ndb:\n  dialect: sqlite\n  dsn: %s\nserver:\n  bindAddress: %s\n  port: %d\n  enabledTLS: %t\nauth:\n  enabled: false\n",
 		strconv.Quote(defaultChoysumPath),
-		strconv.Quote(addonsPath),
+		strconv.Quote(modulesPath),
 		strconv.Quote(distPath),
 		strconv.Quote(dbDSN),
 		strconv.Quote(bindAddress),

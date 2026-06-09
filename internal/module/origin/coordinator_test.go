@@ -100,9 +100,9 @@ func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sou
 	return httptest.NewServer(mux)
 }
 
-func writeSourceTestPackageJSON(t *testing.T, addonsPath string, name string, mod *meta.IrModule) {
+func writeSourceTestPackageJSON(t *testing.T, modulesPath string, name string, mod *meta.IrModule) {
 	t.Helper()
-	moduleDir := filepath.Join(addonsPath, name)
+	moduleDir := filepath.Join(modulesPath, name)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
@@ -134,18 +134,18 @@ func writeSourceTestPackageJSON(t *testing.T, addonsPath string, name string, mo
 func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	workspaceRoot := t.TempDir()
-	addonsPath := filepath.Join(workspaceRoot, "addons")
-	if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: addonsPath, ConfigPath: filepath.Join(workspaceRoot, "config.yaml"), DefaultChoysumPath: t.TempDir()},
+		cfg: &config.Config{ModulesPath: modulesPath, ConfigPath: filepath.Join(workspaceRoot, "config.yaml"), DefaultChoysumPath: t.TempDir()},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 
 	t.Run("resolve local module and persist local binding", func(t *testing.T) {
-		writeSourceTestPackageJSON(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
 		coordinator := NewCoordinator(
 			runtimeScope,
 			WithLockStore(lockStore),
@@ -187,7 +187,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "@acme/choysum-auth" || version != "v2.0.0" {
 				t.Fatalf("unexpected provider input: url=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(addonsPath, "auth")}, nil
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
 
@@ -228,7 +228,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			if version != "latest" {
 				t.Fatalf("expected provider to receive latest, got %s", version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.1.0", Integrity: "sha512-provider-auth-v210", Path: filepath.Join(addonsPath, "auth")}, nil
+			return &meta.IrModule{Name: "auth", Version: "v2.1.0", Integrity: "sha512-provider-auth-v210", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
 
@@ -282,12 +282,12 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			t.Fatalf("upsert lock binding: %v", err)
 		}
 
-		if err := os.RemoveAll(filepath.Join(addonsPath, "auth")); err != nil {
+		if err := os.RemoveAll(filepath.Join(modulesPath, "auth")); err != nil {
 			t.Fatalf("remove local module dir: %v", err)
 		}
 
 		_, err = coordinator.ResolveInstallModule(context.Background(), "auth")
-		if err == nil || !strings.Contains(err.Error(), "not found in addons path") {
+		if err == nil || !strings.Contains(err.Error(), "not found in modules path") {
 			t.Fatalf("expected local missing error, got %v", err)
 		}
 		if fetchCalls != 0 {
@@ -330,13 +330,13 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	workspaceRoot := t.TempDir()
-	addonsPath := filepath.Join(workspaceRoot, "addons")
-	if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: addonsPath, ConfigPath: filepath.Join(workspaceRoot, "config.yaml"), DefaultChoysumPath: t.TempDir()},
+		cfg: &config.Config{ModulesPath: modulesPath, ConfigPath: filepath.Join(workspaceRoot, "config.yaml"), DefaultChoysumPath: t.TempDir()},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 	coordinator := NewCoordinator(
@@ -346,18 +346,18 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		WithRegistryProvider(&fakeRegistryProvider{}),
 	)
 
-	writeSourceTestPackageJSON(t, addonsPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
+	writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "1.2.3", ApplicationStr: "auth"})
 	if _, err := coordinator.ResolveInstallModule(context.Background(), "auth"); err != nil {
 		t.Fatalf("ResolveInstallModule(local) error = %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(addonsPath, "auth", "package.json")); err != nil {
+	if _, err := os.Stat(filepath.Join(modulesPath, "auth", "package.json")); err != nil {
 		t.Fatalf("expected local module files to exist before purge: %v", err)
 	}
 
 	if err := coordinator.Purge(context.Background(), "auth"); err != nil {
 		t.Fatalf("Purge(auth) error = %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(addonsPath, "auth")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(modulesPath, "auth")); !os.IsNotExist(err) {
 		t.Fatalf("expected module dir removed after purge, stat err=%v", err)
 	}
 	if _, ok, err := lockStore.LookupBinding(WorkspaceRoot(runtimeScope), "auth"); err != nil {
@@ -375,13 +375,19 @@ func TestLooksLikeCatalogRegistryURL(t *testing.T) {
 		url      string
 		expected bool
 	}{
+		{name: "invalid url", url: "https://%zz", expected: false},
+		{name: "unsupported scheme", url: "ftp://example.com/modules", expected: false},
+		{name: "empty host", url: "https:///modules", expected: false},
 		{name: "npmjs", url: "https://registry.npmjs.org", expected: false},
 		{name: "npmmirror", url: "https://registry.npmmirror.com", expected: false},
 		{name: "yarn", url: "https://registry.yarnpkg.com", expected: false},
 		{name: "github package", url: "https://npm.pkg.github.com", expected: false},
 		{name: "localhost", url: "http://localhost:4873", expected: false},
 		{name: "loopback", url: "http://127.0.0.1:4873", expected: false},
+		{name: "catalog host no api path", url: "https://catalog.choysum.dev/modules", expected: true},
 		{name: "catalog host", url: "https://catalog.choysum.dev/v1/index.json", expected: true},
+		{name: "github catalog", url: "https://github.com/acme/registry", expected: true},
+		{name: "generic https host", url: "https://example.com/modules", expected: true},
 		{name: "api path", url: "https://example.com/api/v1/modules", expected: true},
 	}
 
@@ -394,4 +400,219 @@ func TestLooksLikeCatalogRegistryURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCoordinatorHelperBranchFunctions(t *testing.T) {
+	t.Parallel()
+
+	if err := validateAndNormalizeModuleSemVer(&meta.IrModule{Name: "auth", Version: "   "}, "source.json"); err == nil || !strings.Contains(err.Error(), "empty module version") {
+		t.Fatalf("expected empty module version error, got %v", err)
+	}
+	if err := validateAndNormalizeModuleSemVer(&meta.IrModule{Name: "auth", Version: "not-semver"}, "source.json"); err == nil || !strings.Contains(err.Error(), "invalid module version") {
+		t.Fatalf("expected invalid module version error, got %v", err)
+	}
+
+	mod := &meta.IrModule{Name: "auth", Version: "1.2.3"}
+	if err := validateAndNormalizeModuleSemVer(mod, "source.json"); err != nil {
+		t.Fatalf("validateAndNormalizeModuleSemVer(valid) error = %v", err)
+	}
+	if mod.Version != "v1.2.3" {
+		t.Fatalf("normalized version = %q, want %q", mod.Version, "v1.2.3")
+	}
+
+	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindLocal, LocalName: " auth "}, "v1.0.0"); got != "auth" {
+		t.Fatalf("canonicalRegistryOriginRef(local) = %q, want %q", got, "auth")
+	}
+	if got := resolveBindingIntegrity("  sha512-catalog  ", &meta.IrModule{Integrity: ""}); got != "sha512-catalog" {
+		t.Fatalf("resolveBindingIntegrity(catalog fallback) = %q, want %q", got, "sha512-catalog")
+	}
+}
+
+func TestCoordinatorPeekLocalModuleErrorBranches(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	t.Run("empty module name", func(t *testing.T) {
+		runtimeScope := &sourceTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DefaultChoysumPath: t.TempDir()}}
+		coordinator := NewCoordinator(runtimeScope)
+
+		if _, err := coordinator.peekLocalModule("   "); err == nil || !strings.Contains(err.Error(), "module name is empty") {
+			t.Fatalf("expected empty module name error, got %v", err)
+		}
+	})
+
+	t.Run("stat package json failure", func(t *testing.T) {
+		modulesPathFile := filepath.Join(t.TempDir(), "modules-file")
+		if err := os.WriteFile(modulesPathFile, []byte("not-a-dir"), 0o644); err != nil {
+			t.Fatalf("write modules path file: %v", err)
+		}
+		runtimeScope := &sourceTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPathFile, DefaultChoysumPath: t.TempDir()}}
+		coordinator := NewCoordinator(runtimeScope)
+
+		if _, err := coordinator.peekLocalModule("auth"); err == nil || !strings.Contains(err.Error(), "stat local module package.json failed") {
+			t.Fatalf("expected stat failure, got %v", err)
+		}
+	})
+
+	t.Run("read package json failure", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		packageJSONDir := filepath.Join(modulesPath, "auth", "package.json")
+		if err := os.MkdirAll(packageJSONDir, 0o755); err != nil {
+			t.Fatalf("mkdir package.json dir: %v", err)
+		}
+		runtimeScope := &sourceTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, DefaultChoysumPath: t.TempDir()}}
+		coordinator := NewCoordinator(runtimeScope)
+
+		if _, err := coordinator.peekLocalModule("auth"); err == nil || !strings.Contains(err.Error(), "read package.json") {
+			t.Fatalf("expected read package.json error, got %v", err)
+		}
+	})
+
+	t.Run("parse package json failure", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		moduleDir := filepath.Join(modulesPath, "auth")
+		if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+			t.Fatalf("mkdir module dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{"name":`), 0o644); err != nil {
+			t.Fatalf("write invalid package.json: %v", err)
+		}
+		runtimeScope := &sourceTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, DefaultChoysumPath: t.TempDir()}}
+		coordinator := NewCoordinator(runtimeScope)
+
+		if _, err := coordinator.peekLocalModule("auth"); err == nil || !strings.Contains(err.Error(), "parse package.json") {
+			t.Fatalf("expected parse package.json error, got %v", err)
+		}
+	})
+}
+
+func TestCoordinatorResolveRegistrySourceErrorBranches(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	runtimeScope := &sourceTestScope{
+		ctx: context.Background(),
+		cfg: &config.Config{
+			ModulesPath:        t.TempDir(),
+			ConfigPath:         filepath.Join(t.TempDir(), "config.yaml"),
+			DefaultChoysumPath: t.TempDir(),
+		},
+	}
+
+	t.Run("registry alias resolve error", func(t *testing.T) {
+		store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		if _, err := coordinator.resolveRegistrySource(context.Background(), ParsedInput{Kind: InputKindRegistry, RegistryAlias: "missing", ModuleName: "auth", Version: "latest"}); err == nil {
+			t.Fatal("expected resolveRegistrySource to fail for missing alias")
+		}
+	})
+
+	t.Run("catalog info error is wrapped", func(t *testing.T) {
+		catalogServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "upstream unavailable", http.StatusBadGateway)
+		}))
+		defer catalogServer.Close()
+
+		store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+		cfg, err := store.Load()
+		if err != nil {
+			t.Fatalf("registry store load: %v", err)
+		}
+		cfg.Registries["corp"] = registry.Entry{URL: catalogServer.URL + "/api/v1/modules"}
+		if err := store.Save(cfg); err != nil {
+			t.Fatalf("registry store save: %v", err)
+		}
+
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		_, err = coordinator.resolveRegistrySource(context.Background(), ParsedInput{Kind: InputKindRegistry, RegistryAlias: "corp", ModuleName: "auth", Version: "latest"})
+		if err == nil || !strings.Contains(err.Error(), "resolve catalog source failed") {
+			t.Fatalf("expected wrapped catalog source error, got %v", err)
+		}
+	})
+}
+
+func TestCoordinatorPeekBranches(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	workspaceRoot := t.TempDir()
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
+	}
+
+	runtimeScope := &sourceTestScope{
+		ctx: context.Background(),
+		cfg: &config.Config{
+			ModulesPath:        modulesPath,
+			ConfigPath:         filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath: t.TempDir(),
+		},
+	}
+
+	store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("registry store load: %v", err)
+	}
+	cfg.Registries["corp"] = registry.Entry{URL: "https://registry.npmjs.org"}
+	if err := store.Save(cfg); err != nil {
+		t.Fatalf("registry store save: %v", err)
+	}
+
+	t.Run("registry input uses provider PeekManifest", func(t *testing.T) {
+		peekCalls := 0
+		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			peekCalls++
+			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "auth" || version != "v2.0.0" {
+				t.Fatalf("unexpected provider peek args: registry=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
+			}
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0"}, nil
+		}}
+
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		mod, err := coordinator.Peek(context.Background(), "corp/auth@v2.0.0")
+		if err != nil {
+			t.Fatalf("Peek(registry) error = %v", err)
+		}
+		if mod == nil || mod.Name != "auth" || mod.Version != "v2.0.0" {
+			t.Fatalf("unexpected Peek(registry) module: %#v", mod)
+		}
+		if peekCalls != 1 {
+			t.Fatalf("provider peek calls = %d, want 1", peekCalls)
+		}
+	})
+
+	t.Run("registry peek requires provider", func(t *testing.T) {
+		parsed, err := ParseInput("corp/auth@v2.0.0")
+		if err != nil {
+			t.Fatalf("ParseInput() error = %v", err)
+		}
+		coordinator := &Coordinator{runtimeScope: runtimeScope, registryStore: store}
+		if _, err := coordinator.peekRegistryModule(context.Background(), parsed); err == nil || !strings.Contains(err.Error(), "registry provider is nil") {
+			t.Fatalf("expected registry provider nil error, got %v", err)
+		}
+	})
+
+	t.Run("local module missing", func(t *testing.T) {
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		if _, err := coordinator.Peek(context.Background(), "missing"); err == nil || !strings.Contains(err.Error(), "not found in modules path") {
+			t.Fatalf("expected local missing error, got %v", err)
+		}
+	})
+
+	t.Run("local module success", func(t *testing.T) {
+		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "2.1.0", ApplicationStr: "auth"})
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		mod, err := coordinator.Peek(context.Background(), "auth")
+		if err != nil {
+			t.Fatalf("Peek(local) error = %v", err)
+		}
+		if mod == nil || mod.Name != "auth" || mod.Version != "v2.1.0" {
+			t.Fatalf("unexpected Peek(local) module: %#v", mod)
+		}
+	})
+
+	t.Run("nil coordinator env", func(t *testing.T) {
+		var nilCoordinator *Coordinator
+		if _, err := nilCoordinator.Peek(context.Background(), "auth"); err == nil || !strings.Contains(err.Error(), "origin coordinator env is nil") {
+			t.Fatalf("expected nil coordinator env error, got %v", err)
+		}
+	})
 }

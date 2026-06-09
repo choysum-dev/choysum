@@ -12,7 +12,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath         string
+	modulesPath        string
 	distPath           string
 	tmpPath            string
 	defaultChoysumPath string
@@ -26,7 +26,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 		compileBundleMode: compileDefaults.BundleMode,
 	}
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 		opts.tmpPath = pathOpts.TmpPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
@@ -65,8 +65,8 @@ func (m *ModuleManager) resolvedRuntimeOptions() runtimeOptions {
 }
 
 func (o runtimeOptions) Validate() error {
-	if strings.TrimSpace(o.addonsPath) == "" {
-		return xfmt.Errorf("module runtime options: addonsPath is required")
+	if strings.TrimSpace(o.modulesPath) == "" {
+		return xfmt.Errorf("module runtime options: modulesPath is required")
 	}
 	if strings.TrimSpace(o.distPath) == "" {
 		return xfmt.Errorf("module runtime options: distPath is required")

@@ -43,27 +43,27 @@ func IsCoreModule(moduleName string) bool {
 }
 
 func ModelDecoratorModuleSpec(runtimeScope scope.Scope) (string, string) {
-	addonsPath := runtimeOptionsFromScope(runtimeScope).addonsPath
-	return filepath.Join(addonsPath, "core", "service", "orm", "decorator", "model"), "Model"
+	modulesPath := runtimeOptionsFromScope(runtimeScope).modulesPath
+	return filepath.Join(modulesPath, "core", "service", "orm", "decorator", "model"), "Model"
 }
 
 func FieldDecoratorModuleSpec(runtimeScope scope.Scope) (string, string) {
-	addonsPath := runtimeOptionsFromScope(runtimeScope).addonsPath
-	return filepath.Join(addonsPath, "core", "service", "orm", "decorator", "field"), "Field"
+	modulesPath := runtimeOptionsFromScope(runtimeScope).modulesPath
+	return filepath.Join(modulesPath, "core", "service", "orm", "decorator", "field"), "Field"
 }
 
 func ServiceDecoratorModuleSpec(runtimeScope scope.Scope) (string, string) {
-	addonsPath := runtimeOptionsFromScope(runtimeScope).addonsPath
-	return filepath.Join(addonsPath, "core", "service", "orm", "decorator", "service"), "Service"
+	modulesPath := runtimeOptionsFromScope(runtimeScope).modulesPath
+	return filepath.Join(modulesPath, "core", "service", "orm", "decorator", "service"), "Service"
 }
 
 func XpathComponentModuleSpec(runtimeScope scope.Scope) (string, string) {
-	addonsPath := runtimeOptionsFromScope(runtimeScope).addonsPath
-	return filepath.Join(addonsPath, "core", "web", "component", "xpath.vue"), "default"
+	modulesPath := runtimeOptionsFromScope(runtimeScope).modulesPath
+	return filepath.Join(modulesPath, "core", "web", "component", "xpath.vue"), "default"
 }
 
 func BaseModelModuleSpec(runtimeScope scope.Scope) (string, string) {
-	addonsPath := runtimeOptionsFromScope(runtimeScope).addonsPath
+	modulesPath := runtimeOptionsFromScope(runtimeScope).modulesPath
 
-	return filepath.Join(addonsPath, "core", "service", "orm", "model", "model"), "BaseModel"
+	return filepath.Join(modulesPath, "core", "service", "orm", "model", "model"), "BaseModel"
 }

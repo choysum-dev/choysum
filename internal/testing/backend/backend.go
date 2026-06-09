@@ -598,7 +598,7 @@ func RunOneAppBackendTests(
 				return err
 			}
 
-			// Auto-discover tests under addons/<app>/service/**/*.test.ts and generate a temporary entry.
+			// Auto-discover tests under modules/<app>/service/**/*.test.ts and generate a temporary entry.
 			entry, cleanup, err := resolveOrGenerateTestsEntryPoint(ctx, runtimeScope, app)
 			if err != nil {
 				return err
@@ -800,8 +800,8 @@ func RunOneAppBackendTests(
 
 func resolveOrGenerateTestsEntryPoint(ctx context.Context, runtimeScope scope.Scope, app string) (string, func(), error) {
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	addonsPath := runtimeOpts.addonsPath
-	serviceDir := filepath.Join(addonsPath, app, "service")
+	modulesPath := runtimeOpts.modulesPath
+	serviceDir := filepath.Join(modulesPath, app, "service")
 
 	files, err := listTestFiles(serviceDir)
 	if err != nil {
@@ -813,7 +813,7 @@ func resolveOrGenerateTestsEntryPoint(ctx context.Context, runtimeScope scope.Sc
 
 	sort.Strings(files)
 
-	genDir, err := backendTestsIndexTmpDir(ctx, runtimeOpts.addonsPath, runtimeOpts.tmpPath, app)
+	genDir, err := backendTestsIndexTmpDir(ctx, runtimeOpts.modulesPath, runtimeOpts.tmpPath, app)
 	if err != nil {
 		return "", func() {}, xfmt.Errorf("resolve tests index tmp dir: %w", err)
 	}
@@ -882,8 +882,8 @@ func listTestFiles(serviceDir string) ([]string, error) {
 	return out, nil
 }
 
-func backendTmpDir(ctx context.Context, addonsPath string, tmpRoot string) (string, error) {
-	workspaceRoot := strings.TrimSpace(addonsPath)
+func backendTmpDir(ctx context.Context, modulesPath string, tmpRoot string) (string, error) {
+	workspaceRoot := strings.TrimSpace(modulesPath)
 	if workspaceRoot != "" {
 		workspaceRoot = filepath.Dir(workspaceRoot)
 	}
@@ -894,16 +894,16 @@ func backendTmpDir(ctx context.Context, addonsPath string, tmpRoot string) (stri
 	return testingpathing.ResolveTestingTmpDirFromContext(ctx, workspaceRoot, resolvedTmpRoot, "backend")
 }
 
-func backendTestsIndexTmpDir(ctx context.Context, addonsPath string, tmpRoot string, app string) (string, error) {
-	backendTmpRoot, err := backendTmpDir(ctx, addonsPath, tmpRoot)
+func backendTestsIndexTmpDir(ctx context.Context, modulesPath string, tmpRoot string, app string) (string, error) {
+	backendTmpRoot, err := backendTmpDir(ctx, modulesPath, tmpRoot)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(backendTmpRoot, "tests-index", sanitizeUnitAppToken(app)), nil
 }
 
-func unitTestDBTmpDir(ctx context.Context, addonsPath string, tmpRoot string, app string) (string, error) {
-	workspaceRoot := strings.TrimSpace(addonsPath)
+func unitTestDBTmpDir(ctx context.Context, modulesPath string, tmpRoot string, app string) (string, error) {
+	workspaceRoot := strings.TrimSpace(modulesPath)
 	if workspaceRoot != "" {
 		workspaceRoot = filepath.Dir(workspaceRoot)
 	}
@@ -957,7 +957,7 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 	case "sqlite", "":
 		sqlitePath := strings.TrimSpace(dbFile)
 		if sqlitePath == "" {
-			tmpDir, err := unitTestDBTmpDir(ctx, baseOpts.addonsPath, baseOpts.tmpPath, app)
+			tmpDir, err := unitTestDBTmpDir(ctx, baseOpts.modulesPath, baseOpts.tmpPath, app)
 			if err != nil {
 				return nil, func() {}, xfmt.Errorf("resolve tmp dir: %w", err)
 			}
@@ -1170,7 +1170,7 @@ func buildAppBundle(ctx context.Context, runtimeScope scope.Scope, jsExec jsexec
 	mod := &meta.IrModule{
 		Name:           app,
 		ApplicationStr: app,
-		Path:           filepath.Join(runtimeOptionsFromScope(runtimeScope).addonsPath, app),
+		Path:           filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, app),
 	}
 
 	b := newBackendBuilderHook(runtimeScope, jsExec, mod, entryPoint, outFileName, globalName)
@@ -1226,22 +1226,22 @@ func newRuntimeExecutor(runtimeScope scope.Scope, authenticator auth.Authenticat
 	return jsExec, nil
 }
 
-type addonManifest struct {
+type moduleManifest struct {
 	EntryPoints map[string]string `json:"entryPoints"`
 }
 
 func resolveServiceEntryPoint(runtimeScope scope.Scope, app string) (string, error) {
-	addonsPath := runtimeOptionsFromScope(runtimeScope).addonsPath
-	manifestPath := filepath.Join(addonsPath, app, "manifest.json")
+	modulesPath := runtimeOptionsFromScope(runtimeScope).modulesPath
+	manifestPath := filepath.Join(modulesPath, app, "manifest.json")
 	raw, err := os.ReadFile(manifestPath)
 	if err == nil {
-		var m addonManifest
+		var m moduleManifest
 		if err := json.Unmarshal(raw, &m); err == nil {
 			if m.EntryPoints != nil {
 				if rel := strings.TrimSpace(m.EntryPoints["service"]); rel != "" {
 					p := rel
 					if !filepath.IsAbs(p) {
-						p = filepath.Join(addonsPath, app, rel)
+						p = filepath.Join(modulesPath, app, rel)
 					}
 					return p, nil
 				}
@@ -1250,7 +1250,7 @@ func resolveServiceEntryPoint(runtimeScope scope.Scope, app string) (string, err
 	}
 
 	// Fallback to convention.
-	fallback := filepath.Join(addonsPath, app, "service", "index.ts")
+	fallback := filepath.Join(modulesPath, app, "service", "index.ts")
 	if st, err2 := os.Stat(fallback); err2 == nil && !st.IsDir() {
 		return fallback, nil
 	}

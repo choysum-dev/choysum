@@ -13,7 +13,7 @@ import (
 )
 
 type Resolver interface {
-	// Peek returns a module described by its manifest without persisting it to addons/.
+	// Peek returns a module described by its manifest without persisting it to modules/.
 	Peek(ctx context.Context, name string) (*meta.IrModule, error)
 	// Load returns the module from DB if it exists (typically installed).
 	Load(name string) (*meta.IrModule, error)

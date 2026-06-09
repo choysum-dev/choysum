@@ -8,7 +8,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath     string
+	modulesPath    string
 	npmRegistryURL string
 }
 
@@ -16,7 +16,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) run
 	if !hasPathOpts {
 		return runtimeOptions{}
 	}
-	return runtimeOptions{addonsPath: pathOpts.AddonsPath, npmRegistryURL: pathOpts.NpmRegistryURL}
+	return runtimeOptions{modulesPath: pathOpts.ModulesPath, npmRegistryURL: pathOpts.NpmRegistryURL}
 }
 
 func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {

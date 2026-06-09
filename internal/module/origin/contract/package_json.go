@@ -18,7 +18,7 @@ import (
 
 var strictSemVerV = regexp.MustCompile(`^v\d+\.\d+\.\d+([\-\+].+)?$`)
 
-// PackageJSON defines the canonical addon package contract for Phase A.
+// PackageJSON defines the canonical module package contract for Phase A.
 type PackageJSON struct {
 	Name             string            `json:"name"`
 	Version          string            `json:"version"`
@@ -193,20 +193,20 @@ func ValidatePackageJSON(pkg *PackageJSON) error {
 			if k != "service" && k != "web" {
 				return xfmt.Errorf("unsupported choysum.entryPoints key %q; allowed keys are service and web", k)
 			}
-			if err := validateAddonRelativePath(v, "choysum.entryPoints."+k); err != nil {
+			if err := validateModuleRelativePath(v, "choysum.entryPoints."+k); err != nil {
 				return err
 			}
 		}
 	}
 
 	for i, p := range pkg.Choysum.Data {
-		if err := validateAddonRelativePath(p, xfmt.Sprintf("choysum.data[%d]", i)); err != nil {
+		if err := validateModuleRelativePath(p, xfmt.Sprintf("choysum.data[%d]", i)); err != nil {
 			return err
 		}
 	}
 
 	for i, p := range pkg.Choysum.Demo {
-		if err := validateAddonRelativePath(p, xfmt.Sprintf("choysum.demo[%d]", i)); err != nil {
+		if err := validateModuleRelativePath(p, xfmt.Sprintf("choysum.demo[%d]", i)); err != nil {
 			return err
 		}
 	}
@@ -214,7 +214,7 @@ func ValidatePackageJSON(pkg *PackageJSON) error {
 	return nil
 }
 
-func validateAddonRelativePath(raw, field string) error {
+func validateModuleRelativePath(raw, field string) error {
 	v := strings.TrimSpace(raw)
 	if v == "" {
 		return xfmt.Errorf("%s cannot be empty", field)

@@ -220,13 +220,13 @@ func TestResolveBundleModeForTests(t *testing.T) {
 
 func TestBackendUtilityHelpers(t *testing.T) {
 	workspaceRoot := t.TempDir()
-	addonsPath := filepath.Join(workspaceRoot, "addons")
+	modulesPath := filepath.Join(workspaceRoot, "modules")
 	tmpRoot := filepath.Join(t.TempDir(), "choysum-custom-tmp")
 	wantBackendTmpDir, err := testingpathing.ResolveTestingTmpDir(workspaceRoot, tmpRoot, "backend")
 	if err != nil {
 		t.Fatalf("ResolveTestingTmpDir(backend): %v", err)
 	}
-	gotBackendTmpDir, err := backendTmpDir(context.Background(), addonsPath, tmpRoot)
+	gotBackendTmpDir, err := backendTmpDir(context.Background(), modulesPath, tmpRoot)
 	if err != nil {
 		t.Fatalf("backendTmpDir(): %v", err)
 	}
@@ -235,7 +235,7 @@ func TestBackendUtilityHelpers(t *testing.T) {
 	}
 
 	wantBackendTestsIndexTmpDir := filepath.Join(wantBackendTmpDir, "tests-index", "auth_role")
-	gotBackendTestsIndexTmpDir, err := backendTestsIndexTmpDir(context.Background(), addonsPath, tmpRoot, "auth role")
+	gotBackendTestsIndexTmpDir, err := backendTestsIndexTmpDir(context.Background(), modulesPath, tmpRoot, "auth role")
 	if err != nil {
 		t.Fatalf("backendTestsIndexTmpDir(): %v", err)
 	}
@@ -248,7 +248,7 @@ func TestBackendUtilityHelpers(t *testing.T) {
 		t.Fatalf("ResolveTestingTmpDir(testdb): %v", err)
 	}
 	wantUnitTestDBDir := filepath.Join(testDBTmpDir, "auth")
-	gotUnitTestDBDir, err := unitTestDBTmpDir(context.Background(), addonsPath, tmpRoot, "auth")
+	gotUnitTestDBDir, err := unitTestDBTmpDir(context.Background(), modulesPath, tmpRoot, "auth")
 	if err != nil {
 		t.Fatalf("unitTestDBTmpDir(): %v", err)
 	}
@@ -501,11 +501,11 @@ func TestMakeTestScope(t *testing.T) {
 	baseScope := &testStubScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			AddonsPath: filepath.Join(t.TempDir(), "addons"),
-			DistPath:   filepath.Join(t.TempDir(), "dist"),
-			TmpPath:    filepath.Join(t.TempDir(), "tmp-root"),
-			Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
-			Server:     &config.ServerConfig{Environment: envName},
+			ModulesPath: filepath.Join(t.TempDir(), "modules"),
+			DistPath:    filepath.Join(t.TempDir(), "dist"),
+			TmpPath:     filepath.Join(t.TempDir(), "tmp-root"),
+			Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
+			Server:      &config.ServerConfig{Environment: envName},
 		},
 	}
 
@@ -567,7 +567,7 @@ func TestMakeTestScope(t *testing.T) {
 		}
 		sqlitePath := strings.Split(strings.TrimPrefix(childDBOpts.DSN, prefix), "?")[0]
 		baseOpts := runtimeOptionsFromScope(baseScope)
-		wantTmpDir, err := unitTestDBTmpDir(context.Background(), baseOpts.addonsPath, baseOpts.tmpPath, "auth")
+		wantTmpDir, err := unitTestDBTmpDir(context.Background(), baseOpts.modulesPath, baseOpts.tmpPath, "auth")
 		if err != nil {
 			t.Fatalf("unitTestDBTmpDir() error: %v", err)
 		}
@@ -602,10 +602,10 @@ func TestMakeTestScope(t *testing.T) {
 		baseWithMinify := &testStubScope{
 			ctx: context.Background(),
 			cfg: &config.Config{
-				AddonsPath: filepath.Join(t.TempDir(), "addons"),
-				DistPath:   filepath.Join(t.TempDir(), "dist"),
-				TmpPath:    filepath.Join(t.TempDir(), "tmp-root"),
-				Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
+				ModulesPath: filepath.Join(t.TempDir(), "modules"),
+				DistPath:    filepath.Join(t.TempDir(), "dist"),
+				TmpPath:     filepath.Join(t.TempDir(), "tmp-root"),
+				Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
 				Compile: &config.CompileConfig{
 					BundleMode:  "application",
 					SourceMap:   false,
@@ -667,11 +667,11 @@ func TestMakeTestScope(t *testing.T) {
 		badBase := &testStubScope{
 			ctx: context.Background(),
 			cfg: &config.Config{
-				AddonsPath: filepath.Join(t.TempDir(), "addons"),
-				DistPath:   filepath.Join(t.TempDir(), "dist"),
-				TmpPath:    filepath.Join(t.TempDir(), "tmp-root"),
-				Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
-				Server:     &config.ServerConfig{Environment: "missing-env-factory"},
+				ModulesPath: filepath.Join(t.TempDir(), "modules"),
+				DistPath:    filepath.Join(t.TempDir(), "dist"),
+				TmpPath:     filepath.Join(t.TempDir(), "tmp-root"),
+				Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
+				Server:      &config.ServerConfig{Environment: "missing-env-factory"},
 			},
 		}
 
@@ -718,9 +718,9 @@ func TestListTestFilesAndGeneratedEntry(t *testing.T) {
 		t.Fatalf("unexpected discovered test files: %#v", files)
 	}
 
-	addonsPath := t.TempDir()
+	modulesPath := t.TempDir()
 	app := "auth"
-	serviceRoot := filepath.Join(addonsPath, app, "service")
+	serviceRoot := filepath.Join(modulesPath, app, "service")
 	if err := os.MkdirAll(serviceRoot, 0o755); err != nil {
 		t.Fatalf("mkdir serviceRoot: %v", err)
 	}
@@ -732,12 +732,12 @@ func TestListTestFilesAndGeneratedEntry(t *testing.T) {
 	}
 
 	tmpRoot := filepath.Join(t.TempDir(), "tmp-root")
-	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: addonsPath, DistPath: filepath.Join(t.TempDir(), "dist"), TmpPath: tmpRoot}}
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, DistPath: filepath.Join(t.TempDir(), "dist"), TmpPath: tmpRoot}}
 	entry, cleanup, err := resolveOrGenerateTestsEntryPoint(context.Background(), runtimeScope, app)
 	if err != nil {
 		t.Fatalf("resolveOrGenerateTestsEntryPoint error: %v", err)
 	}
-	wantEntryDir, err := backendTestsIndexTmpDir(context.Background(), addonsPath, tmpRoot, app)
+	wantEntryDir, err := backendTestsIndexTmpDir(context.Background(), modulesPath, tmpRoot, app)
 	if err != nil {
 		t.Fatalf("backendTestsIndexTmpDir error: %v", err)
 	}
@@ -776,7 +776,7 @@ func TestListTestFilesAndGeneratedEntry(t *testing.T) {
 }
 
 func TestBuildAppBundleEntryMissing(t *testing.T) {
-	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 	err := buildAppBundle(context.Background(), runtimeScope, nil, "auth", "tests.js", "__tests__", filepath.Join(t.TempDir(), "missing.ts"))
 	if err == nil || !strings.Contains(err.Error(), "entry point not found") {
 		t.Fatalf("expected missing entry point error, got %v", err)
@@ -825,7 +825,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	defer func() { newBackendBuilderHook = oldBuilder }()
 
 	t.Run("bundle mode tests.js uses BundleToDirCtx", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		stub := &bundleStub{}
 		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
 			return stub
@@ -840,7 +840,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	})
 
 	t.Run("bundle to dir error is wrapped", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		stub := &bundleStub{bundleToDirErr: errors.New("dir failed")}
 		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
 			return stub
@@ -852,7 +852,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	})
 
 	t.Run("bundle mode tests.js without BundleToDirCtx returns explicit error", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
 			return struct{}{}
 		}
@@ -863,7 +863,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	})
 
 	t.Run("non-tests bundle path uses Bundle", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "bundle"}}}
 		stub := &bundleStub{bundleErr: errors.New("bundle failed")}
 		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
 			return stub
@@ -878,7 +878,7 @@ func TestBuildAppBundleWithInjectedBuilder(t *testing.T) {
 	})
 
 	t.Run("fallback build path uses Build", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "application"}}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Compile: &config.CompileConfig{BundleMode: "application"}}}
 		stub := &buildOnlyStub{err: errors.New("build failed")}
 		newBackendBuilderHook = func(runtimeScope scope.Scope, jsExec jsexecutor.JsExecutor, mod *meta.IrModule, entryPoint, outFileName, globalName string) any {
 			return stub

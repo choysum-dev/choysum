@@ -8,11 +8,12 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 func configSnapshotFixture() *config.Config {
 	return &config.Config{
-		AddonsPath:         "/tmp/addons",
+		ModulesPath:        "/tmp/modules",
 		DistPath:           "/tmp/dist",
 		TmpPath:            "/tmp/tmp",
 		DefaultChoysumPath: "/tmp/.choysum",
@@ -75,5 +76,24 @@ func TestConfigFromSnapshotReturnsDeepCopy(t *testing.T) {
 	}
 	if got := snap.Db.DSN; got != "file:/tmp/app.db?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL" {
 		t.Fatalf("snapshot db config mutated via ConfigFromSnapshot: got %q", got)
+	}
+}
+
+func TestFactoryInputFromConfigExposesModulesPath(t *testing.T) {
+	if got := FactoryInputFromConfig(nil); got != nil {
+		t.Fatalf("FactoryInputFromConfig(nil) = %#v, want nil", got)
+	}
+
+	input := FactoryInputFromConfig(&config.Config{ModulesPath: "/workspace/modules"})
+	if input == nil {
+		t.Fatal("FactoryInputFromConfig() returned nil input")
+	}
+
+	paths, ok := scope.PathsRuntimeOptionsFromInput(input)
+	if !ok {
+		t.Fatal("expected PathsRuntimeOptionsFromInput() to succeed")
+	}
+	if paths.ModulesPath != "/workspace/modules" {
+		t.Fatalf("PathsRuntimeOptionsFromInput().ModulesPath = %q, want /workspace/modules", paths.ModulesPath)
 	}
 }

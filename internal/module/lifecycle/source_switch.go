@@ -61,7 +61,7 @@ func (m *ModuleManager) prepareUpgradeOriginSwitch(ctx context.Context, parsed i
 		ctx,
 		m.newOriginCoordinator(),
 		internalorigin.WorkspaceRoot(m.runtimeScope),
-		runtimeOpts.addonsPath,
+		runtimeOpts.modulesPath,
 		runtimeOpts.tmpPath,
 		runtimeOpts.defaultChoysumPath,
 		parsed,

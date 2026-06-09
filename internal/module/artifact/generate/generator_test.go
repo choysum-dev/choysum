@@ -61,7 +61,7 @@ func newGeneratorScope(t *testing.T) *generatorTestScope {
 		db:     db,
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		cfg: &config.Config{
-			AddonsPath:         t.TempDir(),
+			ModulesPath:        t.TempDir(),
 			DistPath:           t.TempDir(),
 			DefaultChoysumPath: t.TempDir(),
 			Compile:            &config.CompileConfig{BundleMode: string(config.BundleModeApplication)},
@@ -189,7 +189,7 @@ func TestGeneratorHelpers(t *testing.T) {
 func TestServiceDiscoveryConventionConsistencyAcrossStages(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	modulePath := filepath.Join(runtimeOpts.addonsPath, "crm")
+	modulePath := filepath.Join(runtimeOpts.modulesPath, "crm")
 	mod := &meta.IrModule{Path: modulePath, ApplicationStr: "crm"}
 	parserImpl := backendtsparser.NewTsParser(runtimeScope, mod)
 
@@ -432,22 +432,22 @@ func TestGeneratorEntryPoints(t *testing.T) {
 		if results != nil {
 			t.Fatalf("expected nil results when ApplicationId is invalid, got %#v", results)
 		}
-		if generator.protobufGenerator.addonsProtoDir != protoDir {
-			t.Fatalf("unexpected protobuf proto dir: %q", generator.protobufGenerator.addonsProtoDir)
+		if generator.protobufGenerator.modulesProtoDir != protoDir {
+			t.Fatalf("unexpected protobuf proto dir: %q", generator.protobufGenerator.modulesProtoDir)
 		}
 		if generator.protobufGenerator.distAppDir == "" {
 			t.Fatal("expected protobuf dist app dir to be set")
 		}
-		if generator.webGrpcGenerator.addonsProtoDir != protoDir || generator.webGrpcGenerator.addonsWebDir != webDir {
+		if generator.webGrpcGenerator.modulesProtoDir != protoDir || generator.webGrpcGenerator.modulesWebDir != webDir {
 			t.Fatalf("unexpected web grpc dirs: %#v", generator.webGrpcGenerator)
 		}
-		if generator.webServiceGenerator.addonsWebDir != webDir {
-			t.Fatalf("unexpected web service dir: %q", generator.webServiceGenerator.addonsWebDir)
+		if generator.webServiceGenerator.modulesWebDir != webDir {
+			t.Fatalf("unexpected web service dir: %q", generator.webServiceGenerator.modulesWebDir)
 		}
-		if generator.webApiStoreGenerator.addonsWebDir != webDir {
-			t.Fatalf("unexpected web api store dir: %q", generator.webApiStoreGenerator.addonsWebDir)
+		if generator.webApiStoreGenerator.modulesWebDir != webDir {
+			t.Fatalf("unexpected web api store dir: %q", generator.webApiStoreGenerator.modulesWebDir)
 		}
-		if generator.serviceClientGenerator.addonsProtoDir != protoDir || generator.serviceClientGenerator.addonsServiceDir != serviceDir {
+		if generator.serviceClientGenerator.modulesProtoDir != protoDir || generator.serviceClientGenerator.modulesServiceDir != serviceDir {
 			t.Fatalf("unexpected service client dirs: %#v", generator.serviceClientGenerator)
 		}
 		if _, ok := any(NewGrpcGenerator(newGeneratorScope(t), &meta.IrModule{Name: "base"})).(module.Generator); !ok {
@@ -466,21 +466,21 @@ func TestGeneratorEntryPoints(t *testing.T) {
 			runtimeScope: runtimeScope,
 			module:       mod,
 			protobufGenerator: &protobufGenerator{
-				runtimeScope:   runtimeScope,
-				module:         mod,
-				addonsProtoDir: protoDir,
-				distAppDir:     distAppDir,
+				runtimeScope:    runtimeScope,
+				module:          mod,
+				modulesProtoDir: protoDir,
+				distAppDir:      distAppDir,
 			},
 			webGrpcGenerator: &webGrpcGenerator{
-				runtimeScope:   runtimeScope,
-				module:         mod,
-				plugins:        []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}},
-				addonsProtoDir: protoDir,
-				addonsWebDir:   webDir,
+				runtimeScope:    runtimeScope,
+				module:          mod,
+				plugins:         []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}},
+				modulesProtoDir: protoDir,
+				modulesWebDir:   webDir,
 			},
-			webServiceGenerator:    &webServiceGenerator{runtimeScope: runtimeScope, module: mod, addonsWebDir: webDir},
-			webApiStoreGenerator:   &webApiStoreGenerator{runtimeScope: runtimeScope, module: mod, addonsWebDir: webDir},
-			serviceClientGenerator: &serviceClientGenerator{runtimeScope: runtimeScope, module: mod, addonsProtoDir: protoDir, addonsServiceDir: serviceDir},
+			webServiceGenerator:    &webServiceGenerator{runtimeScope: runtimeScope, module: mod, modulesWebDir: webDir},
+			webApiStoreGenerator:   &webApiStoreGenerator{runtimeScope: runtimeScope, module: mod, modulesWebDir: webDir},
+			serviceClientGenerator: &serviceClientGenerator{runtimeScope: runtimeScope, module: mod, modulesProtoDir: protoDir, modulesServiceDir: serviceDir},
 		}
 
 		results, err := generator.GenerateCtx(context.Background())
@@ -502,7 +502,7 @@ func TestGeneratorEntryPoints(t *testing.T) {
 			}
 		}
 		runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-		generatedRoot, err := WorkspaceGeneratedAPIRoot(runtimeOpts.addonsPath, runtimeOpts.defaultChoysumPath)
+		generatedRoot, err := WorkspaceGeneratedAPIRoot(runtimeOpts.modulesPath, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			t.Fatalf("WorkspaceGeneratedAPIRoot() error = %v", err)
 		}

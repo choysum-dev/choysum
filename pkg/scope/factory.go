@@ -17,7 +17,7 @@ type FactoryInput interface {
 }
 
 type PathsInput interface {
-	AddonsPath() string
+	ModulesPath() string
 	DistPath() string
 	TmpPath() string
 }
@@ -113,7 +113,7 @@ type DatabaseInput interface {
 }
 
 type PathsRuntimeOptions struct {
-	AddonsPath         string
+	ModulesPath        string
 	DistPath           string
 	TmpPath            string
 	DefaultChoysumPath string
@@ -200,9 +200,9 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 		return PathsRuntimeOptions{}, false
 	}
 	options := PathsRuntimeOptions{
-		AddonsPath: pathsInput.AddonsPath(),
-		DistPath:   pathsInput.DistPath(),
-		TmpPath:    pathsInput.TmpPath(),
+		ModulesPath: pathsInput.ModulesPath(),
+		DistPath:    pathsInput.DistPath(),
+		TmpPath:     pathsInput.TmpPath(),
 	}
 	if defaultsInput, ok := input.(PathsDefaultInput); ok {
 		options.DefaultChoysumPath = defaultsInput.DefaultChoysumPath()

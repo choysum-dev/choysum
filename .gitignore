@@ -14,7 +14,7 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# addons/dist/cache path
+# modules/dist/cache path
 .choysum
 
 # exec file

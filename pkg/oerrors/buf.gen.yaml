@@ -6,7 +6,7 @@ plugins:
       - paths=source_relative
 
   - plugin: buf.build/bufbuild/es
-    out: ../../addons/core/error
+    out: ../../modules/core/error
     opt:
       - target=ts
       - import_extension=none

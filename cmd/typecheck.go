@@ -19,7 +19,7 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 
 	cmd := &cobra.Command{
 		Use:   "typecheck <app>",
-		Short: "Type-check addons (service + web)",
+		Short: "Type-check modules (service + web)",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all {
 				if len(args) != 0 {
@@ -53,14 +53,14 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 			}
 
 			opts := pkgtypecheck.RunOptions{
-				AddonsPath: runtimeOptions.addonsPath,
-				NpmPath:    runtimeOptions.npmPath,
-				RepoRoot:   repoRoot,
-				TmpPath:    runtimeOptions.tmpPath,
-				Target:     target,
-				Keep:       keep,
-				Stdout:     os.Stdout,
-				Stderr:     os.Stderr,
+				ModulesPath: runtimeOptions.modulesPath,
+				NpmPath:     runtimeOptions.npmPath,
+				RepoRoot:    repoRoot,
+				TmpPath:     runtimeOptions.tmpPath,
+				Target:      target,
+				Keep:        keep,
+				Stdout:      os.Stdout,
+				Stderr:      os.Stderr,
 			}
 			return pkgtypecheck.Run(cmd.Context(), opts)
 		},

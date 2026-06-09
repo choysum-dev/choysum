@@ -48,11 +48,11 @@ func factoryTestConfigFromInput(input FactoryInput) *config.Config {
 	return testInput.cfg
 }
 
-func (i factoryTestInput) AddonsPath() string {
+func (i factoryTestInput) ModulesPath() string {
 	if i.cfg == nil {
 		return ""
 	}
-	return i.cfg.AddonsPath
+	return i.cfg.ModulesPath
 }
 
 func (i factoryTestInput) DistPath() string {
@@ -360,5 +360,27 @@ func TestNewScopeUsesRegisteredFactory(t *testing.T) {
 	stub := created.(*stubScope)
 	if stub.Context() != ctx || stub.Config() != cfg || stub.Logger() != logger {
 		t.Fatalf("unexpected created scope: %#v", stub)
+	}
+}
+
+func TestPathsRuntimeOptionsFromInputUsesPathsInputValues(t *testing.T) {
+	cfg := &config.Config{
+		ModulesPath: "/tmp/modules",
+		DistPath:    "/tmp/dist",
+		TmpPath:     "/tmp/tmp",
+	}
+
+	options, ok := PathsRuntimeOptionsFromInput(factoryTestInput{cfg: cfg})
+	if !ok {
+		t.Fatal("PathsRuntimeOptionsFromInput() ok = false, want true")
+	}
+	if options.ModulesPath != cfg.ModulesPath {
+		t.Fatalf("ModulesPath = %q, want %q", options.ModulesPath, cfg.ModulesPath)
+	}
+	if options.DistPath != cfg.DistPath {
+		t.Fatalf("DistPath = %q, want %q", options.DistPath, cfg.DistPath)
+	}
+	if options.TmpPath != cfg.TmpPath {
+		t.Fatalf("TmpPath = %q, want %q", options.TmpPath, cfg.TmpPath)
 	}
 }

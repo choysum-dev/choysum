@@ -33,7 +33,7 @@ type Callbacks struct {
 	// distAppDir is typically: dist/apps/<app> (may be empty to skip per-app dist publishing).
 	// proto/web/service dirs are typically:
 	// <default_choysum_path>/generated/{proto,web,service}/<app>
-	AppTargets func(appName string) (distAppDir string, addonsTargets AddonsAppTargets, err error)
+	AppTargets func(appName string) (distAppDir string, modulesTargets ModulesAppTargets, err error)
 
 	// BundlesTarget returns the root directory for backend bundles (typically dist/bundles).
 	BundlesTarget func() (distBundlesDir string, err error)
@@ -49,15 +49,15 @@ type Callbacks struct {
 
 	// App stage
 	BuildBackendApp     func(ctx context.Context, appName string, distAppStagingDir string) error
-	GenerateApp         func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error
+	GenerateApp         func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error
 	BuildBackendBundles func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
 	GlobalWebBuild      func(ctx context.Context, distWebStagingDir string) error
 }
 
-// AddonsAppTargets describes per-application addon output directories.
+// ModulesAppTargets describes per-application module output directories.
 // Under the new layout, these directories are staged and committed
 // independently so each can be swapped atomically.
-type AddonsAppTargets struct {
+type ModulesAppTargets struct {
 	ProtoDir        string
 	WebDir          string
 	ServiceDir      string
@@ -192,10 +192,10 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		logStep(slog.LevelInfo, "pipeline module stage completed", attrs...)
 	}
 
-	// generateAddonsForApp stages and commits api outputs (proto/web/service/runtimeProto) for a single app.
+	// generateModulesForApp stages and commits api outputs (proto/web/service/runtimeProto) for a single app.
 	// This is used during install so downstream module builds can resolve generated
 	// side-effect entry imports even if outputs were deleted before install starts.
-	generateAddonsForApp := func(app string) error {
+	generateModulesForApp := func(app string) error {
 		app = strings.TrimSpace(app)
 		if app == "" {
 			return nil
@@ -214,33 +214,33 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			return fmt.Errorf("GenerateApp callback is required")
 		}
 
-		_, addonsTargets, err := cb.AppTargets(app)
+		_, modulesTargets, err := cb.AppTargets(app)
 		if err != nil {
 			return err
 		}
-		if strings.TrimSpace(addonsTargets.ProtoDir) == "" || strings.TrimSpace(addonsTargets.WebDir) == "" || strings.TrimSpace(addonsTargets.ServiceDir) == "" {
+		if strings.TrimSpace(modulesTargets.ProtoDir) == "" || strings.TrimSpace(modulesTargets.WebDir) == "" || strings.TrimSpace(modulesTargets.ServiceDir) == "" {
 			return fmt.Errorf("AppTargets callback returned empty proto/web/service dir for app %s", app)
 		}
 
 		prepareStarted := time.Now()
-		protoStage, err := staging.PrepareDir(ctx, addonsTargets.ProtoDir)
+		protoStage, err := staging.PrepareDir(ctx, modulesTargets.ProtoDir)
 		if err != nil {
 			return err
 		}
-		webStage, err := staging.PrepareDir(ctx, addonsTargets.WebDir)
+		webStage, err := staging.PrepareDir(ctx, modulesTargets.WebDir)
 		if err != nil {
 			_ = protoStage.Abort()
 			return err
 		}
-		serviceStage, err := staging.PrepareDir(ctx, addonsTargets.ServiceDir)
+		serviceStage, err := staging.PrepareDir(ctx, modulesTargets.ServiceDir)
 		if err != nil {
 			_ = protoStage.Abort()
 			_ = webStage.Abort()
 			return err
 		}
 		var runtimeProtoStage *staging.DirStaging
-		if strings.TrimSpace(addonsTargets.RuntimeProtoDir) != "" {
-			runtimeProtoStage, err = staging.PrepareDir(ctx, addonsTargets.RuntimeProtoDir)
+		if strings.TrimSpace(modulesTargets.RuntimeProtoDir) != "" {
+			runtimeProtoStage, err = staging.PrepareDir(ctx, modulesTargets.RuntimeProtoDir)
 			if err != nil {
 				_ = protoStage.Abort()
 				_ = webStage.Abort()
@@ -248,21 +248,21 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				return err
 			}
 		}
-		logStep(slog.LevelDebug, "pipeline prepared addons staging", "app", app, "duration", time.Since(prepareStarted), "proto_target", addonsTargets.ProtoDir, "web_target", addonsTargets.WebDir, "service_target", addonsTargets.ServiceDir, "runtime_proto_target", addonsTargets.RuntimeProtoDir)
+		logStep(slog.LevelDebug, "pipeline prepared modules staging", "app", app, "duration", time.Since(prepareStarted), "proto_target", modulesTargets.ProtoDir, "web_target", modulesTargets.WebDir, "service_target", modulesTargets.ServiceDir, "runtime_proto_target", modulesTargets.RuntimeProtoDir)
 
 		genStarted := time.Now()
-		addonsStaging := AddonsAppTargets{ProtoDir: protoStage.StagingDir, WebDir: webStage.StagingDir, ServiceDir: serviceStage.StagingDir}
+		modulesStaging := ModulesAppTargets{ProtoDir: protoStage.StagingDir, WebDir: webStage.StagingDir, ServiceDir: serviceStage.StagingDir}
 		if runtimeProtoStage != nil {
-			addonsStaging.RuntimeProtoDir = runtimeProtoStage.StagingDir
+			modulesStaging.RuntimeProtoDir = runtimeProtoStage.StagingDir
 		}
-		if err := cb.GenerateApp(ctx, app, addonsStaging, ""); err != nil {
+		if err := cb.GenerateApp(ctx, app, modulesStaging, ""); err != nil {
 			_ = protoStage.Abort()
 			_ = webStage.Abort()
 			_ = serviceStage.Abort()
 			if runtimeProtoStage != nil {
 				_ = runtimeProtoStage.Abort()
 			}
-			logStep(slog.LevelError, "pipeline addons generation failed", "app", app, "duration", time.Since(genStarted), "error", err)
+			logStep(slog.LevelError, "pipeline modules generation failed", "app", app, "duration", time.Since(genStarted), "error", err)
 			return err
 		}
 		if runtimeProtoStage != nil {
@@ -275,7 +275,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				return err
 			}
 		}
-		logStep(slog.LevelDebug, "pipeline addons generated", "app", app, "duration", time.Since(genStarted))
+		logStep(slog.LevelDebug, "pipeline modules generated", "app", app, "duration", time.Since(genStarted))
 
 		committed := []*staging.DirStaging{}
 		rollbackCommitted := func() {
@@ -303,12 +303,12 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		commitOne := func(label string, s *staging.DirStaging) error {
 			started := time.Now()
 			if err := s.CommitKeepBackup(); err != nil {
-				logStep(slog.LevelError, "pipeline addons commit failed", "app", app, "stage", label, "duration", time.Since(started), "error", err)
+				logStep(slog.LevelError, "pipeline modules commit failed", "app", app, "stage", label, "duration", time.Since(started), "error", err)
 				rollbackCommitted()
 				return err
 			}
 			committed = append(committed, s)
-			logStep(slog.LevelDebug, "pipeline addons committed", "app", app, "stage", label, "duration", time.Since(started))
+			logStep(slog.LevelDebug, "pipeline modules committed", "app", app, "stage", label, "duration", time.Since(started))
 			return nil
 		}
 
@@ -479,7 +479,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			}
 			seen[app] = true
 
-			distAppDir, addonsTargets, err := cb.AppTargets(app)
+			distAppDir, modulesTargets, err := cb.AppTargets(app)
 			if err != nil {
 				return err
 			}
@@ -495,21 +495,21 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 					return err
 				}
 			}
-			if strings.TrimSpace(addonsTargets.ProtoDir) == "" || strings.TrimSpace(addonsTargets.WebDir) == "" || strings.TrimSpace(addonsTargets.ServiceDir) == "" {
+			if strings.TrimSpace(modulesTargets.ProtoDir) == "" || strings.TrimSpace(modulesTargets.WebDir) == "" || strings.TrimSpace(modulesTargets.ServiceDir) == "" {
 				if distStage != nil {
 					_ = distStage.Abort()
 				}
 				return fmt.Errorf("AppTargets callback returned empty proto/web/service dir for app %s", app)
 			}
 
-			protoStage, err := staging.PrepareDir(stageCtx, addonsTargets.ProtoDir)
+			protoStage, err := staging.PrepareDir(stageCtx, modulesTargets.ProtoDir)
 			if err != nil {
 				if distStage != nil {
 					_ = distStage.Abort()
 				}
 				return err
 			}
-			webStage, err := staging.PrepareDir(stageCtx, addonsTargets.WebDir)
+			webStage, err := staging.PrepareDir(stageCtx, modulesTargets.WebDir)
 			if err != nil {
 				if distStage != nil {
 					_ = distStage.Abort()
@@ -517,7 +517,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				_ = protoStage.Abort()
 				return err
 			}
-			serviceStage, err := staging.PrepareDir(stageCtx, addonsTargets.ServiceDir)
+			serviceStage, err := staging.PrepareDir(stageCtx, modulesTargets.ServiceDir)
 			if err != nil {
 				if distStage != nil {
 					_ = distStage.Abort()
@@ -527,8 +527,8 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				return err
 			}
 			var runtimeProtoStage *staging.DirStaging
-			if strings.TrimSpace(addonsTargets.RuntimeProtoDir) != "" {
-				runtimeProtoStage, err = staging.PrepareDir(stageCtx, addonsTargets.RuntimeProtoDir)
+			if strings.TrimSpace(modulesTargets.RuntimeProtoDir) != "" {
+				runtimeProtoStage, err = staging.PrepareDir(stageCtx, modulesTargets.RuntimeProtoDir)
 				if err != nil {
 					if distStage != nil {
 						_ = distStage.Abort()
@@ -549,13 +549,13 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				"dist_target",
 				distAppDir,
 				"proto_target",
-				addonsTargets.ProtoDir,
+				modulesTargets.ProtoDir,
 				"runtime_proto_target",
-				addonsTargets.RuntimeProtoDir,
+				modulesTargets.RuntimeProtoDir,
 				"web_target",
-				addonsTargets.WebDir,
+				modulesTargets.WebDir,
 				"service_target",
-				addonsTargets.ServiceDir,
+				modulesTargets.ServiceDir,
 			)
 
 			stages = append(stages, appStages{app: app, distStage: distStage, protoStage: protoStage, runtimeProtoStage: runtimeProtoStage, webStage: webStage, serviceStage: serviceStage})
@@ -577,11 +577,11 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if distStage != nil {
 				distStagingDir = distStage.StagingDir
 			}
-			addonsStaging := AddonsAppTargets{ProtoDir: protoStage.StagingDir, WebDir: webStage.StagingDir, ServiceDir: serviceStage.StagingDir}
+			modulesStaging := ModulesAppTargets{ProtoDir: protoStage.StagingDir, WebDir: webStage.StagingDir, ServiceDir: serviceStage.StagingDir}
 			if runtimeProtoStage != nil {
-				addonsStaging.RuntimeProtoDir = runtimeProtoStage.StagingDir
+				modulesStaging.RuntimeProtoDir = runtimeProtoStage.StagingDir
 			}
-			if err := cb.GenerateApp(stageCtx, app, addonsStaging, distStagingDir); err != nil {
+			if err := cb.GenerateApp(stageCtx, app, modulesStaging, distStagingDir); err != nil {
 				for i := len(stages) - 1; i >= 0; i-- {
 					abortStages(stages[i])
 				}
@@ -609,7 +609,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		}
 
 		// Phase 2: commit all apps after all succeeded.
-		// Commit dist first (runtime-critical), then bundles (if any), then addons.
+		// Commit dist first (runtime-critical), then bundles (if any), then modules.
 		for _, s := range stages {
 			if err := checkCtx(); err != nil {
 				for i := len(stages) - 1; i >= 0; i-- {
@@ -845,7 +845,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			}
 			app := strings.TrimSpace(mod.ApplicationStr)
 			if app != "" && !generated[app] {
-				if err := generateAddonsForApp(app); err != nil {
+				if err := generateModulesForApp(app); err != nil {
 					return err
 				}
 				generated[app] = true

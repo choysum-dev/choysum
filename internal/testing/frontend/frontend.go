@@ -114,8 +114,8 @@ func RunOneAppFrontendTests(
 	}
 
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
-	includeGlob := filepath.ToSlash(filepath.Join("addons", app, "web", "**", "*.{test,spec}.{ts,tsx}"))
-	coverageIncludeGlob := filepath.ToSlash(filepath.Join("addons", app, "web", "**", "*.{ts,tsx,vue}"))
+	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx}"))
+	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,vue}"))
 
 	var b strings.Builder
 	b.WriteString("import { defineConfig } from 'vitest/config'\n")
@@ -125,7 +125,7 @@ func RunOneAppFrontendTests(
 	b.WriteString("  plugins: [vue()],\n")
 	b.WriteString("  resolve: {\n")
 	b.WriteString("    alias: {\n")
-	b.WriteString("      '@': path.resolve(process.cwd(), 'addons'),\n")
+	b.WriteString("      '@': path.resolve(process.cwd(), 'modules'),\n")
 	b.WriteString("    },\n")
 	b.WriteString("  },\n")
 	b.WriteString("  test: {\n")

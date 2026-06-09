@@ -44,22 +44,22 @@ func TestCLIErrorBlockLastOutput_RunInvalidSqlitePath(t *testing.T) {
 	assertReasonInSet(t, reason, []string{"path is not absolute"})
 }
 
-func TestCLIErrorBlockLastOutput_RunAddonsPathMissing(t *testing.T) {
-	t.Skip("run no longer performs interactive bootstrap when addons_path is omitted")
+func TestCLIErrorBlockLastOutput_RunModulesPathMissing(t *testing.T) {
+	t.Skip("run no longer performs interactive bootstrap when modules_path is omitted")
 }
 
-func TestCLIErrorBlockLastOutput_RunAddonsPathUnreadable(t *testing.T) {
-	addonsDir := filepath.Join(t.TempDir(), "addons")
-	if err := os.MkdirAll(addonsDir, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+func TestCLIErrorBlockLastOutput_RunModulesPathUnreadable(t *testing.T) {
+	modulesDir := filepath.Join(t.TempDir(), "modules")
+	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
-	if err := os.Chmod(addonsDir, 0o000); err != nil {
-		t.Skipf("chmod addons dir: %v", err)
+	if err := os.Chmod(modulesDir, 0o000); err != nil {
+		t.Skipf("chmod modules dir: %v", err)
 	}
 	t.Cleanup(func() {
-		_ = os.Chmod(addonsDir, 0o755)
+		_ = os.Chmod(modulesDir, 0o755)
 	})
-	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), addonsDir)
+	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), modulesDir)
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
 		t.Fatalf("expected exit 3, got %d", code)
@@ -67,13 +67,13 @@ func TestCLIErrorBlockLastOutput_RunAddonsPathUnreadable(t *testing.T) {
 	assertLastErrorBlock(t, output)
 }
 
-func TestCLIErrorBlockLastOutput_RunAddonsPathSymlink(t *testing.T) {
-	addonsDir := filepath.Join(t.TempDir(), "addons")
-	if err := os.MkdirAll(addonsDir, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+func TestCLIErrorBlockLastOutput_RunModulesPathSymlink(t *testing.T) {
+	modulesDir := filepath.Join(t.TempDir(), "modules")
+	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
-	linkPath := filepath.Join(t.TempDir(), "addons-link")
-	if err := os.Symlink(addonsDir, linkPath); err != nil {
+	linkPath := filepath.Join(t.TempDir(), "modules-link")
+	if err := os.Symlink(modulesDir, linkPath); err != nil {
 		t.Fatalf("create symlink: %v", err)
 	}
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), linkPath)
@@ -84,9 +84,9 @@ func TestCLIErrorBlockLastOutput_RunAddonsPathSymlink(t *testing.T) {
 	assertLastErrorBlock(t, output)
 }
 
-func TestCLIErrorBlockLastOutput_RunAddonsPathWhitespace(t *testing.T) {
+func TestCLIErrorBlockLastOutput_RunModulesPathWhitespace(t *testing.T) {
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
-	if err := os.WriteFile(configPath, []byte("addons_path: \"   \"\n"+readConfigDbBlock(t, "sqlite", writeTempSqliteDB(t))), 0o600); err != nil {
+	if err := os.WriteFile(configPath, []byte("modules_path: \"   \"\n"+readConfigDbBlock(t, "sqlite", writeTempSqliteDB(t))), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 	output, code := runCLI(t, "run", "--config", configPath)
@@ -96,9 +96,9 @@ func TestCLIErrorBlockLastOutput_RunAddonsPathWhitespace(t *testing.T) {
 	assertLastErrorBlock(t, output)
 }
 
-func TestCLIErrorBlockLastOutput_RunAddonsPathControlChar(t *testing.T) {
+func TestCLIErrorBlockLastOutput_RunModulesPathControlChar(t *testing.T) {
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
-	if err := os.WriteFile(configPath, []byte("addons_path: \"bad\\npath\"\n"+readConfigDbBlock(t, "sqlite", writeTempSqliteDB(t))), 0o600); err != nil {
+	if err := os.WriteFile(configPath, []byte("modules_path: \"bad\\npath\"\n"+readConfigDbBlock(t, "sqlite", writeTempSqliteDB(t))), 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 	output, code := runCLI(t, "run", "--config", configPath)
@@ -141,11 +141,11 @@ func TestCLIErrorBlockLastOutput_RunConfigSymlink(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigMissingFields(t *testing.T) {
-	addons := filepath.Join(t.TempDir(), "addons")
-	if err := os.MkdirAll(addons, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+	modules := filepath.Join(t.TempDir(), "modules")
+	if err := os.MkdirAll(modules, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
-	configPath := writeRawConfig(t, "addons_path: \""+addons+"\"\ndb:\n  dialect: postgres\n")
+	configPath := writeRawConfig(t, "modules_path: \""+modules+"\"\ndb:\n  dialect: postgres\n")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
 		t.Fatalf("expected exit 3, got %d", code)
@@ -153,7 +153,7 @@ func TestCLIErrorBlockLastOutput_RunConfigMissingFields(t *testing.T) {
 	assertLastErrorBlock(t, output)
 }
 
-func TestCLIErrorBlockLastOutput_RunAddonsPathListSeparator(t *testing.T) {
+func TestCLIErrorBlockLastOutput_RunModulesPathListSeparator(t *testing.T) {
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "a:b")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
@@ -179,7 +179,7 @@ func TestCLIErrorBlockLastOutput_RunConfigUnreadable(t *testing.T) {
 }
 
 func TestCLIErrorBlockLastOutput_RunConfigInvalidYAML(t *testing.T) {
-	configPath := writeRawConfig(t, "addons_path: [\n")
+	configPath := writeRawConfig(t, "modules_path: [\n")
 	output, code := runCLI(t, "run", "--config", configPath)
 	if code != 3 {
 		t.Fatalf("expected exit 3, got %d", code)

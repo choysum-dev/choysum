@@ -27,11 +27,11 @@ func (i configFactoryInput) Environment() string {
 	return i.cfg.Server.Environment
 }
 
-func (i configFactoryInput) AddonsPath() string {
+func (i configFactoryInput) ModulesPath() string {
 	if i.cfg == nil {
 		return ""
 	}
-	return i.cfg.AddonsPath
+	return i.cfg.ModulesPath
 }
 
 func (i configFactoryInput) DistPath() string {

@@ -147,7 +147,7 @@ func newBuilderTestScope() *builderTestScope {
 	return &builderTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			AddonsPath:         "/virtual/addons",
+			ModulesPath:        "/virtual/modules",
 			DistPath:           "/virtual/dist",
 			DefaultChoysumPath: filepath.Join(os.TempDir(), "choysum-backendbuilder-default"),
 			Compile: &config.CompileConfig{
@@ -179,7 +179,7 @@ func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
 	builder := &ModuleBuilder{
 		runtimeScope:   testRuntimeScope,
 		module:         &meta.IrModule{ApplicationStr: "auth"},
-		entryPoint:     "/virtual/addons/auth/service/index.ts",
+		entryPoint:     "/virtual/modules/auth/service/index.ts",
 		prebuildPlugin: &stubEsbPlugin{name: "prebuild"},
 		buildPlugin:    &stubEsbPlugin{name: "build"},
 		outFileName:    "bundle.js",
@@ -252,11 +252,11 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 	}
 
 	testRuntimeScope := newBuilderTestScope()
-	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.cfg.ModulesPath = filepath.Join(t.TempDir(), "modules")
 	testRuntimeScope.session = &scope.Session{DB: db}
 	expectedByApp := map[string]string{}
 	for _, app := range []string{"crm", "hr"} {
-		_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, app, testRuntimeScope.cfg.DefaultChoysumPath)
+		_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, app, testRuntimeScope.cfg.DefaultChoysumPath)
 		if err != nil {
 			t.Fatalf("WorkspaceGeneratedAPITargets(%s) error = %v", app, err)
 		}
@@ -283,7 +283,7 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 
 	b := &ModuleBuilder{
 		runtimeScope: testRuntimeScope,
-		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth")},
+		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth")},
 	}
 
 	imports := b.entryPointImports()
@@ -298,7 +298,7 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 	if !importSet[expectedByApp["hr"]] {
 		t.Fatalf("expected installed app alias import, got %#v", imports)
 	}
-	_, _, missingDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "missing", testRuntimeScope.cfg.DefaultChoysumPath)
+	_, _, missingDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "missing", testRuntimeScope.cfg.DefaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(missing) error = %v", err)
 	}
@@ -306,7 +306,7 @@ func TestEntryPointImportsCollectsInstalledServiceApplicationAliases(t *testing.
 	if importSet[missingImportPath] {
 		t.Fatalf("expected module without service entrypoint to be skipped, got %#v", imports)
 	}
-	_, _, draftDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "draft", testRuntimeScope.cfg.DefaultChoysumPath)
+	_, _, draftDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "draft", testRuntimeScope.cfg.DefaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(draft) error = %v", err)
 	}
@@ -326,9 +326,9 @@ func TestBuildOptionsPassesEntryPointImportsToPlugins(t *testing.T) {
 	}
 
 	testRuntimeScope := newBuilderTestScope()
-	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.cfg.ModulesPath = filepath.Join(t.TempDir(), "modules")
 	testRuntimeScope.session = &scope.Session{DB: db}
-	_, _, crmServiceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	_, _, crmServiceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
 	}
@@ -350,7 +350,7 @@ func TestBuildOptionsPassesEntryPointImportsToPlugins(t *testing.T) {
 	builder := &ModuleBuilder{
 		runtimeScope:   testRuntimeScope,
 		module:         &meta.IrModule{Name: "auth", ApplicationStr: "auth"},
-		entryPoint:     filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth", "service", "index.ts"),
+		entryPoint:     filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth", "service", "index.ts"),
 		prebuildPlugin: prebuildPlugin,
 		buildPlugin:    buildPlugin,
 	}
@@ -624,7 +624,7 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 
 	testRuntimeScope := newBuilderTestScope()
 	testRuntimeScope.session = &scope.Session{DB: db}
-	builder := &ModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", Path: "/virtual/addons/base"}}
+	builder := &ModuleBuilder{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", Path: "/virtual/modules/base"}}
 
 	result, err := builder.Build()
 	if err != nil {
@@ -708,14 +708,14 @@ func TestPersistHelpersAndBuild(t *testing.T) {
 }
 
 func TestGetTsParserAndPathAliasParsesTsconfig(t *testing.T) {
-	addonsDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(addonsDir, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+	modulesDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(modulesDir, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
 	}
 	builder := &ModuleBuilder{
 		runtimeScope: &builderTestScope{
 			ctx:    context.Background(),
-			cfg:    &config.Config{AddonsPath: addonsDir},
+			cfg:    &config.Config{ModulesPath: modulesDir},
 			logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		},
 		module:   &meta.IrModule{ApplicationStr: "auth"},
@@ -726,7 +726,7 @@ func TestGetTsParserAndPathAliasParsesTsconfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getTsParserAndPathAlias() error = %v", err)
 	}
-	if parsed != builder.tsParser || alias["@/*"] != filepath.Join(addonsDir, "*") {
+	if parsed != builder.tsParser || alias["@/*"] != filepath.Join(modulesDir, "*") {
 		t.Fatalf("unexpected parser/path alias result: parser=%T alias=%#v", parsed, alias)
 	}
 }
@@ -804,16 +804,16 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 
 	testRuntimeScope := newBuilderTestScope()
 	testRuntimeScope.session = &scope.Session{DB: baseDB}
-	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.cfg.ModulesPath = filepath.Join(t.TempDir(), "modules")
 	testRuntimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
-	if err := os.MkdirAll(testRuntimeScope.cfg.AddonsPath, 0o755); err != nil {
-		t.Fatalf("mkdir addons path: %v", err)
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.AddonsPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
 	}
-	modulePath := filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth")
+	modulePath := filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth")
 	entryPoint := filepath.Join(modulePath, "service", "index.ts")
 	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
 		t.Fatalf("mkdir entry dir: %v", err)
@@ -822,7 +822,7 @@ func TestBundleToDirCtx_UsesContextSessionForRuntimeState(t *testing.T) {
 		t.Fatalf("write entry point: %v", err)
 	}
 
-	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
 	}
@@ -891,16 +891,16 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 
 	testRuntimeScope := newBuilderTestScope()
 	testRuntimeScope.session = &scope.Session{DB: baseDB}
-	testRuntimeScope.cfg.AddonsPath = filepath.Join(t.TempDir(), "addons")
+	testRuntimeScope.cfg.ModulesPath = filepath.Join(t.TempDir(), "modules")
 	testRuntimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
-	if err := os.MkdirAll(testRuntimeScope.cfg.AddonsPath, 0o755); err != nil {
-		t.Fatalf("mkdir addons path: %v", err)
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.AddonsPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
 	}
-	modulePath := filepath.Join(testRuntimeScope.cfg.AddonsPath, "auth")
+	modulePath := filepath.Join(testRuntimeScope.cfg.ModulesPath, "auth")
 	entryPoint := filepath.Join(modulePath, "service", "index.ts")
 	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
 		t.Fatalf("mkdir entry dir: %v", err)
@@ -909,7 +909,7 @@ func TestBundleToDirCtx_PreservesRuntimeTransactionWhenCallerContextHasNoTransac
 		t.Fatalf("write entry point: %v", err)
 	}
 
-	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
 	}
@@ -971,8 +971,8 @@ func TestUpdateModelExtends_UsesStableFieldsWithoutAstNode(t *testing.T) {
 	r := &parser.ParserResult{
 		RawContent: raw,
 		Model: &meta.IrModel{
-			RawExtends: "/virtual/addons/base/models/base_model.ts",
-			Extends:    "/virtual/addons/ext/models/base_model.ts",
+			RawExtends: "/virtual/modules/base/models/base_model.ts",
+			Extends:    "/virtual/modules/ext/models/base_model.ts",
 		},
 		ModelExtendsProperty: &parser.PropertyNode{
 			Line:  1,
@@ -982,7 +982,7 @@ func TestUpdateModelExtends_UsesStableFieldsWithoutAstNode(t *testing.T) {
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/models/base_model"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
@@ -991,7 +991,7 @@ func TestUpdateModelExtends_UsesStableFieldsWithoutAstNode(t *testing.T) {
 		t.Fatalf("expected extends statement to be rewritten, got: %s", r.Content)
 	}
 
-	re := regexp.MustCompile(`import model_[a-z0-9]+ from '/virtual/addons/ext/models/base_model';`)
+	re := regexp.MustCompile(`import model_[a-z0-9]+ from '/virtual/modules/ext/models/base_model';`)
 	if !re.MatchString(r.Content) {
 		t.Fatalf("expected rewritten import statement to be appended, got: %s", r.Content)
 	}
@@ -1013,10 +1013,10 @@ func TestUpdateModelExtends_ReturnsErrorWhenOffsetsBecomeStale(t *testing.T) {
 	r := &parser.ParserResult{
 		RawContent: raw,
 		Content:    content,
-		Path:       "/virtual/addons/partner_commercial/service/models/partner.ts",
+		Path:       "/virtual/modules/partner_commercial/service/models/partner.ts",
 		Model: &meta.IrModel{
-			RawExtends: "/virtual/addons/partner_bank/service/models/partner.ts",
-			Extends:    "/virtual/addons/partner_legacy/service/models/partner.ts",
+			RawExtends: "/virtual/modules/partner_bank/service/models/partner.ts",
+			Extends:    "/virtual/modules/partner_legacy/service/models/partner.ts",
 		},
 		ModelExtendsProperty: &parser.PropertyNode{
 			Line:  2,
@@ -1026,7 +1026,7 @@ func TestUpdateModelExtends_ReturnsErrorWhenOffsetsBecomeStale(t *testing.T) {
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/partner_bank/service/models/partner"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/partner_bank/service/models/partner"}
 	err := b.updateModelExtends(r, extendedModel)
 	if err == nil {
 		t.Fatalf("expected stale offsets to fail without range match")
@@ -1045,10 +1045,10 @@ func TestUpdateModelExtends_ReturnsErrorOnMismatchedExtendsSnippet(t *testing.T)
 
 	r := &parser.ParserResult{
 		RawContent: raw,
-		Path:       "/virtual/addons/test/service/models/child.ts",
+		Path:       "/virtual/modules/test/service/models/child.ts",
 		Model: &meta.IrModel{
-			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
-			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
+			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
 		ModelExtendsProperty: &parser.PropertyNode{
 			Line:  1,
@@ -1058,7 +1058,7 @@ func TestUpdateModelExtends_ReturnsErrorOnMismatchedExtendsSnippet(t *testing.T)
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
 	err := b.updateModelExtends(r, extendedModel)
 	if err == nil {
 		t.Fatalf("expected mismatched extends snippet to fail rewrite")
@@ -1075,10 +1075,10 @@ func TestUpdateModelExtends_PreservesWhitespaceAroundExtendsSlice(t *testing.T) 
 
 	r := &parser.ParserResult{
 		RawContent: raw,
-		Path:       "/virtual/addons/test/service/models/child.ts",
+		Path:       "/virtual/modules/test/service/models/child.ts",
 		Model: &meta.IrModel{
-			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
-			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
+			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
 		ModelExtendsProperty: &parser.PropertyNode{
 			Line:  1,
@@ -1088,7 +1088,7 @@ func TestUpdateModelExtends_PreservesWhitespaceAroundExtendsSlice(t *testing.T) 
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
@@ -1110,10 +1110,10 @@ func TestUpdateModelExtends_UsesDeterministicAlias(t *testing.T) {
 	buildInput := func() *parser.ParserResult {
 		return &parser.ParserResult{
 			RawContent: raw,
-			Path:       "/virtual/addons/test/service/models/child.ts",
+			Path:       "/virtual/modules/test/service/models/child.ts",
 			Model: &meta.IrModel{
-				RawExtends: "/virtual/addons/base/service/models/base_model.ts",
-				Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+				RawExtends: "/virtual/modules/base/service/models/base_model.ts",
+				Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 			},
 			ModelExtendsProperty: &parser.PropertyNode{
 				Line:  1,
@@ -1124,7 +1124,7 @@ func TestUpdateModelExtends_UsesDeterministicAlias(t *testing.T) {
 		}
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
 
 	r1 := buildInput()
 	if err := b.updateModelExtends(r1, extendedModel); err != nil {
@@ -1148,7 +1148,7 @@ func TestUpdateModelExtends_UsesDeterministicAlias(t *testing.T) {
 
 func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *testing.T) {
 	b := &ModuleBuilder{}
-	raw := "import ParentModel from '/virtual/addons/ext/service/models/base_model';\n\nexport default class Child extends BaseModel {}\n"
+	raw := "import ParentModel from '/virtual/modules/ext/service/models/base_model';\n\nexport default class Child extends BaseModel {}\n"
 	extendsText := "extends BaseModel"
 	start := strings.Index(raw, extendsText)
 	if start < 0 {
@@ -1157,10 +1157,10 @@ func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *tes
 
 	r := &parser.ParserResult{
 		RawContent: raw,
-		Path:       "/virtual/addons/test/service/models/child.ts",
+		Path:       "/virtual/modules/test/service/models/child.ts",
 		Model: &meta.IrModel{
-			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
-			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
+			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
 		ModelExtendsProperty: &parser.PropertyNode{
 			Line:  3,
@@ -1171,14 +1171,14 @@ func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *tes
 		Imports: map[string]*parser.Import{
 			"ParentModel": {
 				ReferenceIdent: "default",
-				ModuleSpecPath: "/virtual/addons/ext/service/models/base_model",
+				ModuleSpecPath: "/virtual/modules/ext/service/models/base_model",
 				Start:          0,
 				End:            strings.Index(raw, "\n"),
 			},
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
@@ -1186,7 +1186,7 @@ func TestUpdateModelExtends_ReusesExistingDefaultImportWithoutDuplication(t *tes
 	if !strings.Contains(r.Content, "class Child extends ParentModel") {
 		t.Fatalf("expected existing default import identifier to be reused, got: %s", r.Content)
 	}
-	if strings.Count(r.Content, "from '/virtual/addons/ext/service/models/base_model'") != 1 {
+	if strings.Count(r.Content, "from '/virtual/modules/ext/service/models/base_model'") != 1 {
 		t.Fatalf("expected no duplicate import from same module path, got: %s", r.Content)
 	}
 }
@@ -1202,10 +1202,10 @@ func TestUpdateModelExtends_InsertsImportIntoImportRegion(t *testing.T) {
 
 	r := &parser.ParserResult{
 		RawContent: raw,
-		Path:       "/virtual/addons/test/service/models/child.ts",
+		Path:       "/virtual/modules/test/service/models/child.ts",
 		Model: &meta.IrModel{
-			RawExtends: "/virtual/addons/base/service/models/base_model.ts",
-			Extends:    "/virtual/addons/ext/service/models/base_model.ts",
+			RawExtends: "/virtual/modules/base/service/models/base_model.ts",
+			Extends:    "/virtual/modules/ext/service/models/base_model.ts",
 		},
 		ModelExtendsProperty: &parser.PropertyNode{
 			Line:  3,
@@ -1216,20 +1216,20 @@ func TestUpdateModelExtends_InsertsImportIntoImportRegion(t *testing.T) {
 		Imports: map[string]*parser.Import{
 			"Foo": {
 				ReferenceIdent: "default",
-				ModuleSpecPath: "/virtual/addons/test/service/models/foo",
+				ModuleSpecPath: "/virtual/modules/test/service/models/foo",
 				Start:          0,
 				End:            strings.Index(raw, "\n"),
 			},
 		},
 	}
 
-	extendedModel := &meta.IrModel{Path: "/virtual/addons/ext/service/models/base_model"}
+	extendedModel := &meta.IrModel{Path: "/virtual/modules/ext/service/models/base_model"}
 	if err := b.updateModelExtends(r, extendedModel); err != nil {
 		t.Fatalf("updateModelExtends failed: %v", err)
 	}
 
 	importFooIdx := strings.Index(r.Content, "import Foo from './foo';")
-	newImportIdx := strings.Index(r.Content, "from '/virtual/addons/ext/service/models/base_model';")
+	newImportIdx := strings.Index(r.Content, "from '/virtual/modules/ext/service/models/base_model';")
 	classIdx := strings.Index(r.Content, "export default class Child")
 	if importFooIdx < 0 || newImportIdx < 0 || classIdx < 0 {
 		t.Fatalf("expected import region and class declaration to exist, got: %s", r.Content)

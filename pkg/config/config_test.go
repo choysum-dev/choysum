@@ -88,7 +88,7 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 	var custom customSection
 	cfgPath := writeTestConfig(t, strings.Join([]string{
 		"default_choysum_path: ./.choysum-bootstrap",
-		"addons_path: rel-addons",
+		"modules_path: rel-modules",
 		"dist_path: rel-dist",
 		"npm_path: rel-npm",
 		"compile:",
@@ -121,8 +121,8 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
 
-	if !filepath.IsAbs(cfg.AddonsPath) || !filepath.IsAbs(cfg.DistPath) || !filepath.IsAbs(cfg.NpmPath) || !filepath.IsAbs(cfg.DefaultChoysumPath) || !filepath.IsAbs(cfg.TmpPath) {
-		t.Fatalf("expected absolute paths, got addons=%q dist=%q npm=%q default_choysum=%q tmp=%q", cfg.AddonsPath, cfg.DistPath, cfg.NpmPath, cfg.DefaultChoysumPath, cfg.TmpPath)
+	if !filepath.IsAbs(cfg.ModulesPath) || !filepath.IsAbs(cfg.DistPath) || !filepath.IsAbs(cfg.NpmPath) || !filepath.IsAbs(cfg.DefaultChoysumPath) || !filepath.IsAbs(cfg.TmpPath) {
+		t.Fatalf("expected absolute paths, got modules=%q dist=%q npm=%q default_choysum=%q tmp=%q", cfg.ModulesPath, cfg.DistPath, cfg.NpmPath, cfg.DefaultChoysumPath, cfg.TmpPath)
 	}
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("npm_registry_url = %q, want %q", cfg.NPMRegistryURL, DefaultNPMRegistryURL)
@@ -237,7 +237,7 @@ func TestNewConfigDefaultsMissingDefaultChoysumPath(t *testing.T) {
 	t.Setenv("CHOYSUM_DEFAULT_CHOYSUM_PATH", "")
 
 	cfgPath := writeTestConfig(t, `
-addons_path: rel-addons
+modules_path: rel-modules
 `)
 
 	cfg, err := NewConfig(cfgPath)
@@ -442,7 +442,7 @@ func TestNewConfigRejectsRootTmpPath(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigPrefersLocalAddonsDirectory(t *testing.T) {
+func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	origWD, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
@@ -452,23 +452,23 @@ func TestDefaultConfigPrefersLocalAddonsDirectory(t *testing.T) {
 	}()
 
 	workDir := t.TempDir()
-	if err := os.Mkdir(filepath.Join(workDir, "addons"), 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+	if err := os.Mkdir(filepath.Join(workDir, "modules"), 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
 	if err := os.Chdir(workDir); err != nil {
 		t.Fatalf("chdir: %v", err)
 	}
 
 	cfg := defaultConfig()
-	wantAddons, _ := filepath.Abs(filepath.Join(workDir, "addons"))
+	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
 	wantNpm, _ := filepath.Abs(filepath.Join(workDir, "node_modules"))
 	for _, path := range []string{wantNpm} {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			t.Fatalf("mkdir expected path %q: %v", path, err)
 		}
 	}
-	if canonicalPath(t, cfg.AddonsPath) != canonicalPath(t, wantAddons) {
-		t.Fatalf("addons path = %q, want %q", cfg.AddonsPath, wantAddons)
+	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModules) {
+		t.Fatalf("modules path = %q, want %q", cfg.ModulesPath, wantModules)
 	}
 	if strings.TrimSpace(cfg.DistPath) != "" {
 		t.Fatalf("expected dist_path empty before path invariants, got %q", cfg.DistPath)
@@ -487,7 +487,7 @@ func TestDefaultConfigPrefersLocalAddonsDirectory(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigUsesRelativeAddonsWhenLocalDirMissing(t *testing.T) {
+func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
 	origWD, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
@@ -502,15 +502,15 @@ func TestDefaultConfigUsesRelativeAddonsWhenLocalDirMissing(t *testing.T) {
 	}
 
 	cfg := defaultConfig()
-	wantAddons, _ := filepath.Abs(filepath.Join(workDir, "addons"))
+	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
 	wantNpm, _ := filepath.Abs(filepath.Join(workDir, "node_modules"))
-	for _, path := range []string{wantAddons, wantNpm} {
+	for _, path := range []string{wantModules, wantNpm} {
 		if err := os.MkdirAll(path, 0o755); err != nil {
 			t.Fatalf("mkdir expected path %q: %v", path, err)
 		}
 	}
-	if canonicalPath(t, cfg.AddonsPath) != canonicalPath(t, wantAddons) {
-		t.Fatalf("addons path = %q, want %q", cfg.AddonsPath, wantAddons)
+	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModules) {
+		t.Fatalf("modules path = %q, want %q", cfg.ModulesPath, wantModules)
 	}
 	if strings.TrimSpace(cfg.DistPath) != "" {
 		t.Fatalf("expected dist_path empty before path invariants, got %q", cfg.DistPath)
@@ -600,7 +600,7 @@ func TestNewDefaultFrontendEnv(t *testing.T) {
 func TestConfigUnmarshalEnvOverrideAndHookErrors(t *testing.T) {
 	cfgPath := writeTestConfig(t, `
 default_choysum_path: ./.choysum-custom
-addons_path: from-config
+modules_path: from-config
 compile:
   production: false
 server:
@@ -608,21 +608,21 @@ server:
 `)
 	envOnlyCfgPath := writeTestConfig(t, `
 default_choysum_path: ./.choysum-custom
-addons_path: from-config
+modules_path: from-config
 `)
 
 	t.Run("custom env prefix overrides config values", func(t *testing.T) {
-		envAddons := filepath.Join(t.TempDir(), "env-addons")
+		envModules := filepath.Join(t.TempDir(), "env-modules")
 		envNPMRegistryURL := "https://registry.npmmirror.com"
-		t.Setenv("CHOYSUM_TEST_ADDONS_PATH", envAddons)
+		t.Setenv("CHOYSUM_TEST_MODULES_PATH", envModules)
 		t.Setenv("CHOYSUM_TEST_NPM_REGISTRY_URL", envNPMRegistryURL)
 
 		cfg := defaultConfig()
 		if err := cfg.unmarshal(cfgPath, WithEnvPrefix("CHOYSUM_TEST")); err != nil {
 			t.Fatalf("unmarshal() error = %v", err)
 		}
-		if canonicalPath(t, cfg.AddonsPath) != canonicalPath(t, envAddons) {
-			t.Fatalf("addons path = %q, want env override %q", cfg.AddonsPath, envAddons)
+		if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, envModules) {
+			t.Fatalf("modules path = %q, want env override %q", cfg.ModulesPath, envModules)
 		}
 		if cfg.NPMRegistryURL != envNPMRegistryURL {
 			t.Fatalf("npm_registry_url = %q, want env override %q", cfg.NPMRegistryURL, envNPMRegistryURL)

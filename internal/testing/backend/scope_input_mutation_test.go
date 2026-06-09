@@ -4,10 +4,12 @@
 package backend
 
 import (
+	"context"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 func backendScopeInputMutationFixtureConfig() *config.Config {
@@ -94,5 +96,112 @@ func TestTestRuntimeScopeInputMutationIsolation(t *testing.T) {
 	backendCopy["NESTED_LIST"].([]any)[0].(map[string]any)["k"] = "mutated"
 	if got := input.BackendEnv()["NESTED_LIST"].([]any)[0].(map[string]any)["k"]; got != "v" {
 		t.Fatalf("BackendEnv leaked nested list/map mutation, got %v", got)
+	}
+}
+
+func TestNewTestRuntimeScopeInputFromScopeCopiesRuntimeAndDBOptions(t *testing.T) {
+	runtimeScope := &testStubScope{
+		ctx: context.Background(),
+		cfg: &config.Config{
+			ModulesPath:        "/workspace/modules",
+			DistPath:           "/workspace/dist",
+			TmpPath:            "/workspace/tmp",
+			DefaultChoysumPath: "/workspace/.choysum",
+			ConfigPath:         "/workspace/config.yaml",
+			NpmPath:            "/workspace/node_modules",
+			NPMRegistryURL:     "https://registry.npmjs.org",
+			Server: &config.ServerConfig{
+				Environment: "test",
+				BindAddress: "127.0.0.1",
+				Port:        8088,
+			},
+			Auth: &config.AuthConfig{Enabled: true, InternalKey: "k"},
+		},
+	}
+
+	input := newTestRuntimeScopeInputFromScope(runtimeScope, scope.DatabaseRuntimeOptions{
+		Dialect:                "sqlite",
+		DSN:                    "file:test.db",
+		MaxOpenConns:           8,
+		MaxIdleConns:           4,
+		ConnMaxLifetimeSeconds: 120,
+	})
+
+	if got := input.ModulesPath(); got != "/workspace/modules" {
+		t.Fatalf("ModulesPath() = %q, want /workspace/modules", got)
+	}
+	if got := input.DistPath(); got != "/workspace/dist" {
+		t.Fatalf("DistPath() = %q, want /workspace/dist", got)
+	}
+	if got := input.TmpPath(); got != "/workspace/tmp" {
+		t.Fatalf("TmpPath() = %q, want /workspace/tmp", got)
+	}
+	if got := input.DefaultChoysumPath(); got != "/workspace/.choysum" {
+		t.Fatalf("DefaultChoysumPath() = %q, want /workspace/.choysum", got)
+	}
+	if got := input.ConfigPath(); got != "/workspace/config.yaml" {
+		t.Fatalf("ConfigPath() = %q, want /workspace/config.yaml", got)
+	}
+	if got := input.NpmPath(); got != "/workspace/node_modules" {
+		t.Fatalf("NpmPath() = %q, want /workspace/node_modules", got)
+	}
+	if got := input.NpmRegistryURL(); got != "https://registry.npmjs.org" {
+		t.Fatalf("NpmRegistryURL() = %q, want https://registry.npmjs.org", got)
+	}
+	if got := input.Environment(); got != "test" {
+		t.Fatalf("Environment() = %q, want test", got)
+	}
+	if !input.AuthEnabled() {
+		t.Fatal("AuthEnabled() = false, want true")
+	}
+	if got := input.AuthInternalKey(); got != "k" {
+		t.Fatalf("AuthInternalKey() = %q, want k", got)
+	}
+
+	compileCfg := input.CompileConfig()
+	if compileCfg == nil {
+		t.Fatal("CompileConfig() = nil, want default compile config")
+	}
+	if !compileCfg.SourceMap {
+		t.Fatal("CompileConfig().SourceMap = false, want true")
+	}
+	if compileCfg.Minify {
+		t.Fatal("CompileConfig().Minify = true, want false")
+	}
+
+	if got := input.DatabaseDialect(); got != "sqlite" {
+		t.Fatalf("DatabaseDialect() = %q, want sqlite", got)
+	}
+	if got := input.DatabaseDSN(); got != "file:test.db" {
+		t.Fatalf("DatabaseDSN() = %q, want file:test.db", got)
+	}
+	if got := input.DatabaseMaxOpenConns(); got != 8 {
+		t.Fatalf("DatabaseMaxOpenConns() = %d, want 8", got)
+	}
+	if got := input.DatabaseMaxIdleConns(); got != 4 {
+		t.Fatalf("DatabaseMaxIdleConns() = %d, want 4", got)
+	}
+	if got := input.DatabaseConnMaxLifetimeSeconds(); got != 120 {
+		t.Fatalf("DatabaseConnMaxLifetimeSeconds() = %d, want 120", got)
+	}
+}
+
+func TestNewTestRuntimeScopeInputFromScopeNilScope(t *testing.T) {
+	input := newTestRuntimeScopeInputFromScope(nil, scope.DatabaseRuntimeOptions{})
+	if got := input.ModulesPath(); got != "" {
+		t.Fatalf("ModulesPath() = %q, want empty", got)
+	}
+	if got := input.DatabaseDialect(); got != "" {
+		t.Fatalf("DatabaseDialect() = %q, want empty", got)
+	}
+	if input.CompileConfig() != nil {
+		t.Fatalf("CompileConfig() = %#v, want nil", input.CompileConfig())
+	}
+}
+
+func TestTestRuntimeScopeInputModulesPathFallsBackToSnapshotConfig(t *testing.T) {
+	input := testRuntimeScopeInput{cfg: snapshot.New(&config.Config{ModulesPath: "/snapshot/modules"})}
+	if got := input.ModulesPath(); got != "/snapshot/modules" {
+		t.Fatalf("ModulesPath() = %q, want /snapshot/modules", got)
 	}
 }

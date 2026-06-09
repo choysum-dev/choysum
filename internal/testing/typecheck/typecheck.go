@@ -21,12 +21,12 @@ import (
 )
 
 type RunOptions struct {
-	AddonsPath string
-	NpmPath    string
-	RepoRoot   string
-	TmpPath    string
-	Target     string // app name or "all"
-	Keep       bool
+	ModulesPath string
+	NpmPath     string
+	RepoRoot    string
+	TmpPath     string
+	Target      string // app name or "all"
+	Keep        bool
 
 	Stdout io.Writer
 	Stderr io.Writer
@@ -43,8 +43,8 @@ func Run(ctx context.Context, opts RunOptions) error {
 	if strings.TrimSpace(testingpathing.TestingRunIDFromContext(ctx)) == "" {
 		ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
 	}
-	if strings.TrimSpace(opts.AddonsPath) == "" {
-		return xfmt.Errorf("typecheck: addons_path is required")
+	if strings.TrimSpace(opts.ModulesPath) == "" {
+		return xfmt.Errorf("typecheck: modules_path is required")
 	}
 	if opts.Stdout == nil {
 		opts.Stdout = os.Stdout
@@ -63,7 +63,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 		opts.Target = "all"
 	}
 
-	apps, err := ResolveApps(opts.AddonsPath, opts.Target)
+	apps, err := ResolveApps(opts.ModulesPath, opts.Target)
 	if err != nil {
 		return err
 	}
@@ -89,10 +89,10 @@ func Run(ctx context.Context, opts RunOptions) error {
 	return nil
 }
 
-func ResolveApps(addonsPath string, target string) ([]string, error) {
-	addonsPath = strings.TrimSpace(addonsPath)
-	if addonsPath == "" {
-		return nil, xfmt.Errorf("typecheck: addons_path is required")
+func ResolveApps(modulesPath string, target string) ([]string, error) {
+	modulesPath = strings.TrimSpace(modulesPath)
+	if modulesPath == "" {
+		return nil, xfmt.Errorf("typecheck: modules_path is required")
 	}
 	target = strings.TrimSpace(target)
 	if target == "" {
@@ -100,12 +100,12 @@ func ResolveApps(addonsPath string, target string) ([]string, error) {
 	}
 
 	if target != "all" {
-		appDir := filepath.Join(addonsPath, target)
+		appDir := filepath.Join(modulesPath, target)
 		st, err := os.Stat(appDir)
 		if err != nil || !st.IsDir() {
 			return nil, xfmt.Errorf("typecheck: unknown app %q", target)
 		}
-		hasTargets, err := HasTargets(addonsPath, target)
+		hasTargets, err := HasTargets(modulesPath, target)
 		if err != nil {
 			return nil, err
 		}
@@ -115,9 +115,9 @@ func ResolveApps(addonsPath string, target string) ([]string, error) {
 		return []string{target}, nil
 	}
 
-	entries, err := os.ReadDir(addonsPath)
+	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
-		return nil, xfmt.Errorf("typecheck: read addons dir: %w", err)
+		return nil, xfmt.Errorf("typecheck: read modules dir: %w", err)
 	}
 
 	apps := make([]string, 0)
@@ -129,7 +129,7 @@ func ResolveApps(addonsPath string, target string) ([]string, error) {
 		if name == ".choysum" || name == "tmp" {
 			continue
 		}
-		hasTargets, err := HasTargets(addonsPath, name)
+		hasTargets, err := HasTargets(modulesPath, name)
 		if err != nil {
 			return nil, err
 		}
@@ -140,9 +140,9 @@ func ResolveApps(addonsPath string, target string) ([]string, error) {
 	return apps, nil
 }
 
-func HasTargets(addonsPath string, app string) (bool, error) {
-	serviceDir := filepath.Join(addonsPath, app, "service")
-	webDir := filepath.Join(addonsPath, app, "web")
+func HasTargets(modulesPath string, app string) (bool, error) {
+	serviceDir := filepath.Join(modulesPath, app, "service")
+	webDir := filepath.Join(modulesPath, app, "web")
 	if st, err := os.Stat(serviceDir); err == nil && st.IsDir() {
 		return true, nil
 	}
@@ -159,8 +159,8 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if strings.TrimSpace(opts.AddonsPath) == "" {
-		return xfmt.Errorf("typecheck: addons_path is required")
+	if strings.TrimSpace(opts.ModulesPath) == "" {
+		return xfmt.Errorf("typecheck: modules_path is required")
 	}
 	if strings.TrimSpace(opts.RepoRoot) == "" {
 		wd, _ := os.Getwd()
@@ -175,11 +175,11 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	repoRoot = filepath.Clean(repoRoot)
 
-	addonsRoot := opts.AddonsPath
-	if !filepath.IsAbs(addonsRoot) {
-		addonsRoot, _ = filepath.Abs(addonsRoot)
+	modulesRoot := opts.ModulesPath
+	if !filepath.IsAbs(modulesRoot) {
+		modulesRoot, _ = filepath.Abs(modulesRoot)
 	}
-	addonsRoot = filepath.Clean(addonsRoot)
+	modulesRoot = filepath.Clean(modulesRoot)
 
 	tmpRoot := strings.TrimSpace(opts.TmpPath)
 	if tmpRoot == "" {
@@ -203,7 +203,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	if app == "" {
 		return xfmt.Errorf("typecheck: missing app name")
 	}
-	hasInputs, err := hasTypecheckInputs(addonsRoot, app)
+	hasInputs, err := hasTypecheckInputs(modulesRoot, app)
 	if err != nil {
 		return xfmt.Errorf("typecheck: scan inputs for %s: %w", app, err)
 	}
@@ -225,7 +225,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 
 	hasWebSources := false
-	if st, err := os.Stat(filepath.Join(addonsRoot, app, "web")); err == nil && st.IsDir() {
+	if st, err := os.Stat(filepath.Join(modulesRoot, app, "web")); err == nil && st.IsDir() {
 		hasWebSources = true
 	}
 	viteClientTypesPath := filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts")
@@ -257,12 +257,12 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 
 	include := []string{
-		filepath.ToSlash(filepath.Join(addonsRoot, "**", "*.d.ts")),
-		filepath.ToSlash(filepath.Join(addonsRoot, app, "*.ts")),
-		filepath.ToSlash(filepath.Join(addonsRoot, app, "service", "**", "*.ts")),
-		filepath.ToSlash(filepath.Join(addonsRoot, app, "web", "**", "*.ts")),
-		filepath.ToSlash(filepath.Join(addonsRoot, app, "web", "**", "*.tsx")),
-		filepath.ToSlash(filepath.Join(addonsRoot, app, "web", "**", "*.vue")),
+		filepath.ToSlash(filepath.Join(modulesRoot, "**", "*.d.ts")),
+		filepath.ToSlash(filepath.Join(modulesRoot, app, "*.ts")),
+		filepath.ToSlash(filepath.Join(modulesRoot, app, "service", "**", "*.ts")),
+		filepath.ToSlash(filepath.Join(modulesRoot, app, "web", "**", "*.ts")),
+		filepath.ToSlash(filepath.Join(modulesRoot, app, "web", "**", "*.tsx")),
+		filepath.ToSlash(filepath.Join(modulesRoot, app, "web", "**", "*.vue")),
 	}
 	if hasWebSources {
 		include = append(include, filepath.ToSlash(viteClientTypesPath))
@@ -282,7 +282,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 			"types":                        []string{"node"},
 			"typeRoots":                    []string{filepath.ToSlash(filepath.Join(repoRoot, "node_modules", "@types"))},
 			"paths": map[string]any{
-				"@/*": []string{filepath.ToSlash(filepath.Join(addonsRoot, "*"))},
+				"@/*": []string{filepath.ToSlash(filepath.Join(modulesRoot, "*"))},
 			},
 			"noEmit": true,
 		},
@@ -348,8 +348,8 @@ func resolveNpxPath(npmPath string) (string, error) {
 	return "npx", nil
 }
 
-func hasTypecheckInputs(addonsPath string, app string) (bool, error) {
-	root := filepath.Join(addonsPath, app)
+func hasTypecheckInputs(modulesPath string, app string) (bool, error) {
+	root := filepath.Join(modulesPath, app)
 	st, err := os.Stat(root)
 	if err != nil || !st.IsDir() {
 		return false, nil

@@ -141,7 +141,7 @@ func (p *WebPlugin) TsPlugin() api.Plugin {
 				var importerModuleName string
 				runtimeOptions := p.resolvedRuntimeOptions()
 				args.Importer = strings.ReplaceAll(args.Importer, "\\", "/")
-				importerModuleName = strings.Split(strings.TrimPrefix(args.Importer, runtimeOptions.addonsPath+"/"), "/")[0]
+				importerModuleName = strings.Split(strings.TrimPrefix(args.Importer, runtimeOptions.modulesPath+"/"), "/")[0]
 
 				if args.Importer != "" {
 					for _, result := range p.ParserResults {
@@ -149,7 +149,7 @@ func (p *WebPlugin) TsPlugin() api.Plugin {
 							if slices.Contains(result.VueAppImportTree, resolvePath) {
 								for i := 0; i < len(result.VueAppImportTree); i++ {
 									if result.VueAppImportTree[i] == resolvePath {
-										if i > 0 && !strings.Contains(result.VueAppImportTree[i-1], filepath.Join(runtimeOptions.addonsPath, importerModuleName)) {
+										if i > 0 && !strings.Contains(result.VueAppImportTree[i-1], filepath.Join(runtimeOptions.modulesPath, importerModuleName)) {
 											return api.OnResolveResult{Path: result.VueAppImportTree[i-1]}, nil
 										}
 									}
@@ -587,7 +587,7 @@ func (p *WebPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexecuto
 
 	dist_path := runtimeOptions.distPath
 	webBaseUrl := strings.TrimSuffix(runtimeOptions.webBaseURL, "/") + "/"
-	htmlSourceFile := filepath.Join(runtimeOptions.addonsPath, "web", "web", "index.html")
+	htmlSourceFile := filepath.Join(runtimeOptions.modulesPath, "web", "web", "index.html")
 	htmlOutFile := p.IndexHtmlOutFile
 	if htmlOutFile == "" {
 		htmlOutFile = filepath.Join(dist_path, "web", "index.html")

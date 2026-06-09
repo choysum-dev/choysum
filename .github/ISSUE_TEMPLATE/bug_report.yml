@@ -51,7 +51,7 @@ body:
     attributes:
       label: Impact scope
       description: Which modules, commands, or pages are affected?
-      placeholder: "Example: cmd run, addons/meta, API /auth/login"
+      placeholder: "Example: cmd run, modules/meta, API /auth/login"
 
   - type: textarea
     id: logs

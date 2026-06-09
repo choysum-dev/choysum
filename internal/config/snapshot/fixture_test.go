@@ -7,7 +7,7 @@ import "github.com/choysum-dev/choysum/pkg/config"
 
 func snapshotFixtureConfig() *config.Config {
 	return &config.Config{
-		AddonsPath:         "/workspace/addons",
+		ModulesPath:        "/workspace/modules",
 		DistPath:           "/workspace/dist",
 		TmpPath:            "/workspace/tmp",
 		DefaultChoysumPath: "/workspace/.choysum",

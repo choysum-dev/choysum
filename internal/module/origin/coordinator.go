@@ -107,7 +107,7 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 	if moduleName == "" {
 		return nil, xfmt.Errorf("module name is empty")
 	}
-	moduleDir := filepath.Join(runtimeOptionsFromScope(c.runtimeScope).addonsPath, moduleName)
+	moduleDir := filepath.Join(runtimeOptionsFromScope(c.runtimeScope).modulesPath, moduleName)
 	packageJSONPath := filepath.Join(moduleDir, "package.json")
 	if _, err := os.Stat(packageJSONPath); err != nil {
 		if os.IsNotExist(err) {
@@ -266,7 +266,7 @@ func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, e
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
-		return nil, xfmt.Errorf("module %s not found in addons path", moduleName)
+		return nil, xfmt.Errorf("module %s not found in modules path", moduleName)
 	default:
 		return nil, xfmt.Errorf("unsupported origin input kind: %s", parsed.Kind)
 	}
@@ -312,7 +312,7 @@ func (c *Coordinator) Purge(ctx context.Context, moduleName string) error {
 		return err
 	}
 
-	moduleDir := filepath.Join(runtimeOptionsFromScope(c.runtimeScope).addonsPath, parsed.LocalName)
+	moduleDir := filepath.Join(runtimeOptionsFromScope(c.runtimeScope).modulesPath, parsed.LocalName)
 	if err := os.RemoveAll(moduleDir); err != nil {
 		return xfmt.Errorf("purge module %s failed: %w", parsed.LocalName, err)
 	}
@@ -335,7 +335,7 @@ func (c *Coordinator) resolveLocal(ctx context.Context, parsed ParsedInput) (*me
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return nil, xfmt.Errorf("load local module %s failed: %w", moduleName, err)
 	}
-	return nil, xfmt.Errorf("module %s not found in addons path", moduleName)
+	return nil, xfmt.Errorf("module %s not found in modules path", moduleName)
 }
 
 func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {

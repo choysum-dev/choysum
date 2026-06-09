@@ -1,0 +1,22 @@
+{
+  "name": "@choysum/module-document",
+  "version": "0.0.0",
+  "description": "Document attachment control-plane and data-plane skeleton",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "choysum": {
+    "moduleName": "document",
+    "application": "document",
+    "category": "System/Document",
+    "depends": [
+      "core",
+      "base",
+      "auth",
+      "task"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts"
+    }
+  }
+}

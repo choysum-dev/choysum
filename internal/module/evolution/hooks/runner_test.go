@@ -16,8 +16,8 @@ import (
 	"time"
 
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
-	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
+	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -111,13 +111,13 @@ func newHooksTestScope(t *testing.T) *hooksTestScope {
 	return &hooksTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			AddonsPath: filepath.Join(t.TempDir(), "addons"),
-			DistPath:   distRoot,
-			Log:        config.NewDefaultLogConfig(),
-			Db:         &config.DbConfig{Dialect: "sqlite"},
-			Server:     config.NewDefaultServerConfig(),
-			Auth:       config.NewDefaultAuthConfig(),
-			Compile:    config.NewDefaultCompileConfig(),
+			ModulesPath: filepath.Join(t.TempDir(), "modules"),
+			DistPath:    distRoot,
+			Log:         config.NewDefaultLogConfig(),
+			Db:          &config.DbConfig{Dialect: "sqlite"},
+			Server:      config.NewDefaultServerConfig(),
+			Auth:        config.NewDefaultAuthConfig(),
+			Compile:     config.NewDefaultCompileConfig(),
 		},
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
@@ -365,13 +365,13 @@ func TestResolveScriptsLoadDistScriptsAndBuildModuleEntryScript(t *testing.T) {
 func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *testing.T) {
 	testRuntimeScope := newHooksTestScope(t)
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
-	if err := os.MkdirAll(testRuntimeScope.cfg.AddonsPath, 0o755); err != nil {
-		t.Fatalf("mkdir addons path: %v", err)
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.AddonsPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
 	}
-	entryPoint := filepath.Join(testRuntimeScope.cfg.AddonsPath, "base", "service", "index.ts")
+	entryPoint := filepath.Join(testRuntimeScope.cfg.ModulesPath, "base", "service", "index.ts")
 	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
 		t.Fatalf("mkdir entry dir: %v", err)
 	}
@@ -386,7 +386,7 @@ func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *t
 	if err := runtimeDB.AutoMigrate(&meta.IrModule{}); err != nil {
 		t.Fatalf("migrate runtime modules: %v", err)
 	}
-	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.AddonsPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
+	_, _, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(testRuntimeScope.cfg.ModulesPath, "crm", testRuntimeScope.cfg.DefaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
 	}

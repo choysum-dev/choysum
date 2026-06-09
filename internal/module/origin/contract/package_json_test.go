@@ -179,7 +179,7 @@ func TestParsePackageJSONToIrModule(t *testing.T) {
 		raw := []byte(`{
 			"name":"@acme/choysum-sale",
 			"version":"0.1.0",
-			"description":"Sales addon",
+			"description":"Sales module",
 			"license":"LGPL-3.0-or-later",
 			"author":"Acme",
 			"peerDependencies":{"pinia":"^2.1.7","vue":"^3.4.29"},
@@ -193,7 +193,7 @@ func TestParsePackageJSONToIrModule(t *testing.T) {
 			}
 		}`)
 
-		result, err := ParsePackageJSONToIrModule(raw, "/tmp/addons/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+		result, err := ParsePackageJSONToIrModule(raw, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
 		if err != nil {
 			t.Fatalf("ParsePackageJSONToIrModule() error = %v", err)
 		}
@@ -259,11 +259,11 @@ func TestPackageJSONToIrModuleIdempotent(t *testing.T) {
 		PeerDependencies: map[string]string{"vue": "^3.4.29", "pinia": "^2.1.7"},
 	}
 
-	res1, err := PackageJSONToIrModule(pkg, "/tmp/addons/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+	res1, err := PackageJSONToIrModule(pkg, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
 	if err != nil {
 		t.Fatalf("first conversion error = %v", err)
 	}
-	res2, err := PackageJSONToIrModule(pkg, "/tmp/addons/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
+	res2, err := PackageJSONToIrModule(pkg, "/tmp/modules/sale", map[string]string{"wkhtmltopdf": ">=0.12.0"})
 	if err != nil {
 		t.Fatalf("second conversion error = %v", err)
 	}

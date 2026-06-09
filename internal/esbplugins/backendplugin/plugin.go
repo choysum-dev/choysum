@@ -349,14 +349,14 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 
 	// 2. Batch query external applications
 	externalAppMap := make(map[string]string)
-	externalAddonAppMap := make(map[string]string)
+	externalModuleAppMap := make(map[string]string)
 	runtimeOptions := p.resolvedRuntimeOptions()
-	addonsPath := strings.TrimSpace(runtimeOptions.addonsPath)
-	addonNameFromPath := func(path string) string {
-		if addonsPath == "" {
+	modulesPath := strings.TrimSpace(runtimeOptions.modulesPath)
+	moduleNameFromPath := func(path string) string {
+		if modulesPath == "" {
 			return ""
 		}
-		rel, err := filepath.Rel(addonsPath, path)
+		rel, err := filepath.Rel(modulesPath, path)
 		if err != nil {
 			return ""
 		}
@@ -373,9 +373,9 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 
 	if len(externalPaths) > 0 {
 		queryPathSet := make(map[string]struct{})
-		addonNameSet := make(map[string]struct{})
+		moduleNameSet := make(map[string]struct{})
 		var queryPaths []string
-		var addonNames []string
+		var moduleNames []string
 		addQueryPath := func(path string) {
 			path = strings.TrimSpace(path)
 			if path == "" {
@@ -393,10 +393,10 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 			if path == "" {
 				continue
 			}
-			if addonName := addonNameFromPath(path); addonName != "" {
-				if _, ok := addonNameSet[addonName]; !ok {
-					addonNameSet[addonName] = struct{}{}
-					addonNames = append(addonNames, addonName)
+			if moduleName := moduleNameFromPath(path); moduleName != "" {
+				if _, ok := moduleNameSet[moduleName]; !ok {
+					moduleNameSet[moduleName] = struct{}{}
+					moduleNames = append(moduleNames, moduleName)
 				}
 			}
 			addQueryPath(path)
@@ -407,14 +407,14 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 			}
 		}
 
-		if len(addonNames) > 0 {
+		if len(moduleNames) > 0 {
 			var modules []meta.IrModule
-			if err := p.Env.Session().Where("name IN ?", addonNames).Find(&modules).Error; err == nil {
+			if err := p.Env.Session().Where("name IN ?", moduleNames).Find(&modules).Error; err == nil {
 				for _, mod := range modules {
 					name := strings.TrimSpace(mod.Name)
 					app := strings.TrimSpace(mod.ApplicationStr)
 					if name != "" && app != "" {
-						externalAddonAppMap[name] = app
+						externalModuleAppMap[name] = app
 					}
 				}
 			}
@@ -448,8 +448,8 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 		if app, ok := externalAppMap[path]; ok {
 			return app, nil
 		}
-		if addonName := addonNameFromPath(path); addonName != "" {
-			if app, ok := externalAddonAppMap[addonName]; ok {
+		if moduleName := moduleNameFromPath(path); moduleName != "" {
+			if app, ok := externalModuleAppMap[moduleName]; ok {
 				return app, nil
 			}
 		}
@@ -972,7 +972,7 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 	return []api.Plugin{{
 		Name: "choysum-backend-inherit",
 		Setup: func(build api.PluginBuild) {
-			// addonsPath := "<addons-path>"
+			// modulesPath := "<modules-path>"
 			// build.OnResolve(api.OnResolveOptions{Filter: `.*`}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
 			// 	p.Mu.Lock()
 			// 	defer p.Mu.Unlock()
@@ -987,7 +987,7 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 			// 		resolvePath = filepath.Join(args.ResolveDir, resolvePath)
 			// 	}
 
-			// 	if strings.HasPrefix(resolvePath, addonsPath) {
+			// 	if strings.HasPrefix(resolvePath, modulesPath) {
 			// 		fullPath := ""
 			// 		possiablePaths := []string{
 			// 			resolvePath,
@@ -1010,7 +1010,7 @@ func (p *BackendPlugin) DefinePlugins(runtimeScope scope.Scope, jsExecutor jsexe
 			// 			if finalChildPath != "" {
 			// 				fullPath = finalChildPath
 			// 			}
-			// 			if args.Importer == "/Users/wangbuke/choysum/addons/sale2/service/models/order.ts" {
+			// 			if args.Importer == "/Users/wangbuke/choysum/modules/sale2/service/models/order.ts" {
 			// 				fmt.Printf("fullPath: %s args: %+s\n", fullPath, args.Importer)
 			// 			}
 			// 			return api.OnResolveResult{Path: fullPath}, nil

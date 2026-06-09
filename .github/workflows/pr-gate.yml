@@ -60,7 +60,7 @@ jobs:
           from pathlib import PurePosixPath
 
           repo_root = pathlib.Path.cwd()
-          addons_root = repo_root / "addons"
+          modules_root = repo_root / "modules"
           ignored_modules = {".choysum", "tmp"}
           high_fanout_modules = {"core", "web", "base"}
           build_prefixes = (
@@ -87,11 +87,11 @@ jobs:
               return json.dumps(sorted(values), separators=(",", ":"))
 
           def list_modules():
-              if not addons_root.is_dir():
+              if not modules_root.is_dir():
                   return []
               return sorted(
                   child.name
-                  for child in addons_root.iterdir()
+                  for child in modules_root.iterdir()
                   if child.is_dir() and child.name not in ignored_modules
               )
 
@@ -99,12 +99,12 @@ jobs:
           module_names = set(modules)
 
           def has_smoke_spec(module):
-              return (addons_root / module / "e2e" / "smoke.spec.ts").is_file()
+              return (modules_root / module / "e2e" / "smoke.spec.ts").is_file()
 
-          def classify_addon_path(path):
+          def classify_module_path(path):
               pure = PurePosixPath(path)
               parts = pure.parts
-              if len(parts) < 3 or parts[0] != "addons":
+              if len(parts) < 3 or parts[0] != "modules":
                   return None, None
               module = parts[1]
               if module in ignored_modules or module not in module_names:
@@ -145,7 +145,7 @@ jobs:
 
           reverse_graph = {module: set() for module in modules}
           for module in modules:
-              package_path = addons_root / module / "package.json"
+              package_path = modules_root / module / "package.json"
               if not package_path.is_file():
                   continue
               with package_path.open("r", encoding="utf-8") as fh:
@@ -227,14 +227,14 @@ jobs:
               docs_only = True
 
               for path in changed_paths:
-                  module, kind = classify_addon_path(path)
+                  module, kind = classify_module_path(path)
                   if module is not None:
                       direct_modules.add(module)
                       if kind == "doc":
                           continue
                       docs_only = False
                       impacted_modules.add(module)
-                      if path.startswith(f"addons/{module}/e2e/"):
+                      if path.startswith(f"modules/{module}/e2e/"):
                           direct_e2e_modules.add(module)
                       if kind == "contract":
                           contract_modules.add(module)
@@ -286,9 +286,9 @@ jobs:
                       run_full = False
                       run_bootstrap = False
                       if contract_modules:
-                          reason = f"addon-contract:{sorted(contract_modules)[0]}"
+                          reason = f"module-contract:{sorted(contract_modules)[0]}"
                       elif local_modules:
-                          reason = f"addon-local:{sorted(local_modules)[0]}"
+                          reason = f"module-local:{sorted(local_modules)[0]}"
                       else:
                           reason = "no-impactable-tests"
 
@@ -567,7 +567,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Run addon typecheck
+      - name: Run module typecheck
         run: go run . test typecheck ${{ matrix.module }}
 
   typecheck-all:

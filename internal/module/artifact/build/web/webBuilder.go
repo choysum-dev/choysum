@@ -680,7 +680,7 @@ func (b *WebModuleBuilder) getScriptNode(result *parser.ParserResult, extendsRes
 	}
 
 	canonicalXPathModule := normalizeModuleSpec(xpathModuleSpec)
-	canonicalCoreWebModule := normalizeModuleSpec(filepath.Join(runtimeOptions.addonsPath, "core", "web"))
+	canonicalCoreWebModule := normalizeModuleSpec(filepath.Join(runtimeOptions.modulesPath, "core", "web"))
 
 	for _, node := range result.VueComponentsPropertys {
 		if node == nil {
@@ -927,14 +927,14 @@ func (b *WebModuleBuilder) reparseXPathComponentsPropertyNode(scriptContent stri
 
 	pathAlias := map[string]string{}
 	resolvedAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{
-		Tsconfig: filepath.Join(runtimeOptions.addonsPath, "tsconfig.json"),
+		Tsconfig: filepath.Join(runtimeOptions.modulesPath, "tsconfig.json"),
 	})
 	if err == nil {
 		pathAlias = resolvedAlias
 	}
 
 	vueParser := vueparser.NewVueParser(b.runtimeScope, b.module)
-	virtualPath := filepath.Join(runtimeOptions.addonsPath, ".choysum_internal", "xpath_fallback.vue")
+	virtualPath := filepath.Join(runtimeOptions.modulesPath, ".choysum_internal", "xpath_fallback.vue")
 	wrapped := "<template><div/></template>\n<script lang=\"ts\">\n" + scriptContent + "\n</script>\n"
 	reparsed, err := vueParser.Parse(pathAlias, virtualPath, wrapped)
 	if err != nil {
@@ -2115,17 +2115,17 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.IrU
 
 func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugins.EsbPluginOptions) *api.BuildOptions {
 	runtimeOptions := b.resolvedRuntimeOptions()
-	addons_path := runtimeOptions.addonsPath
+	modules_path := runtimeOptions.modulesPath
 	dist_path := runtimeOptions.distPath
 	webBaseUrl := strings.TrimSuffix(runtimeOptions.webBaseURL, "/") + "/"
 
 	buildOptions := api.BuildOptions{
 		EntryPoints: []string{b.entryPoint},
 		PublicPath:  webBaseUrl + "assets",
-		Tsconfig:    filepath.Join(addons_path, "tsconfig.json"),
+		Tsconfig:    filepath.Join(modules_path, "tsconfig.json"),
 		NodePaths: []string{
-			filepath.Join(addons_path, "node_modules"),
-			filepath.Join(filepath.Dir(addons_path), "node_modules"),
+			filepath.Join(modules_path, "node_modules"),
+			filepath.Join(filepath.Dir(modules_path), "node_modules"),
 		},
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
@@ -2218,11 +2218,11 @@ func (b *WebModuleBuilder) entryPointImports() []string {
 		ep = strings.TrimSuffix(ep, ".ts")
 
 		// Normalize entrypoint to an import path resolvable by tsconfig paths.
-		// - If absolute: convert to addons-relative then prefix with @/
+		// - If absolute: convert to modules-relative then prefix with @/
 		// - If relative (manifest style like "./web/index.ts"): join with module name
 		var importPath string
 		if filepath.IsAbs(ep) {
-			rel, err := filepath.Rel(runtimeOptions.addonsPath, ep)
+			rel, err := filepath.Rel(runtimeOptions.modulesPath, ep)
 			if err == nil {
 				importPath = "@/" + filepath.ToSlash(rel)
 			} else {
@@ -2248,7 +2248,7 @@ func (b *WebModuleBuilder) entryPointImports() []string {
 		return moduleImports
 	}
 	for _, app := range installApplications {
-		_, workspaceWebDir, _, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOptions.addonsPath, app.Name, runtimeOptions.defaultChoysumPath)
+		_, workspaceWebDir, _, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOptions.modulesPath, app.Name, runtimeOptions.defaultChoysumPath)
 		if err != nil {
 			continue
 		}

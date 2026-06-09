@@ -11,14 +11,14 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath string
+	modulesPath string
 }
 
 func newRuntimeOptions(paths scope.PathsRuntimeOptions, ok bool) runtimeOptions {
 	if !ok {
 		return runtimeOptions{}
 	}
-	return runtimeOptions{addonsPath: paths.AddonsPath}
+	return runtimeOptions{modulesPath: paths.ModulesPath}
 }
 
 func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {
@@ -30,7 +30,7 @@ func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {
 }
 
 func hasRuntimeOptions(opts runtimeOptions) bool {
-	return strings.TrimSpace(opts.addonsPath) != ""
+	return strings.TrimSpace(opts.modulesPath) != ""
 }
 
 func (p *BackendPlugin) resolvedRuntimeOptions() runtimeOptions {
@@ -47,8 +47,8 @@ func (p *BackendPlugin) resolvedRuntimeOptions() runtimeOptions {
 }
 
 func (o runtimeOptions) Validate() error {
-	if strings.TrimSpace(o.addonsPath) == "" {
-		return xfmt.Errorf("backend plugin runtime options: addonsPath is required")
+	if strings.TrimSpace(o.modulesPath) == "" {
+		return xfmt.Errorf("backend plugin runtime options: modulesPath is required")
 	}
 	return nil
 }

@@ -15,16 +15,16 @@ import (
 func WorkspaceRoot(runtimeScope scope.Scope) string {
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 	if configPath := strings.TrimSpace(runtimeOpts.configPath); configPath != "" {
-		if absConfigPath, err := filepath.Abs(configPath); err == nil {
-			return filepath.Dir(absConfigPath)
+		if absConfigPath, err := filepath.Abs(configPath); err == nil && strings.TrimSpace(absConfigPath) != "" {
+			configPath = absConfigPath
 		}
 		return filepath.Dir(configPath)
 	}
-	if addonsPath := strings.TrimSpace(runtimeOpts.addonsPath); addonsPath != "" {
-		if absAddonsPath, err := filepath.Abs(addonsPath); err == nil {
-			return filepath.Dir(absAddonsPath)
+	if modulesPath := strings.TrimSpace(runtimeOpts.modulesPath); modulesPath != "" {
+		if absModulesPath, err := filepath.Abs(modulesPath); err == nil && strings.TrimSpace(absModulesPath) != "" {
+			modulesPath = absModulesPath
 		}
-		return filepath.Dir(addonsPath)
+		return filepath.Dir(modulesPath)
 	}
 	if cwd, err := os.Getwd(); err == nil {
 		return cwd

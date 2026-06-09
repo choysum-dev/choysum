@@ -60,7 +60,7 @@ func TestServerWatchHelpers(t *testing.T) {
 	defer watcher.Close()
 
 	root := t.TempDir()
-	moduleDir := filepath.Join(root, "addons", "demo")
+	moduleDir := filepath.Join(root, "modules", "demo")
 	nestedDir := filepath.Join(moduleDir, "sub")
 	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
@@ -114,7 +114,7 @@ func TestServerWatchHelpers(t *testing.T) {
 		t.Fatalf("unexpected watch callback: %#v", firstCall)
 	}
 
-	siblingDir := filepath.Join(root, "addons", "demo-sibling")
+	siblingDir := filepath.Join(root, "modules", "demo-sibling")
 	if err := os.MkdirAll(siblingDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
@@ -143,7 +143,7 @@ func TestServerWatchHelpers(t *testing.T) {
 
 func TestIsWatchedPathBoundaries(t *testing.T) {
 	root := t.TempDir()
-	moduleDir := filepath.Join(root, "addons", "demo")
+	moduleDir := filepath.Join(root, "modules", "demo")
 	nestedDir := filepath.Join(moduleDir, "sub")
 	if err := os.MkdirAll(nestedDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
@@ -183,8 +183,8 @@ func TestServerRegisterWatchDirAndDispatchWatchHandlerResolvesSymlinks(t *testin
 	defer watcher.Close()
 
 	root := t.TempDir()
-	logicalAddonsDir := filepath.Join(root, "addons")
-	if err := os.MkdirAll(logicalAddonsDir, 0o755); err != nil {
+	logicalModulesDir := filepath.Join(root, "modules")
+	if err := os.MkdirAll(logicalModulesDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	realModuleDir := filepath.Join(root, "real", "demo")
@@ -192,7 +192,7 @@ func TestServerRegisterWatchDirAndDispatchWatchHandlerResolvesSymlinks(t *testin
 	if err := os.MkdirAll(realNestedDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	symlinkModuleDir := filepath.Join(logicalAddonsDir, "demo")
+	symlinkModuleDir := filepath.Join(logicalModulesDir, "demo")
 	if err := os.Symlink(realModuleDir, symlinkModuleDir); err != nil {
 		t.Skipf("Symlink not supported: %v", err)
 	}
@@ -313,9 +313,9 @@ func TestWaitForWatchDebounceHonorsContextCancel(t *testing.T) {
 
 func TestWatchOverlappingRoots(t *testing.T) {
 	root := t.TempDir()
-	moduleDir := filepath.Join(root, "addons", "demo")
+	moduleDir := filepath.Join(root, "modules", "demo")
 	nestedDir := filepath.Join(moduleDir, "sub")
-	siblingDir := filepath.Join(root, "addons", "other")
+	siblingDir := filepath.Join(root, "modules", "other")
 	registeredRoots := map[string]struct{}{moduleDir: {}, nestedDir: {}, siblingDir: {}}
 
 	skip, coveredRoots, err := overlappingWatchRoots(nestedDir, registeredRoots)
@@ -329,7 +329,7 @@ func TestWatchOverlappingRoots(t *testing.T) {
 		t.Fatalf("coveredRoots for child = %#v, want empty", coveredRoots)
 	}
 
-	parentRoot := filepath.Join(root, "addons")
+	parentRoot := filepath.Join(root, "modules")
 	skip, coveredRoots, err = overlappingWatchRoots(parentRoot, registeredRoots)
 	if err != nil {
 		t.Fatalf("overlappingWatchRoots(parent) error = %v", err)
@@ -425,8 +425,8 @@ func TestWatchEventLogsIncludeStructuredFields(t *testing.T) {
 func TestServerDispatchWatchHandlerResolvesSymlinkedRemovedFile(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	root := t.TempDir()
-	logicalAddonsDir := filepath.Join(root, "addons")
-	if err := os.MkdirAll(logicalAddonsDir, 0o755); err != nil {
+	logicalModulesDir := filepath.Join(root, "modules")
+	if err := os.MkdirAll(logicalModulesDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	realModuleDir := filepath.Join(root, "real", "demo")
@@ -434,7 +434,7 @@ func TestServerDispatchWatchHandlerResolvesSymlinkedRemovedFile(t *testing.T) {
 	if err := os.MkdirAll(realNestedDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	symlinkModuleDir := filepath.Join(logicalAddonsDir, "demo")
+	symlinkModuleDir := filepath.Join(logicalModulesDir, "demo")
 	if err := os.Symlink(realModuleDir, symlinkModuleDir); err != nil {
 		t.Skipf("Symlink not supported: %v", err)
 	}
@@ -469,8 +469,8 @@ func TestServerDispatchWatchHandlerResolvesSymlinkedRemovedFile(t *testing.T) {
 func TestServerDispatchWatchHandlerResolvesSymlinkedRenamedOldFile(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	root := t.TempDir()
-	logicalAddonsDir := filepath.Join(root, "addons")
-	if err := os.MkdirAll(logicalAddonsDir, 0o755); err != nil {
+	logicalModulesDir := filepath.Join(root, "modules")
+	if err := os.MkdirAll(logicalModulesDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 	realModuleDir := filepath.Join(root, "real", "demo")
@@ -478,7 +478,7 @@ func TestServerDispatchWatchHandlerResolvesSymlinkedRenamedOldFile(t *testing.T)
 	if err := os.MkdirAll(realNestedDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
-	symlinkModuleDir := filepath.Join(logicalAddonsDir, "demo")
+	symlinkModuleDir := filepath.Join(logicalModulesDir, "demo")
 	if err := os.Symlink(realModuleDir, symlinkModuleDir); err != nil {
 		t.Skipf("Symlink not supported: %v", err)
 	}

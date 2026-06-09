@@ -330,6 +330,19 @@ func TestSyncModuleIndexAfterInstall_MetaNotIncludedSkipsSync(t *testing.T) {
 	}
 }
 
+func TestSyncModuleIndexAfterInstall_UsesDefaultSyncFunctionWhenNil(t *testing.T) {
+	m := &ModuleManager{
+		runtimeScope: &testLogScope{ctx: context.Background(), logger: slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))},
+		lockerFactory: func(scope.Scope) statepkg.Locker {
+			return &moduleIndexSyncTestLocker{}
+		},
+	}
+
+	if err := m.syncModuleIndexAfterInstall(context.Background(), m.runtimeScope.Logger(), []string{"meta"}); err != nil {
+		t.Fatalf("syncModuleIndexAfterInstall(default sync) error = %v, want nil", err)
+	}
+}
+
 func TestContainsModuleName_CaseInsensitiveAndTrimmed(t *testing.T) {
 	if !containsModuleName([]string{" core ", " Meta "}, "meta") {
 		t.Fatal("expected containsModuleName() to match case-insensitive trimmed target")

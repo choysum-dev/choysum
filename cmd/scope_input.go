@@ -11,7 +11,7 @@ import (
 )
 
 type scopeInputConfigOptions struct {
-	AddonsPath         string
+	ModulesPath        string
 	DistPath           string
 	TmpPath            string
 	DefaultChoysumPath string
@@ -33,7 +33,7 @@ func newScopeInputConfigOptions(snap *snapshot.ConfigSnapshot) *scopeInputConfig
 		return nil
 	}
 	return &scopeInputConfigOptions{
-		AddonsPath:         snap.AddonsPath,
+		ModulesPath:        snap.ModulesPath,
 		DistPath:           snap.DistPath,
 		TmpPath:            snap.TmpPath,
 		DefaultChoysumPath: snap.DefaultChoysumPath,
@@ -224,14 +224,14 @@ func (i commandRuntimeScopeInput) Environment() string {
 	return i.options.Server.Environment
 }
 
-func (i commandRuntimeScopeInput) AddonsPath() string {
-	if strings.TrimSpace(i.runtimeOptions.addonsPath) != "" {
-		return i.runtimeOptions.addonsPath
+func (i commandRuntimeScopeInput) ModulesPath() string {
+	if strings.TrimSpace(i.runtimeOptions.modulesPath) != "" {
+		return i.runtimeOptions.modulesPath
 	}
 	if i.options == nil {
 		return ""
 	}
-	return i.options.AddonsPath
+	return i.options.ModulesPath
 }
 
 func (i commandRuntimeScopeInput) DistPath() string {
@@ -538,14 +538,14 @@ func (i runRuntimeScopeInput) Environment() string {
 	return i.options.Server.Environment
 }
 
-func (i runRuntimeScopeInput) AddonsPath() string {
-	if strings.TrimSpace(i.cliOptions.addonsPath) != "" {
-		return i.cliOptions.addonsPath
+func (i runRuntimeScopeInput) ModulesPath() string {
+	if strings.TrimSpace(i.cliOptions.modulesPath) != "" {
+		return i.cliOptions.modulesPath
 	}
 	if i.options == nil {
 		return ""
 	}
-	return i.options.AddonsPath
+	return i.options.ModulesPath
 }
 
 func (i runRuntimeScopeInput) DistPath() string {

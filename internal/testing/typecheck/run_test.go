@@ -12,22 +12,22 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	t.Run("requires addons path", func(t *testing.T) {
+	t.Run("requires modules path", func(t *testing.T) {
 		err := Run(context.Background(), RunOptions{})
-		if err == nil || !strings.Contains(err.Error(), "addons_path is required") {
-			t.Fatalf("expected addons path error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "modules_path is required") {
+			t.Fatalf("expected modules path error, got %v", err)
 		}
 	})
 
 	t.Run("prints no tests found when resolver finds none", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		makeDir(t, filepath.Join(addonsPath, "empty"))
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "empty"))
 		var stdout strings.Builder
 
 		err := Run(context.Background(), RunOptions{
-			AddonsPath: addonsPath,
-			Target:     "all",
-			Stdout:     &stdout,
+			ModulesPath: modulesPath,
+			Target:      "all",
+			Stdout:      &stdout,
 		})
 		if err != nil {
 			t.Fatalf("expected no-tests-found success, got %v", err)
@@ -38,15 +38,15 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("prints no tests found when target has no ts inputs", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
 		t.Setenv("PATH", "")
 		var stdout strings.Builder
 
 		err := Run(context.Background(), RunOptions{
-			AddonsPath: addonsPath,
-			Target:     "auth",
-			Stdout:     &stdout,
+			ModulesPath: modulesPath,
+			Target:      "auth",
+			Stdout:      &stdout,
 		})
 		if err != nil {
 			t.Fatalf("expected no-tests-found success, got %v", err)
@@ -58,13 +58,13 @@ func TestRun(t *testing.T) {
 
 	t.Run("defaults target to all and processes apps in sorted order", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		addonsPath := t.TempDir()
-		makeDir(t, filepath.Join(addonsPath, "zeta", "web"))
-		writeFile(t, filepath.Join(addonsPath, "zeta", "web", "index.ts"), "export const z = 1\n")
-		makeDir(t, filepath.Join(addonsPath, "alpha", "service"))
-		writeFile(t, filepath.Join(addonsPath, "alpha", "service", "index.ts"), "export const a = 1\n")
-		makeDir(t, filepath.Join(addonsPath, ".choysum", "service"))
-		makeDir(t, filepath.Join(addonsPath, "tmp", "web"))
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "zeta", "web"))
+		writeFile(t, filepath.Join(modulesPath, "zeta", "web", "index.ts"), "export const z = 1\n")
+		makeDir(t, filepath.Join(modulesPath, "alpha", "service"))
+		writeFile(t, filepath.Join(modulesPath, "alpha", "service", "index.ts"), "export const a = 1\n")
+		makeDir(t, filepath.Join(modulesPath, ".choysum", "service"))
+		makeDir(t, filepath.Join(modulesPath, "tmp", "web"))
 		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
 		writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare interface ImportMetaEnv {}\n")
 
@@ -72,10 +72,10 @@ func TestRun(t *testing.T) {
 
 		var stderr strings.Builder
 		err := Run(context.Background(), RunOptions{
-			AddonsPath: addonsPath,
-			NpmPath:    npmPath,
-			RepoRoot:   repoRoot,
-			Stderr:     &stderr,
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			Stderr:      &stderr,
 		})
 		if err != nil {
 			t.Fatalf("Run returned error: %v", err)
@@ -91,9 +91,9 @@ func TestRun(t *testing.T) {
 
 	t.Run("uses current working directory as repo root when omitted", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		addonsPath := filepath.Join(repoRoot, "addons")
-		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
-		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		modulesPath := filepath.Join(repoRoot, "modules")
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 
 		originalWD, err := os.Getwd()
@@ -108,10 +108,10 @@ func TestRun(t *testing.T) {
 		}()
 
 		err = Run(context.Background(), RunOptions{
-			AddonsPath: addonsPath,
-			NpmPath:    npmPath,
-			Target:     "auth",
-			Stderr:     &strings.Builder{},
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			Target:      "auth",
+			Stderr:      &strings.Builder{},
 		})
 		if err != nil {
 			t.Fatalf("Run returned error: %v", err)
@@ -119,8 +119,8 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("propagates target resolution errors", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		err := Run(context.Background(), RunOptions{AddonsPath: addonsPath, Target: "missing"})
+		modulesPath := t.TempDir()
+		err := Run(context.Background(), RunOptions{ModulesPath: modulesPath, Target: "missing"})
 		if err == nil || !strings.Contains(err.Error(), "unknown app") {
 			t.Fatalf("expected unknown app error, got %v", err)
 		}
@@ -128,18 +128,18 @@ func TestRun(t *testing.T) {
 
 	t.Run("propagates typecheck app errors", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		addonsPath := t.TempDir()
-		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
-		writeFile(t, filepath.Join(addonsPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "printf 'compile failed'; exit 7\n")
 
 		var stderr strings.Builder
 		err := Run(context.Background(), RunOptions{
-			AddonsPath: addonsPath,
-			NpmPath:    npmPath,
-			RepoRoot:   repoRoot,
-			Target:     "auth",
-			Stderr:     &stderr,
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			Target:      "auth",
+			Stderr:      &stderr,
 		})
 		if err == nil || !strings.Contains(err.Error(), "typecheck failed for auth") {
 			t.Fatalf("expected typecheck failure, got %v", err)
@@ -151,18 +151,18 @@ func TestRun(t *testing.T) {
 
 	t.Run("propagates context cancellation from app typecheck", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		addonsPath := t.TempDir()
-		makeDir(t, filepath.Join(addonsPath, "auth", "service"))
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
 		err := Run(ctx, RunOptions{
-			AddonsPath: addonsPath,
-			NpmPath:    npmPath,
-			RepoRoot:   repoRoot,
-			Target:     "auth",
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			Target:      "auth",
 		})
 		if err == nil || err != context.Canceled {
 			t.Fatalf("expected context canceled, got %v", err)

@@ -71,15 +71,15 @@ func (p fakeParser) Parse(pathAlias map[string]string, path string, content stri
 
 func newTestScope(t *testing.T) scope.Scope {
 	t.Helper()
-	addonsPath := t.TempDir()
+	modulesPath := t.TempDir()
 	return &stubScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			AddonsPath: addonsPath,
-			DistPath:   filepath.Join(t.TempDir(), "dist"),
-			Compile:    config.NewDefaultCompileConfig(),
-			Server:     config.NewDefaultServerConfig(),
-			Log:        config.NewDefaultLogConfig(),
+			ModulesPath: modulesPath,
+			DistPath:    filepath.Join(t.TempDir(), "dist"),
+			Compile:     config.NewDefaultCompileConfig(),
+			Server:      config.NewDefaultServerConfig(),
+			Log:         config.NewDefaultLogConfig(),
 		},
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
@@ -89,7 +89,7 @@ func newPluginForTest(t *testing.T, parserImpl parser.Parser) *WebPrebuildPlugin
 	t.Helper()
 	testRuntimeScope := newTestScope(t)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	plugin := NewWebPrebuildPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.addonsPath, "app", "web", "index.ts"), WithParser(parserImpl))
+	plugin := NewWebPrebuildPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl))
 	if plugin == nil {
 		t.Fatal("expected web prebuild plugin to be created")
 	}
@@ -243,10 +243,10 @@ func TestWebPrebuildPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	baseOpts := runtimeOptionsFromScope(baseScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.addonsPath, "base", "web", "index.ts"), ApplicationStr: "base"}
-	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.addonsPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
+	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
+	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
 
-	plugin := NewWebPrebuildPlugin(baseScope, baseModule, filepath.Join(baseOpts.addonsPath, "base", "web", "index.ts"), WithParser(fakeParser{}))
+	plugin := NewWebPrebuildPlugin(baseScope, baseModule, filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), WithParser(fakeParser{}))
 	if plugin == nil {
 		t.Fatal("expected web prebuild plugin")
 	}

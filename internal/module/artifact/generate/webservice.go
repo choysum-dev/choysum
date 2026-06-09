@@ -28,7 +28,7 @@ type webServiceGenerator struct {
 	module       *meta.IrModule
 
 	// Optional override for pipeline-managed staging.
-	addonsWebDir string
+	modulesWebDir string
 }
 
 func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.GeneratorResult, error) {
@@ -41,7 +41,7 @@ func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.Gener
 	moduleSpecPath, referenceIdent := meta.BaseModelModuleSpec(g.runtimeScope)
 	funcMap := template.FuncMap{
 		"ConvertPath": func(path string) string {
-			p := strings.ReplaceAll(path, runtimeOpts.addonsPath, "@")
+			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
 		"ConvertTypeParam": func(model *meta.IrModel, service *meta.IrService) string {
@@ -88,15 +88,15 @@ func (g *webServiceGenerator) generate(app *meta.IrApplication) ([]*module.Gener
 		return nil, xfmt.Errorf("error executing web template: %w", err)
 	}
 
-	addonsWebDir := g.addonsWebDir
-	if addonsWebDir == "" {
-		_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesWebDir := g.modulesWebDir
+	if modulesWebDir == "" {
+		_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return nil, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsWebDir = webDir
+		modulesWebDir = webDir
 	}
-	webOutDir, _ := filepath.Abs(addonsWebDir)
+	webOutDir, _ := filepath.Abs(modulesWebDir)
 	if err := os.MkdirAll(webOutDir, 0755); err != nil {
 		return nil, err
 	}

@@ -19,7 +19,7 @@ import (
 
 type ResolveAppsFunc func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error)
 
-type HasTestsFunc func(addonsPath string, app string) (bool, error)
+type HasTestsFunc func(modulesPath string, app string) (bool, error)
 
 type TypecheckFunc func(ctx context.Context, runtimeScope scope.Scope, repoRoot string, app string) error
 
@@ -56,10 +56,10 @@ type FrontendRunnerFunc func(
 ) (bool, error)
 
 type RunOptions struct {
-	Env        scope.Scope
-	AddonsPath string
-	Target     string // app|all
-	RepoRoot   string
+	Env         scope.Scope
+	ModulesPath string
+	Target      string // app|all
+	RepoRoot    string
 
 	RunBE bool
 	RunFE bool
@@ -120,8 +120,8 @@ func Run(ctx context.Context, opts RunOptions) error {
 	if opts.Env == nil || !runtimeOpts.hasConfig {
 		return xfmt.Errorf("scope is not initialized")
 	}
-	if strings.TrimSpace(opts.AddonsPath) == "" {
-		return xfmt.Errorf("config missing addons_path")
+	if strings.TrimSpace(opts.ModulesPath) == "" {
+		return xfmt.Errorf("config missing modules_path")
 	}
 	if strings.TrimSpace(opts.Target) == "" {
 		return xfmt.Errorf("missing app")
@@ -180,14 +180,14 @@ func Run(ctx context.Context, opts RunOptions) error {
 		hasBETests := false
 		hasFETests := false
 		if opts.RunBE {
-			b, err := opts.HasBackendTests(opts.AddonsPath, app)
+			b, err := opts.HasBackendTests(opts.ModulesPath, app)
 			if err != nil {
 				return err
 			}
 			hasBETests = b
 		}
 		if opts.RunFE {
-			f, err := opts.HasFrontendTests(opts.AddonsPath, app)
+			f, err := opts.HasFrontendTests(opts.ModulesPath, app)
 			if err != nil {
 				return err
 			}

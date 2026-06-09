@@ -14,8 +14,8 @@ import (
 func TestHandleParserResultsBuildsOrderedResultsAndExports(t *testing.T) {
 	plugin := newPluginForTest(t, fakeParser{})
 	runtimeOpts := runtimeOptionsFromScope(plugin.Env)
-	firstPath := filepath.Join(runtimeOpts.addonsPath, "auth", "web", "components", "first.ts")
-	indexPath := filepath.Join(runtimeOpts.addonsPath, "auth", "web", "components", "index.ts")
+	firstPath := filepath.Join(runtimeOpts.modulesPath, "auth", "web", "components", "first.ts")
+	indexPath := filepath.Join(runtimeOpts.modulesPath, "auth", "web", "components", "index.ts")
 
 	plugin.ParserResultChan <- &parser.ParserResult{
 		Path: firstPath,
@@ -49,9 +49,9 @@ func TestHandleParserResultsBuildsOrderedResultsAndExports(t *testing.T) {
 func TestGetParserResultsRewritesVueComponentReferences(t *testing.T) {
 	plugin := newPluginForTest(t, fakeParser{})
 	runtimeOpts := runtimeOptionsFromScope(plugin.Env)
-	componentPath := filepath.Join(runtimeOpts.addonsPath, "auth", "web", "components", "base.ts")
+	componentPath := filepath.Join(runtimeOpts.modulesPath, "auth", "web", "components", "base.ts")
 	componentModuleSpec := componentPath[:len(componentPath)-len(filepath.Ext(componentPath))]
-	consumerPath := filepath.Join(runtimeOpts.addonsPath, "auth", "web", "pages", "home.ts")
+	consumerPath := filepath.Join(runtimeOpts.modulesPath, "auth", "web", "pages", "home.ts")
 
 	plugin.ParserResultChan <- &parser.ParserResult{
 		Path: componentPath,

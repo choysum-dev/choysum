@@ -130,14 +130,14 @@ jobs:
           import pathlib
 
           repo_root = pathlib.Path.cwd()
-          addons_root = repo_root / "addons"
+          modules_root = repo_root / "modules"
           ignored_modules = {".choysum", "tmp"}
 
           modules = []
           e2e_modules = []
 
-          if addons_root.is_dir():
-              for child in sorted(addons_root.iterdir(), key=lambda entry: entry.name):
+          if modules_root.is_dir():
+              for child in sorted(modules_root.iterdir(), key=lambda entry: entry.name):
                   if not child.is_dir() or child.name in ignored_modules:
                       continue
                   modules.append(child.name)
@@ -307,7 +307,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Run addon typecheck
+      - name: Run module typecheck
         run: |
           CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
           "$CHOYSUM_BIN" test typecheck ${{ matrix.module }}

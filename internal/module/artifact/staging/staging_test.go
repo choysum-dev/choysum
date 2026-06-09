@@ -233,7 +233,7 @@ func TestPrepareDir_CommitReplacesAndSharesOpID(t *testing.T) {
 	ctx := WithTmpRoot(WithOpID(context.Background(), "op-shared"), filepath.Join(base, "custom-tmp"))
 
 	targetA := filepath.Join(base, "dist", "a")
-	targetB := filepath.Join(base, "addons", "api", "a")
+	targetB := filepath.Join(base, "modules", "api", "a")
 	if err := os.MkdirAll(targetA, 0o755); err != nil {
 		t.Fatalf("mkdir targetA: %v", err)
 	}
@@ -488,26 +488,26 @@ func TestWorkspaceStagingRoot_IsSharedAcrossChoysumTargets(t *testing.T) {
 	}
 }
 
-func TestWorkspaceStagingRoot_UsesRepoRootForClassicDistAndAddonsPaths(t *testing.T) {
+func TestWorkspaceStagingRoot_UsesRepoRootForClassicDistAndModulesPaths(t *testing.T) {
 	t.Parallel()
 
 	repoRoot := t.TempDir()
 	tmpRoot := filepath.Join(t.TempDir(), "custom-tmp")
 
 	distTarget := filepath.Join(repoRoot, "dist", "apps", "auth")
-	addonsTarget := filepath.Join(repoRoot, "addons", "auth")
+	modulesTarget := filepath.Join(repoRoot, "modules", "auth")
 
 	distStagingRoot, err := WorkspaceStagingRoot(distTarget, tmpRoot)
 	if err != nil {
 		t.Fatalf("WorkspaceStagingRoot(dist) error = %v", err)
 	}
-	addonsStagingRoot, err := WorkspaceStagingRoot(addonsTarget, tmpRoot)
+	modulesStagingRoot, err := WorkspaceStagingRoot(modulesTarget, tmpRoot)
 	if err != nil {
-		t.Fatalf("WorkspaceStagingRoot(addons) error = %v", err)
+		t.Fatalf("WorkspaceStagingRoot(modules) error = %v", err)
 	}
 
-	if filepath.Clean(distStagingRoot) != filepath.Clean(addonsStagingRoot) {
-		t.Fatalf("expected dist and addons staging roots to match, got dist=%q addons=%q", distStagingRoot, addonsStagingRoot)
+	if filepath.Clean(distStagingRoot) != filepath.Clean(modulesStagingRoot) {
+		t.Fatalf("expected dist and modules staging roots to match, got dist=%q modules=%q", distStagingRoot, modulesStagingRoot)
 	}
 }
 

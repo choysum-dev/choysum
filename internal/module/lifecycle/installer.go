@@ -168,16 +168,6 @@ func (m *moduleInstaller) install() error {
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepData, dataStarted)
 
-	// webIndex := filepath.Join(addonsPath, m.module.Name, "web", "index.ts")
-	// if _, err := os.Stat(webIndex); err == nil {
-	// 	_, err = m.webBuilder.Build()
-	// 	if err != nil {
-	// 		return xfmt.Errorf("error building web module: %w", err)
-	// 	}
-	// } else if !os.IsNotExist(err) {
-	// 	return xfmt.Errorf("error checking web index file: %w", err)
-	// }
-
 	saveStarted := time.Now()
 	m.module.Status = meta.Installed
 	if len(m.module.Dependencies) > 0 {
@@ -349,7 +339,7 @@ func newModuleInstaller(runtimeScope scope.Scope, jsExecutor jsexecutor.ScriptEx
 	}
 
 	if module.ServiceEntryPoint != "" && !filepath.IsAbs(module.ServiceEntryPoint) {
-		module.ServiceEntryPoint = filepath.Join(runtimeOptionsFromScope(runtimeScope).addonsPath, module.Name, module.ServiceEntryPoint)
+		module.ServiceEntryPoint = filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, module.Name, module.ServiceEntryPoint)
 	}
 	installer.builder = internalbackendbuilder.NewModuleBuilder(runtimeScope, jsExecutor, module, module.ServiceEntryPoint, internalbackendbuilder.WithPublishDist(false))
 

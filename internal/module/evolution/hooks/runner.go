@@ -172,7 +172,7 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	runtimeScope := deriveRuntimeScope(ctx, r.runtimeScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 	if !filepath.IsAbs(entry) {
-		entry = filepath.Join(runtimeOpts.addonsPath, r.module.Name, entry)
+		entry = filepath.Join(runtimeOpts.modulesPath, r.module.Name, entry)
 	}
 	builder := internalbackendbuilder.NewModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry, internalbackendbuilder.WithPublishDist(false))
 	if bundler, ok := builder.(module.Bundler); ok {
