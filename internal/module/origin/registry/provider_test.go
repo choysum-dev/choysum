@@ -873,6 +873,11 @@ func TestProviderNormalizePackageAuthorAndParseModule(t *testing.T) {
 	if _, err := parseModuleFromPackageJSON(mismatchRaw, "auth", modulePath); err == nil || !strings.Contains(err.Error(), "does not match requested module") {
 		t.Fatalf("expected module mismatch error, got %v", err)
 	}
+
+	invalidContractRaw := []byte(`{"name":"@acme/choysum-auth","version":"1.0.0","choysum":{"moduleName":"","application":"auth"}}`)
+	if _, err := parseModuleFromPackageJSON(invalidContractRaw, "auth", modulePath); err == nil || !strings.Contains(err.Error(), "parse package.json") {
+		t.Fatalf("expected parse package.json contract error, got %v", err)
+	}
 }
 
 func TestProviderPathAndTarballHelpers(t *testing.T) {

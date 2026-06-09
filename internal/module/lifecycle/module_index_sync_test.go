@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -211,6 +213,32 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 	}
 	if !strings.Contains(entryText, absEntry) {
 		t.Fatalf("expected app entry to preserve absolute service import, got %q", entryText)
+	}
+}
+
+func TestModuleManagerGenerateAppToDirsPropagatesGeneratorError(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	if err := db.Create(&meta.IrModule{
+		Name:           "crm_core",
+		ApplicationStr: "crm",
+		Status:         meta.Installed,
+		ApplicationId:  sql.NullString{String: "missing-app", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+
+	err := manager.generateAppToDirs(context.Background(), "crm", pipeline.ModulesAppTargets{}, filepath.Join(t.TempDir(), "dist-app"))
+	if err == nil || !strings.Contains(err.Error(), "error generating app crm") {
+		t.Fatalf("generateAppToDirs() error = %v, want wrapped generator error", err)
 	}
 }
 

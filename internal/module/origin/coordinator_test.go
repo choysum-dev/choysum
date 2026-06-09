@@ -376,6 +376,7 @@ func TestLooksLikeCatalogRegistryURL(t *testing.T) {
 		expected bool
 	}{
 		{name: "invalid url", url: "https://%zz", expected: false},
+		{name: "unsupported scheme", url: "ftp://example.com/modules", expected: false},
 		{name: "empty host", url: "https:///modules", expected: false},
 		{name: "npmjs", url: "https://registry.npmjs.org", expected: false},
 		{name: "npmmirror", url: "https://registry.npmmirror.com", expected: false},
@@ -383,6 +384,7 @@ func TestLooksLikeCatalogRegistryURL(t *testing.T) {
 		{name: "github package", url: "https://npm.pkg.github.com", expected: false},
 		{name: "localhost", url: "http://localhost:4873", expected: false},
 		{name: "loopback", url: "http://127.0.0.1:4873", expected: false},
+		{name: "catalog host no api path", url: "https://catalog.choysum.dev/modules", expected: true},
 		{name: "catalog host", url: "https://catalog.choysum.dev/v1/index.json", expected: true},
 		{name: "github catalog", url: "https://github.com/acme/registry", expected: true},
 		{name: "generic https host", url: "https://example.com/modules", expected: true},
@@ -428,6 +430,15 @@ func TestCoordinatorHelperBranchFunctions(t *testing.T) {
 
 func TestCoordinatorPeekLocalModuleErrorBranches(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+
+	t.Run("empty module name", func(t *testing.T) {
+		runtimeScope := &sourceTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DefaultChoysumPath: t.TempDir()}}
+		coordinator := NewCoordinator(runtimeScope)
+
+		if _, err := coordinator.peekLocalModule("   "); err == nil || !strings.Contains(err.Error(), "module name is empty") {
+			t.Fatalf("expected empty module name error, got %v", err)
+		}
+	})
 
 	t.Run("stat package json failure", func(t *testing.T) {
 		modulesPathFile := filepath.Join(t.TempDir(), "modules-file")

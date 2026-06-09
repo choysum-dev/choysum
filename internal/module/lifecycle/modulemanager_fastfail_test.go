@@ -128,3 +128,67 @@ func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 		t.Fatalf("peek inputs = %#v, want [registry/task@1.0.0]", coordinator.peekInputs)
 	}
 }
+
+func TestModuleManagerUninstallFastFailWhenLoadReturnsError(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	locker := &moduleIndexSyncTestLocker{}
+
+	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
+		return locker
+	}))
+	manager.bootstrapOnce.Do(func() {})
+
+	err := manager.Uninstall(context.Background(), "auth")
+	if err == nil || !strings.Contains(err.Error(), "error loading module auth") {
+		t.Fatalf("Uninstall() error = %v, want load error", err)
+	}
+	if locker.acquired != 0 {
+		t.Fatalf("locker Acquire calls = %d, want 0", locker.acquired)
+	}
+}
+
+func TestModuleManagerUpgradeFastFailWhenLocalLoadReturnsError(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	locker := &moduleIndexSyncTestLocker{}
+
+	manager := NewModuleManager(runtimeScope, nil, WithLockerFactory(func(scope.Scope) statepkg.Locker {
+		return locker
+	}))
+	manager.bootstrapOnce.Do(func() {})
+
+	err := manager.Upgrade(context.Background(), "auth")
+	if err == nil || !strings.Contains(err.Error(), "error loading module auth") {
+		t.Fatalf("Upgrade() error = %v, want load error", err)
+	}
+	if locker.acquired != 0 {
+		t.Fatalf("locker Acquire calls = %d, want 0", locker.acquired)
+	}
+}
+
+func TestModuleManagerUpgradeRegistryEntersLeaseBeforeOriginSwitchFailure(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &fastFailOriginCoordinator{}
+
+	manager := NewModuleManager(
+		runtimeScope,
+		nil,
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+
+	err := manager.Upgrade(context.Background(), "registry/task@1.0.0")
+	if err == nil || !strings.Contains(err.Error(), "scope config is not initialized") {
+		t.Fatalf("Upgrade() error = %v, want origin switch config error", err)
+	}
+	if locker.acquired != 1 {
+		t.Fatalf("locker Acquire calls = %d, want 1", locker.acquired)
+	}
+	if locker.released != 1 {
+		t.Fatalf("locker Release calls = %d, want 1", locker.released)
+	}
+}

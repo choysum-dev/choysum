@@ -164,10 +164,6 @@ func normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL string) (s
 }
 
 func registryPackageMetadataURL(registryURL, moduleName, packageName, defaultRegistryURL string) (string, string, error) {
-	moduleName = strings.TrimSpace(moduleName)
-	if moduleName == "" {
-		return "", "", xfmt.Errorf("module name is empty")
-	}
 	baseURL, err := normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL)
 	if err != nil {
 		return "", "", err
@@ -302,9 +298,6 @@ func parseModuleFromPackageJSON(raw []byte, moduleName, modulePath string) (*met
 	result, err := contract.ParsePackageJSONToIrModule(normalizedRaw, modulePath, nil)
 	if err != nil {
 		return nil, xfmt.Errorf("parse package.json: %w", err)
-	}
-	if result == nil || result.Module == nil {
-		return nil, xfmt.Errorf("parse package.json: empty module result")
 	}
 	module := result.Module
 	if strings.TrimSpace(module.Name) != strings.TrimSpace(moduleName) {

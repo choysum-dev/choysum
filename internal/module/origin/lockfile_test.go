@@ -130,6 +130,37 @@ func TestWorkspaceRootFallsBackToModulesPathAndCWD(t *testing.T) {
 	}
 }
 
+func TestWorkspaceRootModulesPathDirFallbackWhenAbsFails(t *testing.T) {
+	originCWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(originCWD)
+	}()
+
+	brokenRoot := t.TempDir()
+	brokenCWD := filepath.Join(brokenRoot, "gone")
+	if err := os.MkdirAll(brokenCWD, 0o755); err != nil {
+		t.Fatalf("os.MkdirAll(%q) error = %v", brokenCWD, err)
+	}
+	if err := os.Chdir(brokenCWD); err != nil {
+		t.Fatalf("os.Chdir(%q) error = %v", brokenCWD, err)
+	}
+	if err := os.RemoveAll(brokenRoot); err != nil {
+		t.Fatalf("os.RemoveAll(%q) error = %v", brokenRoot, err)
+	}
+
+	if _, err := filepath.Abs("relative/modules"); err == nil {
+		t.Skip("platform did not trigger filepath.Abs failure from deleted cwd")
+	}
+
+	runtimeScope := &originPathsScope{ctx: context.Background(), input: originPathsInput{modulesPath: "relative/modules"}}
+	if got := WorkspaceRoot(runtimeScope); got != "relative" {
+		t.Fatalf("WorkspaceRoot() = %q, want %q", got, "relative")
+	}
+}
+
 func TestWorkspaceChoysumDirAndLockPaths(t *testing.T) {
 	workspaceRoot := t.TempDir()
 
