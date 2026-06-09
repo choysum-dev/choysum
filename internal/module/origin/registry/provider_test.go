@@ -686,6 +686,9 @@ func TestProviderAdditionalHelperBranches(t *testing.T) {
 	if _, err := normalizeRegistryMetadataBaseURL("https://%zz", config.DefaultNPMRegistryURL); err == nil || !strings.Contains(err.Error(), "invalid registry url") {
 		t.Fatalf("expected invalid registry URL parse error, got %v", err)
 	}
+	if _, err := normalizeRegistryMetadataBaseURL("https://", config.DefaultNPMRegistryURL); err == nil || !strings.Contains(err.Error(), "unsupported registry url") {
+		t.Fatalf("expected unsupported registry host error, got %v", err)
+	}
 	if _, _, err := registryPackageMetadataURL("https://registry.npmjs.org", "auth", "", "https://%zz"); err == nil || !strings.Contains(err.Error(), "invalid default npm registry url") {
 		t.Fatalf("expected registryPackageMetadataURL default registry error, got %v", err)
 	}
@@ -794,6 +797,18 @@ func TestProviderResolveNPMVersionBranches(t *testing.T) {
 
 	if gotVersion, gotRaw, err := resolveNPMVersion(metadata, "rc"); err != nil || gotVersion != "3.0.0-rc.1" || string(gotRaw) != string(rawV300rc) {
 		t.Fatalf("dist-tag resolve got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	if gotVersion, gotRaw, err := resolveNPMVersion(metadata, "latest"); err != nil || gotVersion != "2.0.0" || string(gotRaw) != string(rawV200) {
+		t.Fatalf("latest dist-tag v-prefixed resolve got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	metadataLatestPlain := &npmPackageMetadata{
+		DistTags: map[string]string{"latest": "2.0.0"},
+		Versions: map[string]json.RawMessage{"2.0.0": rawV200},
+	}
+	if gotVersion, gotRaw, err := resolveNPMVersion(metadataLatestPlain, "latest"); err != nil || gotVersion != "2.0.0" || string(gotRaw) != string(rawV200) {
+		t.Fatalf("latest dist-tag plain resolve got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
 	}
 
 	singleVersion := &npmPackageMetadata{Versions: map[string]json.RawMessage{"0.9.0": rawV100}}

@@ -136,6 +136,37 @@ func TestModuleManagerResolveGeneratedAPIRootUsesDefaultChoysumPath(t *testing.T
 	}
 }
 
+func TestModuleManagerBuildGlobalWebToDirResolvesRelativeEntryPath(t *testing.T) {
+	modulesPath := t.TempDir()
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, &moduleManagerNoopScriptExecutor{})
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := os.MkdirAll(filepath.Join(modulesPath, "web"), 0o755); err != nil {
+		t.Fatalf("mkdir web module dir: %v", err)
+	}
+	if err := db.Create(&meta.IrModule{
+		Name:          "web",
+		Status:        meta.Installed,
+		Version:       "v1.0.0",
+		Path:          filepath.Join(modulesPath, "web"),
+		WebEntryPoint: "web/missing.ts",
+	}).Error; err != nil {
+		t.Fatalf("seed web module: %v", err)
+	}
+
+	err := manager.buildGlobalWebToDir(context.Background(), filepath.Join(t.TempDir(), "dist", "web"))
+	if err == nil || !strings.Contains(err.Error(), "global web build failed") {
+		t.Fatalf("buildGlobalWebToDir() error = %v, want wrapped global web build error", err)
+	}
+}
+
 func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
 	modulesPath := t.TempDir()
 	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.3.0","choysum":{"moduleName":"partner","application":"partner"}}`)
@@ -805,6 +836,7 @@ func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
 		Name:           "auth",
 		ApplicationStr: "crm",
 		Version:        "v1.2.0",
+		Path:           filepath.Join(modulesPath, "auth"),
 	}}
 	manager := NewModuleManager(
 		runtimeScope,
@@ -868,12 +900,22 @@ func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
 
 	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.IrModule{
+		Name:           "auth",
+		ApplicationStr: "crm",
+		Version:        "v1.2.0",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}}
 	manager := NewModuleManager(
 		runtimeScope,
 		&moduleManagerNoopScriptExecutor{},
 		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
 	)
 	manager.bootstrapOnce.Do(func() {})
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+		t.Fatalf("mkdir auth module dir: %v", err)
+	}
 
 	if err := db.Create(&meta.IrModule{
 		Name:           "auth",
@@ -898,6 +940,196 @@ func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
 	}
 	if mod.Status != meta.Uninstalled {
 		t.Fatalf("module status after uninstall = %q, want %q", mod.Status, meta.Uninstalled)
+	}
+
+	for _, dir := range []string{
+		filepath.Join(distPath, "apps", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "proto", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "web", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "service", "crm"),
+	} {
+		if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
+			t.Fatalf("expected staged app output dir %q, stat err=%v info=%#v", dir, statErr, info)
+		}
+	}
+}
+
+func TestModuleManagerInstallPropagatesGeneratedAPIRootError(t *testing.T) {
+	modulesPath := t.TempDir()
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
+	runtimeScope.cfg.TmpPath = filepath.Join(t.TempDir(), "tmp")
+	runtimeScope.cfg.DefaultChoysumPath = string(filepath.Separator)
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.IrModule{
+		Name:           "auth",
+		ApplicationStr: "crm",
+		Version:        "v1.2.0",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}}
+	locker := &moduleIndexSyncTestLocker{}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+		t.Fatalf("mkdir auth module dir: %v", err)
+	}
+
+	if err := db.Create(&meta.IrModule{
+		Name:           "auth",
+		Status:         meta.Installed,
+		Version:        "v1.0.0",
+		ApplicationStr: "crm",
+		Path:           filepath.Join(modulesPath, "auth"),
+		DependsStr:     []byte(`["missing_dep"]`),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	err := manager.Install(context.Background(), "auth")
+	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api root") {
+		t.Fatalf("Install() error = %v, want generated api root error", err)
+	}
+}
+
+func TestModuleManagerUninstallPropagatesGeneratedAPIRootError(t *testing.T) {
+	modulesPath := t.TempDir()
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
+	runtimeScope.cfg.TmpPath = filepath.Join(t.TempDir(), "tmp")
+	runtimeScope.cfg.DefaultChoysumPath = string(filepath.Separator)
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return &moduleIndexSyncTestLocker{} }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+		t.Fatalf("mkdir auth module dir: %v", err)
+	}
+
+	if err := db.Create(&meta.IrModule{
+		Name:           "auth",
+		Status:         meta.Installed,
+		Version:        "v1.0.0",
+		ApplicationStr: "crm",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	err := manager.Uninstall(context.Background(), "auth")
+	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api root") {
+		t.Fatalf("Uninstall() error = %v, want generated api root error", err)
+	}
+}
+
+func TestModuleManagerUpgradePropagatesGeneratedAPIRootError(t *testing.T) {
+	modulesPath := t.TempDir()
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = filepath.Join(t.TempDir(), "dist")
+	runtimeScope.cfg.TmpPath = filepath.Join(t.TempDir(), "tmp")
+	runtimeScope.cfg.DefaultChoysumPath = string(filepath.Separator)
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return &moduleIndexSyncTestLocker{} }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := db.Create(&meta.IrModule{
+		Name:           "auth",
+		Status:         meta.Installed,
+		Version:        "v1.0.0",
+		ApplicationStr: "crm",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	err := manager.Upgrade(context.Background(), "auth")
+	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api root") {
+		t.Fatalf("Upgrade() error = %v, want generated api root error", err)
+	}
+}
+
+func TestModuleManagerUpgradeRunsAppStageCallbacks(t *testing.T) {
+	modulesPath := t.TempDir()
+	distPath := filepath.Join(t.TempDir(), "dist")
+	tmpPath := filepath.Join(t.TempDir(), "tmp")
+	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = distPath
+	runtimeScope.cfg.TmpPath = tmpPath
+	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.IrModule{
+		Name:           "auth",
+		ApplicationStr: "crm",
+		Version:        "v1.2.0",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+		t.Fatalf("mkdir auth module dir: %v", err)
+	}
+
+	if err := db.Create(&meta.IrModule{
+		Name:           "auth",
+		Status:         meta.Installed,
+		Version:        "v1.0.0",
+		ApplicationStr: "crm",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	if err := manager.Upgrade(context.Background(), "auth"); err != nil {
+		t.Fatalf("Upgrade() error = %v", err)
+	}
+	if locker.acquired != 1 || locker.released != 1 {
+		t.Fatalf("locker calls acquired=%d released=%d, want 1/1", locker.acquired, locker.released)
 	}
 
 	for _, dir := range []string{

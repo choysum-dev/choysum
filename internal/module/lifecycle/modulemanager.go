@@ -628,10 +628,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				if !isBundleMode {
 					distAppDir = config.AppDir(runtimeOpts.distPath, appName)
 				}
-				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, appName, runtimeOpts.defaultChoysumPath)
-				if err != nil {
-					return "", pipeline.ModulesAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
-				}
+				protoDir := filepath.Join(generatedAPIRoot, "proto", appName)
+				webDir := filepath.Join(generatedAPIRoot, "web", appName)
+				serviceDir := filepath.Join(generatedAPIRoot, "service", appName)
 				modulesTargets := pipeline.ModulesAppTargets{
 					ProtoDir:        protoDir,
 					WebDir:          webDir,
@@ -759,10 +758,9 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 				if !isBundleMode {
 					distAppDir = config.AppDir(runtimeOpts.distPath, appName)
 				}
-				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, appName, runtimeOpts.defaultChoysumPath)
-				if err != nil {
-					return "", pipeline.ModulesAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
-				}
+				protoDir := filepath.Join(generatedAPIRoot, "proto", appName)
+				webDir := filepath.Join(generatedAPIRoot, "web", appName)
+				serviceDir := filepath.Join(generatedAPIRoot, "service", appName)
 				modulesTargets := pipeline.ModulesAppTargets{
 					ProtoDir:        protoDir,
 					WebDir:          webDir,
@@ -910,10 +908,9 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				if !isBundleMode {
 					distAppDir = config.AppDir(runtimeOpts.distPath, appName)
 				}
-				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, appName, runtimeOpts.defaultChoysumPath)
-				if err != nil {
-					return "", pipeline.ModulesAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
-				}
+				protoDir := filepath.Join(generatedAPIRoot, "proto", appName)
+				webDir := filepath.Join(generatedAPIRoot, "web", appName)
+				serviceDir := filepath.Join(generatedAPIRoot, "service", appName)
 				modulesTargets := pipeline.ModulesAppTargets{
 					ProtoDir:        protoDir,
 					WebDir:          webDir,
