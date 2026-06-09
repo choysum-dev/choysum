@@ -281,6 +281,44 @@ func TestFilteredE2EEnvDropsAmbientChoysumConfigOverrides(t *testing.T) {
 	}
 }
 
+func TestFilteredE2EEnv_EmptyAndMalformedEntries(t *testing.T) {
+	if env := filteredE2EEnv(nil); env != nil {
+		t.Fatalf("filteredE2EEnv(nil) = %#v, want nil", env)
+	}
+
+	filtered := filteredE2EEnv([]string{"MALFORMED", "CHOYSUM_TOKEN=abc", "CHOYSUM_E2E_TOKEN=ok"})
+	joined := strings.Join(filtered, "\n")
+	if !strings.Contains(joined, "MALFORMED") {
+		t.Fatalf("expected malformed env entry to be preserved, got %q", joined)
+	}
+	if strings.Contains(joined, "CHOYSUM_TOKEN=abc") {
+		t.Fatalf("expected CHOYSUM_ non-e2e env to be removed, got %q", joined)
+	}
+	if !strings.Contains(joined, "CHOYSUM_E2E_TOKEN=ok") {
+		t.Fatalf("expected CHOYSUM_E2E_ env to be preserved, got %q", joined)
+	}
+}
+
+func TestNewE2ERuntimeOptionsAndValidate(t *testing.T) {
+	noPath := newE2ERuntimeOptions(scope.PathsRuntimeOptions{}, false)
+	if noPath.modulesPath != "" {
+		t.Fatalf("newE2ERuntimeOptions(no path).modulesPath = %q, want empty", noPath.modulesPath)
+	}
+	if err := noPath.Validate(); err == nil || !strings.Contains(err.Error(), "modulesPath is required") {
+		t.Fatalf("Validate(no path) error = %v, want modulesPath required", err)
+	}
+
+	valid := newE2ERuntimeOptions(scope.PathsRuntimeOptions{ModulesPath: "/workspace/modules"}, true)
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("Validate(valid path) error = %v", err)
+	}
+
+	blank := newE2ERuntimeOptions(scope.PathsRuntimeOptions{ModulesPath: "   "}, true)
+	if err := blank.Validate(); err == nil || !strings.Contains(err.Error(), "modulesPath is required") {
+		t.Fatalf("Validate(blank path) error = %v, want modulesPath required", err)
+	}
+}
+
 func TestRunPlaywrightNoSpecs(t *testing.T) {
 	specsDir := t.TempDir()
 	err := runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir()}, specsDir, "http://127.0.0.1:9999", filepath.Join(t.TempDir(), "runtime.json"))

@@ -17,6 +17,7 @@ import (
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"gorm.io/driver/sqlite"
@@ -108,6 +109,103 @@ func writePackageJSON(t *testing.T, modulesPath, moduleName, content string) {
 	}
 	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(content), 0o644); err != nil {
 		t.Fatalf("write package.json: %v", err)
+	}
+}
+
+func TestModuleManagerResolveGeneratedAPIRootUsesDefaultChoysumPath(t *testing.T) {
+	defaultChoysumPath := t.TempDir()
+	manager := &ModuleManager{runtimeOptions: runtimeOptions{
+		modulesPath:        filepath.Join(t.TempDir(), "modules"),
+		defaultChoysumPath: defaultChoysumPath,
+		compileBundleMode:  string(config.BundleModeApplication),
+	}}
+
+	root, err := manager.resolveGeneratedAPIRoot()
+	if err != nil {
+		t.Fatalf("resolveGeneratedAPIRoot() error = %v", err)
+	}
+	if root != filepath.Join(defaultChoysumPath, "generated") {
+		t.Fatalf("resolveGeneratedAPIRoot() = %q, want %q", root, filepath.Join(defaultChoysumPath, "generated"))
+	}
+}
+
+func TestModuleManagerRefreshModuleIndexForLocalModules(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.3.0","choysum":{"moduleName":"partner","application":"partner"}}`)
+
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+
+	err := manager.refreshModuleIndexForLocalModules(context.Background(), []string{"partner", "missing", "partner", " "})
+	if err != nil {
+		t.Fatalf("refreshModuleIndexForLocalModules() error = %v", err)
+	}
+
+	var partner metadata.IrModuleIndex
+	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "partner", "local", "local").Take(&partner).Error; err != nil {
+		t.Fatalf("load partner module index row: %v", err)
+	}
+	if !partner.Available {
+		t.Fatal("expected partner index row to be available")
+	}
+	if !partner.LocalPath.Valid || partner.LocalPath.String != filepath.Join(modulesPath, "partner") {
+		t.Fatalf("unexpected partner local path: %#v", partner.LocalPath)
+	}
+	if partner.LastErrorMessage.Valid && strings.TrimSpace(partner.LastErrorMessage.String) != "" {
+		t.Fatalf("expected partner last error to be empty, got %#v", partner.LastErrorMessage)
+	}
+
+	var missing metadata.IrModuleIndex
+	if err := db.Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "missing", "local", "local").Take(&missing).Error; err != nil {
+		t.Fatalf("load missing module index row: %v", err)
+	}
+	if missing.Available {
+		t.Fatal("expected missing index row to be unavailable")
+	}
+	if !missing.LocalPath.Valid || missing.LocalPath.String != filepath.Join(modulesPath, "missing") {
+		t.Fatalf("unexpected missing local path: %#v", missing.LocalPath)
+	}
+	if !missing.LastErrorMessage.Valid || missing.LastErrorMessage.String != "package.json not found" {
+		t.Fatalf("unexpected missing last error message: %#v", missing.LastErrorMessage)
+	}
+}
+
+func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	absEntry := filepath.Join(t.TempDir(), "service", "entry.ts")
+	if err := db.Create(&meta.IrModule{Name: "crm_partner", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "service/main.ts"}).Error; err != nil {
+		t.Fatalf("seed relative module: %v", err)
+	}
+	if err := db.Create(&meta.IrModule{Name: "crm_company", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: absEntry}).Error; err != nil {
+		t.Fatalf("seed absolute module: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+	distAppDir := t.TempDir()
+
+	_ = manager.buildBackendAppToDir(context.Background(), "crm", distAppDir)
+
+	entryFilePath := filepath.Join(distAppDir, "__choysum_app_entry.ts")
+	entryRaw, err := os.ReadFile(entryFilePath)
+	if err != nil {
+		t.Fatalf("read app entry file %q: %v", entryFilePath, err)
+	}
+	entryText := string(entryRaw)
+
+	if !strings.Contains(entryText, filepath.Join(modulesPath, "crm_partner", "service/main.ts")) {
+		t.Fatalf("expected app entry to include module-relative service import, got %q", entryText)
+	}
+	if !strings.Contains(entryText, absEntry) {
+		t.Fatalf("expected app entry to preserve absolute service import, got %q", entryText)
 	}
 }
 

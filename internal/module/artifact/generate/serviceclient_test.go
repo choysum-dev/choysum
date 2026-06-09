@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -80,5 +81,49 @@ func TestServiceClientGenerateEdgeCases(t *testing.T) {
 	_, err = gen.generate(context.Background(), testApp())
 	if err == nil || !strings.Contains(err.Error(), "no proto files found") {
 		t.Fatalf("expected missing proto files error, got %v", err)
+	}
+}
+
+func TestServiceClientGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	protoDir, _, serviceDir, err := WorkspaceGeneratedAPITargets(runtimeScope.cfg.ModulesPath, "crm", runtimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(protoDir, "google", "protobuf"), 0o755); err != nil {
+		t.Fatalf("mkdir google proto dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(protoDir, "partner.proto"), []byte("syntax = \"proto3\";"), 0o644); err != nil {
+		t.Fatalf("write partner proto: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(protoDir, "google", "protobuf", "empty.proto"), []byte("syntax = \"proto3\";"), 0o644); err != nil {
+		t.Fatalf("write google proto: %v", err)
+	}
+
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}
+	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
+	results, err := gen.generate(ctx, testApp())
+	if err != nil {
+		t.Fatalf("generate() error = %v", err)
+	}
+	if len(results) != 1 || len(results[0].OutPaths) != 2 {
+		t.Fatalf("unexpected generation results: %#v", results)
+	}
+	if _, err := os.Stat(filepath.Join(serviceDir, "service.ts")); err != nil {
+		t.Fatalf("expected generated service.ts in workspace target: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(serviceDir, "index.ts")); err != nil {
+		t.Fatalf("expected generated index.ts in workspace target: %v", err)
+	}
+}
+
+func TestServiceClientGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	runtimeScope.cfg.DefaultChoysumPath = ""
+
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}
+	_, err := gen.generate(context.Background(), testApp())
+	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api targets") {
+		t.Fatalf("expected workspace target resolution error, got %v", err)
 	}
 }

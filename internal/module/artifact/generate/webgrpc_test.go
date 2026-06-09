@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
+	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -84,5 +85,45 @@ func TestWebGrpcGenerateWithoutProtoResultsReturnsInput(t *testing.T) {
 	}
 	if len(results) != 1 || results[0].Name != "webservice" {
 		t.Fatalf("expected original results to pass through, got %#v", results)
+	}
+}
+
+func TestWebGrpcGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	protoDir, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeScope.cfg.ModulesPath, "crm", runtimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets() error = %v", err)
+	}
+	protoPath := filepath.Join(protoDir, "crm.proto")
+	if err := os.MkdirAll(filepath.Dir(protoPath), 0o755); err != nil {
+		t.Fatalf("mkdir proto dir: %v", err)
+	}
+	protoContent := "syntax = \"proto3\"; package crm; message PingRequest {} message PingReply {} service Partner { rpc Ping(PingRequest) returns (PingReply); }"
+	if err := os.WriteFile(protoPath, []byte(protoContent), 0o644); err != nil {
+		t.Fatalf("write proto file: %v", err)
+	}
+
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}}
+	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
+	results, err := gen.generate(ctx, []*module.GeneratorResult{{Name: "protobuf", OutPaths: []string{protoPath}}})
+	if err != nil {
+		t.Fatalf("generate() error = %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected original result plus plugin result, got %#v", results)
+	}
+	if _, err := os.Stat(filepath.Join(webDir, "pb", "crm_pb.ts")); err != nil {
+		t.Fatalf("expected generated grpc file in workspace target: %v", err)
+	}
+}
+
+func TestWebGrpcGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	runtimeScope.cfg.DefaultChoysumPath = ""
+
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}}
+	_, err := gen.generate(context.Background(), []*module.GeneratorResult{{Name: "protobuf", OutPaths: []string{"crm.proto"}}})
+	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api targets") {
+		t.Fatalf("expected workspace target resolution error, got %v", err)
 	}
 }
