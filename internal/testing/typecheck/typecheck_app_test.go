@@ -64,6 +64,35 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("accepts relative modules path", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := filepath.Join(repoRoot, "modules")
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+
+		originalWD, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd returned error: %v", err)
+		}
+		if err := os.Chdir(repoRoot); err != nil {
+			t.Fatalf("Chdir(%q): %v", repoRoot, err)
+		}
+		defer func() {
+			_ = os.Chdir(originalWD)
+		}()
+
+		err = TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: "modules",
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			Stderr:      &strings.Builder{},
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp(relative modules path) returned error: %v", err)
+		}
+	})
+
 	t.Run("writes temp tsconfig and cleans it up on success", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()

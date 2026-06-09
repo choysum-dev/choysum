@@ -330,6 +330,37 @@ func TestInjectModelApplication_MultipleEditsSameFile_ReverseOrder(t *testing.T)
 	}
 }
 
+func TestInjectModelApplication_EmptyModulesPathStillProcessesModelDecorator(t *testing.T) {
+	testRuntimeScope, db := newPluginSessionTestScope(t)
+	migrateBackendPluginMetadata(t, db)
+	testRuntimeScope.cfg.ModulesPath = ""
+	plugin := newBackendPluginForInjectTest(t, testRuntimeScope)
+	modelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(testRuntimeScope)
+
+	raw := "@Model('User')\nexport default class User {}\n"
+	argEnd := mustIndex(t, raw, "'User'") + len("'User'")
+
+	result := &parser.ParserResult{
+		Path:       "/external/modules/user.ts",
+		RawContent: raw,
+		ModelClassNode: &parser.Class{
+			Decorators: []*parser.Decorator{
+				{
+					ModuleSpecPath: modelDecoratorModuleSpec,
+					ReferenceIdent: "Model",
+					Arguments: []*parser.Argument{
+						{Type: "Literal", End: argEnd},
+					},
+				},
+			},
+		},
+	}
+
+	if err := plugin.injectModelApplication([]*parser.ParserResult{result}); err == nil || !strings.Contains(err.Error(), "application not found for model path") {
+		t.Fatalf("expected application resolution failure for empty modules path, got %v", err)
+	}
+}
+
 type fakeParser struct {
 	parseFn func(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error)
 }

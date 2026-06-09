@@ -5,6 +5,7 @@ package generator
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,6 +87,41 @@ func TestProtobufGenerateUsesStagingWhenNoExplicitTargets(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(runtimeScope.cfg.DistPath, "apps", "crm", "assets", "crm.proto")); err != nil {
 		t.Fatalf("expected staged dist proto output: %v", err)
 	}
+}
+
+func TestProtobufGenerateModulesProtoDirBranchErrorPaths(t *testing.T) {
+	t.Run("writeAll error is propagated", func(t *testing.T) {
+		runtimeScope := newGeneratorScope(t)
+		blockedPath := filepath.Join(t.TempDir(), "blocked")
+		if err := os.WriteFile(blockedPath, []byte("file blocks mkdir"), 0o644); err != nil {
+			t.Fatalf("write blocked path file: %v", err)
+		}
+
+		gen := &protobufGenerator{
+			runtimeScope:    runtimeScope,
+			module:          &meta.IrModule{ApplicationStr: "crm"},
+			modulesProtoDir: blockedPath,
+		}
+		if _, err := gen.generate(context.Background(), testApp()); err == nil {
+			t.Fatal("expected generate() to fail when modulesProtoDir cannot be created")
+		}
+	})
+
+	t.Run("syncProtoToDistDirect error is propagated", func(t *testing.T) {
+		runtimeScope := newGeneratorScope(t)
+		gen := &protobufGenerator{
+			runtimeScope:    runtimeScope,
+			module:          &meta.IrModule{ApplicationStr: "crm"},
+			modulesProtoDir: t.TempDir(),
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := gen.generate(ctx, testApp())
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("generate(canceled) error = %v, want context.Canceled", err)
+		}
+	})
 }
 
 func TestSyncProtoToDist_ApplicationCopies_ToAppsAssets_NoLegacyFallback(t *testing.T) {

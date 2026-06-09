@@ -65,6 +65,14 @@ func TestResolveApps(t *testing.T) {
 			t.Fatalf("expected modules path error, got %v", err)
 		}
 	})
+
+	t.Run("propagates read modules dir error", func(t *testing.T) {
+		missingModulesPath := filepath.Join(t.TempDir(), "missing")
+		_, err := ResolveApps(missingModulesPath, "all")
+		if err == nil || !strings.Contains(err.Error(), "read modules dir") {
+			t.Fatalf("expected read modules dir error, got %v", err)
+		}
+	})
 }
 
 func TestHasTargets(t *testing.T) {

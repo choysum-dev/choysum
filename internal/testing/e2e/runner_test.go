@@ -121,6 +121,19 @@ func TestDiscoverSourcePackagesAndResolveModules(t *testing.T) {
 	}
 }
 
+func TestResolveE2EModulesRequiresModulesPath(t *testing.T) {
+	if _, err := ResolveE2EModules("  "); err == nil || !strings.Contains(err.Error(), "modules_path is required") {
+		t.Fatalf("expected modules_path required error, got %v", err)
+	}
+}
+
+func TestDiscoverSourcePackagesReadModulesDirError(t *testing.T) {
+	missingModulesPath := filepath.Join(t.TempDir(), "missing")
+	if _, err := discoverSourcePackages(missingModulesPath); err == nil || !strings.Contains(err.Error(), "read modules dir") {
+		t.Fatalf("expected read modules dir error, got %v", err)
+	}
+}
+
 func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 	manifests := map[string]*sourceModulePackage{
 		"auth": {Depends: []string{"base"}},
@@ -478,6 +491,29 @@ func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "module=auth scenario=empty defined but has no fixtures") {
 		t.Fatalf("expected target empty fixtures log, got %q", stderr.String())
+	}
+}
+
+func TestApplyScenarioFixturesFixturePathErrorUsesModuleRoot(t *testing.T) {
+	modulesPath := t.TempDir()
+	configPath := writeTempE2EConfig(t, modulesPath)
+
+	manifests := map[string]*sourceModulePackage{
+		"auth": {
+			DirName: "auth",
+			E2E: &packageE2E{Scenarios: map[string]packageScene{
+				"default": {Fixtures: []string{"fixtures/missing.json"}},
+			}},
+		},
+	}
+
+	loaded := []string{}
+	err := applyScenarioFixtures(context.Background(), configPath, []string{"auth"}, manifests, "default", "auth", false, io.Discard, &loaded)
+	if err == nil {
+		t.Fatal("expected applyScenarioFixtures to fail for missing fixture path")
+	}
+	if len(loaded) != 0 {
+		t.Fatalf("expected no loaded fixtures on error, got %#v", loaded)
 	}
 }
 

@@ -198,3 +198,10 @@ func TestNewTestRuntimeScopeInputFromScopeNilScope(t *testing.T) {
 		t.Fatalf("CompileConfig() = %#v, want nil", input.CompileConfig())
 	}
 }
+
+func TestTestRuntimeScopeInputModulesPathFallsBackToSnapshotConfig(t *testing.T) {
+	input := testRuntimeScopeInput{cfg: snapshot.New(&config.Config{ModulesPath: "/snapshot/modules"})}
+	if got := input.ModulesPath(); got != "/snapshot/modules" {
+		t.Fatalf("ModulesPath() = %q, want /snapshot/modules", got)
+	}
+}

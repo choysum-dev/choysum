@@ -77,3 +77,27 @@ defineRoute('auth.route.user_list', {
 		t.Fatalf("expected no ui decl issues, got %#v", result.UiResourceDeclIssues)
 	}
 }
+
+func TestVueParserParseTSSkipsCompatibilityCorePaths(t *testing.T) {
+	runtimeScope := newVueParserTestScope()
+	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
+	module := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "core"), ApplicationStr: "core"}
+	p := NewVueParser(runtimeScope, module)
+
+	path := filepath.Join(runtimeOpts.modulesPath, "core", "service", "runtime", "onchange", "types.ts")
+	content := "export const unchanged = true\n"
+
+	result, err := p.Parse(nil, path, content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected parser result")
+	}
+	if result.Path != path || result.RawContent != content {
+		t.Fatalf("unexpected compatibility-skip parse result: %#v", result)
+	}
+	if len(result.Imports) != 0 || len(result.Exports) != 0 {
+		t.Fatalf("expected compatibility-skip result without tsgo symbols, got imports=%#v exports=%#v", result.Imports, result.Exports)
+	}
+}

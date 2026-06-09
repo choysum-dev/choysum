@@ -213,9 +213,6 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 	funcMap := template.FuncMap{
 		"ToLowerCase": strings.ToLower,
 		"ToSnakeCase": strcase.ToSnake,
-		"ConvertPath": func(path string) string {
-			return strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
-		},
 		// Drop the .ts extension.
 		"ConvertPathNoExt": func(path string) string {
 			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")

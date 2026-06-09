@@ -96,6 +96,24 @@ func newPluginForTest(t *testing.T, parserImpl parser.Parser) *WebPlugin {
 	return plugin
 }
 
+func captureWebTsOnResolve(t *testing.T, plugin api.Plugin, buildOptions *api.BuildOptions) func(api.OnResolveArgs) (api.OnResolveResult, error) {
+	t.Helper()
+
+	var onResolve func(api.OnResolveArgs) (api.OnResolveResult, error)
+	plugin.Setup(api.PluginBuild{
+		InitialOptions: buildOptions,
+		OnLoad: func(api.OnLoadOptions, func(api.OnLoadArgs) (api.OnLoadResult, error)) {
+		},
+		OnResolve: func(options api.OnResolveOptions, callback func(api.OnResolveArgs) (api.OnResolveResult, error)) {
+			onResolve = callback
+		},
+	})
+	if onResolve == nil {
+		t.Fatal("expected web ts plugin to register an OnResolve callback")
+	}
+	return onResolve
+}
+
 func renderHTML(t *testing.T, node *html.Node) string {
 	t.Helper()
 	var builder strings.Builder
@@ -449,6 +467,35 @@ func TestVueLoadProcessorAndResolveProcessor(t *testing.T) {
 	}})
 	if _, err := errPlugin.VueLoadProcessor()("<template/>", api.OnLoadArgs{Path: "/repo/components/Error.vue"}, &api.BuildOptions{}); err == nil || !strings.Contains(err.Error(), "parse failed") {
 		t.Fatalf("expected vue load parse error, got %v", err)
+	}
+}
+
+func TestWebPluginTsPluginOnResolveUsesModulesPathImporterMapping(t *testing.T) {
+	runtimeScope := newTestScope(t)
+	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
+	plugin := NewWebPlugin(runtimeScope, &meta.IrModule{Name: "web", Path: filepath.Join(runtimeOpts.modulesPath, "web")}, filepath.Join(runtimeOpts.modulesPath, "auth", "web", "index.ts"), WithParser(fakeParser{})).(*WebPlugin)
+
+	resolvePath := filepath.Join(t.TempDir(), "child.ts")
+	if err := os.WriteFile(resolvePath, []byte("export default {}\n"), 0o644); err != nil {
+		t.Fatalf("write resolve target file: %v", err)
+	}
+	externalParent := filepath.Join(t.TempDir(), "external", "parent.ts")
+	plugin.ParserResults = []*parser.ParserResult{{
+		Path:             resolvePath,
+		VueAppImportTree: []string{externalParent, resolvePath},
+	}}
+
+	onResolve := captureWebTsOnResolve(t, plugin.TsPlugin(), &api.BuildOptions{})
+	result, err := onResolve(api.OnResolveArgs{
+		Path:       resolvePath,
+		ResolveDir: filepath.Dir(resolvePath),
+		Importer:   filepath.Join(runtimeOpts.modulesPath, "auth", "web", "index.ts"),
+	})
+	if err != nil {
+		t.Fatalf("OnResolve callback error = %v", err)
+	}
+	if result.Path != externalParent {
+		t.Fatalf("OnResolve callback path = %q, want %q", result.Path, externalParent)
 	}
 }
 
