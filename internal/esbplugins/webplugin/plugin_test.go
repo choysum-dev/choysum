@@ -451,3 +451,49 @@ func TestVueLoadProcessorAndResolveProcessor(t *testing.T) {
 		t.Fatalf("expected vue load parse error, got %v", err)
 	}
 }
+
+func TestWebPluginIsEntryPointPath(t *testing.T) {
+	plugin := newPluginForTest(t, fakeParser{})
+	plugin.EntryPoint = "/repo/web/index.ts"
+
+	if !plugin.isEntryPointPath("/repo/web/index.ts") {
+		t.Fatal("expected exact entry path to match")
+	}
+	if !plugin.isEntryPointPath("/repo/web/./index.ts") {
+		t.Fatal("expected cleaned entry path to match")
+	}
+	if plugin.isEntryPointPath("   ") {
+		t.Fatal("expected blank path not to match entry path")
+	}
+
+	plugin.EntryPoint = "   "
+	if plugin.isEntryPointPath("/repo/web/index.ts") {
+		t.Fatal("expected blank entry point not to match")
+	}
+}
+
+func TestWebPluginPrioritizedEntryPointImports(t *testing.T) {
+	plugin := newPluginForTest(t, fakeParser{})
+	plugin.EntryPointImports = []string{
+		"/repo/generated/api/web/crm/stores/index.ts",
+		"/repo/app/boot.ts",
+		"/repo/generated/web/crm/service.ts",
+		"",
+	}
+
+	ordered := plugin.prioritizedEntryPointImports()
+	if len(ordered) != 4 {
+		t.Fatalf("prioritizedEntryPointImports() len = %d, want 4", len(ordered))
+	}
+	if ordered[0] != "/repo/generated/api/web/crm/stores/index.ts" {
+		t.Fatalf("expected store import first, got %#v", ordered)
+	}
+	if ordered[1] != "/repo/app/boot.ts" || ordered[2] != "/repo/generated/web/crm/service.ts" || ordered[3] != "" {
+		t.Fatalf("expected non-store imports to keep relative order, got %#v", ordered)
+	}
+
+	plugin.EntryPointImports = nil
+	if got := plugin.prioritizedEntryPointImports(); got != nil {
+		t.Fatalf("prioritizedEntryPointImports(nil) = %#v, want nil", got)
+	}
+}

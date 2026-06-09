@@ -44,3 +44,35 @@ func TestWebServiceGenerateEmptyApp(t *testing.T) {
 		t.Fatalf("expected nil results for app without models, got %#v", results)
 	}
 }
+
+func TestWebServiceGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	serviceResults, err := (&webServiceGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}).generate(testApp())
+	if err != nil {
+		t.Fatalf("web service generate() error = %v", err)
+	}
+	if len(serviceResults) != 1 || serviceResults[0].Name != "webservice" {
+		t.Fatalf("unexpected web service results: %#v", serviceResults)
+	}
+
+	_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeScope.cfg.ModulesPath, "crm", runtimeScope.cfg.DefaultChoysumPath)
+	if err != nil {
+		t.Fatalf("WorkspaceGeneratedAPITargets() error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(webDir, "service.ts")); err != nil {
+		t.Fatalf("expected generated service.ts in workspace target dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(webDir, "index.ts")); err != nil {
+		t.Fatalf("expected generated index.ts in workspace target dir: %v", err)
+	}
+}
+
+func TestWebServiceGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	runtimeScope.cfg.DefaultChoysumPath = ""
+
+	_, err := (&webServiceGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}).generate(testApp())
+	if err == nil || !strings.Contains(err.Error(), "defaultChoysumPath is required") {
+		t.Fatalf("expected defaultChoysumPath required error, got %v", err)
+	}
+}

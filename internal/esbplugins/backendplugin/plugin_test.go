@@ -1542,6 +1542,52 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 	})
 }
 
+func TestBackendPluginRuntimeOptionsHelpers(t *testing.T) {
+	if got := newRuntimeOptions(scope.PathsRuntimeOptions{}, false); got.modulesPath != "" {
+		t.Fatalf("newRuntimeOptions(no paths) = %#v, want empty modulesPath", got)
+	}
+
+	if got := runtimeOptionsFromScope(nil); got.modulesPath != "" {
+		t.Fatalf("runtimeOptionsFromScope(nil) = %#v, want empty modulesPath", got)
+	}
+
+	runtimeScope := newPluginTestScope()
+	if got := runtimeOptionsFromScope(runtimeScope); strings.TrimSpace(got.modulesPath) == "" {
+		t.Fatalf("runtimeOptionsFromScope(scope) = %#v, want non-empty modulesPath", got)
+	}
+
+	if hasRuntimeOptions(runtimeOptions{modulesPath: "   "}) {
+		t.Fatal("hasRuntimeOptions() = true for whitespace modulesPath")
+	}
+	if !hasRuntimeOptions(runtimeOptions{modulesPath: "/workspace/modules"}) {
+		t.Fatal("hasRuntimeOptions() = false for non-empty modulesPath")
+	}
+
+	if err := (runtimeOptions{}).Validate(); err == nil || !strings.Contains(err.Error(), "modulesPath is required") {
+		t.Fatalf("Validate(empty) error = %v, want modulesPath required", err)
+	}
+	if err := (runtimeOptions{modulesPath: "/workspace/modules"}).Validate(); err != nil {
+		t.Fatalf("Validate(valid) error = %v", err)
+	}
+
+	if got := (*BackendPlugin)(nil).resolvedRuntimeOptions(); got.modulesPath != "" {
+		t.Fatalf("nil plugin resolvedRuntimeOptions = %#v, want empty modulesPath", got)
+	}
+
+	pluginFromEnv := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{Env: runtimeScope}}
+	if got := pluginFromEnv.resolvedRuntimeOptions(); strings.TrimSpace(got.modulesPath) == "" {
+		t.Fatalf("resolvedRuntimeOptions(env fallback) = %#v, want non-empty modulesPath", got)
+	}
+
+	pluginPreferExplicit := &BackendPlugin{
+		BasePlugin:     &esbplugins.BasePlugin{Env: runtimeScope},
+		runtimeOptions: runtimeOptions{modulesPath: "/explicit/modules"},
+	}
+	if got := pluginPreferExplicit.resolvedRuntimeOptions(); got.modulesPath != "/explicit/modules" {
+		t.Fatalf("resolvedRuntimeOptions(explicit) = %#v, want explicit modulesPath", got)
+	}
+}
+
 func TestBackendPluginGetParserResults_PublishesAndInjects(t *testing.T) {
 	testRuntimeScope, db := newPluginSessionTestScope(t)
 	migrateBackendPluginMetadata(t, db)

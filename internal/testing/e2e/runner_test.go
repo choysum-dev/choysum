@@ -319,6 +319,21 @@ func TestNewE2ERuntimeOptionsAndValidate(t *testing.T) {
 	}
 }
 
+func TestWriteE2EProgressAndRuntimeScopeValidation(t *testing.T) {
+	writeE2EProgress(nil, "ignored %s", "output")
+
+	var out strings.Builder
+	writeE2EProgress(&out, "# %s %d\n", "prepare", 1)
+	if out.String() != "# prepare 1\n" {
+		t.Fatalf("writeE2EProgress() output = %q, want %q", out.String(), "# prepare 1\\n")
+	}
+
+	missingConfigPath := filepath.Join(t.TempDir(), "missing-config.yaml")
+	if _, _, err := newE2ERuntimeScope(context.Background(), missingConfigPath); err == nil {
+		t.Fatal("expected config load error for missing e2e config path")
+	}
+}
+
 func TestRunPlaywrightNoSpecs(t *testing.T) {
 	specsDir := t.TempDir()
 	err := runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir()}, specsDir, "http://127.0.0.1:9999", filepath.Join(t.TempDir(), "runtime.json"))

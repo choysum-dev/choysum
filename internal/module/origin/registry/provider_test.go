@@ -512,3 +512,61 @@ func TestProviderUsesExplicitNPMPackageName(t *testing.T) {
 		t.Fatalf("unexpected module: %#v", mod)
 	}
 }
+
+func TestProviderRejectsNilRuntimeScope(t *testing.T) {
+	t.Parallel()
+
+	var nilProvider *SourceRegistryProvider
+	if got := nilProvider.defaultRegistryURL(); got != config.DefaultNPMRegistryURL {
+		t.Fatalf("defaultRegistryURL(nil) = %q, want %q", got, config.DefaultNPMRegistryURL)
+	}
+
+	if _, err := nilProvider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
+		t.Fatalf("expected nil provider guard error from PeekManifest, got %v", err)
+	}
+	if _, err := nilProvider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
+		t.Fatalf("expected nil provider guard error from Fetch, got %v", err)
+	}
+
+	emptyProvider := &SourceRegistryProvider{}
+	if _, err := emptyProvider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
+		t.Fatalf("expected empty provider guard error from PeekManifest, got %v", err)
+	}
+}
+
+func TestProviderFetchRequiresModulesPath(t *testing.T) {
+	t.Parallel()
+
+	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: ""}}
+	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+	tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.0.tgz"
+	metadata := buildMetadata(t, map[string]string{"latest": "1.0.0"}, map[string]any{
+		"1.0.0": map[string]any{
+			"name":    "@choysum/module-auth",
+			"version": "1.0.0",
+			"author":  map[string]any{"name": "test"},
+			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
+			"dist":    map[string]any{"tarball": tarballURL},
+		},
+	})
+	tgz := buildTarGz(t, map[string]string{
+		"package/package.json": buildPackageJSON(t, "auth", "1.0.0", nil),
+	})
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case metadataURL:
+			return httpResponse(http.StatusOK, metadata), nil
+		case tarballURL:
+			return httpResponse(http.StatusOK, tgz), nil
+		default:
+			t.Fatalf("unexpected request url: %s", req.URL.String())
+			return nil, nil
+		}
+	})}
+
+	provider := NewProvider(runtimeScope, WithHTTPClient(client))
+	if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "modules path is empty") {
+		t.Fatalf("expected modules path required error, got %v", err)
+	}
+}

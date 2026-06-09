@@ -148,6 +148,50 @@ func TestResolveNpxPath(t *testing.T) {
 	})
 }
 
+func TestTypecheckHelperFunctions(t *testing.T) {
+	if got := sanitizeAppToken("crm/web app"); got != "crm_web_app" {
+		t.Fatalf("sanitizeAppToken() = %q, want crm_web_app", got)
+	}
+	if got := sanitizeAppToken(""); got != "app" {
+		t.Fatalf("sanitizeAppToken(empty) = %q, want app", got)
+	}
+	if got := sanitizeAppToken("   "); got != "___" {
+		t.Fatalf("sanitizeAppToken(spaces) = %q, want ___", got)
+	}
+
+	for _, name := range []string{"node_modules", "dist", ".choysum", "tmp"} {
+		if !shouldSkipTypecheckInputScanDir(name) {
+			t.Fatalf("shouldSkipTypecheckInputScanDir(%q) = false, want true", name)
+		}
+	}
+	if shouldSkipTypecheckInputScanDir("service") {
+		t.Fatal("shouldSkipTypecheckInputScanDir(service) = true, want false")
+	}
+
+	modulesPath := t.TempDir()
+	appName := "auth"
+	makeDir(t, filepath.Join(modulesPath, appName, "node_modules"))
+	writeFile(t, filepath.Join(modulesPath, appName, "node_modules", "ignored.ts"), "export const ignored = true\n")
+
+	hasInputs, err := hasTypecheckInputs(modulesPath, appName)
+	if err != nil {
+		t.Fatalf("hasTypecheckInputs(only skipped dirs) error = %v", err)
+	}
+	if hasInputs {
+		t.Fatal("hasTypecheckInputs() = true with only skipped dirs")
+	}
+
+	makeDir(t, filepath.Join(modulesPath, appName, "web"))
+	writeFile(t, filepath.Join(modulesPath, appName, "web", "index.vue"), "<template><div/></template>\n")
+	hasInputs, err = hasTypecheckInputs(modulesPath, appName)
+	if err != nil {
+		t.Fatalf("hasTypecheckInputs(with vue input) error = %v", err)
+	}
+	if !hasInputs {
+		t.Fatal("hasTypecheckInputs() = false, want true when vue input exists")
+	}
+}
+
 func makeDir(t *testing.T, dir string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {

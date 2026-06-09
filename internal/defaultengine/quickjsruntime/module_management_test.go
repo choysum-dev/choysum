@@ -269,3 +269,29 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 		})
 	}
 }
+
+func TestQuickjsRuntimeOptionsHelpers(t *testing.T) {
+	if got := newRuntimeOptions(scope.PathsRuntimeOptions{}, false); got.modulesPath != "" {
+		t.Fatalf("newRuntimeOptions(no path) = %#v, want empty modulesPath", got)
+	}
+
+	if got := runtimeOptionsFromScope(nil); got.modulesPath != "" {
+		t.Fatalf("runtimeOptionsFromScope(nil) = %#v, want empty modulesPath", got)
+	}
+
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: "/workspace/modules"},
+	}
+	if got := runtimeOptionsFromScope(runtimeScope); got.modulesPath != "/workspace/modules" {
+		t.Fatalf("runtimeOptionsFromScope(scope).modulesPath = %q, want /workspace/modules", got.modulesPath)
+	}
+
+	if (runtimeOptions{modulesPath: "   "}).hasModulesPath() {
+		t.Fatal("hasModulesPath() = true for whitespace modulesPath")
+	}
+	if !(runtimeOptions{modulesPath: "/workspace/modules"}).hasModulesPath() {
+		t.Fatal("hasModulesPath() = false for non-empty modulesPath")
+	}
+}

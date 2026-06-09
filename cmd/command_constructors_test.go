@@ -137,6 +137,30 @@ func registerCommandHelperEngines() {
 	})
 }
 
+func TestRequireCliRuntimeOptions(t *testing.T) {
+	if _, err := requireCliRuntimeOptions(nil); err == nil || !strings.Contains(err.Error(), "getter is not initialized") {
+		t.Fatalf("expected nil getter error, got %v", err)
+	}
+
+	if _, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return cliRuntimeOptions{} }); err == nil || !strings.Contains(err.Error(), "defaultChoysumPath is required") {
+		t.Fatalf("expected Validate() error from getter options, got %v", err)
+	}
+
+	want := cliRuntimeOptions{
+		defaultChoysumPath: "/workspace/.choysum",
+		modulesPath:        "/workspace/modules",
+		npmPath:            "/workspace/node_modules",
+		tmpPath:            "/workspace/.choysum/tmp",
+	}
+	got, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return want })
+	if err != nil {
+		t.Fatalf("requireCliRuntimeOptions(valid) error = %v", err)
+	}
+	if got != want {
+		t.Fatalf("requireCliRuntimeOptions(valid) = %#v, want %#v", got, want)
+	}
+}
+
 func newCommandExitConfig(jsEngineFactory string) *config.Config {
 	serverCfg := config.NewDefaultServerConfig()
 	serverCfg.JsEngineFactory = jsEngineFactory

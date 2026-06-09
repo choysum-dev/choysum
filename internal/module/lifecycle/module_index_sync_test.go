@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -451,5 +453,189 @@ func TestSanitizeModuleIndexError_PathAndDefault(t *testing.T) {
 	got := SanitizeModuleIndexError(runtimeScope, errors.New(" read /tmp/choysum/modules/meta/package.json failed "))
 	if strings.Contains(got, "/tmp/choysum/modules") {
 		t.Fatalf("expected modules path to be redacted, got %q", got)
+	}
+}
+
+type moduleManagerInstallOriginCoordinator struct {
+	module              *meta.IrModule
+	resolveInstallCalls int
+}
+
+func (c *moduleManagerInstallOriginCoordinator) Peek(context.Context, string) (*meta.IrModule, error) {
+	if c == nil || c.module == nil {
+		return nil, nil
+	}
+	cloned := *c.module
+	return &cloned, nil
+}
+
+func (c *moduleManagerInstallOriginCoordinator) ResolveInstallModule(context.Context, string) (*meta.IrModule, error) {
+	c.resolveInstallCalls++
+	if c.module == nil {
+		return nil, nil
+	}
+	cloned := *c.module
+	return &cloned, nil
+}
+
+func (c *moduleManagerInstallOriginCoordinator) Fetch(context.Context, string) (*meta.IrModule, error) {
+	if c.module == nil {
+		return nil, nil
+	}
+	cloned := *c.module
+	return &cloned, nil
+}
+
+func (c *moduleManagerInstallOriginCoordinator) Purge(context.Context, string) error {
+	return nil
+}
+
+type moduleManagerNoopScriptExecutor struct {
+	scripts []*jsengine.JsScript
+}
+
+func (e *moduleManagerNoopScriptExecutor) Execute(context.Context, *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return &jsengine.JsResponse{}, nil
+}
+
+func (e *moduleManagerNoopScriptExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.scripts
+}
+
+func (e *moduleManagerNoopScriptExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.scripts = scripts
+}
+
+func (e *moduleManagerNoopScriptExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.scripts = scripts
+	return nil
+}
+
+func TestModuleManagerInstallRunsAppStageCallbacks(t *testing.T) {
+	modulesPath := t.TempDir()
+	distPath := filepath.Join(t.TempDir(), "dist")
+	tmpPath := filepath.Join(t.TempDir(), "tmp")
+	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = distPath
+	runtimeScope.cfg.TmpPath = tmpPath
+	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	locker := &moduleIndexSyncTestLocker{}
+	coordinator := &moduleManagerInstallOriginCoordinator{module: &meta.IrModule{
+		Name:           "auth",
+		ApplicationStr: "crm",
+		Version:        "v1.2.0",
+	}}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+
+	dependsRaw, err := json.Marshal([]string{"missing_dep"})
+	if err != nil {
+		t.Fatalf("marshal depends: %v", err)
+	}
+	if err := db.Create(&meta.IrModule{
+		Name:       "auth",
+		Status:     meta.Installed,
+		Version:    "v1.0.0",
+		DependsStr: dependsRaw,
+		Path:       filepath.Join(modulesPath, "auth"),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	if err := manager.Install(context.Background(), "auth"); err != nil {
+		t.Fatalf("Install() error = %v", err)
+	}
+	if locker.acquired != 1 || locker.released != 1 {
+		t.Fatalf("locker calls acquired=%d released=%d, want 1/1", locker.acquired, locker.released)
+	}
+	if coordinator.resolveInstallCalls == 0 {
+		t.Fatal("expected ResolveInstallModule to be called")
+	}
+
+	for _, dir := range []string{
+		filepath.Join(distPath, "apps", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "proto", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "web", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "service", "crm"),
+	} {
+		if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
+			t.Fatalf("expected staged app output dir %q, stat err=%v info=%#v", dir, statErr, info)
+		}
+	}
+}
+
+func TestModuleManagerUninstallRunsAppStageCallbacks(t *testing.T) {
+	modulesPath := t.TempDir()
+	distPath := filepath.Join(t.TempDir(), "dist")
+	tmpPath := filepath.Join(t.TempDir(), "tmp")
+	defaultChoysumPath := filepath.Join(t.TempDir(), ".choysum")
+
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope.cfg.DistPath = distPath
+	runtimeScope.cfg.TmpPath = tmpPath
+	runtimeScope.cfg.DefaultChoysumPath = defaultChoysumPath
+	runtimeScope.cfg.Compile = &config.CompileConfig{BundleMode: string(config.BundleModeApplication)}
+
+	locker := &moduleIndexSyncTestLocker{}
+	manager := NewModuleManager(
+		runtimeScope,
+		&moduleManagerNoopScriptExecutor{},
+		WithLockerFactory(func(scope.Scope) statepkg.Locker { return locker }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := db.Create(&meta.IrModule{
+		Name:           "auth",
+		Status:         meta.Installed,
+		Version:        "v1.0.0",
+		ApplicationStr: "crm",
+		Path:           filepath.Join(modulesPath, "auth"),
+	}).Error; err != nil {
+		t.Fatalf("seed installed module: %v", err)
+	}
+
+	if err := manager.Uninstall(context.Background(), "auth"); err != nil {
+		t.Fatalf("Uninstall() error = %v", err)
+	}
+	if locker.acquired != 1 || locker.released != 1 {
+		t.Fatalf("locker calls acquired=%d released=%d, want 1/1", locker.acquired, locker.released)
+	}
+
+	var mod meta.IrModule
+	if err := db.Unscoped().Where("name = ?", "auth").Take(&mod).Error; err != nil {
+		t.Fatalf("load uninstalled module row: %v", err)
+	}
+	if mod.Status != meta.Uninstalled {
+		t.Fatalf("module status after uninstall = %q, want %q", mod.Status, meta.Uninstalled)
+	}
+
+	for _, dir := range []string{
+		filepath.Join(distPath, "apps", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "proto", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "web", "crm"),
+		filepath.Join(defaultChoysumPath, "generated", "service", "crm"),
+	} {
+		if info, statErr := os.Stat(dir); statErr != nil || !info.IsDir() {
+			t.Fatalf("expected staged app output dir %q, stat err=%v info=%#v", dir, statErr, info)
+		}
 	}
 }

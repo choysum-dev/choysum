@@ -239,6 +239,39 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 	})
 
+	t.Run("empty path defaults to modules directory", func(t *testing.T) {
+		oldWd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		workDir := t.TempDir()
+		modulesDir := filepath.Join(workDir, "modules")
+		if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
+		}
+		if err := os.Chdir(workDir); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWd) }()
+
+		runtimeOptions := &cliRuntimeOptions{}
+		if err := validateRunModulesPath(runtimeOptions); err != nil {
+			t.Fatalf("validateRunModulesPath(empty) = %#v", err)
+		}
+
+		gotPath, err := filepath.EvalSymlinks(runtimeOptions.modulesPath)
+		if err != nil {
+			t.Fatalf("evalsymlinks cfg modules path: %v", err)
+		}
+		wantPath, err := filepath.EvalSymlinks(modulesDir)
+		if err != nil {
+			t.Fatalf("evalsymlinks modules dir: %v", err)
+		}
+		if !filepath.IsAbs(runtimeOptions.modulesPath) || filepath.Clean(gotPath) != filepath.Clean(wantPath) {
+			t.Fatalf("expected normalized modules path %q, got %q", wantPath, gotPath)
+		}
+	})
+
 	t.Run("invalid value paths", func(t *testing.T) {
 		cases := []struct {
 			name string
