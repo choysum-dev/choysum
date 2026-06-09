@@ -292,6 +292,16 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	if mod.Source != nil {
 		t.Fatalf("expected empty source to be removed, got %#v", mod.Source)
 	}
+	if got := (&CatalogModule{NPMPackage: "  @acme/choysum-auth  "}).ResolvedNPMPackage(); got != "@acme/choysum-auth" {
+		t.Fatalf("ResolvedNPMPackage(default fallback) = %q, want %q", got, "@acme/choysum-auth")
+	}
+
+	if got := (&CatalogModule{NPMPackage: "@acme/choysum-auth"}).ResolvedNPMRegistry("  https://registry.npmjs.org  "); got != "https://registry.npmjs.org" {
+		t.Fatalf("ResolvedNPMRegistry(default fallback) = %q, want %q", got, "https://registry.npmjs.org")
+	}
+	if got := (&CatalogModule{Source: &CatalogSource{Registry: "  https://registry.acme.dev  "}}).ResolvedNPMRegistry("https://registry.npmjs.org"); got != "https://registry.acme.dev" {
+		t.Fatalf("ResolvedNPMRegistry(source override) = %q, want %q", got, "https://registry.acme.dev")
+	}
 
 	notFoundServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)

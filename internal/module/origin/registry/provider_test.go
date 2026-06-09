@@ -9,6 +9,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -54,6 +55,21 @@ type roundTripFunc func(req *http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
+}
+
+type errReadCloser struct {
+	err error
+}
+
+func (r errReadCloser) Read([]byte) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	return 0, io.EOF
+}
+
+func (r errReadCloser) Close() error {
+	return nil
 }
 
 func httpResponse(status int, body []byte) *http.Response {
@@ -655,6 +671,103 @@ func TestProviderHelperNormalizationBranches(t *testing.T) {
 	}
 }
 
+func TestProviderAdditionalHelperBranches(t *testing.T) {
+	t.Parallel()
+
+	if got, err := normalizeDefaultRegistryMetadataBaseURL("   "); err != nil || got != config.DefaultNPMRegistryURL {
+		t.Fatalf("normalizeDefaultRegistryMetadataBaseURL(blank) = %q err=%v, want %q nil", got, err, config.DefaultNPMRegistryURL)
+	}
+	if _, err := normalizeDefaultRegistryMetadataBaseURL("https://%zz"); err == nil || !strings.Contains(err.Error(), "invalid default npm registry url") {
+		t.Fatalf("expected invalid default registry URL parse error, got %v", err)
+	}
+	if _, err := normalizeRegistryMetadataBaseURL("https://registry.npmjs.org", "https://%zz"); err == nil || !strings.Contains(err.Error(), "invalid default npm registry url") {
+		t.Fatalf("expected default registry normalization error, got %v", err)
+	}
+	if _, err := normalizeRegistryMetadataBaseURL("https://%zz", config.DefaultNPMRegistryURL); err == nil || !strings.Contains(err.Error(), "invalid registry url") {
+		t.Fatalf("expected invalid registry URL parse error, got %v", err)
+	}
+	if _, _, err := registryPackageMetadataURL("https://registry.npmjs.org", "auth", "", "https://%zz"); err == nil || !strings.Contains(err.Error(), "invalid default npm registry url") {
+		t.Fatalf("expected registryPackageMetadataURL default registry error, got %v", err)
+	}
+
+	rawLatest := json.RawMessage(`{"name":"pkg","version":"1.0.0"}`)
+	metadata := &npmPackageMetadata{
+		DistTags: map[string]string{"latest": "1.0.0"},
+		Versions: map[string]json.RawMessage{"1.0.0": rawLatest},
+	}
+	if gotVersion, gotRaw, err := resolveNPMVersion(metadata, "   "); err != nil || gotVersion != "1.0.0" || string(gotRaw) != string(rawLatest) {
+		t.Fatalf("resolveNPMVersion(blank requested version) got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	normalized, err := normalizePackageAuthor([]byte(`{"name":"pkg","author":123}`))
+	if err != nil {
+		t.Fatalf("normalizePackageAuthor(non-string author) error = %v", err)
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(normalized, &payload); err != nil {
+		t.Fatalf("unmarshal normalized payload: %v", err)
+	}
+	if _, ok := payload["author"]; ok {
+		t.Fatalf("expected non-string author to be removed, got payload=%#v", payload)
+	}
+
+	if _, err := parseModuleFromPackageJSON([]byte(`{"name":`), "auth", filepath.Join(t.TempDir(), "auth")); err == nil || !strings.Contains(err.Error(), "decode package.json payload") {
+		t.Fatalf("expected parseModuleFromPackageJSON decode error, got %v", err)
+	}
+	if _, _, err := extractTarballURL(json.RawMessage(`{"dist":`)); err == nil || !strings.Contains(err.Error(), "decode npm version dist") {
+		t.Fatalf("expected extractTarballURL decode error, got %v", err)
+	}
+
+	if scorePackageJSONPath("/tmp/modules/auth/package.json", "auth") <= scorePackageJSONPath("package/package.json", "auth") {
+		t.Fatal("expected /tmp/modules/auth/package.json to receive higher score than package/package.json")
+	}
+}
+
+func TestProviderInspectRegistryPackageErrorBranches(t *testing.T) {
+	t.Parallel()
+
+	t.Run("invalid default registry configured in runtime scope", func(t *testing.T) {
+		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), NPMRegistryURL: "https://%zz"}}
+		provider := NewProvider(runtimeScope)
+
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "", "auth", ""); err == nil || !strings.Contains(err.Error(), "invalid default npm registry url") {
+			t.Fatalf("expected invalid default registry URL error, got %v", err)
+		}
+	})
+
+	t.Run("metadata load failure bubbles up from inspect", func(t *testing.T) {
+		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir()}}
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("network down")
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+
+		if _, err := provider.inspectRegistryPackage(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "get npm metadata") {
+			t.Fatalf("expected inspectRegistryPackage metadata error, got %v", err)
+		}
+	})
+
+	t.Run("version resolution failure is wrapped by inspect", func(t *testing.T) {
+		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir()}}
+		metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+		metadata := buildMetadata(t, map[string]string{}, map[string]any{
+			"1.0.0": map[string]any{"name": "@choysum/module-auth", "version": "1.0.0"},
+			"2.0.0": map[string]any{"name": "@choysum/module-auth", "version": "2.0.0"},
+		})
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.String() != metadataURL {
+				t.Fatalf("unexpected request url: %s", req.URL.String())
+			}
+			return httpResponse(http.StatusOK, metadata), nil
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+
+		if _, err := provider.inspectRegistryPackage(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "inspect package") || !strings.Contains(err.Error(), "missing latest dist-tag") {
+			t.Fatalf("expected inspectRegistryPackage version resolution error, got %v", err)
+		}
+	})
+}
+
 func TestProviderResolveNPMVersionBranches(t *testing.T) {
 	t.Parallel()
 
@@ -845,6 +958,31 @@ func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
 		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "status code") {
 			t.Fatalf("expected metadata non-200 error, got %v", err)
+		}
+	})
+
+	t.Run("metadata request transport error", func(t *testing.T) {
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("dial failed")
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "get npm metadata") {
+			t.Fatalf("expected metadata transport error, got %v", err)
+		}
+	})
+
+	t.Run("metadata response body read error", func(t *testing.T) {
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Status:     "200 OK",
+				Header:     make(http.Header),
+				Body:       errReadCloser{err: errors.New("read failed")},
+			}, nil
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "read npm metadata") {
+			t.Fatalf("expected metadata read error, got %v", err)
 		}
 	})
 

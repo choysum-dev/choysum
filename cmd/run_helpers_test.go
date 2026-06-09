@@ -220,6 +220,31 @@ func TestValidateRunSqliteAllowsDefaultCreate(t *testing.T) {
 	}
 }
 
+func TestValidateRunSqliteAllowCreateStillValidatesPragmas(t *testing.T) {
+	missingPath := filepath.Join(t.TempDir(), "state", "choysum.sqlite")
+	missingDSN := fmt.Sprintf("file:%s?mode=rwc", missingPath)
+
+	err := validateRunSqlite(missingDSN, true)
+	if err == nil || err.reason != "sqlite dsn missing required params: _fk=1, _busy_timeout>0, _journal_mode=WAL" {
+		t.Fatalf("validateRunSqlite(allowCreate with missing pragmas) = %#v, want missing pragmas error", err)
+	}
+}
+
+func TestValidateRunSQLitePragmasAndDSNQueryErrors(t *testing.T) {
+	t.Run("invalid file uri query parse", func(t *testing.T) {
+		err := validateRunSQLitePragmas("file://%zz")
+		if err == nil || err.reason != "sqlite dsn query params are invalid" {
+			t.Fatalf("validateRunSQLitePragmas(file://%%zz) = %#v, want query params invalid error", err)
+		}
+	})
+
+	t.Run("invalid plain query encoding", func(t *testing.T) {
+		if _, err := sqliteDSNQueryParams("/tmp/choysum.sqlite?mode=%zz"); err == nil {
+			t.Fatal("expected sqliteDSNQueryParams() to fail for invalid query escape")
+		}
+	})
+}
+
 func TestPrepareRunDatabaseCreatesDefaultSqliteParent(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "state", "choysum.sqlite")
 	err := prepareRunDatabase(runDBRuntimeOptions{dialect: "sqlite", dsn: dbPath, allowCreate: true})

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
+	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -210,6 +211,67 @@ func TestModuleManagerBuildBackendAppToDirWritesModuleBasedEntryImports(t *testi
 	}
 	if !strings.Contains(entryText, absEntry) {
 		t.Fatalf("expected app entry to preserve absolute service import, got %q", entryText)
+	}
+}
+
+func TestModuleManagerBuildBackendBundlesToDirWritesModuleBasedEntryImports(t *testing.T) {
+	modulesPath := t.TempDir()
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(meta.Entities()...); err != nil {
+		t.Fatalf("auto migrate meta entities: %v", err)
+	}
+
+	if err := db.Create(&meta.IrModule{Name: "crm_partner", ApplicationStr: "crm", Status: meta.Installed, ServiceEntryPoint: "service/main.ts"}).Error; err != nil {
+		t.Fatalf("seed backend module: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+	distBundlesDir := t.TempDir()
+
+	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
+	if err != nil && !strings.Contains(err.Error(), "backend bundle failed") && !strings.Contains(err.Error(), "BundleToDirCtx") {
+		t.Fatalf("buildBackendBundlesToDir() unexpected error = %v", err)
+	}
+
+	entryFilePath := filepath.Join(distBundlesDir, "__choysum_bundles_entry.ts")
+	entryRaw, readErr := os.ReadFile(entryFilePath)
+	if readErr != nil {
+		t.Fatalf("read bundles entry file %q: %v", entryFilePath, readErr)
+	}
+	entryText := string(entryRaw)
+	wantImport := filepath.Join(modulesPath, "crm_partner", "service/main.ts")
+	if !strings.Contains(entryText, wantImport) {
+		t.Fatalf("expected bundles entry to include module-relative service import %q, got %q", wantImport, entryText)
+	}
+}
+
+func TestModuleManagerPrepareUpgradeOriginSwitchLocalInputNoop(t *testing.T) {
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), nil)
+	manager := &ModuleManager{runtimeScope: runtimeScope}
+
+	snapshot, err := manager.prepareUpgradeOriginSwitch(context.Background(), internalorigin.ParsedInput{Kind: internalorigin.InputKindLocal, LocalName: "auth"}, "auth", "")
+	if err != nil {
+		t.Fatalf("prepareUpgradeOriginSwitch(local) error = %v", err)
+	}
+	if snapshot != nil {
+		t.Fatalf("prepareUpgradeOriginSwitch(local) = %#v, want nil", snapshot)
+	}
+}
+
+func TestNewModuleInstallerResolvesRelativeServiceEntryPoint(t *testing.T) {
+	modulesPath := t.TempDir()
+	runtimeScope := newModuleIndexSyncScope(modulesPath, nil)
+	module := &meta.IrModule{Name: "auth", ServiceEntryPoint: "service/main.ts"}
+
+	installer := newModuleInstaller(runtimeScope, nil, module, nil, newOpContext())
+	if installer == nil || installer.builder == nil {
+		t.Fatalf("newModuleInstaller() = %#v, want non-nil installer and builder", installer)
+	}
+	want := filepath.Join(modulesPath, "auth", "service/main.ts")
+	if module.ServiceEntryPoint != want {
+		t.Fatalf("module.ServiceEntryPoint = %q, want %q", module.ServiceEntryPoint, want)
 	}
 }
 

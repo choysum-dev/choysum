@@ -111,6 +111,39 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	if got := nilOptionsInput.DistPath(); got != "" {
 		t.Fatalf("DistPath() with nil options = %q, want empty", got)
 	}
+	if got := nilOptionsInput.NpmRegistryURL(); got != "" {
+		t.Fatalf("NpmRegistryURL() with nil options = %q, want empty", got)
+	}
+}
+
+func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
+	t.Parallel()
+
+	input := newRunRuntimeScopeInput(
+		&scopeInputConfigOptions{
+			ModulesPath:    "/options/modules",
+			TmpPath:        "/options/tmp",
+			NPMRegistryURL: "https://registry.options.example",
+		},
+		cliRuntimeOptions{},
+		runServerRuntimeOptions{},
+		runDBRuntimeOptions{},
+	)
+
+	if got := input.ModulesPath(); got != "/options/modules" {
+		t.Fatalf("ModulesPath() fallback = %q, want %q", got, "/options/modules")
+	}
+	if got := input.NpmRegistryURL(); got != "https://registry.options.example" {
+		t.Fatalf("NpmRegistryURL() fallback = %q, want %q", got, "https://registry.options.example")
+	}
+
+	nilOptions := newRunRuntimeScopeInput(nil, cliRuntimeOptions{}, runServerRuntimeOptions{}, runDBRuntimeOptions{})
+	if got := nilOptions.ModulesPath(); got != "" {
+		t.Fatalf("ModulesPath() with nil options = %q, want empty", got)
+	}
+	if got := nilOptions.NpmRegistryURL(); got != "" {
+		t.Fatalf("NpmRegistryURL() with nil options = %q, want empty", got)
+	}
 }
 
 func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
