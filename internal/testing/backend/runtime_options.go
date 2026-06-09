@@ -9,7 +9,7 @@ import (
 
 type runtimeOptions struct {
 	hasConfig             bool
-	addonsPath            string
+	modulesPath           string
 	distPath              string
 	tmpPath               string
 	compileBundleMode     string
@@ -23,7 +23,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 		return opts
 	}
 	opts.hasConfig = true
-	opts.addonsPath = pathOpts.AddonsPath
+	opts.modulesPath = pathOpts.ModulesPath
 	opts.distPath = pathOpts.DistPath
 	opts.tmpPath = pathOpts.TmpPath
 	if hasCompileOpts {

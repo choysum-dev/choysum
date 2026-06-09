@@ -12,7 +12,7 @@ import (
 
 type cliRuntimeOptions struct {
 	defaultChoysumPath string
-	addonsPath         string
+	modulesPath        string
 	npmPath            string
 	tmpPath            string
 }
@@ -23,7 +23,7 @@ func newCliRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) 
 	}
 	return cliRuntimeOptions{
 		defaultChoysumPath: pathOpts.DefaultChoysumPath,
-		addonsPath:         pathOpts.AddonsPath,
+		modulesPath:        pathOpts.ModulesPath,
 		npmPath:            pathOpts.NpmPath,
 		tmpPath:            pathOpts.TmpPath,
 	}
@@ -35,7 +35,7 @@ func newCliRuntimeOptionsFromScopeInputOptions(options *scopeInputConfigOptions)
 	}
 	return cliRuntimeOptions{
 		defaultChoysumPath: options.DefaultChoysumPath,
-		addonsPath:         options.AddonsPath,
+		modulesPath:        options.ModulesPath,
 		npmPath:            options.NpmPath,
 		tmpPath:            options.TmpPath,
 	}
@@ -56,8 +56,8 @@ func (o cliRuntimeOptions) Validate() error {
 	if strings.TrimSpace(o.defaultChoysumPath) == "" {
 		return xfmt.Errorf("cli runtime options: defaultChoysumPath is required")
 	}
-	if strings.TrimSpace(o.addonsPath) == "" {
-		return xfmt.Errorf("cli runtime options: addonsPath is required")
+	if strings.TrimSpace(o.modulesPath) == "" {
+		return xfmt.Errorf("cli runtime options: modulesPath is required")
 	}
 	if strings.TrimSpace(o.npmPath) == "" {
 		return xfmt.Errorf("cli runtime options: npmPath is required")

@@ -12,7 +12,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath            string
+	modulesPath           string
 	distPath              string
 	defaultChoysumPath    string
 	backendEnv            map[string]any
@@ -45,7 +45,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, aut
 	}
 
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
 	}
@@ -107,8 +107,8 @@ func (b *ModuleBuilder) resolvedRuntimeOptions() runtimeOptions {
 }
 
 func (o runtimeOptions) Validate() error {
-	if strings.TrimSpace(o.addonsPath) == "" {
-		return xfmt.Errorf("backend builder runtime options: addonsPath is required")
+	if strings.TrimSpace(o.modulesPath) == "" {
+		return xfmt.Errorf("backend builder runtime options: modulesPath is required")
 	}
 	if strings.TrimSpace(o.distPath) == "" {
 		return xfmt.Errorf("backend builder runtime options: distPath is required")

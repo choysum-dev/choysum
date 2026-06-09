@@ -29,7 +29,7 @@ func (p *providerSpy) Load(configPath string, opts ...Option) (*Config, error) {
 }
 
 func TestLoadWithProviderUsesCustomProvider(t *testing.T) {
-	spy := &providerSpy{cfg: &Config{AddonsPath: "/tmp/addons"}}
+	spy := &providerSpy{cfg: &Config{ModulesPath: "/tmp/modules"}}
 
 	cfg, err := LoadWithProvider(spy, "/tmp/config.yaml", WithEnvPrefix("CHOYSUM_TEST"))
 	if err != nil {

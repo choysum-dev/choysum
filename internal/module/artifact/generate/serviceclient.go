@@ -32,8 +32,8 @@ type serviceClientGenerator struct {
 	module       *meta.IrModule
 
 	// Optional override for pipeline-managed staging.
-	addonsProtoDir   string
-	addonsServiceDir string
+	modulesProtoDir   string
+	modulesServiceDir string
 }
 
 type serviceClientTemplateData struct {
@@ -67,7 +67,7 @@ func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrAppli
 	moduleSpecPath, referenceIdent := meta.BaseModelModuleSpec(g.runtimeScope)
 	funcMap := template.FuncMap{
 		"ConvertPath": func(path string) string {
-			p := strings.ReplaceAll(path, runtimeOpts.addonsPath, "@")
+			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
 		"ConvertTypeParam": func(model *meta.IrModel, service *meta.IrService) string {
@@ -118,15 +118,15 @@ func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrAppli
 		return nil, xfmt.Errorf("error executing service client template: %w", err)
 	}
 
-	addonsServiceDir := g.addonsServiceDir
-	if addonsServiceDir == "" {
-		_, _, serviceDir, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesServiceDir := g.modulesServiceDir
+	if modulesServiceDir == "" {
+		_, _, serviceDir, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return nil, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsServiceDir = serviceDir
+		modulesServiceDir = serviceDir
 	}
-	outDir, _ := filepath.Abs(addonsServiceDir)
+	outDir, _ := filepath.Abs(modulesServiceDir)
 
 	writeTo := func(dir string) error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -147,7 +147,7 @@ func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrAppli
 		return nil
 	}
 
-	if g.addonsServiceDir != "" {
+	if g.modulesServiceDir != "" {
 		if err := writeTo(outDir); err != nil {
 			return nil, err
 		}
@@ -168,15 +168,15 @@ func (g *serviceClientGenerator) generate(ctx context.Context, app *meta.IrAppli
 
 func (g *serviceClientGenerator) collectProtoFiles(appName string) ([]*protoFilePayload, error) {
 	runtimeOpts := runtimeOptionsFromScope(g.runtimeScope)
-	addonsProtoDir := g.addonsProtoDir
-	if addonsProtoDir == "" {
-		protoDir, _, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesProtoDir := g.modulesProtoDir
+	if modulesProtoDir == "" {
+		protoDir, _, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return nil, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsProtoDir = protoDir
+		modulesProtoDir = protoDir
 	}
-	protoDir := addonsProtoDir
+	protoDir := modulesProtoDir
 	entries := make([]*protoFilePayload, 0)
 	err := filepath.WalkDir(protoDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

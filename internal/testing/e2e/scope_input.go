@@ -9,7 +9,7 @@ import (
 )
 
 type runtimeScopeInputOptions struct {
-	AddonsPath         string
+	ModulesPath        string
 	DistPath           string
 	TmpPath            string
 	DefaultChoysumPath string
@@ -32,7 +32,7 @@ func newRuntimeScopeInputOptions(cfg *snapshot.ConfigSnapshot) *runtimeScopeInpu
 		return nil
 	}
 	return &runtimeScopeInputOptions{
-		AddonsPath:         snap.AddonsPath,
+		ModulesPath:        snap.ModulesPath,
 		DistPath:           snap.DistPath,
 		TmpPath:            snap.TmpPath,
 		DefaultChoysumPath: snap.DefaultChoysumPath,
@@ -223,14 +223,14 @@ func (i runtimeScopeInput) Environment() string {
 	return i.options.Server.Environment
 }
 
-func (i runtimeScopeInput) AddonsPath() string {
-	if i.runtimeOptions.addonsPath != "" {
-		return i.runtimeOptions.addonsPath
+func (i runtimeScopeInput) ModulesPath() string {
+	if i.runtimeOptions.modulesPath != "" {
+		return i.runtimeOptions.modulesPath
 	}
 	if i.options == nil {
 		return ""
 	}
-	return i.options.AddonsPath
+	return i.options.ModulesPath
 }
 
 func (i runtimeScopeInput) DistPath() string {

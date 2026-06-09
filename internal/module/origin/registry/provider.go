@@ -410,7 +410,7 @@ func validateTarballURL(downloadURL string) error {
 func scorePackageJSONPath(path, moduleName string) int {
 	path = filepath.ToSlash(path)
 	score := 0
-	if strings.Contains(path, "/addons/"+moduleName+"/") {
+	if strings.Contains(path, "/modules/"+moduleName+"/") {
 		score += 4
 	}
 	if strings.HasSuffix(path, "/package/package.json") {
@@ -590,11 +590,11 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 	}
 	moduleSourcePath := filepath.Dir(packageJSONPath)
 
-	addonsPath := runtimeOptionsFromScope(p.runtimeScope).addonsPath
-	if strings.TrimSpace(addonsPath) == "" {
-		return nil, xfmt.Errorf("addons path is empty")
+	modulesPath := runtimeOptionsFromScope(p.runtimeScope).modulesPath
+	if strings.TrimSpace(modulesPath) == "" {
+		return nil, xfmt.Errorf("modules path is empty")
 	}
-	moduleTargetPath := filepath.Join(addonsPath, moduleName)
+	moduleTargetPath := filepath.Join(modulesPath, moduleName)
 	if _, err := os.Stat(moduleTargetPath); err == nil {
 		return nil, os.ErrExist
 	} else if !os.IsNotExist(err) {
@@ -609,7 +609,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 			return false, nil
 		},
 	}); err != nil {
-		return nil, xfmt.Errorf("copy module to addons failed: %w", err)
+		return nil, xfmt.Errorf("copy module to modules failed: %w", err)
 	}
 
 	raw, err := os.ReadFile(filepath.Join(moduleTargetPath, "package.json"))

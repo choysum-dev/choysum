@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
-	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	internalbackendbuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/backend"
+	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -170,7 +170,7 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	runtimeScope := deriveRuntimeScope(ctx, r.runtimeScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 	if !filepath.IsAbs(entry) {
-		entry = filepath.Join(runtimeOpts.addonsPath, r.module.Name, entry)
+		entry = filepath.Join(runtimeOpts.modulesPath, r.module.Name, entry)
 	}
 	builder := internalbackendbuilder.NewModuleBuilder(runtimeScope, r.jsExecutor, r.module, entry, internalbackendbuilder.WithPublishDist(false))
 	if bundler, ok := builder.(module.Bundler); ok {

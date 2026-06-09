@@ -8,7 +8,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath         string
+	modulesPath        string
 	configPath         string
 	defaultChoysumPath string
 }
@@ -18,7 +18,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) run
 		return runtimeOptions{}
 	}
 	return runtimeOptions{
-		addonsPath:         pathOpts.AddonsPath,
+		modulesPath:        pathOpts.ModulesPath,
 		configPath:         pathOpts.ConfigPath,
 		defaultChoysumPath: pathOpts.DefaultChoysumPath,
 	}

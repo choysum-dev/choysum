@@ -21,10 +21,10 @@ func TestOptionHelpers(t *testing.T) {
 	}
 
 	WithDefaults(func(cfg *Config) {
-		cfg.AddonsPath = "/tmp/addons"
+		cfg.ModulesPath = "/tmp/modules"
 	}).applyPre(v, &cfg)
-	if cfg.AddonsPath != "/tmp/addons" {
-		t.Fatalf("WithDefaults did not apply override, got %q", cfg.AddonsPath)
+	if cfg.ModulesPath != "/tmp/modules" {
+		t.Fatalf("WithDefaults did not apply override, got %q", cfg.ModulesPath)
 	}
 
 	WithDefaults(nil).applyPre(v, &cfg)

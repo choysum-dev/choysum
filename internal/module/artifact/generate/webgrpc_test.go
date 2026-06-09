@@ -47,7 +47,7 @@ func TestWebGrpcGenerate(t *testing.T) {
 		t.Fatalf("write proto file: %v", err)
 	}
 
-	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, addonsProtoDir: protoDir, addonsWebDir: outDir}
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, modulesProtoDir: protoDir, modulesWebDir: outDir}
 	request, err := gen.buildCodeGeneratorRequest([]string{protoPath})
 	if err != nil {
 		t.Fatalf("buildCodeGeneratorRequest() error = %v", err)
@@ -75,7 +75,7 @@ func TestWebGrpcGenerate(t *testing.T) {
 
 func TestWebGrpcGenerateWithoutProtoResultsReturnsInput(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, addonsWebDir: t.TempDir()}
+	gen := &webGrpcGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, plugins: []GrpcPlugin{fakeGrpcPlugin{name: "fake-grpc"}}, modulesWebDir: t.TempDir()}
 	input := []*module.GeneratorResult{{Name: "webservice", OutPaths: []string{"service.ts"}}}
 
 	results, err := gen.generate(context.Background(), input)

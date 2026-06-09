@@ -82,12 +82,12 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		}
 	}()
 
-	addonsPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).addonsPath)
-	if addonsPath == "" {
-		return stats, status.Error(codes.InvalidArgument, "addons_path is required")
+	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	if modulesPath == "" {
+		return stats, status.Error(codes.InvalidArgument, "modules_path is required")
 	}
 
-	entries, err := os.ReadDir(addonsPath)
+	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
 		return stats, err
 	}
@@ -108,7 +108,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		if shouldSkipModuleDir(name) {
 			continue
 		}
-		packageJSONPath := filepath.Join(addonsPath, name, "package.json")
+		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		info, err := os.Stat(packageJSONPath)
 		if err != nil {
 			continue
@@ -249,7 +249,7 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, mod
 			}
 			return datatypes.JSON(raw)
 		}(),
-		LocalPath:        nullString(filepath.Join(runtimeOptionsFromScope(runtimeScope).addonsPath, moduleName)),
+		LocalPath:        nullString(filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, moduleName)),
 		LastSyncAt:       &now,
 		SyncRevision:     nullString(revision),
 		LastErrorMessage: nullString(""),
@@ -341,8 +341,8 @@ func redactModuleIndexError(runtimeScope scope.Scope, msg string) string {
 	if msg == "" {
 		return "package.json parsing failed"
 	}
-	if runtimeOpts := runtimeOptionsFromScope(runtimeScope); strings.TrimSpace(runtimeOpts.addonsPath) != "" {
-		msg = strings.ReplaceAll(msg, runtimeOpts.addonsPath, "<addonsPath>")
+	if runtimeOpts := runtimeOptionsFromScope(runtimeScope); strings.TrimSpace(runtimeOpts.modulesPath) != "" {
+		msg = strings.ReplaceAll(msg, runtimeOpts.modulesPath, "<modulesPath>")
 	}
 	return msg
 }

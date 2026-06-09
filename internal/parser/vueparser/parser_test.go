@@ -13,7 +13,7 @@ import (
 
 func TestVueParserParseRejectsUnsupportedExtension(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"}
+	module := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
 	_, err := p.Parse(nil, filepath.Join(t.TempDir(), "notes.md"), "# hello")
@@ -25,10 +25,10 @@ func TestVueParserParseRejectsUnsupportedExtension(t *testing.T) {
 func TestVueParserParseTSFileCollectsImportsExportsAndUiResources(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	module := &meta.IrModule{Path: filepath.Join(runtimeOpts.addonsPath, "auth"), ApplicationStr: "auth"}
+	module := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
-	path := filepath.Join(runtimeOpts.addonsPath, "auth", "web", "views", "users.ts")
+	path := filepath.Join(runtimeOpts.modulesPath, "auth", "web", "views", "users.ts")
 	content := `
 import DefaultView, { helper as alias } from './base.ts'
 

@@ -27,7 +27,7 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 		OriginRef:       "official/auth@v1.2.3",
 		ResolvedVersion: "v1.2.3",
 		Integrity:       "sha512-auth-v1.2.3",
-		LocalPath:       "/tmp/addons/auth",
+		LocalPath:       "/tmp/modules/auth",
 	}); err != nil {
 		t.Fatalf("UpsertBinding() error = %v", err)
 	}
@@ -67,7 +67,7 @@ func TestLockStoreUpsertBindingSameContentDoesNotRewriteFile(t *testing.T) {
 		OriginRef:       "corp/auth@v2.0.0",
 		ResolvedVersion: "v2.0.0",
 		Integrity:       "sha512-auth-v2",
-		LocalPath:       "/tmp/addons/auth",
+		LocalPath:       "/tmp/modules/auth",
 	}
 	if err := store.UpsertBinding(workspaceRoot, binding); err != nil {
 		t.Fatalf("first UpsertBinding() error = %v", err)

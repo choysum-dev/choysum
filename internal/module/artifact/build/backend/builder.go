@@ -87,7 +87,7 @@ func (b *ModuleBuilder) bindRuntimeState(ctx context.Context) func() {
 
 func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	runtimeOptions := b.resolvedRuntimeOptions()
-	addons_path := runtimeOptions.addonsPath
+	modules_path := runtimeOptions.modulesPath
 	dist_path := runtimeOptions.distPath
 	outName := strings.TrimSpace(b.outFileName)
 	if outName == "" {
@@ -101,7 +101,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	buildOptions := api.BuildOptions{
 		EntryPoints: []string{b.entryPoint},
 		Outfile:     outFile,
-		Tsconfig:    filepath.Join(addons_path, ".", "tsconfig.json"),
+		Tsconfig:    filepath.Join(modules_path, ".", "tsconfig.json"),
 		Loader: map[string]api.Loader{
 			".proto": api.LoaderText,
 		},
@@ -210,7 +210,7 @@ func (b *ModuleBuilder) entryPointImports() []string {
 			continue
 		}
 
-		_, _, workspaceServiceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOptions.addonsPath, appName, runtimeOptions.defaultChoysumPath)
+		_, _, workspaceServiceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOptions.modulesPath, appName, runtimeOptions.defaultChoysumPath)
 		if err != nil {
 			continue
 		}
@@ -341,7 +341,7 @@ func (b *ModuleBuilder) getTsParserAndPathAlias() (parser.Parser, map[string]str
 	if b.tsPathAlias == nil {
 		runtimeOptions := b.resolvedRuntimeOptions()
 		pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{
-			Tsconfig: filepath.Join(runtimeOptions.addonsPath, ".", "tsconfig.json"),
+			Tsconfig: filepath.Join(runtimeOptions.modulesPath, ".", "tsconfig.json"),
 		})
 		if err != nil {
 			return nil, nil, err

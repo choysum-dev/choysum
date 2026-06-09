@@ -13,7 +13,7 @@ import (
 )
 
 func TestParseTSGoCtxParsesImportsAndExports(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "addons", "auth", "web", "views", "sample.ts")
+	path := filepath.Join(t.TempDir(), "modules", "auth", "web", "views", "sample.ts")
 	content := `
 import DefaultView, { named as alias, plain } from './base.ts'
 import * as toolkit from '@/shared/toolkit.ts'

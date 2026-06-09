@@ -11,7 +11,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath        string
+	modulesPath       string
 	distPath          string
 	compileBundleMode string
 	authInternalKey   string
@@ -24,7 +24,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 		compileBundleMode: compileDefaults.BundleMode,
 	}
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 	}
 	if hasCompileOpts && strings.TrimSpace(compileOpts.BundleMode) != "" {

@@ -107,17 +107,17 @@ func TestURLScheme(t *testing.T) {
 	}
 }
 
-func TestConfigHasAddonsPath(t *testing.T) {
+func TestConfigHasModulesPath(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing.yaml")
-	if !configHasAddonsPath(missing) {
+	if !configHasModulesPath(missing) {
 		t.Fatal("expected missing config file to default to true")
 	}
 
 	invalidPath := filepath.Join(t.TempDir(), "invalid.yaml")
-	if err := os.WriteFile(invalidPath, []byte("addons_path: ["), 0o644); err != nil {
+	if err := os.WriteFile(invalidPath, []byte("modules_path: ["), 0o644); err != nil {
 		t.Fatalf("write invalid yaml: %v", err)
 	}
-	if !configHasAddonsPath(invalidPath) {
+	if !configHasModulesPath(invalidPath) {
 		t.Fatal("expected invalid yaml to default to true")
 	}
 
@@ -125,16 +125,16 @@ func TestConfigHasAddonsPath(t *testing.T) {
 	if err := os.WriteFile(missingKeyPath, []byte("db:\n  dialect: sqlite\n"), 0o644); err != nil {
 		t.Fatalf("write missing-key yaml: %v", err)
 	}
-	if configHasAddonsPath(missingKeyPath) {
-		t.Fatal("expected config without addons_path to return false")
+	if configHasModulesPath(missingKeyPath) {
+		t.Fatal("expected config without modules_path to return false")
 	}
 
 	presentKeyPath := filepath.Join(t.TempDir(), "present_key.yaml")
-	if err := os.WriteFile(presentKeyPath, []byte("addons_path: ./addons\n"), 0o644); err != nil {
+	if err := os.WriteFile(presentKeyPath, []byte("modules_path: ./modules\n"), 0o644); err != nil {
 		t.Fatalf("write present-key yaml: %v", err)
 	}
-	if !configHasAddonsPath(presentKeyPath) {
-		t.Fatal("expected config with addons_path to return true")
+	if !configHasModulesPath(presentKeyPath) {
+		t.Fatal("expected config with modules_path to return true")
 	}
 }
 
@@ -231,9 +231,9 @@ func TestPrepareRunDatabaseCreatesDefaultSqliteParent(t *testing.T) {
 	}
 }
 
-func TestValidateRunAddonsPath(t *testing.T) {
+func TestValidateRunModulesPath(t *testing.T) {
 	t.Run("missing required fields", func(t *testing.T) {
-		err := validateRunAddonsPath(&cliRuntimeOptions{addonsPath: "   "})
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: "   "})
 		if err == nil || err.reason != "missing required fields" {
 			t.Fatalf("expected missing required fields error, got %#v", err)
 		}
@@ -244,22 +244,22 @@ func TestValidateRunAddonsPath(t *testing.T) {
 			name string
 			path string
 		}{
-			{name: "whitespace", path: " /tmp/addons "},
-			{name: "control", path: "/tmp/addons\nname"},
+			{name: "whitespace", path: " /tmp/modules "},
+			{name: "control", path: "/tmp/modules\nname"},
 			{name: "path list", path: "/tmp/one:/tmp/two"},
 		}
 		for _, tt := range cases {
 			t.Run(tt.name, func(t *testing.T) {
-				err := validateRunAddonsPath(&cliRuntimeOptions{addonsPath: tt.path})
+				err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: tt.path})
 				if err == nil || err.reason != "invalid value" {
-					t.Fatalf("validateRunAddonsPath(%q) = %#v, want invalid value", tt.path, err)
+					t.Fatalf("validateRunModulesPath(%q) = %#v, want invalid value", tt.path, err)
 				}
 			})
 		}
 	})
 
 	t.Run("path does not exist", func(t *testing.T) {
-		err := validateRunAddonsPath(&cliRuntimeOptions{addonsPath: filepath.Join(t.TempDir(), "missing")})
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: filepath.Join(t.TempDir(), "missing")})
 		if err == nil || err.reason != "path does not exist" {
 			t.Fatalf("expected missing path error, got %#v", err)
 		}
@@ -267,26 +267,26 @@ func TestValidateRunAddonsPath(t *testing.T) {
 
 	t.Run("path is symlink", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		realDir := filepath.Join(tmpDir, "real-addons")
-		linkDir := filepath.Join(tmpDir, "addons-link")
+		realDir := filepath.Join(tmpDir, "real-modules")
+		linkDir := filepath.Join(tmpDir, "modules-link")
 		if err := os.MkdirAll(realDir, 0o755); err != nil {
 			t.Fatalf("mkdir real dir: %v", err)
 		}
 		if err := os.Symlink(realDir, linkDir); err != nil {
 			t.Fatalf("create symlink: %v", err)
 		}
-		err := validateRunAddonsPath(&cliRuntimeOptions{addonsPath: linkDir})
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: linkDir})
 		if err == nil || err.reason != "invalid value" {
 			t.Fatalf("expected symlink path error, got %#v", err)
 		}
 	})
 
 	t.Run("path is file", func(t *testing.T) {
-		filePath := filepath.Join(t.TempDir(), "addons.txt")
+		filePath := filepath.Join(t.TempDir(), "modules.txt")
 		if err := os.WriteFile(filePath, []byte("not a dir"), 0o644); err != nil {
 			t.Fatalf("write file path: %v", err)
 		}
-		err := validateRunAddonsPath(&cliRuntimeOptions{addonsPath: filePath})
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: filePath})
 		if err == nil || err.reason != "invalid value" {
 			t.Fatalf("expected non-directory error, got %#v", err)
 		}
@@ -298,29 +298,29 @@ func TestValidateRunAddonsPath(t *testing.T) {
 			t.Fatalf("getwd: %v", err)
 		}
 		workDir := t.TempDir()
-		addonsDir := filepath.Join(workDir, "addons")
-		if err := os.MkdirAll(addonsDir, 0o755); err != nil {
-			t.Fatalf("mkdir addons: %v", err)
+		modulesDir := filepath.Join(workDir, "modules")
+		if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
 		}
 		if err := os.Chdir(workDir); err != nil {
 			t.Fatalf("chdir: %v", err)
 		}
 		defer func() { _ = os.Chdir(oldWd) }()
 
-		runtimeOptions := &cliRuntimeOptions{addonsPath: "addons"}
-		if err := validateRunAddonsPath(runtimeOptions); err != nil {
-			t.Fatalf("validateRunAddonsPath(valid relative) = %#v", err)
+		runtimeOptions := &cliRuntimeOptions{modulesPath: "modules"}
+		if err := validateRunModulesPath(runtimeOptions); err != nil {
+			t.Fatalf("validateRunModulesPath(valid relative) = %#v", err)
 		}
-		wantPath, err := filepath.EvalSymlinks(addonsDir)
+		wantPath, err := filepath.EvalSymlinks(modulesDir)
 		if err != nil {
-			t.Fatalf("evalsymlinks addons dir: %v", err)
+			t.Fatalf("evalsymlinks modules dir: %v", err)
 		}
-		gotPath, err := filepath.EvalSymlinks(runtimeOptions.addonsPath)
+		gotPath, err := filepath.EvalSymlinks(runtimeOptions.modulesPath)
 		if err != nil {
-			t.Fatalf("evalsymlinks cfg addons path: %v", err)
+			t.Fatalf("evalsymlinks cfg modules path: %v", err)
 		}
-		if !filepath.IsAbs(runtimeOptions.addonsPath) || filepath.Clean(gotPath) != filepath.Clean(wantPath) {
-			t.Fatalf("expected relative addons path to normalize to %q, got %q", wantPath, gotPath)
+		if !filepath.IsAbs(runtimeOptions.modulesPath) || filepath.Clean(gotPath) != filepath.Clean(wantPath) {
+			t.Fatalf("expected relative modules path to normalize to %q, got %q", wantPath, gotPath)
 		}
 	})
 }
@@ -478,9 +478,9 @@ func TestLoadRunConfig(t *testing.T) {
 		}
 		workDir := t.TempDir()
 		homeDir := t.TempDir()
-		addonsDir := filepath.Join(workDir, "addons")
-		if err := os.MkdirAll(addonsDir, 0o755); err != nil {
-			t.Fatalf("mkdir addons: %v", err)
+		modulesDir := filepath.Join(workDir, "modules")
+		if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
 		}
 		if err := os.Chdir(workDir); err != nil {
 			t.Fatalf("chdir: %v", err)
@@ -501,16 +501,16 @@ func TestLoadRunConfig(t *testing.T) {
 		if got := loaded.scopeInput.DefaultChoysumPath(); filepath.Clean(got) != filepath.Clean(wantDefaultChoysumPath) {
 			t.Fatalf("default choysum path = %q, want %q", got, wantDefaultChoysumPath)
 		}
-		gotAddonsPath, err := filepath.EvalSymlinks(loaded.scopeInput.AddonsPath())
+		gotModulesPath, err := filepath.EvalSymlinks(loaded.scopeInput.ModulesPath())
 		if err != nil {
-			t.Fatalf("evalsymlinks addons path: %v", err)
+			t.Fatalf("evalsymlinks modules path: %v", err)
 		}
-		wantAddonsPath, err := filepath.EvalSymlinks(addonsDir)
+		wantModulesPath, err := filepath.EvalSymlinks(modulesDir)
 		if err != nil {
-			t.Fatalf("evalsymlinks want addons path: %v", err)
+			t.Fatalf("evalsymlinks want modules path: %v", err)
 		}
-		if filepath.Clean(gotAddonsPath) != filepath.Clean(wantAddonsPath) {
-			t.Fatalf("addons path = %q, want %q", gotAddonsPath, wantAddonsPath)
+		if filepath.Clean(gotModulesPath) != filepath.Clean(wantModulesPath) {
+			t.Fatalf("modules path = %q, want %q", gotModulesPath, wantModulesPath)
 		}
 		if got := loaded.scopeInput.dbOptions.dialect; got != "sqlite" {
 			t.Fatalf("db dialect = %q, want sqlite", got)
@@ -525,7 +525,7 @@ func TestLoadRunConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("defaults addons path when key missing", func(t *testing.T) {
+	t.Run("defaults modules path when key missing", func(t *testing.T) {
 		cfgPath := writeConfig(t, `
 default_choysum_path: ./.choysum
 db:
@@ -536,13 +536,13 @@ db:
 		if err != nil {
 			t.Fatalf("loadRunConfig(valid) = %#v", err)
 		}
-		if got := loaded.scopeInput.AddonsPath(); got != "./addons" {
-			t.Fatalf("expected addons path fallback to ./addons, got %q", got)
+		if got := loaded.scopeInput.ModulesPath(); got != "./modules" {
+			t.Fatalf("expected modules path fallback to ./modules, got %q", got)
 		}
 	})
 
 	t.Run("invalid yaml format", func(t *testing.T) {
-		cfgPath := writeConfig(t, `addons_path: [`)
+		cfgPath := writeConfig(t, `modules_path: [`)
 		_, err := loadRunConfig(cfgPath)
 		if err == nil || err.reason != "invalid config format (YAML parse failed)" {
 			t.Fatalf("expected YAML parse error mapping, got %#v", err)
@@ -574,9 +574,9 @@ func TestValidateRunConfig(t *testing.T) {
 	})
 
 	t.Run("valid config", func(t *testing.T) {
-		addonsDir := filepath.Join(t.TempDir(), "addons")
-		if err := os.MkdirAll(addonsDir, 0o755); err != nil {
-			t.Fatalf("mkdir addons: %v", err)
+		modulesDir := filepath.Join(t.TempDir(), "modules")
+		if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
 		}
 		dbPath := filepath.Join(t.TempDir(), "app.db")
 		if err := os.WriteFile(dbPath, []byte("sqlite"), 0o644); err != nil {
@@ -585,7 +585,7 @@ func TestValidateRunConfig(t *testing.T) {
 		dbDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", dbPath)
 
 		cfg := &config.Config{
-			AddonsPath: addonsDir,
+			ModulesPath: modulesDir,
 			Db: &config.DbConfig{
 				Dialect: "sqlite",
 				DSN:     dbDSN,

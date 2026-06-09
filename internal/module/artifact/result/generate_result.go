@@ -14,9 +14,9 @@ type Generator interface {
 type GeneratorToTargets interface {
 	GenerateToTargetsCtx(
 		ctx context.Context,
-		addonsProtoDir string,
-		addonsWebDir string,
-		addonsServiceDir string,
+		modulesProtoDir string,
+		modulesWebDir string,
+		modulesServiceDir string,
 		distAppDir string,
 	) ([]*GeneratorResult, error)
 }

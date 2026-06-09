@@ -56,7 +56,7 @@ func TestCatalogInfoFromRemoteAPI_PrefersSourcePackage(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"name":          "auth",
 			"latestVersion": "v1.0.0",
-			"npmPackage":    "@choysum/addon-auth",
+			"npmPackage":    "@choysum/module-auth",
 			"source": map[string]any{
 				"package": "@acme/choysum-auth",
 			},

@@ -12,7 +12,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath        string
+	modulesPath       string
 	distPath          string
 	webBaseURL        string
 	serverEnvironment string
@@ -29,7 +29,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, ser
 	}
 
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 	}
 	if hasServerOpts {
@@ -68,8 +68,8 @@ func (p *WebPlugin) resolvedRuntimeOptions() runtimeOptions {
 }
 
 func (o runtimeOptions) Validate() error {
-	if strings.TrimSpace(o.addonsPath) == "" {
-		return xfmt.Errorf("web plugin runtime options: addonsPath is required")
+	if strings.TrimSpace(o.modulesPath) == "" {
+		return xfmt.Errorf("web plugin runtime options: modulesPath is required")
 	}
 	if strings.TrimSpace(o.distPath) == "" {
 		return xfmt.Errorf("web plugin runtime options: distPath is required")

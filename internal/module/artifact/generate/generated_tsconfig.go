@@ -22,19 +22,19 @@ type workspaceGeneratedTSCompilerOptions struct {
 	NoEmit bool `json:"noEmit"`
 }
 
-func buildWorkspaceGeneratedTSConfig(addonsPath string, defaultChoysumPath string) ([]byte, error) {
-	generatedRoot, err := WorkspaceGeneratedAPIRoot(addonsPath, defaultChoysumPath)
+func buildWorkspaceGeneratedTSConfig(modulesPath string, defaultChoysumPath string) ([]byte, error) {
+	generatedRoot, err := WorkspaceGeneratedAPIRoot(modulesPath, defaultChoysumPath)
 	if err != nil {
 		return nil, err
 	}
 	if absGeneratedRoot, err := filepath.Abs(generatedRoot); err == nil {
 		generatedRoot = absGeneratedRoot
 	}
-	addonsTSConfigPath := filepath.Join(filepath.Clean(addonsPath), "tsconfig.json")
-	if absAddonsTSConfigPath, err := filepath.Abs(addonsTSConfigPath); err == nil {
-		addonsTSConfigPath = absAddonsTSConfigPath
+	modulesTSConfigPath := filepath.Join(filepath.Clean(modulesPath), "tsconfig.json")
+	if absModulesTSConfigPath, err := filepath.Abs(modulesTSConfigPath); err == nil {
+		modulesTSConfigPath = absModulesTSConfigPath
 	}
-	extendsPath, err := filepath.Rel(generatedRoot, addonsTSConfigPath)
+	extendsPath, err := filepath.Rel(generatedRoot, modulesTSConfigPath)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func buildWorkspaceGeneratedTSConfig(addonsPath string, defaultChoysumPath strin
 
 func ensureWorkspaceGeneratedTSConfig(runtimeScope scope.Scope) (*module.GeneratorResult, error) {
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	generatedRoot, err := WorkspaceGeneratedAPIRoot(runtimeOpts.addonsPath, runtimeOpts.defaultChoysumPath)
+	generatedRoot, err := WorkspaceGeneratedAPIRoot(runtimeOpts.modulesPath, runtimeOpts.defaultChoysumPath)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func ensureWorkspaceGeneratedTSConfig(runtimeScope scope.Scope) (*module.Generat
 		return nil, err
 	}
 
-	content, err := buildWorkspaceGeneratedTSConfig(runtimeOpts.addonsPath, runtimeOpts.defaultChoysumPath)
+	content, err := buildWorkspaceGeneratedTSConfig(runtimeOpts.modulesPath, runtimeOpts.defaultChoysumPath)
 	if err != nil {
 		return nil, err
 	}

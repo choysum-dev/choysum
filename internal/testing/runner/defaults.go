@@ -45,14 +45,14 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 				return xfmt.Errorf("typecheck: invalid scope")
 			}
 			typecheckOpts := pkgtypecheck.RunOptions{
-				AddonsPath: runtimeOpts.addonsPath,
-				NpmPath:    runtimeOpts.npmPath,
-				RepoRoot:   repoRoot,
-				TmpPath:    runtimeOpts.tmpPath,
-				Target:     app,
-				Keep:       opts.Keep,
-				Stdout:     stdout,
-				Stderr:     stderr,
+				ModulesPath: runtimeOpts.modulesPath,
+				NpmPath:     runtimeOpts.npmPath,
+				RepoRoot:    repoRoot,
+				TmpPath:     runtimeOpts.tmpPath,
+				Target:      app,
+				Keep:        opts.Keep,
+				Stdout:      stdout,
+				Stderr:      stderr,
 			}
 			return pkgtypecheck.TypecheckApp(ctx, typecheckOpts, app)
 		}

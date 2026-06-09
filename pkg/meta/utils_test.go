@@ -32,7 +32,7 @@ func (e *stubScope) FactoryInput() scope.FactoryInput {
 }
 
 func TestIsCoreModuleAndModuleSpecs(t *testing.T) {
-	runtimeScope := &stubScope{cfg: &config.Config{AddonsPath: filepath.Join("tmp", "addons")}}
+	runtimeScope := &stubScope{cfg: &config.Config{ModulesPath: filepath.Join("tmp", "modules")}}
 
 	if !IsCoreModule("core") {
 		t.Fatal("expected core module to be recognized")
@@ -46,11 +46,11 @@ func TestIsCoreModuleAndModuleSpecs(t *testing.T) {
 		path      string
 		reference string
 	}{
-		{name: "ModelDecoratorModuleSpec", path: filepath.Join(runtimeScope.cfg.AddonsPath, "core", "service", "orm", "decorator", "model"), reference: "Model"},
-		{name: "FieldDecoratorModuleSpec", path: filepath.Join(runtimeScope.cfg.AddonsPath, "core", "service", "orm", "decorator", "field"), reference: "Field"},
-		{name: "ServiceDecoratorModuleSpec", path: filepath.Join(runtimeScope.cfg.AddonsPath, "core", "service", "orm", "decorator", "service"), reference: "Service"},
-		{name: "XpathComponentModuleSpec", path: filepath.Join(runtimeScope.cfg.AddonsPath, "core", "web", "component", "xpath.vue"), reference: "default"},
-		{name: "BaseModelModuleSpec", path: filepath.Join(runtimeScope.cfg.AddonsPath, "core", "service", "orm", "model", "model"), reference: "BaseModel"},
+		{name: "ModelDecoratorModuleSpec", path: filepath.Join(runtimeScope.cfg.ModulesPath, "core", "service", "orm", "decorator", "model"), reference: "Model"},
+		{name: "FieldDecoratorModuleSpec", path: filepath.Join(runtimeScope.cfg.ModulesPath, "core", "service", "orm", "decorator", "field"), reference: "Field"},
+		{name: "ServiceDecoratorModuleSpec", path: filepath.Join(runtimeScope.cfg.ModulesPath, "core", "service", "orm", "decorator", "service"), reference: "Service"},
+		{name: "XpathComponentModuleSpec", path: filepath.Join(runtimeScope.cfg.ModulesPath, "core", "web", "component", "xpath.vue"), reference: "default"},
+		{name: "BaseModelModuleSpec", path: filepath.Join(runtimeScope.cfg.ModulesPath, "core", "service", "orm", "model", "model"), reference: "BaseModel"},
 	}
 
 	actual := []struct {

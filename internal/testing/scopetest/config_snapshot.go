@@ -14,7 +14,7 @@ func ConfigFromSnapshot(snap *snapshot.ConfigSnapshot) *config.Config {
 		return nil
 	}
 	return &config.Config{
-		AddonsPath:         snap.AddonsPath,
+		ModulesPath:        snap.ModulesPath,
 		DistPath:           snap.DistPath,
 		TmpPath:            snap.TmpPath,
 		DefaultChoysumPath: snap.DefaultChoysumPath,

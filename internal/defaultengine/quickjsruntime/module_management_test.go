@@ -73,16 +73,16 @@ func registerModuleManagementTestJsEngine(name string) {
 }
 
 func TestSanitizeModuleIndexError_PathErrorRedactsPath(t *testing.T) {
-	addonsPath := "/tmp/choysum/addons"
+	modulesPath := "/tmp/choysum/modules"
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.Default(),
-		cfg:    &config.Config{AddonsPath: addonsPath},
+		cfg:    &config.Config{ModulesPath: modulesPath},
 	}
 
-	err := &os.PathError{Op: "open", Path: addonsPath + "/meta/manifest.json", Err: os.ErrNotExist}
+	err := &os.PathError{Op: "open", Path: modulesPath + "/meta/manifest.json", Err: os.ErrNotExist}
 	got := lifecycle.SanitizeModuleIndexError(runtimeScope, err)
-	if strings.Contains(got, addonsPath) {
+	if strings.Contains(got, modulesPath) {
 		t.Fatalf("expected redacted path, got %q", got)
 	}
 	if got != "open manifest.json" {
@@ -90,21 +90,21 @@ func TestSanitizeModuleIndexError_PathErrorRedactsPath(t *testing.T) {
 	}
 }
 
-func TestSanitizeModuleIndexError_RedactsAddonsPathInMessage(t *testing.T) {
-	addonsPath := "/tmp/choysum/addons"
+func TestSanitizeModuleIndexError_RedactsModulesPathInMessage(t *testing.T) {
+	modulesPath := "/tmp/choysum/modules"
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.Default(),
-		cfg:    &config.Config{AddonsPath: addonsPath},
+		cfg:    &config.Config{ModulesPath: modulesPath},
 	}
 
-	err := errors.New("failed to read " + addonsPath + "/meta/manifest.json")
+	err := errors.New("failed to read " + modulesPath + "/meta/manifest.json")
 	got := lifecycle.SanitizeModuleIndexError(runtimeScope, err)
-	if strings.Contains(got, addonsPath) {
+	if strings.Contains(got, modulesPath) {
 		t.Fatalf("expected redacted path, got %q", got)
 	}
-	if !strings.Contains(got, "<addonsPath>") {
-		t.Fatalf("expected <addonsPath> placeholder, got %q", got)
+	if !strings.Contains(got, "<modulesPath>") {
+		t.Fatalf("expected <modulesPath> placeholder, got %q", got)
 	}
 }
 
@@ -141,7 +141,7 @@ func TestSyncModuleIndexLocalUsesInjectedLockerFactory(t *testing.T) {
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.Default(),
-		cfg:    &config.Config{AddonsPath: t.TempDir()},
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
 	}
 	locker := &moduleIndexTestLocker{acquireErr: statepkg.ErrLeaseBusy}
 

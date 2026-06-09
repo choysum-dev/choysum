@@ -116,7 +116,7 @@ func (tx *webBuilderTestTransaction) ReleaseSavepoint(string) error    { return 
 func newTestScope() scope.Scope {
 	return &testScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: "/virtual/addons", DefaultChoysumPath: "/virtual/.choysum"},
+		cfg: &config.Config{ModulesPath: "/virtual/modules", DefaultChoysumPath: "/virtual/.choysum"},
 	}
 }
 
@@ -131,7 +131,7 @@ func newTestScopeWithDB(t *testing.T) scope.Scope {
 
 	return &testScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: "/virtual/addons", DefaultChoysumPath: t.TempDir()},
+		cfg: &config.Config{ModulesPath: "/virtual/modules", DefaultChoysumPath: t.TempDir()},
 		db:  db,
 	}
 }
@@ -153,7 +153,7 @@ func mustExec(t *testing.T, db *gorm.DB, query string, args ...any) {
 
 func parseVueResult(t *testing.T, runtimeScope scope.Scope, path string, content string) *parser.ParserResult {
 	t.Helper()
-	p := defaultparser.NewVueParser(runtimeScope, &meta.IrModule{Path: "/virtual/addons/test"})
+	p := defaultparser.NewVueParser(runtimeScope, &meta.IrModule{Path: "/virtual/modules/test"})
 	parsed, err := p.Parse(map[string]string{}, path, content)
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
@@ -245,17 +245,17 @@ func setupBuildPipelineTestFiles(t *testing.T, testRuntimeScope *testScope, entr
 	t.Helper()
 
 	root := t.TempDir()
-	addonsPath := filepath.Join(root, "addons")
-	modulePath := filepath.Join(addonsPath, "auth")
+	modulesPath := filepath.Join(root, "modules")
+	modulePath := filepath.Join(modulesPath, "auth")
 	webPath := filepath.Join(modulePath, "web")
 	entryPoint := filepath.Join(webPath, "index.ts")
 
-	for _, dir := range []string{addonsPath, webPath, filepath.Join(root, "dist")} {
+	for _, dir := range []string{modulesPath, webPath, filepath.Join(root, "dist")} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("mkdir %s failed: %v", dir, err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(addonsPath, "tsconfig.json"), []byte(`{
+	if err := os.WriteFile(filepath.Join(modulesPath, "tsconfig.json"), []byte(`{
 	"compilerOptions": {
 		"target": "ES2020",
 		"module": "ESNext",
@@ -268,7 +268,7 @@ func setupBuildPipelineTestFiles(t *testing.T, testRuntimeScope *testScope, entr
 		t.Fatalf("write entry point failed: %v", err)
 	}
 
-	testRuntimeScope.cfg.AddonsPath = addonsPath
+	testRuntimeScope.cfg.ModulesPath = modulesPath
 	testRuntimeScope.cfg.DistPath = filepath.Join(root, "dist")
 	testRuntimeScope.cfg.Compile = config.NewDefaultCompileConfig()
 	testRuntimeScope.cfg.Server = config.NewDefaultServerConfig()
@@ -281,8 +281,8 @@ func TestGetScriptNode_RewritesExtendsImport_SingleLineImport(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	path := "/virtual/addons/test/web/views/ChildView.vue"
-	newExtendsPath := "/virtual/addons/ext/web/views/BaseView.vue"
+	path := "/virtual/modules/test/web/views/ChildView.vue"
+	newExtendsPath := "/virtual/modules/ext/web/views/BaseView.vue"
 
 	sfc := `<template><div/></template>
 <script lang="ts" _name="ChildView">
@@ -329,8 +329,8 @@ func TestGetScriptNode_RewritesExtendsImport_MultiLineImport(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	path := "/virtual/addons/test/web/views/ChildView.vue"
-	newExtendsPath := filepath.Join("/virtual/addons/ext/web/views", "BaseView.vue")
+	path := "/virtual/modules/test/web/views/ChildView.vue"
+	newExtendsPath := filepath.Join("/virtual/modules/ext/web/views", "BaseView.vue")
 
 	sfc := `<template><div/></template>
 <script lang="ts" _name="ChildView">
@@ -377,16 +377,16 @@ func TestGetScriptNode_MultiLineExtendsImport_WithXPathReplacement(t *testing.T)
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/addons/test/web/views/ChildView.vue"
-	parentPath := "/virtual/addons/test/web/views/BaseView.vue"
-	newExtendsPath := "/virtual/addons/ext/web/views/BaseView.vue"
+	childPath := "/virtual/modules/test/web/views/ChildView.vue"
+	parentPath := "/virtual/modules/test/web/views/BaseView.vue"
+	newExtendsPath := "/virtual/modules/ext/web/views/BaseView.vue"
 
 	childSFC := `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from
 	'./BaseView.vue';
-import Xpath from '/virtual/addons/core/web/component/xpath.vue';
+import Xpath from '/virtual/modules/core/web/component/xpath.vue';
 
 export default defineComponent({
   name: 'ChildView',
@@ -427,7 +427,7 @@ export default defineComponent({
 	if !(strings.Contains(content, "components: {ParentBadge") || strings.Contains(content, "components: { ParentBadge")) {
 		t.Fatalf("expected parent component to replace xpath placeholder, got:\n%s", content)
 	}
-	if !strings.Contains(content, "import ParentBadge from '/virtual/addons/test/web/views/ParentBadge.vue';") {
+	if !strings.Contains(content, "import ParentBadge from '/virtual/modules/test/web/views/ParentBadge.vue';") {
 		t.Fatalf("expected missing parent import to be appended, got:\n%s", content)
 	}
 }
@@ -436,8 +436,8 @@ func TestGetScriptNode_RewritesExtendsImport_WithStableFieldsOnly(t *testing.T) 
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	path := "/virtual/addons/test/web/views/ChildView.vue"
-	newExtendsPath := "/virtual/addons/ext/web/views/BaseView.vue"
+	path := "/virtual/modules/test/web/views/ChildView.vue"
+	newExtendsPath := "/virtual/modules/ext/web/views/BaseView.vue"
 
 	sfc := `<template><div/></template>
 <script lang="ts" _name="ChildView">
@@ -473,15 +473,15 @@ func TestGetScriptNode_MultipleRewrites_WithMultibyteContent(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/addons/test/web/views/ChildView.vue"
-	parentPath := "/virtual/addons/test/web/views/BaseView.vue"
-	newExtendsPath := "/virtual/addons/ext/web/views/BaseView.vue"
+	childPath := "/virtual/modules/test/web/views/ChildView.vue"
+	parentPath := "/virtual/modules/test/web/views/BaseView.vue"
+	newExtendsPath := "/virtual/modules/ext/web/views/BaseView.vue"
 
 	childSFC := `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from './BaseView.vue';
-import Xpath from '/virtual/addons/core/web/component/xpath.vue';
+import Xpath from '/virtual/modules/core/web/component/xpath.vue';
 
 // emoji😀 keep offset
 export default defineComponent({
@@ -529,7 +529,7 @@ export default defineComponent({
 	if !(strings.Contains(content, "components: {ParentBadge") || strings.Contains(content, "components: { ParentBadge")) {
 		t.Fatalf("expected xpath component placeholder to be replaced by parent template imports, got:\n%s", content)
 	}
-	if !strings.Contains(content, "import ParentBadge from '/virtual/addons/test/web/views/ParentBadge.vue';") {
+	if !strings.Contains(content, "import ParentBadge from '/virtual/modules/test/web/views/ParentBadge.vue';") {
 		t.Fatalf("expected missing parent component import to be appended, got:\n%s", content)
 	}
 }
@@ -538,15 +538,15 @@ func TestGetScriptNode_MultipleRewrites_DeterministicAcrossRuns(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/addons/test/web/views/ChildView.vue"
-	parentPath := "/virtual/addons/test/web/views/BaseView.vue"
-	newExtendsPath := "/virtual/addons/ext/web/views/BaseView.vue"
+	childPath := "/virtual/modules/test/web/views/ChildView.vue"
+	parentPath := "/virtual/modules/test/web/views/BaseView.vue"
+	newExtendsPath := "/virtual/modules/ext/web/views/BaseView.vue"
 
 	childSFC := `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from './BaseView.vue';
-import Xpath from '/virtual/addons/core/web/component/xpath.vue';
+import Xpath from '/virtual/modules/core/web/component/xpath.vue';
 
 export default defineComponent({
   name: 'ChildView',
@@ -593,19 +593,19 @@ export default defineComponent({
 		t.Fatalf("expected stable sorted component order in xpath replacement, got:\n%s", first)
 	}
 
-	if !strings.Contains(first, "import AncillaryPanel from '/virtual/addons/test/web/panel/AncillaryPanel.vue';") {
+	if !strings.Contains(first, "import AncillaryPanel from '/virtual/modules/test/web/panel/AncillaryPanel.vue';") {
 		t.Fatalf("expected AncillaryPanel import to be appended, got:\n%s", first)
 	}
-	if !strings.Contains(first, "import ParentBadge from '/virtual/addons/test/web/views/ParentBadge.vue';") {
+	if !strings.Contains(first, "import ParentBadge from '/virtual/modules/test/web/views/ParentBadge.vue';") {
 		t.Fatalf("expected ParentBadge import to be appended, got:\n%s", first)
 	}
-	if !strings.Contains(first, "import { AlphaWidget, HelperWidget } from '/virtual/addons/test/web/views/widgets';") {
+	if !strings.Contains(first, "import { AlphaWidget, HelperWidget } from '/virtual/modules/test/web/views/widgets';") {
 		t.Fatalf("expected named imports to be sorted deterministically, got:\n%s", first)
 	}
 
-	ancillaryImportIdx := strings.Index(first, "import AncillaryPanel from '/virtual/addons/test/web/panel/AncillaryPanel.vue';")
-	parentImportIdx := strings.Index(first, "import ParentBadge from '/virtual/addons/test/web/views/ParentBadge.vue';")
-	widgetsImportIdx := strings.Index(first, "import { AlphaWidget, HelperWidget } from '/virtual/addons/test/web/views/widgets';")
+	ancillaryImportIdx := strings.Index(first, "import AncillaryPanel from '/virtual/modules/test/web/panel/AncillaryPanel.vue';")
+	parentImportIdx := strings.Index(first, "import ParentBadge from '/virtual/modules/test/web/views/ParentBadge.vue';")
+	widgetsImportIdx := strings.Index(first, "import { AlphaWidget, HelperWidget } from '/virtual/modules/test/web/views/widgets';")
 	if ancillaryImportIdx < 0 || parentImportIdx < 0 || widgetsImportIdx < 0 || !(ancillaryImportIdx < parentImportIdx && parentImportIdx < widgetsImportIdx) {
 		t.Fatalf("expected deterministic import group order by module path, got:\n%s", first)
 	}
@@ -615,7 +615,7 @@ func TestGetTemplateImportComponents_CollectsScriptSetupTemplateImports(t *testi
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	parentPath := "/virtual/addons/test/web/components/layout/OHeader.vue"
+	parentPath := "/virtual/modules/test/web/components/layout/OHeader.vue"
 	parentSFC := `<template>
   <div>
     <el-icon><QuestionFilled /></el-icon>
@@ -625,7 +625,7 @@ func TestGetTemplateImportComponents_CollectsScriptSetupTemplateImports(t *testi
 import { QuestionFilled } from '@element-plus/icons-vue';
 </script>`
 
-	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/test"}).Parse(map[string]string{"@": "/virtual/addons"}, parentPath, parentSFC)
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/test"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
 	if err != nil {
 		t.Fatalf("parse parent failed: %v", err)
 	}
@@ -644,8 +644,8 @@ func TestGetScriptNode_AppendsScriptSetupParentTemplateIconImports(t *testing.T)
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/addons/test/web/components/layout/OHeader.vue"
-	parentPath := "/virtual/addons/web/web/components/layout/OHeader.vue"
+	childPath := "/virtual/modules/test/web/components/layout/OHeader.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/OHeader.vue"
 
 	childSFC := `<template>
   <Xpath expr="//div[@class='o-header__actions-primary']" position="inside" />
@@ -671,7 +671,7 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 </script>`
 
 	childParsed := parseVueResult(t, testRuntimeScope, childPath, childSFC)
-	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/web"}).Parse(map[string]string{"@": "/virtual/addons"}, parentPath, parentSFC)
+	parentParsed, err := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/web"}).Parse(map[string]string{"@": "/virtual/modules"}, parentPath, parentSFC)
 	if err != nil {
 		t.Fatalf("parse parent failed: %v", err)
 	}
@@ -694,25 +694,25 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := "/virtual/addons/auth/web/components/layout/OHeader.vue"
-	parentPath := "/virtual/addons/web/web/components/layout/OHeader.vue"
+	childPath := "/virtual/modules/auth/web/components/layout/OHeader.vue"
+	parentPath := "/virtual/modules/web/web/components/layout/OHeader.vue"
 
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
 	}
 
-	childContent, err := os.ReadFile(filepath.Join(repoRoot, "addons", "auth", "web", "components", "layout", "OHeader.vue"))
+	childContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue"))
 	if err != nil {
 		t.Fatalf("read child OHeader failed: %v", err)
 	}
-	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "addons", "web", "web", "components", "layout", "OHeader.vue"))
+	parentContent, err := os.ReadFile(filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue"))
 	if err != nil {
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
-	alias := map[string]string{"@": "/virtual/addons"}
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
+	alias := map[string]string{"@": "/virtual/modules"}
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
@@ -750,7 +750,7 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ForRealAuthOHeader(t *testing
 	}
 }
 
-func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeAddonsPath(t *testing.T) {
+func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeModulesPath(t *testing.T) {
 	repoRoot, err := findRepoRootFromWD()
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
@@ -758,12 +758,12 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeAddonsPath(t *tes
 
 	testRuntimeScope := &testScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: filepath.Join(repoRoot, "addons")},
+		cfg: &config.Config{ModulesPath: filepath.Join(repoRoot, "modules")},
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "addons", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "addons", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
@@ -774,8 +774,8 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRelativeAddonsPath(t *tes
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "addons", "auth")})
-	alias := map[string]string{"@": filepath.Join(repoRoot, "addons")}
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "modules", "auth")})
+	alias := map[string]string{"@": filepath.Join(repoRoot, "modules")}
 
 	childParsed, err := p.Parse(alias, childPath, string(childContent))
 	if err != nil {
@@ -813,12 +813,12 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 
 	testRuntimeScope := &testScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: "./addons"},
+		cfg: &config.Config{ModulesPath: "./modules"},
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "addons", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "addons", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
@@ -829,7 +829,7 @@ func TestGetScriptNode_AppendsQuestionFilledImport_ResolvesAliasViaTsconfig(t *t
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "addons", "auth")})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "modules", "auth")})
 
 	// Intentionally do not pass runtime path aliases; getScriptNode should resolve
 	// '@/core/web' using ParseTsconfigPathAlias + ApplyPathAlias.
@@ -869,12 +869,12 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 
 	testRuntimeScope := &testScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: "./addons"},
+		cfg: &config.Config{ModulesPath: "./modules"},
 	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childPath := filepath.Join(repoRoot, "addons", "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(repoRoot, "addons", "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(repoRoot, "modules", "auth", "web", "components", "layout", "OHeader.vue")
+	parentPath := filepath.Join(repoRoot, "modules", "web", "web", "components", "layout", "OHeader.vue")
 
 	childContent, err := os.ReadFile(childPath)
 	if err != nil {
@@ -885,12 +885,12 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: filepath.Join(repoRoot, "addons", "tsconfig.json")})
+	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: filepath.Join(repoRoot, "modules", "tsconfig.json")})
 	if err != nil {
 		t.Fatalf("parse tsconfig path alias failed: %v", err)
 	}
 
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "addons", "auth")})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: filepath.Join(repoRoot, "modules", "auth")})
 	childParsed, err := p.Parse(pathAlias, childPath, string(childContent))
 	if err != nil {
 		t.Fatalf("parse child OHeader failed: %v", err)
@@ -925,27 +925,27 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 		t.Fatalf("locate repo root failed: %v", err)
 	}
 
-	addonsPath := filepath.Join(repoRoot, "addons")
+	modulesPath := filepath.Join(repoRoot, "modules")
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	testRuntimeScope.cfg.AddonsPath = addonsPath
+	testRuntimeScope.cfg.ModulesPath = modulesPath
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(repoRoot, ".choysum")
 	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
-	mod := &meta.IrModule{Path: filepath.Join(addonsPath, "auth")}
+	mod := &meta.IrModule{Path: filepath.Join(modulesPath, "auth")}
 	b := &WebModuleBuilder{
 		runtimeScope: testRuntimeScope,
 		module:       mod,
 		parser:       defaultparser.NewVueParser(testRuntimeScope, mod),
 	}
 
-	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: filepath.Join(addonsPath, "tsconfig.json")})
+	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: filepath.Join(modulesPath, "tsconfig.json")})
 	if err != nil {
 		t.Fatalf("parse tsconfig alias failed: %v", err)
 	}
 
-	childPath := filepath.Join(addonsPath, "auth", "web", "components", "layout", "OHeader.vue")
-	parentPath := filepath.Join(addonsPath, "web", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "OHeader.vue")
+	parentPath := filepath.Join(modulesPath, "web", "web", "components", "layout", "OHeader.vue")
 
 	childContentBytes, err := os.ReadFile(childPath)
 	if err != nil {
@@ -1007,9 +1007,9 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("locate repo root failed: %v", err)
 	}
 
-	addonsPath := filepath.Join(repoRoot, "addons")
+	modulesPath := filepath.Join(repoRoot, "modules")
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	testRuntimeScope.cfg.AddonsPath = addonsPath
+	testRuntimeScope.cfg.ModulesPath = modulesPath
 	testRuntimeScope.cfg.DistPath = filepath.Join(repoRoot, ".choysum", "dist")
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(repoRoot, ".choysum")
 	testRuntimeScope.cfg.Server = &config.ServerConfig{WebBaseURL: "/web"}
@@ -1019,8 +1019,8 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 
-	moduleRef := &meta.IrModule{Name: "auth", Path: filepath.Join(addonsPath, "auth")}
-	entryPoint := filepath.Join(addonsPath, "auth", "web", "index.ts")
+	moduleRef := &meta.IrModule{Name: "auth", Path: filepath.Join(modulesPath, "auth")}
+	entryPoint := filepath.Join(modulesPath, "auth", "web", "index.ts")
 	builder, ok := NewWebBuilder(testRuntimeScope, nil, moduleRef, entryPoint).(*WebModuleBuilder)
 	if !ok {
 		t.Fatal("expected NewWebBuilder to return *WebModuleBuilder")
@@ -1032,7 +1032,7 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 		t.Fatalf("prebuild failed: %v", err)
 	}
 
-	childPath := filepath.Join(addonsPath, "auth", "web", "components", "layout", "OHeader.vue")
+	childPath := filepath.Join(modulesPath, "auth", "web", "components", "layout", "OHeader.vue")
 	var beforeChild *parser.ParserResult
 	for _, r := range parserResultsOf(prebuildResult) {
 		if r != nil && r.Path == childPath {
@@ -1074,11 +1074,11 @@ func TestGetScriptNode_RecognizesCoreWebDefaultImportFallback(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	childParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/ChildView.vue", `<template><div/></template>
+	childParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/ChildView.vue", `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from './BaseView.vue';
-import Xpath from '/virtual/addons/core/web/index';
+import Xpath from '/virtual/modules/core/web/index';
 
 export default defineComponent({
   name: 'ChildView',
@@ -1086,7 +1086,7 @@ export default defineComponent({
   components: { Xpath },
 });
 </script>`)
-	parentParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/BaseView.vue", `<template><div><ParentBadge /></div></template>
+	parentParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/BaseView.vue", `<template><div><ParentBadge /></div></template>
 <script lang="ts" _name="BaseView">
 import { defineComponent } from 'vue';
 import ParentBadge from './ParentBadge.vue';
@@ -1111,7 +1111,7 @@ export default defineComponent({
 	if !strings.Contains(content, "ParentBadge") {
 		t.Fatalf("expected parent template import to be injected, got:\n%s", content)
 	}
-	if !strings.Contains(content, "import ParentBadge from '/virtual/addons/test/web/views/ParentBadge.vue';") {
+	if !strings.Contains(content, "import ParentBadge from '/virtual/modules/test/web/views/ParentBadge.vue';") {
 		t.Fatalf("expected parent import to be appended, got:\n%s", content)
 	}
 }
@@ -1121,11 +1121,11 @@ func TestGetScriptNode_ErrorPaths(t *testing.T) {
 		testRuntimeScope := newTestScope()
 		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-		childParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/ChildView.vue", `<template><div/></template>
+		childParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/ChildView.vue", `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from './BaseView.vue';
-import Xpath from '/virtual/addons/core/web/component/xpath.vue';
+import Xpath from '/virtual/modules/core/web/component/xpath.vue';
 
 export default defineComponent({
   name: 'ChildView',
@@ -1133,7 +1133,7 @@ export default defineComponent({
   components: { Xpath },
 });
 </script>`)
-		parentParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/BaseView.vue", `<template><div><ParentBadge /></div></template>
+		parentParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/BaseView.vue", `<template><div><ParentBadge /></div></template>
 <script lang="ts" _name="BaseView">
 import { defineComponent } from 'vue';
 import ParentBadge from './ParentBadge.vue';
@@ -1146,7 +1146,7 @@ export default defineComponent({
 </script>`)
 
 		childParsed.VueComponentsPropertys = []*parser.PropertyNode{{
-			ModuleSpecPath: "/virtual/addons/core/web/component/xpath.vue",
+			ModuleSpecPath: "/virtual/modules/core/web/component/xpath.vue",
 			ReferenceIdent: "Xpath",
 			ValueText:      "MissingXpathSymbol",
 			Start:          -1,
@@ -1162,7 +1162,7 @@ export default defineComponent({
 		testRuntimeScope := newTestScope()
 		b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-		parsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/ChildView.vue", `<template><div/></template>
+		parsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/ChildView.vue", `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from './BaseView.vue';
@@ -1172,7 +1172,7 @@ export default defineComponent({
   extends: BaseView,
 });
 </script>`)
-		parsed.VueComponent.Extends = "/virtual/addons/ext/web/views/BaseView.vue"
+		parsed.VueComponent.Extends = "/virtual/modules/ext/web/views/BaseView.vue"
 		parsed.Imports = map[string]*parser.Import{}
 		parsed.VueExtendsProperty.ValueText = "MissingRef.setup"
 
@@ -1206,7 +1206,7 @@ func TestWebRuntime_NoLegacyPermissionAnyOfKeys(t *testing.T) {
 	if err != nil {
 		t.Fatalf("locate repo root failed: %v", err)
 	}
-	webRoot := filepath.Join(repoRoot, "addons")
+	webRoot := filepath.Join(repoRoot, "modules")
 	legacyAnyOfPattern := regexp.MustCompile(`(?s)permission\s*:\s*\{[^\}]*?anyOf\s*:\s*\[[^\]]*(rpc:/|role:)`)
 
 	var violations []string
@@ -1332,9 +1332,9 @@ func TestReplaceXPathComponents_ReturnsErrorWhenNoReplacementOccurs(t *testing.T
 }
 
 func TestReplaceXPathComponents_ReparseFallbackReplacesPropertyAssignment(t *testing.T) {
-	b := &WebModuleBuilder{runtimeScope: newTestScope(), module: &meta.IrModule{Path: "/virtual/addons/test"}}
+	b := &WebModuleBuilder{runtimeScope: newTestScope(), module: &meta.IrModule{Path: "/virtual/modules/test"}}
 	scriptContent := "import { defineComponent } from 'vue';\n" +
-		"import Xpath from '/virtual/addons/core/web/component/xpath.vue';\n\n" +
+		"import Xpath from '/virtual/modules/core/web/component/xpath.vue';\n\n" +
 		"export default defineComponent({\n" +
 		"  components: {\n" +
 		"    Xpath: Xpath,\n" +
@@ -1394,9 +1394,9 @@ func TestAppendNewImports_DeterministicOrderAndNamedSorting(t *testing.T) {
 
 func TestTsParser_CollectsUiResourceDecls(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/route/routes.ts"
+	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
 import { defineRoute, defineAction } from '@/core/web/app/resource';
 
@@ -1445,9 +1445,9 @@ export const exportAction = defineAction('auth.action.user_export', {
 
 func TestVueParser_CollectsUiResourceDeclsFromScriptSetup(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/UserListView.vue"
+	path := "/virtual/modules/auth/web/views/UserListView.vue"
 	content := `<template><div /></template>
 <script setup lang="ts">
 import { defineMenu, defineModelActions } from '@/core/web/app/resource';
@@ -1517,9 +1517,9 @@ const userActions = defineModelActions('auth.User', {
 
 func TestVueParser_CollectsUiResourceDeclsFromScript(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/RouteActionView.vue"
+	path := "/virtual/modules/auth/web/views/RouteActionView.vue"
 	content := `<template><div /></template>
 <script lang="ts">
 import { defineRoute, defineAction } from '@/core/web/app/resource';
@@ -1575,9 +1575,9 @@ export const exportAction = defineAction('auth.action.user_export', {
 
 func TestTsParser_InheritsParentMenuFromNestedDefineMenuChildren(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/menu/menus.ts"
+	path := "/virtual/modules/auth/web/menu/menus.ts"
 	content := `
 import { defineMenu } from '@/core/web/app/resource';
 
@@ -1643,9 +1643,9 @@ export const menus = [
 
 func TestExtractUiResources_UsesInheritedParentMenuFromNestedMenus(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/menu/menus.ts"
+	path := "/virtual/modules/auth/web/menu/menus.ts"
 	content := `
 import { defineMenu } from '@/core/web/app/resource';
 
@@ -1705,9 +1705,9 @@ export const menus = [
 
 func TestTsParser_DefaultsMissingRequireMethodToWildcard(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/actions.ts"
+	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
 import { defineAction } from '@/core/web/app/resource';
 
@@ -1731,9 +1731,9 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestTsParser_SkipsPublicRouteRequiresAuthFalse(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/route/routes.ts"
+	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
 import { defineRoute } from '@/core/web/app/resource';
 
@@ -1763,9 +1763,9 @@ export const userListRoute = defineRoute('auth.route.user_list', {
 
 func TestTsParser_ReportsFatalForNonLiteralResourceID(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/route/routes.ts"
+	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
 import { defineRoute } from '@/core/web/app/resource';
 
@@ -1816,9 +1816,9 @@ export const userListRoute = defineRoute(routeId, {
 
 func TestTsParser_ReportsFatalForDynamicRequires(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/actions.ts"
+	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
 import { defineAction } from '@/core/web/app/resource';
 
@@ -1851,9 +1851,9 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestTsParser_ReportsFatalForLegacyStringRequires(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/actions.ts"
+	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
 import { defineAction } from '@/core/web/app/resource';
 
@@ -1884,9 +1884,9 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestTsParser_ReportsFatalForEmptyRequireMethod(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/actions.ts"
+	path := "/virtual/modules/auth/web/views/actions.ts"
 	content := `
 import { defineAction } from '@/core/web/app/resource';
 
@@ -1917,9 +1917,9 @@ export const actionExport = defineAction('auth.action.user_export', {
 
 func TestExtractUiResources_ExpandsModelActions(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/route/routes.ts"
+	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
 import { defineMenu, defineModelActions, defineRoute } from '@/core/web/app/resource';
 
@@ -1995,9 +1995,9 @@ export const userActions = defineModelActions('auth.User', {
 
 func TestTsParser_RejectsInvalidDefineModelActionDisplayOptions(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/views/UserListView.vue"
+	path := "/virtual/modules/auth/web/views/UserListView.vue"
 	content := `<template><div /></template>
 <script setup lang="ts">
 const entityTitle = 'User';
@@ -2034,9 +2034,9 @@ const userActions = defineModelActions('auth.User', {
 
 func TestTsParser_AcceptsDefineModelActionTitlesWithTrailingComma(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/meta"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/meta"})
 
-	path := "/virtual/addons/meta/web/views/ModuleListView.vue"
+	path := "/virtual/modules/meta/web/views/ModuleListView.vue"
 	content := `<template><div /></template>
 <script setup lang="ts">
 const moduleActions = defineModelActions('meta.IrModuleIndex', {
@@ -2080,9 +2080,9 @@ const moduleActions = defineModelActions('meta.IrModuleIndex', {
 
 func TestTsParser_RejectsParentMenuOutsideDefineMenu(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/route/routes.ts"
+	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
 import { defineRoute } from '@/core/web/app/resource';
 
@@ -2384,7 +2384,7 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model_lead", Valid: true}},
 		Application: "crm",
 		Name:        "Lead",
-		Path:        "/virtual/addons/crm/models/lead.ts",
+		Path:        "/virtual/modules/crm/models/lead.ts",
 	}).Error; err != nil {
 		t.Fatalf("seed model failed: %v", err)
 	}
@@ -2402,10 +2402,10 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	mod := &meta.IrModule{
 		BaseModel: meta.BaseModel{Id: sql.NullString{String: "mod_auth", Valid: true}},
 		Name:      "auth",
-		Path:      "/virtual/addons/auth",
+		Path:      "/virtual/modules/auth",
 	}
 	insidePath := filepath.Join(mod.Path, "web", "views", "DashboardView.vue")
-	outsidePath := "/virtual/addons/other/web/views/ForeignView.vue"
+	outsidePath := "/virtual/modules/other/web/views/ForeignView.vue"
 	buildResult := withParserResults(
 		&module.BuildResult{Module: mod},
 		&parser.ParserResult{
@@ -2528,14 +2528,14 @@ func TestExtractUiResources_DuplicateEquivalentDeclsAreDeduped(t *testing.T) {
 			ID:         "auth.action.session_create",
 			Type:       parser.UiResourceTypeAction,
 			Requires:   []string{"rpc:/auth.Session/Create"},
-			SourcePath: "/addons/auth/web/views/SessionListView.vue",
+			SourcePath: "/modules/auth/web/views/SessionListView.vue",
 			SourceLine: 10,
 		},
 		{
 			ID:         "auth.action.session_create",
 			Type:       parser.UiResourceTypeAction,
 			Requires:   []string{"rpc:/auth.Session/Create"},
-			SourcePath: "/addons/auth/web/views/SessionFormView.vue",
+			SourcePath: "/modules/auth/web/views/SessionFormView.vue",
 			SourceLine: 35,
 		},
 	}}
@@ -2557,9 +2557,9 @@ func TestExtractUiResources_DuplicateEquivalentDeclsAreDeduped(t *testing.T) {
 
 func TestWebBuilder_IntegratesCrossFileDuplicateModelActionsFromVue(t *testing.T) {
 	tmpDir := t.TempDir()
-	addonsPath := filepath.Join(tmpDir, "addons")
+	modulesPath := filepath.Join(tmpDir, "modules")
 	distPath := filepath.Join(tmpDir, "dist")
-	modulePath := filepath.Join(addonsPath, "auth")
+	modulePath := filepath.Join(modulesPath, "auth")
 	viewsPath := filepath.Join(modulePath, "web", "views")
 	entryPoint := filepath.Join(modulePath, "web", "index.ts")
 
@@ -2577,11 +2577,11 @@ func TestWebBuilder_IntegratesCrossFileDuplicateModelActionsFromVue(t *testing.T
 		}
 	}
 
-	mustMkdirAll(addonsPath)
+	mustMkdirAll(modulesPath)
 	mustMkdirAll(viewsPath)
 	mustMkdirAll(distPath)
 
-	mustWrite(filepath.Join(addonsPath, "tsconfig.json"), `{
+	mustWrite(filepath.Join(modulesPath, "tsconfig.json"), `{
 	"compilerOptions": {
 		"target": "ES2020",
 		"module": "ESNext",
@@ -2623,7 +2623,7 @@ const formActions = defineModelActions('auth.Session', {
 		t.Fatalf("unexpected env type")
 	}
 	tenv.cfg = &config.Config{
-		AddonsPath:  addonsPath,
+		ModulesPath: modulesPath,
 		DistPath:    distPath,
 		Compile:     config.NewDefaultCompileConfig(),
 		Server:      config.NewDefaultServerConfig(),
@@ -2680,9 +2680,9 @@ const formActions = defineModelActions('auth.Session', {
 
 func TestWebBuilder_IntegratesCrossFileConflictingRouteActionsFromVueFailsUIVal002(t *testing.T) {
 	tmpDir := t.TempDir()
-	addonsPath := filepath.Join(tmpDir, "addons")
+	modulesPath := filepath.Join(tmpDir, "modules")
 	distPath := filepath.Join(tmpDir, "dist")
-	modulePath := filepath.Join(addonsPath, "auth")
+	modulePath := filepath.Join(modulesPath, "auth")
 	viewsPath := filepath.Join(modulePath, "web", "views")
 	entryPoint := filepath.Join(modulePath, "web", "index.ts")
 
@@ -2700,11 +2700,11 @@ func TestWebBuilder_IntegratesCrossFileConflictingRouteActionsFromVueFailsUIVal0
 		}
 	}
 
-	mustMkdirAll(addonsPath)
+	mustMkdirAll(modulesPath)
 	mustMkdirAll(viewsPath)
 	mustMkdirAll(distPath)
 
-	mustWrite(filepath.Join(addonsPath, "tsconfig.json"), `{
+	mustWrite(filepath.Join(modulesPath, "tsconfig.json"), `{
 	"compilerOptions": {
 		"target": "ES2020",
 		"module": "ESNext",
@@ -2748,7 +2748,7 @@ const formRoute = defineRoute('auth.route.session_list', {
 		t.Fatalf("unexpected env type")
 	}
 	tenv.cfg = &config.Config{
-		AddonsPath:  addonsPath,
+		ModulesPath: modulesPath,
 		DistPath:    distPath,
 		Compile:     config.NewDefaultCompileConfig(),
 		Server:      config.NewDefaultServerConfig(),
@@ -2799,8 +2799,8 @@ func TestExtractUiResources_DiagnosticIncludesLocationAndHintForDuplicate(t *tes
 	module := &meta.IrModule{Name: "auth"}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
-		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "User List", SourcePath: "/addons/auth/web/menu/menus.ts", SourceLine: 12, SourceColumn: 5},
-		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "Users", SourcePath: "/addons/auth/web/menu/override.ts", SourceLine: 20, SourceColumn: 9},
+		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "User List", SourcePath: "/modules/auth/web/menu/menus.ts", SourceLine: 12, SourceColumn: 5},
+		{ID: "auth.menu.user_list", Type: parser.UiResourceTypeMenu, Title: "Users", SourcePath: "/modules/auth/web/menu/override.ts", SourceLine: 20, SourceColumn: 9},
 	}}
 
 	_, _, err := extractUiResources(module, []*parser.ParserResult{pr})
@@ -2811,7 +2811,7 @@ func TestExtractUiResources_DiagnosticIncludesLocationAndHintForDuplicate(t *tes
 	if !strings.Contains(msg, "[UI_VAL_002]") {
 		t.Fatalf("expected rule code in diagnostic, got: %s", msg)
 	}
-	if !strings.Contains(msg, "/addons/auth/web/menu/override.ts:20:9") {
+	if !strings.Contains(msg, "/modules/auth/web/menu/override.ts:20:9") {
 		t.Fatalf("expected source location in diagnostic, got: %s", msg)
 	}
 	if !strings.Contains(msg, "hint:") {
@@ -2821,9 +2821,9 @@ func TestExtractUiResources_DiagnosticIncludesLocationAndHintForDuplicate(t *tes
 
 func TestTsParser_WarnsForNonRecommendedResourceIDNaming(t *testing.T) {
 	testRuntimeScope := newTestScope()
-	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/addons/auth"})
+	p := defaultparser.NewVueParser(testRuntimeScope, &meta.IrModule{Path: "/virtual/modules/auth"})
 
-	path := "/virtual/addons/auth/web/route/routes.ts"
+	path := "/virtual/modules/auth/web/route/routes.ts"
 	content := `
 import { defineRoute } from '@/core/web/app/resource';
 
@@ -2948,7 +2948,7 @@ func TestExtractUiResources_ParserWarningCarriesCodeAndHint(t *testing.T) {
 
 	pr := &parser.ParserResult{
 		UiResourceDecls: []*parser.UiResourceDecl{
-			{ID: "auth.route.user_list", Type: parser.UiResourceTypeRoute, SourcePath: "/addons/auth/web/route/routes.ts", SourceLine: 10, SourceColumn: 2},
+			{ID: "auth.route.user_list", Type: parser.UiResourceTypeRoute, SourcePath: "/modules/auth/web/route/routes.ts", SourceLine: 10, SourceColumn: 2},
 		},
 		UiResourceDeclIssues: []*parser.UiResourceDeclIssue{
 			{
@@ -2957,7 +2957,7 @@ func TestExtractUiResources_ParserWarningCarriesCodeAndHint(t *testing.T) {
 				Factory:    "defineRoute",
 				ResourceID: "auth.route.user_list",
 				Message:    "requires must be an object-literal array like [{ model: 'auth.User' }] or [{ model: 'auth.User', method: 'Browse' }]",
-				SourcePath: "/addons/auth/web/route/routes.ts",
+				SourcePath: "/modules/auth/web/route/routes.ts",
 				Line:       11,
 				Column:     6,
 			},
@@ -3130,7 +3130,7 @@ func TestExtractUiResources_InjectsApplicationFromModuleOwnership(t *testing.T) 
 	}
 
 	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
-		{ID: "whatever-id", Type: parser.UiResourceTypeMenu, SourcePath: "/addons/sale_marketing/web/menu/menus.ts", SourceLine: 9, SourceColumn: 3},
+		{ID: "whatever-id", Type: parser.UiResourceTypeMenu, SourcePath: "/modules/sale_marketing/web/menu/menus.ts", SourceLine: 9, SourceColumn: 3},
 	}}
 
 	resources, warnings, err := extractUiResources(module, []*parser.ParserResult{pr})
@@ -3251,8 +3251,8 @@ func TestTemplateStyleAndRenderComponentChain(t *testing.T) {
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	parentPath := "/virtual/addons/test/web/base/BaseView.vue"
-	childPath := "/virtual/addons/test/web/views/ChildView.vue"
+	parentPath := "/virtual/modules/test/web/base/BaseView.vue"
+	childPath := "/virtual/modules/test/web/views/ChildView.vue"
 
 	parentSFC := `<template><div id="root"><p id="target">base</p></div></template>
 <script lang="ts" _name="BaseView">
@@ -3358,8 +3358,8 @@ func TestGetStyleNodes_HoistsSassModuleDirectivesAfterPathRewrite(t *testing.T) 
 	testRuntimeScope := newTestScope()
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
-	parentPath := "/virtual/addons/test/web/base/BaseView.vue"
-	childPath := "/virtual/addons/test/web/views/ChildView.vue"
+	parentPath := "/virtual/modules/test/web/base/BaseView.vue"
+	childPath := "/virtual/modules/test/web/views/ChildView.vue"
 
 	parentSFC := `<template><div/></template>
 <script lang="ts" _name="BaseView">
@@ -3443,7 +3443,7 @@ func TestGetTemplateNode_UsesRenderedParentAndWrapsErrors(t *testing.T) {
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
 	t.Run("prefers rendered parent template node when available", func(t *testing.T) {
-		parentRaw := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/base/BaseView.vue", `<template><section id="raw-target"><p>raw</p></section></template>
+		parentRaw := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/base/BaseView.vue", `<template><section id="raw-target"><p>raw</p></section></template>
 <script lang="ts" _name="BaseView">
 import { defineComponent } from 'vue';
 import LegacyView from './LegacyView.vue';
@@ -3453,7 +3453,7 @@ export default defineComponent({
   extends: LegacyView,
 });
 </script>`)
-		parentRendered := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/base/BaseViewRendered.vue", `<template><section id="target"><p>rendered</p></section></template>
+		parentRendered := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/base/BaseViewRendered.vue", `<template><section id="target"><p>rendered</p></section></template>
 <script lang="ts" _name="BaseViewRendered">
 import { defineComponent } from 'vue';
 import LegacyView from './LegacyView.vue';
@@ -3463,7 +3463,7 @@ export default defineComponent({
   extends: LegacyView,
 });
 </script>`)
-		childParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/ChildView.vue", `<template><xpath expr="//*[@id='target']" position="replace"><strong id="new">child</strong></xpath></template>
+		childParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/ChildView.vue", `<template><xpath expr="//*[@id='target']" position="replace"><strong id="new">child</strong></xpath></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from '../base/BaseView.vue';
@@ -3489,7 +3489,7 @@ export default defineComponent({
 	})
 
 	t.Run("wraps xpath application errors", func(t *testing.T) {
-		parentParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/base/BaseView.vue", `<template><div id="target">base</div></template>
+		parentParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/base/BaseView.vue", `<template><div id="target">base</div></template>
 <script lang="ts" _name="BaseView">
 import { defineComponent } from 'vue';
 import LegacyView from './LegacyView.vue';
@@ -3499,7 +3499,7 @@ export default defineComponent({
   extends: LegacyView,
 });
 </script>`)
-		childParsed := parseVueResult(t, testRuntimeScope, "/virtual/addons/test/web/views/ChildView.vue", `<template><xpath expr="//*[" position="replace"><strong id="new">child</strong></xpath></template>
+		childParsed := parseVueResult(t, testRuntimeScope, "/virtual/modules/test/web/views/ChildView.vue", `<template><xpath expr="//*[" position="replace"><strong id="new">child</strong></xpath></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
 import BaseView from '../base/BaseView.vue';
@@ -3590,7 +3590,7 @@ func TestValidateUiResourceDependencies(t *testing.T) {
 		BaseModel:   meta.BaseModel{Id: sql.NullString{String: "model_lead", Valid: true}},
 		Application: "crm",
 		Name:        "Lead",
-		Path:        "/virtual/addons/crm/models/lead.ts",
+		Path:        "/virtual/modules/crm/models/lead.ts",
 	}
 	if err := testRuntimeScope.db.Create(model).Error; err != nil {
 		t.Fatalf("create model: %v", err)
@@ -3815,7 +3815,7 @@ func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 func TestUpdateComponentBranches(t *testing.T) {
 	root := t.TempDir()
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	testRuntimeScope.cfg.AddonsPath = root
+	testRuntimeScope.cfg.ModulesPath = root
 	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
@@ -3976,7 +3976,7 @@ func TestWebBuilderHelperFunctions(t *testing.T) {
 func TestBuildCtxAndBuildToDirCtxRespectCanceledContext(t *testing.T) {
 	b := &WebModuleBuilder{
 		runtimeScope:       newTestScope(),
-		module:             &meta.IrModule{Name: "web", Path: "/virtual/addons/web"},
+		module:             &meta.IrModule{Name: "web", Path: "/virtual/modules/web"},
 		publishDist:        false,
 		distWebDirOverride: "previous",
 	}
@@ -4527,7 +4527,7 @@ func TestReparseXPathComponentsPropertyNode(t *testing.T) {
 	t.Run("finds component property after reparsing", func(t *testing.T) {
 		testRuntimeScope := newTestScope().(*testScope)
 		root := t.TempDir()
-		testRuntimeScope.cfg.AddonsPath = root
+		testRuntimeScope.cfg.ModulesPath = root
 		if err := os.WriteFile(filepath.Join(root, "tsconfig.json"), []byte(`{"compilerOptions":{}}`), 0o644); err != nil {
 			t.Fatalf("write tsconfig failed: %v", err)
 		}
@@ -4536,7 +4536,7 @@ func TestReparseXPathComponentsPropertyNode(t *testing.T) {
 		parsed, err := vueParser.Parse(map[string]string{}, filepath.Join(root, "ChildView.vue"), `<template><div/></template>
 <script lang="ts" _name="ChildView">
 import { defineComponent } from 'vue';
-import Xpath from '/virtual/addons/core/web/component/xpath.vue';
+import Xpath from '/virtual/modules/core/web/component/xpath.vue';
 import KeepMe from './KeepMe.vue';
 
 export default defineComponent({
@@ -4573,7 +4573,7 @@ export default defineComponent({
 	t.Run("returns symbol not found when reparsed script has no xpath component", func(t *testing.T) {
 		testRuntimeScope := newTestScope().(*testScope)
 		root := t.TempDir()
-		testRuntimeScope.cfg.AddonsPath = root
+		testRuntimeScope.cfg.ModulesPath = root
 		if err := os.WriteFile(filepath.Join(root, "tsconfig.json"), []byte(`{"compilerOptions":{}}`), 0o644); err != nil {
 			t.Fatalf("write tsconfig failed: %v", err)
 		}
@@ -4645,22 +4645,22 @@ func TestInheritanceValidationHelpers(t *testing.T) {
 
 func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
-	addonsDir := t.TempDir()
-	testRuntimeScope.cfg.AddonsPath = addonsDir
+	modulesDir := t.TempDir()
+	testRuntimeScope.cfg.ModulesPath = modulesDir
 	db := testRuntimeScope.db
 
 	if err := db.AutoMigrate(&meta.IrApplication{}, &meta.IrModule{}); err != nil {
 		t.Fatalf("auto migrate failed: %v", err)
 	}
 
-	absEntry := filepath.Join(addonsDir, "partner", "web", "main.ts")
+	absEntry := filepath.Join(modulesDir, "partner", "web", "main.ts")
 	if err := os.MkdirAll(filepath.Dir(absEntry), 0o755); err != nil {
 		t.Fatalf("mkdir abs entry dir: %v", err)
 	}
 	if err := os.WriteFile(absEntry, []byte("export {}"), 0o644); err != nil {
 		t.Fatalf("write abs entry: %v", err)
 	}
-	_, crmWebDir, _, err := modulegenerator.WorkspaceGeneratedAPITargets(addonsDir, "crm", runtimeOptionsFromScope(testRuntimeScope).defaultChoysumPath)
+	_, crmWebDir, _, err := modulegenerator.WorkspaceGeneratedAPITargets(modulesDir, "crm", runtimeOptionsFromScope(testRuntimeScope).defaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(crm) error = %v", err)
 	}
@@ -4672,7 +4672,7 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 	if err := os.WriteFile(appStore, []byte("export {}"), 0o644); err != nil {
 		t.Fatalf("write app store: %v", err)
 	}
-	_, hrWebDir, _, err := modulegenerator.WorkspaceGeneratedAPITargets(addonsDir, "hr", runtimeOptionsFromScope(testRuntimeScope).defaultChoysumPath)
+	_, hrWebDir, _, err := modulegenerator.WorkspaceGeneratedAPITargets(modulesDir, "hr", runtimeOptionsFromScope(testRuntimeScope).defaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets(hr) error = %v", err)
 	}
@@ -4697,7 +4697,7 @@ func TestEntryPointImportsCollectsModulesAndAppStores(t *testing.T) {
 
 	b := &WebModuleBuilder{
 		runtimeScope: testRuntimeScope,
-		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(addonsDir, "auth")},
+		module:       &meta.IrModule{Name: "auth", Path: filepath.Join(modulesDir, "auth")},
 	}
 
 	imports := b.entryPointImports()

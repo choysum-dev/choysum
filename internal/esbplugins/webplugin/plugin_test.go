@@ -76,11 +76,11 @@ func newTestScope(t *testing.T) scope.Scope {
 	return &stubScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   filepath.Join(t.TempDir(), "dist"),
-			Compile:    config.NewDefaultCompileConfig(),
-			Server:     config.NewDefaultServerConfig(),
-			Log:        config.NewDefaultLogConfig(),
+			ModulesPath: t.TempDir(),
+			DistPath:    filepath.Join(t.TempDir(), "dist"),
+			Compile:     config.NewDefaultCompileConfig(),
+			Server:      config.NewDefaultServerConfig(),
+			Log:         config.NewDefaultLogConfig(),
 		},
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
@@ -90,7 +90,7 @@ func newPluginForTest(t *testing.T, parserImpl parser.Parser) *WebPlugin {
 	t.Helper()
 	testRuntimeScope := newTestScope(t)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	plugin := NewWebPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.addonsPath, "app", "web", "index.ts"), WithParser(parserImpl)).(*WebPlugin)
+	plugin := NewWebPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl)).(*WebPlugin)
 	plugin.ParserResultChan = make(chan *parser.ParserResult, 8)
 	plugin.ParserResults = make([]*parser.ParserResult, 0)
 	return plugin
@@ -373,10 +373,10 @@ func TestWebPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	baseOpts := runtimeOptionsFromScope(baseScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.addonsPath, "base", "web", "index.ts"), ApplicationStr: "base"}
-	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.addonsPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
+	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
+	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
 
-	plugin, ok := NewWebPlugin(baseScope, baseModule, filepath.Join(baseOpts.addonsPath, "base", "web", "index.ts")).(*WebPlugin)
+	plugin, ok := NewWebPlugin(baseScope, baseModule, filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts")).(*WebPlugin)
 	if !ok {
 		t.Fatalf("expected *WebPlugin, got %T", plugin)
 	}

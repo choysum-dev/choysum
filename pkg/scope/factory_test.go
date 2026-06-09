@@ -48,11 +48,11 @@ func factoryTestConfigFromInput(input FactoryInput) *config.Config {
 	return testInput.cfg
 }
 
-func (i factoryTestInput) AddonsPath() string {
+func (i factoryTestInput) ModulesPath() string {
 	if i.cfg == nil {
 		return ""
 	}
-	return i.cfg.AddonsPath
+	return i.cfg.ModulesPath
 }
 
 func (i factoryTestInput) DistPath() string {

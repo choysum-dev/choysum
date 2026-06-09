@@ -19,7 +19,7 @@ const DefaultNPMRegistryURL = "https://registry.npmjs.org"
 
 type Config struct {
 	ConfigPath         string `mapstructure:"-"`
-	AddonsPath         string `mapstructure:"addons_path"`
+	ModulesPath        string `mapstructure:"modules_path"`
 	DistPath           string `mapstructure:"dist_path"`
 	NpmPath            string `mapstructure:"npm_path"`
 	NPMRegistryURL     string `mapstructure:"npm_registry_url"`
@@ -160,8 +160,8 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 
 	c.normalizeJWTKeyPaths()
 
-	if !filepath.IsAbs(c.AddonsPath) {
-		c.AddonsPath, _ = filepath.Abs(c.AddonsPath)
+	if !filepath.IsAbs(c.ModulesPath) {
+		c.ModulesPath, _ = filepath.Abs(c.ModulesPath)
 	}
 	if !filepath.IsAbs(c.DistPath) {
 		c.DistPath, _ = filepath.Abs(c.DistPath)
@@ -279,15 +279,15 @@ func (c *Config) applyDatabaseInvariants() {
 }
 
 func defaultConfig() *Config {
-	addonsPath := "./addons"
+	modulesPath := "./modules"
 	if cwd, err := os.Getwd(); err == nil {
-		localAddons := filepath.Join(cwd, "addons")
-		if info, statErr := os.Stat(localAddons); statErr == nil && info.IsDir() {
-			addonsPath = localAddons
+		localModules := filepath.Join(cwd, "modules")
+		if info, statErr := os.Stat(localModules); statErr == nil && info.IsDir() {
+			modulesPath = localModules
 		}
 	}
 	var err error
-	addonsPath, err = filepath.Abs(addonsPath)
+	modulesPath, err = filepath.Abs(modulesPath)
 	if err != nil {
 		panic(err)
 	}
@@ -298,7 +298,7 @@ func defaultConfig() *Config {
 	}
 
 	return &Config{
-		AddonsPath:         addonsPath,
+		ModulesPath:        modulesPath,
 		DistPath:           "",
 		NpmPath:            npmPath,
 		NPMRegistryURL:     DefaultNPMRegistryURL,

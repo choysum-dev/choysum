@@ -12,7 +12,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath         string
+	modulesPath        string
 	distPath           string
 	defaultChoysumPath string
 	webBaseURL         string
@@ -35,7 +35,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, ser
 	}
 
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
 	}
@@ -83,8 +83,8 @@ func (b *WebModuleBuilder) resolvedRuntimeOptions() runtimeOptions {
 }
 
 func (o runtimeOptions) Validate() error {
-	if strings.TrimSpace(o.addonsPath) == "" {
-		return xfmt.Errorf("web builder runtime options: addonsPath is required")
+	if strings.TrimSpace(o.modulesPath) == "" {
+		return xfmt.Errorf("web builder runtime options: modulesPath is required")
 	}
 	if strings.TrimSpace(o.distPath) == "" {
 		return xfmt.Errorf("web builder runtime options: distPath is required")

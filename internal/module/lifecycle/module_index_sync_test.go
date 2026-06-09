@@ -87,7 +87,7 @@ func newModuleIndexSyncDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func newModuleIndexSyncScope(addonsPath string, db *gorm.DB) *moduleIndexSyncTestScope {
+func newModuleIndexSyncScope(modulesPath string, db *gorm.DB) *moduleIndexSyncTestScope {
 	scopeSession := &scope.Session{}
 	if db != nil {
 		scopeSession.DB = db
@@ -95,14 +95,14 @@ func newModuleIndexSyncScope(addonsPath string, db *gorm.DB) *moduleIndexSyncTes
 	return &moduleIndexSyncTestScope{
 		ctx:     context.Background(),
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cfg:     &config.Config{AddonsPath: addonsPath},
+		cfg:     &config.Config{ModulesPath: modulesPath},
 		session: scopeSession,
 	}
 }
 
-func writePackageJSON(t *testing.T, addonsPath, moduleName, content string) {
+func writePackageJSON(t *testing.T, modulesPath, moduleName, content string) {
 	t.Helper()
-	moduleDir := filepath.Join(addonsPath, moduleName)
+	moduleDir := filepath.Join(modulesPath, moduleName)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
@@ -142,15 +142,15 @@ func TestSyncLocalModuleIndex_LeaseBusyMappedToDomainError(t *testing.T) {
 	}
 }
 
-func TestSyncLocalModuleIndex_AddonsPathRequired(t *testing.T) {
+func TestSyncLocalModuleIndex_ModulesPathRequired(t *testing.T) {
 	runtimeScope := newModuleIndexSyncScope("", nil)
 	locker := &moduleIndexSyncTestLocker{}
 
 	_, err := SyncLocalModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return locker
 	})
-	if err == nil || !strings.Contains(err.Error(), "addons_path is required") {
-		t.Fatalf("expected addons_path required error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "modules_path is required") {
+		t.Fatalf("expected modules_path required error, got %v", err)
 	}
 	if locker.released != 1 {
 		t.Fatalf("locker Release calls = %d, want 1", locker.released)
@@ -158,13 +158,13 @@ func TestSyncLocalModuleIndex_AddonsPathRequired(t *testing.T) {
 }
 
 func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T) {
-	addonsPath := t.TempDir()
-	writePackageJSON(t, addonsPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
-	writePackageJSON(t, addonsPath, "broken", `{`)
-	if err := os.MkdirAll(filepath.Join(addonsPath, "node_modules"), 0o755); err != nil {
+	modulesPath := t.TempDir()
+	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
+	writePackageJSON(t, modulesPath, "broken", `{`)
+	if err := os.MkdirAll(filepath.Join(modulesPath, "node_modules"), 0o755); err != nil {
 		t.Fatalf("mkdir node_modules: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(addonsPath, "README.md"), []byte("ignored"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(modulesPath, "README.md"), []byte("ignored"), 0o644); err != nil {
 		t.Fatalf("write ignored file: %v", err)
 	}
 
@@ -178,7 +178,7 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 		t.Fatalf("seed stale index row: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(addonsPath, db)
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 
 	stats, err := SyncLocalModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
@@ -235,11 +235,11 @@ func TestSyncLocalModuleIndex_SyncsRowsAndReconcilesMissingModules(t *testing.T)
 }
 
 func TestSyncLocalModuleIndex_AllSuccessUpdatesBatchSyncAt(t *testing.T) {
-	addonsPath := t.TempDir()
-	writePackageJSON(t, addonsPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
+	modulesPath := t.TempDir()
+	writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.2.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 
 	db := newModuleIndexSyncDB(t)
-	runtimeScope := newModuleIndexSyncScope(addonsPath, db)
+	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
 
 	stats, err := SyncLocalModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
 		return &moduleIndexSyncTestLocker{}
@@ -341,8 +341,8 @@ func TestReadPackageJSONAndHelpers(t *testing.T) {
 }
 
 func TestSanitizeModuleIndexError_PathAndDefault(t *testing.T) {
-	runtimeScope := newModuleIndexSyncScope("/tmp/choysum/addons", nil)
-	pathErr := &os.PathError{Op: "open", Path: "/tmp/choysum/addons/meta/package.json", Err: os.ErrNotExist}
+	runtimeScope := newModuleIndexSyncScope("/tmp/choysum/modules", nil)
+	pathErr := &os.PathError{Op: "open", Path: "/tmp/choysum/modules/meta/package.json", Err: os.ErrNotExist}
 	if got := SanitizeModuleIndexError(runtimeScope, pathErr); got != "open package.json" {
 		t.Fatalf("sanitized path error = %q, want %q", got, "open package.json")
 	}
@@ -350,8 +350,8 @@ func TestSanitizeModuleIndexError_PathAndDefault(t *testing.T) {
 		t.Fatalf("SanitizeModuleIndexError(nil) = %q, want default", got)
 	}
 
-	got := SanitizeModuleIndexError(runtimeScope, errors.New(" read /tmp/choysum/addons/meta/package.json failed "))
-	if strings.Contains(got, "/tmp/choysum/addons") {
-		t.Fatalf("expected addons path to be redacted, got %q", got)
+	got := SanitizeModuleIndexError(runtimeScope, errors.New(" read /tmp/choysum/modules/meta/package.json failed "))
+	if strings.Contains(got, "/tmp/choysum/modules") {
+		t.Fatalf("expected modules path to be redacted, got %q", got)
 	}
 }

@@ -11,15 +11,15 @@ import (
 
 func TestWorkspaceGeneratedAPIRoot(t *testing.T) {
 	choysumRoot := t.TempDir()
-	addonsPath := filepath.Join("tmp", "repo", "addons")
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, choysumRoot)
+	modulesPath := filepath.Join("tmp", "repo", "modules")
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, choysumRoot)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPIRoot() error = %v", err)
 	}
 	if root != filepath.Join(choysumRoot, "generated") {
 		t.Fatalf("workspace generated root = %q, want %q", root, filepath.Join(choysumRoot, "generated"))
 	}
-	recomputed, err := WorkspaceGeneratedAPIRoot(addonsPath, choysumRoot)
+	recomputed, err := WorkspaceGeneratedAPIRoot(modulesPath, choysumRoot)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPIRoot(recompute) error = %v", err)
 	}
@@ -30,12 +30,12 @@ func TestWorkspaceGeneratedAPIRoot(t *testing.T) {
 
 func TestWorkspaceGeneratedAPITargets(t *testing.T) {
 	choysumRoot := t.TempDir()
-	addonsPath := filepath.Join("tmp", "repo", "addons")
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, choysumRoot)
+	modulesPath := filepath.Join("tmp", "repo", "modules")
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, choysumRoot)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPIRoot() error = %v", err)
 	}
-	protoDir, webDir, serviceDir, err := WorkspaceGeneratedAPITargets(addonsPath, "crm", choysumRoot)
+	protoDir, webDir, serviceDir, err := WorkspaceGeneratedAPITargets(modulesPath, "crm", choysumRoot)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPITargets() error = %v", err)
 	}
@@ -52,16 +52,16 @@ func TestWorkspaceGeneratedAPITargets(t *testing.T) {
 }
 
 func TestWorkspaceGeneratedAPIRoot_RequiresDefaultChoysumPath(t *testing.T) {
-	if _, err := WorkspaceGeneratedAPIRoot(filepath.Join("tmp", "repo", "addons"), ""); err == nil {
+	if _, err := WorkspaceGeneratedAPIRoot(filepath.Join("tmp", "repo", "modules"), ""); err == nil {
 		t.Fatal("expected WorkspaceGeneratedAPIRoot to reject empty defaultChoysumPath")
 	}
 }
 
 func TestWorkspaceGeneratedAPIRoot_UsesContractNamespaceOnly(t *testing.T) {
 	choysumRoot := t.TempDir()
-	addonsPath := filepath.Join(t.TempDir(), "addons")
+	modulesPath := filepath.Join(t.TempDir(), "modules")
 
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, choysumRoot)
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, choysumRoot)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPIRoot() error = %v", err)
 	}

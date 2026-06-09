@@ -30,7 +30,7 @@ func TestEnvNameForPath(t *testing.T) {
 func TestConfigUnmarshalEnvOnlyCompileAndServerKeys(t *testing.T) {
 	envOnlyCfgPath := writeTestConfig(t, `
 default_choysum_path: ./.choysum-custom
-addons_path: from-config
+modules_path: from-config
 `)
 
 	t.Setenv("CHOYSUM_TEST_COMPILE_MINIFY", "false")

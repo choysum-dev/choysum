@@ -11,7 +11,7 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath         string
+	modulesPath        string
 	distPath           string
 	defaultChoysumPath string
 	compileBundleMode  string
@@ -22,7 +22,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 
 	opts := runtimeOptions{compileBundleMode: compileDefaults.BundleMode}
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
 	}

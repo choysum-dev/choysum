@@ -61,7 +61,7 @@ type webApiStoreGenerator struct {
 	module       *meta.IrModule
 
 	// Optional override for pipeline-managed staging.
-	addonsWebDir string
+	modulesWebDir string
 }
 
 // convertFieldToMetadata converts ChoysumMetaField into FieldMetadata.
@@ -214,11 +214,11 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		"ToLowerCase": strings.ToLower,
 		"ToSnakeCase": strcase.ToSnake,
 		"ConvertPath": func(path string) string {
-			return strings.ReplaceAll(path, runtimeOpts.addonsPath, "@")
+			return strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 		},
 		// Drop the .ts extension.
 		"ConvertPathNoExt": func(path string) string {
-			p := strings.ReplaceAll(path, runtimeOpts.addonsPath, "@")
+			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
 		// Check whether the service name comes from BaseModel.
@@ -228,17 +228,17 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		"Contains": strings.Contains,
 	}
 
-	addonsWebDir := g.addonsWebDir
-	if addonsWebDir == "" {
-		_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesWebDir := g.modulesWebDir
+	if modulesWebDir == "" {
+		_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return nil, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsWebDir = webDir
+		modulesWebDir = webDir
 	}
 
 	// Create the <web>/stores directory.
-	outDir, _ := filepath.Abs(filepath.Join(addonsWebDir, "stores"))
+	outDir, _ := filepath.Abs(filepath.Join(modulesWebDir, "stores"))
 
 	writeTo := func(dir string) error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -309,7 +309,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		return nil
 	}
 
-	if g.addonsWebDir != "" {
+	if g.modulesWebDir != "" {
 		if err := writeTo(outDir); err != nil {
 			return nil, err
 		}

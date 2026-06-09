@@ -404,28 +404,28 @@ func (g *grpcGenerator) GenerateCtx(ctx context.Context) ([]*module.GeneratorRes
 // staged directories atomically.
 func (g *grpcGenerator) GenerateToTargetsCtx(
 	ctx context.Context,
-	addonsProtoDir string,
-	addonsWebDir string,
-	addonsServiceDir string,
+	modulesProtoDir string,
+	modulesWebDir string,
+	modulesServiceDir string,
 	distAppDir string,
 ) ([]*module.GeneratorResult, error) {
 	if g.protobufGenerator != nil {
-		g.protobufGenerator.addonsProtoDir = addonsProtoDir
+		g.protobufGenerator.modulesProtoDir = modulesProtoDir
 		g.protobufGenerator.distAppDir = distAppDir
 	}
 	if g.webGrpcGenerator != nil {
-		g.webGrpcGenerator.addonsProtoDir = addonsProtoDir
-		g.webGrpcGenerator.addonsWebDir = addonsWebDir
+		g.webGrpcGenerator.modulesProtoDir = modulesProtoDir
+		g.webGrpcGenerator.modulesWebDir = modulesWebDir
 	}
 	if g.webServiceGenerator != nil {
-		g.webServiceGenerator.addonsWebDir = addonsWebDir
+		g.webServiceGenerator.modulesWebDir = modulesWebDir
 	}
 	if g.webApiStoreGenerator != nil {
-		g.webApiStoreGenerator.addonsWebDir = addonsWebDir
+		g.webApiStoreGenerator.modulesWebDir = modulesWebDir
 	}
 	if g.serviceClientGenerator != nil {
-		g.serviceClientGenerator.addonsProtoDir = addonsProtoDir
-		g.serviceClientGenerator.addonsServiceDir = addonsServiceDir
+		g.serviceClientGenerator.modulesProtoDir = modulesProtoDir
+		g.serviceClientGenerator.modulesServiceDir = modulesServiceDir
 	}
 	return g.GenerateCtx(ctx)
 }

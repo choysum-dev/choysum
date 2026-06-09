@@ -87,7 +87,7 @@ func runModuleSearchLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeO
 		}
 	}
 
-	if entries, err := os.ReadDir(runtimeOptions.addonsPath); err == nil {
+	if entries, err := os.ReadDir(runtimeOptions.modulesPath); err == nil {
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue

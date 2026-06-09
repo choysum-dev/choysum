@@ -27,7 +27,7 @@ func TestServiceClientGenerate(t *testing.T) {
 		t.Fatalf("write google proto: %v", err)
 	}
 
-	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, addonsProtoDir: protoDir, addonsServiceDir: serviceDir}
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesProtoDir: protoDir, modulesServiceDir: serviceDir}
 	protoFiles, err := gen.collectProtoFiles("crm")
 	if err != nil {
 		t.Fatalf("collectProtoFiles() error = %v", err)
@@ -67,7 +67,7 @@ func TestServiceClientGenerate(t *testing.T) {
 
 func TestServiceClientGenerateEdgeCases(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, addonsProtoDir: t.TempDir(), addonsServiceDir: t.TempDir()}
+	gen := &serviceClientGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesProtoDir: t.TempDir(), modulesServiceDir: t.TempDir()}
 
 	results, err := gen.generate(context.Background(), &meta.IrApplication{Name: "crm"})
 	if err != nil {

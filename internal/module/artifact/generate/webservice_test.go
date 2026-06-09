@@ -18,7 +18,7 @@ func TestWebServiceGenerate(t *testing.T) {
 		t.Fatal("expected web service generator constructor to return non-nil")
 	}
 	webServiceDir := t.TempDir()
-	serviceResults, err := (&webServiceGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, addonsWebDir: webServiceDir}).generate(testApp())
+	serviceResults, err := (&webServiceGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webServiceDir}).generate(testApp())
 	if err != nil {
 		t.Fatalf("web service generate() error = %v", err)
 	}
@@ -36,7 +36,7 @@ func TestWebServiceGenerate(t *testing.T) {
 
 func TestWebServiceGenerateEmptyApp(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	results, err := (&webServiceGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, addonsWebDir: t.TempDir()}).generate(&meta.IrApplication{Name: "crm"})
+	results, err := (&webServiceGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(&meta.IrApplication{Name: "crm"})
 	if err != nil {
 		t.Fatalf("generate(empty app) error = %v", err)
 	}

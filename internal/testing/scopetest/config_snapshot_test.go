@@ -12,7 +12,7 @@ import (
 
 func configSnapshotFixture() *config.Config {
 	return &config.Config{
-		AddonsPath:         "/tmp/addons",
+		ModulesPath:        "/tmp/modules",
 		DistPath:           "/tmp/dist",
 		TmpPath:            "/tmp/tmp",
 		DefaultChoysumPath: "/tmp/.choysum",

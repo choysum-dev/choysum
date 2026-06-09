@@ -78,10 +78,10 @@ func noopRunFrontend(context.Context, string, string, string, string, bool, bool
 }
 
 func TestRun(t *testing.T) {
-	newEnv := func(addonsPath string) *testStubScope {
+	newEnv := func(modulesPath string) *testStubScope {
 		return &testStubScope{
 			ctx: context.Background(),
-			cfg: &config.Config{AddonsPath: addonsPath},
+			cfg: &config.Config{ModulesPath: modulesPath},
 		}
 	}
 
@@ -110,12 +110,12 @@ func TestRun(t *testing.T) {
 
 	t.Run("requires callbacks after base validation", func(t *testing.T) {
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunBE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 		})
 		if err == nil || !strings.Contains(err.Error(), "missing required callbacks") {
 			t.Fatalf("expected missing callbacks error, got %v", err)
@@ -123,17 +123,17 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("validates scope and required fields", func(t *testing.T) {
-		err := Run(context.Background(), RunOptions{RunBE: true, AddonsPath: t.TempDir(), Target: "auth"})
+		err := Run(context.Background(), RunOptions{RunBE: true, ModulesPath: t.TempDir(), Target: "auth"})
 		if err == nil || !strings.Contains(err.Error(), "scope is not initialized") {
 			t.Fatalf("expected missing scope error, got %v", err)
 		}
 
 		err = Run(context.Background(), RunOptions{Env: newEnv(t.TempDir()), RunBE: true, Target: "auth"})
-		if err == nil || !strings.Contains(err.Error(), "config missing addons_path") {
-			t.Fatalf("expected missing addons_path error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "config missing modules_path") {
+			t.Fatalf("expected missing modules_path error, got %v", err)
 		}
 
-		err = Run(context.Background(), RunOptions{Env: newEnv(t.TempDir()), AddonsPath: t.TempDir(), RunBE: true})
+		err = Run(context.Background(), RunOptions{Env: newEnv(t.TempDir()), ModulesPath: t.TempDir(), RunBE: true})
 		if err == nil || !strings.Contains(err.Error(), "missing app") {
 			t.Fatalf("expected missing app error, got %v", err)
 		}
@@ -142,17 +142,17 @@ func TestRun(t *testing.T) {
 	t.Run("returns no tests found when nothing resolves", func(t *testing.T) {
 		var stdout strings.Builder
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "all",
-			RunBE:      true,
-			Stdout:     &stdout,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "all",
+			RunBE:       true,
+			Stdout:      &stdout,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return nil, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return false, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return false, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -169,17 +169,17 @@ func TestRun(t *testing.T) {
 	t.Run("resolve apps error is propagated", func(t *testing.T) {
 		resolveErr := errors.New("resolve failed")
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "all",
-			RunBE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "all",
+			RunBE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return nil, resolveErr
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return false, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return false, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -193,7 +193,7 @@ func TestRun(t *testing.T) {
 	t.Run("fails when no tests found and fail if no tests is set", func(t *testing.T) {
 		err := Run(context.Background(), RunOptions{
 			Env:           newEnv(t.TempDir()),
-			AddonsPath:    t.TempDir(),
+			ModulesPath:   t.TempDir(),
 			Target:        "all",
 			RunBE:         true,
 			FailIfNoTests: true,
@@ -202,8 +202,8 @@ func TestRun(t *testing.T) {
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return nil, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return false, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return false, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -218,19 +218,19 @@ func TestRun(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		resolved := false
 		err := Run(ctx, RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunBE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				resolved = true
 				cancel()
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -247,7 +247,7 @@ func TestRun(t *testing.T) {
 	t.Run("requires typecheck callback when requested", func(t *testing.T) {
 		err := Run(context.Background(), RunOptions{
 			Env:           newEnv(t.TempDir()),
-			AddonsPath:    t.TempDir(),
+			ModulesPath:   t.TempDir(),
 			Target:        "auth",
 			RunBE:         true,
 			WithTypecheck: true,
@@ -256,8 +256,8 @@ func TestRun(t *testing.T) {
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -272,7 +272,7 @@ func TestRun(t *testing.T) {
 		var stderr strings.Builder
 		err := Run(context.Background(), RunOptions{
 			Env:           newEnv(t.TempDir()),
-			AddonsPath:    t.TempDir(),
+			ModulesPath:   t.TempDir(),
 			Target:        "all",
 			RunBE:         true,
 			WithTypecheck: true,
@@ -281,8 +281,8 @@ func TestRun(t *testing.T) {
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			Typecheck: func(context.Context, scope.Scope, string, string) error {
 				return errors.New("typecheck boom")
 			},
@@ -303,7 +303,7 @@ func TestRun(t *testing.T) {
 		typecheckErr := errors.New("typecheck stop now")
 		err := Run(context.Background(), RunOptions{
 			Env:           newEnv(t.TempDir()),
-			AddonsPath:    t.TempDir(),
+			ModulesPath:   t.TempDir(),
 			Target:        "auth",
 			RunBE:         true,
 			WithTypecheck: true,
@@ -313,8 +313,8 @@ func TestRun(t *testing.T) {
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			Typecheck: func(context.Context, scope.Scope, string, string) error {
 				return typecheckErr
 			},
@@ -331,18 +331,18 @@ func TestRun(t *testing.T) {
 	t.Run("backend fail fast stops after first failing app", func(t *testing.T) {
 		calls := 0
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "all",
-			RunBE:      true,
-			FailFast:   true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "all",
+			RunBE:       true,
+			FailFast:    true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth", "partner"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				calls++
 				return true, nil
@@ -360,18 +360,18 @@ func TestRun(t *testing.T) {
 	t.Run("propagates keep option to backend runner", func(t *testing.T) {
 		keepSeen := false
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunBE:      true,
-			Keep:       true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			Keep:        true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(_ context.Context, _ scope.Scope, _ string, _ string, _ string, _ string, _ string, keep bool, _ string, _ string, _ bool, _ bool) (bool, error) {
 				keepSeen = keep
 				return false, nil
@@ -389,17 +389,17 @@ func TestRun(t *testing.T) {
 	t.Run("backend and frontend runner errors are propagated", func(t *testing.T) {
 		backendErr := errors.New("backend exploded")
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunBE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, backendErr
 			},
@@ -411,17 +411,17 @@ func TestRun(t *testing.T) {
 
 		frontendErr := errors.New("frontend exploded")
 		err = Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunFE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunFE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return false, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return true, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return false, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return true, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -437,19 +437,19 @@ func TestRun(t *testing.T) {
 	t.Run("test discovery callback errors are propagated", func(t *testing.T) {
 		hasBEErr := errors.New("has backend tests failed")
 		err := Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunBE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests: func(addonsPath string, app string) (bool, error) {
+			HasBackendTests: func(modulesPath string, app string) (bool, error) {
 				return false, hasBEErr
 			},
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -461,17 +461,17 @@ func TestRun(t *testing.T) {
 
 		hasFEErr := errors.New("has frontend tests failed")
 		err = Run(context.Background(), RunOptions{
-			Env:        newEnv(t.TempDir()),
-			AddonsPath: t.TempDir(),
-			Target:     "auth",
-			RunFE:      true,
-			Stdout:     io.Discard,
-			Stderr:     io.Discard,
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunFE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return false, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, hasFEErr },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return false, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, hasFEErr },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -486,7 +486,7 @@ func TestRun(t *testing.T) {
 		t.Setenv("PATH", "")
 		err := Run(context.Background(), RunOptions{
 			Env:               newEnv(t.TempDir()),
-			AddonsPath:        t.TempDir(),
+			ModulesPath:       t.TempDir(),
 			Target:            "auth",
 			RepoRoot:          t.TempDir(),
 			RunBE:             true,
@@ -498,8 +498,8 @@ func TestRun(t *testing.T) {
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -511,7 +511,7 @@ func TestRun(t *testing.T) {
 
 		err = Run(context.Background(), RunOptions{
 			Env:           newEnv(t.TempDir()),
-			AddonsPath:    t.TempDir(),
+			ModulesPath:   t.TempDir(),
 			Target:        "auth",
 			RepoRoot:      t.TempDir(),
 			RunBE:         true,
@@ -523,8 +523,8 @@ func TestRun(t *testing.T) {
 			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 				return []string{"auth"}, nil
 			},
-			HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-			HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 				return false, nil
 			},
@@ -596,11 +596,11 @@ func TestResolveJUnitReportPath(t *testing.T) {
 
 func TestRunWithDefaults(t *testing.T) {
 	err := RunWithDefaults(context.Background(), RunOptions{
-		RunBE:      true,
-		AddonsPath: t.TempDir(),
-		Target:     "auth",
-		Stdout:     io.Discard,
-		Stderr:     io.Discard,
+		RunBE:       true,
+		ModulesPath: t.TempDir(),
+		Target:      "auth",
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
 	})
 	if err == nil || !strings.Contains(err.Error(), "scope is not initialized") {
 		t.Fatalf("expected scope error, got %v", err)
@@ -612,7 +612,7 @@ func TestRunWithDefaultsUsesInjectedTypecheck(t *testing.T) {
 		Env:           nil,
 		RunBE:         true,
 		WithTypecheck: true,
-		AddonsPath:    t.TempDir(),
+		ModulesPath:   t.TempDir(),
 		Target:        "auth",
 		Stdout:        io.Discard,
 		Stderr:        io.Discard,
@@ -627,11 +627,11 @@ func TestRunWithDefaultsUsesInjectedTypecheck(t *testing.T) {
 
 func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	repoRoot := t.TempDir()
-	addonsPath := filepath.Join(repoRoot, "addons")
-	if err := os.MkdirAll(filepath.Join(addonsPath, "auth", "service"), 0o755); err != nil {
+	modulesPath := filepath.Join(repoRoot, "modules")
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth", "service"), 0o755); err != nil {
 		t.Fatalf("MkdirAll auth service: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile auth service ts: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(repoRoot, "node_modules", "vue-tsc"), 0o755); err != nil {
@@ -655,10 +655,10 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	}
 	t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", capturePath)
 
-	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: addonsPath, NpmPath: npmPath, TmpPath: tmpRoot}}
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, NpmPath: npmPath, TmpPath: tmpRoot}}
 	err := RunWithDefaults(context.Background(), RunOptions{
 		Env:           runtimeScope,
-		AddonsPath:    addonsPath,
+		ModulesPath:   modulesPath,
 		RepoRoot:      repoRoot,
 		Target:        "auth",
 		RunBE:         true,
@@ -668,8 +668,8 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 		ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 			return []string{"auth"}, nil
 		},
-		HasBackendTests:  func(addonsPath string, app string) (bool, error) { return true, nil },
-		HasFrontendTests: func(addonsPath string, app string) (bool, error) { return false, nil },
+		HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+		HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
 		RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
 			return false, nil
 		},

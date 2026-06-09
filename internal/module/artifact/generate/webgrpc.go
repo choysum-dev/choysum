@@ -28,8 +28,8 @@ type webGrpcGenerator struct {
 	plugins      []GrpcPlugin
 
 	// Optional override for pipeline-managed staging.
-	addonsProtoDir string
-	addonsWebDir   string
+	modulesProtoDir string
+	modulesWebDir   string
 }
 
 func (p *webGrpcGenerator) generate(ctx context.Context, results []*module.GeneratorResult) ([]*module.GeneratorResult, error) {
@@ -64,15 +64,15 @@ func (p *webGrpcGenerator) generate(ctx context.Context, results []*module.Gener
 	var allGenResults []*module.GeneratorResult
 
 	// Resolve the output directory.
-	addonsWebDir := p.addonsWebDir
-	if addonsWebDir == "" {
-		_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, p.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesWebDir := p.modulesWebDir
+	if modulesWebDir == "" {
+		_, webDir, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, p.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return results, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsWebDir = webDir
+		modulesWebDir = webDir
 	}
-	outDir, _ := filepath.Abs(filepath.Join(addonsWebDir, "pb"))
+	outDir, _ := filepath.Abs(filepath.Join(modulesWebDir, "pb"))
 
 	writeTo := func(dir string) error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -115,7 +115,7 @@ func (p *webGrpcGenerator) generate(ctx context.Context, results []*module.Gener
 		return nil
 	}
 
-	if p.addonsWebDir != "" {
+	if p.modulesWebDir != "" {
 		if err := writeTo(outDir); err != nil {
 			return results, err
 		}
@@ -134,15 +134,15 @@ func (p *webGrpcGenerator) generate(ctx context.Context, results []*module.Gener
 // buildRequestWithBuf builds a CodeGeneratorRequest with the protocompile library.
 func (p *webGrpcGenerator) buildCodeGeneratorRequest(protoFiles []string) (*pluginpb.CodeGeneratorRequest, error) {
 	runtimeOpts := runtimeOptionsFromScope(p.runtimeScope)
-	addonsProtoDir := p.addonsProtoDir
-	if addonsProtoDir == "" {
-		protoDir, _, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, p.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesProtoDir := p.modulesProtoDir
+	if modulesProtoDir == "" {
+		protoDir, _, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, p.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return nil, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsProtoDir = protoDir
+		modulesProtoDir = protoDir
 	}
-	protoDir, _ := filepath.Abs(addonsProtoDir)
+	protoDir, _ := filepath.Abs(modulesProtoDir)
 	protoFileNames := make([]string, len(protoFiles))
 	for i, file := range protoFiles {
 		relPath, _ := filepath.Rel(protoDir, file)

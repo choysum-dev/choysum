@@ -8,14 +8,14 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath string
+	modulesPath string
 }
 
 func newRuntimeOptions(paths scope.PathsRuntimeOptions, ok bool) runtimeOptions {
 	if !ok {
 		return runtimeOptions{}
 	}
-	return runtimeOptions{addonsPath: paths.AddonsPath}
+	return runtimeOptions{modulesPath: paths.ModulesPath}
 }
 
 func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {

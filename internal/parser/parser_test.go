@@ -14,7 +14,7 @@ import (
 
 func TestTsParserParseImportAndExport(t *testing.T) {
 	parser := &TsParser{
-		Path: "/virtual/addons/test/service/user.ts",
+		Path: "/virtual/modules/test/service/user.ts",
 		Content: "import BaseModel from './base';\n" +
 			"import * as helpers from '@/shared/helpers';\n" +
 			"import { Named as Alias, Inline } from './named';\n" +
@@ -24,20 +24,20 @@ func TestTsParserParseImportAndExport(t *testing.T) {
 			"export * from './wild';\n" +
 			"export default Local;\n",
 		PathAlias: map[string]string{
-			"@/*": "/virtual/addons/test/*",
+			"@/*": "/virtual/modules/test/*",
 		},
 	}
 
 	if err := parser.ParseImport(nil); err != nil {
 		t.Fatalf("ParseImport() error = %v", err)
 	}
-	if got := parser.ImportsMap["BaseModel"]; got == nil || got.ReferenceIdent != "default" || got.ModuleSpecPath != "/virtual/addons/test/service/base" {
+	if got := parser.ImportsMap["BaseModel"]; got == nil || got.ReferenceIdent != "default" || got.ModuleSpecPath != "/virtual/modules/test/service/base" {
 		t.Fatalf("unexpected default import: %#v", got)
 	}
-	if got := parser.ImportsMap["helpers"]; got == nil || got.ReferenceIdent != "*" || got.ModuleSpecPath != "/virtual/addons/test/shared/helpers" {
+	if got := parser.ImportsMap["helpers"]; got == nil || got.ReferenceIdent != "*" || got.ModuleSpecPath != "/virtual/modules/test/shared/helpers" {
 		t.Fatalf("unexpected namespace import: %#v", got)
 	}
-	if got := parser.ImportsMap["Alias"]; got == nil || got.ReferenceIdent != "Named" || got.ModuleSpecPath != "/virtual/addons/test/service/named" {
+	if got := parser.ImportsMap["Alias"]; got == nil || got.ReferenceIdent != "Named" || got.ModuleSpecPath != "/virtual/modules/test/service/named" {
 		t.Fatalf("unexpected aliased import: %#v", got)
 	}
 	if got := parser.ImportsMap["Inline"]; got == nil || got.ReferenceIdent != "Inline" {
@@ -47,30 +47,30 @@ func TestTsParserParseImportAndExport(t *testing.T) {
 	if err := parser.ParseExport(nil); err != nil {
 		t.Fatalf("ParseExport() error = %v", err)
 	}
-	if got := parser.ExportsMap["ExportedAlias"]; got == nil || got.ReferenceIdent != "Named" || got.ModuleSpecPath != "/virtual/addons/test/service/named" {
+	if got := parser.ExportsMap["ExportedAlias"]; got == nil || got.ReferenceIdent != "Named" || got.ModuleSpecPath != "/virtual/modules/test/service/named" {
 		t.Fatalf("unexpected re-exported alias: %#v", got)
 	}
-	if got := parser.ExportsMap["SharedDefault"]; got == nil || got.ReferenceIdent != "default" || got.ModuleSpecPath != "/virtual/addons/test/shared/defaults" {
+	if got := parser.ExportsMap["SharedDefault"]; got == nil || got.ReferenceIdent != "default" || got.ModuleSpecPath != "/virtual/modules/test/shared/defaults" {
 		t.Fatalf("unexpected default re-export: %#v", got)
 	}
-	if got := parser.ExportsMap["default"]; got == nil || got.ReferenceIdent != "Local" || got.ModuleSpecPath != "/virtual/addons/test/service/user" {
+	if got := parser.ExportsMap["default"]; got == nil || got.ReferenceIdent != "Local" || got.ModuleSpecPath != "/virtual/modules/test/service/user" {
 		t.Fatalf("unexpected default export assignment: %#v", got)
 	}
-	if got := parser.ExportsMap["*"]; got == nil || len(got.Wildcard) != 1 || got.Wildcard[0].ModuleSpecPath != "/virtual/addons/test/service/wild" {
+	if got := parser.ExportsMap["*"]; got == nil || len(got.Wildcard) != 1 || got.Wildcard[0].ModuleSpecPath != "/virtual/modules/test/service/wild" {
 		t.Fatalf("unexpected wildcard exports: %#v", got)
 	}
 }
 
 func TestParseTsconfigPathAlias(t *testing.T) {
 	rawOptions := &api.BuildOptions{
-		AbsWorkingDir: "/workspace/addons",
+		AbsWorkingDir: "/workspace/modules",
 		TsconfigRaw:   `{"compilerOptions":{"paths":{"@/*":["src/*"],"~/*":["shared/*"]}}}`,
 	}
 	rawAliases, err := ParseTsconfigPathAlias(rawOptions)
 	if err != nil {
 		t.Fatalf("ParseTsconfigPathAlias(raw) error = %v", err)
 	}
-	if rawAliases["@/*"] != "/workspace/addons/src/*" || rawAliases["~/*"] != "/workspace/addons/shared/*" {
+	if rawAliases["@/*"] != "/workspace/modules/src/*" || rawAliases["~/*"] != "/workspace/modules/shared/*" {
 		t.Fatalf("unexpected raw aliases: %#v", rawAliases)
 	}
 

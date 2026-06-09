@@ -3,7 +3,7 @@
 
 package config
 
-// AddonsPathConfig owns the root-level addons_path mapping.
-type AddonsPathConfig struct {
-	AddonsPath string `mapstructure:"addons_path"`
+// ModulesPathConfig owns the root-level modules_path mapping.
+type ModulesPathConfig struct {
+	ModulesPath string `mapstructure:"modules_path"`
 }

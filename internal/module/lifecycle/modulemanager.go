@@ -44,7 +44,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func (m *ModuleManager) generateAppToDirs(ctx context.Context, appName string, addonsTargets pipeline.AddonsAppTargets, distAppDir string) error {
+func (m *ModuleManager) generateAppToDirs(ctx context.Context, appName string, modulesTargets pipeline.ModulesAppTargets, distAppDir string) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -72,7 +72,7 @@ func (m *ModuleManager) generateAppToDirs(ctx context.Context, appName string, a
 	if !ok {
 		return xfmt.Errorf("generator does not support GenerateToTargetsCtx")
 	}
-	if _, err := genToTargets.GenerateToTargetsCtx(ctx, addonsTargets.ProtoDir, addonsTargets.WebDir, addonsTargets.ServiceDir, distAppDir); err != nil {
+	if _, err := genToTargets.GenerateToTargetsCtx(ctx, modulesTargets.ProtoDir, modulesTargets.WebDir, modulesTargets.ServiceDir, distAppDir); err != nil {
 		return xfmt.Errorf("error generating app %s: %w", appName, err)
 	}
 	return nil
@@ -113,7 +113,7 @@ func (m *ModuleManager) buildBackendAppToDir(ctx context.Context, appName string
 			continue
 		}
 		if !filepath.IsAbs(entry) {
-			entry = filepath.Join(runtimeOpts.addonsPath, mods[i].Name, entry)
+			entry = filepath.Join(runtimeOpts.modulesPath, mods[i].Name, entry)
 		}
 		entry = filepath.Clean(entry)
 		b.WriteString("import \"")
@@ -157,7 +157,7 @@ func (m *ModuleManager) buildGlobalWebToDir(ctx context.Context, distWebDir stri
 	entry := webMod.WebEntryPoint
 	runtimeOpts := m.resolvedRuntimeOptions()
 	if !filepath.IsAbs(entry) {
-		entry = filepath.Join(runtimeOpts.addonsPath, webMod.Name, entry)
+		entry = filepath.Join(runtimeOpts.modulesPath, webMod.Name, entry)
 	}
 	webMod.WebEntryPoint = entry
 
@@ -423,7 +423,7 @@ func nullString(value string) sql.NullString {
 
 func (m *ModuleManager) resolveGeneratedAPIRoot() (string, error) {
 	runtimeOpts := m.resolvedRuntimeOptions()
-	generatedAPIRoot, err := modulegenerator.WorkspaceGeneratedAPIRoot(runtimeOpts.addonsPath, runtimeOpts.defaultChoysumPath)
+	generatedAPIRoot, err := modulegenerator.WorkspaceGeneratedAPIRoot(runtimeOpts.modulesPath, runtimeOpts.defaultChoysumPath)
 	if err != nil {
 		return "", xfmt.Errorf("resolve workspace generated api root: %w", err)
 	}
@@ -439,7 +439,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 	}
 
 	runtimeOpts := m.resolvedRuntimeOptions()
-	addonsPath := strings.TrimSpace(runtimeOpts.addonsPath)
+	modulesPath := strings.TrimSpace(runtimeOpts.modulesPath)
 	now := time.Now()
 	seen := make(map[string]struct{}, len(moduleNames))
 
@@ -453,7 +453,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 		}
 		seen[name] = struct{}{}
 
-		packageJSONPath := filepath.Join(addonsPath, name, "package.json")
+		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
 		packageJSONData, readErr := os.ReadFile(packageJSONPath)
 
 		entry := metadata.IrModuleIndex{
@@ -462,7 +462,7 @@ func (m *ModuleManager) refreshModuleIndexForLocalModules(ctx context.Context, m
 			OriginRef:        "local",
 			Available:        readErr == nil,
 			ManifestJson:     packageJSONData,
-			LocalPath:        nullString(filepath.Join(addonsPath, name)),
+			LocalPath:        nullString(filepath.Join(modulesPath, name)),
 			LastSyncAt:       &now,
 			LastErrorMessage: nullString(""),
 		}
@@ -623,22 +623,22 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			Upgrade: func(mod *meta.IrModule) error {
 				return m.upgradeWithCtx(mod, opCtx)
 			},
-			AppTargets: func(appName string) (string, pipeline.AddonsAppTargets, error) {
+			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
 					distAppDir = config.AppDir(runtimeOpts.distPath, appName)
 				}
-				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, appName, runtimeOpts.defaultChoysumPath)
+				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, appName, runtimeOpts.defaultChoysumPath)
 				if err != nil {
-					return "", pipeline.AddonsAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
+					return "", pipeline.ModulesAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 				}
-				addonsTargets := pipeline.AddonsAppTargets{
+				modulesTargets := pipeline.ModulesAppTargets{
 					ProtoDir:        protoDir,
 					WebDir:          webDir,
 					ServiceDir:      serviceDir,
 					RuntimeProtoDir: config.APIAppProtoDir(runtimeOpts.distPath, appName),
 				}
-				return distAppDir, addonsTargets, nil
+				return distAppDir, modulesTargets, nil
 			},
 			BundlesTarget: bundlesTargetFn,
 			WebTarget: func() (string, error) {
@@ -653,8 +653,8 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			BuildBackendApp: func(stageCtx context.Context, appName string, distAppStagingDir string) error {
 				return m.buildBackendAppToDir(stageCtx, appName, distAppStagingDir)
 			},
-			GenerateApp: func(stageCtx context.Context, appName string, addonsStaging pipeline.AddonsAppTargets, distAppStagingDir string) error {
-				return m.generateAppToDirs(stageCtx, appName, addonsStaging, distAppStagingDir)
+			GenerateApp: func(stageCtx context.Context, appName string, modulesStaging pipeline.ModulesAppTargets, distAppStagingDir string) error {
+				return m.generateAppToDirs(stageCtx, appName, modulesStaging, distAppStagingDir)
 			},
 			BuildBackendBundles: buildBundlesFn,
 			GlobalWebBuild: func(stageCtx context.Context, distWebStagingDir string) error {
@@ -754,22 +754,22 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			Upgrade: func(mod *meta.IrModule) error {
 				return m.upgradeWithCtx(mod, opCtx)
 			},
-			AppTargets: func(appName string) (string, pipeline.AddonsAppTargets, error) {
+			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
 					distAppDir = config.AppDir(runtimeOpts.distPath, appName)
 				}
-				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, appName, runtimeOpts.defaultChoysumPath)
+				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, appName, runtimeOpts.defaultChoysumPath)
 				if err != nil {
-					return "", pipeline.AddonsAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
+					return "", pipeline.ModulesAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 				}
-				addonsTargets := pipeline.AddonsAppTargets{
+				modulesTargets := pipeline.ModulesAppTargets{
 					ProtoDir:        protoDir,
 					WebDir:          webDir,
 					ServiceDir:      serviceDir,
 					RuntimeProtoDir: config.APIAppProtoDir(runtimeOpts.distPath, appName),
 				}
-				return distAppDir, addonsTargets, nil
+				return distAppDir, modulesTargets, nil
 			},
 			BundlesTarget: bundlesTargetFn,
 			WebTarget: func() (string, error) {
@@ -784,8 +784,8 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			BuildBackendApp: func(stageCtx context.Context, appName string, distAppStagingDir string) error {
 				return m.buildBackendAppToDir(stageCtx, appName, distAppStagingDir)
 			},
-			GenerateApp: func(stageCtx context.Context, appName string, addonsStaging pipeline.AddonsAppTargets, distAppStagingDir string) error {
-				return m.generateAppToDirs(stageCtx, appName, addonsStaging, distAppStagingDir)
+			GenerateApp: func(stageCtx context.Context, appName string, modulesStaging pipeline.ModulesAppTargets, distAppStagingDir string) error {
+				return m.generateAppToDirs(stageCtx, appName, modulesStaging, distAppStagingDir)
 			},
 			BuildBackendBundles: buildBundlesFn,
 			GlobalWebBuild: func(stageCtx context.Context, distWebStagingDir string) error {
@@ -905,22 +905,22 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			Upgrade: func(mod *meta.IrModule) error {
 				return m.upgradeWithCtx(mod, opCtx)
 			},
-			AppTargets: func(appName string) (string, pipeline.AddonsAppTargets, error) {
+			AppTargets: func(appName string) (string, pipeline.ModulesAppTargets, error) {
 				distAppDir := ""
 				if !isBundleMode {
 					distAppDir = config.AppDir(runtimeOpts.distPath, appName)
 				}
-				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, appName, runtimeOpts.defaultChoysumPath)
+				protoDir, webDir, serviceDir, err := modulegenerator.WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, appName, runtimeOpts.defaultChoysumPath)
 				if err != nil {
-					return "", pipeline.AddonsAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
+					return "", pipeline.ModulesAppTargets{}, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 				}
-				addonsTargets := pipeline.AddonsAppTargets{
+				modulesTargets := pipeline.ModulesAppTargets{
 					ProtoDir:        protoDir,
 					WebDir:          webDir,
 					ServiceDir:      serviceDir,
 					RuntimeProtoDir: config.APIAppProtoDir(runtimeOpts.distPath, appName),
 				}
-				return distAppDir, addonsTargets, nil
+				return distAppDir, modulesTargets, nil
 			},
 			BundlesTarget: bundlesTargetFn,
 			WebTarget: func() (string, error) {
@@ -935,8 +935,8 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			BuildBackendApp: func(stageCtx context.Context, appName string, distAppStagingDir string) error {
 				return m.buildBackendAppToDir(stageCtx, appName, distAppStagingDir)
 			},
-			GenerateApp: func(stageCtx context.Context, appName string, addonsStaging pipeline.AddonsAppTargets, distAppStagingDir string) error {
-				return m.generateAppToDirs(stageCtx, appName, addonsStaging, distAppStagingDir)
+			GenerateApp: func(stageCtx context.Context, appName string, modulesStaging pipeline.ModulesAppTargets, distAppStagingDir string) error {
+				return m.generateAppToDirs(stageCtx, appName, modulesStaging, distAppStagingDir)
 			},
 			BuildBackendBundles: buildBundlesFn,
 			GlobalWebBuild: func(stageCtx context.Context, distWebStagingDir string) error {

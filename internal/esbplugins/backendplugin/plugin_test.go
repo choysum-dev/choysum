@@ -55,7 +55,7 @@ func (e *testScope) FactoryInput() scope.FactoryInput {
 func newPluginTestScope() scope.Scope {
 	return &testScope{
 		ctx:    context.Background(),
-		cfg:    &config.Config{AddonsPath: "/virtual/addons"},
+		cfg:    &config.Config{ModulesPath: "/virtual/modules"},
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }
@@ -70,7 +70,7 @@ func newPluginSessionTestScope(t *testing.T) (*testScope, *gorm.DB) {
 
 	return &testScope{
 		ctx:     context.Background(),
-		cfg:     &config.Config{AddonsPath: filepath.Join(t.TempDir(), "addons")},
+		cfg:     &config.Config{ModulesPath: filepath.Join(t.TempDir(), "modules")},
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
 	}, db
@@ -99,7 +99,7 @@ func newBackendPluginForInjectTest(t *testing.T, runtimeScope scope.Scope) *Back
 	return &BackendPlugin{
 		BasePlugin: &esbplugins.BasePlugin{
 			Env:    runtimeScope,
-			Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+			Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 			TsExports: map[string]map[string]*parser.Export{
 				modelDecoratorModuleSpec: {
 					"Model": {
@@ -121,7 +121,7 @@ func TestInjectModelApplication_InsertsSecondArgUsingStableFields(t *testing.T) 
 	argEnd := mustIndex(t, raw, "'User'") + len("'User'")
 
 	result := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/user.ts",
+		Path:       "/virtual/modules/auth/service/user.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{
 			Decorators: []*parser.Decorator{
@@ -156,7 +156,7 @@ func TestInjectModelApplication_SkipsWhenApplicationAlreadyExists(t *testing.T) 
 	objectEnd := mustIndex(t, raw, "}") + 1
 
 	result := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/user.ts",
+		Path:       "/virtual/modules/auth/service/user.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{
 			Decorators: []*parser.Decorator{
@@ -203,7 +203,7 @@ func TestInjectModelApplication_MultipleEditsSameFile_WithMultibytePrefix(t *tes
 	secondObjectEnd := mustIndex(t, raw, "})") + 1
 
 	firstResult := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/multi_model.ts",
+		Path:       "/virtual/modules/auth/service/multi_model.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{
 			Decorators: []*parser.Decorator{
@@ -219,7 +219,7 @@ func TestInjectModelApplication_MultipleEditsSameFile_WithMultibytePrefix(t *tes
 	}
 
 	secondResult := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/multi_model.ts",
+		Path:       "/virtual/modules/auth/service/multi_model.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{
 			Decorators: []*parser.Decorator{
@@ -274,7 +274,7 @@ func TestInjectModelApplication_MultipleEditsSameFile_ReverseOrder(t *testing.T)
 	secondObjectEnd := mustIndex(t, raw, "})") + 1
 
 	firstResult := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/multi_model.ts",
+		Path:       "/virtual/modules/auth/service/multi_model.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{
 			Decorators: []*parser.Decorator{
@@ -290,7 +290,7 @@ func TestInjectModelApplication_MultipleEditsSameFile_ReverseOrder(t *testing.T)
 	}
 
 	secondResult := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/multi_model.ts",
+		Path:       "/virtual/modules/auth/service/multi_model.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{
 			Decorators: []*parser.Decorator{
@@ -359,7 +359,7 @@ func captureBackendOnLoad(t *testing.T, plugin api.Plugin, buildOptions *api.Bui
 
 func TestBackendPluginConstructorsAndParserResults(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
-	moduleRef := &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"}
+	moduleRef := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	customParser := fakeParser{}
 
 	created, ok := NewBackendPlugin(testRuntimeScope, moduleRef, "service/index.ts", WithParser(customParser)).(*BackendPlugin)
@@ -407,7 +407,7 @@ func TestBackendPluginDefinePlugins(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
@@ -440,8 +440,8 @@ func TestBackendPluginDefinePlugins(t *testing.T) {
 func TestBackendPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	baseScope := newPluginTestScope()
 	runtimeScope := newPluginTestScope()
-	baseModule := &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"}
-	runtimeModule := &meta.IrModule{Path: "/runtime/addons/crm", ApplicationStr: "crm"}
+	baseModule := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
+	runtimeModule := &meta.IrModule{Path: "/runtime/modules/crm", ApplicationStr: "crm"}
 
 	plugin, ok := NewBackendPlugin(baseScope, baseModule, "service/index.ts").(*BackendPlugin)
 	if !ok {
@@ -591,10 +591,10 @@ func TestBackendPluginDefinePluginsOnLoad_AppendsEntryPointImports_WhenEntryPath
 
 func TestBackendPluginDefinePluginsOnLoad_UsesCachedContentAndPublishesResult(t *testing.T) {
 	testRuntimeScope := newPluginTestScope()
-	path := "/virtual/addons/auth/service/user.ts"
+	path := "/virtual/modules/auth/service/user.ts"
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults: []*parser.ParserResult{{
@@ -619,7 +619,7 @@ func TestBackendPluginDefinePluginsOnLoad_UsesCachedContentAndPublishesResult(t 
 
 	onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{
 		TsconfigRaw:   `{"compilerOptions":{"paths":{"@/*":["src/*"]}}}`,
-		AbsWorkingDir: "/virtual/addons/auth",
+		AbsWorkingDir: "/virtual/modules/auth",
 	})
 
 	result, err := onLoad(api.OnLoadArgs{Path: path})
@@ -689,11 +689,11 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		testRuntimeScope := newPluginTestScope()
 		plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 			Env:              testRuntimeScope,
-			Module:           &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+			Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 			ParserResultChan: make(chan *parser.ParserResult, 1),
 			TsExports:        make(map[string]map[string]*parser.Export),
 			ParserResults: []*parser.ParserResult{{
-				Path:       "/virtual/addons/auth/service/user.ts",
+				Path:       "/virtual/modules/auth/service/user.ts",
 				RawContent: "const value = 1\n",
 			}},
 		}}
@@ -703,7 +703,7 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		}}
 
 		onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{TsconfigRaw: "{"})
-		if _, err := onLoad(api.OnLoadArgs{Path: "/virtual/addons/auth/service/user.ts"}); err == nil {
+		if _, err := onLoad(api.OnLoadArgs{Path: "/virtual/modules/auth/service/user.ts"}); err == nil {
 			t.Fatal("expected invalid tsconfig error")
 		}
 	})
@@ -712,11 +712,11 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		testRuntimeScope := newPluginTestScope()
 		plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 			Env:              testRuntimeScope,
-			Module:           &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+			Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 			ParserResultChan: make(chan *parser.ParserResult, 1),
 			TsExports:        make(map[string]map[string]*parser.Export),
 			ParserResults: []*parser.ParserResult{{
-				Path:       "/virtual/addons/auth/service/user.ts",
+				Path:       "/virtual/modules/auth/service/user.ts",
 				RawContent: "const value = 1\n",
 			}},
 		}}
@@ -726,28 +726,28 @@ func TestBackendPluginDefinePluginsOnLoad_ErrorPaths(t *testing.T) {
 		}}
 
 		onLoad := captureBackendOnLoad(t, plugin.DefinePlugins(testRuntimeScope, nil, plugin.Module)[0], &api.BuildOptions{})
-		if _, err := onLoad(api.OnLoadArgs{Path: "/virtual/addons/auth/service/user.ts"}); !errors.Is(err, wantErr) {
+		if _, err := onLoad(api.OnLoadArgs{Path: "/virtual/modules/auth/service/user.ts"}); !errors.Is(err, wantErr) {
 			t.Fatalf("expected parser error %v, got %v", wantErr, err)
 		}
 	})
 }
 
-func TestInjectModelApplication_UsesExternalAddonApplication(t *testing.T) {
+func TestInjectModelApplication_UsesExternalModuleApplication(t *testing.T) {
 	testRuntimeScope, db := newPluginSessionTestScope(t)
 	migrateBackendPluginMetadata(t, db)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	if err := db.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(testRuntimeOpts.addonsPath, "crm")}).Error; err != nil {
+	if err := db.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(testRuntimeOpts.modulesPath, "crm")}).Error; err != nil {
 		t.Fatalf("seed external module: %v", err)
 	}
 
 	plugin := newBackendPluginForInjectTest(t, testRuntimeScope)
-	plugin.Module.Path = filepath.Join(testRuntimeOpts.addonsPath, "auth")
+	plugin.Module.Path = filepath.Join(testRuntimeOpts.modulesPath, "auth")
 
 	modelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(testRuntimeScope)
 	raw := "@Model('Partner')\nexport default class Partner {}\n"
 	argEnd := mustIndex(t, raw, "'Partner'") + len("'Partner'")
 	result := &parser.ParserResult{
-		Path:       filepath.Join(testRuntimeOpts.addonsPath, "crm", "service", "partner.ts"),
+		Path:       filepath.Join(testRuntimeOpts.modulesPath, "crm", "service", "partner.ts"),
 		RawContent: raw,
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -760,7 +760,7 @@ func TestInjectModelApplication_UsesExternalAddonApplication(t *testing.T) {
 		t.Fatalf("injectModelApplication failed: %v", err)
 	}
 	if !strings.Contains(result.Content, "application: 'crm-app'") {
-		t.Fatalf("expected external addon application to be injected, got:\n%s", result.Content)
+		t.Fatalf("expected external module application to be injected, got:\n%s", result.Content)
 	}
 }
 
@@ -770,13 +770,13 @@ func TestInjectModelApplication_ReturnsErrorWhenExternalApplicationMissing(t *te
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
 
 	plugin := newBackendPluginForInjectTest(t, testRuntimeScope)
-	plugin.Module.Path = filepath.Join(testRuntimeOpts.addonsPath, "auth")
+	plugin.Module.Path = filepath.Join(testRuntimeOpts.modulesPath, "auth")
 
 	modelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(testRuntimeScope)
 	raw := "@Model('Partner')\nexport default class Partner {}\n"
 	argEnd := mustIndex(t, raw, "'Partner'") + len("'Partner'")
 	result := &parser.ParserResult{
-		Path:       filepath.Join(testRuntimeOpts.addonsPath, "missing", "service", "partner.ts"),
+		Path:       filepath.Join(testRuntimeOpts.modulesPath, "missing", "service", "partner.ts"),
 		RawContent: raw,
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -813,7 +813,7 @@ func TestInjectModelApplication_UsesExternalModelApplication(t *testing.T) {
 	}
 
 	plugin := newBackendPluginForInjectTest(t, testRuntimeScope)
-	plugin.Module.Path = filepath.Join(testRuntimeOpts.addonsPath, "auth")
+	plugin.Module.Path = filepath.Join(testRuntimeOpts.modulesPath, "auth")
 
 	modelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(testRuntimeScope)
 	raw := "@Model('Partner')\nexport default class Partner {}\n"
@@ -844,7 +844,7 @@ func TestInjectModelApplication_UsesRuntimeScopeFromDefinePlugins(t *testing.T) 
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 
 	plugin := newBackendPluginForInjectTest(t, baseScope)
-	runtimeModule := &meta.IrModule{Path: filepath.Join(runtimeOpts.addonsPath, "auth"), ApplicationStr: "auth"}
+	runtimeModule := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
 	plugin.DefinePlugins(runtimeScope, nil, runtimeModule)
 	runtimeModelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(runtimeScope)
 	plugin.TsExports = map[string]map[string]*parser.Export{
@@ -856,14 +856,14 @@ func TestInjectModelApplication_UsesRuntimeScopeFromDefinePlugins(t *testing.T) 
 		},
 	}
 
-	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(runtimeOpts.addonsPath, "crm")}).Error; err != nil {
+	if err := runtimeDB.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm-app", Path: filepath.Join(runtimeOpts.modulesPath, "crm")}).Error; err != nil {
 		t.Fatalf("seed runtime external module: %v", err)
 	}
 
 	raw := "@Model('Partner')\nexport default class Partner {}\n"
 	argEnd := mustIndex(t, raw, "'Partner'") + len("'Partner'")
 	result := &parser.ParserResult{
-		Path:       filepath.Join(runtimeOpts.addonsPath, "crm", "service", "partner.ts"),
+		Path:       filepath.Join(runtimeOpts.modulesPath, "crm", "service", "partner.ts"),
 		RawContent: raw,
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			ModuleSpecPath: runtimeModelDecoratorModuleSpec,
@@ -888,7 +888,7 @@ func TestInjectModelApplication_InjectsIntoEmptyObjectLiteral(t *testing.T) {
 	raw := "@Model('User', {})\nexport default class User {}\n"
 	objectEnd := mustIndex(t, raw, "}") + 1
 	result := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/user.ts",
+		Path:       "/virtual/modules/auth/service/user.ts",
 		RawContent: raw,
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -915,7 +915,7 @@ func TestInjectModelApplication_SkipsUnsupportedDecorators(t *testing.T) {
 
 	noArgsRaw := "@Model()\nexport default class User {}\n"
 	noArgsResult := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/no_args.ts",
+		Path:       "/virtual/modules/auth/service/no_args.ts",
 		RawContent: noArgsRaw,
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -925,7 +925,7 @@ func TestInjectModelApplication_SkipsUnsupportedDecorators(t *testing.T) {
 
 	nonModelRaw := "@Other('User')\nexport default class User {}\n"
 	nonModelResult := &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/no_model.ts",
+		Path:       "/virtual/modules/auth/service/no_model.ts",
 		RawContent: nonModelRaw,
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			ModuleSpecPath: "@/other",
@@ -933,7 +933,7 @@ func TestInjectModelApplication_SkipsUnsupportedDecorators(t *testing.T) {
 		}}},
 	}
 
-	if err := plugin.injectModelApplication([]*parser.ParserResult{noArgsResult, nonModelResult, {Path: "/virtual/addons/auth/service/no_class.ts"}}); err != nil {
+	if err := plugin.injectModelApplication([]*parser.ParserResult{noArgsResult, nonModelResult, {Path: "/virtual/modules/auth/service/no_class.ts"}}); err != nil {
 		t.Fatalf("expected unsupported decorators to be skipped, got %v", err)
 	}
 	if noArgsResult.Content != noArgsRaw {
@@ -953,7 +953,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent(t *testing.T) {
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		TsExports: map[string]map[string]*parser.Export{
 			"@/base": {
 				"BaseModel": {ModuleSpecPath: baseModelModuleSpec, ReferenceIdent: "default"},
@@ -963,7 +963,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent(t *testing.T) {
 
 	autoMigrate := true
 	result := &parser.ParserResult{
-		Path: "/virtual/addons/auth/service/models/partner.ts",
+		Path: "/virtual/modules/auth/service/models/partner.ts",
 		Model: &meta.IrModel{
 			Decorators: []*meta.IrDecorator{{
 				Name:           "Model",
@@ -1031,7 +1031,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent(t *testing.T) {
 	}
 
 	badResult := &parser.ParserResult{
-		Path:                 "/virtual/addons/auth/service/models/bad.ts",
+		Path:                 "/virtual/modules/auth/service/models/bad.ts",
 		Model:                &meta.IrModel{},
 		ModelExtendsProperty: &parser.PropertyNode{ModuleSpecPath: "@/base", ReferenceIdent: "NamedExport"},
 	}
@@ -1049,7 +1049,7 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_AdditionalPaths(t *testing
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		TsExports: map[string]map[string]*parser.Export{
 			"@/base": {
 				"default": {ModuleSpecPath: baseModelModuleSpec, ReferenceIdent: "BaseModelClass"},
@@ -1066,13 +1066,13 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_AdditionalPaths(t *testing
 			},
 			"@/field-impl": {
 				"Field":        {ModuleSpecPath: fieldDecoratorModuleSpec, ReferenceIdent: fieldDecoratorReferenceIdent},
-				"RelatedModel": {ModuleSpecPath: "/virtual/addons/auth/service/models/category", ReferenceIdent: "default"},
+				"RelatedModel": {ModuleSpecPath: "/virtual/modules/auth/service/models/category", ReferenceIdent: "default"},
 			},
 		},
 	}}
 
 	result := &parser.ParserResult{
-		Path: "/virtual/addons/auth/service/models/order.ts",
+		Path: "/virtual/modules/auth/service/models/order.ts",
 		Model: &meta.IrModel{
 			Decorators: []*meta.IrDecorator{{
 				Name:           "Model",
@@ -1139,13 +1139,13 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_AdditionalPaths(t *testing
 		t.Fatalf("expected field to be preserved after wildcard resolution, got %#v", result.Model.Fields)
 	}
 	field := result.Model.Fields[0]
-	if field.ModuleSpecPath != "/virtual/addons/auth/service/models/category" || field.ReferenceIdent != "default" {
+	if field.ModuleSpecPath != "/virtual/modules/auth/service/models/category" || field.ReferenceIdent != "default" {
 		t.Fatalf("unexpected field module rewrite: %#v", field)
 	}
 	if len(field.Decorators) != 1 || field.Decorators[0].ModuleSpecPath != fieldDecoratorModuleSpec || field.Decorators[0].ReferenceIdent != fieldDecoratorReferenceIdent {
 		t.Fatalf("unexpected field decorator rewrite: %#v", field.Decorators)
 	}
-	if len(field.Decorators[0].Arguments) != 1 || field.Decorators[0].Arguments[0].ModuleSpecPath != "/virtual/addons/auth/service/models/category" || field.Decorators[0].Arguments[0].ReferenceIdent != "default" {
+	if len(field.Decorators[0].Arguments) != 1 || field.Decorators[0].Arguments[0].ModuleSpecPath != "/virtual/modules/auth/service/models/category" || field.Decorators[0].Arguments[0].ReferenceIdent != "default" {
 		t.Fatalf("unexpected field argument rewrite: %#v", field.Decorators[0].Arguments)
 	}
 }
@@ -1154,11 +1154,11 @@ func TestBackendPluginReplaceModuleSpecReferenceIdent_SkipsExternalPaths(t *test
 	testRuntimeScope := newPluginTestScope()
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	result := &parser.ParserResult{
-		Path: "/virtual/addons/external/service/models/partner.ts",
+		Path: "/virtual/modules/external/service/models/partner.ts",
 		Model: &meta.IrModel{
 			Name:        "External",
 			Application: "legacy",
@@ -1179,12 +1179,12 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 	modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	targetModel := &meta.IrModel{
 		Name: "Category",
-		Path: "/virtual/addons/auth/service/models/category.ts",
+		Path: "/virtual/modules/auth/service/models/category.ts",
 		Decorators: []*meta.IrDecorator{{
 			Name:           "Model",
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -1197,7 +1197,7 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 	}
 
 	goodResult := &parser.ParserResult{
-		Path: "/virtual/addons/auth/service/models/partner.ts",
+		Path: "/virtual/modules/auth/service/models/partner.ts",
 		Model: &meta.IrModel{
 			Name: "Partner",
 			Fields: []*meta.IrField{
@@ -1221,7 +1221,7 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 				},
 				{
 					Name:           "Category",
-					ModuleSpecPath: "/virtual/addons/auth/service/models/category",
+					ModuleSpecPath: "/virtual/modules/auth/service/models/category",
 					Decorators: []*meta.IrDecorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
@@ -1231,7 +1231,7 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 				},
 				{
 					Name:           "Children",
-					ModuleSpecPath: "/virtual/addons/auth/service/models/category",
+					ModuleSpecPath: "/virtual/modules/auth/service/models/category",
 					Decorators: []*meta.IrDecorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
@@ -1241,7 +1241,7 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 				},
 				{
 					Name:           "Tags",
-					ModuleSpecPath: "/virtual/addons/auth/service/models/category",
+					ModuleSpecPath: "/virtual/modules/auth/service/models/category",
 					Decorators: []*meta.IrDecorator{{
 						Name:           "Field",
 						ModuleSpecPath: fieldDecoratorModuleSpec,
@@ -1307,7 +1307,7 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 	}
 
 	badResult := &parser.ParserResult{
-		Path: "/virtual/addons/auth/service/models/bad.ts",
+		Path: "/virtual/modules/auth/service/models/bad.ts",
 		Model: &meta.IrModel{
 			Name: "BadModel",
 			Fields: []*meta.IrField{
@@ -1336,11 +1336,11 @@ func TestBackendPluginSetFieldMeta_AdditionalPaths(t *testing.T) {
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	result := &parser.ParserResult{
-		Path: "/virtual/addons/auth/service/models/advanced.ts",
+		Path: "/virtual/modules/auth/service/models/advanced.ts",
 		Model: &meta.IrModel{
 			Name: "Advanced",
 			Fields: []*meta.IrField{
@@ -1423,7 +1423,7 @@ func TestBackendPluginSetFieldMeta_UsesRuntimeScopeFromDefinePlugins(t *testing.
 	if err := runtimeDB.Create(app).Error; err != nil {
 		t.Fatalf("create runtime application: %v", err)
 	}
-	mod := &meta.IrModule{Name: "crm", ApplicationStr: "crm-app", ApplicationId: app.Id, Path: filepath.Join(runtimeOpts.addonsPath, "crm")}
+	mod := &meta.IrModule{Name: "crm", ApplicationStr: "crm-app", ApplicationId: app.Id, Path: filepath.Join(runtimeOpts.modulesPath, "crm")}
 	if err := runtimeDB.Create(mod).Error; err != nil {
 		t.Fatalf("create runtime module: %v", err)
 	}
@@ -1431,10 +1431,10 @@ func TestBackendPluginSetFieldMeta_UsesRuntimeScopeFromDefinePlugins(t *testing.
 		t.Fatalf("create runtime model: %v", err)
 	}
 
-	runtimeModule := &meta.IrModule{Path: filepath.Join(runtimeOpts.addonsPath, "auth"), ApplicationStr: "auth"}
+	runtimeModule := &meta.IrModule{Path: filepath.Join(runtimeOpts.modulesPath, "auth"), ApplicationStr: "auth"}
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    baseScope,
-		Module: &meta.IrModule{Path: filepath.Join(baseOpts.addonsPath, "auth"), ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: filepath.Join(baseOpts.modulesPath, "auth"), ApplicationStr: "auth"},
 	}}
 	plugin.DefinePlugins(runtimeScope, nil, runtimeModule)
 
@@ -1470,12 +1470,12 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:    testRuntimeScope,
-		Module: &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module: &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 	}}
 
 	t.Run("invalid_field_json", func(t *testing.T) {
 		badResult := &parser.ParserResult{
-			Path: "/virtual/addons/auth/service/models/bad_json.ts",
+			Path: "/virtual/modules/auth/service/models/bad_json.ts",
 			Model: &meta.IrModel{
 				Name: "BadJSON",
 				Fields: []*meta.IrField{{
@@ -1497,7 +1497,7 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 	t.Run("skip_validation_for_non_migrating_model", func(t *testing.T) {
 		noMigrate := false
 		result := &parser.ParserResult{
-			Path: "/virtual/addons/auth/service/models/no_migrate.ts",
+			Path: "/virtual/modules/auth/service/models/no_migrate.ts",
 			Model: &meta.IrModel{
 				Name:        "NoMigrate",
 				AutoMigrate: &noMigrate,
@@ -1519,7 +1519,7 @@ func TestBackendPluginSetFieldMeta_SkipAndErrorPaths(t *testing.T) {
 
 	t.Run("skip_external_module_paths", func(t *testing.T) {
 		result := &parser.ParserResult{
-			Path: "/virtual/addons/external/service/models/partner.ts",
+			Path: "/virtual/modules/external/service/models/partner.ts",
 			Model: &meta.IrModel{
 				Name: "External",
 				Fields: []*meta.IrField{{
@@ -1551,7 +1551,7 @@ func TestBackendPluginGetParserResults_PublishesAndInjects(t *testing.T) {
 
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 2),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
@@ -1563,9 +1563,9 @@ func TestBackendPluginGetParserResults_PublishesAndInjects(t *testing.T) {
 		},
 	}
 	plugin.ParserResultChan <- &parser.ParserResult{
-		Path:       "/virtual/addons/auth/service/models/partner.ts",
+		Path:       "/virtual/modules/auth/service/models/partner.ts",
 		RawContent: raw,
-		Model:      &meta.IrModel{Name: "Partner", Path: "/virtual/addons/auth/service/models/partner.ts"},
+		Model:      &meta.IrModel{Name: "Partner", Path: "/virtual/modules/auth/service/models/partner.ts"},
 		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
 			Name:           "Model",
 			ModuleSpecPath: modelDecoratorModuleSpec,
@@ -1588,7 +1588,7 @@ func TestBackendPluginGetParserResults_PublishesAndInjects(t *testing.T) {
 
 	var modelResult *parser.ParserResult
 	for _, result := range results {
-		if result.Path == "/virtual/addons/auth/service/models/partner.ts" {
+		if result.Path == "/virtual/modules/auth/service/models/partner.ts" {
 			modelResult = result
 			break
 		}
@@ -1606,13 +1606,13 @@ func TestBackendPluginGetParserResults_PropagatesSetFieldMetaError(t *testing.T)
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(testRuntimeScope)
 	plugin := &BackendPlugin{BasePlugin: &esbplugins.BasePlugin{
 		Env:              testRuntimeScope,
-		Module:           &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"},
+		Module:           &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"},
 		ParserResultChan: make(chan *parser.ParserResult, 1),
 		TsExports:        make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
 	}}
 	plugin.ParserResultChan <- &parser.ParserResult{
-		Path: "/virtual/addons/auth/service/models/bad.ts",
+		Path: "/virtual/modules/auth/service/models/bad.ts",
 		Model: &meta.IrModel{
 			Name: "Bad",
 			Fields: []*meta.IrField{{

@@ -16,11 +16,11 @@ func TestTypecheckApp_MissingVueTsc(t *testing.T) {
 	ctx := context.Background()
 
 	repoRoot := t.TempDir()
-	addonsPath := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(addonsPath, "auth", "service"), 0o755); err != nil {
+	modulesPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth", "service"), 0o755); err != nil {
 		t.Fatalf("mkdir auth service: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "service", "index.ts"), []byte("export const auth = 1\n"), 0o644); err != nil {
 		t.Fatalf("write auth service ts: %v", err)
 	}
 
@@ -36,10 +36,10 @@ func TestTypecheckApp_MissingVueTsc(t *testing.T) {
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	opts := RunOptions{
-		AddonsPath: addonsPath,
-		RepoRoot:   repoRoot,
-		Stdout:     io.Discard,
-		Stderr:     io.Discard,
+		ModulesPath: modulesPath,
+		RepoRoot:    repoRoot,
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
 	}
 
 	err := TypecheckApp(ctx, opts, "auth")

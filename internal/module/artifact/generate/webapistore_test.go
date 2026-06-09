@@ -57,7 +57,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 
 	webStoreDir := t.TempDir()
-	storeResults, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, addonsWebDir: webStoreDir}).generate(context.Background(), testApp())
+	storeResults, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), testApp())
 	if err != nil {
 		t.Fatalf("web api store generate() error = %v", err)
 	}
@@ -78,7 +78,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 
 func TestWebApiStoreGenerateEmptyApp(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, addonsWebDir: t.TempDir()}).generate(context.Background(), &meta.IrApplication{Name: "crm"})
+	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), &meta.IrApplication{Name: "crm"})
 	if err != nil {
 		t.Fatalf("generate(empty app) error = %v", err)
 	}

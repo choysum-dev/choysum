@@ -13,7 +13,7 @@ import (
 
 func mustParseTSGoCtx(t *testing.T, path string, content string) (*TsParser, *tsgoImportExportCtx) {
 	t.Helper()
-	parser := &TsParser{Path: path, Content: content, PathAlias: map[string]string{"@/*": "/virtual/addons/test/*"}}
+	parser := &TsParser{Path: path, Content: content, PathAlias: map[string]string{"@/*": "/virtual/modules/test/*"}}
 	ctx, err := parser.parseTSGoImportExportCtx()
 	if err != nil {
 		t.Fatalf("parseTSGoImportExportCtx() error = %v", err)
@@ -62,7 +62,7 @@ func findClassMemberByKind(classNode *tsast.Node, kind tsast.Kind, name string) 
 
 func TestParseClassNode_ResolvesExtendsWithoutPreparse(t *testing.T) {
 	p := &TsParser{
-		Path:      "/virtual/addons/test/service/user.ts",
+		Path:      "/virtual/modules/test/service/user.ts",
 		Content:   "import BaseModel from './base';\nexport default class User extends BaseModel {}\n",
 		PathAlias: map[string]string{},
 	}
@@ -83,14 +83,14 @@ func TestParseClassNode_ResolvesExtendsWithoutPreparse(t *testing.T) {
 	if class.Extends.ReferenceIdent != "default" {
 		t.Fatalf("expected extends reference default, got %s", class.Extends.ReferenceIdent)
 	}
-	if class.Extends.ModuleSpecPath != "/virtual/addons/test/service/base" {
+	if class.Extends.ModuleSpecPath != "/virtual/modules/test/service/base" {
 		t.Fatalf("unexpected extends module spec path: %s", class.Extends.ModuleSpecPath)
 	}
 }
 
 func TestParseClassNode_DefaultExportAssignmentClass(t *testing.T) {
 	p := &TsParser{
-		Path: "/virtual/addons/test/service/user_assignment.ts",
+		Path: "/virtual/modules/test/service/user_assignment.ts",
 		Content: "import BaseModel from './base';\n" +
 			"class User extends BaseModel {}\n" +
 			"export default User;\n",
@@ -117,7 +117,7 @@ func TestParseClassNode_DefaultExportAssignmentClass(t *testing.T) {
 
 func TestParseClassNode_NonDefaultExportClassReturnsNil(t *testing.T) {
 	p := &TsParser{
-		Path:      "/virtual/addons/test/service/compiler.ts",
+		Path:      "/virtual/modules/test/service/compiler.ts",
 		Content:   "import { PostgresQueryCompiler } from 'kysely';\nexport class ChoysumPostgresQueryCompiler extends PostgresQueryCompiler {}\n",
 		PathAlias: map[string]string{},
 	}
@@ -133,13 +133,13 @@ func TestParseClassNode_NonDefaultExportClassReturnsNil(t *testing.T) {
 
 func TestConvertReferenceWithModuleSpec_FallbackUsesTrimSuffix(t *testing.T) {
 	p := &TsParser{
-		Path:       "/virtual/addons/test/service/stats.ts",
+		Path:       "/virtual/modules/test/service/stats.ts",
 		ImportsMap: map[string]*Import{},
 		ExportsMap: map[string]*Export{},
 	}
 
 	moduleSpec, referenceIdent := p.ConvertReferenceWithModuleSpec("UnknownRef")
-	if moduleSpec != "/virtual/addons/test/service/stats" {
+	if moduleSpec != "/virtual/modules/test/service/stats" {
 		t.Fatalf("unexpected fallback module spec path: %s", moduleSpec)
 	}
 	if referenceIdent != "UnknownRef" {
@@ -149,18 +149,18 @@ func TestConvertReferenceWithModuleSpec_FallbackUsesTrimSuffix(t *testing.T) {
 
 func TestConvertReferenceWithModuleSpec_DefaultExportAlias(t *testing.T) {
 	p := &TsParser{
-		Path:       "/virtual/addons/test/service/user.ts",
+		Path:       "/virtual/modules/test/service/user.ts",
 		ImportsMap: map[string]*Import{},
 		ExportsMap: map[string]*Export{
 			"default": {
 				ReferenceIdent: "User",
-				ModuleSpecPath: "/virtual/addons/test/service/user",
+				ModuleSpecPath: "/virtual/modules/test/service/user",
 			},
 		},
 	}
 
 	moduleSpec, referenceIdent := p.ConvertReferenceWithModuleSpec("User")
-	if moduleSpec != "/virtual/addons/test/service/user" {
+	if moduleSpec != "/virtual/modules/test/service/user" {
 		t.Fatalf("unexpected module spec path: %s", moduleSpec)
 	}
 	if referenceIdent != "default" {
@@ -185,7 +185,7 @@ func TestParseTSTreeAndTSGoHelperFunctions(t *testing.T) {
 	if got := (&tsgoImportExportCtx{path: "/tmp/sample.vue"}).currentModuleSpecPath(); got != "/tmp/sample.vue" {
 		t.Fatalf("currentModuleSpecPath(non-ts) = %q, want /tmp/sample.vue", got)
 	}
-	if got := ctx.resolveModuleSpec("@/shared/types.ts"); got != "/virtual/addons/test/shared/types" {
+	if got := ctx.resolveModuleSpec("@/shared/types.ts"); got != "/virtual/modules/test/shared/types" {
 		t.Fatalf("resolveModuleSpec(alias) = %q", got)
 	}
 	if got := ctx.nodeText(nil); got != "" {
@@ -268,7 +268,7 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 		"  syncMethod(): void {}\n" +
 		"}\n"
 
-	parser, ctx := mustParseTSGoCtx(t, "/virtual/addons/test/service/user.ts", content)
+	parser, ctx := mustParseTSGoCtx(t, "/virtual/modules/test/service/user.ts", content)
 	classNode := parser.tsgoFindClassNode(ctx, "")
 	if classNode == nil {
 		t.Fatal("expected class node")
@@ -289,7 +289,7 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 	if decorator == nil || decorator.Name != "Model" || decorator.ReferenceIdent != "" {
 		t.Fatalf("unexpected class decorator: %#v", decorator)
 	}
-	if decorator.ModuleSpecPath != "/virtual/addons/test/decorators" {
+	if decorator.ModuleSpecPath != "/virtual/modules/test/decorators" {
 		t.Fatalf("unexpected decorator module path: %q", decorator.ModuleSpecPath)
 	}
 	if len(decorator.Arguments) != 1 {
@@ -306,7 +306,7 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 	if classInfo == nil || classInfo.Name != "User" || !classInfo.Abstract {
 		t.Fatalf("unexpected class info: %#v", classInfo)
 	}
-	if classInfo.Extends == nil || classInfo.Extends.Name != "Entity" || classInfo.Extends.ReferenceIdent != "Entity" || classInfo.Extends.ModuleSpecPath != "/virtual/addons/test/decorators" {
+	if classInfo.Extends == nil || classInfo.Extends.Name != "Entity" || classInfo.Extends.ReferenceIdent != "Entity" || classInfo.Extends.ModuleSpecPath != "/virtual/modules/test/decorators" {
 		t.Fatalf("unexpected extends info: %#v", classInfo.Extends)
 	}
 	if len(classInfo.Decorators) != 1 || len(classInfo.MemberVars) != 3 || len(classInfo.MemberMethods) != 1 {
@@ -327,7 +327,7 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 	if nameVar == nil || !nameVar.IsReadonly || nameVar.AccessibilityModifier != "public" || nameVar.TypeAnnotation != "string" {
 		t.Fatalf("unexpected name var: %#v", nameVar)
 	}
-	if len(nameVar.Decorators) != 1 || nameVar.Decorators[0].Name != "Field" || nameVar.Decorators[0].ModuleSpecPath != "/virtual/addons/test/service/field" {
+	if len(nameVar.Decorators) != 1 || nameVar.Decorators[0].Name != "Field" || nameVar.Decorators[0].ModuleSpecPath != "/virtual/modules/test/service/field" {
 		t.Fatalf("unexpected name var decorators: %#v", nameVar.Decorators)
 	}
 	if metaVar == nil || metaVar.AccessibilityModifier != "private" || metaVar.TypeAnnotation != "jsonobject" || metaVar.TsTypeReference != "jsonobject" {
@@ -344,7 +344,7 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 	if len(method.Parameters) != 2 || method.Parameters[0].Name != "this" || method.Parameters[1].Name != "payload" {
 		t.Fatalf("unexpected method parameters: %#v", method.Parameters)
 	}
-	if len(method.TypeParameters) != 1 || method.TypeParameters[0].Name != "T" || method.TypeParameters[0].ReferenceIdent != "default" || method.TypeParameters[0].ModuleSpecPath != "/virtual/addons/test/service/base" {
+	if len(method.TypeParameters) != 1 || method.TypeParameters[0].Name != "T" || method.TypeParameters[0].ReferenceIdent != "default" || method.TypeParameters[0].ModuleSpecPath != "/virtual/modules/test/service/base" {
 		t.Fatalf("unexpected type parameters: %#v", method.TypeParameters)
 	}
 

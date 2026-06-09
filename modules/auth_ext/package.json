@@ -1,0 +1,20 @@
+{
+  "name": "@choysum/module-auth-ext",
+  "version": "0.0.0",
+  "description": "User authentication and management module",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "choysum": {
+    "moduleName": "auth_ext",
+    "application": "auth",
+    "category": "User/Authentication",
+    "depends": [
+      "auth"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts"
+    }
+  }
+}

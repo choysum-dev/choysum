@@ -8,10 +8,10 @@ import (
 )
 
 type runtimeOptions struct {
-	hasConfig  bool
-	addonsPath string
-	npmPath    string
-	tmpPath    string
+	hasConfig   bool
+	modulesPath string
+	npmPath     string
+	tmpPath     string
 }
 
 func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) runtimeOptions {
@@ -20,7 +20,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) run
 		return opts
 	}
 	opts.hasConfig = true
-	opts.addonsPath = pathOpts.AddonsPath
+	opts.modulesPath = pathOpts.ModulesPath
 	opts.npmPath = pathOpts.NpmPath
 	opts.tmpPath = pathOpts.TmpPath
 	return opts
