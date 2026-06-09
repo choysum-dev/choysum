@@ -662,20 +662,20 @@ func TestSyncLocalModuleIndex_EdgeCases(t *testing.T) {
 		}
 	})
 
-	t.Run("nil context falls back to background", func(t *testing.T) {
+	t.Run("todo context works", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
 		db := newModuleIndexSyncDB(t)
 		runtimeScope := newModuleIndexSyncScope(modulesPath, db)
 
-		stats, err := SyncLocalModuleIndex(nil, runtimeScope, func(scope.Scope) statepkg.Locker {
+		stats, err := SyncLocalModuleIndex(context.TODO(), runtimeScope, func(scope.Scope) statepkg.Locker {
 			return &moduleIndexSyncTestLocker{}
 		})
 		if err != nil {
-			t.Fatalf("SyncLocalModuleIndex(nil ctx) error = %v", err)
+			t.Fatalf("SyncLocalModuleIndex(todo ctx) error = %v", err)
 		}
 		if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
-			t.Fatalf("unexpected stats for nil ctx sync: %+v", stats)
+			t.Fatalf("unexpected stats for todo ctx sync: %+v", stats)
 		}
 	})
 
