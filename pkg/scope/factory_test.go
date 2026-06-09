@@ -362,3 +362,25 @@ func TestNewScopeUsesRegisteredFactory(t *testing.T) {
 		t.Fatalf("unexpected created scope: %#v", stub)
 	}
 }
+
+func TestPathsRuntimeOptionsFromInputUsesPathsInputValues(t *testing.T) {
+	cfg := &config.Config{
+		ModulesPath: "/tmp/modules",
+		DistPath:    "/tmp/dist",
+		TmpPath:     "/tmp/tmp",
+	}
+
+	options, ok := PathsRuntimeOptionsFromInput(factoryTestInput{cfg: cfg})
+	if !ok {
+		t.Fatal("PathsRuntimeOptionsFromInput() ok = false, want true")
+	}
+	if options.ModulesPath != cfg.ModulesPath {
+		t.Fatalf("ModulesPath = %q, want %q", options.ModulesPath, cfg.ModulesPath)
+	}
+	if options.DistPath != cfg.DistPath {
+		t.Fatalf("DistPath = %q, want %q", options.DistPath, cfg.DistPath)
+	}
+	if options.TmpPath != cfg.TmpPath {
+		t.Fatalf("TmpPath = %q, want %q", options.TmpPath, cfg.TmpPath)
+	}
+}
