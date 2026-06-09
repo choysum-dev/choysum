@@ -73,19 +73,19 @@ func (e *testStubScope) FactoryInput() scope.FactoryInput {
 }
 
 func TestResolveTestApps(t *testing.T) {
-	addonsPath := t.TempDir()
-	writeTestFile(t, filepath.Join(addonsPath, "auth", "service", "user.test.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "partner", "web", "user.spec.tsx"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "mixed", "service", "node_modules", "ignored.test.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "mixed", "web", "dist", "ignored.spec.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "empty", "service", "user.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, ".choysum", "service", "ignored.test.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "tmp", "web", "ignored.spec.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "README.md"), "ignored")
+	modulesPath := t.TempDir()
+	writeTestFile(t, filepath.Join(modulesPath, "auth", "service", "user.test.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "partner", "web", "user.spec.tsx"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "mixed", "service", "node_modules", "ignored.test.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "mixed", "web", "dist", "ignored.spec.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "empty", "service", "user.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, ".choysum", "service", "ignored.test.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "tmp", "web", "ignored.spec.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "README.md"), "ignored")
 
 	runtimeScope := &testStubScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: addonsPath},
+		cfg: &config.Config{ModulesPath: modulesPath},
 	}
 
 	t.Run("requires initialized scope", func(t *testing.T) {
@@ -95,10 +95,10 @@ func TestResolveTestApps(t *testing.T) {
 		}
 	})
 
-	t.Run("requires addons path", func(t *testing.T) {
+	t.Run("requires modules path", func(t *testing.T) {
 		_, err := ResolveTestApps(&testStubScope{ctx: context.Background(), cfg: &config.Config{}}, "auth", true, false)
-		if err == nil || !strings.Contains(err.Error(), "config missing addons_path") {
-			t.Fatalf("expected addons path error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "config missing modules_path") {
+			t.Fatalf("expected modules path error, got %v", err)
 		}
 	})
 
@@ -152,23 +152,23 @@ func TestResolveTestApps(t *testing.T) {
 	t.Run("all propagates read dir errors", func(t *testing.T) {
 		badRuntimeScope := &testStubScope{
 			ctx: context.Background(),
-			cfg: &config.Config{AddonsPath: filepath.Join(addonsPath, "missing")},
+			cfg: &config.Config{ModulesPath: filepath.Join(modulesPath, "missing")},
 		}
 		_, err := ResolveTestApps(badRuntimeScope, "all", true, true)
-		if err == nil || !strings.Contains(err.Error(), "read addons dir") {
-			t.Fatalf("expected read addons dir error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "read modules dir") {
+			t.Fatalf("expected read modules dir error, got %v", err)
 		}
 	})
 }
 
 func TestHasAnyBackendTests(t *testing.T) {
-	addonsPath := t.TempDir()
-	writeTestFile(t, filepath.Join(addonsPath, "auth", "service", "nested", "user.test.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "ignored", "service", "node_modules", "ignored.test.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "plain", "service", "user.ts"), "")
+	modulesPath := t.TempDir()
+	writeTestFile(t, filepath.Join(modulesPath, "auth", "service", "nested", "user.test.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "ignored", "service", "node_modules", "ignored.test.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "plain", "service", "user.ts"), "")
 
 	t.Run("finds backend tests recursively", func(t *testing.T) {
-		has, err := HasAnyBackendTests(addonsPath, "auth")
+		has, err := HasAnyBackendTests(modulesPath, "auth")
 		if err != nil {
 			t.Fatalf("HasAnyBackendTests returned error: %v", err)
 		}
@@ -178,7 +178,7 @@ func TestHasAnyBackendTests(t *testing.T) {
 	})
 
 	t.Run("skips ignored directories", func(t *testing.T) {
-		has, err := HasAnyBackendTests(addonsPath, "ignored")
+		has, err := HasAnyBackendTests(modulesPath, "ignored")
 		if err != nil {
 			t.Fatalf("HasAnyBackendTests returned error: %v", err)
 		}
@@ -188,7 +188,7 @@ func TestHasAnyBackendTests(t *testing.T) {
 	})
 
 	t.Run("returns false when no backend tests exist", func(t *testing.T) {
-		has, err := HasAnyBackendTests(addonsPath, "plain")
+		has, err := HasAnyBackendTests(modulesPath, "plain")
 		if err != nil {
 			t.Fatalf("HasAnyBackendTests returned error: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestHasAnyBackendTests(t *testing.T) {
 	})
 
 	t.Run("returns false when service dir is missing", func(t *testing.T) {
-		has, err := HasAnyBackendTests(addonsPath, "missing")
+		has, err := HasAnyBackendTests(modulesPath, "missing")
 		if err != nil {
 			t.Fatalf("HasAnyBackendTests returned error: %v", err)
 		}
@@ -209,11 +209,11 @@ func TestHasAnyBackendTests(t *testing.T) {
 }
 
 func TestHasAnyFrontendTests(t *testing.T) {
-	addonsPath := t.TempDir()
-	writeTestFile(t, filepath.Join(addonsPath, "portal", "web", "nested", "screen.test.tsx"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "portal2", "web", "nested", "screen.spec.ts"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "ignored", "web", "dist", "screen.spec.tsx"), "")
-	writeTestFile(t, filepath.Join(addonsPath, "plain", "web", "screen.tsx"), "")
+	modulesPath := t.TempDir()
+	writeTestFile(t, filepath.Join(modulesPath, "portal", "web", "nested", "screen.test.tsx"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "portal2", "web", "nested", "screen.spec.ts"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "ignored", "web", "dist", "screen.spec.tsx"), "")
+	writeTestFile(t, filepath.Join(modulesPath, "plain", "web", "screen.tsx"), "")
 
 	tests := []struct {
 		name string
@@ -229,7 +229,7 @@ func TestHasAnyFrontendTests(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			has, err := HasAnyFrontendTests(addonsPath, tt.app)
+			has, err := HasAnyFrontendTests(modulesPath, tt.app)
 			if err != nil {
 				t.Fatalf("HasAnyFrontendTests returned error: %v", err)
 			}

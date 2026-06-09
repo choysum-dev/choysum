@@ -17,13 +17,13 @@ type tsParser struct {
 }
 
 func (p *tsParser) parse() (*parser.ParserResult, error) {
-	addons_path := runtimeOptionsFromScope(p.runtimeScope).addonsPath
+	modules_path := runtimeOptionsFromScope(p.runtimeScope).modulesPath
 	// Keep historical skip behavior for known compatibility paths.
-	// addons/core/service/orm/metadata/field.ts
-	// addons/core/service/runtime/onchange/types.ts
-	if p.Path == filepath.Join(addons_path, "core", "client", "store.ts") ||
-		p.Path == filepath.Join(addons_path, "core", "service", "orm", "metadata", "field.ts") ||
-		p.Path == filepath.Join(addons_path, "core", "service", "runtime", "onchange", "types.ts") {
+	// modules/core/service/orm/metadata/field.ts
+	// modules/core/service/runtime/onchange/types.ts
+	if p.Path == filepath.Join(modules_path, "core", "client", "store.ts") ||
+		p.Path == filepath.Join(modules_path, "core", "service", "orm", "metadata", "field.ts") ||
+		p.Path == filepath.Join(modules_path, "core", "service", "runtime", "onchange", "types.ts") {
 		return &parser.ParserResult{
 			Path:       p.Path,
 			RawContent: p.Content,

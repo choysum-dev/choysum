@@ -107,13 +107,13 @@ func TestNewRegistryCmd_ValidationPaths(t *testing.T) {
 
 func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	workspaceRoot := t.TempDir()
-	addonsPath := filepath.Join(workspaceRoot, "addons")
-	if err := os.MkdirAll(addonsPath, 0o755); err != nil {
-		t.Fatalf("create addons path: %v", err)
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("create modules path: %v", err)
 	}
 
-	writeCommandPackage(t, addonsPath, "auth", `{
-		"name": "@choysum/addon-auth",
+	writeCommandPackage(t, modulesPath, "auth", `{
+		"name": "@choysum/module-auth",
 		"version": "1.2.3",
 		"description": "test module",
 		"license": "Apache-2.0",
@@ -131,7 +131,7 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 
 	defaultChoysumPath := t.TempDir()
 	cfg := &config.Config{
-		AddonsPath:         addonsPath,
+		ModulesPath:        modulesPath,
 		NpmPath:            filepath.Join(workspaceRoot, "node_modules"),
 		TmpPath:            filepath.Join(defaultChoysumPath, "tmp"),
 		ConfigPath:         filepath.Join(workspaceRoot, "config.yaml"),
@@ -180,7 +180,7 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	if _, err := executeCommandForTest(t, moduleCmd, "purge", "auth"); err != nil {
 		t.Fatalf("module purge failed: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(addonsPath, "auth")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(modulesPath, "auth")); !os.IsNotExist(err) {
 		t.Fatalf("expected purged module directory to be removed, stat err=%v", err)
 	}
 

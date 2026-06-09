@@ -13,16 +13,16 @@ import (
 )
 
 func TestResolveApps(t *testing.T) {
-	addonsPath := t.TempDir()
-	makeDir(t, filepath.Join(addonsPath, "auth", "service"))
-	makeDir(t, filepath.Join(addonsPath, "web", "web"))
-	makeDir(t, filepath.Join(addonsPath, "empty"))
-	makeDir(t, filepath.Join(addonsPath, ".choysum", "service"))
-	makeDir(t, filepath.Join(addonsPath, "tmp", "web"))
-	writeFile(t, filepath.Join(addonsPath, "README.md"), "ignored")
+	modulesPath := t.TempDir()
+	makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+	makeDir(t, filepath.Join(modulesPath, "web", "web"))
+	makeDir(t, filepath.Join(modulesPath, "empty"))
+	makeDir(t, filepath.Join(modulesPath, ".choysum", "service"))
+	makeDir(t, filepath.Join(modulesPath, "tmp", "web"))
+	writeFile(t, filepath.Join(modulesPath, "README.md"), "ignored")
 
 	t.Run("returns all apps with service or web targets", func(t *testing.T) {
-		apps, err := ResolveApps(addonsPath, "all")
+		apps, err := ResolveApps(modulesPath, "all")
 		if err != nil {
 			t.Fatalf("ResolveApps returned error: %v", err)
 		}
@@ -33,7 +33,7 @@ func TestResolveApps(t *testing.T) {
 	})
 
 	t.Run("returns explicit app when target exists and has sources", func(t *testing.T) {
-		apps, err := ResolveApps(addonsPath, "auth")
+		apps, err := ResolveApps(modulesPath, "auth")
 		if err != nil {
 			t.Fatalf("ResolveApps returned error: %v", err)
 		}
@@ -43,14 +43,14 @@ func TestResolveApps(t *testing.T) {
 	})
 
 	t.Run("rejects unknown app", func(t *testing.T) {
-		_, err := ResolveApps(addonsPath, "missing")
+		_, err := ResolveApps(modulesPath, "missing")
 		if err == nil || !strings.Contains(err.Error(), "unknown app") {
 			t.Fatalf("expected unknown app error, got %v", err)
 		}
 	})
 
 	t.Run("returns empty list for app without service or web sources", func(t *testing.T) {
-		apps, err := ResolveApps(addonsPath, "empty")
+		apps, err := ResolveApps(modulesPath, "empty")
 		if err != nil {
 			t.Fatalf("ResolveApps returned error: %v", err)
 		}
@@ -59,21 +59,29 @@ func TestResolveApps(t *testing.T) {
 		}
 	})
 
-	t.Run("requires addons path", func(t *testing.T) {
+	t.Run("requires modules path", func(t *testing.T) {
 		_, err := ResolveApps("", "all")
-		if err == nil || !strings.Contains(err.Error(), "addons_path is required") {
-			t.Fatalf("expected addons path error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "modules_path is required") {
+			t.Fatalf("expected modules path error, got %v", err)
+		}
+	})
+
+	t.Run("propagates read modules dir error", func(t *testing.T) {
+		missingModulesPath := filepath.Join(t.TempDir(), "missing")
+		_, err := ResolveApps(missingModulesPath, "all")
+		if err == nil || !strings.Contains(err.Error(), "read modules dir") {
+			t.Fatalf("expected read modules dir error, got %v", err)
 		}
 	})
 }
 
 func TestHasTargets(t *testing.T) {
-	addonsPath := t.TempDir()
-	makeDir(t, filepath.Join(addonsPath, "svc", "service"))
-	makeDir(t, filepath.Join(addonsPath, "ui", "web"))
-	makeDir(t, filepath.Join(addonsPath, "both", "service"))
-	makeDir(t, filepath.Join(addonsPath, "both", "web"))
-	makeDir(t, filepath.Join(addonsPath, "none"))
+	modulesPath := t.TempDir()
+	makeDir(t, filepath.Join(modulesPath, "svc", "service"))
+	makeDir(t, filepath.Join(modulesPath, "ui", "web"))
+	makeDir(t, filepath.Join(modulesPath, "both", "service"))
+	makeDir(t, filepath.Join(modulesPath, "both", "web"))
+	makeDir(t, filepath.Join(modulesPath, "none"))
 
 	tests := []struct {
 		name string
@@ -89,7 +97,7 @@ func TestHasTargets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := HasTargets(addonsPath, tt.app)
+			got, err := HasTargets(modulesPath, tt.app)
 			if err != nil {
 				t.Fatalf("HasTargets returned error: %v", err)
 			}
@@ -146,6 +154,50 @@ func TestResolveNpxPath(t *testing.T) {
 			t.Fatalf("expected install hint, got %v", err)
 		}
 	})
+}
+
+func TestTypecheckHelperFunctions(t *testing.T) {
+	if got := sanitizeAppToken("crm/web app"); got != "crm_web_app" {
+		t.Fatalf("sanitizeAppToken() = %q, want crm_web_app", got)
+	}
+	if got := sanitizeAppToken(""); got != "app" {
+		t.Fatalf("sanitizeAppToken(empty) = %q, want app", got)
+	}
+	if got := sanitizeAppToken("   "); got != "___" {
+		t.Fatalf("sanitizeAppToken(spaces) = %q, want ___", got)
+	}
+
+	for _, name := range []string{"node_modules", "dist", ".choysum", "tmp"} {
+		if !shouldSkipTypecheckInputScanDir(name) {
+			t.Fatalf("shouldSkipTypecheckInputScanDir(%q) = false, want true", name)
+		}
+	}
+	if shouldSkipTypecheckInputScanDir("service") {
+		t.Fatal("shouldSkipTypecheckInputScanDir(service) = true, want false")
+	}
+
+	modulesPath := t.TempDir()
+	appName := "auth"
+	makeDir(t, filepath.Join(modulesPath, appName, "node_modules"))
+	writeFile(t, filepath.Join(modulesPath, appName, "node_modules", "ignored.ts"), "export const ignored = true\n")
+
+	hasInputs, err := hasTypecheckInputs(modulesPath, appName)
+	if err != nil {
+		t.Fatalf("hasTypecheckInputs(only skipped dirs) error = %v", err)
+	}
+	if hasInputs {
+		t.Fatal("hasTypecheckInputs() = true with only skipped dirs")
+	}
+
+	makeDir(t, filepath.Join(modulesPath, appName, "web"))
+	writeFile(t, filepath.Join(modulesPath, appName, "web", "index.vue"), "<template><div/></template>\n")
+	hasInputs, err = hasTypecheckInputs(modulesPath, appName)
+	if err != nil {
+		t.Fatalf("hasTypecheckInputs(with vue input) error = %v", err)
+	}
+	if !hasInputs {
+		t.Fatal("hasTypecheckInputs() = false, want true when vue input exists")
+	}
 }
 
 func makeDir(t *testing.T, dir string) {

@@ -347,8 +347,8 @@ func loadRunConfig(cfgPath string) (runLoadedConfig, *runError) {
 			next:     next,
 		}
 	}
-	if !configHasAddonsPath(cfgPath) {
-		cfg.AddonsPath = "./addons"
+	if !configHasModulesPath(cfgPath) {
+		cfg.ModulesPath = "./modules"
 	}
 	cfgOptions := newScopeInputConfigOptions(snapshot.New(cfg))
 	cliOptions := newCliRuntimeOptionsFromScopeInputOptions(cfgOptions)
@@ -369,7 +369,7 @@ func cloneRunLogConfig(cfg *config.LogConfig) *config.LogConfig {
 	return &cloned
 }
 
-func configHasAddonsPath(cfgPath string) bool {
+func configHasModulesPath(cfgPath string) bool {
 	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return true
@@ -378,7 +378,7 @@ func configHasAddonsPath(cfgPath string) bool {
 	if err := yaml.Unmarshal(data, &raw); err != nil {
 		return true
 	}
-	_, ok := raw["addons_path"]
+	_, ok := raw["modules_path"]
 	return ok
 }
 
@@ -391,13 +391,13 @@ func validateRunConfig(scopeInput *runRuntimeScopeInput) *runError {
 			next:     runConfigFixValuesNext,
 		}
 	}
-	if err := validateRunAddonsPath(&scopeInput.cliOptions); err != nil {
+	if err := validateRunModulesPath(&scopeInput.cliOptions); err != nil {
 		return err
 	}
 	return validateRunDb(scopeInput.dbOptions)
 }
 
-func validateRunAddonsPath(options *cliRuntimeOptions) *runError {
+func validateRunModulesPath(options *cliRuntimeOptions) *runError {
 	if options == nil {
 		return &runError{
 			exitCode: 3,
@@ -407,10 +407,10 @@ func validateRunAddonsPath(options *cliRuntimeOptions) *runError {
 		}
 	}
 
-	path := options.addonsPath
+	path := options.modulesPath
 	if path == "" {
-		path = "./addons"
-		options.addonsPath = path
+		path = "./modules"
+		options.modulesPath = path
 	}
 	if strings.TrimSpace(path) == "" {
 		return &runError{
@@ -448,7 +448,7 @@ func validateRunAddonsPath(options *cliRuntimeOptions) *runError {
 		absPath, err := filepath.Abs(path)
 		if err == nil {
 			path = absPath
-			options.addonsPath = absPath
+			options.modulesPath = absPath
 		}
 	}
 	info, err := os.Lstat(path)

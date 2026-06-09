@@ -27,8 +27,8 @@ func normalizedDefaultChoysumRoot(defaultChoysumPath string) (string, error) {
 
 // WorkspaceGeneratedAPIRoot returns the generated API root under
 // <default-choysum-root>/generated.
-func WorkspaceGeneratedAPIRoot(addonsPath string, defaultChoysumPath string) (string, error) {
-	_ = addonsPath
+func WorkspaceGeneratedAPIRoot(modulesPath string, defaultChoysumPath string) (string, error) {
+	_ = modulesPath
 	root, err := normalizedDefaultChoysumRoot(defaultChoysumPath)
 	if err != nil {
 		return "", err
@@ -36,24 +36,24 @@ func WorkspaceGeneratedAPIRoot(addonsPath string, defaultChoysumPath string) (st
 	return filepath.Join(root, "generated"), nil
 }
 
-func workspaceGeneratedAPIProtoDir(addonsPath, appName, defaultChoysumPath string) (string, error) {
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, defaultChoysumPath)
+func workspaceGeneratedAPIProtoDir(modulesPath, appName, defaultChoysumPath string) (string, error) {
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, defaultChoysumPath)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(root, "proto", appName), nil
 }
 
-func workspaceGeneratedAPIWebDir(addonsPath, appName, defaultChoysumPath string) (string, error) {
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, defaultChoysumPath)
+func workspaceGeneratedAPIWebDir(modulesPath, appName, defaultChoysumPath string) (string, error) {
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, defaultChoysumPath)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(root, "web", appName), nil
 }
 
-func workspaceGeneratedAPIServiceDir(addonsPath, appName, defaultChoysumPath string) (string, error) {
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, defaultChoysumPath)
+func workspaceGeneratedAPIServiceDir(modulesPath, appName, defaultChoysumPath string) (string, error) {
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, defaultChoysumPath)
 	if err != nil {
 		return "", err
 	}
@@ -62,8 +62,8 @@ func workspaceGeneratedAPIServiceDir(addonsPath, appName, defaultChoysumPath str
 
 // WorkspaceGeneratedAPITargets returns per-app proto/web/service output directories
 // under <default-choysum-root>/generated.
-func WorkspaceGeneratedAPITargets(addonsPath, appName, defaultChoysumPath string) (protoDir, webDir, serviceDir string, err error) {
-	root, err := WorkspaceGeneratedAPIRoot(addonsPath, defaultChoysumPath)
+func WorkspaceGeneratedAPITargets(modulesPath, appName, defaultChoysumPath string) (protoDir, webDir, serviceDir string, err error) {
+	root, err := WorkspaceGeneratedAPIRoot(modulesPath, defaultChoysumPath)
 	if err != nil {
 		return "", "", "", err
 	}

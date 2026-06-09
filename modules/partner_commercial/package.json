@@ -1,0 +1,23 @@
+{
+  "name": "@choysum/module-partner-commercial",
+  "version": "0.0.0",
+  "description": "Partner commercial extension",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "choysum": {
+    "moduleName": "partner_commercial",
+    "application": "partner",
+    "category": "Partner",
+    "depends": [
+      "partner",
+      "base",
+      "web"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts",
+      "web": "./web/index.ts"
+    }
+  }
+}

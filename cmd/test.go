@@ -41,11 +41,11 @@ func resolveUnitTestRuntimeOptions(optionsGetter func() cliRuntimeOptions) (cliR
 		return cliRuntimeOptions{}, xfmt.Errorf("config is not initialized")
 	}
 	runtimeOptions := optionsGetter()
-	if strings.TrimSpace(runtimeOptions.addonsPath) == "" && strings.TrimSpace(runtimeOptions.npmPath) == "" && strings.TrimSpace(runtimeOptions.tmpPath) == "" && strings.TrimSpace(runtimeOptions.defaultChoysumPath) == "" {
+	if strings.TrimSpace(runtimeOptions.modulesPath) == "" && strings.TrimSpace(runtimeOptions.npmPath) == "" && strings.TrimSpace(runtimeOptions.tmpPath) == "" && strings.TrimSpace(runtimeOptions.defaultChoysumPath) == "" {
 		return cliRuntimeOptions{}, xfmt.Errorf("config is not initialized")
 	}
-	if strings.TrimSpace(runtimeOptions.addonsPath) == "" {
-		return cliRuntimeOptions{}, xfmt.Errorf("config missing addons_path")
+	if strings.TrimSpace(runtimeOptions.modulesPath) == "" {
+		return cliRuntimeOptions{}, xfmt.Errorf("config missing modules_path")
 	}
 	return runtimeOptions, nil
 }
@@ -126,7 +126,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 			if err != nil {
 				return err
 			}
-			addonsPath := strings.TrimSpace(runtimeOptions.addonsPath)
+			modulesPath := strings.TrimSpace(runtimeOptions.modulesPath)
 
 			// Default: TAP to stdout, business logs to stderr.
 			// This keeps TAP machine-parseable. Use --tap-stdout=false to revert legacy mixed output.
@@ -220,7 +220,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 			}
 			opts := pkgrunner.RunOptions{
 				Env:                baseScope,
-				AddonsPath:         addonsPath,
+				ModulesPath:        modulesPath,
 				Target:             target,
 				RepoRoot:           repoRoot,
 				RunBE:              runBE,
@@ -276,7 +276,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 	cmd.Flags().StringVar(&junitPath, "junit", "", "write JUnit XML report(s) to path; supports {app} and {scope} placeholders, and auto-disambiguates multi-app or mixed backend/frontend runs")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "overall timeout for the test run (e.g. 30s, 2m); 0 means no timeout")
 	cmd.Flags().BoolVar(&failIfNoTests, "fail-if-no-tests", false, "exit non-zero if no tests found")
-	cmd.Flags().BoolVar(&withTypecheck, "with-typecheck", false, "run TypeScript typecheck for addons/<app>/service + addons/<app>/web before tests (equivalent to 'choysum test typecheck <app>'; requires npm install)")
+	cmd.Flags().BoolVar(&withTypecheck, "with-typecheck", false, "run TypeScript typecheck for modules/<app>/service + modules/<app>/web before tests (equivalent to 'choysum test typecheck <app>'; requires npm install)")
 	cmd.Flags().StringVar(&pattern, "pattern", "", "run tests whose names match this regex")
 	cmd.Flags().BoolVar(&failFast, "fail-fast", false, "stop after first failure")
 	cmd.Flags().BoolVar(&tapStdout, "tap-stdout", true, "print TAP to stdout and logs to stderr (set false to revert legacy mixed output)")

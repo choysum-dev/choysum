@@ -7,7 +7,7 @@ import "github.com/choysum-dev/choysum/pkg/config"
 
 // ConfigSnapshot stores a deep-copied runtime config projection for scope input adapters.
 type ConfigSnapshot struct {
-	AddonsPath         string
+	ModulesPath        string
 	DistPath           string
 	TmpPath            string
 	DefaultChoysumPath string
@@ -30,7 +30,7 @@ func New(cfg *config.Config) *ConfigSnapshot {
 		return nil
 	}
 	return &ConfigSnapshot{
-		AddonsPath:         cfg.AddonsPath,
+		ModulesPath:        cfg.ModulesPath,
 		DistPath:           cfg.DistPath,
 		TmpPath:            cfg.TmpPath,
 		DefaultChoysumPath: cfg.DefaultChoysumPath,

@@ -10,13 +10,13 @@ import (
 )
 
 type runtimeOptions struct {
-	addonsPath string
+	modulesPath string
 }
 
 func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) runtimeOptions {
 	opts := runtimeOptions{}
 	if hasPathOpts {
-		opts.addonsPath = pathOpts.AddonsPath
+		opts.modulesPath = pathOpts.ModulesPath
 	}
 	return opts
 }
@@ -29,6 +29,6 @@ func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {
 	return newRuntimeOptions(pathOpts, hasPathOpts)
 }
 
-func (o runtimeOptions) hasAddonsPath() bool {
-	return strings.TrimSpace(o.addonsPath) != ""
+func (o runtimeOptions) hasModulesPath() bool {
+	return strings.TrimSpace(o.modulesPath) != ""
 }

@@ -124,9 +124,9 @@ func TestServerRegisterApplicationServicesBuildsWatchDirsAndScripts(t *testing.T
 	runtimeScope.cfg.Compile.BundleMode = "application"
 	runtimeScope.cfg.Server.HotReload = true
 	distDir := t.TempDir()
-	addonsDir := t.TempDir()
+	modulesDir := t.TempDir()
 	runtimeScope.cfg.DistPath = distDir
-	runtimeScope.cfg.AddonsPath = addonsDir
+	runtimeScope.cfg.ModulesPath = modulesDir
 
 	appDistDir := filepath.Join(distDir, "apps", "auth")
 	if err := os.MkdirAll(appDistDir, 0o755); err != nil {
@@ -135,9 +135,9 @@ func TestServerRegisterApplicationServicesBuildsWatchDirsAndScripts(t *testing.T
 	if err := os.WriteFile(filepath.Join(appDistDir, "index.js"), []byte("console.log('auth')"), 0o644); err != nil {
 		t.Fatalf("WriteFile(index.js) error = %v", err)
 	}
-	authAddonDir := filepath.Join(addonsDir, "auth")
-	baseAddonDir := filepath.Join(addonsDir, "base")
-	for _, dir := range []string{authAddonDir, baseAddonDir} {
+	authModuleDir := filepath.Join(modulesDir, "auth")
+	baseModuleDir := filepath.Join(modulesDir, "base")
+	for _, dir := range []string{authModuleDir, baseModuleDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatalf("MkdirAll(%s) error = %v", dir, err)
 		}
@@ -183,15 +183,15 @@ func TestServerRegisterApplicationServicesBuildsWatchDirsAndScripts(t *testing.T
 		watchRoots[target.root] = true
 		watchModules[target.moduleName] = true
 	}
-	resolvedAuthAddonDir, err := resolveWatchPath(authAddonDir)
+	resolvedAuthModuleDir, err := resolveWatchPath(authModuleDir)
 	if err != nil {
-		t.Fatalf("resolveWatchPath(authAddonDir) error = %v", err)
+		t.Fatalf("resolveWatchPath(authModuleDir) error = %v", err)
 	}
-	resolvedBaseAddonDir, err := resolveWatchPath(baseAddonDir)
+	resolvedBaseModuleDir, err := resolveWatchPath(baseModuleDir)
 	if err != nil {
-		t.Fatalf("resolveWatchPath(baseAddonDir) error = %v", err)
+		t.Fatalf("resolveWatchPath(baseModuleDir) error = %v", err)
 	}
-	if !watchRoots[resolvedAuthAddonDir] || !watchRoots[resolvedBaseAddonDir] {
+	if !watchRoots[resolvedAuthModuleDir] || !watchRoots[resolvedBaseModuleDir] {
 		t.Fatalf("unexpected watch target roots: %#v", watchTargets)
 	}
 	if !watchModules["auth"] || !watchModules["base"] {

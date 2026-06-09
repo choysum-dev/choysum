@@ -22,7 +22,7 @@ type UpgradeSwitchSnapshot struct {
 	previousBinding Binding
 }
 
-func PrepareUpgradeSwitch(ctx context.Context, coordinator Service, workspaceRoot string, addonsPath string, tmpPath string, defaultChoysumPath string, parsed ParsedInput, moduleName string, opid string) (*UpgradeSwitchSnapshot, error) {
+func PrepareUpgradeSwitch(ctx context.Context, coordinator Service, workspaceRoot string, modulesPath string, tmpPath string, defaultChoysumPath string, parsed ParsedInput, moduleName string, opid string) (*UpgradeSwitchSnapshot, error) {
 	if parsed.Kind != InputKindRegistry {
 		return nil, nil
 	}
@@ -47,7 +47,7 @@ func PrepareUpgradeSwitch(ctx context.Context, coordinator Service, workspaceRoo
 		return nil, xfmt.Errorf("lookup previous module origin binding %s failed: %w", moduleName, err)
 	}
 
-	modulePath := filepath.Join(strings.TrimSpace(addonsPath), moduleName)
+	modulePath := filepath.Join(strings.TrimSpace(modulesPath), moduleName)
 	hadModuleDir := false
 	if info, statErr := os.Stat(modulePath); statErr == nil {
 		if !info.IsDir() {

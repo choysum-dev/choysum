@@ -10,8 +10,8 @@ Choysum uses a dual-license architecture to balance core protection with ecosyst
 
 | Component | License | Directory Scope |
 | :--- | :--- | :--- |
-| **Core Framework** | LGPL-3.0-or-later | Everything outside `addons/` |
-| **Official Addons**| Apache-2.0 | All files within `addons/` |
+| **Core Framework** | LGPL-3.0-or-later | Everything outside `modules/` |
+| **Official Modules**| Apache-2.0 | All files within `modules/` |
 
 **Important:** The project owner reserves the right to sublicense contributions under commercial terms (Dual-licensing). By contributing, you agree to this strategy.
 
@@ -23,10 +23,10 @@ Choysum uses a dual-license architecture to balance core protection with ecosyst
 Every new source files should include an SPDX license identifier at the top:
 
 - **Core files:** `// SPDX-License-Identifier: LGPL-3.0-or-later`
-- **Addon files:** `// SPDX-License-Identifier: Apache-2.0`
+- **Module files:** `// SPDX-License-Identifier: Apache-2.0`
 
 ### Boundary Rules
-- **No Leakage:** Do not copy or "vendor" core framework code into the `addons/` directory.
+- **No Leakage:** Do not copy or "vendor" core framework code into the `modules/` directory.
 - **Dependency Check:** Check third-party license compatibility before adding dependencies.
 - **Go Style:** Please run `go fmt ./...` before submitting.
 

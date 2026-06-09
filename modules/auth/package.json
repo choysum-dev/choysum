@@ -1,0 +1,41 @@
+{
+  "name": "@choysum/module-auth",
+  "version": "0.0.0",
+  "description": "User authentication and management module",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "peerDependencies": {
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "choysum": {
+    "moduleName": "auth",
+    "application": "auth",
+    "category": "User/Authentication",
+    "depends": [
+      "core",
+      "base",
+      "meta",
+      "web"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts",
+      "web": "./web/index.ts"
+    },
+    "data": [
+      "data/bootstrap.json"
+    ],
+    "e2e": {
+      "specs": "e2e",
+      "scenarios": {
+        "default": {
+          "fixtures": [
+            "e2e/fixtures/smoke.json"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -84,7 +84,7 @@ func (m *ModuleManager) buildBackendBundlesToDir(ctx context.Context, distBundle
 				continue
 			}
 			if !filepath.IsAbs(entry) {
-				entry = filepath.Join(runtimeOpts.addonsPath, mod.Name, entry)
+				entry = filepath.Join(runtimeOpts.modulesPath, mod.Name, entry)
 			}
 			entry = filepath.Clean(entry)
 			b.WriteString("import \"")

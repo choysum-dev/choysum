@@ -14,14 +14,14 @@ import (
 )
 
 func TestResolveServiceEntryPoint(t *testing.T) {
-	addonsPath := t.TempDir()
+	modulesPath := t.TempDir()
 	app := "auth"
-	appDir := filepath.Join(addonsPath, app)
+	appDir := filepath.Join(modulesPath, app)
 	if err := os.MkdirAll(filepath.Join(appDir, "service"), 0o755); err != nil {
 		t.Fatalf("mkdir app dir: %v", err)
 	}
 
-	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: addonsPath}}
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
 
 	entryRel := "service/custom.ts"
 	if err := os.WriteFile(filepath.Join(appDir, "manifest.json"), []byte(`{"entryPoints":{"service":"`+entryRel+`"}}`), 0o644); err != nil {

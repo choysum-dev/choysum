@@ -37,7 +37,7 @@ body:
     attributes:
       label: Affected scope
       description: Which module(s) or area(s) are involved?
-      placeholder: "Example: core runtime, addons/web, CLI, API"
+      placeholder: "Example: core runtime, modules/web, CLI, API"
 
   - type: textarea
     id: acceptance

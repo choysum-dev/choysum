@@ -21,7 +21,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
-func writeTempE2EConfig(t *testing.T, addonsPath string) string {
+func writeTempE2EConfig(t *testing.T, modulesPath string) string {
 	t.Helper()
 	runDir := t.TempDir()
 	distDir := filepath.Join(runDir, "dist")
@@ -30,7 +30,7 @@ func writeTempE2EConfig(t *testing.T, addonsPath string) string {
 	}
 	configPath := filepath.Join(runDir, "config.yaml")
 	configYAML := "default_choysum_path: \"" + filepath.Join(runDir, ".choysum") + "\"\n" +
-		"addons_path: \"" + addonsPath + "\"\n" +
+		"modules_path: \"" + modulesPath + "\"\n" +
 		"dist_path: \"" + distDir + "\"\n" +
 		"npm_path: \"\"\n" +
 		"log:\n  level: \"info\"\n" +
@@ -53,9 +53,9 @@ func writeExecFile(t *testing.T, path string, content string) {
 	}
 }
 
-func writePackageFile(t *testing.T, addonsPath, app, content string) {
+func writePackageFile(t *testing.T, modulesPath, app, content string) {
 	t.Helper()
-	dir := filepath.Join(addonsPath, app)
+	dir := filepath.Join(modulesPath, app)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir app dir: %v", err)
 	}
@@ -71,37 +71,37 @@ func TestRunModuleInputValidation(t *testing.T) {
 	}
 
 	err = RunModule(context.Background(), RunOptions{Module: "auth"})
-	if err == nil || !strings.Contains(err.Error(), "addons_path is required") {
-		t.Fatalf("expected addons path error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "modules_path is required") {
+		t.Fatalf("expected modules path error, got %v", err)
 	}
 
-	addonsPath := t.TempDir()
-	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
-	err = RunModule(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, Scenarios: []string{"Bad Name"}})
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	err = RunModule(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, Scenarios: []string{"Bad Name"}})
 	if err == nil || !strings.Contains(err.Error(), "invalid scenario") {
 		t.Fatalf("expected invalid scenario error, got %v", err)
 	}
 
-	err = RunModule(context.Background(), RunOptions{Module: "missing", AddonsPath: addonsPath})
+	err = RunModule(context.Background(), RunOptions{Module: "missing", ModulesPath: modulesPath})
 	if err == nil || !strings.Contains(err.Error(), "unknown module") {
 		t.Fatalf("expected unknown module error, got %v", err)
 	}
 
-	err = RunModule(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, Scenarios: []string{""}})
+	err = RunModule(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, Scenarios: []string{""}})
 	if err == nil || !strings.Contains(err.Error(), "scenario name cannot be empty") {
 		t.Fatalf("expected empty scenario error, got %v", err)
 	}
 }
 
 func TestDiscoverSourcePackagesAndResolveModules(t *testing.T) {
-	addonsPath := t.TempDir()
-	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","depends":["base"],"e2e":{"specs":"e2e/specs"}}}`)
-	writePackageFile(t, addonsPath, "base", `{"name":"@choysum/addon-base","version":"0.0.0","choysum":{"moduleName":"base","application":"base"}}`)
-	if err := os.WriteFile(filepath.Join(addonsPath, "README.md"), []byte("ignored"), 0o644); err != nil {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","depends":["base"],"e2e":{"specs":"e2e/specs"}}}`)
+	writePackageFile(t, modulesPath, "base", `{"name":"@choysum/module-base","version":"0.0.0","choysum":{"moduleName":"base","application":"base"}}`)
+	if err := os.WriteFile(filepath.Join(modulesPath, "README.md"), []byte("ignored"), 0o644); err != nil {
 		t.Fatalf("write readme: %v", err)
 	}
 
-	packages, err := discoverSourcePackages(addonsPath)
+	packages, err := discoverSourcePackages(modulesPath)
 	if err != nil {
 		t.Fatalf("discoverSourcePackages error: %v", err)
 	}
@@ -112,12 +112,25 @@ func TestDiscoverSourcePackagesAndResolveModules(t *testing.T) {
 		t.Fatalf("auth package not parsed correctly: %#v", packages["auth"])
 	}
 
-	mods, err := ResolveE2EModules(addonsPath)
+	mods, err := ResolveE2EModules(modulesPath)
 	if err != nil {
 		t.Fatalf("ResolveE2EModules error: %v", err)
 	}
 	if !reflect.DeepEqual(mods, []string{"auth"}) {
 		t.Fatalf("unexpected e2e modules: %#v", mods)
+	}
+}
+
+func TestResolveE2EModulesRequiresModulesPath(t *testing.T) {
+	if _, err := ResolveE2EModules("  "); err == nil || !strings.Contains(err.Error(), "modules_path is required") {
+		t.Fatalf("expected modules_path required error, got %v", err)
+	}
+}
+
+func TestDiscoverSourcePackagesReadModulesDirError(t *testing.T) {
+	missingModulesPath := filepath.Join(t.TempDir(), "missing")
+	if _, err := discoverSourcePackages(missingModulesPath); err == nil || !strings.Contains(err.Error(), "read modules dir") {
+		t.Fatalf("expected read modules dir error, got %v", err)
 	}
 }
 
@@ -199,7 +212,7 @@ func TestE2EUtilityHelpers(t *testing.T) {
 
 	repoRoot := t.TempDir()
 	packagePath := filepath.Join(repoRoot, "package.json")
-	if err := os.WriteFile(packagePath, []byte(`{"name":"@choysum/addon-auth","version":"1.2.3","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+	if err := os.WriteFile(packagePath, []byte(`{"name":"@choysum/module-auth","version":"1.2.3","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
 		t.Fatalf("write package.json: %v", err)
 	}
 	_, version, err := readPackageVersion(packagePath)
@@ -237,8 +250,8 @@ func TestE2EUtilityHelpers(t *testing.T) {
 }
 
 func TestNewE2ERuntimeScopeIgnoresAmbientChoysumConfigEnv(t *testing.T) {
-	addonsPath := t.TempDir()
-	configPath := writeTempE2EConfig(t, addonsPath)
+	modulesPath := t.TempDir()
+	configPath := writeTempE2EConfig(t, modulesPath)
 	t.Setenv("CHOYSUM_DB_DIALECT", "postgres")
 	t.Setenv("CHOYSUM_DB_DSN", "postgres://ambient/db")
 
@@ -278,6 +291,59 @@ func TestFilteredE2EEnvDropsAmbientChoysumConfigOverrides(t *testing.T) {
 	}
 	if !strings.Contains(joined, "PATH=/usr/bin") {
 		t.Fatalf("expected unrelated env to be preserved, got %q", joined)
+	}
+}
+
+func TestFilteredE2EEnv_EmptyAndMalformedEntries(t *testing.T) {
+	if env := filteredE2EEnv(nil); env != nil {
+		t.Fatalf("filteredE2EEnv(nil) = %#v, want nil", env)
+	}
+
+	filtered := filteredE2EEnv([]string{"MALFORMED", "CHOYSUM_TOKEN=abc", "CHOYSUM_E2E_TOKEN=ok"})
+	joined := strings.Join(filtered, "\n")
+	if !strings.Contains(joined, "MALFORMED") {
+		t.Fatalf("expected malformed env entry to be preserved, got %q", joined)
+	}
+	if strings.Contains(joined, "CHOYSUM_TOKEN=abc") {
+		t.Fatalf("expected CHOYSUM_ non-e2e env to be removed, got %q", joined)
+	}
+	if !strings.Contains(joined, "CHOYSUM_E2E_TOKEN=ok") {
+		t.Fatalf("expected CHOYSUM_E2E_ env to be preserved, got %q", joined)
+	}
+}
+
+func TestNewE2ERuntimeOptionsAndValidate(t *testing.T) {
+	noPath := newE2ERuntimeOptions(scope.PathsRuntimeOptions{}, false)
+	if noPath.modulesPath != "" {
+		t.Fatalf("newE2ERuntimeOptions(no path).modulesPath = %q, want empty", noPath.modulesPath)
+	}
+	if err := noPath.Validate(); err == nil || !strings.Contains(err.Error(), "modulesPath is required") {
+		t.Fatalf("Validate(no path) error = %v, want modulesPath required", err)
+	}
+
+	valid := newE2ERuntimeOptions(scope.PathsRuntimeOptions{ModulesPath: "/workspace/modules"}, true)
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("Validate(valid path) error = %v", err)
+	}
+
+	blank := newE2ERuntimeOptions(scope.PathsRuntimeOptions{ModulesPath: "   "}, true)
+	if err := blank.Validate(); err == nil || !strings.Contains(err.Error(), "modulesPath is required") {
+		t.Fatalf("Validate(blank path) error = %v, want modulesPath required", err)
+	}
+}
+
+func TestWriteE2EProgressAndRuntimeScopeValidation(t *testing.T) {
+	writeE2EProgress(nil, "ignored %s", "output")
+
+	var out strings.Builder
+	writeE2EProgress(&out, "# %s %d\n", "prepare", 1)
+	if out.String() != "# prepare 1\n" {
+		t.Fatalf("writeE2EProgress() output = %q, want %q", out.String(), "# prepare 1\\n")
+	}
+
+	missingConfigPath := filepath.Join(t.TempDir(), "missing-config.yaml")
+	if _, _, err := newE2ERuntimeScope(context.Background(), missingConfigPath); err == nil {
+		t.Fatal("expected config load error for missing e2e config path")
 	}
 }
 
@@ -385,8 +451,8 @@ func TestStartAndStopServerBranches(t *testing.T) {
 }
 
 func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
-	addonsPath := t.TempDir()
-	configPath := writeTempE2EConfig(t, addonsPath)
+	modulesPath := t.TempDir()
+	configPath := writeTempE2EConfig(t, modulesPath)
 
 	manifests := map[string]*sourceModulePackage{
 		"auth": {
@@ -428,19 +494,42 @@ func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
 	}
 }
 
+func TestApplyScenarioFixturesFixturePathErrorUsesModuleRoot(t *testing.T) {
+	modulesPath := t.TempDir()
+	configPath := writeTempE2EConfig(t, modulesPath)
+
+	manifests := map[string]*sourceModulePackage{
+		"auth": {
+			DirName: "auth",
+			E2E: &packageE2E{Scenarios: map[string]packageScene{
+				"default": {Fixtures: []string{"fixtures/missing.json"}},
+			}},
+		},
+	}
+
+	loaded := []string{}
+	err := applyScenarioFixtures(context.Background(), configPath, []string{"auth"}, manifests, "default", "auth", false, io.Discard, &loaded)
+	if err == nil {
+		t.Fatal("expected applyScenarioFixtures to fail for missing fixture path")
+	}
+	if len(loaded) != 0 {
+		t.Fatalf("expected no loaded fixtures on error, got %#v", loaded)
+	}
+}
+
 func TestInstallForE2EAndSeedModuleIndexRuntimeBranches(t *testing.T) {
-	addonsPath := t.TempDir()
-	configPath := writeTempE2EConfig(t, addonsPath)
+	modulesPath := t.TempDir()
+	configPath := writeTempE2EConfig(t, modulesPath)
 
 	err := installForE2E(context.Background(), configPath, "missing-module", false)
 	if err == nil {
 		t.Fatalf("expected installForE2E to fail for missing module")
 	}
 
-	if err := os.MkdirAll(filepath.Join(addonsPath, "auth"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
 		t.Fatalf("mkdir auth dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(addonsPath, "auth", "package.json"), []byte(`{"name":"@choysum/addon-auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "package.json"), []byte(`{"name":"@choysum/module-auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
 		t.Fatalf("write auth package.json: %v", err)
 	}
 

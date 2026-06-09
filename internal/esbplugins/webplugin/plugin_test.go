@@ -76,11 +76,11 @@ func newTestScope(t *testing.T) scope.Scope {
 	return &stubScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   filepath.Join(t.TempDir(), "dist"),
-			Compile:    config.NewDefaultCompileConfig(),
-			Server:     config.NewDefaultServerConfig(),
-			Log:        config.NewDefaultLogConfig(),
+			ModulesPath: t.TempDir(),
+			DistPath:    filepath.Join(t.TempDir(), "dist"),
+			Compile:     config.NewDefaultCompileConfig(),
+			Server:      config.NewDefaultServerConfig(),
+			Log:         config.NewDefaultLogConfig(),
 		},
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
@@ -90,10 +90,28 @@ func newPluginForTest(t *testing.T, parserImpl parser.Parser) *WebPlugin {
 	t.Helper()
 	testRuntimeScope := newTestScope(t)
 	testRuntimeOpts := runtimeOptionsFromScope(testRuntimeScope)
-	plugin := NewWebPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.addonsPath, "app", "web", "index.ts"), WithParser(parserImpl)).(*WebPlugin)
+	plugin := NewWebPlugin(testRuntimeScope, &meta.IrModule{Name: "web"}, filepath.Join(testRuntimeOpts.modulesPath, "app", "web", "index.ts"), WithParser(parserImpl)).(*WebPlugin)
 	plugin.ParserResultChan = make(chan *parser.ParserResult, 8)
 	plugin.ParserResults = make([]*parser.ParserResult, 0)
 	return plugin
+}
+
+func captureWebTsOnResolve(t *testing.T, plugin api.Plugin, buildOptions *api.BuildOptions) func(api.OnResolveArgs) (api.OnResolveResult, error) {
+	t.Helper()
+
+	var onResolve func(api.OnResolveArgs) (api.OnResolveResult, error)
+	plugin.Setup(api.PluginBuild{
+		InitialOptions: buildOptions,
+		OnLoad: func(api.OnLoadOptions, func(api.OnLoadArgs) (api.OnLoadResult, error)) {
+		},
+		OnResolve: func(options api.OnResolveOptions, callback func(api.OnResolveArgs) (api.OnResolveResult, error)) {
+			onResolve = callback
+		},
+	})
+	if onResolve == nil {
+		t.Fatal("expected web ts plugin to register an OnResolve callback")
+	}
+	return onResolve
 }
 
 func renderHTML(t *testing.T, node *html.Node) string {
@@ -373,10 +391,10 @@ func TestWebPluginDefinePlugins_BindsRuntimeState(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	baseOpts := runtimeOptionsFromScope(baseScope)
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
-	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.addonsPath, "base", "web", "index.ts"), ApplicationStr: "base"}
-	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.addonsPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
+	baseModule := &meta.IrModule{Name: "base", Path: filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts"), ApplicationStr: "base"}
+	runtimeModule := &meta.IrModule{Name: "runtime", Path: filepath.Join(runtimeOpts.modulesPath, "runtime", "web", "index.ts"), ApplicationStr: "runtime"}
 
-	plugin, ok := NewWebPlugin(baseScope, baseModule, filepath.Join(baseOpts.addonsPath, "base", "web", "index.ts")).(*WebPlugin)
+	plugin, ok := NewWebPlugin(baseScope, baseModule, filepath.Join(baseOpts.modulesPath, "base", "web", "index.ts")).(*WebPlugin)
 	if !ok {
 		t.Fatalf("expected *WebPlugin, got %T", plugin)
 	}
@@ -449,5 +467,80 @@ func TestVueLoadProcessorAndResolveProcessor(t *testing.T) {
 	}})
 	if _, err := errPlugin.VueLoadProcessor()("<template/>", api.OnLoadArgs{Path: "/repo/components/Error.vue"}, &api.BuildOptions{}); err == nil || !strings.Contains(err.Error(), "parse failed") {
 		t.Fatalf("expected vue load parse error, got %v", err)
+	}
+}
+
+func TestWebPluginTsPluginOnResolveUsesModulesPathImporterMapping(t *testing.T) {
+	runtimeScope := newTestScope(t)
+	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
+	plugin := NewWebPlugin(runtimeScope, &meta.IrModule{Name: "web", Path: filepath.Join(runtimeOpts.modulesPath, "web")}, filepath.Join(runtimeOpts.modulesPath, "auth", "web", "index.ts"), WithParser(fakeParser{})).(*WebPlugin)
+
+	resolvePath := filepath.Join(t.TempDir(), "child.ts")
+	if err := os.WriteFile(resolvePath, []byte("export default {}\n"), 0o644); err != nil {
+		t.Fatalf("write resolve target file: %v", err)
+	}
+	externalParent := filepath.Join(t.TempDir(), "external", "parent.ts")
+	plugin.ParserResults = []*parser.ParserResult{{
+		Path:             resolvePath,
+		VueAppImportTree: []string{externalParent, resolvePath},
+	}}
+
+	onResolve := captureWebTsOnResolve(t, plugin.TsPlugin(), &api.BuildOptions{})
+	result, err := onResolve(api.OnResolveArgs{
+		Path:       resolvePath,
+		ResolveDir: filepath.Dir(resolvePath),
+		Importer:   filepath.Join(runtimeOpts.modulesPath, "auth", "web", "index.ts"),
+	})
+	if err != nil {
+		t.Fatalf("OnResolve callback error = %v", err)
+	}
+	if result.Path != externalParent {
+		t.Fatalf("OnResolve callback path = %q, want %q", result.Path, externalParent)
+	}
+}
+
+func TestWebPluginIsEntryPointPath(t *testing.T) {
+	plugin := newPluginForTest(t, fakeParser{})
+	plugin.EntryPoint = "/repo/web/index.ts"
+
+	if !plugin.isEntryPointPath("/repo/web/index.ts") {
+		t.Fatal("expected exact entry path to match")
+	}
+	if !plugin.isEntryPointPath("/repo/web/./index.ts") {
+		t.Fatal("expected cleaned entry path to match")
+	}
+	if plugin.isEntryPointPath("   ") {
+		t.Fatal("expected blank path not to match entry path")
+	}
+
+	plugin.EntryPoint = "   "
+	if plugin.isEntryPointPath("/repo/web/index.ts") {
+		t.Fatal("expected blank entry point not to match")
+	}
+}
+
+func TestWebPluginPrioritizedEntryPointImports(t *testing.T) {
+	plugin := newPluginForTest(t, fakeParser{})
+	plugin.EntryPointImports = []string{
+		"/repo/generated/api/web/crm/stores/index.ts",
+		"/repo/app/boot.ts",
+		"/repo/generated/web/crm/service.ts",
+		"",
+	}
+
+	ordered := plugin.prioritizedEntryPointImports()
+	if len(ordered) != 4 {
+		t.Fatalf("prioritizedEntryPointImports() len = %d, want 4", len(ordered))
+	}
+	if ordered[0] != "/repo/generated/api/web/crm/stores/index.ts" {
+		t.Fatalf("expected store import first, got %#v", ordered)
+	}
+	if ordered[1] != "/repo/app/boot.ts" || ordered[2] != "/repo/generated/web/crm/service.ts" || ordered[3] != "" {
+		t.Fatalf("expected non-store imports to keep relative order, got %#v", ordered)
+	}
+
+	plugin.EntryPointImports = nil
+	if got := plugin.prioritizedEntryPointImports(); got != nil {
+		t.Fatalf("prioritizedEntryPointImports(nil) = %#v, want nil", got)
 	}
 }

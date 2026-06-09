@@ -63,8 +63,8 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 		return nil
 	}
 
-	addonsPath := t.TempDir()
-	specsDir := filepath.Join(addonsPath, "auth", "e2e")
+	modulesPath := t.TempDir()
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
 	if err := os.MkdirAll(specsDir, 0o755); err != nil {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 
 	err := runOneScenario(context.Background(), RunOptions{
 		Module:         "auth",
-		AddonsPath:     addonsPath,
+		ModulesPath:    modulesPath,
 		WorkDir:        t.TempDir(),
 		TmpPath:        t.TempDir(),
 		StartupTimeout: time.Second,
@@ -125,8 +125,8 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	}
 	stopServerHook = func(cmd *exec.Cmd) {}
 
-	addonsPath := t.TempDir()
-	specsDir := filepath.Join(addonsPath, "auth", "e2e")
+	modulesPath := t.TempDir()
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
 	if err := os.MkdirAll(specsDir, 0o755); err != nil {
 		t.Fatalf("mkdir specs dir: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	startServerHook = func(workDir, configPath, logPath string, choysumBinaryPath string) (*exec.Cmd, error) {
 		return nil, startErr
 	}
-	err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+	err := runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 	if !errors.Is(err, startErr) {
 		t.Fatalf("expected start server error, got %v", err)
 	}
@@ -152,7 +152,7 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	}
 	waitErr := errors.New("not ready")
 	waitForHTTP200Hook = func(ctx context.Context, url string, timeout time.Duration) error { return waitErr }
-	err = runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+	err = runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 	if !errors.Is(err, waitErr) {
 		t.Fatalf("expected wait error, got %v", err)
 	}
@@ -162,7 +162,7 @@ func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
 	runPlaywrightHook = func(ctx context.Context, opts RunOptions, specsDir string, baseURL string, runtimePath string) error {
 		return playErr
 	}
-	err = runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+	err = runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 	if !errors.Is(err, playErr) {
 		t.Fatalf("expected playwright error, got %v", err)
 	}
@@ -172,8 +172,8 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 	oldRunOne := runOneScenarioHook
 	defer func() { runOneScenarioHook = oldRunOne }()
 
-	addonsPath := t.TempDir()
-	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 
 	calls := 0
 	sawDeadline := false
@@ -192,10 +192,10 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 	}
 
 	err := RunModule(context.Background(), RunOptions{
-		Module:     "auth",
-		AddonsPath: addonsPath,
-		Scenarios:  []string{"default", "smoke"},
-		Timeout:    time.Second,
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		Scenarios:   []string{"default", "smoke"},
+		Timeout:     time.Second,
 	})
 	if err != nil {
 		t.Fatalf("RunModule returned error: %v", err)
@@ -212,15 +212,15 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 	oldRunOne := runOneScenarioHook
 	defer func() { runOneScenarioHook = oldRunOne }()
 
-	addonsPath := t.TempDir()
-	writePackageFile(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 
 	wantErr := errors.New("scenario failed")
 	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceModulePackage, scenario string) error {
 		return wantErr
 	}
 
-	err := RunModule(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath})
+	err := RunModule(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath})
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("expected scenario error, got %v", err)
 	}
@@ -265,8 +265,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			return nil
 		}
 
-		addonsPath := t.TempDir()
-		specsDir := filepath.Join(addonsPath, "meta", "e2e")
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "meta", "e2e")
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
@@ -279,7 +279,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
-		err := runOneScenario(context.Background(), RunOptions{Module: "meta", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+		err := runOneScenario(context.Background(), RunOptions{Module: "meta", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 		if err != nil {
 			t.Fatalf("runOneScenario(meta) error: %v", err)
 		}
@@ -289,11 +289,11 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 	})
 
 	t.Run("invalid specs rel is rejected", func(t *testing.T) {
-		addonsPath := t.TempDir()
+		modulesPath := t.TempDir()
 		manifests := map[string]*sourceModulePackage{
 			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "../outside"}},
 		}
-		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+		err := runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 		if err == nil || !strings.Contains(err.Error(), "invalid package.json choysum.e2e.specs") {
 			t.Fatalf("expected invalid specs error, got %v", err)
 		}
@@ -327,8 +327,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			return nil
 		}
 
-		addonsPath := t.TempDir()
-		specsDir := filepath.Join(addonsPath, "auth", "e2e")
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "auth", "e2e")
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
@@ -346,7 +346,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
 			return nil
 		}
-		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+		err := runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 		if !errors.Is(err, fixtureErr) {
 			t.Fatalf("expected fixture error, got %v", err)
 		}
@@ -358,7 +358,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		seedModuleIndexHook = func(ctx context.Context, configPath string, manifests map[string]*sourceModulePackage) error {
 			return seedErr
 		}
-		err = runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
+		err = runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: io.Discard}, manifests, "default")
 		if !errors.Is(err, seedErr) {
 			t.Fatalf("expected seed error, got %v", err)
 		}
@@ -398,8 +398,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			return nil
 		}
 
-		addonsPath := t.TempDir()
-		specsDir := filepath.Join(addonsPath, "auth", "e2e")
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "auth", "e2e")
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
@@ -411,7 +411,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 
 		var stderr strings.Builder
-		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Keep: true, Stderr: &stderr}, manifests, "default")
+		err := runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Keep: true, Stderr: &stderr}, manifests, "default")
 		if err != nil {
 			t.Fatalf("runOneScenario keep error: %v", err)
 		}
@@ -471,8 +471,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			return nil
 		}
 
-		addonsPath := t.TempDir()
-		specsDir := filepath.Join(addonsPath, "auth", "e2e")
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "auth", "e2e")
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
@@ -483,7 +483,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			"auth": {DirName: "auth", E2E: &packageE2E{Specs: "e2e"}},
 		}
 
-		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, RuntimeLogLevel: "info", Stderr: io.Discard}, manifests, "default")
+		err := runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, RuntimeLogLevel: "info", Stderr: io.Discard}, manifests, "default")
 		if err != nil {
 			t.Fatalf("runOneScenario error: %v", err)
 		}
@@ -528,8 +528,8 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 			return nil
 		}
 
-		addonsPath := t.TempDir()
-		specsDir := filepath.Join(addonsPath, "auth", "e2e")
+		modulesPath := t.TempDir()
+		specsDir := filepath.Join(modulesPath, "auth", "e2e")
 		if err := os.MkdirAll(specsDir, 0o755); err != nil {
 			t.Fatalf("mkdir specs dir: %v", err)
 		}
@@ -541,7 +541,7 @@ func TestRunOneScenarioAdditionalBranches(t *testing.T) {
 		}
 
 		var stderr strings.Builder
-		err := runOneScenario(context.Background(), RunOptions{Module: "auth", AddonsPath: addonsPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: &stderr}, manifests, "default")
+		err := runOneScenario(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, WorkDir: t.TempDir(), TmpPath: t.TempDir(), StartupTimeout: time.Second, Stderr: &stderr}, manifests, "default")
 		if err != nil {
 			t.Fatalf("runOneScenario error: %v", err)
 		}

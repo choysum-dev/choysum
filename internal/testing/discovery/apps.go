@@ -15,15 +15,15 @@ import (
 )
 
 // ResolveTestApps resolves the user-supplied target (app name or "all") into
-// a concrete list of addon apps that have runnable tests under the requested scopes.
+// a concrete list of module apps that have runnable tests under the requested scopes.
 func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 	if runtimeScope == nil || !runtimeOpts.hasConfig {
 		return nil, xfmt.Errorf("scope is not initialized")
 	}
-	addonsPath := strings.TrimSpace(runtimeOpts.addonsPath)
-	if addonsPath == "" {
-		return nil, xfmt.Errorf("config missing addons_path")
+	modulesPath := strings.TrimSpace(runtimeOpts.modulesPath)
+	if modulesPath == "" {
+		return nil, xfmt.Errorf("config missing modules_path")
 	}
 	arg = strings.TrimSpace(arg)
 	if arg == "" {
@@ -34,14 +34,14 @@ func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE boo
 	if arg != "all" {
 		ok := false
 		if runBE {
-			has, err := HasAnyBackendTests(addonsPath, arg)
+			has, err := HasAnyBackendTests(modulesPath, arg)
 			if err != nil {
 				return nil, err
 			}
 			ok = ok || has
 		}
 		if runFE {
-			has, err := HasAnyFrontendTests(addonsPath, arg)
+			has, err := HasAnyFrontendTests(modulesPath, arg)
 			if err != nil {
 				return nil, err
 			}
@@ -53,9 +53,9 @@ func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE boo
 		return nil, nil
 	}
 
-	entries, err := os.ReadDir(addonsPath)
+	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
-		return nil, xfmt.Errorf("read addons dir: %w", err)
+		return nil, xfmt.Errorf("read modules dir: %w", err)
 	}
 
 	apps := make([]string, 0)
@@ -70,14 +70,14 @@ func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE boo
 
 		ok := false
 		if runBE {
-			has, err := HasAnyBackendTests(addonsPath, name)
+			has, err := HasAnyBackendTests(modulesPath, name)
 			if err != nil {
 				return nil, err
 			}
 			ok = ok || has
 		}
 		if runFE {
-			has, err := HasAnyFrontendTests(addonsPath, name)
+			has, err := HasAnyFrontendTests(modulesPath, name)
 			if err != nil {
 				return nil, err
 			}
@@ -91,8 +91,8 @@ func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE boo
 	return apps, nil
 }
 
-func HasAnyBackendTests(addonsPath string, app string) (bool, error) {
-	serviceDir := filepath.Join(addonsPath, app, "service")
+func HasAnyBackendTests(modulesPath string, app string) (bool, error) {
+	serviceDir := filepath.Join(modulesPath, app, "service")
 	st, err := os.Stat(serviceDir)
 	if err != nil || !st.IsDir() {
 		return false, nil
@@ -102,8 +102,8 @@ func HasAnyBackendTests(addonsPath string, app string) (bool, error) {
 	})
 }
 
-func HasAnyFrontendTests(addonsPath string, app string) (bool, error) {
-	webDir := filepath.Join(addonsPath, app, "web")
+func HasAnyFrontendTests(modulesPath string, app string) (bool, error) {
+	webDir := filepath.Join(modulesPath, app, "web")
 	st, err := os.Stat(webDir)
 	if err != nil || !st.IsDir() {
 		return false, nil

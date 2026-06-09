@@ -38,16 +38,16 @@ func (e *backendParserTestScope) FactoryInput() scope.FactoryInput {
 func newBackendParserTestScope() scope.Scope {
 	return &backendParserTestScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: "/virtual/addons"},
+		cfg: &config.Config{ModulesPath: "/virtual/modules"},
 	}
 }
 
 func TestTsParser_ParseModelExtendsProperty_IgnoresNonDefaultExportClass(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/core", ApplicationStr: "core"}
+	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
 	p := NewTsParser(runtimeScope, module)
 
-	path := "/virtual/addons/core/service/database/driver/compiler.ts"
+	path := "/virtual/modules/core/service/database/driver/compiler.ts"
 	content := `import { PostgresQueryCompiler } from "kysely";
 
 export class ChoysumPostgresQueryCompiler extends PostgresQueryCompiler {}
@@ -64,10 +64,10 @@ export class ChoysumPostgresQueryCompiler extends PostgresQueryCompiler {}
 
 func TestTsParser_ParseModelExtendsProperty_DefaultExportAssignmentUsesDefaultReference(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/test", ApplicationStr: "test"}
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
-	path := "/virtual/addons/test/service/user.ts"
+	path := "/virtual/modules/test/service/user.ts"
 	content := `import BaseModel from './base';
 
 class User extends BaseModel {}
@@ -85,10 +85,10 @@ export default User;
 	if r.ModelExtendsProperty.ReferenceIdent != "default" {
 		t.Fatalf("expected extends reference ident default, got %s", r.ModelExtendsProperty.ReferenceIdent)
 	}
-	if r.ModelExtendsProperty.ModuleSpecPath != "/virtual/addons/test/service/base" {
+	if r.ModelExtendsProperty.ModuleSpecPath != "/virtual/modules/test/service/base" {
 		t.Fatalf("unexpected extends module spec path: %s", r.ModelExtendsProperty.ModuleSpecPath)
 	}
-	if r.Model == nil || r.Model.RawExtends != "/virtual/addons/test/service/base.ts" {
+	if r.Model == nil || r.Model.RawExtends != "/virtual/modules/test/service/base.ts" {
 		t.Fatalf("unexpected model raw extends: %+v", r.Model)
 	}
 }
@@ -112,10 +112,10 @@ func TestGetProtoTypeFromTsType(t *testing.T) {
 
 func TestTsParser_ParseModelAddsParentPathAndServices(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/test", ApplicationStr: "test"}
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
 	p := NewTsParser(runtimeScope, module)
 
-	path := "/virtual/addons/test/service/department.ts"
+	path := "/virtual/modules/test/service/department.ts"
 	content := `import { Model, Field } from '../../core/service';
 import BaseModel from './base';
 
@@ -151,7 +151,7 @@ export default class Department extends BaseModel {
 	if r.Model.CompanyScoped == nil || !*r.Model.CompanyScoped {
 		t.Fatalf("expected companyScoped=true, got %+v", r.Model.CompanyScoped)
 	}
-	if r.Model.RawExtends != "/virtual/addons/test/service/base.ts" {
+	if r.Model.RawExtends != "/virtual/modules/test/service/base.ts" {
 		t.Fatalf("unexpected raw extends: %s", r.Model.RawExtends)
 	}
 	if r.ModelExtendsProperty == nil || r.ModelExtendsProperty.ReferenceIdent != "default" {
@@ -169,7 +169,7 @@ export default class Department extends BaseModel {
 	if parentPath == nil || len(parentPath.Decorators) != 1 {
 		t.Fatalf("expected synthesized ParentPath field, got %+v", parentPath)
 	}
-	if parentPath.Decorators[0].ModuleSpecPath != filepath.Join(runtimeOptionsFromScope(runtimeScope).addonsPath, "core", "service", "orm", "decorator", "field") {
+	if parentPath.Decorators[0].ModuleSpecPath != filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "orm", "decorator", "field") {
 		t.Fatalf("unexpected ParentPath decorator module: %+v", parentPath.Decorators[0])
 	}
 	if _, exists := fieldByName["InternalCode"]; exists {
@@ -190,10 +190,10 @@ export default class Department extends BaseModel {
 
 func TestTsParser_ParseSkipsCompatibilityPath(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/core", ApplicationStr: "core"}
+	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
 	p := NewTsParser(runtimeScope, module)
 
-	path := filepath.Join(runtimeOptionsFromScope(runtimeScope).addonsPath, "core", "service", "orm", "metadata", "field.ts")
+	path := filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "orm", "metadata", "field.ts")
 	r, err := p.Parse(nil, path, "export default class Ignored {}")
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)

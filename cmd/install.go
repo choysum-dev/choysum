@@ -83,8 +83,8 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
-							if strings.Contains(peekErr.Error(), "not found in addons path") {
-								peekErr = xfmt.Errorf("module %s not found in addons path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
+							if strings.Contains(peekErr.Error(), "not found in modules path") {
+								peekErr = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
 							}
 							return peekErr
 						}
@@ -98,8 +98,8 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					txScope.Logger().Debug("module installed", "module", moduleName)
 					return nil
 				}); err != nil {
-					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && strings.Contains(err.Error(), "not found in addons path") {
-						err = xfmt.Errorf("module %s not found in addons path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
+					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && strings.Contains(err.Error(), "not found in modules path") {
+						err = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
 					}
 					attrs := []any{"error", err}
 					attrs = append(attrs, moduleCommandFailureAttrs("install")...)

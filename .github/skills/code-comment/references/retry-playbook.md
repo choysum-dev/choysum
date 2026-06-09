@@ -10,14 +10,14 @@ Retry in this order:
 
 ```text
 /code-comment pkg/auth
-/code-comment addons/auth/web/pages
+/code-comment modules/auth/web/pages
 ```
 
 2. Name the skill explicitly in natural language.
 
 ```text
 Use the code-comment skill on pkg/auth comments.
-Use the code-comment skill on addons/auth/web/pages Vue SFC comments.
+Use the code-comment skill on modules/auth/web/pages Vue SFC comments.
 ```
 
 3. Reuse the discovery phrases from the skill description.
@@ -40,10 +40,10 @@ Examples:
 
 ```text
 /code-comment pkg/auth
-/code-comment addons/auth/web/pages
+/code-comment modules/auth/web/pages
 /code-comment review pkg/auth without editing
-/code-comment cleanup addons/web/web/router
-/code-comment review addons/auth/web/pages/RoleList.vue
+/code-comment cleanup modules/web/web/router
+/code-comment review modules/auth/web/pages/RoleList.vue
 /code-comment hybrid pkg/auth public APIs
 ```
 
@@ -59,9 +59,9 @@ Examples:
 
 ```text
 /code-comment review pkg/auth
-/code-comment review addons/auth/web/pages
+/code-comment review modules/auth/web/pages
 /code-comment review pkg/auth/authenticator.go
-/code-comment review addons/auth/web/pages/RoleList.vue
+/code-comment review modules/auth/web/pages/RoleList.vue
 /code-comment review pkg/auth public interfaces
 ```
 
@@ -76,10 +76,10 @@ Split the request into separate passes:
 Example:
 
 ```text
-/code-comment review addons/web/web/router
-/code-comment cleanup addons/web/web/router
-/code-comment review addons/auth/web/pages
-/code-comment cleanup addons/auth/web/pages
+/code-comment review modules/web/web/router
+/code-comment cleanup modules/web/web/router
+/code-comment review modules/auth/web/pages
+/code-comment cleanup modules/auth/web/pages
 ```
 
 ## If the Skill Still Feels Inconsistent

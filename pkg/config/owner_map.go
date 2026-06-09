@@ -19,10 +19,10 @@ type ConfigRootOwner struct {
 }
 
 var configRootOwnerMap = map[string]ConfigRootOwner{
-	"addons_path": {
+	"modules_path": {
 		Domain:      "module",
 		PackagePath: "internal/module/config",
-		OptionsType: "AddonsPathConfig",
+		OptionsType: "ModulesPathConfig",
 	},
 	"dist_path": {
 		Domain:      "server",

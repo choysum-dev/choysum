@@ -18,12 +18,12 @@ type parsedWorkspaceGeneratedTSConfig struct {
 	Include []string `json:"include"`
 }
 
-func TestBuildWorkspaceGeneratedTSConfig_UsesAddonsPath(t *testing.T) {
+func TestBuildWorkspaceGeneratedTSConfig_UsesModulesPath(t *testing.T) {
 	root := t.TempDir()
-	addonsPath := filepath.Join(root, "custom-addons")
+	modulesPath := filepath.Join(root, "custom-modules")
 	defaultChoysumPath := t.TempDir()
 
-	content, err := buildWorkspaceGeneratedTSConfig(addonsPath, defaultChoysumPath)
+	content, err := buildWorkspaceGeneratedTSConfig(modulesPath, defaultChoysumPath)
 	if err != nil {
 		t.Fatalf("buildWorkspaceGeneratedTSConfig() error = %v", err)
 	}
@@ -33,18 +33,18 @@ func TestBuildWorkspaceGeneratedTSConfig_UsesAddonsPath(t *testing.T) {
 		t.Fatalf("unmarshal generated tsconfig: %v", err)
 	}
 
-	generatedRoot, err := WorkspaceGeneratedAPIRoot(addonsPath, defaultChoysumPath)
+	generatedRoot, err := WorkspaceGeneratedAPIRoot(modulesPath, defaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPIRoot() error = %v", err)
 	}
 	if absGeneratedRoot, err := filepath.Abs(generatedRoot); err == nil {
 		generatedRoot = absGeneratedRoot
 	}
-	addonsTSConfigPath := filepath.Join(addonsPath, "tsconfig.json")
-	if absAddonsTSConfigPath, err := filepath.Abs(addonsTSConfigPath); err == nil {
-		addonsTSConfigPath = absAddonsTSConfigPath
+	modulesTSConfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if absModulesTSConfigPath, err := filepath.Abs(modulesTSConfigPath); err == nil {
+		modulesTSConfigPath = absModulesTSConfigPath
 	}
-	wantExtendsRel, err := filepath.Rel(generatedRoot, addonsTSConfigPath)
+	wantExtendsRel, err := filepath.Rel(generatedRoot, modulesTSConfigPath)
 	if err != nil {
 		t.Fatalf("filepath.Rel() error = %v", err)
 	}
@@ -63,9 +63,9 @@ func TestBuildWorkspaceGeneratedTSConfig_UsesAddonsPath(t *testing.T) {
 	}
 }
 
-func TestBuildWorkspaceGeneratedTSConfig_RelativeAddonsPath(t *testing.T) {
+func TestBuildWorkspaceGeneratedTSConfig_RelativeModulesPath(t *testing.T) {
 	defaultChoysumPath := t.TempDir()
-	content, err := buildWorkspaceGeneratedTSConfig("addons", defaultChoysumPath)
+	content, err := buildWorkspaceGeneratedTSConfig("modules", defaultChoysumPath)
 	if err != nil {
 		t.Fatalf("buildWorkspaceGeneratedTSConfig() error = %v", err)
 	}
@@ -75,18 +75,18 @@ func TestBuildWorkspaceGeneratedTSConfig_RelativeAddonsPath(t *testing.T) {
 		t.Fatalf("unmarshal generated tsconfig: %v", err)
 	}
 
-	generatedRoot, err := WorkspaceGeneratedAPIRoot("addons", defaultChoysumPath)
+	generatedRoot, err := WorkspaceGeneratedAPIRoot("modules", defaultChoysumPath)
 	if err != nil {
 		t.Fatalf("WorkspaceGeneratedAPIRoot() error = %v", err)
 	}
 	if absGeneratedRoot, err := filepath.Abs(generatedRoot); err == nil {
 		generatedRoot = absGeneratedRoot
 	}
-	addonsTSConfigPath := filepath.Join("addons", "tsconfig.json")
-	if absAddonsTSConfigPath, err := filepath.Abs(addonsTSConfigPath); err == nil {
-		addonsTSConfigPath = absAddonsTSConfigPath
+	modulesTSConfigPath := filepath.Join("modules", "tsconfig.json")
+	if absModulesTSConfigPath, err := filepath.Abs(modulesTSConfigPath); err == nil {
+		modulesTSConfigPath = absModulesTSConfigPath
 	}
-	wantExtendsRel, err := filepath.Rel(generatedRoot, addonsTSConfigPath)
+	wantExtendsRel, err := filepath.Rel(generatedRoot, modulesTSConfigPath)
 	if err != nil {
 		t.Fatalf("filepath.Rel() error = %v", err)
 	}

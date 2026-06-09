@@ -41,7 +41,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 		Use:   "e2e <module> [-- <playwrightArgs...>]",
 		Short: "Run module-scoped system E2E (choysum run + Playwright)",
 		Long: "Run module-scoped system E2E (choysum run + Playwright).\n\n" +
-			"<module> refers to the addon directory name under the addons path (e.g. addons/auth -> auth), not package.json's name.",
+			"<module> refers to the module directory name under the modules path (e.g. modules/auth -> auth), not package.json's name.",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all {
 				return nil
@@ -84,16 +84,16 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			ctx := context.Background()
 			if all {
 				ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
-				mods, err := resolveE2EModules(runtimeOptions.addonsPath)
+				mods, err := resolveE2EModules(runtimeOptions.modulesPath)
 				if err != nil {
 					return err
 				}
 				if len(mods) == 0 {
-					return fmt.Errorf("e2e: no runnable modules found under %s", runtimeOptions.addonsPath)
+					return fmt.Errorf("e2e: no runnable modules found under %s", runtimeOptions.modulesPath)
 				}
 				for _, mod := range mods {
 					opts := pkge2e.RunOptions{
-						AddonsPath:      runtimeOptions.addonsPath,
+						ModulesPath:     runtimeOptions.modulesPath,
 						NpmPath:         runtimeOptions.npmPath,
 						TmpPath:         runtimeOptions.tmpPath,
 						Module:          mod,
@@ -118,7 +118,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			}
 
 			opts := pkge2e.RunOptions{
-				AddonsPath:      runtimeOptions.addonsPath,
+				ModulesPath:     runtimeOptions.modulesPath,
 				NpmPath:         runtimeOptions.npmPath,
 				TmpPath:         runtimeOptions.tmpPath,
 				Module:          moduleName,

@@ -25,17 +25,17 @@ func TestAuthTypecheckGate(t *testing.T) {
 		t.Fatalf("resolve repo root: %v", err)
 	}
 
-	addonsPath, err := resolveAddonsPath(repoRoot)
+	modulesPath, err := resolveModulesPath(repoRoot)
 	if err != nil {
-		t.Fatalf("resolve addons path: %v", err)
+		t.Fatalf("resolve modules path: %v", err)
 	}
 
 	opts := tctypecheck.RunOptions{
-		AddonsPath: addonsPath,
-		RepoRoot:   repoRoot,
-		Target:     "auth",
-		Stdout:     io.Discard,
-		Stderr:     io.Discard,
+		ModulesPath: modulesPath,
+		RepoRoot:    repoRoot,
+		Target:      "auth",
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
 	}
 	if err := tctypecheck.Run(context.Background(), opts); err != nil {
 		t.Fatalf("auth typecheck gate failed: %v", err)
@@ -86,25 +86,25 @@ func validateRepoRoot(repoRoot string) error {
 	return nil
 }
 
-func resolveAddonsPath(repoRoot string) (string, error) {
-	if v := os.Getenv("CHOYSUM_ADDONS_PATH"); strings.TrimSpace(v) != "" {
-		addonsPath := v
-		if !filepath.IsAbs(addonsPath) {
-			addonsPath = filepath.Join(repoRoot, addonsPath)
+func resolveModulesPath(repoRoot string) (string, error) {
+	if v := os.Getenv("CHOYSUM_MODULES_PATH"); strings.TrimSpace(v) != "" {
+		modulesPath := v
+		if !filepath.IsAbs(modulesPath) {
+			modulesPath = filepath.Join(repoRoot, modulesPath)
 		}
-		addonsPath = normalizePath(addonsPath)
-		if err := validateDirectoryPath("addons path", addonsPath); err != nil {
+		modulesPath = normalizePath(modulesPath)
+		if err := validateDirectoryPath("modules path", modulesPath); err != nil {
 			return "", err
 		}
-		return addonsPath, nil
+		return modulesPath, nil
 	}
 
-	addonsPath := filepath.Join(repoRoot, "addons")
-	addonsPath = normalizePath(addonsPath)
-	if err := validateDirectoryPath("addons path", addonsPath); err != nil {
+	modulesPath := filepath.Join(repoRoot, "modules")
+	modulesPath = normalizePath(modulesPath)
+	if err := validateDirectoryPath("modules path", modulesPath); err != nil {
 		return "", err
 	}
-	return addonsPath, nil
+	return modulesPath, nil
 }
 
 func validateDirectoryPath(label, path string) error {
@@ -212,71 +212,71 @@ func TestValidateRepoRoot(t *testing.T) {
 	})
 }
 
-func TestResolveAddonsPath(t *testing.T) {
+func TestResolveModulesPath(t *testing.T) {
 	repoRoot := t.TempDir()
 	if err := os.WriteFile(filepath.Join(repoRoot, "go.mod"), []byte("module example.com/test\n"), 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
-	defaultAddons := filepath.Join(repoRoot, "addons")
-	if err := os.MkdirAll(defaultAddons, 0o755); err != nil {
-		t.Fatalf("mkdir addons: %v", err)
+	defaultModules := filepath.Join(repoRoot, "modules")
+	if err := os.MkdirAll(defaultModules, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
 	}
 
-	t.Run("default addons path", func(t *testing.T) {
-		t.Setenv("CHOYSUM_ADDONS_PATH", "")
-		got, err := resolveAddonsPath(repoRoot)
+	t.Run("default modules path", func(t *testing.T) {
+		t.Setenv("CHOYSUM_MODULES_PATH", "")
+		got, err := resolveModulesPath(repoRoot)
 		if err != nil {
-			t.Fatalf("resolveAddonsPath failed: %v", err)
+			t.Fatalf("resolveModulesPath failed: %v", err)
 		}
-		if canonicalPathForTest(got) != canonicalPathForTest(defaultAddons) {
-			t.Fatalf("unexpected addons path: got=%q want=%q", got, defaultAddons)
+		if canonicalPathForTest(got) != canonicalPathForTest(defaultModules) {
+			t.Fatalf("unexpected modules path: got=%q want=%q", got, defaultModules)
 		}
 	})
 
-	t.Run("absolute addons override", func(t *testing.T) {
+	t.Run("absolute modules override", func(t *testing.T) {
 		override := t.TempDir()
-		t.Setenv("CHOYSUM_ADDONS_PATH", override)
-		got, err := resolveAddonsPath(repoRoot)
+		t.Setenv("CHOYSUM_MODULES_PATH", override)
+		got, err := resolveModulesPath(repoRoot)
 		if err != nil {
-			t.Fatalf("resolveAddonsPath failed: %v", err)
+			t.Fatalf("resolveModulesPath failed: %v", err)
 		}
 		if canonicalPathForTest(got) != canonicalPathForTest(override) {
-			t.Fatalf("unexpected addons path: got=%q want=%q", got, override)
+			t.Fatalf("unexpected modules path: got=%q want=%q", got, override)
 		}
 	})
 
-	t.Run("relative addons override resolved from repoRoot", func(t *testing.T) {
-		rel := filepath.Join("custom", "addons")
+	t.Run("relative modules override resolved from repoRoot", func(t *testing.T) {
+		rel := filepath.Join("custom", "modules")
 		want := filepath.Join(repoRoot, rel)
 		if err := os.MkdirAll(want, 0o755); err != nil {
-			t.Fatalf("mkdir custom addons: %v", err)
+			t.Fatalf("mkdir custom modules: %v", err)
 		}
-		t.Setenv("CHOYSUM_ADDONS_PATH", rel)
-		got, err := resolveAddonsPath(repoRoot)
+		t.Setenv("CHOYSUM_MODULES_PATH", rel)
+		got, err := resolveModulesPath(repoRoot)
 		if err != nil {
-			t.Fatalf("resolveAddonsPath failed: %v", err)
+			t.Fatalf("resolveModulesPath failed: %v", err)
 		}
 		if canonicalPathForTest(got) != canonicalPathForTest(want) {
-			t.Fatalf("unexpected addons path: got=%q want=%q", got, want)
+			t.Fatalf("unexpected modules path: got=%q want=%q", got, want)
 		}
 	})
 
 	t.Run("override path missing", func(t *testing.T) {
-		t.Setenv("CHOYSUM_ADDONS_PATH", filepath.Join(repoRoot, "not-exist"))
-		if _, err := resolveAddonsPath(repoRoot); err == nil {
-			t.Fatalf("expected error for missing addons path")
+		t.Setenv("CHOYSUM_MODULES_PATH", filepath.Join(repoRoot, "not-exist"))
+		if _, err := resolveModulesPath(repoRoot); err == nil {
+			t.Fatalf("expected error for missing modules path")
 		}
 	})
 
 	t.Run("override path is file", func(t *testing.T) {
-		file := filepath.Join(repoRoot, "addons-file")
+		file := filepath.Join(repoRoot, "modules-file")
 		if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
 			t.Fatalf("write file: %v", err)
 		}
-		t.Setenv("CHOYSUM_ADDONS_PATH", file)
-		_, err := resolveAddonsPath(repoRoot)
+		t.Setenv("CHOYSUM_MODULES_PATH", file)
+		_, err := resolveModulesPath(repoRoot)
 		if err == nil {
-			t.Fatalf("expected error for addons file path")
+			t.Fatalf("expected error for modules file path")
 		}
 		if !strings.Contains(err.Error(), "not a directory") {
 			t.Fatalf("expected not-a-directory context, got: %v", err)

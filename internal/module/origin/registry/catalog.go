@@ -176,7 +176,7 @@ func (c *Catalog) listFromGitHub(ctx context.Context, registryURL, query string)
 	if err != nil {
 		return nil, err
 	}
-	entries, err := c.listGitHubDirectory(ctx, owner, repo, "addons")
+	entries, err := c.listGitHubDirectory(ctx, owner, repo, "modules")
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (c *Catalog) listGitHubDirectory(ctx context.Context, owner, repo, dir stri
 }
 
 func (c *Catalog) fetchGitHubLatestVersion(ctx context.Context, owner, repo, moduleName string) (string, []string, error) {
-	entries, err := c.listGitHubDirectory(ctx, owner, repo, path.Join("addons", moduleName))
+	entries, err := c.listGitHubDirectory(ctx, owner, repo, path.Join("modules", moduleName))
 	if err != nil {
 		return "", nil, err
 	}

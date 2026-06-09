@@ -5,15 +5,201 @@ package origin
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/choysum-dev/choysum/pkg/scope"
 )
+
+type originPathsScope struct {
+	ctx   context.Context
+	input scope.FactoryInput
+}
+
+func (s *originPathsScope) Run(fn func(scope.Scope) error) error {
+	if fn == nil {
+		return nil
+	}
+	return fn(s)
+}
+
+func (s *originPathsScope) Session() *scope.Session { return nil }
+func (s *originPathsScope) Transactor() scope.Transactor {
+	return nil
+}
+
+func (s *originPathsScope) WithContext(ctx context.Context) scope.Scope {
+	clone := *s
+	clone.ctx = ctx
+	return &clone
+}
+
+func (s *originPathsScope) Context() context.Context {
+	if s.ctx == nil {
+		return context.Background()
+	}
+	return s.ctx
+}
+
+func (s *originPathsScope) Logger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func (s *originPathsScope) FactoryInput() scope.FactoryInput {
+	return s.input
+}
+
+type originPathsInput struct {
+	modulesPath string
+	configPath  string
+}
+
+func (i originPathsInput) Environment() string        { return "" }
+func (i originPathsInput) ModulesPath() string        { return i.modulesPath }
+func (i originPathsInput) DistPath() string           { return "" }
+func (i originPathsInput) TmpPath() string            { return "" }
+func (i originPathsInput) DefaultChoysumPath() string { return "" }
+func (i originPathsInput) ConfigPath() string         { return i.configPath }
+
+func TestWorkspaceRootPrefersConfigPath(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	configPath := filepath.Join(workspaceRoot, "configs", "dev.yaml")
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+
+	runtimeScope := &originPathsScope{ctx: context.Background(), input: originPathsInput{configPath: configPath, modulesPath: modulesPath}}
+	got := WorkspaceRoot(runtimeScope)
+
+	absConfigPath, err := filepath.Abs(configPath)
+	if err != nil {
+		t.Fatalf("filepath.Abs(%q) error = %v", configPath, err)
+	}
+	want := filepath.Dir(absConfigPath)
+	if got != want {
+		t.Fatalf("WorkspaceRoot() = %q, want %q", got, want)
+	}
+}
+
+func TestWorkspaceRootFallsBackToModulesPathAndCWD(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+
+	runtimeScope := &originPathsScope{ctx: context.Background(), input: originPathsInput{modulesPath: modulesPath}}
+	got := WorkspaceRoot(runtimeScope)
+	absModulesPath, err := filepath.Abs(modulesPath)
+	if err != nil {
+		t.Fatalf("filepath.Abs(%q) error = %v", modulesPath, err)
+	}
+	want := filepath.Dir(absModulesPath)
+	if got != want {
+		t.Fatalf("WorkspaceRoot() with modules path = %q, want %q", got, want)
+	}
+
+	originCWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(originCWD)
+	}()
+	fallbackCWD := t.TempDir()
+	if err := os.Chdir(fallbackCWD); err != nil {
+		t.Fatalf("os.Chdir(%q) error = %v", fallbackCWD, err)
+	}
+
+	fallbackScope := &originPathsScope{ctx: context.Background(), input: originPathsInput{}}
+	gotFallback := WorkspaceRoot(fallbackScope)
+	resolvedGot := gotFallback
+	if eval, err := filepath.EvalSymlinks(gotFallback); err == nil {
+		resolvedGot = eval
+	}
+	resolvedWant := fallbackCWD
+	if eval, err := filepath.EvalSymlinks(fallbackCWD); err == nil {
+		resolvedWant = eval
+	}
+	if resolvedGot != resolvedWant {
+		t.Fatalf("WorkspaceRoot() cwd fallback = %q (resolved %q), want %q (resolved %q)", gotFallback, resolvedGot, fallbackCWD, resolvedWant)
+	}
+}
+
+func TestWorkspaceRootModulesPathDirFallbackWhenAbsFails(t *testing.T) {
+	originCWD, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
+	defer func() {
+		_ = os.Chdir(originCWD)
+	}()
+
+	brokenRoot := t.TempDir()
+	brokenCWD := filepath.Join(brokenRoot, "gone")
+	if err := os.MkdirAll(brokenCWD, 0o755); err != nil {
+		t.Fatalf("os.MkdirAll(%q) error = %v", brokenCWD, err)
+	}
+	if err := os.Chdir(brokenCWD); err != nil {
+		t.Fatalf("os.Chdir(%q) error = %v", brokenCWD, err)
+	}
+	if err := os.RemoveAll(brokenRoot); err != nil {
+		t.Fatalf("os.RemoveAll(%q) error = %v", brokenRoot, err)
+	}
+
+	if _, err := filepath.Abs("relative/modules"); err == nil {
+		t.Skip("platform did not trigger filepath.Abs failure from deleted cwd")
+	}
+
+	runtimeScope := &originPathsScope{ctx: context.Background(), input: originPathsInput{modulesPath: "relative/modules"}}
+	if got := WorkspaceRoot(runtimeScope); got != "relative" {
+		t.Fatalf("WorkspaceRoot() = %q, want %q", got, "relative")
+	}
+}
+
+func TestWorkspaceChoysumDirAndLockPaths(t *testing.T) {
+	workspaceRoot := t.TempDir()
+
+	if _, err := workspaceChoysumDir(workspaceRoot, ""); err == nil {
+		t.Fatal("expected workspaceChoysumDir to reject empty defaultChoysumPath")
+	}
+	if _, err := workspaceChoysumDir(workspaceRoot, string(filepath.Separator)); err == nil {
+		t.Fatal("expected workspaceChoysumDir to reject root path")
+	}
+
+	override := filepath.Join(workspaceRoot, ".choysum")
+	choysumDir, err := workspaceChoysumDir(workspaceRoot, override)
+	if err != nil {
+		t.Fatalf("workspaceChoysumDir() error = %v", err)
+	}
+	absOverride, err := filepath.Abs(override)
+	if err != nil {
+		t.Fatalf("filepath.Abs(%q) error = %v", override, err)
+	}
+	if choysumDir != filepath.Clean(absOverride) {
+		t.Fatalf("workspaceChoysumDir() = %q, want %q", choysumDir, filepath.Clean(absOverride))
+	}
+
+	lockPath, err := modulesLockFilePath(workspaceRoot, override)
+	if err != nil {
+		t.Fatalf("modulesLockFilePath() error = %v", err)
+	}
+	if lockPath != filepath.Join(choysumDir, "modules.lock.json") {
+		t.Fatalf("modulesLockFilePath() = %q, want %q", lockPath, filepath.Join(choysumDir, "modules.lock.json"))
+	}
+
+	leasePath, err := modulesLockLeasePath(workspaceRoot, override)
+	if err != nil {
+		t.Fatalf("modulesLockLeasePath() error = %v", err)
+	}
+	if leasePath != lockPath+".lock" {
+		t.Fatalf("modulesLockLeasePath() = %q, want %q", leasePath, lockPath+".lock")
+	}
+}
 
 func TestLockStoreUpsertLookupDelete(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
@@ -27,7 +213,7 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 		OriginRef:       "official/auth@v1.2.3",
 		ResolvedVersion: "v1.2.3",
 		Integrity:       "sha512-auth-v1.2.3",
-		LocalPath:       "/tmp/addons/auth",
+		LocalPath:       "/tmp/modules/auth",
 	}); err != nil {
 		t.Fatalf("UpsertBinding() error = %v", err)
 	}
@@ -67,7 +253,7 @@ func TestLockStoreUpsertBindingSameContentDoesNotRewriteFile(t *testing.T) {
 		OriginRef:       "corp/auth@v2.0.0",
 		ResolvedVersion: "v2.0.0",
 		Integrity:       "sha512-auth-v2",
-		LocalPath:       "/tmp/addons/auth",
+		LocalPath:       "/tmp/modules/auth",
 	}
 	if err := store.UpsertBinding(workspaceRoot, binding); err != nil {
 		t.Fatalf("first UpsertBinding() error = %v", err)

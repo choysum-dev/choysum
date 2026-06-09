@@ -32,8 +32,8 @@ type protobufGenerator struct {
 
 	// Optional overrides for pipeline-managed staging.
 	// When set, generator writes directly into these directories and does not commit.
-	addonsProtoDir string
-	distAppDir     string
+	modulesProtoDir string
+	distAppDir      string
 }
 
 func (g *protobufGenerator) generate(ctx context.Context, app *meta.IrApplication) ([]*module.GeneratorResult, error) {
@@ -46,15 +46,15 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.IrApplicatio
 		return nil, nil
 	}
 
-	addonsProtoDir := g.addonsProtoDir
-	if addonsProtoDir == "" {
-		protoDir, _, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.addonsPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
+	modulesProtoDir := g.modulesProtoDir
+	if modulesProtoDir == "" {
+		protoDir, _, _, err := WorkspaceGeneratedAPITargets(runtimeOpts.modulesPath, g.module.ApplicationStr, runtimeOpts.defaultChoysumPath)
 		if err != nil {
 			return nil, xfmt.Errorf("resolve workspace generated api targets: %w", err)
 		}
-		addonsProtoDir = protoDir
+		modulesProtoDir = protoDir
 	}
-	addonsProtoDir, _ = filepath.Abs(addonsProtoDir)
+	modulesProtoDir, _ = filepath.Abs(modulesProtoDir)
 
 	tpl, err := template.New(app.Name).Funcs(template.FuncMap{
 		"index": func(i int, start int) int {
@@ -90,7 +90,7 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.IrApplicatio
 		if err := os.MkdirAll(protoDir, 0o755); err != nil {
 			return err
 		}
-		// Copy embedded proto files into the addons proto directory for generators and frontend code.
+		// Copy embedded proto files into the modules proto directory for generators and frontend code.
 		embeddedProtoFiles, err := g.copyEmbeddedProtoFiles(protoDir)
 		if err != nil {
 			return xfmt.Errorf("error copying embedded proto files: %w", err)
@@ -100,27 +100,27 @@ func (g *protobufGenerator) generate(ctx context.Context, app *meta.IrApplicatio
 			if err != nil {
 				return err
 			}
-			OutPaths = append(OutPaths, filepath.Join(addonsProtoDir, rel))
+			OutPaths = append(OutPaths, filepath.Join(modulesProtoDir, rel))
 		}
 
 		protoFilePath := filepath.Join(protoDir, app.Name+".proto")
 		if err := os.WriteFile(protoFilePath, buf.Bytes(), 0o644); err != nil {
 			return xfmt.Errorf("error writing file: %w", err)
 		}
-		OutPaths = append(OutPaths, filepath.Join(addonsProtoDir, app.Name+".proto"))
+		OutPaths = append(OutPaths, filepath.Join(modulesProtoDir, app.Name+".proto"))
 		return nil
 	}
 
-	if g.addonsProtoDir != "" {
-		if err := writeAll(addonsProtoDir); err != nil {
+	if g.modulesProtoDir != "" {
+		if err := writeAll(modulesProtoDir); err != nil {
 			return nil, err
 		}
 		// Sync proto source files to the dist directory for ApplicationService runtime use.
-		if err := g.syncProtoToDistDirect(ctx, addonsProtoDir); err != nil {
+		if err := g.syncProtoToDistDirect(ctx, modulesProtoDir); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := staging.WithStagingDir(ctx, addonsProtoDir, func(stagingDir string) error {
+		if err := staging.WithStagingDir(ctx, modulesProtoDir, func(stagingDir string) error {
 			if err := writeAll(stagingDir); err != nil {
 				return err
 			}

@@ -1,0 +1,28 @@
+{
+  "name": "@choysum/module-base",
+  "version": "0.0.0",
+  "description": "Core master data such as companies and organizations",
+  "license": "Apache-2.0",
+  "author": "Choysum Team",
+  "type": "module",
+  "main": "index.ts",
+  "choysum": {
+    "moduleName": "base",
+    "application": "base",
+    "category": "Base",
+    "depends": [
+      "core",
+      "web"
+    ],
+    "entryPoints": {
+      "service": "./service/index.ts",
+      "web": "./web/index.ts"
+    },
+    "data": [
+      "data/bootstrap.json"
+    ],
+    "demo": [
+      "demo/demo.json"
+    ]
+  }
+}

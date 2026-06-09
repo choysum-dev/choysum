@@ -8,8 +8,8 @@ import (
 )
 
 type runtimeOptions struct {
-	hasConfig  bool
-	addonsPath string
+	hasConfig   bool
+	modulesPath string
 }
 
 func newRuntimeOptions(paths scope.PathsRuntimeOptions, ok bool) runtimeOptions {
@@ -18,7 +18,7 @@ func newRuntimeOptions(paths scope.PathsRuntimeOptions, ok bool) runtimeOptions 
 		return opts
 	}
 	opts.hasConfig = true
-	opts.addonsPath = paths.AddonsPath
+	opts.modulesPath = paths.ModulesPath
 	return opts
 }
 

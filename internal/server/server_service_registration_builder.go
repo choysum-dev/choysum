@@ -66,10 +66,10 @@ func (b applicationServiceBuilder) watchPlans(target string) []registrationWatch
 	if !ok {
 		return nil
 	}
-	return buildApplicationWatchPlans(target, b.opts.addonsPath, app.Dev.Modules)
+	return buildApplicationWatchPlans(target, b.opts.modulesPath, app.Dev.Modules)
 }
 
-func buildApplicationWatchPlans(serviceName string, addonsPath string, modules []string) []registrationWatchPlan {
+func buildApplicationWatchPlans(serviceName string, modulesPath string, modules []string) []registrationWatchPlan {
 	seen := map[string]bool{}
 	plans := make([]registrationWatchPlan, 0, len(modules))
 	for _, moduleName := range modules {
@@ -81,7 +81,7 @@ func buildApplicationWatchPlans(serviceName string, addonsPath string, modules [
 		plans = append(plans, registrationWatchPlan{
 			ServiceName: serviceName,
 			ModuleName:  moduleName,
-			Root:        filepath.Join(addonsPath, moduleName),
+			Root:        filepath.Join(modulesPath, moduleName),
 		})
 	}
 	return plans

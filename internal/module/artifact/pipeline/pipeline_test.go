@@ -51,18 +51,18 @@ func TestExecuteValidationErrors(t *testing.T) {
 	if err := Execute(ctx, planWithApps, root, cb); err == nil || err.Error() != `AppTargets callback is required` {
 		t.Fatalf("unexpected missing AppTargets error: %v", err)
 	}
-	cb.AppTargets = func(appName string) (string, AddonsAppTargets, error) {
+	cb.AppTargets = func(appName string) (string, ModulesAppTargets, error) {
 		rootDir := t.TempDir()
-		return filepath.Join(rootDir, "dist", appName), AddonsAppTargets{
-			ProtoDir:   filepath.Join(rootDir, "addons", "api", "proto", appName),
-			WebDir:     filepath.Join(rootDir, "addons", "api", "web", appName),
-			ServiceDir: filepath.Join(rootDir, "addons", "api", "service", appName),
+		return filepath.Join(rootDir, "dist", appName), ModulesAppTargets{
+			ProtoDir:   filepath.Join(rootDir, "modules", "api", "proto", appName),
+			WebDir:     filepath.Join(rootDir, "modules", "api", "web", appName),
+			ServiceDir: filepath.Join(rootDir, "modules", "api", "service", appName),
 		}, nil
 	}
 	if err := Execute(ctx, planWithApps, root, cb); err == nil || err.Error() != `GenerateApp callback is required` {
 		t.Fatalf("unexpected missing GenerateApp error: %v", err)
 	}
-	cb.GenerateApp = func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+	cb.GenerateApp = func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 		return nil
 	}
 	if err := Execute(ctx, planWithApps, root, cb); err == nil || err.Error() != `BuildBackendApp callback is required` {
@@ -75,7 +75,7 @@ func TestExecuteValidationErrors(t *testing.T) {
 	}
 }
 
-func TestExecuteInstallGenerateAddonsCanceledBeforeCallbacks(t *testing.T) {
+func TestExecuteInstallGenerateModulesCanceledBeforeCallbacks(t *testing.T) {
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 
@@ -88,11 +88,11 @@ func TestExecuteInstallGenerateAddonsCanceledBeforeCallbacks(t *testing.T) {
 			cancel()
 			return nil
 		},
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			t.Fatal("AppTargets should not be called after canceled context")
-			return "", AddonsAppTargets{}, nil
+			return "", ModulesAppTargets{}, nil
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			t.Fatal("GenerateApp should not be called after canceled context")
 			return nil
 		},
@@ -114,19 +114,19 @@ func TestExecuteUpgradeRunAppStageValidationErrors(t *testing.T) {
 		t.Fatalf("unexpected missing AppTargets error for upgrade runAppStage: %v", err)
 	}
 
-	baseCallbacks.AppTargets = func(appName string) (string, AddonsAppTargets, error) {
+	baseCallbacks.AppTargets = func(appName string) (string, ModulesAppTargets, error) {
 		rootDir := t.TempDir()
-		return filepath.Join(rootDir, "dist", "apps", appName), AddonsAppTargets{
-			ProtoDir:   filepath.Join(rootDir, "addons", "api", "proto", appName),
-			WebDir:     filepath.Join(rootDir, "addons", "api", "web", appName),
-			ServiceDir: filepath.Join(rootDir, "addons", "api", "service", appName),
+		return filepath.Join(rootDir, "dist", "apps", appName), ModulesAppTargets{
+			ProtoDir:   filepath.Join(rootDir, "modules", "api", "proto", appName),
+			WebDir:     filepath.Join(rootDir, "modules", "api", "web", appName),
+			ServiceDir: filepath.Join(rootDir, "modules", "api", "service", appName),
 		}, nil
 	}
 	if err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, baseCallbacks); err == nil || err.Error() != `GenerateApp callback is required` {
 		t.Fatalf("unexpected missing GenerateApp error for upgrade runAppStage: %v", err)
 	}
 
-	baseCallbacks.GenerateApp = func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+	baseCallbacks.GenerateApp = func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 		return nil
 	}
 	if err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, baseCallbacks); err == nil || err.Error() != `BuildBackendApp callback is required` {
@@ -137,7 +137,7 @@ func TestExecuteUpgradeRunAppStageValidationErrors(t *testing.T) {
 func TestExecuteInstallAppStageSuccess(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:                  planner.OpInstall,
@@ -151,11 +151,11 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 	manifestCalls := 0
 	webCalls := 0
 
-	appTargets := func(appName string) (string, AddonsAppTargets, error) {
-		return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-			ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-			WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-			ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+	appTargets := func(appName string) (string, ModulesAppTargets, error) {
+		return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+			ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+			WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+			ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 		}, nil
 	}
 
@@ -169,14 +169,14 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
 		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -208,9 +208,9 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 		filepath.Join(distRoot, "apps", "crm", "index.js"),
 		filepath.Join(distRoot, "bundles", "index.js"),
 		filepath.Join(distRoot, "web", "index.html"),
-		filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"),
-		filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"),
-		filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"),
+		filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"),
+		filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"),
+		filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"),
 		filepath.Join(distRoot, distmanifest.DistManifestFileName),
 	} {
 		if _, err := os.Stat(path); err != nil {
@@ -222,7 +222,7 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 func TestExecuteInstallAppStageSuccessWithRuntimeProtoTarget(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	runtimeProtoRoot := filepath.Join(rootDir, "runtime", "api")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
@@ -234,39 +234,39 @@ func TestExecuteInstallAppStageSuccessWithRuntimeProtoTarget(t *testing.T) {
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
 		Install:                        func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:        filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:          filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir:      filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:        filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:          filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir:      filepath.Join(modulesRoot, "api", "service", appName),
 				RuntimeProtoDir: filepath.Join(runtimeProtoRoot, appName, "proto"),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 	})
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	assertFileContent(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"), "syntax = \"proto3\";")
+	assertFileContent(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"), "syntax = \"proto3\";")
 	assertFileContent(t, filepath.Join(runtimeProtoRoot, "crm", "proto", "index.proto"), "syntax = \"proto3\";")
 }
 
 func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "core"}
 	var logBuf bytes.Buffer
 
@@ -278,24 +278,24 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 		Logger:                 slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		DistManifestTarget: func() (string, error) { return filepath.Join(distRoot, distmanifest.DistManifestFileName), nil },
 		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
@@ -338,7 +338,7 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 		t.Fatalf("expected manifest commit detail to stay out of info logs, got %q", logs)
 	}
 }
-func TestExecuteInstallSkipsWebAddonGeneration(t *testing.T) {
+func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
 	root := &meta.IrModule{Name: "webmod", ApplicationStr: "web"}
 	installCalls := 0
 	generateCalls := 0
@@ -355,11 +355,11 @@ func TestExecuteInstallSkipsWebAddonGeneration(t *testing.T) {
 			installCalls++
 			return nil
 		},
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			appTargetsCalls++
-			return "", AddonsAppTargets{}, nil
+			return "", ModulesAppTargets{}, nil
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			generateCalls++
 			return nil
 		},
@@ -371,14 +371,14 @@ func TestExecuteInstallSkipsWebAddonGeneration(t *testing.T) {
 		t.Fatalf("install calls = %d, want 1", installCalls)
 	}
 	if appTargetsCalls != 0 || generateCalls != 0 {
-		t.Fatalf("expected web app addon generation to be skipped, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
+		t.Fatalf("expected web app module generation to be skipped, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
 	}
 }
 
 func TestExecuteUpgradeRollsBackCommittedStagesOnManifestFailure(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:           planner.OpUpgrade,
@@ -395,25 +395,25 @@ func TestExecuteUpgradeRollsBackCommittedStagesOnManifestFailure(t *testing.T) {
 			upgradeCalls++
 			return nil
 		},
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return "", AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return "", ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			generateCalls++
 			if distAppStagingDir != "" {
 				return errors.New("expected empty dist staging dir")
 			}
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		DistManifestTarget: func() (string, error) { return filepath.Join(distRoot, distmanifest.DistManifestFileName), nil },
 		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
@@ -427,16 +427,16 @@ func TestExecuteUpgradeRollsBackCommittedStagesOnManifestFailure(t *testing.T) {
 		t.Fatalf("unexpected callback counts: upgrade=%d generate=%d", upgradeCalls, generateCalls)
 	}
 
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 	assertPathNotExists(t, filepath.Join(distRoot, distmanifest.DistManifestFileName))
 }
 
 func TestExecuteUpgradeGlobalWebFailureRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{
 		Op:                  planner.OpUpgrade,
@@ -448,24 +448,24 @@ func TestExecuteUpgradeGlobalWebFailureRollsBackCommittedStages(t *testing.T) {
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		WebTarget: func() (string, error) { return filepath.Join(distRoot, "web"), nil },
 		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
@@ -477,9 +477,9 @@ func TestExecuteUpgradeGlobalWebFailureRollsBackCommittedStages(t *testing.T) {
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 	assertPathNotExists(t, filepath.Join(distRoot, "web", "index.html"))
 }
 
@@ -490,17 +490,17 @@ func TestExecuteGlobalWebAndBundlesValidation(t *testing.T) {
 	baseCallbacks := Callbacks{
 		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
 		Install:                        func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(rootDir, "dist", "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(rootDir, "addons", "api", "proto", appName),
-				WebDir:     filepath.Join(rootDir, "addons", "api", "web", appName),
-				ServiceDir: filepath.Join(rootDir, "addons", "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(rootDir, "dist", "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(rootDir, "modules", "api", "proto", appName),
+				WebDir:     filepath.Join(rootDir, "modules", "api", "web", appName),
+				ServiceDir: filepath.Join(rootDir, "modules", "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "ok")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			return nil
 		},
 		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -598,26 +598,26 @@ func TestExecuteCanceledContextStopsBeforeCallbacks(t *testing.T) {
 	}
 }
 
-func TestExecuteInstallGenerateAddonsValidationErrors(t *testing.T) {
+func TestExecuteInstallGenerateModulesValidationErrors(t *testing.T) {
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}}, root, Callbacks{
 		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
 			return nil, errors.New("fetch should not be called for root module")
 		},
 		Install: func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return "", AddonsAppTargets{ProtoDir: "", WebDir: "/tmp/web", ServiceDir: "/tmp/service"}, nil
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return "", ModulesAppTargets{ProtoDir: "", WebDir: "/tmp/web", ServiceDir: "/tmp/service"}, nil
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			return nil
 		},
 	})
 	if err == nil || err.Error() != "AppTargets callback returned empty proto/web/service dir for app crm" {
-		t.Fatalf("unexpected generateAddons validation error: %v", err)
+		t.Fatalf("unexpected generateModules validation error: %v", err)
 	}
 }
 
-func TestExecuteInstallGenerateAddonsCallbackErrors(t *testing.T) {
+func TestExecuteInstallGenerateModulesCallbackErrors(t *testing.T) {
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	tests := []struct {
 		name string
@@ -631,10 +631,10 @@ func TestExecuteInstallGenerateAddonsCallbackErrors(t *testing.T) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
 				Install: func(module *meta.IrModule) error { return nil },
-				AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-					return "", AddonsAppTargets{}, errors.New("app targets failed")
+				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+					return "", ModulesAppTargets{}, errors.New("app targets failed")
 				},
-				GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+				GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 					return nil
 				},
 			},
@@ -647,19 +647,19 @@ func TestExecuteInstallGenerateAddonsCallbackErrors(t *testing.T) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
 				Install: func(module *meta.IrModule) error { return nil },
-				AppTargets: func(appName string) (string, AddonsAppTargets, error) {
+				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 					rootDir := t.TempDir()
-					return "", AddonsAppTargets{
-						ProtoDir:   filepath.Join(rootDir, "addons", "api", "proto", appName),
-						WebDir:     filepath.Join(rootDir, "addons", "api", "web", appName),
-						ServiceDir: filepath.Join(rootDir, "addons", "api", "service", appName),
+					return "", ModulesAppTargets{
+						ProtoDir:   filepath.Join(rootDir, "modules", "api", "proto", appName),
+						WebDir:     filepath.Join(rootDir, "modules", "api", "web", appName),
+						ServiceDir: filepath.Join(rootDir, "modules", "api", "service", appName),
 					}, nil
 				},
-				GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-					return errors.New("generate addons failed")
+				GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+					return errors.New("generate modules failed")
 				},
 			},
-			want: "generate addons failed",
+			want: "generate modules failed",
 		},
 	}
 
@@ -667,7 +667,7 @@ func TestExecuteInstallGenerateAddonsCallbackErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpInstall, ModuleOrder: []string{"base"}}, root, tc.cb)
 			if err == nil || err.Error() != tc.want {
-				t.Fatalf("unexpected install generateAddons error: %v", err)
+				t.Fatalf("unexpected install generateModules error: %v", err)
 			}
 		})
 	}
@@ -771,7 +771,7 @@ func TestExecuteOperationCallbackErrors(t *testing.T) {
 func TestExecuteUpgradeNoGlobalWebManifestSuccess(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	manifestCalls := 0
 	webTargetCalls := 0
@@ -781,24 +781,24 @@ func TestExecuteUpgradeNoGlobalWebManifestSuccess(t *testing.T) {
 		Logger:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		DistManifestTarget: func() (string, error) { return filepath.Join(distRoot, distmanifest.DistManifestFileName), nil },
 		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
@@ -826,9 +826,9 @@ func TestExecuteUpgradeNoGlobalWebManifestSuccess(t *testing.T) {
 
 	for _, path := range []string{
 		filepath.Join(distRoot, "apps", "crm", "index.js"),
-		filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"),
-		filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"),
-		filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"),
+		filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"),
+		filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"),
+		filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"),
 		filepath.Join(distRoot, distmanifest.DistManifestFileName),
 	} {
 		if _, err := os.Stat(path); err != nil {
@@ -841,31 +841,31 @@ func TestExecuteUpgradeNoGlobalWebManifestSuccess(t *testing.T) {
 func TestExecuteBundlesTargetErrorRollsBackCommittedDist(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		BundlesTarget: func() (string, error) { return "", errors.New("bundles target failed") },
 		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -877,39 +877,39 @@ func TestExecuteBundlesTargetErrorRollsBackCommittedDist(t *testing.T) {
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 }
 
 func TestExecuteDistManifestTargetErrorRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		DistManifestTarget: func() (string, error) { return "", errors.New("manifest target failed") },
 		WriteDistManifest:  func(ctx context.Context, distManifestStagingPath string) error { return nil },
@@ -919,9 +919,9 @@ func TestExecuteDistManifestTargetErrorRollsBackCommittedStages(t *testing.T) {
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 	assertPathNotExists(t, filepath.Join(distRoot, distmanifest.DistManifestFileName))
 }
 
@@ -930,10 +930,10 @@ func TestExecuteAffectedAppsValidationErrors(t *testing.T) {
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return "", AddonsAppTargets{ProtoDir: "/tmp/proto", WebDir: "", ServiceDir: "/tmp/service"}, nil
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return "", ModulesAppTargets{ProtoDir: "/tmp/proto", WebDir: "", ServiceDir: "/tmp/service"}, nil
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			return nil
 		},
 	})
@@ -945,31 +945,31 @@ func TestExecuteAffectedAppsValidationErrors(t *testing.T) {
 func TestExecuteBundlesBuildFailureRollsBackCommittedDist(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
 		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -981,40 +981,40 @@ func TestExecuteBundlesBuildFailureRollsBackCommittedDist(t *testing.T) {
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 	assertPathNotExists(t, filepath.Join(distRoot, "bundles", "index.js"))
 }
 
 func TestExecuteWebTargetErrorRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		WebTarget:      func() (string, error) { return "", errors.New("web target failed") },
 		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error { return nil },
@@ -1024,43 +1024,43 @@ func TestExecuteWebTargetErrorRollsBackCommittedStages(t *testing.T) {
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 	assertPathNotExists(t, filepath.Join(distRoot, "web", "index.html"))
 }
 
 func TestExecuteGenerateAppFailureForLaterAppAbortsAllStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm", "erp"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", appName)
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			if appName == "erp" {
 				return errors.New("generate erp failed")
 			}
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", appName); err != nil {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", appName); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", appName); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", appName); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", appName)
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", appName)
 		},
 	})
 	if err == nil || err.Error() != "generate erp failed" {
@@ -1069,27 +1069,27 @@ func TestExecuteGenerateAppFailureForLaterAppAbortsAllStages(t *testing.T) {
 
 	for _, app := range []string{"crm", "erp"} {
 		assertPathNotExists(t, filepath.Join(distRoot, "apps", app, "index.js"))
-		assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", app, "index.proto"))
-		assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", app, "index.ts"))
-		assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", app, "index.ts"))
+		assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", app, "index.proto"))
+		assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", app, "index.ts"))
+		assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", app, "index.ts"))
 	}
 }
 
 func TestExecuteBuildBackendFailureForLaterAppAbortsAllStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm", "erp"}}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
@@ -1098,14 +1098,14 @@ func TestExecuteBuildBackendFailureForLaterAppAbortsAllStages(t *testing.T) {
 			}
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 	})
 	if err == nil || err.Error() != "build erp failed" {
@@ -1114,13 +1114,13 @@ func TestExecuteBuildBackendFailureForLaterAppAbortsAllStages(t *testing.T) {
 
 	for _, app := range []string{"crm", "erp"} {
 		assertPathNotExists(t, filepath.Join(distRoot, "apps", app, "index.js"))
-		assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", app, "index.proto"))
-		assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", app, "index.ts"))
-		assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", app, "index.ts"))
+		assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", app, "index.proto"))
+		assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", app, "index.ts"))
+		assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", app, "index.ts"))
 	}
 }
 
-func TestExecuteInstallGeneratesAddonsOncePerApplication(t *testing.T) {
+func TestExecuteInstallGeneratesModulesOncePerApplication(t *testing.T) {
 	rootDir := t.TempDir()
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	dep := &meta.IrModule{Name: "dep", ApplicationStr: "crm"}
@@ -1135,15 +1135,15 @@ func TestExecuteInstallGeneratesAddonsOncePerApplication(t *testing.T) {
 			return nil, errors.New("unexpected fetch")
 		},
 		Install: func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
 			appTargetsCalls++
-			return "", AddonsAppTargets{
-				ProtoDir:   filepath.Join(rootDir, "addons", "api", "proto", appName),
-				WebDir:     filepath.Join(rootDir, "addons", "api", "web", appName),
-				ServiceDir: filepath.Join(rootDir, "addons", "api", "service", appName),
+			return "", ModulesAppTargets{
+				ProtoDir:   filepath.Join(rootDir, "modules", "api", "proto", appName),
+				WebDir:     filepath.Join(rootDir, "modules", "api", "web", appName),
+				ServiceDir: filepath.Join(rootDir, "modules", "api", "service", appName),
 			}, nil
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			generateCalls++
 			return nil
 		},
@@ -1152,11 +1152,11 @@ func TestExecuteInstallGeneratesAddonsOncePerApplication(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 	if appTargetsCalls != 1 || generateCalls != 1 {
-		t.Fatalf("expected single addon generation for shared app, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
+		t.Fatalf("expected single module generation for shared app, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
 	}
 }
 
-func TestExecuteInstallAddonCommitFailuresRollbackCommittedStages(t *testing.T) {
+func TestExecuteInstallModuleCommitFailuresRollbackCommittedStages(t *testing.T) {
 	tests := []struct {
 		name               string
 		failingStage       string
@@ -1169,13 +1169,13 @@ func TestExecuteInstallAddonCommitFailuresRollbackCommittedStages(t *testing.T) 
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			const opID = "pipeline-addons-commit-failure"
+			const opID = "pipeline-modules-commit-failure"
 			rootDir := t.TempDir()
-			addonsRoot := filepath.Join(rootDir, "addons")
+			modulesRoot := filepath.Join(rootDir, "modules")
 			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 
 			stageDir := func(stage string) string {
-				return filepath.Join(addonsRoot, "api", stage, "crm")
+				return filepath.Join(modulesRoot, "api", stage, "crm")
 			}
 
 			for _, stage := range tc.preexistingTargets {
@@ -1208,25 +1208,25 @@ func TestExecuteInstallAddonCommitFailuresRollbackCommittedStages(t *testing.T) 
 					return nil, errors.New("fetch should not be called for root module")
 				},
 				Install: func(module *meta.IrModule) error { return nil },
-				AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-					return "", AddonsAppTargets{
+				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+					return "", ModulesAppTargets{
 						ProtoDir:   stageDir("proto"),
 						WebDir:     stageDir("web"),
 						ServiceDir: stageDir("service"),
 					}, nil
 				},
-				GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-					if err := writeStageFile(addonsStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+				GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+					if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
 						return err
 					}
-					if err := writeStageFile(addonsStaging.WebDir, "generated.txt", "web-new"); err != nil {
+					if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
 						return err
 					}
-					return writeStageFile(addonsStaging.ServiceDir, "generated.txt", "service-new")
+					return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
 				},
 			})
 			if err == nil {
-				t.Fatal("expected addon commit failure")
+				t.Fatal("expected module commit failure")
 			}
 
 			assertFileContent(t, filepath.Join(failingTarget, "existing.txt"), tc.failingStage+"-old")
@@ -1261,22 +1261,22 @@ func TestExecuteInstallAddonCommitFailuresRollbackCommittedStages(t *testing.T) 
 	}
 }
 
-func TestExecuteInstallAddonPrepareFailuresAbortPreparedStages(t *testing.T) {
+func TestExecuteInstallModulePrepareFailuresAbortPreparedStages(t *testing.T) {
 	tests := []struct {
 		name             string
 		failingStage     string
 		preparedStages   []string
 		blockerPathParts []string
 	}{
-		{name: "proto prepare failure returns immediately", failingStage: "proto", blockerPathParts: []string{"addons", "api", "proto"}},
-		{name: "web prepare failure aborts proto", failingStage: "web", preparedStages: []string{"proto"}, blockerPathParts: []string{"addons", "api", "web"}},
-		{name: "service prepare failure aborts proto and web", failingStage: "service", preparedStages: []string{"proto", "web"}, blockerPathParts: []string{"addons", "api", "service"}},
+		{name: "proto prepare failure returns immediately", failingStage: "proto", blockerPathParts: []string{"modules", "api", "proto"}},
+		{name: "web prepare failure aborts proto", failingStage: "web", preparedStages: []string{"proto"}, blockerPathParts: []string{"modules", "api", "web"}},
+		{name: "service prepare failure aborts proto and web", failingStage: "service", preparedStages: []string{"proto", "web"}, blockerPathParts: []string{"modules", "api", "service"}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			rootDir := t.TempDir()
-			addonsRoot := filepath.Join(rootDir, "addons")
+			modulesRoot := filepath.Join(rootDir, "modules")
 			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 
 			blockerPath := filepath.Join(append([]string{rootDir}, tc.blockerPathParts...)...)
@@ -1287,14 +1287,14 @@ func TestExecuteInstallAddonPrepareFailuresAbortPreparedStages(t *testing.T) {
 					return nil, errors.New("fetch should not be called for root module")
 				},
 				Install: func(module *meta.IrModule) error { return nil },
-				AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-					return "", AddonsAppTargets{
-						ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-						WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-						ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+					return "", ModulesAppTargets{
+						ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+						WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+						ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 					}, nil
 				},
-				GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+				GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 					return errors.New("generate should not be called when prepare fails")
 				},
 			})
@@ -1303,10 +1303,10 @@ func TestExecuteInstallAddonPrepareFailuresAbortPreparedStages(t *testing.T) {
 			}
 
 			for _, stage := range tc.preparedStages {
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", stage, "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", stage, "crm", "generated.txt"))
 			}
 			assertPathNotExists(t, filepath.Join(rootDir, ".choysum", "tmp", "staging"))
-			assertPathNotExists(t, filepath.Join(addonsRoot, "api", tc.failingStage, "crm", "generated.txt"))
+			assertPathNotExists(t, filepath.Join(modulesRoot, "api", tc.failingStage, "crm", "generated.txt"))
 		})
 	}
 }
@@ -1318,30 +1318,30 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 		preparedStages   []string
 		blockerPathParts []string
 		plan             planner.Plan
-		callbacks        func(rootDir string, distRoot string, addonsRoot string) Callbacks
+		callbacks        func(rootDir string, distRoot string, modulesRoot string) Callbacks
 	}{
 		{
-			name:             "dist prepare failure returns before addons staging",
+			name:             "dist prepare failure returns before modules staging",
 			failingStage:     "dist",
 			blockerPathParts: []string{"dist", "apps"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return errors.New("build should not be called when prepare fails")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 						return errors.New("generate should not be called when prepare fails")
 					},
 				}
@@ -1351,25 +1351,25 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			name:             "proto prepare failure aborts dist staging",
 			failingStage:     "proto",
 			preparedStages:   []string{"dist"},
-			blockerPathParts: []string{"addons", "api", "proto"},
+			blockerPathParts: []string{"modules", "api", "proto"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 						return errors.New("generate should not be called when prepare fails")
 					},
 				}
@@ -1379,25 +1379,25 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			name:             "web prepare failure aborts dist and proto staging",
 			failingStage:     "web",
 			preparedStages:   []string{"dist", "proto"},
-			blockerPathParts: []string{"addons", "api", "web"},
+			blockerPathParts: []string{"modules", "api", "web"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 						return errors.New("generate should not be called when prepare fails")
 					},
 				}
@@ -1407,25 +1407,25 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			name:             "service prepare failure aborts dist proto and web staging",
 			failingStage:     "service",
 			preparedStages:   []string{"dist", "proto", "web"},
-			blockerPathParts: []string{"addons", "api", "service"},
+			blockerPathParts: []string{"modules", "api", "service"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 						return errors.New("generate should not be called when prepare fails")
 					},
 				}
@@ -1437,30 +1437,30 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			preparedStages:   []string{"dist", "proto", "web", "service"},
 			blockerPathParts: []string{".choysum", "tmp", "staging"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-						if err := writeStageFile(addonsStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+						if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
 							return err
 						}
-						if err := writeStageFile(addonsStaging.WebDir, "generated.txt", "web-new"); err != nil {
+						if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
 							return err
 						}
-						return writeStageFile(addonsStaging.ServiceDir, "generated.txt", "service-new")
+						return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
 					},
 					BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
 					BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -1475,30 +1475,30 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			preparedStages:   []string{"dist", "proto", "web", "service"},
 			blockerPathParts: []string{".choysum", "tmp", "staging"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-						if err := writeStageFile(addonsStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+						if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
 							return err
 						}
-						if err := writeStageFile(addonsStaging.WebDir, "generated.txt", "web-new"); err != nil {
+						if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
 							return err
 						}
-						return writeStageFile(addonsStaging.ServiceDir, "generated.txt", "service-new")
+						return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
 					},
 					WebTarget: func() (string, error) { return filepath.Join(distRoot, "web"), nil },
 					GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
@@ -1513,31 +1513,31 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			preparedStages:   []string{"dist", "proto", "web", "service"},
 			blockerPathParts: []string{".choysum", "tmp", "staging"},
 			plan:             planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}},
-			callbacks: func(rootDir string, distRoot string, addonsRoot string) Callbacks {
+			callbacks: func(rootDir string, distRoot string, modulesRoot string) Callbacks {
 				manifestPath := filepath.Join(distRoot, "manifest-parent", distmanifest.DistManifestFileName)
 				return Callbacks{
 					ResolveInstalledModule: func(name string) (*meta.IrModule, error) {
 						return &meta.IrModule{Name: "base", ApplicationStr: "crm"}, nil
 					},
 					Upgrade: func(module *meta.IrModule) error { return nil },
-					AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-						return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-							ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-							WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-							ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+					AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+						return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+							ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+							WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+							ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 						}, nil
 					},
 					BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 						return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 					},
-					GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-						if err := writeStageFile(addonsStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+					GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+						if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
 							return err
 						}
-						if err := writeStageFile(addonsStaging.WebDir, "generated.txt", "web-new"); err != nil {
+						if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
 							return err
 						}
-						return writeStageFile(addonsStaging.ServiceDir, "generated.txt", "service-new")
+						return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
 					},
 					DistManifestTarget: func() (string, error) { return manifestPath, nil },
 					WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
@@ -1552,11 +1552,11 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rootDir := t.TempDir()
 			distRoot := filepath.Join(rootDir, "dist")
-			addonsRoot := filepath.Join(rootDir, "addons")
+			modulesRoot := filepath.Join(rootDir, "modules")
 			writeBlockerFile(t, filepath.Join(append([]string{rootDir}, tc.blockerPathParts...)...))
 
 			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
-			err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), tc.plan, root, tc.callbacks(rootDir, distRoot, addonsRoot))
+			err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), tc.plan, root, tc.callbacks(rootDir, distRoot, modulesRoot))
 			if err == nil {
 				t.Fatal("expected prepare failure")
 			}
@@ -1566,7 +1566,7 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 				case "dist":
 					assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "generated.txt"))
 				case "proto", "web", "service":
-					assertPathNotExists(t, filepath.Join(addonsRoot, "api", stage, "crm", "generated.txt"))
+					assertPathNotExists(t, filepath.Join(modulesRoot, "api", stage, "crm", "generated.txt"))
 				}
 			}
 
@@ -1574,21 +1574,21 @@ func TestExecuteUpgradePrepareFailuresAbortPreparedStages(t *testing.T) {
 			case "bundles":
 				assertPathNotExists(t, filepath.Join(distRoot, "bundles", "generated.txt"))
 				assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "generated.txt"))
 			case "global-web":
 				assertPathNotExists(t, filepath.Join(distRoot, "web", "generated.txt"))
 				assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "generated.txt"))
 			case "manifest":
 				assertPathNotExists(t, filepath.Join(distRoot, "manifest-parent", distmanifest.DistManifestFileName))
 				assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "generated.txt"))
-				assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "generated.txt"))
+				assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "generated.txt"))
 			}
 		})
 	}
@@ -1599,7 +1599,7 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 		failingStage       string
 		preexistingTargets []string
 	}{
-		{name: "dist commit failure aborts staged addons", failingStage: "dist", preexistingTargets: []string{"dist"}},
+		{name: "dist commit failure aborts staged modules", failingStage: "dist", preexistingTargets: []string{"dist"}},
 		{name: "proto commit failure rolls back dist", failingStage: "proto", preexistingTargets: []string{"dist", "proto"}},
 		{name: "web commit failure rolls back dist and proto", failingStage: "web", preexistingTargets: []string{"dist", "proto", "web"}},
 		{name: "service commit failure rolls back earlier app commits", failingStage: "service", preexistingTargets: []string{"dist", "proto", "web", "service"}},
@@ -1610,7 +1610,7 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 			const opID = "pipeline-upgrade-commit-failure"
 			rootDir := t.TempDir()
 			distRoot := filepath.Join(rootDir, "dist")
-			addonsRoot := filepath.Join(rootDir, "addons")
+			modulesRoot := filepath.Join(rootDir, "modules")
 			root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 
 			targetDir := func(stage string) string {
@@ -1618,11 +1618,11 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 				case "dist":
 					return filepath.Join(distRoot, "apps", "crm")
 				case "proto":
-					return filepath.Join(addonsRoot, "api", "proto", "crm")
+					return filepath.Join(modulesRoot, "api", "proto", "crm")
 				case "web":
-					return filepath.Join(addonsRoot, "api", "web", "crm")
+					return filepath.Join(modulesRoot, "api", "web", "crm")
 				case "service":
-					return filepath.Join(addonsRoot, "api", "service", "crm")
+					return filepath.Join(modulesRoot, "api", "service", "crm")
 				default:
 					t.Fatalf("unexpected stage %s", stage)
 					return ""
@@ -1651,8 +1651,8 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 			err := Execute(staging.WithOpID(staging.WithTmpRoot(context.Background(), t.TempDir()), opID), planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}, root, Callbacks{
 				ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 				Upgrade:                func(module *meta.IrModule) error { return nil },
-				AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-					return targetDir("dist"), AddonsAppTargets{
+				AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+					return targetDir("dist"), ModulesAppTargets{
 						ProtoDir:   targetDir("proto"),
 						WebDir:     targetDir("web"),
 						ServiceDir: targetDir("service"),
@@ -1661,14 +1661,14 @@ func TestExecuteUpgradeCommitFailuresRollbackCommittedStages(t *testing.T) {
 				BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 					return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 				},
-				GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-					if err := writeStageFile(addonsStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+				GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+					if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
 						return err
 					}
-					if err := writeStageFile(addonsStaging.WebDir, "generated.txt", "web-new"); err != nil {
+					if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
 						return err
 					}
-					return writeStageFile(addonsStaging.ServiceDir, "generated.txt", "service-new")
+					return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
 				},
 			})
 			if err == nil {
@@ -1708,14 +1708,14 @@ func TestExecuteUpgradeGlobalWebCommitFailureRollsBackCommittedStages(t *testing
 	const opID = "pipeline-upgrade-global-web-commit"
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 
 	targets := map[string]string{
 		"dist":       filepath.Join(distRoot, "apps", "crm"),
-		"proto":      filepath.Join(addonsRoot, "api", "proto", "crm"),
-		"web":        filepath.Join(addonsRoot, "api", "web", "crm"),
-		"service":    filepath.Join(addonsRoot, "api", "service", "crm"),
+		"proto":      filepath.Join(modulesRoot, "api", "proto", "crm"),
+		"web":        filepath.Join(modulesRoot, "api", "web", "crm"),
+		"service":    filepath.Join(modulesRoot, "api", "service", "crm"),
 		"global-web": filepath.Join(distRoot, "web"),
 	}
 
@@ -1744,8 +1744,8 @@ func TestExecuteUpgradeGlobalWebCommitFailureRollsBackCommittedStages(t *testing
 	}, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return targets["dist"], AddonsAppTargets{
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return targets["dist"], ModulesAppTargets{
 				ProtoDir:   targets["proto"],
 				WebDir:     targets["web"],
 				ServiceDir: targets["service"],
@@ -1754,14 +1754,14 @@ func TestExecuteUpgradeGlobalWebCommitFailureRollsBackCommittedStages(t *testing
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "generated.txt", "dist-new")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "generated.txt", "web-new"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "generated.txt", "service-new")
+			return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
 		},
 		WebTarget: func() (string, error) { return targets["global-web"], nil },
 		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
@@ -1783,31 +1783,31 @@ func TestExecuteUpgradeGlobalWebCommitFailureRollsBackCommittedStages(t *testing
 func TestExecuteGlobalWebManifestWriteFailureRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}, NeedsGlobalWebBuild: true}
 
 	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		WebTarget: func() (string, error) { return filepath.Join(distRoot, "web"), nil },
 		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
@@ -1823,9 +1823,9 @@ func TestExecuteGlobalWebManifestWriteFailureRollsBackCommittedStages(t *testing
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 	assertPathNotExists(t, filepath.Join(distRoot, "web", "index.html"))
 	assertPathNotExists(t, filepath.Join(distRoot, distmanifest.DistManifestFileName))
 }
@@ -1833,7 +1833,7 @@ func TestExecuteGlobalWebManifestWriteFailureRollsBackCommittedStages(t *testing
 func TestExecuteCanceledAfterPhase1AbortsPreparedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
@@ -1841,25 +1841,25 @@ func TestExecuteCanceledAfterPhase1AbortsPreparedStages(t *testing.T) {
 	err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
 			defer cancel()
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 	})
 	if !errors.Is(err, context.Canceled) {
@@ -1867,15 +1867,15 @@ func TestExecuteCanceledAfterPhase1AbortsPreparedStages(t *testing.T) {
 	}
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 }
 
 func TestExecuteCanceledAfterBundlesCommitRollsBackCommittedStages(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
-	addonsRoot := filepath.Join(rootDir, "addons")
+	modulesRoot := filepath.Join(rootDir, "modules")
 	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
 	plan := planner.Plan{Op: planner.OpUpgrade, ModuleOrder: []string{"base"}, AffectedApps: []string{"crm"}}
 	ctx, cancel := context.WithCancel(staging.WithTmpRoot(context.Background(), t.TempDir()))
@@ -1883,24 +1883,24 @@ func TestExecuteCanceledAfterBundlesCommitRollsBackCommittedStages(t *testing.T)
 	err := Execute(ctx, plan, root, Callbacks{
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
-		AppTargets: func(appName string) (string, AddonsAppTargets, error) {
-			return filepath.Join(distRoot, "apps", appName), AddonsAppTargets{
-				ProtoDir:   filepath.Join(addonsRoot, "api", "proto", appName),
-				WebDir:     filepath.Join(addonsRoot, "api", "web", appName),
-				ServiceDir: filepath.Join(addonsRoot, "api", "service", appName),
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
 			}, nil
 		},
 		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
 			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
 		},
-		GenerateApp: func(ctx context.Context, appName string, addonsStaging AddonsAppTargets, distAppStagingDir string) error {
-			if err := writeStageFile(addonsStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
 				return err
 			}
-			if err := writeStageFile(addonsStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
 				return err
 			}
-			return writeStageFile(addonsStaging.ServiceDir, "index.ts", "export const service = true")
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
 		},
 		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
 		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -1914,9 +1914,9 @@ func TestExecuteCanceledAfterBundlesCommitRollsBackCommittedStages(t *testing.T)
 
 	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
 	assertPathNotExists(t, filepath.Join(distRoot, "bundles", "index.js"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "proto", "crm", "index.proto"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "web", "crm", "index.ts"))
-	assertPathNotExists(t, filepath.Join(addonsRoot, "api", "service", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "proto", "crm", "index.proto"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "web", "crm", "index.ts"))
+	assertPathNotExists(t, filepath.Join(modulesRoot, "api", "service", "crm", "index.ts"))
 }
 
 func assertPathNotExists(t *testing.T, path string) {

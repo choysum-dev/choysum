@@ -150,7 +150,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 	}()
 
 	t.Run("make test scope error is propagated", func(t *testing.T) {
-		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir()}}
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir()}}
 		makeErr := errors.New("make scope failed")
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return nil, func() {}, makeErr
@@ -168,7 +168,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 	t.Run("compiler creation error still triggers cleanup", func(t *testing.T) {
 		cleanupCalled := false
 		repoRoot := t.TempDir()
-		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return baseScope, func() { cleanupCalled = true }, nil
 		}
@@ -192,7 +192,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		repoRoot := t.TempDir()
 		tmpRoot := t.TempDir()
 		distRoot := filepath.Join(t.TempDir(), "dist")
-		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: distRoot, TmpPath: tmpRoot}}
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: distRoot, TmpPath: tmpRoot}}
 
 		prepareCleanupCalled := false
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
@@ -256,7 +256,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 
 	t.Run("prints runtime preparation progress lines", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
 
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return baseScope, func() {}, nil
@@ -296,7 +296,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 
 	t.Run("prepare and execute hook errors are wrapped", func(t *testing.T) {
 		repoRoot := t.TempDir()
-		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
 
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return baseScope, func() {}, nil
@@ -337,7 +337,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 	})
 
 	t.Run("context canceled and junit write error branches", func(t *testing.T) {
-		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: filepath.Join(t.TempDir(), "dist")}}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -376,8 +376,8 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 	})
 
 	t.Run("helper constructors are callable", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), Server: &config.ServerConfig{JsEngineFactory: "quickjs"}}}
-		mod := &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: filepath.Join(runtimeOptionsFromScope(runtimeScope).addonsPath, "auth")}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), Server: &config.ServerConfig{JsEngineFactory: "quickjs"}}}
+		mod := &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "auth")}
 		if b := defaultNewBackendBuilder(runtimeScope, nil, mod, filepath.Join(t.TempDir(), "entry.ts"), "index.js", "auth"); b == nil {
 			t.Fatalf("expected non-nil backend builder")
 		}
@@ -395,7 +395,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		runErr := errors.New("prepare run failed")
 		runtimeScope := &failRunScope{
 			ctx:    context.Background(),
-			cfg:    &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir()},
+			cfg:    &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir()},
 			runErr: runErr,
 		}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
@@ -418,10 +418,10 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 
 	t.Run("default execute branch fails on missing js engine factory", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   t.TempDir(),
-			Server:     &config.ServerConfig{JsEngineFactory: "missing-factory"},
-			Compile:    &config.CompileConfig{BundleMode: "bundle"},
+			ModulesPath: t.TempDir(),
+			DistPath:    t.TempDir(),
+			Server:      &config.ServerConfig{JsEngineFactory: "missing-factory"},
+			Compile:     &config.CompileConfig{BundleMode: "bundle"},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -446,7 +446,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		if err := os.WriteFile(tmpRootFile, []byte("x"), 0o644); err != nil {
 			t.Fatalf("write tmpRoot file: %v", err)
 		}
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir(), TmpPath: tmpRootFile}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir(), TmpPath: tmpRootFile}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
 		}
@@ -474,7 +474,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 	})
 
 	t.Run("context canceled after prepare returns canceled", func(t *testing.T) {
-		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{AddonsPath: t.TempDir(), DistPath: t.TempDir()}}
+		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir()}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
 		}
@@ -498,11 +498,11 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 	t.Run("default execute branch reaches runtime path", func(t *testing.T) {
 		baseDist := t.TempDir()
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   baseDist,
-			Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
-			Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
-			Compile:    &config.CompileConfig{BundleMode: "bundle"},
+			ModulesPath: t.TempDir(),
+			DistPath:    baseDist,
+			Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
+			Server:      &config.ServerConfig{JsEngineFactory: "quickjs"},
+			Compile:     &config.CompileConfig{BundleMode: "bundle"},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -565,10 +565,10 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		})
 
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   distRoot,
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
+			ModulesPath: t.TempDir(),
+			DistPath:    distRoot,
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -608,10 +608,10 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		})
 
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   distRoot,
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
+			ModulesPath: t.TempDir(),
+			DistPath:    distRoot,
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -663,10 +663,10 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		})
 
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   distRoot,
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
+			ModulesPath: t.TempDir(),
+			DistPath:    distRoot,
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -709,10 +709,10 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		})
 
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   distRoot,
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
+			ModulesPath: t.TempDir(),
+			DistPath:    distRoot,
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -737,11 +737,11 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 
 	t.Run("default execute branch returns jwt authenticator init error when auth enabled", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   t.TempDir(),
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
-			Auth:       &config.AuthConfig{Enabled: true, JWT: nil},
+			ModulesPath: t.TempDir(),
+			DistPath:    t.TempDir(),
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: "quickjs"},
+			Auth:        &config.AuthConfig{Enabled: true, JWT: nil},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -786,11 +786,11 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		})
 
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   distRoot,
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Auth:       &config.AuthConfig{Enabled: true},
+			ModulesPath: t.TempDir(),
+			DistPath:    distRoot,
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Auth:        &config.AuthConfig{Enabled: true},
 		}}
 		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 			return runtimeScope, func() {}, nil
@@ -851,11 +851,11 @@ func TestInProcessGrpcHarnessGuards(t *testing.T) {
 	}
 
 	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-		AddonsPath: t.TempDir(),
-		DistPath:   t.TempDir(),
-		Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
-		Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
-		Compile:    &config.CompileConfig{BundleMode: "application"},
+		ModulesPath: t.TempDir(),
+		DistPath:    t.TempDir(),
+		Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
+		Server:      &config.ServerConfig{JsEngineFactory: "quickjs"},
+		Compile:     &config.CompileConfig{BundleMode: "application"},
 	}}
 	didPanic := false
 	func() {
@@ -887,11 +887,11 @@ func TestInProcessGrpcHarnessGuards(t *testing.T) {
 		t.Fatalf("write bundle index: %v", err)
 	}
 	bundleRuntimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-		AddonsPath: t.TempDir(),
-		DistPath:   bundleDist,
-		Db:         &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
-		Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
-		Compile:    &config.CompileConfig{BundleMode: "bundle"},
+		ModulesPath: t.TempDir(),
+		DistPath:    bundleDist,
+		Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file::memory:?cache=shared&_fk=1&_busy_timeout=60000"},
+		Server:      &config.ServerConfig{JsEngineFactory: "quickjs"},
+		Compile:     &config.CompileConfig{BundleMode: "bundle"},
 	}}
 	bundlePanic := false
 	func() {
@@ -928,10 +928,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 			t.Fatalf("mkdir apps auth dir: %v", err)
 		}
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
 		}}
 
 		newHarnessServiceHook = func(runtimeScope scope.Scope, name string, jsExec jsexecutor.JsExecutor, mode string) (harnessService, error) {
@@ -958,10 +958,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 			t.Fatalf("mkdir apps auth dir: %v", err)
 		}
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
 		}}
 
 		callCount := 0
@@ -999,10 +999,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 			t.Fatalf("write bundle index: %v", err)
 		}
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "bundle"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "bundle"},
 		}}
 
 		newHarnessServiceHook = func(runtimeScope scope.Scope, name string, jsExec jsexecutor.JsExecutor, mode string) (harnessService, error) {
@@ -1035,10 +1035,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 			t.Fatalf("write bundle index: %v", err)
 		}
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "bundle"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "bundle"},
 		}}
 
 		callCount := 0
@@ -1072,10 +1072,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 			t.Fatalf("mkdir apps dir: %v", err)
 		}
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
 		}}
 		newHarnessServiceHook = oldNewHarnessService
 
@@ -1091,11 +1091,11 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 
 	t.Run("authenticator initialization error is propagated", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   t.TempDir(),
-			Server:     &config.ServerConfig{JsEngineFactory: "quickjs"},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
-			Auth:       &config.AuthConfig{Enabled: true, Type: "missing-auth-type"},
+			ModulesPath: t.TempDir(),
+			DistPath:    t.TempDir(),
+			Server:      &config.ServerConfig{JsEngineFactory: "quickjs"},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
+			Auth:        &config.AuthConfig{Enabled: true, Type: "missing-auth-type"},
 		}}
 
 		h, err := startInProcessGrpcHarness(context.Background(), runtimeScope)
@@ -1109,10 +1109,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 
 	t.Run("runtime executor creation error is wrapped", func(t *testing.T) {
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   t.TempDir(),
-			Server:     &config.ServerConfig{JsEngineFactory: "missing-factory"},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
+			ModulesPath: t.TempDir(),
+			DistPath:    t.TempDir(),
+			Server:      &config.ServerConfig{JsEngineFactory: "missing-factory"},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
 		}}
 
 		h, err := startInProcessGrpcHarness(context.Background(), runtimeScope)
@@ -1132,10 +1132,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 
 		dist := t.TempDir()
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
 		}}
 
 		h, err := startInProcessGrpcHarness(context.Background(), runtimeScope)
@@ -1171,10 +1171,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 		defer os.Chmod(apiRoot, 0o755)
 
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "bundle"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "bundle"},
 		}}
 
 		h, err := startInProcessGrpcHarness(context.Background(), runtimeScope)
@@ -1197,10 +1197,10 @@ func TestStartInProcessGrpcHarnessErrorBranches(t *testing.T) {
 			t.Fatalf("mkdir apps dir: %v", err)
 		}
 		runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{
-			AddonsPath: t.TempDir(),
-			DistPath:   dist,
-			Server:     &config.ServerConfig{JsEngineFactory: engineName},
-			Compile:    &config.CompileConfig{BundleMode: "application"},
+			ModulesPath: t.TempDir(),
+			DistPath:    dist,
+			Server:      &config.ServerConfig{JsEngineFactory: engineName},
+			Compile:     &config.CompileConfig{BundleMode: "application"},
 		}}
 
 		h, err := startInProcessGrpcHarness(context.Background(), runtimeScope)

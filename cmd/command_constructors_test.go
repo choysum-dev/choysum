@@ -137,23 +137,47 @@ func registerCommandHelperEngines() {
 	})
 }
 
+func TestRequireCliRuntimeOptions(t *testing.T) {
+	if _, err := requireCliRuntimeOptions(nil); err == nil || !strings.Contains(err.Error(), "getter is not initialized") {
+		t.Fatalf("expected nil getter error, got %v", err)
+	}
+
+	if _, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return cliRuntimeOptions{} }); err == nil || !strings.Contains(err.Error(), "defaultChoysumPath is required") {
+		t.Fatalf("expected Validate() error from getter options, got %v", err)
+	}
+
+	want := cliRuntimeOptions{
+		defaultChoysumPath: "/workspace/.choysum",
+		modulesPath:        "/workspace/modules",
+		npmPath:            "/workspace/node_modules",
+		tmpPath:            "/workspace/.choysum/tmp",
+	}
+	got, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return want })
+	if err != nil {
+		t.Fatalf("requireCliRuntimeOptions(valid) error = %v", err)
+	}
+	if got != want {
+		t.Fatalf("requireCliRuntimeOptions(valid) = %#v, want %#v", got, want)
+	}
+}
+
 func newCommandExitConfig(jsEngineFactory string) *config.Config {
 	serverCfg := config.NewDefaultServerConfig()
 	serverCfg.JsEngineFactory = jsEngineFactory
 	return &config.Config{Server: serverCfg, Log: config.NewDefaultLogConfig()}
 }
 
-func newCommandTestConfig(addonsPath string) *config.Config {
-	defaultChoysumPath := filepath.Join(addonsPath, ".choysum")
+func newCommandTestConfig(modulesPath string) *config.Config {
+	defaultChoysumPath := filepath.Join(modulesPath, ".choysum")
 	return &config.Config{
-		AddonsPath:         addonsPath,
-		DistPath:           filepath.Join(addonsPath, "dist"),
-		NpmPath:            filepath.Join(addonsPath, "node_modules"),
+		ModulesPath:        modulesPath,
+		DistPath:           filepath.Join(modulesPath, "dist"),
+		NpmPath:            filepath.Join(modulesPath, "node_modules"),
 		DefaultChoysumPath: defaultChoysumPath,
 		TmpPath:            filepath.Join(defaultChoysumPath, "tmp"),
 		Db: &config.DbConfig{
 			Dialect: "sqlite",
-			DSN:     filepath.Join(addonsPath, "command-test.db"),
+			DSN:     filepath.Join(modulesPath, "command-test.db"),
 		},
 		Server: config.NewDefaultServerConfig(),
 		Log:    config.NewDefaultLogConfig(),
@@ -175,9 +199,9 @@ func newTestUnitCmdFromScope(scopeGetter func() scope.Scope) *cobra.Command {
 	return newTestUnitCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 }
 
-func writeCommandPackage(t *testing.T, addonsPath string, moduleName string, packageJSON string) {
+func writeCommandPackage(t *testing.T, modulesPath string, moduleName string, packageJSON string) {
 	t.Helper()
-	moduleDir := filepath.Join(addonsPath, moduleName)
+	moduleDir := filepath.Join(modulesPath, moduleName)
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatalf("mkdir module dir: %v", err)
 	}
@@ -356,10 +380,10 @@ func TestNewTestUnitCmd_ArgsAndEarlyRunE(t *testing.T) {
 	}
 
 	cmd = newTestUnitCmdFromScope(func() scope.Scope {
-		return &commandTestScope{cfg: &config.Config{AddonsPath: "   ", NpmPath: "/tmp/npm", TmpPath: "/tmp/choysum", DefaultChoysumPath: "/tmp/.choysum"}}
+		return &commandTestScope{cfg: &config.Config{ModulesPath: "   ", NpmPath: "/tmp/npm", TmpPath: "/tmp/choysum", DefaultChoysumPath: "/tmp/.choysum"}}
 	})
-	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "config missing addons_path") {
-		t.Fatalf("expected missing addons_path error, got %v", err)
+	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "config missing modules_path") {
+		t.Fatalf("expected missing modules_path error, got %v", err)
 	}
 }
 
@@ -524,7 +548,7 @@ func TestNewTestUnitCmd_AdditionalRunEPaths(t *testing.T) {
 		serverCfg := config.NewDefaultServerConfig()
 		serverCfg.Environment = "missing-command-env"
 		cmd := newTestUnitCmdFromScope(func() scope.Scope {
-			return &commandTestScope{cfg: &config.Config{AddonsPath: t.TempDir(), Server: serverCfg, Log: config.NewDefaultLogConfig()}}
+			return &commandTestScope{cfg: &config.Config{ModulesPath: t.TempDir(), Server: serverCfg, Log: config.NewDefaultLogConfig()}}
 		})
 		err := cmd.RunE(cmd, []string{"auth"})
 		if err == nil || !strings.Contains(err.Error(), "failed to initialize scope for tap stdout") {
@@ -682,7 +706,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 			runE2EModule = oldRun
 		}()
 
-		resolveE2EModules = func(addonsPath string) ([]string, error) {
+		resolveE2EModules = func(modulesPath string) ([]string, error) {
 			return []string{"auth", "meta", "task"}, nil
 		}
 
@@ -735,8 +759,8 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 	})
 
 	t.Run("unknown module is rejected", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		cfg := newCommandTestConfig(addonsPath)
+		modulesPath := t.TempDir()
+		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 		err := cmd.RunE(cmd, []string{"auth"})
@@ -746,9 +770,9 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 	})
 
 	t.Run("module without e2e specs is skipped", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		writeCommandPackage(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth"}}`)
-		cfg := newCommandTestConfig(addonsPath)
+		modulesPath := t.TempDir()
+		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth"}}`)
+		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 		err := cmd.RunE(cmd, []string{"auth"})
@@ -758,9 +782,9 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 	})
 
 	t.Run("module with invalid specs path is rejected", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		writeCommandPackage(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"../specs"}}}`)
-		cfg := newCommandTestConfig(addonsPath)
+		modulesPath := t.TempDir()
+		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"../specs"}}}`)
+		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 		err := cmd.RunE(cmd, []string{"auth"})
@@ -770,9 +794,9 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 	})
 
 	t.Run("invalid scenario name is rejected", func(t *testing.T) {
-		addonsPath := t.TempDir()
-		writeCommandPackage(t, addonsPath, "auth", `{"name":"@choysum/addon-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"specs"}}}`)
-		cfg := newCommandTestConfig(addonsPath)
+		modulesPath := t.TempDir()
+		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"specs"}}}`)
+		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
 		if err := cmd.Flags().Set("scenario", "BadScenario"); err != nil {
@@ -965,10 +989,10 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		workDir := t.TempDir()
 		homeDir := t.TempDir()
-		addonsDir := filepath.Join(workDir, "addons")
+		modulesDir := filepath.Join(workDir, "modules")
 		npmDir := filepath.Join(workDir, "node_modules")
 		dbPath := filepath.Join(workDir, "app.db")
-		for _, dir := range []string{addonsDir, npmDir} {
+		for _, dir := range []string{modulesDir, npmDir} {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatalf("mkdir %s: %v", dir, err)
 			}
@@ -1001,11 +1025,11 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 
 	t.Run("explicit config initializes environment", func(t *testing.T) {
 		workDir := t.TempDir()
-		addonsDir := filepath.Join(workDir, "addons")
+		modulesDir := filepath.Join(workDir, "modules")
 		distDir := filepath.Join(workDir, "dist")
 		npmDir := filepath.Join(workDir, "node_modules")
 		dbPath := filepath.Join(workDir, "app.db")
-		for _, dir := range []string{addonsDir, distDir, npmDir} {
+		for _, dir := range []string{modulesDir, distDir, npmDir} {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatalf("mkdir %s: %v", dir, err)
 			}
@@ -1016,7 +1040,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		cfgPath := filepath.Join(workDir, "config.yaml")
 		cfgBody := strings.Join([]string{
 			"default_choysum_path: " + filepath.Join(workDir, ".choysum"),
-			"addons_path: " + addonsDir,
+			"modules_path: " + modulesDir,
 			"dist_path: " + distDir,
 			"npm_path: " + npmDir,
 			"db:",

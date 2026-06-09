@@ -27,12 +27,12 @@ func TestRealArtifactSpotcheck(t *testing.T) {
 	}
 
 	repoRoot := repoRootFromThisFile(t)
-	metaPBFile := envOrDefault("CHOYSUM_SPOTCHECK_META_PB_FILE", filepath.Join(repoRoot, "addons", "api", "web", "meta", "pb", "meta_pb.ts"))
-	structPBFile := envOrDefault("CHOYSUM_SPOTCHECK_STRUCT_PB_FILE", filepath.Join(repoRoot, "addons", "api", "web", "meta", "pb", "google", "protobuf", "struct_pb.ts"))
-	anyPBFile := envOrDefault("CHOYSUM_SPOTCHECK_ANY_PB_FILE", filepath.Join(repoRoot, "addons", "api", "web", "meta", "pb", "google", "protobuf", "any_pb.ts"))
-	timestampPBFile := envOrDefault("CHOYSUM_SPOTCHECK_TIMESTAMP_PB_FILE", filepath.Join(repoRoot, "addons", "api", "web", "meta", "pb", "google", "protobuf", "timestamp_pb.ts"))
-	durationPBFile := envOrDefault("CHOYSUM_SPOTCHECK_DURATION_PB_FILE", filepath.Join(repoRoot, "addons", "api", "web", "meta", "pb", "google", "protobuf", "duration_pb.ts"))
-	errorPBFile := envOrDefault("CHOYSUM_SPOTCHECK_ERROR_PB_FILE", filepath.Join(repoRoot, "addons", "core", "error", "error_pb.ts"))
+	metaPBFile := envOrDefault("CHOYSUM_SPOTCHECK_META_PB_FILE", filepath.Join(repoRoot, "modules", "api", "web", "meta", "pb", "meta_pb.ts"))
+	structPBFile := envOrDefault("CHOYSUM_SPOTCHECK_STRUCT_PB_FILE", filepath.Join(repoRoot, "modules", "api", "web", "meta", "pb", "google", "protobuf", "struct_pb.ts"))
+	anyPBFile := envOrDefault("CHOYSUM_SPOTCHECK_ANY_PB_FILE", filepath.Join(repoRoot, "modules", "api", "web", "meta", "pb", "google", "protobuf", "any_pb.ts"))
+	timestampPBFile := envOrDefault("CHOYSUM_SPOTCHECK_TIMESTAMP_PB_FILE", filepath.Join(repoRoot, "modules", "api", "web", "meta", "pb", "google", "protobuf", "timestamp_pb.ts"))
+	durationPBFile := envOrDefault("CHOYSUM_SPOTCHECK_DURATION_PB_FILE", filepath.Join(repoRoot, "modules", "api", "web", "meta", "pb", "google", "protobuf", "duration_pb.ts"))
+	errorPBFile := envOrDefault("CHOYSUM_SPOTCHECK_ERROR_PB_FILE", filepath.Join(repoRoot, "modules", "core", "error", "error_pb.ts"))
 	logFile := envOrDefault("CHOYSUM_SPOTCHECK_LOG_FILE", filepath.Join(repoRoot, "docs", "core", "grpc_ts_generator", "grpc_target_ts_real_artifact_check_log.md"))
 
 	rules := []artifactSpotcheckRule{

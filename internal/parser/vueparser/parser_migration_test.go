@@ -38,16 +38,16 @@ func (e *vueParserTestScope) FactoryInput() scope.FactoryInput {
 func newVueParserTestScope() scope.Scope {
 	return &vueParserTestScope{
 		ctx: context.Background(),
-		cfg: &config.Config{AddonsPath: "/virtual/addons"},
+		cfg: &config.Config{ModulesPath: "/virtual/modules"},
 	}
 }
 
 func TestVueParser_ParseVueComponentWithTSGo(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"}
+	module := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
-	path := "/virtual/addons/auth/web/views/ChildView.vue"
+	path := "/virtual/modules/auth/web/views/ChildView.vue"
 	content := `<template><div /></template>
 <script lang="ts">
 import { defineComponent } from 'vue';
@@ -61,7 +61,7 @@ export default defineComponent({
 });
 </script>`
 
-	r, err := p.Parse(map[string]string{"@": "/virtual/addons"}, path, content)
+	r, err := p.Parse(map[string]string{"@": "/virtual/modules"}, path, content)
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
@@ -75,7 +75,7 @@ export default defineComponent({
 	if strings.TrimSpace(r.VueExtendsProperty.Text) != "extends: BaseView" {
 		t.Fatalf("unexpected extends property text: %q", r.VueExtendsProperty.Text)
 	}
-	if r.VueComponent.RawExtends != "/virtual/addons/auth/web/views/BaseView.vue" {
+	if r.VueComponent.RawExtends != "/virtual/modules/auth/web/views/BaseView.vue" {
 		t.Fatalf("unexpected vue raw extends: %s", r.VueComponent.RawExtends)
 	}
 
@@ -102,10 +102,10 @@ export default defineComponent({
 
 func TestVueParser_ParseImportsExportsWithTSGoAcrossScriptBlocks(t *testing.T) {
 	runtimeScope := newVueParserTestScope()
-	module := &meta.IrModule{Path: "/virtual/addons/auth", ApplicationStr: "auth"}
+	module := &meta.IrModule{Path: "/virtual/modules/auth", ApplicationStr: "auth"}
 	p := NewVueParser(runtimeScope, module)
 
-	path := "/virtual/addons/auth/web/views/ChildView.vue"
+	path := "/virtual/modules/auth/web/views/ChildView.vue"
 	content := `<template><div /></template>
 <script lang="ts">
 import { defineComponent } from 'vue';
@@ -123,7 +123,7 @@ const state = localRef(1);
 void state;
 </script>`
 
-	r, err := p.Parse(map[string]string{"@": "/virtual/addons"}, path, content)
+	r, err := p.Parse(map[string]string{"@": "/virtual/modules"}, path, content)
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
@@ -145,7 +145,7 @@ void state;
 		t.Fatalf("expected localRef import from script setup")
 	}
 
-	if r.Imports["BaseView"].ModuleSpecPath != "/virtual/addons/auth/web/views/BaseView.vue" {
+	if r.Imports["BaseView"].ModuleSpecPath != "/virtual/modules/auth/web/views/BaseView.vue" {
 		t.Fatalf("unexpected BaseView module spec path: %s", r.Imports["BaseView"].ModuleSpecPath)
 	}
 
