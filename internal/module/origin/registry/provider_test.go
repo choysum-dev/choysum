@@ -570,3 +570,301 @@ func TestProviderFetchRequiresModulesPath(t *testing.T) {
 		t.Fatalf("expected modules path required error, got %v", err)
 	}
 }
+
+func TestProviderHelperNormalizationBranches(t *testing.T) {
+	t.Parallel()
+
+	moduleName, version, err := normalizeModuleNameVersion(" auth ", "")
+	if err != nil {
+		t.Fatalf("normalizeModuleNameVersion() error = %v", err)
+	}
+	if moduleName != "auth" || version != "latest" {
+		t.Fatalf("unexpected normalizeModuleNameVersion result: module=%q version=%q", moduleName, version)
+	}
+
+	if _, _, err := normalizeModuleNameVersion("   ", "v1.0.0"); err == nil {
+		t.Fatal("expected empty module name error")
+	}
+
+	if pkg, err := normalizePackageName("auth", ""); err != nil || pkg != "auth" {
+		t.Fatalf("normalizePackageName fallback = %q err=%v, want auth nil", pkg, err)
+	}
+	if _, err := normalizePackageName("", "@acme/choysum-auth"); err == nil {
+		t.Fatal("expected empty module name error from normalizePackageName")
+	}
+
+	base, err := normalizeDefaultRegistryMetadataBaseURL("https://registry.npmjs.org/")
+	if err != nil {
+		t.Fatalf("normalizeDefaultRegistryMetadataBaseURL() error = %v", err)
+	}
+	if base != "https://registry.npmjs.org" {
+		t.Fatalf("default registry base = %q, want %q", base, "https://registry.npmjs.org")
+	}
+	if _, err := normalizeDefaultRegistryMetadataBaseURL("ftp://registry.npmjs.org"); err == nil {
+		t.Fatal("expected unsupported default registry scheme error")
+	}
+	if _, err := normalizeDefaultRegistryMetadataBaseURL("https://"); err == nil {
+		t.Fatal("expected unsupported default registry host error")
+	}
+
+	fallback, err := normalizeRegistryMetadataBaseURL("", "https://registry.npmjs.org/")
+	if err != nil {
+		t.Fatalf("normalizeRegistryMetadataBaseURL(empty) error = %v", err)
+	}
+	if fallback != "https://registry.npmjs.org" {
+		t.Fatalf("fallback registry base = %q, want %q", fallback, "https://registry.npmjs.org")
+	}
+
+	fromGitHub, err := normalizeRegistryMetadataBaseURL("https://github.com/acme/catalog", "https://registry.npmjs.org")
+	if err != nil {
+		t.Fatalf("normalizeRegistryMetadataBaseURL(github) error = %v", err)
+	}
+	if fromGitHub != "https://registry.npmjs.org" {
+		t.Fatalf("github registry should fallback to default, got %q", fromGitHub)
+	}
+
+	fromAPI, err := normalizeRegistryMetadataBaseURL("https://catalog.acme.dev/api/v1/modules", "https://registry.npmjs.org")
+	if err != nil {
+		t.Fatalf("normalizeRegistryMetadataBaseURL(api) error = %v", err)
+	}
+	if fromAPI != "https://registry.npmjs.org" {
+		t.Fatalf("api/json registry should fallback to default, got %q", fromAPI)
+	}
+
+	custom, err := normalizeRegistryMetadataBaseURL("https://registry.acme.dev/custom/", "https://registry.npmjs.org")
+	if err != nil {
+		t.Fatalf("normalizeRegistryMetadataBaseURL(custom) error = %v", err)
+	}
+	if custom != "https://registry.acme.dev/custom" {
+		t.Fatalf("custom registry base = %q, want %q", custom, "https://registry.acme.dev/custom")
+	}
+
+	metadataURL, pkgName, err := registryPackageMetadataURL("https://registry.acme.dev", "auth", "@acme/choysum-auth", config.DefaultNPMRegistryURL)
+	if err != nil {
+		t.Fatalf("registryPackageMetadataURL() error = %v", err)
+	}
+	if pkgName != "@acme/choysum-auth" {
+		t.Fatalf("resolved package name = %q, want %q", pkgName, "@acme/choysum-auth")
+	}
+	if metadataURL != "https://registry.acme.dev/@acme%2Fchoysum-auth" {
+		t.Fatalf("metadata URL = %q, want %q", metadataURL, "https://registry.acme.dev/@acme%2Fchoysum-auth")
+	}
+
+	if _, _, err := registryPackageMetadataURL("https://registry.acme.dev", "", "", config.DefaultNPMRegistryURL); err == nil {
+		t.Fatal("expected empty module name error from registryPackageMetadataURL")
+	}
+}
+
+func TestProviderResolveNPMVersionBranches(t *testing.T) {
+	t.Parallel()
+
+	rawV100 := json.RawMessage(`{"name":"pkg","version":"1.0.0"}`)
+	rawV200 := json.RawMessage(`{"name":"pkg","version":"2.0.0"}`)
+	rawV300rc := json.RawMessage(`{"name":"pkg","version":"3.0.0-rc.1"}`)
+
+	metadata := &npmPackageMetadata{
+		DistTags: map[string]string{"latest": "v2.0.0", "rc": "v3.0.0-rc.1"},
+		Versions: map[string]json.RawMessage{
+			"1.0.0":      rawV100,
+			"2.0.0":      rawV200,
+			"3.0.0-rc.1": rawV300rc,
+		},
+	}
+
+	if gotVersion, gotRaw, err := resolveNPMVersion(metadata, "1.0.0"); err != nil || gotVersion != "1.0.0" || string(gotRaw) != string(rawV100) {
+		t.Fatalf("direct version resolve got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	if gotVersion, gotRaw, err := resolveNPMVersion(metadata, "v1.0.0"); err != nil || gotVersion != "1.0.0" || string(gotRaw) != string(rawV100) {
+		t.Fatalf("v-prefixed version resolve got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	if gotVersion, gotRaw, err := resolveNPMVersion(metadata, "rc"); err != nil || gotVersion != "3.0.0-rc.1" || string(gotRaw) != string(rawV300rc) {
+		t.Fatalf("dist-tag resolve got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	singleVersion := &npmPackageMetadata{Versions: map[string]json.RawMessage{"0.9.0": rawV100}}
+	if gotVersion, gotRaw, err := resolveNPMVersion(singleVersion, "latest"); err != nil || gotVersion != "0.9.0" || string(gotRaw) != string(rawV100) {
+		t.Fatalf("single-version latest fallback got version=%q raw=%s err=%v", gotVersion, string(gotRaw), err)
+	}
+
+	multiWithoutLatest := &npmPackageMetadata{Versions: map[string]json.RawMessage{"1.0.0": rawV100, "2.0.0": rawV200}}
+	if _, _, err := resolveNPMVersion(multiWithoutLatest, "latest"); err == nil || !strings.Contains(err.Error(), "missing latest dist-tag") {
+		t.Fatalf("expected latest dist-tag missing error, got %v", err)
+	}
+
+	if _, _, err := resolveNPMVersion(metadata, "9.9.9"); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected version not found error, got %v", err)
+	}
+
+	if _, _, err := resolveNPMVersion(nil, "latest"); err == nil || !strings.Contains(err.Error(), "metadata is nil") {
+		t.Fatalf("expected nil metadata error, got %v", err)
+	}
+}
+
+func TestProviderNormalizePackageAuthorAndParseModule(t *testing.T) {
+	t.Parallel()
+
+	decodeAuthor := func(raw []byte) any {
+		t.Helper()
+		payload := map[string]any{}
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			t.Fatalf("unmarshal normalized payload: %v", err)
+		}
+		return payload["author"]
+	}
+
+	trimmedString, err := normalizePackageAuthor([]byte(`{"name":"@acme/choysum-auth","author":"  Alice  "}`))
+	if err != nil {
+		t.Fatalf("normalizePackageAuthor(string) error = %v", err)
+	}
+	if author := decodeAuthor(trimmedString); author != "Alice" {
+		t.Fatalf("normalized string author = %#v, want %q", author, "Alice")
+	}
+
+	trimmedMap, err := normalizePackageAuthor([]byte(`{"name":"@acme/choysum-auth","author":{"name":"  Bob  ","email":"bob@example.com"}}`))
+	if err != nil {
+		t.Fatalf("normalizePackageAuthor(map) error = %v", err)
+	}
+	if author := decodeAuthor(trimmedMap); author != "Bob" {
+		t.Fatalf("normalized map author = %#v, want %q", author, "Bob")
+	}
+
+	removedInvalidAuthor, err := normalizePackageAuthor([]byte(`{"name":"@acme/choysum-auth","author":{"email":"bob@example.com"}}`))
+	if err != nil {
+		t.Fatalf("normalizePackageAuthor(invalid map) error = %v", err)
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(removedInvalidAuthor, &payload); err != nil {
+		t.Fatalf("unmarshal normalized payload: %v", err)
+	}
+	if _, ok := payload["author"]; ok {
+		t.Fatalf("expected invalid author field to be removed, got payload=%#v", payload)
+	}
+
+	if _, err := normalizePackageAuthor([]byte(`{"author":`)); err == nil {
+		t.Fatal("expected normalizePackageAuthor decode error")
+	}
+
+	modulePath := filepath.Join(t.TempDir(), "auth")
+	raw := []byte(buildPackageJSON(t, "auth", "1.0.0", map[string]string{"service": "./service/main.ts"}))
+	module, err := parseModuleFromPackageJSON(raw, "auth", modulePath)
+	if err != nil {
+		t.Fatalf("parseModuleFromPackageJSON(success) error = %v", err)
+	}
+	if module == nil || module.Name != "auth" || module.Path != modulePath {
+		t.Fatalf("unexpected parsed module: %#v", module)
+	}
+
+	mismatchRaw := []byte(buildPackageJSON(t, "sale", "1.0.0", nil))
+	if _, err := parseModuleFromPackageJSON(mismatchRaw, "auth", modulePath); err == nil || !strings.Contains(err.Error(), "does not match requested module") {
+		t.Fatalf("expected module mismatch error, got %v", err)
+	}
+}
+
+func TestProviderPathAndTarballHelpers(t *testing.T) {
+	t.Parallel()
+
+	if !isUnsafeTarPath("") {
+		t.Fatal("empty tar path should be unsafe")
+	}
+	if !isUnsafeTarPath("../escape") {
+		t.Fatal("parent traversal tar path should be unsafe")
+	}
+	if isUnsafeTarPath("package/package.json") {
+		t.Fatal("relative package path should be safe")
+	}
+
+	baseDir := t.TempDir()
+	joined, err := safeJoin(baseDir, "package/package.json")
+	if err != nil {
+		t.Fatalf("safeJoin(valid) error = %v", err)
+	}
+	if joined != filepath.Join(baseDir, "package", "package.json") {
+		t.Fatalf("safeJoin(valid) = %q, want %q", joined, filepath.Join(baseDir, "package", "package.json"))
+	}
+	if _, err := safeJoin(baseDir, "../outside"); err == nil {
+		t.Fatal("expected safeJoin traversal error")
+	}
+
+	if err := validateTarballURL("https://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"); err != nil {
+		t.Fatalf("validateTarballURL(valid) error = %v", err)
+	}
+	if err := validateTarballURL("ftp://registry.npmjs.org/pkg/-/pkg-1.0.0.tgz"); err == nil {
+		t.Fatal("expected invalid tarball scheme error")
+	}
+	if err := validateTarballURL("https://registry.npmjs.org/pkg/-/pkg-1.0.0.zip"); err == nil {
+		t.Fatal("expected invalid tarball file type error")
+	}
+
+	if scorePackageJSONPath("modules/auth/package.json", "auth") <= scorePackageJSONPath("package/package.json", "auth") {
+		t.Fatal("expected modules/auth/package.json to score higher than package/package.json")
+	}
+
+	rootDir := t.TempDir()
+	for _, rel := range []string{"package/package.json", "modules/auth/package.json", "auth/package.json"} {
+		abs := filepath.Join(rootDir, rel)
+		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+			t.Fatalf("mkdir %q: %v", rel, err)
+		}
+		if err := os.WriteFile(abs, []byte(`{"name":"pkg"}`), 0o644); err != nil {
+			t.Fatalf("write %q: %v", rel, err)
+		}
+	}
+
+	bestPath, err := findBestPackageJSONPath(rootDir, "auth")
+	if err != nil {
+		t.Fatalf("findBestPackageJSONPath() error = %v", err)
+	}
+	expectedPath := filepath.Join(rootDir, "modules", "auth", "package.json")
+	if filepath.Clean(bestPath) != filepath.Clean(expectedPath) {
+		t.Fatalf("best package path = %q, want %q", bestPath, expectedPath)
+	}
+
+	if _, err := findBestPackageJSONPath(t.TempDir(), "auth"); err == nil || !strings.Contains(err.Error(), "package.json not found") {
+		t.Fatalf("expected package.json not found error, got %v", err)
+	}
+}
+
+func TestProviderFetchPackageMetadataErrors(t *testing.T) {
+	t.Parallel()
+
+	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir()}}
+
+	t.Run("invalid registry url", func(t *testing.T) {
+		provider := NewProvider(runtimeScope)
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "ftp://registry.acme.dev", "auth", ""); err == nil {
+			t.Fatal("expected invalid registry URL error")
+		}
+	})
+
+	t.Run("metadata request non-200", func(t *testing.T) {
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return httpResponse(http.StatusBadGateway, []byte(`{"error":"upstream"}`)), nil
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "status code") {
+			t.Fatalf("expected metadata non-200 error, got %v", err)
+		}
+	})
+
+	t.Run("invalid metadata payload", func(t *testing.T) {
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return httpResponse(http.StatusOK, []byte(`{"dist-tags":`)), nil
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "decoding npm metadata") {
+			t.Fatalf("expected metadata decode error, got %v", err)
+		}
+	})
+
+	t.Run("metadata has no versions", func(t *testing.T) {
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return httpResponse(http.StatusOK, []byte(`{"dist-tags":{"latest":"1.0.0"},"versions":{}}`)), nil
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "no versions") {
+			t.Fatalf("expected metadata no versions error, got %v", err)
+		}
+	})
+}

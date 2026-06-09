@@ -395,3 +395,91 @@ func TestLooksLikeCatalogRegistryURL(t *testing.T) {
 		})
 	}
 }
+
+func TestCoordinatorPeekBranches(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	workspaceRoot := t.TempDir()
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules: %v", err)
+	}
+
+	runtimeScope := &sourceTestScope{
+		ctx: context.Background(),
+		cfg: &config.Config{
+			ModulesPath:        modulesPath,
+			ConfigPath:         filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath: t.TempDir(),
+		},
+	}
+
+	store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("registry store load: %v", err)
+	}
+	cfg.Registries["corp"] = registry.Entry{URL: "https://registry.npmjs.org"}
+	if err := store.Save(cfg); err != nil {
+		t.Fatalf("registry store save: %v", err)
+	}
+
+	t.Run("registry input uses provider PeekManifest", func(t *testing.T) {
+		peekCalls := 0
+		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			peekCalls++
+			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "auth" || version != "v2.0.0" {
+				t.Fatalf("unexpected provider peek args: registry=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
+			}
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0"}, nil
+		}}
+
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		mod, err := coordinator.Peek(context.Background(), "corp/auth@v2.0.0")
+		if err != nil {
+			t.Fatalf("Peek(registry) error = %v", err)
+		}
+		if mod == nil || mod.Name != "auth" || mod.Version != "v2.0.0" {
+			t.Fatalf("unexpected Peek(registry) module: %#v", mod)
+		}
+		if peekCalls != 1 {
+			t.Fatalf("provider peek calls = %d, want 1", peekCalls)
+		}
+	})
+
+	t.Run("registry peek requires provider", func(t *testing.T) {
+		parsed, err := ParseInput("corp/auth@v2.0.0")
+		if err != nil {
+			t.Fatalf("ParseInput() error = %v", err)
+		}
+		coordinator := &Coordinator{runtimeScope: runtimeScope, registryStore: store}
+		if _, err := coordinator.peekRegistryModule(context.Background(), parsed); err == nil || !strings.Contains(err.Error(), "registry provider is nil") {
+			t.Fatalf("expected registry provider nil error, got %v", err)
+		}
+	})
+
+	t.Run("local module missing", func(t *testing.T) {
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		if _, err := coordinator.Peek(context.Background(), "missing"); err == nil || !strings.Contains(err.Error(), "not found in modules path") {
+			t.Fatalf("expected local missing error, got %v", err)
+		}
+	})
+
+	t.Run("local module success", func(t *testing.T) {
+		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "2.1.0", ApplicationStr: "auth"})
+		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		mod, err := coordinator.Peek(context.Background(), "auth")
+		if err != nil {
+			t.Fatalf("Peek(local) error = %v", err)
+		}
+		if mod == nil || mod.Name != "auth" || mod.Version != "v2.1.0" {
+			t.Fatalf("unexpected Peek(local) module: %#v", mod)
+		}
+	})
+
+	t.Run("nil coordinator env", func(t *testing.T) {
+		var nilCoordinator *Coordinator
+		if _, err := nilCoordinator.Peek(context.Background(), "auth"); err == nil || !strings.Contains(err.Error(), "origin coordinator env is nil") {
+			t.Fatalf("expected nil coordinator env error, got %v", err)
+		}
+	})
+}

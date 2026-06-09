@@ -22,6 +22,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -416,6 +418,186 @@ func TestModuleIndexLockTTL_FallbackCases(t *testing.T) {
 			t.Fatalf("ttl = %v, want %v", got, 60*time.Second)
 		}
 	})
+}
+
+func TestModuleIndexSyncHelperFunctions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("shouldSkipModuleDir", func(t *testing.T) {
+		cases := []struct {
+			name string
+			want bool
+		}{
+			{name: "", want: true},
+			{name: ".cache", want: true},
+			{name: "tmp", want: true},
+			{name: "node_modules", want: true},
+			{name: "dist", want: true},
+			{name: "auth", want: false},
+		}
+		for _, tc := range cases {
+			if got := shouldSkipModuleDir(tc.name); got != tc.want {
+				t.Fatalf("shouldSkipModuleDir(%q) = %v, want %v", tc.name, got, tc.want)
+			}
+		}
+	})
+
+	t.Run("fmtSyncRevision", func(t *testing.T) {
+		if got := fmtSyncRevision(nil); got != "" {
+			t.Fatalf("fmtSyncRevision(nil) = %q, want empty", got)
+		}
+
+		tmpFile := filepath.Join(t.TempDir(), "package.json")
+		if err := os.WriteFile(tmpFile, []byte(`{"name":"pkg"}`), 0o644); err != nil {
+			t.Fatalf("write temp file: %v", err)
+		}
+		info, err := os.Stat(tmpFile)
+		if err != nil {
+			t.Fatalf("stat temp file: %v", err)
+		}
+		if got := fmtSyncRevision(info); strings.TrimSpace(got) == "" {
+			t.Fatal("fmtSyncRevision(non-nil) should return non-empty revision")
+		}
+	})
+}
+
+func TestReadPackageJSONValidation(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing file", func(t *testing.T) {
+		if _, _, err := readPackageJSON(filepath.Join(t.TempDir(), "missing.json")); err == nil {
+			t.Fatal("expected readPackageJSON missing file error")
+		}
+	})
+
+	t.Run("missing version", func(t *testing.T) {
+		pkgPath := filepath.Join(t.TempDir(), "package.json")
+		raw := `{"name":"@acme/choysum-auth","choysum":{"moduleName":"auth","application":"auth"}}`
+		if err := os.WriteFile(pkgPath, []byte(raw), 0o644); err != nil {
+			t.Fatalf("write package.json: %v", err)
+		}
+
+		data, version, err := readPackageJSON(pkgPath)
+		if err == nil || (!strings.Contains(err.Error(), "missing version") && !strings.Contains(err.Error(), "empty package version")) {
+			t.Fatalf("expected missing version error, got version=%q err=%v", version, err)
+		}
+		if string(data) != raw {
+			t.Fatalf("readPackageJSON should return original payload, got %q", string(data))
+		}
+	})
+
+	t.Run("valid payload", func(t *testing.T) {
+		pkgPath := filepath.Join(t.TempDir(), "package.json")
+		raw := `{"name":"@acme/choysum-auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`
+		if err := os.WriteFile(pkgPath, []byte(raw), 0o644); err != nil {
+			t.Fatalf("write package.json: %v", err)
+		}
+
+		_, version, err := readPackageJSON(pkgPath)
+		if err != nil {
+			t.Fatalf("readPackageJSON(valid) error = %v", err)
+		}
+		if version != "v1.0.0" {
+			t.Fatalf("readPackageJSON(valid) version = %q, want %q", version, "v1.0.0")
+		}
+	})
+}
+
+func TestSanitizeModuleIndexErrorBranches(t *testing.T) {
+	t.Parallel()
+
+	modulesPath := filepath.Join(t.TempDir(), "modules")
+	runtimeScope := newModuleIndexSyncScope(modulesPath, nil)
+
+	if got := SanitizeModuleIndexError(runtimeScope, nil); got != "package.json parsing failed" {
+		t.Fatalf("SanitizeModuleIndexError(nil) = %q, want %q", got, "package.json parsing failed")
+	}
+
+	grpcErr := status.Error(codes.InvalidArgument, filepath.Join(modulesPath, "auth", "package.json")+": invalid field")
+	if got := SanitizeModuleIndexError(runtimeScope, grpcErr); !strings.Contains(got, "<modulesPath>") {
+		t.Fatalf("expected redacted modules path in grpc error, got %q", got)
+	}
+
+	pathErr := &os.PathError{Op: "open", Path: filepath.Join(modulesPath, "auth", "package.json"), Err: errors.New("permission denied")}
+	if got := SanitizeModuleIndexError(runtimeScope, pathErr); got != "open package.json" {
+		t.Fatalf("SanitizeModuleIndexError(path error) = %q, want %q", got, "open package.json")
+	}
+
+	if got := redactModuleIndexError(runtimeScope, ""); got != "package.json parsing failed" {
+		t.Fatalf("redactModuleIndexError(empty) = %q, want default", got)
+	}
+}
+
+func TestSyncLocalModuleIndex_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	t.Run("read dir failure", func(t *testing.T) {
+		runtimeScope := newModuleIndexSyncScope(filepath.Join(t.TempDir(), "missing"), nil)
+		_, err := SyncLocalModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+			return &moduleIndexSyncTestLocker{}
+		})
+		if err == nil {
+			t.Fatal("expected read dir error")
+		}
+	})
+
+	t.Run("nil context falls back to background", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		writePackageJSON(t, modulesPath, "partner", `{"name":"@acme/choysum-partner","version":"0.1.0","choysum":{"moduleName":"partner","application":"partner"}}`)
+		db := newModuleIndexSyncDB(t)
+		runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+
+		stats, err := SyncLocalModuleIndex(nil, runtimeScope, func(scope.Scope) statepkg.Locker {
+			return &moduleIndexSyncTestLocker{}
+		})
+		if err != nil {
+			t.Fatalf("SyncLocalModuleIndex(nil ctx) error = %v", err)
+		}
+		if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+			t.Fatalf("unexpected stats for nil ctx sync: %+v", stats)
+		}
+	})
+
+	t.Run("context canceled during scan", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(modulesPath, "partner"), 0o755); err != nil {
+			t.Fatalf("mkdir module dir: %v", err)
+		}
+		runtimeScope := newModuleIndexSyncScope(modulesPath, newModuleIndexSyncDB(t))
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := SyncLocalModuleIndex(ctx, runtimeScope, func(scope.Scope) statepkg.Locker {
+			return &moduleIndexSyncTestLocker{}
+		})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context canceled error, got %v", err)
+		}
+	})
+}
+
+func TestIsTableMissingInSessionBranches(t *testing.T) {
+	t.Parallel()
+
+	if isTableMissingInSession(nil, "meta_ir_setting") {
+		t.Fatal("nil session should not be treated as missing table")
+	}
+
+	s := &scope.Session{}
+	if isTableMissingInSession(s, "meta_ir_setting") {
+		t.Fatal("session without DB should not be treated as missing table")
+	}
+
+	db := newModuleIndexSyncDB(t)
+	s = &scope.Session{DB: db}
+	if isTableMissingInSession(s, "") {
+		t.Fatal("empty table name should return false")
+	}
+	if isTableMissingInSession(s, "meta_ir_setting") {
+		t.Fatal("existing table should not be treated as missing")
+	}
+	if !isTableMissingInSession(s, "meta_ir_not_exists") {
+		t.Fatal("unknown table should be treated as missing")
+	}
 }
 
 func TestReadPackageJSONAndHelpers(t *testing.T) {
