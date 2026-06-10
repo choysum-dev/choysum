@@ -191,6 +191,47 @@ func TestStoreLoadBackfillsOfficialIndexURLWhenMissing(t *testing.T) {
 	}
 }
 
+func TestStoreLoadMigratesLegacyOfficialGitHubRegistryURLToDefaultIndex(t *testing.T) {
+	home := t.TempDir()
+	defaultChoysumPath := t.TempDir()
+	store := NewStore(WithHomeDir(home), WithDefaultChoysumPath(defaultChoysumPath))
+
+	path, err := store.filePath()
+	if err != nil {
+		t.Fatalf("filePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	legacyConfig := "version: 1\n" +
+		"registries:\n" +
+		"  official:\n" +
+		"    url: https://github.com/project-choysum/registry/\n" +
+		"    authRef: token://official\n"
+	if err := os.WriteFile(path, []byte(legacyConfig), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	entry, ok := cfg.Registries[DefaultRegistryAlias]
+	if !ok {
+		t.Fatalf("expected default alias %q to exist", DefaultRegistryAlias)
+	}
+	if entry.IndexURL != DefaultRegistryIndexURL {
+		t.Fatalf("official indexURL = %q, want %q", entry.IndexURL, DefaultRegistryIndexURL)
+	}
+	if entry.AuthRef != "token://official" {
+		t.Fatalf("official authRef = %q, want %q", entry.AuthRef, "token://official")
+	}
+	if entry.URL != "" {
+		t.Fatalf("official legacy url field should be cleared after migration, got %q", entry.URL)
+	}
+}
+
 func TestStorePathValidationAndOptionReset(t *testing.T) {
 	rootStore := NewStore(WithDefaultChoysumPath(string(filepath.Separator)))
 	if _, err := rootStore.Load(); err == nil || !strings.Contains(err.Error(), "non-root directory") {

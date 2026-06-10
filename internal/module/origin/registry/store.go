@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	DefaultRegistryAlias    = "official"
-	DefaultRegistryIndexURL = "https://index.choysum.dev/v1/index.json"
+	DefaultRegistryAlias     = "official"
+	DefaultRegistryIndexURL  = "https://index.choysum.dev/v1/index.json"
+	legacyDefaultRegistryURL = "https://github.com/project-choysum/registry"
 )
 
 type Entry struct {
@@ -107,6 +108,9 @@ func cloneConfig(cfg *Config) *Config {
 		if entry.IndexURL == "" {
 			entry.IndexURL = strings.TrimSpace(entry.URL)
 		}
+		if strings.TrimSpace(k) == DefaultRegistryAlias && isLegacyDefaultRegistryURL(entry.IndexURL) {
+			entry.IndexURL = DefaultRegistryIndexURL
+		}
 		entry.URL = ""
 		out.Registries[k] = entry
 	}
@@ -124,6 +128,11 @@ func cloneConfig(cfg *Config) *Config {
 		out.Registries[DefaultRegistryAlias] = defaultEntry
 	}
 	return out
+}
+
+func isLegacyDefaultRegistryURL(raw string) bool {
+	normalized := strings.TrimSuffix(strings.TrimSpace(raw), "/")
+	return normalized == legacyDefaultRegistryURL
 }
 
 func (s *Store) Load() (*Config, error) {
