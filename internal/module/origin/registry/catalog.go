@@ -213,11 +213,12 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 
 	entry, ok := module.Versions[item.LatestVersion]
 	if ok {
-		if item.Source == nil {
-			item.Source = &CatalogSource{}
-		}
 		if entry.Source != nil {
-			item.Source = cloneCatalogSource(entry.Source)
+			if item.Source == nil {
+				item.Source = cloneCatalogSource(entry.Source)
+			} else {
+				mergeCatalogSource(item.Source, entry.Source)
+			}
 		}
 		if item.Source == nil {
 			item.Source = &CatalogSource{}
@@ -259,6 +260,30 @@ func cloneCatalogSource(src *CatalogSource) *CatalogSource {
 	}
 	clone := *src
 	return &clone
+}
+
+func mergeCatalogSource(dst *CatalogSource, src *CatalogSource) {
+	if dst == nil || src == nil {
+		return
+	}
+	if value := strings.TrimSpace(src.Type); value != "" {
+		dst.Type = value
+	}
+	if value := strings.TrimSpace(src.Registry); value != "" {
+		dst.Registry = value
+	}
+	if value := strings.TrimSpace(src.Package); value != "" {
+		dst.Package = value
+	}
+	if value := strings.TrimSpace(src.Version); value != "" {
+		dst.Version = value
+	}
+	if value := strings.TrimSpace(src.Tarball); value != "" {
+		dst.Tarball = value
+	}
+	if value := strings.TrimSpace(src.Integrity); value != "" {
+		dst.Integrity = value
+	}
 }
 
 func pickLatestVersion(versions []string) string {

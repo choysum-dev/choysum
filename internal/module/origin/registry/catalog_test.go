@@ -128,6 +128,55 @@ func TestCatalogInfoFromStaticIndex_PrefersVersionSourcePackage(t *testing.T) {
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_MergesVersionSourceIntoModuleSource(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.0.0",
+				"package":       "@choysum/module-auth",
+				"source": map[string]any{
+					"type":     "npm",
+					"registry": "https://registry.acme.dev",
+					"package":  "@choysum/module-auth",
+				},
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{
+						"source": map[string]any{
+							"package":   "@acme/choysum-auth",
+							"integrity": "sha512-auth",
+						},
+					},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil {
+		t.Fatal("Catalog.Info() returned nil")
+	}
+	if got := item.ResolvedNPMPackage(); got != "@acme/choysum-auth" {
+		t.Fatalf("ResolvedNPMPackage() = %q, want %q", got, "@acme/choysum-auth")
+	}
+	if got := item.ResolvedNPMRegistry(""); got != "https://registry.acme.dev" {
+		t.Fatalf("ResolvedNPMRegistry() = %q, want %q", got, "https://registry.acme.dev")
+	}
+	if item.Source == nil {
+		t.Fatal("expected merged source, got nil")
+	}
+	if item.Source.Type != "npm" || item.Source.Registry != "https://registry.acme.dev" || item.Source.Package != "@acme/choysum-auth" || item.Source.Integrity != "sha512-auth" {
+		t.Fatalf("unexpected merged source: %#v", item.Source)
+	}
+}
+
 func TestCatalogListFromStaticIndex_FiltersAndSorts(t *testing.T) {
 	t.Parallel()
 
