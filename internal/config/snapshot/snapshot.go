@@ -7,21 +7,22 @@ import "github.com/choysum-dev/choysum/pkg/config"
 
 // ConfigSnapshot stores a deep-copied runtime config projection for scope input adapters.
 type ConfigSnapshot struct {
-	ModulesPath        string
-	DistPath           string
-	TmpPath            string
-	DefaultChoysumPath string
-	ConfigPath         string
-	NpmPath            string
-	NPMRegistryURL     string
-	Log                *config.LogConfig
-	Compile            *config.CompileConfig
-	Auth               *config.AuthConfig
-	Server             *config.ServerConfig
-	Task               *config.TaskConfig
-	FrontendEnv        map[string]any
-	BackendEnv         map[string]any
-	Db                 *config.DbConfig
+	ModulesPath           string
+	DistPath              string
+	TmpPath               string
+	DefaultChoysumPath    string
+	ConfigPath            string
+	NpmPath               string
+	NPMRegistryURL        string
+	ModuleCatalogIndexURL string
+	Log                   *config.LogConfig
+	Compile               *config.CompileConfig
+	Auth                  *config.AuthConfig
+	Server                *config.ServerConfig
+	Task                  *config.TaskConfig
+	FrontendEnv           map[string]any
+	BackendEnv            map[string]any
+	Db                    *config.DbConfig
 }
 
 // New deep-copies the provided config into a runtime-safe snapshot.
@@ -30,21 +31,22 @@ func New(cfg *config.Config) *ConfigSnapshot {
 		return nil
 	}
 	return &ConfigSnapshot{
-		ModulesPath:        cfg.ModulesPath,
-		DistPath:           cfg.DistPath,
-		TmpPath:            cfg.TmpPath,
-		DefaultChoysumPath: cfg.DefaultChoysumPath,
-		ConfigPath:         cfg.ConfigPath,
-		NpmPath:            cfg.NpmPath,
-		NPMRegistryURL:     cfg.NPMRegistryURL,
-		Log:                cloneLogConfig(cfg.Log),
-		Compile:            cloneCompileConfig(cfg.Compile),
-		Auth:               cloneAuthConfig(cfg.Auth),
-		Server:             cloneServerConfig(cfg.Server),
-		Task:               cloneTaskConfig(cfg.Task),
-		FrontendEnv:        cloneAnyMap(cfg.FrontendEnv),
-		BackendEnv:         cloneAnyMap(cfg.BackendEnv),
-		Db:                 cloneDbConfig(cfg.Db),
+		ModulesPath:           cfg.ModulesPath,
+		DistPath:              cfg.DistPath,
+		TmpPath:               cfg.TmpPath,
+		DefaultChoysumPath:    cfg.DefaultChoysumPath,
+		ConfigPath:            cfg.ConfigPath,
+		NpmPath:               cfg.NpmPath,
+		NPMRegistryURL:        cfg.NPMRegistryURL,
+		ModuleCatalogIndexURL: cfg.ModuleCatalogIndexURL,
+		Log:                   cloneLogConfig(cfg.Log),
+		Compile:               cloneCompileConfig(cfg.Compile),
+		Auth:                  cloneAuthConfig(cfg.Auth),
+		Server:                cloneServerConfig(cfg.Server),
+		Task:                  cloneTaskConfig(cfg.Task),
+		FrontendEnv:           cloneAnyMap(cfg.FrontendEnv),
+		BackendEnv:            cloneAnyMap(cfg.BackendEnv),
+		Db:                    cloneDbConfig(cfg.Db),
 	}
 }
 

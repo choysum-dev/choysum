@@ -9,21 +9,22 @@ import (
 )
 
 type runtimeScopeInputOptions struct {
-	ModulesPath        string
-	DistPath           string
-	TmpPath            string
-	DefaultChoysumPath string
-	ConfigPath         string
-	NpmPath            string
-	NPMRegistryURL     string
-	Log                *config.LogConfig
-	Compile            *config.CompileConfig
-	Auth               *config.AuthConfig
-	Server             *config.ServerConfig
-	Task               *config.TaskConfig
-	FrontendEnv        map[string]any
-	BackendEnv         map[string]any
-	Db                 *config.DbConfig
+	ModulesPath           string
+	DistPath              string
+	TmpPath               string
+	DefaultChoysumPath    string
+	ConfigPath            string
+	NpmPath               string
+	NPMRegistryURL        string
+	ModuleCatalogIndexURL string
+	Log                   *config.LogConfig
+	Compile               *config.CompileConfig
+	Auth                  *config.AuthConfig
+	Server                *config.ServerConfig
+	Task                  *config.TaskConfig
+	FrontendEnv           map[string]any
+	BackendEnv            map[string]any
+	Db                    *config.DbConfig
 }
 
 func newRuntimeScopeInputOptions(cfg *snapshot.ConfigSnapshot) *runtimeScopeInputOptions {
@@ -32,21 +33,22 @@ func newRuntimeScopeInputOptions(cfg *snapshot.ConfigSnapshot) *runtimeScopeInpu
 		return nil
 	}
 	return &runtimeScopeInputOptions{
-		ModulesPath:        snap.ModulesPath,
-		DistPath:           snap.DistPath,
-		TmpPath:            snap.TmpPath,
-		DefaultChoysumPath: snap.DefaultChoysumPath,
-		ConfigPath:         snap.ConfigPath,
-		NpmPath:            snap.NpmPath,
-		NPMRegistryURL:     snap.NPMRegistryURL,
-		Log:                snap.CopyLogConfig(),
-		Compile:            snap.CopyCompileConfig(),
-		Auth:               snap.CopyAuthConfig(),
-		Server:             snap.CopyServerConfig(),
-		Task:               snap.CopyTaskConfig(),
-		FrontendEnv:        snap.CopyFrontendEnv(),
-		BackendEnv:         snap.CopyBackendEnv(),
-		Db:                 cloneRuntimeScopeDbConfig(snap.Db),
+		ModulesPath:           snap.ModulesPath,
+		DistPath:              snap.DistPath,
+		TmpPath:               snap.TmpPath,
+		DefaultChoysumPath:    snap.DefaultChoysumPath,
+		ConfigPath:            snap.ConfigPath,
+		NpmPath:               snap.NpmPath,
+		NPMRegistryURL:        snap.NPMRegistryURL,
+		ModuleCatalogIndexURL: snap.ModuleCatalogIndexURL,
+		Log:                   snap.CopyLogConfig(),
+		Compile:               snap.CopyCompileConfig(),
+		Auth:                  snap.CopyAuthConfig(),
+		Server:                snap.CopyServerConfig(),
+		Task:                  snap.CopyTaskConfig(),
+		FrontendEnv:           snap.CopyFrontendEnv(),
+		BackendEnv:            snap.CopyBackendEnv(),
+		Db:                    cloneRuntimeScopeDbConfig(snap.Db),
 	}
 }
 
@@ -273,6 +275,13 @@ func (i runtimeScopeInput) NpmRegistryURL() string {
 		return ""
 	}
 	return i.options.NPMRegistryURL
+}
+
+func (i runtimeScopeInput) ModuleCatalogIndexURL() string {
+	if i.options == nil {
+		return ""
+	}
+	return i.options.ModuleCatalogIndexURL
 }
 
 func (i runtimeScopeInput) CompileBundleMode() string {

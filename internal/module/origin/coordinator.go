@@ -13,6 +13,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/module/origin/registry"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -21,7 +22,6 @@ import (
 type Coordinator struct {
 	runtimeScope     scope.Scope
 	lockStore        *LockStore
-	registryStore    *registry.Store
 	registryProvider registry.Provider
 }
 
@@ -31,14 +31,6 @@ func WithLockStore(store *LockStore) Option {
 	return func(c *Coordinator) {
 		if store != nil {
 			c.lockStore = store
-		}
-	}
-}
-
-func WithRegistryStore(store *registry.Store) Option {
-	return func(c *Coordinator) {
-		if store != nil {
-			c.registryStore = store
 		}
 	}
 }
@@ -57,7 +49,6 @@ func NewCoordinator(runtimeScope scope.Scope, opts ...Option) *Coordinator {
 	c := &Coordinator{
 		runtimeScope:     runtimeScope,
 		lockStore:        NewLockStore(WithLockStoreDefaultChoysumPath(defaultChoysumPath)),
-		registryStore:    registry.NewStore(registry.WithDefaultChoysumPath(defaultChoysumPath)),
 		registryProvider: registry.NewProvider(runtimeScope),
 	}
 	for _, opt := range opts {
@@ -149,12 +140,17 @@ func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) stri
 	if parsed.Kind != InputKindRegistry {
 		return strings.TrimSpace(parsed.LocalName)
 	}
+	moduleName := strings.TrimSpace(parsed.ModuleName)
 	if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
 		if resolvedVersion = strings.TrimSpace(resolvedVersion); resolvedVersion != "" {
-			return strings.TrimSpace(parsed.RegistryAlias) + "/" + strings.TrimSpace(parsed.ModuleName) + "@" + resolvedVersion
+			return moduleName + "@" + resolvedVersion
 		}
 	}
-	return parsed.CanonicalRef()
+	version := strings.TrimSpace(parsed.Version)
+	if version == "" {
+		version = "latest"
+	}
+	return moduleName + "@" + version
 }
 
 func resolveBindingIntegrity(catalogIntegrity string, mod *meta.IrModule) string {
@@ -178,22 +174,22 @@ func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput
 }
 
 func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (registrySourceResolution, error) {
-	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
-	if err != nil {
-		return registrySourceResolution{}, err
+	runtimeOpts := runtimeOptionsFromScope(c.runtimeScope)
+	indexURL := strings.TrimSpace(runtimeOpts.moduleCatalogIndexURL)
+	if indexURL == "" {
+		indexURL = config.DefaultModuleCatalogIndexURL
 	}
-	indexURL := strings.TrimSpace(entry.IndexURL)
 	moduleName := strings.TrimSpace(parsed.ModuleName)
 	resolved := registrySourceResolution{}
 
 	catalog := registry.NewCatalog(c.runtimeScope)
 	item, err := catalog.Info(ctx, indexURL, moduleName)
 	if err != nil {
-		return registrySourceResolution{}, xfmt.Errorf("resolve catalog source failed (registry=%s module=%s): %w", strings.TrimSpace(parsed.RegistryAlias), moduleName, err)
+		return registrySourceResolution{}, xfmt.Errorf("resolve catalog source failed (indexURL=%s module=%s): %w", indexURL, moduleName, err)
 	}
 	resolved.packageName = item.ResolvedNPMPackage()
 	if resolved.packageName == "" {
-		return registrySourceResolution{}, xfmt.Errorf("catalog module %q in registry %q has empty npm package source", moduleName, strings.TrimSpace(parsed.RegistryAlias))
+		return registrySourceResolution{}, xfmt.Errorf("catalog module %q has empty npm package source", moduleName)
 	}
 	if sourceRegistry := item.ResolvedNPMRegistry(""); sourceRegistry != "" {
 		resolved.registryURL = sourceRegistry

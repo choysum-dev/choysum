@@ -15,7 +15,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/choysum-dev/choysum/internal/module/origin/registry"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -148,7 +147,12 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	}
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
-		cfg: &config.Config{ModulesPath: modulesPath, ConfigPath: filepath.Join(workspaceRoot, "config.yaml"), DefaultChoysumPath: t.TempDir()},
+		cfg: &config.Config{
+			ModulesPath:           modulesPath,
+			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:    t.TempDir(),
+			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
+		},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 
@@ -157,7 +161,6 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		coordinator := NewCoordinator(
 			runtimeScope,
 			WithLockStore(lockStore),
-			WithRegistryStore(registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))),
 			WithRegistryProvider(&fakeRegistryProvider{}),
 		)
 
@@ -178,18 +181,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	})
 
 	t.Run("resolve registry ref and persist registry binding", func(t *testing.T) {
-		home := t.TempDir()
 		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v2")
 		defer catalog.Close()
-		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-		cfg, err := store.Load()
-		if err != nil {
-			t.Fatalf("registry store load: %v", err)
-		}
-		cfg.Registries["corp"] = registry.Entry{IndexURL: catalog.URL + "/v1/index.json"}
-		if err := store.Save(cfg); err != nil {
-			t.Fatalf("registry store save: %v", err)
-		}
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "@acme/choysum-auth" || version != "v2.0.0" {
@@ -197,9 +191,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			}
 			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v2", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
-		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
-		mod, err := coordinator.ResolveInstallModule(context.Background(), "corp/auth@v2.0.0")
+		mod, err := coordinator.ResolveInstallModule(context.Background(), "auth@v2.0.0")
 		if err != nil {
 			t.Fatalf("ResolveInstallModule(registry) error = %v", err)
 		}
@@ -210,7 +204,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("LookupBinding(registry) error = %v", err)
 		}
-		if !ok || binding.OriginType != "registry" || binding.OriginRef != "corp/auth@v2.0.0" {
+		if !ok || binding.OriginType != "registry" || binding.OriginRef != "auth@v2.0.0" {
 			t.Fatalf("unexpected registry binding: ok=%v binding=%#v", ok, binding)
 		}
 		if binding.ResolvedVersion != "v2.0.0" || binding.Integrity != "sha512-provider-auth-v2" {
@@ -219,18 +213,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	})
 
 	t.Run("resolve registry latest pins origin ref to resolved version", func(t *testing.T) {
-		home := t.TempDir()
 		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "")
 		defer catalog.Close()
-		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-		cfg, err := store.Load()
-		if err != nil {
-			t.Fatalf("registry store load: %v", err)
-		}
-		cfg.Registries["corp"] = registry.Entry{IndexURL: catalog.URL + "/v1/index.json"}
-		if err := store.Save(cfg); err != nil {
-			t.Fatalf("registry store save: %v", err)
-		}
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			if version != "latest" {
@@ -238,9 +223,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			}
 			return &meta.IrModule{Name: "auth", Version: "v2.1.0", Integrity: "sha512-provider-auth-v210", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
-		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
-		mod, err := coordinator.ResolveInstallModule(context.Background(), "corp/auth")
+		mod, err := coordinator.ResolveInstallModule(context.Background(), "auth@latest")
 		if err != nil {
 			t.Fatalf("ResolveInstallModule(registry latest) error = %v", err)
 		}
@@ -254,7 +239,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected registry binding to exist after latest install")
 		}
-		if binding.OriginRef != "corp/auth@v2.1.0" || binding.ResolvedVersion != "v2.1.0" {
+		if binding.OriginRef != "auth@v2.1.0" || binding.ResolvedVersion != "v2.1.0" {
 			t.Fatalf("expected latest ref to pin resolved version, got %#v", binding)
 		}
 		if binding.Integrity != "sha512-provider-auth-v210" {
@@ -263,28 +248,19 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	})
 
 	t.Run("resolve local name does not fallback to registry binding", func(t *testing.T) {
-		home := t.TempDir()
-		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-		cfg, err := store.Load()
-		if err != nil {
-			t.Fatalf("registry store load: %v", err)
-		}
-		cfg.Registries["corp"] = registry.Entry{IndexURL: "https://index.acme.dev/v1/index.json"}
-		if err := store.Save(cfg); err != nil {
-			t.Fatalf("registry store save: %v", err)
-		}
+		runtimeScope.cfg.ModuleCatalogIndexURL = "https://index.acme.dev/v1/index.json"
 
 		fetchCalls := 0
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			fetchCalls++
 			return &meta.IrModule{Name: moduleName, Version: version}, nil
 		}}
-		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
 		if err := lockStore.UpsertBinding(WorkspaceRoot(runtimeScope), Binding{
 			ModuleName:      "auth",
 			OriginType:      OriginTypeRegistry,
-			OriginRef:       "corp/auth@v2.0.0",
+			OriginRef:       "auth@v2.0.0",
 			ResolvedVersion: "v2.0.0",
 		}); err != nil {
 			t.Fatalf("upsert lock binding: %v", err)
@@ -294,7 +270,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			t.Fatalf("remove local module dir: %v", err)
 		}
 
-		_, err = coordinator.ResolveInstallModule(context.Background(), "auth")
+		_, err := coordinator.ResolveInstallModule(context.Background(), "auth")
 		if err == nil || !strings.Contains(err.Error(), "not found in modules path") {
 			t.Fatalf("expected local missing error, got %v", err)
 		}
@@ -304,19 +280,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	})
 
 	t.Run("resolve registry ref rejects empty catalog npm package", func(t *testing.T) {
-		home := t.TempDir()
 		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org", "")
 		defer catalog.Close()
-
-		store := registry.NewStore(registry.WithHomeDir(home), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-		cfg, err := store.Load()
-		if err != nil {
-			t.Fatalf("registry store load: %v", err)
-		}
-		cfg.Registries["corp"] = registry.Entry{IndexURL: catalog.URL + "/v1/index.json"}
-		if err := store.Save(cfg); err != nil {
-			t.Fatalf("registry store save: %v", err)
-		}
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		fetchCalls := 0
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
@@ -324,8 +290,8 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			return &meta.IrModule{Name: moduleName, Version: version}, nil
 		}}
 
-		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryStore(store), WithRegistryProvider(provider))
-		_, err = coordinator.ResolveInstallModule(context.Background(), "corp/auth@v2.0.0")
+		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
+		_, err := coordinator.ResolveInstallModule(context.Background(), "auth@v2.0.0")
 		if err == nil || !strings.Contains(err.Error(), "empty npm package source") {
 			t.Fatalf("expected empty npm package source error, got %v", err)
 		}
@@ -344,13 +310,17 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 	}
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
-		cfg: &config.Config{ModulesPath: modulesPath, ConfigPath: filepath.Join(workspaceRoot, "config.yaml"), DefaultChoysumPath: t.TempDir()},
+		cfg: &config.Config{
+			ModulesPath:           modulesPath,
+			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:    t.TempDir(),
+			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
+		},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 	coordinator := NewCoordinator(
 		runtimeScope,
 		WithLockStore(lockStore),
-		WithRegistryStore(registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))),
 		WithRegistryProvider(&fakeRegistryProvider{}),
 	)
 
@@ -464,19 +434,12 @@ func TestCoordinatorResolveRegistrySourceErrorBranches(t *testing.T) {
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:        t.TempDir(),
-			ConfigPath:         filepath.Join(t.TempDir(), "config.yaml"),
-			DefaultChoysumPath: t.TempDir(),
+			ModulesPath:           t.TempDir(),
+			ConfigPath:            filepath.Join(t.TempDir(), "config.yaml"),
+			DefaultChoysumPath:    t.TempDir(),
+			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
 		},
 	}
-
-	t.Run("registry alias resolve error", func(t *testing.T) {
-		store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
-		if _, err := coordinator.resolveRegistrySource(context.Background(), ParsedInput{Kind: InputKindRegistry, RegistryAlias: "missing", ModuleName: "auth", Version: "latest"}); err == nil {
-			t.Fatal("expected resolveRegistrySource to fail for missing alias")
-		}
-	})
 
 	t.Run("catalog info error is wrapped", func(t *testing.T) {
 		catalogServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -484,18 +447,10 @@ func TestCoordinatorResolveRegistrySourceErrorBranches(t *testing.T) {
 		}))
 		defer catalogServer.Close()
 
-		store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-		cfg, err := store.Load()
-		if err != nil {
-			t.Fatalf("registry store load: %v", err)
-		}
-		cfg.Registries["corp"] = registry.Entry{IndexURL: catalogServer.URL + "/v1/index.json"}
-		if err := store.Save(cfg); err != nil {
-			t.Fatalf("registry store save: %v", err)
-		}
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalogServer.URL + "/v1/index.json"
 
-		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
-		_, err = coordinator.resolveRegistrySource(context.Background(), ParsedInput{Kind: InputKindRegistry, RegistryAlias: "corp", ModuleName: "auth", Version: "latest"})
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		_, err := coordinator.resolveRegistrySource(context.Background(), ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"})
 		if err == nil || !strings.Contains(err.Error(), "resolve catalog source failed") {
 			t.Fatalf("expected wrapped catalog source error, got %v", err)
 		}
@@ -513,23 +468,15 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:        modulesPath,
-			ConfigPath:         filepath.Join(workspaceRoot, "config.yaml"),
-			DefaultChoysumPath: t.TempDir(),
+			ModulesPath:           modulesPath,
+			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:    t.TempDir(),
+			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
 		},
 	}
 	catalogServer := startCoordinatorCatalogServer(t, "auth", "https://registry.npmjs.org", "")
 	defer catalogServer.Close()
-
-	store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
-	cfg, err := store.Load()
-	if err != nil {
-		t.Fatalf("registry store load: %v", err)
-	}
-	cfg.Registries["corp"] = registry.Entry{IndexURL: catalogServer.URL + "/v1/index.json"}
-	if err := store.Save(cfg); err != nil {
-		t.Fatalf("registry store save: %v", err)
-	}
+	runtimeScope.cfg.ModuleCatalogIndexURL = catalogServer.URL + "/v1/index.json"
 
 	t.Run("registry input uses provider PeekManifest", func(t *testing.T) {
 		peekCalls := 0
@@ -541,8 +488,8 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 			return &meta.IrModule{Name: "auth", Version: "v2.0.0"}, nil
 		}}
 
-		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
-		mod, err := coordinator.Peek(context.Background(), "corp/auth@v2.0.0")
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		mod, err := coordinator.Peek(context.Background(), "auth@v2.0.0")
 		if err != nil {
 			t.Fatalf("Peek(registry) error = %v", err)
 		}
@@ -555,18 +502,18 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 	})
 
 	t.Run("registry peek requires provider", func(t *testing.T) {
-		parsed, err := ParseInput("corp/auth@v2.0.0")
+		parsed, err := ParseInput("auth@v2.0.0")
 		if err != nil {
 			t.Fatalf("ParseInput() error = %v", err)
 		}
-		coordinator := &Coordinator{runtimeScope: runtimeScope, registryStore: store}
+		coordinator := &Coordinator{runtimeScope: runtimeScope}
 		if _, err := coordinator.peekRegistryModule(context.Background(), parsed); err == nil || !strings.Contains(err.Error(), "registry provider is nil") {
 			t.Fatalf("expected registry provider nil error, got %v", err)
 		}
 	})
 
 	t.Run("local module missing", func(t *testing.T) {
-		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
 		if _, err := coordinator.Peek(context.Background(), "missing"); err == nil || !strings.Contains(err.Error(), "not found in modules path") {
 			t.Fatalf("expected local missing error, got %v", err)
 		}
@@ -574,7 +521,7 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 
 	t.Run("local module success", func(t *testing.T) {
 		writeSourceTestPackageJSON(t, modulesPath, "auth", &meta.IrModule{Version: "2.1.0", ApplicationStr: "auth"})
-		coordinator := NewCoordinator(runtimeScope, WithRegistryStore(store), WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
 		mod, err := coordinator.Peek(context.Background(), "auth")
 		if err != nil {
 			t.Fatalf("Peek(local) error = %v", err)

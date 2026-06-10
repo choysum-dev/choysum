@@ -76,6 +76,13 @@ func (i configFactoryInput) NpmRegistryURL() string {
 	return i.cfg.NPMRegistryURL
 }
 
+func (i configFactoryInput) ModuleCatalogIndexURL() string {
+	if i.cfg == nil {
+		return ""
+	}
+	return i.cfg.ModuleCatalogIndexURL
+}
+
 func (i configFactoryInput) CompileConfig() *config.CompileConfig {
 	if i.cfg == nil {
 		return nil

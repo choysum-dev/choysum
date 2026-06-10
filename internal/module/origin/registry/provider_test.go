@@ -177,7 +177,7 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.PeekManifest(context.Background(), "https://github.com/acme/registry", "auth", "@choysum/module-auth", "v1.2.3")
+	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "v1.2.3")
 	if err != nil {
 		t.Fatalf("PeekManifest() error = %v", err)
 	}
@@ -682,21 +682,23 @@ func TestProviderHelperNormalizationBranches(t *testing.T) {
 		t.Fatalf("fallback registry base = %q, want %q", fallback, "https://registry.npmjs.org")
 	}
 
-	fromGitHub, err := normalizeRegistryMetadataBaseURL("https://github.com/acme/catalog", "https://registry.npmjs.org")
-	if err != nil {
-		t.Fatalf("normalizeRegistryMetadataBaseURL(github) error = %v", err)
-	}
-	if fromGitHub != "https://registry.npmjs.org" {
-		t.Fatalf("github registry should fallback to default, got %q", fromGitHub)
+	assertLegacyRegistrySourceRejected := func(registryURL string) {
+		t.Helper()
+		_, err := normalizeRegistryMetadataBaseURL(registryURL, "https://registry.npmjs.org")
+		if err == nil {
+			t.Fatalf("normalizeRegistryMetadataBaseURL(%s): expected legacy source rejection", registryURL)
+		}
+		if !strings.Contains(err.Error(), "no longer supported") {
+			t.Fatalf("normalizeRegistryMetadataBaseURL(%s): expected no longer supported guidance, got %v", registryURL, err)
+		}
+		if !strings.Contains(err.Error(), "module_catalog_index_url") {
+			t.Fatalf("normalizeRegistryMetadataBaseURL(%s): expected module_catalog_index_url guidance, got %v", registryURL, err)
+		}
 	}
 
-	fromAPI, err := normalizeRegistryMetadataBaseURL("https://catalog.acme.dev/api/v1/modules", "https://registry.npmjs.org")
-	if err != nil {
-		t.Fatalf("normalizeRegistryMetadataBaseURL(api) error = %v", err)
-	}
-	if fromAPI != "https://registry.npmjs.org" {
-		t.Fatalf("api/json registry should fallback to default, got %q", fromAPI)
-	}
+	assertLegacyRegistrySourceRejected("https://github.com/acme/catalog")
+	assertLegacyRegistrySourceRejected("https://catalog.acme.dev/api/v1/modules")
+	assertLegacyRegistrySourceRejected("https://index.acme.dev/v1/index.json")
 
 	custom, err := normalizeRegistryMetadataBaseURL("https://registry.acme.dev/custom/", "https://registry.npmjs.org")
 	if err != nil {

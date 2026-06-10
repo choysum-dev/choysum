@@ -21,7 +21,7 @@ import (
 func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	cmd := &cobra.Command{
-		Use:   "install",
+		Use:   "install <module|module@version> [<module|module@version>...]",
 		Short: "Install Choysum Module",
 		PreRun: func(cmd *cobra.Command, args []string) {
 			env := envGetter()
@@ -84,7 +84,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
 							if strings.Contains(peekErr.Error(), "not found in modules path") {
-								peekErr = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
+								peekErr = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
 							}
 							return peekErr
 						}
@@ -99,7 +99,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					return nil
 				}); err != nil {
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && strings.Contains(err.Error(), "not found in modules path") {
-						err = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <registry>/<module>@<version>` or `choysum install <registry>/<module>@<version>`", moduleName)
+						err = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
 					}
 					attrs := []any{"error", err}
 					attrs = append(attrs, moduleCommandFailureAttrs("install")...)

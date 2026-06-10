@@ -210,7 +210,7 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 	if err := store.UpsertBinding(workspaceRoot, Binding{
 		ModuleName:      "auth",
 		OriginType:      OriginTypeRegistry,
-		OriginRef:       "official/auth@v1.2.3",
+		OriginRef:       "auth@v1.2.3",
 		ResolvedVersion: "v1.2.3",
 		Integrity:       "sha512-auth-v1.2.3",
 		LocalPath:       "/tmp/modules/auth",
@@ -222,7 +222,7 @@ func TestLockStoreUpsertLookupDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LookupBinding() error = %v", err)
 	}
-	if !ok || binding.OriginRef != "official/auth@v1.2.3" {
+	if !ok || binding.OriginRef != "auth@v1.2.3" {
 		t.Fatalf("unexpected binding after upsert: ok=%v binding=%#v", ok, binding)
 	}
 	if binding.Integrity != "sha512-auth-v1.2.3" {
@@ -250,7 +250,7 @@ func TestLockStoreUpsertBindingSameContentDoesNotRewriteFile(t *testing.T) {
 	binding := Binding{
 		ModuleName:      "auth",
 		OriginType:      OriginTypeRegistry,
-		OriginRef:       "corp/auth@v2.0.0",
+		OriginRef:       "auth@v2.0.0",
 		ResolvedVersion: "v2.0.0",
 		Integrity:       "sha512-auth-v2",
 		LocalPath:       "/tmp/modules/auth",

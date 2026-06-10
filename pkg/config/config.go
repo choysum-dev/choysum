@@ -15,16 +15,20 @@ import (
 
 var maxProcs = runtime.GOMAXPROCS(0)
 
-const DefaultNPMRegistryURL = "https://registry.npmjs.org"
+const (
+	DefaultNPMRegistryURL        = "https://registry.npmjs.org"
+	DefaultModuleCatalogIndexURL = "https://index.choysum.dev/v1/index.json"
+)
 
 type Config struct {
-	ConfigPath         string `mapstructure:"-"`
-	ModulesPath        string `mapstructure:"modules_path"`
-	DistPath           string `mapstructure:"dist_path"`
-	NpmPath            string `mapstructure:"npm_path"`
-	NPMRegistryURL     string `mapstructure:"npm_registry_url"`
-	DefaultChoysumPath string `mapstructure:"default_choysum_path"`
-	TmpPath            string `mapstructure:"tmp_path"`
+	ConfigPath            string `mapstructure:"-"`
+	ModulesPath           string `mapstructure:"modules_path"`
+	DistPath              string `mapstructure:"dist_path"`
+	NpmPath               string `mapstructure:"npm_path"`
+	NPMRegistryURL        string `mapstructure:"npm_registry_url"`
+	ModuleCatalogIndexURL string `mapstructure:"module_catalog_index_url"`
+	DefaultChoysumPath    string `mapstructure:"default_choysum_path"`
+	TmpPath               string `mapstructure:"tmp_path"`
 
 	Log         *LogConfig      `mapstructure:"log"`
 	Db          *DbConfig       `mapstructure:"db"`
@@ -113,6 +117,9 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	if err := rejectLegacyJWTIdentityCacheKeys(v); err != nil {
 		return stageError(LoadStageValidate, err)
 	}
+	if err := rejectLegacyModuleCatalogConfigKeys(v); err != nil {
+		return stageError(LoadStageValidate, err)
+	}
 	if err := v.Unmarshal(c); err != nil {
 		return stageError(LoadStageDecode, xfmt.Errorf("unmarshal config failed: %v", err))
 	}
@@ -133,6 +140,13 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	c.NPMRegistryURL = strings.TrimSpace(c.NPMRegistryURL)
 	if c.NPMRegistryURL == "" {
 		c.NPMRegistryURL = DefaultNPMRegistryURL
+	}
+	c.ModuleCatalogIndexURL = strings.TrimSpace(c.ModuleCatalogIndexURL)
+	if c.ModuleCatalogIndexURL == "" {
+		c.ModuleCatalogIndexURL = DefaultModuleCatalogIndexURL
+	}
+	if err := ValidateModuleCatalogIndexURL(c.ModuleCatalogIndexURL); err != nil {
+		return stageError(LoadStageValidate, err)
 	}
 
 	if err := c.normalizeAndMergeAuthConfig(); err != nil {
@@ -298,20 +312,21 @@ func defaultConfig() *Config {
 	}
 
 	return &Config{
-		ModulesPath:        modulesPath,
-		DistPath:           "",
-		NpmPath:            npmPath,
-		NPMRegistryURL:     DefaultNPMRegistryURL,
-		DefaultChoysumPath: "",
-		TmpPath:            "",
-		Log:                NewDefaultLogConfig(),
-		Db:                 NewDefaultDbConfig(),
-		Compile:            NewDefaultCompileConfig(),
-		Server:             NewDefaultServerConfig(),
-		Document:           NewDefaultDocumentConfig(),
-		Task:               NewDefaultTaskConfig(),
-		FrontendEnv:        make(map[string]any),
-		BackendEnv:         make(map[string]any),
+		ModulesPath:           modulesPath,
+		DistPath:              "",
+		NpmPath:               npmPath,
+		NPMRegistryURL:        DefaultNPMRegistryURL,
+		ModuleCatalogIndexURL: DefaultModuleCatalogIndexURL,
+		DefaultChoysumPath:    "",
+		TmpPath:               "",
+		Log:                   NewDefaultLogConfig(),
+		Db:                    NewDefaultDbConfig(),
+		Compile:               NewDefaultCompileConfig(),
+		Server:                NewDefaultServerConfig(),
+		Document:              NewDefaultDocumentConfig(),
+		Task:                  NewDefaultTaskConfig(),
+		FrontendEnv:           make(map[string]any),
+		BackendEnv:            make(map[string]any),
 	}
 }
 

@@ -127,6 +127,9 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("npm_registry_url = %q, want %q", cfg.NPMRegistryURL, DefaultNPMRegistryURL)
 	}
+	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+		t.Fatalf("module_catalog_index_url = %q, want %q", cfg.ModuleCatalogIndexURL, DefaultModuleCatalogIndexURL)
+	}
 	if strings.TrimSpace(cfg.DefaultChoysumPath) == "" {
 		t.Fatal("expected default_choysum_path to be non-empty")
 	}
@@ -197,6 +200,36 @@ auth:
 	}
 	if !strings.Contains(err.Error(), "auth.jwt.cacheTTL (use auth.jwt.identityCache.ttl)") {
 		t.Fatalf("expected cacheTTL guidance in error, got %v", err)
+	}
+}
+
+func TestNewConfigRejectsLegacyModuleCatalogKeys(t *testing.T) {
+	cfgPath := writeTestConfig(t, `
+registry_index_url: https://index.example.dev/v1/index.json
+registries:
+  official:
+    url: https://index.example.dev/v1/index.json
+    indexURL: https://index.example.dev/v1/index.json
+`)
+
+	_, err := NewConfig(cfgPath)
+	if err == nil {
+		t.Fatal("expected legacy module catalog keys to be rejected")
+	}
+	if !strings.Contains(err.Error(), "legacy module catalog config keys are no longer supported") {
+		t.Fatalf("expected legacy module catalog rejection header, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registry_index_url (use module_catalog_index_url)") {
+		t.Fatalf("expected registry_index_url guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registries (use module_catalog_index_url)") {
+		t.Fatalf("expected registries guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registries.official.url (use module_catalog_index_url)") {
+		t.Fatalf("expected registries.official.url guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registries.official.indexURL (use module_catalog_index_url)") {
+		t.Fatalf("expected registries.official.indexURL guidance, got %v", err)
 	}
 }
 
@@ -485,6 +518,9 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
 	}
+	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
+	}
 }
 
 func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
@@ -526,6 +562,9 @@ func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
 	}
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
+	}
+	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
 	}
 	if cfg.Log == nil || cfg.Db == nil || cfg.Compile == nil || cfg.Server == nil || cfg.Task == nil {
 		t.Fatalf("expected nested defaults to be initialized: %#v", cfg)
@@ -614,8 +653,10 @@ modules_path: from-config
 	t.Run("custom env prefix overrides config values", func(t *testing.T) {
 		envModules := filepath.Join(t.TempDir(), "env-modules")
 		envNPMRegistryURL := "https://registry.npmmirror.com"
+		envModuleCatalogIndexURL := "https://index.example.dev/v1/index.json"
 		t.Setenv("CHOYSUM_TEST_MODULES_PATH", envModules)
 		t.Setenv("CHOYSUM_TEST_NPM_REGISTRY_URL", envNPMRegistryURL)
+		t.Setenv("CHOYSUM_TEST_MODULE_CATALOG_INDEX_URL", envModuleCatalogIndexURL)
 
 		cfg := defaultConfig()
 		if err := cfg.unmarshal(cfgPath, WithEnvPrefix("CHOYSUM_TEST")); err != nil {
@@ -626,6 +667,19 @@ modules_path: from-config
 		}
 		if cfg.NPMRegistryURL != envNPMRegistryURL {
 			t.Fatalf("npm_registry_url = %q, want env override %q", cfg.NPMRegistryURL, envNPMRegistryURL)
+		}
+		if cfg.ModuleCatalogIndexURL != envModuleCatalogIndexURL {
+			t.Fatalf("module_catalog_index_url = %q, want env override %q", cfg.ModuleCatalogIndexURL, envModuleCatalogIndexURL)
+		}
+	})
+
+	t.Run("invalid module catalog index url fails validation", func(t *testing.T) {
+		cfg := defaultConfig()
+		err := cfg.unmarshal(cfgPath, WithDefaults(func(cfg *Config) {
+			cfg.ModuleCatalogIndexURL = "https://index.example.dev/v1/catalog.json"
+		}))
+		if err == nil || !strings.Contains(err.Error(), "module_catalog_index_url") {
+			t.Fatalf("expected invalid module_catalog_index_url validation error, got %v", err)
 		}
 	})
 
