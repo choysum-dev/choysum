@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/module/origin/registry"
@@ -23,6 +24,8 @@ type Coordinator struct {
 	runtimeScope     scope.Scope
 	lockStore        *LockStore
 	registryProvider registry.Provider
+	resolutionCache  map[string]registrySourceResolution
+	cacheMu          sync.RWMutex
 }
 
 type Option func(*Coordinator)
@@ -50,6 +53,7 @@ func NewCoordinator(runtimeScope scope.Scope, opts ...Option) *Coordinator {
 		runtimeScope:     runtimeScope,
 		lockStore:        NewLockStore(WithLockStoreDefaultChoysumPath(defaultChoysumPath)),
 		registryProvider: registry.NewProvider(runtimeScope),
+		resolutionCache:  make(map[string]registrySourceResolution),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -180,6 +184,10 @@ func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedIn
 		indexURL = config.DefaultModuleCatalogIndexURL
 	}
 	moduleName := strings.TrimSpace(parsed.ModuleName)
+	cacheKey := registrySourceResolutionCacheKey(indexURL, moduleName)
+	if resolved, ok := c.lookupRegistrySourceResolution(cacheKey); ok {
+		return resolved, nil
+	}
 	resolved := registrySourceResolution{}
 
 	catalog := registry.NewCatalog(c.runtimeScope)
@@ -197,8 +205,40 @@ func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedIn
 	if item.Source != nil {
 		resolved.integrity = strings.TrimSpace(item.Source.Integrity)
 	}
+	c.cacheRegistrySourceResolution(cacheKey, resolved)
 
 	return resolved, nil
+}
+
+func registrySourceResolutionCacheKey(indexURL, moduleName string) string {
+	indexURL = strings.TrimSpace(indexURL)
+	moduleName = strings.TrimSpace(moduleName)
+	if indexURL == "" || moduleName == "" {
+		return ""
+	}
+	return indexURL + "|" + moduleName
+}
+
+func (c *Coordinator) lookupRegistrySourceResolution(cacheKey string) (registrySourceResolution, bool) {
+	if c == nil || cacheKey == "" {
+		return registrySourceResolution{}, false
+	}
+	c.cacheMu.RLock()
+	defer c.cacheMu.RUnlock()
+	resolved, ok := c.resolutionCache[cacheKey]
+	return resolved, ok
+}
+
+func (c *Coordinator) cacheRegistrySourceResolution(cacheKey string, resolved registrySourceResolution) {
+	if c == nil || cacheKey == "" {
+		return
+	}
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	if c.resolutionCache == nil {
+		c.resolutionCache = make(map[string]registrySourceResolution)
+	}
+	c.resolutionCache[cacheKey] = resolved
 }
 
 func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, error) {

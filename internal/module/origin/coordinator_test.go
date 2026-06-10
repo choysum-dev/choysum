@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -453,6 +454,123 @@ func TestCoordinatorResolveRegistrySourceErrorBranches(t *testing.T) {
 		_, err := coordinator.resolveRegistrySource(context.Background(), ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"})
 		if err == nil || !strings.Contains(err.Error(), "resolve catalog source failed") {
 			t.Fatalf("expected wrapped catalog source error, got %v", err)
+		}
+	})
+}
+
+func TestCoordinatorResolveRegistrySourceCaching(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	newRuntimeScope := func() *sourceTestScope {
+		return &sourceTestScope{
+			ctx: context.Background(),
+			cfg: &config.Config{
+				ModulesPath:           t.TempDir(),
+				ConfigPath:            filepath.Join(t.TempDir(), "config.yaml"),
+				DefaultChoysumPath:    t.TempDir(),
+				ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
+			},
+		}
+	}
+
+	startCacheCatalogServer := func(t *testing.T, npmPackage, sourceRegistry string, hits *int32) *httptest.Server {
+		t.Helper()
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.TrimSpace(r.URL.Path) != "/v1/index.json" {
+				http.NotFound(w, r)
+				return
+			}
+			if r.Method != http.MethodGet {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			atomic.AddInt32(hits, 1)
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"modules": map[string]any{
+					"auth": map[string]any{
+						"moduleId":      "auth",
+						"latestVersion": "v2.0.0",
+						"package":       npmPackage,
+						"versions": map[string]any{
+							"v2.0.0": map[string]any{
+								"source": map[string]any{
+									"type":     "npm",
+									"registry": sourceRegistry,
+									"package":  npmPackage,
+								},
+							},
+						},
+					},
+				},
+			})
+		}))
+	}
+
+	parsed := ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"}
+
+	t.Run("same module under same index uses cache", func(t *testing.T) {
+		var hits int32
+		catalogServer := startCacheCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", &hits)
+		defer catalogServer.Close()
+
+		runtimeScope := newRuntimeScope()
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalogServer.URL + "/v1/index.json"
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}))
+
+		for i := 0; i < 3; i++ {
+			resolved, err := coordinator.resolveRegistrySource(context.Background(), parsed)
+			if err != nil {
+				t.Fatalf("resolveRegistrySource() error = %v", err)
+			}
+			if resolved.packageName != "@acme/choysum-auth" {
+				t.Fatalf("packageName = %q, want %q", resolved.packageName, "@acme/choysum-auth")
+			}
+			if resolved.registryURL != "https://registry.npmjs.org" {
+				t.Fatalf("registryURL = %q, want %q", resolved.registryURL, "https://registry.npmjs.org")
+			}
+		}
+
+		if got := atomic.LoadInt32(&hits); got != 1 {
+			t.Fatalf("catalog server hit count = %d, want 1", got)
+		}
+	})
+
+	t.Run("cache key includes index url", func(t *testing.T) {
+		var hitsA int32
+		catalogA := startCacheCatalogServer(t, "@acme/choysum-auth-a", "https://registry-a.example.dev", &hitsA)
+		defer catalogA.Close()
+
+		var hitsB int32
+		catalogB := startCacheCatalogServer(t, "@acme/choysum-auth-b", "https://registry-b.example.dev", &hitsB)
+		defer catalogB.Close()
+
+		runtimeScope := newRuntimeScope()
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}))
+
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalogA.URL + "/v1/index.json"
+		resolvedA, err := coordinator.resolveRegistrySource(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("resolveRegistrySource(indexA) error = %v", err)
+		}
+		if resolvedA.packageName != "@acme/choysum-auth-a" || resolvedA.registryURL != "https://registry-a.example.dev" {
+			t.Fatalf("unexpected resolution from indexA: %#v", resolvedA)
+		}
+
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalogB.URL + "/v1/index.json"
+		resolvedB, err := coordinator.resolveRegistrySource(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("resolveRegistrySource(indexB) error = %v", err)
+		}
+		if resolvedB.packageName != "@acme/choysum-auth-b" || resolvedB.registryURL != "https://registry-b.example.dev" {
+			t.Fatalf("unexpected resolution from indexB: %#v", resolvedB)
+		}
+
+		if got := atomic.LoadInt32(&hitsA); got != 1 {
+			t.Fatalf("catalogA hit count = %d, want 1", got)
+		}
+		if got := atomic.LoadInt32(&hitsB); got != 1 {
+			t.Fatalf("catalogB hit count = %d, want 1", got)
 		}
 	})
 }
