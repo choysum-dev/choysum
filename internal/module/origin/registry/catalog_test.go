@@ -747,6 +747,24 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 		t.Fatal("normalizeSemVer(invalid) should fail")
 	}
 
+	semverEquivalent := []string{"v1.2.3", "1.2.3"}
+	sortCatalogVersions(semverEquivalent)
+	if len(semverEquivalent) != 2 || semverEquivalent[0] != "1.2.3" || semverEquivalent[1] != "v1.2.3" {
+		t.Fatalf("sortCatalogVersions(semver equivalent) = %#v, want [1.2.3 v1.2.3]", semverEquivalent)
+	}
+
+	mixed := []string{"v1.0.0", "alpha"}
+	sortCatalogVersions(mixed)
+	if len(mixed) != 2 || mixed[0] != "alpha" || mixed[1] != "v1.0.0" {
+		t.Fatalf("sortCatalogVersions(mixed) = %#v, want [alpha v1.0.0]", mixed)
+	}
+
+	nonSemVer := []string{"beta", "alpha"}
+	sortCatalogVersions(nonSemVer)
+	if len(nonSemVer) != 2 || nonSemVer[0] != "alpha" || nonSemVer[1] != "beta" {
+		t.Fatalf("sortCatalogVersions(non-semver) = %#v, want [alpha beta]", nonSemVer)
+	}
+
 	mod := &CatalogModule{
 		Name:          " auth ",
 		LatestVersion: "",

@@ -76,6 +76,32 @@ func TestStoreResolveValidationPaths(t *testing.T) {
 	}
 }
 
+func TestIsValidRegistryIndexURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		raw   string
+		valid bool
+	}{
+		{name: "valid url", raw: "https://index.example.com/v1/index.json", valid: true},
+		{name: "valid url with spaces", raw: "  https://index.example.com/v1/index.json  ", valid: true},
+		{name: "invalid parse", raw: "://bad-url", valid: false},
+		{name: "invalid scheme", raw: "ftp://index.example.com/v1/index.json", valid: false},
+		{name: "missing host", raw: "https:///v1/index.json", valid: false},
+		{name: "invalid path", raw: "https://index.example.com/v1/catalog.json", valid: false},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isValidRegistryIndexURL(tt.raw); got != tt.valid {
+				t.Fatalf("isValidRegistryIndexURL(%q) = %v, want %v", tt.raw, got, tt.valid)
+			}
+		})
+	}
+}
+
 func TestStoreFilePathDefaultsAndCloneNormalization(t *testing.T) {
 	root := t.TempDir()
 	store := NewStore(WithDefaultChoysumPath(root))
