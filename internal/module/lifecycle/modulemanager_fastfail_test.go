@@ -108,7 +108,7 @@ func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
 	locker := &moduleIndexSyncTestLocker{}
-	coordinator := &fastFailOriginCoordinator{peekErr: errors.New("registry alias not found")}
+	coordinator := &fastFailOriginCoordinator{peekErr: errors.New("module catalog source not found")}
 
 	manager := NewModuleManager(
 		runtimeScope,
@@ -117,15 +117,15 @@ func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
 	)
 
-	err := manager.Upgrade(context.Background(), "registry/task@1.0.0")
-	if err == nil || !strings.Contains(err.Error(), "registry alias not found") {
+	err := manager.Upgrade(context.Background(), "task@1.0.0")
+	if err == nil || !strings.Contains(err.Error(), "module catalog source not found") {
 		t.Fatalf("Upgrade() error = %v, want registry peek error", err)
 	}
 	if locker.acquired != 0 {
 		t.Fatalf("locker Acquire calls = %d, want 0", locker.acquired)
 	}
-	if len(coordinator.peekInputs) != 1 || coordinator.peekInputs[0] != "registry/task@1.0.0" {
-		t.Fatalf("peek inputs = %#v, want [registry/task@1.0.0]", coordinator.peekInputs)
+	if len(coordinator.peekInputs) != 1 || coordinator.peekInputs[0] != "task@1.0.0" {
+		t.Fatalf("peek inputs = %#v, want [task@1.0.0]", coordinator.peekInputs)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestModuleManagerUpgradeRegistryEntersLeaseBeforeOriginSwitchFailure(t *tes
 	)
 	manager.bootstrapOnce.Do(func() {})
 
-	err := manager.Upgrade(context.Background(), "registry/task@1.0.0")
+	err := manager.Upgrade(context.Background(), "task@1.0.0")
 	if err == nil || !strings.Contains(err.Error(), "scope config is not initialized") {
 		t.Fatalf("Upgrade() error = %v, want origin switch config error", err)
 	}

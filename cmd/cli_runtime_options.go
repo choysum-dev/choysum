@@ -6,15 +6,17 @@ package cmd
 import (
 	"strings"
 
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 type cliRuntimeOptions struct {
-	defaultChoysumPath string
-	modulesPath        string
-	npmPath            string
-	tmpPath            string
+	defaultChoysumPath    string
+	modulesPath           string
+	npmPath               string
+	tmpPath               string
+	moduleCatalogIndexURL string
 }
 
 func newCliRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) cliRuntimeOptions {
@@ -22,10 +24,11 @@ func newCliRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) 
 		return cliRuntimeOptions{}
 	}
 	return cliRuntimeOptions{
-		defaultChoysumPath: pathOpts.DefaultChoysumPath,
-		modulesPath:        pathOpts.ModulesPath,
-		npmPath:            pathOpts.NpmPath,
-		tmpPath:            pathOpts.TmpPath,
+		defaultChoysumPath:    pathOpts.DefaultChoysumPath,
+		modulesPath:           pathOpts.ModulesPath,
+		npmPath:               pathOpts.NpmPath,
+		tmpPath:               pathOpts.TmpPath,
+		moduleCatalogIndexURL: strings.TrimSpace(pathOpts.ModuleCatalogIndexURL),
 	}
 }
 
@@ -34,10 +37,11 @@ func newCliRuntimeOptionsFromScopeInputOptions(options *scopeInputConfigOptions)
 		return cliRuntimeOptions{}
 	}
 	return cliRuntimeOptions{
-		defaultChoysumPath: options.DefaultChoysumPath,
-		modulesPath:        options.ModulesPath,
-		npmPath:            options.NpmPath,
-		tmpPath:            options.TmpPath,
+		defaultChoysumPath:    options.DefaultChoysumPath,
+		modulesPath:           options.ModulesPath,
+		npmPath:               options.NpmPath,
+		tmpPath:               options.TmpPath,
+		moduleCatalogIndexURL: strings.TrimSpace(options.ModuleCatalogIndexURL),
 	}
 }
 
@@ -64,6 +68,13 @@ func (o cliRuntimeOptions) Validate() error {
 	}
 	if strings.TrimSpace(o.tmpPath) == "" {
 		return xfmt.Errorf("cli runtime options: tmpPath is required")
+	}
+	moduleCatalogIndexURL := strings.TrimSpace(o.moduleCatalogIndexURL)
+	if moduleCatalogIndexURL == "" {
+		moduleCatalogIndexURL = config.DefaultModuleCatalogIndexURL
+	}
+	if err := config.ValidateModuleCatalogIndexURL(moduleCatalogIndexURL); err != nil {
+		return err
 	}
 	return nil
 }

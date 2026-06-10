@@ -96,3 +96,15 @@ func TestRuntimeScopeInputMutationIsolation(t *testing.T) {
 		t.Fatalf("BackendEnv leaked nested list/map mutation, got %v", got)
 	}
 }
+
+func TestRuntimeScopeInputModuleCatalogIndexURLBranches(t *testing.T) {
+	input := newRuntimeScopeInput(snapshot.New(&config.Config{ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json"}), e2eRuntimeOptions{})
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.example.dev/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() = %q, want https://index.example.dev/v1/index.json", got)
+	}
+
+	nilOptionsInput := newRuntimeScopeInput(nil, e2eRuntimeOptions{})
+	if got := nilOptionsInput.ModuleCatalogIndexURL(); got != "" {
+		t.Fatalf("ModuleCatalogIndexURL() with nil options = %q, want empty", got)
+	}
+}

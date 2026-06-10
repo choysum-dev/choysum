@@ -4,23 +4,33 @@
 package origin
 
 import (
+	"strings"
+
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 type runtimeOptions struct {
-	modulesPath        string
-	configPath         string
-	defaultChoysumPath string
+	modulesPath           string
+	configPath            string
+	defaultChoysumPath    string
+	moduleCatalogIndexURL string
 }
 
 func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) runtimeOptions {
 	if !hasPathOpts {
 		return runtimeOptions{}
 	}
+	moduleCatalogIndexURL := strings.TrimSpace(pathOpts.ModuleCatalogIndexURL)
+	if moduleCatalogIndexURL == "" {
+		moduleCatalogIndexURL = config.DefaultModuleCatalogIndexURL
+	}
+
 	return runtimeOptions{
-		modulesPath:        pathOpts.ModulesPath,
-		configPath:         pathOpts.ConfigPath,
-		defaultChoysumPath: pathOpts.DefaultChoysumPath,
+		modulesPath:           pathOpts.ModulesPath,
+		configPath:            pathOpts.ConfigPath,
+		defaultChoysumPath:    pathOpts.DefaultChoysumPath,
+		moduleCatalogIndexURL: moduleCatalogIndexURL,
 	}
 }
 

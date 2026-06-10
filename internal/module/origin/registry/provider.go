@@ -136,9 +136,6 @@ func normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL string) (s
 	if registryURL == "" {
 		return fallbackBaseURL, nil
 	}
-	if strings.HasPrefix(registryURL, "https://github.com/") {
-		return fallbackBaseURL, nil
-	}
 
 	parsed, err := url.Parse(registryURL)
 	if err != nil {
@@ -152,8 +149,9 @@ func normalizeRegistryMetadataBaseURL(registryURL, defaultRegistryURL string) (s
 	}
 
 	pathLower := strings.ToLower(parsed.Path)
-	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") {
-		return fallbackBaseURL, nil
+	hostLower := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(parsed.Hostname())), ".")
+	if hostLower == "github.com" || hostLower == "www.github.com" || strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/v1/modules") || strings.Contains(pathLower, "/api/modules") {
+		return "", xfmt.Errorf("legacy catalog source registry %q is no longer supported; use module_catalog_index_url for catalog index and set source.registry to npm registry base URL", registryURL)
 	}
 
 	parsed.RawQuery = ""

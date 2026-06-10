@@ -45,7 +45,7 @@ func TestPrepareUpgradeSwitchGuards(t *testing.T) {
 		t.Fatalf("PrepareUpgradeSwitch(non-registry) = %#v, want nil", snapshot)
 	}
 
-	parsedRegistry := ParsedInput{Kind: InputKindRegistry, RegistryAlias: "core", ModuleName: "auth", Version: "latest"}
+	parsedRegistry := ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"}
 
 	if _, err := PrepareUpgradeSwitch(context.Background(), upgradeSwitchStubCoordinator{}, t.TempDir(), t.TempDir(), t.TempDir(), t.TempDir(), parsedRegistry, "   ", ""); err == nil || !strings.Contains(err.Error(), "module name is empty") {
 		t.Fatalf("expected empty module name error, got %v", err)
@@ -121,7 +121,7 @@ func TestNormalizeUpgradeBackupTmpRoot(t *testing.T) {
 func TestPrepareUpgradeSwitchSuccessAndFetchFailureRollback(t *testing.T) {
 	t.Parallel()
 
-	parsedRegistry := ParsedInput{Kind: InputKindRegistry, RegistryAlias: "core", ModuleName: "auth", Version: "latest"}
+	parsedRegistry := ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"}
 
 	t.Run("success with existing module backup and commit", func(t *testing.T) {
 		workspaceRoot := t.TempDir()

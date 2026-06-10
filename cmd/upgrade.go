@@ -19,7 +19,7 @@ import (
 func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
 	cmd := &cobra.Command{
-		Use:   "upgrade",
+		Use:   "upgrade <module|module@version> [<module|module@version>...]",
 		Short: "Upgrade Choysum Module",
 		PreRun: func(cmd *cobra.Command, args []string) {
 			env := envGetter()

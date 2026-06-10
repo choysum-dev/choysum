@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"golang.org/x/mod/semver"
@@ -168,7 +169,7 @@ func (c *Catalog) Info(ctx context.Context, indexURL, moduleName string) (*Catal
 func (c *Catalog) loadIndex(ctx context.Context, indexURL string) (*catalogIndexDocument, error) {
 	indexURL = strings.TrimSpace(indexURL)
 	if indexURL == "" {
-		indexURL = DefaultRegistryIndexURL
+		indexURL = config.DefaultModuleCatalogIndexURL
 	}
 	payload, err := c.fetchJSON(ctx, indexURL)
 	if err != nil {
@@ -176,7 +177,7 @@ func (c *Catalog) loadIndex(ctx context.Context, indexURL string) (*catalogIndex
 	}
 	index := &catalogIndexDocument{}
 	if err := json.Unmarshal(payload, index); err != nil {
-		return nil, xfmt.Errorf("decode registry index failed: %w", err)
+		return nil, xfmt.Errorf("decode module catalog index failed: %w", err)
 	}
 	if index.Modules == nil {
 		index.Modules = map[string]catalogIndexModule{}
