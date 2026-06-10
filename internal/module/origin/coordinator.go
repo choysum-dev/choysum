@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -178,56 +177,17 @@ func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput
 	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
 }
 
-func looksLikeCatalogRegistryURL(registryURL string) bool {
-	parsed, err := url.Parse(strings.TrimSpace(registryURL))
-	if err != nil {
-		return false
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return false
-	}
-	pathLower := strings.ToLower(parsed.Path)
-	if strings.HasSuffix(pathLower, ".json") || strings.Contains(pathLower, "/api/") || strings.HasSuffix(pathLower, "/api") {
-		return true
-	}
-
-	hostLower := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
-	if hostLower == "" {
-		return false
-	}
-	if strings.Contains(hostLower, "registry.npmjs.org") ||
-		strings.Contains(hostLower, "registry.npmmirror.com") ||
-		strings.Contains(hostLower, "registry.yarnpkg.com") ||
-		strings.Contains(hostLower, "npm.pkg.github.com") ||
-		hostLower == "localhost" ||
-		hostLower == "127.0.0.1" ||
-		hostLower == "::1" {
-		return false
-	}
-	if strings.Contains(hostLower, "catalog.") {
-		return true
-	}
-	if hostLower == "github.com" {
-		return true
-	}
-	return true
-}
-
 func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (registrySourceResolution, error) {
 	entry, err := c.registryStore.Resolve(parsed.RegistryAlias)
 	if err != nil {
 		return registrySourceResolution{}, err
 	}
-	registryURL := strings.TrimSpace(entry.URL)
+	indexURL := strings.TrimSpace(entry.IndexURL)
 	moduleName := strings.TrimSpace(parsed.ModuleName)
-	resolved := registrySourceResolution{registryURL: registryURL, packageName: moduleName}
-
-	if !looksLikeCatalogRegistryURL(registryURL) {
-		return resolved, nil
-	}
+	resolved := registrySourceResolution{}
 
 	catalog := registry.NewCatalog(c.runtimeScope)
-	item, err := catalog.Info(ctx, registryURL, moduleName)
+	item, err := catalog.Info(ctx, indexURL, moduleName)
 	if err != nil {
 		return registrySourceResolution{}, xfmt.Errorf("resolve catalog source failed (registry=%s module=%s): %w", strings.TrimSpace(parsed.RegistryAlias), moduleName, err)
 	}
@@ -235,7 +195,7 @@ func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedIn
 	if resolved.packageName == "" {
 		return registrySourceResolution{}, xfmt.Errorf("catalog module %q in registry %q has empty npm package source", moduleName, strings.TrimSpace(parsed.RegistryAlias))
 	}
-	if sourceRegistry := item.ResolvedNPMRegistry(registryURL); sourceRegistry != "" {
+	if sourceRegistry := item.ResolvedNPMRegistry(""); sourceRegistry != "" {
 		resolved.registryURL = sourceRegistry
 	}
 	if item.Source != nil {

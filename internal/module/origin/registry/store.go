@@ -4,6 +4,7 @@
 package registry
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,13 +14,15 @@ import (
 )
 
 const (
-	DefaultRegistryAlias = "official"
-	DefaultRegistryURL   = "https://github.com/project-choysum/registry"
+	DefaultRegistryAlias     = "official"
+	DefaultRegistryIndexURL  = "https://index.choysum.dev/v1/index.json"
+	legacyDefaultRegistryURL = "https://github.com/project-choysum/registry"
 )
 
 type Entry struct {
-	URL     string `yaml:"url"`
-	AuthRef string `yaml:"authRef,omitempty"`
+	IndexURL string `yaml:"indexURL"`
+	URL      string `yaml:"url,omitempty"`
+	AuthRef  string `yaml:"authRef,omitempty"`
 }
 
 type Config struct {
@@ -32,7 +35,7 @@ func defaultConfig() *Config {
 		Version: 1,
 		Registries: map[string]Entry{
 			DefaultRegistryAlias: {
-				URL: DefaultRegistryURL,
+				IndexURL: DefaultRegistryIndexURL,
 			},
 		},
 	}
@@ -101,7 +104,16 @@ func cloneConfig(cfg *Config) *Config {
 	}
 	out := &Config{Version: cfg.Version, Registries: map[string]Entry{}}
 	for k, v := range cfg.Registries {
-		out.Registries[k] = v
+		entry := v
+		entry.IndexURL = strings.TrimSpace(entry.IndexURL)
+		if entry.IndexURL == "" {
+			entry.IndexURL = strings.TrimSpace(entry.URL)
+		}
+		if strings.TrimSpace(k) == DefaultRegistryAlias && isLegacyDefaultRegistryURL(entry.IndexURL) {
+			entry.IndexURL = DefaultRegistryIndexURL
+		}
+		entry.URL = ""
+		out.Registries[k] = entry
 	}
 	if out.Version == 0 {
 		out.Version = 1
@@ -109,10 +121,33 @@ func cloneConfig(cfg *Config) *Config {
 	if out.Registries == nil {
 		out.Registries = map[string]Entry{}
 	}
-	if _, ok := out.Registries[DefaultRegistryAlias]; !ok {
-		out.Registries[DefaultRegistryAlias] = Entry{URL: DefaultRegistryURL}
+	defaultEntry, ok := out.Registries[DefaultRegistryAlias]
+	if !ok {
+		out.Registries[DefaultRegistryAlias] = Entry{IndexURL: DefaultRegistryIndexURL}
+	} else if strings.TrimSpace(defaultEntry.IndexURL) == "" {
+		defaultEntry.IndexURL = DefaultRegistryIndexURL
+		out.Registries[DefaultRegistryAlias] = defaultEntry
 	}
 	return out
+}
+
+func isLegacyDefaultRegistryURL(raw string) bool {
+	normalized := strings.TrimSuffix(strings.TrimSpace(raw), "/")
+	return normalized == legacyDefaultRegistryURL
+}
+
+func isValidRegistryIndexURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return false
+	}
+	return strings.HasSuffix(strings.ToLower(strings.TrimSpace(parsed.Path)), "/index.json")
 }
 
 func (s *Store) Load() (*Config, error) {
@@ -165,9 +200,12 @@ func (s *Store) Resolve(alias string) (Entry, error) {
 	if !ok {
 		return Entry{}, xfmt.Errorf("registry alias %s not found", alias)
 	}
-	entry.URL = strings.TrimSpace(entry.URL)
-	if entry.URL == "" {
-		return Entry{}, xfmt.Errorf("registry alias %s has empty url", alias)
+	entry.IndexURL = strings.TrimSpace(entry.IndexURL)
+	if entry.IndexURL == "" {
+		return Entry{}, xfmt.Errorf("registry alias %s has empty indexURL", alias)
+	}
+	if !isValidRegistryIndexURL(entry.IndexURL) {
+		return Entry{}, xfmt.Errorf("registry alias %s has invalid indexURL %q: must point to an index.json resource", alias, entry.IndexURL)
 	}
 	return entry, nil
 }

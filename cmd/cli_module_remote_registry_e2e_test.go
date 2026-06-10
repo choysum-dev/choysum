@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -42,40 +41,39 @@ func startRemoteRegistryCatalogServer(t *testing.T, modules []remoteCatalogModul
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/modules", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v1/index.json", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
-		items := make([]remoteCatalogModule, 0, len(byName))
+		modulesPayload := map[string]any{}
 		for _, item := range byName {
-			if q != "" && !strings.Contains(strings.ToLower(item.Name), q) {
-				continue
+			versions := item.Versions
+			if len(versions) == 0 {
+				versions = []string{item.LatestVersion}
 			}
-			items = append(items, remoteCatalogModule{
-				Name:          item.Name,
-				LatestVersion: item.LatestVersion,
-				Description:   item.Description,
-			})
+			versionPayload := map[string]any{}
+			for _, version := range versions {
+				version = strings.TrimSpace(version)
+				if version == "" {
+					continue
+				}
+				versionPayload[version] = map[string]any{
+					"tarball":   "https://registry.npmjs.org/@acme/choysum-" + item.Name + "/-/choysum-" + item.Name + "-" + strings.TrimPrefix(version, "v") + ".tgz",
+					"integrity": "sha512-" + item.Name + "-" + strings.TrimPrefix(version, "v"),
+					"package":   "@acme/choysum-" + item.Name,
+				}
+			}
+			modulesPayload[item.Name] = map[string]any{
+				"moduleId":      item.Name,
+				"description":   item.Description,
+				"latestVersion": item.LatestVersion,
+				"package":       "@acme/choysum-" + item.Name,
+				"versions":      versionPayload,
+			}
 		}
-		sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"modules": items})
-	})
-	mux.HandleFunc("/api/v1/modules/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		name := path.Base(r.URL.Path)
-		item, ok := byName[name]
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(item)
+		_ = json.NewEncoder(w).Encode(map[string]any{"modules": modulesPayload})
 	})
 
 	return httptest.NewServer(mux)
@@ -91,7 +89,7 @@ func TestCLIModuleRemoteSearchListInfo(t *testing.T) {
 	})
 	defer srv.Close()
 
-	if output, code := runCLI(t, "registry", "add", "corp", srv.URL, "--config", configPath); code != 0 {
+	if output, code := runCLI(t, "registry", "add", "corp", srv.URL+"/v1/index.json", "--config", configPath); code != 0 {
 		t.Fatalf("registry add failed, code=%d output=%s", code, output)
 	}
 
@@ -133,7 +131,7 @@ func TestCLIModuleRemoteInfoNotFound(t *testing.T) {
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0"}})
 	defer srv.Close()
 
-	if output, code := runCLI(t, "registry", "add", "corp", srv.URL, "--config", configPath); code != 0 {
+	if output, code := runCLI(t, "registry", "add", "corp", srv.URL+"/v1/index.json", "--config", configPath); code != 0 {
 		t.Fatalf("registry add failed, code=%d output=%s", code, output)
 	}
 
@@ -291,7 +289,7 @@ func TestCLIRegistryAddFetchUninstallPurgeFlow(t *testing.T) {
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "demo", LatestVersion: "v0.1.0"}})
 	defer srv.Close()
 
-	if output, code := runCLI(t, "registry", "add", "corp", srv.URL, "--config", configPath); code != 0 {
+	if output, code := runCLI(t, "registry", "add", "corp", srv.URL+"/v1/index.json", "--config", configPath); code != 0 {
 		t.Fatalf("registry add failed, code=%d output=%s", code, output)
 	}
 	if output, code := runCLI(t, "module", "fetch", "demo", "--config", configPath); code != 0 {
