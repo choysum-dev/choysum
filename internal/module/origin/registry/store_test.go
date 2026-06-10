@@ -4,6 +4,7 @@
 package registry
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -95,6 +96,45 @@ func TestStoreFilePathDefaultsAndCloneNormalization(t *testing.T) {
 	}
 	if got := cfg.Registries[DefaultRegistryAlias].IndexURL; got != DefaultRegistryIndexURL {
 		t.Fatalf("default indexURL = %q, want %q", got, DefaultRegistryIndexURL)
+	}
+}
+
+func TestStoreLoadBackfillsOfficialIndexURLForLegacyURLConfig(t *testing.T) {
+	home := t.TempDir()
+	defaultChoysumPath := t.TempDir()
+	store := NewStore(WithHomeDir(home), WithDefaultChoysumPath(defaultChoysumPath))
+
+	path, err := store.filePath()
+	if err != nil {
+		t.Fatalf("filePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	legacyConfig := `version: 1
+registries:
+  official:
+    url: https://legacy.example.com/v1/index.json
+    authRef: token://official
+`
+	if err := os.WriteFile(path, []byte(legacyConfig), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	entry, ok := cfg.Registries[DefaultRegistryAlias]
+	if !ok {
+		t.Fatalf("expected default alias %q to exist", DefaultRegistryAlias)
+	}
+	if entry.IndexURL != DefaultRegistryIndexURL {
+		t.Fatalf("official indexURL = %q, want %q", entry.IndexURL, DefaultRegistryIndexURL)
+	}
+	if entry.AuthRef != "token://official" {
+		t.Fatalf("official authRef = %q, want %q", entry.AuthRef, "token://official")
 	}
 }
 

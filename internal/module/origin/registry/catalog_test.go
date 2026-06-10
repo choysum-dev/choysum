@@ -386,6 +386,53 @@ func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryWithWhitespaceKey(t *tes
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryWithSemverEquivalentKey(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.2.3",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"1.2.3": map[string]any{
+						"source": map[string]any{
+							"type":      "npm",
+							"registry":  "https://registry.acme.dev",
+							"package":   "@acme/choysum-auth",
+							"tarball":   "https://registry.acme.dev/@acme/choysum-auth/-/choysum-auth-1.2.3.tgz",
+							"integrity": "sha512-auth-v123-semver",
+						},
+					},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil {
+		t.Fatal("Catalog.Info() returned nil")
+	}
+	if item.Source == nil {
+		t.Fatal("expected source metadata from semver-equivalent version key")
+	}
+	if item.Source.Version != "v1.2.3" {
+		t.Fatalf("source version = %q, want %q", item.Source.Version, "v1.2.3")
+	}
+	if item.Source.Tarball != "https://registry.acme.dev/@acme/choysum-auth/-/choysum-auth-1.2.3.tgz" {
+		t.Fatalf("source tarball = %q, want expected tarball", item.Source.Tarball)
+	}
+	if item.Source.Integrity != "sha512-auth-v123-semver" {
+		t.Fatalf("source integrity = %q, want %q", item.Source.Integrity, "sha512-auth-v123-semver")
+	}
+}
+
 func TestCatalogBuildAndHelperBranchCoverage(t *testing.T) {
 	t.Parallel()
 

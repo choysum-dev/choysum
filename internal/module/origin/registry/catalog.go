@@ -294,9 +294,16 @@ func resolveCatalogVersionEntry(versions map[string]catalogIndexEntry, targetVer
 	if entry, ok := versions[targetVersion]; ok {
 		return entry, true
 	}
+	targetNormalized, targetHasSemVer := normalizeSemVer(targetVersion)
 	for rawVersion, entry := range versions {
-		if strings.TrimSpace(rawVersion) == targetVersion {
+		trimmedVersion := strings.TrimSpace(rawVersion)
+		if trimmedVersion == targetVersion {
 			return entry, true
+		}
+		if targetHasSemVer {
+			if rawNormalized, ok := normalizeSemVer(trimmedVersion); ok && rawNormalized == targetNormalized {
+				return entry, true
+			}
 		}
 	}
 	return catalogIndexEntry{}, false

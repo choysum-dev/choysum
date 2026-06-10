@@ -109,8 +109,12 @@ func cloneConfig(cfg *Config) *Config {
 	if out.Registries == nil {
 		out.Registries = map[string]Entry{}
 	}
-	if _, ok := out.Registries[DefaultRegistryAlias]; !ok {
+	defaultEntry, ok := out.Registries[DefaultRegistryAlias]
+	if !ok {
 		out.Registries[DefaultRegistryAlias] = Entry{IndexURL: DefaultRegistryIndexURL}
+	} else if strings.TrimSpace(defaultEntry.IndexURL) == "" {
+		defaultEntry.IndexURL = DefaultRegistryIndexURL
+		out.Registries[DefaultRegistryAlias] = defaultEntry
 	}
 	return out
 }
