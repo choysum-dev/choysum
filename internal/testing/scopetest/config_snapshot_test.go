@@ -100,4 +100,8 @@ func TestFactoryInputFromConfigExposesModulesPath(t *testing.T) {
 	if paths.ModuleCatalogIndexURL != "https://index.example.dev/v1/index.json" {
 		t.Fatalf("PathsRuntimeOptionsFromInput().ModuleCatalogIndexURL = %q, want https://index.example.dev/v1/index.json", paths.ModuleCatalogIndexURL)
 	}
+
+	if got := (configFactoryInput{}).ModuleCatalogIndexURL(); got != "" {
+		t.Fatalf("configFactoryInput{}.ModuleCatalogIndexURL() = %q, want empty", got)
+	}
 }

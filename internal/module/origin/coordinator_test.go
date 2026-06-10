@@ -696,6 +696,26 @@ func TestCoordinatorResolveRegistrySourceCaching(t *testing.T) {
 			t.Fatalf("resolveRegistrySource(blank index fallback cache hit) = %#v, want %#v", resolved, wantResolved)
 		}
 	})
+
+	t.Run("nil runtime scope falls back to default index and can hit cache", func(t *testing.T) {
+		coordinator := NewCoordinator(nil, WithRegistryProvider(&fakeRegistryProvider{}))
+
+		cacheKey := registrySourceResolutionCacheKey(config.DefaultModuleCatalogIndexURL, "auth")
+		wantResolved := registrySourceResolution{
+			registryURL: "https://registry.npmjs.org",
+			packageName: "@acme/choysum-auth",
+			integrity:   "sha512-auth",
+		}
+		coordinator.cacheRegistrySourceResolution(cacheKey, wantResolved)
+
+		resolved, err := coordinator.resolveRegistrySource(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("resolveRegistrySource(nil scope default index fallback cache hit) error = %v", err)
+		}
+		if resolved != wantResolved {
+			t.Fatalf("resolveRegistrySource(nil scope default index fallback cache hit) = %#v, want %#v", resolved, wantResolved)
+		}
+	})
 }
 
 func TestCoordinatorPeekBranches(t *testing.T) {

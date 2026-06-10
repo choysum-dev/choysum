@@ -995,3 +995,18 @@ registries:
 		}
 	})
 }
+
+func TestAppendLegacyModuleCatalogKey(t *testing.T) {
+	t.Parallel()
+
+	invalid := []string{"existing"}
+	appendLegacyModuleCatalogKey(&invalid, "   ")
+	if !reflect.DeepEqual(invalid, []string{"existing"}) {
+		t.Fatalf("appendLegacyModuleCatalogKey(blank) mutated invalid = %#v", invalid)
+	}
+
+	appendLegacyModuleCatalogKey(&invalid, " registry_index_url ")
+	if !reflect.DeepEqual(invalid, []string{"existing", "registry_index_url (use module_catalog_index_url)"}) {
+		t.Fatalf("appendLegacyModuleCatalogKey(non-blank) invalid = %#v", invalid)
+	}
+}

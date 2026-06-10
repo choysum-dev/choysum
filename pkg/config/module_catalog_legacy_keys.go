@@ -12,31 +12,32 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+func appendLegacyModuleCatalogKey(invalid *[]string, key string) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return
+	}
+	*invalid = append(*invalid, key+" (use module_catalog_index_url)")
+}
+
 func rejectLegacyModuleCatalogConfigKeys(v *viper.Viper) error {
 	if v == nil {
 		return nil
 	}
 
 	invalid := make([]string, 0, 6)
-	appendLegacy := func(key string) {
-		key = strings.TrimSpace(key)
-		if key == "" {
-			return
-		}
-		invalid = append(invalid, key+" (use module_catalog_index_url)")
-	}
 
 	if v.InConfig("registry_index_url") {
-		appendLegacy("registry_index_url")
+		appendLegacyModuleCatalogKey(&invalid, "registry_index_url")
 	}
 
 	if v.InConfig("registries") {
-		appendLegacy("registries")
+		appendLegacyModuleCatalogKey(&invalid, "registries")
 
 		registries := v.GetStringMap("registries")
 		for alias, raw := range registries {
 			for _, key := range legacyRegistryEntryKeys(raw) {
-				appendLegacy("registries." + strings.TrimSpace(alias) + "." + key)
+				appendLegacyModuleCatalogKey(&invalid, "registries."+strings.TrimSpace(alias)+"."+key)
 			}
 		}
 	}
