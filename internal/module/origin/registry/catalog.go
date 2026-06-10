@@ -156,7 +156,7 @@ func (c *Catalog) Info(ctx context.Context, indexURL, moduleName string) (*Catal
 	sort.Strings(keys)
 	for _, k := range keys {
 		module := index.Modules[k]
-		if strings.TrimSpace(module.ModuleID) == moduleName || strings.TrimSpace(module.Name) == moduleName {
+		if strings.TrimSpace(k) == moduleName || strings.TrimSpace(module.ModuleID) == moduleName || strings.TrimSpace(module.Name) == moduleName {
 			item := buildCatalogModule(k, module)
 			return &item, nil
 		}

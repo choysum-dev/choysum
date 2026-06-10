@@ -178,6 +178,35 @@ func TestCatalogInfoFromStaticIndex_FallbackByModuleID(t *testing.T) {
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_FallbackByTrimmedMapKey(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			" auth ": map[string]any{
+				"latestVersion": "v1.0.0",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil || item.Name != "auth" {
+		t.Fatalf("unexpected trimmed-key fallback result: %#v", item)
+	}
+	if got := item.ResolvedNPMPackage(); got != "@acme/choysum-auth" {
+		t.Fatalf("ResolvedNPMPackage() = %q, want %q", got, "@acme/choysum-auth")
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_MergesVersionSourceIntoModuleSource(t *testing.T) {
 	t.Parallel()
 
