@@ -699,6 +699,7 @@ func TestProviderHelperNormalizationBranches(t *testing.T) {
 	assertLegacyRegistrySourceRejected("https://github.com/acme/catalog")
 	assertLegacyRegistrySourceRejected("https://www.github.com/acme/catalog")
 	assertLegacyRegistrySourceRejected("https://catalog.acme.dev/api/v1/modules")
+	assertLegacyRegistrySourceRejected("https://catalog.acme.dev/api/modules")
 	assertLegacyRegistrySourceRejected("https://index.acme.dev/v1/index.json")
 
 	custom, err := normalizeRegistryMetadataBaseURL("https://registry.acme.dev/custom/", "https://registry.npmjs.org")
@@ -707,6 +708,14 @@ func TestProviderHelperNormalizationBranches(t *testing.T) {
 	}
 	if custom != "https://registry.acme.dev/custom" {
 		t.Fatalf("custom registry base = %q, want %q", custom, "https://registry.acme.dev/custom")
+	}
+
+	artifactory, err := normalizeRegistryMetadataBaseURL("https://acme.jfrog.io/artifactory/api/npm/npm-virtual/", "https://registry.npmjs.org")
+	if err != nil {
+		t.Fatalf("normalizeRegistryMetadataBaseURL(artifactory) error = %v", err)
+	}
+	if artifactory != "https://acme.jfrog.io/artifactory/api/npm/npm-virtual" {
+		t.Fatalf("artifactory registry base = %q, want %q", artifactory, "https://acme.jfrog.io/artifactory/api/npm/npm-virtual")
 	}
 
 	githubPackages, err := normalizeRegistryMetadataBaseURL("https://npm.pkg.github.com", "https://registry.npmjs.org")
