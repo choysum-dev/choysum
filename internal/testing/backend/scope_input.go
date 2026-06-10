@@ -38,7 +38,7 @@ func newTestRuntimeScopeInput(cfg *testScopeConfigSnapshot) testRuntimeScopeInpu
 	hasAuthOpts := false
 
 	if cfg != nil {
-		pathOpts = scope.PathsRuntimeOptions{ModulesPath: cfg.ModulesPath, DistPath: cfg.DistPath, TmpPath: cfg.TmpPath, NpmRegistryURL: cfg.NPMRegistryURL}
+		pathOpts = scope.PathsRuntimeOptions{ModulesPath: cfg.ModulesPath, DistPath: cfg.DistPath, TmpPath: cfg.TmpPath, NpmRegistryURL: cfg.NPMRegistryURL, ModuleCatalogIndexURL: cfg.ModuleCatalogIndexURL}
 		hasPathOpts = true
 		if cfg.Compile != nil {
 			compileOpts = scope.CompileRuntimeOptions{BundleMode: cfg.Compile.BundleMode}
@@ -82,6 +82,7 @@ func newTestRuntimeScopeInputFromScope(runtimeScope scope.Scope, dbOpts scope.Da
 		cfg.ConfigPath = pathOpts.ConfigPath
 		cfg.NpmPath = pathOpts.NpmPath
 		cfg.NPMRegistryURL = pathOpts.NpmRegistryURL
+		cfg.ModuleCatalogIndexURL = pathOpts.ModuleCatalogIndexURL
 	}
 	cfg.Log = scope.LogConfigFromScope(runtimeScope)
 
@@ -241,6 +242,13 @@ func (i testRuntimeScopeInput) NpmRegistryURL() string {
 		return ""
 	}
 	return i.cfg.NPMRegistryURL
+}
+
+func (i testRuntimeScopeInput) ModuleCatalogIndexURL() string {
+	if i.cfg == nil {
+		return ""
+	}
+	return i.cfg.ModuleCatalogIndexURL
 }
 
 func (i testRuntimeScopeInput) CompileBundleMode() string {

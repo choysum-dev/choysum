@@ -20,13 +20,14 @@ func TestNewCliRuntimeOptionsConstructors(t *testing.T) {
 	}
 
 	pathOpts := scope.PathsRuntimeOptions{
-		DefaultChoysumPath: "/workspace/.choysum",
-		ModulesPath:        "/workspace/modules",
-		NpmPath:            "/workspace/node_modules",
-		TmpPath:            "/workspace/.choysum/tmp",
+		DefaultChoysumPath:    "/workspace/.choysum",
+		ModulesPath:           "/workspace/modules",
+		NpmPath:               "/workspace/node_modules",
+		TmpPath:               "/workspace/.choysum/tmp",
+		ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
 	}
 	fromPath := newCliRuntimeOptions(pathOpts, true)
-	if fromPath.defaultChoysumPath != pathOpts.DefaultChoysumPath || fromPath.modulesPath != pathOpts.ModulesPath || fromPath.npmPath != pathOpts.NpmPath || fromPath.tmpPath != pathOpts.TmpPath {
+	if fromPath.defaultChoysumPath != pathOpts.DefaultChoysumPath || fromPath.modulesPath != pathOpts.ModulesPath || fromPath.npmPath != pathOpts.NpmPath || fromPath.tmpPath != pathOpts.TmpPath || fromPath.moduleCatalogIndexURL != pathOpts.ModuleCatalogIndexURL {
 		t.Fatalf("newCliRuntimeOptions(hasPathOpts=true) = %#v, want fields from path opts", fromPath)
 	}
 
@@ -35,12 +36,13 @@ func TestNewCliRuntimeOptionsConstructors(t *testing.T) {
 	}
 
 	fromScopeOptions := newCliRuntimeOptionsFromScopeInputOptions(&scopeInputConfigOptions{
-		DefaultChoysumPath: "/default",
-		ModulesPath:        "/modules",
-		NpmPath:            "/npm",
-		TmpPath:            "/tmp",
+		DefaultChoysumPath:    "/default",
+		ModulesPath:           "/modules",
+		NpmPath:               "/npm",
+		TmpPath:               "/tmp",
+		ModuleCatalogIndexURL: "https://index.scope.example/v1/index.json",
 	})
-	if fromScopeOptions.defaultChoysumPath != "/default" || fromScopeOptions.modulesPath != "/modules" || fromScopeOptions.npmPath != "/npm" || fromScopeOptions.tmpPath != "/tmp" {
+	if fromScopeOptions.defaultChoysumPath != "/default" || fromScopeOptions.modulesPath != "/modules" || fromScopeOptions.npmPath != "/npm" || fromScopeOptions.tmpPath != "/tmp" || fromScopeOptions.moduleCatalogIndexURL != "https://index.scope.example/v1/index.json" {
 		t.Fatalf("newCliRuntimeOptionsFromScopeInputOptions() = %#v, want values copied from scope options", fromScopeOptions)
 	}
 }
@@ -50,14 +52,15 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 
 	input := newCommandRuntimeScopeInput(
 		&scopeInputConfigOptions{
-			ModulesPath:        "/options/modules",
-			DistPath:           "/options/dist",
-			TmpPath:            "/options/tmp",
-			DefaultChoysumPath: "/options/default",
-			ConfigPath:         "/options/config.yaml",
-			NpmPath:            "/options/npm",
-			NPMRegistryURL:     "https://registry.example.com",
-			Server:             &config.ServerConfig{Environment: "production"},
+			ModulesPath:           "/options/modules",
+			DistPath:              "/options/dist",
+			TmpPath:               "/options/tmp",
+			DefaultChoysumPath:    "/options/default",
+			ConfigPath:            "/options/config.yaml",
+			NpmPath:               "/options/npm",
+			NPMRegistryURL:        "https://registry.example.com",
+			ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
+			Server:                &config.ServerConfig{Environment: "production"},
 		},
 		cliRuntimeOptions{modulesPath: "/runtime/modules", tmpPath: "/runtime/tmp"},
 	)
@@ -85,6 +88,9 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	}
 	if got := input.NpmRegistryURL(); got != "https://registry.example.com" {
 		t.Fatalf("NpmRegistryURL() = %q, want %q", got, "https://registry.example.com")
+	}
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.example.com/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() = %q, want %q", got, "https://index.example.com/v1/index.json")
 	}
 
 	fallback := newCommandRuntimeScopeInput(
@@ -114,6 +120,9 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	if got := nilOptionsInput.NpmRegistryURL(); got != "" {
 		t.Fatalf("NpmRegistryURL() with nil options = %q, want empty", got)
 	}
+	if got := nilOptionsInput.ModuleCatalogIndexURL(); got != "" {
+		t.Fatalf("ModuleCatalogIndexURL() with nil options = %q, want empty", got)
+	}
 }
 
 func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
@@ -121,9 +130,10 @@ func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 
 	input := newRunRuntimeScopeInput(
 		&scopeInputConfigOptions{
-			ModulesPath:    "/options/modules",
-			TmpPath:        "/options/tmp",
-			NPMRegistryURL: "https://registry.options.example",
+			ModulesPath:           "/options/modules",
+			TmpPath:               "/options/tmp",
+			NPMRegistryURL:        "https://registry.options.example",
+			ModuleCatalogIndexURL: "https://index.options.example/v1/index.json",
 		},
 		cliRuntimeOptions{},
 		runServerRuntimeOptions{},
@@ -136,6 +146,9 @@ func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 	if got := input.NpmRegistryURL(); got != "https://registry.options.example" {
 		t.Fatalf("NpmRegistryURL() fallback = %q, want %q", got, "https://registry.options.example")
 	}
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.options.example/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() fallback = %q, want %q", got, "https://index.options.example/v1/index.json")
+	}
 
 	nilOptions := newRunRuntimeScopeInput(nil, cliRuntimeOptions{}, runServerRuntimeOptions{}, runDBRuntimeOptions{})
 	if got := nilOptions.ModulesPath(); got != "" {
@@ -143,6 +156,9 @@ func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 	}
 	if got := nilOptions.NpmRegistryURL(); got != "" {
 		t.Fatalf("NpmRegistryURL() with nil options = %q, want empty", got)
+	}
+	if got := nilOptions.ModuleCatalogIndexURL(); got != "" {
+		t.Fatalf("ModuleCatalogIndexURL() with nil options = %q, want empty", got)
 	}
 }
 
@@ -188,6 +204,12 @@ func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
 				t.Fatalf("Validate() expected %q error, got %v", tc.msg, err)
 			}
 		})
+	}
+
+	invalidCatalog := valid
+	invalidCatalog.moduleCatalogIndexURL = "https://index.example.dev/v1/catalog.json"
+	if err := invalidCatalog.Validate(); err == nil || !strings.Contains(err.Error(), "index.json") {
+		t.Fatalf("Validate(invalid moduleCatalogIndexURL) error = %v, want index.json validation error", err)
 	}
 
 	if err := valid.Validate(); err != nil {

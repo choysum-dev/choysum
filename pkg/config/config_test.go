@@ -127,6 +127,9 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("npm_registry_url = %q, want %q", cfg.NPMRegistryURL, DefaultNPMRegistryURL)
 	}
+	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+		t.Fatalf("module_catalog_index_url = %q, want %q", cfg.ModuleCatalogIndexURL, DefaultModuleCatalogIndexURL)
+	}
 	if strings.TrimSpace(cfg.DefaultChoysumPath) == "" {
 		t.Fatal("expected default_choysum_path to be non-empty")
 	}
@@ -197,6 +200,36 @@ auth:
 	}
 	if !strings.Contains(err.Error(), "auth.jwt.cacheTTL (use auth.jwt.identityCache.ttl)") {
 		t.Fatalf("expected cacheTTL guidance in error, got %v", err)
+	}
+}
+
+func TestNewConfigRejectsLegacyModuleCatalogKeys(t *testing.T) {
+	cfgPath := writeTestConfig(t, `
+registry_index_url: https://index.example.dev/v1/index.json
+registries:
+  official:
+    url: https://index.example.dev/v1/index.json
+    indexURL: https://index.example.dev/v1/index.json
+`)
+
+	_, err := NewConfig(cfgPath)
+	if err == nil {
+		t.Fatal("expected legacy module catalog keys to be rejected")
+	}
+	if !strings.Contains(err.Error(), "legacy module catalog config keys are no longer supported") {
+		t.Fatalf("expected legacy module catalog rejection header, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registry_index_url (use module_catalog_index_url)") {
+		t.Fatalf("expected registry_index_url guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registries (use module_catalog_index_url)") {
+		t.Fatalf("expected registries guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registries.official.url (use module_catalog_index_url)") {
+		t.Fatalf("expected registries.official.url guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "registries.official.indexURL (use module_catalog_index_url)") {
+		t.Fatalf("expected registries.official.indexURL guidance, got %v", err)
 	}
 }
 
@@ -485,6 +518,9 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
 	}
+	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
+	}
 }
 
 func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
@@ -526,6 +562,9 @@ func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
 	}
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
+	}
+	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
 	}
 	if cfg.Log == nil || cfg.Db == nil || cfg.Compile == nil || cfg.Server == nil || cfg.Task == nil {
 		t.Fatalf("expected nested defaults to be initialized: %#v", cfg)
@@ -614,8 +653,10 @@ modules_path: from-config
 	t.Run("custom env prefix overrides config values", func(t *testing.T) {
 		envModules := filepath.Join(t.TempDir(), "env-modules")
 		envNPMRegistryURL := "https://registry.npmmirror.com"
+		envModuleCatalogIndexURL := "https://index.example.dev/v1/index.json"
 		t.Setenv("CHOYSUM_TEST_MODULES_PATH", envModules)
 		t.Setenv("CHOYSUM_TEST_NPM_REGISTRY_URL", envNPMRegistryURL)
+		t.Setenv("CHOYSUM_TEST_MODULE_CATALOG_INDEX_URL", envModuleCatalogIndexURL)
 
 		cfg := defaultConfig()
 		if err := cfg.unmarshal(cfgPath, WithEnvPrefix("CHOYSUM_TEST")); err != nil {
@@ -626,6 +667,32 @@ modules_path: from-config
 		}
 		if cfg.NPMRegistryURL != envNPMRegistryURL {
 			t.Fatalf("npm_registry_url = %q, want env override %q", cfg.NPMRegistryURL, envNPMRegistryURL)
+		}
+		if cfg.ModuleCatalogIndexURL != envModuleCatalogIndexURL {
+			t.Fatalf("module_catalog_index_url = %q, want env override %q", cfg.ModuleCatalogIndexURL, envModuleCatalogIndexURL)
+		}
+	})
+
+	t.Run("invalid module catalog index url fails validation", func(t *testing.T) {
+		cfg := defaultConfig()
+		err := cfg.unmarshal(cfgPath, WithDefaults(func(cfg *Config) {
+			cfg.ModuleCatalogIndexURL = "https://index.example.dev/v1/catalog.json"
+		}))
+		if err == nil || !strings.Contains(err.Error(), "module_catalog_index_url") {
+			t.Fatalf("expected invalid module_catalog_index_url validation error, got %v", err)
+		}
+	})
+
+	t.Run("blank module catalog index url defaults before validation", func(t *testing.T) {
+		cfg := defaultConfig()
+		err := cfg.unmarshal(cfgPath, WithDefaults(func(cfg *Config) {
+			cfg.ModuleCatalogIndexURL = "   "
+		}))
+		if err != nil {
+			t.Fatalf("expected blank module_catalog_index_url to default, got %v", err)
+		}
+		if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+			t.Fatalf("module_catalog_index_url = %q, want %q", cfg.ModuleCatalogIndexURL, DefaultModuleCatalogIndexURL)
 		}
 	})
 
@@ -800,5 +867,146 @@ func TestDefaultConfigPathUsesLocalAndFallsBackWhenMissing(t *testing.T) {
 	}
 	if got != "" {
 		t.Fatalf("expected empty config path fallback, got %q", got)
+	}
+}
+
+func TestValidateModuleCatalogIndexURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		raw         string
+		wantErrPart string
+	}{
+		{name: "empty", raw: "   ", wantErrPart: "module_catalog_index_url is required"},
+		{name: "invalid url", raw: "https://%zz", wantErrPart: "invalid module_catalog_index_url"},
+		{name: "unsupported scheme", raw: "ftp://index.example.dev/v1/index.json", wantErrPart: "only http/https are supported"},
+		{name: "missing host", raw: "https:///v1/index.json", wantErrPart: "host is required"},
+		{name: "missing index json", raw: "https://index.example.dev/v1/catalog.json", wantErrPart: "must point to an index.json resource"},
+		{name: "valid https", raw: "https://index.example.dev/v1/index.json", wantErrPart: ""},
+		{name: "valid http", raw: "http://index.example.dev/v1/index.json", wantErrPart: ""},
+		{name: "valid upper index path", raw: "https://index.example.dev/v1/INDEX.JSON", wantErrPart: ""},
+		{name: "valid with query", raw: "https://index.example.dev/v1/index.json?cache=1", wantErrPart: ""},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateModuleCatalogIndexURL(tt.raw)
+			if tt.wantErrPart == "" {
+				if err != nil {
+					t.Fatalf("ValidateModuleCatalogIndexURL(%q) error = %v", tt.raw, err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErrPart) {
+				t.Fatalf("ValidateModuleCatalogIndexURL(%q) error = %v, want substring %q", tt.raw, err, tt.wantErrPart)
+			}
+		})
+	}
+}
+
+func TestLegacyRegistryEntryKeysHelpers(t *testing.T) {
+	t.Parallel()
+
+	if got := legacyRegistryEntryKeys(map[string]any{
+		" url ":     "https://legacy.example.dev",
+		"INDEXURL":  "https://legacy.example.dev/v1/index.json",
+		"index_url": "https://legacy.example.dev/v1/index.json",
+	}); !reflect.DeepEqual(got, []string{"indexURL", "index_url", "url"}) {
+		t.Fatalf("legacyRegistryEntryKeys(map[string]any) = %#v, want %#v", got, []string{"indexURL", "index_url", "url"})
+	}
+
+	if got := legacyRegistryEntryKeys(map[any]any{
+		" url ":     "https://legacy.example.dev",
+		"INDEXURL":  "https://legacy.example.dev/v1/index.json",
+		"index_url": "https://legacy.example.dev/v1/index.json",
+	}); !reflect.DeepEqual(got, []string{"indexURL", "index_url", "url"}) {
+		t.Fatalf("legacyRegistryEntryKeys(map[any]any) = %#v, want %#v", got, []string{"indexURL", "index_url", "url"})
+	}
+
+	if got := legacyRegistryEntryKeys("not-a-map"); got != nil {
+		t.Fatalf("legacyRegistryEntryKeys(non-map) = %#v, want nil", got)
+	}
+
+	if got := collectLegacyRegistryEntryKeys(map[string]any{"name": "official"}); len(got) != 0 {
+		t.Fatalf("collectLegacyRegistryEntryKeys(no legacy keys) = %#v, want empty", got)
+	}
+}
+
+func TestRejectLegacyModuleCatalogConfigKeys(t *testing.T) {
+	t.Parallel()
+
+	if err := rejectLegacyModuleCatalogConfigKeys(nil); err != nil {
+		t.Fatalf("rejectLegacyModuleCatalogConfigKeys(nil) error = %v", err)
+	}
+
+	loadViper := func(t *testing.T, body string) *viper.Viper {
+		t.Helper()
+		v := viper.New()
+		v.SetConfigType("yaml")
+		if err := v.ReadConfig(strings.NewReader(strings.TrimSpace(body) + "\n")); err != nil {
+			t.Fatalf("ReadConfig() error = %v", err)
+		}
+		return v
+	}
+
+	t.Run("accepts current index-url config", func(t *testing.T) {
+		v := loadViper(t, `
+module_catalog_index_url: https://index.choysum.dev/v1/index.json
+`)
+		if err := rejectLegacyModuleCatalogConfigKeys(v); err != nil {
+			t.Fatalf("rejectLegacyModuleCatalogConfigKeys(current) error = %v", err)
+		}
+	})
+
+	t.Run("rejects root legacy key", func(t *testing.T) {
+		v := loadViper(t, `
+registry_index_url: https://legacy.example.dev/v1/index.json
+`)
+		err := rejectLegacyModuleCatalogConfigKeys(v)
+		if err == nil || !strings.Contains(err.Error(), "registry_index_url (use module_catalog_index_url)") {
+			t.Fatalf("rejectLegacyModuleCatalogConfigKeys(root legacy) error = %v", err)
+		}
+	})
+
+	t.Run("rejects nested legacy registry entry keys", func(t *testing.T) {
+		v := loadViper(t, `
+registries:
+  official:
+    url: https://legacy.example.dev/v1/index.json
+    indexURL: https://legacy.example.dev/v1/index.json
+  community:
+    index_url: https://legacy.example.dev/v1/index.json
+`)
+		err := rejectLegacyModuleCatalogConfigKeys(v)
+		if err == nil {
+			t.Fatal("expected nested legacy keys to be rejected")
+		}
+		for _, want := range []string{
+			"registries (use module_catalog_index_url)",
+			"registries.official.url (use module_catalog_index_url)",
+			"registries.official.indexURL (use module_catalog_index_url)",
+			"registries.community.index_url (use module_catalog_index_url)",
+		} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("rejectLegacyModuleCatalogConfigKeys(nested legacy) error = %v, missing %q", err, want)
+			}
+		}
+	})
+}
+
+func TestAppendLegacyModuleCatalogKey(t *testing.T) {
+	t.Parallel()
+
+	invalid := []string{"existing"}
+	appendLegacyModuleCatalogKey(&invalid, "   ")
+	if !reflect.DeepEqual(invalid, []string{"existing"}) {
+		t.Fatalf("appendLegacyModuleCatalogKey(blank) mutated invalid = %#v", invalid)
+	}
+
+	appendLegacyModuleCatalogKey(&invalid, " registry_index_url ")
+	if !reflect.DeepEqual(invalid, []string{"existing", "registry_index_url (use module_catalog_index_url)"}) {
+		t.Fatalf("appendLegacyModuleCatalogKey(non-blank) invalid = %#v", invalid)
 	}
 }

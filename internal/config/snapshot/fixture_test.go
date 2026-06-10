@@ -7,13 +7,14 @@ import "github.com/choysum-dev/choysum/pkg/config"
 
 func snapshotFixtureConfig() *config.Config {
 	return &config.Config{
-		ModulesPath:        "/workspace/modules",
-		DistPath:           "/workspace/dist",
-		TmpPath:            "/workspace/tmp",
-		DefaultChoysumPath: "/workspace/.choysum",
-		ConfigPath:         "/workspace/config.yaml",
-		NpmPath:            "/workspace/node_modules",
-		NPMRegistryURL:     "https://registry.npmmirror.com",
+		ModulesPath:           "/workspace/modules",
+		DistPath:              "/workspace/dist",
+		TmpPath:               "/workspace/tmp",
+		DefaultChoysumPath:    "/workspace/.choysum",
+		ConfigPath:            "/workspace/config.yaml",
+		NpmPath:               "/workspace/node_modules",
+		NPMRegistryURL:        "https://registry.npmmirror.com",
+		ModuleCatalogIndexURL: "https://index.choysum.dev/v1/index.json",
 		Compile: &config.CompileConfig{
 			BundleMode:  "bundle",
 			Production:  true,

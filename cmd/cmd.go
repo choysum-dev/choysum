@@ -35,7 +35,7 @@ func NewCommander(ctx context.Context) *Command {
 	rootCmd := &cobra.Command{
 		Use:   "choysum",
 		Short: "Run the Choysum command-line interface",
-		Long: `Choysum provides commands for module lifecycle management, registry operations,
+		Long: `Choysum provides commands for module lifecycle management,
 runtime startup, and test workflows.
 
 Use --config to point to a workspace config file when you want to override the
@@ -86,7 +86,6 @@ built-in defaults or load a non-default workspace config.`,
 		newInstallCmd(envGetter),
 		newUpgradeCmd(envGetter),
 		newUninstallCmd(envGetter),
-		newRegistryCmd(envGetter, cliOptionsGetter),
 		newModuleCmd(envGetter, cliOptionsGetter),
 		newRunCmd(),
 		newTestCmd(envGetter, cliOptionsGetter),

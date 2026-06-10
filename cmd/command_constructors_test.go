@@ -872,7 +872,7 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	envGetter := func() scope.Scope { return nil }
 
 	installCmd := newInstallCmd(envGetter)
-	if installCmd.Use != "install" || installCmd.PreRun == nil || installCmd.Run == nil {
+	if installCmd.Use != "install <module|module@version> [<module|module@version>...]" || installCmd.PreRun == nil || installCmd.Run == nil {
 		t.Fatalf("unexpected install command shape: %#v", installCmd)
 	}
 	if installCmd.Flags().Lookup("with-demo") == nil {
@@ -883,7 +883,7 @@ func TestInstallUpgradeUninstallCommandConstruction(t *testing.T) {
 	}
 
 	upgradeCmd := newUpgradeCmd(envGetter)
-	if upgradeCmd.Use != "upgrade" || upgradeCmd.PreRun == nil || upgradeCmd.Run == nil {
+	if upgradeCmd.Use != "upgrade <module|module@version> [<module|module@version>...]" || upgradeCmd.PreRun == nil || upgradeCmd.Run == nil {
 		t.Fatalf("unexpected upgrade command shape: %#v", upgradeCmd)
 	}
 	if upgradeCmd.Flags().Lookup("with-demo") == nil {
@@ -955,7 +955,6 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		"install":   false,
 		"upgrade":   false,
 		"uninstall": false,
-		"registry":  false,
 		"module":    false,
 		"run":       false,
 		"test":      false,

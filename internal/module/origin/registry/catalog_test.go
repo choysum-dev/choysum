@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -287,7 +288,7 @@ func TestCatalogInfoRejectsEmptyModuleName(t *testing.T) {
 	t.Parallel()
 
 	catalog := NewCatalog(nil)
-	if _, err := catalog.Info(context.Background(), DefaultRegistryIndexURL, "   "); err == nil || !strings.Contains(err.Error(), "module name is empty") {
+	if _, err := catalog.Info(context.Background(), config.DefaultModuleCatalogIndexURL, "   "); err == nil || !strings.Contains(err.Error(), "module name is empty") {
 		t.Fatalf("expected empty module name error, got %v", err)
 	}
 }
@@ -300,8 +301,8 @@ func TestCatalogLoadIndexDefaultAndNilModules(t *testing.T) {
 		Transport: catalogRoundTripper(func(req *http.Request) (*http.Response, error) {
 			requests++
 			if requests == 1 {
-				if req.URL.String() != DefaultRegistryIndexURL {
-					t.Fatalf("default index URL = %q, want %q", req.URL.String(), DefaultRegistryIndexURL)
+				if req.URL.String() != config.DefaultModuleCatalogIndexURL {
+					t.Fatalf("default index URL = %q, want %q", req.URL.String(), config.DefaultModuleCatalogIndexURL)
 				}
 				return &http.Response{
 					StatusCode: http.StatusOK,
@@ -366,8 +367,8 @@ func TestCatalogLoadIndexDecodeError(t *testing.T) {
 		}),
 	}))
 
-	if _, err := catalog.List(context.Background(), "https://index.acme.dev/v1/index.json", ""); err == nil || !strings.Contains(err.Error(), "decode registry index failed") {
-		t.Fatalf("expected decode registry index error, got %v", err)
+	if _, err := catalog.List(context.Background(), "https://index.acme.dev/v1/index.json", ""); err == nil || !strings.Contains(err.Error(), "decode module catalog index failed") {
+		t.Fatalf("expected decode module catalog index error, got %v", err)
 	}
 }
 

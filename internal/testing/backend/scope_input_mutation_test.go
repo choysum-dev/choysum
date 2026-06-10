@@ -103,13 +103,14 @@ func TestNewTestRuntimeScopeInputFromScopeCopiesRuntimeAndDBOptions(t *testing.T
 	runtimeScope := &testStubScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:        "/workspace/modules",
-			DistPath:           "/workspace/dist",
-			TmpPath:            "/workspace/tmp",
-			DefaultChoysumPath: "/workspace/.choysum",
-			ConfigPath:         "/workspace/config.yaml",
-			NpmPath:            "/workspace/node_modules",
-			NPMRegistryURL:     "https://registry.npmjs.org",
+			ModulesPath:           "/workspace/modules",
+			DistPath:              "/workspace/dist",
+			TmpPath:               "/workspace/tmp",
+			DefaultChoysumPath:    "/workspace/.choysum",
+			ConfigPath:            "/workspace/config.yaml",
+			NpmPath:               "/workspace/node_modules",
+			NPMRegistryURL:        "https://registry.npmjs.org",
+			ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json",
 			Server: &config.ServerConfig{
 				Environment: "test",
 				BindAddress: "127.0.0.1",
@@ -147,6 +148,9 @@ func TestNewTestRuntimeScopeInputFromScopeCopiesRuntimeAndDBOptions(t *testing.T
 	}
 	if got := input.NpmRegistryURL(); got != "https://registry.npmjs.org" {
 		t.Fatalf("NpmRegistryURL() = %q, want https://registry.npmjs.org", got)
+	}
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.example.dev/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() = %q, want https://index.example.dev/v1/index.json", got)
 	}
 	if got := input.Environment(); got != "test" {
 		t.Fatalf("Environment() = %q, want test", got)
@@ -193,6 +197,9 @@ func TestNewTestRuntimeScopeInputFromScopeNilScope(t *testing.T) {
 	}
 	if got := input.DatabaseDialect(); got != "" {
 		t.Fatalf("DatabaseDialect() = %q, want empty", got)
+	}
+	if got := input.ModuleCatalogIndexURL(); got != "" {
+		t.Fatalf("ModuleCatalogIndexURL() = %q, want empty", got)
 	}
 	if input.CompileConfig() != nil {
 		t.Fatalf("CompileConfig() = %#v, want nil", input.CompileConfig())

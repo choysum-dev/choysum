@@ -38,6 +38,10 @@ type NpmRegistryURLInput interface {
 	NpmRegistryURL() string
 }
 
+type ModuleCatalogIndexURLInput interface {
+	ModuleCatalogIndexURL() string
+}
+
 type CompileInput interface {
 	CompileBundleMode() string
 }
@@ -113,13 +117,14 @@ type DatabaseInput interface {
 }
 
 type PathsRuntimeOptions struct {
-	ModulesPath        string
-	DistPath           string
-	TmpPath            string
-	DefaultChoysumPath string
-	ConfigPath         string
-	NpmPath            string
-	NpmRegistryURL     string
+	ModulesPath           string
+	DistPath              string
+	TmpPath               string
+	DefaultChoysumPath    string
+	ConfigPath            string
+	NpmPath               string
+	NpmRegistryURL        string
+	ModuleCatalogIndexURL string
 }
 
 type CompileRuntimeOptions struct {
@@ -215,6 +220,9 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 	}
 	if npmRegistryURLInput, ok := input.(NpmRegistryURLInput); ok {
 		options.NpmRegistryURL = npmRegistryURLInput.NpmRegistryURL()
+	}
+	if moduleCatalogIndexURLInput, ok := input.(ModuleCatalogIndexURLInput); ok {
+		options.ModuleCatalogIndexURL = moduleCatalogIndexURLInput.ModuleCatalogIndexURL()
 	}
 	return options, true
 }

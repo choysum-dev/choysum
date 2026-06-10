@@ -17,6 +17,7 @@ import (
 
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -42,10 +43,9 @@ func newModuleCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliR
 
 func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var remote bool
-	var registryAlias string
 	cmd := &cobra.Command{
 		Use:   "search <query>",
-		Short: "Search modules from local workspace or remote registry",
+		Short: "Search modules from local workspace or remote module catalog index",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			env, err := requireCommandScope(envGetter)
@@ -57,13 +57,12 @@ func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func(
 				return xfmt.Errorf("module: invalid runtime options: %w", err)
 			}
 			if remote {
-				return runModuleSearchRemote(cmd, env, runtimeOptions, registryAlias, args[0])
+				return runModuleSearchRemote(cmd, env, runtimeOptions, args[0])
 			}
 			return runModuleSearchLocal(cmd, env, runtimeOptions, args[0])
 		},
 	}
-	cmd.Flags().BoolVar(&remote, "remote", false, "query modules from remote registry catalog")
-	cmd.Flags().StringVar(&registryAlias, "registry", sourceregistry.DefaultRegistryAlias, "registry alias for --remote queries")
+	cmd.Flags().BoolVar(&remote, "remote", false, "query modules from remote module catalog index")
 	return cmd
 }
 
@@ -115,18 +114,18 @@ func runModuleSearchLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeO
 	return nil
 }
 
-func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, registryAlias, rawQuery string) error {
+func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, rawQuery string) error {
 	query := strings.TrimSpace(rawQuery)
 	if query == "" {
 		return xfmt.Errorf("query is required")
 	}
 
-	items, err := listRemoteCatalogModules(cmd, runtimeScope, runtimeOptions, registryAlias, query)
+	items, err := listRemoteCatalogModules(cmd, runtimeScope, runtimeOptions, query)
 	if err != nil {
 		return err
 	}
 	if len(items) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No remote modules matched query %q in registry %q\n", rawQuery, strings.TrimSpace(registryAlias))
+		fmt.Fprintf(cmd.OutOrStdout(), "No remote modules matched query %q\n", rawQuery)
 		return nil
 	}
 
@@ -142,9 +141,8 @@ func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtime
 
 func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var remote bool
-	var registryAlias string
 	cmd := &cobra.Command{
-		Use:   "info <input>",
+		Use:   "info <module|module@version>",
 		Short: "Inspect source metadata for a module input",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -157,13 +155,12 @@ func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 				if err != nil {
 					return xfmt.Errorf("module: invalid runtime options: %w", err)
 				}
-				return runModuleInfoRemote(cmd, env, runtimeOptions, registryAlias, args[0])
+				return runModuleInfoRemote(cmd, env, runtimeOptions, args[0])
 			}
 			return runModuleInfoLocal(cmd, envGetter, args[0])
 		},
 	}
-	cmd.Flags().BoolVar(&remote, "remote", false, "query module info from remote registry catalog")
-	cmd.Flags().StringVar(&registryAlias, "registry", sourceregistry.DefaultRegistryAlias, "registry alias for --remote lookup when input is local module name")
+	cmd.Flags().BoolVar(&remote, "remote", false, "query module info from remote module catalog index")
 	return cmd
 }
 
@@ -204,7 +201,7 @@ func runModuleInfoLocal(cmd *cobra.Command, envGetter func() scope.Scope, input 
 	return nil
 }
 
-func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, registryAlias, input string) error {
+func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, input string) error {
 	raw := strings.TrimSpace(input)
 	if raw == "" {
 		return xfmt.Errorf("module input is required")
@@ -213,7 +210,6 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 	moduleName := raw
 	if parsed, err := internalorigin.ParseInput(raw); err == nil {
 		if parsed.Kind == internalorigin.InputKindRegistry {
-			registryAlias = parsed.RegistryAlias
 			moduleName = parsed.ModuleName
 			version := strings.TrimSpace(parsed.Version)
 			if version != "" && !strings.EqualFold(version, "latest") {
@@ -232,14 +228,13 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 				fmt.Fprintln(cmd.OutOrStdout(), string(payload))
 				return nil
 			}
-		} else {
-			moduleName = strings.TrimSpace(parsed.ModuleName)
 		}
+		moduleName = strings.TrimSpace(parsed.ModuleName)
 	} else if strings.Contains(raw, "/") {
 		return err
 	}
 
-	item, err := loadRemoteModuleInfo(cmd, runtimeScope, runtimeOptions, registryAlias, moduleName)
+	item, err := loadRemoteModuleInfo(cmd, runtimeScope, runtimeOptions, moduleName)
 	if err != nil {
 		return err
 	}
@@ -253,10 +248,9 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 
 func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var remote bool
-	var registryAlias string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List modules in source lock bindings or remote registry",
+		Short: "List modules in source lock bindings or remote module catalog index",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			env, err := requireCommandScope(envGetter)
@@ -268,13 +262,12 @@ func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 				return xfmt.Errorf("module: invalid runtime options: %w", err)
 			}
 			if remote {
-				return runModuleListRemote(cmd, env, runtimeOptions, registryAlias)
+				return runModuleListRemote(cmd, env, runtimeOptions)
 			}
 			return runModuleListLocal(cmd, env, runtimeOptions)
 		},
 	}
-	cmd.Flags().BoolVar(&remote, "remote", false, "list modules from remote registry catalog")
-	cmd.Flags().StringVar(&registryAlias, "registry", sourceregistry.DefaultRegistryAlias, "registry alias for --remote list")
+	cmd.Flags().BoolVar(&remote, "remote", false, "list modules from remote module catalog index")
 	return cmd
 }
 
@@ -328,13 +321,13 @@ func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOpt
 	return nil
 }
 
-func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, registryAlias string) error {
-	items, err := listRemoteCatalogModules(cmd, runtimeScope, runtimeOptions, registryAlias, "")
+func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions) error {
+	items, err := listRemoteCatalogModules(cmd, runtimeScope, runtimeOptions, "")
 	if err != nil {
 		return err
 	}
 	if len(items) == 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "No remote modules found in registry %q\n", strings.TrimSpace(registryAlias))
+		fmt.Fprintln(cmd.OutOrStdout(), "No remote modules found.")
 		return nil
 	}
 
@@ -348,42 +341,41 @@ func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 	return nil
 }
 
-func listRemoteCatalogModules(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, registryAlias, query string) ([]sourceregistry.CatalogModule, error) {
-	entry, err := resolveRegistryEntry(runtimeOptions, registryAlias)
+func listRemoteCatalogModules(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, query string) ([]sourceregistry.CatalogModule, error) {
+	indexURL, err := resolveModuleCatalogIndexURL(runtimeOptions)
 	if err != nil {
 		return nil, err
 	}
 	catalog := sourceregistry.NewCatalog(runtimeScope)
-	items, err := catalog.List(contextFromCommand(cmd), entry.IndexURL, query)
+	items, err := catalog.List(contextFromCommand(cmd), indexURL, query)
 	if err != nil {
-		return nil, xfmt.Errorf("query remote registry %q failed: %w", strings.TrimSpace(registryAlias), err)
+		return nil, xfmt.Errorf("query remote module catalog index %q failed: %w", indexURL, err)
 	}
 	return items, nil
 }
 
-func loadRemoteModuleInfo(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, registryAlias, moduleName string) (*sourceregistry.CatalogModule, error) {
-	entry, err := resolveRegistryEntry(runtimeOptions, registryAlias)
+func loadRemoteModuleInfo(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, moduleName string) (*sourceregistry.CatalogModule, error) {
+	indexURL, err := resolveModuleCatalogIndexURL(runtimeOptions)
 	if err != nil {
 		return nil, err
 	}
 	catalog := sourceregistry.NewCatalog(runtimeScope)
-	item, err := catalog.Info(contextFromCommand(cmd), entry.IndexURL, moduleName)
+	item, err := catalog.Info(contextFromCommand(cmd), indexURL, moduleName)
 	if err != nil {
-		return nil, xfmt.Errorf("query remote module info failed (registry=%s module=%s): %w", strings.TrimSpace(registryAlias), strings.TrimSpace(moduleName), err)
+		return nil, xfmt.Errorf("query remote module info failed (module=%s): %w", strings.TrimSpace(moduleName), err)
 	}
 	return item, nil
 }
 
-func resolveRegistryEntry(runtimeOptions cliRuntimeOptions, registryAlias string) (sourceregistry.Entry, error) {
-	alias := strings.TrimSpace(registryAlias)
-	if alias == "" {
-		alias = sourceregistry.DefaultRegistryAlias
+func resolveModuleCatalogIndexURL(runtimeOptions cliRuntimeOptions) (string, error) {
+	indexURL := strings.TrimSpace(runtimeOptions.moduleCatalogIndexURL)
+	if indexURL == "" {
+		indexURL = config.DefaultModuleCatalogIndexURL
 	}
-	entry, err := registryStoreFromRuntimeOptions(runtimeOptions).Resolve(alias)
-	if err != nil {
-		return sourceregistry.Entry{}, xfmt.Errorf("resolve registry alias %q failed: %w", alias, err)
+	if err := config.ValidateModuleCatalogIndexURL(indexURL); err != nil {
+		return "", err
 	}
-	return entry, nil
+	return indexURL, nil
 }
 
 func contextFromCommand(cmd *cobra.Command) context.Context {
@@ -460,7 +452,7 @@ func nullStringValue(v sql.NullString) string {
 
 func newModuleFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 	return &cobra.Command{
-		Use:   "fetch <input>",
+		Use:   "fetch <module|module@version>",
 		Short: "Fetch a module from source and bind it in modules.lock.json",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
