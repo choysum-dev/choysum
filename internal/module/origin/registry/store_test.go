@@ -99,7 +99,7 @@ func TestStoreFilePathDefaultsAndCloneNormalization(t *testing.T) {
 	}
 }
 
-func TestStoreLoadBackfillsOfficialIndexURLForLegacyURLConfig(t *testing.T) {
+func TestStoreLoadMigratesLegacyURLFieldToIndexURL(t *testing.T) {
 	home := t.TempDir()
 	defaultChoysumPath := t.TempDir()
 	store := NewStore(WithHomeDir(home), WithDefaultChoysumPath(defaultChoysumPath))
@@ -112,13 +112,66 @@ func TestStoreLoadBackfillsOfficialIndexURLForLegacyURLConfig(t *testing.T) {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
 
-	legacyConfig := `version: 1
-registries:
-  official:
-    url: https://legacy.example.com/v1/index.json
-    authRef: token://official
-`
+	legacyConfig := "version: 1\n" +
+		"registries:\n" +
+		"  official:\n" +
+		"    url: https://legacy-official.example.com/v1/index.json\n" +
+		"    authRef: token://official\n" +
+		"  corp:\n" +
+		"    url: https://legacy-corp.example.com/v1/index.json\n" +
+		"    authRef: token://corp\n"
 	if err := os.WriteFile(path, []byte(legacyConfig), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	entry, ok := cfg.Registries[DefaultRegistryAlias]
+	if !ok {
+		t.Fatalf("expected default alias %q to exist", DefaultRegistryAlias)
+	}
+	if entry.IndexURL != "https://legacy-official.example.com/v1/index.json" {
+		t.Fatalf("official indexURL = %q, want %q", entry.IndexURL, "https://legacy-official.example.com/v1/index.json")
+	}
+	if entry.AuthRef != "token://official" {
+		t.Fatalf("official authRef = %q, want %q", entry.AuthRef, "token://official")
+	}
+	if entry.URL != "" {
+		t.Fatalf("official legacy url field should be cleared after migration, got %q", entry.URL)
+	}
+
+	corpEntry, err := store.Resolve("corp")
+	if err != nil {
+		t.Fatalf("Resolve(corp) error = %v", err)
+	}
+	if corpEntry.IndexURL != "https://legacy-corp.example.com/v1/index.json" {
+		t.Fatalf("corp indexURL = %q, want %q", corpEntry.IndexURL, "https://legacy-corp.example.com/v1/index.json")
+	}
+	if corpEntry.AuthRef != "token://corp" {
+		t.Fatalf("corp authRef = %q, want %q", corpEntry.AuthRef, "token://corp")
+	}
+}
+
+func TestStoreLoadBackfillsOfficialIndexURLWhenMissing(t *testing.T) {
+	home := t.TempDir()
+	defaultChoysumPath := t.TempDir()
+	store := NewStore(WithHomeDir(home), WithDefaultChoysumPath(defaultChoysumPath))
+
+	path, err := store.filePath()
+	if err != nil {
+		t.Fatalf("filePath() error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	missingIndexConfig := "version: 1\n" +
+		"registries:\n" +
+		"  official:\n" +
+		"    authRef: token://official\n"
+	if err := os.WriteFile(path, []byte(missingIndexConfig), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 

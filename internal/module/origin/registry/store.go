@@ -19,6 +19,7 @@ const (
 
 type Entry struct {
 	IndexURL string `yaml:"indexURL"`
+	URL      string `yaml:"url,omitempty"`
 	AuthRef  string `yaml:"authRef,omitempty"`
 }
 
@@ -101,7 +102,13 @@ func cloneConfig(cfg *Config) *Config {
 	}
 	out := &Config{Version: cfg.Version, Registries: map[string]Entry{}}
 	for k, v := range cfg.Registries {
-		out.Registries[k] = v
+		entry := v
+		entry.IndexURL = strings.TrimSpace(entry.IndexURL)
+		if entry.IndexURL == "" {
+			entry.IndexURL = strings.TrimSpace(entry.URL)
+		}
+		entry.URL = ""
+		out.Registries[k] = entry
 	}
 	if out.Version == 0 {
 		out.Version = 1

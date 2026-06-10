@@ -120,10 +120,13 @@ func (c *Catalog) List(ctx context.Context, indexURL, query string) ([]CatalogMo
 
 	items := make([]CatalogModule, 0, len(index.Modules))
 	for moduleName, module := range index.Modules {
-		item := buildCatalogModule(moduleName, module)
-		if query != "" && !strings.Contains(strings.ToLower(item.Name), query) {
-			continue
+		if query != "" {
+			name := resolveCatalogModuleName(moduleName, module)
+			if !strings.Contains(strings.ToLower(name), query) {
+				continue
+			}
 		}
+		item := buildCatalogModule(moduleName, module)
 		items = append(items, item)
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
@@ -182,13 +185,7 @@ func (c *Catalog) loadIndex(ctx context.Context, indexURL string) (*catalogIndex
 }
 
 func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogModule {
-	name := strings.TrimSpace(moduleName)
-	if strings.TrimSpace(module.ModuleID) != "" {
-		name = strings.TrimSpace(module.ModuleID)
-	}
-	if name == "" {
-		name = strings.TrimSpace(module.Name)
-	}
+	name := resolveCatalogModuleName(moduleName, module)
 
 	item := CatalogModule{
 		Name:          name,
@@ -252,6 +249,17 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 
 	normalizeCatalogModule(&item)
 	return item
+}
+
+func resolveCatalogModuleName(moduleName string, module catalogIndexModule) string {
+	name := strings.TrimSpace(moduleName)
+	if moduleID := strings.TrimSpace(module.ModuleID); moduleID != "" {
+		name = moduleID
+	}
+	if name == "" {
+		name = strings.TrimSpace(module.Name)
+	}
+	return name
 }
 
 func cloneCatalogSource(src *CatalogSource) *CatalogSource {
