@@ -45,11 +45,11 @@ func TestNewRegistryCmd_SubcommandsAndWorkflow(t *testing.T) {
 	}
 
 	registryCmd := newRegistryCmd(envGetter, runtimeOptionsGetter)
-	output, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://example.com/registry")
+	output, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://index.example.com/v1/index.json")
 	if err != nil {
 		t.Fatalf("registry add failed: %v", err)
 	}
-	if !strings.Contains(output, `Registry "corp" -> https://example.com/registry`) {
+	if !strings.Contains(output, `Registry "corp" -> https://index.example.com/v1/index.json`) {
 		t.Fatalf("unexpected add output: %q", output)
 	}
 
@@ -92,12 +92,16 @@ func TestNewRegistryCmd_ValidationPaths(t *testing.T) {
 	}
 	registryCmd := newRegistryCmd(envGetter, runtimeOptionsGetter)
 
-	if _, err := executeCommandForTest(t, registryCmd, "add", "bad/alias", "https://example.com/registry"); err == nil || !strings.Contains(err.Error(), "invalid registry alias") {
+	if _, err := executeCommandForTest(t, registryCmd, "add", "bad/alias", "https://index.example.com/v1/index.json"); err == nil || !strings.Contains(err.Error(), "invalid registry alias") {
 		t.Fatalf("expected invalid alias error, got %v", err)
 	}
 
-	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "ftp://example.com/registry"); err == nil || !strings.Contains(err.Error(), "only http/https are supported") {
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "ftp://index.example.com/v1/index.json"); err == nil || !strings.Contains(err.Error(), "only http/https are supported") {
 		t.Fatalf("expected invalid url error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://index.example.com/v1"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected index.json path validation error, got %v", err)
 	}
 
 	if _, err := executeCommandForTest(t, registryCmd, "remove", sourceregistry.DefaultRegistryAlias); err == nil || !strings.Contains(err.Error(), "cannot remove default registry alias") {

@@ -354,7 +354,7 @@ func listRemoteCatalogModules(cmd *cobra.Command, runtimeScope scope.Scope, runt
 		return nil, err
 	}
 	catalog := sourceregistry.NewCatalog(runtimeScope)
-	items, err := catalog.List(contextFromCommand(cmd), entry.URL, query)
+	items, err := catalog.List(contextFromCommand(cmd), entry.IndexURL, query)
 	if err != nil {
 		return nil, xfmt.Errorf("query remote registry %q failed: %w", strings.TrimSpace(registryAlias), err)
 	}
@@ -367,7 +367,7 @@ func loadRemoteModuleInfo(cmd *cobra.Command, runtimeScope scope.Scope, runtimeO
 		return nil, err
 	}
 	catalog := sourceregistry.NewCatalog(runtimeScope)
-	item, err := catalog.Info(contextFromCommand(cmd), entry.URL, moduleName)
+	item, err := catalog.Info(contextFromCommand(cmd), entry.IndexURL, moduleName)
 	if err != nil {
 		return nil, xfmt.Errorf("query remote module info failed (registry=%s module=%s): %w", strings.TrimSpace(registryAlias), strings.TrimSpace(moduleName), err)
 	}

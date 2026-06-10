@@ -37,28 +37,46 @@ func (p *catalogFakeProvider) Fetch(ctx context.Context, registryURL, moduleName
 	return nil, nil
 }
 
-func TestCatalogInfoFromRemoteAPI_ResolvesNPMPackageSource(t *testing.T) {
+func startStaticIndexServer(t *testing.T, payload map[string]any) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/index.json", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(payload)
+	})
+	return httptest.NewServer(mux)
+}
+
+func TestCatalogInfoFromStaticIndex_ResolvesNPMPackageSource(t *testing.T) {
 	t.Parallel()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/modules/sale", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"name":          "sale",
-			"latestVersion": "v0.1.0",
-			"npmPackage":    "@acme/choysum-sale",
-			"source": map[string]any{
-				"type":     "npm",
-				"registry": "https://registry.npmjs.org",
-				"package":  "@acme/choysum-sale",
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"sale": map[string]any{
+				"moduleId":      "sale",
+				"latestVersion": "v0.1.0",
+				"package":       "@acme/choysum-sale",
+				"versions": map[string]any{
+					"v0.1.0": map[string]any{
+						"source": map[string]any{
+							"type":      "npm",
+							"registry":  "https://registry.npmjs.org",
+							"package":   "@acme/choysum-sale",
+							"integrity": "sha512-sale",
+						},
+					},
+				},
 			},
-		})
+		},
 	})
-	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	catalog := NewCatalog(nil)
-	item, err := catalog.Info(context.Background(), server.URL, "sale")
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "sale")
 	if err != nil {
 		t.Fatalf("Catalog.Info() error = %v", err)
 	}
@@ -68,31 +86,37 @@ func TestCatalogInfoFromRemoteAPI_ResolvesNPMPackageSource(t *testing.T) {
 	if got := item.ResolvedNPMPackage(); got != "@acme/choysum-sale" {
 		t.Fatalf("ResolvedNPMPackage() = %q, want %q", got, "@acme/choysum-sale")
 	}
-	if got := item.ResolvedNPMRegistry(server.URL); got != "https://registry.npmjs.org" {
+	if got := item.ResolvedNPMRegistry(""); got != "https://registry.npmjs.org" {
 		t.Fatalf("ResolvedNPMRegistry() = %q, want %q", got, "https://registry.npmjs.org")
+	}
+	if item.Source == nil || item.Source.Integrity != "sha512-sale" {
+		t.Fatalf("expected source integrity from index, got %#v", item.Source)
 	}
 }
 
-func TestCatalogInfoFromRemoteAPI_PrefersSourcePackage(t *testing.T) {
+func TestCatalogInfoFromStaticIndex_PrefersVersionSourcePackage(t *testing.T) {
 	t.Parallel()
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/modules/auth", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"name":          "auth",
-			"latestVersion": "v1.0.0",
-			"npmPackage":    "@choysum/module-auth",
-			"source": map[string]any{
-				"package": "@acme/choysum-auth",
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.0.0",
+				"package":       "@choysum/module-auth",
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{
+						"source": map[string]any{
+							"package": "@acme/choysum-auth",
+						},
+					},
+				},
 			},
-		})
+		},
 	})
-	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	catalog := NewCatalog(nil)
-	item, err := catalog.Info(context.Background(), server.URL, "auth")
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
 	if err != nil {
 		t.Fatalf("Catalog.Info() error = %v", err)
 	}
@@ -104,128 +128,60 @@ func TestCatalogInfoFromRemoteAPI_PrefersSourcePackage(t *testing.T) {
 	}
 }
 
-func TestCatalogListFromRemoteAPI_SupportsEnvelopeAndArray(t *testing.T) {
+func TestCatalogListFromStaticIndex_FiltersAndSorts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("envelope payload", func(t *testing.T) {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/api/v1/modules", func(w http.ResponseWriter, r *http.Request) {
-			if gotQ := r.URL.Query().Get("q"); gotQ != "au" {
-				t.Fatalf("query parameter q = %q, want %q", gotQ, "au")
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"modules": []map[string]any{{
-					"name":          " auth ",
-					"latestVersion": " v1.2.3 ",
-					"source": map[string]any{
-						"package": " @acme/choysum-auth ",
-					},
-				}},
-			})
-		})
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
-		catalog := NewCatalog(nil)
-		items, err := catalog.List(context.Background(), server.URL, "au")
-		if err != nil {
-			t.Fatalf("Catalog.List() error = %v", err)
-		}
-		if len(items) != 1 {
-			t.Fatalf("Catalog.List() len = %d, want 1", len(items))
-		}
-		if items[0].Name != "auth" || items[0].LatestVersion != "v1.2.3" {
-			t.Fatalf("unexpected normalized item: %#v", items[0])
-		}
-		if got := items[0].ResolvedNPMPackage(); got != "@acme/choysum-auth" {
-			t.Fatalf("ResolvedNPMPackage() = %q, want %q", got, "@acme/choysum-auth")
-		}
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"partner": map[string]any{
+				"moduleId":      " partner ",
+				"latestVersion": " v0.9.0 ",
+				"description":   " partner module ",
+				"package":       "@acme/choysum-partner",
+				"versions": map[string]any{
+					" v0.9.0 ": map[string]any{},
+				},
+			},
+			"auth": map[string]any{
+				"moduleId":      " auth ",
+				"latestVersion": " v1.2.3 ",
+				"description":   " auth module ",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					" v1.0.0 ": map[string]any{},
+					" v1.2.3 ": map[string]any{},
+				},
+			},
+		},
 	})
+	defer server.Close()
 
-	t.Run("array payload", func(t *testing.T) {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/api/v1/modules", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte(`[{"name":"sale","latestVersion":"v0.1.0"}]`))
-		})
-		server := httptest.NewServer(mux)
-		defer server.Close()
-
-		catalog := NewCatalog(nil)
-		items, err := catalog.List(context.Background(), server.URL, "")
-		if err != nil {
-			t.Fatalf("Catalog.List() error = %v", err)
-		}
-		if len(items) != 1 || items[0].Name != "sale" {
-			t.Fatalf("unexpected array payload result: %#v", items)
-		}
-	})
+	catalog := NewCatalog(nil)
+	items, err := catalog.List(context.Background(), server.URL+"/v1/index.json", "au")
+	if err != nil {
+		t.Fatalf("Catalog.List() error = %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("Catalog.List() len = %d, want 1", len(items))
+	}
+	if items[0].Name != "auth" || items[0].LatestVersion != "v1.2.3" {
+		t.Fatalf("unexpected normalized item: %#v", items[0])
+	}
+	if len(items[0].Versions) != 2 || items[0].Versions[0] != "v1.0.0" || items[0].Versions[1] != "v1.2.3" {
+		t.Fatalf("unexpected versions: %#v", items[0].Versions)
+	}
 }
 
-func TestCatalogGitHubListAndInfo(t *testing.T) {
+func TestCatalogInfoFromStaticIndex_NotFound(t *testing.T) {
 	t.Parallel()
 
-	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		switch req.URL.String() {
-		case "https://api.github.com/repos/acme/registry/contents/modules":
-			return httpResponse(http.StatusOK, []byte(`[
-				{"name":"sale","type":"dir"},
-				{"name":"auth","type":"dir"},
-				{"name":"README.md","type":"file"}
-			]`)), nil
-		case "https://api.github.com/repos/acme/registry/contents/modules/auth":
-			return httpResponse(http.StatusOK, []byte(`[
-				{"name":"v1.0.0","type":"dir"},
-				{"name":"v2.0.0","type":"dir"}
-			]`)), nil
-		case "https://api.github.com/repos/acme/registry/contents/modules/sale":
-			return httpResponse(http.StatusOK, []byte(`[
-				{"name":"0.9.0","type":"dir"},
-				{"name":"v1.1.0","type":"dir"}
-			]`)), nil
-		default:
-			return httpResponse(http.StatusNotFound, []byte(`{"message":"not found"}`)), nil
-		}
-	})
+	server := startStaticIndexServer(t, map[string]any{"modules": map[string]any{"auth": map[string]any{"moduleId": "auth"}}})
+	defer server.Close()
 
-	catalog := NewCatalog(nil, WithCatalogHTTPClient(&http.Client{Transport: transport}))
-	items, err := catalog.List(context.Background(), "https://github.com/acme/registry", "")
-	if err != nil {
-		t.Fatalf("Catalog.List(github) error = %v", err)
-	}
-	if len(items) != 2 {
-		t.Fatalf("Catalog.List(github) len = %d, want 2", len(items))
-	}
-	if items[0].Name != "auth" || items[1].Name != "sale" {
-		t.Fatalf("expected sorted github modules [auth sale], got %#v", items)
-	}
-	if items[0].LatestVersion != "v2.0.0" {
-		t.Fatalf("unexpected auth latest version: %#v", items[0])
-	}
-
-	peekCalls := 0
-	provider := &catalogFakeProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
-		peekCalls++
-		if registryURL != "https://github.com/acme/registry" || moduleName != "auth" || packageName != "auth" || version != "v2.0.0" {
-			t.Fatalf("unexpected provider peek args: registry=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
-		}
-		return &meta.IrModule{Description: "  Auth module from provider  "}, nil
-	}}
-
-	catalog = NewCatalog(nil, WithCatalogHTTPClient(&http.Client{Transport: transport}), WithCatalogProvider(provider))
-	item, err := catalog.Info(context.Background(), "https://github.com/acme/registry", "auth")
-	if err != nil {
-		t.Fatalf("Catalog.Info(github) error = %v", err)
-	}
-	if item == nil || item.Name != "auth" || item.LatestVersion != "v2.0.0" {
-		t.Fatalf("unexpected github info item: %#v", item)
-	}
-	if item.Description != "Auth module from provider" {
-		t.Fatalf("expected trimmed provider description, got %q", item.Description)
-	}
-	if peekCalls != 1 {
-		t.Fatalf("provider peek calls = %d, want 1", peekCalls)
+	catalog := NewCatalog(nil)
+	_, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "missing")
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("expected not found error, got %v", err)
 	}
 }
 
@@ -254,21 +210,6 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 	if _, ok := normalizeSemVer("invalid"); ok {
 		t.Fatal("normalizeSemVer(invalid) should fail")
-	}
-
-	if !isGitHubRegistryURL("https://github.com/acme/registry") {
-		t.Fatal("expected github URL to be recognized")
-	}
-	if isGitHubRegistryURL("http://github.com/acme/registry") {
-		t.Fatal("expected non-https github URL to be rejected")
-	}
-
-	owner, repo, err := parseGitHubOwnerRepo("https://github.com/acme/registry")
-	if err != nil || owner != "acme" || repo != "registry" {
-		t.Fatalf("parseGitHubOwnerRepo(valid) = (%q,%q,%v), want (acme,registry,nil)", owner, repo, err)
-	}
-	if _, _, err := parseGitHubOwnerRepo("https://github.com/acme"); err == nil {
-		t.Fatal("expected invalid github registry URL error")
 	}
 
 	mod := &CatalogModule{

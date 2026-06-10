@@ -35,7 +35,7 @@ func newRegistryCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 func newRegistryAddCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var authRef string
 	cmd := &cobra.Command{
-		Use:   "add <alias> <url>",
+		Use:   "add <alias> <index-url>",
 		Short: "Add or update a registry alias",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -48,11 +48,11 @@ func newRegistryAddCmd(envGetter func() scope.Scope, runtimeOptionsGetter func()
 				return xfmt.Errorf("registry: invalid runtime options: %w", err)
 			}
 			alias := strings.TrimSpace(args[0])
-			registryURL := strings.TrimSpace(args[1])
+			indexURL := strings.TrimSpace(args[1])
 			if err := validateRegistryAlias(alias); err != nil {
 				return err
 			}
-			if err := validateRegistryURL(registryURL); err != nil {
+			if err := validateRegistryIndexURL(indexURL); err != nil {
 				return err
 			}
 
@@ -64,11 +64,11 @@ func newRegistryAddCmd(envGetter func() scope.Scope, runtimeOptionsGetter func()
 			if cfg.Registries == nil {
 				cfg.Registries = map[string]sourceregistry.Entry{}
 			}
-			cfg.Registries[alias] = sourceregistry.Entry{URL: registryURL, AuthRef: strings.TrimSpace(authRef)}
+			cfg.Registries[alias] = sourceregistry.Entry{IndexURL: indexURL, AuthRef: strings.TrimSpace(authRef)}
 			if err := store.Save(cfg); err != nil {
 				return xfmt.Errorf("save registries config: %w", err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Registry %q -> %s\n", alias, registryURL)
+			fmt.Fprintf(cmd.OutOrStdout(), "Registry %q -> %s\n", alias, indexURL)
 			return nil
 		},
 	}
@@ -107,10 +107,10 @@ func newRegistryListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func(
 			}
 
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-			fmt.Fprintln(w, "ALIAS\tURL\tAUTH_REF")
+			fmt.Fprintln(w, "ALIAS\tINDEX_URL\tAUTH_REF")
 			for _, alias := range aliases {
 				entry := cfg.Registries[alias]
-				fmt.Fprintf(w, "%s\t%s\t%s\n", alias, entry.URL, entry.AuthRef)
+				fmt.Fprintf(w, "%s\t%s\t%s\n", alias, entry.IndexURL, entry.AuthRef)
 			}
 			_ = w.Flush()
 			return nil
@@ -214,16 +214,19 @@ func validateRegistryAlias(alias string) error {
 	return nil
 }
 
-func validateRegistryURL(raw string) error {
+func validateRegistryIndexURL(raw string) error {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return xfmt.Errorf("invalid registry url %q: %w", raw, err)
+		return xfmt.Errorf("invalid registry index url %q: %w", raw, err)
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return xfmt.Errorf("invalid registry url %q: only http/https are supported", raw)
+		return xfmt.Errorf("invalid registry index url %q: only http/https are supported", raw)
 	}
 	if parsed.Host == "" {
-		return xfmt.Errorf("invalid registry url %q: host is required", raw)
+		return xfmt.Errorf("invalid registry index url %q: host is required", raw)
+	}
+	if !strings.HasSuffix(strings.ToLower(strings.TrimSpace(parsed.Path)), ".json") {
+		return xfmt.Errorf("invalid registry index url %q: must point to an index.json resource", raw)
 	}
 	return nil
 }

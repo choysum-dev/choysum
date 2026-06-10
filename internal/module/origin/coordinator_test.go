@@ -72,8 +72,8 @@ func (p *fakeRegistryProvider) Fetch(ctx context.Context, registryURL, moduleNam
 func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sourceIntegrity string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(strings.TrimSpace(r.URL.Path), "/api/v1/modules/auth") {
+	mux.HandleFunc("/v1/index.json", func(w http.ResponseWriter, r *http.Request) {
+		if strings.TrimSpace(r.URL.Path) != "/v1/index.json" {
 			http.NotFound(w, r)
 			return
 		}
@@ -91,10 +91,18 @@ func startCoordinatorCatalogServer(t *testing.T, npmPackage, sourceRegistry, sou
 			source["integrity"] = strings.TrimSpace(sourceIntegrity)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"name":          "auth",
-			"latestVersion": "v2.0.0",
-			"npmPackage":    npmPackage,
-			"source":        source,
+			"modules": map[string]any{
+				"auth": map[string]any{
+					"moduleId":      "auth",
+					"latestVersion": "v2.0.0",
+					"package":       npmPackage,
+					"versions": map[string]any{
+						"v2.0.0": map[string]any{
+							"source": source,
+						},
+					},
+				},
+			},
 		})
 	})
 	return httptest.NewServer(mux)
@@ -178,7 +186,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
+		cfg.Registries["corp"] = registry.Entry{IndexURL: catalog.URL + "/v1/index.json"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -219,7 +227,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
+		cfg.Registries["corp"] = registry.Entry{IndexURL: catalog.URL + "/v1/index.json"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -261,7 +269,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: "https://github.com/acme/registry"}
+		cfg.Registries["corp"] = registry.Entry{IndexURL: "https://index.acme.dev/v1/index.json"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -305,7 +313,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalog.URL + "/catalog/api"}
+		cfg.Registries["corp"] = registry.Entry{IndexURL: catalog.URL + "/v1/index.json"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -364,41 +372,6 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 		t.Fatalf("LookupBinding(after purge) error = %v", err)
 	} else if ok {
 		t.Fatal("expected binding to be removed after purge")
-	}
-}
-
-func TestLooksLikeCatalogRegistryURL(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		url      string
-		expected bool
-	}{
-		{name: "invalid url", url: "https://%zz", expected: false},
-		{name: "unsupported scheme", url: "ftp://example.com/modules", expected: false},
-		{name: "empty host", url: "https:///modules", expected: false},
-		{name: "npmjs", url: "https://registry.npmjs.org", expected: false},
-		{name: "npmmirror", url: "https://registry.npmmirror.com", expected: false},
-		{name: "yarn", url: "https://registry.yarnpkg.com", expected: false},
-		{name: "github package", url: "https://npm.pkg.github.com", expected: false},
-		{name: "localhost", url: "http://localhost:4873", expected: false},
-		{name: "loopback", url: "http://127.0.0.1:4873", expected: false},
-		{name: "catalog host no api path", url: "https://catalog.choysum.dev/modules", expected: true},
-		{name: "catalog host", url: "https://catalog.choysum.dev/v1/index.json", expected: true},
-		{name: "github catalog", url: "https://github.com/acme/registry", expected: true},
-		{name: "generic https host", url: "https://example.com/modules", expected: true},
-		{name: "api path", url: "https://example.com/api/v1/modules", expected: true},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			if got := looksLikeCatalogRegistryURL(tc.url); got != tc.expected {
-				t.Fatalf("looksLikeCatalogRegistryURL(%q) = %v, want %v", tc.url, got, tc.expected)
-			}
-		})
 	}
 }
 
@@ -516,7 +489,7 @@ func TestCoordinatorResolveRegistrySourceErrorBranches(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registry store load: %v", err)
 		}
-		cfg.Registries["corp"] = registry.Entry{URL: catalogServer.URL + "/api/v1/modules"}
+		cfg.Registries["corp"] = registry.Entry{IndexURL: catalogServer.URL + "/v1/index.json"}
 		if err := store.Save(cfg); err != nil {
 			t.Fatalf("registry store save: %v", err)
 		}
@@ -545,13 +518,15 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 			DefaultChoysumPath: t.TempDir(),
 		},
 	}
+	catalogServer := startCoordinatorCatalogServer(t, "auth", "https://registry.npmjs.org", "")
+	defer catalogServer.Close()
 
 	store := registry.NewStore(registry.WithHomeDir(t.TempDir()), registry.WithDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
 	cfg, err := store.Load()
 	if err != nil {
 		t.Fatalf("registry store load: %v", err)
 	}
-	cfg.Registries["corp"] = registry.Entry{URL: "https://registry.npmjs.org"}
+	cfg.Registries["corp"] = registry.Entry{IndexURL: catalogServer.URL + "/v1/index.json"}
 	if err := store.Save(cfg); err != nil {
 		t.Fatalf("registry store save: %v", err)
 	}

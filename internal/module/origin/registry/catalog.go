@@ -8,9 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
-	"path"
 	"sort"
 	"strings"
 
@@ -55,6 +53,28 @@ func (m CatalogModule) ResolvedNPMRegistry(defaultRegistry string) string {
 	return strings.TrimSpace(defaultRegistry)
 }
 
+type catalogIndexDocument struct {
+	Modules map[string]catalogIndexModule `json:"modules"`
+}
+
+type catalogIndexModule struct {
+	ModuleID      string                       `json:"moduleId,omitempty"`
+	Name          string                       `json:"name,omitempty"`
+	Description   string                       `json:"description,omitempty"`
+	Package       string                       `json:"package,omitempty"`
+	LatestVersion string                       `json:"latestVersion,omitempty"`
+	Versions      map[string]catalogIndexEntry `json:"versions,omitempty"`
+	Source        *CatalogSource               `json:"source,omitempty"`
+}
+
+type catalogIndexEntry struct {
+	Registry  string         `json:"registry,omitempty"`
+	Package   string         `json:"package,omitempty"`
+	Tarball   string         `json:"tarball,omitempty"`
+	Integrity string         `json:"integrity,omitempty"`
+	Source    *CatalogSource `json:"source,omitempty"`
+}
+
 type Catalog struct {
 	runtimeScope scope.Scope
 	provider     Provider
@@ -91,179 +111,154 @@ func NewCatalog(runtimeScope scope.Scope, opts ...CatalogOption) *Catalog {
 	return c
 }
 
-func (c *Catalog) List(ctx context.Context, registryURL, query string) ([]CatalogModule, error) {
-	registryURL = strings.TrimSpace(registryURL)
-	if registryURL == "" {
-		registryURL = DefaultRegistryURL
+func (c *Catalog) List(ctx context.Context, indexURL, query string) ([]CatalogModule, error) {
+	index, err := c.loadIndex(ctx, indexURL)
+	if err != nil {
+		return nil, err
 	}
-	query = strings.TrimSpace(query)
-	if isGitHubRegistryURL(registryURL) {
-		return c.listFromGitHub(ctx, registryURL, query)
+	query = strings.ToLower(strings.TrimSpace(query))
+
+	items := make([]CatalogModule, 0, len(index.Modules))
+	for moduleName, module := range index.Modules {
+		item := buildCatalogModule(moduleName, module)
+		if query != "" && !strings.Contains(strings.ToLower(item.Name), query) {
+			continue
+		}
+		items = append(items, item)
 	}
-	return c.listFromRemoteAPI(ctx, registryURL, query)
+	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
+	return items, nil
 }
 
-func (c *Catalog) Info(ctx context.Context, registryURL, moduleName string) (*CatalogModule, error) {
-	registryURL = strings.TrimSpace(registryURL)
-	if registryURL == "" {
-		registryURL = DefaultRegistryURL
-	}
+func (c *Catalog) Info(ctx context.Context, indexURL, moduleName string) (*CatalogModule, error) {
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return nil, xfmt.Errorf("module name is empty")
 	}
-	if isGitHubRegistryURL(registryURL) {
-		return c.infoFromGitHub(ctx, registryURL, moduleName)
-	}
-	return c.infoFromRemoteAPI(ctx, registryURL, moduleName)
-}
 
-func (c *Catalog) listFromRemoteAPI(ctx context.Context, registryURL, query string) ([]CatalogModule, error) {
-	u := strings.TrimRight(registryURL, "/") + "/api/v1/modules"
-	parsed, err := url.Parse(u)
-	if err != nil {
-		return nil, xfmt.Errorf("invalid registry url %q: %w", registryURL, err)
-	}
-	if query != "" {
-		q := parsed.Query()
-		q.Set("q", query)
-		parsed.RawQuery = q.Encode()
-	}
-	payload, err := c.fetchJSON(ctx, parsed.String())
+	index, err := c.loadIndex(ctx, indexURL)
 	if err != nil {
 		return nil, err
 	}
 
-	type listEnvelope struct {
-		Modules []CatalogModule `json:"modules"`
-	}
-	env := listEnvelope{}
-	if err := json.Unmarshal(payload, &env); err == nil && env.Modules != nil {
-		normalizeCatalogModules(env.Modules)
-		return env.Modules, nil
+	if module, ok := index.Modules[moduleName]; ok {
+		item := buildCatalogModule(moduleName, module)
+		return &item, nil
 	}
 
-	items := []CatalogModule{}
-	if err := json.Unmarshal(payload, &items); err != nil {
-		return nil, xfmt.Errorf("decode registry catalog list failed: %w", err)
+	keys := make([]string, 0, len(index.Modules))
+	for k := range index.Modules {
+		keys = append(keys, k)
 	}
-	normalizeCatalogModules(items)
-	return items, nil
-}
-
-func (c *Catalog) infoFromRemoteAPI(ctx context.Context, registryURL, moduleName string) (*CatalogModule, error) {
-	u := strings.TrimRight(registryURL, "/") + "/api/v1/modules/" + url.PathEscape(moduleName)
-	payload, err := c.fetchJSON(ctx, u)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, xfmt.Errorf("remote module %q not found", moduleName)
+	sort.Strings(keys)
+	for _, k := range keys {
+		module := index.Modules[k]
+		if strings.TrimSpace(module.ModuleID) == moduleName || strings.TrimSpace(module.Name) == moduleName {
+			item := buildCatalogModule(k, module)
+			return &item, nil
 		}
-		return nil, err
 	}
-	item := &CatalogModule{}
-	if err := json.Unmarshal(payload, item); err != nil {
-		return nil, xfmt.Errorf("decode registry module info failed: %w", err)
-	}
-	if strings.TrimSpace(item.Name) == "" {
-		item.Name = moduleName
-	}
-	normalizeCatalogModule(item)
-	return item, nil
+
+	return nil, xfmt.Errorf("remote module %q not found", moduleName)
 }
 
-func (c *Catalog) listFromGitHub(ctx context.Context, registryURL, query string) ([]CatalogModule, error) {
-	owner, repo, err := parseGitHubOwnerRepo(registryURL)
+func (c *Catalog) loadIndex(ctx context.Context, indexURL string) (*catalogIndexDocument, error) {
+	indexURL = strings.TrimSpace(indexURL)
+	if indexURL == "" {
+		indexURL = DefaultRegistryIndexURL
+	}
+	payload, err := c.fetchJSON(ctx, indexURL)
 	if err != nil {
 		return nil, err
 	}
-	entries, err := c.listGitHubDirectory(ctx, owner, repo, "modules")
-	if err != nil {
-		return nil, err
+	index := &catalogIndexDocument{}
+	if err := json.Unmarshal(payload, index); err != nil {
+		return nil, xfmt.Errorf("decode registry index failed: %w", err)
 	}
-	out := make([]CatalogModule, 0, len(entries))
-	for _, entry := range entries {
-		if entry.Type != "dir" {
-			continue
-		}
-		name := strings.TrimSpace(entry.Name)
-		if name == "" {
-			continue
-		}
-		if query != "" && !strings.Contains(strings.ToLower(name), strings.ToLower(query)) {
-			continue
-		}
-		latest, _, err := c.fetchGitHubLatestVersion(ctx, owner, repo, name)
-		if err != nil {
-			latest = ""
-		}
-		out = append(out, CatalogModule{Name: name, LatestVersion: latest})
+	if index.Modules == nil {
+		index.Modules = map[string]catalogIndexModule{}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out, nil
+	return index, nil
 }
 
-func (c *Catalog) infoFromGitHub(ctx context.Context, registryURL, moduleName string) (*CatalogModule, error) {
-	owner, repo, err := parseGitHubOwnerRepo(registryURL)
-	if err != nil {
-		return nil, err
+func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogModule {
+	name := strings.TrimSpace(moduleName)
+	if strings.TrimSpace(module.ModuleID) != "" {
+		name = strings.TrimSpace(module.ModuleID)
 	}
-	latest, versions, err := c.fetchGitHubLatestVersion(ctx, owner, repo, moduleName)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, xfmt.Errorf("remote module %q not found", moduleName)
-		}
-		return nil, err
+	if name == "" {
+		name = strings.TrimSpace(module.Name)
 	}
-	item := &CatalogModule{Name: moduleName, LatestVersion: latest, Versions: versions}
-	if c.provider != nil && latest != "" {
-		if mod, peekErr := c.provider.PeekManifest(ctx, registryURL, moduleName, moduleName, latest); peekErr == nil && mod != nil {
-			item.Description = strings.TrimSpace(mod.Description)
-		}
-	}
-	normalizeCatalogModule(item)
-	return item, nil
-}
 
-type githubContentItem struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-}
+	item := CatalogModule{
+		Name:          name,
+		Description:   strings.TrimSpace(module.Description),
+		NPMPackage:    strings.TrimSpace(module.Package),
+		LatestVersion: strings.TrimSpace(module.LatestVersion),
+	}
+	if module.Source != nil {
+		sourceCopy := *module.Source
+		item.Source = &sourceCopy
+	}
 
-func (c *Catalog) listGitHubDirectory(ctx context.Context, owner, repo, dir string) ([]githubContentItem, error) {
-	u := "https://api.github.com/repos/" + owner + "/" + repo + "/contents/" + strings.TrimPrefix(dir, "/")
-	payload, err := c.fetchJSON(ctx, u)
-	if err != nil {
-		return nil, err
-	}
-	items := []githubContentItem{}
-	if err := json.Unmarshal(payload, &items); err != nil {
-		return nil, xfmt.Errorf("decode github directory listing failed: %w", err)
-	}
-	return items, nil
-}
-
-func (c *Catalog) fetchGitHubLatestVersion(ctx context.Context, owner, repo, moduleName string) (string, []string, error) {
-	entries, err := c.listGitHubDirectory(ctx, owner, repo, path.Join("modules", moduleName))
-	if err != nil {
-		return "", nil, err
-	}
-	versions := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if entry.Type != "dir" {
-			continue
-		}
-		ver := strings.TrimSpace(entry.Name)
-		if ver == "" {
-			continue
-		}
-		versions = append(versions, ver)
-	}
-	if len(versions) == 0 {
-		return "", nil, os.ErrNotExist
+	versions := make([]string, 0, len(module.Versions))
+	for version := range module.Versions {
+		versions = append(versions, strings.TrimSpace(version))
 	}
 	sort.Strings(versions)
-	latest := pickLatestVersion(versions)
-	return latest, versions, nil
+	item.Versions = versions
+	if item.LatestVersion == "" {
+		item.LatestVersion = pickLatestVersion(versions)
+	}
+
+	entry, ok := module.Versions[item.LatestVersion]
+	if ok {
+		if item.Source == nil {
+			item.Source = &CatalogSource{}
+		}
+		if entry.Source != nil {
+			item.Source = cloneCatalogSource(entry.Source)
+		}
+		if item.Source == nil {
+			item.Source = &CatalogSource{}
+		}
+		if item.Source.Package == "" {
+			item.Source.Package = strings.TrimSpace(entry.Package)
+		}
+		if item.Source.Registry == "" {
+			item.Source.Registry = strings.TrimSpace(entry.Registry)
+		}
+		if item.Source.Tarball == "" {
+			item.Source.Tarball = strings.TrimSpace(entry.Tarball)
+		}
+		if item.Source.Integrity == "" {
+			item.Source.Integrity = strings.TrimSpace(entry.Integrity)
+		}
+		if item.Source.Version == "" {
+			item.Source.Version = strings.TrimSpace(item.LatestVersion)
+		}
+		if item.Source.Type == "" && (item.Source.Package != "" || item.Source.Registry != "" || item.Source.Tarball != "") {
+			item.Source.Type = "npm"
+		}
+		if item.NPMPackage == "" {
+			item.NPMPackage = strings.TrimSpace(item.Source.Package)
+		}
+	}
+
+	if item.Source != nil && item.Source.Package == "" {
+		item.Source.Package = item.NPMPackage
+	}
+
+	normalizeCatalogModule(&item)
+	return item
+}
+
+func cloneCatalogSource(src *CatalogSource) *CatalogSource {
+	if src == nil {
+		return nil
+	}
+	clone := *src
+	return &clone
 }
 
 func pickLatestVersion(versions []string) string {
@@ -301,34 +296,6 @@ func normalizeSemVer(raw string) (string, bool) {
 		return "", false
 	}
 	return candidate, true
-}
-
-func isGitHubRegistryURL(registryURL string) bool {
-	u, err := url.Parse(strings.TrimSpace(registryURL))
-	if err != nil {
-		return false
-	}
-	return strings.EqualFold(u.Scheme, "https") && strings.EqualFold(u.Host, "github.com")
-}
-
-func parseGitHubOwnerRepo(registryURL string) (string, string, error) {
-	u, err := url.Parse(strings.TrimSpace(registryURL))
-	if err != nil {
-		return "", "", xfmt.Errorf("invalid github registry url %q: %w", registryURL, err)
-	}
-	if !strings.EqualFold(u.Scheme, "https") || !strings.EqualFold(u.Host, "github.com") {
-		return "", "", xfmt.Errorf("unsupported github registry url: %s", registryURL)
-	}
-	parts := strings.Split(strings.Trim(strings.TrimSpace(u.Path), "/"), "/")
-	if len(parts) < 2 {
-		return "", "", xfmt.Errorf("invalid github registry url: %s", registryURL)
-	}
-	owner := strings.TrimSpace(parts[0])
-	repo := strings.TrimSpace(parts[1])
-	if owner == "" || repo == "" {
-		return "", "", xfmt.Errorf("invalid github registry url: %s", registryURL)
-	}
-	return owner, repo, nil
 }
 
 func (c *Catalog) fetchJSON(ctx context.Context, requestURL string) ([]byte, error) {

@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	DefaultRegistryAlias = "official"
-	DefaultRegistryURL   = "https://github.com/project-choysum/registry"
+	DefaultRegistryAlias    = "official"
+	DefaultRegistryIndexURL = "https://index.choysum.dev/v1/index.json"
 )
 
 type Entry struct {
-	URL     string `yaml:"url"`
-	AuthRef string `yaml:"authRef,omitempty"`
+	IndexURL string `yaml:"indexURL"`
+	AuthRef  string `yaml:"authRef,omitempty"`
 }
 
 type Config struct {
@@ -32,7 +32,7 @@ func defaultConfig() *Config {
 		Version: 1,
 		Registries: map[string]Entry{
 			DefaultRegistryAlias: {
-				URL: DefaultRegistryURL,
+				IndexURL: DefaultRegistryIndexURL,
 			},
 		},
 	}
@@ -110,7 +110,7 @@ func cloneConfig(cfg *Config) *Config {
 		out.Registries = map[string]Entry{}
 	}
 	if _, ok := out.Registries[DefaultRegistryAlias]; !ok {
-		out.Registries[DefaultRegistryAlias] = Entry{URL: DefaultRegistryURL}
+		out.Registries[DefaultRegistryAlias] = Entry{IndexURL: DefaultRegistryIndexURL}
 	}
 	return out
 }
@@ -165,9 +165,9 @@ func (s *Store) Resolve(alias string) (Entry, error) {
 	if !ok {
 		return Entry{}, xfmt.Errorf("registry alias %s not found", alias)
 	}
-	entry.URL = strings.TrimSpace(entry.URL)
-	if entry.URL == "" {
-		return Entry{}, xfmt.Errorf("registry alias %s has empty url", alias)
+	entry.IndexURL = strings.TrimSpace(entry.IndexURL)
+	if entry.IndexURL == "" {
+		return Entry{}, xfmt.Errorf("registry alias %s has empty indexURL", alias)
 	}
 	return entry, nil
 }

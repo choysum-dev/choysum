@@ -16,11 +16,11 @@ func TestStoreLoadResolveAndSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load(default) error = %v", err)
 	}
-	if cfg.Registries[DefaultRegistryAlias].URL != DefaultRegistryURL {
-		t.Fatalf("unexpected default registry url: %#v", cfg.Registries)
+	if cfg.Registries[DefaultRegistryAlias].IndexURL != DefaultRegistryIndexURL {
+		t.Fatalf("unexpected default registry index url: %#v", cfg.Registries)
 	}
 
-	cfg.Registries["corp"] = Entry{URL: "https://github.com/acme/registry", AuthRef: "token:corp"}
+	cfg.Registries["corp"] = Entry{IndexURL: "https://index.acme.dev/v1/index.json", AuthRef: "token:corp"}
 	if err := store.Save(cfg); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
@@ -29,7 +29,7 @@ func TestStoreLoadResolveAndSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve(corp) error = %v", err)
 	}
-	if entry.URL != "https://github.com/acme/registry" || entry.AuthRef != "token:corp" {
+	if entry.IndexURL != "https://index.acme.dev/v1/index.json" || entry.AuthRef != "token:corp" {
 		t.Fatalf("unexpected resolved registry entry: %#v", entry)
 	}
 
