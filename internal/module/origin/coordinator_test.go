@@ -20,6 +20,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/datatypes"
 )
 
 type sourceTestScope struct {
@@ -378,6 +379,94 @@ func TestCoordinatorHelperBranchFunctions(t *testing.T) {
 	}
 	if got := resolveBindingIntegrity("  sha512-catalog  ", &meta.IrModule{Integrity: ""}); got != "sha512-catalog" {
 		t.Fatalf("resolveBindingIntegrity(catalog fallback) = %q, want %q", got, "sha512-catalog")
+	}
+}
+
+func TestCoordinatorHelperAndGuardCoverage(t *testing.T) {
+	t.Parallel()
+
+	if err := applyEntryPoints(nil); err != nil {
+		t.Fatalf("applyEntryPoints(nil) error = %v", err)
+	}
+
+	invalidEntryPoints := &meta.IrModule{EntryPoints: datatypes.JSON([]byte(`{"web":`))}
+	if err := applyEntryPoints(invalidEntryPoints); err == nil || !strings.Contains(err.Error(), "error unmarshalling entry points") {
+		t.Fatalf("expected entry points unmarshal error, got %v", err)
+	}
+
+	modWithEntryPoints := &meta.IrModule{EntryPoints: datatypes.JSON([]byte(`{"web":"./web/index.ts","service":"./service/main.ts"}`))}
+	if err := applyEntryPoints(modWithEntryPoints); err != nil {
+		t.Fatalf("applyEntryPoints(valid) error = %v", err)
+	}
+	if modWithEntryPoints.WebEntryPoint != "./web/index.ts" || modWithEntryPoints.ServiceEntryPoint != "./service/main.ts" {
+		t.Fatalf("unexpected entry point mapping: %#v", modWithEntryPoints)
+	}
+
+	if err := validateAndNormalizeModuleSemVer(nil, ""); err != nil {
+		t.Fatalf("validateAndNormalizeModuleSemVer(nil) error = %v", err)
+	}
+
+	if got := resolveBindingIntegrity("  sha512-catalog  ", nil); got != "sha512-catalog" {
+		t.Fatalf("resolveBindingIntegrity(nil module) = %q, want %q", got, "sha512-catalog")
+	}
+	if got := resolveBindingIntegrity("sha512-catalog", &meta.IrModule{Integrity: "  sha512-provider  "}); got != "sha512-provider" {
+		t.Fatalf("resolveBindingIntegrity(provider integrity) = %q, want %q", got, "sha512-provider")
+	}
+
+	if got := registrySourceResolutionCacheKey("", "auth"); got != "" {
+		t.Fatalf("registrySourceResolutionCacheKey(empty index) = %q, want empty", got)
+	}
+	if got := registrySourceResolutionCacheKey("https://index.acme.dev/v1/index.json", "   "); got != "" {
+		t.Fatalf("registrySourceResolutionCacheKey(empty module) = %q, want empty", got)
+	}
+	if got := registrySourceResolutionCacheKey(" https://index.acme.dev/v1/index.json ", " auth "); got != "https://index.acme.dev/v1/index.json|auth" {
+		t.Fatalf("registrySourceResolutionCacheKey(trimmed) = %q, want %q", got, "https://index.acme.dev/v1/index.json|auth")
+	}
+
+	var nilCoordinator *Coordinator
+	if _, ok := nilCoordinator.lookupRegistrySourceResolution("index|auth"); ok {
+		t.Fatal("expected nil coordinator cache lookup miss")
+	}
+	nilCoordinator.cacheRegistrySourceResolution("index|auth", registrySourceResolution{packageName: "@acme/choysum-auth"})
+
+	coordinator := &Coordinator{}
+	if _, ok := coordinator.lookupRegistrySourceResolution(""); ok {
+		t.Fatal("expected empty cache key lookup miss")
+	}
+	coordinator.cacheRegistrySourceResolution("", registrySourceResolution{packageName: "@acme/choysum-auth"})
+	if coordinator.resolutionCache != nil {
+		t.Fatal("expected empty cache key write to be ignored")
+	}
+
+	cacheKey := "https://index.acme.dev/v1/index.json|auth"
+	wantResolved := registrySourceResolution{
+		registryURL: "https://registry.npmjs.org",
+		packageName: "@acme/choysum-auth",
+		integrity:   "sha512-auth",
+	}
+	coordinator.cacheRegistrySourceResolution(cacheKey, wantResolved)
+	gotResolved, ok := coordinator.lookupRegistrySourceResolution(cacheKey)
+	if !ok {
+		t.Fatal("expected cache hit after write")
+	}
+	if gotResolved != wantResolved {
+		t.Fatalf("cached resolution = %#v, want %#v", gotResolved, wantResolved)
+	}
+
+	if _, err := nilCoordinator.Fetch(context.Background(), "auth"); err == nil || !strings.Contains(err.Error(), "origin coordinator env is nil") {
+		t.Fatalf("expected nil coordinator fetch error, got %v", err)
+	}
+	if err := nilCoordinator.Purge(context.Background(), "auth"); err == nil || !strings.Contains(err.Error(), "origin coordinator env is nil") {
+		t.Fatalf("expected nil coordinator purge error, got %v", err)
+	}
+
+	runtimeScope := &sourceTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DefaultChoysumPath: t.TempDir()}}
+	coordinatorWithScope := NewCoordinator(runtimeScope)
+	if _, err := coordinatorWithScope.Fetch(context.Background(), "   "); err == nil || !strings.Contains(err.Error(), "empty module input") {
+		t.Fatalf("expected fetch parse error for empty input, got %v", err)
+	}
+	if err := coordinatorWithScope.Purge(context.Background(), "auth@latest"); err == nil || !strings.Contains(err.Error(), "purge accepts local module name only") {
+		t.Fatalf("expected purge local-name guard error, got %v", err)
 	}
 }
 

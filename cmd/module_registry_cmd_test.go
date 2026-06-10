@@ -6,6 +6,8 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,4 +127,168 @@ func TestNewModuleCmd_RequiresRuntimeScope(t *testing.T) {
 	if _, err := executeCommandForTest(t, moduleCmd, "fetch", "auth"); err == nil || !strings.Contains(err.Error(), "scope is not initialized") {
 		t.Fatalf("expected environment initialization error, got %v", err)
 	}
+}
+
+func TestModuleUtilityHelpers(t *testing.T) {
+	defaultURL, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{})
+	if err != nil {
+		t.Fatalf("resolveModuleCatalogIndexURL(default) error = %v", err)
+	}
+	if defaultURL != config.DefaultModuleCatalogIndexURL {
+		t.Fatalf("resolveModuleCatalogIndexURL(default) = %q, want %q", defaultURL, config.DefaultModuleCatalogIndexURL)
+	}
+
+	customURL, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{moduleCatalogIndexURL: " https://index.acme.dev/v1/index.json "})
+	if err != nil {
+		t.Fatalf("resolveModuleCatalogIndexURL(custom) error = %v", err)
+	}
+	if customURL != "https://index.acme.dev/v1/index.json" {
+		t.Fatalf("resolveModuleCatalogIndexURL(custom) = %q, want %q", customURL, "https://index.acme.dev/v1/index.json")
+	}
+
+	if _, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{moduleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}); err == nil || !strings.Contains(err.Error(), "index.json") {
+		t.Fatalf("expected invalid module_catalog_index_url error, got %v", err)
+	}
+
+	if ctx := contextFromCommand(nil); ctx == nil {
+		t.Fatal("contextFromCommand(nil) returned nil context")
+	}
+	cmd := &cobra.Command{}
+	ctxKey := struct{}{}
+	wantCtx := context.WithValue(context.Background(), ctxKey, "module")
+	cmd.SetContext(wantCtx)
+	if gotCtx := contextFromCommand(cmd); gotCtx != wantCtx {
+		t.Fatalf("contextFromCommand(command) did not return command context")
+	}
+
+	if got := nullStringValue(sql.NullString{}); got != "" {
+		t.Fatalf("nullStringValue(invalid) = %q, want empty", got)
+	}
+	if got := nullStringValue(sql.NullString{String: "  v1.2.3  ", Valid: true}); got != "v1.2.3" {
+		t.Fatalf("nullStringValue(valid) = %q, want %q", got, "v1.2.3")
+	}
+
+	payload := moduleIndexViewToPayload(moduleIndexView{
+		ModuleName:    " auth ",
+		OriginType:    " registry ",
+		OriginRef:     " auth@v1.2.3 ",
+		Available:     true,
+		Version:       sql.NullString{String: " v1.2.3 ", Valid: true},
+		LocalPath:     sql.NullString{String: " /tmp/auth ", Valid: true},
+		InstallStatus: sql.NullString{},
+	})
+	if payload["moduleName"] != "auth" || payload["originType"] != "registry" || payload["originRef"] != "auth@v1.2.3" {
+		t.Fatalf("unexpected payload identity fields: %#v", payload)
+	}
+	if payload["version"] != "v1.2.3" || payload["localPath"] != "/tmp/auth" || payload["installStatus"] != "" {
+		t.Fatalf("unexpected payload optional fields: %#v", payload)
+	}
+	if available, ok := payload["available"].(bool); !ok || !available {
+		t.Fatalf("unexpected payload availability: %#v", payload["available"])
+	}
+}
+
+func TestModuleRemoteCommandBranches(t *testing.T) {
+	runtimeScope := &commandTestScope{ctx: context.Background(), cfg: &config.Config{}}
+
+	catalogServer := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{
+		{Name: "auth", LatestVersion: "v1.2.3", Description: "Authentication", Versions: []string{"v1.0.0", "v1.2.3"}},
+	})
+	defer catalogServer.Close()
+
+	runtimeOptions := cliRuntimeOptions{moduleCatalogIndexURL: catalogServer.URL + "/v1/index.json"}
+
+	t.Run("search validates query", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		if err := runModuleSearchRemote(cmd, runtimeScope, runtimeOptions, "   "); err == nil || !strings.Contains(err.Error(), "query is required") {
+			t.Fatalf("expected query required error, got %v", err)
+		}
+	})
+
+	t.Run("search renders result table", func(t *testing.T) {
+		var out bytes.Buffer
+		cmd := &cobra.Command{}
+		cmd.SetOut(&out)
+
+		if err := runModuleSearchRemote(cmd, runtimeScope, runtimeOptions, "auth"); err != nil {
+			t.Fatalf("runModuleSearchRemote() error = %v", err)
+		}
+		output := out.String()
+		if !strings.Contains(output, "MODULE") || !strings.Contains(output, "auth") || !strings.Contains(output, "v1.2.3") {
+			t.Fatalf("unexpected remote search output: %q", output)
+		}
+	})
+
+	t.Run("search reports empty result", func(t *testing.T) {
+		var out bytes.Buffer
+		cmd := &cobra.Command{}
+		cmd.SetOut(&out)
+
+		if err := runModuleSearchRemote(cmd, runtimeScope, runtimeOptions, "missing"); err != nil {
+			t.Fatalf("runModuleSearchRemote(missing) error = %v", err)
+		}
+		if !strings.Contains(out.String(), `No remote modules matched query "missing"`) {
+			t.Fatalf("unexpected missing-search output: %q", out.String())
+		}
+	})
+
+	t.Run("list renders and handles empty catalog", func(t *testing.T) {
+		var listOut bytes.Buffer
+		listCmd := &cobra.Command{}
+		listCmd.SetOut(&listOut)
+
+		if err := runModuleListRemote(listCmd, runtimeScope, runtimeOptions); err != nil {
+			t.Fatalf("runModuleListRemote() error = %v", err)
+		}
+		if !strings.Contains(listOut.String(), "MODULE") || !strings.Contains(listOut.String(), "auth") {
+			t.Fatalf("unexpected remote list output: %q", listOut.String())
+		}
+
+		emptyServer := startRemoteRegistryCatalogServer(t, nil)
+		defer emptyServer.Close()
+		emptyOptions := cliRuntimeOptions{moduleCatalogIndexURL: emptyServer.URL + "/v1/index.json"}
+
+		var emptyOut bytes.Buffer
+		emptyCmd := &cobra.Command{}
+		emptyCmd.SetOut(&emptyOut)
+		if err := runModuleListRemote(emptyCmd, runtimeScope, emptyOptions); err != nil {
+			t.Fatalf("runModuleListRemote(empty) error = %v", err)
+		}
+		if !strings.Contains(emptyOut.String(), "No remote modules found.") {
+			t.Fatalf("unexpected empty remote list output: %q", emptyOut.String())
+		}
+	})
+
+	t.Run("info validates input and returns payload", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		if err := runModuleInfoRemote(cmd, runtimeScope, runtimeOptions, "   "); err == nil || !strings.Contains(err.Error(), "module input is required") {
+			t.Fatalf("expected module input required error, got %v", err)
+		}
+
+		if err := runModuleInfoRemote(cmd, runtimeScope, runtimeOptions, "legacy/auth"); err == nil || !strings.Contains(err.Error(), "registry alias syntax is no longer supported") {
+			t.Fatalf("expected legacy alias syntax error, got %v", err)
+		}
+
+		for _, input := range []string{"auth", "auth@latest"} {
+			var out bytes.Buffer
+			infoCmd := &cobra.Command{}
+			infoCmd.SetOut(&out)
+
+			if err := runModuleInfoRemote(infoCmd, runtimeScope, runtimeOptions, input); err != nil {
+				t.Fatalf("runModuleInfoRemote(%s) error = %v", input, err)
+			}
+			payload := map[string]any{}
+			if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+				t.Fatalf("unmarshal remote info payload for %s: %v (payload=%q)", input, err, out.String())
+			}
+			if payload["name"] != "auth" || payload["latestVersion"] != "v1.2.3" {
+				t.Fatalf("unexpected remote info payload for %s: %#v", input, payload)
+			}
+		}
+
+		invalidOptions := cliRuntimeOptions{moduleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}
+		if err := runModuleInfoRemote(cmd, runtimeScope, invalidOptions, "auth"); err == nil || !strings.Contains(err.Error(), "index.json") {
+			t.Fatalf("expected invalid catalog index url validation error, got %v", err)
+		}
+	})
 }
