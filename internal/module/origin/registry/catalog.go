@@ -302,16 +302,29 @@ func resolveCatalogVersionEntry(versions map[string]catalogIndexEntry, targetVer
 	if entry, ok := versions[targetVersion]; ok {
 		return entry, true
 	}
-	targetNormalized, targetHasSemVer := normalizeSemVer(targetVersion)
-	for rawVersion, entry := range versions {
+	keys := make([]string, 0, len(versions))
+	for rawVersion := range versions {
+		keys = append(keys, rawVersion)
+	}
+	sort.Strings(keys)
+
+	for _, rawVersion := range keys {
+		entry := versions[rawVersion]
 		trimmedVersion := strings.TrimSpace(rawVersion)
 		if trimmedVersion == targetVersion {
 			return entry, true
 		}
-		if targetHasSemVer {
-			if rawNormalized, ok := normalizeSemVer(trimmedVersion); ok && rawNormalized == targetNormalized {
-				return entry, true
-			}
+	}
+
+	targetNormalized, targetHasSemVer := normalizeSemVer(targetVersion)
+	if !targetHasSemVer {
+		return catalogIndexEntry{}, false
+	}
+	for _, rawVersion := range keys {
+		entry := versions[rawVersion]
+		trimmedVersion := strings.TrimSpace(rawVersion)
+		if rawNormalized, ok := normalizeSemVer(trimmedVersion); ok && rawNormalized == targetNormalized {
+			return entry, true
 		}
 	}
 	return catalogIndexEntry{}, false

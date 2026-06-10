@@ -462,6 +462,59 @@ func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryWithSemverEquivalentKey(
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryDeterministicallyForSemverEquivalentKeys(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.2.3",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"1.2.3": map[string]any{
+						"source": map[string]any{
+							"type":      "npm",
+							"registry":  "https://registry.acme.dev",
+							"package":   "@acme/choysum-auth",
+							"tarball":   "https://registry.acme.dev/@acme/choysum-auth/-/choysum-auth-1.2.3-plain.tgz",
+							"integrity": "sha512-auth-v123-plain",
+						},
+					},
+					" 1.2.3 ": map[string]any{
+						"source": map[string]any{
+							"type":      "npm",
+							"registry":  "https://registry.acme.dev",
+							"package":   "@acme/choysum-auth",
+							"tarball":   "https://registry.acme.dev/@acme/choysum-auth/-/choysum-auth-1.2.3-spaced.tgz",
+							"integrity": "sha512-auth-v123-spaced",
+						},
+					},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil {
+		t.Fatal("Catalog.Info() returned nil")
+	}
+	if item.Source == nil {
+		t.Fatal("expected source metadata from deterministic semver-equivalent match")
+	}
+	if item.Source.Tarball != "https://registry.acme.dev/@acme/choysum-auth/-/choysum-auth-1.2.3-spaced.tgz" {
+		t.Fatalf("source tarball = %q, want deterministic spaced-key tarball", item.Source.Tarball)
+	}
+	if item.Source.Integrity != "sha512-auth-v123-spaced" {
+		t.Fatalf("source integrity = %q, want %q", item.Source.Integrity, "sha512-auth-v123-spaced")
+	}
+}
+
 func TestCatalogBuildAndHelperBranchCoverage(t *testing.T) {
 	t.Parallel()
 
