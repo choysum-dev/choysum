@@ -856,3 +856,129 @@ func TestDefaultConfigPathUsesLocalAndFallsBackWhenMissing(t *testing.T) {
 		t.Fatalf("expected empty config path fallback, got %q", got)
 	}
 }
+
+func TestValidateModuleCatalogIndexURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		raw         string
+		wantErrPart string
+	}{
+		{name: "empty", raw: "   ", wantErrPart: "module_catalog_index_url is required"},
+		{name: "invalid url", raw: "https://%zz", wantErrPart: "invalid module_catalog_index_url"},
+		{name: "unsupported scheme", raw: "ftp://index.example.dev/v1/index.json", wantErrPart: "only http/https are supported"},
+		{name: "missing host", raw: "https:///v1/index.json", wantErrPart: "host is required"},
+		{name: "missing index json", raw: "https://index.example.dev/v1/catalog.json", wantErrPart: "must point to an index.json resource"},
+		{name: "valid https", raw: "https://index.example.dev/v1/index.json", wantErrPart: ""},
+		{name: "valid http", raw: "http://index.example.dev/v1/index.json", wantErrPart: ""},
+		{name: "valid upper index path", raw: "https://index.example.dev/v1/INDEX.JSON", wantErrPart: ""},
+		{name: "valid with query", raw: "https://index.example.dev/v1/index.json?cache=1", wantErrPart: ""},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateModuleCatalogIndexURL(tt.raw)
+			if tt.wantErrPart == "" {
+				if err != nil {
+					t.Fatalf("ValidateModuleCatalogIndexURL(%q) error = %v", tt.raw, err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErrPart) {
+				t.Fatalf("ValidateModuleCatalogIndexURL(%q) error = %v, want substring %q", tt.raw, err, tt.wantErrPart)
+			}
+		})
+	}
+}
+
+func TestLegacyRegistryEntryKeysHelpers(t *testing.T) {
+	t.Parallel()
+
+	if got := legacyRegistryEntryKeys(map[string]any{
+		" url ":     "https://legacy.example.dev",
+		"INDEXURL":  "https://legacy.example.dev/v1/index.json",
+		"index_url": "https://legacy.example.dev/v1/index.json",
+	}); !reflect.DeepEqual(got, []string{"indexURL", "index_url", "url"}) {
+		t.Fatalf("legacyRegistryEntryKeys(map[string]any) = %#v, want %#v", got, []string{"indexURL", "index_url", "url"})
+	}
+
+	if got := legacyRegistryEntryKeys(map[any]any{
+		" url ":     "https://legacy.example.dev",
+		"INDEXURL":  "https://legacy.example.dev/v1/index.json",
+		"index_url": "https://legacy.example.dev/v1/index.json",
+	}); !reflect.DeepEqual(got, []string{"indexURL", "index_url", "url"}) {
+		t.Fatalf("legacyRegistryEntryKeys(map[any]any) = %#v, want %#v", got, []string{"indexURL", "index_url", "url"})
+	}
+
+	if got := legacyRegistryEntryKeys("not-a-map"); got != nil {
+		t.Fatalf("legacyRegistryEntryKeys(non-map) = %#v, want nil", got)
+	}
+
+	if got := collectLegacyRegistryEntryKeys(map[string]any{"name": "official"}); len(got) != 0 {
+		t.Fatalf("collectLegacyRegistryEntryKeys(no legacy keys) = %#v, want empty", got)
+	}
+}
+
+func TestRejectLegacyModuleCatalogConfigKeys(t *testing.T) {
+	t.Parallel()
+
+	if err := rejectLegacyModuleCatalogConfigKeys(nil); err != nil {
+		t.Fatalf("rejectLegacyModuleCatalogConfigKeys(nil) error = %v", err)
+	}
+
+	loadViper := func(t *testing.T, body string) *viper.Viper {
+		t.Helper()
+		v := viper.New()
+		v.SetConfigType("yaml")
+		if err := v.ReadConfig(strings.NewReader(strings.TrimSpace(body) + "\n")); err != nil {
+			t.Fatalf("ReadConfig() error = %v", err)
+		}
+		return v
+	}
+
+	t.Run("accepts current index-url config", func(t *testing.T) {
+		v := loadViper(t, `
+module_catalog_index_url: https://index.choysum.dev/v1/index.json
+`)
+		if err := rejectLegacyModuleCatalogConfigKeys(v); err != nil {
+			t.Fatalf("rejectLegacyModuleCatalogConfigKeys(current) error = %v", err)
+		}
+	})
+
+	t.Run("rejects root legacy key", func(t *testing.T) {
+		v := loadViper(t, `
+registry_index_url: https://legacy.example.dev/v1/index.json
+`)
+		err := rejectLegacyModuleCatalogConfigKeys(v)
+		if err == nil || !strings.Contains(err.Error(), "registry_index_url (use module_catalog_index_url)") {
+			t.Fatalf("rejectLegacyModuleCatalogConfigKeys(root legacy) error = %v", err)
+		}
+	})
+
+	t.Run("rejects nested legacy registry entry keys", func(t *testing.T) {
+		v := loadViper(t, `
+registries:
+  official:
+    url: https://legacy.example.dev/v1/index.json
+    indexURL: https://legacy.example.dev/v1/index.json
+  community:
+    index_url: https://legacy.example.dev/v1/index.json
+`)
+		err := rejectLegacyModuleCatalogConfigKeys(v)
+		if err == nil {
+			t.Fatal("expected nested legacy keys to be rejected")
+		}
+		for _, want := range []string{
+			"registries (use module_catalog_index_url)",
+			"registries.official.url (use module_catalog_index_url)",
+			"registries.official.indexURL (use module_catalog_index_url)",
+			"registries.community.index_url (use module_catalog_index_url)",
+		} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("rejectLegacyModuleCatalogConfigKeys(nested legacy) error = %v, missing %q", err, want)
+			}
+		}
+	})
+}
