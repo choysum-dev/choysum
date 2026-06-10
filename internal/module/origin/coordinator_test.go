@@ -367,6 +367,12 @@ func TestCoordinatorHelperBranchFunctions(t *testing.T) {
 	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindLocal, LocalName: " auth "}, "v1.0.0"); got != "auth" {
 		t.Fatalf("canonicalRegistryOriginRef(local) = %q, want %q", got, "auth")
 	}
+	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "LATEST"}, ""); got != "auth@latest" {
+		t.Fatalf("canonicalRegistryOriginRef(registry latest fallback) = %q, want %q", got, "auth@latest")
+	}
+	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "LaTeSt"}, "v2.0.1"); got != "auth@v2.0.1" {
+		t.Fatalf("canonicalRegistryOriginRef(registry latest resolved) = %q, want %q", got, "auth@v2.0.1")
+	}
 	if got := resolveBindingIntegrity("  sha512-catalog  ", &meta.IrModule{Integrity: ""}); got != "sha512-catalog" {
 		t.Fatalf("resolveBindingIntegrity(catalog fallback) = %q, want %q", got, "sha512-catalog")
 	}

@@ -145,12 +145,13 @@ func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) stri
 		return strings.TrimSpace(parsed.LocalName)
 	}
 	moduleName := strings.TrimSpace(parsed.ModuleName)
-	if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
+	version := strings.TrimSpace(parsed.Version)
+	if strings.EqualFold(version, "latest") {
+		version = "latest"
 		if resolvedVersion = strings.TrimSpace(resolvedVersion); resolvedVersion != "" {
 			return moduleName + "@" + resolvedVersion
 		}
 	}
-	version := strings.TrimSpace(parsed.Version)
 	if version == "" {
 		version = "latest"
 	}
