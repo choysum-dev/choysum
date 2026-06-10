@@ -625,6 +625,15 @@ func TestCatalogFetchJSONBranchCoverage(t *testing.T) {
 	t.Parallel()
 
 	catalog := NewCatalog(nil)
+	nilCtxServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"modules":{}}`))
+	}))
+	defer nilCtxServer.Close()
+	if payload, err := catalog.fetchJSON(nil, nilCtxServer.URL); err != nil || len(payload) == 0 {
+		t.Fatalf("fetchJSON(nil context) = (%q, %v), want non-empty payload", string(payload), err)
+	}
+
 	if _, err := catalog.fetchJSON(context.Background(), "://bad-url"); err == nil || !strings.Contains(err.Error(), "build request failed") {
 		t.Fatalf("expected build request failed error, got %v", err)
 	}
@@ -745,6 +754,15 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 	if _, ok := normalizeSemVer("invalid"); ok {
 		t.Fatal("normalizeSemVer(invalid) should fail")
+	}
+	if _, ok := resolveCatalogVersionEntry(map[string]catalogIndexEntry{"v1.0.0": {}}, "   "); ok {
+		t.Fatal("resolveCatalogVersionEntry(empty target) should not match")
+	}
+	if _, ok := resolveCatalogVersionEntry(map[string]catalogIndexEntry{"beta": {}}, "alpha"); ok {
+		t.Fatal("resolveCatalogVersionEntry(non-semver target miss) should not match")
+	}
+	if _, ok := resolveCatalogVersionEntry(map[string]catalogIndexEntry{"v1.2.4": {}}, "v1.2.3"); ok {
+		t.Fatal("resolveCatalogVersionEntry(semver target miss) should not match")
 	}
 
 	semverEquivalent := []string{"v1.2.3", "1.2.3"}
