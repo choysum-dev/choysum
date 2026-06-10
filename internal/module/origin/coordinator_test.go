@@ -374,6 +374,9 @@ func TestCoordinatorHelperBranchFunctions(t *testing.T) {
 	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "LaTeSt"}, "v2.0.1"); got != "auth@v2.0.1" {
 		t.Fatalf("canonicalRegistryOriginRef(registry latest resolved) = %q, want %q", got, "auth@v2.0.1")
 	}
+	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "   "}, ""); got != "auth@latest" {
+		t.Fatalf("canonicalRegistryOriginRef(registry blank version) = %q, want %q", got, "auth@latest")
+	}
 	if got := canonicalRegistryOriginRef(ParsedInput{Kind: InputKindRegistry, ModuleName: "auth", Version: "latest"}, "  v2.0.2  "); got != "auth@v2.0.2" {
 		t.Fatalf("canonicalRegistryOriginRef(registry latest resolved trimmed) = %q, want %q", got, "auth@v2.0.2")
 	}
@@ -669,6 +672,28 @@ func TestCoordinatorResolveRegistrySourceCaching(t *testing.T) {
 		}
 		if got := atomic.LoadInt32(&hitsB); got != 1 {
 			t.Fatalf("catalogB hit count = %d, want 1", got)
+		}
+	})
+
+	t.Run("blank index url falls back to default and can hit cache", func(t *testing.T) {
+		runtimeScope := newRuntimeScope()
+		runtimeScope.cfg.ModuleCatalogIndexURL = "   "
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}))
+
+		cacheKey := registrySourceResolutionCacheKey(config.DefaultModuleCatalogIndexURL, "auth")
+		wantResolved := registrySourceResolution{
+			registryURL: "https://registry.npmjs.org",
+			packageName: "@acme/choysum-auth",
+			integrity:   "sha512-auth",
+		}
+		coordinator.cacheRegistrySourceResolution(cacheKey, wantResolved)
+
+		resolved, err := coordinator.resolveRegistrySource(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("resolveRegistrySource(blank index fallback cache hit) error = %v", err)
+		}
+		if resolved != wantResolved {
+			t.Fatalf("resolveRegistrySource(blank index fallback cache hit) = %#v, want %#v", resolved, wantResolved)
 		}
 	})
 }

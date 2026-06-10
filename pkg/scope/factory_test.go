@@ -69,6 +69,13 @@ func (i factoryTestInput) TmpPath() string {
 	return i.cfg.TmpPath
 }
 
+func (i factoryTestInput) ModuleCatalogIndexURL() string {
+	if i.cfg == nil {
+		return ""
+	}
+	return i.cfg.ModuleCatalogIndexURL
+}
+
 func (i factoryTestInput) CompileBundleMode() string {
 	if i.cfg == nil || i.cfg.Compile == nil {
 		return ""
@@ -365,9 +372,10 @@ func TestNewScopeUsesRegisteredFactory(t *testing.T) {
 
 func TestPathsRuntimeOptionsFromInputUsesPathsInputValues(t *testing.T) {
 	cfg := &config.Config{
-		ModulesPath: "/tmp/modules",
-		DistPath:    "/tmp/dist",
-		TmpPath:     "/tmp/tmp",
+		ModulesPath:           "/tmp/modules",
+		DistPath:              "/tmp/dist",
+		TmpPath:               "/tmp/tmp",
+		ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json",
 	}
 
 	options, ok := PathsRuntimeOptionsFromInput(factoryTestInput{cfg: cfg})
@@ -382,5 +390,8 @@ func TestPathsRuntimeOptionsFromInputUsesPathsInputValues(t *testing.T) {
 	}
 	if options.TmpPath != cfg.TmpPath {
 		t.Fatalf("TmpPath = %q, want %q", options.TmpPath, cfg.TmpPath)
+	}
+	if options.ModuleCatalogIndexURL != cfg.ModuleCatalogIndexURL {
+		t.Fatalf("ModuleCatalogIndexURL = %q, want %q", options.ModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
 	}
 }

@@ -13,13 +13,14 @@ import (
 
 func configSnapshotFixture() *config.Config {
 	return &config.Config{
-		ModulesPath:        "/tmp/modules",
-		DistPath:           "/tmp/dist",
-		TmpPath:            "/tmp/tmp",
-		DefaultChoysumPath: "/tmp/.choysum",
-		ConfigPath:         "/tmp/config.yaml",
-		NpmPath:            "/tmp/node_modules",
-		Compile:            &config.CompileConfig{BundleMode: "bundle"},
+		ModulesPath:           "/tmp/modules",
+		DistPath:              "/tmp/dist",
+		TmpPath:               "/tmp/tmp",
+		DefaultChoysumPath:    "/tmp/.choysum",
+		ConfigPath:            "/tmp/config.yaml",
+		NpmPath:               "/tmp/node_modules",
+		ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json",
+		Compile:               &config.CompileConfig{BundleMode: "bundle"},
 		Auth: &config.AuthConfig{
 			GrpcEntryPolicy: map[string]*config.EntryMethodConfig{
 				"auth.User/Login": {RecordRuleAllow: []config.EntryRecordRuleAllow{{Model: "auth.User", Ops: []string{"read"}}}},
@@ -84,7 +85,7 @@ func TestFactoryInputFromConfigExposesModulesPath(t *testing.T) {
 		t.Fatalf("FactoryInputFromConfig(nil) = %#v, want nil", got)
 	}
 
-	input := FactoryInputFromConfig(&config.Config{ModulesPath: "/workspace/modules"})
+	input := FactoryInputFromConfig(&config.Config{ModulesPath: "/workspace/modules", ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json"})
 	if input == nil {
 		t.Fatal("FactoryInputFromConfig() returned nil input")
 	}
@@ -95,5 +96,8 @@ func TestFactoryInputFromConfigExposesModulesPath(t *testing.T) {
 	}
 	if paths.ModulesPath != "/workspace/modules" {
 		t.Fatalf("PathsRuntimeOptionsFromInput().ModulesPath = %q, want /workspace/modules", paths.ModulesPath)
+	}
+	if paths.ModuleCatalogIndexURL != "https://index.example.dev/v1/index.json" {
+		t.Fatalf("PathsRuntimeOptionsFromInput().ModuleCatalogIndexURL = %q, want https://index.example.dev/v1/index.json", paths.ModuleCatalogIndexURL)
 	}
 }

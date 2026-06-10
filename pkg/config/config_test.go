@@ -683,6 +683,19 @@ modules_path: from-config
 		}
 	})
 
+	t.Run("blank module catalog index url defaults before validation", func(t *testing.T) {
+		cfg := defaultConfig()
+		err := cfg.unmarshal(cfgPath, WithDefaults(func(cfg *Config) {
+			cfg.ModuleCatalogIndexURL = "   "
+		}))
+		if err != nil {
+			t.Fatalf("expected blank module_catalog_index_url to default, got %v", err)
+		}
+		if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
+			t.Fatalf("module_catalog_index_url = %q, want %q", cfg.ModuleCatalogIndexURL, DefaultModuleCatalogIndexURL)
+		}
+	})
+
 	t.Run("custom env prefix overrides server factory selectors", func(t *testing.T) {
 		t.Setenv("CHOYSUM_TEST_SERVER_JS_ENGINE_FACTORY", "engine-from-env")
 		t.Setenv("CHOYSUM_TEST_SERVER_JS_EXECUTOR_FACTORY", "executor-from-env")

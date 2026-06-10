@@ -206,6 +206,12 @@ func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
 		})
 	}
 
+	invalidCatalog := valid
+	invalidCatalog.moduleCatalogIndexURL = "https://index.example.dev/v1/catalog.json"
+	if err := invalidCatalog.Validate(); err == nil || !strings.Contains(err.Error(), "index.json") {
+		t.Fatalf("Validate(invalid moduleCatalogIndexURL) error = %v, want index.json validation error", err)
+	}
+
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("Validate(valid) error = %v", err)
 	}

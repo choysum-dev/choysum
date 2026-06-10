@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -202,6 +204,22 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		cmd := &cobra.Command{}
 		if err := runModuleSearchRemote(cmd, runtimeScope, runtimeOptions, "   "); err == nil || !strings.Contains(err.Error(), "query is required") {
 			t.Fatalf("expected query required error, got %v", err)
+		}
+	})
+
+	t.Run("search wraps remote catalog query errors", func(t *testing.T) {
+		failingCatalog := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "upstream unavailable", http.StatusBadGateway)
+		}))
+		defer failingCatalog.Close()
+
+		cmd := &cobra.Command{}
+		err := runModuleSearchRemote(cmd, runtimeScope, cliRuntimeOptions{moduleCatalogIndexURL: failingCatalog.URL + "/v1/index.json"}, "auth")
+		if err == nil {
+			t.Fatal("expected remote catalog query error")
+		}
+		if !strings.Contains(err.Error(), "query remote module catalog index") {
+			t.Fatalf("expected wrapped remote catalog query error, got %v", err)
 		}
 	})
 
