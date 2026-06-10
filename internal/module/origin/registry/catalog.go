@@ -211,7 +211,7 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 		item.LatestVersion = pickLatestVersion(versions)
 	}
 
-	entry, ok := module.Versions[item.LatestVersion]
+	entry, ok := resolveCatalogVersionEntry(module.Versions, item.LatestVersion)
 	if ok {
 		if entry.Source != nil {
 			if item.Source == nil {
@@ -284,6 +284,22 @@ func mergeCatalogSource(dst *CatalogSource, src *CatalogSource) {
 	if value := strings.TrimSpace(src.Integrity); value != "" {
 		dst.Integrity = value
 	}
+}
+
+func resolveCatalogVersionEntry(versions map[string]catalogIndexEntry, targetVersion string) (catalogIndexEntry, bool) {
+	targetVersion = strings.TrimSpace(targetVersion)
+	if targetVersion == "" {
+		return catalogIndexEntry{}, false
+	}
+	if entry, ok := versions[targetVersion]; ok {
+		return entry, true
+	}
+	for rawVersion, entry := range versions {
+		if strings.TrimSpace(rawVersion) == targetVersion {
+			return entry, true
+		}
+	}
+	return catalogIndexEntry{}, false
 }
 
 func pickLatestVersion(versions []string) string {
