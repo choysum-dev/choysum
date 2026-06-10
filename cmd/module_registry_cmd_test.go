@@ -45,11 +45,11 @@ func TestNewRegistryCmd_SubcommandsAndWorkflow(t *testing.T) {
 	}
 
 	registryCmd := newRegistryCmd(envGetter, runtimeOptionsGetter)
-	output, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://example.com/registry")
+	output, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://index.example.com/v1/index.json")
 	if err != nil {
 		t.Fatalf("registry add failed: %v", err)
 	}
-	if !strings.Contains(output, `Registry "corp" -> https://example.com/registry`) {
+	if !strings.Contains(output, `Registry "corp" -> https://index.example.com/v1/index.json`) {
 		t.Fatalf("unexpected add output: %q", output)
 	}
 
@@ -92,16 +92,52 @@ func TestNewRegistryCmd_ValidationPaths(t *testing.T) {
 	}
 	registryCmd := newRegistryCmd(envGetter, runtimeOptionsGetter)
 
-	if _, err := executeCommandForTest(t, registryCmd, "add", "bad/alias", "https://example.com/registry"); err == nil || !strings.Contains(err.Error(), "invalid registry alias") {
+	if _, err := executeCommandForTest(t, registryCmd, "add", "bad/alias", "https://index.example.com/v1/index.json"); err == nil || !strings.Contains(err.Error(), "invalid registry alias") {
 		t.Fatalf("expected invalid alias error, got %v", err)
 	}
 
-	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "ftp://example.com/registry"); err == nil || !strings.Contains(err.Error(), "only http/https are supported") {
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "ftp://index.example.com/v1/index.json"); err == nil || !strings.Contains(err.Error(), "only http/https are supported") {
 		t.Fatalf("expected invalid url error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://index.example.com/v1"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected index.json path validation error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://index.example.com/v1/catalog.json"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected strict index.json path validation error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https:///v1/index.json"); err == nil || !strings.Contains(err.Error(), "host is required") {
+		t.Fatalf("expected host required validation error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "login", "corp"); err == nil || !strings.Contains(err.Error(), "--auth-ref is required") {
+		t.Fatalf("expected missing auth-ref error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "remove", "missing"); err == nil || !strings.Contains(err.Error(), "registry alias \"missing\" not found") {
+		t.Fatalf("expected remove missing alias error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "login", "missing", "--auth-ref", "token://missing"); err == nil || !strings.Contains(err.Error(), "registry alias \"missing\" not found") {
+		t.Fatalf("expected login missing alias error, got %v", err)
 	}
 
 	if _, err := executeCommandForTest(t, registryCmd, "remove", sourceregistry.DefaultRegistryAlias); err == nil || !strings.Contains(err.Error(), "cannot remove default registry alias") {
 		t.Fatalf("expected protected default alias error, got %v", err)
+	}
+}
+
+func TestRegistryValidationHelpers(t *testing.T) {
+	if err := validateRegistryAlias(""); err == nil || !strings.Contains(err.Error(), "registry alias is required") {
+		t.Fatalf("expected empty alias validation error, got %v", err)
+	}
+	if err := validateRegistryIndexURL("://bad-url"); err == nil || !strings.Contains(err.Error(), "invalid registry index url") {
+		t.Fatalf("expected parse validation error, got %v", err)
+	}
+	if err := validateRegistryIndexURL("https://index.example.com/v1/catalog.json"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected strict index.json helper validation error, got %v", err)
 	}
 }
 
