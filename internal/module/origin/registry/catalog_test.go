@@ -6,6 +6,7 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +26,21 @@ type catalogRoundTripper func(req *http.Request) (*http.Response, error)
 
 func (rt catalogRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	return rt(req)
+}
+
+type catalogErrorReadCloser struct {
+	err error
+}
+
+func (r catalogErrorReadCloser) Read(_ []byte) (int, error) {
+	if r.err == nil {
+		return 0, io.EOF
+	}
+	return 0, r.err
+}
+
+func (catalogErrorReadCloser) Close() error {
+	return nil
 }
 
 func (p *catalogFakeProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
@@ -260,6 +276,154 @@ func TestCatalogLoadIndexDefaultAndNilModules(t *testing.T) {
 	}
 	if len(items) != 0 {
 		t.Fatalf("Catalog.List(nil modules) len = %d, want 0", len(items))
+	}
+}
+
+func TestCatalogListAndInfoPropagateLoadIndexErrors(t *testing.T) {
+	t.Parallel()
+
+	expected := errors.New("dial failed")
+	catalog := NewCatalog(nil, WithCatalogHTTPClient(&http.Client{
+		Transport: catalogRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return nil, expected
+		}),
+	}))
+
+	if _, err := catalog.List(context.Background(), "https://index.acme.dev/v1/index.json", ""); err == nil || !strings.Contains(err.Error(), "dial failed") {
+		t.Fatalf("expected list loadIndex error, got %v", err)
+	}
+	if _, err := catalog.Info(context.Background(), "https://index.acme.dev/v1/index.json", "auth"); err == nil || !strings.Contains(err.Error(), "dial failed") {
+		t.Fatalf("expected info loadIndex error, got %v", err)
+	}
+}
+
+func TestCatalogLoadIndexDecodeError(t *testing.T) {
+	t.Parallel()
+
+	catalog := NewCatalog(nil, WithCatalogHTTPClient(&http.Client{
+		Transport: catalogRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader("{not-json")),
+			}, nil
+		}),
+	}))
+
+	if _, err := catalog.List(context.Background(), "https://index.acme.dev/v1/index.json", ""); err == nil || !strings.Contains(err.Error(), "decode registry index failed") {
+		t.Fatalf("expected decode registry index error, got %v", err)
+	}
+}
+
+func TestCatalogListFromStaticIndex_SortsMultiple(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"zeta":  map[string]any{"moduleId": "zeta", "latestVersion": "v1.0.0", "versions": map[string]any{"v1.0.0": map[string]any{}}},
+			"alpha": map[string]any{"moduleId": "alpha", "latestVersion": "v1.0.0", "versions": map[string]any{"v1.0.0": map[string]any{}}},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	items, err := catalog.List(context.Background(), server.URL+"/v1/index.json", "")
+	if err != nil {
+		t.Fatalf("Catalog.List() error = %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("Catalog.List() len = %d, want 2", len(items))
+	}
+	if items[0].Name != "alpha" || items[1].Name != "zeta" {
+		t.Fatalf("Catalog.List() sort order = [%s %s], want [alpha zeta]", items[0].Name, items[1].Name)
+	}
+}
+
+func TestCatalogBuildAndHelperBranchCoverage(t *testing.T) {
+	t.Parallel()
+
+	item := buildCatalogModule("", catalogIndexModule{
+		Name:          " auth ",
+		LatestVersion: "",
+		Package:       "",
+		Versions: map[string]catalogIndexEntry{
+			"v1.1.0": {
+				Source: &CatalogSource{Package: "@acme/choysum-auth"},
+			},
+		},
+	})
+	if item.Name != "auth" {
+		t.Fatalf("buildCatalogModule() name = %q, want %q", item.Name, "auth")
+	}
+	if item.LatestVersion != "v1.1.0" {
+		t.Fatalf("buildCatalogModule() latestVersion = %q, want %q", item.LatestVersion, "v1.1.0")
+	}
+	if item.NPMPackage != "@acme/choysum-auth" {
+		t.Fatalf("buildCatalogModule() npmPackage = %q, want %q", item.NPMPackage, "@acme/choysum-auth")
+	}
+
+	merged := &CatalogSource{}
+	mergeCatalogSource(merged, &CatalogSource{
+		Type:      " npm ",
+		Registry:  " https://registry.acme.dev ",
+		Package:   " @acme/choysum-auth ",
+		Version:   " v1.1.0 ",
+		Tarball:   " https://registry.acme.dev/auth.tgz ",
+		Integrity: " sha512-auth ",
+	})
+	if merged.Type != "npm" || merged.Registry != "https://registry.acme.dev" || merged.Package != "@acme/choysum-auth" || merged.Version != "v1.1.0" || merged.Tarball != "https://registry.acme.dev/auth.tgz" || merged.Integrity != "sha512-auth" {
+		t.Fatalf("mergeCatalogSource() unexpected merged source: %#v", merged)
+	}
+
+	if got := pickLatestVersion(nil); got != "" {
+		t.Fatalf("pickLatestVersion(nil) = %q, want empty", got)
+	}
+	if _, ok := normalizeSemVer(""); ok {
+		t.Fatal("normalizeSemVer(empty) should fail")
+	}
+
+	normalizeCatalogModule(nil)
+}
+
+func TestCatalogFetchJSONBranchCoverage(t *testing.T) {
+	t.Parallel()
+
+	catalog := NewCatalog(nil)
+	if _, err := catalog.fetchJSON(context.Background(), "://bad-url"); err == nil || !strings.Contains(err.Error(), "build request failed") {
+		t.Fatalf("expected build request failed error, got %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"modules":{}}`))
+	}))
+	defer server.Close()
+
+	nilClientCatalog := &Catalog{client: nil}
+	if payload, err := nilClientCatalog.fetchJSON(context.TODO(), server.URL); err != nil || len(payload) == 0 {
+		t.Fatalf("fetchJSON(nil client) = (%q, %v), want non-empty payload", string(payload), err)
+	}
+
+	failingCatalog := NewCatalog(nil, WithCatalogHTTPClient(&http.Client{
+		Transport: catalogRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("transport boom")
+		}),
+	}))
+	if _, err := failingCatalog.fetchJSON(context.Background(), "https://index.acme.dev/v1/index.json"); err == nil || !strings.Contains(err.Error(), "request failed") {
+		t.Fatalf("expected request failed error, got %v", err)
+	}
+
+	brokenBodyCatalog := NewCatalog(nil, WithCatalogHTTPClient(&http.Client{
+		Transport: catalogRoundTripper(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       catalogErrorReadCloser{err: errors.New("read boom")},
+			}, nil
+		}),
+	}))
+	if _, err := brokenBodyCatalog.fetchJSON(context.Background(), "https://index.acme.dev/v1/index.json"); err == nil || !strings.Contains(err.Error(), "read response failed") {
+		t.Fatalf("expected read response failed error, got %v", err)
 	}
 }
 

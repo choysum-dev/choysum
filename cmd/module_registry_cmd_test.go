@@ -125,6 +125,15 @@ func TestNewRegistryCmd_ValidationPaths(t *testing.T) {
 	}
 }
 
+func TestRegistryValidationHelpers(t *testing.T) {
+	if err := validateRegistryAlias(""); err == nil || !strings.Contains(err.Error(), "registry alias is required") {
+		t.Fatalf("expected empty alias validation error, got %v", err)
+	}
+	if err := validateRegistryIndexURL("://bad-url"); err == nil || !strings.Contains(err.Error(), "invalid registry index url") {
+		t.Fatalf("expected parse validation error, got %v", err)
+	}
+}
+
 func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
