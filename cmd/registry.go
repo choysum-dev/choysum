@@ -225,7 +225,7 @@ func validateRegistryIndexURL(raw string) error {
 	if parsed.Host == "" {
 		return xfmt.Errorf("invalid registry index url %q: host is required", raw)
 	}
-	if !strings.HasSuffix(strings.ToLower(strings.TrimSpace(parsed.Path)), ".json") {
+	if !strings.HasSuffix(strings.ToLower(strings.TrimSpace(parsed.Path)), "/index.json") {
 		return xfmt.Errorf("invalid registry index url %q: must point to an index.json resource", raw)
 	}
 	return nil

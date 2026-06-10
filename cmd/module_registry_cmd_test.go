@@ -104,6 +104,10 @@ func TestNewRegistryCmd_ValidationPaths(t *testing.T) {
 		t.Fatalf("expected index.json path validation error, got %v", err)
 	}
 
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https://index.example.com/v1/catalog.json"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected strict index.json path validation error, got %v", err)
+	}
+
 	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https:///v1/index.json"); err == nil || !strings.Contains(err.Error(), "host is required") {
 		t.Fatalf("expected host required validation error, got %v", err)
 	}
@@ -131,6 +135,9 @@ func TestRegistryValidationHelpers(t *testing.T) {
 	}
 	if err := validateRegistryIndexURL("://bad-url"); err == nil || !strings.Contains(err.Error(), "invalid registry index url") {
 		t.Fatalf("expected parse validation error, got %v", err)
+	}
+	if err := validateRegistryIndexURL("https://index.example.com/v1/catalog.json"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected strict index.json helper validation error, got %v", err)
 	}
 }
 
