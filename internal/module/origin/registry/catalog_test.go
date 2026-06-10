@@ -178,6 +178,33 @@ func TestCatalogInfoFromStaticIndex_FallbackByModuleID(t *testing.T) {
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_FallbackByModuleIDCaseInsensitive(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth-key": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.0.0",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "AUTH")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil || item.Name != "auth" {
+		t.Fatalf("unexpected case-insensitive fallback result: %#v", item)
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_FallbackByTrimmedMapKey(t *testing.T) {
 	t.Parallel()
 
@@ -512,6 +539,39 @@ func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryDeterministicallyForSemv
 	}
 	if item.Source.Integrity != "sha512-auth-v123-spaced" {
 		t.Fatalf("source integrity = %q, want %q", item.Source.Integrity, "sha512-auth-v123-spaced")
+	}
+}
+
+func TestCatalogInfoFromStaticIndex_SortsVersionsSemantically(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId": "auth",
+				"package":  "@acme/choysum-auth",
+				"versions": map[string]any{
+					"v10.0.0": map[string]any{},
+					"v2.0.0":  map[string]any{},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil {
+		t.Fatal("Catalog.Info() returned nil")
+	}
+	if len(item.Versions) != 2 || item.Versions[0] != "v2.0.0" || item.Versions[1] != "v10.0.0" {
+		t.Fatalf("semantic versions order = %#v, want [v2.0.0 v10.0.0]", item.Versions)
+	}
+	if item.LatestVersion != "v10.0.0" {
+		t.Fatalf("latestVersion = %q, want %q", item.LatestVersion, "v10.0.0")
 	}
 }
 

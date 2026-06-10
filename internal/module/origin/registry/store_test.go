@@ -63,12 +63,16 @@ func TestStoreResolveValidationPaths(t *testing.T) {
 		t.Fatalf("Load() error = %v", err)
 	}
 	cfg.Registries["broken"] = Entry{IndexURL: "   "}
+	cfg.Registries["legacy"] = Entry{IndexURL: "https://github.com/acme/registry"}
 	if err := store.Save(cfg); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
 
 	if _, err := store.Resolve("broken"); err == nil || !strings.Contains(err.Error(), "empty indexURL") {
 		t.Fatalf("expected empty indexURL error, got %v", err)
+	}
+	if _, err := store.Resolve("legacy"); err == nil || !strings.Contains(err.Error(), "must point to an index.json resource") {
+		t.Fatalf("expected index.json validation error, got %v", err)
 	}
 }
 

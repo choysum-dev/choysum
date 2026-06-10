@@ -4,6 +4,7 @@
 package registry
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -135,6 +136,20 @@ func isLegacyDefaultRegistryURL(raw string) bool {
 	return normalized == legacyDefaultRegistryURL
 }
 
+func isValidRegistryIndexURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return false
+	}
+	return strings.HasSuffix(strings.ToLower(strings.TrimSpace(parsed.Path)), "/index.json")
+}
+
 func (s *Store) Load() (*Config, error) {
 	path, err := s.filePath()
 	if err != nil {
@@ -188,6 +203,9 @@ func (s *Store) Resolve(alias string) (Entry, error) {
 	entry.IndexURL = strings.TrimSpace(entry.IndexURL)
 	if entry.IndexURL == "" {
 		return Entry{}, xfmt.Errorf("registry alias %s has empty indexURL", alias)
+	}
+	if !isValidRegistryIndexURL(entry.IndexURL) {
+		return Entry{}, xfmt.Errorf("registry alias %s has invalid indexURL %q: must point to an index.json resource", alias, entry.IndexURL)
 	}
 	return entry, nil
 }

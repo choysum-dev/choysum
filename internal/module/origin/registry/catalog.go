@@ -156,7 +156,7 @@ func (c *Catalog) Info(ctx context.Context, indexURL, moduleName string) (*Catal
 	sort.Strings(keys)
 	for _, k := range keys {
 		module := index.Modules[k]
-		if strings.TrimSpace(k) == moduleName || strings.TrimSpace(module.ModuleID) == moduleName || strings.TrimSpace(module.Name) == moduleName {
+		if strings.EqualFold(strings.TrimSpace(k), moduleName) || strings.EqualFold(strings.TrimSpace(module.ModuleID), moduleName) || strings.EqualFold(strings.TrimSpace(module.Name), moduleName) {
 			item := buildCatalogModule(k, module)
 			return &item, nil
 		}
@@ -202,7 +202,7 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 	for version := range module.Versions {
 		versions = append(versions, strings.TrimSpace(version))
 	}
-	sort.Strings(versions)
+	sortCatalogVersions(versions)
 	item.Versions = versions
 	if item.LatestVersion == "" {
 		item.LatestVersion = pickLatestVersion(versions)
@@ -330,6 +330,23 @@ func resolveCatalogVersionEntry(versions map[string]catalogIndexEntry, targetVer
 	return catalogIndexEntry{}, false
 }
 
+func sortCatalogVersions(versions []string) {
+	sort.Slice(versions, func(i, j int) bool {
+		leftSemVer, leftOK := normalizeSemVer(versions[i])
+		rightSemVer, rightOK := normalizeSemVer(versions[j])
+		if leftOK && rightOK {
+			if cmp := semver.Compare(leftSemVer, rightSemVer); cmp != 0 {
+				return cmp < 0
+			}
+			return versions[i] < versions[j]
+		}
+		if leftOK != rightOK {
+			return !leftOK
+		}
+		return versions[i] < versions[j]
+	})
+}
+
 func pickLatestVersion(versions []string) string {
 	if len(versions) == 0 {
 		return ""
@@ -432,7 +449,7 @@ func normalizeCatalogModule(item *CatalogModule) {
 			}
 			versions = append(versions, version)
 		}
-		sort.Strings(versions)
+		sortCatalogVersions(versions)
 		item.Versions = versions
 		if item.LatestVersion == "" {
 			item.LatestVersion = pickLatestVersion(versions)
