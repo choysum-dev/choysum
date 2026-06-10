@@ -697,6 +697,7 @@ func TestProviderHelperNormalizationBranches(t *testing.T) {
 	}
 
 	assertLegacyRegistrySourceRejected("https://github.com/acme/catalog")
+	assertLegacyRegistrySourceRejected("https://www.github.com/acme/catalog")
 	assertLegacyRegistrySourceRejected("https://catalog.acme.dev/api/v1/modules")
 	assertLegacyRegistrySourceRejected("https://index.acme.dev/v1/index.json")
 
@@ -706,6 +707,14 @@ func TestProviderHelperNormalizationBranches(t *testing.T) {
 	}
 	if custom != "https://registry.acme.dev/custom" {
 		t.Fatalf("custom registry base = %q, want %q", custom, "https://registry.acme.dev/custom")
+	}
+
+	githubPackages, err := normalizeRegistryMetadataBaseURL("https://npm.pkg.github.com", "https://registry.npmjs.org")
+	if err != nil {
+		t.Fatalf("normalizeRegistryMetadataBaseURL(npm.pkg.github.com) error = %v", err)
+	}
+	if githubPackages != "https://npm.pkg.github.com" {
+		t.Fatalf("github packages registry base = %q, want %q", githubPackages, "https://npm.pkg.github.com")
 	}
 
 	metadataURL, pkgName, err := registryPackageMetadataURL("https://registry.acme.dev", "auth", "@acme/choysum-auth", config.DefaultNPMRegistryURL)
