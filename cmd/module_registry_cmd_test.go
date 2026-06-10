@@ -104,6 +104,22 @@ func TestNewRegistryCmd_ValidationPaths(t *testing.T) {
 		t.Fatalf("expected index.json path validation error, got %v", err)
 	}
 
+	if _, err := executeCommandForTest(t, registryCmd, "add", "corp", "https:///v1/index.json"); err == nil || !strings.Contains(err.Error(), "host is required") {
+		t.Fatalf("expected host required validation error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "login", "corp"); err == nil || !strings.Contains(err.Error(), "--auth-ref is required") {
+		t.Fatalf("expected missing auth-ref error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "remove", "missing"); err == nil || !strings.Contains(err.Error(), "registry alias \"missing\" not found") {
+		t.Fatalf("expected remove missing alias error, got %v", err)
+	}
+
+	if _, err := executeCommandForTest(t, registryCmd, "login", "missing", "--auth-ref", "token://missing"); err == nil || !strings.Contains(err.Error(), "registry alias \"missing\" not found") {
+		t.Fatalf("expected login missing alias error, got %v", err)
+	}
+
 	if _, err := executeCommandForTest(t, registryCmd, "remove", sourceregistry.DefaultRegistryAlias); err == nil || !strings.Contains(err.Error(), "cannot remove default registry alias") {
 		t.Fatalf("expected protected default alias error, got %v", err)
 	}

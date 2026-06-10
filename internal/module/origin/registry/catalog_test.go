@@ -6,6 +6,7 @@ package registry
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,6 +19,12 @@ import (
 type catalogFakeProvider struct {
 	peekFn  func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
 	fetchFn func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error)
+}
+
+type catalogRoundTripper func(req *http.Request) (*http.Response, error)
+
+func (rt catalogRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return rt(req)
 }
 
 func (p *catalogFakeProvider) PeekManifest(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
@@ -128,6 +135,33 @@ func TestCatalogInfoFromStaticIndex_PrefersVersionSourcePackage(t *testing.T) {
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_FallbackByModuleID(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth-key": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.0.0",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil || item.Name != "auth" {
+		t.Fatalf("unexpected fallback match result: %#v", item)
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_MergesVersionSourceIntoModuleSource(t *testing.T) {
 	t.Parallel()
 
@@ -174,6 +208,58 @@ func TestCatalogInfoFromStaticIndex_MergesVersionSourceIntoModuleSource(t *testi
 	}
 	if item.Source.Type != "npm" || item.Source.Registry != "https://registry.acme.dev" || item.Source.Package != "@acme/choysum-auth" || item.Source.Integrity != "sha512-auth" {
 		t.Fatalf("unexpected merged source: %#v", item.Source)
+	}
+}
+
+func TestCatalogInfoRejectsEmptyModuleName(t *testing.T) {
+	t.Parallel()
+
+	catalog := NewCatalog(nil)
+	if _, err := catalog.Info(context.Background(), DefaultRegistryIndexURL, "   "); err == nil || !strings.Contains(err.Error(), "module name is empty") {
+		t.Fatalf("expected empty module name error, got %v", err)
+	}
+}
+
+func TestCatalogLoadIndexDefaultAndNilModules(t *testing.T) {
+	t.Parallel()
+
+	requests := 0
+	client := &http.Client{
+		Transport: catalogRoundTripper(func(req *http.Request) (*http.Response, error) {
+			requests++
+			if requests == 1 {
+				if req.URL.String() != DefaultRegistryIndexURL {
+					t.Fatalf("default index URL = %q, want %q", req.URL.String(), DefaultRegistryIndexURL)
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     http.Header{"Content-Type": []string{"application/json"}},
+					Body:       io.NopCloser(strings.NewReader(`{"modules":{}}`)),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(`{}`)),
+			}, nil
+		}),
+	}
+
+	catalog := NewCatalog(nil, WithCatalogHTTPClient(client))
+	items, err := catalog.List(context.Background(), "", "")
+	if err != nil {
+		t.Fatalf("Catalog.List(default index) error = %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("Catalog.List(default index) len = %d, want 0", len(items))
+	}
+
+	items, err = catalog.List(context.Background(), "https://index.acme.dev/v1/index.json", "")
+	if err != nil {
+		t.Fatalf("Catalog.List(nil modules) error = %v", err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("Catalog.List(nil modules) len = %d, want 0", len(items))
 	}
 }
 
@@ -291,6 +377,24 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 	if got := (&CatalogModule{Source: &CatalogSource{Registry: "  https://registry.acme.dev  "}}).ResolvedNPMRegistry("https://registry.npmjs.org"); got != "https://registry.acme.dev" {
 		t.Fatalf("ResolvedNPMRegistry(source override) = %q, want %q", got, "https://registry.acme.dev")
+	}
+
+	if cloneCatalogSource(nil) != nil {
+		t.Fatal("cloneCatalogSource(nil) should return nil")
+	}
+
+	base := &CatalogSource{Type: "npm", Registry: "https://registry.acme.dev", Package: "@acme/base"}
+	mergeCatalogSource(base, &CatalogSource{Package: "@acme/override", Integrity: "sha512-override"})
+	if base.Type != "npm" || base.Registry != "https://registry.acme.dev" || base.Package != "@acme/override" || base.Integrity != "sha512-override" {
+		t.Fatalf("mergeCatalogSource() unexpected merged source: %#v", base)
+	}
+	mergeCatalogSource(base, nil)
+	mergeCatalogSource(nil, &CatalogSource{Package: "ignored"})
+
+	normalizedItems := []CatalogModule{{Name: " auth ", LatestVersion: " v1.0.0 ", Versions: []string{" v1.0.0 "}}}
+	normalizeCatalogModules(normalizedItems)
+	if normalizedItems[0].Name != "auth" || normalizedItems[0].LatestVersion != "v1.0.0" || len(normalizedItems[0].Versions) != 1 || normalizedItems[0].Versions[0] != "v1.0.0" {
+		t.Fatalf("normalizeCatalogModules() unexpected result: %#v", normalizedItems[0])
 	}
 
 	notFoundServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
