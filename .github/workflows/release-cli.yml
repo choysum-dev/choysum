@@ -9,7 +9,62 @@ permissions:
   contents: write # Write permission is required to create a GitHub release
 
 jobs:
+  prepare-embedded-assets:
+    name: Prepare Embedded Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            internal/bootstrap/web/package-lock.json
+            pkg/jsengine/scripts/vuesfc/package-lock.json
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install Vue SFC npm dependencies
+        working-directory: pkg/jsengine/scripts/vuesfc
+        run: npm ci
+
+      - name: Build Vue SFC embed asset
+        working-directory: pkg/jsengine/scripts/vuesfc
+        run: npm run build
+
+      - name: Install bootstrap npm dependencies
+        working-directory: internal/bootstrap/web
+        run: npm ci
+
+      - name: Build bootstrap dist
+        working-directory: internal/bootstrap/web
+        run: npm run build
+
+      - name: Pack embedded assets
+        run: |
+          mkdir -p .choysum/tmp
+          tar -czf .choysum/tmp/release-embedded-assets.tar.gz \
+            internal/bootstrap/web/dist \
+            pkg/jsengine/scripts/vuesfc/dist/index.js
+
+      - name: Upload embedded assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-embedded-assets
+          path: .choysum/tmp/release-embedded-assets.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
   build:
+    needs: prepare-embedded-assets
     name: Build on ${{ matrix.os }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -44,6 +99,17 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+
+      - name: Download embedded assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-embedded-assets
+          path: ${{ runner.temp }}/release-embedded-assets
+
+      - name: Extract embedded assets
+        shell: bash
+        run: |
+          tar -xzf "${{ runner.temp }}/release-embedded-assets/release-embedded-assets.tar.gz" -C "$GITHUB_WORKSPACE"
 
       - name: Prepare GoReleaser config for current target
         id: prepare_goreleaser_config
