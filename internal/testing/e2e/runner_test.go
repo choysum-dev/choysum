@@ -457,7 +457,7 @@ func TestStopServerSignalsRunningProcess(t *testing.T) {
 		t.Skip("unix process-group signaling is covered in !windows builds")
 	}
 
-	cmd := exec.Command("sh", "-c", "sleep 30")
+	cmd := exec.Command("sleep", "30")
 	setServerProcessAttrs(cmd)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start process: %v", err)
@@ -484,7 +484,7 @@ func TestSignalServerProcessFallbackWithoutSetpgid(t *testing.T) {
 		t.Skip("fallback SIGTERM path is covered in !windows builds")
 	}
 
-	cmd := exec.Command("sh", "-c", "sleep 30")
+	cmd := exec.Command("sleep", "30")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start process: %v", err)
 	}
