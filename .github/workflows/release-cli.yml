@@ -271,7 +271,7 @@ jobs:
           # Combine checksums from all runners into one unified file
           cat $(find dist-artifacts -name "checksums.txt") | sort -u > combined_checksums.txt
           
-          # Find all archives
+          # Find all release archives
           ASSETS=$(find dist-artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \))
           
           echo "Assets to be uploaded:"
