@@ -22,6 +22,10 @@ func signalServerProcess(cmd *exec.Cmd) {
 		return
 	}
 	if cmd.Process.Pid > 0 {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+		if cmd.SysProcAttr != nil && cmd.SysProcAttr.Setpgid {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+			return
+		}
+		_ = cmd.Process.Signal(syscall.SIGTERM)
 	}
 }

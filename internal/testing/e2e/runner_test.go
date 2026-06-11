@@ -478,6 +478,33 @@ func TestStopServerSignalsRunningProcess(t *testing.T) {
 	}
 }
 
+func TestSignalServerProcessFallbackWithoutSetpgid(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fallback SIGTERM path is covered in !windows builds")
+	}
+
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start process: %v", err)
+	}
+
+	signalServerProcess(cmd)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		t.Fatal("signalServerProcess fallback did not terminate process in time")
+	case <-done:
+	}
+}
+
 func TestServerProcessHelpersNilSafety(t *testing.T) {
 	setServerProcessAttrs(nil)
 	signalServerProcess(nil)
