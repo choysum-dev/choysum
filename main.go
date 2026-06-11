@@ -33,7 +33,7 @@ func getBuildVersion() string {
 	c := commit
 	d := date
 	if version == "dev" {
-		if info, ok := readBuildInfo(); ok {
+		if info, ok := readBuildInfo(); ok && info != nil {
 			revision := ""
 			dirty := false
 			for _, setting := range info.Settings {

@@ -270,3 +270,29 @@ func TestGetBuildVersion_DevBuildWithoutBuildInfo(t *testing.T) {
 		t.Fatalf("unexpected version string: %q", got)
 	}
 }
+
+func TestGetBuildVersion_DevBuildWithNilBuildInfo(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return nil, true
+	}
+
+	got := getBuildVersion()
+
+	if got != "dev (commit: none, date: unknown)" {
+		t.Fatalf("unexpected version string: %q", got)
+	}
+}
