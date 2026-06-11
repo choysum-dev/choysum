@@ -109,7 +109,13 @@ jobs:
       - name: Extract embedded assets
         shell: bash
         run: |
-          tar -xzf "${{ runner.temp }}/release-embedded-assets/release-embedded-assets.tar.gz" -C "$GITHUB_WORKSPACE"
+          ARCHIVE_PATH="${{ runner.temp }}/release-embedded-assets/release-embedded-assets.tar.gz"
+          WORKSPACE_PATH="$GITHUB_WORKSPACE"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            ARCHIVE_PATH="$(cygpath -u "$ARCHIVE_PATH")"
+            WORKSPACE_PATH="$(cygpath -u "$WORKSPACE_PATH")"
+          fi
+          tar -xzf "$ARCHIVE_PATH" -C "$WORKSPACE_PATH"
 
       - name: Prepare GoReleaser config for current target
         id: prepare_goreleaser_config
