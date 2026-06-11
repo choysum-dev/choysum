@@ -48,9 +48,22 @@ jobs:
       - name: Prepare GoReleaser config for current target
         shell: bash
         run: |
-          cp .goreleaser.yaml .goreleaser.target.yaml
-          sed -i.bak "s|__TARGET__|${{ matrix.target }}|g" .goreleaser.target.yaml
-          rm -f .goreleaser.target.yaml.bak
+          awk -v target="${{ matrix.target }}" '
+            BEGIN { in_targets = 0 }
+            /^    targets:/ {
+              print
+              print "      - " target
+              in_targets = 1
+              next
+            }
+            in_targets {
+              if ($0 ~ /^      - /) {
+                next
+              }
+              in_targets = 0
+            }
+            { print }
+          ' .goreleaser.yaml > .goreleaser.target.yaml
 
       - name: Run GoReleaser (Build & Archive native target)
         uses: goreleaser/goreleaser-action@v7
