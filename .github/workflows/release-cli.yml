@@ -3,10 +3,10 @@ name: Release CLI
 on:
   push:
     tags:
-      - 'v*' # 只有在推送 v 开头的 tag 时才会触发发版（如 v1.5.0）
+      - 'v*' # Trigger release only when pushing tags starting with 'v' (e.g., v1.5.0)
 
 permissions:
-  contents: write # 发布 release 必须要写权限
+  contents: write # Write permission is required to create a GitHub release
 
 jobs:
   goreleaser:
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Goreleaser 需要全量 git 历史和标签信息才能构建 changelog
+          fetch-depth: 0 # GoReleaser requires full git history and tags to build the changelog
 
       - name: Set up Go
         uses: actions/setup-go@v5
