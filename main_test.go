@@ -184,6 +184,70 @@ func TestGetBuildVersion_DevBuildWithDirtyTree(t *testing.T) {
 	}
 }
 
+func TestGetBuildVersion_DevBuildUsesMainVersionWhenAvailable(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Main: debug.Module{Version: "v1.2.3"},
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "1234567890abcdef"},
+				{Key: "vcs.time", Value: "2026-06-11T05:00:00Z"},
+			},
+		}, true
+	}
+
+	got := getBuildVersion()
+
+	if got != "v1.2.3 (commit: 1234567, date: 2026-06-11T05:00:00Z)" {
+		t.Fatalf("unexpected version string: %q", got)
+	}
+}
+
+func TestGetBuildVersion_DevBuildIgnoresDevelMainVersion(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Main: debug.Module{Version: "(devel)"},
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "1234567890abcdef"},
+				{Key: "vcs.modified", Value: "true"},
+			},
+		}, true
+	}
+
+	got := getBuildVersion()
+
+	if got != "dev-1234567-dirty (commit: 1234567, date: unknown)" {
+		t.Fatalf("unexpected version string: %q", got)
+	}
+}
+
 func TestGetBuildVersion_DevBuildWithoutRevisionFallsBackToDev(t *testing.T) {
 	originalVersion := version
 	originalCommit := commit

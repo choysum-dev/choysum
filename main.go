@@ -47,7 +47,12 @@ func getBuildVersion() string {
 					dirty = true
 				}
 			}
-			if revision != "" {
+			if info.Main.Version != "" && info.Main.Version != "(devel)" {
+				v = info.Main.Version
+				if revision != "" {
+					c = revision
+				}
+			} else if revision != "" {
 				c = revision
 				v = fmt.Sprintf("dev-%s", revision)
 				if dirty {
