@@ -100,6 +100,26 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Setup MSYS2 for windows_amd64
+        if: ${{ matrix.target == 'windows_amd64' }}
+        id: setup_msys2_windows_amd64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+
+      - name: Setup MSYS2 for windows_arm64
+        if: ${{ matrix.target == 'windows_arm64' }}
+        id: setup_msys2_windows_arm64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANGARM64
+          update: true
+          install: >-
+            mingw-w64-clang-aarch64-clang
+
       - name: Download embedded assets
         uses: actions/download-artifact@v4
         with:
@@ -122,61 +142,58 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          GCC_PATH=""
-          GXX_PATH=""
-          for BIN_DIR in /c/msys64/ucrt64/bin /c/msys64/mingw64/bin; do
-            if [[ -x "$BIN_DIR/gcc.exe" ]] && [[ -x "$BIN_DIR/g++.exe" ]]; then
-              GCC_PATH="$BIN_DIR/gcc.exe"
-              GXX_PATH="$BIN_DIR/g++.exe"
-              WIN_BIN="$(cygpath -w "$BIN_DIR" | tr -d '\r')"
-              echo "Using gcc from $WIN_BIN"
-              break
-            fi
-          done
-
-          if [[ -z "$GCC_PATH" || -z "$GXX_PATH" ]]; then
-            if command -v gcc >/dev/null 2>&1 && command -v g++ >/dev/null 2>&1; then
-              GCC_PATH="$(command -v gcc)"
-              GXX_PATH="$(command -v g++)"
-              echo "Using gcc from PATH fallback: $(cygpath -w "$(dirname "$GCC_PATH")" | tr -d '\r')"
-            else
-              echo "MSYS2 gcc toolchain not found at C:\\msys64\\ucrt64\\bin or C:\\msys64\\mingw64\\bin, and PATH fallback is unavailable" >&2
-              exit 1
-            fi
+          MSYS2_LOCATION="${{ steps.setup_msys2_windows_amd64.outputs.msys2-location }}"
+          if [[ -z "$MSYS2_LOCATION" ]]; then
+            echo "MSYS2 setup output is empty for windows_amd64" >&2
+            exit 1
           fi
-
-          GCC_TARGET="$($GCC_PATH -dumpmachine | tr -d '\r')"
+          POSIX_ROOT="$(cygpath -u "$MSYS2_LOCATION")"
+          BIN_DIR="$POSIX_ROOT/ucrt64/bin"
+          if [[ ! -x "$BIN_DIR/gcc.exe" ]] || [[ ! -x "$BIN_DIR/g++.exe" ]]; then
+            echo "MSYS2 UCRT64 gcc/g++ not found under $MSYS2_LOCATION\\ucrt64\\bin" >&2
+            exit 1
+          fi
+          GCC_TARGET="$($BIN_DIR/gcc.exe -dumpmachine | tr -d '\r')"
           echo "GCC_TARGET=$GCC_TARGET"
           if ! printf '%s\n' "$GCC_TARGET" | grep -Eiq 'mingw'; then
             echo "Unexpected gcc target for windows_amd64; require MinGW target" >&2
             exit 1
           fi
 
-          WIN_GCC_PATH="$(cygpath -w "$GCC_PATH" | tr -d '\r')"
-          WIN_GXX_PATH="$(cygpath -w "$GXX_PATH" | tr -d '\r')"
-          WIN_BIN="$(cygpath -w "$(dirname "$GCC_PATH")" | tr -d '\r')"
+          WIN_BIN="$(cygpath -w "$BIN_DIR" | tr -d '\r')"
+          WIN_GCC_PATH="${WIN_BIN}\\gcc.exe"
+          WIN_GXX_PATH="${WIN_BIN}\\g++.exe"
           echo "$WIN_BIN" >> "$GITHUB_PATH"
           echo "CC=$WIN_GCC_PATH" >> "$GITHUB_ENV"
           echo "CXX=$WIN_GXX_PATH" >> "$GITHUB_ENV"
+          echo "Using gcc from $WIN_BIN"
 
       - name: Configure CGO compiler for windows_arm64
         if: ${{ matrix.target == 'windows_arm64' }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -x "/c/msys64/clangarm64/bin/clang.exe" ]] && [[ -x "/c/msys64/clangarm64/bin/clang++.exe" ]]; then
-            echo "C:\\msys64\\clangarm64\\bin" >> "$GITHUB_PATH"
-            echo "CC=C:\\msys64\\clangarm64\\bin\\clang.exe" >> "$GITHUB_ENV"
-            echo "CXX=C:\\msys64\\clangarm64\\bin\\clang++.exe" >> "$GITHUB_ENV"
-            echo "Using clang from C:\\msys64\\clangarm64\\bin"
-            CLANG_VERSION="$(/c/msys64/clangarm64/bin/clang.exe --version | tr -d '\r')"
-            echo "$CLANG_VERSION"
-            if printf '%s\n' "$CLANG_VERSION" | grep -Eiq '^Target: .*windows-msvc'; then
-              echo "Unexpected MSVC clang target for windows_arm64; require MSYS2 clangarm64 GNU target" >&2
-              exit 1
-            fi
-          else
-            echo "MSYS2 clangarm64 toolchain not found at C:\\msys64\\clangarm64\\bin" >&2
+          MSYS2_LOCATION="${{ steps.setup_msys2_windows_arm64.outputs.msys2-location }}"
+          if [[ -z "$MSYS2_LOCATION" ]]; then
+            echo "MSYS2 setup output is empty for windows_arm64" >&2
+            exit 1
+          fi
+          POSIX_ROOT="$(cygpath -u "$MSYS2_LOCATION")"
+          BIN_DIR="$POSIX_ROOT/clangarm64/bin"
+          if [[ ! -x "$BIN_DIR/clang.exe" ]] || [[ ! -x "$BIN_DIR/clang++.exe" ]]; then
+            echo "MSYS2 CLANGARM64 clang/clang++ not found under $MSYS2_LOCATION\\clangarm64\\bin" >&2
+            exit 1
+          fi
+
+          WIN_BIN="$(cygpath -w "$BIN_DIR" | tr -d '\r')"
+          echo "$WIN_BIN" >> "$GITHUB_PATH"
+          echo "CC=${WIN_BIN}\\clang.exe" >> "$GITHUB_ENV"
+          echo "CXX=${WIN_BIN}\\clang++.exe" >> "$GITHUB_ENV"
+          echo "Using clang from $WIN_BIN"
+          CLANG_VERSION="$($BIN_DIR/clang.exe --version | tr -d '\r')"
+          echo "$CLANG_VERSION"
+          if printf '%s\n' "$CLANG_VERSION" | grep -Eiq '^Target: .*windows-msvc'; then
+            echo "Unexpected MSVC clang target for windows_arm64; require MSYS2 clangarm64 GNU target" >&2
             exit 1
           fi
 
