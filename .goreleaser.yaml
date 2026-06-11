@@ -4,6 +4,9 @@ builds:
   - id: choysum
     main: .
     binary: choysum
+    # This placeholder is replaced per-runner in Release CLI workflow.
+    targets:
+      - __TARGET__
     env:
       - CGO_ENABLED=1
     ldflags:
