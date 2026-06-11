@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -448,6 +449,33 @@ func TestStartAndStopServerBranches(t *testing.T) {
 
 	stopServer(nil)
 	stopServer(&exec.Cmd{})
+}
+
+func TestStopServerSignalsRunningProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix process-group signaling is covered in !windows builds")
+	}
+
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	setServerProcessAttrs(cmd)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start process: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		stopServer(cmd)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		t.Fatal("stopServer did not return in time")
+	}
 }
 
 func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {

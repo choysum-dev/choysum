@@ -6,12 +6,11 @@
 package e2e
 
 import (
-	"os"
 	"os/exec"
 )
 
 func setServerProcessAttrs(*exec.Cmd) {}
 
 func signalServerProcess(cmd *exec.Cmd) {
-	_ = cmd.Process.Signal(os.Interrupt)
+	_ = cmd.Process.Kill()
 }
