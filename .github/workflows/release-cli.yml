@@ -1,71 +1,52 @@
-name: Release CLI
+name: Publish CLI Release
 
 on:
-  push:
-    tags:
-      - 'v*' # Trigger release only when pushing tags starting with 'v' (e.g., v1.5.0)
+  workflow_run:
+    workflows:
+      - Build Release Embedded Assets
+    types:
+      - completed
 
 permissions:
-  contents: write # Write permission is required to create a GitHub release
+  actions: read
+  contents: write
 
 jobs:
-  prepare-embedded-assets:
-    name: Prepare Embedded Assets
+  resolve-release-ref:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    name: Resolve Release Ref
     runs-on: ubuntu-latest
+    outputs:
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
     steps:
-      - name: Checkout
+      - name: Checkout source commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
-            pkg/jsengine/scripts/vuesfc/package-lock.json
-
-      - name: Install protoc
+      - name: Resolve tag from commit
+        id: resolve
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          set -euo pipefail
+          git fetch --tags --force
 
-      - name: Install Vue SFC npm dependencies
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm ci
+          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          RELEASE_TAG="$(git tag --points-at "$HEAD_SHA" | grep -E '^v' | head -n1 || true)"
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo "No release tag (v*) points at commit $HEAD_SHA" >&2
+            exit 1
+          fi
 
-      - name: Build Vue SFC embed asset
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm run build
-
-      - name: Install bootstrap npm dependencies
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Build bootstrap dist
-        working-directory: internal/bootstrap/web
-        run: npm run build
-
-      - name: Pack embedded assets
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/release-embedded-assets.tar.gz \
-            internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
-
-      - name: Upload embedded assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-embedded-assets
-          path: .choysum/tmp/release-embedded-assets.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: prepare-embedded-assets
-    name: Build on ${{ matrix.os }} (${{ matrix.target }})
+    needs:
+      - resolve-release-ref
+    name: Build CLI Artifacts on ${{ matrix.os }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -93,6 +74,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ needs.resolve-release-ref.outputs.head_sha }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -123,18 +105,44 @@ jobs:
       - name: Download embedded assets
         uses: actions/download-artifact@v4
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
           name: release-embedded-assets
           path: ${{ runner.temp }}/release-embedded-assets
 
-      - name: Extract embedded assets
+      - name: Verify and extract embedded assets
         shell: bash
         run: |
-          ARCHIVE_PATH="${{ runner.temp }}/release-embedded-assets/release-embedded-assets.tar.gz"
+          set -euo pipefail
+
+          ASSET_DIR="${{ runner.temp }}/release-embedded-assets"
           WORKSPACE_PATH="$GITHUB_WORKSPACE"
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            ARCHIVE_PATH="$(cygpath -u "$ARCHIVE_PATH")"
+            ASSET_DIR="$(cygpath -u "$ASSET_DIR")"
             WORKSPACE_PATH="$(cygpath -u "$WORKSPACE_PATH")"
           fi
+
+          ARCHIVE_PATH="$ASSET_DIR/release-embedded-assets.tar.gz"
+          CHECKSUM_PATH="$ASSET_DIR/release-embedded-assets.tar.gz.sha256"
+          SOURCE_SHA_PATH="$ASSET_DIR/source.sha"
+
+          if [[ ! -f "$ARCHIVE_PATH" ]] || [[ ! -f "$CHECKSUM_PATH" ]] || [[ ! -f "$SOURCE_SHA_PATH" ]]; then
+            echo "Embedded assets artifact is incomplete under $ASSET_DIR" >&2
+            ls -la "$ASSET_DIR" >&2 || true
+            exit 1
+          fi
+
+          SOURCE_SHA="$(tr -d '\r\n' < "$SOURCE_SHA_PATH")"
+          if [[ "$SOURCE_SHA" != "${{ needs.resolve-release-ref.outputs.head_sha }}" ]]; then
+            echo "Embedded assets source SHA mismatch: expected ${{ needs.resolve-release-ref.outputs.head_sha }}, got $SOURCE_SHA" >&2
+            exit 1
+          fi
+
+          (
+            cd "$ASSET_DIR"
+            sha256sum -c release-embedded-assets.tar.gz.sha256
+          )
+
           tar -xzf "$ARCHIVE_PATH" -C "$WORKSPACE_PATH"
 
       - name: Configure CGO compiler for windows_amd64
@@ -233,7 +241,6 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          # Use rendered config with a single matrix target per runner.
           args: release --clean --skip=publish --config ${{ steps.prepare_goreleaser_config.outputs.config_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -250,12 +257,16 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish GitHub Release
-    needs: build
+    name: Publish CLI GitHub Release
+    needs:
+      - resolve-release-ref
+      - build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-release-ref.outputs.head_sha }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -268,23 +279,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Combine checksums from all runners into one unified file
+          set -euo pipefail
+
+          TAG="${{ needs.resolve-release-ref.outputs.release_tag }}"
+
           cat $(find dist-artifacts -name "checksums.txt") | sort -u > combined_checksums.txt
-          
-          # Find all release archives
           ASSETS=$(find dist-artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \))
-          
+
           echo "Assets to be uploaded:"
           echo "$ASSETS"
           echo "combined_checksums.txt"
 
-          # Check if the release already exists
-          if gh release view ${{ github.ref_name }} > /dev/null 2>&1; then
-            echo "Release ${{ github.ref_name }} exists, updating assets..."
-            echo $ASSETS | xargs gh release upload ${{ github.ref_name }} --clobber
-            gh release upload ${{ github.ref_name }} combined_checksums.txt --clobber
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG exists, updating assets..."
+            echo $ASSETS | xargs gh release upload "$TAG" --clobber
+            gh release upload "$TAG" combined_checksums.txt --clobber
           else
-            echo "Creating new release ${{ github.ref_name }}..."
-            # --generate-notes automatically generates the changelog
-            echo $ASSETS | xargs gh release create ${{ github.ref_name }} --title "Release ${{ github.ref_name }}" --generate-notes combined_checksums.txt
+            echo "Creating new release $TAG..."
+            echo $ASSETS | xargs gh release create "$TAG" --title "Release $TAG" --generate-notes combined_checksums.txt
           fi

@@ -1,0 +1,92 @@
+name: Build Release Embedded Assets
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or SHA to build embedded assets from
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-embedded-assets-${{ inputs.ref || github.ref || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build-release-embedded-assets:
+    name: Build Release Embedded Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            internal/bootstrap/web/package-lock.json
+            pkg/jsengine/scripts/vuesfc/package-lock.json
+
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install Vue SFC npm dependencies
+        working-directory: pkg/jsengine/scripts/vuesfc
+        run: npm ci
+
+      - name: Build Vue SFC embed asset
+        working-directory: pkg/jsengine/scripts/vuesfc
+        run: npm run build
+
+      - name: Install bootstrap npm dependencies
+        working-directory: internal/bootstrap/web
+        run: npm ci
+
+      - name: Build bootstrap dist
+        working-directory: internal/bootstrap/web
+        run: npm run build
+
+      - name: Package embedded assets and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RESOLVED_SHA="$(git rev-parse HEAD)"
+          RESOLVED_TAG="$(git tag --points-at "$RESOLVED_SHA" | grep -E '^v' | head -n1 || true)"
+
+          OUTPUT_DIR=".choysum/tmp/release-embedded-assets"
+          ARCHIVE_PATH="$OUTPUT_DIR/release-embedded-assets.tar.gz"
+
+          mkdir -p "$OUTPUT_DIR"
+          tar -czf "$ARCHIVE_PATH" \
+            internal/bootstrap/web/dist \
+            pkg/jsengine/scripts/vuesfc/dist/index.js
+
+          (
+            cd "$OUTPUT_DIR"
+            sha256sum release-embedded-assets.tar.gz > release-embedded-assets.tar.gz.sha256
+          )
+
+          printf '%s\n' "$RESOLVED_SHA" > "$OUTPUT_DIR/source.sha"
+          printf '%s\n' "$RESOLVED_TAG" > "$OUTPUT_DIR/source.tag"
+
+      - name: Upload embedded assets artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-embedded-assets
+          path: .choysum/tmp/release-embedded-assets/
+          if-no-files-found: error
+          retention-days: 7
