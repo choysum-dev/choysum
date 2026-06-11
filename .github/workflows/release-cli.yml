@@ -243,6 +243,7 @@ jobs:
         with:
           name: choysum-binaries-${{ matrix.os }}
           path: |
+            dist/*.tar.gz
             dist/*.zip
             dist/checksums.txt
           retention-days: 1
@@ -270,8 +271,8 @@ jobs:
           # Combine checksums from all runners into one unified file
           cat $(find dist-artifacts -name "checksums.txt") | sort -u > combined_checksums.txt
           
-          # Find all zip archives
-          ASSETS=$(find dist-artifacts -type f -name "*.zip")
+          # Find all release archives
+          ASSETS=$(find dist-artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \))
           
           echo "Assets to be uploaded:"
           echo "$ASSETS"

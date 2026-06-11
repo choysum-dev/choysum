@@ -20,6 +20,7 @@ builds:
       - -X main.date={{.CommitDate}}
 archives:
   - formats:
+      - tar.gz
       - zip
     name_template: >-
       {{ .ProjectName }}_
