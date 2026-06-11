@@ -19,10 +19,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
@@ -693,9 +691,7 @@ func startServer(workDir, configPath, logPath string, choysumBinaryPath string) 
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	cmd.Env = append(filteredE2EEnv(os.Environ()), "CHOYSUM_E2E_SKIP_INIT=true")
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
+	setServerProcessAttrs(cmd)
 	if err := cmd.Start(); err != nil {
 		_ = logFile.Close()
 		return nil, xfmt.Errorf("start server: %w", err)
@@ -707,11 +703,7 @@ func stopServer(cmd *exec.Cmd) {
 	if cmd == nil || cmd.Process == nil {
 		return
 	}
-	if runtime.GOOS != "windows" {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
-	} else {
-		_ = cmd.Process.Signal(os.Interrupt)
-	}
+	signalServerProcess(cmd)
 	_, _ = cmd.Process.Wait()
 }
 

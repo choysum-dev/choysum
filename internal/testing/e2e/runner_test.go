@@ -14,7 +14,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -448,6 +450,77 @@ func TestStartAndStopServerBranches(t *testing.T) {
 
 	stopServer(nil)
 	stopServer(&exec.Cmd{})
+}
+
+func TestStopServerSignalsRunningProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix process-group signaling is covered in !windows builds")
+	}
+
+	cmd := exec.Command("sleep", "30")
+	setServerProcessAttrs(cmd)
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start process: %v", err)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		stopServer(cmd)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		t.Fatal("stopServer did not return in time")
+	}
+}
+
+func TestSignalServerProcessFallbackWithoutSetpgid(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fallback SIGTERM path is covered in !windows builds")
+	}
+
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start process: %v", err)
+	}
+
+	signalServerProcess(cmd)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case <-time.After(5 * time.Second):
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		t.Fatal("signalServerProcess fallback did not terminate process in time")
+	case <-done:
+	}
+}
+
+func TestServerProcessHelpersNilSafety(t *testing.T) {
+	setServerProcessAttrs(nil)
+	signalServerProcess(nil)
+	signalServerProcess(&exec.Cmd{})
+}
+
+func TestSetServerProcessAttrsPreservesExistingSysProcAttr(t *testing.T) {
+	original := &syscall.SysProcAttr{}
+	cmd := &exec.Cmd{SysProcAttr: original}
+
+	setServerProcessAttrs(cmd)
+
+	if cmd.SysProcAttr != original {
+		t.Fatalf("expected existing SysProcAttr pointer to be preserved")
+	}
 }
 
 func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
