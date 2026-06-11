@@ -46,8 +46,10 @@ jobs:
           cache: true
 
       - name: Prepare GoReleaser config for current target
+        id: prepare_goreleaser_config
         shell: bash
         run: |
+          TARGET_CONFIG_PATH="$RUNNER_TEMP/goreleaser.target.yaml"
           awk -v target="${{ matrix.target }}" '
             BEGIN { in_targets = 0 }
             /^    targets:/ {
@@ -63,7 +65,8 @@ jobs:
               in_targets = 0
             }
             { print }
-          ' .goreleaser.yaml > .goreleaser.target.yaml
+          ' .goreleaser.yaml > "$TARGET_CONFIG_PATH"
+          echo "config_path=$TARGET_CONFIG_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Run GoReleaser (Build & Archive native target)
         uses: goreleaser/goreleaser-action@v7
@@ -71,7 +74,7 @@ jobs:
           distribution: goreleaser
           version: latest
           # Use rendered config with a single matrix target per runner.
-          args: release --clean --skip=publish --config .goreleaser.target.yaml
+          args: release --clean --skip=publish --config ${{ steps.prepare_goreleaser_config.outputs.config_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
