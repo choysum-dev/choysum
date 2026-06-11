@@ -117,29 +117,53 @@ jobs:
           fi
           tar -xzf "$ARCHIVE_PATH" -C "$WORKSPACE_PATH"
 
+      - name: Configure CGO compiler for windows_amd64
+        if: ${{ matrix.target == 'windows_amd64' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for BIN_DIR in /c/msys64/ucrt64/bin /c/msys64/mingw64/bin; do
+            if [[ -x "$BIN_DIR/gcc.exe" ]] && [[ -x "$BIN_DIR/g++.exe" ]]; then
+              WIN_BIN="$(cygpath -w "$BIN_DIR" | tr -d '\r')"
+              echo "$WIN_BIN" >> "$GITHUB_PATH"
+              echo "CC=${WIN_BIN}\\gcc.exe" >> "$GITHUB_ENV"
+              echo "CXX=${WIN_BIN}\\g++.exe" >> "$GITHUB_ENV"
+              echo "Using gcc from $WIN_BIN"
+              GCC_TARGET="$("$BIN_DIR/gcc.exe" -dumpmachine | tr -d '\r')"
+              echo "GCC_TARGET=$GCC_TARGET"
+              if ! printf '%s\n' "$GCC_TARGET" | grep -Eiq 'mingw'; then
+                echo "Unexpected gcc target for windows_amd64; require MSYS2 MinGW target" >&2
+                exit 1
+              fi
+              exit 0
+            fi
+          done
+          echo "MSYS2 gcc toolchain not found at C:\\msys64\\ucrt64\\bin or C:\\msys64\\mingw64\\bin" >&2
+          exit 1
+
       - name: Configure CGO compiler for windows_arm64
         if: ${{ matrix.target == 'windows_arm64' }}
         shell: bash
         run: |
           set -euo pipefail
-          if command -v clang >/dev/null 2>&1; then
-            echo "CC=clang" >> "$GITHUB_ENV"
-            echo "CXX=clang++" >> "$GITHUB_ENV"
-            echo "Using clang from PATH"
-            clang --version
-          elif [[ -x "/c/msys64/clangarm64/bin/clang.exe" ]]; then
-            echo "/c/msys64/clangarm64/bin" >> "$GITHUB_PATH"
-            echo "CC=clang" >> "$GITHUB_ENV"
-            echo "CXX=clang++" >> "$GITHUB_ENV"
-            echo "Using clang from /c/msys64/clangarm64/bin"
-            /c/msys64/clangarm64/bin/clang.exe --version
+          if [[ -x "/c/msys64/clangarm64/bin/clang.exe" ]] && [[ -x "/c/msys64/clangarm64/bin/clang++.exe" ]]; then
+            echo "C:\\msys64\\clangarm64\\bin" >> "$GITHUB_PATH"
+            echo "CC=C:\\msys64\\clangarm64\\bin\\clang.exe" >> "$GITHUB_ENV"
+            echo "CXX=C:\\msys64\\clangarm64\\bin\\clang++.exe" >> "$GITHUB_ENV"
+            echo "Using clang from C:\\msys64\\clangarm64\\bin"
+            CLANG_VERSION="$(/c/msys64/clangarm64/bin/clang.exe --version | tr -d '\r')"
+            echo "$CLANG_VERSION"
+            if printf '%s\n' "$CLANG_VERSION" | grep -Eiq '^Target: .*windows-msvc'; then
+              echo "Unexpected MSVC clang target for windows_arm64; require MSYS2 clangarm64 GNU target" >&2
+              exit 1
+            fi
           else
-            echo "No clang toolchain found for windows_arm64" >&2
+            echo "MSYS2 clangarm64 toolchain not found at C:\\msys64\\clangarm64\\bin" >&2
             exit 1
           fi
 
       - name: Print CGO compiler env
-        if: ${{ matrix.target == 'windows_arm64' }}
+        if: ${{ matrix.target == 'windows_arm64' || matrix.target == 'windows_amd64' }}
         shell: bash
         run: |
           echo "CC=$CC"
