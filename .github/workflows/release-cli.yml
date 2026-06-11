@@ -15,10 +15,11 @@ jobs:
     strategy:
       matrix:
         # ubuntu-latest: Linux x86_64
+        # ubuntu-24.04-arm: Linux arm64
         # macos-latest: macOS arm64 (Apple Silicon)
         # macos-13: macOS x86_64 (Intel)
         # windows-latest: Windows x86_64
-        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-13, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
