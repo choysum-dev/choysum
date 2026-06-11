@@ -15,5 +15,7 @@ func setServerProcessAttrs(cmd *exec.Cmd) {
 }
 
 func signalServerProcess(cmd *exec.Cmd) {
-	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+	if cmd.Process.Pid > 0 {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+	}
 }
