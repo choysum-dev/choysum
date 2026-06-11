@@ -10,17 +10,29 @@ permissions:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
+    name: Build on ${{ matrix.os }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # ubuntu-latest: Linux x86_64
-        # ubuntu-24.04-arm: Linux arm64
-        # macos-26: macOS 26 arm64 (Apple Silicon)
-        # macos-26-intel: macOS 26 x86_64 (Intel)
-        # windows-latest: Windows x86_64
-        # windows-11-arm: Windows 11 arm64
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-26, macos-26-intel, windows-latest, windows-11-arm]
+        include:
+          # linux_amd64
+          - os: ubuntu-latest
+            target: linux_amd64
+          # linux_arm64
+          - os: ubuntu-24.04-arm
+            target: linux_arm64
+          # darwin_arm64
+          - os: macos-26
+            target: darwin_arm64
+          # darwin_amd64
+          - os: macos-26-intel
+            target: darwin_amd64
+          # windows_amd64
+          - os: windows-latest
+            target: windows_amd64
+          # windows_arm64
+          - os: windows-11-arm
+            target: windows_arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,13 +45,33 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Prepare GoReleaser config for current target
+        shell: bash
+        run: |
+          awk -v target="${{ matrix.target }}" '
+            BEGIN { in_targets = 0 }
+            /^    targets:/ {
+              print
+              print "      - " target
+              in_targets = 1
+              next
+            }
+            in_targets {
+              if ($0 ~ /^      - /) {
+                next
+              }
+              in_targets = 0
+            }
+            { print }
+          ' .goreleaser.yaml > .goreleaser.target.yaml
+
       - name: Run GoReleaser (Build & Archive native target)
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: latest
-          # --single-target ensures GoReleaser only builds the OS/Arch for the current runner.
-          args: release --clean --skip=publish --single-target
+          # Use rendered config with a single matrix target per runner.
+          args: release --clean --skip=publish --config .goreleaser.target.yaml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

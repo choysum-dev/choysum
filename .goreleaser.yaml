@@ -4,6 +4,13 @@ builds:
   - id: choysum
     main: .
     binary: choysum
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - darwin_amd64
+      - darwin_arm64
+      - windows_amd64
+      - windows_arm64
     env:
       - CGO_ENABLED=1
     ldflags:
