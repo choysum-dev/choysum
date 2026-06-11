@@ -30,20 +30,22 @@ func shortCommitHash(value string) string {
 
 func getBuildVersion() string {
 	v := version
+	c := commit
+	d := date
 	if version == "dev" {
 		if info, ok := readBuildInfo(); ok {
 			for _, setting := range info.Settings {
 				if setting.Key == "vcs.revision" {
-					commit = shortCommitHash(setting.Value)
+					c = shortCommitHash(setting.Value)
 				}
 				if setting.Key == "vcs.time" {
-					date = setting.Value
+					d = setting.Value
 				}
 			}
-			v = fmt.Sprintf("dev-%s", commit)
+			v = fmt.Sprintf("dev-%s", c)
 		}
 	}
-	return fmt.Sprintf("%s (commit: %s, date: %s)", v, commit, date)
+	return fmt.Sprintf("%s (commit: %s, date: %s)", v, c, d)
 }
 
 var newCommander = func(ctx context.Context) interface{ Execute() error } {
