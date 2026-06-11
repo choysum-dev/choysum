@@ -179,6 +179,40 @@ func TestGetBuildVersion_DevBuildWithDirtyTree(t *testing.T) {
 	if !strings.Contains(got, "dev-1234567-dirty") {
 		t.Fatalf("expected dirty suffix in version string, got %q", got)
 	}
+	if !strings.Contains(got, "commit: 1234567") {
+		t.Fatalf("expected clean commit field without dirty suffix, got %q", got)
+	}
+}
+
+func TestGetBuildVersion_DevBuildWithoutRevisionFallsBackToDev(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.time", Value: "2026-06-11T04:30:00Z"},
+				{Key: "vcs.modified", Value: "true"},
+			},
+		}, true
+	}
+
+	got := getBuildVersion()
+
+	if got != "dev (commit: none, date: 2026-06-11T04:30:00Z)" {
+		t.Fatalf("unexpected version string: %q", got)
+	}
 }
 
 func TestGetBuildVersion_DevBuildWithShortRevision(t *testing.T) {

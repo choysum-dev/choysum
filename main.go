@@ -34,10 +34,11 @@ func getBuildVersion() string {
 	d := date
 	if version == "dev" {
 		if info, ok := readBuildInfo(); ok {
+			revision := ""
 			dirty := false
 			for _, setting := range info.Settings {
 				if setting.Key == "vcs.revision" {
-					c = shortCommitHash(setting.Value)
+					revision = shortCommitHash(setting.Value)
 				}
 				if setting.Key == "vcs.time" {
 					d = setting.Value
@@ -46,10 +47,13 @@ func getBuildVersion() string {
 					dirty = true
 				}
 			}
-			if dirty {
-				c += "-dirty"
+			if revision != "" {
+				c = revision
+				v = fmt.Sprintf("dev-%s", revision)
+				if dirty {
+					v += "-dirty"
+				}
 			}
-			v = fmt.Sprintf("dev-%s", c)
 		}
 	}
 	return fmt.Sprintf("%s (commit: %s, date: %s)", v, c, d)
