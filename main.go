@@ -5,14 +5,40 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/choysum-dev/choysum/cmd"
 	_ "github.com/choysum-dev/choysum/internal/initialize"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
+func getBuildVersion() string {
+	v := version
+	if version == "dev" {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					commit = setting.Value[:7]
+				}
+				if setting.Key == "vcs.time" {
+					date = setting.Value
+				}
+			}
+			v = fmt.Sprintf("dev-%s", commit)
+		}
+	}
+	return fmt.Sprintf("%s (commit: %s, date: %s)", v, commit, date)
+}
+
 var newCommander = func(ctx context.Context) interface{ Execute() error } {
-	return cmd.NewCommander(ctx)
+	return cmd.NewCommander(ctx, getBuildVersion())
 }
 
 var exitFunc = os.Exit
