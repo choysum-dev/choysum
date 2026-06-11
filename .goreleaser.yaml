@@ -2,7 +2,7 @@ version: 2
 project_name: choysum
 builds:
   - id: choysum
-    main: ./main.go
+    main: .
     binary: choysum
     env:
       - CGO_ENABLED=1
