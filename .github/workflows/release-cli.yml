@@ -117,6 +117,30 @@ jobs:
           fi
           tar -xzf "$ARCHIVE_PATH" -C "$WORKSPACE_PATH"
 
+      - name: Configure CGO compiler for windows_amd64
+        if: ${{ matrix.target == 'windows_amd64' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for BIN_DIR in /c/msys64/ucrt64/bin /c/msys64/mingw64/bin; do
+            if [[ -x "$BIN_DIR/gcc.exe" ]] && [[ -x "$BIN_DIR/g++.exe" ]]; then
+              WIN_BIN="$(cygpath -w "$BIN_DIR" | tr -d '\r')"
+              echo "$WIN_BIN" >> "$GITHUB_PATH"
+              echo "CC=${WIN_BIN}\\gcc.exe" >> "$GITHUB_ENV"
+              echo "CXX=${WIN_BIN}\\g++.exe" >> "$GITHUB_ENV"
+              echo "Using gcc from $WIN_BIN"
+              GCC_TARGET="$("$BIN_DIR/gcc.exe" -dumpmachine | tr -d '\r')"
+              echo "GCC_TARGET=$GCC_TARGET"
+              if ! printf '%s\n' "$GCC_TARGET" | grep -Eiq 'mingw'; then
+                echo "Unexpected gcc target for windows_amd64; require MSYS2 MinGW target" >&2
+                exit 1
+              fi
+              exit 0
+            fi
+          done
+          echo "MSYS2 gcc toolchain not found at C:\\msys64\\ucrt64\\bin or C:\\msys64\\mingw64\\bin" >&2
+          exit 1
+
       - name: Configure CGO compiler for windows_arm64
         if: ${{ matrix.target == 'windows_arm64' }}
         shell: bash
@@ -139,7 +163,7 @@ jobs:
           fi
 
       - name: Print CGO compiler env
-        if: ${{ matrix.target == 'windows_arm64' }}
+        if: ${{ matrix.target == 'windows_arm64' || matrix.target == 'windows_amd64' }}
         shell: bash
         run: |
           echo "CC=$CC"
