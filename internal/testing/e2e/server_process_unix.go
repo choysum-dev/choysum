@@ -14,7 +14,10 @@ func setServerProcessAttrs(cmd *exec.Cmd) {
 	if cmd == nil {
 		return
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if cmd.SysProcAttr == nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	cmd.SysProcAttr.Setpgid = true
 }
 
 func signalServerProcess(cmd *exec.Cmd) {

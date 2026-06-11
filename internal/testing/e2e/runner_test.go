@@ -16,6 +16,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -509,6 +510,17 @@ func TestServerProcessHelpersNilSafety(t *testing.T) {
 	setServerProcessAttrs(nil)
 	signalServerProcess(nil)
 	signalServerProcess(&exec.Cmd{})
+}
+
+func TestSetServerProcessAttrsPreservesExistingSysProcAttr(t *testing.T) {
+	original := &syscall.SysProcAttr{}
+	cmd := &exec.Cmd{SysProcAttr: original}
+
+	setServerProcessAttrs(cmd)
+
+	if cmd.SysProcAttr != original {
+		t.Fatalf("expected existing SysProcAttr pointer to be preserved")
+	}
 }
 
 func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
