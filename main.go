@@ -17,15 +17,24 @@ var (
 	version = "dev"
 	commit  = "none"
 	date    = "unknown"
+
+	readBuildInfo = debug.ReadBuildInfo
 )
+
+func shortCommitHash(value string) string {
+	if len(value) > 7 {
+		return value[:7]
+	}
+	return value
+}
 
 func getBuildVersion() string {
 	v := version
 	if version == "dev" {
-		if info, ok := debug.ReadBuildInfo(); ok {
+		if info, ok := readBuildInfo(); ok {
 			for _, setting := range info.Settings {
 				if setting.Key == "vcs.revision" {
-					commit = setting.Value[:7]
+					commit = shortCommitHash(setting.Value)
 				}
 				if setting.Key == "vcs.time" {
 					date = setting.Value

@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"errors"
+	"runtime/debug"
+	"strings"
 	"testing"
 )
 
@@ -80,5 +82,126 @@ func TestMainExitsOnCommanderError(t *testing.T) {
 	}
 	if exitCode != 1 {
 		t.Fatalf("exit code = %d, want 1", exitCode)
+	}
+}
+
+func TestGetBuildVersion_ReleaseBuildSkipsBuildInfo(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "v1.2.3"
+	commit = "abc1234"
+	date = "2026-06-11T00:00:00Z"
+	called := false
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		called = true
+		return nil, false
+	}
+
+	got := getBuildVersion()
+
+	if called {
+		t.Fatal("expected build info reader to be skipped for non-dev version")
+	}
+	if got != "v1.2.3 (commit: abc1234, date: 2026-06-11T00:00:00Z)" {
+		t.Fatalf("unexpected version string: %q", got)
+	}
+}
+
+func TestGetBuildVersion_DevBuildWithLongRevision(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "1234567890abcdef"},
+				{Key: "vcs.time", Value: "2026-06-11T03:00:00Z"},
+			},
+		}, true
+	}
+
+	got := getBuildVersion()
+
+	if !strings.Contains(got, "dev-1234567") {
+		t.Fatalf("expected shortened revision in version string, got %q", got)
+	}
+	if !strings.Contains(got, "date: 2026-06-11T03:00:00Z") {
+		t.Fatalf("expected vcs.time in version string, got %q", got)
+	}
+}
+
+func TestGetBuildVersion_DevBuildWithShortRevision(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "abc"},
+			},
+		}, true
+	}
+
+	got := getBuildVersion()
+
+	if !strings.Contains(got, "dev-abc") {
+		t.Fatalf("expected short revision without panic, got %q", got)
+	}
+}
+
+func TestGetBuildVersion_DevBuildWithoutBuildInfo(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return nil, false
+	}
+
+	got := getBuildVersion()
+
+	if got != "dev (commit: none, date: unknown)" {
+		t.Fatalf("unexpected version string: %q", got)
 	}
 }
