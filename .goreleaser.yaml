@@ -6,13 +6,6 @@ builds:
     binary: choysum
     env:
       - CGO_ENABLED=1
-    goos:
-      - linux
-      - windows
-      - darwin
-    goarch:
-      - amd64
-      - arm64
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -32,11 +25,3 @@ archives:
         format: zip
 checksum:
   name_template: 'checksums.txt'
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'

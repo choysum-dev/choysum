@@ -9,13 +9,21 @@ permissions:
   contents: write # Write permission is required to create a GitHub release
 
 jobs:
-  goreleaser:
-    runs-on: ubuntu-latest
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # ubuntu-latest: Linux x86_64
+        # macos-latest: macOS arm64 (Apple Silicon)
+        # macos-13: macOS x86_64 (Intel)
+        # windows-latest: Windows x86_64
+        os: [ubuntu-latest, macos-latest, macos-13, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # GoReleaser requires full git history and tags to build the changelog
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -23,11 +31,63 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Run GoReleaser
+      - name: Run GoReleaser (Build & Archive native target)
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          # --single-target ensures GoReleaser only builds the OS/Arch for the current runner.
+          args: release --clean --skip=publish --single-target
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: choysum-binaries-${{ matrix.os }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-artifacts
+          pattern: choysum-binaries-*
+          merge-multiple: true
+
+      - name: Create Release and Upload Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Combine checksums from all runners into one unified file
+          cat $(find dist-artifacts -name "checksums.txt") | sort -u > combined_checksums.txt
+          
+          # Find all archives
+          ASSETS=$(find dist-artifacts -type f \( -name "*.tar.gz" -o -name "*.zip" \))
+          
+          echo "Assets to be uploaded:"
+          echo "$ASSETS"
+          echo "combined_checksums.txt"
+
+          # Check if the release already exists
+          if gh release view ${{ github.ref_name }} > /dev/null 2>&1; then
+            echo "Release ${{ github.ref_name }} exists, updating assets..."
+            echo $ASSETS | xargs gh release upload ${{ github.ref_name }} --clobber
+            gh release upload ${{ github.ref_name }} combined_checksums.txt --clobber
+          else
+            echo "Creating new release ${{ github.ref_name }}..."
+            # --generate-notes automatically generates the changelog
+            echo $ASSETS | xargs gh release create ${{ github.ref_name }} --title "Release ${{ github.ref_name }}" --generate-notes combined_checksums.txt
+          fi
