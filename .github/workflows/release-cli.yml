@@ -19,7 +19,8 @@ jobs:
         # macos-latest: macOS arm64 (Apple Silicon)
         # macos-13: macOS x86_64 (Intel)
         # windows-latest: Windows x86_64
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-13, windows-latest]
+        # windows-11-arm: Windows arm64
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-13, windows-latest, windows-11-arm]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
