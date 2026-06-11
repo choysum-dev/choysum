@@ -150,6 +150,37 @@ func TestGetBuildVersion_DevBuildWithLongRevision(t *testing.T) {
 	}
 }
 
+func TestGetBuildVersion_DevBuildWithDirtyTree(t *testing.T) {
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return &debug.BuildInfo{
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "1234567890abcdef"},
+				{Key: "vcs.modified", Value: "true"},
+			},
+		}, true
+	}
+
+	got := getBuildVersion()
+
+	if !strings.Contains(got, "dev-1234567-dirty") {
+		t.Fatalf("expected dirty suffix in version string, got %q", got)
+	}
+}
+
 func TestGetBuildVersion_DevBuildWithShortRevision(t *testing.T) {
 	originalVersion := version
 	originalCommit := commit

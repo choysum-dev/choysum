@@ -42,7 +42,6 @@ runtime startup, and test workflows.
 Use --config to point to a workspace config file when you want to override the
 built-in defaults or load a non-default workspace config.`,
 	}
-	rootCmd.SetVersionTemplate("choysum version {{.Version}}\n")
 
 	c := &Command{
 		rootCmd: rootCmd,
