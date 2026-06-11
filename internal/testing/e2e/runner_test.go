@@ -478,6 +478,12 @@ func TestStopServerSignalsRunningProcess(t *testing.T) {
 	}
 }
 
+func TestServerProcessHelpersNilSafety(t *testing.T) {
+	setServerProcessAttrs(nil)
+	signalServerProcess(nil)
+	signalServerProcess(&exec.Cmd{})
+}
+
 func TestApplyScenarioFixturesLogOnlyBranches(t *testing.T) {
 	modulesPath := t.TempDir()
 	configPath := writeTempE2EConfig(t, modulesPath)

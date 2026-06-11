@@ -12,5 +12,8 @@ import (
 func setServerProcessAttrs(*exec.Cmd) {}
 
 func signalServerProcess(cmd *exec.Cmd) {
+	if cmd == nil || cmd.Process == nil {
+		return
+	}
 	_ = cmd.Process.Kill()
 }
