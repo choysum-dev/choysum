@@ -31,16 +31,18 @@ func (c *Command) Execute() error {
 }
 
 // NewCommander constructs the Choysum root command and wires its subcommands.
-func NewCommander(ctx context.Context) *Command {
+func NewCommander(ctx context.Context, version string) *Command {
 	rootCmd := &cobra.Command{
-		Use:   "choysum",
-		Short: "Run the Choysum command-line interface",
+		Use:     "choysum",
+		Short:   "Run the Choysum command-line interface",
+		Version: version,
 		Long: `Choysum provides commands for module lifecycle management,
 runtime startup, and test workflows.
 
 Use --config to point to a workspace config file when you want to override the
 built-in defaults or load a non-default workspace config.`,
 	}
+
 	c := &Command{
 		rootCmd: rootCmd,
 	}

@@ -940,7 +940,7 @@ func TestInstallUpgradeUninstallCommandExitPaths(t *testing.T) {
 }
 
 func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
-	commander := NewCommander(context.Background())
+	commander := NewCommander(context.Background(), "test-version")
 	if commander == nil || commander.rootCmd == nil {
 		t.Fatal("expected commander and root command to be initialized")
 	}
@@ -971,7 +971,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 	}
 
 	t.Run("run skips config bootstrap", func(t *testing.T) {
-		c := NewCommander(context.Background())
+		c := NewCommander(context.Background(), "test-version")
 		sub, _, err := c.rootCmd.Find([]string{"run"})
 		if err != nil {
 			t.Fatalf("find run subcommand: %v", err)
@@ -1008,7 +1008,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		t.Setenv("CHOYSUM_DB_DSN", dbPath)
 		t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "dev-internal-key")
 
-		c := NewCommander(context.Background())
+		c := NewCommander(context.Background(), "test-version")
 		sub, _, err := c.rootCmd.Find([]string{"test"})
 		if err != nil {
 			t.Fatalf("find test subcommand: %v", err)
@@ -1050,7 +1050,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 			t.Fatalf("write config file: %v", err)
 		}
 
-		c := NewCommander(context.Background())
+		c := NewCommander(context.Background(), "test-version")
 		if err := c.rootCmd.PersistentFlags().Set("config", cfgPath); err != nil {
 			t.Fatalf("set persistent config flag: %v", err)
 		}

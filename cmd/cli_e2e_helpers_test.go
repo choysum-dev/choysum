@@ -50,7 +50,7 @@ func TestCLIErrorBlockHelper(t *testing.T) {
 		return
 	}
 	args := helperArgs(os.Args)
-	cmd := NewCommander(context.Background())
+	cmd := NewCommander(context.Background(), "test-version")
 	cmd.rootCmd.SetArgs(args)
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
