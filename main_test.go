@@ -85,6 +85,33 @@ func TestMainExitsOnCommanderError(t *testing.T) {
 	}
 }
 
+func TestDefaultNewCommanderFactory(t *testing.T) {
+	originalNewCommander := newCommander
+	originalVersion := version
+	originalCommit := commit
+	originalDate := date
+	originalReadBuildInfo := readBuildInfo
+	t.Cleanup(func() {
+		newCommander = originalNewCommander
+		version = originalVersion
+		commit = originalCommit
+		date = originalDate
+		readBuildInfo = originalReadBuildInfo
+	})
+
+	version = "dev"
+	commit = "none"
+	date = "unknown"
+	readBuildInfo = func() (*debug.BuildInfo, bool) {
+		return nil, false
+	}
+
+	commander := originalNewCommander(context.Background())
+	if commander == nil {
+		t.Fatal("expected default commander factory to return a commander")
+	}
+}
+
 func TestGetBuildVersion_ReleaseBuildSkipsBuildInfo(t *testing.T) {
 	originalVersion := version
 	originalCommit := commit
