@@ -117,6 +117,35 @@ jobs:
           fi
           tar -xzf "$ARCHIVE_PATH" -C "$WORKSPACE_PATH"
 
+      - name: Configure CGO compiler for windows_arm64
+        if: ${{ matrix.target == 'windows_arm64' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v clang >/dev/null 2>&1; then
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+            echo "Using clang from PATH"
+            clang --version
+          elif [[ -x "/c/msys64/clangarm64/bin/clang.exe" ]]; then
+            echo "/c/msys64/clangarm64/bin" >> "$GITHUB_PATH"
+            echo "CC=clang" >> "$GITHUB_ENV"
+            echo "CXX=clang++" >> "$GITHUB_ENV"
+            echo "Using clang from /c/msys64/clangarm64/bin"
+            /c/msys64/clangarm64/bin/clang.exe --version
+          else
+            echo "No clang toolchain found for windows_arm64" >&2
+            exit 1
+          fi
+
+      - name: Print CGO compiler env
+        if: ${{ matrix.target == 'windows_arm64' }}
+        shell: bash
+        run: |
+          echo "CC=$CC"
+          echo "CXX=$CXX"
+          go env CC CXX GOOS GOARCH
+
       - name: Prepare GoReleaser config for current target
         id: prepare_goreleaser_config
         shell: bash
