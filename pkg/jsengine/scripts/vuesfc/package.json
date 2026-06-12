@@ -10,5 +10,8 @@
     "path-browserify": "latest",
     "sass": "latest",
     "url": "latest"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
