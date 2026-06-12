@@ -480,7 +480,7 @@ def sync_modules_per_module_pr():
         askpass_path.write_bytes(
             b"#!/bin/sh\n"
             b"case \"$1\" in\n"
-            b"  *Username*) printf '%s\\n' 'x-access-token' ;;\n"
+            b"  *[Uu]sername*) printf '%s\\n' 'x-access-token' ;;\n"
             b"  *) printf '%s\\n' \"$CHOYSUM_SYNC_GIT_TOKEN\" ;;\n"
             b"esac\n"
         )
