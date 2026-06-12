@@ -477,8 +477,6 @@ def sync_modules_per_module_pr():
     askpass_path = output_dir / "git-askpass.sh"
 
     def ensure_askpass_script():
-        if askpass_path.is_file():
-            return
         askpass_path.write_bytes(
             b"#!/bin/sh\n"
             b"case \"$1\" in\n"
