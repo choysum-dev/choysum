@@ -710,11 +710,7 @@ def sync_modules_per_module_pr():
                 run_cmd(["git", "commit", "-m", f"chore(modules): sync pointer for {module}"], cwd=repo_clone_dir)
                 push_cmd = ["git", "push"]
                 if has_remote_branch:
-                    expected_remote = run_cmd(
-                        ["git", "rev-parse", f"origin/{branch_name}"],
-                        cwd=repo_clone_dir,
-                    ).stdout.strip()
-                    push_cmd.append(f"--force-with-lease={branch_name}:{expected_remote}")
+                    push_cmd.append(f"--force-with-lease={branch_name}")
                 push_cmd.extend(["origin", branch_name])
 
                 run_git_with_auth(push_cmd, cwd=repo_clone_dir)
