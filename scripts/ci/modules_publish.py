@@ -522,6 +522,17 @@ def sync_modules_per_module_pr():
             ["git", "remote", "set-url", "origin", "https://github.com/choysum-dev/modules-directory.git"],
             cwd=repo_clone_dir,
         )
+        run_cmd(
+            [
+                "git",
+                "remote",
+                "set-url",
+                "--push",
+                "origin",
+                clone_url,
+            ],
+            cwd=repo_clone_dir,
+        )
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
         run_cmd(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
