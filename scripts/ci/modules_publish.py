@@ -518,7 +518,13 @@ def sync_modules_per_module_pr():
     def ensure_repo_ready():
         if repo_clone_dir.exists():
             shutil.rmtree(repo_clone_dir)
-        run_cmd(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
+        try:
+            run_cmd(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
+        except Exception:
+            if repo_clone_dir.exists():
+                shutil.rmtree(repo_clone_dir)
+            run_cmd(["git", "clone", "--depth", "1", push_url, str(repo_clone_dir)])
+            run_cmd(["git", "remote", "set-url", "origin", repo_url], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
         run_cmd(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
@@ -685,7 +691,7 @@ def sync_modules_per_module_pr():
                 push_cmd = ["git", "push"]
                 if has_remote_branch:
                     expected_remote = run_cmd(
-                        ["git", "rev-parse", f"refs/remotes/origin/{branch_name}"],
+                        ["git", "rev-parse", f"origin/{branch_name}"],
                         cwd=repo_clone_dir,
                     ).stdout.strip()
                     push_cmd.append(f"--force-with-lease={branch_name}:{expected_remote}")
