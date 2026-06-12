@@ -42,14 +42,11 @@ jobs:
         with:
           ref: ${{ inputs.run_ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: ${{ inputs.embedded_assets_artifact_name }}
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf "${{ inputs.embedded_assets_archive_path }}" -C .
+          artifact-name: ${{ inputs.embedded_assets_artifact_name }}
+          archive-path: ${{ inputs.embedded_assets_archive_path }}
 
       - name: Setup Go
         uses: actions/setup-go@v6

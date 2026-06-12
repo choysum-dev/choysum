@@ -40,16 +40,12 @@ jobs:
         with:
           ref: ${{ inputs.run_ref }}
 
-      - name: Download embedded assets
+      - name: Download and extract embedded assets
         if: ${{ inputs.run_bootstrap_verify == 'true' }}
-        uses: actions/download-artifact@v8
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: ${{ inputs.embedded_assets_artifact_name }}
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        if: ${{ inputs.run_bootstrap_verify == 'true' }}
-        run: tar -xzf "${{ inputs.embedded_assets_archive_path }}" -C .
+          artifact-name: ${{ inputs.embedded_assets_artifact_name }}
+          archive-path: ${{ inputs.embedded_assets_archive_path }}
 
       - name: Setup Go
         if: ${{ inputs.run_bootstrap_verify == 'true' }}

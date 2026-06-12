@@ -87,14 +87,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: nightly-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/nightly-embedded-assets.tar.gz -C .
+          artifact-name: nightly-embedded-assets
+          archive-path: .choysum/tmp/nightly-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8

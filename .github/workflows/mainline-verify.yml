@@ -82,14 +82,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -139,14 +136,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -218,14 +212,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -297,14 +288,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
