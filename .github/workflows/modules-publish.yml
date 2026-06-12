@@ -1,0 +1,256 @@
+name: Modules Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run publish flow without pushing npm packages"
+        required: true
+        default: true
+        type: boolean
+      target_module:
+        description: "Single module name to target (empty means auto-discover changed modules)"
+        required: false
+        default: ""
+        type: string
+      target_ref:
+        description: "Branch, tag, or SHA to run against"
+        required: false
+        default: ""
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - "modules/**"
+      - ".github/workflows/modules-publish.yml"
+      - ".github/workflows/modules-publish-*.yml"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: modules-publish-${{ inputs.target_ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: modules / preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      run_ref: ${{ steps.resolve-ref.outputs.run_ref }}
+      dry_run: ${{ steps.resolve-flags.outputs.dry_run }}
+    steps:
+      - name: Resolve run ref
+        id: resolve-ref
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ inputs.target_ref }}" ]]; then
+            echo "run_ref=${{ inputs.target_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve dry_run flag
+        id: resolve-flags
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+              echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # Safety default for push-triggered runs.
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate NPM publish secret presence
+        env:
+          NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${NPM_PUBLISH_TOKEN:-}" ]]; then
+            echo "NPM_PUBLISH_TOKEN is required for module publish workflow" >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.resolve-ref.outputs.run_ref }}
+          fetch-depth: 0
+
+      - name: Validate module metadata schema baseline
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish_preflight.py validate-schema-baseline
+
+  discover-module-updates:
+    name: modules / discover-module-updates
+    needs:
+      - preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      modules_json: ${{ steps.discover.outputs.modules_json }}
+      has_modules: ${{ steps.discover.outputs.has_modules }}
+      artifact_name: ${{ steps.discover.outputs.artifact_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.run_ref }}
+          fetch-depth: 0
+
+      - name: Discover target modules
+        id: discover
+        env:
+          TARGET_MODULE: ${{ inputs.target_module }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+          RUN_REF: ${{ needs.preflight.outputs.run_ref }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish_preflight.py discover-target-modules
+
+      - name: Upload discovery artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: module-discovery
+          path: .choysum/tmp/module-discovery.json
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-module-gate:
+    name: modules / verify-module-gate
+    needs:
+      - preflight
+      - discover-module-updates
+    if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.run_ref }}
+
+      - name: Verify module metadata consistency
+        env:
+          MODULES_JSON: ${{ needs.discover-module-updates.outputs.modules_json }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish.py verify-gate
+
+  publish-npm-registry-shard:
+    name: modules / publish-npm-registry-shard
+    needs:
+      - preflight
+      - discover-module-updates
+      - verify-module-gate
+    if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
+    uses: ./.github/workflows/modules-publish-shard.yml
+    with:
+      run_ref: ${{ needs.preflight.outputs.run_ref }}
+      dry_run: ${{ needs.preflight.outputs.dry_run }}
+      modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
+    secrets:
+      NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+  publish-npm-registry:
+    name: modules / publish-npm-registry
+    needs:
+      - preflight
+      - discover-module-updates
+      - verify-module-gate
+      - publish-npm-registry-shard
+    if: ${{ always() && needs.discover-module-updates.outputs.has_modules == 'true' }}
+    uses: ./.github/workflows/modules-publish-aggregate.yml
+    with:
+      run_ref: ${{ needs.preflight.outputs.run_ref }}
+      expected_modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
+
+  sync-catalog-directory-pr:
+    name: modules / sync-catalog-directory-pr
+    needs:
+      - preflight
+      - publish-npm-registry
+    if: ${{ always() && needs.publish-npm-registry.result == 'success' }}
+    uses: ./.github/workflows/modules-publish-sync.yml
+    with:
+      run_ref: ${{ needs.preflight.outputs.run_ref }}
+      dry_run: ${{ needs.preflight.outputs.dry_run }}
+      source_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      source_run_ref: ${{ needs.preflight.outputs.run_ref }}
+      source_sha: ${{ github.sha }}
+    secrets:
+      MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+
+  finalize-publish:
+    name: modules / finalize-publish
+    needs:
+      - preflight
+      - discover-module-updates
+      - verify-module-gate
+      - publish-npm-registry-shard
+      - publish-npm-registry
+      - sync-catalog-directory-pr
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize module publish pipeline status
+        run: |
+          set -euo pipefail
+          echo "preflight=${{ needs.preflight.result }}"
+          echo "discover-module-updates=${{ needs.discover-module-updates.result }}"
+          echo "verify-module-gate=${{ needs.verify-module-gate.result }}"
+          echo "publish-npm-registry-shard=${{ needs.publish-npm-registry-shard.result }}"
+          echo "publish-npm-registry=${{ needs.publish-npm-registry.result }}"
+          echo "sync-catalog-directory-pr=${{ needs.sync-catalog-directory-pr.result }}"
+
+      - name: Write stage result report
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          cat > .choysum/tmp/pipeline-stage-results.json <<JSON
+          {
+            "preflight": "${{ needs.preflight.result }}",
+            "discover-module-updates": "${{ needs.discover-module-updates.result }}",
+            "verify-module-gate": "${{ needs.verify-module-gate.result }}",
+            "publish-npm-registry-shard": "${{ needs.publish-npm-registry-shard.result }}",
+            "publish-npm-registry": "${{ needs.publish-npm-registry.result }}",
+            "sync-catalog-directory-pr": "${{ needs.sync-catalog-directory-pr.result }}"
+          }
+          JSON
+
+      - name: Upload pipeline stage report artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: pipeline-stage-results
+          path: .choysum/tmp/pipeline-stage-results.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce fail-fast outcome
+        run: |
+          set -euo pipefail
+          for job in \
+            "${{ needs.preflight.result }}" \
+            "${{ needs.discover-module-updates.result }}" \
+            "${{ needs.verify-module-gate.result }}" \
+            "${{ needs.publish-npm-registry-shard.result }}" \
+            "${{ needs.publish-npm-registry.result }}" \
+            "${{ needs.sync-catalog-directory-pr.result }}"
+          do
+            if [[ "$job" != "success" && "$job" != "skipped" ]]; then
+              echo "module publish pipeline failed due to upstream job result: $job" >&2
+              exit 1
+            fi
+          done
