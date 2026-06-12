@@ -435,19 +435,26 @@ def sync_modules_per_module_pr():
     results = []
 
     def run_cmd(command, cwd=None, check=True):
-        proc = subprocess.run(
-            command,
-            cwd=str(cwd) if cwd is not None else None,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
         safe_command = []
         for part in command:
             value = str(part)
             if token:
                 value = value.replace(token, "***")
             safe_command.append(value)
+
+        try:
+            proc = subprocess.run(
+                command,
+                cwd=str(cwd) if cwd is not None else None,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except Exception as exc:
+            message = str(exc)
+            if token:
+                message = message.replace(token, "***")
+            raise RuntimeError(f"command execution failed ({' '.join(safe_command)}): {message}") from None
 
         safe_stdout = proc.stdout or ""
         safe_stderr = proc.stderr or ""

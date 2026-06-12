@@ -130,7 +130,7 @@ def build_reverse_graph(modules):
 
 
 def reverse_closure(reverse_graph, start):
-    seen = set()
+    seen = {start}
     queue = deque([start])
     while queue:
         current = queue.popleft()
@@ -139,6 +139,7 @@ def reverse_closure(reverse_graph, start):
                 continue
             seen.add(nxt)
             queue.append(nxt)
+    seen.discard(start)
     return seen
 
 

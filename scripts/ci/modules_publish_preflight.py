@@ -29,6 +29,8 @@ def validate_schema_baseline():
     errors = []
     for package_path in sorted(MODULES_ROOT.glob("*/package.json")):
         module_dir_name = package_path.parent.name
+        if module_dir_name in {".choysum", "tmp"}:
+            continue
         rel = package_path.relative_to(REPO_ROOT)
         try:
             data = json.loads(package_path.read_text(encoding="utf-8"))
