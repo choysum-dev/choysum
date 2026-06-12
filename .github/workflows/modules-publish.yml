@@ -24,6 +24,7 @@ on:
     paths:
       - "modules/**"
       - ".github/workflows/modules-publish.yml"
+      - ".github/workflows/modules-publish-*.yml"
       - "package.json"
       - "package-lock.json"
 
@@ -274,54 +275,19 @@ jobs:
           python3 scripts/ci/modules_publish.py verify-gate
 
   publish-npm-registry-shard:
-    name: modules / publish-npm-registry (${{ matrix.module }})
+    name: modules / publish-npm-registry-shard
     needs:
       - preflight
       - discover-module-updates
       - verify-module-gate
     if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.discover-module-updates.outputs.modules_json) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.preflight.outputs.run_ref }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Publish single module (idempotent)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-          MODULE_NAME: ${{ matrix.module }}
-          DRY_RUN: ${{ needs.preflight.outputs.dry_run }}
-        run: |
-          set -euo pipefail
-          mkdir -p .choysum/tmp
-          python3 scripts/ci/modules_publish.py publish-single-module
-
-      - name: Upload shard publish artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: publish-shard-${{ matrix.module }}
-          path: |
-            .choysum/tmp/publish-result-${{ matrix.module }}.json
-            .choysum/tmp/publish-error-${{ matrix.module }}.json
-          if-no-files-found: error
-          retention-days: 14
+    uses: ./.github/workflows/modules-publish-shard.yml
+    with:
+      run_ref: ${{ needs.preflight.outputs.run_ref }}
+      dry_run: ${{ needs.preflight.outputs.dry_run }}
+      modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
+    secrets:
+      NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 
   publish-npm-registry:
     name: modules / publish-npm-registry
@@ -331,59 +297,10 @@ jobs:
       - verify-module-gate
       - publish-npm-registry-shard
     if: ${{ always() && needs.discover-module-updates.outputs.has_modules == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.preflight.outputs.run_ref }}
-
-      - name: Download shard publish artifacts
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: actions/download-artifact@v8
-        with:
-          pattern: publish-shard-*
-          merge-multiple: true
-          path: .choysum/tmp/publish-results
-
-      - name: Aggregate publish results
-        id: aggregate
-        continue-on-error: true
-        env:
-          EXPECTED_MODULES_JSON: ${{ needs.discover-module-updates.outputs.modules_json }}
-        run: |
-          set -euo pipefail
-          mkdir -p .choysum/tmp
-          python3 scripts/ci/modules_publish.py aggregate-publish-results
-
-      - name: Upload published modules artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: published-modules
-          path: .choysum/tmp/published-modules.json
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Upload publish diagnostics artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: publish-diagnostics
-          path: .choysum/tmp/publish-errors.json
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Enforce publish aggregate outcome
-        if: ${{ always() }}
-        run: |
-          set -euo pipefail
-          if [[ "${{ steps.aggregate.outcome }}" != "success" ]]; then
-            echo "publish-npm-registry aggregate failed" >&2
-            exit 1
-          fi
+    uses: ./.github/workflows/modules-publish-aggregate.yml
+    with:
+      run_ref: ${{ needs.preflight.outputs.run_ref }}
+      expected_modules_json: ${{ needs.discover-module-updates.outputs.modules_json }}
 
   sync-catalog-directory-pr:
     name: modules / sync-catalog-directory-pr
@@ -391,66 +308,15 @@ jobs:
       - preflight
       - publish-npm-registry
     if: ${{ always() && needs.publish-npm-registry.result == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.preflight.outputs.run_ref }}
-
-      - name: Download published modules artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: published-modules
-          path: .choysum/tmp
-
-      - name: Validate modules-directory API precheck
-        id: sync_precheck
-        continue-on-error: true
-        env:
-          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
-        run: |
-          set -euo pipefail
-          python3 scripts/ci/modules_publish.py sync-precheck
-
-      - name: Sync modules-directory pointers (per-module PR)
-        id: sync_modules
-        if: ${{ steps.sync_precheck.outcome == 'success' }}
-        continue-on-error: true
-        env:
-          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
-          DRY_RUN: ${{ needs.preflight.outputs.dry_run }}
-          SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          SOURCE_RUN_REF: ${{ needs.preflight.outputs.run_ref }}
-          SOURCE_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          python3 scripts/ci/modules_publish.py sync-modules-per-module-pr
-
-      - name: Upload sync diagnostics artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: sync-diagnostics
-          path: |
-            .choysum/tmp/sync-errors.json
-            .choysum/tmp/sync-summary.json
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Enforce sync outcomes
-        if: ${{ always() }}
-        run: |
-          set -euo pipefail
-          if [[ "${{ steps.sync_precheck.outcome }}" != "success" ]]; then
-            echo "sync-catalog-directory-pr precheck failed" >&2
-            exit 1
-          fi
-          if [[ "${{ steps.sync_modules.outcome }}" != "success" ]]; then
-            echo "sync-catalog-directory-pr module sync failed" >&2
-            exit 1
-          fi
+    uses: ./.github/workflows/modules-publish-sync.yml
+    with:
+      run_ref: ${{ needs.preflight.outputs.run_ref }}
+      dry_run: ${{ needs.preflight.outputs.dry_run }}
+      source_run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      source_run_ref: ${{ needs.preflight.outputs.run_ref }}
+      source_sha: ${{ github.sha }}
+    secrets:
+      MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
 
   finalize-publish:
     name: modules / finalize-publish

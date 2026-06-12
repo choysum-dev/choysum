@@ -1,0 +1,69 @@
+name: Modules Publish / Shard
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      dry_run:
+        description: "Run publish flow without pushing npm packages"
+        required: true
+        type: string
+      modules_json:
+        description: "JSON array of module names"
+        required: true
+        type: string
+    secrets:
+      NPM_PUBLISH_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish-npm-registry-shard:
+    name: modules / publish-npm-registry (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(inputs.modules_json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Publish single module (idempotent)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          MODULE_NAME: ${{ matrix.module }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          python3 scripts/ci/modules_publish.py publish-single-module
+
+      - name: Upload shard publish artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-shard-${{ matrix.module }}
+          path: |
+            .choysum/tmp/publish-result-${{ matrix.module }}.json
+            .choysum/tmp/publish-error-${{ matrix.module }}.json
+          if-no-files-found: error
+          retention-days: 14

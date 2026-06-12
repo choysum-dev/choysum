@@ -1,0 +1,73 @@
+name: Modules Publish / Aggregate
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      expected_modules_json:
+        description: "JSON array of expected modules"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish-npm-registry:
+    name: modules / publish-npm-registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Download shard publish artifacts
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          pattern: publish-shard-*
+          merge-multiple: true
+          path: .choysum/tmp/publish-results
+
+      - name: Aggregate publish results
+        id: aggregate
+        continue-on-error: true
+        env:
+          EXPECTED_MODULES_JSON: ${{ inputs.expected_modules_json }}
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          python3 scripts/ci/modules_publish.py aggregate-publish-results
+
+      - name: Upload published modules artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-modules
+          path: .choysum/tmp/published-modules.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload publish diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-diagnostics
+          path: .choysum/tmp/publish-errors.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce publish aggregate outcome
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.aggregate.outcome }}" != "success" ]]; then
+            echo "publish-npm-registry aggregate failed" >&2
+            exit 1
+          fi
