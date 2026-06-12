@@ -1,5 +1,5 @@
 {
-  "name": "@choysum/module-base",
+  "name": "@choysum-dev/base",
   "version": "0.0.0",
   "description": "Core master data such as companies and organizations",
   "license": "Apache-2.0",

@@ -126,7 +126,7 @@ func TestCatalogInfoFromStaticIndex_PrefersVersionSourcePackage(t *testing.T) {
 			"auth": map[string]any{
 				"moduleId":      "auth",
 				"latestVersion": "v1.0.0",
-				"package":       "@choysum/module-auth",
+				"package":       "@choysum-dev/auth",
 				"versions": map[string]any{
 					"v1.0.0": map[string]any{
 						"source": map[string]any{
@@ -243,11 +243,11 @@ func TestCatalogInfoFromStaticIndex_MergesVersionSourceIntoModuleSource(t *testi
 			"auth": map[string]any{
 				"moduleId":      "auth",
 				"latestVersion": "v1.0.0",
-				"package":       "@choysum/module-auth",
+				"package":       "@choysum-dev/auth",
 				"source": map[string]any{
 					"type":     "npm",
 					"registry": "https://registry.acme.dev",
-					"package":  "@choysum/module-auth",
+					"package":  "@choysum-dev/auth",
 				},
 				"versions": map[string]any{
 					"v1.0.0": map[string]any{

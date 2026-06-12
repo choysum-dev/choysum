@@ -78,7 +78,7 @@ func TestRunModuleInputValidation(t *testing.T) {
 	}
 
 	modulesPath := t.TempDir()
-	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 	err = RunModule(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, Scenarios: []string{"Bad Name"}})
 	if err == nil || !strings.Contains(err.Error(), "invalid scenario") {
 		t.Fatalf("expected invalid scenario error, got %v", err)
@@ -97,8 +97,8 @@ func TestRunModuleInputValidation(t *testing.T) {
 
 func TestDiscoverSourcePackagesAndResolveModules(t *testing.T) {
 	modulesPath := t.TempDir()
-	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","depends":["base"],"e2e":{"specs":"e2e/specs"}}}`)
-	writePackageFile(t, modulesPath, "base", `{"name":"@choysum/module-base","version":"0.0.0","choysum":{"moduleName":"base","application":"base"}}`)
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","depends":["base"],"e2e":{"specs":"e2e/specs"}}}`)
+	writePackageFile(t, modulesPath, "base", `{"name":"@choysum-dev/base","version":"0.0.0","choysum":{"moduleName":"base","application":"base"}}`)
 	if err := os.WriteFile(filepath.Join(modulesPath, "README.md"), []byte("ignored"), 0o644); err != nil {
 		t.Fatalf("write readme: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestE2EUtilityHelpers(t *testing.T) {
 
 	repoRoot := t.TempDir()
 	packagePath := filepath.Join(repoRoot, "package.json")
-	if err := os.WriteFile(packagePath, []byte(`{"name":"@choysum/module-auth","version":"1.2.3","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+	if err := os.WriteFile(packagePath, []byte(`{"name":"@choysum-dev/auth","version":"1.2.3","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
 		t.Fatalf("write package.json: %v", err)
 	}
 	_, version, err := readPackageVersion(packagePath)
@@ -602,7 +602,7 @@ func TestInstallForE2EAndSeedModuleIndexRuntimeBranches(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
 		t.Fatalf("mkdir auth dir: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "package.json"), []byte(`{"name":"@choysum/module-auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "package.json"), []byte(`{"name":"@choysum-dev/auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
 		t.Fatalf("write auth package.json: %v", err)
 	}
 
