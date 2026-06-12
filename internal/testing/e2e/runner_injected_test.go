@@ -173,7 +173,7 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 	defer func() { runOneScenarioHook = oldRunOne }()
 
 	modulesPath := t.TempDir()
-	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 
 	calls := 0
 	sawDeadline := false
@@ -213,7 +213,7 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 	defer func() { runOneScenarioHook = oldRunOne }()
 
 	modulesPath := t.TempDir()
-	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
 
 	wantErr := errors.New("scenario failed")
 	runOneScenarioHook = func(ctx context.Context, opts RunOptions, manifests map[string]*sourceModulePackage, scenario string) error {

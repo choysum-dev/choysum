@@ -771,7 +771,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("module without e2e specs is skipped", func(t *testing.T) {
 		modulesPath := t.TempDir()
-		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth"}}`)
+		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth"}}`)
 		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
@@ -783,7 +783,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("module with invalid specs path is rejected", func(t *testing.T) {
 		modulesPath := t.TempDir()
-		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"../specs"}}}`)
+		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"../specs"}}}`)
 		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
@@ -795,7 +795,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("invalid scenario name is rejected", func(t *testing.T) {
 		modulesPath := t.TempDir()
-		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum/module-auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"specs"}}}`)
+		writeCommandPackage(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"specs"}}}`)
 		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))

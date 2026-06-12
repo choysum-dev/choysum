@@ -1,5 +1,5 @@
 {
-  "name": "@choysum/module-partner-bank",
+  "name": "@choysum-dev/partner-bank",
   "version": "0.0.0",
   "description": "Partner bank account extension",
   "license": "Apache-2.0",

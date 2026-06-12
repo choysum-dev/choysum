@@ -392,7 +392,7 @@ func TestCLIUpgradeFlowWithGlobalRegistryIndex(t *testing.T) {
 	}
 
 	writeCommandPackage(t, modulesPath, "demo", `{
-		"name": "@choysum/module-demo",
+		"name": "@choysum-dev/demo",
 		"version": "0.1.0",
 		"description": "demo module",
 		"license": "Apache-2.0",
@@ -475,7 +475,7 @@ func TestCLIModulePurgeRequiresUninstallWhenInstalled(t *testing.T) {
 	}
 
 	writeCommandPackage(t, modulesPath, "demo", `{
-		"name": "@choysum/module-demo",
+		"name": "@choysum-dev/demo",
 		"version": "0.1.0",
 		"description": "demo module",
 		"license": "Apache-2.0",
@@ -521,7 +521,7 @@ func TestCLIFetchUninstallPurgeFlowWithGlobalRegistryIndex(t *testing.T) {
 	}
 
 	writeCommandPackage(t, modulesPath, "demo", `{
-		"name": "@choysum/module-demo",
+		"name": "@choysum-dev/demo",
 		"version": "0.1.0",
 		"description": "demo module",
 		"license": "Apache-2.0",

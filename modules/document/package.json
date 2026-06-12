@@ -1,5 +1,5 @@
 {
-  "name": "@choysum/module-document",
+  "name": "@choysum-dev/document",
   "version": "0.0.0",
   "description": "Document attachment control-plane and data-plane skeleton",
   "license": "Apache-2.0",

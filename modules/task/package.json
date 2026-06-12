@@ -1,5 +1,5 @@
 {
-  "name": "@choysum/module-task",
+  "name": "@choysum-dev/task",
   "version": "0.0.0",
   "description": "Background task scheduling and dispatch",
   "license": "Apache-2.0",
