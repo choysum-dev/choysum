@@ -9,6 +9,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import urllib.error
@@ -17,7 +18,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 
-REPO_ROOT = pathlib.Path.cwd()
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 TMP_DIR = REPO_ROOT / ".choysum" / "tmp"
 
 
@@ -222,8 +223,7 @@ def publish_single_module():
                     view_not_found = (
                         (view.returncode == 0 and not view.stdout.strip())
                         or "e404" in view_text
-                        or "404" in view_text
-                        or "not found" in view_text
+                        or "404 not found" in view_text
                     )
                     if not view_not_found:
                         errors.append(
@@ -371,6 +371,7 @@ def sync_precheck():
                 "Accept": "application/vnd.github+json",
                 "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "choysum-publish-script",
             },
         )
         try:
@@ -474,6 +475,7 @@ def sync_modules_per_module_pr():
                 "Authorization": f"Bearer {token}",
                 "X-GitHub-Api-Version": "2022-11-28",
                 "Content-Type": "application/json",
+                "User-Agent": "choysum-publish-script",
             },
         )
         try:
@@ -506,7 +508,7 @@ def sync_modules_per_module_pr():
 
     def ensure_repo_ready():
         if repo_clone_dir.exists():
-            run_cmd(["rm", "-rf", str(repo_clone_dir)])
+            shutil.rmtree(repo_clone_dir)
         clone_url = f"https://x-access-token:{token}@github.com/choysum-dev/modules-directory.git"
         run_cmd(["git", "clone", "--depth", "1", clone_url, str(repo_clone_dir)])
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)

@@ -13,7 +13,7 @@ from collections import deque
 from pathlib import PurePosixPath
 
 
-REPO_ROOT = pathlib.Path.cwd()
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULES_ROOT = REPO_ROOT / "modules"
 IGNORED_MODULES = {".choysum", "tmp"}
 HIGH_FANOUT_MODULES = {"core", "web", "base"}
@@ -167,13 +167,18 @@ def pull_request_outputs(modules):
     if not base_sha or not head_sha:
         raise SystemExit("discover-impact: pull_request event missing base/head sha")
 
-    diff = subprocess.run(
-        ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    changed_paths = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
+    try:
+        diff = subprocess.run(
+            ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        changed_paths = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
+        fallback_full = False
+    except subprocess.CalledProcessError:
+        changed_paths = []
+        fallback_full = True
 
     direct_modules = set()
     direct_e2e_modules = set()
@@ -181,8 +186,8 @@ def pull_request_outputs(modules):
     contract_modules = set()
     local_modules = set()
     build_hit = False
-    shared_hit = False
-    docs_only = True
+    shared_hit = fallback_full
+    docs_only = not fallback_full
 
     for path in changed_paths:
         module, kind = classify_module_path(path, module_names)

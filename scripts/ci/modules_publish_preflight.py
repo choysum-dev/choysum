@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 
-REPO_ROOT = pathlib.Path.cwd()
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULES_ROOT = REPO_ROOT / "modules"
 
 
@@ -30,7 +30,11 @@ def validate_schema_baseline():
     for package_path in sorted(MODULES_ROOT.glob("*/package.json")):
         module_dir_name = package_path.parent.name
         rel = package_path.relative_to(REPO_ROOT)
-        data = json.loads(package_path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(package_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            errors.append(f"{rel}: invalid JSON: {exc}")
+            continue
         if not isinstance(data, dict):
             errors.append(f"{rel}: package.json must be a JSON object")
             continue
@@ -108,20 +112,23 @@ def discover_target_modules():
     elif event_name == "push":
         modules = []
         if before and not is_all_zero_sha(before):
-            diff = subprocess.run(
-                ["git", "diff", "--name-only", f"{before}...{head}"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            changed = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
-            seen = set()
-            for path in changed:
-                parts = path.split("/")
-                if len(parts) >= 3 and parts[0] == "modules" and parts[1] in available_modules:
-                    if parts[1] not in seen:
-                        modules.append(parts[1])
-                        seen.add(parts[1])
+            try:
+                diff = subprocess.run(
+                    ["git", "diff", "--name-only", f"{before}...{head}"],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                changed = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
+                seen = set()
+                for path in changed:
+                    parts = path.split("/")
+                    if len(parts) >= 3 and parts[0] == "modules" and parts[1] in available_modules:
+                        if parts[1] not in seen:
+                            modules.append(parts[1])
+                            seen.add(parts[1])
+            except subprocess.CalledProcessError:
+                modules = []
         if not modules:
             modules = available_modules
     else:
