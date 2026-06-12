@@ -113,8 +113,11 @@ def build_reverse_graph(modules):
         if not package_path.is_file():
             continue
 
-        with package_path.open("r", encoding="utf-8") as fh:
-            package_json = json.load(fh)
+        try:
+            with package_path.open("r", encoding="utf-8") as fh:
+                package_json = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            continue
 
         choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
         depends = choysum.get("depends") if isinstance(choysum, dict) else []
