@@ -214,11 +214,17 @@ def publish_single_module():
                     text=True,
                 )
 
-                if view.returncode == 0:
+                version_exists = view.returncode == 0 and view.stdout.strip() == version
+                if version_exists:
                     result["status"] = "already_published"
                 else:
                     view_text = f"{view.stdout}\n{view.stderr}".lower()
-                    view_not_found = "e404" in view_text or "404" in view_text or "not found" in view_text
+                    view_not_found = (
+                        (view.returncode == 0 and not view.stdout.strip())
+                        or "e404" in view_text
+                        or "404" in view_text
+                        or "not found" in view_text
+                    )
                     if not view_not_found:
                         errors.append(
                             {
@@ -441,10 +447,17 @@ def sync_modules_per_module_pr():
             if token:
                 value = value.replace(token, "***")
             safe_command.append(value)
+
+        safe_stdout = proc.stdout or ""
+        safe_stderr = proc.stderr or ""
+        if token:
+            safe_stdout = safe_stdout.replace(token, "***")
+            safe_stderr = safe_stderr.replace(token, "***")
+
         if check and proc.returncode != 0:
             raise RuntimeError(
                 f"command failed ({' '.join(safe_command)}): exit={proc.returncode}; "
-                f"stdout={compact(proc.stdout)}; stderr={compact(proc.stderr)}"
+                f"stdout={compact(safe_stdout)}; stderr={compact(safe_stderr)}"
             )
         return proc
 

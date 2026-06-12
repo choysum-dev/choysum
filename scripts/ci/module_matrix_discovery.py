@@ -10,7 +10,7 @@ import os
 import pathlib
 
 
-REPO_ROOT = pathlib.Path.cwd()
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULES_ROOT = REPO_ROOT / "modules"
 IGNORED_MODULES = {".choysum", "tmp"}
 

@@ -31,6 +31,9 @@ def validate_schema_baseline():
         module_dir_name = package_path.parent.name
         rel = package_path.relative_to(REPO_ROOT)
         data = json.loads(package_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            errors.append(f"{rel}: package.json must be a JSON object")
+            continue
 
         missing_top = sorted(required_top - set(data.keys()))
         if missing_top:
