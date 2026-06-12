@@ -19,5 +19,8 @@
       "service": "./service/index.ts",
       "web": "./web/index.ts"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
