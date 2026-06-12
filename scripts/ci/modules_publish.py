@@ -490,6 +490,7 @@ def sync_modules_per_module_pr():
         ensure_askpass_script()
 
         auth_env = os.environ.copy()
+        auth_env["LC_ALL"] = "C"
         auth_env["GIT_TERMINAL_PROMPT"] = "0"
         auth_env["GIT_ASKPASS"] = askpass_path.as_posix()
         auth_env["CHOYSUM_SYNC_GIT_TOKEN"] = token
