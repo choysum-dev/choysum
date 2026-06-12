@@ -69,45 +69,13 @@ jobs:
     name: pr / prepare-root-node-modules
     needs:
       - discover-impact
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Skip root node_modules for docs-only changes
-        if: ${{ needs.discover-impact.outputs.docs_only == 'true' }}
-        run: echo "root node_modules skipped by routing"
-
-      - name: Checkout
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Setup Node
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install npm dependencies
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        run: npm ci
-
-      - name: Pack root node_modules
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/pr-root-node-modules.tar.gz node_modules
-
-      - name: Upload root node_modules
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: pr-root-node-modules
-          path: .choysum/tmp/pr-root-node-modules.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/prepare-root-node-modules.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: pr-root-node-modules
+      archive_path: .choysum/tmp/pr-root-node-modules.tar.gz
+      retention_days: 1
+      docs_only: ${{ needs.discover-impact.outputs.docs_only }}
 
   go-test:
     name: pr / go-test

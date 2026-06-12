@@ -30,36 +30,12 @@ jobs:
 
   prepare-root-node-modules:
     name: main / prepare-root-node-modules
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Pack root node_modules
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/main-root-node-modules.tar.gz node_modules
-
-      - name: Upload root node_modules
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-root-node-modules
-          path: .choysum/tmp/main-root-node-modules.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/prepare-root-node-modules.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: main-root-node-modules
+      archive_path: .choysum/tmp/main-root-node-modules.tar.gz
+      retention_days: 1
 
   discover-modules:
     name: main / discover-modules

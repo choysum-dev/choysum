@@ -1,0 +1,73 @@
+name: Prepare Root Node Modules
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      artifact_name:
+        description: "Artifact name to upload"
+        required: true
+        type: string
+      archive_path:
+        description: "Archive path to create and upload"
+        required: true
+        type: string
+      retention_days:
+        description: "Artifact retention days"
+        required: true
+        type: number
+      docs_only:
+        description: "Skip root node_modules preparation when docs-only routing is active"
+        required: false
+        default: "false"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-root-node-modules:
+    name: prepare-root-node-modules
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Skip root node_modules when docs-only routing is active
+        if: ${{ inputs.docs_only == 'true' }}
+        run: echo "root node_modules skipped by routing"
+
+      - name: Checkout
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Setup Node
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        if: ${{ inputs.docs_only != 'true' }}
+        run: npm ci
+
+      - name: Pack root node_modules
+        if: ${{ inputs.docs_only != 'true' }}
+        run: |
+          ARCHIVE_PATH="${{ inputs.archive_path }}"
+          mkdir -p "$(dirname "$ARCHIVE_PATH")"
+          tar -czf "$ARCHIVE_PATH" node_modules
+
+      - name: Upload root node_modules
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.archive_path }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}
