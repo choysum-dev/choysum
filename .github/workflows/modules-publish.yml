@@ -294,7 +294,7 @@ jobs:
               if not isinstance(name, str) or not name.startswith("@"):
                   errors.append(f"modules/{module}/package.json: name must be a scoped package")
 
-                if not isinstance(version, str) or not version.strip():
+              if not isinstance(version, str) or not version.strip():
                   errors.append(f"modules/{module}/package.json: version must be non-empty")
 
               if module_name != module:
@@ -651,7 +651,7 @@ jobs:
       - publish-npm-registry
     if: ${{ always() && needs.publish-npm-registry.result == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Download published modules artifact
         uses: actions/download-artifact@v8
@@ -745,18 +745,398 @@ jobs:
               raise SystemExit('sync-catalog-directory-pr precheck failed')
           PY
 
-      - name: Stub catalog sync
+      - name: Sync modules-directory pointers (per-module PR)
+        id: sync_modules
         if: ${{ steps.sync_precheck.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+          DRY_RUN: ${{ needs.preflight.outputs.dry_run }}
+          SOURCE_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_RUN_REF: ${{ needs.preflight.outputs.run_ref }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          cat > .choysum/tmp/sync-summary.json <<'JSON'
-          {
-            "status": "stubbed",
-            "note": "sync-catalog-directory-pr implementation is pending and will consume published-modules.json"
+          python3 <<'PY'
+          from datetime import datetime, timezone
+          import json
+          import os
+          import pathlib
+          import re
+          import subprocess
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          output_dir = pathlib.Path('.choysum/tmp')
+          output_dir.mkdir(parents=True, exist_ok=True)
+          published_path = output_dir / 'published-modules.json'
+          summary_path = output_dir / 'sync-summary.json'
+          errors_path = output_dir / 'sync-errors.json'
+
+          token = os.environ.get('MODULES_DIRECTORY_SYNC_TOKEN', '').strip()
+          dry_run = os.environ.get('DRY_RUN', 'true').strip().lower() == 'true'
+          source_run_url = os.environ.get('SOURCE_RUN_URL', '').strip()
+          source_run_ref = os.environ.get('SOURCE_RUN_REF', '').strip()
+          source_sha = os.environ.get('SOURCE_SHA', '').strip()
+
+          api_base = 'https://api.github.com/repos/choysum-dev/modules-directory'
+          repo_clone_dir = output_dir / 'modules-directory'
+
+          errors = []
+          results = []
+
+          def compact(text, limit=3000):
+              value = (text or '').strip()
+              if len(value) <= limit:
+                  return value
+              return value[-limit:]
+
+          def run_cmd(command, cwd=None, check=True):
+              proc = subprocess.run(
+                  command,
+                  cwd=str(cwd) if cwd is not None else None,
+                  check=False,
+                  capture_output=True,
+                  text=True,
+              )
+              safe_command = []
+              for part in command:
+                  value = str(part)
+                  if token:
+                      value = value.replace(token, '***')
+                  safe_command.append(value)
+              if check and proc.returncode != 0:
+                  raise RuntimeError(
+                      f"command failed ({' '.join(safe_command)}): exit={proc.returncode}; "
+                      f"stdout={compact(proc.stdout)}; stderr={compact(proc.stderr)}"
+                  )
+              return proc
+
+          def api_json(method, url, payload=None):
+              body = None
+              if payload is not None:
+                  body = json.dumps(payload).encode('utf-8')
+              request = urllib.request.Request(
+                  url,
+                  data=body,
+                  method=method,
+                  headers={
+                      'Accept': 'application/vnd.github+json',
+                      'Authorization': f'Bearer {token}',
+                      'X-GitHub-Api-Version': '2022-11-28',
+                      'Content-Type': 'application/json',
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      raw = response.read().decode('utf-8', errors='replace')
+                      if not raw:
+                          return None
+                      return json.loads(raw)
+              except urllib.error.HTTPError as exc:
+                  message = exc.read().decode('utf-8', errors='replace')
+                  raise RuntimeError(f'GitHub API {method} {url} failed: status={exc.code}, response={compact(message)}')
+
+          def sanitize_module(module):
+              cleaned = re.sub(r'[^A-Za-z0-9._-]+', '-', module).strip('-')
+              return cleaned or 'module'
+
+          def find_open_pr(branch_name):
+              query = urllib.parse.urlencode(
+                  {
+                      'state': 'open',
+                      'head': f'choysum-dev:{branch_name}',
+                  }
+              )
+              url = f"{api_base}/pulls?{query}"
+              payload = api_json('GET', url)
+              if isinstance(payload, list) and payload:
+                  return payload[0]
+              return None
+
+          def ensure_repo_ready():
+              if repo_clone_dir.exists():
+                  run_cmd(['rm', '-rf', str(repo_clone_dir)])
+              clone_url = f"https://x-access-token:{token}@github.com/choysum-dev/modules-directory.git"
+              run_cmd(['git', 'clone', '--depth', '1', clone_url, str(repo_clone_dir)])
+              run_cmd(['git', 'config', 'user.name', 'choysum-ci-bot'], cwd=repo_clone_dir)
+              run_cmd(['git', 'config', 'user.email', 'bot@choysum.dev'], cwd=repo_clone_dir)
+              run_cmd(['git', 'fetch', 'origin', '+refs/heads/*:refs/remotes/origin/*'], cwd=repo_clone_dir)
+
+          def remote_branch_exists(branch_name):
+              probe = run_cmd(['git', 'rev-parse', '--verify', f'origin/{branch_name}'], cwd=repo_clone_dir, check=False)
+              return probe.returncode == 0
+
+          def find_pointer_path(module):
+              existing = list((repo_clone_dir / 'modules').glob(f'*/{module}.json'))
+              if len(existing) == 1:
+                  return existing[0], None
+              if len(existing) > 1:
+                  return None, f'multiple_pointer_files_found: {[str(p.relative_to(repo_clone_dir)) for p in existing]}'
+              return repo_clone_dir / 'modules' / 'official' / f'{module}.json', None
+
+          published_items = []
+          if not token:
+              errors.append(
+                  {
+                      'operation': 'sync_modules',
+                      'error': 'missing_secret',
+                      'message': 'MODULES_DIRECTORY_SYNC_TOKEN is not configured',
+                  }
+              )
+
+          if not published_path.is_file():
+              errors.append(
+                  {
+                      'operation': 'sync_modules',
+                      'error': 'missing_published_modules_artifact',
+                      'message': 'published-modules.json is not available',
+                  }
+              )
+
+          if not errors:
+              try:
+                  published_items = json.loads(published_path.read_text(encoding='utf-8'))
+              except Exception as exc:
+                  errors.append(
+                      {
+                          'operation': 'sync_modules',
+                          'error': 'invalid_published_modules_json',
+                          'message': str(exc),
+                      }
+                  )
+
+          if not errors and not isinstance(published_items, list):
+              errors.append(
+                  {
+                      'operation': 'sync_modules',
+                      'error': 'invalid_published_modules_artifact',
+                      'message': 'published-modules.json must be an array',
+                  }
+              )
+
+          syncable_status = {'published', 'already_published'}
+          candidates = []
+          if not errors:
+              for item in published_items:
+                  if isinstance(item, dict) and item.get('status') in syncable_status:
+                      candidates.append(item)
+
+          if not errors and not dry_run:
+              try:
+                  ensure_repo_ready()
+              except Exception as exc:
+                  errors.append(
+                      {
+                          'operation': 'sync_modules',
+                          'error': 'clone_modules_directory_failed',
+                          'message': str(exc),
+                      }
+                  )
+
+          if not errors:
+              for item in candidates:
+                  module = str(item.get('module', '')).strip()
+                  package = str(item.get('name', '')).strip()
+                  publish_status = str(item.get('status', '')).strip()
+
+                  if not module or not package:
+                      errors.append(
+                          {
+                              'operation': 'sync_module',
+                              'error': 'missing_module_or_package',
+                              'module': module,
+                              'package': package,
+                          }
+                      )
+                      continue
+
+                  branch_name = f"sync/modules-update-{sanitize_module(module)}"
+
+                  try:
+                      open_pr = find_open_pr(branch_name)
+                      pr_url = open_pr.get('html_url') if isinstance(open_pr, dict) else None
+
+                      if dry_run:
+                          if pr_url:
+                              results.append(
+                                  {
+                                      'module': module,
+                                      'package': package,
+                                      'publishStatus': publish_status,
+                                      'branch': branch_name,
+                                      'status': 'dry_run_would_update_open_pr',
+                                      'prUrl': pr_url,
+                                  }
+                              )
+                          else:
+                              results.append(
+                                  {
+                                      'module': module,
+                                      'package': package,
+                                      'publishStatus': publish_status,
+                                      'branch': branch_name,
+                                      'status': 'dry_run_would_create_pr',
+                                  }
+                              )
+                          continue
+
+                      has_remote_branch = remote_branch_exists(branch_name)
+                      if has_remote_branch:
+                          run_cmd(['git', 'checkout', '-B', branch_name, f'origin/{branch_name}'], cwd=repo_clone_dir)
+                      else:
+                          run_cmd(['git', 'checkout', '-B', branch_name, 'origin/main'], cwd=repo_clone_dir)
+
+                      pointer_path, pointer_path_error = find_pointer_path(module)
+                      if pointer_path_error:
+                          raise RuntimeError(pointer_path_error)
+                      pointer_path.parent.mkdir(parents=True, exist_ok=True)
+
+                      existing = {}
+                      if pointer_path.is_file():
+                          existing = json.loads(pointer_path.read_text(encoding='utf-8'))
+                          if not isinstance(existing, dict):
+                              existing = {}
+
+                      pointer = dict(existing)
+                      pointer.setdefault('$schema', '../../schemas/catalog-entry.schema.json')
+                      pointer['package'] = package
+                      trust = pointer.get('trust')
+                      if trust not in {'official', 'verified', 'community'}:
+                          pointer['trust'] = 'official'
+                      maintainers = pointer.get('maintainers')
+                      if not isinstance(maintainers, list) or not maintainers:
+                          pointer['maintainers'] = [{'github': 'choysum-dev'}]
+
+                      new_content = json.dumps(pointer, indent=2) + '\n'
+                      old_content = pointer_path.read_text(encoding='utf-8') if pointer_path.is_file() else ''
+
+                      if new_content == old_content:
+                          results.append(
+                              {
+                                  'module': module,
+                                  'package': package,
+                                  'publishStatus': publish_status,
+                                  'branch': branch_name,
+                                  'status': 'no_change',
+                                  'prUrl': pr_url,
+                              }
+                          )
+                          continue
+
+                      pointer_path.write_text(new_content, encoding='utf-8')
+                      rel_path = str(pointer_path.relative_to(repo_clone_dir))
+                      run_cmd(['git', 'add', rel_path], cwd=repo_clone_dir)
+                      run_cmd(
+                          ['git', 'commit', '-m', f'chore(modules): sync pointer for {module}'],
+                          cwd=repo_clone_dir,
+                      )
+                      run_cmd(['git', 'push', '--force-with-lease', 'origin', branch_name], cwd=repo_clone_dir)
+
+                      if open_pr:
+                          results.append(
+                              {
+                                  'module': module,
+                                  'package': package,
+                                  'publishStatus': publish_status,
+                                  'branch': branch_name,
+                                  'status': 'updated_open_pr',
+                                  'prUrl': pr_url,
+                              }
+                          )
+                          continue
+
+                      title = f'chore(modules): sync pointer for {module}'
+                      body = '\n'.join(
+                          [
+                              'Automated sync from choysum modules publish workflow.',
+                              '',
+                              f'- Module: {module}',
+                              f'- Package: {package}',
+                              f'- Publish status: {publish_status}',
+                              f'- Source run: {source_run_url}',
+                              f'- Source ref: {source_run_ref}',
+                              f'- Source sha: {source_sha}',
+                          ]
+                      )
+                      created_pr = api_json(
+                          'POST',
+                          f'{api_base}/pulls',
+                          {
+                              'title': title,
+                              'head': branch_name,
+                              'base': 'main',
+                              'body': body,
+                          },
+                      )
+                      results.append(
+                          {
+                              'module': module,
+                              'package': package,
+                              'publishStatus': publish_status,
+                              'branch': branch_name,
+                              'status': 'created_pr',
+                              'prUrl': created_pr.get('html_url') if isinstance(created_pr, dict) else None,
+                          }
+                      )
+                  except Exception as exc:
+                      errors.append(
+                          {
+                              'operation': 'sync_module',
+                              'module': module,
+                              'package': package,
+                              'branch': branch_name,
+                              'error': 'sync_module_failed',
+                              'message': str(exc),
+                          }
+                      )
+                      results.append(
+                          {
+                              'module': module,
+                              'package': package,
+                              'publishStatus': publish_status,
+                              'branch': branch_name,
+                              'status': 'failed',
+                          }
+                      )
+
+          for item in published_items:
+              if not isinstance(item, dict):
+                  continue
+              status = item.get('status')
+              if status in syncable_status:
+                  continue
+              results.append(
+                  {
+                      'module': item.get('module'),
+                      'package': item.get('name'),
+                      'publishStatus': status,
+                      'status': 'skipped_non_syncable_status',
+                  }
+              )
+
+          summary = {
+              'generatedAt': datetime.now(timezone.utc).isoformat(),
+              'mode': 'per_module_pr',
+              'dryRun': dry_run,
+              'sourceRunUrl': source_run_url,
+              'sourceRunRef': source_run_ref,
+              'sourceSha': source_sha,
+              'candidateCount': len(candidates),
+              'results': results,
           }
-          JSON
-          echo "sync-catalog-directory-pr is not implemented yet."
-          echo "It will consume .choysum/tmp/published-modules.json in 11.5.3 implementation."
+          summary_path.write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
+
+          error_payload = {
+              'generatedAt': datetime.now(timezone.utc).isoformat(),
+              'errors': errors,
+          }
+          errors_path.write_text(json.dumps(error_payload, indent=2) + '\n', encoding='utf-8')
+
+          if errors:
+              raise SystemExit('sync-catalog-directory-pr per-module sync failed')
+          PY
 
       - name: Upload sync diagnostics artifact
         if: ${{ always() }}
@@ -769,12 +1149,16 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Enforce sync precheck outcome
+      - name: Enforce sync outcomes
         if: ${{ always() }}
         run: |
           set -euo pipefail
           if [[ "${{ steps.sync_precheck.outcome }}" != "success" ]]; then
             echo "sync-catalog-directory-pr precheck failed" >&2
+            exit 1
+          fi
+          if [[ "${{ steps.sync_modules.outcome }}" != "success" ]]; then
+            echo "sync-catalog-directory-pr module sync failed" >&2
             exit 1
           fi
 
