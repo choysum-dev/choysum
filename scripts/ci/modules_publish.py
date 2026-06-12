@@ -477,6 +477,8 @@ def sync_modules_per_module_pr():
     askpass_path = output_dir / "git-askpass.sh"
 
     def ensure_askpass_script():
+        if askpass_path.is_file():
+            return
         askpass_path.write_bytes(
             b"#!/bin/sh\n"
             b"case \"$1\" in\n"
@@ -708,10 +710,7 @@ def sync_modules_per_module_pr():
                 rel_path = str(pointer_path.relative_to(repo_clone_dir))
                 run_cmd(["git", "add", rel_path], cwd=repo_clone_dir)
                 run_cmd(["git", "commit", "-m", f"chore(modules): sync pointer for {module}"], cwd=repo_clone_dir)
-                push_cmd = ["git", "push"]
-                if has_remote_branch:
-                    push_cmd.append(f"--force-with-lease={branch_name}")
-                push_cmd.extend(["origin", branch_name])
+                push_cmd = ["git", "push", f"--force-with-lease={branch_name}", "origin", branch_name]
 
                 run_git_with_auth(push_cmd, cwd=repo_clone_dir)
 
