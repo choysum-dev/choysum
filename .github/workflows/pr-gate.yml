@@ -554,57 +554,9 @@ jobs:
     needs:
       - discover-impact
       - prepare-embedded-assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Skip bootstrap verify when routing does not require it
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify != 'true' }}
-        run: echo "bootstrap verify skipped by routing"
-
-      - name: Checkout
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Download embedded assets
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        uses: actions/download-artifact@v8
-        with:
-          name: pr-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        run: tar -xzf .choysum/tmp/pr-embedded-assets.tar.gz -C .
-
-      - name: Setup Go
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Setup Node
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: internal/bootstrap/web/package-lock.json
-
-      - name: Install protoc
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install bootstrap npm dependencies
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Run bootstrap verify
-        if: ${{ needs.discover-impact.outputs.run_bootstrap_verify == 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm run verify:bootstrap:release
+    uses: ./.github/workflows/bootstrap-verify.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      embedded_assets_artifact_name: pr-embedded-assets
+      embedded_assets_archive_path: .choysum/tmp/pr-embedded-assets.tar.gz
+      run_bootstrap_verify: ${{ needs.discover-impact.outputs.run_bootstrap_verify }}
