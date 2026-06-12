@@ -429,17 +429,21 @@ def sync_modules_per_module_pr():
     source_sha = os.environ.get("SOURCE_SHA", "").strip()
 
     api_base = "https://api.github.com/repos/choysum-dev/modules-directory"
+    repo_url = "https://github.com/choysum-dev/modules-directory.git"
     repo_clone_dir = output_dir / "modules-directory"
+    redaction_values = []
+    if token:
+        redaction_values.append(token)
 
     errors = []
     results = []
 
-    def run_cmd(command, cwd=None, check=True):
+    def run_cmd(command, cwd=None, check=True, env=None):
         safe_command = []
         for part in command:
             value = str(part)
-            if token:
-                value = value.replace(token, "***")
+            for secret in redaction_values:
+                value = value.replace(secret, "***")
             safe_command.append(value)
 
         try:
@@ -449,18 +453,19 @@ def sync_modules_per_module_pr():
                 check=False,
                 capture_output=True,
                 text=True,
+                env=env,
             )
         except Exception as exc:
             message = str(exc)
-            if token:
-                message = message.replace(token, "***")
+            for secret in redaction_values:
+                message = message.replace(secret, "***")
             raise RuntimeError(f"command execution failed ({' '.join(safe_command)}): {message}") from None
 
         safe_stdout = proc.stdout or ""
         safe_stderr = proc.stderr or ""
-        if token:
-            safe_stdout = safe_stdout.replace(token, "***")
-            safe_stderr = safe_stderr.replace(token, "***")
+        for secret in redaction_values:
+            safe_stdout = safe_stdout.replace(secret, "***")
+            safe_stderr = safe_stderr.replace(secret, "***")
 
         if check and proc.returncode != 0:
             raise RuntimeError(
@@ -468,6 +473,29 @@ def sync_modules_per_module_pr():
                 f"stdout={compact(safe_stdout)}; stderr={compact(safe_stderr)}"
             )
         return proc
+
+    askpass_path = output_dir / "git-askpass.sh"
+
+    def ensure_askpass_script():
+        askpass_path.write_bytes(
+            b"#!/bin/sh\n"
+            b"case \"$1\" in\n"
+            b"  *[Uu]sername*) printf '%s\\n' 'x-access-token' ;;\n"
+            b"  *) printf '%s\\n' \"$CHOYSUM_SYNC_GIT_TOKEN\" ;;\n"
+            b"esac\n"
+        )
+        askpass_path.chmod(0o700)
+
+    def run_git_with_auth(command, cwd=None, check=True):
+        ensure_askpass_script()
+
+        auth_env = os.environ.copy()
+        auth_env["LC_ALL"] = "C"
+        auth_env["GIT_TERMINAL_PROMPT"] = "0"
+        auth_env["GIT_ASKPASS"] = askpass_path.as_posix()
+        auth_env["CHOYSUM_SYNC_GIT_TOKEN"] = token
+
+        return run_cmd(command, cwd=cwd, check=check, env=auth_env)
 
     def api_json(method, url, payload=None):
         body = None
@@ -516,15 +544,10 @@ def sync_modules_per_module_pr():
     def ensure_repo_ready():
         if repo_clone_dir.exists():
             shutil.rmtree(repo_clone_dir)
-        clone_url = f"https://x-access-token:{token}@github.com/choysum-dev/modules-directory.git"
-        run_cmd(["git", "clone", "--depth", "1", clone_url, str(repo_clone_dir)])
-        run_cmd(
-            ["git", "remote", "set-url", "origin", "https://github.com/choysum-dev/modules-directory.git"],
-            cwd=repo_clone_dir,
-        )
+        run_git_with_auth(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
-        run_cmd(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
+        run_git_with_auth(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
 
     def remote_branch_exists(branch_name):
         probe = run_cmd(
@@ -685,7 +708,9 @@ def sync_modules_per_module_pr():
                 rel_path = str(pointer_path.relative_to(repo_clone_dir))
                 run_cmd(["git", "add", rel_path], cwd=repo_clone_dir)
                 run_cmd(["git", "commit", "-m", f"chore(modules): sync pointer for {module}"], cwd=repo_clone_dir)
-                run_cmd(["git", "push", "--force-with-lease", "origin", branch_name], cwd=repo_clone_dir)
+                push_cmd = ["git", "push", f"--force-with-lease={branch_name}", "origin", branch_name]
+
+                run_git_with_auth(push_cmd, cwd=repo_clone_dir)
 
                 if open_pr:
                     results.append(
