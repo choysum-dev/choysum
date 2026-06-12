@@ -477,8 +477,6 @@ def sync_modules_per_module_pr():
     askpass_path = output_dir / "git-askpass.sh"
 
     def ensure_askpass_script():
-        if askpass_path.exists():
-            return
         askpass_path.write_text(
             "#!/bin/sh\n"
             "case \"$1\" in\n"
@@ -494,7 +492,7 @@ def sync_modules_per_module_pr():
 
         auth_env = os.environ.copy()
         auth_env["GIT_TERMINAL_PROMPT"] = "0"
-        auth_env["GIT_ASKPASS"] = str(askpass_path)
+        auth_env["GIT_ASKPASS"] = askpass_path.as_posix()
         auth_env["CHOYSUM_SYNC_GIT_TOKEN"] = token
 
         return run_cmd(command, cwd=cwd, check=check, env=auth_env)
