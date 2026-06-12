@@ -682,17 +682,16 @@ def sync_modules_per_module_pr():
                 rel_path = str(pointer_path.relative_to(repo_clone_dir))
                 run_cmd(["git", "add", rel_path], cwd=repo_clone_dir)
                 run_cmd(["git", "commit", "-m", f"chore(modules): sync pointer for {module}"], cwd=repo_clone_dir)
+                push_cmd = ["git", "push"]
                 if has_remote_branch:
                     expected_remote = run_cmd(
                         ["git", "rev-parse", f"refs/remotes/origin/{branch_name}"],
                         cwd=repo_clone_dir,
                     ).stdout.strip()
-                    lease_arg = f"--force-with-lease={branch_name}:{expected_remote}"
-                else:
-                    # For newly created sync branches there is no remote ref yet; a normal push is sufficient.
-                    lease_arg = "--force-with-lease"
+                    push_cmd.append(f"--force-with-lease={branch_name}:{expected_remote}")
+                push_cmd.extend([push_url, branch_name])
 
-                run_cmd(["git", "push", lease_arg, push_url, branch_name], cwd=repo_clone_dir)
+                run_cmd(push_cmd, cwd=repo_clone_dir)
 
                 if open_pr:
                     results.append(
