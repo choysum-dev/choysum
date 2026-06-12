@@ -60,41 +60,14 @@ jobs:
     name: main / build-choysum-cli
     needs:
       - prepare-embedded-assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
-        with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build choysum CLI
-        run: |
-          mkdir -p .choysum/tmp
-          go build -o .choysum/tmp/choysum .
-
-      - name: Upload choysum CLI
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-choysum-cli
-          path: .choysum/tmp/choysum
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/build-choysum-cli.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      embedded_assets_artifact_name: main-embedded-assets
+      embedded_assets_archive_path: .choysum/tmp/main-embedded-assets.tar.gz
+      choysum_artifact_name: main-choysum-cli
+      choysum_binary_path: .choysum/tmp/choysum
+      retention_days: 1
 
   go-test:
     name: main / go-test
