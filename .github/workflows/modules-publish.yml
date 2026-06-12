@@ -336,27 +336,69 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      - name: Initialize publish diagnostics files
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          printf '[]\n' > .choysum/tmp/published-modules.json
+          cat > .choysum/tmp/publish-errors.json <<'JSON'
+          {
+            "errors": []
+          }
+          JSON
+
       - name: Publish modules (idempotent)
         id: publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
-          mkdir -p .choysum/tmp
-          dry_run='${{ needs.preflight.outputs.dry_run }}'
-
           python3 <<'PY'
+          from datetime import datetime, timezone
           import json
           import pathlib
           import subprocess
+          import sys
 
           repo_root = pathlib.Path.cwd()
           modules_root = repo_root / "modules"
+          output_dir = repo_root / ".choysum" / "tmp"
           modules = json.loads('${{ needs.discover-module-updates.outputs.modules_json }}')
           dry_run = '${{ needs.preflight.outputs.dry_run }}' == 'true'
 
           results = []
+          errors = []
+          short_circuit = False
+
+          def compact(text: str, limit: int = 8000) -> str:
+              value = (text or "").strip()
+              if len(value) <= limit:
+                  return value
+              return value[-limit:]
+
+          def append_error(module: str, operation: str, command: str, proc: subprocess.CompletedProcess):
+              payload = {
+                  "module": module,
+                  "operation": operation,
+                  "command": command,
+                  "exitCode": proc.returncode,
+                  "stdout": compact(proc.stdout),
+                  "stderr": compact(proc.stderr),
+              }
+              errors.append(payload)
+              return payload
+
           for module in modules:
+              if short_circuit:
+                  results.append(
+                      {
+                          "module": module,
+                          "status": "failed",
+                          "error": "skipped_due_to_earlier_failure",
+                      }
+                  )
+                  continue
+
               package_path = modules_root / module / "package.json"
               package_json = json.loads(package_path.read_text(encoding="utf-8"))
               name = package_json["name"]
@@ -371,11 +413,44 @@ jobs:
               )
 
               if view.returncode == 0:
-                  results.append({"module": module, "name": name, "version": version, "status": "already_published"})
+                  results.append(
+                      {
+                          "module": module,
+                          "name": name,
+                          "version": version,
+                          "status": "already_published",
+                      }
+                  )
+                  continue
+
+              view_text = f"{view.stdout}\n{view.stderr}".lower()
+              view_not_found = "e404" in view_text or "404" in view_text or "not found" in view_text
+              if not view_not_found:
+                  append_error(module, "npm_view", f"npm view {identifier} version", view)
+                  results.append(
+                      {
+                          "module": module,
+                          "name": name,
+                          "version": version,
+                          "status": "failed",
+                          "error": "npm_view_failed",
+                          "errorRef": f"errors[{len(errors) - 1}]",
+                      }
+                  )
+                  short_circuit = True
                   continue
 
               if dry_run:
-                  results.append({"module": module, "name": name, "version": version, "status": "dry_run"})
+                  results.append(
+                      {
+                          "module": module,
+                          "name": name,
+                          "version": version,
+                          "status": "published",
+                          "dryRun": True,
+                          "note": "would_publish",
+                      }
+                  )
                   continue
 
               publish = subprocess.run(
@@ -386,33 +461,62 @@ jobs:
                   text=True,
               )
               if publish.returncode == 0:
-                  results.append({"module": module, "name": name, "version": version, "status": "published"})
+                  results.append(
+                      {
+                          "module": module,
+                          "name": name,
+                          "version": version,
+                          "status": "published",
+                      }
+                  )
               else:
+                  append_error(module, "npm_publish", "npm publish --access public", publish)
                   results.append(
                       {
                           "module": module,
                           "name": name,
                           "version": version,
                           "status": "failed",
-                          "error": publish.stderr.strip() or publish.stdout.strip(),
+                          "error": "npm_publish_failed",
+                          "errorRef": f"errors[{len(errors) - 1}]",
                       }
                   )
+                  short_circuit = True
 
-          out_path = repo_root / ".choysum" / "tmp" / "published-modules.json"
+          out_path = output_dir / "published-modules.json"
           out_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+
+          error_path = output_dir / "publish-errors.json"
+          error_payload = {
+              "generatedAt": datetime.now(timezone.utc).isoformat(),
+              "dryRun": dry_run,
+              "errors": errors,
+          }
+          error_path.write_text(json.dumps(error_payload, indent=2) + "\n", encoding="utf-8")
 
           failed = [item for item in results if item["status"] == "failed"]
           if failed:
-              raise SystemExit("One or more module publishes failed")
+              print("publish-npm-registry short-circuited due to module failure", file=sys.stderr)
+              raise SystemExit("One or more module publish subtasks failed")
           PY
 
           echo "published_modules_artifact=published-modules" >> "$GITHUB_OUTPUT"
 
       - name: Upload published modules artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
           name: published-modules
           path: .choysum/tmp/published-modules.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload publish diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-diagnostics
+          path: .choysum/tmp/publish-errors.json
           if-no-files-found: error
           retention-days: 14
 
@@ -431,11 +535,95 @@ jobs:
           name: ${{ needs.publish-npm-registry.outputs.published_modules_artifact }}
           path: .choysum/tmp
 
+      - name: Validate modules-directory API precheck
+        env:
+          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from datetime import datetime, timezone
+          import json
+          import os
+          import pathlib
+          import urllib.error
+          import urllib.request
+
+          output_dir = pathlib.Path('.choysum/tmp')
+          output_dir.mkdir(parents=True, exist_ok=True)
+
+          token = os.environ.get('MODULES_DIRECTORY_SYNC_TOKEN', '').strip()
+          errors = []
+
+          if not token:
+              errors.append(
+                  {
+                      "operation": "sync_precheck",
+                      "error": "missing_secret",
+                      "message": "MODULES_DIRECTORY_SYNC_TOKEN is not configured",
+                  }
+              )
+          else:
+              request = urllib.request.Request(
+                  'https://api.github.com/repos/choysum-dev/modules-directory',
+                  headers={
+                      'Accept': 'application/vnd.github+json',
+                      'Authorization': f'Bearer {token}',
+                      'X-GitHub-Api-Version': '2022-11-28',
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      _ = response.read().decode('utf-8', errors='replace')
+              except urllib.error.HTTPError as exc:
+                  errors.append(
+                      {
+                          "operation": "sync_precheck",
+                          "error": "http_error",
+                          "status": exc.code,
+                          "response": exc.read().decode('utf-8', errors='replace'),
+                      }
+                  )
+              except Exception as exc:
+                  errors.append(
+                      {
+                          "operation": "sync_precheck",
+                          "error": "request_exception",
+                          "message": str(exc),
+                      }
+                  )
+
+          sync_error_payload = {
+              "generatedAt": datetime.now(timezone.utc).isoformat(),
+              "errors": errors,
+          }
+          (output_dir / 'sync-errors.json').write_text(json.dumps(sync_error_payload, indent=2) + '\n', encoding='utf-8')
+
+          if errors:
+              raise SystemExit('sync-catalog-directory-pr precheck failed')
+          PY
+
       - name: Stub catalog sync
         run: |
           set -euo pipefail
+          cat > .choysum/tmp/sync-summary.json <<'JSON'
+          {
+            "status": "stubbed",
+            "note": "sync-catalog-directory-pr implementation is pending and will consume published-modules.json"
+          }
+          JSON
           echo "sync-catalog-directory-pr is not implemented yet."
           echo "It will consume .choysum/tmp/published-modules.json in 11.5.3 implementation."
+
+      - name: Upload sync diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sync-diagnostics
+          path: |
+            .choysum/tmp/sync-errors.json
+            .choysum/tmp/sync-summary.json
+          if-no-files-found: error
+          retention-days: 14
 
   finalize-publish:
     name: modules / finalize-publish
@@ -456,6 +644,29 @@ jobs:
           echo "verify-module-gate=${{ needs.verify-module-gate.result }}"
           echo "publish-npm-registry=${{ needs.publish-npm-registry.result }}"
           echo "sync-catalog-directory-pr=${{ needs.sync-catalog-directory-pr.result }}"
+
+      - name: Write stage result report
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          cat > .choysum/tmp/pipeline-stage-results.json <<JSON
+          {
+            "preflight": "${{ needs.preflight.result }}",
+            "discover-module-updates": "${{ needs.discover-module-updates.result }}",
+            "verify-module-gate": "${{ needs.verify-module-gate.result }}",
+            "publish-npm-registry": "${{ needs.publish-npm-registry.result }}",
+            "sync-catalog-directory-pr": "${{ needs.sync-catalog-directory-pr.result }}"
+          }
+          JSON
+
+      - name: Upload pipeline stage report artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: pipeline-stage-results
+          path: .choysum/tmp/pipeline-stage-results.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Enforce fail-fast outcome
         run: |
