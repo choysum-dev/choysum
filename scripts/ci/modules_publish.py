@@ -430,19 +430,15 @@ def sync_modules_per_module_pr():
 
     api_base = "https://api.github.com/repos/choysum-dev/modules-directory"
     repo_url = "https://github.com/choysum-dev/modules-directory.git"
-    encoded_token = urllib.parse.quote(token, safe="")
-    push_url = f"https://x-access-token:{encoded_token}@github.com/choysum-dev/modules-directory.git"
     repo_clone_dir = output_dir / "modules-directory"
     redaction_values = []
     if token:
         redaction_values.append(token)
-    if encoded_token and encoded_token != token:
-        redaction_values.append(encoded_token)
 
     errors = []
     results = []
 
-    def run_cmd(command, cwd=None, check=True):
+    def run_cmd(command, cwd=None, check=True, env=None):
         safe_command = []
         for part in command:
             value = str(part)
@@ -457,6 +453,7 @@ def sync_modules_per_module_pr():
                 check=False,
                 capture_output=True,
                 text=True,
+                env=env,
             )
         except Exception as exc:
             message = str(exc)
@@ -476,6 +473,31 @@ def sync_modules_per_module_pr():
                 f"stdout={compact(safe_stdout)}; stderr={compact(safe_stderr)}"
             )
         return proc
+
+    def run_git_with_auth(command, cwd=None, check=True):
+        askpass_path = output_dir / "git-askpass.sh"
+        askpass_path.write_text(
+            "#!/bin/sh\n"
+            "case \"$1\" in\n"
+            "  *Username*) printf '%s\\n' 'x-access-token' ;;\n"
+            "  *) printf '%s\\n' \"$CHOYSUM_SYNC_GIT_TOKEN\" ;;\n"
+            "esac\n",
+            encoding="utf-8",
+        )
+        askpass_path.chmod(0o700)
+
+        auth_env = os.environ.copy()
+        auth_env["GIT_TERMINAL_PROMPT"] = "0"
+        auth_env["GIT_ASKPASS"] = str(askpass_path)
+        auth_env["CHOYSUM_SYNC_GIT_TOKEN"] = token
+
+        try:
+            return run_cmd(command, cwd=cwd, check=check, env=auth_env)
+        finally:
+            try:
+                askpass_path.unlink()
+            except OSError:
+                pass
 
     def api_json(method, url, payload=None):
         body = None
@@ -524,19 +546,15 @@ def sync_modules_per_module_pr():
     def ensure_repo_ready():
         if repo_clone_dir.exists():
             shutil.rmtree(repo_clone_dir)
-        used_auth_clone = False
         try:
             run_cmd(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
         except Exception:
             if repo_clone_dir.exists():
                 shutil.rmtree(repo_clone_dir)
-            run_cmd(["git", "clone", "--depth", "1", push_url, str(repo_clone_dir)])
-            used_auth_clone = True
+            run_git_with_auth(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
-        run_cmd(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
-        if used_auth_clone:
-            run_cmd(["git", "remote", "set-url", "origin", repo_url], cwd=repo_clone_dir)
+        run_git_with_auth(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
 
     def remote_branch_exists(branch_name):
         probe = run_cmd(
@@ -704,9 +722,9 @@ def sync_modules_per_module_pr():
                         cwd=repo_clone_dir,
                     ).stdout.strip()
                     push_cmd.append(f"--force-with-lease={branch_name}:{expected_remote}")
-                push_cmd.extend([push_url, branch_name])
+                push_cmd.extend(["origin", branch_name])
 
-                run_cmd(push_cmd, cwd=repo_clone_dir)
+                run_git_with_auth(push_cmd, cwd=repo_clone_dir)
 
                 if open_pr:
                     results.append(
