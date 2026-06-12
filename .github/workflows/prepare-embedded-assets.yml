@@ -1,0 +1,99 @@
+name: Prepare Embedded Assets
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      artifact_name:
+        description: "Artifact name to upload"
+        required: true
+        type: string
+      archive_path:
+        description: "Archive path to create and upload"
+        required: true
+        type: string
+      retention_days:
+        description: "Artifact retention days"
+        required: true
+        type: number
+      docs_only:
+        description: "Skip asset build when docs-only routing is active"
+        required: false
+        default: "false"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-embedded-assets:
+    name: prepare-embedded-assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Skip embedded assets when docs-only routing is active
+        if: ${{ inputs.docs_only == 'true' }}
+        run: echo "embedded assets skipped by routing"
+
+      - name: Checkout
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Setup Node
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            internal/bootstrap/web/package-lock.json
+            pkg/jsengine/scripts/vuesfc/package-lock.json
+
+      - name: Install protoc
+        if: ${{ inputs.docs_only != 'true' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install Vue SFC npm dependencies
+        if: ${{ inputs.docs_only != 'true' }}
+        working-directory: pkg/jsengine/scripts/vuesfc
+        run: npm ci
+
+      - name: Build Vue SFC embed asset
+        if: ${{ inputs.docs_only != 'true' }}
+        working-directory: pkg/jsengine/scripts/vuesfc
+        run: npm run build
+
+      - name: Install bootstrap npm dependencies
+        if: ${{ inputs.docs_only != 'true' }}
+        working-directory: internal/bootstrap/web
+        run: npm ci
+
+      - name: Build bootstrap dist
+        if: ${{ inputs.docs_only != 'true' }}
+        working-directory: internal/bootstrap/web
+        run: npm run build
+
+      - name: Pack embedded assets
+        if: ${{ inputs.docs_only != 'true' }}
+        run: |
+          ARCHIVE_PATH="${{ inputs.archive_path }}"
+          mkdir -p "$(dirname "$ARCHIVE_PATH")"
+          tar -czf "$ARCHIVE_PATH" \
+            internal/bootstrap/web/dist \
+            pkg/jsengine/scripts/vuesfc/dist/index.js
+
+      - name: Upload embedded assets
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.archive_path }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}

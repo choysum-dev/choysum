@@ -57,71 +57,13 @@ jobs:
     name: pr / prepare-embedded-assets
     needs:
       - discover-impact
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Skip embedded assets for docs-only changes
-        if: ${{ needs.discover-impact.outputs.docs_only == 'true' }}
-        run: echo "embedded assets skipped by routing"
-
-      - name: Checkout
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Setup Node
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
-            pkg/jsengine/scripts/vuesfc/package-lock.json
-
-      - name: Install protoc
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install Vue SFC npm dependencies
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm ci
-
-      - name: Build Vue SFC embed asset
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm run build
-
-      - name: Install bootstrap npm dependencies
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Build bootstrap dist
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm run build
-
-      - name: Pack embedded assets
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/pr-embedded-assets.tar.gz \
-            internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
-
-      - name: Upload embedded assets
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: pr-embedded-assets
-          path: .choysum/tmp/pr-embedded-assets.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/prepare-embedded-assets.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: pr-embedded-assets
+      archive_path: .choysum/tmp/pr-embedded-assets.tar.gz
+      retention_days: 1
+      docs_only: ${{ needs.discover-impact.outputs.docs_only }}
 
   prepare-root-node-modules:
     name: pr / prepare-root-node-modules

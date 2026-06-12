@@ -21,58 +21,12 @@ concurrency:
 jobs:
   prepare-embedded-assets:
     name: main / prepare-embedded-assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
-            pkg/jsengine/scripts/vuesfc/package-lock.json
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install Vue SFC npm dependencies
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm ci
-
-      - name: Build Vue SFC embed asset
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm run build
-
-      - name: Install bootstrap npm dependencies
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Build bootstrap dist
-        working-directory: internal/bootstrap/web
-        run: npm run build
-
-      - name: Pack embedded assets
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/main-embedded-assets.tar.gz \
-            internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
-
-      - name: Upload embedded assets
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-embedded-assets
-          path: .choysum/tmp/main-embedded-assets.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/prepare-embedded-assets.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: main-embedded-assets
+      archive_path: .choysum/tmp/main-embedded-assets.tar.gz
+      retention_days: 1
 
   prepare-root-node-modules:
     name: main / prepare-root-node-modules
