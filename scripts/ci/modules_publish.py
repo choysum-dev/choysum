@@ -474,8 +474,11 @@ def sync_modules_per_module_pr():
             )
         return proc
 
-    def run_git_with_auth(command, cwd=None, check=True):
-        askpass_path = output_dir / "git-askpass.sh"
+    askpass_path = output_dir / "git-askpass.sh"
+
+    def ensure_askpass_script():
+        if askpass_path.exists():
+            return
         askpass_path.write_text(
             "#!/bin/sh\n"
             "case \"$1\" in\n"
@@ -486,18 +489,15 @@ def sync_modules_per_module_pr():
         )
         askpass_path.chmod(0o700)
 
+    def run_git_with_auth(command, cwd=None, check=True):
+        ensure_askpass_script()
+
         auth_env = os.environ.copy()
         auth_env["GIT_TERMINAL_PROMPT"] = "0"
         auth_env["GIT_ASKPASS"] = str(askpass_path)
         auth_env["CHOYSUM_SYNC_GIT_TOKEN"] = token
 
-        try:
-            return run_cmd(command, cwd=cwd, check=check, env=auth_env)
-        finally:
-            try:
-                askpass_path.unlink()
-            except OSError:
-                pass
+        return run_cmd(command, cwd=cwd, check=check, env=auth_env)
 
     def api_json(method, url, payload=None):
         body = None
@@ -546,12 +546,7 @@ def sync_modules_per_module_pr():
     def ensure_repo_ready():
         if repo_clone_dir.exists():
             shutil.rmtree(repo_clone_dir)
-        try:
-            run_cmd(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
-        except Exception:
-            if repo_clone_dir.exists():
-                shutil.rmtree(repo_clone_dir)
-            run_git_with_auth(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
+        run_git_with_auth(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
         run_git_with_auth(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
