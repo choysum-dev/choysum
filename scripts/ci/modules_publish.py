@@ -429,6 +429,8 @@ def sync_modules_per_module_pr():
     source_sha = os.environ.get("SOURCE_SHA", "").strip()
 
     api_base = "https://api.github.com/repos/choysum-dev/modules-directory"
+    repo_url = "https://github.com/choysum-dev/modules-directory.git"
+    push_url = f"https://x-access-token:{token}@github.com/choysum-dev/modules-directory.git"
     repo_clone_dir = output_dir / "modules-directory"
 
     errors = []
@@ -516,23 +518,7 @@ def sync_modules_per_module_pr():
     def ensure_repo_ready():
         if repo_clone_dir.exists():
             shutil.rmtree(repo_clone_dir)
-        clone_url = f"https://x-access-token:{token}@github.com/choysum-dev/modules-directory.git"
-        run_cmd(["git", "clone", "--depth", "1", clone_url, str(repo_clone_dir)])
-        run_cmd(
-            ["git", "remote", "set-url", "origin", "https://github.com/choysum-dev/modules-directory.git"],
-            cwd=repo_clone_dir,
-        )
-        run_cmd(
-            [
-                "git",
-                "remote",
-                "set-url",
-                "--push",
-                "origin",
-                clone_url,
-            ],
-            cwd=repo_clone_dir,
-        )
+        run_cmd(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
         run_cmd(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
@@ -696,7 +682,7 @@ def sync_modules_per_module_pr():
                 rel_path = str(pointer_path.relative_to(repo_clone_dir))
                 run_cmd(["git", "add", rel_path], cwd=repo_clone_dir)
                 run_cmd(["git", "commit", "-m", f"chore(modules): sync pointer for {module}"], cwd=repo_clone_dir)
-                run_cmd(["git", "push", "--force-with-lease", "origin", branch_name], cwd=repo_clone_dir)
+                run_cmd(["git", "push", "--force-with-lease", push_url, branch_name], cwd=repo_clone_dir)
 
                 if open_pr:
                     results.append(
