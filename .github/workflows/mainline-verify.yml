@@ -21,91 +21,21 @@ concurrency:
 jobs:
   prepare-embedded-assets:
     name: main / prepare-embedded-assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
-            pkg/jsengine/scripts/vuesfc/package-lock.json
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install Vue SFC npm dependencies
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm ci
-
-      - name: Build Vue SFC embed asset
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm run build
-
-      - name: Install bootstrap npm dependencies
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Build bootstrap dist
-        working-directory: internal/bootstrap/web
-        run: npm run build
-
-      - name: Pack embedded assets
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/main-embedded-assets.tar.gz \
-            internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
-
-      - name: Upload embedded assets
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-embedded-assets
-          path: .choysum/tmp/main-embedded-assets.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/prepare-embedded-assets.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: main-embedded-assets
+      archive_path: .choysum/tmp/main-embedded-assets.tar.gz
+      retention_days: 1
 
   prepare-root-node-modules:
     name: main / prepare-root-node-modules
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Pack root node_modules
-        run: |
-          mkdir -p .choysum/tmp
-          tar -czf .choysum/tmp/main-root-node-modules.tar.gz node_modules
-
-      - name: Upload root node_modules
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-root-node-modules
-          path: .choysum/tmp/main-root-node-modules.tar.gz
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/prepare-root-node-modules.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: main-root-node-modules
+      archive_path: .choysum/tmp/main-root-node-modules.tar.gz
+      retention_days: 1
 
   discover-modules:
     name: main / discover-modules
@@ -124,84 +54,20 @@ jobs:
         id: discover
         run: |
           set -euo pipefail
-          python3 <<'PY'
-          import json
-          import os
-          import pathlib
-
-          repo_root = pathlib.Path.cwd()
-          modules_root = repo_root / "modules"
-          ignored_modules = {".choysum", "tmp"}
-
-          modules = []
-          e2e_modules = []
-
-          if modules_root.is_dir():
-              for child in sorted(modules_root.iterdir(), key=lambda entry: entry.name):
-                  if not child.is_dir() or child.name in ignored_modules:
-                      continue
-                  modules.append(child.name)
-
-                  package_path = child / "package.json"
-                  if not package_path.is_file():
-                      continue
-
-                  package_json = json.loads(package_path.read_text(encoding="utf-8"))
-                  choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
-                  e2e = choysum.get("e2e") if isinstance(choysum, dict) else {}
-                  specs = e2e.get("specs") if isinstance(e2e, dict) else ""
-                  if isinstance(specs, str) and specs.strip():
-                      e2e_modules.append(child.name)
-
-          outputs = {
-              "modules_json": json.dumps(modules, separators=(",", ":")),
-              "e2e_modules_json": json.dumps(e2e_modules, separators=(",", ":")),
-          }
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-              for key, value in outputs.items():
-                  print(f"{key}={value}", file=fh)
-          PY
+          python3 scripts/ci/module_matrix_discovery.py discover-mainline
 
   build-choysum-cli:
     name: main / build-choysum-cli
     needs:
       - prepare-embedded-assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
-        with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build choysum CLI
-        run: |
-          mkdir -p .choysum/tmp
-          go build -o .choysum/tmp/choysum .
-
-      - name: Upload choysum CLI
-        uses: actions/upload-artifact@v7
-        with:
-          name: main-choysum-cli
-          path: .choysum/tmp/choysum
-          if-no-files-found: error
-          retention-days: 1
+    uses: ./.github/workflows/build-choysum-cli.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      embedded_assets_artifact_name: main-embedded-assets
+      embedded_assets_archive_path: .choysum/tmp/main-embedded-assets.tar.gz
+      choysum_artifact_name: main-choysum-cli
+      choysum_binary_path: .choysum/tmp/choysum
+      retention_days: 1
 
   go-test:
     name: main / go-test
@@ -216,14 +82,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -273,14 +136,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -352,14 +212,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -431,14 +288,11 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
         with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
+          artifact-name: main-embedded-assets
+          archive-path: .choysum/tmp/main-embedded-assets.tar.gz
 
       - name: Download root node_modules
         uses: actions/download-artifact@v8
@@ -503,45 +357,8 @@ jobs:
     name: main / bootstrap-verify
     needs:
       - prepare-embedded-assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ inputs.ref || github.ref }}
-
-      - name: Download embedded assets
-        uses: actions/download-artifact@v8
-        with:
-          name: main-embedded-assets
-          path: .choysum/tmp
-
-      - name: Extract embedded assets
-        run: tar -xzf .choysum/tmp/main-embedded-assets.tar.gz -C .
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: internal/bootstrap/web/package-lock.json
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install bootstrap npm dependencies
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Run bootstrap verify
-        working-directory: internal/bootstrap/web
-        run: npm run verify:bootstrap:release
+    uses: ./.github/workflows/bootstrap-verify.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      embedded_assets_artifact_name: main-embedded-assets
+      embedded_assets_archive_path: .choysum/tmp/main-embedded-assets.tar.gz

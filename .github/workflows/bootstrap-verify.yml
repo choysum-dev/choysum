@@ -1,0 +1,79 @@
+name: Bootstrap Verify
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      embedded_assets_artifact_name:
+        description: "Embedded assets artifact name to download"
+        required: true
+        type: string
+      embedded_assets_archive_path:
+        description: "Path to embedded assets archive to extract"
+        required: true
+        type: string
+      run_bootstrap_verify:
+        description: "Whether bootstrap verify should run"
+        required: false
+        default: "true"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-verify:
+    name: bootstrap-verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Skip bootstrap verify when routing does not require it
+        if: ${{ inputs.run_bootstrap_verify != 'true' }}
+        run: echo "bootstrap verify skipped by routing"
+
+      - name: Checkout
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Download and extract embedded assets
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        uses: ./.github/actions/download-extract-embedded-assets
+        with:
+          artifact-name: ${{ inputs.embedded_assets_artifact_name }}
+          archive-path: ${{ inputs.embedded_assets_archive_path }}
+
+      - name: Setup Go
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: internal/bootstrap/web/package-lock.json
+
+      - name: Install protoc
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install bootstrap npm dependencies
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        working-directory: internal/bootstrap/web
+        run: npm ci
+
+      - name: Run bootstrap verify
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        working-directory: internal/bootstrap/web
+        run: npm run verify:bootstrap:release

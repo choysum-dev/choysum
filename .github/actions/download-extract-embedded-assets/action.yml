@@ -1,0 +1,23 @@
+name: Download and Extract Embedded Assets
+description: Download embedded assets artifact and extract the archive into workspace
+
+inputs:
+  artifact-name:
+    description: Embedded assets artifact name to download
+    required: true
+  archive-path:
+    description: Embedded assets archive path to extract
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Download embedded assets artifact
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: .choysum/tmp
+
+    - name: Extract embedded assets archive
+      shell: bash
+      run: tar -xzf "${{ inputs.archive-path }}" -C .

@@ -1,0 +1,95 @@
+name: Modules Publish / Sync
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      dry_run:
+        description: "Run publish flow without pushing npm packages"
+        required: true
+        type: string
+      source_run_url:
+        description: "Source workflow run URL"
+        required: true
+        type: string
+      source_run_ref:
+        description: "Source workflow run ref"
+        required: true
+        type: string
+      source_sha:
+        description: "Source workflow SHA"
+        required: true
+        type: string
+    secrets:
+      MODULES_DIRECTORY_SYNC_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync-catalog-directory-pr:
+    name: modules / sync-catalog-directory-pr
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Download published modules artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: published-modules
+          path: .choysum/tmp
+
+      - name: Validate modules-directory API precheck
+        id: sync_precheck
+        continue-on-error: true
+        env:
+          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish.py sync-precheck
+
+      - name: Sync modules-directory pointers (per-module PR)
+        id: sync_modules
+        if: ${{ steps.sync_precheck.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          MODULES_DIRECTORY_SYNC_TOKEN: ${{ secrets.MODULES_DIRECTORY_SYNC_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          SOURCE_RUN_URL: ${{ inputs.source_run_url }}
+          SOURCE_RUN_REF: ${{ inputs.source_run_ref }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/modules_publish.py sync-modules-per-module-pr
+
+      - name: Upload sync diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: sync-diagnostics
+          path: |
+            .choysum/tmp/sync-errors.json
+            .choysum/tmp/sync-summary.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce sync outcomes
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.sync_precheck.outcome }}" != "success" ]]; then
+            echo "sync-catalog-directory-pr precheck failed" >&2
+            exit 1
+          fi
+          if [[ "${{ steps.sync_modules.outcome }}" != "success" ]]; then
+            echo "sync-catalog-directory-pr module sync failed" >&2
+            exit 1
+          fi

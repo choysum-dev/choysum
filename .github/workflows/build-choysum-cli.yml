@@ -1,0 +1,69 @@
+name: Build Choysum CLI
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      embedded_assets_artifact_name:
+        description: "Embedded assets artifact name to download"
+        required: true
+        type: string
+      embedded_assets_archive_path:
+        description: "Path to embedded assets archive to extract"
+        required: true
+        type: string
+      choysum_artifact_name:
+        description: "Artifact name for built choysum CLI"
+        required: true
+        type: string
+      choysum_binary_path:
+        description: "Output path for built choysum CLI binary"
+        required: true
+        type: string
+      retention_days:
+        description: "Artifact retention days"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+
+jobs:
+  build-choysum-cli:
+    name: build-choysum-cli
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
+        with:
+          artifact-name: ${{ inputs.embedded_assets_artifact_name }}
+          archive-path: ${{ inputs.embedded_assets_archive_path }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build choysum CLI
+        run: |
+          CHOYSUM_BINARY_PATH="${{ inputs.choysum_binary_path }}"
+          mkdir -p "$(dirname "$CHOYSUM_BINARY_PATH")"
+          go build -o "$CHOYSUM_BINARY_PATH" .
+
+      - name: Upload choysum CLI
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.choysum_artifact_name }}
+          path: ${{ inputs.choysum_binary_path }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}
