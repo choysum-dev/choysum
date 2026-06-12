@@ -43,7 +43,7 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	}
 
 	writeCommandPackage(t, modulesPath, "auth", `{
-		"name": "@choysum/module-auth",
+		"name": "@choysum-dev/auth",
 		"version": "1.2.3",
 		"description": "test module",
 		"license": "Apache-2.0",

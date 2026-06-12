@@ -1,5 +1,5 @@
 {
-  "name": "@choysum/module-auth",
+  "name": "@choysum-dev/auth",
   "version": "0.0.0",
   "description": "User authentication and management module",
   "license": "Apache-2.0",

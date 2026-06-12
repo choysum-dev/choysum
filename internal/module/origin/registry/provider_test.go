@@ -114,7 +114,7 @@ func buildPackageJSON(t *testing.T, moduleName, version string, entryPoints map[
 		choysum["entryPoints"] = entryPoints
 	}
 	payload := map[string]any{
-		"name":        "@choysum/module-" + moduleName,
+		"name":        "@choysum-dev/" + moduleName,
 		"version":     version,
 		"description": "test module",
 		"license":     "Apache-2.0",
@@ -149,11 +149,11 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
 
-	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
-	tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.2.3.tgz"
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+	tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.2.3.tgz"
 	metadata := buildMetadata(t, map[string]string{"latest": "1.2.3"}, map[string]any{
 		"1.2.3": map[string]any{
-			"name":        "@choysum/module-auth",
+			"name":        "@choysum-dev/auth",
 			"version":     "1.2.3",
 			"description": "auth module",
 			"license":     "Apache-2.0",
@@ -177,7 +177,7 @@ func TestProviderPeekManifestFromNPMMetadata(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "v1.2.3")
+	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "v1.2.3")
 	if err != nil {
 		t.Fatalf("PeekManifest() error = %v", err)
 	}
@@ -201,13 +201,13 @@ func TestProviderPeekManifestUsesConfiguredDefaultNPMRegistryURL(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, NPMRegistryURL: "https://registry.npmmirror.com/"}}
 
-	metadataURL := "https://registry.npmmirror.com/@choysum%2Fmodule-auth"
+	metadataURL := "https://registry.npmmirror.com/@choysum-dev%2Fauth"
 	metadata := buildMetadata(t, map[string]string{"latest": "1.0.0"}, map[string]any{
 		"1.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "1.0.0",
 			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
-			"dist":    map[string]any{"tarball": "https://registry.npmmirror.com/@choysum/module-auth/-/module-auth-1.0.0.tgz"},
+			"dist":    map[string]any{"tarball": "https://registry.npmmirror.com/@choysum-dev/auth/-/auth-1.0.0.tgz"},
 		},
 	})
 
@@ -219,7 +219,7 @@ func TestProviderPeekManifestUsesConfiguredDefaultNPMRegistryURL(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.PeekManifest(context.Background(), "", "auth", "@choysum/module-auth", "latest")
+	mod, err := provider.PeekManifest(context.Background(), "", "auth", "@choysum-dev/auth", "latest")
 	if err != nil {
 		t.Fatalf("PeekManifest() error = %v", err)
 	}
@@ -234,19 +234,19 @@ func TestProviderPeekManifestResolvesLatestDistTag(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
 
-	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
 	metadata := buildMetadata(t, map[string]string{"latest": "2.0.0"}, map[string]any{
 		"1.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "1.0.0",
 			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
-			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.0.tgz"},
+			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.0.tgz"},
 		},
 		"2.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "2.0.0",
 			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
-			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-2.0.0.tgz"},
+			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum-dev/auth/-/auth-2.0.0.tgz"},
 		},
 	})
 
@@ -258,7 +258,7 @@ func TestProviderPeekManifestResolvesLatestDistTag(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest")
+	mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest")
 	if err != nil {
 		t.Fatalf("PeekManifest() error = %v", err)
 	}
@@ -276,11 +276,11 @@ func TestProviderFetchMaterializesModuleToModules(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
 
-	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
-	tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-2.0.0.tgz"
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+	tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-2.0.0.tgz"
 	metadata := buildMetadata(t, map[string]string{"latest": "2.0.0"}, map[string]any{
 		"2.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "2.0.0",
 			"author":  map[string]any{"name": "test"},
 			"choysum": map[string]any{
@@ -309,7 +309,7 @@ func TestProviderFetchMaterializesModuleToModules(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	mod, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "v2.0.0")
+	mod, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "v2.0.0")
 	if err != nil {
 		t.Fatalf("Fetch() error = %v", err)
 	}
@@ -333,13 +333,13 @@ func TestProviderPeekManifestConcurrentRequests(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
 
-	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
 	metadata := buildMetadata(t, map[string]string{"latest": "3.0.0"}, map[string]any{
 		"3.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "3.0.0",
 			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
-			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-3.0.0.tgz"},
+			"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum-dev/auth/-/auth-3.0.0.tgz"},
 		},
 	})
 
@@ -360,7 +360,7 @@ func TestProviderPeekManifestConcurrentRequests(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest")
+			mod, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest")
 			if err != nil {
 				errCh <- err
 				return
@@ -388,10 +388,10 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 	t.Run("missing tarball url in npm metadata", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
-		metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
 		metadata := buildMetadata(t, map[string]string{"latest": "1.0.0"}, map[string]any{
 			"1.0.0": map[string]any{
-				"name":    "@choysum/module-auth",
+				"name":    "@choysum-dev/auth",
 				"version": "1.0.0",
 				"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
 				"dist":    map[string]any{},
@@ -404,7 +404,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			return httpResponse(http.StatusOK, metadata), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "no tarball url found in npm metadata") {
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "no tarball url found in npm metadata") {
 			t.Fatalf("expected missing tarball url error, got %v", err)
 		}
 	})
@@ -412,11 +412,11 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 	t.Run("tarball without package.json", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
-		metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
-		tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.1.tgz"
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+		tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.1.tgz"
 		metadata := buildMetadata(t, map[string]string{"latest": "1.0.1"}, map[string]any{
 			"1.0.1": map[string]any{
-				"name":    "@choysum/module-auth",
+				"name":    "@choysum-dev/auth",
 				"version": "1.0.1",
 				"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
 				"dist":    map[string]any{"tarball": tarballURL},
@@ -435,7 +435,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			}
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "package.json not found in tarball") {
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "package.json not found in tarball") {
 			t.Fatalf("expected package.json not found error, got %v", err)
 		}
 	})
@@ -443,11 +443,11 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 	t.Run("unsafe tar path", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
-		metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
-		tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.2.tgz"
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+		tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.2.tgz"
 		metadata := buildMetadata(t, map[string]string{"latest": "1.0.2"}, map[string]any{
 			"1.0.2": map[string]any{
-				"name":    "@choysum/module-auth",
+				"name":    "@choysum-dev/auth",
 				"version": "1.0.2",
 				"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
 				"dist":    map[string]any{"tarball": tarballURL},
@@ -466,7 +466,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			}
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil {
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil {
 			t.Fatalf("expected unsafe tar path error")
 		}
 	})
@@ -474,13 +474,13 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 	t.Run("package moduleName mismatch", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
-		metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
 		metadata := buildMetadata(t, map[string]string{"latest": "1.0.3"}, map[string]any{
 			"1.0.3": map[string]any{
-				"name":    "@choysum/module-auth",
+				"name":    "@choysum-dev/auth",
 				"version": "1.0.3",
 				"choysum": map[string]any{"moduleName": "sale", "application": "sale"},
-				"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.3.tgz"},
+				"dist":    map[string]any{"tarball": "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.3.tgz"},
 			},
 		})
 		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -490,7 +490,7 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 			return httpResponse(http.StatusOK, metadata), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "does not match requested module") {
+		if _, err := provider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "does not match requested module") {
 			t.Fatalf("expected moduleName mismatch error, got %v", err)
 		}
 	})
@@ -537,15 +537,15 @@ func TestProviderRejectsNilRuntimeScope(t *testing.T) {
 		t.Fatalf("defaultRegistryURL(nil) = %q, want %q", got, config.DefaultNPMRegistryURL)
 	}
 
-	if _, err := nilProvider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
+	if _, err := nilProvider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
 		t.Fatalf("expected nil provider guard error from PeekManifest, got %v", err)
 	}
-	if _, err := nilProvider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
+	if _, err := nilProvider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
 		t.Fatalf("expected nil provider guard error from Fetch, got %v", err)
 	}
 
 	emptyProvider := &SourceRegistryProvider{}
-	if _, err := emptyProvider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
+	if _, err := emptyProvider.PeekManifest(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "registry provider env is nil") {
 		t.Fatalf("expected empty provider guard error from PeekManifest, got %v", err)
 	}
 }
@@ -554,11 +554,11 @@ func TestProviderFetchRequiresModulesPath(t *testing.T) {
 	t.Parallel()
 
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: ""}}
-	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
-	tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.0.tgz"
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+	tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.0.tgz"
 	metadata := buildMetadata(t, map[string]string{"latest": "1.0.0"}, map[string]any{
 		"1.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "1.0.0",
 			"author":  map[string]any{"name": "test"},
 			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
@@ -582,7 +582,7 @@ func TestProviderFetchRequiresModulesPath(t *testing.T) {
 	})}
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "modules path is empty") {
+	if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "modules path is empty") {
 		t.Fatalf("expected modules path required error, got %v", err)
 	}
 }
@@ -593,11 +593,11 @@ func TestProviderFetchCopyModuleToModulesFailure(t *testing.T) {
 	modulesPath := t.TempDir()
 	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
 
-	metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
-	tarballURL := "https://registry.npmjs.org/@choysum/module-auth/-/module-auth-1.0.0.tgz"
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+	tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.0.tgz"
 	metadata := buildMetadata(t, map[string]string{"latest": "1.0.0"}, map[string]any{
 		"1.0.0": map[string]any{
-			"name":    "@choysum/module-auth",
+			"name":    "@choysum-dev/auth",
 			"version": "1.0.0",
 			"author":  map[string]any{"name": "test"},
 			"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
@@ -633,7 +633,7 @@ func TestProviderFetchCopyModuleToModulesFailure(t *testing.T) {
 	runtimeScope.cfg.ModulesPath = readOnlyRoot
 
 	provider := NewProvider(runtimeScope, WithHTTPClient(client))
-	if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "copy module to modules failed") {
+	if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "copy module to modules failed") {
 		t.Fatalf("expected copy module to modules failure, got %v", err)
 	}
 }
@@ -816,17 +816,17 @@ func TestProviderInspectRegistryPackageErrorBranches(t *testing.T) {
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
 
-		if _, err := provider.inspectRegistryPackage(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "get npm metadata") {
+		if _, err := provider.inspectRegistryPackage(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "get npm metadata") {
 			t.Fatalf("expected inspectRegistryPackage metadata error, got %v", err)
 		}
 	})
 
 	t.Run("version resolution failure is wrapped by inspect", func(t *testing.T) {
 		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir()}}
-		metadataURL := "https://registry.npmjs.org/@choysum%2Fmodule-auth"
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
 		metadata := buildMetadata(t, map[string]string{}, map[string]any{
-			"1.0.0": map[string]any{"name": "@choysum/module-auth", "version": "1.0.0"},
-			"2.0.0": map[string]any{"name": "@choysum/module-auth", "version": "2.0.0"},
+			"1.0.0": map[string]any{"name": "@choysum-dev/auth", "version": "1.0.0"},
+			"2.0.0": map[string]any{"name": "@choysum-dev/auth", "version": "2.0.0"},
 		})
 		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			if req.URL.String() != metadataURL {
@@ -836,7 +836,7 @@ func TestProviderInspectRegistryPackageErrorBranches(t *testing.T) {
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
 
-		if _, err := provider.inspectRegistryPackage(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth", "latest"); err == nil || !strings.Contains(err.Error(), "inspect package") || !strings.Contains(err.Error(), "missing latest dist-tag") {
+		if _, err := provider.inspectRegistryPackage(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "inspect package") || !strings.Contains(err.Error(), "missing latest dist-tag") {
 			t.Fatalf("expected inspectRegistryPackage version resolution error, got %v", err)
 		}
 	})
@@ -1047,7 +1047,7 @@ func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 			return httpResponse(http.StatusBadGateway, []byte(`{"error":"upstream"}`)), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "status code") {
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth"); err == nil || !strings.Contains(err.Error(), "status code") {
 			t.Fatalf("expected metadata non-200 error, got %v", err)
 		}
 	})
@@ -1057,7 +1057,7 @@ func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 			return nil, errors.New("dial failed")
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "get npm metadata") {
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth"); err == nil || !strings.Contains(err.Error(), "get npm metadata") {
 			t.Fatalf("expected metadata transport error, got %v", err)
 		}
 	})
@@ -1072,7 +1072,7 @@ func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 			}, nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "read npm metadata") {
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth"); err == nil || !strings.Contains(err.Error(), "read npm metadata") {
 			t.Fatalf("expected metadata read error, got %v", err)
 		}
 	})
@@ -1082,7 +1082,7 @@ func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 			return httpResponse(http.StatusOK, []byte(`{"dist-tags":`)), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "decoding npm metadata") {
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth"); err == nil || !strings.Contains(err.Error(), "decoding npm metadata") {
 			t.Fatalf("expected metadata decode error, got %v", err)
 		}
 	})
@@ -1092,7 +1092,7 @@ func TestProviderFetchPackageMetadataErrors(t *testing.T) {
 			return httpResponse(http.StatusOK, []byte(`{"dist-tags":{"latest":"1.0.0"},"versions":{}}`)), nil
 		})}
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
-		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum/module-auth"); err == nil || !strings.Contains(err.Error(), "no versions") {
+		if _, _, err := provider.fetchPackageMetadata(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth"); err == nil || !strings.Contains(err.Error(), "no versions") {
 			t.Fatalf("expected metadata no versions error, got %v", err)
 		}
 	})
