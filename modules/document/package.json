@@ -18,5 +18,8 @@
     "entryPoints": {
       "service": "./service/index.ts"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
