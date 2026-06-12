@@ -16,6 +16,11 @@ REPO_ROOT = pathlib.Path.cwd()
 MODULES_ROOT = REPO_ROOT / "modules"
 
 
+def is_all_zero_sha(value):
+    text = (value or "").strip()
+    return bool(text) and set(text) == {"0"}
+
+
 def validate_schema_baseline():
     required_top = {"name", "version", "choysum", "publishConfig"}
     required_choysum = {"moduleName", "application", "entryPoints"}
@@ -99,7 +104,7 @@ def discover_target_modules():
         modules = [target_module]
     elif event_name == "push":
         modules = []
-        if before:
+        if before and not is_all_zero_sha(before):
             diff = subprocess.run(
                 ["git", "diff", "--name-only", f"{before}...{head}"],
                 check=True,

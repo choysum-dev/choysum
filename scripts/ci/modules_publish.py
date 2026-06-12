@@ -75,9 +75,13 @@ def verify_gate():
             continue
 
         data = read_json(package_path)
+        if not isinstance(data, dict):
+            errors.append(f"modules/{module}/package.json is not a JSON object")
+            continue
+
         name = data.get("name")
         version = data.get("version")
-        choysum = data.get("choysum") if isinstance(data, dict) else {}
+        choysum = data.get("choysum")
         module_name = choysum.get("moduleName") if isinstance(choysum, dict) else None
 
         if not isinstance(name, str) or not name.startswith("@"):
@@ -110,7 +114,7 @@ def publish_single_module():
 
     dry_run = env_bool("DRY_RUN", default=True)
     semver_pattern = re.compile(
-        r"^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+        r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
     )
 
     result_file = output_dir / f"publish-result-{module}.json"
@@ -133,114 +137,124 @@ def publish_single_module():
         )
     else:
         package_json = read_json(package_path)
-        name = package_json.get("name")
-        version = package_json.get("version")
-        choysum = package_json.get("choysum") if isinstance(package_json, dict) else {}
-        module_name = choysum.get("moduleName") if isinstance(choysum, dict) else None
-
-        result["name"] = name
-        result["version"] = version
-
-        if not isinstance(name, str) or not name.startswith("@"):
+        if not isinstance(package_json, dict):
             errors.append(
                 {
                     "module": module,
-                    "operation": "publish_precheck",
-                    "error": "invalid_package_name",
-                    "message": "name must be a scoped package",
+                    "operation": "load_package_json",
+                    "error": "invalid_package_json",
+                    "message": "package.json is not a JSON object",
                 }
             )
+        else:
+            name = package_json.get("name")
+            version = package_json.get("version")
+            choysum = package_json.get("choysum")
+            module_name = choysum.get("moduleName") if isinstance(choysum, dict) else None
 
-        if not isinstance(version, str) or not semver_pattern.match(version):
-            errors.append(
-                {
-                    "module": module,
-                    "operation": "publish_precheck",
-                    "error": "invalid_package_version",
-                    "message": "version must be valid semver",
-                }
-            )
+            result["name"] = name
+            result["version"] = version
 
-        if module_name != module:
-            errors.append(
-                {
-                    "module": module,
-                    "operation": "publish_precheck",
-                    "error": "module_name_mismatch",
-                    "message": f"choysum.moduleName '{module_name}' must match directory '{module}'",
-                }
-            )
-
-        if not errors:
-            pack = subprocess.run(
-                ["npm", "pack", "--dry-run", "--json"],
-                cwd=str(modules_root / module),
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            if pack.returncode != 0:
+            if not isinstance(name, str) or not name.startswith("@"):
                 errors.append(
                     {
                         "module": module,
-                        "operation": "npm_pack_dry_run",
-                        "command": "npm pack --dry-run --json",
-                        "exitCode": pack.returncode,
-                        "stdout": compact(pack.stdout),
-                        "stderr": compact(pack.stderr),
+                        "operation": "publish_precheck",
+                        "error": "invalid_package_name",
+                        "message": "name must be a scoped package",
                     }
                 )
 
-        if not errors:
-            identifier = f"{name}@{version}"
-            view = subprocess.run(
-                ["npm", "view", identifier, "version"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
+            if not isinstance(version, str) or not semver_pattern.match(version):
+                errors.append(
+                    {
+                        "module": module,
+                        "operation": "publish_precheck",
+                        "error": "invalid_package_version",
+                        "message": "version must be valid semver",
+                    }
+                )
 
-            if view.returncode == 0:
-                result["status"] = "already_published"
-            else:
-                view_text = f"{view.stdout}\n{view.stderr}".lower()
-                view_not_found = "e404" in view_text or "404" in view_text or "not found" in view_text
-                if not view_not_found:
+            if module_name != module:
+                errors.append(
+                    {
+                        "module": module,
+                        "operation": "publish_precheck",
+                        "error": "module_name_mismatch",
+                        "message": f"choysum.moduleName '{module_name}' must match directory '{module}'",
+                    }
+                )
+
+            if not errors:
+                pack = subprocess.run(
+                    ["npm", "pack", "--dry-run", "--json"],
+                    cwd=str(modules_root / module),
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                if pack.returncode != 0:
                     errors.append(
                         {
                             "module": module,
-                            "operation": "npm_view",
-                            "command": f"npm view {identifier} version",
-                            "exitCode": view.returncode,
-                            "stdout": compact(view.stdout),
-                            "stderr": compact(view.stderr),
+                            "operation": "npm_pack_dry_run",
+                            "command": "npm pack --dry-run --json",
+                            "exitCode": pack.returncode,
+                            "stdout": compact(pack.stdout),
+                            "stderr": compact(pack.stderr),
                         }
                     )
-                elif dry_run:
-                    result["status"] = "published"
-                    result["dryRun"] = True
-                    result["note"] = "would_publish"
+
+            if not errors:
+                identifier = f"{name}@{version}"
+                view = subprocess.run(
+                    ["npm", "view", identifier, "version"],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+
+                if view.returncode == 0:
+                    result["status"] = "already_published"
                 else:
-                    publish = subprocess.run(
-                        ["npm", "publish", "--access", "public"],
-                        cwd=str(modules_root / module),
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-                    if publish.returncode == 0:
-                        result["status"] = "published"
-                    else:
+                    view_text = f"{view.stdout}\n{view.stderr}".lower()
+                    view_not_found = "e404" in view_text or "404" in view_text or "not found" in view_text
+                    if not view_not_found:
                         errors.append(
                             {
                                 "module": module,
-                                "operation": "npm_publish",
-                                "command": "npm publish --access public",
-                                "exitCode": publish.returncode,
-                                "stdout": compact(publish.stdout),
-                                "stderr": compact(publish.stderr),
+                                "operation": "npm_view",
+                                "command": f"npm view {identifier} version",
+                                "exitCode": view.returncode,
+                                "stdout": compact(view.stdout),
+                                "stderr": compact(view.stderr),
                             }
                         )
+                    elif dry_run:
+                        result["status"] = "published"
+                        result["dryRun"] = True
+                        result["note"] = "would_publish"
+                    else:
+                        publish = subprocess.run(
+                            ["npm", "publish", "--access", "public"],
+                            cwd=str(modules_root / module),
+                            check=False,
+                            capture_output=True,
+                            text=True,
+                        )
+                        if publish.returncode == 0:
+                            result["status"] = "published"
+                        else:
+                            errors.append(
+                                {
+                                    "module": module,
+                                    "operation": "npm_publish",
+                                    "command": "npm publish --access public",
+                                    "exitCode": publish.returncode,
+                                    "stdout": compact(publish.stdout),
+                                    "stderr": compact(publish.stderr),
+                                }
+                            )
 
     if errors:
         result["status"] = "failed"
