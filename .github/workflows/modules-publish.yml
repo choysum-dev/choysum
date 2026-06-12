@@ -1,0 +1,474 @@
+name: Modules Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run publish flow without pushing npm packages"
+        required: true
+        default: true
+        type: boolean
+      target_module:
+        description: "Single module name to target (empty means auto-discover changed modules)"
+        required: false
+        default: ""
+        type: string
+      target_ref:
+        description: "Branch, tag, or SHA to run against"
+        required: false
+        default: ""
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - "modules/**"
+      - ".github/workflows/modules-publish.yml"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: modules-publish-${{ inputs.target_ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: modules / preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      run_ref: ${{ steps.resolve-ref.outputs.run_ref }}
+      dry_run: ${{ steps.resolve-flags.outputs.dry_run }}
+    steps:
+      - name: Resolve run ref
+        id: resolve-ref
+        run: |
+          set -euo pipefail
+          if [[ -n "${{ inputs.target_ref }}" ]]; then
+            echo "run_ref=${{ inputs.target_ref }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve dry_run flag
+        id: resolve-flags
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+              echo "dry_run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "dry_run=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # Safety default for push-triggered runs.
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate NPM publish secret presence
+        env:
+          NPM_PUBLISH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${NPM_PUBLISH_TOKEN:-}" ]]; then
+            echo "NPM_PUBLISH_TOKEN is required for module publish workflow" >&2
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.resolve-ref.outputs.run_ref }}
+          fetch-depth: 0
+
+      - name: Validate module metadata schema baseline
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          repo_root = pathlib.Path.cwd()
+          modules_root = repo_root / "modules"
+
+          required_top = {"name", "version", "choysum", "publishConfig"}
+          required_choysum = {"moduleName", "application", "entryPoints"}
+          optional_entry_keys = {"service", "web"}
+
+          errors = []
+          for package_path in sorted(modules_root.glob("*/package.json")):
+              module_dir_name = package_path.parent.name
+              rel = package_path.relative_to(repo_root)
+              data = json.loads(package_path.read_text(encoding="utf-8"))
+
+              missing_top = sorted(required_top - set(data.keys()))
+              if missing_top:
+                  errors.append(f"{rel}: missing top-level keys: {', '.join(missing_top)}")
+                  continue
+
+              choysum = data.get("choysum")
+              if not isinstance(choysum, dict):
+                  errors.append(f"{rel}: choysum must be an object")
+                  continue
+
+              missing_choysum = sorted(required_choysum - set(choysum.keys()))
+              if missing_choysum:
+                  errors.append(f"{rel}: missing choysum keys: {', '.join(missing_choysum)}")
+                  continue
+
+              module_name = choysum.get("moduleName")
+              if not isinstance(module_name, str) or not module_name.strip():
+                  errors.append(f"{rel}: choysum.moduleName must be a non-empty string")
+              elif module_name != module_dir_name:
+                  errors.append(
+                      f"{rel}: choysum.moduleName '{module_name}' must match directory name '{module_dir_name}'"
+                  )
+
+              entry_points = choysum.get("entryPoints")
+              if not isinstance(entry_points, dict) or not entry_points:
+                  errors.append(f"{rel}: choysum.entryPoints must be a non-empty object")
+              else:
+                  unknown_keys = sorted(set(entry_points.keys()) - optional_entry_keys)
+                  if unknown_keys:
+                      errors.append(f"{rel}: choysum.entryPoints has unsupported keys: {', '.join(unknown_keys)}")
+                  if not any(key in entry_points for key in ("service", "web")):
+                      errors.append(f"{rel}: choysum.entryPoints must include at least one of service/web")
+                  for key, value in entry_points.items():
+                      if not isinstance(value, str) or not value.strip():
+                          errors.append(f"{rel}: choysum.entryPoints.{key} must be a non-empty string")
+
+              publish_cfg = data.get("publishConfig")
+              if not isinstance(publish_cfg, dict) or publish_cfg.get("access") != "public":
+                  errors.append(f"{rel}: publishConfig.access must equal 'public'")
+
+          if errors:
+              print("preflight schema validation failed:", file=sys.stderr)
+              for item in errors:
+                  print(f"- {item}", file=sys.stderr)
+              sys.exit(1)
+
+          print("preflight schema validation passed")
+          PY
+
+  discover-module-updates:
+    name: modules / discover-module-updates
+    needs:
+      - preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      modules_json: ${{ steps.discover.outputs.modules_json }}
+      has_modules: ${{ steps.discover.outputs.has_modules }}
+      artifact_name: ${{ steps.discover.outputs.artifact_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.run_ref }}
+          fetch-depth: 0
+
+      - name: Discover target modules
+        id: discover
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          repo_root = pathlib.Path.cwd()
+          modules_root = repo_root / "modules"
+
+          target_module = "${{ inputs.target_module }}".strip()
+          event_name = "${{ github.event_name }}"
+
+          available_modules = sorted(
+              child.name
+              for child in modules_root.iterdir()
+              if child.is_dir() and child.name not in {".choysum", "tmp"}
+          )
+
+          if target_module:
+              if target_module not in available_modules:
+                  raise SystemExit(f"target_module '{target_module}' does not exist under modules/")
+              modules = [target_module]
+          elif event_name == "push":
+              before = "${{ github.event.before }}".strip()
+              head = "${{ github.sha }}".strip()
+              modules = []
+              if before:
+                  diff = subprocess.run(
+                      ["git", "diff", "--name-only", f"{before}...{head}"],
+                      check=True,
+                      capture_output=True,
+                      text=True,
+                  )
+                  changed = [line.strip() for line in diff.stdout.splitlines() if line.strip()]
+                  seen = set()
+                  for path in changed:
+                      parts = path.split("/")
+                      if len(parts) >= 3 and parts[0] == "modules" and parts[1] in available_modules:
+                          if parts[1] not in seen:
+                              modules.append(parts[1])
+                              seen.add(parts[1])
+              if not modules:
+                  modules = available_modules
+          else:
+              modules = available_modules
+
+          modules = sorted(dict.fromkeys(modules))
+          has_modules = "true" if modules else "false"
+
+          out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
+          with out.open("a", encoding="utf-8") as fh:
+              print(f"modules_json={json.dumps(modules, separators=(',', ':'))}", file=fh)
+              print(f"has_modules={has_modules}", file=fh)
+              print("artifact_name=module-discovery", file=fh)
+
+          artifact_dir = repo_root / ".choysum" / "tmp"
+          artifact_dir.mkdir(parents=True, exist_ok=True)
+          report = {
+              "modules": modules,
+              "event": event_name,
+              "target_module": target_module,
+              "run_ref": "${{ needs.preflight.outputs.run_ref }}",
+          }
+          (artifact_dir / "module-discovery.json").write_text(
+              json.dumps(report, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload discovery artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: module-discovery
+          path: .choysum/tmp/module-discovery.json
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-module-gate:
+    name: modules / verify-module-gate
+    needs:
+      - preflight
+      - discover-module-updates
+    if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.run_ref }}
+
+      - name: Verify module metadata consistency
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          repo_root = pathlib.Path.cwd()
+          modules_root = repo_root / "modules"
+          modules = json.loads('${{ needs.discover-module-updates.outputs.modules_json }}')
+
+          errors = []
+          for module in modules:
+              package_path = modules_root / module / "package.json"
+              if not package_path.is_file():
+                  errors.append(f"modules/{module}/package.json is missing")
+                  continue
+
+              data = json.loads(package_path.read_text(encoding="utf-8"))
+              name = data.get("name")
+              version = data.get("version")
+              choysum = data.get("choysum") if isinstance(data, dict) else {}
+              module_name = choysum.get("moduleName") if isinstance(choysum, dict) else None
+
+              if not isinstance(name, str) or not name.startswith("@"):
+                  errors.append(f"modules/{module}/package.json: name must be a scoped package")
+              if not isinstance(version, str) or not version.strip():
+                  errors.append(f"modules/{module}/package.json: version must be non-empty")
+              if module_name != module:
+                  errors.append(
+                      f"modules/{module}/package.json: choysum.moduleName '{module_name}' must equal directory '{module}'"
+                  )
+
+          if errors:
+              print("verify-module-gate failed:", file=sys.stderr)
+              for item in errors:
+                  print(f"- {item}", file=sys.stderr)
+              sys.exit(1)
+
+          print("verify-module-gate metadata checks passed")
+          PY
+
+  publish-npm-registry:
+    name: modules / publish-npm-registry
+    needs:
+      - preflight
+      - discover-module-updates
+      - verify-module-gate
+    if: ${{ needs.discover-module-updates.outputs.has_modules == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      published_modules_artifact: ${{ steps.publish.outputs.published_modules_artifact }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.run_ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Publish modules (idempotent)
+        id: publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p .choysum/tmp
+          dry_run='${{ needs.preflight.outputs.dry_run }}'
+
+          python3 <<'PY'
+          import json
+          import pathlib
+          import subprocess
+
+          repo_root = pathlib.Path.cwd()
+          modules_root = repo_root / "modules"
+          modules = json.loads('${{ needs.discover-module-updates.outputs.modules_json }}')
+          dry_run = '${{ needs.preflight.outputs.dry_run }}' == 'true'
+
+          results = []
+          for module in modules:
+              package_path = modules_root / module / "package.json"
+              package_json = json.loads(package_path.read_text(encoding="utf-8"))
+              name = package_json["name"]
+              version = package_json["version"]
+              identifier = f"{name}@{version}"
+
+              view = subprocess.run(
+                  ["npm", "view", identifier, "version"],
+                  check=False,
+                  capture_output=True,
+                  text=True,
+              )
+
+              if view.returncode == 0:
+                  results.append({"module": module, "name": name, "version": version, "status": "already_published"})
+                  continue
+
+              if dry_run:
+                  results.append({"module": module, "name": name, "version": version, "status": "dry_run"})
+                  continue
+
+              publish = subprocess.run(
+                  ["npm", "publish", "--access", "public"],
+                  cwd=str(modules_root / module),
+                  check=False,
+                  capture_output=True,
+                  text=True,
+              )
+              if publish.returncode == 0:
+                  results.append({"module": module, "name": name, "version": version, "status": "published"})
+              else:
+                  results.append(
+                      {
+                          "module": module,
+                          "name": name,
+                          "version": version,
+                          "status": "failed",
+                          "error": publish.stderr.strip() or publish.stdout.strip(),
+                      }
+                  )
+
+          out_path = repo_root / ".choysum" / "tmp" / "published-modules.json"
+          out_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+
+          failed = [item for item in results if item["status"] == "failed"]
+          if failed:
+              raise SystemExit("One or more module publishes failed")
+          PY
+
+          echo "published_modules_artifact=published-modules" >> "$GITHUB_OUTPUT"
+
+      - name: Upload published modules artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-modules
+          path: .choysum/tmp/published-modules.json
+          if-no-files-found: error
+          retention-days: 14
+
+  sync-catalog-directory-pr:
+    name: modules / sync-catalog-directory-pr
+    needs:
+      - preflight
+      - publish-npm-registry
+    if: ${{ always() && needs.publish-npm-registry.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download published modules artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.publish-npm-registry.outputs.published_modules_artifact }}
+          path: .choysum/tmp
+
+      - name: Stub catalog sync
+        run: |
+          set -euo pipefail
+          echo "sync-catalog-directory-pr is not implemented yet."
+          echo "It will consume .choysum/tmp/published-modules.json in 11.5.3 implementation."
+
+  finalize-publish:
+    name: modules / finalize-publish
+    needs:
+      - preflight
+      - discover-module-updates
+      - verify-module-gate
+      - publish-npm-registry
+      - sync-catalog-directory-pr
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize module publish pipeline status
+        run: |
+          set -euo pipefail
+          echo "preflight=${{ needs.preflight.result }}"
+          echo "discover-module-updates=${{ needs.discover-module-updates.result }}"
+          echo "verify-module-gate=${{ needs.verify-module-gate.result }}"
+          echo "publish-npm-registry=${{ needs.publish-npm-registry.result }}"
+          echo "sync-catalog-directory-pr=${{ needs.sync-catalog-directory-pr.result }}"
+
+      - name: Enforce fail-fast outcome
+        run: |
+          set -euo pipefail
+          for job in \
+            "${{ needs.preflight.result }}" \
+            "${{ needs.discover-module-updates.result }}" \
+            "${{ needs.verify-module-gate.result }}" \
+            "${{ needs.publish-npm-registry.result }}" \
+            "${{ needs.sync-catalog-directory-pr.result }}"
+          do
+            if [[ "$job" != "success" && "$job" != "skipped" ]]; then
+              echo "module publish pipeline failed due to upstream job result: $job" >&2
+              exit 1
+            fi
+          done
