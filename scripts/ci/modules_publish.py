@@ -430,8 +430,14 @@ def sync_modules_per_module_pr():
 
     api_base = "https://api.github.com/repos/choysum-dev/modules-directory"
     repo_url = "https://github.com/choysum-dev/modules-directory.git"
-    push_url = f"https://x-access-token:{token}@github.com/choysum-dev/modules-directory.git"
+    encoded_token = urllib.parse.quote(token, safe="")
+    push_url = f"https://x-access-token:{encoded_token}@github.com/choysum-dev/modules-directory.git"
     repo_clone_dir = output_dir / "modules-directory"
+    redaction_values = []
+    if token:
+        redaction_values.append(token)
+    if encoded_token and encoded_token != token:
+        redaction_values.append(encoded_token)
 
     errors = []
     results = []
@@ -440,8 +446,8 @@ def sync_modules_per_module_pr():
         safe_command = []
         for part in command:
             value = str(part)
-            if token:
-                value = value.replace(token, "***")
+            for secret in redaction_values:
+                value = value.replace(secret, "***")
             safe_command.append(value)
 
         try:
@@ -454,15 +460,15 @@ def sync_modules_per_module_pr():
             )
         except Exception as exc:
             message = str(exc)
-            if token:
-                message = message.replace(token, "***")
+            for secret in redaction_values:
+                message = message.replace(secret, "***")
             raise RuntimeError(f"command execution failed ({' '.join(safe_command)}): {message}") from None
 
         safe_stdout = proc.stdout or ""
         safe_stderr = proc.stderr or ""
-        if token:
-            safe_stdout = safe_stdout.replace(token, "***")
-            safe_stderr = safe_stderr.replace(token, "***")
+        for secret in redaction_values:
+            safe_stdout = safe_stdout.replace(secret, "***")
+            safe_stderr = safe_stderr.replace(secret, "***")
 
         if check and proc.returncode != 0:
             raise RuntimeError(
@@ -518,16 +524,19 @@ def sync_modules_per_module_pr():
     def ensure_repo_ready():
         if repo_clone_dir.exists():
             shutil.rmtree(repo_clone_dir)
+        used_auth_clone = False
         try:
             run_cmd(["git", "clone", "--depth", "1", repo_url, str(repo_clone_dir)])
         except Exception:
             if repo_clone_dir.exists():
                 shutil.rmtree(repo_clone_dir)
             run_cmd(["git", "clone", "--depth", "1", push_url, str(repo_clone_dir)])
-            run_cmd(["git", "remote", "set-url", "origin", repo_url], cwd=repo_clone_dir)
+            used_auth_clone = True
         run_cmd(["git", "config", "user.name", "choysum-ci-bot"], cwd=repo_clone_dir)
         run_cmd(["git", "config", "user.email", "bot@choysum.dev"], cwd=repo_clone_dir)
         run_cmd(["git", "fetch", "origin", "+refs/heads/*:refs/remotes/origin/*"], cwd=repo_clone_dir)
+        if used_auth_clone:
+            run_cmd(["git", "remote", "set-url", "origin", repo_url], cwd=repo_clone_dir)
 
     def remote_branch_exists(branch_name):
         probe = run_cmd(
