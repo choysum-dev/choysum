@@ -477,13 +477,12 @@ def sync_modules_per_module_pr():
     askpass_path = output_dir / "git-askpass.sh"
 
     def ensure_askpass_script():
-        askpass_path.write_text(
-            "#!/bin/sh\n"
-            "case \"$1\" in\n"
-            "  *Username*) printf '%s\\n' 'x-access-token' ;;\n"
-            "  *) printf '%s\\n' \"$CHOYSUM_SYNC_GIT_TOKEN\" ;;\n"
-            "esac\n",
-            encoding="utf-8",
+        askpass_path.write_bytes(
+            b"#!/bin/sh\n"
+            b"case \"$1\" in\n"
+            b"  *Username*) printf '%s\\n' 'x-access-token' ;;\n"
+            b"  *) printf '%s\\n' \"$CHOYSUM_SYNC_GIT_TOKEN\" ;;\n"
+            b"esac\n"
         )
         askpass_path.chmod(0o700)
 
