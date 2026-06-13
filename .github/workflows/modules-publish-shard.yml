@@ -42,7 +42,6 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-          always-auth: true
           cache: npm
           cache-dependency-path: package-lock.json
 
