@@ -13,6 +13,7 @@
     "moduleName": "core",
     "application": "core",
     "depends": [],
+    "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
       "service": "./service/index.ts"
     }
