@@ -15,6 +15,7 @@
       "web",
       "task"
     ],
+    "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
       "service": "./service/index.ts",
       "web": "./web/index.ts"

@@ -11,9 +11,10 @@ import (
 	"sort"
 	"strings"
 
+	msemver "github.com/Masterminds/semver/v3"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	xfmt "golang.org/x/exp/errors/fmt"
-	"golang.org/x/mod/semver"
+	modsemver "golang.org/x/mod/semver"
 )
 
 var strictSemVerV = regexp.MustCompile(`^v\d+\.\d+\.\d+([\-\+].+)?$`)
@@ -34,6 +35,7 @@ type ChoysumMeta struct {
 	Application   string            `json:"application"`
 	Category      string            `json:"category,omitempty"`
 	Depends       []string          `json:"depends,omitempty"`
+	CLI           string            `json:"cli,omitempty"`
 	EntryPoints   map[string]string `json:"entryPoints,omitempty"`
 	Data          []string          `json:"data,omitempty"`
 	Demo          []string          `json:"demo,omitempty"`
@@ -158,7 +160,7 @@ func NormalizeVersion(version string) (string, error) {
 	if !strings.HasPrefix(version, "v") {
 		version = "v" + version
 	}
-	if !strictSemVerV.MatchString(version) || !semver.IsValid(version) {
+	if !strictSemVerV.MatchString(version) || !modsemver.IsValid(version) {
 		return "", xfmt.Errorf("invalid package version %q; expected SemVer like 0.1.0 or v0.1.0", strings.TrimSpace(strings.TrimPrefix(version, "v")))
 	}
 	return version, nil
@@ -180,6 +182,11 @@ func ValidatePackageJSON(pkg *PackageJSON) error {
 	}
 	if strings.TrimSpace(pkg.Choysum.Application) == "" {
 		return xfmt.Errorf("choysum.application is required")
+	}
+	if cliRange := strings.TrimSpace(pkg.Choysum.CLI); cliRange != "" {
+		if _, err := msemver.NewConstraint(cliRange); err != nil {
+			return xfmt.Errorf("invalid choysum.cli range %q: %w", cliRange, err)
+		}
 	}
 
 	for _, dep := range pkg.Choysum.Depends {

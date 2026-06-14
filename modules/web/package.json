@@ -18,6 +18,7 @@
     "depends": [
       "core"
     ],
+    "cli": ">=0.0.0-0 <0.0.0",
     "entryPoints": {
       "web": "./web/index.ts"
     }
