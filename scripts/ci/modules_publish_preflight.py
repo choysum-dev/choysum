@@ -8,12 +8,37 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULES_ROOT = REPO_ROOT / "modules"
+
+SEMVER_COMPARATOR_PATTERN = re.compile(
+    r"^(<=|>=|<|>|=)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+)
+
+
+def is_valid_semver_constraint(value):
+    text = (value or "").strip()
+    if not text:
+        return False
+
+    disjunctions = [item.strip() for item in text.split("||")]
+    if any(not item for item in disjunctions):
+        return False
+
+    for item in disjunctions:
+        comparators = [token.strip() for token in item.split() if token.strip()]
+        if not comparators:
+            return False
+        for comparator in comparators:
+            if not SEMVER_COMPARATOR_PATTERN.match(comparator):
+                return False
+
+    return True
 
 
 def is_all_zero_sha(value):
@@ -23,8 +48,9 @@ def is_all_zero_sha(value):
 
 def validate_schema_baseline():
     required_top = {"name", "version", "choysum", "publishConfig"}
-    required_choysum = {"moduleName", "application", "entryPoints"}
+    required_choysum = {"moduleName", "application", "entryPoints", "cli"}
     optional_entry_keys = {"service", "web"}
+    required_cli_range = os.environ.get("REQUIRED_CHOYSUM_CLI_RANGE", ">=0.0.0-0 <0.0.0").strip()
 
     errors = []
     for package_path in sorted(MODULES_ROOT.glob("*/package.json")):
@@ -57,12 +83,24 @@ def validate_schema_baseline():
             continue
 
         module_name = choysum.get("moduleName")
+        cli_range = choysum.get("cli")
         if not isinstance(module_name, str) or not module_name.strip():
             errors.append(f"{rel}: choysum.moduleName must be a non-empty string")
         elif module_name != module_dir_name:
             errors.append(
                 f"{rel}: choysum.moduleName '{module_name}' must match directory name '{module_dir_name}'"
             )
+
+        if not isinstance(cli_range, str) or not cli_range.strip():
+            errors.append(f"{rel}: choysum.cli must be a non-empty semver constraint string")
+        else:
+            normalized_cli_range = cli_range.strip()
+            if not is_valid_semver_constraint(normalized_cli_range):
+                errors.append(f"{rel}: choysum.cli '{normalized_cli_range}' is not a valid semver constraint")
+            if required_cli_range and normalized_cli_range != required_cli_range:
+                errors.append(
+                    f"{rel}: choysum.cli '{normalized_cli_range}' must equal required policy '{required_cli_range}'"
+                )
 
         entry_points = choysum.get("entryPoints")
         if not isinstance(entry_points, dict) or not entry_points:
