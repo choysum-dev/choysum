@@ -20,6 +20,7 @@ func TestDecodePackageJSON(t *testing.T) {
 		"choysum":{
 			"moduleName":"sale",
 			"application":"sale",
+			"cli":">=0.0.0-0 <0.0.0",
 			"depends":["core"],
 			"entryPoints":{"web":"./web/index.ts"}
 		}
@@ -34,6 +35,9 @@ func TestDecodePackageJSON(t *testing.T) {
 	}
 	if pkg.Choysum.ModuleName != "sale" {
 		t.Fatalf("moduleName = %q, want %q", pkg.Choysum.ModuleName, "sale")
+	}
+	if pkg.Choysum.CLI != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("cli = %q, want %q", pkg.Choysum.CLI, ">=0.0.0-0 <0.0.0")
 	}
 }
 
@@ -83,6 +87,7 @@ func TestValidatePackageJSON(t *testing.T) {
 		Choysum: ChoysumMeta{
 			ModuleName:  "sale",
 			Application: "sale",
+			CLI:         ">=0.0.0-0 <0.0.0",
 			Depends:     []string{"core"},
 			EntryPoints: map[string]string{"web": "./web/index.ts"},
 		},
@@ -101,6 +106,12 @@ func TestValidatePackageJSON(t *testing.T) {
 	missingModuleName.Choysum.ModuleName = ""
 	if err := ValidatePackageJSON(&missingModuleName); err == nil || !strings.Contains(err.Error(), "choysum.moduleName is required") {
 		t.Fatalf("missing moduleName expected error, got %v", err)
+	}
+
+	invalidCLI := *valid
+	invalidCLI.Choysum.CLI = ">=0.0.0 <"
+	if err := ValidatePackageJSON(&invalidCLI); err == nil || !strings.Contains(err.Error(), "invalid choysum.cli range") {
+		t.Fatalf("invalid cli range expected error, got %v", err)
 	}
 
 	badEntry := *valid
@@ -186,6 +197,7 @@ func TestParsePackageJSONToIrModule(t *testing.T) {
 			"choysum":{
 				"moduleName":"sale",
 				"application":"sale",
+				"cli":">=0.0.0-0 <0.0.0",
 				"depends":["core","base"],
 				"entryPoints":{"service":"./service/index.ts","web":"./web/index.ts"},
 				"data":["data/bootstrap.json"],
@@ -251,6 +263,7 @@ func TestPackageJSONToIrModuleIdempotent(t *testing.T) {
 		Choysum: ChoysumMeta{
 			ModuleName:  "sale",
 			Application: "sale",
+			CLI:         ">=0.0.0-0 <0.0.0",
 			Depends:     []string{"core", "base"},
 			EntryPoints: map[string]string{"service": "./service/index.ts", "web": "./web/index.ts"},
 			Data:        []string{"data/bootstrap.json"},
