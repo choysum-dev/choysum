@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
@@ -84,7 +84,7 @@ jobs:
           printf '%s\n' "$RESOLVED_TAG" > "$OUTPUT_DIR/source.tag"
 
       - name: Upload embedded assets artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-embedded-assets
           path: .choysum/tmp/release-embedded-assets/
