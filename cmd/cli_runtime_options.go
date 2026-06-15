@@ -45,6 +45,14 @@ func newCliRuntimeOptionsFromScopeInputOptions(options *scopeInputConfigOptions)
 	}
 }
 
+func cliRuntimeOptionsFromScope(runtimeScope scope.Scope) cliRuntimeOptions {
+	if runtimeScope == nil {
+		return cliRuntimeOptions{}
+	}
+	pathOpts, hasPathOpts := scope.PathsRuntimeOptionsFromScope(runtimeScope)
+	return newCliRuntimeOptions(pathOpts, hasPathOpts)
+}
+
 func requireCliRuntimeOptions(optionsGetter func() cliRuntimeOptions) (cliRuntimeOptions, error) {
 	if optionsGetter == nil {
 		return cliRuntimeOptions{}, xfmt.Errorf("cli runtime options getter is not initialized")
