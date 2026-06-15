@@ -64,9 +64,35 @@ def env_bool(name, default=False):
     return raw.strip().lower() == "true"
 
 
+SEMVER_COMPARATOR_PATTERN = re.compile(
+    r"^(<=|>=|<|>|=|~|\^)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+)
+
+
+def is_valid_semver_constraint(value):
+    text = (value or "").strip()
+    if not text:
+        return False
+
+    disjunctions = [item.strip() for item in text.split("||")]
+    if any(not item for item in disjunctions):
+        return False
+
+    for item in disjunctions:
+        comparators = [token.strip() for token in item.split() if token.strip()]
+        if not comparators:
+            return False
+        for comparator in comparators:
+            if not SEMVER_COMPARATOR_PATTERN.match(comparator):
+                return False
+
+    return True
+
+
 def verify_gate():
     modules = load_json_env("MODULES_JSON")
     modules_root = REPO_ROOT / "modules"
+    required_cli_range = os.environ.get("REQUIRED_CHOYSUM_CLI_RANGE", ">=0.0.0-0 <0.0.0").strip()
 
     errors = []
     for module in modules:
@@ -84,6 +110,7 @@ def verify_gate():
         version = data.get("version")
         choysum = data.get("choysum")
         module_name = choysum.get("moduleName") if isinstance(choysum, dict) else None
+        cli_range = choysum.get("cli") if isinstance(choysum, dict) else None
 
         if not isinstance(name, str) or not name.startswith("@"):
             errors.append(f"modules/{module}/package.json: name must be a scoped package")
@@ -95,6 +122,19 @@ def verify_gate():
             errors.append(
                 f"modules/{module}/package.json: choysum.moduleName '{module_name}' must equal directory '{module}'"
             )
+
+        if not isinstance(cli_range, str) or not cli_range.strip():
+            errors.append(f"modules/{module}/package.json: choysum.cli must be a non-empty semver constraint string")
+        else:
+            normalized_cli_range = cli_range.strip()
+            if not is_valid_semver_constraint(normalized_cli_range):
+                errors.append(
+                    f"modules/{module}/package.json: choysum.cli '{normalized_cli_range}' is not a valid semver constraint"
+                )
+            if required_cli_range and normalized_cli_range != required_cli_range:
+                errors.append(
+                    f"modules/{module}/package.json: choysum.cli '{normalized_cli_range}' must equal required policy '{required_cli_range}'"
+                )
 
     if errors:
         print("verify-module-gate failed:", file=sys.stderr)

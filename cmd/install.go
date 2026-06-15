@@ -20,6 +20,7 @@ import (
 
 func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
+	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "install <module|module@version> [<module|module@version>...]",
 		Short: "Install Choysum Module",
@@ -40,6 +41,13 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				printCLIError("scope is not initialized")
 				os.Exit(1)
 			}
+			resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+			if err != nil {
+				env.Logger().Error("module compatibility version resolution failed", "error", err)
+				os.Exit(1)
+			}
+			runtimeOptions := cliRuntimeOptionsFromScope(env)
+
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
 
@@ -54,6 +62,23 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				if err != nil {
 					env.Logger().Error("module input invalid", "input", input, "error", err)
 					os.Exit(1)
+				}
+				if parsed.Kind == internalorigin.InputKindRegistry && strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
+					if strings.TrimSpace(resolvedCompat.Version) == "" {
+						err = xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
+						env.Logger().Error("module install failed", "input", input, "error", err)
+						os.Exit(1)
+					}
+					if err := runtimeOptions.Validate(); err != nil {
+						env.Logger().Error("module install failed", "input", input, "error", err)
+						os.Exit(1)
+					}
+					compatibleVersion, compatErr := resolveCompatibleRegistryLatestVersion(ctx, env, runtimeOptions, parsed.ModuleName, resolvedCompat.Version)
+					if compatErr != nil {
+						env.Logger().Error("module install failed", "input", input, "error", compatErr)
+						os.Exit(1)
+					}
+					parsed.Version = compatibleVersion
 				}
 
 				moduleName := strings.TrimSpace(parsed.LocalName)
@@ -111,5 +136,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
+	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }

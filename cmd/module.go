@@ -141,6 +141,8 @@ func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtime
 
 func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var remote bool
+	var showAll bool
+	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "info <module|module@version>",
 		Short: "Inspect source metadata for a module input",
@@ -155,12 +157,14 @@ func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 				if err != nil {
 					return xfmt.Errorf("module: invalid runtime options: %w", err)
 				}
-				return runModuleInfoRemote(cmd, env, runtimeOptions, args[0])
+				return runModuleInfoRemote(cmd, env, runtimeOptions, args[0], cliCompatVersion, showAll)
 			}
 			return runModuleInfoLocal(cmd, envGetter, args[0])
 		},
 	}
 	cmd.Flags().BoolVar(&remote, "remote", false, "query module info from remote module catalog index")
+	cmd.Flags().BoolVar(&showAll, "all", false, "show all remote versions without default compatibility filtering")
+	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }
 
@@ -201,7 +205,7 @@ func runModuleInfoLocal(cmd *cobra.Command, envGetter func() scope.Scope, input 
 	return nil
 }
 
-func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, input string) error {
+func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, input string, cliCompatVersion string, showAll bool) error {
 	raw := strings.TrimSpace(input)
 	if raw == "" {
 		return xfmt.Errorf("module input is required")
@@ -213,6 +217,29 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 			moduleName = parsed.ModuleName
 			version := strings.TrimSpace(parsed.Version)
 			if version != "" && !strings.EqualFold(version, "latest") {
+				resolvedCompat, compatErr := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+				if compatErr != nil {
+					return compatErr
+				}
+				if !showAll {
+					if strings.TrimSpace(resolvedCompat.Version) == "" {
+						return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
+					}
+					catalogItem, catalogErr := loadRemoteModuleInfo(cmd, runtimeScope, runtimeOptions, moduleName)
+					if catalogErr != nil {
+						return catalogErr
+					}
+					compatibleVersions, compatibilityErr := compatibleCatalogVersions(catalogItem, resolvedCompat.Version)
+					if compatibilityErr != nil {
+						return compatibilityErr
+					}
+					if !containsCatalogVersion(compatibleVersions, version) {
+						return xfmt.Errorf("ERR_MODULE_NO_COMPATIBLE_VERSION: No compatible version found for module '%s' with CLI version '%s'.", strings.TrimSpace(moduleName), strings.TrimSpace(resolvedCompat.Version))
+					}
+				} else if strings.TrimSpace(resolvedCompat.Version) == "" {
+					printCLIWarning(cliCompatFilterSkippedWarning())
+				}
+
 				coordinator, ctx, err := newCoordinatorForCommand(func() scope.Scope { return runtimeScope }, cmd)
 				if err != nil {
 					return err
@@ -234,11 +261,33 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 		return err
 	}
 
+	resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+	if err != nil {
+		return err
+	}
+
 	item, err := loadRemoteModuleInfo(cmd, runtimeScope, runtimeOptions, moduleName)
 	if err != nil {
 		return err
 	}
-	payload, err := json.MarshalIndent(item, "", "  ")
+
+	itemForOutput := item
+	if showAll {
+		if strings.TrimSpace(resolvedCompat.Version) == "" {
+			printCLIWarning(cliCompatFilterSkippedWarning())
+		}
+	} else {
+		if strings.TrimSpace(resolvedCompat.Version) == "" {
+			return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
+		}
+		filtered, err := filterCatalogModuleByCompatibility(item, resolvedCompat.Version)
+		if err != nil {
+			return err
+		}
+		itemForOutput = filtered
+	}
+
+	payload, err := json.MarshalIndent(itemForOutput, "", "  ")
 	if err != nil {
 		return xfmt.Errorf("marshal remote module info: %w", err)
 	}
@@ -248,6 +297,8 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 
 func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var remote bool
+	var showAll bool
+	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List modules in source lock bindings or remote module catalog index",
@@ -262,12 +313,14 @@ func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 				return xfmt.Errorf("module: invalid runtime options: %w", err)
 			}
 			if remote {
-				return runModuleListRemote(cmd, env, runtimeOptions)
+				return runModuleListRemote(cmd, env, runtimeOptions, cliCompatVersion, showAll)
 			}
 			return runModuleListLocal(cmd, env, runtimeOptions)
 		},
 	}
 	cmd.Flags().BoolVar(&remote, "remote", false, "list modules from remote module catalog index")
+	cmd.Flags().BoolVar(&showAll, "all", false, "show all remote versions without default compatibility filtering")
+	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }
 
@@ -321,11 +374,36 @@ func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOpt
 	return nil
 }
 
-func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions) error {
+func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, cliCompatVersion string, showAll bool) error {
+	resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+	if err != nil {
+		return err
+	}
+
 	items, err := listRemoteCatalogModules(cmd, runtimeScope, runtimeOptions, "")
 	if err != nil {
 		return err
 	}
+	if !showAll {
+		if strings.TrimSpace(resolvedCompat.Version) == "" {
+			return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
+		}
+		filteredItems := make([]sourceregistry.CatalogModule, 0, len(items))
+		for i := range items {
+			filtered, err := filterCatalogModuleByCompatibility(&items[i], resolvedCompat.Version)
+			if err != nil {
+				if strings.Contains(err.Error(), "ERR_MODULE_NO_COMPATIBLE_VERSION") {
+					continue
+				}
+				return err
+			}
+			filteredItems = append(filteredItems, *filtered)
+		}
+		items = filteredItems
+	} else if strings.TrimSpace(resolvedCompat.Version) == "" {
+		printCLIWarning(cliCompatFilterSkippedWarning())
+	}
+
 	if len(items) == 0 {
 		fmt.Fprintln(cmd.OutOrStdout(), "No remote modules found.")
 		return nil
@@ -333,9 +411,10 @@ func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 
 	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "MODULE\tLATEST\tDESCRIPTION")
+	fmt.Fprintln(w, "MODULE\tLATEST\tCLI_RANGE\tDESCRIPTION")
 	for _, item := range items {
-		fmt.Fprintf(w, "%s\t%s\t%s\n", item.Name, item.LatestVersion, item.Description)
+		latestCLIRange, _ := item.LatestCLIRange()
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", item.Name, item.LatestVersion, latestCLIRange, item.Description)
 	}
 	_ = w.Flush()
 	return nil
