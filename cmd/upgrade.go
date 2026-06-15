@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -18,6 +19,7 @@ import (
 
 func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 	var withDemo bool
+	var cliCompatVersion string
 	cmd := &cobra.Command{
 		Use:   "upgrade <module|module@version> [<module|module@version>...]",
 		Short: "Upgrade Choysum Module",
@@ -38,6 +40,12 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				printCLIError("scope is not initialized")
 				os.Exit(1)
 			}
+			resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+			if err != nil {
+				env.Logger().Error("module compatibility version resolution failed", "error", err)
+				os.Exit(1)
+			}
+			runtimeOptions := cliRuntimeOptionsFromScope(env)
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
 
@@ -62,11 +70,46 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 						return xfmt.Errorf("module name is empty")
 					}
 
-					txScope.Logger().Debug("module upgrade started", "input", moduleInput)
-					if err := moduleLifecycle.Upgrade(tx.Context(), lifecycle.UpgradeRequest{Input: moduleInput, WithDemo: withDemo}); err != nil {
+					parsed, err := internalorigin.ParseInput(moduleInput)
+					if err != nil {
+						return xfmt.Errorf("error parsing module input %s: %w", moduleInput, err)
+					}
+
+					upgradeInput := moduleInput
+					switch parsed.Kind {
+					case internalorigin.InputKindRegistry:
+						if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
+							if strings.TrimSpace(resolvedCompat.Version) == "" {
+								return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
+							}
+							compatibleVersion, compatErr := resolveCompatibleRegistryLatestVersion(tx.Context(), txScope, runtimeOptions, parsed.ModuleName, resolvedCompat.Version)
+							if compatErr != nil {
+								return compatErr
+							}
+							upgradeInput = strings.TrimSpace(parsed.ModuleName) + "@" + compatibleVersion
+						}
+					case internalorigin.InputKindLocal:
+						registryBacked, bindErr := hasRegistryOriginBinding(txScope, runtimeOptions, parsed.LocalName)
+						if bindErr != nil {
+							return bindErr
+						}
+						if registryBacked {
+							if strings.TrimSpace(resolvedCompat.Version) == "" {
+								return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
+							}
+							compatibleVersion, compatErr := resolveCompatibleRegistryLatestVersion(tx.Context(), txScope, runtimeOptions, parsed.LocalName, resolvedCompat.Version)
+							if compatErr != nil {
+								return compatErr
+							}
+							upgradeInput = parsed.LocalName + "@" + compatibleVersion
+						}
+					}
+
+					txScope.Logger().Debug("module upgrade started", "input", upgradeInput)
+					if err := moduleLifecycle.Upgrade(tx.Context(), lifecycle.UpgradeRequest{Input: upgradeInput, WithDemo: withDemo}); err != nil {
 						return xfmt.Errorf("error upgrading module %s: %w", moduleInput, err)
 					}
-					txScope.Logger().Debug("module upgraded", "input", moduleInput)
+					txScope.Logger().Debug("module upgraded", "input", upgradeInput)
 				}
 				return nil
 			}); err != nil {
@@ -79,5 +122,6 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
+	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
 }
