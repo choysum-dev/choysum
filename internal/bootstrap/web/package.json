@@ -11,17 +11,17 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.7.0",
-    "@connectrpc/connect": "^2.1.0",
-    "@connectrpc/connect-web": "^2.1.0",
-    "element-plus": "^2.14.1",
-    "vue": "^3.5.35"
+    "@connectrpc/connect": "^2.1.2",
+    "@connectrpc/connect-web": "^2.1.2",
+    "element-plus": "^2.14.2",
+    "vue": "^3.5.38"
   },
   "devDependencies": {
     "@bufbuild/protoc-gen-es": "2.12.0",
-    "@types/node": "^25.9.2",
+    "@types/node": "^25.9.3",
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
-    "vue-tsc": "^3.3.3"
+    "vue-tsc": "^3.3.5"
   }
 }
