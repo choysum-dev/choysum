@@ -79,17 +79,6 @@ func resolveCLICompatVersionForCommand(cmd *cobra.Command, flagValue string) (re
 	return resolveCLICompatVersion(flagValue, runtimeVersion)
 }
 
-func requireCLICompatVersionForCommand(cmd *cobra.Command, flagValue string) (resolvedCLICompatVersion, error) {
-	resolved, err := resolveCLICompatVersionForCommand(cmd, flagValue)
-	if err != nil {
-		return resolvedCLICompatVersion{}, err
-	}
-	if strings.TrimSpace(resolved.Version) == "" {
-		return resolvedCLICompatVersion{}, xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
-	}
-	return resolved, nil
-}
-
 func cliVersionForConstraint(cliVersion string) (*msemver.Version, error) {
 	normalized, ok := normalizeCLICompatVersion(cliVersion)
 	if !ok {
@@ -229,9 +218,13 @@ func filterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliV
 		}
 	}
 	if filtered.Source != nil {
-		source := *filtered.Source
-		source.Version = filtered.LatestVersion
-		filtered.Source = &source
+		if strings.TrimSpace(filtered.LatestVersion) == strings.TrimSpace(item.LatestVersion) {
+			source := *filtered.Source
+			source.Version = filtered.LatestVersion
+			filtered.Source = &source
+		} else {
+			filtered.Source = nil
+		}
 	}
 	return &filtered, nil
 }

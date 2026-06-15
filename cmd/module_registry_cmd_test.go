@@ -17,6 +17,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -188,6 +189,54 @@ func TestModuleUtilityHelpers(t *testing.T) {
 	if available, ok := payload["available"].(bool); !ok || !available {
 		t.Fatalf("unexpected payload availability: %#v", payload["available"])
 	}
+}
+
+func TestFilterCatalogModuleByCompatibility_SourceConsistency(t *testing.T) {
+	item := &sourceregistry.CatalogModule{
+		Name:          "demo",
+		LatestVersion: "v2.0.0",
+		Versions:      []string{"v1.0.0", "v2.0.0"},
+		VersionCLIRanges: map[string]string{
+			"v1.0.0": ">=1.0.0 <2.0.0",
+			"v2.0.0": ">=2.0.0 <3.0.0",
+		},
+		Source: &sourceregistry.CatalogSource{
+			Type:      "npm",
+			Package:   "@choysum-dev/demo",
+			Version:   "v2.0.0",
+			Tarball:   "https://registry.npmjs.org/@choysum-dev/demo/-/demo-2.0.0.tgz",
+			Integrity: "sha512-demo",
+		},
+	}
+
+	t.Run("drops source when filtered latest changes", func(t *testing.T) {
+		filtered, err := filterCatalogModuleByCompatibility(item, "v1.5.0")
+		if err != nil {
+			t.Fatalf("filterCatalogModuleByCompatibility() error = %v", err)
+		}
+		if filtered.LatestVersion != "v1.0.0" {
+			t.Fatalf("filtered latest version = %q, want %q", filtered.LatestVersion, "v1.0.0")
+		}
+		if filtered.Source != nil {
+			t.Fatalf("filtered source = %#v, want nil when latest version changes", filtered.Source)
+		}
+	})
+
+	t.Run("keeps source when filtered latest unchanged", func(t *testing.T) {
+		filtered, err := filterCatalogModuleByCompatibility(item, "v2.1.0")
+		if err != nil {
+			t.Fatalf("filterCatalogModuleByCompatibility() error = %v", err)
+		}
+		if filtered.Source == nil {
+			t.Fatal("filtered source is nil, want source metadata")
+		}
+		if filtered.Source.Version != "v2.0.0" {
+			t.Fatalf("filtered source version = %q, want %q", filtered.Source.Version, "v2.0.0")
+		}
+		if filtered.Source.Tarball != item.Source.Tarball || filtered.Source.Integrity != item.Source.Integrity {
+			t.Fatalf("filtered source payload changed unexpectedly: %#v", filtered.Source)
+		}
+	})
 }
 
 func TestModuleRemoteCommandBranches(t *testing.T) {

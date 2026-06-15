@@ -17,7 +17,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MODULES_ROOT = REPO_ROOT / "modules"
 
 SEMVER_COMPARATOR_PATTERN = re.compile(
-    r"^(<=|>=|<|>|=)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+    r"^(<=|>=|<|>|=|~|\^)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 )
 
 
