@@ -587,6 +587,27 @@ func TestCatalogInfoFromStaticIndex_ExposesVersionCLIRanges(t *testing.T) {
 	}
 }
 
+func TestCatalogModuleCLIRangeForVersion_DeterministicFallbackOrder(t *testing.T) {
+	t.Parallel()
+
+	module := CatalogModule{
+		VersionCLIRanges: map[string]string{
+			"1.2.3":   ">=0.0.0-0 <0.0.0",
+			"v1.2.3 ": ">=1.0.0 <2.0.0",
+		},
+	}
+
+	for i := 0; i < 200; i++ {
+		got, ok := module.CLIRangeForVersion("v1.2.3")
+		if !ok {
+			t.Fatalf("CLIRangeForVersion(v1.2.3) = (%q,%v), want non-empty deterministic match", got, ok)
+		}
+		if got != ">=0.0.0-0 <0.0.0" {
+			t.Fatalf("CLIRangeForVersion(v1.2.3) = %q, want deterministic sorted-key result >=0.0.0-0 <0.0.0", got)
+		}
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_SortsVersionsSemantically(t *testing.T) {
 	t.Parallel()
 

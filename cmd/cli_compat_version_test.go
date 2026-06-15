@@ -49,10 +49,10 @@ func newCLICompatTestScope(runtimeOptions cliRuntimeOptions) *commandTestScope {
 func TestNormalizeAndParseCLICompatVersion(t *testing.T) {
 	t.Run("normalize", func(t *testing.T) {
 		tests := []struct {
-			name    string
-			input   string
-			want    string
-			wantOK  bool
+			name   string
+			input  string
+			want   string
+			wantOK bool
 		}{
 			{name: "trim and add prefix", input: " 1.7.0 ", want: "v1.7.0", wantOK: true},
 			{name: "keep prefixed", input: "v1.7.0", want: "v1.7.0", wantOK: true},

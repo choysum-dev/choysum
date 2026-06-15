@@ -69,7 +69,14 @@ func (m CatalogModule) CLIRangeForVersion(version string) (string, bool) {
 	}
 
 	targetNormalized, targetHasSemVer := normalizeSemVer(version)
-	for rawVersion, rawRange := range m.VersionCLIRanges {
+	keys := make([]string, 0, len(m.VersionCLIRanges))
+	for rawVersion := range m.VersionCLIRanges {
+		keys = append(keys, rawVersion)
+	}
+	sort.Strings(keys)
+
+	for _, rawVersion := range keys {
+		rawRange := m.VersionCLIRanges[rawVersion]
 		rawRange = strings.TrimSpace(rawRange)
 		if rawRange == "" {
 			continue
