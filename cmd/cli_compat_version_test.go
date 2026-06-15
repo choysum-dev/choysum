@@ -375,6 +375,58 @@ func TestRegistryBindingHelpers(t *testing.T) {
 	}
 }
 
+func TestCLICompatHelperEdgeCases(t *testing.T) {
+	t.Run("resolve from nil command", func(t *testing.T) {
+		t.Setenv(cliCompatVersionEnv, "")
+		resolved, err := resolveCLICompatVersionForCommand(nil, "")
+		if err != nil {
+			t.Fatalf("resolveCLICompatVersionForCommand(nil) error = %v", err)
+		}
+		if resolved != (resolvedCLICompatVersion{}) {
+			t.Fatalf("resolveCLICompatVersionForCommand(nil) = %#v, want empty", resolved)
+		}
+	})
+
+	t.Run("catalog candidates for nil module", func(t *testing.T) {
+		if candidates := catalogCandidateVersions(nil); candidates != nil {
+			t.Fatalf("catalogCandidateVersions(nil) = %#v, want nil", candidates)
+		}
+	})
+
+	t.Run("containsCatalogVersion non-semver target mismatch", func(t *testing.T) {
+		if containsCatalogVersion([]string{"v1.2.3"}, "snapshot") {
+			t.Fatal("containsCatalogVersion() should return false for non-semver mismatch")
+		}
+	})
+
+	t.Run("filterCatalogModuleByCompatibility nil module", func(t *testing.T) {
+		if _, err := filterCatalogModuleByCompatibility(nil, "v1.0.0"); err == nil || !strings.Contains(err.Error(), "remote module is nil") {
+			t.Fatalf("filterCatalogModuleByCompatibility(nil) error = %v, want nil-module error", err)
+		}
+	})
+
+	t.Run("resolveCompatibleRegistryLatestVersion invalid cli version", func(t *testing.T) {
+		catalogServer := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{
+			{
+				Name:          "demo",
+				LatestVersion: "v1.0.0",
+				Versions:      []string{"v1.0.0"},
+				VersionCLIRanges: map[string]string{
+					"v1.0.0": ">=1.0.0 <2.0.0",
+				},
+			},
+		})
+		defer catalogServer.Close()
+
+		runtimeOptions := newCLICompatTestRuntimeOptions(t, catalogServer.URL+"/v1/index.json")
+		runtimeScope := newCLICompatTestScope(runtimeOptions)
+
+		if _, err := resolveCompatibleRegistryLatestVersion(context.Background(), runtimeScope, runtimeOptions, "demo", "bad"); err == nil || !strings.Contains(err.Error(), "ERR_CLI_COMPAT_VERSION_INVALID") {
+			t.Fatalf("resolveCompatibleRegistryLatestVersion(invalid cli version) error = %v, want invalid-version error", err)
+		}
+	})
+}
+
 func TestCLICompatFilterSkippedWarning(t *testing.T) {
 	warning := cliCompatFilterSkippedWarning()
 	if !strings.Contains(warning, "WARN_CLI_COMPAT_FILTER_SKIPPED") {

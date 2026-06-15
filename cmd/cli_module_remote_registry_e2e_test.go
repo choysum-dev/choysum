@@ -312,6 +312,7 @@ func TestCLIModuleRemoteInfoNotFound(t *testing.T) {
 
 func TestCLIModuleRemoteListRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -329,6 +330,7 @@ func TestCLIModuleRemoteListRequiresCompatVersionInDev(t *testing.T) {
 
 func TestCLIModuleRemoteListAllAllowsUnresolvedCompatVersion(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -349,6 +351,7 @@ func TestCLIModuleRemoteListAllAllowsUnresolvedCompatVersion(t *testing.T) {
 
 func TestCLIModuleRemoteInfoRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -361,6 +364,27 @@ func TestCLIModuleRemoteInfoRequiresCompatVersionInDev(t *testing.T) {
 	}
 	if !strings.Contains(output, "ERR_CLI_COMPAT_VERSION_UNRESOLVED") {
 		t.Fatalf("expected unresolved cli compat error, got %q", output)
+	}
+}
+
+func TestCLIModuleRemoteInfoAllAllowsUnresolvedCompatVersion(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
+	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
+
+	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
+	defer srv.Close()
+	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
+
+	output, code := runCLI(t, "module", "info", "auth", "--remote", "--all", "--config", configPath)
+	if code != 0 {
+		t.Fatalf("expected module info --remote --all to succeed without compat version, code=%d output=%s", code, output)
+	}
+	if !strings.Contains(output, `"name": "auth"`) {
+		t.Fatalf("expected module info payload for auth, got %q", output)
+	}
+	if !strings.Contains(output, "WARN_CLI_COMPAT_FILTER_SKIPPED") {
+		t.Fatalf("expected compat filter skipped warning, got %q", output)
 	}
 }
 
@@ -532,6 +556,7 @@ func TestCLIUpgradeFlowWithGlobalRegistryIndex(t *testing.T) {
 
 func TestCLIUpgradeLatestRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -635,8 +660,122 @@ func TestCLIUpgradeLocalRegistryBindingUsesCompatFilter(t *testing.T) {
 	}
 }
 
+func TestCLIUpgradeLocalRegistryBindingRequiresCompatVersionInDev(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
+
+	workspaceRoot := t.TempDir()
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("create modules path: %v", err)
+	}
+
+	writeCommandPackage(t, modulesPath, "demo", `{
+		"name": "@choysum-dev/demo",
+		"version": "0.1.0",
+		"description": "demo module",
+		"license": "Apache-2.0",
+		"author": "test",
+		"choysum": {
+			"moduleName": "demo",
+			"application": "demo",
+			"category": "test",
+			"depends": []
+		}
+	}`)
+
+	dbPath := writeTempSqliteDB(t)
+	seedModuleStatusForCLI(t, dbPath, "demo", meta.Installed)
+	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, modulesPath)
+
+	srv := startRemoteRegistryCatalogAndNPMServer(t, "demo", "v0.2.0")
+	defer srv.Close()
+	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
+
+	cfg, err := config.NewConfig(configPath)
+	if err != nil {
+		t.Fatalf("load config for lock binding seed failed: %v", err)
+	}
+	workspaceStateRoot := filepath.Dir(configPath)
+	store := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(cfg.DefaultChoysumPath))
+	if err := store.UpsertBinding(workspaceStateRoot, internalorigin.Binding{
+		ModuleName:      "demo",
+		OriginType:      internalorigin.OriginTypeRegistry,
+		OriginRef:       "demo@v0.1.0",
+		ResolvedVersion: "v0.1.0",
+		LocalPath:       filepath.Join(modulesPath, "demo"),
+	}); err != nil {
+		t.Fatalf("seed registry binding failed: %v", err)
+	}
+
+	output, code := runCLI(t, "upgrade", "demo", "--config", configPath)
+	if code == 0 {
+		t.Fatalf("expected non-zero exit code when cli compat version is unresolved, output=%s", output)
+	}
+	if !strings.Contains(output, "ERR_CLI_COMPAT_VERSION_UNRESOLVED") {
+		t.Fatalf("expected unresolved cli compat error, got %q", output)
+	}
+}
+
+func TestCLIUpgradeLocalRegistryBindingNoCompatibleVersion(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	workspaceRoot := t.TempDir()
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("create modules path: %v", err)
+	}
+
+	writeCommandPackage(t, modulesPath, "demo", `{
+		"name": "@choysum-dev/demo",
+		"version": "0.1.0",
+		"description": "demo module",
+		"license": "Apache-2.0",
+		"author": "test",
+		"choysum": {
+			"moduleName": "demo",
+			"application": "demo",
+			"category": "test",
+			"depends": []
+		}
+	}`)
+
+	dbPath := writeTempSqliteDB(t)
+	seedModuleStatusForCLI(t, dbPath, "demo", meta.Installed)
+	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, modulesPath)
+
+	srv := startRemoteRegistryCatalogAndNPMServer(t, "demo", "v0.2.0")
+	defer srv.Close()
+	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
+
+	cfg, err := config.NewConfig(configPath)
+	if err != nil {
+		t.Fatalf("load config for lock binding seed failed: %v", err)
+	}
+	workspaceStateRoot := filepath.Dir(configPath)
+	store := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(cfg.DefaultChoysumPath))
+	if err := store.UpsertBinding(workspaceStateRoot, internalorigin.Binding{
+		ModuleName:      "demo",
+		OriginType:      internalorigin.OriginTypeRegistry,
+		OriginRef:       "demo@v0.1.0",
+		ResolvedVersion: "v0.1.0",
+		LocalPath:       filepath.Join(modulesPath, "demo"),
+	}); err != nil {
+		t.Fatalf("seed registry binding failed: %v", err)
+	}
+
+	output, code := runCLI(t, "upgrade", "demo", "--cli-compat-version", "v9.0.0", "--config", configPath)
+	if code == 0 {
+		t.Fatalf("expected non-zero exit code for no-compatible registry upgrade, output=%s", output)
+	}
+	if !strings.Contains(output, "ERR_MODULE_NO_COMPATIBLE_VERSION") {
+		t.Fatalf("expected no-compatible-version error, got %q", output)
+	}
+}
+
 func TestCLIInstallLatestRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv(cliCompatVersionEnv, "")
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -655,6 +794,68 @@ func TestCLIInstallLatestRequiresCompatVersionInDev(t *testing.T) {
 	}
 	if !strings.Contains(output, "ERR_CLI_COMPAT_VERSION_UNRESOLVED") {
 		t.Fatalf("expected unresolved cli compat error, got %q", output)
+	}
+}
+
+func TestCLIInstallLatestResolvesCompatibleVersion(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	workspaceRoot := t.TempDir()
+	modulesPath := filepath.Join(workspaceRoot, "modules")
+	if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+		t.Fatalf("create modules path: %v", err)
+	}
+
+	dbPath := writeTempSqliteDB(t)
+	configPath := writeTempConfigWithDSN(t, "sqlite", dbPath, modulesPath)
+
+	srv := startRemoteRegistryCatalogAndNPMServer(t, "demo", "v0.2.0")
+	defer srv.Close()
+	setModuleCatalogIndexURLForCLIConfig(t, configPath, srv.URL+"/v1/index.json")
+
+	output, code := runCLI(t, "install", "demo@latest", "--cli-compat-version", "v0.0.0-0", "--config", configPath)
+	if code != 0 {
+		t.Fatalf("install failed, code=%d output=%s", code, output)
+	}
+
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	var installed meta.IrModule
+	if err := db.Where("name = ?", "demo").Take(&installed).Error; err != nil {
+		t.Fatalf("query installed module failed: %v", err)
+	}
+	if installed.Version != "v0.2.0" {
+		t.Fatalf("unexpected installed version: %q", installed.Version)
+	}
+	if installed.Status != meta.Installed {
+		t.Fatalf("unexpected installed status: %v", installed.Status)
+	}
+
+	cfg, err := config.NewConfig(configPath)
+	if err != nil {
+		t.Fatalf("load config for lock lookup failed: %v", err)
+	}
+	workspaceStateRoot := filepath.Dir(configPath)
+	binding, ok, err := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(cfg.DefaultChoysumPath)).LookupBinding(workspaceStateRoot, "demo")
+	if err != nil {
+		t.Fatalf("lookup lock binding failed: %v", err)
+	}
+	if !ok {
+		t.Fatal("expected lock binding for installed module")
+	}
+	if strings.TrimSpace(binding.LocalPath) == "" {
+		t.Fatalf("expected lock binding to record local path, got %#v", binding)
+	}
+
+	packageJSONRaw, err := os.ReadFile(filepath.Join(modulesPath, "demo", "package.json"))
+	if err != nil {
+		t.Fatalf("read installed package.json failed: %v", err)
+	}
+	packageJSON := string(packageJSONRaw)
+	if !strings.Contains(packageJSON, `"version":"0.2.0"`) && !strings.Contains(packageJSON, `"version": "0.2.0"`) {
+		t.Fatalf("expected installed package.json version 0.2.0, got %q", packageJSON)
 	}
 }
 

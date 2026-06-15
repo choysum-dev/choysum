@@ -403,3 +403,93 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		}
 	})
 }
+
+func TestModuleRemoteCompatibilityEdgeBranches(t *testing.T) {
+	runtimeScope := &commandTestScope{ctx: context.Background(), cfg: &config.Config{}}
+
+	compatibleCatalog := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{
+		{
+			Name:          "auth",
+			LatestVersion: "v2.0.0",
+			Description:   "Authentication",
+			Versions:      []string{"v1.0.0", "v2.0.0"},
+			VersionCLIRanges: map[string]string{
+				"v1.0.0": ">=1.0.0 <2.0.0",
+				"v2.0.0": ">=2.0.0 <3.0.0",
+			},
+		},
+	})
+	defer compatibleCatalog.Close()
+
+	runtimeOptions := cliRuntimeOptions{moduleCatalogIndexURL: compatibleCatalog.URL + "/v1/index.json"}
+
+	t.Run("list all allows unresolved compat version", func(t *testing.T) {
+		var out bytes.Buffer
+		listCmd := &cobra.Command{}
+		listCmd.SetOut(&out)
+
+		if err := runModuleListRemote(listCmd, runtimeScope, runtimeOptions, "", true); err != nil {
+			t.Fatalf("runModuleListRemote(showAll unresolved) error = %v", err)
+		}
+		output := out.String()
+		if !strings.Contains(output, "MODULE") || !strings.Contains(output, "CLI_RANGE") || !strings.Contains(output, "auth") {
+			t.Fatalf("unexpected remote list output: %q", output)
+		}
+	})
+
+	t.Run("list rejects invalid compat version", func(t *testing.T) {
+		listCmd := &cobra.Command{}
+		err := runModuleListRemote(listCmd, runtimeScope, runtimeOptions, "bad", false)
+		if err == nil || !strings.Contains(err.Error(), "ERR_CLI_COMPAT_VERSION_INVALID") {
+			t.Fatalf("runModuleListRemote(invalid compat) error = %v, want invalid-version error", err)
+		}
+	})
+
+	t.Run("list fails when catalog item misses cli range", func(t *testing.T) {
+		malformedCatalog := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"modules": map[string]any{
+					"auth": map[string]any{
+						"moduleId":      "auth",
+						"latestVersion": "v1.0.0",
+						"package":       "@acme/choysum-auth",
+						"versions": map[string]any{
+							"v1.0.0": map[string]any{
+								"package":   "@acme/choysum-auth",
+								"tarball":   "https://registry.npmjs.org/@acme/choysum-auth/-/choysum-auth-1.0.0.tgz",
+								"integrity": "sha512-auth-1.0.0",
+							},
+						},
+					},
+				},
+			})
+		}))
+		defer malformedCatalog.Close()
+
+		err := runModuleListRemote(&cobra.Command{}, runtimeScope, cliRuntimeOptions{moduleCatalogIndexURL: malformedCatalog.URL + "/v1/index.json"}, "v1.5.0", false)
+		if err == nil || !strings.Contains(err.Error(), "ERR_MODULE_CLI_RANGE_MISSING") {
+			t.Fatalf("runModuleListRemote(malformed cli range) error = %v, want missing-range error", err)
+		}
+	})
+
+	t.Run("info rejects explicit version outside compatible set", func(t *testing.T) {
+		err := runModuleInfoRemote(&cobra.Command{}, runtimeScope, runtimeOptions, "auth@v1.0.0", "v2.5.0", false)
+		if err == nil || !strings.Contains(err.Error(), "ERR_MODULE_NO_COMPATIBLE_VERSION") {
+			t.Fatalf("runModuleInfoRemote(explicit incompatible) error = %v, want no-compatible error", err)
+		}
+	})
+
+	t.Run("info all allows unresolved compat version", func(t *testing.T) {
+		var out bytes.Buffer
+		infoCmd := &cobra.Command{}
+		infoCmd.SetOut(&out)
+
+		if err := runModuleInfoRemote(infoCmd, runtimeScope, runtimeOptions, "auth", "", true); err != nil {
+			t.Fatalf("runModuleInfoRemote(showAll unresolved) error = %v", err)
+		}
+		if !strings.Contains(out.String(), `"name": "auth"`) {
+			t.Fatalf("unexpected info payload: %q", out.String())
+		}
+	})
+}

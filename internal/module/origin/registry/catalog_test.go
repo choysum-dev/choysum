@@ -608,6 +608,40 @@ func TestCatalogModuleCLIRangeForVersion_DeterministicFallbackOrder(t *testing.T
 	}
 }
 
+func TestCatalogModuleCLIRangeForVersion_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	emptyModule := CatalogModule{}
+	if got, ok := emptyModule.CLIRangeForVersion(""); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(empty version) = (%q,%v), want (\"\",false)", got, ok)
+	}
+	if got, ok := emptyModule.CLIRangeForVersion("v1.0.0"); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(no ranges) = (%q,%v), want (\"\",false)", got, ok)
+	}
+
+	moduleWithEmptyDirectRange := CatalogModule{
+		VersionCLIRanges: map[string]string{
+			"v1.0.0": "   ",
+		},
+	}
+	if got, ok := moduleWithEmptyDirectRange.CLIRangeForVersion("v1.0.0"); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(empty direct range) = (%q,%v), want (\"\",false)", got, ok)
+	}
+
+	nonSemVerTargetModule := CatalogModule{
+		VersionCLIRanges: map[string]string{
+			"v1.0.0": ">=1.0.0 <2.0.0",
+		},
+	}
+	if got, ok := nonSemVerTargetModule.CLIRangeForVersion("snapshot"); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(non-semver mismatch) = (%q,%v), want (\"\",false)", got, ok)
+	}
+
+	if got, ok := (CatalogModule{LatestVersion: "v1.0.0"}).LatestCLIRange(); ok || got != "" {
+		t.Fatalf("LatestCLIRange(no ranges) = (%q,%v), want (\"\",false)", got, ok)
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_SortsVersionsSemantically(t *testing.T) {
 	t.Parallel()
 
@@ -696,7 +730,7 @@ func TestCatalogFetchJSONBranchCoverage(t *testing.T) {
 		_, _ = w.Write([]byte(`{"modules":{}}`))
 	}))
 	defer nilCtxServer.Close()
-	if payload, err := catalog.fetchJSON(nil, nilCtxServer.URL); err != nil || len(payload) == 0 {
+	if payload, err := catalog.fetchJSON(context.TODO(), nilCtxServer.URL); err != nil || len(payload) == 0 {
 		t.Fatalf("fetchJSON(nil context) = (%q, %v), want non-empty payload", string(payload), err)
 	}
 
