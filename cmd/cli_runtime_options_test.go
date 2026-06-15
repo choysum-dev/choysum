@@ -47,6 +47,27 @@ func TestNewCliRuntimeOptionsConstructors(t *testing.T) {
 	}
 }
 
+func TestCliRuntimeOptionsFromScope(t *testing.T) {
+	t.Parallel()
+
+	if got := cliRuntimeOptionsFromScope(nil); got != (cliRuntimeOptions{}) {
+		t.Fatalf("cliRuntimeOptionsFromScope(nil) = %#v, want zero value", got)
+	}
+
+	runtimeScope := &commandTestScope{cfg: &config.Config{
+		DefaultChoysumPath:    "/workspace/.choysum",
+		ModulesPath:           "/workspace/modules",
+		NpmPath:               "/workspace/node_modules",
+		TmpPath:               "/workspace/.choysum/tmp",
+		ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
+	}}
+
+	got := cliRuntimeOptionsFromScope(runtimeScope)
+	if got.defaultChoysumPath != "/workspace/.choysum" || got.modulesPath != "/workspace/modules" || got.npmPath != "/workspace/node_modules" || got.tmpPath != "/workspace/.choysum/tmp" || got.moduleCatalogIndexURL != "https://index.example.com/v1/index.json" {
+		t.Fatalf("cliRuntimeOptionsFromScope() = %#v, want values copied from scope paths", got)
+	}
+}
+
 func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	t.Parallel()
 

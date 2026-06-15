@@ -543,6 +543,105 @@ func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryDeterministicallyForSemv
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_ExposesVersionCLIRanges(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.2.3",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{
+						"choysum": map[string]any{"cli": ">=0.0.0-0 <0.0.0"},
+					},
+					"1.2.3": map[string]any{
+						"choysum": map[string]any{"cli": ">=0.0.0-0 <0.0.0"},
+					},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil {
+		t.Fatal("Catalog.Info() returned nil")
+	}
+	if len(item.VersionCLIRanges) != 2 {
+		t.Fatalf("versionCLIRanges len = %d, want 2", len(item.VersionCLIRanges))
+	}
+	if got, ok := item.CLIRangeForVersion("v1.0.0"); !ok || got != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("CLIRangeForVersion(v1.0.0) = (%q,%v), want (>=0.0.0-0 <0.0.0,true)", got, ok)
+	}
+	if got, ok := item.CLIRangeForVersion("v1.2.3"); !ok || got != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("CLIRangeForVersion(v1.2.3) = (%q,%v), want (>=0.0.0-0 <0.0.0,true)", got, ok)
+	}
+	if got, ok := item.LatestCLIRange(); !ok || got != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("LatestCLIRange() = (%q,%v), want (>=0.0.0-0 <0.0.0,true)", got, ok)
+	}
+}
+
+func TestCatalogModuleCLIRangeForVersion_DeterministicFallbackOrder(t *testing.T) {
+	t.Parallel()
+
+	module := CatalogModule{
+		VersionCLIRanges: map[string]string{
+			"1.2.3":   ">=0.0.0-0 <0.0.0",
+			"v1.2.3 ": ">=1.0.0 <2.0.0",
+		},
+	}
+
+	for i := 0; i < 200; i++ {
+		got, ok := module.CLIRangeForVersion("v1.2.3")
+		if !ok {
+			t.Fatalf("CLIRangeForVersion(v1.2.3) = (%q,%v), want non-empty deterministic match", got, ok)
+		}
+		if got != ">=0.0.0-0 <0.0.0" {
+			t.Fatalf("CLIRangeForVersion(v1.2.3) = %q, want deterministic sorted-key result >=0.0.0-0 <0.0.0", got)
+		}
+	}
+}
+
+func TestCatalogModuleCLIRangeForVersion_EdgeCases(t *testing.T) {
+	t.Parallel()
+
+	emptyModule := CatalogModule{}
+	if got, ok := emptyModule.CLIRangeForVersion(""); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(empty version) = (%q,%v), want (\"\",false)", got, ok)
+	}
+	if got, ok := emptyModule.CLIRangeForVersion("v1.0.0"); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(no ranges) = (%q,%v), want (\"\",false)", got, ok)
+	}
+
+	moduleWithEmptyDirectRange := CatalogModule{
+		VersionCLIRanges: map[string]string{
+			"v1.0.0": "   ",
+		},
+	}
+	if got, ok := moduleWithEmptyDirectRange.CLIRangeForVersion("v1.0.0"); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(empty direct range) = (%q,%v), want (\"\",false)", got, ok)
+	}
+
+	nonSemVerTargetModule := CatalogModule{
+		VersionCLIRanges: map[string]string{
+			"v1.0.0": ">=1.0.0 <2.0.0",
+		},
+	}
+	if got, ok := nonSemVerTargetModule.CLIRangeForVersion("snapshot"); ok || got != "" {
+		t.Fatalf("CLIRangeForVersion(non-semver mismatch) = (%q,%v), want (\"\",false)", got, ok)
+	}
+
+	if got, ok := (CatalogModule{LatestVersion: "v1.0.0"}).LatestCLIRange(); ok || got != "" {
+		t.Fatalf("LatestCLIRange(no ranges) = (%q,%v), want (\"\",false)", got, ok)
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_SortsVersionsSemantically(t *testing.T) {
 	t.Parallel()
 
@@ -631,7 +730,7 @@ func TestCatalogFetchJSONBranchCoverage(t *testing.T) {
 		_, _ = w.Write([]byte(`{"modules":{}}`))
 	}))
 	defer nilCtxServer.Close()
-	if payload, err := catalog.fetchJSON(nil, nilCtxServer.URL); err != nil || len(payload) == 0 {
+	if payload, err := catalog.fetchJSON(context.TODO(), nilCtxServer.URL); err != nil || len(payload) == 0 {
 		t.Fatalf("fetchJSON(nil context) = (%q, %v), want non-empty payload", string(payload), err)
 	}
 
@@ -785,12 +884,13 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 
 	mod := &CatalogModule{
-		Name:          " auth ",
-		LatestVersion: "",
-		Description:   "  auth module  ",
-		Versions:      []string{" v1.2.0 ", "", "v1.0.0"},
-		NPMPackage:    " @acme/choysum-auth ",
-		Source:        &CatalogSource{},
+		Name:             " auth ",
+		LatestVersion:    "",
+		Description:      "  auth module  ",
+		Versions:         []string{" v1.2.0 ", "", "v1.0.0"},
+		VersionCLIRanges: map[string]string{" v1.2.0 ": "  >=0.0.0-0 <0.0.0  ", "": "ignored", "v1.0.0": ""},
+		NPMPackage:       " @acme/choysum-auth ",
+		Source:           &CatalogSource{},
 	}
 	normalizeCatalogModule(mod)
 	if mod.Name != "auth" || mod.Description != "auth module" || mod.NPMPackage != "@acme/choysum-auth" {
@@ -798,6 +898,9 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 	if mod.LatestVersion != "v1.2.0" {
 		t.Fatalf("normalizeCatalogModule() latest version = %q, want %q", mod.LatestVersion, "v1.2.0")
+	}
+	if len(mod.VersionCLIRanges) != 1 || mod.VersionCLIRanges["v1.2.0"] != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("normalizeCatalogModule() versionCLIRanges = %#v, want one normalized entry", mod.VersionCLIRanges)
 	}
 	if len(mod.Versions) != 2 || mod.Versions[0] != "v1.0.0" || mod.Versions[1] != "v1.2.0" {
 		t.Fatalf("normalizeCatalogModule() versions = %#v, want [v1.0.0 v1.2.0]", mod.Versions)
