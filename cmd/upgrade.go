@@ -97,11 +97,11 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 							if strings.TrimSpace(resolvedCompat.Version) == "" {
 								return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
 							}
-							resolvedInput, _, resolveErr := resolveRegistryBackedUpgradeInput(tx.Context(), txScope, runtimeOptions, parsed.LocalName, resolvedCompat.Version)
-							if resolveErr != nil {
-								return resolveErr
+							compatibleVersion, compatErr := resolveCompatibleRegistryLatestVersion(tx.Context(), txScope, runtimeOptions, parsed.LocalName, resolvedCompat.Version)
+							if compatErr != nil {
+								return compatErr
 							}
-							upgradeInput = resolvedInput
+							upgradeInput = parsed.LocalName + "@" + compatibleVersion
 						}
 					}
 
