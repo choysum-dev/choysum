@@ -19,12 +19,13 @@ import (
 )
 
 type CatalogModule struct {
-	Name          string         `json:"name"`
-	LatestVersion string         `json:"latestVersion,omitempty"`
-	Description   string         `json:"description,omitempty"`
-	Versions      []string       `json:"versions,omitempty"`
-	NPMPackage    string         `json:"npmPackage,omitempty"`
-	Source        *CatalogSource `json:"source,omitempty"`
+	Name             string            `json:"name"`
+	LatestVersion    string            `json:"latestVersion,omitempty"`
+	Description      string            `json:"description,omitempty"`
+	Versions         []string          `json:"versions,omitempty"`
+	VersionCLIRanges map[string]string `json:"versionCLIRanges,omitempty"`
+	NPMPackage       string            `json:"npmPackage,omitempty"`
+	Source           *CatalogSource    `json:"source,omitempty"`
 }
 
 type CatalogSource struct {
@@ -54,6 +55,51 @@ func (m CatalogModule) ResolvedNPMRegistry(defaultRegistry string) string {
 	return strings.TrimSpace(defaultRegistry)
 }
 
+func (m CatalogModule) CLIRangeForVersion(version string) (string, bool) {
+	version = strings.TrimSpace(version)
+	if version == "" || len(m.VersionCLIRanges) == 0 {
+		return "", false
+	}
+
+	if value, ok := m.VersionCLIRanges[version]; ok {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			return value, true
+		}
+	}
+
+	targetNormalized, targetHasSemVer := normalizeSemVer(version)
+	keys := make([]string, 0, len(m.VersionCLIRanges))
+	for rawVersion := range m.VersionCLIRanges {
+		keys = append(keys, rawVersion)
+	}
+	sort.Strings(keys)
+
+	for _, rawVersion := range keys {
+		rawRange := m.VersionCLIRanges[rawVersion]
+		rawRange = strings.TrimSpace(rawRange)
+		if rawRange == "" {
+			continue
+		}
+		trimmedVersion := strings.TrimSpace(rawVersion)
+		if trimmedVersion == version {
+			return rawRange, true
+		}
+		if !targetHasSemVer {
+			continue
+		}
+		if rawNormalized, ok := normalizeSemVer(trimmedVersion); ok && rawNormalized == targetNormalized {
+			return rawRange, true
+		}
+	}
+
+	return "", false
+}
+
+func (m CatalogModule) LatestCLIRange() (string, bool) {
+	return m.CLIRangeForVersion(m.LatestVersion)
+}
+
 type catalogIndexDocument struct {
 	Modules map[string]catalogIndexModule `json:"modules"`
 }
@@ -69,11 +115,16 @@ type catalogIndexModule struct {
 }
 
 type catalogIndexEntry struct {
-	Registry  string         `json:"registry,omitempty"`
-	Package   string         `json:"package,omitempty"`
-	Tarball   string         `json:"tarball,omitempty"`
-	Integrity string         `json:"integrity,omitempty"`
-	Source    *CatalogSource `json:"source,omitempty"`
+	Registry  string                   `json:"registry,omitempty"`
+	Package   string                   `json:"package,omitempty"`
+	Tarball   string                   `json:"tarball,omitempty"`
+	Integrity string                   `json:"integrity,omitempty"`
+	Choysum   catalogIndexEntryChoysum `json:"choysum,omitempty"`
+	Source    *CatalogSource           `json:"source,omitempty"`
+}
+
+type catalogIndexEntryChoysum struct {
+	CLI string `json:"cli,omitempty"`
 }
 
 type Catalog struct {
@@ -189,10 +240,11 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 	name := resolveCatalogModuleName(moduleName, module)
 
 	item := CatalogModule{
-		Name:          name,
-		Description:   strings.TrimSpace(module.Description),
-		NPMPackage:    strings.TrimSpace(module.Package),
-		LatestVersion: strings.TrimSpace(module.LatestVersion),
+		Name:             name,
+		Description:      strings.TrimSpace(module.Description),
+		NPMPackage:       strings.TrimSpace(module.Package),
+		LatestVersion:    strings.TrimSpace(module.LatestVersion),
+		VersionCLIRanges: map[string]string{},
 	}
 	if module.Source != nil {
 		sourceCopy := *module.Source
@@ -200,8 +252,13 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 	}
 
 	versions := make([]string, 0, len(module.Versions))
-	for version := range module.Versions {
-		versions = append(versions, strings.TrimSpace(version))
+	for version, entry := range module.Versions {
+		trimmedVersion := strings.TrimSpace(version)
+		versions = append(versions, trimmedVersion)
+		cliRange := strings.TrimSpace(entry.Choysum.CLI)
+		if cliRange != "" {
+			item.VersionCLIRanges[trimmedVersion] = cliRange
+		}
 	}
 	sortCatalogVersions(versions)
 	item.Versions = versions
@@ -246,6 +303,9 @@ func buildCatalogModule(moduleName string, module catalogIndexModule) CatalogMod
 
 	if item.Source != nil && item.Source.Package == "" {
 		item.Source.Package = item.NPMPackage
+	}
+	if len(item.VersionCLIRanges) == 0 {
+		item.VersionCLIRanges = nil
 	}
 
 	normalizeCatalogModule(&item)
@@ -454,6 +514,22 @@ func normalizeCatalogModule(item *CatalogModule) {
 		item.Versions = versions
 		if item.LatestVersion == "" {
 			item.LatestVersion = pickLatestVersion(versions)
+		}
+	}
+	if len(item.VersionCLIRanges) > 0 {
+		normalizedRanges := make(map[string]string, len(item.VersionCLIRanges))
+		for version, cliRange := range item.VersionCLIRanges {
+			version = strings.TrimSpace(version)
+			cliRange = strings.TrimSpace(cliRange)
+			if version == "" || cliRange == "" {
+				continue
+			}
+			normalizedRanges[version] = cliRange
+		}
+		if len(normalizedRanges) == 0 {
+			item.VersionCLIRanges = nil
+		} else {
+			item.VersionCLIRanges = normalizedRanges
 		}
 	}
 }

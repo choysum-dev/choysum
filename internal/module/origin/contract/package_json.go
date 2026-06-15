@@ -31,19 +31,14 @@ type PackageJSON struct {
 }
 
 type ChoysumMeta struct {
-	ModuleName    string            `json:"moduleName"`
-	Application   string            `json:"application"`
-	Category      string            `json:"category,omitempty"`
-	Depends       []string          `json:"depends,omitempty"`
-	CLI           string            `json:"cli,omitempty"`
-	EntryPoints   map[string]string `json:"entryPoints,omitempty"`
-	Data          []string          `json:"data,omitempty"`
-	Demo          []string          `json:"demo,omitempty"`
-	Compatibility CompatibilityMeta `json:"compatibility,omitempty"`
-}
-
-type CompatibilityMeta struct {
-	Choysum string `json:"choysum,omitempty"`
+	ModuleName  string            `json:"moduleName"`
+	Application string            `json:"application"`
+	Category    string            `json:"category,omitempty"`
+	Depends     []string          `json:"depends,omitempty"`
+	CLI         string            `json:"cli,omitempty"`
+	EntryPoints map[string]string `json:"entryPoints,omitempty"`
+	Data        []string          `json:"data,omitempty"`
+	Demo        []string          `json:"demo,omitempty"`
 }
 
 // PackageToModuleResult is the canonical output of package.json parsing.
