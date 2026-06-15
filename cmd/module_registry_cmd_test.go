@@ -255,7 +255,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		listCmd := &cobra.Command{}
 		listCmd.SetOut(&listOut)
 
-		if err := runModuleListRemote(listCmd, runtimeScope, runtimeOptions); err != nil {
+		if err := runModuleListRemote(listCmd, runtimeScope, runtimeOptions, "v0.0.0-0", false); err != nil {
 			t.Fatalf("runModuleListRemote() error = %v", err)
 		}
 		if !strings.Contains(listOut.String(), "MODULE") || !strings.Contains(listOut.String(), "auth") {
@@ -269,7 +269,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		var emptyOut bytes.Buffer
 		emptyCmd := &cobra.Command{}
 		emptyCmd.SetOut(&emptyOut)
-		if err := runModuleListRemote(emptyCmd, runtimeScope, emptyOptions); err != nil {
+		if err := runModuleListRemote(emptyCmd, runtimeScope, emptyOptions, "v0.0.0-0", false); err != nil {
 			t.Fatalf("runModuleListRemote(empty) error = %v", err)
 		}
 		if !strings.Contains(emptyOut.String(), "No remote modules found.") {
@@ -277,13 +277,57 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		}
 	})
 
+	t.Run("list filters to compatible version", func(t *testing.T) {
+		compatibleCatalog := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{
+			{
+				Name:          "auth",
+				LatestVersion: "v1.2.3",
+				Description:   "Authentication",
+				Versions:      []string{"v0.9.0", "v1.2.3"},
+				VersionCLIRanges: map[string]string{
+					"v0.9.0": ">=0.0.0-0 <0.0.0",
+					"v1.2.3": ">=1.0.0 <2.0.0",
+				},
+			},
+			{
+				Name:          "billing",
+				LatestVersion: "v1.0.0",
+				Description:   "Billing",
+				Versions:      []string{"v1.0.0"},
+				VersionCLIRanges: map[string]string{
+					"v1.0.0": ">=1.0.0 <2.0.0",
+				},
+			},
+		})
+		defer compatibleCatalog.Close()
+
+		var out bytes.Buffer
+		listCmd := &cobra.Command{}
+		listCmd.SetOut(&out)
+
+		err := runModuleListRemote(listCmd, runtimeScope, cliRuntimeOptions{moduleCatalogIndexURL: compatibleCatalog.URL + "/v1/index.json"}, "v0.0.0-0", false)
+		if err != nil {
+			t.Fatalf("runModuleListRemote(compat-filtered) error = %v", err)
+		}
+		output := out.String()
+		if !strings.Contains(output, "auth") {
+			t.Fatalf("expected auth in filtered list output, got %q", output)
+		}
+		if !strings.Contains(output, "v0.9.0") {
+			t.Fatalf("expected compatible version in filtered list output, got %q", output)
+		}
+		if strings.Contains(output, "billing") {
+			t.Fatalf("did not expect incompatible module in filtered list output, got %q", output)
+		}
+	})
+
 	t.Run("info validates input and returns payload", func(t *testing.T) {
 		cmd := &cobra.Command{}
-		if err := runModuleInfoRemote(cmd, runtimeScope, runtimeOptions, "   "); err == nil || !strings.Contains(err.Error(), "module input is required") {
+		if err := runModuleInfoRemote(cmd, runtimeScope, runtimeOptions, "   ", "", false); err == nil || !strings.Contains(err.Error(), "module input is required") {
 			t.Fatalf("expected module input required error, got %v", err)
 		}
 
-		if err := runModuleInfoRemote(cmd, runtimeScope, runtimeOptions, "legacy/auth"); err == nil || !strings.Contains(err.Error(), "registry alias syntax is no longer supported") {
+		if err := runModuleInfoRemote(cmd, runtimeScope, runtimeOptions, "legacy/auth", "", false); err == nil || !strings.Contains(err.Error(), "registry alias syntax is no longer supported") {
 			t.Fatalf("expected legacy alias syntax error, got %v", err)
 		}
 
@@ -292,7 +336,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 			infoCmd := &cobra.Command{}
 			infoCmd.SetOut(&out)
 
-			if err := runModuleInfoRemote(infoCmd, runtimeScope, runtimeOptions, input); err != nil {
+			if err := runModuleInfoRemote(infoCmd, runtimeScope, runtimeOptions, input, "v0.0.0-0", false); err != nil {
 				t.Fatalf("runModuleInfoRemote(%s) error = %v", input, err)
 			}
 			payload := map[string]any{}
@@ -305,7 +349,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		}
 
 		invalidOptions := cliRuntimeOptions{moduleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}
-		if err := runModuleInfoRemote(cmd, runtimeScope, invalidOptions, "auth"); err == nil || !strings.Contains(err.Error(), "index.json") {
+		if err := runModuleInfoRemote(cmd, runtimeScope, invalidOptions, "auth", "v0.0.0-0", false); err == nil || !strings.Contains(err.Error(), "index.json") {
 			t.Fatalf("expected invalid catalog index url validation error, got %v", err)
 		}
 	})

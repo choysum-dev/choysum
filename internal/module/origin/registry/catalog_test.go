@@ -543,6 +543,50 @@ func TestCatalogInfoFromStaticIndex_ResolvesVersionEntryDeterministicallyForSemv
 	}
 }
 
+func TestCatalogInfoFromStaticIndex_ExposesVersionCLIRanges(t *testing.T) {
+	t.Parallel()
+
+	server := startStaticIndexServer(t, map[string]any{
+		"modules": map[string]any{
+			"auth": map[string]any{
+				"moduleId":      "auth",
+				"latestVersion": "v1.2.3",
+				"package":       "@acme/choysum-auth",
+				"versions": map[string]any{
+					"v1.0.0": map[string]any{
+						"choysum": map[string]any{"cli": ">=0.0.0-0 <0.0.0"},
+					},
+					"1.2.3": map[string]any{
+						"choysum": map[string]any{"cli": ">=0.0.0-0 <0.0.0"},
+					},
+				},
+			},
+		},
+	})
+	defer server.Close()
+
+	catalog := NewCatalog(nil)
+	item, err := catalog.Info(context.Background(), server.URL+"/v1/index.json", "auth")
+	if err != nil {
+		t.Fatalf("Catalog.Info() error = %v", err)
+	}
+	if item == nil {
+		t.Fatal("Catalog.Info() returned nil")
+	}
+	if len(item.VersionCLIRanges) != 2 {
+		t.Fatalf("versionCLIRanges len = %d, want 2", len(item.VersionCLIRanges))
+	}
+	if got, ok := item.CLIRangeForVersion("v1.0.0"); !ok || got != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("CLIRangeForVersion(v1.0.0) = (%q,%v), want (>=0.0.0-0 <0.0.0,true)", got, ok)
+	}
+	if got, ok := item.CLIRangeForVersion("v1.2.3"); !ok || got != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("CLIRangeForVersion(v1.2.3) = (%q,%v), want (>=0.0.0-0 <0.0.0,true)", got, ok)
+	}
+	if got, ok := item.LatestCLIRange(); !ok || got != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("LatestCLIRange() = (%q,%v), want (>=0.0.0-0 <0.0.0,true)", got, ok)
+	}
+}
+
 func TestCatalogInfoFromStaticIndex_SortsVersionsSemantically(t *testing.T) {
 	t.Parallel()
 
@@ -785,12 +829,13 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 
 	mod := &CatalogModule{
-		Name:          " auth ",
-		LatestVersion: "",
-		Description:   "  auth module  ",
-		Versions:      []string{" v1.2.0 ", "", "v1.0.0"},
-		NPMPackage:    " @acme/choysum-auth ",
-		Source:        &CatalogSource{},
+		Name:             " auth ",
+		LatestVersion:    "",
+		Description:      "  auth module  ",
+		Versions:         []string{" v1.2.0 ", "", "v1.0.0"},
+		VersionCLIRanges: map[string]string{" v1.2.0 ": "  >=0.0.0-0 <0.0.0  ", "": "ignored", "v1.0.0": ""},
+		NPMPackage:       " @acme/choysum-auth ",
+		Source:           &CatalogSource{},
 	}
 	normalizeCatalogModule(mod)
 	if mod.Name != "auth" || mod.Description != "auth module" || mod.NPMPackage != "@acme/choysum-auth" {
@@ -798,6 +843,9 @@ func TestCatalogHelpersAndOptions(t *testing.T) {
 	}
 	if mod.LatestVersion != "v1.2.0" {
 		t.Fatalf("normalizeCatalogModule() latest version = %q, want %q", mod.LatestVersion, "v1.2.0")
+	}
+	if len(mod.VersionCLIRanges) != 1 || mod.VersionCLIRanges["v1.2.0"] != ">=0.0.0-0 <0.0.0" {
+		t.Fatalf("normalizeCatalogModule() versionCLIRanges = %#v, want one normalized entry", mod.VersionCLIRanges)
 	}
 	if len(mod.Versions) != 2 || mod.Versions[0] != "v1.0.0" || mod.Versions[1] != "v1.2.0" {
 		t.Fatalf("normalizeCatalogModule() versions = %#v, want [v1.0.0 v1.2.0]", mod.Versions)
