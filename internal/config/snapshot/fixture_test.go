@@ -12,7 +12,6 @@ func snapshotFixtureConfig() *config.Config {
 		TmpPath:               "/workspace/tmp",
 		DefaultChoysumPath:    "/workspace/.choysum",
 		ConfigPath:            "/workspace/config.yaml",
-		NpmPath:               "/workspace/node_modules",
 		NPMRegistryURL:        "https://registry.npmmirror.com",
 		ModuleCatalogIndexURL: "https://index.choysum.dev/v1/index.json",
 		Compile: &config.CompileConfig{

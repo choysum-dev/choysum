@@ -90,7 +90,6 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 		"default_choysum_path: ./.choysum-bootstrap",
 		"modules_path: rel-modules",
 		"dist_path: rel-dist",
-		"npm_path: rel-npm",
 		"compile:",
 		"  bundleMode: \" application \"",
 		"  production: false",
@@ -121,8 +120,8 @@ func TestNewConfigMergesDefaultsAndNormalizesPaths(t *testing.T) {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
 
-	if !filepath.IsAbs(cfg.ModulesPath) || !filepath.IsAbs(cfg.DistPath) || !filepath.IsAbs(cfg.NpmPath) || !filepath.IsAbs(cfg.DefaultChoysumPath) || !filepath.IsAbs(cfg.TmpPath) {
-		t.Fatalf("expected absolute paths, got modules=%q dist=%q npm=%q default_choysum=%q tmp=%q", cfg.ModulesPath, cfg.DistPath, cfg.NpmPath, cfg.DefaultChoysumPath, cfg.TmpPath)
+	if !filepath.IsAbs(cfg.ModulesPath) || !filepath.IsAbs(cfg.DistPath) || !filepath.IsAbs(cfg.DefaultChoysumPath) || !filepath.IsAbs(cfg.TmpPath) {
+		t.Fatalf("expected absolute paths, got modules=%q dist=%q default_choysum=%q tmp=%q", cfg.ModulesPath, cfg.DistPath, cfg.DefaultChoysumPath, cfg.TmpPath)
 	}
 	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
 		t.Fatalf("npm_registry_url = %q, want %q", cfg.NPMRegistryURL, DefaultNPMRegistryURL)
@@ -494,20 +493,14 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 
 	cfg := defaultConfig()
 	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
-	wantNpm, _ := filepath.Abs(filepath.Join(workDir, "node_modules"))
-	for _, path := range []string{wantNpm} {
-		if err := os.MkdirAll(path, 0o755); err != nil {
-			t.Fatalf("mkdir expected path %q: %v", path, err)
-		}
+	if err := os.MkdirAll(wantModules, 0o755); err != nil {
+		t.Fatalf("mkdir expected path %q: %v", wantModules, err)
 	}
 	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModules) {
 		t.Fatalf("modules path = %q, want %q", cfg.ModulesPath, wantModules)
 	}
 	if strings.TrimSpace(cfg.DistPath) != "" {
 		t.Fatalf("expected dist_path empty before path invariants, got %q", cfg.DistPath)
-	}
-	if canonicalPath(t, cfg.NpmPath) != canonicalPath(t, wantNpm) {
-		t.Fatalf("npm path = %q, want %q", cfg.NpmPath, wantNpm)
 	}
 	if strings.TrimSpace(cfg.DefaultChoysumPath) != "" {
 		t.Fatalf("expected default_choysum_path empty by default, got %q", cfg.DefaultChoysumPath)
@@ -539,20 +532,14 @@ func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
 
 	cfg := defaultConfig()
 	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
-	wantNpm, _ := filepath.Abs(filepath.Join(workDir, "node_modules"))
-	for _, path := range []string{wantModules, wantNpm} {
-		if err := os.MkdirAll(path, 0o755); err != nil {
-			t.Fatalf("mkdir expected path %q: %v", path, err)
-		}
+	if err := os.MkdirAll(wantModules, 0o755); err != nil {
+		t.Fatalf("mkdir expected path %q: %v", wantModules, err)
 	}
 	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModules) {
 		t.Fatalf("modules path = %q, want %q", cfg.ModulesPath, wantModules)
 	}
 	if strings.TrimSpace(cfg.DistPath) != "" {
 		t.Fatalf("expected dist_path empty before path invariants, got %q", cfg.DistPath)
-	}
-	if canonicalPath(t, cfg.NpmPath) != canonicalPath(t, wantNpm) {
-		t.Fatalf("npm path = %q, want %q", cfg.NpmPath, wantNpm)
 	}
 	if strings.TrimSpace(cfg.DefaultChoysumPath) != "" {
 		t.Fatalf("expected default_choysum_path empty by default, got %q", cfg.DefaultChoysumPath)

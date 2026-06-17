@@ -172,7 +172,14 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
 		// Prepend the ESM resolver so bare imports are intercepted before
 		// other plugins process them.
-		buildOptions.Plugins = append([]api.Plugin{esmresolver.New().Plugin()}, basePlugins...)
+		resolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+			esmresolver.WithTarget("deno"),
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(resolverOpts...).Plugin()}, basePlugins...)
 		// Do not let esbuild write directly to dist; we publish outputs atomically.
 		buildOptions.Write = false
 	}

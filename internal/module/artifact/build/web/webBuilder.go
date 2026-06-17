@@ -2124,10 +2124,6 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		EntryPoints: []string{b.entryPoint},
 		PublicPath:  webBaseUrl + "assets",
 		Tsconfig:    filepath.Join(modules_path, "tsconfig.json"),
-		NodePaths: []string{
-			filepath.Join(modules_path, "node_modules"),
-			filepath.Join(filepath.Dir(modules_path), "node_modules"),
-		},
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
 			".scss": api.LoaderCSS,
@@ -2185,7 +2181,13 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
 		// Prepend the ESM resolver so bare imports are intercepted before
 		// other plugins process them.
-		buildOptions.Plugins = append([]api.Plugin{esmresolver.New().Plugin()}, basePlugins...)
+		webResolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(webResolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	}
 

@@ -25,7 +25,6 @@ type Config struct {
 	ConfigPath            string `mapstructure:"-"`
 	ModulesPath           string `mapstructure:"modules_path"`
 	DistPath              string `mapstructure:"dist_path"`
-	NpmPath               string `mapstructure:"npm_path"`
 	NPMRegistryURL        string `mapstructure:"npm_registry_url"`
 	ModuleCatalogIndexURL string `mapstructure:"module_catalog_index_url"`
 	ESMUpstreamURL        string `mapstructure:"esm_upstream_url"`
@@ -182,9 +181,6 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	if !filepath.IsAbs(c.DistPath) {
 		c.DistPath, _ = filepath.Abs(c.DistPath)
 	}
-	if !filepath.IsAbs(c.NpmPath) {
-		c.NpmPath, _ = filepath.Abs(c.NpmPath)
-	}
 
 	return nil
 }
@@ -307,16 +303,10 @@ func defaultConfig() *Config {
 	if err != nil {
 		panic(err)
 	}
-	npmPath := "./node_modules"
-	npmPath, err = filepath.Abs(npmPath)
-	if err != nil {
-		panic(err)
-	}
 
 	return &Config{
 		ModulesPath:           modulesPath,
 		DistPath:              "",
-		NpmPath:               npmPath,
 		NPMRegistryURL:        DefaultNPMRegistryURL,
 		ModuleCatalogIndexURL: DefaultModuleCatalogIndexURL,
 		ESMUpstreamURL:        DefaultESMUpstreamURL,

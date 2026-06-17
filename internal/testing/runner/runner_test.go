@@ -655,7 +655,7 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	}
 	t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", capturePath)
 
-	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, NpmPath: npmPath, TmpPath: tmpRoot}}
+	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, TmpPath: tmpRoot}}
 	err := RunWithDefaults(context.Background(), RunOptions{
 		Env:           runtimeScope,
 		ModulesPath:   modulesPath,

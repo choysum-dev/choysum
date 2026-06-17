@@ -149,7 +149,6 @@ func TestRequireCliRuntimeOptions(t *testing.T) {
 	want := cliRuntimeOptions{
 		defaultChoysumPath: "/workspace/.choysum",
 		modulesPath:        "/workspace/modules",
-		npmPath:            "/workspace/node_modules",
 		tmpPath:            "/workspace/.choysum/tmp",
 	}
 	got, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return want })
@@ -172,7 +171,6 @@ func newCommandTestConfig(modulesPath string) *config.Config {
 	return &config.Config{
 		ModulesPath:        modulesPath,
 		DistPath:           filepath.Join(modulesPath, "dist"),
-		NpmPath:            filepath.Join(modulesPath, "node_modules"),
 		DefaultChoysumPath: defaultChoysumPath,
 		TmpPath:            filepath.Join(defaultChoysumPath, "tmp"),
 		Db: &config.DbConfig{
@@ -380,7 +378,7 @@ func TestNewTestUnitCmd_ArgsAndEarlyRunE(t *testing.T) {
 	}
 
 	cmd = newTestUnitCmdFromScope(func() scope.Scope {
-		return &commandTestScope{cfg: &config.Config{ModulesPath: "   ", NpmPath: "/tmp/npm", TmpPath: "/tmp/choysum", DefaultChoysumPath: "/tmp/.choysum"}}
+		return &commandTestScope{cfg: &config.Config{ModulesPath: "   ", TmpPath: "/tmp/choysum", DefaultChoysumPath: "/tmp/.choysum"}}
 	})
 	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "config missing modules_path") {
 		t.Fatalf("expected missing modules_path error, got %v", err)
@@ -629,7 +627,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		defer func() { runE2EModule = oldRun }()
 
 		cfg := newCommandTestConfig(t.TempDir())
-		cfg.NpmPath = t.TempDir()
+		// cfg.NpmPath removed
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 
 		t.Run("default warn", func(t *testing.T) {
@@ -719,7 +717,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 		}
 
 		cfg := newCommandTestConfig(t.TempDir())
-		cfg.NpmPath = t.TempDir()
+		// cfg.NpmPath removed
 		scopeGetter := func() scope.Scope {
 			return &commandTestScope{cfg: cfg}
 		}
@@ -744,7 +742,7 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 
 	t.Run("all with no runnable modules returns helpful error", func(t *testing.T) {
 		cfg := newCommandTestConfig(t.TempDir())
-		cfg.NpmPath = t.TempDir()
+		// cfg.NpmPath removed
 		scopeGetter := func() scope.Scope {
 			return &commandTestScope{cfg: cfg}
 		}
@@ -1041,7 +1039,6 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 			"default_choysum_path: " + filepath.Join(workDir, ".choysum"),
 			"modules_path: " + modulesDir,
 			"dist_path: " + distDir,
-			"npm_path: " + npmDir,
 			"db:",
 			"  dialect: sqlite",
 			"  dsn: " + dbPath,

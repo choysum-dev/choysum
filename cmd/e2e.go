@@ -94,7 +94,6 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 				for _, mod := range mods {
 					opts := pkge2e.RunOptions{
 						ModulesPath:     runtimeOptions.modulesPath,
-						NpmPath:         runtimeOptions.npmPath,
 						TmpPath:         runtimeOptions.tmpPath,
 						Module:          mod,
 						Scenarios:       scenarios,
@@ -119,7 +118,6 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 
 			opts := pkge2e.RunOptions{
 				ModulesPath:     runtimeOptions.modulesPath,
-				NpmPath:         runtimeOptions.npmPath,
 				TmpPath:         runtimeOptions.tmpPath,
 				Module:          moduleName,
 				Scenarios:       scenarios,

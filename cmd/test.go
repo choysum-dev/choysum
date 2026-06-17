@@ -41,7 +41,7 @@ func resolveUnitTestRuntimeOptions(optionsGetter func() cliRuntimeOptions) (cliR
 		return cliRuntimeOptions{}, xfmt.Errorf("config is not initialized")
 	}
 	runtimeOptions := optionsGetter()
-	if strings.TrimSpace(runtimeOptions.modulesPath) == "" && strings.TrimSpace(runtimeOptions.npmPath) == "" && strings.TrimSpace(runtimeOptions.tmpPath) == "" && strings.TrimSpace(runtimeOptions.defaultChoysumPath) == "" {
+	if strings.TrimSpace(runtimeOptions.modulesPath) == "" && strings.TrimSpace(runtimeOptions.tmpPath) == "" && strings.TrimSpace(runtimeOptions.defaultChoysumPath) == "" {
 		return cliRuntimeOptions{}, xfmt.Errorf("config is not initialized")
 	}
 	if strings.TrimSpace(runtimeOptions.modulesPath) == "" {

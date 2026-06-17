@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	pkgtypecheck "github.com/choysum-dev/choysum/internal/testing/typecheck"
@@ -54,7 +55,7 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 
 			opts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOptions.modulesPath,
-				NpmPath:     runtimeOptions.npmPath,
+				NpmPath:     filepath.Join(runtimeOptions.modulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
 				TmpPath:     runtimeOptions.tmpPath,
 				Target:      target,

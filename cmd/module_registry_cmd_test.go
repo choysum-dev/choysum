@@ -63,7 +63,6 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	defaultChoysumPath := t.TempDir()
 	cfg := &config.Config{
 		ModulesPath:        modulesPath,
-		NpmPath:            filepath.Join(workspaceRoot, "node_modules"),
 		TmpPath:            filepath.Join(defaultChoysumPath, "tmp"),
 		ConfigPath:         filepath.Join(workspaceRoot, "config.yaml"),
 		DefaultChoysumPath: defaultChoysumPath,

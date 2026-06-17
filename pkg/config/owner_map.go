@@ -29,11 +29,6 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		PackagePath: "internal/server/serverconfig",
 		OptionsType: "DistPathConfig",
 	},
-	"npm_path": {
-		Domain:      "cli",
-		PackagePath: "cmd",
-		OptionsType: "cliRuntimeOptions",
-	},
 	"npm_registry_url": {
 		Domain:      "module",
 		PackagePath: "internal/module/origin/registry",

@@ -15,6 +15,7 @@ type runtimeOptions struct {
 	modulesPath           string
 	distPath              string
 	defaultChoysumPath    string
+	esmUpstreamURL        string
 	backendEnv            map[string]any
 	grpcAuthentication    bool
 	grpcMethodAccess      bool
@@ -48,6 +49,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, aut
 		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
+		opts.esmUpstreamURL = pathOpts.ESMUpstreamURL
 	}
 
 	if hasEnvOpts && envOpts.BackendEnv != nil {
