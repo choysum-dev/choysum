@@ -110,13 +110,44 @@ func (r *Resolver) Plugin() api.Plugin {
 		if strings.HasPrefix(path, "data:") || strings.HasPrefix(path, "#") {
 			return false
 		}
+		// Exclude local filesystem paths that esbuild may pass without a
+		// leading slash. Package names never have more than one slash
+		// (scoped packages like @scope/name have exactly one).
+		if strings.Count(path, "/") > 1 {
+			return false
+		}
+		// Exclude paths that look like source files.
+		if strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".js") ||
+			strings.HasSuffix(path, ".mjs") || strings.HasSuffix(path, ".tsx") {
+			return false
+		}
+		// Safety net: if the path exists as a local file, it is not a bare import.
+		if _, err := os.Stat(path); err == nil {
+			return false
+		}
 		return true
+	}
+
+	// isUpstreamInternalPath detects absolute-path imports produced by esm.sh
+	// that reference sub-modules on the same upstream (e.g. "/pkg@ver/deno/...").
+	isUpstreamInternalPath := func(path string) bool {
+		return strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "//")
 	}
 
 	return api.Plugin{
 		Name: "choysum-esm-resolver",
 		Setup: func(build api.PluginBuild) {
 			build.OnResolve(api.OnResolveOptions{Filter: ".*"}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+				// Rewrite upstream-internal absolute paths (e.g. "/pkg@ver/deno/...")
+				// back to full esm.sh URLs so esbuild can continue resolving.
+				if isUpstreamInternalPath(args.Path) {
+					esmURL := r.upstream + args.Path
+					return api.OnResolveResult{
+						Path:      esmURL,
+						Namespace: "choysum-esm",
+					}, nil
+				}
+
 				if !isBareImport(args.Path) {
 					return api.OnResolveResult{}, nil
 				}
