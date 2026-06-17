@@ -654,6 +654,7 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 		t.Fatalf("WriteFile npx stub: %v", err)
 	}
 	t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", capturePath)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	runtimeScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath, TmpPath: tmpRoot}}
 	err := RunWithDefaults(context.Background(), RunOptions{
