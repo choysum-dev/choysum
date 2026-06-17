@@ -39,6 +39,11 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		PackagePath: "internal/module/origin/registry",
 		OptionsType: "runtimeOptions",
 	},
+	"esm_upstream_url": {
+		Domain:      "build",
+		PackagePath: "internal/esmresolver",
+		OptionsType: "Resolver",
+	},
 	"module_catalog_index_url": {
 		Domain:      "module",
 		PackagePath: "internal/module/origin/registry",

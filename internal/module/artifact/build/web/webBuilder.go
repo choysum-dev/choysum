@@ -20,6 +20,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	internalwebplugin "github.com/choysum-dev/choysum/internal/esbplugins/webplugin"
 	"github.com/choysum-dev/choysum/internal/esbplugins/webprebuildplugin"
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -2181,7 +2182,10 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		buildOptions.Plugins = b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
 		buildOptions.Write = false
 	} else {
-		buildOptions.Plugins = b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New().Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	}
 

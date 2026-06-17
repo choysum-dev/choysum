@@ -18,6 +18,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	internalbackendplugin "github.com/choysum-dev/choysum/internal/esbplugins/backendplugin"
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -168,7 +169,10 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		buildOptions.Plugins = b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
 		buildOptions.Write = false
 	} else {
-		buildOptions.Plugins = b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New().Plugin()}, basePlugins...)
 		// Do not let esbuild write directly to dist; we publish outputs atomically.
 		buildOptions.Write = false
 	}

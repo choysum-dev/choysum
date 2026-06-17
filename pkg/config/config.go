@@ -18,6 +18,7 @@ var maxProcs = runtime.GOMAXPROCS(0)
 const (
 	DefaultNPMRegistryURL        = "https://registry.npmjs.org"
 	DefaultModuleCatalogIndexURL = "https://index.choysum.dev/v1/index.json"
+	DefaultESMUpstreamURL        = "https://esm.sh"
 )
 
 type Config struct {
@@ -27,6 +28,7 @@ type Config struct {
 	NpmPath               string `mapstructure:"npm_path"`
 	NPMRegistryURL        string `mapstructure:"npm_registry_url"`
 	ModuleCatalogIndexURL string `mapstructure:"module_catalog_index_url"`
+	ESMUpstreamURL        string `mapstructure:"esm_upstream_url"`
 	DefaultChoysumPath    string `mapstructure:"default_choysum_path"`
 	TmpPath               string `mapstructure:"tmp_path"`
 
@@ -317,6 +319,7 @@ func defaultConfig() *Config {
 		NpmPath:               npmPath,
 		NPMRegistryURL:        DefaultNPMRegistryURL,
 		ModuleCatalogIndexURL: DefaultModuleCatalogIndexURL,
+		ESMUpstreamURL:        DefaultESMUpstreamURL,
 		DefaultChoysumPath:    "",
 		TmpPath:               "",
 		Log:                   NewDefaultLogConfig(),

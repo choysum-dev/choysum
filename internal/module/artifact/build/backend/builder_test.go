@@ -232,7 +232,7 @@ func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
 	if got, want := buildOpts.Outfile, filepath.Join("/tmp/staged/auth", "bundle.js"); got != want {
 		t.Fatalf("build outfile = %q, want %q", got, want)
 	}
-	if len(buildOpts.Plugins) != 1 || buildOpts.Plugins[0].Name != "build" {
+	if len(buildOpts.Plugins) != 2 || buildOpts.Plugins[0].Name != "choysum-esm-resolver" || buildOpts.Plugins[1].Name != "build" {
 		t.Fatalf("unexpected build plugins: %#v", buildOpts.Plugins)
 	}
 
