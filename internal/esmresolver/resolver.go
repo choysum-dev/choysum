@@ -6,10 +6,14 @@
 package esmresolver
 
 import (
+	"context"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -26,6 +30,7 @@ type Resolver struct {
 	upstream     string
 	cacheDir     string
 	target       string
+	offline      bool
 	client       *http.Client
 	singleflight singleflight.Group
 }
@@ -58,6 +63,14 @@ func WithTarget(target string) Option {
 		if target != "" {
 			r.target = target
 		}
+	}
+}
+
+// WithOffline enables offline mode. Cache misses produce a hard error instead
+// of attempting a network download.
+func WithOffline(offline bool) Option {
+	return func(r *Resolver) {
+		r.offline = offline
 	}
 }
 
@@ -127,15 +140,22 @@ func (r *Resolver) Plugin() api.Plugin {
 
 			build.OnLoad(api.OnLoadOptions{Filter: ".*", Namespace: "choysum-esm"}, func(args api.OnLoadArgs) (api.OnLoadResult, error) {
 				url := args.Path
+				pkg := extractPkgFromURL(url, r.upstream)
 				cacheKey := sha256Hex(url)
 				cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
 
-				// Try cache first.
-				if content, err := os.ReadFile(cacheFile); err == nil {
+				// Try cache first, verify integrity if metadata present.
+				if content, ok := r.readCache(cacheFile); ok {
 					return api.OnLoadResult{
-						Contents: ptr(string(content)),
+						Contents: ptr(content),
 						Loader:   api.LoaderJS,
 					}, nil
+				}
+
+				// Offline mode: cache miss is a hard error.
+				if r.offline {
+					return api.OnLoadResult{}, r.formatError("cache miss (offline)", pkg, url,
+						"run 'choysum install' with network access to populate the cache")
 				}
 
 				// Download with singleflight deduplication.
@@ -144,7 +164,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					err     error
 				}
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
-					content, dlErr := r.download(url)
+					content, dlErr := r.downloadWithRetry(url)
 					if dlErr != nil {
 						return fetchResult{}, dlErr
 					}
@@ -154,7 +174,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					return fetchResult{content: content}, nil
 				})
 				if err != nil {
-					return api.OnLoadResult{}, fmt.Errorf("[esm-resolver] download failed: %w\n  url: %s\n  hint: check that the package exists on %s", err, url, r.upstream)
+					return api.OnLoadResult{}, r.formatError("download failed", pkg, url, err.Error())
 				}
 				result := v.(fetchResult)
 
@@ -167,6 +187,29 @@ func (r *Resolver) Plugin() api.Plugin {
 	}
 }
 
+// readCache reads a cached file and verifies its integrity.
+// Returns the content and true on success, or "" and false on miss/corruption.
+func (r *Resolver) readCache(cacheFile string) (string, bool) {
+	content, err := os.ReadFile(cacheFile)
+	if err != nil {
+		return "", false
+	}
+	integrityFile := cacheFile + ".integrity"
+	expected, err := os.ReadFile(integrityFile)
+	if err != nil {
+		// No integrity metadata — accept the cached content as-is.
+		return string(content), true
+	}
+	actual := sha512Hex(string(content))
+	if strings.TrimSpace(string(expected)) != actual {
+		// Integrity mismatch — delete dirty cache and return miss.
+		_ = os.Remove(cacheFile)
+		_ = os.Remove(integrityFile)
+		return "", false
+	}
+	return string(content), true
+}
+
 func (r *Resolver) codeCacheDir() string {
 	if r.cacheDir == "" {
 		return filepath.Join("pkg", "esm")
@@ -174,8 +217,32 @@ func (r *Resolver) codeCacheDir() string {
 	return filepath.Join(r.cacheDir, "pkg", "esm")
 }
 
+// downloadWithRetry fetches a URL with exponential backoff (initial 1s, max 10s,
+// up to 3 attempts). 4xx responses are not retried; 5xx and network errors are.
+func (r *Resolver) downloadWithRetry(url string) (string, error) {
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			delay := time.Duration(math.Min(float64(time.Second<<(attempt-1)), float64(10*time.Second)))
+			time.Sleep(delay)
+		}
+		content, err := r.download(url)
+		if err == nil {
+			return content, nil
+		}
+		lastErr = err
+		if !isRetryable(err) {
+			break
+		}
+	}
+	return "", lastErr
+}
+
 func (r *Resolver) download(url string) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)
 	}
@@ -187,7 +254,7 @@ func (r *Resolver) download(url string) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return "", fmt.Errorf("http %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return "", &httpError{code: resp.StatusCode, body: strings.TrimSpace(string(body))}
 	}
 
 	content, err := io.ReadAll(resp.Body)
@@ -195,6 +262,51 @@ func (r *Resolver) download(url string) (string, error) {
 		return "", fmt.Errorf("read body: %w", err)
 	}
 	return string(content), nil
+}
+
+type httpError struct {
+	code int
+	body string
+}
+
+func (e *httpError) Error() string {
+	return fmt.Sprintf("http %d: %s", e.code, e.body)
+}
+
+// isRetryable reports whether an error from download() is worth retrying.
+// 4xx errors are not retried; 5xx and network errors are.
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var httpErr *httpError
+	if asHTTPErr(err, &httpErr) {
+		return httpErr.code >= 500
+	}
+	// Network errors (DNS, connection refused, timeout, etc.) are retryable.
+	return true
+}
+
+func asHTTPErr(err error, target **httpError) bool {
+	if err == nil {
+		return false
+	}
+	// Check if the error chain contains *httpError.
+	for e := err; e != nil; e = unwrapErr(e) {
+		if he, ok := e.(*httpError); ok {
+			*target = he
+			return true
+		}
+	}
+	return false
+}
+
+func unwrapErr(err error) error {
+	type unwrapper interface{ Unwrap() error }
+	if u, ok := err.(unwrapper); ok {
+		return u.Unwrap()
+	}
+	return nil
 }
 
 func (r *Resolver) writeCache(cacheFile string, data []byte) error {
@@ -206,12 +318,85 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
 		return err
 	}
-	return os.Rename(tmpFile, cacheFile)
+	if err := os.Rename(tmpFile, cacheFile); err != nil {
+		return err
+	}
+	// Write integrity metadata alongside the cache file.
+	integrityFile := cacheFile + ".integrity"
+	hash := sha512Hex(string(data))
+	_ = os.WriteFile(integrityFile, []byte(hash), 0644)
+	return nil
+}
+
+func (r *Resolver) formatError(errorType, pkg, url, detail string) error {
+	var b strings.Builder
+	b.WriteString("[esm-resolver] ")
+	b.WriteString(errorType)
+	if pkg != "" {
+		b.WriteString("\n  package: ")
+		b.WriteString(pkg)
+	}
+	b.WriteString("\n  url: ")
+	b.WriteString(url)
+	if detail != "" {
+		b.WriteString("\n  detail: ")
+		b.WriteString(detail)
+	}
+	return fmt.Errorf("%s", b.String())
+}
+
+// extractPkgFromURL extracts a human-readable package identifier from an esm.sh URL.
+func extractPkgFromURL(url, upstream string) string {
+	prefix := strings.TrimRight(upstream, "/") + "/"
+	if !strings.HasPrefix(url, prefix) {
+		return ""
+	}
+	rest := strings.TrimPrefix(url, prefix)
+	// Strip query string.
+	if idx := strings.Index(rest, "?"); idx >= 0 {
+		rest = rest[:idx]
+	}
+	return rest
 }
 
 func sha256Hex(s string) string {
 	h := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(h[:])
+}
+
+func sha512Hex(s string) string {
+	h := sha512.Sum512([]byte(s))
+	return hex.EncodeToString(h[:])
+}
+
+// isNetError reports whether err is a network-level error (not an HTTP response).
+func isNetError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Check for common net errors without importing net package types.
+	msg := err.Error()
+	for _, substr := range []string{
+		"connection refused",
+		"no such host",
+		"i/o timeout",
+		"context deadline exceeded",
+		"connection reset",
+		"tls:",
+	} {
+		if strings.Contains(strings.ToLower(msg), substr) {
+			return true
+		}
+	}
+	// Also check for net.Error interface.
+	type netErr interface{ Timeout() bool }
+	if ne, ok := err.(netErr); ok && ne.Timeout() {
+		return true
+	}
+	if _, ok := err.(net.Error); ok {
+		return true
+	}
+	return false
 }
 
 func ptr[T any](v T) *T {
