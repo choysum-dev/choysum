@@ -130,14 +130,34 @@ func (r *Resolver) Plugin() api.Plugin {
 
 	// isUpstreamInternalPath detects absolute-path imports produced by esm.sh
 	// that reference sub-modules on the same upstream (e.g. "/pkg@ver/deno/...").
+	// Excludes local filesystem paths (they may also start with "/").
 	isUpstreamInternalPath := func(path string) bool {
-		return strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "//")
+		if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+			return false
+		}
+		// Exclude paths that exist as local files.
+		if _, err := os.Stat(path); err == nil {
+			return false
+		}
+		return true
 	}
 
 	return api.Plugin{
 		Name: "choysum-esm-resolver",
 		Setup: func(build api.PluginBuild) {
 			build.OnResolve(api.OnResolveOptions{Filter: ".*"}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+				// Relative imports inside choysum-esm namespace are left
+				// unresolved — esbuild can't resolve them and we can't
+				// reconstruct the exact esm.sh URL for individual files.
+				// This is safe because esm.sh output for the deno target
+				// uses absolute-path imports (handled below), not relative.
+				if strings.HasPrefix(args.Path, ".") {
+					importer := stripNamespace(args.Importer)
+					if strings.HasPrefix(importer, r.upstream) {
+						return api.OnResolveResult{}, nil
+					}
+				}
+
 				// Rewrite upstream-internal absolute paths (e.g. "/pkg@ver/deno/...")
 				// back to full esm.sh URLs so esbuild can continue resolving.
 				if isUpstreamInternalPath(args.Path) {
@@ -376,7 +396,45 @@ func (r *Resolver) formatError(errorType, pkg, url, detail string) error {
 	return fmt.Errorf("%s", b.String())
 }
 
+// stripNamespace removes the "choysum-esm:" prefix from a path.
+func stripNamespace(path string) string {
+	if idx := strings.Index(path, "://"); idx > 0 {
+		if schemeEnd := strings.LastIndex(path[:idx], ":"); schemeEnd > 0 {
+			return path[schemeEnd+1:]
+		}
+	}
+	return path
+}
+
 // extractPkgFromURL extracts a human-readable package identifier from an esm.sh URL.
+// extractPkgRootURL returns the package root URL from an esm.sh sub-path URL.
+func (r *Resolver) extractPkgRootURL(url string) string {
+	prefix := strings.TrimRight(r.upstream, "/") + "/"
+	if !strings.HasPrefix(url, prefix) {
+		return ""
+	}
+	rest := strings.TrimPrefix(url, prefix)
+	// Strip query params and path after package.
+	if idx := strings.Index(rest, "?"); idx >= 0 {
+		rest = rest[:idx]
+	}
+	// For scoped packages (@scope/pkg@ver), keep the first two segments.
+	// For regular packages (pkg@ver), keep the first segment.
+	parts := strings.SplitN(rest, "/", 3)
+	pkg := parts[0]
+	if strings.HasPrefix(pkg, "@") && len(parts) > 1 {
+		pkg = parts[0] + "/" + parts[1]
+	}
+	// Strip version: @scope/pkg@ver → @scope/pkg, pkg@ver → pkg.
+	if idx := strings.LastIndex(pkg, "@"); idx > 0 {
+		pkg = pkg[:idx]
+	}
+	if pkg == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s?target=%s", r.upstream, pkg, r.target)
+}
+
 func extractPkgFromURL(url, upstream string) string {
 	prefix := strings.TrimRight(upstream, "/") + "/"
 	if !strings.HasPrefix(url, prefix) {
