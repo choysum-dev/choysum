@@ -176,22 +176,6 @@ func (r *Resolver) Plugin() api.Plugin {
 		if strings.HasPrefix(path, "data:") || strings.HasPrefix(path, "#") {
 			return false
 		}
-		// Exclude local filesystem paths that esbuild may pass without a
-		// leading slash. Non-scoped packages have at most 1 slash (allowing
-		// pkg/sub-path). Scoped packages (@scope/name) have up to 3 slashes
-		// (allowing @scope/name/sub/path).
-		maxSlashes := 1
-		if strings.HasPrefix(path, "@") {
-			maxSlashes = 3
-		}
-		if strings.Count(path, "/") > maxSlashes {
-			return false
-		}
-		// Exclude paths that look like source files.
-		if strings.HasSuffix(path, ".ts") || strings.HasSuffix(path, ".js") ||
-			strings.HasSuffix(path, ".mjs") || strings.HasSuffix(path, ".tsx") {
-			return false
-		}
 		// Safety net: if the path exists as a local file, it is not a bare import.
 		if _, err := os.Stat(path); err == nil {
 			return false

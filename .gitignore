@@ -66,3 +66,4 @@ tryon/
 # Local dev files
 .dev/
 /cert/
+modules/tsconfig.json
