@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -145,28 +146,39 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 		}
 		content = body
 
-		// Write to cache atomically.
-		if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
-			return nil, nil, fmt.Errorf("create types cache dir: %w", err)
-		}
-		tmpFile := cacheFile + ".tmp"
-		if err := os.WriteFile(tmpFile, content, 0644); err != nil {
-			return nil, nil, fmt.Errorf("write types tmp: %w", err)
-		}
-		if err := os.Rename(tmpFile, cacheFile); err != nil {
-			return nil, nil, fmt.Errorf("rename types tmp: %w", err)
+		if err := writeTypeCacheFile(cacheFile, content); err != nil {
+			return nil, nil, err
 		}
 	}
 
-	// Parse imports and recursively fetch.
+	// Parse imports/exports and resolve transitive type URLs.
 	imports := parseDTSImports(string(content))
-	var allTransitive []TypeFetchResult
-
+	resolvedImports := make([]resolvedTypeImport, 0, len(imports))
 	for _, importPath := range imports {
+		if isLocalCachedTypeSpecifier(importPath) {
+			continue
+		}
 		resolvedURL, err := resolveTypeImport(normalized, importPath)
 		if err != nil {
 			continue
 		}
+		resolvedImports = append(resolvedImports, resolvedTypeImport{Original: importPath, ResolvedURL: resolvedURL})
+	}
+
+	// Rewire import/export module specifiers to local cache paths so TypeScript
+	// can follow the graph even when files are flattened into a shared cache dir.
+	rewritten := rewriteTypeImportSpecifiers(string(content), cacheFile, typesDir, resolvedImports)
+	if rewritten != string(content) {
+		content = []byte(rewritten)
+		if err := writeTypeCacheFile(cacheFile, content); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	var allTransitive []TypeFetchResult
+
+	for _, imp := range resolvedImports {
+		resolvedURL := imp.ResolvedURL
 		// Derive package name from the resolved URL path.
 		pkgName := typePkgNameFromURL(resolvedURL)
 		_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", visited)
@@ -183,6 +195,47 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 		FromCache:  false,
 	}
 	return result, allTransitive, nil
+}
+
+type resolvedTypeImport struct {
+	Original    string
+	ResolvedURL string
+}
+
+func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []resolvedTypeImport) string {
+	if len(imports) == 0 {
+		return content
+	}
+
+	out := content
+	for _, imp := range imports {
+		localPath := typeCachePathForURL(typesDir, imp.ResolvedURL)
+		rel, err := filepath.Rel(filepath.Dir(cacheFile), localPath)
+		if err != nil {
+			continue
+		}
+		rel = filepath.ToSlash(rel)
+		if rel == "" || rel == "." {
+			continue
+		}
+		if !strings.HasPrefix(rel, ".") {
+			rel = "./" + rel
+		}
+
+		out = strings.ReplaceAll(out, `"`+imp.Original+`"`, `"`+rel+`"`)
+		out = strings.ReplaceAll(out, `'`+imp.Original+`'`, `'`+rel+`'`)
+	}
+
+	return out
+}
+
+func isLocalCachedTypeSpecifier(importPath string) bool {
+	p := filepath.ToSlash(strings.TrimSpace(importPath))
+	if p == "" {
+		return false
+	}
+	base := filepath.Base(p)
+	return strings.HasPrefix(base, "esm.sh_")
 }
 
 // parseDTSImports uses the TypeScript AST parser to extract module specifiers
@@ -230,6 +283,18 @@ func parseDTSImports(content string) []string {
 				}
 			}
 		}
+
+		// Catch re-export clauses like `export * from "./foo.d.ts"`.
+		if stmt.Kind == tsast.KindExportDeclaration {
+			decl := stmt.AsExportDeclaration()
+			if decl != nil && decl.ModuleSpecifier != nil {
+				p := strings.Trim(decl.ModuleSpecifier.Text(), `"'`)
+				if p != "" && !seen[p] && !strings.HasPrefix(p, "node:") {
+					seen[p] = true
+					paths = append(paths, p)
+				}
+			}
+		}
 	}
 
 	// Also parse /// <reference path="..." /> and /// <reference types="..." />
@@ -264,25 +329,27 @@ func resolveTypeImport(baseURL, importPath string) (string, error) {
 	if importPath == "" {
 		return "", fmt.Errorf("empty import path")
 	}
+	importPath = strings.TrimSpace(importPath)
+
 	// Absolute URLs pass through.
 	if strings.HasPrefix(importPath, "http://") || strings.HasPrefix(importPath, "https://") {
 		return importPath, nil
 	}
-	// Relative paths: resolve against the base URL's directory.
-	base := strings.TrimRight(baseURL, "/")
-	// Remove the filename from the base URL to get the directory.
-	if idx := strings.LastIndex(base, "/"); idx > 0 && idx > len("https://") {
-		base = base[:idx]
+
+	// Skip bare package/type library imports like "node".
+	if !strings.HasPrefix(importPath, "./") && !strings.HasPrefix(importPath, "../") && !strings.HasPrefix(importPath, "/") {
+		return "", fmt.Errorf("unsupported bare type import %q", importPath)
 	}
-	// Handle ../ and ./
-	for strings.HasPrefix(importPath, "../") {
-		if idx := strings.LastIndex(base, "/"); idx > len("https://") {
-			base = base[:idx]
-		}
-		importPath = importPath[3:]
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return "", fmt.Errorf("parse base type URL: %w", err)
 	}
-	importPath = strings.TrimPrefix(importPath, "./")
-	return base + "/" + importPath, nil
+	ref, err := url.Parse(importPath)
+	if err != nil {
+		return "", fmt.Errorf("parse type import %q: %w", importPath, err)
+	}
+	return base.ResolveReference(ref).String(), nil
 }
 
 // typeCachePathForURL derives a cache file path from a type URL.
@@ -351,6 +418,20 @@ func FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir stri
 
 func typesCachePath(typesDir, pkg, version string) string {
 	return filepath.Join(typesDir, fmt.Sprintf("%s@%s.d.ts", pkg, version))
+}
+
+func writeTypeCacheFile(cacheFile string, content []byte) error {
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
+		return fmt.Errorf("create types cache dir: %w", err)
+	}
+	tmpFile := cacheFile + ".tmp"
+	if err := os.WriteFile(tmpFile, content, 0644); err != nil {
+		return fmt.Errorf("write types tmp: %w", err)
+	}
+	if err := os.Rename(tmpFile, cacheFile); err != nil {
+		return fmt.Errorf("rename types tmp: %w", err)
+	}
+	return nil
 }
 
 // UpdateTsconfigPaths reads the tsconfig at the given path, adds or updates

@@ -75,17 +75,10 @@ func RunOneAppFrontendTests(
 	}
 
 	if _, err := exec.LookPath("npx"); err != nil {
-		return true, xfmt.Errorf("vitest: missing npx (Node.js). Install Node/npm, then run `npm install` in repo root")
+		return true, xfmt.Errorf("vitest: npx not found. Install Node.js from https://nodejs.org")
 	}
-	vitestBin := filepath.Join(repoRoot, "node_modules", ".bin", "vitest")
-	if _, err := os.Stat(vitestBin); err != nil {
-		return true, xfmt.Errorf("vitest: vitest is not installed. Run `npm install` in repo root (%s)", repoRoot)
-	}
-	if coverage {
-		providerPkg := filepath.Join(repoRoot, "node_modules", "@vitest", "coverage-v8", "package.json")
-		if _, err := os.Stat(providerPkg); err != nil {
-			return true, xfmt.Errorf("vitest: coverage requested but @vitest/coverage-v8 is not installed. Run `npm i -D @vitest/coverage-v8` in repo root")
-		}
+	if _, err := exec.LookPath("vitest"); err != nil {
+		return true, xfmt.Errorf("vitest: vitest is not installed. Run: npm install -g vitest")
 	}
 	junitPath = strings.TrimSpace(junitPath)
 	if junitPath != "" {

@@ -38,15 +38,15 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		t.Setenv("PATH", "")
 		tmpRoot := t.TempDir()
 		failed, err := runFrontendTest(context.Background(), t.TempDir(), "auth", "", false, false, false, false, "coverage", 0, 0, 0, 0, tmpRoot, false)
-		if err == nil || !strings.Contains(err.Error(), "missing npx") {
-			t.Fatalf("expected missing npx error, got failed=%v err=%v", failed, err)
+		if err == nil || !strings.Contains(err.Error(), "npx not found") {
+			t.Fatalf("expected npx not found error, got failed=%v err=%v", failed, err)
 		}
 	})
 
 	t.Run("rejects missing vitest binary", func(t *testing.T) {
 		binDir := filepath.Join(t.TempDir(), "bin")
 		writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
+		t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 		tmpRoot := t.TempDir()
 		failed, err := runFrontendTest(context.Background(), t.TempDir(), "auth", "", false, false, false, false, "coverage", 0, 0, 0, 0, tmpRoot, false)
@@ -59,12 +59,15 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		repoRoot := t.TempDir()
 		binDir := filepath.Join(t.TempDir(), "bin")
 		writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
-		t.Setenv("PATH", binDir)
-		writeExecFile(t, filepath.Join(repoRoot, "node_modules", ".bin", "vitest"), "#!/bin/sh\nexit 0\n")
+		writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
+		// vitest is on PATH, but @vitest/coverage-v8 is not installed.
+		// vitest itself will report the missing coverage provider at runtime;
+		// our pre-flight no longer guards this case.
 		failed, err := runFrontendTest(context.Background(), repoRoot, "auth", "", true, false, false, false, "coverage", 0, 0, 0, 0, repoRoot, false)
-		if err == nil || !strings.Contains(err.Error(), "coverage-v8") {
-			t.Fatalf("expected missing coverage provider error, got failed=%v err=%v", failed, err)
+		if err != nil {
+			t.Fatalf("expected no pre-flight error, got failed=%v err=%v", failed, err)
 		}
 	})
 }
@@ -73,8 +76,8 @@ func TestRunOneAppFrontendTestsKeepTmpConfig(t *testing.T) {
 	repoRoot := t.TempDir()
 	binDir := filepath.Join(t.TempDir(), "bin")
 	writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\ncapture=\"${CHOYSUM_CAPTURE_CONFIG}\"\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = \"--config\" ]; then\n    shift\n    echo \"$1\" > \"$capture\"\n    break\n  fi\n  shift\ndone\nexit 0\n")
-	t.Setenv("PATH", binDir)
-	writeExecFile(t, filepath.Join(repoRoot, "node_modules", ".bin", "vitest"), "#!/bin/sh\nexit 0\n")
+	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	captureDefault := filepath.Join(t.TempDir(), "default-config.txt")
 	t.Setenv("CHOYSUM_CAPTURE_CONFIG", captureDefault)
@@ -117,9 +120,8 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	repoRoot := t.TempDir()
 	binDir := filepath.Join(t.TempDir(), "bin")
 	writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\ncapture=\"${CHOYSUM_CAPTURE_CONFIG}\"\nwhile [ \"$#\" -gt 0 ]; do\n  if [ \"$1\" = \"--config\" ]; then\n    shift\n    echo \"$1\" > \"$capture\"\n    break\n  fi\n  shift\ndone\nexit 0\n")
-	t.Setenv("PATH", binDir)
-	writeExecFile(t, filepath.Join(repoRoot, "node_modules", ".bin", "vitest"), "#!/bin/sh\nexit 0\n")
-	writeExecFile(t, filepath.Join(repoRoot, "node_modules", "@vitest", "coverage-v8", "package.json"), "{}\n")
+	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	capturePath := filepath.Join(t.TempDir(), "config.txt")
 	t.Setenv("CHOYSUM_CAPTURE_CONFIG", capturePath)
@@ -162,10 +164,8 @@ func TestRunOneAppFrontendTestsCoverageCheck(t *testing.T) {
 	repoRoot := t.TempDir()
 	binDir := filepath.Join(t.TempDir(), "bin")
 	writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
-	t.Setenv("PATH", binDir)
-
-	writeExecFile(t, filepath.Join(repoRoot, "node_modules", ".bin", "vitest"), "#!/bin/sh\nexit 0\n")
-	writeExecFile(t, filepath.Join(repoRoot, "node_modules", "@vitest", "coverage-v8", "package.json"), "{}\n")
+	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	summaryPath := filepath.Join(repoRoot, "cov", "fe", "auth", "coverage-summary.json")
 	if err := os.MkdirAll(filepath.Dir(summaryPath), 0o755); err != nil {

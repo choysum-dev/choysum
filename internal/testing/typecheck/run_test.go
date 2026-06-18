@@ -178,12 +178,21 @@ func makeFakeTypecheckTooling(t *testing.T, repoRoot string, scriptBody string) 
 
 	npmPath := filepath.Join(binDir, "npm")
 	npxPath := filepath.Join(binDir, "npx")
+	vueTscPath := filepath.Join(binDir, "vue-tsc")
+	vitePath := filepath.Join(binDir, "vite")
 	writeFile(t, npmPath, "#!/bin/sh\nexit 0\n")
 	writeFile(t, npxPath, "#!/bin/sh\nset -eu\nif [ -n \"${CHOYSUM_CAPTURE_TSCONFIG_PATH:-}\" ]; then\n  printf '%s\\n' \"$4\" > \"$CHOYSUM_CAPTURE_TSCONFIG_PATH\"\nfi\nif [ -n \"${CHOYSUM_COPY_TSCONFIG:-}\" ]; then\n  cp \"$4\" \"$CHOYSUM_COPY_TSCONFIG\"\nfi\n"+scriptBody)
+	writeFile(t, vueTscPath, "#!/bin/sh\nexit 0\n")
+	writeFile(t, vitePath, "#!/bin/sh\nexit 0\n")
 
-	makeDir(t, filepath.Join(repoRoot, "node_modules", ".bin"))
-	makeDir(t, filepath.Join(repoRoot, "node_modules", "vue-tsc"))
-	writeFile(t, filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), "{}\n")
+	// Prepend binDir to PATH so exec.LookPath finds the fake binaries
+	// while system commands (cp, printf, etc.) remain available.
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	// Create a minimal @types/node so the generated tsconfig includes it.
+	makeDir(t, filepath.Join(repoRoot, "node_modules", "@types", "node"))
+	writeFile(t, filepath.Join(repoRoot, "node_modules", "@types", "node", "index.d.ts"), "// @types/node\n")
+	writeFile(t, filepath.Join(repoRoot, "node_modules", "@types", "node", "package.json"), "{}\n")
 
 	copyPath := filepath.Join(t.TempDir(), "captured.tsconfig.json")
 	argsPath := filepath.Join(t.TempDir(), "npx.args.txt")

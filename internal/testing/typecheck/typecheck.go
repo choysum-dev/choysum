@@ -216,23 +216,22 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return err
 	}
 
-	vueTscBin := filepath.Join(repoRoot, "node_modules", ".bin", "vue-tsc")
-	vueTscPkg := filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json")
-	if _, err := os.Stat(vueTscPkg); err != nil {
-		if _, err2 := os.Stat(vueTscBin); err2 != nil {
-			return xfmt.Errorf("typecheck: vue-tsc is not installed. Run `npm install` in repo root (%s)", repoRoot)
-		}
+	if _, err := exec.LookPath("vue-tsc"); err != nil {
+		return xfmt.Errorf("typecheck: vue-tsc is not installed. Run: npm install -g vue-tsc")
 	}
 
 	hasWebSources := false
 	if st, err := os.Stat(filepath.Join(modulesRoot, app, "web")); err == nil && st.IsDir() {
 		hasWebSources = true
 	}
-	viteClientTypesPath := filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts")
+	var viteClientTypesPath string
 	if hasWebSources {
-		if _, err := os.Stat(viteClientTypesPath); err != nil {
-			return xfmt.Errorf("typecheck: vite is not installed. Run `npm install` in repo root (%s)", repoRoot)
+		if _, err := exec.LookPath("vite"); err != nil {
+			return xfmt.Errorf("typecheck: vite is not installed. Run: npm install -g vite")
 		}
+		// Resolve vite/client.d.ts from the global npm root so TypeScript
+		// can find DOM-related type declarations (e.g. ImportMeta).
+		viteClientTypesPath = resolveGlobalViteClientDTS(repoRoot)
 	}
 
 	tmpTsconfigRoot, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, tmpRoot, "typecheck")
@@ -248,8 +247,17 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return xfmt.Errorf("typecheck: create tmp tsconfig: %w", err)
 	}
 	tmpTsconfigPath := tmpTsconfigFile.Name()
+
+	// Write ambient stub for subpath imports (locales, plugins, chart
+	// sub-modules, etc.) that don't have individual type definitions.
+	ambientStubPath := filepath.Join(tmpTsconfigDir, "subpath-stubs.d.ts")
+	if err := writeSubpathStubs(ambientStubPath); err != nil {
+		return xfmt.Errorf("typecheck: write subpath stubs: %w", err)
+	}
+
 	cleanupTmpArtifacts := func() {
 		_ = os.Remove(tmpTsconfigPath)
+		_ = os.Remove(ambientStubPath)
 		_ = os.Remove(tmpTsconfigDir)
 	}
 	if !opts.Keep {
@@ -257,16 +265,26 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 
 	include := []string{
-		filepath.ToSlash(filepath.Join(modulesRoot, "**", "*.d.ts")),
+		filepath.ToSlash(filepath.Join(modulesRoot, app, "**", "*.d.ts")),
 		filepath.ToSlash(filepath.Join(modulesRoot, app, "*.ts")),
 		filepath.ToSlash(filepath.Join(modulesRoot, app, "service", "**", "*.ts")),
 		filepath.ToSlash(filepath.Join(modulesRoot, app, "web", "**", "*.ts")),
 		filepath.ToSlash(filepath.Join(modulesRoot, app, "web", "**", "*.tsx")),
 		filepath.ToSlash(filepath.Join(modulesRoot, app, "web", "**", "*.vue")),
 	}
+	coreAmbientTypes := filepath.Join(modulesRoot, "core", "types", "$choysum.d.ts")
+	if _, err := os.Stat(coreAmbientTypes); err == nil {
+		include = append(include, filepath.ToSlash(coreAmbientTypes))
+	}
 	if hasWebSources {
 		include = append(include, filepath.ToSlash(viteClientTypesPath))
 	}
+	include = append(include, filepath.ToSlash(ambientStubPath))
+
+	typeRoots := resolveTypeRoots(repoRoot)
+	types := resolveCompilerTypes(typeRoots)
+	paths := resolveModulePaths(modulesRoot)
+	paths["@/*"] = []string{filepath.ToSlash(filepath.Join(modulesRoot, "*"))}
 	cfg := map[string]any{
 		"compilerOptions": map[string]any{
 			"target":                       "ES2020",
@@ -279,18 +297,20 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 			"allowJs":                      true,
 			"allowArbitraryExtensions":     true,
 			"skipLibCheck":                 true,
-			"types":                        []string{"node"},
-			"typeRoots":                    []string{filepath.ToSlash(filepath.Join(repoRoot, "node_modules", "@types"))},
-			"paths": map[string]any{
-				"@/*": []string{filepath.ToSlash(filepath.Join(modulesRoot, "*"))},
-			},
-			"noEmit": true,
+			"types":                        types,
+			"typeRoots":                    typeRoots,
+			"paths":                        paths,
+			"noEmit":                       true,
 		},
 		"include": include,
 		"exclude": []string{
 			filepath.ToSlash(filepath.Join(repoRoot, "node_modules")),
 			filepath.ToSlash(filepath.Join(repoRoot, "dist")),
 			filepath.ToSlash(filepath.Join(repoRoot, "coverage")),
+			filepath.ToSlash(filepath.Join(modulesRoot, app, "**", "*.test.ts")),
+			filepath.ToSlash(filepath.Join(modulesRoot, app, "**", "*.spec.ts")),
+			"**/*.test.ts",
+			"**/*.spec.ts",
 			"**/*.bak",
 			"**/*.gen.*",
 		},
@@ -343,9 +363,202 @@ func resolveNpxPath(npmPath string) (string, error) {
 		}
 	}
 	if _, err := exec.LookPath("npx"); err != nil {
-		return "", xfmt.Errorf("typecheck: missing npx (Node.js). Install Node/npm, then run `npm install` in repo root")
+		return "", xfmt.Errorf("typecheck: npx not found. Install Node.js from https://nodejs.org")
 	}
 	return "npx", nil
+}
+
+// resolveGlobalViteClientDTS returns the path to vite/client.d.ts,
+// preferring a local node_modules copy and falling back to the global
+// npm prefix when vite is installed globally.
+func resolveGlobalViteClientDTS(repoRoot string) string {
+	local := filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts")
+	if _, err := os.Stat(local); err == nil {
+		return local
+	}
+	globalRoot, err := globalNpmRoot()
+	if err != nil {
+		return local
+	}
+	return filepath.Join(globalRoot, "vite", "client.d.ts")
+}
+
+// resolveTypeRoots returns typeRoots entries for the generated tsconfig,
+// including both local node_modules/@types and the global npm prefix.
+func resolveTypeRoots(repoRoot string) []string {
+	var roots []string
+	localTypes := filepath.Join(repoRoot, "node_modules", "@types")
+	if _, err := os.Stat(localTypes); err == nil {
+		roots = append(roots, filepath.ToSlash(localTypes))
+	}
+	if globalRoot, err := globalNpmRoot(); err == nil {
+		globalTypes := filepath.Join(globalRoot, "@types")
+		if _, err := os.Stat(globalTypes); err == nil {
+			roots = append(roots, filepath.ToSlash(globalTypes))
+		}
+	}
+	if len(roots) == 0 {
+		// Keep a sensible default so the error message is clear.
+		roots = append(roots, filepath.ToSlash(localTypes))
+	}
+	return roots
+}
+
+// globalNpmRoot returns the global node_modules path (npm root -g).
+func globalNpmRoot() (string, error) {
+	out, err := exec.Command("npm", "root", "-g").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// resolveCompilerTypes returns the "types" compiler option, including
+// only type libraries that are actually installed in a typeRoot.
+func resolveCompilerTypes(typeRoots []string) []string {
+	for _, root := range typeRoots {
+		if _, err := os.Stat(filepath.Join(root, "node")); err == nil {
+			return []string{"node"}
+		}
+	}
+	return nil
+}
+
+// resolveModulePaths reads modules/tsconfig.json and returns its "paths"
+// entries resolved to absolute paths (relative to the modules directory).
+func resolveModulePaths(modulesRoot string) map[string]any {
+	paths := make(map[string]any)
+	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		return paths
+	}
+	var tsconfig struct {
+		CompilerOptions struct {
+			Paths map[string][]string `json:"paths"`
+		} `json:"compilerOptions"`
+	}
+	if err := json.Unmarshal(data, &tsconfig); err != nil {
+		return paths
+	}
+	for alias, targets := range tsconfig.CompilerOptions.Paths {
+		var absTargets []string
+		for _, t := range targets {
+			if filepath.IsAbs(t) {
+				absTargets = append(absTargets, filepath.ToSlash(t))
+			} else {
+				absTargets = append(absTargets, filepath.ToSlash(filepath.Join(modulesRoot, t)))
+			}
+		}
+		paths[alias] = absTargets
+	}
+	return paths
+}
+
+// writeSubpathStubs writes a .d.ts file that declares ambient modules for
+// subpath imports (locales, plugins, etc.) that don't have individual
+// type definitions on esm.sh.  The open-ended declare module syntax
+// (without {}) tells TypeScript the module exists without checking
+// specific exports.
+func writeSubpathStubs(dst string) error {
+	stubs := []string{
+		// dayjs locales and plugins (pure JS, no .d.ts).
+		"dayjs/locale/*",
+		"dayjs/plugin/*",
+		// element-plus locale lang modules (pure JS).
+		"element-plus/es/locale/lang/*",
+		// External modules/subpaths without stable d.ts coverage.
+		"@element-plus/icons-vue",
+		// Test-only imports.
+		"vitest",
+		"@vue/test-utils",
+	}
+	var b strings.Builder
+	b.WriteString("// Ambient declarations for subpath imports without individual types.\n")
+	for _, mod := range stubs {
+		fmt.Fprintf(&b, "declare module %q;\n", mod)
+	}
+	b.WriteString(`
+declare module "@bufbuild/protobuf/codegenv2" {
+  export type Message = any;
+  export type GenFile = any;
+  export type GenMessage<T = any> = any;
+  export const fileDesc: any;
+  export const messageDesc: any;
+}
+
+declare module "@bufbuild/protobuf/wkt" {
+  export type Value = any;
+  export const EmptySchema: any;
+  export const ListValueSchema: any;
+  export const NullValue: any;
+  export const StructSchema: any;
+  export const ValueSchema: any;
+}
+
+declare module "kysely/helpers/postgres" {
+  export const jsonArrayFrom: any;
+  export const jsonObjectFrom: any;
+}
+
+declare module "kysely/helpers/mysql" {
+  export const jsonArrayFrom: any;
+  export const jsonObjectFrom: any;
+}
+
+declare module "kysely/helpers/sqlite" {
+  export const jsonArrayFrom: any;
+  export const jsonObjectFrom: any;
+}
+
+declare module "kysely/helpers/mssql" {
+  export const jsonArrayFrom: any;
+  export const jsonObjectFrom: any;
+}
+
+declare module "echarts/core" {
+  export const use: (...args: any[]) => void;
+}
+
+declare module "echarts/charts" {
+  export const BarChart: any;
+  export const LineChart: any;
+  export const PieChart: any;
+}
+
+declare module "echarts/components" {
+  export const TitleComponent: any;
+  export const TooltipComponent: any;
+  export const LegendComponent: any;
+  export const GridComponent: any;
+}
+
+declare module "echarts/renderers" {
+  export const SVGRenderer: any;
+}
+
+declare module "element-plus/es/components/table-v2/src/row" {
+	export type RowEventHandlerParams = any;
+}
+
+declare module "element-plus/es/components/table-v2/src/types" {
+	export type RowEventHandlerParams = import("element-plus/es/components/table-v2/src/row").RowEventHandlerParams;
+	export type KeyType = string | number;
+}
+
+declare module "fast-deep-equal" {
+	export default function equal(a: any, b: any): boolean;
+}
+
+declare module "node:fs" {
+	export function readFileSync(path: string, encoding?: string): string;
+}
+
+declare module "node:path" {
+	export function resolve(...paths: string[]): string;
+}
+`)
+	return os.WriteFile(dst, []byte(b.String()), 0o644)
 }
 
 func hasTypecheckInputs(modulesPath string, app string) (bool, error) {

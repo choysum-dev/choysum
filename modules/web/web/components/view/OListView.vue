@@ -99,8 +99,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel">
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
-import type { RowEventHandlerParams } from 'element-plus/es/components/table-v2/src/row';
-import type { KeyType } from 'element-plus/es/components/table-v2/src/types';
+import type { RowEventHandlerParams } from 'element-plus';
 import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, DefineComponent } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -137,7 +136,7 @@ export interface SelectionExpose<T = any> {
 export type RowEventPayload<T> = {
   row: ClientModel<T>;
   rowIndex: number;
-  rowKey: KeyType;
+  rowKey: RowEventHandlerParams['rowKey'];
   event: MouseEvent | Event;
 };
 
@@ -333,7 +332,7 @@ const {
   height: tableHeight,
   pxHeight: tablePxHeight,
   recompute: recomputeTableHeight,
-} = useAdaptiveHeight(tableWrapRef, {
+} = useAdaptiveHeight(tableWrapRef as Ref<Element | null, any>, {
   mode: props.heightMode,
   containerSelector: props.containerSelector,
   viewportGap: props.viewportGap,
@@ -594,7 +593,7 @@ async function onRowClick(p: RowEventHandlerParams) {
       emit('row-click', {
         row: row.payload as ClientModel<T>,
         rowIndex: p.rowIndex,
-        rowKey: p.rowKey as KeyType,
+        rowKey: p.rowKey as RowEventHandlerParams['rowKey'],
         event: p.event as MouseEvent,
       });
       return;
@@ -607,7 +606,7 @@ async function onRowClick(p: RowEventHandlerParams) {
   emit('row-click', {
     row: record as ClientModel<T>,
     rowIndex: p.rowIndex,
-    rowKey: p.rowKey as KeyType,
+    rowKey: p.rowKey as RowEventHandlerParams['rowKey'],
     event: p.event as MouseEvent,
   });
 }

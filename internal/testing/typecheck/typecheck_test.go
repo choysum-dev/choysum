@@ -33,7 +33,7 @@ func TestTypecheckApp_MissingVueTsc(t *testing.T) {
 		t.Fatalf("write fake npx: %v", err)
 	}
 
-	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("PATH", binDir)
 
 	opts := RunOptions{
 		ModulesPath: modulesPath,
@@ -50,7 +50,7 @@ func TestTypecheckApp_MissingVueTsc(t *testing.T) {
 	if !strings.Contains(msg, "vue-tsc") {
 		t.Fatalf("expected error to mention vue-tsc, got: %s", msg)
 	}
-	if !strings.Contains(msg, "npm install") {
-		t.Fatalf("expected error to mention npm install, got: %s", msg)
+	if !strings.Contains(msg, "npm install -g") {
+		t.Fatalf("expected error to mention npm install -g, got: %s", msg)
 	}
 }

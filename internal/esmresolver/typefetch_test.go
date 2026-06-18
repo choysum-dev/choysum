@@ -99,6 +99,10 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 			return
 		}
 		if strings.HasSuffix(r.URL.Path, ".d.ts") {
+			if strings.HasSuffix(r.URL.Path, "index.d.ts") {
+				fmt.Fprint(w, `export * from "./sub.d.ts";`)
+				return
+			}
 			fmt.Fprint(w, "export declare const y: string;")
 			return
 		}
@@ -124,13 +128,19 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 		t.Fatalf("result = %+v", result)
 	}
 
+	depPath := typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/sub.d.ts")
+	if _, err := os.Stat(depPath); err != nil {
+		t.Fatalf("expected transitive type file at %s: %v", depPath, err)
+	}
+
 	// Verify file content.
 	data, err := os.ReadFile(result.CachedPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(data) != "export declare const y: string;" {
-		t.Fatalf("content = %q", string(data))
+	rewritten := string(data)
+	if !strings.Contains(rewritten, filepath.Base(depPath)) {
+		t.Fatalf("expected rewritten import to local cache file, got: %q", rewritten)
 	}
 }
 
@@ -271,6 +281,7 @@ func TestParseDTSImports(t *testing.T) {
 	content := `
 import { Foo } from './foo';
 import type { Bar } from "../bar";
+export * from "./baz";
 /// <reference path="./types.d.ts" />
 /// <reference types="node" />
 export declare const x: number;
@@ -278,10 +289,10 @@ export declare const x: number;
 	// Note: import("dynamic") is a call expression, not a declaration,
 	// so it is not extracted by the AST parser.
 	paths := parseDTSImports(content)
-	if len(paths) != 4 {
-		t.Fatalf("expected 4 imports, got %d: %v", len(paths), paths)
+	if len(paths) != 5 {
+		t.Fatalf("expected 5 imports, got %d: %v", len(paths), paths)
 	}
-	if !contains(paths, "./foo") || !contains(paths, "../bar") ||
+	if !contains(paths, "./foo") || !contains(paths, "../bar") || !contains(paths, "./baz") ||
 		!contains(paths, "./types.d.ts") || !contains(paths, "node") {
 		t.Fatalf("missing expected imports: %v", paths)
 	}
@@ -318,6 +329,57 @@ func TestResolveTypeImport_Relative(t *testing.T) {
 		}
 		if got != tt.want {
 			t.Fatalf("resolveTypeImport(%q, %q) = %q, want %q", base, tt.imp, got, tt.want)
+		}
+	}
+}
+
+func TestResolveTypeImport_BareImportUnsupported(t *testing.T) {
+	_, err := resolveTypeImport("https://esm.sh/pkg@1.0.0/index.d.ts", "node")
+	if err == nil {
+		t.Fatal("expected error for bare type import")
+	}
+}
+
+func TestRewriteTypeImportSpecifiers(t *testing.T) {
+	typesDir := t.TempDir()
+	cacheFile := filepath.Join(typesDir, "root.d.ts")
+
+	urlA := "https://esm.sh/pkg@1.0.0/sub.d.ts"
+	urlB := "https://esm.sh/pkg@1.0.0/types/ref.d.ts"
+	content := `export * from "./sub.d.ts";
+/// <reference path="./types/ref.d.ts" />`
+
+	rewritten := rewriteTypeImportSpecifiers(content, cacheFile, typesDir, []resolvedTypeImport{
+		{Original: "./sub.d.ts", ResolvedURL: urlA},
+		{Original: "./types/ref.d.ts", ResolvedURL: urlB},
+	})
+
+	if strings.Contains(rewritten, `"./sub.d.ts"`) || strings.Contains(rewritten, `"./types/ref.d.ts"`) {
+		t.Fatalf("expected original specifiers to be rewritten, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, filepath.Base(typeCachePathForURL(typesDir, urlA))) {
+		t.Fatalf("missing rewritten target for sub.d.ts: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, filepath.Base(typeCachePathForURL(typesDir, urlB))) {
+		t.Fatalf("missing rewritten target for ref.d.ts: %q", rewritten)
+	}
+}
+
+func TestIsLocalCachedTypeSpecifier(t *testing.T) {
+	tests := []struct {
+		path string
+		want bool
+	}{
+		{path: "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "../esm.sh_kysely@0.29.2_dist_index.d.ts.d.ts", want: true},
+		{path: "./runtime-dom.d.ts", want: false},
+		{path: "https://esm.sh/vue@3.5.35/dist/vue.d.mts", want: false},
+		{path: "node", want: false},
+	}
+
+	for _, tt := range tests {
+		if got := isLocalCachedTypeSpecifier(tt.path); got != tt.want {
+			t.Fatalf("isLocalCachedTypeSpecifier(%q) = %v, want %v", tt.path, got, tt.want)
 		}
 	}
 }

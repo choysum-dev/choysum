@@ -2,13 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { usePreferredLanguages, isClient } from '@vueuse/core';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { SUPPORTED_LOCALES } from './locales';
 import { DateTimeFormatType, SupportedLocale } from './types';
 
 // Enable the relative time plugin.
 dayjs.extend(relativeTime);
+
+type DayjsWithRelativeTime = Dayjs & {
+  fromNow: (withoutSuffix?: boolean) => string;
+};
 
 /**
  * Detect the best matching system locale.
@@ -97,7 +101,7 @@ export function formatDateTime(
 
   // Select the most appropriate format for the requested type.
   if (type === 'relative') {
-    return dayjs(date).fromNow();
+    return (dayjs(date) as DayjsWithRelativeTime).fromNow();
   }
 
   let defaultFormat: string;

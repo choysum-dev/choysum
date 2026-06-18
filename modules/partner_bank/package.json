@@ -6,6 +6,11 @@
   "author": "Choysum Team",
   "type": "module",
   "main": "index.ts",
+  "peerDependencies": {
+    "element-plus": "^2.14.1",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
   "choysum": {
     "moduleName": "partner_bank",
     "application": "partner",

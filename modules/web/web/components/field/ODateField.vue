@@ -153,12 +153,12 @@ function isValidValue(value: any): boolean {
   return dayjs(new Date(value)).isValid();
 }
 
-const internalRule: RuleItem = {
-  validator: (_r, value, cb) => {
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (!isValidValue(value)) return cb(new Error('无效的日期'));
     cb();
   },
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 
 function sameDate(a: Date | null, b: Date | null) {

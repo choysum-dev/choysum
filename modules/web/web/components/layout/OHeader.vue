@@ -157,7 +157,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, onMounted, ref } from 'vue';
 import { useCssVar, useTextDirection } from '@vueuse/core';
 import { useLayoutStore } from '@/web/web/stores';
-import { useI18nStore, SUPPORTED_LOCALES } from '@/web/web/stores/i18nStore';
+import { useI18nStore, SUPPORTED_LOCALES, type SupportedLocale } from '@/web/web/stores/i18nStore';
 import { useMenu } from '@/web/web/composables';
 import type { MenuItem } from '@/core/web/menu';
 import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDropdownItem, ElInput, ElScrollbar } from 'element-plus';
@@ -217,7 +217,7 @@ const drawerDirection = computed(() => (direction.value === 'rtl' ? 'rtl' : 'ltr
 
 // Supported locale list.
 const localeOptions = computed(() =>
-  i18nStore.supportedLocales.map(code => {
+  i18nStore.supportedLocales.map((code: SupportedLocale) => {
     const locale = SUPPORTED_LOCALES[code];
     return {
       code,

@@ -777,13 +777,15 @@ module.exports = {
 		}
 	}
 
-	// Prefer configured npm modules dir (opts.NpmPath), but fall back to repo-local node_modules.
-	tryBinDir(opts.NpmPath)
-	if playwrightBin == "playwright" {
-		tryBinDir(filepath.Join(opts.WorkDir, "node_modules"))
-	}
-	if playwrightBin == "playwright" {
-		return xfmt.Errorf("playwright not found (expected %s or %s); please run npm install", filepath.Join(opts.NpmPath, ".bin", "playwright"), filepath.Join(opts.WorkDir, "node_modules", ".bin", "playwright"))
+	if _, err := exec.LookPath("playwright"); err != nil {
+		// Fall back to local node_modules search.
+		tryBinDir(opts.NpmPath)
+		if playwrightBin == "playwright" {
+			tryBinDir(filepath.Join(opts.WorkDir, "node_modules"))
+		}
+		if playwrightBin == "playwright" {
+			return xfmt.Errorf("playwright not found. Run: npm install -g @playwright/test && npx playwright install")
+		}
 	}
 
 	cmd := exec.CommandContext(ctx, playwrightBin, args[1:]...)

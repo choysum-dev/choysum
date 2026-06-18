@@ -208,8 +208,8 @@ const OIntCell = defineComponent({
   },
 });
 
-const internalRule: RuleItem = {
-  validator: (_r, value, cb) => {
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
       if (props.nullable) return cb();
       return cb(new Error('不能为空'));
@@ -222,7 +222,7 @@ const internalRule: RuleItem = {
     }
     cb();
   },
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 

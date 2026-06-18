@@ -18,7 +18,7 @@ export function useBreadcrumb() {
    * Returns the breadcrumb list exposed to the view.
    */
   const breadcrumbs = computed(() => {
-    return breadcrumbStore.breadcrumbStack.map((item, index) => {
+    return breadcrumbStore.breadcrumbStack.map((item: BreadcrumbItem, index: number) => {
       return {
         ...item,
         displayTitle: item.title,
