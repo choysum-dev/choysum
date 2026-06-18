@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/evanw/esbuild/pkg/api"
 	"golang.org/x/sync/singleflight"
 )
@@ -529,6 +530,10 @@ func (r *Resolver) readCache(cacheFile string) (string, bool) {
 
 func (r *Resolver) codeCacheDir() string {
 	if r.cacheDir == "" {
+		// Fall back to the default Choysum path when no cache dir is configured.
+		if defaultPath, err := config.ResolveDefaultChoysumPaths(); err == nil {
+			return filepath.Join(defaultPath, "pkg", "esm")
+		}
 		return filepath.Join("pkg", "esm")
 	}
 	return filepath.Join(r.cacheDir, "pkg", "esm")
