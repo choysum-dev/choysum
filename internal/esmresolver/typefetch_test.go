@@ -19,7 +19,7 @@ func TestReadPackageJSON(t *testing.T) {
 	pkgPath := filepath.Join(dir, "package.json")
 
 	pkg := &PackageJSON{
-		Dependencies:    map[string]string{"vue": "^3.4.0", "pinia": "~2.1.0"},
+		Dependencies:     map[string]string{"vue": "^3.4.0", "pinia": "~2.1.0"},
 		PeerDependencies: map[string]string{"typescript": "^5.0.0"},
 	}
 	data, _ := json.Marshal(pkg)
@@ -39,7 +39,7 @@ func TestReadPackageJSON(t *testing.T) {
 
 func TestCollectDependencies(t *testing.T) {
 	pkg := &PackageJSON{
-		Dependencies:    map[string]string{"a": "1.0.0"},
+		Dependencies:     map[string]string{"a": "1.0.0"},
 		PeerDependencies: map[string]string{"b": "2.0.0", "a": "0.9.0"},
 	}
 	deps := pkg.CollectDependencies()

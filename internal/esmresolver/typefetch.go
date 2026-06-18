@@ -25,7 +25,7 @@ type TypeFetchResult struct {
 // PackageJSON represents the subset of package.json fields needed for
 // dependency extraction.
 type PackageJSON struct {
-	Dependencies    map[string]string `json:"dependencies"`
+	Dependencies     map[string]string `json:"dependencies"`
 	PeerDependencies map[string]string `json:"peerDependencies"`
 }
 
