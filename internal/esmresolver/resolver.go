@@ -34,10 +34,10 @@ type Resolver struct {
 	offline      bool
 	client       *http.Client
 	singleflight singleflight.Group
-	lockfilePath string            // path to esm.lock for version pinning
-	modulePath   string            // module root for deriving lockfile path
-	lockfile     *EsmLockfile      // cached parsed lockfile (nil if not loaded)
-	lockfileErr  error             // error from last lockfile load attempt
+	lockfilePath string       // path to esm.lock for version pinning
+	modulePath   string       // module root for deriving lockfile path
+	lockfile     *EsmLockfile // cached parsed lockfile (nil if not loaded)
+	lockfileErr  error        // error from last lockfile load attempt
 }
 
 // Option configures a Resolver.

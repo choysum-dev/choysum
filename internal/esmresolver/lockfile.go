@@ -16,8 +16,8 @@ const lockfileVersion = 1
 // EsmLockfile represents the esm.lock file that pins resolved ESM package
 // versions for reproducible builds.
 type EsmLockfile struct {
-	Version  int                   `json:"version"`
-	Packages map[string]LockEntry  `json:"packages"`
+	Version  int                  `json:"version"`
+	Packages map[string]LockEntry `json:"packages"`
 }
 
 // LockEntry records the resolved version and source URL for a package specifier.
