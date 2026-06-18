@@ -661,12 +661,12 @@ func TestIsLocalFilesystemPath(t *testing.T) {
 		{"/usr/local/bin", true},
 		{"/opt/app", true},
 		{"/proc/cpuinfo", true},
-		{"/node/process.mjs", false},         // esm.sh Node.js polyfill
-		{"/node/buffer.mjs", false},          // esm.sh Node.js polyfill
-		{"/pkg@ver/deno/foo.mjs", false},     // versioned esm.sh path
-		{"/stable/pkg/dist/foo.mjs", false},  // esm.sh target prefix
-		{"/v135/pkg/foo.mjs", false},         // esm.sh version prefix
-		{"https://esm.sh/pkg", false},        // not absolute
+		{"/node/process.mjs", false},        // esm.sh Node.js polyfill
+		{"/node/buffer.mjs", false},         // esm.sh Node.js polyfill
+		{"/pkg@ver/deno/foo.mjs", false},    // versioned esm.sh path
+		{"/stable/pkg/dist/foo.mjs", false}, // esm.sh target prefix
+		{"/v135/pkg/foo.mjs", false},        // esm.sh version prefix
+		{"https://esm.sh/pkg", false},       // not absolute
 		{"", false},
 	}
 	for _, tt := range tests {
