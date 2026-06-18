@@ -32,4 +32,26 @@ default_choysum_path: ./.choysum
 #   tlsCertFile: /absolute/path/to/.choysum/cert/server.crt
 #   tlsKeyFile: /absolute/path/to/.choysum/cert/server.key
 # Generate those local TLS files with ./scripts/dev/generate-local-tls-certs.sh.
+
+# ---- ESM dependency resolution ----
+# The ESM resolver replaces node_modules for bare-import resolution (e.g. import
+# "vue", import "kysely").  Packages are fetched from an ESM CDN (default esm.sh),
+# cached under <default_choysum_path>/pkg/esm, and bundled at build time.
+#
+# ESM resolver config:
+#   esm_upstream_url: "https://esm.sh"
+#     Override via env CHOYSUM_ESM_UPSTREAM_URL.
+#   esm_offline: false
+#     If true, only use cache; cache misses produce a hard error with recovery
+#     guidance (run 'choysum install' online).
+#
+# Per-module version locking:
+#   Each module may have an esm.lock file (<module>/esm.lock) that pins resolved
+#   package versions for reproducible builds.  The lock is used automatically
+#   when present; if absent, the latest compatible version is resolved.
+#
+# To disable ESM resolution entirely, unset esm_upstream_url or set it to "".
+# esm:
+#   upstream_url: "https://esm.sh"
+#   offline: false
 # The script defaults to $HOME/.choysum/cert; pass a custom output dir if needed.
