@@ -34,6 +34,10 @@ type Resolver struct {
 	offline      bool
 	client       *http.Client
 	singleflight singleflight.Group
+	lockfilePath string            // path to esm.lock for version pinning
+	modulePath   string            // module root for deriving lockfile path
+	lockfile     *EsmLockfile      // cached parsed lockfile (nil if not loaded)
+	lockfileErr  error             // error from last lockfile load attempt
 }
 
 // Option configures a Resolver.
@@ -80,6 +84,26 @@ func WithHTTPClient(client *http.Client) Option {
 	return func(r *Resolver) {
 		if client != nil {
 			r.client = client
+		}
+	}
+}
+
+// WithLockfile sets the path to an esm.lock file. When set, the resolver
+// uses locked versions from the file to ensure reproducible builds.
+func WithLockfile(path string) Option {
+	return func(r *Resolver) {
+		if path != "" {
+			r.lockfilePath = path
+		}
+	}
+}
+
+// WithModulePath sets the module root directory. The lockfile is expected
+// at <modulePath>/esm.lock unless an explicit lockfile path is provided.
+func WithModulePath(path string) Option {
+	return func(r *Resolver) {
+		if path != "" {
+			r.modulePath = path
 		}
 	}
 }
@@ -183,9 +207,12 @@ func (r *Resolver) Plugin() api.Plugin {
 					return api.OnResolveResult{}, nil
 				}
 
+				// Apply lockfile version pinning to the specifier.
+				spec := r.lockedSpecifier(args.Path)
+
 				// CSS imports from any target are external.
 				if args.Kind == api.ResolveCSSURLToken {
-					resolvedURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, args.Path, r.target)
+					resolvedURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, spec, r.target)
 					return api.OnResolveResult{
 						Path:     resolvedURL,
 						External: true,
@@ -193,7 +220,7 @@ func (r *Resolver) Plugin() api.Plugin {
 				}
 
 				// Map bare import to esm.sh URL.
-				esmURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, args.Path, r.target)
+				esmURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, spec, r.target)
 				return api.OnResolveResult{
 					Path:      esmURL,
 					Namespace: "choysum-esm",
@@ -247,6 +274,36 @@ func (r *Resolver) Plugin() api.Plugin {
 			})
 		},
 	}
+}
+
+// resolveLockfile returns the parsed lockfile if available, loading it on first
+// call. Returns nil if no lockfile is configured or it doesn't exist.
+func (r *Resolver) resolveLockfile() *EsmLockfile {
+	if r.lockfile != nil || r.lockfileErr != nil {
+		return r.lockfile
+	}
+	path := r.lockfilePath
+	if path == "" && r.modulePath != "" {
+		path = filepath.Join(r.modulePath, "esm.lock")
+	}
+	if path == "" {
+		r.lockfileErr = fmt.Errorf("no lockfile path configured")
+		return nil
+	}
+	lock, err := ReadLockfile(path)
+	if err != nil {
+		r.lockfileErr = err
+		return nil
+	}
+	r.lockfile = lock
+	return lock
+}
+
+// lockedSpecifier returns the version-pinned specifier if the lockfile has an
+// entry for the given import path. Otherwise returns the original specifier.
+func (r *Resolver) lockedSpecifier(specifier string) string {
+	lock := r.resolveLockfile()
+	return LookupLockedSpec(lock, specifier)
 }
 
 // resolveInNamespace handles import resolution for files already inside the
