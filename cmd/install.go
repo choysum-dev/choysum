@@ -5,12 +5,17 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -133,9 +138,62 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					os.Exit(1)
 				}
 			}
+
+			// Auto-trigger type fetch after successful install for IDE support.
+			runTypeFetchAfterInstall(env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
+}
+
+// runTypeFetchAfterInstall triggers a best-effort type fetch for all modules
+// after a successful install. Failures are logged but do not fail the install.
+func runTypeFetchAfterInstall(env scope.Scope) {
+	runtimeOpts, ok := scope.PathsRuntimeOptionsFromScope(env)
+	if !ok {
+		return
+	}
+	modulesPath := runtimeOpts.ModulesPath
+	if modulesPath == "" {
+		return
+	}
+	defaultPath := runtimeOpts.DefaultChoysumPath
+	if defaultPath == "" {
+		defaultPath = ".choysum"
+	}
+	typesDir := filepath.Join(defaultPath, "pkg", "types")
+	upstream := runtimeOpts.ESMUpstreamURL
+	if upstream == "" {
+		upstream = config.DefaultESMUpstreamURL
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	entries, err := os.ReadDir(modulesPath)
+	if err != nil {
+		env.Logger().Warn("type-fetch: read modules dir failed", "error", err)
+		return
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		moduleDir := filepath.Join(modulesPath, entry.Name())
+		if _, err := os.Stat(filepath.Join(moduleDir, "package.json")); err != nil {
+			continue
+		}
+		results, err := esmresolver.FetchTypesForModule(client, upstream, typesDir, moduleDir)
+		if err != nil {
+			env.Logger().Warn("type-fetch: skipped module", "module", entry.Name(), "error", err)
+			continue
+		}
+		for _, r := range results {
+			if !r.FromCache {
+				env.Logger().Info("type-fetch: downloaded", "module", entry.Name(), "package", r.Package+"@"+r.Version)
+
+			}
+		}
+	}
 }
