@@ -173,6 +173,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithTarget("es2020"),
 			esmresolver.WithModulePath(b.module.Path),
+			esmresolver.WithLogger(b.runtimeScope.Logger()),
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
@@ -187,6 +188,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithTarget("es2020"),
 			esmresolver.WithModulePath(b.module.Path),
+			esmresolver.WithLogger(b.runtimeScope.Logger()),
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))

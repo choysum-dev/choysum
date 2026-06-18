@@ -8,6 +8,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -813,4 +814,88 @@ func TestIsBareImport(t *testing.T) {
 			t.Fatalf("relative import should not be intercepted: %v", result.Errors)
 		}
 	})
+}
+
+// ---- Metrics tests ----
+
+func TestMetrics_Snapshot(t *testing.T) {
+	m := &Metrics{}
+	m.CacheHit.Store(10)
+	m.CacheMiss.Store(5)
+	m.Downloads.Store(3)
+	m.Errors.Store(1)
+	m.DownloadDurationMs.Store(1500)
+
+	hit, miss, downloads, errors, downloadMs := m.Snapshot()
+	if hit != 10 || miss != 5 || downloads != 3 || errors != 1 || downloadMs != 1500 {
+		t.Fatalf("snapshot = (%d,%d,%d,%d,%d), want (10,5,3,1,1500)", hit, miss, downloads, errors, downloadMs)
+	}
+}
+
+func TestMetrics_Concurrency(t *testing.T) {
+	m := &Metrics{}
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 1000; i++ {
+			m.CacheHit.Add(1)
+		}
+		done <- struct{}{}
+	}()
+	go func() {
+		for i := 0; i < 500; i++ {
+			m.CacheMiss.Add(1)
+		}
+		done <- struct{}{}
+	}()
+	<-done
+	<-done
+	if m.CacheHit.Load() != 1000 {
+		t.Fatalf("CacheHit = %d, want 1000", m.CacheHit.Load())
+	}
+	if m.CacheMiss.Load() != 500 {
+		t.Fatalf("CacheMiss = %d, want 500", m.CacheMiss.Load())
+	}
+}
+
+func TestResolver_WithLogger(t *testing.T) {
+	var buf strings.Builder
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "export const x = 1;")
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	r := New(
+		WithUpstream(server.URL),
+		WithCacheDir(dir),
+		WithTarget("es2020"),
+		WithLogger(logger),
+	)
+
+	entry := filepath.Join(dir, "entry.ts")
+	if err := os.WriteFile(entry, []byte(`import { x } from "test-pkg";`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result := api.Build(api.BuildOptions{
+		EntryPoints: []string{entry},
+		Bundle:      true,
+		Write:       false,
+		Plugins:     []api.Plugin{r.Plugin()},
+		Platform:    api.PlatformBrowser,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("build failed: %v", result.Errors)
+	}
+
+	// Verify metrics were logged.
+	output := buf.String()
+	if !strings.Contains(output, "esm resolver metrics") {
+		t.Fatalf("expected metrics log, got: %s", output)
+	}
+	if !strings.Contains(output, "cache_miss") {
+		t.Fatalf("expected cache_miss in metrics: %s", output)
+	}
 }

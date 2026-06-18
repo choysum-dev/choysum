@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -19,11 +20,28 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/evanw/esbuild/pkg/api"
 	"golang.org/x/sync/singleflight"
 )
+
+// Metrics holds lightweight counters for resolver observability.
+// All fields are safe for concurrent access via atomic operations.
+type Metrics struct {
+	CacheHit  atomic.Int64
+	CacheMiss atomic.Int64
+	Downloads atomic.Int64
+	Errors    atomic.Int64
+	// total download duration in milliseconds (atomic)
+	DownloadDurationMs atomic.Int64
+}
+
+// Snapshot returns a point-in-time copy of the metrics.
+func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int64) {
+	return m.CacheHit.Load(), m.CacheMiss.Load(), m.Downloads.Load(), m.Errors.Load(), m.DownloadDurationMs.Load()
+}
 
 // Resolver is an esbuild plugin that intercepts bare imports and resolves them
 // through an ESM CDN with local caching.
@@ -38,6 +56,8 @@ type Resolver struct {
 	modulePath   string       // module root for deriving lockfile path
 	lockfile     *EsmLockfile // cached parsed lockfile (nil if not loaded)
 	lockfileErr  error        // error from last lockfile load attempt
+	logger       *slog.Logger // logger for structured metrics output (optional)
+	metrics      *Metrics     // resolver metrics (nil if not initialised)
 }
 
 // Option configures a Resolver.
@@ -108,6 +128,26 @@ func WithModulePath(path string) Option {
 	}
 }
 
+// WithLogger sets the structured logger for metrics output. When set, the
+// resolver emits cache/download metrics at the end of each build.
+func WithLogger(logger *slog.Logger) Option {
+	return func(r *Resolver) {
+		if logger != nil {
+			r.logger = logger
+		}
+	}
+}
+
+// WithMetrics sets a shared Metrics instance for cross-build aggregation.
+// If not set, a private Metrics instance is created automatically.
+func WithMetrics(m *Metrics) Option {
+	return func(r *Resolver) {
+		if m != nil {
+			r.metrics = m
+		}
+	}
+}
+
 // New creates a Resolver with the given options.
 func New(opts ...Option) *Resolver {
 	r := &Resolver{
@@ -116,6 +156,7 @@ func New(opts ...Option) *Resolver {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		metrics: &Metrics{},
 	}
 	for _, opt := range opts {
 		opt(r)
@@ -235,14 +276,18 @@ func (r *Resolver) Plugin() api.Plugin {
 
 				// Try cache first, verify integrity if metadata present.
 				if content, ok := r.readCache(cacheFile); ok {
+					r.metrics.CacheHit.Add(1)
 					return api.OnLoadResult{
 						Contents: ptr(content),
 						Loader:   loaderForURL(url),
 					}, nil
 				}
 
+				r.metrics.CacheMiss.Add(1)
+
 				// Offline mode: cache miss is a hard error.
 				if r.offline {
+					r.metrics.Errors.Add(1)
 					return api.OnLoadResult{}, r.formatError("cache miss (offline)", pkg, url,
 						"run 'choysum install' with network access to populate the cache")
 				}
@@ -252,6 +297,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					content string
 					err     error
 				}
+				downloadStart := time.Now()
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
 					content, dlErr := r.downloadWithRetry(url)
 					if dlErr != nil {
@@ -262,7 +308,10 @@ func (r *Resolver) Plugin() api.Plugin {
 					}
 					return fetchResult{content: content}, nil
 				})
+				r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
+				r.metrics.Downloads.Add(1)
 				if err != nil {
+					r.metrics.Errors.Add(1)
 					return api.OnLoadResult{}, r.formatError("download failed", pkg, url, err.Error())
 				}
 				result := v.(fetchResult)
@@ -271,6 +320,21 @@ func (r *Resolver) Plugin() api.Plugin {
 					Contents: ptr(result.content),
 					Loader:   loaderForURL(url),
 				}, nil
+			})
+
+			// OnEnd: emit structured metrics summary.
+			build.OnEnd(func(result *api.BuildResult) (api.OnEndResult, error) {
+				if r.logger != nil && r.metrics != nil {
+					hit, miss, downloads, errors, downloadMs := r.metrics.Snapshot()
+					r.logger.Info("esm resolver metrics",
+						"cache_hit", hit,
+						"cache_miss", miss,
+						"downloads", downloads,
+						"download_duration_ms", downloadMs,
+						"errors", errors,
+					)
+				}
+				return api.OnEndResult{}, nil
 			})
 		},
 	}
