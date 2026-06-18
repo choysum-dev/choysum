@@ -166,7 +166,17 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	}
 
 	if prebuild {
-		buildOptions.Plugins = b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		resolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+			esmresolver.WithTarget("es2020"),
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(resolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	} else {
 		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
@@ -174,7 +184,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		// other plugins process them.
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-			esmresolver.WithTarget("deno"),
+			esmresolver.WithTarget("es2020"),
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))

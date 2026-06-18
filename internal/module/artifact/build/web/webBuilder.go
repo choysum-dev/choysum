@@ -2175,7 +2175,16 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	}
 
 	if prebuild {
-		buildOptions.Plugins = b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		webResolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(webResolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	} else {
 		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)

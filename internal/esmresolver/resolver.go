@@ -15,6 +15,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -111,9 +112,14 @@ func (r *Resolver) Plugin() api.Plugin {
 			return false
 		}
 		// Exclude local filesystem paths that esbuild may pass without a
-		// leading slash. Package names never have more than one slash
-		// (scoped packages like @scope/name have exactly one).
-		if strings.Count(path, "/") > 1 {
+		// leading slash. Non-scoped packages have at most 1 slash (allowing
+		// pkg/sub-path). Scoped packages (@scope/name) have up to 3 slashes
+		// (allowing @scope/name/sub/path).
+		maxSlashes := 1
+		if strings.HasPrefix(path, "@") {
+			maxSlashes = 3
+		}
+		if strings.Count(path, "/") > maxSlashes {
 			return false
 		}
 		// Exclude paths that look like source files.
@@ -129,7 +135,8 @@ func (r *Resolver) Plugin() api.Plugin {
 	}
 
 	// isUpstreamInternalPath detects absolute-path imports produced by esm.sh
-	// that reference sub-modules on the same upstream (e.g. "/pkg@ver/deno/...").
+	// that reference sub-modules on the same upstream (e.g. "/pkg@ver/deno/...",
+	// "/node/process.mjs" for Node.js built-in polyfills).
 	// Excludes local filesystem paths (they may also start with "/").
 	isUpstreamInternalPath := func(path string) bool {
 		if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
@@ -139,23 +146,27 @@ func (r *Resolver) Plugin() api.Plugin {
 		if _, err := os.Stat(path); err == nil {
 			return false
 		}
-		return true
+		// Match esm.sh-style internal paths: package version paths
+		// (e.g. "/pkg@ver/deno/...") or Node.js built-in polyfills
+		// (e.g. "/node/process.mjs").
+		parts := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)
+		if len(parts) == 0 {
+			return false
+		}
+		if strings.Contains(parts[0], "@") || parts[0] == "node" {
+			return true
+		}
+		return false
 	}
 
 	return api.Plugin{
 		Name: "choysum-esm-resolver",
 		Setup: func(build api.PluginBuild) {
 			build.OnResolve(api.OnResolveOptions{Filter: ".*"}, func(args api.OnResolveArgs) (api.OnResolveResult, error) {
-				// Relative imports inside choysum-esm namespace are left
-				// unresolved — esbuild can't resolve them and we can't
-				// reconstruct the exact esm.sh URL for individual files.
-				// This is safe because esm.sh output for the deno target
-				// uses absolute-path imports (handled below), not relative.
-				if strings.HasPrefix(args.Path, ".") {
-					importer := stripNamespace(args.Importer)
-					if strings.HasPrefix(importer, r.upstream) {
-						return api.OnResolveResult{}, nil
-					}
+				// Inside choysum-esm namespace: resolve relative and absolute
+				// imports against the importer URL via standard URL resolution.
+				if args.Namespace == "choysum-esm" {
+					return r.resolveInNamespace(args)
 				}
 
 				// Rewrite upstream-internal absolute paths (e.g. "/pkg@ver/deno/...")
@@ -172,8 +183,8 @@ func (r *Resolver) Plugin() api.Plugin {
 					return api.OnResolveResult{}, nil
 				}
 
-				// For backend (deno target): CSS imports are external.
-				if r.target == "deno" && args.Kind == api.ResolveCSSURLToken {
+				// CSS imports from any target are external.
+				if args.Kind == api.ResolveCSSURLToken {
 					resolvedURL := fmt.Sprintf("%s/%s?target=%s", r.upstream, args.Path, r.target)
 					return api.OnResolveResult{
 						Path:     resolvedURL,
@@ -199,7 +210,7 @@ func (r *Resolver) Plugin() api.Plugin {
 				if content, ok := r.readCache(cacheFile); ok {
 					return api.OnLoadResult{
 						Contents: ptr(content),
-						Loader:   api.LoaderJS,
+						Loader:   loaderForURL(url),
 					}, nil
 				}
 
@@ -231,11 +242,161 @@ func (r *Resolver) Plugin() api.Plugin {
 
 				return api.OnLoadResult{
 					Contents: ptr(result.content),
-					Loader:   api.LoaderJS,
+					Loader:   loaderForURL(url),
 				}, nil
 			})
 		},
 	}
+}
+
+// resolveInNamespace handles import resolution for files already inside the
+// choysum-esm namespace. Relative imports are resolved against the importer URL
+// via standard URL resolution. Absolute HTTP(S) URLs and fragment-only
+// specifiers are handled directly.
+func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResult, error) {
+	// Fragment-only specifiers (e.g. "#icon"): mark as external.
+	if isFragmentOnly(args.Path) {
+		return api.OnResolveResult{Path: args.Path, External: true}, nil
+	}
+
+	// Data URLs: pass through as external.
+	if strings.HasPrefix(args.Path, "data:") {
+		return api.OnResolveResult{Path: args.Path, External: true}, nil
+	}
+
+	// Absolute local filesystem paths (e.g. /Users/..., /home/...) should not
+	// go through the ESM namespace. Let esbuild resolve them normally.
+	if isLocalFilesystemPath(args.Path) {
+		return api.OnResolveResult{}, nil
+	}
+
+	// Already an absolute HTTP(S) URL: resolve and handle CSS as external.
+	if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
+		// CSS URLs should remain external.
+		if args.Kind == api.ResolveCSSURLToken || isCSSURL(args.Path) {
+			return api.OnResolveResult{Path: args.Path, External: true}, nil
+		}
+		return api.OnResolveResult{
+			Path:      args.Path,
+			Namespace: "choysum-esm",
+		}, nil
+	}
+
+	// Resolve relative/absolute path against the importer URL.
+	importerURL := stripNamespace(args.Importer)
+	if importerURL == "" {
+		return api.OnResolveResult{}, nil
+	}
+
+	base, err := url.Parse(importerURL)
+	if err != nil {
+		return api.OnResolveResult{}, fmt.Errorf("esm-resolver: invalid importer URL %q: %w", importerURL, err)
+	}
+
+	ref, err := url.Parse(args.Path)
+	if err != nil {
+		return api.OnResolveResult{}, fmt.Errorf("esm-resolver: invalid import path %q: %w", args.Path, err)
+	}
+
+	resolved := base.ResolveReference(ref)
+	resolvedURL := resolved.String()
+
+	// If the resolved URL is a local filesystem path, don't put it in namespace.
+	if isLocalFilesystemPath(resolvedURL) {
+		return api.OnResolveResult{}, nil
+	}
+
+	// Re-add the target parameter if it was present in the original
+	// importer URL but got dropped during URL resolution.
+	if !strings.Contains(resolvedURL, "?target=") {
+		if ti := strings.Index(importerURL, "?target="); ti >= 0 {
+			resolvedURL += importerURL[ti:]
+		}
+	}
+
+	// CSS URLs from the upstream are marked external.
+	if args.Kind == api.ResolveCSSURLToken || isCSSURL(resolvedURL) {
+		return api.OnResolveResult{Path: resolvedURL, External: true}, nil
+	}
+
+	return api.OnResolveResult{
+		Path:      resolvedURL,
+		Namespace: "choysum-esm",
+	}, nil
+}
+
+// isCSSURL reports whether the resolved remote URL path ends with .css.
+func isCSSURL(rawURL string) bool {
+	lower := strings.ToLower(rawURL)
+	if idx := strings.Index(lower, "?"); idx >= 0 {
+		lower = lower[:idx]
+	}
+	if idx := strings.Index(lower, "#"); idx >= 0 {
+		lower = lower[:idx]
+	}
+	return strings.HasSuffix(lower, ".css")
+}
+
+// isLocalFilesystemPath reports whether path looks like an absolute local
+// filesystem path rather than a remote ESM URL or upstream-internal path.
+func isLocalFilesystemPath(path string) bool {
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+		return false
+	}
+	// Check if the file exists on disk (with or without extension).
+	if _, err := os.Stat(path); err == nil {
+		return true
+	}
+	// esm.sh internal paths: /node/... (Node.js built-in polyfills),
+	// /pkg@ver/... (versioned packages), /stable/... (target prefixes).
+	// Do not treat these as local filesystem paths.
+	first := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)[0]
+	if strings.Contains(first, "@") || first == "node" || first == "stable" || first == "v135" || first == "v136" {
+		return false
+	}
+	// Common UNIX filesystem root directories indicate a local path.
+	localRoots := []string{"Users", "home", "var", "tmp", "etc", "usr", "opt",
+		"Applications", "Library", "System", "Volumes", "private", "dev", "proc", "sys", "root", "sbin", "bin", "srv", "mnt", "media"}
+	for _, root := range localRoots {
+		if first == root {
+			return true
+		}
+	}
+	// If the path has multiple directory levels, it's likely a local path.
+	return strings.Count(path, "/") >= 3
+}
+
+// isFragmentOnly reports whether path is a fragment-only specifier like "#icon".
+func isFragmentOnly(path string) bool {
+	path = strings.TrimSpace(path)
+	if path == "" || !strings.HasPrefix(path, "#") {
+		return false
+	}
+	// Must have only a fragment, no scheme, host, or path.
+	parsed, err := url.Parse(path)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "" && parsed.Host == "" && parsed.Path == "" && parsed.Opaque == "" && parsed.RawQuery == "" && parsed.Fragment != ""
+}
+
+// loaderForURL returns the esbuild loader appropriate for a resolved ESM URL.
+func loaderForURL(rawURL string) api.Loader {
+	lower := strings.ToLower(rawURL)
+	// Strip query string and fragment for extension detection.
+	if idx := strings.Index(lower, "?"); idx >= 0 {
+		lower = lower[:idx]
+	}
+	if idx := strings.Index(lower, "#"); idx >= 0 {
+		lower = lower[:idx]
+	}
+	if strings.HasSuffix(lower, ".css") {
+		return api.LoaderCSS
+	}
+	if strings.HasSuffix(lower, ".ts") || strings.HasSuffix(lower, ".tsx") || strings.HasSuffix(lower, ".mts") {
+		return api.LoaderTS
+	}
+	return api.LoaderJS
 }
 
 // readCache reads a cached file and verifies its integrity.
