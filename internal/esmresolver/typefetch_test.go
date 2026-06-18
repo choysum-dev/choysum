@@ -203,3 +203,59 @@ func TestFetchTypesForModule_NoDeps(t *testing.T) {
 		t.Fatalf("expected nil results for no deps, got %d", len(results))
 	}
 }
+
+func TestUpdateTsconfigPaths(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+
+	// Write initial tsconfig.
+	initial := `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}`
+	if err := os.WriteFile(tsconfigPath, []byte(initial), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	results := []TypeFetchResult{
+		{Package: "vue", Version: "3.4.29", CachedPath: filepath.Join(dir, "types", "vue@3.4.29.d.ts")},
+	}
+
+	// Create the cached file so the relative path can be computed.
+	os.MkdirAll(filepath.Join(dir, "types"), 0755)
+	os.WriteFile(filepath.Join(dir, "types", "vue@3.4.29.d.ts"), []byte("// types"), 0644)
+
+	if err := UpdateTsconfigPaths(tsconfigPath, results); err != nil {
+		t.Fatalf("UpdateTsconfigPaths failed: %v", err)
+	}
+
+	// Read back and verify.
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, `"vue"`) {
+		t.Fatalf("tsconfig missing vue path: %s", content)
+	}
+	if !strings.Contains(content, "types/vue@3.4.29.d.ts") {
+		t.Fatalf("tsconfig missing types path: %s", content)
+	}
+	if !strings.Contains(content, `"@/*"`) {
+		t.Fatalf("tsconfig lost existing @/* path: %s", content)
+	}
+}
+
+func TestUpdateTsconfigPaths_EmptyResults(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"paths":{"@/*":["./*"]}}}`), 0644)
+
+	if err := UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("UpdateTsconfigPaths with nil results should be no-op: %v", err)
+	}
+}

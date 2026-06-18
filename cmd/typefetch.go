@@ -98,6 +98,7 @@ When <app> is specified, fetches types for that module only.`,
 
 			totalCached := 0
 			totalFetched := 0
+			var allResults []esmresolver.TypeFetchResult
 
 			for _, appName := range appNames {
 				moduleDir := filepath.Join(modulesPath, appName)
@@ -114,6 +115,7 @@ When <app> is specified, fetches types for that module only.`,
 						cmd.Printf("[%s] fetched %s@%s → %s\n", appName, r.Package, r.Version, r.CachedPath)
 					}
 				}
+				allResults = append(allResults, results...)
 				if len(results) == 0 {
 					cmd.Printf("[%s] no dependencies found\n", appName)
 				}
@@ -121,6 +123,15 @@ When <app> is specified, fetches types for that module only.`,
 
 			cmd.Printf("\nType fetch complete: %d cached, %d downloaded.\n", totalCached, totalFetched)
 			cmd.Printf("Types directory: %s\n", typesDir)
+
+			// Update tsconfig paths for IDE support.
+			tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+			if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, allResults); err != nil {
+				cmd.Printf("Warning: failed to update tsconfig paths: %v\n", err)
+			} else if len(allResults) > 0 {
+				cmd.Println("Updated tsconfig paths.")
+			}
+
 			if offline {
 				cmd.Println("(offline mode — only cached types were used)")
 			}

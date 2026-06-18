@@ -164,3 +164,68 @@ func FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir stri
 func typesCachePath(typesDir, pkg, version string) string {
 	return filepath.Join(typesDir, fmt.Sprintf("%s@%s.d.ts", pkg, version))
 }
+
+// UpdateTsconfigPaths reads the tsconfig at the given path, adds or updates
+// "paths" entries for each fetched type definition, and writes it back.
+// The paths map package names (e.g. "vue") to their cached .d.ts file,
+// relative to the directory containing the tsconfig.
+func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
+	if len(results) == 0 {
+		return nil
+	}
+
+	// Read existing tsconfig.
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		return fmt.Errorf("read tsconfig: %w", err)
+	}
+
+	// Parse into a flexible map to preserve unknown fields.
+	var tsconfig map[string]interface{}
+	if err := json.Unmarshal(data, &tsconfig); err != nil {
+		return fmt.Errorf("parse tsconfig: %w", err)
+	}
+
+	// Navigate to compilerOptions.paths.
+	compilerOptions, ok := tsconfig["compilerOptions"].(map[string]interface{})
+	if !ok {
+		compilerOptions = make(map[string]interface{})
+		tsconfig["compilerOptions"] = compilerOptions
+	}
+
+	paths, ok := compilerOptions["paths"].(map[string]interface{})
+	if !ok {
+		paths = make(map[string]interface{})
+		compilerOptions["paths"] = paths
+	}
+
+	tsconfigDir := filepath.Dir(tsconfigPath)
+
+	for _, r := range results {
+		if r.CachedPath == "" {
+			continue
+		}
+		// Compute relative path from tsconfig dir to the cached .d.ts file.
+		relPath, err := filepath.Rel(tsconfigDir, r.CachedPath)
+		if err != nil {
+			continue
+		}
+		relPath = filepath.ToSlash(relPath)
+
+		// Add a paths entry for the bare specifier → cached type.
+		key := r.Package
+		paths[key] = []string{relPath}
+	}
+
+	// Write back with indentation.
+	out, err := json.MarshalIndent(tsconfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tsconfig: %w", err)
+	}
+	out = append(out, '\n')
+
+	if err := os.WriteFile(tsconfigPath, out, 0644); err != nil {
+		return fmt.Errorf("write tsconfig: %w", err)
+	}
+	return nil
+}
