@@ -190,7 +190,7 @@ func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
 	if got, want := prebuildOpts.Outfile, filepath.Join("/virtual/dist", "apps", "auth", "bundle.js"); got != want {
 		t.Fatalf("prebuild outfile = %q, want %q", got, want)
 	}
-	if len(prebuildOpts.Plugins) != 1 || prebuildOpts.Plugins[0].Name != "prebuild" {
+	if len(prebuildOpts.Plugins) != 2 || prebuildOpts.Plugins[1].Name != "prebuild" {
 		t.Fatalf("unexpected prebuild plugins: %#v", prebuildOpts.Plugins)
 	}
 	if prebuildOpts.Write {
