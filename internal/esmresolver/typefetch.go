@@ -12,6 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	tsast "github.com/buke/typescript-go-internal/pkg/ast"
+	tscore "github.com/buke/typescript-go-internal/pkg/core"
+	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
 )
 
 // TypeFetchResult holds the outcome of a type fetch operation.
@@ -181,64 +185,45 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 	return result, allTransitive, nil
 }
 
-// parseDTSImports extracts import paths and reference directives from .d.ts content.
+// parseDTSImports uses the TypeScript AST parser to extract module specifiers
+// from import declarations and /// <reference> directives in .d.ts content.
 func parseDTSImports(content string) []string {
 	var paths []string
 	seen := make(map[string]bool)
 
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
+	// Use an absolute virtual path so the parser accepts it.
+	fname := "/virtual/type.d.ts"
+	scriptKind := tscore.GetScriptKindFromFileName(fname)
+	source := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{
+		FileName: fname,
+	}, content, scriptKind)
 
-		// Match "from '...'" or 'from "..."' patterns (covers most import styles).
-		for _, quote := range []string{`"`, `'`} {
-			// from "..." or from '...'
-			if idx := strings.Index(line, "from "+quote); idx >= 0 {
-				start := idx + len("from ") + 1
-				if end := strings.Index(line[start:], quote); end >= 0 {
-					p := line[start : start+end]
-					if !seen[p] && !strings.HasPrefix(p, "node:") {
-						seen[p] = true
-						paths = append(paths, p)
-					}
-				}
-			}
-			// import("...") or import('...')
-			if idx := strings.Index(line, "import("+quote); idx >= 0 {
-				start := idx + len("import(") + 1
-				if end := strings.Index(line[start:], quote); end >= 0 {
-					p := line[start : start+end]
-					if !seen[p] {
-						seen[p] = true
-						paths = append(paths, p)
-					}
-				}
-			}
-			// Simple import "..." or import '...' (direct side-effect import)
-			if idx := strings.Index(line, "import "+quote); idx >= 0 {
-				start := idx + len("import ") + 1
-				if end := strings.Index(line[start:], quote); end >= 0 {
-					p := line[start : start+end]
-					if !seen[p] {
-						seen[p] = true
-						paths = append(paths, p)
-					}
+	if source == nil {
+		return paths
+	}
+
+	// Walk statements looking for import declarations.
+	for _, stmt := range source.Statements.Nodes {
+		if stmt == nil {
+			continue
+		}
+		if stmt.Kind == tsast.KindImportDeclaration || stmt.Kind == tsast.KindJSImportDeclaration {
+			decl := stmt.AsImportDeclaration()
+			if decl != nil && decl.ModuleSpecifier != nil {
+				p := strings.Trim(decl.ModuleSpecifier.Text(), `"'`)
+				if p != "" && !seen[p] && !strings.HasPrefix(p, "node:") {
+					seen[p] = true
+					paths = append(paths, p)
 				}
 			}
 		}
-
-		// /// <reference path="..." /> or /// <reference types="..." />
-		if strings.HasPrefix(line, "///") {
-			for _, attr := range []string{`path="`, `path='`, `types="`, `types='`} {
-				idx := strings.Index(line, attr)
-				if idx < 0 {
-					continue
-				}
-				start := idx + len(attr)
-				quote := string(attr[len(attr)-1])
-				if end := strings.Index(line[start:], quote); end >= 0 {
-					p := line[start : start+end]
-					if !seen[p] {
+		// Also catch import foo = require("...") — KindImportEqualsDeclaration.
+		if stmt.Kind == tsast.KindImportEqualsDeclaration {
+			decl := stmt.AsImportEqualsDeclaration()
+			if decl != nil && decl.ModuleReference != nil {
+				if ref := decl.ModuleReference.AsExternalModuleReference(); ref != nil && ref.Expression != nil {
+					p := strings.Trim(ref.Expression.Text(), `"'`)
+					if p != "" && !seen[p] {
 						seen[p] = true
 						paths = append(paths, p)
 					}
@@ -246,6 +231,31 @@ func parseDTSImports(content string) []string {
 			}
 		}
 	}
+
+	// Also parse /// <reference path="..." /> and /// <reference types="..." />
+	// These are comments, not AST nodes, so we use simple string scanning.
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "///") {
+			continue
+		}
+		for _, attr := range []string{`path="`, `path='`, `types="`, `types='`} {
+			idx := strings.Index(line, attr)
+			if idx < 0 {
+				continue
+			}
+			start := idx + len(attr)
+			quote := string(attr[len(attr)-1])
+			if end := strings.Index(line[start:], quote); end >= 0 {
+				p := line[start : start+end]
+				if !seen[p] {
+					seen[p] = true
+					paths = append(paths, p)
+				}
+			}
+		}
+	}
+
 	return paths
 }
 

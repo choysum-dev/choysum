@@ -1,22 +1,46 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2020",
+    "allowArbitraryExtensions": true,
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "experimentalDecorators": true,
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": true,
-    "allowImportingTsExtensions": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@vicons/ionicons5": [
+        "../../.choysum/pkg/types/esm.sh_@vicons_ionicons5@0.12.0_es_index.d.ts.d.ts"
+      ],
+      "naive-ui": [
+        "../../.choysum/pkg/types/esm.sh_naive-ui@2.38.1_es_index.d.ts.d.ts"
+      ],
+      "pinia": [
+        "../../.choysum/pkg/types/esm.sh_pinia@2.1.7_dist_pinia.d.ts.d.ts"
+      ],
+      "vue": [
+        "../../.choysum/pkg/types/esm.sh_vue@3.4.29_dist_vue.d.mts.d.ts"
+      ],
+      "vue-router": [
+        "../../.choysum/pkg/types/esm.sh_vue-router@4.3.3_dist_vue-router.d.ts.d.ts"
+      ]
+    },
+    "skipLibCheck": true,
     "strict": true,
     "strictPropertyInitialization": false,
-    "experimentalDecorators": true,
-    "allowJs": true,
-    "allowArbitraryExtensions": true,
-    "skipLibCheck": true,
-    "types": ["node", "vite/client"],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "target": "ES2020",
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
-  "$schema": "https://json.schemastore.org/tsconfig",
   "display": "Recommended"
 }
