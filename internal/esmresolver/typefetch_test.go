@@ -75,9 +75,12 @@ func TestFetchTypeDefinition_CacheHit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := FetchTypeDefinition(nil, "https://esm.sh", typesDir, "testpkg", "1.0.0")
+	result, _, err := FetchTypeDefinition(nil, "https://esm.sh", typesDir, "testpkg", "1.0.0")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
 	}
 	if !result.FromCache {
 		t.Fatal("expected cache hit")
@@ -106,10 +109,14 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	dir := t.TempDir()
 	typesDir := filepath.Join(dir, "types")
 
-	result, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+	result, transitive, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
 	if err != nil {
 		t.Fatalf("FetchTypeDefinition failed: %v", err)
 	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	_ = transitive
 	if result.FromCache {
 		t.Fatal("expected download, got cache hit")
 	}
@@ -136,7 +143,7 @@ func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	dir := t.TempDir()
 	typesDir := filepath.Join(dir, "types")
 
-	_, err := FetchTypeDefinition(nil, server.URL, typesDir, "noplace", "1.0.0")
+	_, _, err := FetchTypeDefinition(nil, server.URL, typesDir, "noplace", "1.0.0")
 	if err == nil {
 		t.Fatal("expected error for missing x-typescript-types header")
 	}
@@ -257,5 +264,46 @@ func TestUpdateTsconfigPaths_EmptyResults(t *testing.T) {
 
 	if err := UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
 		t.Fatalf("UpdateTsconfigPaths with nil results should be no-op: %v", err)
+	}
+}
+
+func TestParseDTSImports(t *testing.T) {
+	content := `
+import { Foo } from './foo';
+import type { Bar } from "../bar";
+import("dynamic");
+/// <reference path="./types.d.ts" />
+/// <reference types="node" />
+export declare const x: number;
+`
+	paths := parseDTSImports(content)
+	if len(paths) != 5 {
+		t.Fatalf("expected 5 imports, got %d: %v", len(paths), paths)
+	}
+}
+
+func TestParseDTSImports_Empty(t *testing.T) {
+	paths := parseDTSImports("export declare const x: number;")
+	if len(paths) != 0 {
+		t.Fatalf("expected 0 imports, got %d", len(paths))
+	}
+}
+
+func TestResolveTypeImport_Relative(t *testing.T) {
+	base := "https://esm.sh/vue@3.4.29/dist/vue.d.ts"
+	tests := []struct{ imp, want string }{
+		{"./foo", "https://esm.sh/vue@3.4.29/dist/foo"},
+		{"../bar", "https://esm.sh/vue@3.4.29/bar"},
+		{"../../baz", "https://esm.sh/baz"},
+		{"https://other.com/types.d.ts", "https://other.com/types.d.ts"},
+	}
+	for _, tt := range tests {
+		got, err := resolveTypeImport(base, tt.imp)
+		if err != nil {
+			t.Fatalf("resolveTypeImport(%q, %q) error: %v", base, tt.imp, err)
+		}
+		if got != tt.want {
+			t.Fatalf("resolveTypeImport(%q, %q) = %q, want %q", base, tt.imp, got, tt.want)
+		}
 	}
 }
