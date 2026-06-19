@@ -158,12 +158,14 @@ func RunOneAppFrontendTests(
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
 	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx}"))
 	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,vue}"))
+	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
 
 	var b strings.Builder
 	b.WriteString("import { defineConfig } from 'vitest/config'\n")
 	b.WriteString("import vue from '@vitejs/plugin-vue'\n\n")
 	b.WriteString("import path from 'node:path'\n")
 	b.WriteString("export default defineConfig({\n")
+	b.WriteString("  cacheDir: " + strconv.Quote(viteCacheDir) + ",\n")
 	b.WriteString("  plugins: [vue()],\n")
 	b.WriteString("  resolve: {\n")
 	b.WriteString("    alias: {\n")
@@ -282,8 +284,10 @@ func collectRequiredFrontendModules(repoRoot string, app string) ([]string, erro
 		"@vitejs/plugin-vue":   {},
 		"vue":                  {},
 		"@vue/compiler-sfc":    {},
+		"@vue/shared":          {},
 		"@vue/server-renderer": {},
 		"@vue/test-utils":      {},
+		"sass-embedded":        {},
 	}
 
 	visitedModules := map[string]struct{}{}
@@ -429,9 +433,11 @@ func appUsesVitestEnvironment(repoRoot string, app string, environment string) (
 }
 
 func localFrontendModuleRoots(repoRoot string) []string {
+	modulesNodeModules := filepath.Join(repoRoot, "modules", "node_modules")
+	rootNodeModules := filepath.Join(repoRoot, "node_modules")
 	return []string{
-		filepath.Join(repoRoot, "node_modules"),
-		filepath.Join(repoRoot, "modules", "node_modules"),
+		modulesNodeModules,
+		rootNodeModules,
 	}
 }
 
@@ -445,7 +451,7 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 		return noop, nil
 	}
 
-	localNodeModulesRoot := filepath.Join(repoRoot, "node_modules")
+	localNodeModulesRoot := filepath.Join(repoRoot, "modules", "node_modules")
 	if err := os.MkdirAll(localNodeModulesRoot, 0o755); err != nil {
 		return nil, xfmt.Errorf("vitest: create local node_modules: %w", err)
 	}
@@ -485,10 +491,44 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 				continue
 			}
 			_ = os.Remove(localModuleDir)
+			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
 		}
+		pruneEmptyDirs(localNodeModulesRoot, localNodeModulesRoot)
 	}
 
 	return cleanup, nil
+}
+
+func pruneEmptyDirs(startDir string, stopDir string) {
+	startDir = filepath.Clean(strings.TrimSpace(startDir))
+	stopDir = filepath.Clean(strings.TrimSpace(stopDir))
+	if startDir == "." || stopDir == "." {
+		return
+	}
+
+	dir := startDir
+	for {
+		if dir != stopDir && !strings.HasPrefix(dir, stopDir+string(os.PathSeparator)) {
+			return
+		}
+
+		entries, err := os.ReadDir(dir)
+		if err != nil || len(entries) > 0 {
+			return
+		}
+		if err := os.Remove(dir); err != nil {
+			return
+		}
+		if dir == stopDir {
+			return
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return
+		}
+		dir = parent
+	}
 }
 
 func missingRequiredNodeModules(required []string, moduleRoots ...string) []string {

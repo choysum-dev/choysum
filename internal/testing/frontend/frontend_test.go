@@ -23,7 +23,7 @@ func writeExecFile(t *testing.T, path string, content string) {
 
 func ensureFrontendRequiredModulesAt(t *testing.T, moduleRoot string) {
 	t.Helper()
-	required := []string{"vitest", "vite", "@bufbuild/protobuf", "@vitejs/plugin-vue", "vue", "@vue/compiler-sfc", "@vue/server-renderer", "@vue/test-utils"}
+	required := []string{"vitest", "vite", "@bufbuild/protobuf", "@vitejs/plugin-vue", "vue", "@vue/compiler-sfc", "@vue/shared", "@vue/server-renderer", "@vue/test-utils", "sass-embedded"}
 	for _, mod := range required {
 		if err := os.MkdirAll(filepath.Join(moduleRoot, filepath.FromSlash(mod)), 0o755); err != nil {
 			t.Fatalf("mkdir required module %s: %v", mod, err)
@@ -206,7 +206,7 @@ func TestRunOneAppFrontendTestsUsesTemporaryGlobalNodeModulesLink(t *testing.T) 
 	writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nlink_path=\"${CHOYSUM_EXPECT_GLOBAL_LINK}\"\nif [ ! -L \"$link_path\" ]; then\n  echo \"missing global module symlink: $link_path\" >&2\n  exit 12\nfi\nexit 0\n")
 	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("CHOYSUM_EXPECT_GLOBAL_LINK", filepath.Join(repoRoot, "node_modules", "vue"))
+	t.Setenv("CHOYSUM_EXPECT_GLOBAL_LINK", filepath.Join(repoRoot, "modules", "node_modules", "@vue", "shared"))
 
 	globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
@@ -217,8 +217,17 @@ func TestRunOneAppFrontendTestsUsesTemporaryGlobalNodeModulesLink(t *testing.T) 
 		t.Fatalf("expected frontend run success, failed=%v err=%v", failed, err)
 	}
 
-	if _, err := os.Lstat(filepath.Join(repoRoot, "node_modules", "vue")); !os.IsNotExist(err) {
+	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@vue", "shared")); !os.IsNotExist(err) {
 		t.Fatalf("expected temporary global module symlink to be cleaned up, err=%v", err)
+	}
+	if st, err := os.Stat(filepath.Join(repoRoot, "modules", "node_modules")); err == nil && st.IsDir() {
+		entries, readErr := os.ReadDir(filepath.Join(repoRoot, "modules", "node_modules"))
+		if readErr != nil {
+			t.Fatalf("read modules/node_modules: %v", readErr)
+		}
+		if len(entries) != 0 {
+			t.Fatalf("expected modules/node_modules to be empty after cleanup, found %d entries", len(entries))
+		}
 	}
 }
 
@@ -297,6 +306,8 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	}
 	configText := string(configRaw)
 	checks := []string{
+		"cacheDir: \"",
+		"/frontend/vite-cache/auth\"",
 		"reporters: ['default', 'junit']",
 		`junit: "` + filepath.ToSlash(junitPath) + `"`,
 		"'lcovonly'",

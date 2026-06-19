@@ -680,11 +680,19 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	if err := os.WriteFile(npmPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatalf("WriteFile npm stub: %v", err)
 	}
+	vueTSCPath := filepath.Join(binDir, "vue-tsc")
+	if err := os.WriteFile(vueTSCPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile vue-tsc stub: %v", err)
+	}
 	capturePath := filepath.Join(t.TempDir(), "captured-tsconfig-path.txt")
 	npxPath := filepath.Join(binDir, "npx")
 	npxScript := "#!/bin/sh\nprev=\"\"\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"-p\" ]; then\n    printf '%s' \"$arg\" > \"$CHOYSUM_CAPTURE_TSCONFIG_PATH\"\n    break\n  fi\n  prev=\"$arg\"\ndone\nexit 0\n"
 	if err := os.WriteFile(npxPath, []byte(npxScript), 0o755); err != nil {
 		t.Fatalf("WriteFile npx stub: %v", err)
+	}
+	vitePath := filepath.Join(binDir, "vite")
+	if err := os.WriteFile(vitePath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("WriteFile vite stub: %v", err)
 	}
 	t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", capturePath)
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
