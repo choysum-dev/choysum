@@ -125,8 +125,10 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 
 	// Check cache.
 	var content []byte
+	fromCache := false
 	if data, err := os.ReadFile(cacheFile); err == nil {
 		content = data
+		fromCache = true
 	} else {
 		req, err := http.NewRequest(http.MethodGet, normalized, nil)
 		if err != nil {
@@ -192,7 +194,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 		Package:    rootPkg,
 		Version:    rootVersion,
 		CachedPath: cacheFile,
-		FromCache:  false,
+		FromCache:  fromCache,
 	}
 	return result, allTransitive, nil
 }

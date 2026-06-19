@@ -90,6 +90,52 @@ func TestFetchTypeDefinition_CacheHit(t *testing.T) {
 	}
 }
 
+func TestFetchTypeDefinition_CacheHitURLDerivedFile(t *testing.T) {
+	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
+	getCalls := 0
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet {
+			getCalls++
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	cacheFile := typeCachePathForURL(typesDir, srv.URL+typesURLPath)
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("export declare const cached: boolean;"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if !result.FromCache {
+		t.Fatal("expected URL-derived cache hit")
+	}
+	if result.CachedPath != cacheFile {
+		t.Fatalf("cached path = %s, want %s", result.CachedPath, cacheFile)
+	}
+	if getCalls != 0 {
+		t.Fatalf("expected no GET request when URL-derived cache exists, got %d", getCalls)
+	}
+}
+
 func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

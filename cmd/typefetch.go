@@ -113,6 +113,7 @@ When <app> is specified, fetches types for that module only.`,
 				for _, r := range results {
 					if r.FromCache {
 						totalCached++
+						cmd.Printf("[%s] cached %s@%s → %s\n", appName, r.Package, r.Version, r.CachedPath)
 					} else {
 						totalFetched++
 						cmd.Printf("[%s] fetched %s@%s → %s\n", appName, r.Package, r.Version, r.CachedPath)
@@ -124,7 +125,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 			}
 
-			cmd.Printf("\nType fetch complete: %d cached, %d downloaded.\n", totalCached, totalFetched)
+			cmd.Printf("\nType fetch complete: %d cached, %d fetched.\n", totalCached, totalFetched)
 			cmd.Printf("Types directory: %s\n", typesDir)
 
 			// Update tsconfig paths for IDE support.
