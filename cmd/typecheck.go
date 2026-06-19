@@ -38,9 +38,9 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 			if baseScope == nil {
 				return xfmt.Errorf("typecheck: invalid scope")
 			}
-			runtimeOptions, err := requireCliRuntimeOptions(runtimeOptionsGetter)
+			runtimeOptions, err := requireCliRuntimeOptionsForCommand("typecheck", runtimeOptionsGetter)
 			if err != nil {
-				return xfmt.Errorf("typecheck: invalid runtime options: %w", err)
+				return err
 			}
 
 			target := "all"

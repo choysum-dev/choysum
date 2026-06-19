@@ -227,4 +227,20 @@ func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("Validate(valid) error = %v", err)
 	}
+
+	if _, err := requireCliRuntimeOptionsForCommand("typecheck", nil); err == nil || !strings.Contains(err.Error(), "typecheck: invalid runtime options") {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(nil) error = %v, want prefixed runtime options error", err)
+	}
+
+	if _, err := requireCliRuntimeOptionsForCommand("", func() cliRuntimeOptions { return cliRuntimeOptions{} }); err == nil || !strings.Contains(err.Error(), "command: invalid runtime options") {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(empty command) error = %v, want fallback command prefix", err)
+	}
+
+	resolvedWithPrefix, err := requireCliRuntimeOptionsForCommand("e2e", func() cliRuntimeOptions { return valid })
+	if err != nil {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(valid) error = %v", err)
+	}
+	if resolvedWithPrefix != valid {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(valid) = %#v, want %#v", resolvedWithPrefix, valid)
+	}
 }

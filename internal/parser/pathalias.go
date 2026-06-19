@@ -73,6 +73,13 @@ func ApplyPathAlias(pathAlias map[string]string, path string) string {
 			return re.ReplaceAllString(path, realPath)
 		}
 	}
+
+	// Backward compatibility: some callers pass "@" (without wildcard) to
+	// represent the module root and still expect "@/..." imports to be resolved.
+	if rootAlias, ok := pathAlias["@"]; ok && strings.HasPrefix(path, "@/") {
+		return filepath.Join(rootAlias, strings.TrimPrefix(path, "@/"))
+	}
+
 	return path
 }
 

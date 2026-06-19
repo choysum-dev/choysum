@@ -6,6 +6,7 @@ package cmd
 import (
 	"strings"
 
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -57,6 +58,14 @@ func requireCliRuntimeOptions(optionsGetter func() cliRuntimeOptions) (cliRuntim
 	runtimeOptions := optionsGetter()
 	if err := runtimeOptions.Validate(); err != nil {
 		return cliRuntimeOptions{}, err
+	}
+	return runtimeOptions, nil
+}
+
+func requireCliRuntimeOptionsForCommand(commandName string, optionsGetter func() cliRuntimeOptions) (cliRuntimeOptions, error) {
+	runtimeOptions, err := requireCliRuntimeOptions(optionsGetter)
+	if err != nil {
+		return cliRuntimeOptions{}, xfmt.Errorf("%s: %w", testsemantics.InvalidRuntimeOptionsMessage(commandName), err)
 	}
 	return runtimeOptions, nil
 }

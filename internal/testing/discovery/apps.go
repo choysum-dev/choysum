@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -32,6 +33,11 @@ func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE boo
 
 	// Single app.
 	if arg != "all" {
+		appDir := filepath.Join(modulesPath, arg)
+		if st, err := os.Stat(appDir); err != nil || !st.IsDir() {
+			return nil, xfmt.Errorf(testsemantics.UnknownAppMessage(arg))
+		}
+
 		ok := false
 		if runBE {
 			has, err := HasAnyBackendTests(modulesPath, arg)

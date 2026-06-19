@@ -98,6 +98,7 @@ func TestParseTsconfigPathAlias(t *testing.T) {
 func TestApplyPathAlias(t *testing.T) {
 	aliases := map[string]string{
 		"@/*":     "/workspace/src/*",
+		"@":       "/workspace/modules",
 		"#core":   "/workspace/core/index.ts",
 		"plain/*": "/workspace/plain/*",
 	}
@@ -113,6 +114,10 @@ func TestApplyPathAlias(t *testing.T) {
 	}
 	if got := ApplyPathAlias(aliases, "other/module.ts"); got != "other/module.ts" {
 		t.Fatalf("unexpected passthrough path: %s", got)
+	}
+	legacyAliases := map[string]string{"@": "/workspace/modules"}
+	if got := ApplyPathAlias(legacyAliases, "@/core/web/component/xpath.vue"); got != "/workspace/modules/core/web/component/xpath.vue" {
+		t.Fatalf("unexpected legacy @ alias result: %s", got)
 	}
 }
 

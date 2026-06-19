@@ -373,15 +373,15 @@ func TestNewTestUnitCmd_ArgsAndEarlyRunE(t *testing.T) {
 	}
 
 	cmd = newTestUnitCmdFromScope(func() scope.Scope { return &commandTestScope{} })
-	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "config is not initialized") {
-		t.Fatalf("expected nil config error, got %v", err)
+	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "test unit: invalid runtime options") {
+		t.Fatalf("expected invalid runtime options error, got %v", err)
 	}
 
 	cmd = newTestUnitCmdFromScope(func() scope.Scope {
 		return &commandTestScope{cfg: &config.Config{ModulesPath: "   ", TmpPath: "/tmp/choysum", DefaultChoysumPath: "/tmp/.choysum"}}
 	})
-	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "config missing modules_path") {
-		t.Fatalf("expected missing modules_path error, got %v", err)
+	if err := cmd.RunE(cmd, []string{"auth"}); err == nil || !strings.Contains(err.Error(), "test unit: invalid runtime options") || !strings.Contains(err.Error(), "modulesPath is required") {
+		t.Fatalf("expected missing modulesPath validation error, got %v", err)
 	}
 }
 
@@ -545,8 +545,10 @@ func TestNewTestUnitCmd_AdditionalRunEPaths(t *testing.T) {
 	t.Run("tap stdout split env init failure is surfaced", func(t *testing.T) {
 		serverCfg := config.NewDefaultServerConfig()
 		serverCfg.Environment = "missing-command-env"
+		cfg := newCommandTestConfig(t.TempDir())
+		cfg.Server = serverCfg
 		cmd := newTestUnitCmdFromScope(func() scope.Scope {
-			return &commandTestScope{cfg: &config.Config{ModulesPath: t.TempDir(), Server: serverCfg, Log: config.NewDefaultLogConfig()}}
+			return &commandTestScope{cfg: cfg}
 		})
 		err := cmd.RunE(cmd, []string{"auth"})
 		if err == nil || !strings.Contains(err.Error(), "failed to initialize scope for tap stdout") {
@@ -694,6 +696,31 @@ func TestNewE2ECmd_AdditionalRunEPaths(t *testing.T) {
 				t.Fatalf("expected invalid runtime log level error, got %v", err)
 			}
 		})
+	})
+
+	t.Run("uses command context for runner invocation", func(t *testing.T) {
+		oldRun := runE2EModule
+		defer func() { runE2EModule = oldRun }()
+
+		cfg := newCommandTestConfig(t.TempDir())
+		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
+
+		type ctxKey string
+		const key ctxKey = "e2e-command-context"
+		const wantValue = "propagated"
+
+		runE2EModule = func(ctx context.Context, opts pkge2e.RunOptions) error {
+			if got := ctx.Value(key); got != wantValue {
+				t.Fatalf("runner context value = %v, want %q", got, wantValue)
+			}
+			return nil
+		}
+
+		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
+		cmd.SetContext(context.WithValue(context.Background(), key, wantValue))
+		if err := cmd.RunE(cmd, []string{"auth"}); err != nil {
+			t.Fatalf("RunE error: %v", err)
+		}
 	})
 
 	t.Run("all uses a shared command-level run-id", func(t *testing.T) {

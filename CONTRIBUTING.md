@@ -30,6 +30,19 @@ Every new source files should include an SPDX license identifier at the top:
 - **Dependency Check:** Check third-party license compatibility before adding dependencies.
 - **Go Style:** Please run `go fmt ./...` before submitting.
 
+### CLI Test Semantics Contract
+The `test unit`, `test typecheck`, and `test e2e` commands share one semantics source of truth for unknown-target, no-tests-found, and command-prefix behavior.
+
+| Command | Runtime Options Prefix | Unknown Explicit Target | Existing Target With No Runnable Tests | `--all` With No Runnable Targets |
+| :--- | :--- | :--- | :--- | :--- |
+| `test unit` | `test unit: invalid runtime options` | `unknown app "<app>"` | Print `no tests found`, exit `0` (or non-zero with `--fail-if-no-tests`) | Print `no tests found`, exit `0` (or non-zero with `--fail-if-no-tests`) |
+| `test typecheck` | `typecheck: invalid runtime options` | `typecheck: unknown app "<app>"` | Print `no tests found`, exit `0` | Print `no tests found`, exit `0` |
+| `test e2e` | `e2e: invalid runtime options` | `unknown module "<module>" (no package.json under <modules_path>)` | Print `no tests found`, exit `0` when module exists but has no `choysum.e2e.specs` | Exit non-zero with `e2e: no runnable modules found under <modules_path>` |
+
+Implementation reference:
+- Shared message templates: `internal/testing/semantics/messages.go`
+- Contract tests: `cmd/cli_test_semantics_contract_test.go`
+
 ---
 
 ## 📜 CLA (Contributor License Agreement)

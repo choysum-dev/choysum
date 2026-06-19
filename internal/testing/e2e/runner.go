@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -32,6 +33,8 @@ import (
 	"github.com/choysum-dev/choysum/internal/logger"
 	dataloader "github.com/choysum-dev/choysum/internal/module/evolution/data"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -66,6 +69,9 @@ type RunOptions struct {
 
 	Stdout io.Writer
 	Stderr io.Writer
+
+	staticRequiredModules     []string
+	staticSpecRequiredModules []string
 }
 
 type runtimeInfo struct {
@@ -114,6 +120,31 @@ func writeE2EProgress(w io.Writer, format string, args ...any) {
 		return
 	}
 	_, _ = fmt.Fprintf(w, format, args...)
+}
+
+func writeE2ECanceledStage(w io.Writer, stage string, module string, scenario string, err error) {
+	if w == nil || err == nil {
+		return
+	}
+	module = strings.TrimSpace(module)
+	if module == "" {
+		module = "unknown"
+	}
+	scenario = strings.TrimSpace(scenario)
+	if scenario == "" {
+		_, _ = fmt.Fprintf(w, "[choysum test e2e] canceled stage=%s module=%s: %v\n", stage, module, err)
+		return
+	}
+	_, _ = fmt.Fprintf(w, "[choysum test e2e] canceled stage=%s module=%s scenario=%s: %v\n", stage, module, scenario, err)
+}
+
+func cloneStringSlice(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, len(values))
+	copy(out, values)
+	return out
 }
 
 func newE2ERuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) e2eRuntimeOptions {
@@ -176,6 +207,18 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	if opts.Stdout == nil {
+		opts.Stdout = os.Stdout
+	}
+	if opts.Stderr == nil {
+		opts.Stderr = os.Stderr
+	}
+	if err := ctx.Err(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			writeE2ECanceledStage(opts.Stderr, "entry", opts.Module, "", err)
+		}
+		return err
+	}
 	if strings.TrimSpace(testingpathing.TestingRunIDFromContext(ctx)) == "" {
 		ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
 	}
@@ -184,12 +227,6 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	}
 	if strings.TrimSpace(opts.ModulesPath) == "" {
 		return xfmt.Errorf("modules_path is required")
-	}
-	if opts.Stdout == nil {
-		opts.Stdout = os.Stdout
-	}
-	if opts.Stderr == nil {
-		opts.Stderr = os.Stderr
 	}
 	if opts.WorkDir == "" {
 		wd, _ := os.Getwd()
@@ -205,10 +242,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	}
 	targetPackage, ok := packages[opts.Module]
 	if !ok {
-		return xfmt.Errorf("unknown module %q (no package.json under %s)", opts.Module, opts.ModulesPath)
+		return xfmt.Errorf(testsemantics.UnknownModuleMessage(opts.Module, opts.ModulesPath))
 	}
 	if targetPackage.E2E == nil || strings.TrimSpace(targetPackage.E2E.Specs) == "" {
-		return xfmt.Errorf("module %q has no package.json choysum.e2e.specs", opts.Module)
+		return xfmt.Errorf(testsemantics.ModuleNoE2ESpecsMessage(opts.Module))
 	}
 	closure, err := topoClosure(opts.Module, packages)
 	if err != nil {
@@ -218,6 +255,13 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil {
 		return err
 	}
+	specRequiredModules, err := collectRequiredPlaywrightModules(specsDir)
+	if err != nil {
+		return err
+	}
+	requiredModules := mergeRequiredE2ERuntimeModules(packages, closure, specRequiredModules)
+	opts.staticSpecRequiredModules = cloneStringSlice(specRequiredModules)
+	opts.staticRequiredModules = cloneStringSlice(requiredModules)
 
 	scenarioList := opts.Scenarios
 	if len(scenarioList) == 0 {
@@ -235,10 +279,6 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if _, _, err := resolvePlaywrightCommand(opts); err != nil {
 		return err
 	}
-	requiredModules, err := collectRequiredE2ERuntimeModules(packages, closure, specsDir)
-	if err != nil {
-		return err
-	}
 	if err := preflightPlaywrightRuntimeDependency(opts, opts.Module, requiredModules); err != nil {
 		return err
 	}
@@ -249,11 +289,17 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 			err := runOneScenarioHook(perRunCtx, opts, packages, scenario)
 			cancel()
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					writeE2ECanceledStage(opts.Stderr, "scenario", opts.Module, scenario, err)
+				}
 				return err
 			}
 			continue
 		}
 		if err := runOneScenarioHook(ctx, opts, packages, scenario); err != nil {
+			if errors.Is(err, context.Canceled) {
+				writeE2ECanceledStage(opts.Stderr, "scenario", opts.Module, scenario, err)
+			}
 			return err
 		}
 	}
@@ -294,9 +340,12 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	if err != nil {
 		return err
 	}
-	requiredRuntimeModules, err := collectRequiredE2ERuntimeModules(packages, closure, specsDir)
-	if err != nil {
-		return err
+	requiredRuntimeModules := cloneStringSlice(opts.staticRequiredModules)
+	if len(requiredRuntimeModules) == 0 {
+		requiredRuntimeModules, err = collectRequiredE2ERuntimeModules(packages, closure, specsDir)
+		if err != nil {
+			return err
+		}
 	}
 	globalNodeModulesRoot := resolvePlaywrightGlobalNodeModulesRoot(opts)
 	cleanupGlobalLinks, err := ensureE2EGlobalModuleLinks(opts.WorkDir, globalNodeModulesRoot, missingRequiredNodeModules(requiredRuntimeModules, localE2EModuleRoots(opts.WorkDir)...))
@@ -345,6 +394,7 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	dbPath := filepath.Join(runDir, "db.sqlite")
 	distDir := filepath.Join(runDir, "dist")
 	defaultChoysumPath := filepath.Join(runDir, ".choysum")
+
 	jwtKeysDir := filepath.Join(runDir, "jwtkeys")
 	privateKeyPath := filepath.Join(jwtKeysDir, "private.pem")
 	publicKeyPath := filepath.Join(jwtKeysDir, "public.pem")
@@ -774,9 +824,12 @@ module.exports = {
 	if len(specFiles) == 0 {
 		return xfmt.Errorf("no playwright specs found under %s", specsDir)
 	}
-	requiredModules, err := requiredPlaywrightModulesFromSpecFiles(specFiles)
-	if err != nil {
-		return xfmt.Errorf("scan playwright imports: %w", err)
+	requiredModules := cloneStringSlice(opts.staticSpecRequiredModules)
+	if len(requiredModules) == 0 {
+		requiredModules, err = requiredPlaywrightModulesFromSpecFiles(specFiles)
+		if err != nil {
+			return xfmt.Errorf("scan playwright imports: %w", err)
+		}
 	}
 	runtimeGeneratedModules, err := collectRuntimeGeneratedModules(runtimePath)
 	if err != nil {
@@ -855,37 +908,12 @@ module.exports = {
 }
 
 func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
-	playwrightBin := "playwright"
-	binDir := ""
-	tryBinDir := func(modulesDir string) {
-		if strings.TrimSpace(modulesDir) == "" {
-			return
-		}
-		candidateBinDir := filepath.Join(modulesDir, ".bin")
-		candidate := filepath.Join(candidateBinDir, "playwright")
-		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
-			playwrightBin = candidate
-			binDir = candidateBinDir
-			return
-		}
-		candidateCmd := candidate + ".cmd"
-		if st, err := os.Stat(candidateCmd); err == nil && !st.IsDir() {
-			playwrightBin = candidateCmd
-			binDir = candidateBinDir
-			return
-		}
-	}
-
-	if _, err := exec.LookPath("playwright"); err == nil {
-		return playwrightBin, binDir, nil
-	}
-
-	// Fall back to node_modules/.bin search.
-	tryBinDir(opts.NpmPath)
-	if playwrightBin == "playwright" {
-		tryBinDir(filepath.Join(strings.TrimSpace(opts.WorkDir), "node_modules"))
-	}
-	if playwrightBin == "playwright" {
+	playwrightBin, binDir, found := noderuntime.FindExecutable(
+		"playwright",
+		opts.NpmPath,
+		filepath.Join(strings.TrimSpace(opts.WorkDir), "node_modules"),
+	)
+	if !found {
 		return "", "", xfmt.Errorf("playwright not found. Run: npm install -g @playwright/test && npx playwright install")
 	}
 
@@ -934,28 +962,11 @@ func runtimeE2EModuleRoots(runtimePath string) []string {
 }
 
 func moduleInstalledInRoots(moduleName string, moduleRoots ...string) bool {
-	for _, root := range moduleRoots {
-		root = strings.TrimSpace(root)
-		if root == "" {
-			continue
-		}
-		moduleDir := filepath.Join(root, filepath.FromSlash(moduleName))
-		if st, err := os.Stat(moduleDir); err == nil && st.IsDir() {
-			return true
-		}
-	}
-	return false
+	return noderuntime.ModuleInstalledInRoots(moduleName, moduleRoots...)
 }
 
 func missingRequiredNodeModules(required []string, moduleRoots ...string) []string {
-	missing := make([]string, 0)
-	for _, moduleName := range required {
-		if moduleInstalledInRoots(moduleName, moduleRoots...) {
-			continue
-		}
-		missing = append(missing, moduleName)
-	}
-	return missing
+	return noderuntime.MissingRequiredNodeModules(required, moduleRoots...)
 }
 
 func ensureE2EGlobalModuleLinks(workDir string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
@@ -1102,14 +1113,7 @@ func pruneEmptyDirs(startDir string, stopDir string) {
 }
 
 func resolveGlobalNpmRoot() string {
-	if override := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); override != "" {
-		return override
-	}
-	out, err := exec.Command("npm", "root", "-g").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
+	return noderuntime.ResolveGlobalNpmRootBestEffort()
 }
 
 func missingE2EModuleError(moduleName string, missingModules []string) error {
@@ -1127,7 +1131,7 @@ func missingE2EModuleError(moduleName string, missingModules []string) error {
 
 func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModulePackage) (string, error) {
 	if pkg == nil || pkg.E2E == nil || strings.TrimSpace(pkg.E2E.Specs) == "" {
-		return "", xfmt.Errorf("module %q has no package.json choysum.e2e.specs", moduleName)
+		return "", xfmt.Errorf(testsemantics.ModuleNoE2ESpecsMessage(moduleName))
 	}
 	specsRel := filepath.Clean(strings.TrimSpace(pkg.E2E.Specs))
 	if specsRel == "." || filepath.IsAbs(specsRel) || specsRel == ".." || strings.HasPrefix(specsRel, ".."+string(filepath.Separator)) {
@@ -1137,12 +1141,19 @@ func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModule
 }
 
 func collectRequiredE2ERuntimeModules(packages map[string]*sourceModulePackage, closure []string, specsDir string) ([]string, error) {
-	required := map[string]struct{}{}
 	fromSpecs, err := collectRequiredPlaywrightModules(specsDir)
 	if err != nil {
 		return nil, err
 	}
-	for _, moduleName := range fromSpecs {
+	return mergeRequiredE2ERuntimeModules(packages, closure, fromSpecs), nil
+}
+
+func mergeRequiredE2ERuntimeModules(packages map[string]*sourceModulePackage, closure []string, specRequiredModules []string) []string {
+	required := map[string]struct{}{}
+	for _, moduleName := range specRequiredModules {
+		if strings.TrimSpace(moduleName) == "" {
+			continue
+		}
 		required[moduleName] = struct{}{}
 	}
 
@@ -1164,7 +1175,7 @@ func collectRequiredE2ERuntimeModules(packages map[string]*sourceModulePackage, 
 		out = append(out, moduleName)
 	}
 	sort.Strings(out)
-	return out, nil
+	return out
 }
 
 func collectPackageModuleDependencies(pkg *sourceModulePackage) []string {

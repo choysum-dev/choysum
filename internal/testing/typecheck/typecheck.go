@@ -16,6 +16,8 @@ import (
 	"sort"
 	"strings"
 
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -68,7 +70,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 		return err
 	}
 	if len(apps) == 0 {
-		fmt.Fprintln(opts.Stdout, "no tests found")
+		fmt.Fprintln(opts.Stdout, testsemantics.NoTestsFoundMessage)
 		return nil
 	}
 	sort.Strings(apps)
@@ -84,7 +86,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 		ranAny = true
 	}
 	if !ranAny {
-		fmt.Fprintln(opts.Stdout, "no tests found")
+		fmt.Fprintln(opts.Stdout, testsemantics.NoTestsFoundMessage)
 	}
 	return nil
 }
@@ -103,7 +105,7 @@ func ResolveApps(modulesPath string, target string) ([]string, error) {
 		appDir := filepath.Join(modulesPath, target)
 		st, err := os.Stat(appDir)
 		if err != nil || !st.IsDir() {
-			return nil, xfmt.Errorf("typecheck: unknown app %q", target)
+			return nil, xfmt.Errorf(testsemantics.PrefixForCommand("typecheck", testsemantics.UnknownAppMessage(target)))
 		}
 		hasTargets, err := HasTargets(modulesPath, target)
 		if err != nil {
@@ -363,17 +365,17 @@ func sanitizeAppToken(app string) string {
 }
 
 func resolveNpxPath(npmPath string) (string, error) {
+	hints := make([]string, 0, 2)
 	if strings.TrimSpace(npmPath) != "" {
-		dir := filepath.Dir(npmPath)
-		candidate := filepath.Join(dir, "npx")
-		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
-			return candidate, nil
-		}
+		hints = append(hints, npmPath, filepath.Dir(npmPath))
 	}
-	if _, err := exec.LookPath("npx"); err != nil {
-		return "", xfmt.Errorf("typecheck: npx not found. Install Node.js from https://nodejs.org")
+	if npxPath, _, found := noderuntime.FindExecutableInRoots("npx", hints...); found {
+		return npxPath, nil
 	}
-	return "npx", nil
+	if npxPath, _, found := noderuntime.FindExecutable("npx"); found {
+		return npxPath, nil
+	}
+	return "", xfmt.Errorf("typecheck: npx not found. Install Node.js from https://nodejs.org")
 }
 
 // resolveGlobalViteClientDTS returns the path to vite/client.d.ts,
@@ -414,11 +416,7 @@ func resolveTypeRoots(repoRoot string) []string {
 
 // globalNpmRoot returns the global node_modules path (npm root -g).
 func globalNpmRoot() (string, error) {
-	out, err := exec.Command("npm", "root", "-g").Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
+	return noderuntime.ResolveGlobalNpmRoot()
 }
 
 // resolveCompilerTypes returns the "types" compiler option, including

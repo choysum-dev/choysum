@@ -131,6 +131,18 @@ func TestNewModuleCmd_RequiresRuntimeScope(t *testing.T) {
 	}
 }
 
+func TestNewModuleCmd_RuntimeOptionsPrefix(t *testing.T) {
+	modulesPath := t.TempDir()
+	scopeGetter := func() scope.Scope {
+		return &commandTestScope{ctx: context.Background(), cfg: newCommandTestConfig(modulesPath)}
+	}
+	moduleCmd := newModuleCmd(scopeGetter, func() cliRuntimeOptions { return cliRuntimeOptions{} })
+
+	if _, err := executeCommandForTest(t, moduleCmd, "search", "auth"); err == nil || !strings.Contains(err.Error(), "module: invalid runtime options") {
+		t.Fatalf("expected prefixed runtime options error, got %v", err)
+	}
+}
+
 func TestModuleUtilityHelpers(t *testing.T) {
 	defaultURL, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{})
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -162,7 +163,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 		return err
 	}
 	if len(apps) == 0 {
-		msg := "no tests found"
+		msg := testsemantics.NoTestsFoundMessage
 		if opts.FailIfNoTests {
 			return xfmt.Errorf(msg)
 		}
