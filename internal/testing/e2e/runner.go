@@ -214,6 +214,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 		}
 	}
 
+	if _, _, err := resolvePlaywrightCommand(opts); err != nil {
+		return err
+	}
+
 	for _, scenario := range scenarioList {
 		if opts.Timeout > 0 {
 			perRunCtx, cancel := context.WithTimeout(ctx, opts.Timeout)
@@ -756,36 +760,9 @@ module.exports = {
 	args := []string{"playwright", "test", "--config", configPath}
 	args = append(args, specFiles...)
 	args = append(args, opts.PlaywrightArgs...)
-	playwrightBin := "playwright"
-	binDir := ""
-	tryBinDir := func(modulesDir string) {
-		if strings.TrimSpace(modulesDir) == "" {
-			return
-		}
-		candidateBinDir := filepath.Join(modulesDir, ".bin")
-		candidate := filepath.Join(candidateBinDir, "playwright")
-		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
-			playwrightBin = candidate
-			binDir = candidateBinDir
-			return
-		}
-		candidateCmd := candidate + ".cmd"
-		if st, err := os.Stat(candidateCmd); err == nil && !st.IsDir() {
-			playwrightBin = candidateCmd
-			binDir = candidateBinDir
-			return
-		}
-	}
-
-	if _, err := exec.LookPath("playwright"); err != nil {
-		// Fall back to local node_modules search.
-		tryBinDir(opts.NpmPath)
-		if playwrightBin == "playwright" {
-			tryBinDir(filepath.Join(opts.WorkDir, "node_modules"))
-		}
-		if playwrightBin == "playwright" {
-			return xfmt.Errorf("playwright not found. Run: npm install -g @playwright/test && npx playwright install")
-		}
+	playwrightBin, binDir, err := resolvePlaywrightCommand(opts)
+	if err != nil {
+		return err
 	}
 
 	cmd := exec.CommandContext(ctx, playwrightBin, args[1:]...)
@@ -815,6 +792,44 @@ module.exports = {
 		return xfmt.Errorf("playwright failed: %w", err)
 	}
 	return nil
+}
+
+func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
+	playwrightBin := "playwright"
+	binDir := ""
+	tryBinDir := func(modulesDir string) {
+		if strings.TrimSpace(modulesDir) == "" {
+			return
+		}
+		candidateBinDir := filepath.Join(modulesDir, ".bin")
+		candidate := filepath.Join(candidateBinDir, "playwright")
+		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
+			playwrightBin = candidate
+			binDir = candidateBinDir
+			return
+		}
+		candidateCmd := candidate + ".cmd"
+		if st, err := os.Stat(candidateCmd); err == nil && !st.IsDir() {
+			playwrightBin = candidateCmd
+			binDir = candidateBinDir
+			return
+		}
+	}
+
+	if _, err := exec.LookPath("playwright"); err == nil {
+		return playwrightBin, binDir, nil
+	}
+
+	// Fall back to node_modules/.bin search.
+	tryBinDir(opts.NpmPath)
+	if playwrightBin == "playwright" {
+		tryBinDir(filepath.Join(strings.TrimSpace(opts.WorkDir), "node_modules"))
+	}
+	if playwrightBin == "playwright" {
+		return "", "", xfmt.Errorf("playwright not found. Run: npm install -g @playwright/test && npx playwright install")
+	}
+
+	return playwrightBin, binDir, nil
 }
 
 func waitForHTTP200(ctx context.Context, url string, timeout time.Duration) error {
