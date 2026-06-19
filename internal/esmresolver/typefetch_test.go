@@ -136,6 +136,66 @@ func TestFetchTypeDefinition_CacheHitURLDerivedFile(t *testing.T) {
 	}
 }
 
+func TestFetchTypeDefinition_RefreshesCorruptedLocalSpecifierCache(t *testing.T) {
+	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
+	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
+	indexGetCalls := 0
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case typesURLPath:
+				indexGetCalls++
+				fmt.Fprint(w, `export * from "./sub.d.ts";`)
+				return
+			case subURLPath:
+				fmt.Fprint(w, `export declare const sub: string;`)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	cacheFile := typeCachePathForURL(typesDir, srv.URL+typesURLPath)
+	missingLocal := "./esm.sh_pkg@1.0.0_es_sub.d.ts.d.ts"
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cacheFile, []byte(fmt.Sprintf(`export * from "%s";`, missingLocal)), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.FromCache {
+		t.Fatal("expected corrupted cache refresh to mark result as fetched")
+	}
+	if indexGetCalls == 0 {
+		t.Fatal("expected GET request for index.d.ts when local specifier target is missing")
+	}
+
+	if _, err := os.Stat(typeCachePathForURL(typesDir, srv.URL+subURLPath)); err != nil {
+		t.Fatalf("expected refreshed fetch to restore sub type cache file: %v", err)
+	}
+}
+
 func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

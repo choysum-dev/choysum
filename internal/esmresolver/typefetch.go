@@ -126,35 +126,43 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 	// Check cache.
 	var content []byte
 	fromCache := false
+	var imports []string
 	if data, err := os.ReadFile(cacheFile); err == nil {
 		content = data
 		fromCache = true
+
+		imports = parseDTSImports(string(content))
+		if hasMissingLocalCachedImports(cacheFile, imports) {
+			body, err := downloadTypeContent(client, normalized)
+			if err != nil {
+				return nil, nil, fmt.Errorf("refresh corrupted cached types from %s: %w", normalized, err)
+			}
+			content = body
+			fromCache = false
+
+			if err := writeTypeCacheFile(cacheFile, content); err != nil {
+				return nil, nil, err
+			}
+			imports = parseDTSImports(string(content))
+		}
 	} else {
-		req, err := http.NewRequest(http.MethodGet, normalized, nil)
+		body, err := downloadTypeContent(client, normalized)
 		if err != nil {
-			return nil, nil, fmt.Errorf("create download request for %s: %w", normalized, err)
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			return nil, nil, fmt.Errorf("download types from %s: %w", normalized, err)
-		}
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, nil, fmt.Errorf("read types body from %s: %w", normalized, err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			return nil, nil, fmt.Errorf("download types from %s: http %d", normalized, resp.StatusCode)
+			return nil, nil, err
 		}
 		content = body
 
 		if err := writeTypeCacheFile(cacheFile, content); err != nil {
 			return nil, nil, err
 		}
+		imports = parseDTSImports(string(content))
+	}
+
+	if imports == nil {
+		imports = parseDTSImports(string(content))
 	}
 
 	// Parse imports/exports and resolve transitive type URLs.
-	imports := parseDTSImports(string(content))
 	resolvedImports := make([]resolvedTypeImport, 0, len(imports))
 	for _, importPath := range imports {
 		if isLocalCachedTypeSpecifier(importPath) {
@@ -434,6 +442,46 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 		return fmt.Errorf("rename types tmp: %w", err)
 	}
 	return nil
+}
+
+func downloadTypeContent(client *http.Client, rawURL string) ([]byte, error) {
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create download request for %s: %w", rawURL, err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("download types from %s: %w", rawURL, err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("read types body from %s: %w", rawURL, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download types from %s: http %d", rawURL, resp.StatusCode)
+	}
+
+	return body, nil
+}
+
+func hasMissingLocalCachedImports(cacheFile string, imports []string) bool {
+	baseDir := filepath.Clean(filepath.Dir(cacheFile))
+	for _, importPath := range imports {
+		if !isLocalCachedTypeSpecifier(importPath) {
+			continue
+		}
+
+		candidate := filepath.Clean(filepath.Join(baseDir, filepath.FromSlash(importPath)))
+		if candidate != baseDir && !strings.HasPrefix(candidate, baseDir+string(os.PathSeparator)) {
+			continue
+		}
+		if _, err := os.Stat(candidate); err != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // UpdateTsconfigPaths reads the tsconfig at the given path, adds or updates

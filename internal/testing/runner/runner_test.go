@@ -357,6 +357,39 @@ func TestRun(t *testing.T) {
 		}
 	})
 
+	t.Run("frontend preflight fails before backend execution", func(t *testing.T) {
+		backendCalls := 0
+		preflightErr := errors.New("frontend deps missing")
+		err := Run(context.Background(), RunOptions{
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			RunFE:       true,
+			Stdout:      io.Discard,
+			Stderr:      io.Discard,
+			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
+				return []string{"auth"}, nil
+			},
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return true, nil },
+			PreflightFrontend: func(repoRoot string, app string) error {
+				return preflightErr
+			},
+			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
+				backendCalls++
+				return false, nil
+			},
+			RunFrontend: noopRunFrontend,
+		})
+		if err == nil || !strings.Contains(err.Error(), "tests failed") {
+			t.Fatalf("expected aggregated tests failed error, got %v", err)
+		}
+		if backendCalls != 0 {
+			t.Fatalf("expected backend not to run after frontend preflight failure, got %d calls", backendCalls)
+		}
+	})
+
 	t.Run("propagates keep option to backend runner", func(t *testing.T) {
 		keepSeen := false
 		err := Run(context.Background(), RunOptions{

@@ -102,5 +102,8 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 			)
 		}
 	}
+	if opts.PreflightFrontend == nil {
+		opts.PreflightFrontend = pkgfrontend.ValidateFrontendTestDependencies
+	}
 	return Run(ctx, opts)
 }
