@@ -535,7 +535,7 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		}
 		relPath = filepath.ToSlash(relPath)
 
-		// Add a paths entry for the bare specifier → cached type.
+		// Add a paths entry for the bare specifier to cached type.
 		key := r.Package
 		paths[key] = []string{relPath}
 	}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -45,6 +46,9 @@ func ParseTsconfigPathAlias(buildOptions *api.BuildOptions) (map[string]string, 
 			for key, value := range paths {
 				if pathArray, ok := value.([]interface{}); ok && len(pathArray) > 0 {
 					if pathStr, ok := pathArray[0].(string); ok {
+						if shouldSkipTypeOnlyAlias(key, pathStr) {
+							continue
+						}
 						pathAlias[key] = filepath.Join(tsconfigAbsDir, pathStr)
 					}
 				}
@@ -58,9 +62,11 @@ func ParseTsconfigPathAlias(buildOptions *api.BuildOptions) (map[string]string, 
 func ApplyPathAlias(pathAlias map[string]string, path string) string {
 	for alias, realPath := range pathAlias {
 		aliasPattern := "^" + regexp.QuoteMeta(alias)
-		if alias[len(alias)-1] == '*' {
+		if len(alias) > 0 && alias[len(alias)-1] == '*' {
 			aliasPattern = aliasPattern[:len(aliasPattern)-2] + "(.*)"
 			realPath = realPath[:len(realPath)-1] + "$1"
+		} else {
+			aliasPattern += "$"
 		}
 		re := regexp.MustCompile(aliasPattern)
 		if re.MatchString(path) {
@@ -68,4 +74,30 @@ func ApplyPathAlias(pathAlias map[string]string, path string) string {
 		}
 	}
 	return path
+}
+
+func shouldSkipTypeOnlyAlias(alias string, target string) bool {
+	alias = strings.TrimSpace(alias)
+	target = strings.TrimSpace(target)
+	if alias == "" || target == "" {
+		return false
+	}
+	if strings.Contains(alias, "*") {
+		return false
+	}
+	trimmed := target
+	if i := strings.Index(trimmed, "?"); i >= 0 {
+		trimmed = trimmed[:i]
+	}
+	if i := strings.Index(trimmed, "#"); i >= 0 {
+		trimmed = trimmed[:i]
+	}
+	base := strings.ToLower(filepath.Base(trimmed))
+	if base == "" {
+		return false
+	}
+	if strings.HasSuffix(base, ".d.ts") || strings.HasSuffix(base, ".d.mts") || strings.HasSuffix(base, ".d.cts") {
+		return true
+	}
+	return strings.Contains(base, ".d.ts.") || strings.Contains(base, ".d.mts.") || strings.Contains(base, ".d.cts.")
 }

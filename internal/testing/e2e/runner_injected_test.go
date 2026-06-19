@@ -175,6 +175,11 @@ func TestRunModuleUsesScenarioHook(t *testing.T) {
 	binDir := t.TempDir()
 	writeExecFile(t, filepath.Join(binDir, "playwright"), "#!/bin/sh\nexit 0\n")
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	globalNodeModules := filepath.Join(t.TempDir(), "global-node_modules")
+	if err := os.MkdirAll(filepath.Join(globalNodeModules, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir global playwright package: %v", err)
+	}
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalNodeModules)
 
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
@@ -219,6 +224,11 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 	binDir := t.TempDir()
 	writeExecFile(t, filepath.Join(binDir, "playwright"), "#!/bin/sh\nexit 0\n")
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	globalNodeModules := filepath.Join(t.TempDir(), "global-node_modules")
+	if err := os.MkdirAll(filepath.Join(globalNodeModules, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir global playwright package: %v", err)
+	}
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalNodeModules)
 
 	modulesPath := t.TempDir()
 	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)

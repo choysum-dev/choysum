@@ -64,7 +64,7 @@ func TestTsParserParseImportAndExport(t *testing.T) {
 func TestParseTsconfigPathAlias(t *testing.T) {
 	rawOptions := &api.BuildOptions{
 		AbsWorkingDir: "/workspace/modules",
-		TsconfigRaw:   `{"compilerOptions":{"paths":{"@/*":["src/*"],"~/*":["shared/*"]}}}`,
+		TsconfigRaw:   `{"compilerOptions":{"paths":{"@/*":["src/*"],"~/*":["shared/*"],"vue":["../../.choysum/pkg/types/esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts"]}}}`,
 	}
 	rawAliases, err := ParseTsconfigPathAlias(rawOptions)
 	if err != nil {
@@ -72,6 +72,9 @@ func TestParseTsconfigPathAlias(t *testing.T) {
 	}
 	if rawAliases["@/*"] != "/workspace/modules/src/*" || rawAliases["~/*"] != "/workspace/modules/shared/*" {
 		t.Fatalf("unexpected raw aliases: %#v", rawAliases)
+	}
+	if _, ok := rawAliases["vue"]; ok {
+		t.Fatalf("expected type-only bare alias to be filtered, got: %#v", rawAliases)
 	}
 
 	if _, err := ParseTsconfigPathAlias(&api.BuildOptions{TsconfigRaw: "{"}); err == nil {
@@ -104,6 +107,9 @@ func TestApplyPathAlias(t *testing.T) {
 	}
 	if got := ApplyPathAlias(aliases, "#core"); got != "/workspace/core/index.ts" {
 		t.Fatalf("unexpected exact alias result: %s", got)
+	}
+	if got := ApplyPathAlias(aliases, "#core/sub"); got != "#core/sub" {
+		t.Fatalf("exact alias should not match prefix path: %s", got)
 	}
 	if got := ApplyPathAlias(aliases, "other/module.ts"); got != "other/module.ts" {
 		t.Fatalf("unexpected passthrough path: %s", got)
