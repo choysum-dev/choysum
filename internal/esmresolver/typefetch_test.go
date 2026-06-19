@@ -277,6 +277,27 @@ func TestUpdateTsconfigPaths_EmptyResults(t *testing.T) {
 	}
 }
 
+func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "modules", "tsconfig.json")
+
+	if err := UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("UpdateTsconfigPaths should create tsconfig when missing: %v", err)
+	}
+
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("expected tsconfig to be created: %v", err)
+	}
+	content := string(data)
+	if !strings.Contains(content, `"@/*"`) {
+		t.Fatalf("created tsconfig should include default @/* path: %s", content)
+	}
+	if !strings.Contains(content, `"exclude"`) {
+		t.Fatalf("created tsconfig should include exclude section: %s", content)
+	}
+}
+
 func TestParseDTSImports(t *testing.T) {
 	content := `
 import { Foo } from './foo';

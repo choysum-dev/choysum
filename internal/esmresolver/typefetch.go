@@ -439,6 +439,10 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 // The paths map package names (e.g. "vue") to their cached .d.ts file,
 // relative to the directory containing the tsconfig.
 func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
+	if err := ensureModulesTsconfig(tsconfigPath); err != nil {
+		return fmt.Errorf("ensure tsconfig: %w", err)
+	}
+
 	if len(results) == 0 {
 		return nil
 	}
@@ -488,6 +492,63 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 
 	// Write back with indentation.
 	out, err := json.MarshalIndent(tsconfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tsconfig: %w", err)
+	}
+	out = append(out, '\n')
+
+	if err := os.WriteFile(tsconfigPath, out, 0644); err != nil {
+		return fmt.Errorf("write tsconfig: %w", err)
+	}
+	return nil
+}
+
+func ensureModulesTsconfig(tsconfigPath string) error {
+	st, err := os.Stat(tsconfigPath)
+	if err == nil {
+		if st.IsDir() {
+			return fmt.Errorf("tsconfig path is a directory: %s", tsconfigPath)
+		}
+		return nil
+	}
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("stat tsconfig: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(tsconfigPath), 0o755); err != nil {
+		return fmt.Errorf("create tsconfig dir: %w", err)
+	}
+
+	base := map[string]interface{}{
+		"$schema": "https://json.schemastore.org/tsconfig",
+		"compilerOptions": map[string]interface{}{
+			"allowArbitraryExtensions":     true,
+			"allowImportingTsExtensions":   true,
+			"allowJs":                      true,
+			"experimentalDecorators":       true,
+			"lib":                          []string{"ES2020", "DOM", "DOM.Iterable"},
+			"module":                       "ESNext",
+			"moduleResolution":             "bundler",
+			"noEmit":                       true,
+			"paths":                        map[string]interface{}{"@/*": []string{"./*"}},
+			"skipLibCheck":                 true,
+			"strict":                       true,
+			"strictPropertyInitialization": false,
+			"target":                       "ES2020",
+		},
+		"exclude": []string{
+			"**/*.test.ts",
+			"**/*.test.tsx",
+			"**/*.spec.ts",
+			"**/*.spec.tsx",
+			"**/__tests__/**",
+			"**/tests/**",
+			"**/e2e/**",
+		},
+		"display": "Recommended",
+	}
+
+	out, err := json.MarshalIndent(base, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal tsconfig: %w", err)
 	}

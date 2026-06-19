@@ -56,6 +56,9 @@ When <app> is specified, fetches types for that module only.`,
 			if modulesPath == "" {
 				return xfmt.Errorf("type-fetch: modules path is empty")
 			}
+			if err := os.MkdirAll(modulesPath, 0o755); err != nil {
+				return xfmt.Errorf("type-fetch: ensure modules path: %w", err)
+			}
 
 			defaultPath := strings.TrimSpace(runtimeOpts.DefaultChoysumPath)
 			if defaultPath == "" {
@@ -130,6 +133,8 @@ When <app> is specified, fetches types for that module only.`,
 				cmd.Printf("Warning: failed to update tsconfig paths: %v\n", err)
 			} else if len(allResults) > 0 {
 				cmd.Println("Updated tsconfig paths.")
+			} else {
+				cmd.Printf("Ensured tsconfig exists: %s\n", tsconfigPath)
 			}
 
 			if offline {
