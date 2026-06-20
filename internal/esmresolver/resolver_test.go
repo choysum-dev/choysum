@@ -719,6 +719,221 @@ func TestFormatError(t *testing.T) {
 	}
 }
 
+// ---- WithModulePath tests ----
+
+func TestWithModulePath(t *testing.T) {
+	r := New(WithModulePath("/tmp/modules"))
+	if r.modulePath != "/tmp/modules" {
+		t.Fatalf("modulePath = %q, want /tmp/modules", r.modulePath)
+	}
+}
+
+func TestWithModulePath_Empty(t *testing.T) {
+	r := New(WithModulePath(""))
+	if r.modulePath != "" {
+		t.Fatalf("modulePath = %q, want empty", r.modulePath)
+	}
+}
+
+// ---- WithMetrics tests ----
+
+func TestWithMetrics(t *testing.T) {
+	m := &Metrics{}
+	r := New(WithMetrics(m))
+	if r.metrics != m {
+		t.Fatal("expected metrics to be set")
+	}
+}
+
+func TestWithMetrics_Nil(t *testing.T) {
+	r := New(WithMetrics(nil))
+	if r.metrics == nil {
+		t.Fatal("expected default metrics to be created")
+	}
+}
+
+// ---- extractPkgRootURL tests ----
+
+func TestExtractPkgRootURL(t *testing.T) {
+	r := New(WithUpstream("https://esm.sh"), WithTarget("es2020"))
+
+	tests := []struct {
+		url  string
+		want string
+	}{
+		{
+			"https://esm.sh/kysely@0.27.6/deno/kysely.mjs",
+			"https://esm.sh/kysely?target=es2020",
+		},
+		{
+			"https://esm.sh/@scope/pkg@1.0.0/dist/index.mjs",
+			"https://esm.sh/@scope/pkg?target=es2020",
+		},
+		{
+			"https://other-cdn.com/pkg@1.0.0/file.js",
+			"",
+		},
+		{
+			"https://esm.sh/pkg@1.0.0?target=es2020",
+			"https://esm.sh/pkg?target=es2020",
+		},
+	}
+	for _, tt := range tests {
+		got := r.extractPkgRootURL(tt.url)
+		if got != tt.want {
+			t.Fatalf("extractPkgRootURL(%q) = %q, want %q", tt.url, got, tt.want)
+		}
+	}
+}
+
+// ---- httpError / Error tests ----
+
+func TestHttpError(t *testing.T) {
+	e := &httpError{code: 404, body: "not found"}
+	if e.Error() != "http 404: not found" {
+		t.Fatalf("Error() = %q", e.Error())
+	}
+}
+
+// ---- isNetError tests ----
+
+func TestIsNetError(t *testing.T) {
+	tests := []struct {
+		msg  string
+		want bool
+	}{
+		{"connection refused", true},
+		{"no such host", true},
+		{"i/o timeout", true},
+		{"context deadline exceeded", true},
+		{"connection reset by peer", true},
+		{"tls: handshake failure", true},
+		{"http 404: not found", false},
+		{"some random error", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		err := fmt.Errorf("%s", tt.msg)
+		if got := isNetError(err); got != tt.want {
+			t.Fatalf("isNetError(%q) = %v, want %v", tt.msg, got, tt.want)
+		}
+	}
+
+	if isNetError(nil) {
+		t.Fatal("isNetError(nil) should be false")
+	}
+}
+
+// ---- unwrapErr tests ----
+
+func TestUnwrapErr(t *testing.T) {
+	base := fmt.Errorf("base error")
+	wrapped := fmt.Errorf("wrapped: %w", base)
+
+	target := unwrapErr(wrapped)
+	if target != base {
+		t.Fatalf("unwrapErr did not unwrap to base error")
+	}
+
+	if unwrapErr(base) != nil {
+		t.Fatal("unwrapErr should return nil for non-unwrapper")
+	}
+
+	if unwrapErr(nil) != nil {
+		t.Fatal("unwrapErr(nil) should return nil")
+	}
+}
+
+// ---- asHTTPErr tests ----
+
+func TestAsHTTPErr(t *testing.T) {
+	httpE := &httpError{code: 500, body: "boom"}
+	wrapped := fmt.Errorf("wrapped: %w", httpE)
+
+	var target *httpError
+	if !asHTTPErr(wrapped, &target) {
+		t.Fatal("expected asHTTPErr to find httpError in chain")
+	}
+	if target.code != 500 {
+		t.Fatalf("code = %d, want 500", target.code)
+	}
+
+	if asHTTPErr(nil, &target) {
+		t.Fatal("asHTTPErr(nil) should return false")
+	}
+
+	if asHTTPErr(fmt.Errorf("plain"), &target) {
+		t.Fatal("asHTTPErr(plain) should return false")
+	}
+}
+
+// ---- resolveInNamespace tests ----
+
+func TestResolveInNamespace_FragmentOnly(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "#icon"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External || result.Path != "#icon" {
+		t.Fatalf("expected external fragment, got %+v", result)
+	}
+}
+
+func TestResolveInNamespace_DataURL(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "data:text/javascript,export{}"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected external data URL")
+	}
+}
+
+func TestResolveInNamespace_LocalPath(t *testing.T) {
+	dir := t.TempDir()
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: dir})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "" || result.External {
+		t.Fatal("expected empty result for local filesystem path")
+	}
+}
+
+func TestResolveInNamespace_HTTPURL(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/pkg@1.0.0/index.js"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/index.js" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+// ---- isRetryable tests ----
+
+func TestIsRetryable(t *testing.T) {
+	if isRetryable(nil) {
+		t.Fatal("isRetryable(nil) should be false")
+	}
+	if !isRetryable(fmt.Errorf("connection refused")) {
+		t.Fatal("isRetryable(net error) should be true")
+	}
+	if !isRetryable(&httpError{code: 500, body: "boom"}) {
+		t.Fatal("isRetryable(500) should be true")
+	}
+	if isRetryable(&httpError{code: 404, body: "not found"}) {
+		t.Fatal("isRetryable(404) should be false")
+	}
+	if isRetryable(&httpError{code: 400, body: "bad request"}) {
+		t.Fatal("isRetryable(400) should be false")
+	}
+}
+
 // ---- stripNamespace tests ----
 
 func TestStripNamespace(t *testing.T) {

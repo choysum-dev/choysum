@@ -191,3 +191,57 @@ func TestResolver_LockedSpecifier_Integration(t *testing.T) {
 		t.Fatalf("lockedSpecifier = %q, want %q", got, want)
 	}
 }
+
+// ---- WriteLockfile edge case tests ----
+
+func TestWriteLockfile_InvalidPath(t *testing.T) {
+	err := WriteLockfile("/dev/null/should-fail/esm.lock", &EsmLockfile{
+		Version: 1,
+		Packages: map[string]LockEntry{"a": {Version: "1.0"}},
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid path")
+	}
+}
+
+// ---- ReadLockfile edge case tests ----
+
+func TestReadLockfile_ZeroVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "esm.lock")
+	if err := os.WriteFile(path, []byte(`{"version":0,"packages":{}}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ReadLockfile(path)
+	if err == nil {
+		t.Fatal("expected error for unsupported version 0")
+	}
+}
+
+func TestReadLockfile_NilPackages(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "esm.lock")
+	if err := os.WriteFile(path, []byte(`{"version":1}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := ReadLockfile(path)
+	if err != nil {
+		t.Fatalf("ReadLockfile should handle nil packages: %v", err)
+	}
+	if lock.Packages == nil {
+		t.Fatal("packages should be non-nil after read")
+	}
+	if len(lock.Packages) != 0 {
+		t.Fatalf("packages len = %d, want 0", len(lock.Packages))
+	}
+}
+
+// ---- LookupLockedSpec edge case tests ----
+
+func TestLookupLockedSpec_EmptySpec(t *testing.T) {
+	lock := &EsmLockfile{Version: 1, Packages: map[string]LockEntry{"pkg": {Version: "1.0"}}}
+	got := LookupLockedSpec(lock, "")
+	if got != "" {
+		t.Fatalf("LookupLockedSpec with empty spec = %q, want empty", got)
+	}
+}

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestReadPackageJSON(t *testing.T) {
@@ -529,5 +530,300 @@ func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
 	}
 	if hasMissingLocalCachedImports(cacheFile, imports) {
 		t.Fatal("expected existing relative import to pass cache integrity check")
+	}
+}
+
+// ---- NewTypeFetchSession tests ----
+
+func TestNewTypeFetchSession_Custom(t *testing.T) {
+	s := NewTypeFetchSession(8)
+	if s == nil {
+		t.Fatal("expected non-nil session")
+	}
+	if s.state == nil {
+		t.Fatal("expected non-nil state")
+	}
+}
+
+func TestNewTypeFetchSession_Zero(t *testing.T) {
+	s := NewTypeFetchSession(0)
+	if s == nil || s.state == nil {
+		t.Fatal("expected non-nil session with default parallelism")
+	}
+}
+
+// ---- TypeFetchSession.FetchTypesForModule tests ----
+
+func TestTypeFetchSession_FetchTypesForModule(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+"/types/testlib@1.0.0/index.d.ts")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		fmt.Fprint(w, "export declare const sess: number;")
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "mod")
+	os.MkdirAll(moduleDir, 0755)
+	os.WriteFile(filepath.Join(moduleDir, "package.json"),
+		[]byte(`{"dependencies":{"testlib":"^1.0.0"}}`), 0644)
+
+	typesDir := filepath.Join(dir, "types")
+	session := NewTypeFetchSession(4)
+
+	results, err := session.FetchTypesForModule(nil, srv.URL, typesDir, moduleDir)
+	if err != nil {
+		t.Fatalf("FetchTypesForModule via session failed: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+}
+
+func TestTypeFetchSession_Nil(t *testing.T) {
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "mod")
+	os.MkdirAll(moduleDir, 0755)
+	os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{}`), 0644)
+
+	var s *TypeFetchSession
+	results, err := s.FetchTypesForModule(nil, "https://esm.sh", filepath.Join(dir, "types"), moduleDir)
+	if err != nil {
+		t.Fatalf("nil session should fall back to stateless fetch: %v", err)
+	}
+	if results != nil {
+		t.Fatalf("expected nil results for no-deps module, got %d", len(results))
+	}
+}
+
+// ---- ReadPackageJSON error path tests ----
+
+func TestReadPackageJSON_NotFound(t *testing.T) {
+	_, err := ReadPackageJSON("/nonexistent/package.json")
+	if err == nil {
+		t.Fatal("expected error for nonexistent file")
+	}
+	if !strings.Contains(err.Error(), "read package.json") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestReadPackageJSON_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "package.json")
+	os.WriteFile(path, []byte(`not json`), 0644)
+
+	_, err := ReadPackageJSON(path)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "parse package.json") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// ---- NewTypeFetchHTTPClient tests ----
+
+func TestNewTypeFetchHTTPClient_DefaultTimeout(t *testing.T) {
+	client := NewTypeFetchHTTPClient(0)
+	if client == nil {
+		t.Fatal("expected non-nil client with default timeout")
+	}
+	if client.Timeout != defaultTypeFetchRequestTimeout {
+		t.Fatalf("Timeout = %v, want %v", client.Timeout, defaultTypeFetchRequestTimeout)
+	}
+}
+
+func TestNewTypeFetchHTTPClient_CustomTimeout(t *testing.T) {
+	client := NewTypeFetchHTTPClient(5 * time.Second)
+	if client == nil {
+		t.Fatal("expected non-nil client")
+	}
+	if client.Timeout != 5*time.Second {
+		t.Fatalf("Timeout = %v, want 5s", client.Timeout)
+	}
+}
+
+// ---- typeCachePathForURL tests ----
+
+func TestTypeCachePathForURL_Various(t *testing.T) {
+	dir := t.TempDir()
+
+	tests := []struct {
+		url  string
+		want string
+	}{
+		{
+			"https://esm.sh/vue@3.4.29/dist/vue.d.mts",
+			"esm.sh_vue@3.4.29_dist_vue.d.mts.d.ts",
+		},
+		{
+			"https://cdn.jsdelivr.net/npm/pkg@1.0.0/index.d.ts",
+			"cdn.jsdelivr.net_npm_pkg@1.0.0_index.d.ts.d.ts",
+		},
+	}
+	for _, tt := range tests {
+		got := typeCachePathForURL(dir, tt.url)
+		if filepath.Base(got) != tt.want {
+			t.Fatalf("typeCachePathForURL(%q) base = %q, want %q", tt.url, filepath.Base(got), tt.want)
+		}
+	}
+}
+
+// ---- typePkgNameFromURL tests ----
+
+func TestTypePkgNameFromURL(t *testing.T) {
+	tests := []struct {
+		url  string
+		want string
+	}{
+		{"https://esm.sh/kysely@0.27.6/dist/index.d.ts", "kysely@0.27.6/dist/index.d.ts"},
+		{"https://esm.sh/@scope/pkg@1.0.0/index.d.ts", "@scope/pkg@1.0.0/index.d.ts"},
+		{"https://esm.sh/vue", "vue"},
+		{"https://esm.sh/vue?target=es2020", "vue"},
+	}
+	for _, tt := range tests {
+		got := typePkgNameFromURL(tt.url)
+		if got != tt.want {
+			t.Fatalf("typePkgNameFromURL(%q) = %q, want %q", tt.url, got, tt.want)
+		}
+	}
+}
+
+// ---- FetchTypeDefinition HTTP error paths ----
+
+func TestFetchTypeDefinition_HeadError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	_, _, err := FetchTypeDefinition(nil, server.URL, typesDir, "pkg", "1.0.0")
+	if err == nil {
+		t.Fatal("expected error for non-200 HEAD")
+	}
+}
+
+// ---- writeTypeCacheFile edge case tests ----
+
+func TestWriteTypeCacheFile(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "nested", "deep", "types.d.ts")
+
+	if err := writeTypeCacheFile(cacheFile, []byte("export {};")); err != nil {
+		t.Fatalf("writeTypeCacheFile failed: %v", err)
+	}
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "export {};" {
+		t.Fatalf("content = %q", string(data))
+	}
+}
+
+// ---- downloadTypeContent error path test ----
+
+func TestDownloadTypeContent_404(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := NewTypeFetchHTTPClient(5 * time.Second)
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+
+	_, err := downloadTypeContent(client, server.URL, state)
+	if err == nil {
+		t.Fatal("expected error for 404 download")
+	}
+}
+
+// ---- ensureModulesTsconfig edge cases ----
+
+// ---- ensureModulesTsconfig edge cases ----
+
+func TestEnsureModulesTsconfig_DirNotExist(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "nonexistent", "tsconfig.json")
+
+	if err := ensureModulesTsconfig(tsconfigPath); err != nil {
+		t.Fatalf("ensureModulesTsconfig should create missing dirs: %v", err)
+	}
+
+	if _, err := os.Stat(tsconfigPath); err != nil {
+		t.Fatalf("tsconfig should exist: %v", err)
+	}
+}
+
+func TestEnsureModulesTsconfig_Existing(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(dir, 0755)
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{}}`), 0644)
+
+	if err := ensureModulesTsconfig(tsconfigPath); err != nil {
+		t.Fatalf("ensureModulesTsconfig should be no-op for existing file: %v", err)
+	}
+
+	data, _ := os.ReadFile(tsconfigPath)
+	if string(data) != `{"compilerOptions":{}}` {
+		t.Fatal("existing tsconfig should not be modified")
+	}
+}
+
+// ---- markVisited edge cases ----
+
+func TestMarkVisited_NilState(t *testing.T) {
+	var s *typeFetchState
+	if !s.markVisited("https://example.com") {
+		t.Fatal("expected true when state is nil (allow through)")
+	}
+}
+
+// ---- withRequestSlot edge cases ----
+
+func TestWithRequestSlot_NilState(t *testing.T) {
+	var s *typeFetchState
+	called := false
+	err := s.withRequestSlot(func() error {
+		called = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected fn to be called when state is nil")
+	}
+}
+
+// ---- newTypeFetchState edge cases ----
+
+func TestNewTypeFetchState_ZeroParallelism(t *testing.T) {
+	state := newTypeFetchState(0)
+	if state == nil {
+		t.Fatal("expected non-nil state")
+	}
+	// Should use default parallelism.
+	if state.requestSem == nil || cap(state.requestSem) != defaultTypeFetchParallelism {
+		t.Fatalf("expected default parallelism = %d, got cap=%d", defaultTypeFetchParallelism, cap(state.requestSem))
+	}
+}
+
+// ---- resolveTypeImport edge cases ----
+
+func TestResolveTypeImport_InvalidBase(t *testing.T) {
+	_, err := resolveTypeImport("://invalid", "./foo")
+	if err == nil {
+		t.Fatal("expected error for invalid base URL")
 	}
 }
