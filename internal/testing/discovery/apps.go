@@ -35,7 +35,7 @@ func ResolveTestApps(runtimeScope scope.Scope, arg string, runBE bool, runFE boo
 	if arg != "all" {
 		appDir := filepath.Join(modulesPath, arg)
 		if st, err := os.Stat(appDir); err != nil || !st.IsDir() {
-			return nil, xfmt.Errorf(testsemantics.UnknownAppMessage(arg))
+			return nil, xfmt.Errorf("%s", testsemantics.UnknownAppMessage(arg))
 		}
 
 		ok := false

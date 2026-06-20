@@ -72,6 +72,9 @@ func WriteLockfile(lockfilePath string, lock *EsmLockfile) error {
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
 		return fmt.Errorf("write esm.lock tmp: %w", err)
 	}
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 	if err := os.Rename(tmpFile, lockfilePath); err != nil {
 		return fmt.Errorf("rename esm.lock tmp: %w", err)
 	}

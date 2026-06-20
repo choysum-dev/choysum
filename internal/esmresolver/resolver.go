@@ -652,6 +652,9 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
 		return err
 	}
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 	if err := os.Rename(tmpFile, cacheFile); err != nil {
 		return err
 	}

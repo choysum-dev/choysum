@@ -242,10 +242,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	}
 	targetPackage, ok := packages[opts.Module]
 	if !ok {
-		return xfmt.Errorf(testsemantics.UnknownModuleMessage(opts.Module, opts.ModulesPath))
+		return xfmt.Errorf("%s", testsemantics.UnknownModuleMessage(opts.Module, opts.ModulesPath))
 	}
 	if targetPackage.E2E == nil || strings.TrimSpace(targetPackage.E2E.Specs) == "" {
-		return xfmt.Errorf(testsemantics.ModuleNoE2ESpecsMessage(opts.Module))
+		return xfmt.Errorf("%s", testsemantics.ModuleNoE2ESpecsMessage(opts.Module))
 	}
 	closure, err := topoClosure(opts.Module, packages)
 	if err != nil {
@@ -1131,7 +1131,7 @@ func missingE2EModuleError(moduleName string, missingModules []string) error {
 
 func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModulePackage) (string, error) {
 	if pkg == nil || pkg.E2E == nil || strings.TrimSpace(pkg.E2E.Specs) == "" {
-		return "", xfmt.Errorf(testsemantics.ModuleNoE2ESpecsMessage(moduleName))
+		return "", xfmt.Errorf("%s", testsemantics.ModuleNoE2ESpecsMessage(moduleName))
 	}
 	specsRel := filepath.Clean(strings.TrimSpace(pkg.E2E.Specs))
 	if specsRel == "." || filepath.IsAbs(specsRel) || specsRel == ".." || strings.HasPrefix(specsRel, ".."+string(filepath.Separator)) {

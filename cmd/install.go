@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -141,7 +140,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 
 			// Auto-trigger type fetch after successful install for IDE support.
-			runTypeFetchAfterInstall(env)
+			runTypeFetchAfterInstall(ctx, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
@@ -164,7 +163,7 @@ func ensureInstallModulesTsconfig(env scope.Scope, modulesPath string) {
 
 // runTypeFetchAfterInstall triggers a best-effort type fetch for all modules
 // after a successful install. Failures are logged but do not fail the install.
-func runTypeFetchAfterInstall(env scope.Scope) {
+func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 	runtimeOpts, ok := scope.PathsRuntimeOptionsFromScope(env)
 	if !ok {
 		return
@@ -183,7 +182,7 @@ func runTypeFetchAfterInstall(env scope.Scope) {
 		upstream = config.DefaultESMUpstreamURL
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	session := esmresolver.NewTypeFetchSession(0)
 	var allResults []esmresolver.TypeFetchResult
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
@@ -197,6 +196,10 @@ func runTypeFetchAfterInstall(env scope.Scope) {
 		return
 	}
 	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			env.Logger().Info("type-fetch: interrupted", "error", err)
+			return
+		}
 		if !entry.IsDir() {
 			continue
 		}
@@ -213,7 +216,6 @@ func runTypeFetchAfterInstall(env scope.Scope) {
 		for _, r := range results {
 			if !r.FromCache {
 				env.Logger().Info("type-fetch: downloaded", "module", entry.Name(), "package", r.Package+"@"+r.Version)
-
 			}
 		}
 	}

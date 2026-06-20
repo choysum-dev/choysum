@@ -38,7 +38,7 @@ const defaultTypeFetchParallelism = 16
 type typeFetchState struct {
 	requestSem chan struct{}
 	visitedMu  sync.Mutex
-	visited    map[string]bool
+	visited    map[string]chan struct{}
 }
 
 // TypeFetchSession shares fetch state across multiple module fetch calls.
@@ -65,22 +65,37 @@ func newTypeFetchState(parallelism int) *typeFetchState {
 
 	return &typeFetchState{
 		requestSem: make(chan struct{}, parallelism),
-		visited:    make(map[string]bool),
+		visited:    make(map[string]chan struct{}),
 	}
 }
 
-func (s *typeFetchState) markVisited(url string) bool {
+func (s *typeFetchState) acquireVisit(url string) (bool, func(bool)) {
 	if s == nil {
-		return true
+		return true, func(bool) {}
 	}
 
 	s.visitedMu.Lock()
-	defer s.visitedMu.Unlock()
-	if s.visited[url] {
-		return false
+	if ch, ok := s.visited[url]; ok {
+		s.visitedMu.Unlock()
+		<-ch
+		return false, func(bool) {}
 	}
-	s.visited[url] = true
-	return true
+
+	ch := make(chan struct{})
+	s.visited[url] = ch
+	s.visitedMu.Unlock()
+
+	var once sync.Once
+	return true, func(success bool) {
+		once.Do(func() {
+			if !success {
+				s.visitedMu.Lock()
+				delete(s.visited, url)
+				s.visitedMu.Unlock()
+			}
+			close(ch)
+		})
+	}
 }
 
 func (s *typeFetchState) withRequestSlot(run func() error) error {
@@ -227,9 +242,12 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 	}
 	// Normalize URL to avoid redundant fetches.
 	normalized := strings.TrimRight(typesURL, "/")
-	if !state.markVisited(normalized) {
+	shouldFetch, done := state.acquireVisit(normalized)
+	if !shouldFetch {
 		return nil, nil, nil
 	}
+	success := false
+	defer func() { done(success) }()
 
 	// Derive a cache key from the URL.
 	cacheFile := typeCachePathForURL(typesDir, normalized)
@@ -306,6 +324,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 			CachedPath: cacheFile,
 			FromCache:  true,
 		}
+		success = true
 		return result, nil, nil
 	}
 
@@ -375,6 +394,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 		CachedPath: cacheFile,
 		FromCache:  fromCache,
 	}
+	success = true
 	return result, allTransitive, nil
 }
 
@@ -631,6 +651,9 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 	if err := os.WriteFile(tmpFile, content, 0644); err != nil {
 		return fmt.Errorf("write types tmp: %w", err)
 	}
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 	if err := os.Rename(tmpFile, cacheFile); err != nil {
 		return fmt.Errorf("rename types tmp: %w", err)
 	}

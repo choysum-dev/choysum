@@ -780,13 +780,62 @@ func TestEnsureModulesTsconfig_Existing(t *testing.T) {
 	}
 }
 
-// ---- markVisited edge cases ----
+// ---- acquireVisit edge cases ----
 
-func TestMarkVisited_NilState(t *testing.T) {
+func TestAcquireVisit_NilState(t *testing.T) {
 	var s *typeFetchState
-	if !s.markVisited("https://example.com") {
+	shouldFetch, done := s.acquireVisit("https://example.com")
+	if !shouldFetch {
 		t.Fatal("expected true when state is nil (allow through)")
 	}
+	done(true)
+}
+
+func TestAcquireVisit_WaitsForInFlightFetch(t *testing.T) {
+	s := newTypeFetchState(defaultTypeFetchParallelism)
+	shouldFetch, done := s.acquireVisit("https://example.com")
+	if !shouldFetch {
+		t.Fatal("expected first acquire to fetch")
+	}
+
+	waitDone := make(chan bool, 1)
+	go func() {
+		shouldFetch2, done2 := s.acquireVisit("https://example.com")
+		done2(true)
+		waitDone <- shouldFetch2
+	}()
+
+	select {
+	case <-waitDone:
+		t.Fatal("expected second acquire to wait until first completes")
+	case <-time.After(30 * time.Millisecond):
+	}
+
+	done(true)
+
+	select {
+	case shouldFetch2 := <-waitDone:
+		if shouldFetch2 {
+			t.Fatal("expected second acquire to skip duplicate fetch")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for second acquire")
+	}
+}
+
+func TestAcquireVisit_FailureAllowsRetry(t *testing.T) {
+	s := newTypeFetchState(defaultTypeFetchParallelism)
+	shouldFetch, done := s.acquireVisit("https://example.com")
+	if !shouldFetch {
+		t.Fatal("expected first acquire to fetch")
+	}
+	done(false)
+
+	shouldFetchRetry, doneRetry := s.acquireVisit("https://example.com")
+	if !shouldFetchRetry {
+		t.Fatal("expected retry acquire to fetch after failure")
+	}
+	doneRetry(true)
 }
 
 // ---- withRequestSlot edge cases ----

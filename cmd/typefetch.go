@@ -111,6 +111,9 @@ When <app> is specified, fetches types for that module only.`,
 			var allResults []esmresolver.TypeFetchResult
 
 			for _, appName := range appNames {
+				if err := cmd.Context().Err(); err != nil {
+					return err
+				}
 				moduleDir := filepath.Join(modulesPath, appName)
 				cmd.Printf("[%s] fetching dependency types...\n", appName)
 				results, err := session.FetchTypesForModule(client, upstream, typesDir, moduleDir)

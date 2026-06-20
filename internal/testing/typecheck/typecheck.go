@@ -105,7 +105,7 @@ func ResolveApps(modulesPath string, target string) ([]string, error) {
 		appDir := filepath.Join(modulesPath, target)
 		st, err := os.Stat(appDir)
 		if err != nil || !st.IsDir() {
-			return nil, xfmt.Errorf(testsemantics.PrefixForCommand("typecheck", testsemantics.UnknownAppMessage(target)))
+			return nil, xfmt.Errorf("%s", testsemantics.PrefixForCommand("typecheck", testsemantics.UnknownAppMessage(target)))
 		}
 		hasTargets, err := HasTargets(modulesPath, target)
 		if err != nil {
