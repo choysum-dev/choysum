@@ -58,7 +58,7 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects missing vitest binary", func(t *testing.T) {
+	t.Run("allows npx to resolve vitest without global binary", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		binDir := filepath.Join(t.TempDir(), "bin")
 		writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
@@ -67,8 +67,8 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 
 		tmpRoot := t.TempDir()
 		failed, err := runFrontendTest(context.Background(), repoRoot, "auth", "", false, false, false, false, "coverage", 0, 0, 0, 0, tmpRoot, false)
-		if err == nil || !strings.Contains(err.Error(), "vitest is not installed") {
-			t.Fatalf("expected missing vitest error, got failed=%v err=%v", failed, err)
+		if err != nil || failed {
+			t.Fatalf("expected success with npx-resolved vitest, got failed=%v err=%v", failed, err)
 		}
 	})
 

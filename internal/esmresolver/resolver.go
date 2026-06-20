@@ -648,16 +648,32 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	tmpFile := cacheFile + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+	tmpFile, err := os.CreateTemp(dir, filepath.Base(cacheFile)+"-*.tmp")
+	if err != nil {
 		return err
 	}
+	tmpPath := tmpFile.Name()
+	cleanup := true
 	defer func() {
-		_ = os.Remove(tmpFile)
+		if tmpFile != nil {
+			_ = tmpFile.Close()
+		}
+		if cleanup {
+			_ = os.Remove(tmpPath)
+		}
 	}()
-	if err := os.Rename(tmpFile, cacheFile); err != nil {
+	if _, err := tmpFile.Write(data); err != nil {
 		return err
 	}
+	if err := tmpFile.Close(); err != nil {
+		tmpFile = nil
+		return err
+	}
+	tmpFile = nil
+	if err := os.Rename(tmpPath, cacheFile); err != nil {
+		return err
+	}
+	cleanup = false
 	// Write integrity metadata alongside the cache file.
 	integrityFile := cacheFile + ".integrity"
 	hash := sha512Hex(data)

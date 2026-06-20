@@ -186,9 +186,6 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 	session := esmresolver.NewTypeFetchSession(0)
 	var allResults []esmresolver.TypeFetchResult
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
-	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
-		env.Logger().Warn("type-fetch: ensure tsconfig failed", "path", tsconfigPath, "error", err)
-	}
 
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {

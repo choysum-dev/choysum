@@ -477,9 +477,12 @@ func TestResolver_WriteCache_Atomic(t *testing.T) {
 		t.Fatalf("writeCache failed: %v", err)
 	}
 
-	// Verify tmp file was cleaned up.
-	if _, err := os.Stat(cacheFile + ".tmp"); !os.IsNotExist(err) {
-		t.Fatal("tmp file should not exist after successful write")
+	// Verify temporary files were cleaned up.
+	tmpPattern := filepath.Join(filepath.Dir(cacheFile), filepath.Base(cacheFile)+"-*.tmp")
+	if matches, err := filepath.Glob(tmpPattern); err != nil {
+		t.Fatalf("glob tmp files failed: %v", err)
+	} else if len(matches) != 0 {
+		t.Fatalf("tmp files should not exist after successful write: %v", matches)
 	}
 
 	// Verify content.
@@ -1438,24 +1441,21 @@ func TestWriteCache_RenameFails_CleansUpTmp(t *testing.T) {
 	r := newTestResolver(dir)
 
 	cacheKey := sha256Hex("https://esm.sh/rename-fail@1.0.0")
-	// Create a tmp file and make it a directory so Rename fails.
 	cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
 	if err := os.MkdirAll(cacheFile, 0755); err != nil {
 		t.Fatal(err)
 	}
 	// Rename from regular file to an existing directory will fail on most OSes.
-	tmpFile := cacheFile + ".tmp"
-	if err := os.WriteFile(tmpFile, []byte("data"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	// Now writeCache will try to rename tmp -> cacheFile but cacheFile is a dir.
 	err := r.writeCache(cacheFile, []byte("should not overwrite"))
 	if err == nil {
 		t.Fatal("expected rename error when target is a directory")
 	}
-	// Tmp file should still be cleaned up by the deferred Remove.
-	if _, statErr := os.Stat(tmpFile); !os.IsNotExist(statErr) {
-		t.Fatal("expected tmp file to be cleaned up after failed rename")
+	// Temporary files should be cleaned up by the deferred remove.
+	tmpPattern := filepath.Join(filepath.Dir(cacheFile), filepath.Base(cacheFile)+"-*.tmp")
+	if matches, globErr := filepath.Glob(tmpPattern); globErr != nil {
+		t.Fatalf("glob tmp files failed: %v", globErr)
+	} else if len(matches) != 0 {
+		t.Fatalf("expected tmp files to be cleaned up after failed rename: %v", matches)
 	}
 }
 

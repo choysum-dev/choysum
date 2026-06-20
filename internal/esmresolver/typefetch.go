@@ -227,7 +227,7 @@ func fetchTypeDefinitionWithState(client *http.Client, upstream, typesDir, pkg, 
 	}
 
 	// Step 2: Recursively download the .d.ts file and its imports.
-	mainResult, transitive, err := fetchTypeRecursive(client, typesDir, typesURL, pkg, version, state)
+	mainResult, transitive, err := fetchTypeRecursive(client, typesDir, typesURL, pkg, version, state, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -236,12 +236,21 @@ func fetchTypeDefinitionWithState(client *http.Client, upstream, typesDir, pkg, 
 
 // fetchTypeRecursive downloads a .d.ts file, parses its imports/references,
 // and recursively fetches transitive type dependencies.
-func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVersion string, state *typeFetchState) (*TypeFetchResult, []TypeFetchResult, error) {
+func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVersion string, state *typeFetchState, ancestors map[string]bool) (*TypeFetchResult, []TypeFetchResult, error) {
 	if state == nil {
 		state = newTypeFetchState(defaultTypeFetchParallelism)
 	}
 	// Normalize URL to avoid redundant fetches.
 	normalized := strings.TrimRight(typesURL, "/")
+	if ancestors != nil && ancestors[normalized] {
+		return nil, nil, nil
+	}
+	localAncestors := make(map[string]bool, len(ancestors)+1)
+	for ancestor := range ancestors {
+		localAncestors[ancestor] = true
+	}
+	localAncestors[normalized] = true
+
 	shouldFetch, done := state.acquireVisit(normalized)
 	if !shouldFetch {
 		return nil, nil, nil
@@ -353,7 +362,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 				for resolvedURL := range jobs {
 					// Derive package name from the resolved URL path.
 					pkgName := typePkgNameFromURL(resolvedURL)
-					_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", state)
+					_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
 					if err == nil && len(subTransitive) > 0 {
 						appendMu.Lock()
 						allTransitive = append(allTransitive, subTransitive...)
@@ -380,7 +389,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 			}
 			resolvedURL := imp.ResolvedURL
 			pkgName := typePkgNameFromURL(resolvedURL)
-			_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", state)
+			_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
 			if err != nil {
 				continue
 			}

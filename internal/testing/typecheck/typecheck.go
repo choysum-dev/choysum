@@ -218,10 +218,6 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return err
 	}
 
-	if _, err := exec.LookPath("vue-tsc"); err != nil {
-		return xfmt.Errorf("typecheck: vue-tsc is not installed. Run: npm install -g vue-tsc")
-	}
-
 	hasWebSources := false
 	if st, err := os.Stat(filepath.Join(modulesRoot, app, "web")); err == nil && st.IsDir() {
 		hasWebSources = true

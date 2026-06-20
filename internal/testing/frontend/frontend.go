@@ -56,9 +56,6 @@ func ValidateFrontendTestDependencies(repoRoot string, app string) error {
 	if _, err := exec.LookPath("npx"); err != nil {
 		return xfmt.Errorf("vitest: npx not found. Install Node.js from https://nodejs.org")
 	}
-	if _, err := exec.LookPath("vitest"); err != nil {
-		return xfmt.Errorf("vitest: vitest is not installed. Run: npm install -g vitest")
-	}
 
 	globalNodeModulesRoot := resolveGlobalNpmRoot()
 	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)

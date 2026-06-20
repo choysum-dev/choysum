@@ -251,6 +251,54 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	}
 }
 
+func TestFetchTypeDefinition_CircularImports_NoDeadlock(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+"/types/pkg@1.0.0/a.d.ts")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case "/types/pkg@1.0.0/a.d.ts":
+				fmt.Fprint(w, `export * from "./b.d.ts";`)
+				return
+			case "/types/pkg@1.0.0/b.d.ts":
+				fmt.Fprint(w, `export * from "./a.d.ts";`)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+		errCh <- err
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("FetchTypeDefinition should not deadlock on circular imports: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("FetchTypeDefinition timed out, possible recursive deadlock on circular imports")
+	}
+
+	if _, err := os.Stat(typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/a.d.ts")); err != nil {
+		t.Fatalf("expected cached a.d.ts file: %v", err)
+	}
+	if _, err := os.Stat(typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/b.d.ts")); err != nil {
+		t.Fatalf("expected cached b.d.ts file: %v", err)
+	}
+}
+
 func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -1053,7 +1101,7 @@ func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
 
 	// typesDir inside read-only parent — MkdirAll will fail.
 	typesDir = filepath.Join(roDir, "types")
-	_, _, err := fetchTypeRecursive(client, typesDir, server.URL+"/test.d.ts", "testpkg", "1.0.0", state)
+	_, _, err := fetchTypeRecursive(client, typesDir, server.URL+"/test.d.ts", "testpkg", "1.0.0", state, nil)
 	if err == nil {
 		t.Fatal("expected error when cache write fails in read-only dir")
 	}

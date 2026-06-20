@@ -8,11 +8,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
-func TestTypecheckApp_MissingVueTsc(t *testing.T) {
+func TestTypecheckApp_AllowsNpxWithoutGlobalVueTsc(t *testing.T) {
 	ctx := context.Background()
 
 	repoRoot := t.TempDir()
@@ -43,14 +42,7 @@ func TestTypecheckApp_MissingVueTsc(t *testing.T) {
 	}
 
 	err := TypecheckApp(ctx, opts, "auth")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "vue-tsc") {
-		t.Fatalf("expected error to mention vue-tsc, got: %s", msg)
-	}
-	if !strings.Contains(msg, "npm install -g") {
-		t.Fatalf("expected error to mention npm install -g, got: %s", msg)
+	if err != nil {
+		t.Fatalf("expected success with npx-resolved vue-tsc, got: %v", err)
 	}
 }

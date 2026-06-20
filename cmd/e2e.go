@@ -137,7 +137,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			}
 			err = runE2EModule(ctx, opts)
 			if isNoE2ESpecsError(err) {
-				fmt.Fprintln(os.Stdout, testsemantics.NoTestsFoundMessage)
+				fmt.Fprintln(cmd.OutOrStdout(), testsemantics.NoTestsFoundMessage)
 				return nil
 			}
 			return err
