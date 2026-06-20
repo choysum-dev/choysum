@@ -876,3 +876,185 @@ func TestResolveTypeImport_InvalidBase(t *testing.T) {
 		t.Fatal("expected error for invalid base URL")
 	}
 }
+
+func TestResolveTypeImport_EmptyImportPath(t *testing.T) {
+	_, err := resolveTypeImport("https://esm.sh/pkg/index.d.ts", "")
+	if err == nil {
+		t.Fatal("expected error for empty import path")
+	}
+}
+
+// ---- writeTypeCacheFile rename failure test ----
+
+func TestWriteTypeCacheFile_RenameFails_CleansUpTmp(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "types.d.ts")
+	// Create a directory at the target path so Rename fails.
+	if err := os.MkdirAll(cacheFile, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeTypeCacheFile(cacheFile, []byte("export {};")); err == nil {
+		t.Fatal("expected rename error when target is a directory")
+	}
+	// Tmp file should be cleaned up.
+	if _, err := os.Stat(cacheFile + ".tmp"); !os.IsNotExist(err) {
+		t.Fatal("expected tmp file to be cleaned up after failed rename")
+	}
+}
+
+// ---- hasMissingLocalCachedImports edge cases ----
+
+func TestHasMissingLocalCachedImports_EmptyImports(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "empty.d.ts")
+	os.WriteFile(cacheFile, []byte("export {};"), 0644)
+	if hasMissingLocalCachedImports(cacheFile, nil) {
+		t.Fatal("expected no missing imports for nil/empty import list")
+	}
+	if hasMissingLocalCachedImports(cacheFile, []string{}) {
+		t.Fatal("expected no missing imports for empty import list")
+	}
+}
+
+func TestHasMissingLocalCachedImports_BareImportSkipped(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "bare.d.ts")
+	os.WriteFile(cacheFile, []byte(`import "vue";`), 0644)
+	// Bare imports are not local-cached type specifiers; should be skipped.
+	if hasMissingLocalCachedImports(cacheFile, []string{"vue"}) {
+		t.Fatal("expected bare import to be skipped in integrity check")
+	}
+}
+
+func TestHasMissingLocalCachedImports_PathTraversalBlocked(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "sub", "root.d.ts")
+	os.MkdirAll(filepath.Dir(cacheFile), 0755)
+	os.WriteFile(cacheFile, []byte(`import "../escape.d.ts";`), 0644)
+	// The candidate would resolve outside baseDir, so should be skipped.
+	if hasMissingLocalCachedImports(cacheFile, []string{"../escape.d.ts"}) {
+		t.Fatal("expected path traversal to be blocked in integrity check")
+	}
+}
+
+// ---- downloadTypeContent network error test ----
+
+func TestDownloadTypeContent_NetworkError(t *testing.T) {
+	client := NewTypeFetchHTTPClient(2 * time.Second)
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+	_, err := downloadTypeContent(client, "http://127.0.0.1:1/nonexistent.d.ts", state)
+	if err == nil {
+		t.Fatal("expected network error for non-routable address")
+	}
+}
+
+func TestDownloadTypeContent_InvalidURL(t *testing.T) {
+	client := NewTypeFetchHTTPClient(5 * time.Second)
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+	_, err := downloadTypeContent(client, "://invalid-url", state)
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
+// ---- UpdateTsconfigPaths edge cases ----
+
+func TestUpdateTsconfigPaths_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	os.WriteFile(tsconfigPath, []byte(`{invalid`), 0644)
+
+	results := []TypeFetchResult{
+		{Package: "vue", Version: "3.4.29", CachedPath: filepath.Join(dir, "types", "vue.d.ts")},
+	}
+	err := UpdateTsconfigPaths(tsconfigPath, results)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON tsconfig")
+	}
+}
+
+func TestUpdateTsconfigPaths_ReadOnlyDir(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping write test as root")
+	}
+	dir := t.TempDir()
+	tsconfigPath := filepath.Join(dir, "tsconfig.json")
+	// Make parent dir read-only so write fails.
+	if err := os.Chmod(dir, 0500); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(dir, 0755)
+
+	err := UpdateTsconfigPaths(tsconfigPath, nil)
+	if err == nil {
+		t.Fatal("expected error when tsconfig dir is read-only")
+	}
+}
+
+// ---- typeCachePathForURL edge cases ----
+
+func TestTypeCachePathForURL_LongURL(t *testing.T) {
+	dir := t.TempDir()
+	longPath := strings.Repeat("x", 300)
+	url := "https://esm.sh/" + longPath
+	got := typeCachePathForURL(dir, url)
+	base := filepath.Base(got)
+	// safe name truncated to 200 + ".d.ts" = 205 chars.
+	if len(base) > 205 {
+		t.Fatalf("expected truncated filename, got len=%d: %q", len(base), base)
+	}
+	if !strings.HasSuffix(base, ".d.ts") {
+		t.Fatalf("expected .d.ts suffix: %q", base)
+	}
+}
+
+// ---- isLocalCachedTypeSpecifier edge cases ----
+
+func TestIsLocalCachedTypeSpecifier_Empty(t *testing.T) {
+	if isLocalCachedTypeSpecifier("") {
+		t.Fatal("expected false for empty string")
+	}
+}
+
+func TestIsLocalCachedTypeSpecifier_NonMatching(t *testing.T) {
+	if isLocalCachedTypeSpecifier("./runtime-dom.d.ts") {
+		t.Fatal("expected false for non-esm.sh_ prefix")
+	}
+}
+
+// ---- fetchTypeRecursive read-only dir error path ----
+
+func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("skipping write test as root")
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "export declare const x: number;")
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	// Use an HTTP client that can reach the test server.
+	client := NewTypeFetchHTTPClient(5 * time.Second)
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+
+	// Write to a real readable directory... but the test is more about testing
+	// that fetchTypeRecursive returns an error when cache writing fails.
+	// We simulate by using a non-existent subdirectory in a read-only parent.
+	roDir := filepath.Join(dir, "readonly")
+	if err := os.MkdirAll(roDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(roDir, 0500); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(roDir, 0755)
+
+	// typesDir inside read-only parent — MkdirAll will fail.
+	typesDir = filepath.Join(roDir, "types")
+	_, _, err := fetchTypeRecursive(client, typesDir, server.URL+"/test.d.ts", "testpkg", "1.0.0", state)
+	if err == nil {
+		t.Fatal("expected error when cache write fails in read-only dir")
+	}
+}

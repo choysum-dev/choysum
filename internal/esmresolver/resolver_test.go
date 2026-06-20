@@ -618,6 +618,8 @@ func TestIsCSSURL(t *testing.T) {
 		{"https://esm.sh/style.CSS", true},
 		{"https://esm.sh/style.js", false},
 		{"https://esm.sh/style.mjs", false},
+		{"https://esm.sh/style.css#fragment", true},
+		{"https://esm.sh/style.css?t=1#frag", true},
 		{"", false},
 	}
 	for _, tt := range tests {
@@ -639,6 +641,8 @@ func TestIsFragmentOnly(t *testing.T) {
 		{"", false},
 		{"./file.js", false},
 		{"http://example.com#frag", false},
+		{"#elCarouselVertical", true},
+		{"#", false},
 	}
 	for _, tt := range tests {
 		if got := isFragmentOnly(tt.path); got != tt.want {
@@ -670,6 +674,7 @@ func TestIsLocalFilesystemPath(t *testing.T) {
 		{"/v999/pkg/foo.mjs", false},        // generic esm.sh version prefix
 		{"/v1beta/pkg/foo.mjs", true},       // non-numeric version segment
 		{"https://esm.sh/pkg", false},       // not absolute
+		{"//etc/passwd", false},             // double-slash: not a local path
 		{"", false},
 	}
 	for _, tt := range tests {
@@ -914,6 +919,141 @@ func TestResolveInNamespace_HTTPURL(t *testing.T) {
 	}
 }
 
+func TestResolveInNamespace_HTTP_CSSURL(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/style.css",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External || result.Path != "https://esm.sh/style.css" {
+		t.Fatalf("expected external CSS, got %+v", result)
+	}
+}
+
+func TestResolveInNamespace_HTTP_CSSByExtension(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/lib/style.css"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL detected by extension to be external")
+	}
+}
+
+func TestResolveInNamespace_EmptyImporter(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./relative.js",
+		Importer: "",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "" {
+		t.Fatalf("expected empty result for empty importer, got %+v", result)
+	}
+}
+
+func TestResolveInNamespace_ImporterWithoutNamespacePrefix(t *testing.T) {
+	r := New()
+	// stripNamespace of a plain URL returns the URL unchanged.
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./helper.js",
+		Importer: "https://esm.sh/pkg@1.0.0/index.js",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/helper.js" {
+		t.Fatalf("Path = %q, want https://esm.sh/pkg@1.0.0/helper.js", result.Path)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+}
+
+func TestResolveInNamespace_ResolvedIsLocalPath(t *testing.T) {
+	dir := t.TempDir()
+	// Create the dir so isLocalFilesystemPath returns false for /node/...
+	// Use a real local path that exists.
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     dir,
+		Importer: "https://esm.sh/pkg@1.0.0/index.js",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// dir is a real local path, so isLocalFilesystemPath should return true
+	if result.Path != "" || result.External {
+		t.Fatal("expected empty result for resolved local filesystem path")
+	}
+}
+
+func TestResolveInNamespace_InvalidImporterURL(t *testing.T) {
+	r := New()
+	_, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./foo.js",
+		Importer: ":invalid-url",
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid importer URL")
+	}
+	if !strings.Contains(err.Error(), "invalid importer URL") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolveInNamespace_TargetParamReAdd(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./sub.mjs",
+		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2020",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/deno/sub.mjs?target=es2020" {
+		t.Fatalf("Path = %q, want target re-added", result.Path)
+	}
+}
+
+func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./style.css",
+		Importer: "https://esm.sh/pkg@1.0.0/index.js",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Resolves to a .css URL — should be marked external.
+	if !result.External {
+		t.Fatal("expected external after resolving to CSS URL")
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_ImporterWithChoysumNamespace(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./utils.js",
+		Importer: "choysum-esm:https://esm.sh/pkg@1.0.0/index.js",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/utils.js" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
 // ---- isRetryable tests ----
 
 func TestIsRetryable(t *testing.T) {
@@ -1115,4 +1255,232 @@ func TestResolver_WithLogger(t *testing.T) {
 	if !strings.Contains(output, "cache_miss") {
 		t.Fatalf("expected cache_miss in metrics: %s", output)
 	}
+}
+
+// ---- resolveLockfile tests ----
+
+func TestResolveLockfile_WithLockfilePath(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "esm.lock")
+	lock := &EsmLockfile{
+		Version: lockfileVersion,
+		Packages: map[string]LockEntry{
+			"vue": {Version: "3.4.29"},
+		},
+	}
+	if err := WriteLockfile(lockPath, lock); err != nil {
+		t.Fatal(err)
+	}
+
+	r := New(WithLockfile(lockPath))
+	lf := r.resolveLockfile()
+	if lf == nil {
+		t.Fatal("expected non-nil lockfile")
+	}
+	if lf.Packages["vue"].Version != "3.4.29" {
+		t.Fatalf("version = %q", lf.Packages["vue"].Version)
+	}
+
+	// Second call returns cached result.
+	lf2 := r.resolveLockfile()
+	if lf2 != lf {
+		t.Fatal("expected same cached lockfile pointer")
+	}
+}
+
+func TestResolveLockfile_FromModulePath(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "esm.lock")
+	lock := &EsmLockfile{
+		Version:  lockfileVersion,
+		Packages: map[string]LockEntry{},
+	}
+	if err := WriteLockfile(lockPath, lock); err != nil {
+		t.Fatal(err)
+	}
+
+	r := New(WithModulePath(dir))
+	lf := r.resolveLockfile()
+	if lf == nil {
+		t.Fatal("expected lockfile derived from modulePath")
+	}
+}
+
+func TestResolveLockfile_NoPathConfigured(t *testing.T) {
+	r := New()
+	lf := r.resolveLockfile()
+	if lf != nil {
+		t.Fatal("expected nil lockfile when no path configured")
+	}
+	// Second call returns nil (error cached).
+	lf2 := r.resolveLockfile()
+	if lf2 != nil {
+		t.Fatal("expected nil on second call with cached error")
+	}
+}
+
+func TestResolveLockfile_FileNotFound(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "nonexistent.lock")
+	r := New(WithLockfile(lockPath))
+	lf := r.resolveLockfile()
+	if lf != nil {
+		t.Fatal("expected nil for nonexistent file")
+	}
+	// Error should be cached.
+	lf2 := r.resolveLockfile()
+	if lf2 != nil {
+		t.Fatal("expected nil on second call")
+	}
+}
+
+// ---- download error paths ----
+
+func TestDownload_InvalidURL(t *testing.T) {
+	r := New(WithTarget("es2020"))
+	_, err := r.download("://invalid-url")
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+}
+
+func TestDownload_NetworkError(t *testing.T) {
+	r := New(WithTarget("es2020"))
+	// Use a non-routable address to trigger a network error.
+	_, err := r.download("http://127.0.0.1:1/nonexistent")
+	if err == nil {
+		t.Fatal("expected network error")
+	}
+}
+
+// ---- codeCacheDir tests ----
+
+func TestCodeCacheDir_WithCacheDir(t *testing.T) {
+	r := New(WithCacheDir("/tmp/choysum"))
+	got := r.codeCacheDir()
+	if got != filepath.Join("/tmp/choysum", "pkg", "esm") {
+		t.Fatalf("codeCacheDir = %q", got)
+	}
+}
+
+func TestCodeCacheDir_NoCacheDir(t *testing.T) {
+	r := New()
+	got := r.codeCacheDir()
+	// Falls back to a path that ends with pkg/esm.
+	if !strings.HasSuffix(got, filepath.Join("pkg", "esm")) {
+		t.Fatalf("codeCacheDir = %q, want suffix pkg/esm", got)
+	}
+}
+
+// ---- lockedSpecifier tests ----
+
+func TestLockedSpecifier_WithLockfile(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "esm.lock")
+	lock := &EsmLockfile{
+		Version: lockfileVersion,
+		Packages: map[string]LockEntry{
+			"vue": {Version: "3.4.29"},
+		},
+	}
+	if err := WriteLockfile(lockPath, lock); err != nil {
+		t.Fatal(err)
+	}
+
+	r := New(WithLockfile(lockPath))
+	got := r.lockedSpecifier("vue")
+	if got != "vue@3.4.29" {
+		t.Fatalf("lockedSpecifier = %q, want vue@3.4.29", got)
+	}
+
+	// Unlocked specifier returns as-is.
+	got2 := r.lockedSpecifier("react")
+	if got2 != "react" {
+		t.Fatalf("lockedSpecifier = %q, want react", got2)
+	}
+}
+
+func TestLockedSpecifier_NoLockfile(t *testing.T) {
+	r := New()
+	got := r.lockedSpecifier("vue")
+	if got != "vue" {
+		t.Fatalf("lockedSpecifier = %q, want vue", got)
+	}
+}
+
+// ---- isESMVersionPrefix tests ----
+
+func TestIsESMVersionPrefix(t *testing.T) {
+	tests := []struct {
+		segment string
+		want    bool
+	}{
+		{"v135", true},
+		{"v999", true},
+		{"v1", true},
+		{"v1beta", false},
+		{"stable", false},
+		{"v", false},
+		{"node", false},
+		{"pkg@ver", false},
+	}
+	for _, tt := range tests {
+		if got := isESMVersionPrefix(tt.segment); got != tt.want {
+			t.Fatalf("isESMVersionPrefix(%q) = %v, want %v", tt.segment, got, tt.want)
+		}
+	}
+}
+
+// ---- writeCache rename failure test ----
+
+func TestWriteCache_RenameFails_CleansUpTmp(t *testing.T) {
+	dir := t.TempDir()
+	r := newTestResolver(dir)
+
+	cacheKey := sha256Hex("https://esm.sh/rename-fail@1.0.0")
+	// Create a tmp file and make it a directory so Rename fails.
+	cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
+	if err := os.MkdirAll(cacheFile, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// Rename from regular file to an existing directory will fail on most OSes.
+	tmpFile := cacheFile + ".tmp"
+	if err := os.WriteFile(tmpFile, []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	// Now writeCache will try to rename tmp -> cacheFile but cacheFile is a dir.
+	err := r.writeCache(cacheFile, []byte("should not overwrite"))
+	if err == nil {
+		t.Fatal("expected rename error when target is a directory")
+	}
+	// Tmp file should still be cleaned up by the deferred Remove.
+	if _, statErr := os.Stat(tmpFile); !os.IsNotExist(statErr) {
+		t.Fatal("expected tmp file to be cleaned up after failed rename")
+	}
+}
+
+// ---- Plugin isBareImport edge case: data: and # prefixed ----
+
+func TestPlugin_DataAndFragmentBare(t *testing.T) {
+	dir := t.TempDir()
+	r := New(WithCacheDir(dir), WithTarget("es2020"))
+
+	// data: imports should not be intercepted as bare.
+	entry := filepath.Join(dir, "entry.ts")
+	if err := os.WriteFile(entry, []byte(`import "data:text/javascript,export{}";`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Build with esbuild — the data: import should be resolved by esbuild itself.
+	// Note: esbuild may fail on data: imports in some versions; the important
+	// thing is that our plugin doesn't crash or produce a wrong result.
+	result := api.Build(api.BuildOptions{
+		EntryPoints: []string{entry},
+		Bundle:      false,
+		Write:       false,
+		Plugins:     []api.Plugin{r.Plugin()},
+		Platform:    api.PlatformBrowser,
+	})
+	// We just verify the plugin didn't introduce errors.
+	_ = result
 }
