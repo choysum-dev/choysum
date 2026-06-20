@@ -492,7 +492,7 @@ func writeSubpathStubs(dst string) error {
 	}
 	b.WriteString(`
 interface ImportMetaEnv {
-	readonly [key: string]: string | boolean | undefined;
+	readonly [key: string]: string | undefined;
 }
 
 interface ImportMeta {
