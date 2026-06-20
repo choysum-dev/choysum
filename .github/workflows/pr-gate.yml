@@ -129,8 +129,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Run go build
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
@@ -200,8 +198,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Run module typecheck
         run: go run . test typecheck ${{ matrix.module }}
@@ -276,8 +272,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Run unit tests with coverage and JUnit
         id: unit_tests
@@ -432,14 +426,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Cache Playwright browser
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json', 'pkg/jsengine/scripts/vuesfc/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -491,14 +483,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Cache Playwright browser
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json', 'pkg/jsengine/scripts/vuesfc/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
