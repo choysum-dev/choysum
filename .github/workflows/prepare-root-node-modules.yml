@@ -54,7 +54,7 @@ jobs:
 
       - name: Install npm dependencies
         if: ${{ inputs.docs_only != 'true' }}
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Pack root node_modules
         if: ${{ inputs.docs_only != 'true' }}
