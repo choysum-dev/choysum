@@ -196,7 +196,7 @@ func TestResolver_LockedSpecifier_Integration(t *testing.T) {
 
 func TestWriteLockfile_InvalidPath(t *testing.T) {
 	err := WriteLockfile("/dev/null/should-fail/esm.lock", &EsmLockfile{
-		Version: 1,
+		Version:  1,
 		Packages: map[string]LockEntry{"a": {Version: "1.0"}},
 	})
 	if err == nil {
