@@ -22,7 +22,7 @@ export interface AdaptiveHeightOptions {
  * - viewport: compute height from the distance to the viewport bottom
  * - none: leave height untouched
  */
-export function useAdaptiveHeight(wrapRef: Ref<Element | null, any>, opts: AdaptiveHeightOptions = {}) {
+export function useAdaptiveHeight(wrapRef: Ref<Element | null>, opts: AdaptiveHeightOptions = {}) {
   const options: Required<Omit<AdaptiveHeightOptions, 'mode' | 'containerSelector'>> & Pick<AdaptiveHeightOptions, 'mode' | 'containerSelector'> = {
     mode: opts.mode ?? 'auto',
     containerSelector: opts.containerSelector,

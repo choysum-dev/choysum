@@ -332,7 +332,7 @@ const {
   height: tableHeight,
   pxHeight: tablePxHeight,
   recompute: recomputeTableHeight,
-} = useAdaptiveHeight(tableWrapRef as Ref<Element | null, any>, {
+} = useAdaptiveHeight(tableWrapRef as Ref<Element | null>, {
   mode: props.heightMode,
   containerSelector: props.containerSelector,
   viewportGap: props.viewportGap,

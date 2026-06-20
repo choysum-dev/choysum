@@ -144,12 +144,9 @@ func textEncodingGoDecode(ctx *quickjs.Context, this *quickjs.Value, args []*qui
 	if err != nil {
 		return ctx.ThrowError(err)
 	}
-	fatal := len(args) > 1 && args[1].Bool()
-	if !utf8.Valid(bytes) {
-		if fatal {
-			return ctx.ThrowError(fmt.Errorf("invalid UTF-8 input"))
-		}
-		return ctx.NewString("\uFFFD")
+	fatal := len(args) > 1 && args[1].ToBool()
+	if fatal && !utf8.Valid(bytes) {
+		return ctx.ThrowError(fmt.Errorf("invalid UTF-8 input"))
 	}
 	return ctx.NewString(string(bytes))
 }
@@ -178,8 +175,8 @@ func toDecodeBytes(v *quickjs.Value) ([]byte, error) {
 		defer byteOffset.Free()
 		byteLength := v.Get("byteLength")
 		defer byteLength.Free()
-		start := int(byteOffset.Int64())
-		length := int(byteLength.Int64())
+		start := int(byteOffset.ToInt64())
+		length := int(byteLength.ToInt64())
 		end := start + length
 		if start < 0 || length < 0 || end < 0 || end > len(raw) {
 			return nil, fmt.Errorf("typed array bounds are invalid")

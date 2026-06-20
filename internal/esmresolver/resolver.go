@@ -282,9 +282,11 @@ func (r *Resolver) Plugin() api.Plugin {
 					content string
 					err     error
 				}
-				downloadStart := time.Now()
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
+					downloadStart := time.Now()
+					r.metrics.Downloads.Add(1)
 					content, dlErr := r.downloadWithRetry(url)
+					r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
 					if dlErr != nil {
 						return fetchResult{}, dlErr
 					}
@@ -293,8 +295,6 @@ func (r *Resolver) Plugin() api.Plugin {
 					}
 					return fetchResult{content: content}, nil
 				})
-				r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
-				r.metrics.Downloads.Add(1)
 				if err != nil {
 					r.metrics.Errors.Add(1)
 					return api.OnLoadResult{}, r.formatError("download failed", pkg, url, err.Error())
@@ -457,7 +457,7 @@ func isLocalFilesystemPath(path string) bool {
 	// /pkg@ver/... (versioned packages), /stable/... (target prefixes).
 	// Do not treat these as local filesystem paths.
 	first := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)[0]
-	if strings.Contains(first, "@") || first == "node" || first == "stable" || first == "v135" || first == "v136" {
+	if strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first) {
 		return false
 	}
 	// Common UNIX filesystem root directories indicate a local path.
@@ -484,6 +484,18 @@ func isFragmentOnly(path string) bool {
 		return false
 	}
 	return parsed.Scheme == "" && parsed.Host == "" && parsed.Path == "" && parsed.Opaque == "" && parsed.RawQuery == "" && parsed.Fragment != ""
+}
+
+func isESMVersionPrefix(segment string) bool {
+	if len(segment) < 2 || segment[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(segment); i++ {
+		if segment[i] < '0' || segment[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // loaderForURL returns the esbuild loader appropriate for a resolved ESM URL.
@@ -518,7 +530,7 @@ func (r *Resolver) readCache(cacheFile string) (string, bool) {
 		// No integrity metadata — accept the cached content as-is.
 		return string(content), true
 	}
-	actual := sha512Hex(string(content))
+	actual := sha512Hex(content)
 	if strings.TrimSpace(string(expected)) != actual {
 		// Integrity mismatch — delete dirty cache and return miss.
 		_ = os.Remove(cacheFile)
@@ -645,7 +657,7 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 	}
 	// Write integrity metadata alongside the cache file.
 	integrityFile := cacheFile + ".integrity"
-	hash := sha512Hex(string(data))
+	hash := sha512Hex(data)
 	_ = os.WriteFile(integrityFile, []byte(hash), 0644)
 	return nil
 }
@@ -724,8 +736,8 @@ func sha256Hex(s string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func sha512Hex(s string) string {
-	h := sha512.Sum512([]byte(s))
+func sha512Hex(b []byte) string {
+	h := sha512.Sum512(b)
 	return hex.EncodeToString(h[:])
 }
 

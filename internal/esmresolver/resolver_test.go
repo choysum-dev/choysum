@@ -667,6 +667,8 @@ func TestIsLocalFilesystemPath(t *testing.T) {
 		{"/pkg@ver/deno/foo.mjs", false},    // versioned esm.sh path
 		{"/stable/pkg/dist/foo.mjs", false}, // esm.sh target prefix
 		{"/v135/pkg/foo.mjs", false},        // esm.sh version prefix
+		{"/v999/pkg/foo.mjs", false},        // generic esm.sh version prefix
+		{"/v1beta/pkg/foo.mjs", true},       // non-numeric version segment
 		{"https://esm.sh/pkg", false},       // not absolute
 		{"", false},
 	}
