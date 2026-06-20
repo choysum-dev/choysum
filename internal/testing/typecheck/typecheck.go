@@ -471,10 +471,16 @@ func writeSubpathStubs(dst string) error {
 		// dayjs locales and plugins (pure JS, no .d.ts).
 		"dayjs/locale/*",
 		"dayjs/plugin/*",
+		// Style and static-asset side-effect imports used by web entrypoints.
+		"*.css",
+		"*.scss",
+		"*.sass",
+		"*.svg",
 		// element-plus locale lang modules (pure JS).
 		"element-plus/es/locale/lang/*",
 		// External modules/subpaths without stable d.ts coverage.
 		"@element-plus/icons-vue",
+		"nprogress",
 		// Test-only imports.
 		"vitest",
 		"@vue/test-utils",
@@ -485,6 +491,14 @@ func writeSubpathStubs(dst string) error {
 		fmt.Fprintf(&b, "declare module %q;\n", mod)
 	}
 	b.WriteString(`
+interface ImportMetaEnv {
+	readonly [key: string]: string | boolean | undefined;
+}
+
+interface ImportMeta {
+	readonly env: ImportMetaEnv;
+}
+
 declare module "@bufbuild/protobuf/codegenv2" {
   export type Message = any;
   export type GenFile = any;

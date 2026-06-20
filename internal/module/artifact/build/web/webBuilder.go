@@ -2119,11 +2119,17 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	modules_path := runtimeOptions.modulesPath
 	dist_path := runtimeOptions.distPath
 	webBaseUrl := strings.TrimSuffix(runtimeOptions.webBaseURL, "/") + "/"
+	tsconfigPath := filepath.Join(modules_path, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		if b.runtimeScope != nil {
+			b.runtimeScope.Logger().Warn("web build: ensure modules tsconfig failed", "path", tsconfigPath, "error", err)
+		}
+	}
 
 	buildOptions := api.BuildOptions{
 		EntryPoints: []string{b.entryPoint},
 		PublicPath:  webBaseUrl + "assets",
-		Tsconfig:    filepath.Join(modules_path, "tsconfig.json"),
+		Tsconfig:    tsconfigPath,
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
 			".scss": api.LoaderCSS,

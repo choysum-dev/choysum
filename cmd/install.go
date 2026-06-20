@@ -52,6 +52,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				os.Exit(1)
 			}
 			runtimeOptions := cliRuntimeOptionsFromScope(env)
+			ensureInstallModulesTsconfig(env, runtimeOptions.modulesPath)
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
@@ -146,6 +147,19 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
+}
+
+func ensureInstallModulesTsconfig(env scope.Scope, modulesPath string) {
+	modulesPath = strings.TrimSpace(modulesPath)
+	if modulesPath == "" {
+		return
+	}
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		env.Logger().Warn("install: ensure modules tsconfig failed", "path", tsconfigPath, "error", err)
+		return
+	}
+	env.Logger().Debug("install: ensured modules tsconfig", "path", tsconfigPath)
 }
 
 // runTypeFetchAfterInstall triggers a best-effort type fetch for all modules

@@ -90,6 +90,12 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	runtimeOptions := b.resolvedRuntimeOptions()
 	modules_path := runtimeOptions.modulesPath
 	dist_path := runtimeOptions.distPath
+	tsconfigPath := filepath.Join(modules_path, ".", "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		if b.runtimeScope != nil {
+			b.runtimeScope.Logger().Warn("backend build: ensure modules tsconfig failed", "path", tsconfigPath, "error", err)
+		}
+	}
 	outName := strings.TrimSpace(b.outFileName)
 	if outName == "" {
 		outName = "index.js"
@@ -102,7 +108,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	buildOptions := api.BuildOptions{
 		EntryPoints: []string{b.entryPoint},
 		Outfile:     outFile,
-		Tsconfig:    filepath.Join(modules_path, ".", "tsconfig.json"),
+		Tsconfig:    tsconfigPath,
 		Loader: map[string]api.Loader{
 			".proto": api.LoaderText,
 		},
