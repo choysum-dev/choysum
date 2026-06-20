@@ -510,3 +510,24 @@ func TestIsLocalCachedTypeSpecifier(t *testing.T) {
 		}
 	}
 }
+
+func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
+	dir := t.TempDir()
+	cacheFile := filepath.Join(dir, "root.d.ts")
+	if err := os.WriteFile(cacheFile, []byte("export * from './MissingIcon.d.ts';"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	imports := []string{"./MissingIcon.d.ts"}
+	if !hasMissingLocalCachedImports(cacheFile, imports) {
+		t.Fatal("expected missing relative import to be detected")
+	}
+
+	missingFile := filepath.Join(dir, "MissingIcon.d.ts")
+	if err := os.WriteFile(missingFile, []byte("export {};"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if hasMissingLocalCachedImports(cacheFile, imports) {
+		t.Fatal("expected existing relative import to pass cache integrity check")
+	}
+}

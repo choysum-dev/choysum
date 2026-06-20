@@ -4,14 +4,19 @@
 package esmresolver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	tsast "github.com/buke/typescript-go-internal/pkg/ast"
@@ -25,6 +30,93 @@ type TypeFetchResult struct {
 	Version    string
 	CachedPath string
 	FromCache  bool
+}
+
+const defaultTypeFetchRequestTimeout = 30 * time.Second
+const defaultTypeFetchParallelism = 16
+
+type typeFetchState struct {
+	requestSem chan struct{}
+	visitedMu  sync.Mutex
+	visited    map[string]bool
+}
+
+// TypeFetchSession shares fetch state across multiple module fetch calls.
+// Reusing one session avoids redundant transitive traversals in a single run.
+type TypeFetchSession struct {
+	state *typeFetchState
+}
+
+func NewTypeFetchSession(parallelism int) *TypeFetchSession {
+	return &TypeFetchSession{state: newTypeFetchState(parallelism)}
+}
+
+func (s *TypeFetchSession) FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
+	if s == nil || s.state == nil {
+		return fetchTypesForModuleWithState(client, upstream, typesDir, moduleDir, nil)
+	}
+	return fetchTypesForModuleWithState(client, upstream, typesDir, moduleDir, s.state)
+}
+
+func newTypeFetchState(parallelism int) *typeFetchState {
+	if parallelism <= 0 {
+		parallelism = defaultTypeFetchParallelism
+	}
+
+	return &typeFetchState{
+		requestSem: make(chan struct{}, parallelism),
+		visited:    make(map[string]bool),
+	}
+}
+
+func (s *typeFetchState) markVisited(url string) bool {
+	if s == nil {
+		return true
+	}
+
+	s.visitedMu.Lock()
+	defer s.visitedMu.Unlock()
+	if s.visited[url] {
+		return false
+	}
+	s.visited[url] = true
+	return true
+}
+
+func (s *typeFetchState) withRequestSlot(run func() error) error {
+	if s == nil || s.requestSem == nil {
+		return run()
+	}
+
+	s.requestSem <- struct{}{}
+	defer func() { <-s.requestSem }()
+	return run()
+}
+
+// NewTypeFetchHTTPClient builds an HTTP client tuned for resilient type fetch.
+func NewTypeFetchHTTPClient(timeout time.Duration) *http.Client {
+	if timeout <= 0 {
+		timeout = defaultTypeFetchRequestTimeout
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     false,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+	}
+
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: transport,
+	}
 }
 
 // PackageJSON represents the subset of package.json fields needed for
@@ -67,7 +159,19 @@ func (p *PackageJSON) CollectDependencies() map[string]string {
 // type dependencies that were fetched.
 func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version string) (*TypeFetchResult, []TypeFetchResult, error) {
 	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
+		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+	}
+
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+	return fetchTypeDefinitionWithState(client, upstream, typesDir, pkg, version, state)
+}
+
+func fetchTypeDefinitionWithState(client *http.Client, upstream, typesDir, pkg, version string, state *typeFetchState) (*TypeFetchResult, []TypeFetchResult, error) {
+	if client == nil {
+		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+	}
+	if state == nil {
+		state = newTypeFetchState(defaultTypeFetchParallelism)
 	}
 
 	// Check cache first.
@@ -80,11 +184,19 @@ func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version s
 	spec := pkg + "@" + version
 	discoverURL := fmt.Sprintf("%s/%s?dts", strings.TrimRight(upstream, "/"), spec)
 
-	req, err := http.NewRequest(http.MethodHead, discoverURL, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTypeFetchRequestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, discoverURL, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create discover request: %w", err)
 	}
-	resp, err := client.Do(req)
+	var resp *http.Response
+	err = state.withRequestSlot(func() error {
+		var doErr error
+		resp, doErr = client.Do(req)
+		return doErr
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("discover types URL: %w", err)
 	}
@@ -100,7 +212,7 @@ func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version s
 	}
 
 	// Step 2: Recursively download the .d.ts file and its imports.
-	mainResult, transitive, err := fetchTypeRecursive(client, typesDir, typesURL, pkg, version, nil)
+	mainResult, transitive, err := fetchTypeRecursive(client, typesDir, typesURL, pkg, version, state)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -109,16 +221,15 @@ func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version s
 
 // fetchTypeRecursive downloads a .d.ts file, parses its imports/references,
 // and recursively fetches transitive type dependencies.
-func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVersion string, visited map[string]bool) (*TypeFetchResult, []TypeFetchResult, error) {
-	if visited == nil {
-		visited = make(map[string]bool)
+func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVersion string, state *typeFetchState) (*TypeFetchResult, []TypeFetchResult, error) {
+	if state == nil {
+		state = newTypeFetchState(defaultTypeFetchParallelism)
 	}
 	// Normalize URL to avoid redundant fetches.
 	normalized := strings.TrimRight(typesURL, "/")
-	if visited[normalized] {
+	if !state.markVisited(normalized) {
 		return nil, nil, nil
 	}
-	visited[normalized] = true
 
 	// Derive a cache key from the URL.
 	cacheFile := typeCachePathForURL(typesDir, normalized)
@@ -133,7 +244,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 
 		imports = parseDTSImports(string(content))
 		if hasMissingLocalCachedImports(cacheFile, imports) {
-			body, err := downloadTypeContent(client, normalized)
+			body, err := downloadTypeContent(client, normalized, state)
 			if err != nil {
 				return nil, nil, fmt.Errorf("refresh corrupted cached types from %s: %w", normalized, err)
 			}
@@ -146,7 +257,7 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 			imports = parseDTSImports(string(content))
 		}
 	} else {
-		body, err := downloadTypeContent(client, normalized)
+		body, err := downloadTypeContent(client, normalized, state)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -185,17 +296,77 @@ func fetchTypeRecursive(client *http.Client, typesDir, typesURL, rootPkg, rootVe
 		}
 	}
 
-	var allTransitive []TypeFetchResult
-
-	for _, imp := range resolvedImports {
-		resolvedURL := imp.ResolvedURL
-		// Derive package name from the resolved URL path.
-		pkgName := typePkgNameFromURL(resolvedURL)
-		_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", visited)
-		if err != nil {
-			continue
+	// On cache hits, avoid repeatedly traversing massive transitive graphs.
+	// The first cold fetch already materializes transitive entries; later runs
+	// can safely reuse the cached root file for fast incremental behavior.
+	if fromCache {
+		result := &TypeFetchResult{
+			Package:    rootPkg,
+			Version:    rootVersion,
+			CachedPath: cacheFile,
+			FromCache:  true,
 		}
-		allTransitive = append(allTransitive, subTransitive...)
+		return result, nil, nil
+	}
+
+	var allTransitive []TypeFetchResult
+	if len(resolvedImports) >= 200 {
+		fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s has %d transitive type imports\n", rootPkg, len(resolvedImports))
+	}
+
+	// Only parallelize at the first transitive layer of a direct dependency.
+	// Nested layers stay serial to avoid goroutine fan-out explosion.
+	if rootVersion != "" && len(resolvedImports) > 1 {
+		workerCount := defaultTypeFetchParallelism
+		if workerCount > len(resolvedImports) {
+			workerCount = len(resolvedImports)
+		}
+
+		jobs := make(chan string, len(resolvedImports))
+		var wg sync.WaitGroup
+		var appendMu sync.Mutex
+		var completed int32
+
+		for i := 0; i < workerCount; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for resolvedURL := range jobs {
+					// Derive package name from the resolved URL path.
+					pkgName := typePkgNameFromURL(resolvedURL)
+					_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", state)
+					if err == nil && len(subTransitive) > 0 {
+						appendMu.Lock()
+						allTransitive = append(allTransitive, subTransitive...)
+						appendMu.Unlock()
+					}
+
+					done := int(atomic.AddInt32(&completed, 1))
+					if len(resolvedImports) >= 200 && done%200 == 0 {
+						fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, done, len(resolvedImports))
+					}
+				}
+			}()
+		}
+
+		for _, imp := range resolvedImports {
+			jobs <- imp.ResolvedURL
+		}
+		close(jobs)
+		wg.Wait()
+	} else {
+		for i, imp := range resolvedImports {
+			if len(resolvedImports) >= 200 && i > 0 && i%200 == 0 {
+				fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, i, len(resolvedImports))
+			}
+			resolvedURL := imp.ResolvedURL
+			pkgName := typePkgNameFromURL(resolvedURL)
+			_, subTransitive, err := fetchTypeRecursive(client, typesDir, resolvedURL, pkgName, "", state)
+			if err != nil {
+				continue
+			}
+			allTransitive = append(allTransitive, subTransitive...)
+		}
 	}
 
 	result := &TypeFetchResult{
@@ -395,6 +566,17 @@ func typePkgNameFromURL(rawURL string) string {
 // definitions for all dependencies (including transitive imports).
 // Returns all fetched type results (direct + transitive).
 func FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
+	return fetchTypesForModuleWithState(client, upstream, typesDir, moduleDir, nil)
+}
+
+func fetchTypesForModuleWithState(client *http.Client, upstream, typesDir, moduleDir string, state *typeFetchState) ([]TypeFetchResult, error) {
+	if client == nil {
+		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+	}
+	if state == nil {
+		state = newTypeFetchState(defaultTypeFetchParallelism)
+	}
+
 	pkgPath := filepath.Join(moduleDir, "package.json")
 	pkg, err := ReadPackageJSON(pkgPath)
 	if err != nil {
@@ -406,18 +588,29 @@ func FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir stri
 		return nil, nil
 	}
 
+	depNames := make([]string, 0, len(deps))
+	for name := range deps {
+		depNames = append(depNames, name)
+	}
+	sort.Strings(depNames)
+
 	var results []TypeFetchResult
-	for name, verRange := range deps {
+	for idx, name := range depNames {
+		verRange := deps[name]
 		version := strings.TrimLeft(verRange, "^~=> ")
 		if version == "" || version == "*" {
 			continue
 		}
 
-		result, transitive, err := FetchTypeDefinition(client, upstream, typesDir, name, version)
+		start := time.Now()
+		fmt.Fprintf(os.Stderr, "[esm-type-fetch] (%d/%d) start %s@%s\n", idx+1, len(depNames), name, version)
+
+		result, transitive, err := fetchTypeDefinitionWithState(client, upstream, typesDir, name, version, state)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[esm-type-fetch] warn: %s@%s: %v\n", name, version, err)
+			fmt.Fprintf(os.Stderr, "[esm-type-fetch] warn: %s@%s (%s): %v\n", name, version, time.Since(start).Round(time.Millisecond), err)
 			continue
 		}
+		fmt.Fprintf(os.Stderr, "[esm-type-fetch] (%d/%d) done %s@%s in %s\n", idx+1, len(depNames), name, version, time.Since(start).Round(time.Millisecond))
 		if result != nil {
 			results = append(results, *result)
 		}
@@ -444,13 +637,21 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 	return nil
 }
 
-func downloadTypeContent(client *http.Client, rawURL string) ([]byte, error) {
-	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+func downloadTypeContent(client *http.Client, rawURL string, state *typeFetchState) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTypeFetchRequestTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create download request for %s: %w", rawURL, err)
 	}
 
-	resp, err := client.Do(req)
+	var resp *http.Response
+	err = state.withRequestSlot(func() error {
+		var doErr error
+		resp, doErr = client.Do(req)
+		return doErr
+	})
 	if err != nil {
 		return nil, fmt.Errorf("download types from %s: %w", rawURL, err)
 	}
@@ -469,11 +670,19 @@ func downloadTypeContent(client *http.Client, rawURL string) ([]byte, error) {
 func hasMissingLocalCachedImports(cacheFile string, imports []string) bool {
 	baseDir := filepath.Clean(filepath.Dir(cacheFile))
 	for _, importPath := range imports {
-		if !isLocalCachedTypeSpecifier(importPath) {
+		trimmed := strings.TrimSpace(importPath)
+		if trimmed == "" {
 			continue
 		}
 
-		candidate := filepath.Clean(filepath.Join(baseDir, filepath.FromSlash(importPath)))
+		// Recover from historical partial caches (for example demand-filtered runs)
+		// where relative .d.ts imports were left unresolved in cached root files.
+		isRelativeTypePath := strings.HasPrefix(trimmed, "./") || strings.HasPrefix(trimmed, "../")
+		if !isLocalCachedTypeSpecifier(trimmed) && !isRelativeTypePath {
+			continue
+		}
+
+		candidate := filepath.Clean(filepath.Join(baseDir, filepath.FromSlash(trimmed)))
 		if candidate != baseDir && !strings.HasPrefix(candidate, baseDir+string(os.PathSeparator)) {
 			continue
 		}

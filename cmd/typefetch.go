@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +59,12 @@ When <app> is specified, fetches types for that module only.`,
 				return xfmt.Errorf("type-fetch: ensure modules path: %w", err)
 			}
 
+			tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+			if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+				return xfmt.Errorf("type-fetch: ensure modules tsconfig: %w", err)
+			}
+			cmd.Printf("Ensured tsconfig exists: %s\n", tsconfigPath)
+
 			defaultPath := strings.TrimSpace(runtimeOpts.DefaultChoysumPath)
 			if defaultPath == "" {
 				defaultPath = ".choysum"
@@ -73,7 +78,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 			}
 
-			client := &http.Client{Timeout: 30 * time.Second}
+			client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 
 			var appNames []string
 			if all || len(args) == 0 {
@@ -99,13 +104,16 @@ When <app> is specified, fetches types for that module only.`,
 				return nil
 			}
 
+			session := esmresolver.NewTypeFetchSession(0)
+
 			totalCached := 0
 			totalFetched := 0
 			var allResults []esmresolver.TypeFetchResult
 
 			for _, appName := range appNames {
 				moduleDir := filepath.Join(modulesPath, appName)
-				results, err := esmresolver.FetchTypesForModule(client, upstream, typesDir, moduleDir)
+				cmd.Printf("[%s] fetching dependency types...\n", appName)
+				results, err := session.FetchTypesForModule(client, upstream, typesDir, moduleDir)
 				if err != nil {
 					cmd.Printf("[%s] error: %v\n", appName, err)
 					continue
@@ -129,7 +137,6 @@ When <app> is specified, fetches types for that module only.`,
 			cmd.Printf("Types directory: %s\n", typesDir)
 
 			// Update tsconfig paths for IDE support.
-			tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
 			if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, allResults); err != nil {
 				cmd.Printf("Warning: failed to update tsconfig paths: %v\n", err)
 			} else if len(allResults) > 0 {

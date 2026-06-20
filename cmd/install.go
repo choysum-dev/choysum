@@ -170,7 +170,12 @@ func runTypeFetchAfterInstall(env scope.Scope) {
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
+	session := esmresolver.NewTypeFetchSession(0)
 	var allResults []esmresolver.TypeFetchResult
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		env.Logger().Warn("type-fetch: ensure tsconfig failed", "path", tsconfigPath, "error", err)
+	}
 
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
@@ -185,7 +190,7 @@ func runTypeFetchAfterInstall(env scope.Scope) {
 		if _, err := os.Stat(filepath.Join(moduleDir, "package.json")); err != nil {
 			continue
 		}
-		results, err := esmresolver.FetchTypesForModule(client, upstream, typesDir, moduleDir)
+		results, err := session.FetchTypesForModule(client, upstream, typesDir, moduleDir)
 		if err != nil {
 			env.Logger().Warn("type-fetch: skipped module", "module", entry.Name(), "error", err)
 			continue
@@ -199,7 +204,6 @@ func runTypeFetchAfterInstall(env scope.Scope) {
 		}
 	}
 
-	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
 	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, allResults); err != nil {
 		env.Logger().Warn("type-fetch: update tsconfig failed", "path", tsconfigPath, "error", err)
 		return
