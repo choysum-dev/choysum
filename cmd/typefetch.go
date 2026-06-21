@@ -91,6 +91,9 @@ When <app> is specified, fetches types for that module only.`,
 				client = &http.Client{Transport: &offlineTransport{}}
 			} else {
 				client = esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+				if transport, ok := client.Transport.(*http.Transport); ok {
+					defer transport.CloseIdleConnections()
+				}
 			}
 
 			var appNames []string

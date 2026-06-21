@@ -155,6 +155,31 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		}
 	})
 
+	t.Run("ignores workspace scoped dependencies", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		binDir := filepath.Join(t.TempDir(), "bin")
+		globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+
+		writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
+		writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+		ensureFrontendRequiredModulesAt(t, globalRoot)
+
+		if err := os.MkdirAll(filepath.Join(repoRoot, "modules", "auth"), 0o755); err != nil {
+			t.Fatalf("mkdir modules/auth: %v", err)
+		}
+		authPkg := `{"dependencies":{"@choysum-dev/core":"workspace:*"},"peerDependencies":{"@choysum-dev/base":"workspace:*"}}`
+		if err := os.WriteFile(filepath.Join(repoRoot, "modules", "auth", "package.json"), []byte(authPkg), 0o644); err != nil {
+			t.Fatalf("write auth package.json: %v", err)
+		}
+
+		failed, err := runFrontendTest(context.Background(), repoRoot, "auth", "", false, false, false, false, "coverage", 0, 0, 0, 0, repoRoot, false)
+		if err != nil || failed {
+			t.Fatalf("expected workspace scoped dependencies to be ignored, failed=%v err=%v", failed, err)
+		}
+	})
+
 	t.Run("rejects missing coverage provider", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		binDir := filepath.Join(t.TempDir(), "bin")

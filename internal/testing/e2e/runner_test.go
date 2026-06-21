@@ -768,16 +768,20 @@ func TestRequiredPlaywrightModulesFromSpecFiles(t *testing.T) {
 	content := `
 import { test } from '@playwright/test'
 import { createPromiseClient } from '@connectrpc/connect'
+import { rpc } from '@choysum-dev/core/web/rpc'
 import path from 'node:path'
 import alias from '@/lib/client'
 import rel from './local'
 const debounceModule = import('lodash/debounce')
+const workspaceImport = import('@choysum-dev/base/web/demo')
 void test
 void createPromiseClient
+void rpc
 void path
 void alias
 void rel
 void debounceModule
+void workspaceImport
 `
 	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
 		t.Fatalf("write spec file: %v", err)
@@ -790,6 +794,25 @@ void debounceModule
 	expected := []string{"@connectrpc/connect", "@playwright/test", "lodash"}
 	if !reflect.DeepEqual(required, expected) {
 		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
+func TestCollectPackageModuleDependencies_IgnoresWorkspaceScopedModules(t *testing.T) {
+	pkg := &sourceModulePackage{
+		Dependencies: map[string]string{
+			"@choysum-dev/core":   "workspace:*",
+			"@connectrpc/connect": "^2.1.1",
+		},
+		PeerDependencies: map[string]string{
+			"@choysum-dev/base": "workspace:*",
+			"lodash":            "^4.17.21",
+		},
+	}
+
+	got := collectPackageModuleDependencies(pkg)
+	want := []string{"@connectrpc/connect", "lodash"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("collectPackageModuleDependencies = %#v, want %#v", got, want)
 	}
 }
 

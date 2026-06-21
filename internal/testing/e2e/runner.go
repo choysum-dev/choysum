@@ -1108,14 +1108,14 @@ func collectPackageModuleDependencies(pkg *sourceModulePackage) []string {
 	names := map[string]struct{}{}
 	for moduleName := range pkg.Dependencies {
 		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" {
+		if moduleName == "" || strings.HasPrefix(moduleName, "@choysum-dev/") {
 			continue
 		}
 		names[moduleName] = struct{}{}
 	}
 	for moduleName := range pkg.PeerDependencies {
 		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" {
+		if moduleName == "" || strings.HasPrefix(moduleName, "@choysum-dev/") {
 			continue
 		}
 		names[moduleName] = struct{}{}
@@ -1362,6 +1362,9 @@ func normalizeJSImportModuleName(specifier string) string {
 	if strings.HasPrefix(specifier, "@") {
 		parts := strings.Split(specifier, "/")
 		if len(parts) < 2 {
+			return ""
+		}
+		if parts[0] == "@choysum-dev" {
 			return ""
 		}
 		moduleName := parts[0] + "/" + parts[1]

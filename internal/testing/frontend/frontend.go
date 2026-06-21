@@ -314,9 +314,17 @@ func collectRequiredFrontendModules(repoRoot string, app string) ([]string, erro
 		}
 
 		for name := range pkg.Dependencies {
+			name = strings.TrimSpace(name)
+			if name == "" || strings.HasPrefix(name, "@choysum-dev/") {
+				continue
+			}
 			required[name] = struct{}{}
 		}
 		for name := range pkg.PeerDependencies {
+			name = strings.TrimSpace(name)
+			if name == "" || strings.HasPrefix(name, "@choysum-dev/") {
+				continue
+			}
 			required[name] = struct{}{}
 		}
 		for _, depModule := range pkg.Choysum.Depends {
