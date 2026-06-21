@@ -646,14 +646,28 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 	if err != nil {
 		return err
 	}
+	integrityTmp, err := os.CreateTemp(dir, filepath.Base(cacheFile)+".integrity-*.tmp")
+	if err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpFile.Name())
+		return err
+	}
 	tmpPath := tmpFile.Name()
-	cleanup := true
+	integrityTmpPath := integrityTmp.Name()
+	cleanupCacheTmp := true
+	cleanupIntegrityTmp := true
 	defer func() {
 		if tmpFile != nil {
 			_ = tmpFile.Close()
 		}
-		if cleanup {
+		if integrityTmp != nil {
+			_ = integrityTmp.Close()
+		}
+		if cleanupCacheTmp {
 			_ = os.Remove(tmpPath)
+		}
+		if cleanupIntegrityTmp {
+			_ = os.Remove(integrityTmpPath)
 		}
 	}()
 	if _, err := tmpFile.Write(data); err != nil {
@@ -664,16 +678,28 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 		return err
 	}
 	tmpFile = nil
+
+	hash := sha512Hex(data)
+	if _, err := integrityTmp.Write([]byte(hash)); err != nil {
+		return err
+	}
+	if err := integrityTmp.Close(); err != nil {
+		integrityTmp = nil
+		return err
+	}
+	integrityTmp = nil
+
 	if err := os.Rename(tmpPath, cacheFile); err != nil {
 		return err
 	}
-	cleanup = false
-	// Write integrity metadata alongside the cache file.
+	cleanupCacheTmp = false
+
 	integrityFile := cacheFile + ".integrity"
-	hash := sha512Hex(data)
-	if err := os.WriteFile(integrityFile, []byte(hash), 0644); err != nil {
+	if err := os.Rename(integrityTmpPath, integrityFile); err != nil {
+		_ = os.Remove(cacheFile)
 		return err
 	}
+	cleanupIntegrityTmp = false
 	return nil
 }
 

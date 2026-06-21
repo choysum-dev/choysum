@@ -1285,7 +1285,8 @@ func parseJSImportSpecifiers(source string) []string {
 		if spec.Kind != tsast.KindStringLiteral && spec.Kind != tsast.KindNoSubstitutionTemplateLiteral {
 			return
 		}
-		path := strings.TrimSpace(spec.Text())
+		path := strings.Trim(spec.Text(), "\"'")
+		path = strings.TrimSpace(path)
 		if path == "" || seen[path] {
 			return
 		}

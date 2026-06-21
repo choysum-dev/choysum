@@ -543,17 +543,20 @@ func TestParseDTSImports(t *testing.T) {
 import { Foo } from './foo';
 import type { Bar } from "../bar";
 export * from "./baz";
+declare namespace Nested {
+  export type Dynamic = import("./nested").Dynamic;
+}
+export type ViaTypeof = typeof import("./typeof-nested");
 /// <reference path="./types.d.ts" />
 /// <reference types="node" />
 export declare const x: number;
 `
-	// Note: import("dynamic") is a call expression, not a declaration,
-	// so it is not extracted by the AST parser.
 	paths := parseDTSImports(content)
-	if len(paths) != 5 {
-		t.Fatalf("expected 5 imports, got %d: %v", len(paths), paths)
+	if len(paths) != 7 {
+		t.Fatalf("expected 7 imports, got %d: %v", len(paths), paths)
 	}
 	if !contains(paths, "./foo") || !contains(paths, "../bar") || !contains(paths, "./baz") ||
+		!contains(paths, "./nested") || !contains(paths, "./typeof-nested") ||
 		!contains(paths, "./types.d.ts") || !contains(paths, "node") {
 		t.Fatalf("missing expected imports: %v", paths)
 	}
@@ -985,6 +988,48 @@ func TestAcquireVisit_FailureAllowsRetry(t *testing.T) {
 		t.Fatal("expected retry acquire to fetch after failure")
 	}
 	doneRetry(true)
+}
+
+func TestAcquireVisit_FailedInFlightWaiterRetries(t *testing.T) {
+	s := newTypeFetchState(defaultTypeFetchParallelism)
+	shouldFetch, done := s.acquireVisit("https://example.com")
+	if !shouldFetch {
+		t.Fatal("expected first acquire to fetch")
+	}
+
+	type acquireResult struct {
+		shouldFetch bool
+		done        func(bool)
+	}
+	resultCh := make(chan acquireResult, 1)
+	go func() {
+		shouldFetch2, done2 := s.acquireVisit("https://example.com")
+		resultCh <- acquireResult{shouldFetch: shouldFetch2, done: done2}
+	}()
+
+	select {
+	case <-resultCh:
+		t.Fatal("expected waiter to block while first fetch is in-flight")
+	case <-time.After(30 * time.Millisecond):
+	}
+
+	done(false)
+
+	select {
+	case result := <-resultCh:
+		if !result.shouldFetch {
+			t.Fatal("expected waiter to retry fetch after failure")
+		}
+		result.done(true)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for retried acquire")
+	}
+
+	shouldFetch3, done3 := s.acquireVisit("https://example.com")
+	if shouldFetch3 {
+		t.Fatal("expected acquire to skip duplicate fetch after successful retry")
+	}
+	done3(true)
 }
 
 // ---- withRequestSlot edge cases ----

@@ -793,6 +793,27 @@ void debounceModule
 	}
 }
 
+func TestParseJSImportSpecifiers_TrimsQuotedLiterals(t *testing.T) {
+	source := `
+import '@playwright/test'
+const deferred = import("@connectrpc/connect")
+void deferred
+`
+
+	paths := parseJSImportSpecifiers(source)
+	if !slices.Contains(paths, "@playwright/test") {
+		t.Fatalf("expected @playwright/test in parsed specifiers, got %v", paths)
+	}
+	if !slices.Contains(paths, "@connectrpc/connect") {
+		t.Fatalf("expected @connectrpc/connect in parsed specifiers, got %v", paths)
+	}
+	for _, p := range paths {
+		if strings.Contains(p, "\"") || strings.Contains(p, "'") {
+			t.Fatalf("parsed specifier should not include quotes, got %q", p)
+		}
+	}
+}
+
 func TestRequiredPlaywrightModulesFromSpecFilesIgnoresCommentedImports(t *testing.T) {
 	specFile := filepath.Join(t.TempDir(), "comments.spec.ts")
 	content := `

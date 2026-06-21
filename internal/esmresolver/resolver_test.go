@@ -1441,6 +1441,45 @@ func TestWriteCache_RenameFails_CleansUpTmp(t *testing.T) {
 	}
 }
 
+func TestWriteCache_IntegrityRenameFails_RollsBackCache(t *testing.T) {
+	dir := t.TempDir()
+	r := newTestResolver(dir)
+
+	cacheKey := sha256Hex("https://esm.sh/integrity-rename-fail@1.0.0")
+	cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Force integrity rename failure by occupying the final path with a directory.
+	integrityFile := cacheFile + ".integrity"
+	if err := os.MkdirAll(integrityFile, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := r.writeCache(cacheFile, []byte("should rollback"))
+	if err == nil {
+		t.Fatal("expected integrity rename error")
+	}
+	if _, statErr := os.Stat(cacheFile); !os.IsNotExist(statErr) {
+		t.Fatalf("expected cache file to be removed on integrity rename failure, stat err=%v", statErr)
+	}
+
+	tmpPattern := filepath.Join(filepath.Dir(cacheFile), filepath.Base(cacheFile)+"-*.tmp")
+	if matches, globErr := filepath.Glob(tmpPattern); globErr != nil {
+		t.Fatalf("glob cache tmp files failed: %v", globErr)
+	} else if len(matches) != 0 {
+		t.Fatalf("expected cache tmp files to be cleaned up after integrity rename failure: %v", matches)
+	}
+
+	integrityTmpPattern := filepath.Join(filepath.Dir(cacheFile), filepath.Base(cacheFile)+".integrity-*.tmp")
+	if matches, globErr := filepath.Glob(integrityTmpPattern); globErr != nil {
+		t.Fatalf("glob integrity tmp files failed: %v", globErr)
+	} else if len(matches) != 0 {
+		t.Fatalf("expected integrity tmp files to be cleaned up after integrity rename failure: %v", matches)
+	}
+}
+
 // ---- Plugin isBareImport edge case: data: and # prefixed ----
 
 func TestPlugin_DataAndFragmentBare(t *testing.T) {

@@ -34,10 +34,15 @@ type TypeFetchResult struct {
 const defaultTypeFetchRequestTimeout = 30 * time.Second
 const defaultTypeFetchParallelism = 16
 
+type visitEntry struct {
+	ch      chan struct{}
+	success bool
+}
+
 type typeFetchState struct {
 	requestSem chan struct{}
 	visitedMu  sync.Mutex
-	visited    map[string]chan struct{}
+	visited    map[string]*visitEntry
 }
 
 // TypeFetchSession shares fetch state across multiple module fetch calls.
@@ -64,7 +69,7 @@ func newTypeFetchState(parallelism int) *typeFetchState {
 
 	return &typeFetchState{
 		requestSem: make(chan struct{}, parallelism),
-		visited:    make(map[string]chan struct{}),
+		visited:    make(map[string]*visitEntry),
 	}
 }
 
@@ -73,27 +78,34 @@ func (s *typeFetchState) acquireVisit(url string) (bool, func(bool)) {
 		return true, func(bool) {}
 	}
 
-	s.visitedMu.Lock()
-	if ch, ok := s.visited[url]; ok {
-		s.visitedMu.Unlock()
-		<-ch
-		return false, func(bool) {}
-	}
-
-	ch := make(chan struct{})
-	s.visited[url] = ch
-	s.visitedMu.Unlock()
-
-	var once sync.Once
-	return true, func(success bool) {
-		once.Do(func() {
-			if !success {
-				s.visitedMu.Lock()
-				delete(s.visited, url)
-				s.visitedMu.Unlock()
+	for {
+		s.visitedMu.Lock()
+		entry, ok := s.visited[url]
+		if ok {
+			s.visitedMu.Unlock()
+			<-entry.ch
+			if entry.success {
+				return false, func(bool) {}
 			}
-			close(ch)
-		})
+			continue
+		}
+
+		entry = &visitEntry{ch: make(chan struct{})}
+		s.visited[url] = entry
+		s.visitedMu.Unlock()
+
+		var once sync.Once
+		return true, func(success bool) {
+			once.Do(func() {
+				s.visitedMu.Lock()
+				entry.success = success
+				if !success {
+					delete(s.visited, url)
+				}
+				close(entry.ch)
+				s.visitedMu.Unlock()
+			})
+		}
 	}
 }
 
@@ -416,8 +428,20 @@ func isLocalCachedTypeSpecifier(importPath string) bool {
 // parseDTSImports uses the TypeScript AST parser to extract module specifiers
 // from import declarations and /// <reference> directives in .d.ts content.
 func parseDTSImports(content string) []string {
-	var paths []string
+	paths := make([]string, 0)
 	seen := make(map[string]bool)
+	addPath := func(raw string, skipNodeProtocol bool) {
+		p := strings.Trim(raw, `"'`)
+		p = strings.TrimSpace(p)
+		if p == "" || seen[p] {
+			return
+		}
+		if skipNodeProtocol && strings.HasPrefix(p, "node:") {
+			return
+		}
+		seen[p] = true
+		paths = append(paths, p)
+	}
 
 	// Use an absolute virtual path so the parser accepts it.
 	fname := "/virtual/type.d.ts"
@@ -430,46 +454,71 @@ func parseDTSImports(content string) []string {
 		return paths
 	}
 
-	// Walk statements looking for import declarations.
-	for _, stmt := range source.Statements.Nodes {
-		if stmt == nil {
-			continue
+	collectSpecifier := func(spec *tsast.Expression) {
+		if spec == nil {
+			return
 		}
-		if stmt.Kind == tsast.KindImportDeclaration || stmt.Kind == tsast.KindJSImportDeclaration {
-			decl := stmt.AsImportDeclaration()
-			if decl != nil && decl.ModuleSpecifier != nil {
-				p := strings.Trim(decl.ModuleSpecifier.Text(), `"'`)
-				if p != "" && !seen[p] && !strings.HasPrefix(p, "node:") {
-					seen[p] = true
-					paths = append(paths, p)
-				}
+		if spec.Kind != tsast.KindStringLiteral && spec.Kind != tsast.KindNoSubstitutionTemplateLiteral {
+			return
+		}
+		addPath(spec.Text(), true)
+	}
+
+	collectImportTypeSpecifier := func(node *tsast.Node) {
+		if node == nil || node.Kind != tsast.KindImportType {
+			return
+		}
+		importType := node.AsImportTypeNode()
+		if importType == nil || importType.Argument == nil || importType.Argument.Kind != tsast.KindLiteralType {
+			return
+		}
+		litType := importType.Argument.AsLiteralTypeNode()
+		if litType == nil || litType.Literal == nil {
+			return
+		}
+		if litType.Literal.Kind != tsast.KindStringLiteral && litType.Literal.Kind != tsast.KindNoSubstitutionTemplateLiteral {
+			return
+		}
+		addPath(litType.Literal.Text(), true)
+	}
+
+	var visit func(node *tsast.Node)
+	visit = func(node *tsast.Node) {
+		if node == nil {
+			return
+		}
+
+		switch node.Kind {
+		case tsast.KindImportDeclaration, tsast.KindJSImportDeclaration:
+			if decl := node.AsImportDeclaration(); decl != nil {
+				collectSpecifier(decl.ModuleSpecifier)
 			}
-		}
-		// Also catch import foo = require("...") — KindImportEqualsDeclaration.
-		if stmt.Kind == tsast.KindImportEqualsDeclaration {
-			decl := stmt.AsImportEqualsDeclaration()
-			if decl != nil && decl.ModuleReference != nil {
-				if ref := decl.ModuleReference.AsExternalModuleReference(); ref != nil && ref.Expression != nil {
-					p := strings.Trim(ref.Expression.Text(), `"'`)
-					if p != "" && !seen[p] {
-						seen[p] = true
-						paths = append(paths, p)
-					}
-				}
+		case tsast.KindImportEqualsDeclaration:
+			decl := node.AsImportEqualsDeclaration()
+			if decl != nil && decl.ModuleReference != nil && decl.ModuleReference.Kind == tsast.KindExternalModuleReference {
+				collectSpecifier(decl.ModuleReference.AsExternalModuleReference().Expression)
+			}
+		case tsast.KindExportDeclaration:
+			if decl := node.AsExportDeclaration(); decl != nil {
+				collectSpecifier(decl.ModuleSpecifier)
+			}
+		case tsast.KindCallExpression:
+			call := node.AsCallExpression()
+			if call != nil && call.Expression != nil && call.Expression.Kind == tsast.KindImportKeyword && call.Arguments != nil && len(call.Arguments.Nodes) > 0 {
+				collectSpecifier(call.Arguments.Nodes[0])
 			}
 		}
 
-		// Catch re-export clauses like `export * from "./foo.d.ts"`.
-		if stmt.Kind == tsast.KindExportDeclaration {
-			decl := stmt.AsExportDeclaration()
-			if decl != nil && decl.ModuleSpecifier != nil {
-				p := strings.Trim(decl.ModuleSpecifier.Text(), `"'`)
-				if p != "" && !seen[p] && !strings.HasPrefix(p, "node:") {
-					seen[p] = true
-					paths = append(paths, p)
-				}
-			}
-		}
+		collectImportTypeSpecifier(node)
+
+		node.ForEachChild(func(child *tsast.Node) bool {
+			visit(child)
+			return false
+		})
+	}
+
+	for _, stmt := range source.Statements.Nodes {
+		visit(stmt)
 	}
 
 	// Also parse /// <reference path="..." /> and /// <reference types="..." />
@@ -488,10 +537,7 @@ func parseDTSImports(content string) []string {
 			quote := string(attr[len(attr)-1])
 			if end := strings.Index(line[start:], quote); end >= 0 {
 				p := line[start : start+end]
-				if !seen[p] {
-					seen[p] = true
-					paths = append(paths, p)
-				}
+				addPath(p, false)
 			}
 		}
 	}
