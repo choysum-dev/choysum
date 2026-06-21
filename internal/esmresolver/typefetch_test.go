@@ -813,6 +813,13 @@ func TestNewTypeFetchHTTPClient_DefaultTimeout(t *testing.T) {
 	if client.Timeout != defaultTypeFetchRequestTimeout {
 		t.Fatalf("Timeout = %v, want %v", client.Timeout, defaultTypeFetchRequestTimeout)
 	}
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok || transport == nil {
+		t.Fatalf("Transport = %T, want *http.Transport", client.Transport)
+	}
+	if !transport.ForceAttemptHTTP2 {
+		t.Fatal("expected ForceAttemptHTTP2 to be enabled")
+	}
 }
 
 func TestNewTypeFetchHTTPClient_CustomTimeout(t *testing.T) {

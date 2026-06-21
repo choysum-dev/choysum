@@ -180,7 +180,7 @@ func toDecodeBytes(v *quickjs.Value) ([]byte, error) {
 			return nil, fmt.Errorf("typed array buffer is not an ArrayBuffer")
 		}
 		defer buffer.Free()
-		if !buffer.IsByteArray() {
+		if buffer.IsUndefined() || buffer.IsNull() || !buffer.IsByteArray() {
 			return nil, fmt.Errorf("typed array buffer is not an ArrayBuffer")
 		}
 		raw, err := buffer.ToByteArray(uint(buffer.ByteLen()))
@@ -197,6 +197,9 @@ func toDecodeBytes(v *quickjs.Value) ([]byte, error) {
 			return nil, fmt.Errorf("typed array bounds are invalid")
 		}
 		defer byteLength.Free()
+		if byteOffset.IsUndefined() || byteOffset.IsNull() || byteLength.IsUndefined() || byteLength.IsNull() {
+			return nil, fmt.Errorf("typed array bounds are invalid")
+		}
 		start := int(byteOffset.ToInt64())
 		length := int(byteLength.ToInt64())
 		end := start + length
