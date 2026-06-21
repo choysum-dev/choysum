@@ -185,13 +185,19 @@ func TestResolver_LockedSpecifier_Integration(t *testing.T) {
 	}
 
 	r := New(WithLockfile(lockfilePath))
-	got := r.lockedSpecifier("kysely")
+	got, err := r.lockedSpecifier("kysely")
+	if err != nil {
+		t.Fatalf("lockedSpecifier returned error: %v", err)
+	}
 	if want := "kysely@0.27.6"; got != want {
 		t.Fatalf("lockedSpecifier = %q, want %q", got, want)
 	}
 
 	// Unknown package passes through unchanged.
-	got = r.lockedSpecifier("unknown")
+	got, err = r.lockedSpecifier("unknown")
+	if err != nil {
+		t.Fatalf("lockedSpecifier returned error: %v", err)
+	}
 	if want := "unknown"; got != want {
 		t.Fatalf("lockedSpecifier = %q, want %q", got, want)
 	}

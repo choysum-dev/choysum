@@ -630,6 +630,30 @@ func TestRewriteTypeImportSpecifiers(t *testing.T) {
 	}
 }
 
+func TestRewriteTypeImportSpecifiers_DoesNotRewritePlainStrings(t *testing.T) {
+	typesDir := t.TempDir()
+	cacheFile := filepath.Join(typesDir, "root.d.ts")
+
+	urlA := "https://esm.sh/pkg@1.0.0/sub.d.ts"
+	content := `// keep this comment mentioning "./sub.d.ts"
+const note = "./sub.d.ts";
+export * from "./sub.d.ts";`
+
+	rewritten := rewriteTypeImportSpecifiers(content, cacheFile, typesDir, []resolvedTypeImport{
+		{Original: "./sub.d.ts", ResolvedURL: urlA},
+	})
+
+	if !strings.Contains(rewritten, `const note = "./sub.d.ts";`) {
+		t.Fatalf("expected plain string literal to remain unchanged, got: %q", rewritten)
+	}
+	if strings.Contains(rewritten, `export * from "./sub.d.ts";`) {
+		t.Fatalf("expected export specifier to be rewritten, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, filepath.Base(typeCachePathForURL(typesDir, urlA))) {
+		t.Fatalf("missing rewritten target for sub.d.ts: %q", rewritten)
+	}
+}
+
 func TestIsLocalCachedTypeSpecifier(t *testing.T) {
 	tests := []struct {
 		path string

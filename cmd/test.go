@@ -232,8 +232,8 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				CoverageFunctions:  coverageFunctions,
 				CoverageBranches:   coverageBranches,
 				CoverageStatements: coverageStatements,
-				Stdout:             os.Stdout,
-				Stderr:             os.Stderr,
+				Stdout:             cmd.OutOrStdout(),
+				Stderr:             cmd.ErrOrStderr(),
 			}
 
 			err = runTestRunnerWithDefaults(ctx, opts)

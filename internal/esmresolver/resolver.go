@@ -199,10 +199,6 @@ func (r *Resolver) Plugin() api.Plugin {
 		if strings.HasPrefix(path, "data:") || strings.HasPrefix(path, "#") {
 			return false
 		}
-		// Safety net: if the path exists as a local file, it is not a bare import.
-		if _, err := os.Stat(path); err == nil {
-			return false
-		}
 		return true
 	}
 
@@ -257,7 +253,11 @@ func (r *Resolver) Plugin() api.Plugin {
 				}
 
 				// Apply lockfile version pinning to the specifier.
-				spec := r.lockedSpecifier(args.Path)
+				spec, lockErr := r.lockedSpecifier(args.Path)
+				if lockErr != nil {
+					r.metrics.Errors.Add(1)
+					return api.OnResolveResult{}, r.formatError("lockfile error", args.Path, r.effectiveLockfilePath(), lockErr.Error())
+				}
 
 				// CSS imports from any target are external.
 				if args.Kind == api.ResolveCSSURLToken {
@@ -350,16 +350,23 @@ func (r *Resolver) Plugin() api.Plugin {
 	}
 }
 
+func (r *Resolver) effectiveLockfilePath() string {
+	if strings.TrimSpace(r.lockfilePath) != "" {
+		return r.lockfilePath
+	}
+	if strings.TrimSpace(r.modulePath) != "" {
+		return filepath.Join(r.modulePath, "esm.lock")
+	}
+	return ""
+}
+
 // resolveLockfile returns the parsed lockfile if available, loading it on first
-// call. Returns nil if no lockfile is configured or it doesn't exist.
-func (r *Resolver) resolveLockfile() *EsmLockfile {
+// call. Returns nil when no lockfile is configured or the lockfile does not
+// exist. Returns an error when a configured lockfile cannot be parsed.
+func (r *Resolver) resolveLockfile() (*EsmLockfile, error) {
 	r.lockfileOnce.Do(func() {
-		path := r.lockfilePath
-		if path == "" && r.modulePath != "" {
-			path = filepath.Join(r.modulePath, "esm.lock")
-		}
+		path := r.effectiveLockfilePath()
 		if path == "" {
-			r.lockfileErr = fmt.Errorf("no lockfile path configured")
 			return
 		}
 		lock, err := ReadLockfile(path)
@@ -369,14 +376,17 @@ func (r *Resolver) resolveLockfile() *EsmLockfile {
 		}
 		r.lockfile = lock
 	})
-	return r.lockfile
+	return r.lockfile, r.lockfileErr
 }
 
 // lockedSpecifier returns the version-pinned specifier if the lockfile has an
 // entry for the given import path. Otherwise returns the original specifier.
-func (r *Resolver) lockedSpecifier(specifier string) string {
-	lock := r.resolveLockfile()
-	return LookupLockedSpec(lock, specifier)
+func (r *Resolver) lockedSpecifier(specifier string) (string, error) {
+	lock, err := r.resolveLockfile()
+	if err != nil {
+		return "", err
+	}
+	return LookupLockedSpec(lock, specifier), nil
 }
 
 // resolveInNamespace handles import resolution for files already inside the

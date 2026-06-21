@@ -4,7 +4,7 @@
 package cmd
 
 import (
-	"io"
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +12,7 @@ import (
 
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/spf13/cobra"
 )
 
 func TestCLITestSemanticsContract_RuntimeOptionsPrefix(t *testing.T) {
@@ -86,7 +87,7 @@ func TestCLITestSemanticsContract_NoTestsFound(t *testing.T) {
 		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newTestUnitCmdFromScope(scopeGetter)
-		stdout, err := captureStdoutForContract(t, func() error {
+		stdout, err := captureStdoutForContract(t, cmd, func() error {
 			return cmd.RunE(cmd, []string{"auth"})
 		})
 		if err != nil {
@@ -105,7 +106,7 @@ func TestCLITestSemanticsContract_NoTestsFound(t *testing.T) {
 		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newTypecheckCmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
-		stdout, err := captureStdoutForContract(t, func() error {
+		stdout, err := captureStdoutForContract(t, cmd, func() error {
 			return cmd.RunE(cmd, []string{"auth"})
 		})
 		if err != nil {
@@ -122,7 +123,7 @@ func TestCLITestSemanticsContract_NoTestsFound(t *testing.T) {
 		cfg := newCommandTestConfig(modulesPath)
 		scopeGetter := func() scope.Scope { return &commandTestScope{cfg: cfg} }
 		cmd := newE2ECmd(scopeGetter, commandRuntimeOptionsFromScope(scopeGetter))
-		stdout, err := captureStdoutForContract(t, func() error {
+		stdout, err := captureStdoutForContract(t, cmd, func() error {
 			return cmd.RunE(cmd, []string{"auth"})
 		})
 		if err != nil {
@@ -149,48 +150,13 @@ func TestCLITestSemanticsContract_NoTestsFound(t *testing.T) {
 	})
 }
 
-func captureStdoutForContract(t *testing.T, fn func() error) (string, error) {
+func captureStdoutForContract(t *testing.T, cmd *cobra.Command, fn func() error) (string, error) {
 	t.Helper()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
+	if cmd == nil {
+		t.Fatal("cmd is nil")
 	}
-	oldStdout := os.Stdout
-	os.Stdout = w
-	defer func() {
-		os.Stdout = oldStdout
-	}()
-
-	dataCh := make(chan []byte, 1)
-	readErrCh := make(chan error, 1)
-	go func() {
-		data, readErr := io.ReadAll(r)
-		if readErr != nil {
-			readErrCh <- readErr
-			return
-		}
-		dataCh <- data
-	}()
-
-	var runErr error
-	func() {
-		defer func() {
-			if err := w.Close(); err != nil {
-				t.Fatalf("close writer: %v", err)
-			}
-		}()
-		runErr = fn()
-	}()
-
-	var data []byte
-	select {
-	case data = <-dataCh:
-	case readErr := <-readErrCh:
-		t.Fatalf("read stdout: %v", readErr)
-	}
-
-	if err := r.Close(); err != nil {
-		t.Fatalf("close reader: %v", err)
-	}
-	return string(data), runErr
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	runErr := fn()
+	return buf.String(), runErr
 }

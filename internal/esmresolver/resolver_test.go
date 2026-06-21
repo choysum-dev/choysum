@@ -1342,7 +1342,10 @@ func TestResolveLockfile_WithLockfilePath(t *testing.T) {
 	}
 
 	r := New(WithLockfile(lockPath))
-	lf := r.resolveLockfile()
+	lf, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error: %v", err)
+	}
 	if lf == nil {
 		t.Fatal("expected non-nil lockfile")
 	}
@@ -1351,7 +1354,10 @@ func TestResolveLockfile_WithLockfilePath(t *testing.T) {
 	}
 
 	// Second call returns cached result.
-	lf2 := r.resolveLockfile()
+	lf2, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error on second call: %v", err)
+	}
 	if lf2 != lf {
 		t.Fatal("expected same cached lockfile pointer")
 	}
@@ -1369,7 +1375,10 @@ func TestResolveLockfile_FromModulePath(t *testing.T) {
 	}
 
 	r := New(WithModulePath(dir))
-	lf := r.resolveLockfile()
+	lf, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error: %v", err)
+	}
 	if lf == nil {
 		t.Fatal("expected lockfile derived from modulePath")
 	}
@@ -1377,14 +1386,20 @@ func TestResolveLockfile_FromModulePath(t *testing.T) {
 
 func TestResolveLockfile_NoPathConfigured(t *testing.T) {
 	r := New()
-	lf := r.resolveLockfile()
+	lf, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error: %v", err)
+	}
 	if lf != nil {
 		t.Fatal("expected nil lockfile when no path configured")
 	}
-	// Second call returns nil (error cached).
-	lf2 := r.resolveLockfile()
+	// Second call returns nil without error.
+	lf2, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error on second call: %v", err)
+	}
 	if lf2 != nil {
-		t.Fatal("expected nil on second call with cached error")
+		t.Fatal("expected nil on second call")
 	}
 }
 
@@ -1392,12 +1407,17 @@ func TestResolveLockfile_FileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	lockPath := filepath.Join(dir, "nonexistent.lock")
 	r := New(WithLockfile(lockPath))
-	lf := r.resolveLockfile()
+	lf, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error: %v", err)
+	}
 	if lf != nil {
 		t.Fatal("expected nil for nonexistent file")
 	}
-	// Error should be cached.
-	lf2 := r.resolveLockfile()
+	lf2, err := r.resolveLockfile()
+	if err != nil {
+		t.Fatalf("resolveLockfile returned error on second call: %v", err)
+	}
 	if lf2 != nil {
 		t.Fatal("expected nil on second call")
 	}
@@ -1457,13 +1477,19 @@ func TestLockedSpecifier_WithLockfile(t *testing.T) {
 	}
 
 	r := New(WithLockfile(lockPath))
-	got := r.lockedSpecifier("vue")
+	got, err := r.lockedSpecifier("vue")
+	if err != nil {
+		t.Fatalf("lockedSpecifier returned error: %v", err)
+	}
 	if got != "vue@3.4.29" {
 		t.Fatalf("lockedSpecifier = %q, want vue@3.4.29", got)
 	}
 
 	// Unlocked specifier returns as-is.
-	got2 := r.lockedSpecifier("react")
+	got2, err := r.lockedSpecifier("react")
+	if err != nil {
+		t.Fatalf("lockedSpecifier returned error: %v", err)
+	}
 	if got2 != "react" {
 		t.Fatalf("lockedSpecifier = %q, want react", got2)
 	}
@@ -1471,9 +1497,61 @@ func TestLockedSpecifier_WithLockfile(t *testing.T) {
 
 func TestLockedSpecifier_NoLockfile(t *testing.T) {
 	r := New()
-	got := r.lockedSpecifier("vue")
+	got, err := r.lockedSpecifier("vue")
+	if err != nil {
+		t.Fatalf("lockedSpecifier returned error: %v", err)
+	}
 	if got != "vue" {
 		t.Fatalf("lockedSpecifier = %q, want vue", got)
+	}
+}
+
+func TestLockedSpecifier_CorruptLockfileReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "esm.lock")
+	if err := os.WriteFile(lockPath, []byte(`{"version":1,"packages":`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	r := New(WithLockfile(lockPath))
+	_, err := r.lockedSpecifier("vue")
+	if err == nil {
+		t.Fatal("expected error for corrupt lockfile")
+	}
+	if !strings.Contains(err.Error(), "parse esm.lock") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestResolver_Plugin_CorruptLockfileFailsBuild(t *testing.T) {
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "esm.lock")
+	if err := os.WriteFile(lockPath, []byte(`{"version":1,"packages":`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	entry := filepath.Join(dir, "entry.ts")
+	if err := os.WriteFile(entry, []byte(`import "vue";`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	r := New(
+		WithLockfile(lockPath),
+		WithTarget("es2020"),
+	)
+
+	result := api.Build(api.BuildOptions{
+		EntryPoints: []string{entry},
+		Bundle:      true,
+		Write:       false,
+		Plugins:     []api.Plugin{r.Plugin()},
+		Platform:    api.PlatformBrowser,
+	})
+	if len(result.Errors) == 0 {
+		t.Fatal("expected build to fail for corrupt lockfile")
+	}
+	if !strings.Contains(result.Errors[0].Text, "lockfile error") {
+		t.Fatalf("unexpected build error: %v", result.Errors[0].Text)
 	}
 }
 

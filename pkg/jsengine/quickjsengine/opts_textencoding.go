@@ -52,8 +52,9 @@ const textEncodingPolyfillJSScript = `(function () {
 				}
 
 				var latin1 = "";
-				for (var i = 0; i < bytes.length; i++) {
-					latin1 += String.fromCharCode(bytes[i]);
+				var chunk = 8192;
+				for (var i = 0; i < bytes.length; i += chunk) {
+					latin1 += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
 				}
 
 				try {

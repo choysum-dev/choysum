@@ -60,8 +60,8 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 				TmpPath:     runtimeOptions.tmpPath,
 				Target:      target,
 				Keep:        keep,
-				Stdout:      os.Stdout,
-				Stderr:      os.Stderr,
+				Stdout:      cmd.OutOrStdout(),
+				Stderr:      cmd.ErrOrStderr(),
 			}
 			return pkgtypecheck.Run(cmd.Context(), opts)
 		},

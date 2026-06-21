@@ -398,12 +398,19 @@ type resolvedTypeImport struct {
 	ResolvedURL string
 }
 
+type typeImportRewriteSpan struct {
+	start int
+	end   int
+	value string
+	quote byte
+}
+
 func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []resolvedTypeImport) string {
 	if len(imports) == 0 {
 		return content
 	}
 
-	out := content
+	rewriteMap := make(map[string]string, len(imports))
 	for _, imp := range imports {
 		localPath := typeCachePathForURL(typesDir, imp.ResolvedURL)
 		rel, err := filepath.Rel(filepath.Dir(cacheFile), localPath)
@@ -417,12 +424,183 @@ func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []
 		if !strings.HasPrefix(rel, ".") {
 			rel = "./" + rel
 		}
+		rewriteMap[imp.Original] = rel
+	}
 
-		out = strings.ReplaceAll(out, `"`+imp.Original+`"`, `"`+rel+`"`)
-		out = strings.ReplaceAll(out, `'`+imp.Original+`'`, `'`+rel+`'`)
+	if len(rewriteMap) == 0 {
+		return content
+	}
+
+	spans := collectTypeImportRewriteSpans(content)
+	if len(spans) == 0 {
+		return content
+	}
+
+	sort.SliceStable(spans, func(i, j int) bool {
+		return spans[i].start > spans[j].start
+	})
+
+	out := content
+	for _, span := range spans {
+		rel, ok := rewriteMap[span.value]
+		if !ok {
+			continue
+		}
+		if span.start < 0 || span.end > len(out) || span.start >= span.end {
+			continue
+		}
+		quote := span.quote
+		if quote == 0 {
+			quote = '"'
+		}
+		replacement := string(quote) + rel + string(quote)
+		out = out[:span.start] + replacement + out[span.end:]
 	}
 
 	return out
+}
+
+func collectTypeImportRewriteSpans(content string) []typeImportRewriteSpan {
+	spans := make([]typeImportRewriteSpan, 0)
+	seen := make(map[string]bool)
+	addSpan := func(spec *tsast.Expression) {
+		if spec == nil {
+			return
+		}
+		if spec.Kind != tsast.KindStringLiteral && spec.Kind != tsast.KindNoSubstitutionTemplateLiteral {
+			return
+		}
+		start, end := spec.Pos(), spec.End()
+		if start < 0 || end <= start || end > len(content) {
+			return
+		}
+
+		raw := content[start:end]
+		quote := byte(0)
+		if len(raw) >= 2 {
+			first := raw[0]
+			if (first == '\'' || first == '"' || first == '`') && raw[len(raw)-1] == first {
+				quote = first
+			}
+		}
+
+		value := strings.TrimSpace(spec.Text())
+		if value == "" && quote != 0 && len(raw) >= 2 {
+			value = raw[1 : len(raw)-1]
+		}
+		if value == "" {
+			return
+		}
+
+		key := fmt.Sprintf("%d:%d:%s", start, end, value)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		spans = append(spans, typeImportRewriteSpan{start: start, end: end, value: value, quote: quote})
+	}
+
+	collectImportTypeSpecifier := func(node *tsast.Node) {
+		if node == nil || node.Kind != tsast.KindImportType {
+			return
+		}
+		importType := node.AsImportTypeNode()
+		if importType == nil || importType.Argument == nil || importType.Argument.Kind != tsast.KindLiteralType {
+			return
+		}
+		litType := importType.Argument.AsLiteralTypeNode()
+		if litType == nil || litType.Literal == nil {
+			return
+		}
+		addSpan(litType.Literal)
+	}
+
+	fname := "/virtual/type.d.ts"
+	scriptKind := tscore.GetScriptKindFromFileName(fname)
+	source := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{FileName: fname}, content, scriptKind)
+	if source != nil && source.Statements != nil {
+		var visit func(node *tsast.Node)
+		visit = func(node *tsast.Node) {
+			if node == nil {
+				return
+			}
+
+			switch node.Kind {
+			case tsast.KindImportDeclaration, tsast.KindJSImportDeclaration:
+				if decl := node.AsImportDeclaration(); decl != nil {
+					addSpan(decl.ModuleSpecifier)
+				}
+			case tsast.KindImportEqualsDeclaration:
+				decl := node.AsImportEqualsDeclaration()
+				if decl != nil && decl.ModuleReference != nil && decl.ModuleReference.Kind == tsast.KindExternalModuleReference {
+					addSpan(decl.ModuleReference.AsExternalModuleReference().Expression)
+				}
+			case tsast.KindExportDeclaration:
+				if decl := node.AsExportDeclaration(); decl != nil {
+					addSpan(decl.ModuleSpecifier)
+				}
+			case tsast.KindCallExpression:
+				call := node.AsCallExpression()
+				if call != nil && call.Expression != nil && call.Expression.Kind == tsast.KindImportKeyword && call.Arguments != nil && len(call.Arguments.Nodes) > 0 {
+					addSpan(call.Arguments.Nodes[0])
+				}
+			}
+
+			collectImportTypeSpecifier(node)
+
+			node.ForEachChild(func(child *tsast.Node) bool {
+				visit(child)
+				return false
+			})
+		}
+
+		for _, stmt := range source.Statements.Nodes {
+			visit(stmt)
+		}
+	}
+
+	// /// <reference path="..." /> and /// <reference types="..." /> are
+	// comment directives and not represented as AST import nodes.
+	lineOffset := 0
+	for _, chunk := range strings.SplitAfter(content, "\n") {
+		line := strings.TrimSuffix(chunk, "\n")
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "///") {
+			for _, attr := range []string{`path="`, `path='`, `types="`, `types='`} {
+				idx := strings.Index(line, attr)
+				if idx < 0 {
+					continue
+				}
+				valueStartInLine := idx + len(attr)
+				quote := attr[len(attr)-1]
+				rest := line[valueStartInLine:]
+				valueEndRel := strings.IndexByte(rest, quote)
+				if valueEndRel < 0 {
+					continue
+				}
+				value := strings.TrimSpace(rest[:valueEndRel])
+				if value == "" {
+					continue
+				}
+
+				start := lineOffset + valueStartInLine - 1
+				end := lineOffset + valueStartInLine + valueEndRel + 1
+				if start < 0 || end <= start || end > len(content) {
+					continue
+				}
+
+				key := fmt.Sprintf("%d:%d:%s", start, end, value)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
+				spans = append(spans, typeImportRewriteSpan{start: start, end: end, value: value, quote: quote})
+			}
+		}
+		lineOffset += len(chunk)
+	}
+
+	return spans
 }
 
 func isLocalCachedTypeSpecifier(importPath string) bool {
