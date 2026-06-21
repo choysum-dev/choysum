@@ -461,13 +461,7 @@ func isLocalFilesystemPath(path string) bool {
 	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		return false
 	}
-	// esm.sh internal paths: /node/... (Node.js built-in polyfills),
-	// /pkg@ver/... (versioned packages), /stable/... (target prefixes).
-	// Do not treat these as local filesystem paths.
 	first := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)[0]
-	if strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first) {
-		return false
-	}
 	// Check if the file exists on disk (with or without extension).
 	if _, err := os.Stat(path); err == nil {
 		return true
@@ -480,8 +474,7 @@ func isLocalFilesystemPath(path string) bool {
 			return true
 		}
 	}
-	// If the path has multiple directory levels, it's likely a local path.
-	return strings.Count(path, "/") >= 3
+	return false
 }
 
 // isFragmentOnly reports whether path is a fragment-only specifier like "#icon".

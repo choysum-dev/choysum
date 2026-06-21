@@ -78,7 +78,7 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		releaseBaseCtx := context.Background()
 		if scopeCtx := runtimeScope.Context(); scopeCtx != nil {
 			if _, ok := scope.TransactionFromContext(scopeCtx); ok {
-				releaseBaseCtx = scopeCtx
+				releaseBaseCtx = context.WithoutCancel(scopeCtx)
 			}
 		}
 		releaseCtx, releaseCancel := context.WithTimeout(releaseBaseCtx, 30*time.Second)

@@ -675,7 +675,9 @@ func TestIsLocalFilesystemPath(t *testing.T) {
 		{"/stable/pkg/dist/foo.mjs", false}, // esm.sh target prefix
 		{"/v135/pkg/foo.mjs", false},        // esm.sh version prefix
 		{"/v999/pkg/foo.mjs", false},        // generic esm.sh version prefix
-		{"/v1beta/pkg/foo.mjs", true},       // non-numeric version segment
+		{"/v1beta/pkg/foo.mjs", false},      // unknown remote-like absolute path
+		{"/npm/lodash-es@4.17.21/lodash.js", false},
+		{"/npm/foo/bar/baz.js", false},
 		{"C:/Users/wangbuke/test", true},    // windows absolute path
 		{"D:\\work\\project\\mod.ts", true}, // windows absolute path
 		{"https://esm.sh/pkg", false},       // not absolute
@@ -976,6 +978,23 @@ func TestResolveInNamespace_ResolvedIsLocalPath(t *testing.T) {
 	// dir is a real local path, so isLocalFilesystemPath should return true
 	if result.Path != "" || result.External {
 		t.Fatal("expected empty result for resolved local filesystem path")
+	}
+}
+
+func TestResolveInNamespace_RemoteAbsolutePathUnderNpmPrefix(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "/npm/lodash-es@4.17.21/lodash.js",
+		Importer: "https://esm.sh/pkg@1.0.0/index.js?target=es2020",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Path != "https://esm.sh/npm/lodash-es@4.17.21/lodash.js?target=es2020" {
+		t.Fatalf("Path = %q, want remote URL under upstream", result.Path)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("Namespace = %q, want choysum-esm", result.Namespace)
 	}
 }
 
