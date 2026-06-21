@@ -999,63 +999,10 @@ func ensureE2ERuntimeGlobalModuleLinks(runtimePath string, globalNodeModulesRoot
 }
 
 func ensureE2EGlobalModuleLinksAt(localNodeModulesRoot string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
-	noop := func() {}
-	localNodeModulesRoot = strings.TrimSpace(localNodeModulesRoot)
-	globalNodeModulesRoot = strings.TrimSpace(globalNodeModulesRoot)
-	if localNodeModulesRoot == "" || globalNodeModulesRoot == "" {
-		return noop, nil
+	cleanup, err := noderuntime.EnsureGlobalModuleLinksAt(localNodeModulesRoot, globalNodeModulesRoot, moduleNames)
+	if err != nil {
+		return nil, xfmt.Errorf("playwright: %w", err)
 	}
-	if st, err := os.Stat(globalNodeModulesRoot); err != nil || !st.IsDir() {
-		return noop, nil
-	}
-
-	if err := os.MkdirAll(localNodeModulesRoot, 0o755); err != nil {
-		return nil, xfmt.Errorf("playwright: create local node_modules: %w", err)
-	}
-
-	createdLinks := make([]string, 0, len(moduleNames))
-	cleanup := func() {
-		for _, localModuleDir := range createdLinks {
-			st, err := os.Lstat(localModuleDir)
-			if err != nil || st.Mode()&os.ModeSymlink == 0 {
-				continue
-			}
-			_ = os.Remove(localModuleDir)
-			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
-		}
-		pruneEmptyDirs(localNodeModulesRoot, localNodeModulesRoot)
-	}
-	for _, moduleName := range moduleNames {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" {
-			continue
-		}
-		if moduleInstalledInRoots(moduleName, localNodeModulesRoot) {
-			continue
-		}
-
-		globalModuleDir := filepath.Join(globalNodeModulesRoot, filepath.FromSlash(moduleName))
-		if st, err := os.Stat(globalModuleDir); err != nil || !st.IsDir() {
-			continue
-		}
-
-		localModuleDir := filepath.Join(localNodeModulesRoot, filepath.FromSlash(moduleName))
-		if _, err := os.Lstat(localModuleDir); err == nil {
-			continue
-		} else if !os.IsNotExist(err) {
-			return nil, xfmt.Errorf("playwright: stat %s: %w", localModuleDir, err)
-		}
-		if err := os.MkdirAll(filepath.Dir(localModuleDir), 0o755); err != nil {
-			return nil, xfmt.Errorf("playwright: prepare %s: %w", localModuleDir, err)
-		}
-		if err := os.Symlink(globalModuleDir, localModuleDir); err != nil {
-			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
-			cleanup()
-			return nil, xfmt.Errorf("playwright: link %s -> %s: %w", localModuleDir, globalModuleDir, err)
-		}
-		createdLinks = append(createdLinks, localModuleDir)
-	}
-
 	return cleanup, nil
 }
 
@@ -1083,37 +1030,6 @@ func buildNodePathValues(moduleRoots []string, existingNodePath string) string {
 		parts = append(parts, existingNodePath)
 	}
 	return strings.Join(parts, string(os.PathListSeparator))
-}
-
-func pruneEmptyDirs(startDir string, stopDir string) {
-	startDir = filepath.Clean(strings.TrimSpace(startDir))
-	stopDir = filepath.Clean(strings.TrimSpace(stopDir))
-	if startDir == "." || stopDir == "." {
-		return
-	}
-
-	dir := startDir
-	for {
-		rel, relErr := filepath.Rel(stopDir, dir)
-		if relErr != nil || strings.HasPrefix(rel, "..") {
-			return
-		}
-		entries, err := os.ReadDir(dir)
-		if err != nil || len(entries) > 0 {
-			return
-		}
-		if err := os.Remove(dir); err != nil {
-			return
-		}
-		if dir == stopDir {
-			return
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return
-		}
-		dir = parent
-	}
 }
 
 func resolveGlobalNpmRoot() string {

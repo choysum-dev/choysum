@@ -378,6 +378,35 @@ func TestFetchTypesForModule_NoDeps(t *testing.T) {
 	}
 }
 
+func TestFetchTypesForModule_SkipsLocalProtocols(t *testing.T) {
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "localdeps")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("mkdir module dir: %v", err)
+	}
+
+	pkg := &PackageJSON{
+		Dependencies: map[string]string{
+			"workspace-pkg": "workspace:*",
+			"file-pkg":      "file:../shared/pkg",
+			"link-pkg":      "link:../linked/pkg",
+		},
+	}
+	data, _ := json.Marshal(pkg)
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), data, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	typesDir := filepath.Join(dir, "types")
+	results, err := FetchTypesForModule(nil, "https://esm.sh", typesDir, moduleDir)
+	if err != nil {
+		t.Fatalf("FetchTypesForModule failed: %v", err)
+	}
+	if results != nil {
+		t.Fatalf("expected nil results for local protocol deps, got %d", len(results))
+	}
+}
+
 func TestUpdateTsconfigPaths(t *testing.T) {
 	dir := t.TempDir()
 	tsconfigPath := filepath.Join(dir, "tsconfig.json")

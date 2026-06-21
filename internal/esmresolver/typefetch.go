@@ -305,10 +305,6 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		imports = parseDTSImports(string(content))
 	}
 
-	if imports == nil {
-		imports = parseDTSImports(string(content))
-	}
-
 	// Parse imports/exports and resolve transitive type URLs.
 	resolvedImports := make([]resolvedTypeImport, 0, len(imports))
 	for _, importPath := range imports {
@@ -647,6 +643,9 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 			return nil, err
 		}
 		verRange := deps[name]
+		if strings.HasPrefix(verRange, "workspace:") || strings.HasPrefix(verRange, "file:") || strings.HasPrefix(verRange, "link:") {
+			continue
+		}
 		version := strings.TrimLeft(verRange, "^~=> ")
 		if version == "" || version == "*" {
 			continue

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -93,6 +94,91 @@ func TestMissingRequiredNodeModules(t *testing.T) {
 	}
 	if ModuleInstalledInRoots("@connectrpc/connect", root) {
 		t.Fatal("expected @connectrpc/connect to be missing")
+	}
+}
+
+func TestEnsureGlobalModuleLinksAt(t *testing.T) {
+	localRoot := filepath.Join(t.TempDir(), "local", "node_modules")
+	globalRoot := filepath.Join(t.TempDir(), "global", "node_modules")
+	if err := os.MkdirAll(filepath.Join(globalRoot, "left-pad"), 0o755); err != nil {
+		t.Fatalf("mkdir global left-pad: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(globalRoot, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir global @scoped/pkg: %v", err)
+	}
+
+	cleanup, err := EnsureGlobalModuleLinksAt(localRoot, globalRoot, []string{"left-pad", "@scoped/pkg"})
+	if err != nil {
+		t.Fatalf("EnsureGlobalModuleLinksAt error: %v", err)
+	}
+
+	leftPadLink := filepath.Join(localRoot, "left-pad")
+	if st, statErr := os.Lstat(leftPadLink); statErr != nil {
+		t.Fatalf("expected left-pad symlink, lstat err=%v", statErr)
+	} else if st.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected left-pad symlink, mode=%v", st.Mode())
+	}
+	scopedLink := filepath.Join(localRoot, "@scoped", "pkg")
+	if st, statErr := os.Lstat(scopedLink); statErr != nil {
+		t.Fatalf("expected @scoped/pkg symlink, lstat err=%v", statErr)
+	} else if st.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected @scoped/pkg symlink, mode=%v", st.Mode())
+	}
+
+	cleanup()
+
+	if _, err := os.Lstat(leftPadLink); !os.IsNotExist(err) {
+		t.Fatalf("expected left-pad link removed after cleanup, err=%v", err)
+	}
+	if _, err := os.Lstat(scopedLink); !os.IsNotExist(err) {
+		t.Fatalf("expected @scoped/pkg link removed after cleanup, err=%v", err)
+	}
+	if st, err := os.Stat(localRoot); err == nil && st.IsDir() {
+		entries, readErr := os.ReadDir(localRoot)
+		if readErr != nil {
+			t.Fatalf("read local root: %v", readErr)
+		}
+		if len(entries) != 0 {
+			t.Fatalf("expected local root empty after cleanup, found %d entries", len(entries))
+		}
+	}
+}
+
+func TestEnsureGlobalModuleLinksAtCleansUpOnSymlinkFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permission semantics differ on windows")
+	}
+
+	localRoot := filepath.Join(t.TempDir(), "local", "node_modules")
+	globalRoot := filepath.Join(t.TempDir(), "global", "node_modules")
+	if err := os.MkdirAll(filepath.Join(globalRoot, "left-pad"), 0o755); err != nil {
+		t.Fatalf("mkdir global left-pad: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(globalRoot, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir global @scoped/pkg: %v", err)
+	}
+	if err := os.MkdirAll(localRoot, 0o755); err != nil {
+		t.Fatalf("mkdir local root: %v", err)
+	}
+
+	blockedScopeDir := filepath.Join(localRoot, "@scoped")
+	if err := os.MkdirAll(blockedScopeDir, 0o755); err != nil {
+		t.Fatalf("mkdir local @scoped dir: %v", err)
+	}
+	if err := os.Chmod(blockedScopeDir, 0o555); err != nil {
+		t.Fatalf("chmod local @scoped dir readonly: %v", err)
+	}
+	defer func() {
+		_ = os.Chmod(blockedScopeDir, 0o755)
+	}()
+
+	cleanup, err := EnsureGlobalModuleLinksAt(localRoot, globalRoot, []string{"left-pad", "@scoped/pkg"})
+	if err == nil {
+		cleanup()
+		t.Fatal("expected symlink failure for readonly scoped directory")
+	}
+	if _, statErr := os.Lstat(filepath.Join(localRoot, "left-pad")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected rollback to remove previously created left-pad link, lstat err=%v", statErr)
 	}
 }
 

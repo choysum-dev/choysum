@@ -670,7 +670,9 @@ func (r *Resolver) writeCache(cacheFile string, data []byte) error {
 	// Write integrity metadata alongside the cache file.
 	integrityFile := cacheFile + ".integrity"
 	hash := sha512Hex(data)
-	_ = os.WriteFile(integrityFile, []byte(hash), 0644)
+	if err := os.WriteFile(integrityFile, []byte(hash), 0644); err != nil {
+		return err
+	}
 	return nil
 }
 
