@@ -128,7 +128,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				moduleDir := filepath.Join(modulesPath, appName)
 				cmd.Printf("[%s] fetching dependency types...\n", appName)
-				results, err := session.FetchTypesForModule(client, upstream, typesDir, moduleDir)
+				results, err := session.FetchTypesForModule(cmd.Context(), client, upstream, typesDir, moduleDir)
 				if err != nil {
 					cmd.Printf("[%s] error: %v\n", appName, err)
 					continue

@@ -448,6 +448,15 @@ func isCSSURL(rawURL string) bool {
 // isLocalFilesystemPath reports whether path looks like an absolute local
 // filesystem path rather than a remote ESM URL or upstream-internal path.
 func isLocalFilesystemPath(path string) bool {
+	if filepath.VolumeName(path) != "" {
+		return true
+	}
+	if len(path) >= 3 {
+		drive := path[0]
+		if ((drive >= 'a' && drive <= 'z') || (drive >= 'A' && drive <= 'Z')) && path[1] == ':' && (path[2] == '/' || path[2] == '\\') {
+			return true
+		}
+	}
 	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		return false
 	}

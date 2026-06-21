@@ -4,7 +4,9 @@
 package esmresolver
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -623,7 +625,7 @@ func TestTypeFetchSession_FetchTypesForModule(t *testing.T) {
 	typesDir := filepath.Join(dir, "types")
 	session := NewTypeFetchSession(4)
 
-	results, err := session.FetchTypesForModule(nil, srv.URL, typesDir, moduleDir)
+	results, err := session.FetchTypesForModule(context.Background(), nil, srv.URL, typesDir, moduleDir)
 	if err != nil {
 		t.Fatalf("FetchTypesForModule via session failed: %v", err)
 	}
@@ -639,12 +641,28 @@ func TestTypeFetchSession_Nil(t *testing.T) {
 	os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{}`), 0644)
 
 	var s *TypeFetchSession
-	results, err := s.FetchTypesForModule(nil, "https://esm.sh", filepath.Join(dir, "types"), moduleDir)
+	results, err := s.FetchTypesForModule(context.Background(), nil, "https://esm.sh", filepath.Join(dir, "types"), moduleDir)
 	if err != nil {
 		t.Fatalf("nil session should fall back to stateless fetch: %v", err)
 	}
 	if results != nil {
 		t.Fatalf("expected nil results for no-deps module, got %d", len(results))
+	}
+}
+
+func TestTypeFetchSession_FetchTypesForModule_ContextCanceled(t *testing.T) {
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "mod")
+	os.MkdirAll(moduleDir, 0755)
+	os.WriteFile(filepath.Join(moduleDir, "package.json"), []byte(`{"dependencies":{"testlib":"^1.0.0"}}`), 0644)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	s := NewTypeFetchSession(1)
+	_, err := s.FetchTypesForModule(ctx, nil, "https://esm.sh", filepath.Join(dir, "types"), moduleDir)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
 	}
 }
 
@@ -789,7 +807,7 @@ func TestDownloadTypeContent_404(t *testing.T) {
 	client := NewTypeFetchHTTPClient(5 * time.Second)
 	state := newTypeFetchState(defaultTypeFetchParallelism)
 
-	_, err := downloadTypeContent(client, server.URL, state)
+	_, err := downloadTypeContent(context.Background(), client, server.URL, state)
 	if err == nil {
 		t.Fatal("expected error for 404 download")
 	}
@@ -990,7 +1008,7 @@ func TestHasMissingLocalCachedImports_PathTraversalBlocked(t *testing.T) {
 func TestDownloadTypeContent_NetworkError(t *testing.T) {
 	client := NewTypeFetchHTTPClient(2 * time.Second)
 	state := newTypeFetchState(defaultTypeFetchParallelism)
-	_, err := downloadTypeContent(client, "http://127.0.0.1:1/nonexistent.d.ts", state)
+	_, err := downloadTypeContent(context.Background(), client, "http://127.0.0.1:1/nonexistent.d.ts", state)
 	if err == nil {
 		t.Fatal("expected network error for non-routable address")
 	}
@@ -999,7 +1017,7 @@ func TestDownloadTypeContent_NetworkError(t *testing.T) {
 func TestDownloadTypeContent_InvalidURL(t *testing.T) {
 	client := NewTypeFetchHTTPClient(5 * time.Second)
 	state := newTypeFetchState(defaultTypeFetchParallelism)
-	_, err := downloadTypeContent(client, "://invalid-url", state)
+	_, err := downloadTypeContent(context.Background(), client, "://invalid-url", state)
 	if err == nil {
 		t.Fatal("expected error for invalid URL")
 	}
@@ -1101,7 +1119,7 @@ func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
 
 	// typesDir inside read-only parent — MkdirAll will fail.
 	typesDir = filepath.Join(roDir, "types")
-	_, _, err := fetchTypeRecursive(client, typesDir, server.URL+"/test.d.ts", "testpkg", "1.0.0", state, nil)
+	_, _, err := fetchTypeRecursive(context.Background(), client, typesDir, server.URL+"/test.d.ts", "testpkg", "1.0.0", state, nil)
 	if err == nil {
 		t.Fatal("expected error when cache write fails in read-only dir")
 	}

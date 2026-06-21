@@ -204,7 +204,7 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 		if _, err := os.Stat(filepath.Join(moduleDir, "package.json")); err != nil {
 			continue
 		}
-		results, err := session.FetchTypesForModule(client, upstream, typesDir, moduleDir)
+		results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
 		if err != nil {
 			env.Logger().Warn("type-fetch: skipped module", "module", entry.Name(), "error", err)
 			continue

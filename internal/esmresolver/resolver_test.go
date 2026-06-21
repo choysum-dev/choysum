@@ -676,6 +676,8 @@ func TestIsLocalFilesystemPath(t *testing.T) {
 		{"/v135/pkg/foo.mjs", false},        // esm.sh version prefix
 		{"/v999/pkg/foo.mjs", false},        // generic esm.sh version prefix
 		{"/v1beta/pkg/foo.mjs", true},       // non-numeric version segment
+		{"C:/Users/wangbuke/test", true},    // windows absolute path
+		{"D:\\work\\project\\mod.ts", true}, // windows absolute path
 		{"https://esm.sh/pkg", false},       // not absolute
 		{"//etc/passwd", false},             // double-slash: not a local path
 		{"", false},
