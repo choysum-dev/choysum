@@ -4,6 +4,7 @@
 package esmresolver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -896,6 +897,22 @@ func TestDownloadTypeContent_404(t *testing.T) {
 	_, err := downloadTypeContent(context.Background(), client, server.URL, state)
 	if err == nil {
 		t.Fatal("expected error for 404 download")
+	}
+}
+
+func TestDownloadTypeContent_ResponseTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(bytes.Repeat([]byte("a"), int(maxTypeFetchDownloadBytes)+1))
+	}))
+	defer server.Close()
+
+	client := NewTypeFetchHTTPClient(5 * time.Second)
+	state := newTypeFetchState(defaultTypeFetchParallelism)
+
+	_, err := downloadTypeContent(context.Background(), client, server.URL, state)
+	if err == nil || !strings.Contains(err.Error(), "response exceeds") {
+		t.Fatalf("expected response too large error, got %v", err)
 	}
 }
 

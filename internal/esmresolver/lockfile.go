@@ -68,16 +68,44 @@ func WriteLockfile(lockfilePath string, lock *EsmLockfile) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create esm.lock directory: %w", err)
 	}
-	tmpFile := lockfilePath + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+	tmpFile, err := os.CreateTemp(dir, filepath.Base(lockfilePath)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create esm.lock tmp: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	tmpClosed := false
+	cleanup := true
+	defer func() {
+		if !tmpClosed {
+			_ = tmpFile.Close()
+		}
+		if cleanup {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if err := tmpFile.Chmod(0644); err != nil {
+		return fmt.Errorf("chmod esm.lock tmp: %w", err)
+	}
+	if _, err := tmpFile.Write(data); err != nil {
 		return fmt.Errorf("write esm.lock tmp: %w", err)
 	}
-	defer func() {
-		_ = os.Remove(tmpFile)
-	}()
-	if err := os.Rename(tmpFile, lockfilePath); err != nil {
-		return fmt.Errorf("rename esm.lock tmp: %w", err)
+	if err := tmpFile.Close(); err != nil {
+		tmpClosed = true
+		return fmt.Errorf("close esm.lock tmp: %w", err)
 	}
+	tmpClosed = true
+
+	if err := os.Rename(tmpPath, lockfilePath); err != nil {
+		if removeErr := os.Remove(lockfilePath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("rename esm.lock tmp: %w", err)
+		}
+		if retryErr := os.Rename(tmpPath, lockfilePath); retryErr != nil {
+			return fmt.Errorf("rename esm.lock tmp: %w", retryErr)
+		}
+	}
+
+	cleanup = false
 	return nil
 }
 

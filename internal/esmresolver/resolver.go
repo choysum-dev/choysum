@@ -170,8 +170,25 @@ func New(opts ...Option) *Resolver {
 	return r
 }
 
+func (r *Resolver) ensureDefaults() {
+	if strings.TrimSpace(r.upstream) == "" {
+		r.upstream = "https://esm.sh"
+	}
+	if strings.TrimSpace(r.target) == "" {
+		r.target = "es2020"
+	}
+	if r.client == nil {
+		r.client = &http.Client{Timeout: 30 * time.Second}
+	}
+	if r.metrics == nil {
+		r.metrics = &Metrics{}
+	}
+}
+
 // Plugin returns an esbuild plugin that resolves bare imports via the ESM CDN.
 func (r *Resolver) Plugin() api.Plugin {
+	r.ensureDefaults()
+
 	isBareImport := func(path string) bool {
 		if path == "" || strings.HasPrefix(path, ".") || strings.HasPrefix(path, "/") {
 			return false

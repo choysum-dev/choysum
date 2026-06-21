@@ -83,9 +83,14 @@ func TestWriteLockfile_Atomically(t *testing.T) {
 		t.Fatalf("WriteLockfile failed: %v", err)
 	}
 
-	// Verify tmp file was cleaned up.
-	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
-		t.Fatal("expected tmp file to not exist after successful write")
+	// Verify unique tmp files were cleaned up.
+	tmpPattern := filepath.Join(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	tmpMatches, err := filepath.Glob(tmpPattern)
+	if err != nil {
+		t.Fatalf("glob tmp files: %v", err)
+	}
+	if len(tmpMatches) != 0 {
+		t.Fatalf("expected no leftover tmp files, found: %v", tmpMatches)
 	}
 
 	// Verify content is valid JSON.

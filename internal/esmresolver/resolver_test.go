@@ -764,6 +764,25 @@ func TestWithMetrics_Nil(t *testing.T) {
 	}
 }
 
+func TestResolver_Plugin_InitializesZeroValueDefaults(t *testing.T) {
+	r := &Resolver{}
+
+	_ = r.Plugin()
+
+	if r.client == nil {
+		t.Fatal("expected Plugin to initialize default HTTP client")
+	}
+	if r.metrics == nil {
+		t.Fatal("expected Plugin to initialize default metrics")
+	}
+	if r.upstream != "https://esm.sh" {
+		t.Fatalf("upstream = %q, want https://esm.sh", r.upstream)
+	}
+	if r.target != "es2020" {
+		t.Fatalf("target = %q, want es2020", r.target)
+	}
+}
+
 // ---- extractPkgRootURL tests ----
 
 func TestExtractPkgRootURL(t *testing.T) {

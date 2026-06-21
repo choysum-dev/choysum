@@ -5,6 +5,7 @@ package quickjsengine
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/buke/quickjs-go"
@@ -145,10 +146,21 @@ func textEncodingGoDecode(ctx *quickjs.Context, this *quickjs.Value, args []*qui
 		return ctx.ThrowError(err)
 	}
 	fatal := len(args) > 1 && args[1].ToBool()
-	if fatal && !utf8.Valid(bytes) {
-		return ctx.ThrowError(fmt.Errorf("invalid UTF-8 input"))
+	decoded, err := decodeUTF8Bytes(bytes, fatal)
+	if err != nil {
+		return ctx.ThrowError(err)
 	}
-	return ctx.NewString(string(bytes))
+	return ctx.NewString(decoded)
+}
+
+func decodeUTF8Bytes(bytes []byte, fatal bool) (string, error) {
+	if fatal && !utf8.Valid(bytes) {
+		return "", fmt.Errorf("invalid UTF-8 input")
+	}
+	if !fatal && !utf8.Valid(bytes) {
+		return strings.ToValidUTF8(string(bytes), "\uFFFD"), nil
+	}
+	return string(bytes), nil
 }
 
 func toDecodeBytes(v *quickjs.Value) ([]byte, error) {

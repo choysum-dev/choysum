@@ -33,6 +33,7 @@ type TypeFetchResult struct {
 
 const defaultTypeFetchRequestTimeout = 30 * time.Second
 const defaultTypeFetchParallelism = 16
+const maxTypeFetchDownloadBytes int64 = 10 * 1024 * 1024
 
 type visitEntry struct {
 	ch      chan struct{}
@@ -47,7 +48,10 @@ type typeFetchState struct {
 
 // TypeFetchSession shares fetch state across multiple module fetch calls.
 // Reusing one session avoids redundant transitive traversals in a single run.
+// Calls are serialized per session to avoid cross-call wait cycles when the
+// same session is shared by multiple goroutines.
 type TypeFetchSession struct {
+	mu    sync.Mutex
 	state *typeFetchState
 }
 
@@ -56,7 +60,12 @@ func NewTypeFetchSession(parallelism int) *TypeFetchSession {
 }
 
 func (s *TypeFetchSession) FetchTypesForModule(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
-	if s == nil || s.state == nil {
+	if s == nil {
+		return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, nil)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.state == nil {
 		return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, nil)
 	}
 	return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, s.state)
@@ -761,9 +770,12 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("download types from %s: http %d", rawURL, resp.StatusCode)
 	}
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxTypeFetchDownloadBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("read types body from %s: %w", rawURL, err)
+	}
+	if int64(len(body)) > maxTypeFetchDownloadBytes {
+		return nil, fmt.Errorf("download types from %s: response exceeds %d bytes", rawURL, maxTypeFetchDownloadBytes)
 	}
 
 	return body, nil
