@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -60,13 +61,13 @@ func ValidateFrontendTestDependencies(repoRoot string, app string) error {
 		return xfmt.Errorf("vitest: npx not found. Install Node.js from https://nodejs.org")
 	}
 
-	globalNodeModulesRoot := resolveGlobalNpmRoot()
+	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
 	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)
 	if err != nil {
 		return err
 	}
 	moduleRoots := append(localFrontendModuleRoots(repoRoot), globalNodeModulesRoot)
-	missingModules := missingRequiredNodeModules(requiredModules, moduleRoots...)
+	missingModules := noderuntime.MissingRequiredNodeModules(requiredModules, moduleRoots...)
 	if len(missingModules) > 0 {
 		return xfmt.Errorf(
 			"vitest: missing required modules for %s: %s. Install globally: npm install -g %s",
@@ -114,13 +115,13 @@ func RunOneAppFrontendTests(
 		repoRoot = wd
 	}
 	app = strings.TrimSpace(app)
-	globalNodeModulesRoot := resolveGlobalNpmRoot()
+	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
 	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)
 	if err != nil {
 		return true, err
 	}
 	localModuleRoots := localFrontendModuleRoots(repoRoot)
-	missingLocalModules := missingRequiredNodeModules(requiredModules, localModuleRoots...)
+	missingLocalModules := noderuntime.MissingRequiredNodeModules(requiredModules, localModuleRoots...)
 	if len(missingLocalModules) > 0 {
 		cleanupGlobalLinks, err := ensureGlobalModuleLinks(repoRoot, globalNodeModulesRoot, missingLocalModules)
 		if err != nil {
@@ -530,42 +531,6 @@ func pruneEmptyDirs(startDir string, stopDir string) {
 		}
 		dir = parent
 	}
-}
-
-func missingRequiredNodeModules(required []string, moduleRoots ...string) []string {
-	missing := make([]string, 0)
-	for _, moduleName := range required {
-		if moduleInstalledInRoots(moduleName, moduleRoots...) {
-			continue
-		}
-		missing = append(missing, moduleName)
-	}
-	return missing
-}
-
-func moduleInstalledInRoots(moduleName string, moduleRoots ...string) bool {
-	for _, root := range moduleRoots {
-		root = strings.TrimSpace(root)
-		if root == "" {
-			continue
-		}
-		moduleDir := filepath.Join(root, filepath.FromSlash(moduleName))
-		if st, err := os.Stat(moduleDir); err == nil && st.IsDir() {
-			return true
-		}
-	}
-	return false
-}
-
-func resolveGlobalNpmRoot() string {
-	if override := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); override != "" {
-		return override
-	}
-	out, err := exec.Command("npm", "root", "-g").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
 }
 
 func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
