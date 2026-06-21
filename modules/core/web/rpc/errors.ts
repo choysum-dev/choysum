@@ -9,7 +9,13 @@ export function normalizeTransportError(error: unknown): unknown {
     return error;
   }
 
-  const errorInfos = error.findDetails(ErrorInfoSchema as any);
+  const errorInfos =
+    typeof error === 'object' &&
+    error !== null &&
+    'findDetails' in error &&
+    typeof (error as { findDetails?: unknown }).findDetails === 'function'
+      ? (error as { findDetails: (schema: unknown) => unknown[] }).findDetails(ErrorInfoSchema as any)
+      : undefined;
   if (errorInfos && errorInfos.length > 0) {
     return ChoysumError.fromErrorInfo(errorInfos[0] as any);
   }

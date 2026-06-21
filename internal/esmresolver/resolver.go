@@ -206,7 +206,8 @@ func (r *Resolver) Plugin() api.Plugin {
 		if len(parts) == 0 {
 			return false
 		}
-		if strings.Contains(parts[0], "@") || parts[0] == "node" {
+		first := parts[0]
+		if strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first) {
 			return true
 		}
 		return false

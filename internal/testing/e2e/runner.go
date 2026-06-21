@@ -1317,10 +1317,14 @@ func parseJSImportSpecifiers(source string) []string {
 			continue
 		}
 		if stmt.Kind == tsast.KindImportDeclaration || stmt.Kind == tsast.KindJSImportDeclaration {
-			collectSpecifier(stmt.AsImportDeclaration().ModuleSpecifier)
+			if decl := stmt.AsImportDeclaration(); decl != nil {
+				collectSpecifier(decl.ModuleSpecifier)
+			}
 		}
 		if stmt.Kind == tsast.KindExportDeclaration {
-			collectSpecifier(stmt.AsExportDeclaration().ModuleSpecifier)
+			if decl := stmt.AsExportDeclaration(); decl != nil {
+				collectSpecifier(decl.ModuleSpecifier)
+			}
 		}
 		if stmt.Kind == tsast.KindImportEqualsDeclaration {
 			decl := stmt.AsImportEqualsDeclaration()

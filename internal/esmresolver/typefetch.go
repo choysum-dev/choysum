@@ -426,7 +426,7 @@ func parseDTSImports(content string) []string {
 		FileName: fname,
 	}, content, scriptKind)
 
-	if source == nil {
+	if source == nil || source.Statements == nil {
 		return paths
 	}
 
@@ -726,7 +726,9 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 
 	// Parse into a flexible map to preserve unknown fields.
 	var tsconfig map[string]interface{}
-	if err := json.Unmarshal(data, &tsconfig); err != nil {
+	if len(data) == 0 || strings.TrimSpace(string(data)) == "" {
+		tsconfig = make(map[string]interface{})
+	} else if err := json.Unmarshal(data, &tsconfig); err != nil {
 		return fmt.Errorf("parse tsconfig: %w", err)
 	}
 

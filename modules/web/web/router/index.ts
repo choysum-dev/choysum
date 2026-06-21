@@ -40,7 +40,7 @@ export function createAppRouter(base = '/'): Router {
 
     try {
       let title = '';
-      const appNameRaw = import.meta.env.CHOYSUM_APP_NAME;
+      const appNameRaw = import.meta.env?.CHOYSUM_APP_NAME;
       const appName = typeof appNameRaw === 'string' && appNameRaw.trim() !== '' ? appNameRaw : 'Choysum';
 
       if (to.meta?.pageTitle) {
