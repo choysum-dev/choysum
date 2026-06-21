@@ -323,6 +323,38 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("allows local vite binary without global PATH entry", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+
+		binDir := filepath.Join(t.TempDir(), "bin")
+		makeDir(t, binDir)
+		npmPath := filepath.Join(binDir, "npm")
+		npxPath := filepath.Join(binDir, "npx")
+		writeFile(t, npmPath, "#!/bin/sh\nexit 0\n")
+		writeFile(t, npxPath, "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir)
+
+		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
+		writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare module 'vite/client' {}\n")
+		makeDir(t, filepath.Join(repoRoot, "node_modules", ".bin"))
+		writeFile(t, filepath.Join(repoRoot, "node_modules", ".bin", "vite"), "#!/bin/sh\nexit 0\n")
+
+		makeDir(t, filepath.Join(modulesPath, "auth", "web"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "web", "index.ts"), "export const auth = 1\n")
+
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &strings.Builder{},
+		}, "auth")
+		if err != nil {
+			t.Fatalf("expected local vite binary to be accepted, got %v", err)
+		}
+	})
+
 	t.Run("best-effort cleanup ignores non-empty tmp directory", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()

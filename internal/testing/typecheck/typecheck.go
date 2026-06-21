@@ -224,7 +224,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	var viteClientTypesPath string
 	if hasWebSources {
-		if _, err := exec.LookPath("vite"); err != nil {
+		if _, _, found := noderuntime.FindExecutable("vite", filepath.Join(repoRoot, "node_modules")); !found {
 			return xfmt.Errorf("typecheck: vite is not installed. Run: npm install -g vite")
 		}
 		// Resolve vite/client.d.ts from the global npm root so TypeScript

@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
@@ -61,16 +60,16 @@ func ParseTsconfigPathAlias(buildOptions *api.BuildOptions) (map[string]string, 
 
 func ApplyPathAlias(pathAlias map[string]string, path string) string {
 	for alias, realPath := range pathAlias {
-		aliasPattern := "^" + regexp.QuoteMeta(alias)
-		if len(alias) > 0 && alias[len(alias)-1] == '*' {
-			aliasPattern = aliasPattern[:len(aliasPattern)-2] + "(.*)"
-			realPath = realPath[:len(realPath)-1] + "$1"
-		} else {
-			aliasPattern += "$"
+		if strings.HasSuffix(alias, "*") {
+			prefix := strings.TrimSuffix(alias, "*")
+			if !strings.HasPrefix(path, prefix) {
+				continue
+			}
+			realPrefix := strings.TrimSuffix(realPath, "*")
+			return realPrefix + strings.TrimPrefix(path, prefix)
 		}
-		re := regexp.MustCompile(aliasPattern)
-		if re.MatchString(path) {
-			return re.ReplaceAllString(path, realPath)
+		if path == alias {
+			return realPath
 		}
 	}
 

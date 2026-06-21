@@ -510,7 +510,8 @@ func pruneEmptyDirs(startDir string, stopDir string) {
 
 	dir := startDir
 	for {
-		if dir != stopDir && !strings.HasPrefix(dir, stopDir+string(os.PathSeparator)) {
+		rel, relErr := filepath.Rel(stopDir, dir)
+		if relErr != nil || strings.HasPrefix(rel, "..") {
 			return
 		}
 

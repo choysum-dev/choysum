@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -55,6 +56,7 @@ type Resolver struct {
 	singleflight singleflight.Group
 	lockfilePath string       // path to esm.lock for version pinning
 	modulePath   string       // module root for deriving lockfile path
+	lockfileOnce sync.Once    // protects lockfile loading
 	lockfile     *EsmLockfile // cached parsed lockfile (nil if not loaded)
 	lockfileErr  error        // error from last lockfile load attempt
 	logger       *slog.Logger // logger for structured metrics output (optional)
@@ -328,24 +330,23 @@ func (r *Resolver) Plugin() api.Plugin {
 // resolveLockfile returns the parsed lockfile if available, loading it on first
 // call. Returns nil if no lockfile is configured or it doesn't exist.
 func (r *Resolver) resolveLockfile() *EsmLockfile {
-	if r.lockfile != nil || r.lockfileErr != nil {
-		return r.lockfile
-	}
-	path := r.lockfilePath
-	if path == "" && r.modulePath != "" {
-		path = filepath.Join(r.modulePath, "esm.lock")
-	}
-	if path == "" {
-		r.lockfileErr = fmt.Errorf("no lockfile path configured")
-		return nil
-	}
-	lock, err := ReadLockfile(path)
-	if err != nil {
-		r.lockfileErr = err
-		return nil
-	}
-	r.lockfile = lock
-	return lock
+	r.lockfileOnce.Do(func() {
+		path := r.lockfilePath
+		if path == "" && r.modulePath != "" {
+			path = filepath.Join(r.modulePath, "esm.lock")
+		}
+		if path == "" {
+			r.lockfileErr = fmt.Errorf("no lockfile path configured")
+			return
+		}
+		lock, err := ReadLockfile(path)
+		if err != nil {
+			r.lockfileErr = err
+			return
+		}
+		r.lockfile = lock
+	})
+	return r.lockfile
 }
 
 // lockedSpecifier returns the version-pinned specifier if the lockfile has an
