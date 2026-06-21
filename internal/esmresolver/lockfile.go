@@ -96,17 +96,71 @@ func WriteLockfile(lockfilePath string, lock *EsmLockfile) error {
 	}
 	tmpClosed = true
 
-	if err := os.Rename(tmpPath, lockfilePath); err != nil {
-		if removeErr := os.Remove(lockfilePath); removeErr != nil && !os.IsNotExist(removeErr) {
-			return fmt.Errorf("rename esm.lock tmp: %w", err)
-		}
-		if retryErr := os.Rename(tmpPath, lockfilePath); retryErr != nil {
-			return fmt.Errorf("rename esm.lock tmp: %w", retryErr)
-		}
+	if err := renameFileWithBackup(tmpPath, lockfilePath); err != nil {
+		return fmt.Errorf("rename esm.lock tmp: %w", err)
 	}
 
 	cleanup = false
 	return nil
+}
+
+func renameFileWithBackup(tmpPath, destPath string) error {
+	if err := os.Rename(tmpPath, destPath); err == nil {
+		return nil
+	} else {
+		backupPath, hasBackup, backupErr := moveExistingFileToBackup(destPath)
+		if backupErr != nil {
+			return fmt.Errorf("%w (backup failed: %v)", err, backupErr)
+		}
+		if retryErr := os.Rename(tmpPath, destPath); retryErr != nil {
+			if hasBackup {
+				if restoreErr := os.Rename(backupPath, destPath); restoreErr != nil {
+					return fmt.Errorf("%w (restore backup failed: %v)", retryErr, restoreErr)
+				}
+			}
+			return retryErr
+		}
+		if hasBackup {
+			if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("cleanup backup file: %w", err)
+			}
+		}
+		return nil
+	}
+}
+
+func moveExistingFileToBackup(destPath string) (string, bool, error) {
+	info, err := os.Stat(destPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	if info.IsDir() {
+		return "", false, fmt.Errorf("destination path is a directory")
+	}
+
+	backupFile, err := os.CreateTemp(filepath.Dir(destPath), filepath.Base(destPath)+".bak-*")
+	if err != nil {
+		return "", false, err
+	}
+	backupPath := backupFile.Name()
+	if err := backupFile.Close(); err != nil {
+		_ = os.Remove(backupPath)
+		return "", false, err
+	}
+	if err := os.Remove(backupPath); err != nil && !os.IsNotExist(err) {
+		return "", false, err
+	}
+	if err := os.Rename(destPath, backupPath); err != nil {
+		if os.IsNotExist(err) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+
+	return backupPath, true, nil
 }
 
 // LookupLockedSpec returns the locked version specifier for a package import

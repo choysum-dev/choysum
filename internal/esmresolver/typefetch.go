@@ -732,13 +732,8 @@ func writeAtomicFile(filePath string, content []byte, perm os.FileMode) error {
 		return fmt.Errorf("close tmp file: %w", err)
 	}
 	tmpClosed = true
-	if err := os.Rename(tmpPath, filePath); err != nil {
-		if removeErr := os.Remove(filePath); removeErr != nil && !os.IsNotExist(removeErr) {
-			return fmt.Errorf("rename tmp file: %w", err)
-		}
-		if retryErr := os.Rename(tmpPath, filePath); retryErr != nil {
-			return fmt.Errorf("rename tmp file: %w", retryErr)
-		}
+	if err := renameFileWithBackup(tmpPath, filePath); err != nil {
+		return fmt.Errorf("rename tmp file: %w", err)
 	}
 
 	cleanup = false

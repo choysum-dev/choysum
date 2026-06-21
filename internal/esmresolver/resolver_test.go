@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1042,6 +1043,51 @@ func TestResolveInNamespace_TargetParamReAdd(t *testing.T) {
 	}
 	if result.Path != "https://esm.sh/pkg@1.0.0/deno/sub.mjs?target=es2020" {
 		t.Fatalf("Path = %q, want target re-added", result.Path)
+	}
+}
+
+func TestResolveInNamespace_TargetParamReAdd_WithExistingQuery(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./sub.mjs?v=1",
+		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2020",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Count(result.Path, "?") != 1 {
+		t.Fatalf("Path = %q, expected a single query delimiter", result.Path)
+	}
+	parsed, err := url.Parse(result.Path)
+	if err != nil {
+		t.Fatalf("parse result path: %v", err)
+	}
+	if got := parsed.Query().Get("v"); got != "1" {
+		t.Fatalf("query v = %q, want 1", got)
+	}
+	if got := parsed.Query().Get("target"); got != "es2020" {
+		t.Fatalf("query target = %q, want es2020", got)
+	}
+}
+
+func TestResolveInNamespace_TargetParamReAdd_PreserveExistingTarget(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./sub.mjs?target=es2018&v=1",
+		Importer: "https://esm.sh/pkg@1.0.0/deno/pkg.mjs?target=es2020",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	parsed, err := url.Parse(result.Path)
+	if err != nil {
+		t.Fatalf("parse result path: %v", err)
+	}
+	if got := parsed.Query().Get("target"); got != "es2018" {
+		t.Fatalf("query target = %q, want es2018", got)
+	}
+	if got := parsed.Query().Get("v"); got != "1" {
+		t.Fatalf("query v = %q, want 1", got)
 	}
 }
 

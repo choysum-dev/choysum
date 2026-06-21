@@ -172,10 +172,15 @@ func captureStdoutForContract(t *testing.T, fn func() error) (string, error) {
 		dataCh <- data
 	}()
 
-	runErr := fn()
-	if err := w.Close(); err != nil {
-		t.Fatalf("close writer: %v", err)
-	}
+	var runErr error
+	func() {
+		defer func() {
+			if err := w.Close(); err != nil {
+				t.Fatalf("close writer: %v", err)
+			}
+		}()
+		runErr = fn()
+	}()
 
 	var data []byte
 	select {

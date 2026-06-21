@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -183,6 +184,9 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 	}
 
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+	if transport, ok := client.Transport.(*http.Transport); ok {
+		defer transport.CloseIdleConnections()
+	}
 	session := esmresolver.NewTypeFetchSession(0)
 	var allResults []esmresolver.TypeFetchResult
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")

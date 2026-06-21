@@ -438,9 +438,17 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 
 	// Re-add the target parameter if it was present in the original
 	// importer URL but got dropped during URL resolution.
-	if !strings.Contains(resolvedURL, "?target=") {
-		if ti := strings.Index(importerURL, "?target="); ti >= 0 {
-			resolvedURL += importerURL[ti:]
+	if parsedImporter, err := url.Parse(importerURL); err == nil {
+		importerTarget := strings.TrimSpace(parsedImporter.Query().Get("target"))
+		if importerTarget != "" {
+			if parsedResolved, parseErr := url.Parse(resolvedURL); parseErr == nil {
+				resolvedQuery := parsedResolved.Query()
+				if strings.TrimSpace(resolvedQuery.Get("target")) == "" {
+					resolvedQuery.Set("target", importerTarget)
+					parsedResolved.RawQuery = resolvedQuery.Encode()
+					resolvedURL = parsedResolved.String()
+				}
+			}
 		}
 	}
 
