@@ -692,6 +692,42 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 	return nil
 }
 
+func writeAtomicFile(filePath string, content []byte, perm os.FileMode) error {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return fmt.Errorf("create parent dir: %w", err)
+	}
+	tmpFile, err := os.CreateTemp(filepath.Dir(filePath), filepath.Base(filePath)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("create tmp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("close tmp file: %w", err)
+	}
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	if err := os.WriteFile(tmpPath, content, perm); err != nil {
+		return fmt.Errorf("write tmp file: %w", err)
+	}
+	if err := os.Rename(tmpPath, filePath); err != nil {
+		if removeErr := os.Remove(filePath); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("rename tmp file: %w", err)
+		}
+		if retryErr := os.Rename(tmpPath, filePath); retryErr != nil {
+			return fmt.Errorf("rename tmp file: %w", retryErr)
+		}
+	}
+
+	cleanup = false
+	return nil
+}
+
 func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string, state *typeFetchState) ([]byte, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -816,7 +852,7 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	}
 	out = append(out, '\n')
 
-	if err := os.WriteFile(tsconfigPath, out, 0644); err != nil {
+	if err := writeAtomicFile(tsconfigPath, out, 0644); err != nil {
 		return fmt.Errorf("write tsconfig: %w", err)
 	}
 	return nil
@@ -873,7 +909,7 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 	}
 	out = append(out, '\n')
 
-	if err := os.WriteFile(tsconfigPath, out, 0644); err != nil {
+	if err := writeAtomicFile(tsconfigPath, out, 0644); err != nil {
 		return fmt.Errorf("write tsconfig: %w", err)
 	}
 	return nil

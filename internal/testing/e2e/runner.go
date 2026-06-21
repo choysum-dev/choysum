@@ -94,9 +94,12 @@ var scenarioNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
 var (
 	nodeBuiltinModules = map[string]struct{}{
-		"assert": {}, "buffer": {}, "child_process": {}, "crypto": {}, "events": {}, "fs": {},
-		"http": {}, "http2": {}, "https": {}, "os": {}, "path": {}, "stream": {},
-		"timers": {}, "tls": {}, "url": {}, "util": {}, "zlib": {},
+		"assert": {}, "async_hooks": {}, "buffer": {}, "child_process": {}, "cluster": {}, "console": {},
+		"constants": {}, "crypto": {}, "dgram": {}, "dns": {}, "domain": {}, "events": {}, "fs": {},
+		"http": {}, "http2": {}, "https": {}, "inspector": {}, "module": {}, "net": {}, "os": {},
+		"path": {}, "perf_hooks": {}, "process": {}, "punycode": {}, "querystring": {}, "readline": {},
+		"repl": {}, "stream": {}, "string_decoder": {}, "timers": {}, "tls": {}, "tty": {}, "url": {},
+		"util": {}, "v8": {}, "vm": {}, "worker_threads": {}, "zlib": {},
 	}
 )
 

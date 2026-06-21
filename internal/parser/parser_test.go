@@ -128,6 +128,9 @@ func TestShouldSkipTypeOnlyAlias(t *testing.T) {
 	if !shouldSkipTypeOnlyAlias("vue", "./types/esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts") {
 		t.Fatal("expected forward-slash .d.mts.d.ts alias target to be skipped")
 	}
+	if !shouldSkipTypeOnlyAlias("vue", `C:\types\esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts`) {
+		t.Fatal("expected windows-style .d.mts.d.ts alias target to be skipped")
+	}
 	if shouldSkipTypeOnlyAlias("@/*", "./types/vue.d.ts") {
 		t.Fatal("expected wildcard aliases to remain mappable")
 	}

@@ -868,6 +868,40 @@ void deferred
 	}
 }
 
+func TestRequiredPlaywrightModulesFromSpecFiles_IgnoresBuiltinModulesWithoutNodePrefix(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "builtins.spec.ts")
+	content := `
+import net from 'net'
+import dns from 'dns/promises'
+import vm from 'vm'
+import { Worker } from 'worker_threads'
+import punycode from 'punycode'
+import querystring from 'querystring'
+import { StringDecoder } from 'string_decoder'
+const debounceModule = import('lodash/debounce')
+void net
+void dns
+void vm
+void Worker
+void punycode
+void querystring
+void StringDecoder
+void debounceModule
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@playwright/test", "lodash"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
 func TestCollectRuntimeGeneratedModules(t *testing.T) {
 	runtimePath := filepath.Join(t.TempDir(), "runtime", "runtime.json")
 	generatedRoot := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web", "auth", "pb")
