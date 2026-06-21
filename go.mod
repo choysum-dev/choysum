@@ -7,12 +7,12 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/antchfx/htmlquery v1.3.6
 	github.com/bufbuild/protocompile v0.14.1
-	github.com/buke/quickjs-go v0.7.6
+	github.com/buke/quickjs-go v0.7.7
 	github.com/buke/typescript-go-internal v0.0.2
 	github.com/ettle/strcase v0.2.0
 	github.com/evanw/esbuild v0.28.1
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/golang-cz/devslog v0.0.16
+	github.com/golang-cz/devslog v0.0.17
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/grandcat/zeroconf v1.0.0
