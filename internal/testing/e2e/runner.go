@@ -1049,6 +1049,7 @@ func ensureE2EGlobalModuleLinksAt(localNodeModulesRoot string, globalNodeModules
 			return nil, xfmt.Errorf("playwright: prepare %s: %w", localModuleDir, err)
 		}
 		if err := os.Symlink(globalModuleDir, localModuleDir); err != nil {
+			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
 			cleanup()
 			return nil, xfmt.Errorf("playwright: link %s -> %s: %w", localModuleDir, globalModuleDir, err)
 		}

@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -623,25 +624,7 @@ func isRetryable(err error) bool {
 }
 
 func asHTTPErr(err error, target **httpError) bool {
-	if err == nil {
-		return false
-	}
-	// Check if the error chain contains *httpError.
-	for e := err; e != nil; e = unwrapErr(e) {
-		if he, ok := e.(*httpError); ok {
-			*target = he
-			return true
-		}
-	}
-	return false
-}
-
-func unwrapErr(err error) error {
-	type unwrapper interface{ Unwrap() error }
-	if u, ok := err.(unwrapper); ok {
-		return u.Unwrap()
-	}
-	return nil
+	return errors.As(err, target)
 }
 
 func (r *Resolver) writeCache(cacheFile string, data []byte) error {

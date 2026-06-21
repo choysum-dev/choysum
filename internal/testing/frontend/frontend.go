@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -396,15 +397,15 @@ func appUsesVitestEnvironment(repoRoot string, app string, environment string) (
 
 	marker := "@vitest-environment " + environment
 	found := false
-	err = filepath.Walk(webRoot, func(path string, info os.FileInfo, walkErr error) error {
+	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if info.IsDir() {
+		if d.IsDir() {
 			return nil
 		}
 
-		name := info.Name()
+		name := d.Name()
 		if !strings.Contains(name, ".test.") && !strings.Contains(name, ".spec.") {
 			return nil
 		}
@@ -492,6 +493,7 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 			return nil, xfmt.Errorf("vitest: prepare %s: %w", localModuleDir, err)
 		}
 		if err := os.Symlink(globalModuleDir, localModuleDir); err != nil {
+			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
 			cleanup()
 			return nil, xfmt.Errorf("vitest: link %s -> %s: %w", localModuleDir, globalModuleDir, err)
 		}

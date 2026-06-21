@@ -193,13 +193,26 @@ func WithTextEncodingPolyfillGoBridge() jsengine.JsEngineOption {
 		globalsObj := jse.Ctx.Globals()
 
 		choysumObj := globalsObj.Get("$choysum")
+		if choysumObj == nil {
+			return fmt.Errorf("failed to get $choysum object")
+		}
 		if choysumObj.IsUndefined() {
+			choysumObj.Free()
 			choysumObj = jse.Ctx.Object()
 		}
+		defer choysumObj.Free()
 
 		bridgeObj := jse.Ctx.Object()
-		bridgeObj.Set("encode", jse.Ctx.Function(textEncodingGoEncode))
-		bridgeObj.Set("decode", jse.Ctx.Function(textEncodingGoDecode))
+		defer bridgeObj.Free()
+
+		encodeFn := jse.Ctx.Function(textEncodingGoEncode)
+		defer encodeFn.Free()
+		bridgeObj.Set("encode", encodeFn)
+
+		decodeFn := jse.Ctx.Function(textEncodingGoDecode)
+		defer decodeFn.Free()
+		bridgeObj.Set("decode", decodeFn)
+
 		choysumObj.Set("__text_encoding", bridgeObj)
 		globalsObj.Set("$choysum", choysumObj)
 

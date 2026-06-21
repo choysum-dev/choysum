@@ -832,26 +832,6 @@ func TestIsNetError(t *testing.T) {
 	}
 }
 
-// ---- unwrapErr tests ----
-
-func TestUnwrapErr(t *testing.T) {
-	base := fmt.Errorf("base error")
-	wrapped := fmt.Errorf("wrapped: %w", base)
-
-	target := unwrapErr(wrapped)
-	if target != base {
-		t.Fatalf("unwrapErr did not unwrap to base error")
-	}
-
-	if unwrapErr(base) != nil {
-		t.Fatal("unwrapErr should return nil for non-unwrapper")
-	}
-
-	if unwrapErr(nil) != nil {
-		t.Fatal("unwrapErr(nil) should return nil")
-	}
-}
-
 // ---- asHTTPErr tests ----
 
 func TestAsHTTPErr(t *testing.T) {
