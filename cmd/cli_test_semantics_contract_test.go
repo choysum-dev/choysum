@@ -161,14 +161,29 @@ func captureStdoutForContract(t *testing.T, fn func() error) (string, error) {
 		os.Stdout = oldStdout
 	}()
 
+	dataCh := make(chan []byte, 1)
+	readErrCh := make(chan error, 1)
+	go func() {
+		data, readErr := io.ReadAll(r)
+		if readErr != nil {
+			readErrCh <- readErr
+			return
+		}
+		dataCh <- data
+	}()
+
 	runErr := fn()
 	if err := w.Close(); err != nil {
 		t.Fatalf("close writer: %v", err)
 	}
-	data, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatalf("read stdout: %v", err)
+
+	var data []byte
+	select {
+	case data = <-dataCh:
+	case readErr := <-readErrCh:
+		t.Fatalf("read stdout: %v", readErr)
 	}
+
 	if err := r.Close(); err != nil {
 		t.Fatalf("close reader: %v", err)
 	}

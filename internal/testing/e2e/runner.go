@@ -91,6 +91,8 @@ var scenarioNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 var (
 	jsImportSpecifierRE        = regexp.MustCompile(`(?m)(?:import|export)\s+(?:[^'"\n]+?\s+from\s+)?["']([^"']+)["']`)
 	jsDynamicImportSpecifierRE = regexp.MustCompile(`(?m)import\(\s*["']([^"']+)["']\s*\)`)
+	jsBlockCommentRE           = regexp.MustCompile(`(?s)/\*.*?\*/`)
+	jsLineCommentRE            = regexp.MustCompile(`(?m)^\s*//.*$`)
 	nodeBuiltinModules         = map[string]struct{}{
 		"assert": {}, "buffer": {}, "child_process": {}, "crypto": {}, "events": {}, "fs": {},
 		"http": {}, "http2": {}, "https": {}, "os": {}, "path": {}, "stream": {},
@@ -1348,6 +1350,9 @@ func collectRuntimeGeneratedModules(runtimePath string) ([]string, error) {
 }
 
 func parseJSImportSpecifiers(source string) []string {
+	source = jsBlockCommentRE.ReplaceAllString(source, "")
+	source = jsLineCommentRE.ReplaceAllString(source, "")
+
 	matches := make([]string, 0)
 	for _, match := range jsImportSpecifierRE.FindAllStringSubmatch(source, -1) {
 		if len(match) < 2 {

@@ -359,6 +359,33 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	}
 }
 
+func TestAppUsesVitestEnvironmentStopsAfterMatch(t *testing.T) {
+	repoRoot := t.TempDir()
+	webRoot := filepath.Join(repoRoot, "modules", "auth", "web")
+	if err := os.MkdirAll(filepath.Join(webRoot, "__tests__"), 0o755); err != nil {
+		t.Fatalf("mkdir tests dir: %v", err)
+	}
+
+	markerFile := filepath.Join(webRoot, "__tests__", "a.spec.ts")
+	markerContent := "// @vitest-environment happy-dom\nimport { describe, it } from 'vitest'\ndescribe('a', () => { it('ok', () => {}) })\n"
+	if err := os.WriteFile(markerFile, []byte(markerContent), 0o644); err != nil {
+		t.Fatalf("write marker test file: %v", err)
+	}
+
+	brokenDir := filepath.Join(webRoot, "__tests__", "zzzz.spec.ts")
+	if err := os.MkdirAll(brokenDir, 0o755); err != nil {
+		t.Fatalf("mkdir trailing pseudo test dir: %v", err)
+	}
+
+	found, err := appUsesVitestEnvironment(repoRoot, "auth", "happy-dom")
+	if err != nil {
+		t.Fatalf("appUsesVitestEnvironment error: %v", err)
+	}
+	if !found {
+		t.Fatal("expected vitest environment marker to be found")
+	}
+}
+
 func TestRunOneAppFrontendTestsCoverageCheck(t *testing.T) {
 	repoRoot := t.TempDir()
 	binDir := filepath.Join(t.TempDir(), "bin")

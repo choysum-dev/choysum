@@ -4,7 +4,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,6 +37,7 @@ locally for IDE support.
 
 When called without arguments, fetches types for all installed modules.
 When <app> is specified, fetches types for that module only.`,
+		Hidden: true,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all && len(args) > 0 {
 				return xfmt.Errorf("type-fetch: --all cannot be used with an app argument")
@@ -170,10 +170,6 @@ When <app> is specified, fetches types for that module only.`,
 	cmd.Flags().BoolVar(&all, "all", false, "fetch types for all installed modules")
 	cmd.Flags().StringVar(&upstream, "upstream", "", "override ESM upstream URL")
 	cmd.Flags().BoolVar(&offline, "offline", false, "use only cached types, do not fetch")
-
-	// Hide the command until it's fully implemented.
-	// Remove this line when ready for production use.
-	_ = fmt.Sprintf("type-fetch is available: %s", upstream)
 
 	return cmd
 }

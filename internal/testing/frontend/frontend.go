@@ -6,6 +6,7 @@ package frontend
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -35,6 +36,8 @@ type vitestCoverageSummary struct {
 		} `json:"statements"`
 	} `json:"total"`
 }
+
+var errVitestEnvironmentMarkerFound = xfmt.Errorf("vitest environment marker found")
 
 // ValidateFrontendTestDependencies checks whether required frontend tooling and
 // modules are available in local module roots or global npm root.
@@ -396,7 +399,7 @@ func appUsesVitestEnvironment(repoRoot string, app string, environment string) (
 		if walkErr != nil {
 			return walkErr
 		}
-		if info.IsDir() || found {
+		if info.IsDir() {
 			return nil
 		}
 
@@ -419,10 +422,11 @@ func appUsesVitestEnvironment(repoRoot string, app string, environment string) (
 		}
 		if strings.Contains(string(raw), marker) {
 			found = true
+			return errVitestEnvironmentMarkerFound
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, errVitestEnvironmentMarkerFound) {
 		return false, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
 	}
 

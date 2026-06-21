@@ -793,6 +793,34 @@ void debounceModule
 	}
 }
 
+func TestRequiredPlaywrightModulesFromSpecFilesIgnoresCommentedImports(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "comments.spec.ts")
+	content := `
+// import { broken } from '@comment/line'
+/*
+import { blocked } from '@comment/block'
+const deferred = import('@comment/dynamic')
+void deferred
+*/
+import { test } from '@playwright/test'
+import { createPromiseClient } from '@connectrpc/connect'
+void test
+void createPromiseClient
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@connectrpc/connect", "@playwright/test"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
 func TestCollectRuntimeGeneratedModules(t *testing.T) {
 	runtimePath := filepath.Join(t.TempDir(), "runtime", "runtime.json")
 	generatedRoot := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web", "auth", "pb")

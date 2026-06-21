@@ -212,7 +212,6 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 	if os.Getenv(commandConstructorHelperEnv) != "1" {
 		return
 	}
-
 	scenario := os.Getenv("CHOYSUM_CMD_CONSTRUCTOR_SCENARIO")
 	registerCommandHelperEngines()
 	exitScope := func() scope.Scope { return &commandExitScope{} }
@@ -304,6 +303,13 @@ func TestCommandConstructorExitHelper(t *testing.T) {
 	}
 
 	os.Exit(0)
+}
+
+func TestNewTypeFetchCmdHidden(t *testing.T) {
+	cmd := newTypeFetchCmd(func() scope.Scope { return nil })
+	if !cmd.Hidden {
+		t.Fatalf("expected type-fetch command to be hidden")
+	}
 }
 
 func runCommandConstructorExit(t *testing.T, scenario string) (string, int) {
