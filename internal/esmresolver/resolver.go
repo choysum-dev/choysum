@@ -449,16 +449,16 @@ func isLocalFilesystemPath(path string) bool {
 	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 		return false
 	}
-	// Check if the file exists on disk (with or without extension).
-	if _, err := os.Stat(path); err == nil {
-		return true
-	}
 	// esm.sh internal paths: /node/... (Node.js built-in polyfills),
 	// /pkg@ver/... (versioned packages), /stable/... (target prefixes).
 	// Do not treat these as local filesystem paths.
 	first := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)[0]
 	if strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first) {
 		return false
+	}
+	// Check if the file exists on disk (with or without extension).
+	if _, err := os.Stat(path); err == nil {
+		return true
 	}
 	// Common UNIX filesystem root directories indicate a local path.
 	localRoots := []string{"Users", "home", "var", "tmp", "etc", "usr", "opt",

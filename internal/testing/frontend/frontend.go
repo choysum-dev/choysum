@@ -454,6 +454,17 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 	}
 
 	createdLinks := make([]string, 0, len(moduleNames))
+	cleanup := func() {
+		for _, localModuleDir := range createdLinks {
+			st, err := os.Lstat(localModuleDir)
+			if err != nil || st.Mode()&os.ModeSymlink == 0 {
+				continue
+			}
+			_ = os.Remove(localModuleDir)
+			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
+		}
+		pruneEmptyDirs(localNodeModulesRoot, localNodeModulesRoot)
+	}
 	for _, moduleName := range moduleNames {
 		moduleName = strings.TrimSpace(moduleName)
 		if moduleName == "" {
@@ -476,21 +487,10 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 			return nil, xfmt.Errorf("vitest: prepare %s: %w", localModuleDir, err)
 		}
 		if err := os.Symlink(globalModuleDir, localModuleDir); err != nil {
+			cleanup()
 			return nil, xfmt.Errorf("vitest: link %s -> %s: %w", localModuleDir, globalModuleDir, err)
 		}
 		createdLinks = append(createdLinks, localModuleDir)
-	}
-
-	cleanup := func() {
-		for _, localModuleDir := range createdLinks {
-			st, err := os.Lstat(localModuleDir)
-			if err != nil || st.Mode()&os.ModeSymlink == 0 {
-				continue
-			}
-			_ = os.Remove(localModuleDir)
-			pruneEmptyDirs(filepath.Dir(localModuleDir), localNodeModulesRoot)
-		}
-		pruneEmptyDirs(localNodeModulesRoot, localNodeModulesRoot)
 	}
 
 	return cleanup, nil

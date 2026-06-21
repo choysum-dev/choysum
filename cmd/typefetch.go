@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,12 @@ import (
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
+
+type offlineTransport struct{}
+
+func (*offlineTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, xfmt.Errorf("offline mode enabled: network request blocked")
+}
 
 func newTypeFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 	var all bool
@@ -78,7 +85,12 @@ When <app> is specified, fetches types for that module only.`,
 				}
 			}
 
-			client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+			var client *http.Client
+			if offline {
+				client = &http.Client{Transport: &offlineTransport{}}
+			} else {
+				client = esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+			}
 
 			var appNames []string
 			if all || len(args) == 0 {

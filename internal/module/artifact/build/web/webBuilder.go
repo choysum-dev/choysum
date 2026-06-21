@@ -2187,7 +2187,9 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		webResolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithModulePath(b.module.Path),
-			esmresolver.WithLogger(b.runtimeScope.Logger()),
+		}
+		if b.runtimeScope != nil {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
@@ -2201,7 +2203,9 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		webResolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithModulePath(b.module.Path),
-			esmresolver.WithLogger(b.runtimeScope.Logger()),
+		}
+		if b.runtimeScope != nil {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
 		}
 		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))

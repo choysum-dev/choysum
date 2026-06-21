@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -228,6 +229,41 @@ func TestRunOneAppFrontendTestsUsesTemporaryGlobalNodeModulesLink(t *testing.T) 
 		if len(entries) != 0 {
 			t.Fatalf("expected modules/node_modules to be empty after cleanup, found %d entries", len(entries))
 		}
+	}
+}
+
+func TestEnsureGlobalModuleLinksCleansUpOnSymlinkFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permission semantics differ on windows")
+	}
+
+	repoRoot := t.TempDir()
+	globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+	if err := os.MkdirAll(filepath.Join(globalRoot, "left-pad"), 0o755); err != nil {
+		t.Fatalf("mkdir global left-pad: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(globalRoot, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir global @scoped/pkg: %v", err)
+	}
+
+	localScopedDir := filepath.Join(repoRoot, "modules", "node_modules", "@scoped")
+	if err := os.MkdirAll(localScopedDir, 0o755); err != nil {
+		t.Fatalf("mkdir local @scoped dir: %v", err)
+	}
+	if err := os.Chmod(localScopedDir, 0o555); err != nil {
+		t.Fatalf("chmod local @scoped dir readonly: %v", err)
+	}
+	defer func() {
+		_ = os.Chmod(localScopedDir, 0o755)
+	}()
+
+	cleanup, err := ensureGlobalModuleLinks(repoRoot, globalRoot, []string{"left-pad", "@scoped/pkg"})
+	if err == nil {
+		cleanup()
+		t.Fatal("expected symlink failure for readonly scoped directory")
+	}
+	if _, statErr := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "left-pad")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected rollback to remove previously created left-pad link, lstat err=%v", statErr)
 	}
 }
 

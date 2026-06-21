@@ -725,6 +725,44 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 }
 
+func TestEnsureE2EGlobalModuleLinksAtCleansUpOnSymlinkFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permission semantics differ on windows")
+	}
+
+	localRoot := filepath.Join(t.TempDir(), "local", "node_modules")
+	globalRoot := filepath.Join(t.TempDir(), "global", "node_modules")
+	if err := os.MkdirAll(filepath.Join(globalRoot, "left-pad"), 0o755); err != nil {
+		t.Fatalf("mkdir global left-pad: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(globalRoot, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir global @scoped/pkg: %v", err)
+	}
+	if err := os.MkdirAll(localRoot, 0o755); err != nil {
+		t.Fatalf("mkdir local node_modules root: %v", err)
+	}
+
+	blockedScopeDir := filepath.Join(localRoot, "@scoped")
+	if err := os.MkdirAll(blockedScopeDir, 0o755); err != nil {
+		t.Fatalf("mkdir local @scoped dir: %v", err)
+	}
+	if err := os.Chmod(blockedScopeDir, 0o555); err != nil {
+		t.Fatalf("chmod local @scoped dir readonly: %v", err)
+	}
+	defer func() {
+		_ = os.Chmod(blockedScopeDir, 0o755)
+	}()
+
+	cleanup, err := ensureE2EGlobalModuleLinksAt(localRoot, globalRoot, []string{"left-pad", "@scoped/pkg"})
+	if err == nil {
+		cleanup()
+		t.Fatal("expected symlink failure for readonly scoped directory")
+	}
+	if _, statErr := os.Lstat(filepath.Join(localRoot, "left-pad")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected rollback to remove previously created left-pad link, lstat err=%v", statErr)
+	}
+}
+
 func TestRequiredPlaywrightModulesFromSpecFiles(t *testing.T) {
 	specFile := filepath.Join(t.TempDir(), "imports.spec.ts")
 	content := `
