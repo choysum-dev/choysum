@@ -713,13 +713,13 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 	if err != nil {
 		return nil, fmt.Errorf("download types from %s: %w", rawURL, err)
 	}
-	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("read types body from %s: %w", rawURL, err)
-	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("download types from %s: http %d", rawURL, resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read types body from %s: %w", rawURL, err)
 	}
 
 	return body, nil

@@ -295,7 +295,9 @@ func (r *Resolver) Plugin() api.Plugin {
 						return fetchResult{}, dlErr
 					}
 					if writeErr := r.writeCache(cacheFile, []byte(content)); writeErr != nil {
-						_ = writeErr
+						if r.logger != nil {
+							r.logger.Warn("esm resolver: failed to write cache", "file", cacheFile, "error", writeErr)
+						}
 					}
 					return fetchResult{content: content}, nil
 				})
