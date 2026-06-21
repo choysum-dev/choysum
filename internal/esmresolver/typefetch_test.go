@@ -301,6 +301,60 @@ func TestFetchTypeDefinition_CircularImports_NoDeadlock(t *testing.T) {
 	}
 }
 
+func TestFetchTypeDefinition_CircularSiblingImports_NoDeadlock(t *testing.T) {
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+"/types/pkg@1.0.0/index.d.ts")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case "/types/pkg@1.0.0/index.d.ts":
+				fmt.Fprint(w, "export * from \"./a.d.ts\";\nexport * from \"./b.d.ts\";")
+				return
+			case "/types/pkg@1.0.0/a.d.ts":
+				fmt.Fprint(w, `export * from "./b.d.ts";`)
+				return
+			case "/types/pkg@1.0.0/b.d.ts":
+				fmt.Fprint(w, `export * from "./a.d.ts";`)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+		errCh <- err
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("FetchTypeDefinition should not deadlock on sibling circular imports: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("FetchTypeDefinition timed out, possible deadlock on sibling circular imports")
+	}
+
+	for _, path := range []string{
+		typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/index.d.ts"),
+		typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/a.d.ts"),
+		typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/b.d.ts"),
+	} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("expected cached file %s: %v", path, err)
+		}
+	}
+}
+
 func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

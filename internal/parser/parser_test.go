@@ -121,6 +121,21 @@ func TestApplyPathAlias(t *testing.T) {
 	}
 }
 
+func TestShouldSkipTypeOnlyAlias(t *testing.T) {
+	if !shouldSkipTypeOnlyAlias("vue", "https://esm.sh/vue@3.5.35/dist/vue.d.mts.d.ts?target=es2020") {
+		t.Fatal("expected URL-style .d.mts.d.ts alias target to be skipped")
+	}
+	if !shouldSkipTypeOnlyAlias("vue", "./types/esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts") {
+		t.Fatal("expected forward-slash .d.mts.d.ts alias target to be skipped")
+	}
+	if shouldSkipTypeOnlyAlias("@/*", "./types/vue.d.ts") {
+		t.Fatal("expected wildcard aliases to remain mappable")
+	}
+	if shouldSkipTypeOnlyAlias("vue", "./types/vue.mts") {
+		t.Fatal("expected non-type-only alias target to remain mappable")
+	}
+}
+
 func TestFindVueComponentFinalChild(t *testing.T) {
 	results := []*ParserResult{
 		{

@@ -24,6 +24,10 @@ import (
 	"strings"
 	"time"
 
+	tsast "github.com/buke/typescript-go-internal/pkg/ast"
+	tscore "github.com/buke/typescript-go-internal/pkg/core"
+	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
+
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
@@ -89,11 +93,7 @@ type runtimeInfo struct {
 var scenarioNameRE = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,63}$`)
 
 var (
-	jsImportSpecifierRE        = regexp.MustCompile(`(?m)(?:import|export)\s+(?:[^'"\n]+?\s+from\s+)?["']([^"']+)["']`)
-	jsDynamicImportSpecifierRE = regexp.MustCompile(`(?m)import\(\s*["']([^"']+)["']\s*\)`)
-	jsBlockCommentRE           = regexp.MustCompile(`(?s)/\*.*?\*/`)
-	jsLineCommentRE            = regexp.MustCompile(`(?m)^\s*//.*$`)
-	nodeBuiltinModules         = map[string]struct{}{
+	nodeBuiltinModules = map[string]struct{}{
 		"assert": {}, "buffer": {}, "child_process": {}, "crypto": {}, "events": {}, "fs": {},
 		"http": {}, "http2": {}, "https": {}, "os": {}, "path": {}, "stream": {},
 		"timers": {}, "tls": {}, "url": {}, "util": {}, "zlib": {},
@@ -1268,23 +1268,70 @@ func collectRuntimeGeneratedModules(runtimePath string) ([]string, error) {
 }
 
 func parseJSImportSpecifiers(source string) []string {
-	source = jsBlockCommentRE.ReplaceAllString(source, "")
-	source = jsLineCommentRE.ReplaceAllString(source, "")
+	paths := make([]string, 0)
+	seen := make(map[string]bool)
 
-	matches := make([]string, 0)
-	for _, match := range jsImportSpecifierRE.FindAllStringSubmatch(source, -1) {
-		if len(match) < 2 {
+	fileName := "/virtual/e2e-spec.ts"
+	scriptKind := tscore.GetScriptKindFromFileName(fileName)
+	sf := tsparser.ParseSourceFile(tsast.SourceFileParseOptions{FileName: fileName}, source, scriptKind)
+	if sf == nil || sf.Statements == nil {
+		return nil
+	}
+
+	collectSpecifier := func(spec *tsast.Expression) {
+		if spec == nil {
+			return
+		}
+		if spec.Kind != tsast.KindStringLiteral && spec.Kind != tsast.KindNoSubstitutionTemplateLiteral {
+			return
+		}
+		path := strings.TrimSpace(spec.Text())
+		if path == "" || seen[path] {
+			return
+		}
+		seen[path] = true
+		paths = append(paths, path)
+	}
+
+	var visit func(node *tsast.Node)
+	visit = func(node *tsast.Node) {
+		if node == nil {
+			return
+		}
+
+		if node.Kind == tsast.KindCallExpression {
+			call := node.AsCallExpression()
+			if call != nil && call.Expression != nil && call.Expression.Kind == tsast.KindImportKeyword && call.Arguments != nil && len(call.Arguments.Nodes) > 0 {
+				collectSpecifier(call.Arguments.Nodes[0])
+			}
+		}
+
+		node.ForEachChild(func(child *tsast.Node) bool {
+			visit(child)
+			return false
+		})
+	}
+
+	for _, stmt := range sf.Statements.Nodes {
+		if stmt == nil {
 			continue
 		}
-		matches = append(matches, match[1])
-	}
-	for _, match := range jsDynamicImportSpecifierRE.FindAllStringSubmatch(source, -1) {
-		if len(match) < 2 {
-			continue
+		if stmt.Kind == tsast.KindImportDeclaration || stmt.Kind == tsast.KindJSImportDeclaration {
+			collectSpecifier(stmt.AsImportDeclaration().ModuleSpecifier)
 		}
-		matches = append(matches, match[1])
+		if stmt.Kind == tsast.KindExportDeclaration {
+			collectSpecifier(stmt.AsExportDeclaration().ModuleSpecifier)
+		}
+		if stmt.Kind == tsast.KindImportEqualsDeclaration {
+			decl := stmt.AsImportEqualsDeclaration()
+			if decl != nil && decl.ModuleReference != nil && decl.ModuleReference.Kind == tsast.KindExternalModuleReference {
+				collectSpecifier(decl.ModuleReference.AsExternalModuleReference().Expression)
+			}
+		}
+		visit(stmt)
 	}
-	return matches
+
+	return paths
 }
 
 func normalizeJSImportModuleName(specifier string) string {

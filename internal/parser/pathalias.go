@@ -6,6 +6,7 @@ package parser
 import (
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -98,7 +99,7 @@ func shouldSkipTypeOnlyAlias(alias string, target string) bool {
 	if i := strings.Index(trimmed, "#"); i >= 0 {
 		trimmed = trimmed[:i]
 	}
-	base := strings.ToLower(filepath.Base(trimmed))
+	base := strings.ToLower(path.Base(trimmed))
 	if base == "" {
 		return false
 	}

@@ -16,7 +16,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	tsast "github.com/buke/typescript-go-internal/pkg/ast"
@@ -347,65 +346,20 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s has %d transitive type imports\n", rootPkg, len(resolvedImports))
 	}
 
-	// Only parallelize at the first transitive layer of a direct dependency.
-	// Nested layers stay serial to avoid goroutine fan-out explosion.
-	if rootVersion != "" && len(resolvedImports) > 1 {
-		workerCount := defaultTypeFetchParallelism
-		if workerCount > len(resolvedImports) {
-			workerCount = len(resolvedImports)
+	for i, imp := range resolvedImports {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
 		}
-
-		jobs := make(chan string, len(resolvedImports))
-		var wg sync.WaitGroup
-		var appendMu sync.Mutex
-		var completed int32
-
-		for i := 0; i < workerCount; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for resolvedURL := range jobs {
-					if err := ctx.Err(); err != nil {
-						return
-					}
-					// Derive package name from the resolved URL path.
-					pkgName := typePkgNameFromURL(resolvedURL)
-					_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
-					if err == nil && len(subTransitive) > 0 {
-						appendMu.Lock()
-						allTransitive = append(allTransitive, subTransitive...)
-						appendMu.Unlock()
-					}
-
-					done := int(atomic.AddInt32(&completed, 1))
-					if len(resolvedImports) >= 200 && done%200 == 0 {
-						fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, done, len(resolvedImports))
-					}
-				}
-			}()
+		if len(resolvedImports) >= 200 && i > 0 && i%200 == 0 {
+			fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, i, len(resolvedImports))
 		}
-
-		for _, imp := range resolvedImports {
-			jobs <- imp.ResolvedURL
+		resolvedURL := imp.ResolvedURL
+		pkgName := typePkgNameFromURL(resolvedURL)
+		_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
+		if err != nil {
+			continue
 		}
-		close(jobs)
-		wg.Wait()
-	} else {
-		for i, imp := range resolvedImports {
-			if err := ctx.Err(); err != nil {
-				return nil, nil, err
-			}
-			if len(resolvedImports) >= 200 && i > 0 && i%200 == 0 {
-				fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, i, len(resolvedImports))
-			}
-			resolvedURL := imp.ResolvedURL
-			pkgName := typePkgNameFromURL(resolvedURL)
-			_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
-			if err != nil {
-				continue
-			}
-			allTransitive = append(allTransitive, subTransitive...)
-		}
+		allTransitive = append(allTransitive, subTransitive...)
 	}
 
 	result := &TypeFetchResult{

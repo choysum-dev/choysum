@@ -821,6 +821,32 @@ void createPromiseClient
 	}
 }
 
+func TestRequiredPlaywrightModulesFromSpecFiles_CommentTokensInsideStrings(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "strings.spec.ts")
+	content := `
+const globPattern = "src/**/*.spec.ts/*not-a-comment*/"
+const url = "https://cdn.example.com/a//b"
+import { test } from '@playwright/test'
+const deferred = import('lodash/debounce')
+void globPattern
+void url
+void test
+void deferred
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@playwright/test", "lodash"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
 func TestCollectRuntimeGeneratedModules(t *testing.T) {
 	runtimePath := filepath.Join(t.TempDir(), "runtime", "runtime.json")
 	generatedRoot := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web", "auth", "pb")
