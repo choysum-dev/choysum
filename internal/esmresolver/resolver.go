@@ -41,6 +41,8 @@ type Metrics struct {
 	DownloadDurationMs atomic.Int64
 }
 
+const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
+
 // Snapshot returns a point-in-time copy of the metrics.
 func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int64) {
 	return m.CacheHit.Load(), m.CacheMiss.Load(), m.Downloads.Load(), m.Errors.Load(), m.DownloadDurationMs.Load()
@@ -598,9 +600,12 @@ func (r *Resolver) download(url string) (string, error) {
 		return "", &httpError{code: resp.StatusCode, body: strings.TrimSpace(string(body))}
 	}
 
-	content, err := io.ReadAll(resp.Body)
+	content, err := io.ReadAll(io.LimitReader(resp.Body, maxResolverDownloadBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read body: %w", err)
+	}
+	if int64(len(content)) > maxResolverDownloadBytes {
+		return "", fmt.Errorf("read body: response too large (>%d bytes)", maxResolverDownloadBytes)
 	}
 	return string(content), nil
 }

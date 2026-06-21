@@ -701,20 +701,28 @@ func writeAtomicFile(filePath string, content []byte, perm os.FileMode) error {
 		return fmt.Errorf("create tmp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpPath)
-		return fmt.Errorf("close tmp file: %w", err)
-	}
+	tmpClosed := false
 	cleanup := true
 	defer func() {
+		if !tmpClosed {
+			_ = tmpFile.Close()
+		}
 		if cleanup {
 			_ = os.Remove(tmpPath)
 		}
 	}()
 
-	if err := os.WriteFile(tmpPath, content, perm); err != nil {
+	if err := tmpFile.Chmod(perm); err != nil {
+		return fmt.Errorf("chmod tmp file: %w", err)
+	}
+	if _, err := tmpFile.Write(content); err != nil {
 		return fmt.Errorf("write tmp file: %w", err)
 	}
+	if err := tmpFile.Close(); err != nil {
+		tmpClosed = true
+		return fmt.Errorf("close tmp file: %w", err)
+	}
+	tmpClosed = true
 	if err := os.Rename(tmpPath, filePath); err != nil {
 		if removeErr := os.Remove(filePath); removeErr != nil && !os.IsNotExist(removeErr) {
 			return fmt.Errorf("rename tmp file: %w", err)

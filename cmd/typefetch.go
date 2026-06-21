@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -116,6 +117,11 @@ When <app> is specified, fetches types for that module only.`,
 				return nil
 			}
 
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+
 			session := esmresolver.NewTypeFetchSession(0)
 
 			totalCached := 0
@@ -123,12 +129,12 @@ When <app> is specified, fetches types for that module only.`,
 			var allResults []esmresolver.TypeFetchResult
 
 			for _, appName := range appNames {
-				if err := cmd.Context().Err(); err != nil {
+				if err := ctx.Err(); err != nil {
 					return err
 				}
 				moduleDir := filepath.Join(modulesPath, appName)
 				cmd.Printf("[%s] fetching dependency types...\n", appName)
-				results, err := session.FetchTypesForModule(cmd.Context(), client, upstream, typesDir, moduleDir)
+				results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
 				if err != nil {
 					cmd.Printf("[%s] error: %v\n", appName, err)
 					continue
