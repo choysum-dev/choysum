@@ -126,7 +126,11 @@ function format(urlObj: ParsedUrl): string {
   if (urlObj.host) {
     result += urlObj.host;
   }
-  result += urlObj.pathname || '';
+  let pathname = urlObj.pathname || '';
+  if (urlObj.host && pathname && !pathname.startsWith('/')) {
+    pathname = '/' + pathname;
+  }
+  result += pathname;
   if (urlObj.search) {
     result += urlObj.search;
   }
