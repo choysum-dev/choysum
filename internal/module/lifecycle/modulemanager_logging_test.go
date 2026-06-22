@@ -354,3 +354,154 @@ func TestContainsModuleName_CaseInsensitiveAndTrimmed(t *testing.T) {
 		t.Fatal("did not expect blank target to match")
 	}
 }
+
+type releaseSequenceLocker struct {
+	releaseErrs     []error
+	releaseCalls    int
+	releaseTimeouts []time.Duration
+}
+
+func (l *releaseSequenceLocker) Acquire(context.Context, string, string, time.Duration) error {
+	return nil
+}
+
+func (l *releaseSequenceLocker) Renew(context.Context, string, string, time.Duration) error {
+	return nil
+}
+
+func (l *releaseSequenceLocker) Release(ctx context.Context, _, _ string) error {
+	l.releaseCalls++
+	if deadline, ok := ctx.Deadline(); ok {
+		l.releaseTimeouts = append(l.releaseTimeouts, time.Until(deadline))
+	} else {
+		l.releaseTimeouts = append(l.releaseTimeouts, 0)
+	}
+
+	if len(l.releaseErrs) == 0 {
+		return nil
+	}
+	idx := l.releaseCalls - 1
+	if idx >= len(l.releaseErrs) {
+		idx = len(l.releaseErrs) - 1
+	}
+	return l.releaseErrs[idx]
+}
+
+func newDebugTestLogScope(buf *bytes.Buffer) *testLogScope {
+	return &testLogScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	}
+}
+
+func TestReleaseLeaseWithContextFallback_NilLockerNoop(t *testing.T) {
+	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), nil, context.Background(), "lease-resource", "owner-1", "module manager")
+}
+
+func TestReleaseLeaseWithContextFallback_PrimarySuccessNoFallback(t *testing.T) {
+	locker := &releaseSequenceLocker{releaseErrs: []error{nil}}
+	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), locker, context.Background(), "lease-resource", "owner-1", "module manager")
+
+	if locker.releaseCalls != 1 {
+		t.Fatalf("release call count = %d, want 1", locker.releaseCalls)
+	}
+	if len(locker.releaseTimeouts) != 1 || locker.releaseTimeouts[0] <= 0 || locker.releaseTimeouts[0] > 5*time.Second {
+		t.Fatalf("primary release timeout = %#v, want within (0, 5s]", locker.releaseTimeouts)
+	}
+}
+
+func TestReleaseLeaseWithContextFallback_PrimaryNotOwnerSkipsFallback(t *testing.T) {
+	var logBuf bytes.Buffer
+	locker := &releaseSequenceLocker{releaseErrs: []error{statepkg.ErrLeaseNotOwner}}
+	releaseLeaseWithContextFallback(newDebugTestLogScope(&logBuf), locker, context.Background(), "lease-resource", "owner-1", "module manager")
+
+	if locker.releaseCalls != 1 {
+		t.Fatalf("release call count = %d, want 1", locker.releaseCalls)
+	}
+	if len(locker.releaseTimeouts) != 1 || locker.releaseTimeouts[0] <= 0 || locker.releaseTimeouts[0] > 5*time.Second {
+		t.Fatalf("primary release timeout = %#v, want within (0, 5s]", locker.releaseTimeouts)
+	}
+
+	logs := logBuf.String()
+	if !strings.Contains(logs, `"msg":"module manager lease release failed"`) {
+		t.Fatalf("expected warn log for non-owner release failure, got %q", logs)
+	}
+	if strings.Contains(logs, `"msg":"module manager lease release retry with background context"`) {
+		t.Fatalf("did not expect retry debug log for non-owner error, got %q", logs)
+	}
+}
+
+func TestReleaseLeaseWithContextFallback_CanceledOperationContextSkipsPrimary(t *testing.T) {
+	opCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	locker := &releaseSequenceLocker{releaseErrs: []error{nil}}
+	releaseLeaseWithContextFallback(newDebugTestLogScope(&bytes.Buffer{}), locker, opCtx, "lease-resource", "owner-1", "module manager")
+
+	if locker.releaseCalls != 1 {
+		t.Fatalf("release call count = %d, want 1", locker.releaseCalls)
+	}
+	if len(locker.releaseTimeouts) != 1 || locker.releaseTimeouts[0] < 20*time.Second {
+		t.Fatalf("fallback release timeout = %#v, want >= 20s", locker.releaseTimeouts)
+	}
+}
+
+func TestReleaseLeaseWithContextFallback_PrimaryErrorFallsBackAndWarns(t *testing.T) {
+	var logBuf bytes.Buffer
+	locker := &releaseSequenceLocker{releaseErrs: []error{errors.New("primary release failed"), errors.New("background release failed")}}
+	releaseLeaseWithContextFallback(newDebugTestLogScope(&logBuf), locker, context.Background(), "lease-resource", "owner-1", "module manager")
+
+	if locker.releaseCalls != 2 {
+		t.Fatalf("release call count = %d, want 2", locker.releaseCalls)
+	}
+	if len(locker.releaseTimeouts) != 2 {
+		t.Fatalf("release timeout count = %d, want 2", len(locker.releaseTimeouts))
+	}
+	if locker.releaseTimeouts[0] <= 0 || locker.releaseTimeouts[0] > 5*time.Second {
+		t.Fatalf("primary release timeout = %v, want within (0, 5s]", locker.releaseTimeouts[0])
+	}
+	if locker.releaseTimeouts[1] < 20*time.Second {
+		t.Fatalf("fallback release timeout = %v, want >= 20s", locker.releaseTimeouts[1])
+	}
+
+	logs := logBuf.String()
+	if !strings.Contains(logs, `"msg":"module manager lease release retry with background context"`) {
+		t.Fatalf("expected retry debug log, got %q", logs)
+	}
+	if !strings.Contains(logs, `"msg":"module manager lease release failed"`) {
+		t.Fatalf("expected fallback warn log, got %q", logs)
+	}
+	if !strings.Contains(logs, "background release failed") {
+		t.Fatalf("expected fallback error detail in logs, got %q", logs)
+	}
+}
+
+func TestReleaseLeaseWithContextFallback_FallbackExpectedErrorsSkipWarn(t *testing.T) {
+	tests := []struct {
+		name        string
+		fallbackErr error
+	}{
+		{name: "not-owner", fallbackErr: statepkg.ErrLeaseNotOwner},
+		{name: "not-held", fallbackErr: statepkg.ErrLeaseNotHeld},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			locker := &releaseSequenceLocker{releaseErrs: []error{errors.New("primary release failed"), tt.fallbackErr}}
+			releaseLeaseWithContextFallback(newDebugTestLogScope(&logBuf), locker, context.Background(), "lease-resource", "owner-1", "module manager")
+
+			if locker.releaseCalls != 2 {
+				t.Fatalf("release call count = %d, want 2", locker.releaseCalls)
+			}
+
+			logs := logBuf.String()
+			if !strings.Contains(logs, `"msg":"module manager lease release retry with background context"`) {
+				t.Fatalf("expected retry debug log, got %q", logs)
+			}
+			if strings.Contains(logs, `"msg":"module manager lease release failed"`) {
+				t.Fatalf("did not expect warn log for expected fallback errors, got %q", logs)
+			}
+		})
+	}
+}
