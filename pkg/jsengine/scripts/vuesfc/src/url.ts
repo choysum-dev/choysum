@@ -63,25 +63,32 @@ function parse(url: string): ParsedUrl {
     rest = rest.slice(authorityEnd);
 
     if (authority) {
-      result.host = authority;
+      const authIdx = authority.indexOf('@');
+      let hostPart = authority;
+      if (authIdx >= 0) {
+        result.auth = authority.slice(0, authIdx);
+        hostPart = authority.slice(authIdx + 1);
+      }
+
+      result.host = hostPart;
       // Keep IPv6 host intact when enclosed in [] and parse trailing :port.
-      if (authority.startsWith('[')) {
-        const closingIdx = authority.indexOf(']');
+      if (hostPart.startsWith('[')) {
+        const closingIdx = hostPart.indexOf(']');
         if (closingIdx >= 0) {
-          result.hostname = authority.slice(0, closingIdx + 1);
-          if (closingIdx + 1 < authority.length && authority[closingIdx + 1] === ':') {
-            result.port = authority.slice(closingIdx + 2);
+          result.hostname = hostPart.slice(0, closingIdx + 1);
+          if (closingIdx + 1 < hostPart.length && hostPart[closingIdx + 1] === ':') {
+            result.port = hostPart.slice(closingIdx + 2);
           }
         } else {
-          result.hostname = authority;
+          result.hostname = hostPart;
         }
       } else {
-        const portIdx = authority.lastIndexOf(':');
+        const portIdx = hostPart.lastIndexOf(':');
         if (portIdx > 0) {
-          result.hostname = authority.slice(0, portIdx);
-          result.port = authority.slice(portIdx + 1);
+          result.hostname = hostPart.slice(0, portIdx);
+          result.port = hostPart.slice(portIdx + 1);
         } else {
-          result.hostname = authority;
+          result.hostname = hostPart;
         }
       }
     }
@@ -111,6 +118,9 @@ function format(urlObj: ParsedUrl): string {
   let result = '';
   if (urlObj.protocol) {
     result += urlObj.protocol + '://';
+  }
+  if (urlObj.auth) {
+    result += urlObj.auth + '@';
   }
   if (urlObj.host) {
     result += urlObj.host;
