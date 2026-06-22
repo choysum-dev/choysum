@@ -179,6 +179,8 @@ func newEngine(options ...jsengine.JsEngineOption) (*QuickjsEngine, error) {
 	// Create QuickJS context
 	ctx := rt.NewContext()
 
+	allOptions := append([]jsengine.JsEngineOption{WithTextEncodingPolyfillJS()}, options...)
+
 	// Create engine instance with default options
 	engine := &QuickjsEngine{
 		Runtime: rt,
@@ -192,13 +194,13 @@ func newEngine(options ...jsengine.JsEngineOption) (*QuickjsEngine, error) {
 			EnableModuleImport: false, // Module import disabled by default
 			Strip:              1,     // Default strip behavior
 		},
-		opts: options, // Store for Reload
+		opts: allOptions, // Store for Reload
 	}
 	engine.execCtx.Store(&execContextHolder{ctx: context.Background()})
 	engine.installInterruptHandler()
 
 	// Apply additional engine options
-	for _, option := range options {
+	for _, option := range allOptions {
 		if err := option(engine); err != nil {
 			engine.Close()
 			return nil, err

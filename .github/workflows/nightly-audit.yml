@@ -44,7 +44,7 @@ jobs:
       e2e_modules_json: ${{ steps.discover.outputs.e2e_modules_json }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -83,7 +83,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -102,6 +102,9 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/nightly-root-node-modules.tar.gz -C .
 
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -115,14 +118,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Cache Playwright browser
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json', 'pkg/jsengine/scripts/vuesfc/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

@@ -42,6 +42,10 @@ type ModuleCatalogIndexURLInput interface {
 	ModuleCatalogIndexURL() string
 }
 
+type ESMUpstreamURLInput interface {
+	ESMUpstreamURL() string
+}
+
 type CompileInput interface {
 	CompileBundleMode() string
 }
@@ -125,6 +129,7 @@ type PathsRuntimeOptions struct {
 	NpmPath               string
 	NpmRegistryURL        string
 	ModuleCatalogIndexURL string
+	ESMUpstreamURL        string
 }
 
 type CompileRuntimeOptions struct {
@@ -223,6 +228,9 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 	}
 	if moduleCatalogIndexURLInput, ok := input.(ModuleCatalogIndexURLInput); ok {
 		options.ModuleCatalogIndexURL = moduleCatalogIndexURLInput.ModuleCatalogIndexURL()
+	}
+	if esmUpstreamInput, ok := input.(ESMUpstreamURLInput); ok {
+		options.ESMUpstreamURL = esmUpstreamInput.ESMUpstreamURL()
 	}
 	return options, true
 }

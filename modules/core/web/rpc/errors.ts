@@ -9,9 +9,15 @@ export function normalizeTransportError(error: unknown): unknown {
     return error;
   }
 
-  const errorInfos = error.findDetails(ErrorInfoSchema);
+  const errorInfos =
+    typeof error === 'object' &&
+    error !== null &&
+    'findDetails' in error &&
+    typeof (error as { findDetails?: unknown }).findDetails === 'function'
+      ? (error as { findDetails: (schema: unknown) => unknown[] }).findDetails(ErrorInfoSchema as any)
+      : undefined;
   if (errorInfos && errorInfos.length > 0) {
-    return ChoysumError.fromErrorInfo(errorInfos[0]);
+    return ChoysumError.fromErrorInfo(errorInfos[0] as any);
   }
 
   const grpcCode = error.code as Code;
@@ -21,7 +27,7 @@ export function normalizeTransportError(error: unknown): unknown {
     message: error.message || 'Unknown API error',
   })
     .withGrpcCode(grpcCode)
-    .withCause(error);
+    .withCause(error instanceof Error ? error : new Error(String(error)));
 
   if (error.metadata) {
     const metadataObj: Record<string, string> = {};

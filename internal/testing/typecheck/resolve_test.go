@@ -147,11 +147,11 @@ func TestResolveNpxPath(t *testing.T) {
 		t.Setenv("PATH", "")
 
 		_, err := resolveNpxPath("")
-		if err == nil || !strings.Contains(err.Error(), "missing npx") {
-			t.Fatalf("expected missing npx error, got %v", err)
+		if err == nil || !strings.Contains(err.Error(), "npx not found") {
+			t.Fatalf("expected npx not found error, got %v", err)
 		}
-		if !strings.Contains(err.Error(), "npm install") {
-			t.Fatalf("expected install hint, got %v", err)
+		if !strings.Contains(err.Error(), "nodejs.org") {
+			t.Fatalf("expected install hint with nodejs.org, got %v", err)
 		}
 	})
 }

@@ -129,6 +129,13 @@ func TestResolveTestApps(t *testing.T) {
 		}
 	})
 
+	t.Run("single unknown app returns error", func(t *testing.T) {
+		_, err := ResolveTestApps(runtimeScope, "missing", true, true)
+		if err == nil || !strings.Contains(err.Error(), `unknown app "missing"`) {
+			t.Fatalf("expected unknown app error, got %v", err)
+		}
+	})
+
 	t.Run("single app without matching tests returns nil slice", func(t *testing.T) {
 		apps, err := ResolveTestApps(runtimeScope, "empty", true, true)
 		if err != nil {

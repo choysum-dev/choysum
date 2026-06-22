@@ -52,9 +52,9 @@ func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func(
 			if err != nil {
 				return err
 			}
-			runtimeOptions, err := requireCliRuntimeOptions(runtimeOptionsGetter)
+			runtimeOptions, err := requireCliRuntimeOptionsForCommand("module", runtimeOptionsGetter)
 			if err != nil {
-				return xfmt.Errorf("module: invalid runtime options: %w", err)
+				return err
 			}
 			if remote {
 				return runModuleSearchRemote(cmd, env, runtimeOptions, args[0])
@@ -153,9 +153,9 @@ func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 				return err
 			}
 			if remote {
-				runtimeOptions, err := requireCliRuntimeOptions(runtimeOptionsGetter)
+				runtimeOptions, err := requireCliRuntimeOptionsForCommand("module", runtimeOptionsGetter)
 				if err != nil {
-					return xfmt.Errorf("module: invalid runtime options: %w", err)
+					return err
 				}
 				return runModuleInfoRemote(cmd, env, runtimeOptions, args[0], cliCompatVersion, showAll)
 			}
@@ -308,9 +308,9 @@ func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 			if err != nil {
 				return err
 			}
-			runtimeOptions, err := requireCliRuntimeOptions(runtimeOptionsGetter)
+			runtimeOptions, err := requireCliRuntimeOptionsForCommand("module", runtimeOptionsGetter)
 			if err != nil {
-				return xfmt.Errorf("module: invalid runtime options: %w", err)
+				return err
 			}
 			if remote {
 				return runModuleListRemote(cmd, env, runtimeOptions, cliCompatVersion, showAll)

@@ -63,7 +63,6 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	defaultChoysumPath := t.TempDir()
 	cfg := &config.Config{
 		ModulesPath:        modulesPath,
-		NpmPath:            filepath.Join(workspaceRoot, "node_modules"),
 		TmpPath:            filepath.Join(defaultChoysumPath, "tmp"),
 		ConfigPath:         filepath.Join(workspaceRoot, "config.yaml"),
 		DefaultChoysumPath: defaultChoysumPath,
@@ -129,6 +128,18 @@ func TestNewModuleCmd_RequiresRuntimeScope(t *testing.T) {
 	moduleCmd := newModuleCmd(func() scope.Scope { return nil }, func() cliRuntimeOptions { return cliRuntimeOptions{} })
 	if _, err := executeCommandForTest(t, moduleCmd, "fetch", "auth"); err == nil || !strings.Contains(err.Error(), "scope is not initialized") {
 		t.Fatalf("expected environment initialization error, got %v", err)
+	}
+}
+
+func TestNewModuleCmd_RuntimeOptionsPrefix(t *testing.T) {
+	modulesPath := t.TempDir()
+	scopeGetter := func() scope.Scope {
+		return &commandTestScope{ctx: context.Background(), cfg: newCommandTestConfig(modulesPath)}
+	}
+	moduleCmd := newModuleCmd(scopeGetter, func() cliRuntimeOptions { return cliRuntimeOptions{} })
+
+	if _, err := executeCommandForTest(t, moduleCmd, "search", "auth"); err == nil || !strings.Contains(err.Error(), "module: invalid runtime options") {
+		t.Fatalf("expected prefixed runtime options error, got %v", err)
 	}
 }
 

@@ -29,15 +29,15 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		PackagePath: "internal/server/serverconfig",
 		OptionsType: "DistPathConfig",
 	},
-	"npm_path": {
-		Domain:      "cli",
-		PackagePath: "cmd",
-		OptionsType: "cliRuntimeOptions",
-	},
 	"npm_registry_url": {
 		Domain:      "module",
 		PackagePath: "internal/module/origin/registry",
 		OptionsType: "runtimeOptions",
+	},
+	"esm_upstream_url": {
+		Domain:      "build",
+		PackagePath: "internal/esmresolver",
+		OptionsType: "Resolver",
 	},
 	"module_catalog_index_url": {
 		Domain:      "module",

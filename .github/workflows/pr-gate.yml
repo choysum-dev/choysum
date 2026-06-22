@@ -38,7 +38,7 @@ jobs:
       reason: ${{ steps.discover.outputs.reason }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
@@ -95,7 +95,7 @@ jobs:
 
       - name: Checkout
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -129,8 +129,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Run go build
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
@@ -168,7 +166,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -187,6 +185,9 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -197,8 +198,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Run module typecheck
         run: go run . test typecheck ${{ matrix.module }}
@@ -241,7 +240,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -260,6 +259,9 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -270,8 +272,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Run unit tests with coverage and JUnit
         id: unit_tests
@@ -397,7 +397,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -426,14 +426,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Cache Playwright browser
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json', 'pkg/jsengine/scripts/vuesfc/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -456,7 +454,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
@@ -485,14 +483,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Cache Playwright browser
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json', 'pkg/jsengine/scripts/vuesfc/package-lock.json') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

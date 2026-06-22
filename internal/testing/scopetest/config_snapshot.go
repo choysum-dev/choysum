@@ -14,19 +14,21 @@ func ConfigFromSnapshot(snap *snapshot.ConfigSnapshot) *config.Config {
 		return nil
 	}
 	return &config.Config{
-		ModulesPath:        snap.ModulesPath,
-		DistPath:           snap.DistPath,
-		TmpPath:            snap.TmpPath,
-		DefaultChoysumPath: snap.DefaultChoysumPath,
-		ConfigPath:         snap.ConfigPath,
-		NpmPath:            snap.NpmPath,
-		Compile:            snap.CopyCompileConfig(),
-		Auth:               snap.CopyAuthConfig(),
-		Server:             snap.CopyServerConfig(),
-		Task:               snap.CopyTaskConfig(),
-		FrontendEnv:        snap.CopyFrontendEnv(),
-		BackendEnv:         snap.CopyBackendEnv(),
-		Db:                 cloneConfigSnapshotDbConfig(snap.Db),
+		ModulesPath:           snap.ModulesPath,
+		DistPath:              snap.DistPath,
+		TmpPath:               snap.TmpPath,
+		DefaultChoysumPath:    snap.DefaultChoysumPath,
+		ConfigPath:            snap.ConfigPath,
+		NPMRegistryURL:        snap.NPMRegistryURL,
+		ModuleCatalogIndexURL: snap.ModuleCatalogIndexURL,
+		ESMUpstreamURL:        snap.ESMUpstreamURL,
+		Compile:               snap.CopyCompileConfig(),
+		Auth:                  snap.CopyAuthConfig(),
+		Server:                snap.CopyServerConfig(),
+		Task:                  snap.CopyTaskConfig(),
+		FrontendEnv:           snap.CopyFrontendEnv(),
+		BackendEnv:            snap.CopyBackendEnv(),
+		Db:                    cloneConfigSnapshotDbConfig(snap.Db),
 	}
 }
 

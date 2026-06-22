@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -55,6 +56,8 @@ type FrontendRunnerFunc func(
 	coverageStatements int,
 ) (bool, error)
 
+type FrontendPreflightFunc func(repoRoot string, app string) error
+
 type RunOptions struct {
 	Env         scope.Scope
 	ModulesPath string
@@ -91,12 +94,13 @@ type RunOptions struct {
 	Stdout io.Writer
 	Stderr io.Writer
 
-	ResolveApps      ResolveAppsFunc
-	HasBackendTests  HasTestsFunc
-	HasFrontendTests HasTestsFunc
-	Typecheck        TypecheckFunc
-	RunBackend       BackendRunnerFunc
-	RunFrontend      FrontendRunnerFunc
+	ResolveApps       ResolveAppsFunc
+	HasBackendTests   HasTestsFunc
+	HasFrontendTests  HasTestsFunc
+	Typecheck         TypecheckFunc
+	RunBackend        BackendRunnerFunc
+	RunFrontend       FrontendRunnerFunc
+	PreflightFrontend FrontendPreflightFunc
 }
 
 func Run(ctx context.Context, opts RunOptions) error {
@@ -146,6 +150,11 @@ func Run(ctx context.Context, opts RunOptions) error {
 		return xfmt.Errorf("test runner: missing required callbacks")
 	}
 
+	preflightFrontend := opts.PreflightFrontend
+	if preflightFrontend == nil {
+		preflightFrontend = func(string, string) error { return nil }
+	}
+
 	apps, err := opts.ResolveApps(opts.Env, opts.Target, opts.RunBE, opts.RunFE)
 	if err != nil {
 		return err
@@ -154,7 +163,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 		return err
 	}
 	if len(apps) == 0 {
-		msg := "no tests found"
+		msg := testsemantics.NoTestsFoundMessage
 		if opts.FailIfNoTests {
 			return xfmt.Errorf(msg)
 		}
@@ -192,6 +201,17 @@ func Run(ctx context.Context, opts RunOptions) error {
 				return err
 			}
 			hasFETests = f
+		}
+
+		if hasFETests {
+			if err := preflightFrontend(opts.RepoRoot, app); err != nil {
+				overallFailed = true
+				if opts.FailFast {
+					return err
+				}
+				fmt.Fprintln(opts.Stderr, err)
+				continue
+			}
 		}
 
 		if opts.WithTypecheck && (hasBETests || hasFETests) {

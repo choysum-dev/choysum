@@ -18,6 +18,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	internalbackendplugin "github.com/choysum-dev/choysum/internal/esbplugins/backendplugin"
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -89,6 +90,12 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	runtimeOptions := b.resolvedRuntimeOptions()
 	modules_path := runtimeOptions.modulesPath
 	dist_path := runtimeOptions.distPath
+	tsconfigPath := filepath.Join(modules_path, ".", "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		if b.runtimeScope != nil {
+			b.runtimeScope.Logger().Warn("backend build: ensure modules tsconfig failed", "path", tsconfigPath, "error", err)
+		}
+	}
 	outName := strings.TrimSpace(b.outFileName)
 	if outName == "" {
 		outName = "index.js"
@@ -101,7 +108,7 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	buildOptions := api.BuildOptions{
 		EntryPoints: []string{b.entryPoint},
 		Outfile:     outFile,
-		Tsconfig:    filepath.Join(modules_path, ".", "tsconfig.json"),
+		Tsconfig:    tsconfigPath,
 		Loader: map[string]api.Loader{
 			".proto": api.LoaderText,
 		},
@@ -165,10 +172,38 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 	}
 
 	if prebuild {
-		buildOptions.Plugins = b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		resolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+			esmresolver.WithTarget("es2020"),
+			esmresolver.WithModulePath(b.module.Path),
+		}
+		if b.runtimeScope != nil {
+			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(resolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	} else {
-		buildOptions.Plugins = b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		resolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+			esmresolver.WithTarget("es2020"),
+			esmresolver.WithModulePath(b.module.Path),
+		}
+		if b.runtimeScope != nil {
+			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			resolverOpts = append(resolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(resolverOpts...).Plugin()}, basePlugins...)
 		// Do not let esbuild write directly to dist; we publish outputs atomically.
 		buildOptions.Write = false
 	}

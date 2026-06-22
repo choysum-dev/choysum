@@ -38,7 +38,6 @@ func newRuntimeScopeInputOptions(cfg *snapshot.ConfigSnapshot) *runtimeScopeInpu
 		TmpPath:               snap.TmpPath,
 		DefaultChoysumPath:    snap.DefaultChoysumPath,
 		ConfigPath:            snap.ConfigPath,
-		NpmPath:               snap.NpmPath,
 		NPMRegistryURL:        snap.NPMRegistryURL,
 		ModuleCatalogIndexURL: snap.ModuleCatalogIndexURL,
 		Log:                   snap.CopyLogConfig(),

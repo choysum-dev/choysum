@@ -359,9 +359,9 @@ function onUpdate(getter: () => WritableComputedRef<string | null>, v: string | 
 }
 
 // 7) Rules and validation
-const internalRule: RuleItem = {
+const internalRule = {
   type: 'string',
-  validator: (_r, value, cb) => {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) return cb();
     if (typeof value !== 'string') return cb(new Error('Value must be a string'));
     // Validate against the current visible options (global fallback)
@@ -369,7 +369,7 @@ const internalRule: RuleItem = {
     if (!ok) return cb(new Error(`Invalid option value: ${value}`));
     cb();
   },
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 

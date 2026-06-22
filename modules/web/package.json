@@ -6,11 +6,22 @@
   "type": "module",
   "main": "index.ts",
   "peerDependencies": {
-    "@vicons/ionicons5": "^0.12.0",
-    "naive-ui": "^2.38.1",
-    "pinia": "^2.1.7",
-    "vue": "^3.4.29",
-    "vue-router": "^4.3.3"
+    "@element-plus/icons-vue": "^2.3.2",
+    "@vicons/material": "^0.13.0",
+    "@vueuse/core": "^14.3.0",
+    "async-validator": "^4.2.5",
+    "dayjs": "^1.11.21",
+    "echarts": "^6.1.0",
+    "element-plus": "^2.14.1",
+    "lru-cache": "^11.5.1",
+    "nprogress": "^0.2.0",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "vue": "^3.5.35",
+    "vue-echarts": "^8.0.1",
+    "vue-i18n": "^11.4.5",
+    "vue-router": "^5.1.0",
+    "vuedraggable": "^4.1.0"
   },
   "choysum": {
     "moduleName": "web",

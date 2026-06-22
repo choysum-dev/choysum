@@ -22,12 +22,11 @@ func TestNewCliRuntimeOptionsConstructors(t *testing.T) {
 	pathOpts := scope.PathsRuntimeOptions{
 		DefaultChoysumPath:    "/workspace/.choysum",
 		ModulesPath:           "/workspace/modules",
-		NpmPath:               "/workspace/node_modules",
 		TmpPath:               "/workspace/.choysum/tmp",
 		ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
 	}
 	fromPath := newCliRuntimeOptions(pathOpts, true)
-	if fromPath.defaultChoysumPath != pathOpts.DefaultChoysumPath || fromPath.modulesPath != pathOpts.ModulesPath || fromPath.npmPath != pathOpts.NpmPath || fromPath.tmpPath != pathOpts.TmpPath || fromPath.moduleCatalogIndexURL != pathOpts.ModuleCatalogIndexURL {
+	if fromPath.defaultChoysumPath != pathOpts.DefaultChoysumPath || fromPath.modulesPath != pathOpts.ModulesPath || fromPath.tmpPath != pathOpts.TmpPath || fromPath.moduleCatalogIndexURL != pathOpts.ModuleCatalogIndexURL {
 		t.Fatalf("newCliRuntimeOptions(hasPathOpts=true) = %#v, want fields from path opts", fromPath)
 	}
 
@@ -38,11 +37,10 @@ func TestNewCliRuntimeOptionsConstructors(t *testing.T) {
 	fromScopeOptions := newCliRuntimeOptionsFromScopeInputOptions(&scopeInputConfigOptions{
 		DefaultChoysumPath:    "/default",
 		ModulesPath:           "/modules",
-		NpmPath:               "/npm",
 		TmpPath:               "/tmp",
 		ModuleCatalogIndexURL: "https://index.scope.example/v1/index.json",
 	})
-	if fromScopeOptions.defaultChoysumPath != "/default" || fromScopeOptions.modulesPath != "/modules" || fromScopeOptions.npmPath != "/npm" || fromScopeOptions.tmpPath != "/tmp" || fromScopeOptions.moduleCatalogIndexURL != "https://index.scope.example/v1/index.json" {
+	if fromScopeOptions.defaultChoysumPath != "/default" || fromScopeOptions.modulesPath != "/modules" || fromScopeOptions.tmpPath != "/tmp" || fromScopeOptions.moduleCatalogIndexURL != "https://index.scope.example/v1/index.json" {
 		t.Fatalf("newCliRuntimeOptionsFromScopeInputOptions() = %#v, want values copied from scope options", fromScopeOptions)
 	}
 }
@@ -57,13 +55,12 @@ func TestCliRuntimeOptionsFromScope(t *testing.T) {
 	runtimeScope := &commandTestScope{cfg: &config.Config{
 		DefaultChoysumPath:    "/workspace/.choysum",
 		ModulesPath:           "/workspace/modules",
-		NpmPath:               "/workspace/node_modules",
 		TmpPath:               "/workspace/.choysum/tmp",
 		ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
 	}}
 
 	got := cliRuntimeOptionsFromScope(runtimeScope)
-	if got.defaultChoysumPath != "/workspace/.choysum" || got.modulesPath != "/workspace/modules" || got.npmPath != "/workspace/node_modules" || got.tmpPath != "/workspace/.choysum/tmp" || got.moduleCatalogIndexURL != "https://index.example.com/v1/index.json" {
+	if got.defaultChoysumPath != "/workspace/.choysum" || got.modulesPath != "/workspace/modules" || got.tmpPath != "/workspace/.choysum/tmp" || got.moduleCatalogIndexURL != "https://index.example.com/v1/index.json" {
 		t.Fatalf("cliRuntimeOptionsFromScope() = %#v, want values copied from scope paths", got)
 	}
 }
@@ -78,7 +75,6 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 			TmpPath:               "/options/tmp",
 			DefaultChoysumPath:    "/options/default",
 			ConfigPath:            "/options/config.yaml",
-			NpmPath:               "/options/npm",
 			NPMRegistryURL:        "https://registry.example.com",
 			ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
 			Server:                &config.ServerConfig{Environment: "production"},
@@ -103,9 +99,6 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	}
 	if got := input.ConfigPath(); got != "/options/config.yaml" {
 		t.Fatalf("ConfigPath() = %q, want %q", got, "/options/config.yaml")
-	}
-	if got := input.NpmPath(); got != "/options/npm" {
-		t.Fatalf("NpmPath() = %q, want %q", got, "/options/npm")
 	}
 	if got := input.NpmRegistryURL(); got != "https://registry.example.com" {
 		t.Fatalf("NpmRegistryURL() = %q, want %q", got, "https://registry.example.com")
@@ -197,7 +190,6 @@ func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
 	valid := cliRuntimeOptions{
 		defaultChoysumPath: "/workspace/.choysum",
 		modulesPath:        "/workspace/modules",
-		npmPath:            "/workspace/node_modules",
 		tmpPath:            "/workspace/.choysum/tmp",
 	}
 	resolved, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return valid })
@@ -213,10 +205,9 @@ func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
 		opts cliRuntimeOptions
 		msg  string
 	}{
-		{name: "missing default path", opts: cliRuntimeOptions{modulesPath: "/modules", npmPath: "/npm", tmpPath: "/tmp"}, msg: "defaultChoysumPath"},
-		{name: "missing modules", opts: cliRuntimeOptions{defaultChoysumPath: "/root", npmPath: "/npm", tmpPath: "/tmp"}, msg: "modulesPath"},
-		{name: "missing npm", opts: cliRuntimeOptions{defaultChoysumPath: "/root", modulesPath: "/modules", tmpPath: "/tmp"}, msg: "npmPath"},
-		{name: "missing tmp", opts: cliRuntimeOptions{defaultChoysumPath: "/root", modulesPath: "/modules", npmPath: "/npm"}, msg: "tmpPath"},
+		{name: "missing default path", opts: cliRuntimeOptions{modulesPath: "/modules", tmpPath: "/tmp"}, msg: "defaultChoysumPath"},
+		{name: "missing modules", opts: cliRuntimeOptions{defaultChoysumPath: "/root", tmpPath: "/tmp"}, msg: "modulesPath"},
+		{name: "missing tmp", opts: cliRuntimeOptions{defaultChoysumPath: "/root", modulesPath: "/modules"}, msg: "tmpPath"},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -235,5 +226,21 @@ func TestRequireCliRuntimeOptionsAndValidate(t *testing.T) {
 
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("Validate(valid) error = %v", err)
+	}
+
+	if _, err := requireCliRuntimeOptionsForCommand("typecheck", nil); err == nil || !strings.Contains(err.Error(), "typecheck: invalid runtime options") {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(nil) error = %v, want prefixed runtime options error", err)
+	}
+
+	if _, err := requireCliRuntimeOptionsForCommand("", func() cliRuntimeOptions { return cliRuntimeOptions{} }); err == nil || !strings.Contains(err.Error(), "command: invalid runtime options") {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(empty command) error = %v, want fallback command prefix", err)
+	}
+
+	resolvedWithPrefix, err := requireCliRuntimeOptionsForCommand("e2e", func() cliRuntimeOptions { return valid })
+	if err != nil {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(valid) error = %v", err)
+	}
+	if resolvedWithPrefix != valid {
+		t.Fatalf("requireCliRuntimeOptionsForCommand(valid) = %#v, want %#v", resolvedWithPrefix, valid)
 	}
 }

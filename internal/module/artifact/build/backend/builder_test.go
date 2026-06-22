@@ -190,7 +190,7 @@ func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
 	if got, want := prebuildOpts.Outfile, filepath.Join("/virtual/dist", "apps", "auth", "bundle.js"); got != want {
 		t.Fatalf("prebuild outfile = %q, want %q", got, want)
 	}
-	if len(prebuildOpts.Plugins) != 1 || prebuildOpts.Plugins[0].Name != "prebuild" {
+	if len(prebuildOpts.Plugins) != 2 || prebuildOpts.Plugins[1].Name != "prebuild" {
 		t.Fatalf("unexpected prebuild plugins: %#v", prebuildOpts.Plugins)
 	}
 	if prebuildOpts.Write {
@@ -232,7 +232,7 @@ func TestBuildOptionsSelectsPluginsAndInjectsBackendEnv(t *testing.T) {
 	if got, want := buildOpts.Outfile, filepath.Join("/tmp/staged/auth", "bundle.js"); got != want {
 		t.Fatalf("build outfile = %q, want %q", got, want)
 	}
-	if len(buildOpts.Plugins) != 1 || buildOpts.Plugins[0].Name != "build" {
+	if len(buildOpts.Plugins) != 2 || buildOpts.Plugins[0].Name != "choysum-esm-resolver" || buildOpts.Plugins[1].Name != "build" {
 		t.Fatalf("unexpected build plugins: %#v", buildOpts.Plugins)
 	}
 
