@@ -201,4 +201,6 @@ export class URL {
   }
 }
 
-(globalThis as any).URL = URL;
+if (typeof (globalThis as any).URL === 'undefined') {
+  (globalThis as any).URL = URL;
+}

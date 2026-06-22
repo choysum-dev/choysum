@@ -62,10 +62,9 @@ func main() {
 		Format:            api.FormatIIFE,
 		GlobalName:        "sfc",
 		Platform:          api.PlatformBrowser,
-		// Provide a global require stub so that esm.sh CJS interop wrappers
-		// (which check typeof require<"u") resolve to a safe no-op instead
-		// of throwing "Dynamic require of ... is not supported" in QuickJS.
-		Banner: map[string]string{"js": "var require=function(m){return null;};"},
+		// Provide a global require stub only when missing, so esm.sh CJS
+		// interop wrappers can resolve safely without overriding a host shim.
+		Banner: map[string]string{"js": "if(typeof require==='undefined'){globalThis.require=function(m){return null;};}"},
 		Plugins: []api.Plugin{
 			esmresolver.New(
 				esmresolver.WithCacheDir(cacheDir),
