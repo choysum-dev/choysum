@@ -210,22 +210,23 @@ func (r *Resolver) Plugin() api.Plugin {
 		if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
 			return false
 		}
-		// Exclude paths that exist as local files.
-		if _, err := os.Stat(path); err == nil {
-			return false
-		}
-		// Match esm.sh-style internal paths: package version paths
-		// (e.g. "/pkg@ver/deno/...") or Node.js built-in polyfills
-		// (e.g. "/node/process.mjs").
+		// Fast-path: esm.sh-style internal paths use a well-known directory
+		// prefix (e.g. "/pkg@ver/deno/..."). Check this cheap string pattern
+		// before falling back to os.Stat, avoiding a syscall for every
+		// absolute path that does not match the pattern.
 		parts := strings.SplitN(strings.TrimPrefix(path, "/"), "/", 2)
 		if len(parts) == 0 {
 			return false
 		}
 		first := parts[0]
-		if strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first) {
-			return true
+		if !(strings.Contains(first, "@") || first == "node" || first == "stable" || isESMVersionPrefix(first)) {
+			return false
 		}
-		return false
+		// Exclude paths that exist as local files.
+		if _, err := os.Stat(path); err == nil {
+			return false
+		}
+		return true
 	}
 
 	return api.Plugin{
