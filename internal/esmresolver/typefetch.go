@@ -1054,17 +1054,20 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	}
 	tsconfigDir = absDir
 
+	// Resolve the working directory once so that relative CachedPath
+	// values can be absolutised without a per-item os.Getwd syscall.
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+
 	for _, r := range results {
 		if r.CachedPath == "" {
 			continue
 		}
 		cachedPath := r.CachedPath
 		if !filepath.IsAbs(cachedPath) {
-			absPath, err := filepath.Abs(cachedPath)
-			if err != nil {
-				return fmt.Errorf("absolute cached path for %s: %w", r.Package, err)
-			}
-			cachedPath = absPath
+			cachedPath = filepath.Join(wd, cachedPath)
 		}
 		// Compute relative path from tsconfig dir to the cached .d.ts file.
 		relPath, err := filepath.Rel(tsconfigDir, cachedPath)
