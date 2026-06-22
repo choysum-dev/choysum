@@ -123,11 +123,18 @@ function format(urlObj: ParsedUrl): string {
   if (urlObj.auth) {
     result += urlObj.auth + '@';
   }
-  if (urlObj.host) {
-    result += urlObj.host;
+  let host = urlObj.host;
+  if (!host && urlObj.hostname) {
+    host = urlObj.hostname;
+    if (urlObj.port) {
+      host += ':' + urlObj.port;
+    }
+  }
+  if (host) {
+    result += host;
   }
   let pathname = urlObj.pathname || '';
-  if ((urlObj.host || urlObj.slashes) && pathname && !pathname.startsWith('/')) {
+  if ((host || urlObj.slashes) && pathname && !pathname.startsWith('/')) {
     pathname = '/' + pathname;
   }
   result += pathname;
