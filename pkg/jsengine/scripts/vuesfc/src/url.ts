@@ -117,7 +117,8 @@ function parse(url: string): ParsedUrl {
 function format(urlObj: ParsedUrl): string {
   let result = '';
   if (urlObj.protocol) {
-    result += urlObj.protocol.endsWith(':') ? urlObj.protocol + '//' : urlObj.protocol + '://';
+    const proto = urlObj.protocol.endsWith(':') ? urlObj.protocol : urlObj.protocol + ':';
+    result += proto + (urlObj.slashes ? '//' : '');
   }
   if (urlObj.auth) {
     result += urlObj.auth + '@';
