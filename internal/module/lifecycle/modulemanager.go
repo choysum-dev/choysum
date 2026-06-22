@@ -252,14 +252,39 @@ func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() er
 	defer func() {
 		cancel()
 		<-done
-		releaseCtx, releaseCancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer releaseCancel()
-		if err := locker.Release(releaseCtx, resource, ownerId); err != nil {
-			m.runtimeScope.Logger().Warn("module manager lease release failed", "resource", resource, "error", err)
-		}
+		releaseLeaseWithContextFallback(m.runtimeScope, locker, ctx, resource, ownerId, "module manager")
 	}()
 
 	return fn()
+}
+
+// releaseLeaseWithContextFallback tries to release a lease using the current
+// operation context first (which can reuse an active sqlite transaction/session),
+// then falls back to a fresh background context when needed.
+func releaseLeaseWithContextFallback(runtimeScope scope.Scope, locker statepkg.Locker, operationCtx context.Context, resource, ownerID, label string) {
+	if locker == nil {
+		return
+	}
+
+	if operationCtx != nil {
+		primaryCtx, primaryCancel := context.WithTimeout(operationCtx, 2*time.Second)
+		primaryErr := locker.Release(primaryCtx, resource, ownerID)
+		primaryCancel()
+		if primaryErr == nil {
+			return
+		}
+		if runtimeScope != nil {
+			runtimeScope.Logger().Debug(label+" lease release retry with background context", "resource", resource, "error", primaryErr)
+		}
+	}
+
+	releaseCtx, releaseCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer releaseCancel()
+	if err := locker.Release(releaseCtx, resource, ownerID); err != nil {
+		if runtimeScope != nil {
+			runtimeScope.Logger().Warn(label+" lease release failed", "resource", resource, "error", err)
+		}
+	}
 }
 
 func (m *ModuleManager) migrateBaseModule() error {
