@@ -991,36 +991,30 @@ func TestAcquireVisit_NilState(t *testing.T) {
 	done(true)
 }
 
-func TestAcquireVisit_WaitsForInFlightFetch(t *testing.T) {
+func TestAcquireVisit_SkipsInFlightFetch(t *testing.T) {
 	s := newTypeFetchState(defaultTypeFetchParallelism)
 	shouldFetch, done := s.acquireVisit("https://example.com")
 	if !shouldFetch {
 		t.Fatal("expected first acquire to fetch")
 	}
 
-	waitDone := make(chan bool, 1)
-	go func() {
-		shouldFetch2, done2 := s.acquireVisit("https://example.com")
-		done2(true)
-		waitDone <- shouldFetch2
-	}()
-
-	select {
-	case <-waitDone:
-		t.Fatal("expected second acquire to wait until first completes")
-	case <-time.After(30 * time.Millisecond):
+	// Second caller must return immediately (non-blocking) to avoid
+	// deadlocks when concurrent sibling traversals share transitive deps.
+	shouldFetch2, done2 := s.acquireVisit("https://example.com")
+	if shouldFetch2 {
+		t.Fatal("expected second acquire to skip in-flight fetch")
 	}
+	done2(true)
 
 	done(true)
 
-	select {
-	case shouldFetch2 := <-waitDone:
-		if shouldFetch2 {
-			t.Fatal("expected second acquire to skip duplicate fetch")
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for second acquire")
+	// After the first fetch completes (success), subsequent calls
+	// still skip because the URL stays in the visited set.
+	shouldFetch3, done3 := s.acquireVisit("https://example.com")
+	if shouldFetch3 {
+		t.Fatal("expected third acquire to still skip after successful fetch")
 	}
+	done3(true)
 }
 
 func TestAcquireVisit_FailureAllowsRetry(t *testing.T) {
@@ -1038,46 +1032,29 @@ func TestAcquireVisit_FailureAllowsRetry(t *testing.T) {
 	doneRetry(true)
 }
 
-func TestAcquireVisit_FailedInFlightWaiterRetries(t *testing.T) {
+func TestAcquireVisit_FailureAllowsRetryAfterSkip(t *testing.T) {
 	s := newTypeFetchState(defaultTypeFetchParallelism)
 	shouldFetch, done := s.acquireVisit("https://example.com")
 	if !shouldFetch {
 		t.Fatal("expected first acquire to fetch")
 	}
 
-	type acquireResult struct {
-		shouldFetch bool
-		done        func(bool)
+	// With non-blocking acquire, the second caller skips immediately.
+	shouldFetch2, done2 := s.acquireVisit("https://example.com")
+	if shouldFetch2 {
+		t.Fatal("expected second acquire to skip in-flight fetch")
 	}
-	resultCh := make(chan acquireResult, 1)
-	go func() {
-		shouldFetch2, done2 := s.acquireVisit("https://example.com")
-		resultCh <- acquireResult{shouldFetch: shouldFetch2, done: done2}
-	}()
+	done2(true)
 
-	select {
-	case <-resultCh:
-		t.Fatal("expected waiter to block while first fetch is in-flight")
-	case <-time.After(30 * time.Millisecond):
-	}
-
+	// First fetch fails → URL is removed from visited set.
 	done(false)
 
-	select {
-	case result := <-resultCh:
-		if !result.shouldFetch {
-			t.Fatal("expected waiter to retry fetch after failure")
-		}
-		result.done(true)
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for retried acquire")
+	// Now a fresh caller can retry.
+	shouldFetchRetry, doneRetry := s.acquireVisit("https://example.com")
+	if !shouldFetchRetry {
+		t.Fatal("expected retry acquire to fetch after failure")
 	}
-
-	shouldFetch3, done3 := s.acquireVisit("https://example.com")
-	if shouldFetch3 {
-		t.Fatal("expected acquire to skip duplicate fetch after successful retry")
-	}
-	done3(true)
+	doneRetry(true)
 }
 
 // ---- withRequestSlot edge cases ----

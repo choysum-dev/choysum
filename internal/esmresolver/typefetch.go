@@ -87,34 +87,36 @@ func (s *typeFetchState) acquireVisit(url string) (bool, func(bool)) {
 		return true, func(bool) {}
 	}
 
-	for {
-		s.visitedMu.Lock()
-		entry, ok := s.visited[url]
-		if ok {
-			s.visitedMu.Unlock()
-			<-entry.ch
-			if entry.success {
-				return false, func(bool) {}
-			}
-			continue
-		}
-
-		entry = &visitEntry{ch: make(chan struct{})}
-		s.visited[url] = entry
+	s.visitedMu.Lock()
+	entry, ok := s.visited[url]
+	if ok {
 		s.visitedMu.Unlock()
+		// Another goroutine is already fetching this URL.
+		// Skip instead of blocking, otherwise concurrent sibling
+		// traversals that share transitive dependencies can deadlock:
+		// goroutine A waits for B via acquireVisit, while B waits
+		// for A's child goroutine via WaitGroup.
+		// The other goroutine will populate the cache; subsequent
+		// runs (or other top-level packages) will pick it up from
+		// the cache without reaching acquireVisit.
+		return false, func(bool) {}
+	}
 
-		var once sync.Once
-		return true, func(success bool) {
-			once.Do(func() {
-				s.visitedMu.Lock()
-				entry.success = success
-				if !success {
-					delete(s.visited, url)
-				}
-				close(entry.ch)
-				s.visitedMu.Unlock()
-			})
-		}
+	entry = &visitEntry{ch: make(chan struct{})}
+	s.visited[url] = entry
+	s.visitedMu.Unlock()
+
+	var once sync.Once
+	return true, func(success bool) {
+		once.Do(func() {
+			s.visitedMu.Lock()
+			entry.success = success
+			if !success {
+				delete(s.visited, url)
+			}
+			close(entry.ch)
+			s.visitedMu.Unlock()
+		})
 	}
 }
 
@@ -363,24 +365,46 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	}
 
 	var allTransitive []TypeFetchResult
-	if len(resolvedImports) >= 200 {
-		fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s has %d transitive type imports\n", rootPkg, len(resolvedImports))
+	total := len(resolvedImports)
+	if total >= 200 {
+		fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s has %d transitive type imports\n", rootPkg, total)
 	}
 
-	for i, imp := range resolvedImports {
-		if err := ctx.Err(); err != nil {
-			return nil, nil, err
+	// Process transitive imports concurrently so that the download semaphore
+	// (withRequestSlot) is fully utilised. Without this, the recursive
+	// traversal is depth-first sequential — only one download is in flight
+	// at a time regardless of parallelism, turning a cold-cache run on a
+	// package with thousands of transitive imports into an hour-long wait.
+	if total > 0 {
+		var (
+			wg        sync.WaitGroup
+			mu        sync.Mutex
+			completed int
+		)
+		for _, imp := range resolvedImports {
+			if err := ctx.Err(); err != nil {
+				return nil, nil, err
+			}
+			wg.Add(1)
+			go func(imp resolvedTypeImport) {
+				defer wg.Done()
+				resolvedURL := imp.ResolvedURL
+				pkgName := typePkgNameFromURL(resolvedURL)
+				_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
+				mu.Lock()
+				if err == nil {
+					allTransitive = append(allTransitive, subTransitive...)
+				}
+				if total >= 200 {
+					completed++
+					if completed%200 == 0 {
+						fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, completed, total)
+					}
+				}
+				mu.Unlock()
+			}(imp)
 		}
-		if len(resolvedImports) >= 200 && i > 0 && i%200 == 0 {
-			fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, i, len(resolvedImports))
-		}
-		resolvedURL := imp.ResolvedURL
-		pkgName := typePkgNameFromURL(resolvedURL)
-		_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
-		if err != nil {
-			continue
-		}
-		allTransitive = append(allTransitive, subTransitive...)
+		wg.Wait()
 	}
 
 	result := &TypeFetchResult{
