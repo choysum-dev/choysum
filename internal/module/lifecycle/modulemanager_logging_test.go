@@ -475,3 +475,33 @@ func TestReleaseLeaseWithContextFallback_PrimaryErrorFallsBackAndWarns(t *testin
 		t.Fatalf("expected fallback error detail in logs, got %q", logs)
 	}
 }
+
+func TestReleaseLeaseWithContextFallback_FallbackExpectedErrorsSkipWarn(t *testing.T) {
+	tests := []struct {
+		name        string
+		fallbackErr error
+	}{
+		{name: "not-owner", fallbackErr: statepkg.ErrLeaseNotOwner},
+		{name: "not-held", fallbackErr: statepkg.ErrLeaseNotHeld},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var logBuf bytes.Buffer
+			locker := &releaseSequenceLocker{releaseErrs: []error{errors.New("primary release failed"), tt.fallbackErr}}
+			releaseLeaseWithContextFallback(newDebugTestLogScope(&logBuf), locker, context.Background(), "lease-resource", "owner-1", "module manager")
+
+			if locker.releaseCalls != 2 {
+				t.Fatalf("release call count = %d, want 2", locker.releaseCalls)
+			}
+
+			logs := logBuf.String()
+			if !strings.Contains(logs, `"msg":"module manager lease release retry with background context"`) {
+				t.Fatalf("expected retry debug log, got %q", logs)
+			}
+			if strings.Contains(logs, `"msg":"module manager lease release failed"`) {
+				t.Fatalf("did not expect warn log for expected fallback errors, got %q", logs)
+			}
+		})
+	}
+}

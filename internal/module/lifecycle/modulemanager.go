@@ -287,7 +287,7 @@ func releaseLeaseWithContextFallback(runtimeScope scope.Scope, locker statepkg.L
 
 	releaseCtx, releaseCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer releaseCancel()
-	if err := locker.Release(releaseCtx, resource, ownerID); err != nil {
+	if err := locker.Release(releaseCtx, resource, ownerID); err != nil && !errors.Is(err, statepkg.ErrLeaseNotOwner) && !errors.Is(err, statepkg.ErrLeaseNotHeld) {
 		if runtimeScope != nil {
 			runtimeScope.Logger().Warn(label+" lease release failed", "resource", resource, "error", err)
 		}
