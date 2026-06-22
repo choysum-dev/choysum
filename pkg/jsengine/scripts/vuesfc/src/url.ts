@@ -39,7 +39,7 @@ function parse(url: string): ParsedUrl {
   const protoMatch = url.match(/^([a-z][a-z0-9+\-.]*):\/\//i);
   let rest = url;
   if (protoMatch) {
-    result.protocol = protoMatch[1].toLowerCase();
+    result.protocol = protoMatch[1].toLowerCase() + ':';
     result.slashes = true;
     rest = url.slice(protoMatch[0].length);
 
@@ -117,7 +117,7 @@ function parse(url: string): ParsedUrl {
 function format(urlObj: ParsedUrl): string {
   let result = '';
   if (urlObj.protocol) {
-    result += urlObj.protocol + '://';
+    result += urlObj.protocol.endsWith(':') ? urlObj.protocol + '//' : urlObj.protocol + '://';
   }
   if (urlObj.auth) {
     result += urlObj.auth + '@';
@@ -175,7 +175,7 @@ export class URL {
     this.path = parsed.path || '';
     this.href = parsed.href || '';
 
-    this.origin = this.protocol && this.host ? `${this.protocol}://${this.host}` : '';
+    this.origin = this.protocol && this.host ? (this.protocol.endsWith(':') ? this.protocol + '//' + this.host : this.protocol + '://' + this.host) : '';
     if (this.auth) {
       const sep = this.auth.indexOf(':');
       if (sep >= 0) {
