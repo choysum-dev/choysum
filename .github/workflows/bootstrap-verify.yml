@@ -36,7 +36,7 @@ jobs:
 
       - name: Checkout
         if: ${{ inputs.run_bootstrap_verify == 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.run_ref }}
 
