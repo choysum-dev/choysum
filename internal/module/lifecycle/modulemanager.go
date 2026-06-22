@@ -273,6 +273,12 @@ func releaseLeaseWithContextFallback(runtimeScope scope.Scope, locker statepkg.L
 		if primaryErr == nil {
 			return
 		}
+		if errors.Is(primaryErr, statepkg.ErrLeaseNotOwner) || errors.Is(primaryErr, statepkg.ErrLeaseNotHeld) {
+			if runtimeScope != nil {
+				runtimeScope.Logger().Warn(label+" lease release failed", "resource", resource, "error", primaryErr)
+			}
+			return
+		}
 		if runtimeScope != nil {
 			runtimeScope.Logger().Debug(label+" lease release retry with background context", "resource", resource, "error", primaryErr)
 		}
