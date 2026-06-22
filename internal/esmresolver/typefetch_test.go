@@ -524,24 +524,21 @@ func TestUpdateTsconfigPaths_RelativeCachedPath(t *testing.T) {
 	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
 	}
-
-	prevWD, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	defer func() { _ = os.Chdir(prevWD) }()
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir temp dir: %v", err)
-	}
-
-	if err := os.MkdirAll(filepath.Join("types"), 0o755); err != nil {
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
 		t.Fatalf("mkdir types: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join("types", "vue.d.ts"), []byte("// types"), 0o644); err != nil {
+	typesFile := filepath.Join(typesDir, "vue.d.ts")
+	if err := os.WriteFile(typesFile, []byte("// types"), 0o644); err != nil {
 		t.Fatalf("write vue types: %v", err)
 	}
 
-	results := []TypeFetchResult{{Package: "vue", Version: "3.4.29", CachedPath: filepath.Join("types", "vue.d.ts")}}
+	relCachedPath, err := filepath.Rel(dir, typesFile)
+	if err != nil {
+		t.Fatalf("rel path: %v", err)
+	}
+
+	results := []TypeFetchResult{{Package: "vue", Version: "3.4.29", CachedPath: relCachedPath}}
 	if err := UpdateTsconfigPaths(tsconfigPath, results); err != nil {
 		t.Fatalf("UpdateTsconfigPaths failed: %v", err)
 	}

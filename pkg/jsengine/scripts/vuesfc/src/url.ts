@@ -35,8 +35,10 @@ function parse(url: string): ParsedUrl {
     href: url,
   };
 
-  // Match protocol (e.g. "file://") or protocol-relative "//" URLs.
+  // Match protocol (e.g. "file://"), scheme-only URLs (e.g. "mailto:"),
+  // or protocol-relative "//" URLs.
   const protoMatch = url.match(/^([a-z][a-z0-9+\-.]*):\/\//i);
+  const schemeMatch = protoMatch ? null : url.match(/^([a-z][a-z0-9+\-.]*):/i);
   const isProtoRelative = url.startsWith('//');
   let rest = url;
   if (protoMatch || isProtoRelative) {
@@ -98,6 +100,9 @@ function parse(url: string): ParsedUrl {
         }
       }
     }
+  } else if (schemeMatch) {
+    result.protocol = schemeMatch[1].toLowerCase() + ':';
+    rest = url.slice(schemeMatch[0].length);
   }
 
   // Split path from hash/search for both absolute and relative inputs.
@@ -130,8 +135,10 @@ function normalizePath(pathname: string): string {
       continue;
     }
     if (segment === '..') {
-      if (normalized.length > 0) {
+      if (normalized.length > 0 && normalized[normalized.length - 1] !== '..') {
         normalized.pop();
+      } else if (!isAbsolute) {
+        normalized.push('..');
       }
       continue;
     }
@@ -245,6 +252,10 @@ class URLSearchParamsShim {
   toString(): string {
     return this.params.map(([key, value]) => encodeQueryComponent(key) + '=' + encodeQueryComponent(value)).join('&');
   }
+
+  [Symbol.iterator](): IterableIterator<[string, string]> {
+    return this.params[Symbol.iterator]();
+  }
 }
 
 function format(urlObj: ParsedUrl): string {
@@ -312,6 +323,10 @@ export class URL {
       if (baseParsed.protocol) {
         parsed = applyBase(parsed, baseParsed);
       }
+    }
+
+    if (!parsed.protocol) {
+      throw new TypeError('Invalid URL: ' + url);
     }
 
     this.url = url;
