@@ -1048,6 +1048,9 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	}
 
 	tsconfigDir := filepath.Dir(tsconfigPath)
+	if absDir, err := filepath.Abs(tsconfigDir); err == nil {
+		tsconfigDir = absDir
+	}
 
 	for _, r := range results {
 		if r.CachedPath == "" {

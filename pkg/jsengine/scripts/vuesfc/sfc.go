@@ -7,5 +7,7 @@ import (
 	_ "embed"
 )
 
+//go:generate go run gen.go
+
 //go:embed dist/index.js
 var VueSfcScript string

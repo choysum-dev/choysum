@@ -52,7 +52,6 @@ jobs:
           cache: npm
           cache-dependency-path: |
             internal/bootstrap/web/package-lock.json
-            pkg/jsengine/scripts/vuesfc/package-lock.json
 
       - name: Install protoc
         if: ${{ inputs.docs_only != 'true' }}
@@ -60,15 +59,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Install Vue SFC npm dependencies
+      - name: Build Vue SFC embed asset (go generate)
         if: ${{ inputs.docs_only != 'true' }}
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm ci
-
-      - name: Build Vue SFC embed asset
-        if: ${{ inputs.docs_only != 'true' }}
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm run build
+        run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
       - name: Install bootstrap npm dependencies
         if: ${{ inputs.docs_only != 'true' }}
