@@ -40,7 +40,7 @@ jobs:
 
       - name: Checkout
         if: ${{ inputs.docs_only != 'true' }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.run_ref }}
 
