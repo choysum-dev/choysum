@@ -174,6 +174,21 @@ export class URL {
     this.pathname = parsed.pathname || '';
     this.path = parsed.path || '';
     this.href = parsed.href || '';
+
+    this.origin = this.protocol && this.host ? `${this.protocol}://${this.host}` : '';
+    if (this.auth) {
+      const sep = this.auth.indexOf(':');
+      if (sep >= 0) {
+        this.username = this.auth.slice(0, sep);
+        this.password = this.auth.slice(sep + 1);
+      } else {
+        this.username = this.auth;
+        this.password = '';
+      }
+    } else {
+      this.username = '';
+      this.password = '';
+    }
   }
 
   toString() {
@@ -181,7 +196,7 @@ export class URL {
   }
 
   toJSON() {
-    return JSON.stringify(this);
+    return this.toString();
   }
 }
 

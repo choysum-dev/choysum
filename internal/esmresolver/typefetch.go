@@ -1048,9 +1048,11 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	}
 
 	tsconfigDir := filepath.Dir(tsconfigPath)
-	if absDir, err := filepath.Abs(tsconfigDir); err == nil {
-		tsconfigDir = absDir
+	absDir, err := filepath.Abs(tsconfigDir)
+	if err != nil {
+		return fmt.Errorf("absolute tsconfig dir: %w", err)
 	}
+	tsconfigDir = absDir
 
 	for _, r := range results {
 		if r.CachedPath == "" {
@@ -1058,9 +1060,11 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		}
 		cachedPath := r.CachedPath
 		if !filepath.IsAbs(cachedPath) {
-			if absPath, err := filepath.Abs(cachedPath); err == nil {
-				cachedPath = absPath
+			absPath, err := filepath.Abs(cachedPath)
+			if err != nil {
+				return fmt.Errorf("absolute cached path for %s: %w", r.Package, err)
 			}
+			cachedPath = absPath
 		}
 		// Compute relative path from tsconfig dir to the cached .d.ts file.
 		relPath, err := filepath.Rel(tsconfigDir, cachedPath)
