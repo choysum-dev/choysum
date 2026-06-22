@@ -35,13 +35,19 @@ function parse(url: string): ParsedUrl {
     href: url,
   };
 
-  // Match protocol (e.g. "file://")
+  // Match protocol (e.g. "file://") or protocol-relative "//" URLs.
   const protoMatch = url.match(/^([a-z][a-z0-9+\-.]*):\/\//i);
+  const isProtoRelative = url.startsWith('//');
   let rest = url;
-  if (protoMatch) {
-    result.protocol = protoMatch[1].toLowerCase() + ':';
-    result.slashes = true;
-    rest = url.slice(protoMatch[0].length);
+  if (protoMatch || isProtoRelative) {
+    if (protoMatch) {
+      result.protocol = protoMatch[1].toLowerCase() + ':';
+      result.slashes = true;
+      rest = url.slice(protoMatch[0].length);
+    } else {
+      result.slashes = true;
+      rest = url.slice(2);
+    }
 
     // Extract authority (host[:port]) when present.
     const slashIdx = rest.indexOf('/');
@@ -140,15 +146,22 @@ function normalizePath(pathname: string): string {
 }
 
 function applyBase(parsed: ParsedUrl, baseParsed: ParsedUrl): ParsedUrl {
+  const hasOwnAuthority = parsed.host !== '' || parsed.hostname !== '' || parsed.auth !== '';
+
   const resolved: ParsedUrl = {
     ...parsed,
     protocol: baseParsed.protocol,
-    slashes: baseParsed.slashes,
-    auth: baseParsed.auth,
-    host: baseParsed.host,
-    port: baseParsed.port,
-    hostname: baseParsed.hostname,
+    slashes: parsed.slashes || baseParsed.slashes,
+    auth: hasOwnAuthority ? parsed.auth : baseParsed.auth,
+    host: hasOwnAuthority ? parsed.host : baseParsed.host,
+    port: hasOwnAuthority ? parsed.port : baseParsed.port,
+    hostname: hasOwnAuthority ? parsed.hostname : baseParsed.hostname,
   };
+
+  if (hasOwnAuthority) {
+    resolved.path = resolved.pathname + resolved.search;
+    return resolved;
+  }
 
   if (resolved.pathname.startsWith('/')) {
     resolved.path = resolved.pathname + resolved.search;
@@ -173,10 +186,11 @@ function applyBase(parsed: ParsedUrl, baseParsed: ParsedUrl): ParsedUrl {
 }
 
 function decodeQueryComponent(value: string): string {
+  const normalized = value.replace(/\+/g, ' ');
   try {
-    return decodeURIComponent(value);
+    return decodeURIComponent(normalized);
   } catch {
-    return value;
+    return normalized;
   }
 }
 
@@ -229,9 +243,7 @@ class URLSearchParamsShim {
   }
 
   toString(): string {
-    return this.params
-      .map(([key, value]) => encodeQueryComponent(key) + '=' + encodeQueryComponent(value))
-      .join('&');
+    return this.params.map(([key, value]) => encodeQueryComponent(key) + '=' + encodeQueryComponent(value)).join('&');
   }
 }
 
