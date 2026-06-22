@@ -114,6 +114,127 @@ function parse(url: string): ParsedUrl {
   return result;
 }
 
+function normalizePath(pathname: string): string {
+  const isAbsolute = pathname.startsWith('/');
+  const segments = pathname.split('/');
+  const normalized: string[] = [];
+
+  for (const segment of segments) {
+    if (!segment || segment === '.') {
+      continue;
+    }
+    if (segment === '..') {
+      if (normalized.length > 0) {
+        normalized.pop();
+      }
+      continue;
+    }
+    normalized.push(segment);
+  }
+
+  const joined = normalized.join('/');
+  if (isAbsolute) {
+    return '/' + joined;
+  }
+  return joined || '';
+}
+
+function applyBase(parsed: ParsedUrl, baseParsed: ParsedUrl): ParsedUrl {
+  const resolved: ParsedUrl = {
+    ...parsed,
+    protocol: baseParsed.protocol,
+    slashes: baseParsed.slashes,
+    auth: baseParsed.auth,
+    host: baseParsed.host,
+    port: baseParsed.port,
+    hostname: baseParsed.hostname,
+  };
+
+  if (resolved.pathname.startsWith('/')) {
+    resolved.path = resolved.pathname + resolved.search;
+    return resolved;
+  }
+
+  const basePath = baseParsed.pathname || '/';
+  if (resolved.pathname) {
+    const baseDirIdx = basePath.lastIndexOf('/');
+    const baseDir = baseDirIdx >= 0 ? basePath.slice(0, baseDirIdx + 1) : '/';
+    resolved.pathname = normalizePath(baseDir + resolved.pathname);
+  } else {
+    resolved.pathname = basePath;
+    if (!resolved.search) {
+      resolved.search = baseParsed.search;
+      resolved.query = baseParsed.query;
+    }
+  }
+
+  resolved.path = resolved.pathname + resolved.search;
+  return resolved;
+}
+
+function decodeQueryComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function encodeQueryComponent(value: string): string {
+  return encodeURIComponent(value);
+}
+
+class URLSearchParamsShim {
+  private params: Array<[string, string]> = [];
+
+  constructor(search: string = '') {
+    const query = search.startsWith('?') ? search.slice(1) : search;
+    if (!query) {
+      return;
+    }
+    for (const pair of query.split('&')) {
+      if (!pair) {
+        continue;
+      }
+      const idx = pair.indexOf('=');
+      const rawKey = idx >= 0 ? pair.slice(0, idx) : pair;
+      const rawValue = idx >= 0 ? pair.slice(idx + 1) : '';
+      const key = decodeQueryComponent(rawKey);
+      const value = decodeQueryComponent(rawValue);
+      this.params.push([key, value]);
+    }
+  }
+
+  get(name: string): string | null {
+    for (const [key, value] of this.params) {
+      if (key === name) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  getAll(name: string): string[] {
+    const values: string[] = [];
+    for (const [key, value] of this.params) {
+      if (key === name) {
+        values.push(value);
+      }
+    }
+    return values;
+  }
+
+  has(name: string): boolean {
+    return this.get(name) !== null;
+  }
+
+  toString(): string {
+    return this.params
+      .map(([key, value]) => encodeQueryComponent(key) + '=' + encodeQueryComponent(value))
+      .join('&');
+  }
+}
+
 function format(urlObj: ParsedUrl): string {
   let result = '';
   if (urlObj.protocol) {
@@ -164,15 +285,23 @@ export class URL {
 
   origin: string = '';
   password: string = '';
-  searchParams: any = undefined;
+  searchParams: any = new URLSearchParamsShim();
   username: string = '';
 
-  constructor(url: string) {
-    this.parse(url);
+  constructor(url: string, base?: string | URL) {
+    this.parse(url, base);
   }
 
-  parse(url: string) {
-    const parsed = parse(url);
+  parse(url: string, base?: string | URL) {
+    let parsed = parse(url);
+    if (!parsed.protocol && base) {
+      const baseSource = typeof base === 'string' ? base : base.toString();
+      const baseParsed = parse(baseSource);
+      if (baseParsed.protocol) {
+        parsed = applyBase(parsed, baseParsed);
+      }
+    }
+
     this.url = url;
     this.protocol = parsed.protocol || '';
     this.slashes = parsed.slashes || false;
@@ -184,8 +313,9 @@ export class URL {
     this.search = parsed.search || '';
     this.query = parsed.query || '';
     this.pathname = parsed.pathname || '';
-    this.path = parsed.path || '';
-    this.href = parsed.href || '';
+    this.path = this.pathname + this.search;
+    this.searchParams = new URLSearchParamsShim(this.search);
+    this.href = this.toString();
 
     this.origin = this.protocol && this.host ? this.protocol + '//' + this.host : '';
     if (this.auth) {
