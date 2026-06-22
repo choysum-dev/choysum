@@ -38,8 +38,7 @@ func main() {
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
 	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, "."); err == nil {
-		tsConfigPath, _ := filepath.Abs("tsconfig.json")
-		if err := esmresolver.UpdateTsconfigPaths(tsConfigPath, results); err != nil {
+		if err := esmresolver.UpdateTsconfigPaths("tsconfig.json", results); err != nil {
 			fmt.Fprintf(os.Stderr, "gen.go: warning: %v\n", err)
 		}
 	} else {
