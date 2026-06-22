@@ -176,7 +176,7 @@ export class URL {
     this.path = parsed.path || '';
     this.href = parsed.href || '';
 
-    this.origin = this.protocol && this.host ? (this.protocol.endsWith(':') ? this.protocol + '//' + this.host : this.protocol + '://' + this.host) : '';
+    this.origin = this.protocol && this.host ? this.protocol + '//' + this.host : '';
     if (this.auth) {
       const sep = this.auth.indexOf(':');
       if (sep >= 0) {
