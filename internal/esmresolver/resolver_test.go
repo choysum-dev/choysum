@@ -784,75 +784,12 @@ func TestResolver_Plugin_InitializesZeroValueDefaults(t *testing.T) {
 	}
 }
 
-// ---- extractPkgRootURL tests ----
-
-func TestExtractPkgRootURL(t *testing.T) {
-	r := New(WithUpstream("https://esm.sh"), WithTarget("es2020"))
-
-	tests := []struct {
-		url  string
-		want string
-	}{
-		{
-			"https://esm.sh/kysely@0.27.6/deno/kysely.mjs",
-			"https://esm.sh/kysely?target=es2020",
-		},
-		{
-			"https://esm.sh/@scope/pkg@1.0.0/dist/index.mjs",
-			"https://esm.sh/@scope/pkg?target=es2020",
-		},
-		{
-			"https://other-cdn.com/pkg@1.0.0/file.js",
-			"",
-		},
-		{
-			"https://esm.sh/pkg@1.0.0?target=es2020",
-			"https://esm.sh/pkg?target=es2020",
-		},
-	}
-	for _, tt := range tests {
-		got := r.extractPkgRootURL(tt.url)
-		if got != tt.want {
-			t.Fatalf("extractPkgRootURL(%q) = %q, want %q", tt.url, got, tt.want)
-		}
-	}
-}
-
 // ---- httpError / Error tests ----
 
 func TestHttpError(t *testing.T) {
 	e := &httpError{code: 404, body: "not found"}
 	if e.Error() != "http 404: not found" {
 		t.Fatalf("Error() = %q", e.Error())
-	}
-}
-
-// ---- isNetError tests ----
-
-func TestIsNetError(t *testing.T) {
-	tests := []struct {
-		msg  string
-		want bool
-	}{
-		{"connection refused", true},
-		{"no such host", true},
-		{"i/o timeout", true},
-		{"context deadline exceeded", true},
-		{"connection reset by peer", true},
-		{"tls: handshake failure", true},
-		{"http 404: not found", false},
-		{"some random error", false},
-		{"", false},
-	}
-	for _, tt := range tests {
-		err := fmt.Errorf("%s", tt.msg)
-		if got := isNetError(err); got != tt.want {
-			t.Fatalf("isNetError(%q) = %v, want %v", tt.msg, got, tt.want)
-		}
-	}
-
-	if isNetError(nil) {
-		t.Fatal("isNetError(nil) should be false")
 	}
 }
 

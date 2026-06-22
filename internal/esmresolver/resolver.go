@@ -15,7 +15,6 @@ import (
 	"io"
 	"log/slog"
 	"math"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -767,34 +766,6 @@ func stripNamespace(path string) string {
 }
 
 // extractPkgFromURL extracts a human-readable package identifier from an esm.sh URL.
-// extractPkgRootURL returns the package root URL from an esm.sh sub-path URL.
-func (r *Resolver) extractPkgRootURL(url string) string {
-	prefix := strings.TrimRight(r.upstream, "/") + "/"
-	if !strings.HasPrefix(url, prefix) {
-		return ""
-	}
-	rest := strings.TrimPrefix(url, prefix)
-	// Strip query params and path after package.
-	if idx := strings.Index(rest, "?"); idx >= 0 {
-		rest = rest[:idx]
-	}
-	// For scoped packages (@scope/pkg@ver), keep the first two segments.
-	// For regular packages (pkg@ver), keep the first segment.
-	parts := strings.SplitN(rest, "/", 3)
-	pkg := parts[0]
-	if strings.HasPrefix(pkg, "@") && len(parts) > 1 {
-		pkg = parts[0] + "/" + parts[1]
-	}
-	// Strip version: @scope/pkg@ver → @scope/pkg, pkg@ver → pkg.
-	if idx := strings.LastIndex(pkg, "@"); idx > 0 {
-		pkg = pkg[:idx]
-	}
-	if pkg == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s/%s?target=%s", r.upstream, pkg, r.target)
-}
-
 func extractPkgFromURL(url, upstream string) string {
 	prefix := strings.TrimRight(upstream, "/") + "/"
 	if !strings.HasPrefix(url, prefix) {
@@ -816,36 +787,6 @@ func sha256Hex(s string) string {
 func sha512Hex(b []byte) string {
 	h := sha512.Sum512(b)
 	return hex.EncodeToString(h[:])
-}
-
-// isNetError reports whether err is a network-level error (not an HTTP response).
-func isNetError(err error) bool {
-	if err == nil {
-		return false
-	}
-	// Check for common net errors without importing net package types.
-	msg := err.Error()
-	for _, substr := range []string{
-		"connection refused",
-		"no such host",
-		"i/o timeout",
-		"context deadline exceeded",
-		"connection reset",
-		"tls:",
-	} {
-		if strings.Contains(strings.ToLower(msg), substr) {
-			return true
-		}
-	}
-	// Also check for net.Error interface.
-	type netErr interface{ Timeout() bool }
-	if ne, ok := err.(netErr); ok && ne.Timeout() {
-		return true
-	}
-	if _, ok := err.(net.Error); ok {
-		return true
-	}
-	return false
 }
 
 func ptr[T any](v T) *T {
