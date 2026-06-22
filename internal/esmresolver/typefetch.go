@@ -1056,8 +1056,14 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 		if r.CachedPath == "" {
 			continue
 		}
+		cachedPath := r.CachedPath
+		if !filepath.IsAbs(cachedPath) {
+			if absPath, err := filepath.Abs(cachedPath); err == nil {
+				cachedPath = absPath
+			}
+		}
 		// Compute relative path from tsconfig dir to the cached .d.ts file.
-		relPath, err := filepath.Rel(tsconfigDir, r.CachedPath)
+		relPath, err := filepath.Rel(tsconfigDir, cachedPath)
 		if err != nil {
 			continue
 		}

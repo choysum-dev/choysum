@@ -42,6 +42,49 @@ function parse(url: string): ParsedUrl {
     result.protocol = protoMatch[1].toLowerCase();
     result.slashes = true;
     rest = url.slice(protoMatch[0].length);
+
+    // Extract authority (host[:port]) when present.
+    const slashIdx = rest.indexOf('/');
+    const questionIdx = rest.indexOf('?');
+    const hashIdx = rest.indexOf('#');
+
+    let authorityEnd = rest.length;
+    if (slashIdx >= 0) {
+      authorityEnd = slashIdx;
+    }
+    if (questionIdx >= 0 && questionIdx < authorityEnd) {
+      authorityEnd = questionIdx;
+    }
+    if (hashIdx >= 0 && hashIdx < authorityEnd) {
+      authorityEnd = hashIdx;
+    }
+
+    const authority = rest.slice(0, authorityEnd);
+    rest = rest.slice(authorityEnd);
+
+    if (authority) {
+      result.host = authority;
+      // Keep IPv6 host intact when enclosed in [] and parse trailing :port.
+      if (authority.startsWith('[')) {
+        const closingIdx = authority.indexOf(']');
+        if (closingIdx >= 0) {
+          result.hostname = authority.slice(0, closingIdx + 1);
+          if (closingIdx + 1 < authority.length && authority[closingIdx + 1] === ':') {
+            result.port = authority.slice(closingIdx + 2);
+          }
+        } else {
+          result.hostname = authority;
+        }
+      } else {
+        const portIdx = authority.lastIndexOf(':');
+        if (portIdx > 0) {
+          result.hostname = authority.slice(0, portIdx);
+          result.port = authority.slice(portIdx + 1);
+        } else {
+          result.hostname = authority;
+        }
+      }
+    }
   }
 
   // Split path from hash/search for both absolute and relative inputs.
@@ -68,6 +111,9 @@ function format(urlObj: ParsedUrl): string {
   let result = '';
   if (urlObj.protocol) {
     result += urlObj.protocol + '://';
+  }
+  if (urlObj.host) {
+    result += urlObj.host;
   }
   result += urlObj.pathname || '';
   if (urlObj.search) {
