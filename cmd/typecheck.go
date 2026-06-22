@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	pkgtypecheck "github.com/choysum-dev/choysum/internal/testing/typecheck"
@@ -37,9 +38,9 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 			if baseScope == nil {
 				return xfmt.Errorf("typecheck: invalid scope")
 			}
-			runtimeOptions, err := requireCliRuntimeOptions(runtimeOptionsGetter)
+			runtimeOptions, err := requireCliRuntimeOptionsForCommand("typecheck", runtimeOptionsGetter)
 			if err != nil {
-				return xfmt.Errorf("typecheck: invalid runtime options: %w", err)
+				return err
 			}
 
 			target := "all"
@@ -54,13 +55,13 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 
 			opts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOptions.modulesPath,
-				NpmPath:     runtimeOptions.npmPath,
+				NpmPath:     filepath.Join(runtimeOptions.modulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
 				TmpPath:     runtimeOptions.tmpPath,
 				Target:      target,
 				Keep:        keep,
-				Stdout:      os.Stdout,
-				Stderr:      os.Stderr,
+				Stdout:      cmd.OutOrStdout(),
+				Stderr:      cmd.ErrOrStderr(),
 			}
 			return pkgtypecheck.Run(cmd.Context(), opts)
 		},

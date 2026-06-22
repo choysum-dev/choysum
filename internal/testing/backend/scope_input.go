@@ -80,9 +80,9 @@ func newTestRuntimeScopeInputFromScope(runtimeScope scope.Scope, dbOpts scope.Da
 		cfg.TmpPath = pathOpts.TmpPath
 		cfg.DefaultChoysumPath = pathOpts.DefaultChoysumPath
 		cfg.ConfigPath = pathOpts.ConfigPath
-		cfg.NpmPath = pathOpts.NpmPath
 		cfg.NPMRegistryURL = pathOpts.NpmRegistryURL
 		cfg.ModuleCatalogIndexURL = pathOpts.ModuleCatalogIndexURL
+		cfg.ESMUpstreamURL = pathOpts.ESMUpstreamURL
 	}
 	cfg.Log = scope.LogConfigFromScope(runtimeScope)
 
@@ -230,11 +230,11 @@ func (i testRuntimeScopeInput) ConfigPath() string {
 	return i.cfg.ConfigPath
 }
 
-func (i testRuntimeScopeInput) NpmPath() string {
+func (i testRuntimeScopeInput) ESMUpstreamURL() string {
 	if i.cfg == nil {
 		return ""
 	}
-	return i.cfg.NpmPath
+	return i.cfg.ESMUpstreamURL
 }
 
 func (i testRuntimeScopeInput) NpmRegistryURL() string {

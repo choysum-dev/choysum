@@ -6,6 +6,9 @@
   "author": "Choysum Team",
   "type": "module",
   "main": "index.ts",
+  "peerDependencies": {
+    "moment-timezone": "^0.6.2"
+  },
   "choysum": {
     "moduleName": "task",
     "application": "task",

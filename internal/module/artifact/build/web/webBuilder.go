@@ -20,6 +20,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	internalwebplugin "github.com/choysum-dev/choysum/internal/esbplugins/webplugin"
 	"github.com/choysum-dev/choysum/internal/esbplugins/webprebuildplugin"
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -2118,15 +2119,17 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	modules_path := runtimeOptions.modulesPath
 	dist_path := runtimeOptions.distPath
 	webBaseUrl := strings.TrimSuffix(runtimeOptions.webBaseURL, "/") + "/"
+	tsconfigPath := filepath.Join(modules_path, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		if b.runtimeScope != nil {
+			b.runtimeScope.Logger().Warn("web build: ensure modules tsconfig failed", "path", tsconfigPath, "error", err)
+		}
+	}
 
 	buildOptions := api.BuildOptions{
 		EntryPoints: []string{b.entryPoint},
 		PublicPath:  webBaseUrl + "assets",
-		Tsconfig:    filepath.Join(modules_path, "tsconfig.json"),
-		NodePaths: []string{
-			filepath.Join(modules_path, "node_modules"),
-			filepath.Join(filepath.Dir(modules_path), "node_modules"),
-		},
+		Tsconfig:    tsconfigPath,
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
 			".scss": api.LoaderCSS,
@@ -2178,10 +2181,36 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 	}
 
 	if prebuild {
-		buildOptions.Plugins = b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.prebuildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		webResolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+			esmresolver.WithModulePath(b.module.Path),
+		}
+		if b.runtimeScope != nil {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(webResolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	} else {
-		buildOptions.Plugins = b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		basePlugins := b.buildPlugin.DefinePlugins(b.runtimeScope, b.jsExecutor, b.module, esbOpts...)
+		// Prepend the ESM resolver so bare imports are intercepted before
+		// other plugins process them.
+		webResolverOpts := []esmresolver.Option{
+			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
+			esmresolver.WithModulePath(b.module.Path),
+		}
+		if b.runtimeScope != nil {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
+		}
+		if upstream := strings.TrimSpace(runtimeOptions.esmUpstreamURL); upstream != "" {
+			webResolverOpts = append(webResolverOpts, esmresolver.WithUpstream(upstream))
+		}
+		buildOptions.Plugins = append([]api.Plugin{esmresolver.New(webResolverOpts...).Plugin()}, basePlugins...)
 		buildOptions.Write = false
 	}
 

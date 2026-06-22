@@ -16,9 +16,9 @@ type scopeInputConfigOptions struct {
 	TmpPath               string
 	DefaultChoysumPath    string
 	ConfigPath            string
-	NpmPath               string
 	NPMRegistryURL        string
 	ModuleCatalogIndexURL string
+	ESMUpstreamURL        string
 	Log                   *config.LogConfig
 	Compile               *config.CompileConfig
 	Auth                  *config.AuthConfig
@@ -39,9 +39,9 @@ func newScopeInputConfigOptions(snap *snapshot.ConfigSnapshot) *scopeInputConfig
 		TmpPath:               snap.TmpPath,
 		DefaultChoysumPath:    snap.DefaultChoysumPath,
 		ConfigPath:            snap.ConfigPath,
-		NpmPath:               snap.NpmPath,
 		NPMRegistryURL:        snap.NPMRegistryURL,
 		ModuleCatalogIndexURL: snap.ModuleCatalogIndexURL,
+		ESMUpstreamURL:        snap.ESMUpstreamURL,
 		Log:                   snap.CopyLogConfig(),
 		Compile:               snap.CopyCompileConfig(),
 		Auth:                  snap.CopyAuthConfig(),
@@ -267,11 +267,11 @@ func (i commandRuntimeScopeInput) ConfigPath() string {
 	return i.options.ConfigPath
 }
 
-func (i commandRuntimeScopeInput) NpmPath() string {
+func (i commandRuntimeScopeInput) ESMUpstreamURL() string {
 	if i.options == nil {
 		return ""
 	}
-	return i.options.NpmPath
+	return i.options.ESMUpstreamURL
 }
 
 func (i commandRuntimeScopeInput) NpmRegistryURL() string {
@@ -588,11 +588,11 @@ func (i runRuntimeScopeInput) ConfigPath() string {
 	return i.options.ConfigPath
 }
 
-func (i runRuntimeScopeInput) NpmPath() string {
+func (i runRuntimeScopeInput) ESMUpstreamURL() string {
 	if i.options == nil {
 		return ""
 	}
-	return i.options.NpmPath
+	return i.options.ESMUpstreamURL
 }
 
 func (i runRuntimeScopeInput) NpmRegistryURL() string {

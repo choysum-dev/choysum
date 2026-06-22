@@ -7,10 +7,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -20,10 +20,7 @@ var resolveE2EModules = pkge2e.ResolveE2EModules
 var runE2EModule = pkge2e.RunModule
 
 func isNoE2ESpecsError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), "has no package.json choysum.e2e.specs")
+	return testsemantics.IsModuleNoE2ESpecsError(err)
 }
 
 func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
@@ -56,9 +53,9 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			if baseScope == nil {
 				return fmt.Errorf("scope is not initialized")
 			}
-			runtimeOptions, err := requireCliRuntimeOptions(runtimeOptionsGetter)
+			runtimeOptions, err := requireCliRuntimeOptionsForCommand("e2e", runtimeOptionsGetter)
 			if err != nil {
-				return fmt.Errorf("e2e: invalid runtime options: %w", err)
+				return err
 			}
 
 			playwrightArgs := []string{}
@@ -81,20 +78,24 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
 			if all {
-				ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
+				if testingpathing.TestingRunIDFromContext(ctx) == "" {
+					ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
+				}
 				mods, err := resolveE2EModules(runtimeOptions.modulesPath)
 				if err != nil {
 					return err
 				}
 				if len(mods) == 0 {
-					return fmt.Errorf("e2e: no runnable modules found under %s", runtimeOptions.modulesPath)
+					return fmt.Errorf("%s", testsemantics.NoRunnableE2EModulesMessage(runtimeOptions.modulesPath))
 				}
 				for _, mod := range mods {
 					opts := pkge2e.RunOptions{
 						ModulesPath:     runtimeOptions.modulesPath,
-						NpmPath:         runtimeOptions.npmPath,
 						TmpPath:         runtimeOptions.tmpPath,
 						Module:          mod,
 						Scenarios:       scenarios,
@@ -119,7 +120,6 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 
 			opts := pkge2e.RunOptions{
 				ModulesPath:     runtimeOptions.modulesPath,
-				NpmPath:         runtimeOptions.npmPath,
 				TmpPath:         runtimeOptions.tmpPath,
 				Module:          moduleName,
 				Scenarios:       scenarios,
@@ -137,7 +137,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			}
 			err = runE2EModule(ctx, opts)
 			if isNoE2ESpecsError(err) {
-				fmt.Fprintln(os.Stdout, "no tests found")
+				fmt.Fprintln(cmd.OutOrStdout(), testsemantics.NoTestsFoundMessage)
 				return nil
 			}
 			return err

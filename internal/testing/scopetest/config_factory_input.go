@@ -62,11 +62,11 @@ func (i configFactoryInput) ConfigPath() string {
 	return i.cfg.ConfigPath
 }
 
-func (i configFactoryInput) NpmPath() string {
+func (i configFactoryInput) ESMUpstreamURL() string {
 	if i.cfg == nil {
 		return ""
 	}
-	return i.cfg.NpmPath
+	return i.cfg.ESMUpstreamURL
 }
 
 func (i configFactoryInput) NpmRegistryURL() string {

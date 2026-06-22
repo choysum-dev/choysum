@@ -6,6 +6,14 @@
   "author": "Choysum Team",
   "type": "module",
   "main": "index.ts",
+  "peerDependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "@vicons/material": "^0.13.0",
+    "element-plus": "^2.14.1",
+    "kysely": "^0.29.2",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
   "choysum": {
     "moduleName": "meta",
     "application": "meta",

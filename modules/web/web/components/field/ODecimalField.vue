@@ -463,8 +463,8 @@ function isValidValue(value: any, scale: number): string | null {
 }
 
 /* ================== Form rule (validate against dynamic scale from the current record) ================== */
-const internalRule: RuleItem = {
-  validator: (_r, value, cb) => {
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     // Form rules cannot access a row object, so derive scale from the root record here
     const rec = binding.recordRef().value;
     const scale = resolveScaleFrom(rec);
@@ -473,7 +473,7 @@ const internalRule: RuleItem = {
     cb();
   },
   trigger: 'blur',
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 

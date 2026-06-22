@@ -36,20 +36,6 @@ func newTestCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRun
 	return cmd
 }
 
-func resolveUnitTestRuntimeOptions(optionsGetter func() cliRuntimeOptions) (cliRuntimeOptions, error) {
-	if optionsGetter == nil {
-		return cliRuntimeOptions{}, xfmt.Errorf("config is not initialized")
-	}
-	runtimeOptions := optionsGetter()
-	if strings.TrimSpace(runtimeOptions.modulesPath) == "" && strings.TrimSpace(runtimeOptions.npmPath) == "" && strings.TrimSpace(runtimeOptions.tmpPath) == "" && strings.TrimSpace(runtimeOptions.defaultChoysumPath) == "" {
-		return cliRuntimeOptions{}, xfmt.Errorf("config is not initialized")
-	}
-	if strings.TrimSpace(runtimeOptions.modulesPath) == "" {
-		return cliRuntimeOptions{}, xfmt.Errorf("config missing modules_path")
-	}
-	return runtimeOptions, nil
-}
-
 func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
 	var dbDialect string
 	var dbFile string
@@ -122,7 +108,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				return xfmt.Errorf("scope is not initialized")
 			}
 
-			runtimeOptions, err := resolveUnitTestRuntimeOptions(runtimeOptionsGetter)
+			runtimeOptions, err := requireCliRuntimeOptionsForCommand("test unit", runtimeOptionsGetter)
 			if err != nil {
 				return err
 			}
@@ -246,8 +232,8 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				CoverageFunctions:  coverageFunctions,
 				CoverageBranches:   coverageBranches,
 				CoverageStatements: coverageStatements,
-				Stdout:             os.Stdout,
-				Stderr:             os.Stderr,
+				Stdout:             cmd.OutOrStdout(),
+				Stderr:             cmd.ErrOrStderr(),
 			}
 
 			err = runTestRunnerWithDefaults(ctx, opts)

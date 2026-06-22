@@ -6,6 +6,7 @@ package cmd
 import (
 	"strings"
 
+	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -14,7 +15,6 @@ import (
 type cliRuntimeOptions struct {
 	defaultChoysumPath    string
 	modulesPath           string
-	npmPath               string
 	tmpPath               string
 	moduleCatalogIndexURL string
 }
@@ -26,7 +26,6 @@ func newCliRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) 
 	return cliRuntimeOptions{
 		defaultChoysumPath:    pathOpts.DefaultChoysumPath,
 		modulesPath:           pathOpts.ModulesPath,
-		npmPath:               pathOpts.NpmPath,
 		tmpPath:               pathOpts.TmpPath,
 		moduleCatalogIndexURL: strings.TrimSpace(pathOpts.ModuleCatalogIndexURL),
 	}
@@ -39,7 +38,6 @@ func newCliRuntimeOptionsFromScopeInputOptions(options *scopeInputConfigOptions)
 	return cliRuntimeOptions{
 		defaultChoysumPath:    options.DefaultChoysumPath,
 		modulesPath:           options.ModulesPath,
-		npmPath:               options.NpmPath,
 		tmpPath:               options.TmpPath,
 		moduleCatalogIndexURL: strings.TrimSpace(options.ModuleCatalogIndexURL),
 	}
@@ -64,15 +62,20 @@ func requireCliRuntimeOptions(optionsGetter func() cliRuntimeOptions) (cliRuntim
 	return runtimeOptions, nil
 }
 
+func requireCliRuntimeOptionsForCommand(commandName string, optionsGetter func() cliRuntimeOptions) (cliRuntimeOptions, error) {
+	runtimeOptions, err := requireCliRuntimeOptions(optionsGetter)
+	if err != nil {
+		return cliRuntimeOptions{}, xfmt.Errorf("%s: %w", testsemantics.InvalidRuntimeOptionsMessage(commandName), err)
+	}
+	return runtimeOptions, nil
+}
+
 func (o cliRuntimeOptions) Validate() error {
 	if strings.TrimSpace(o.defaultChoysumPath) == "" {
 		return xfmt.Errorf("cli runtime options: defaultChoysumPath is required")
 	}
 	if strings.TrimSpace(o.modulesPath) == "" {
 		return xfmt.Errorf("cli runtime options: modulesPath is required")
-	}
-	if strings.TrimSpace(o.npmPath) == "" {
-		return xfmt.Errorf("cli runtime options: npmPath is required")
 	}
 	if strings.TrimSpace(o.tmpPath) == "" {
 		return xfmt.Errorf("cli runtime options: tmpPath is required")

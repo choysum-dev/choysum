@@ -50,10 +50,9 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, watch, Ref, ref, isRef, cloneVNode, h } from 'vue';
-import { ElTableV2, ElAutoResizer, RowEventHandler } from 'element-plus';
-import type { Column } from 'element-plus';
+import { ElTableV2, ElAutoResizer } from 'element-plus';
+import type { Column, RowEventHandler, RowEventHandlerParams } from 'element-plus';
 import { useVTableSelection, getOVColumnMeta, useVTableProvideColumnRegistry, useVTableProvideBuildContext } from '@/web/web/composables/useVTable';
-import type { RowEventHandlerParams } from 'element-plus/es/components/table-v2/src/row';
 
 const props = withDefaults(
   defineProps<{

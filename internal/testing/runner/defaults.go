@@ -6,6 +6,7 @@ package runner
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	pkgbackend "github.com/choysum-dev/choysum/internal/testing/backend"
 	pkgdiscovery "github.com/choysum-dev/choysum/internal/testing/discovery"
@@ -46,7 +47,7 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 			}
 			typecheckOpts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOpts.modulesPath,
-				NpmPath:     runtimeOpts.npmPath,
+				NpmPath:     filepath.Join(runtimeOpts.modulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
 				TmpPath:     runtimeOpts.tmpPath,
 				Target:      app,
@@ -100,6 +101,9 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 				opts.Keep,
 			)
 		}
+	}
+	if opts.PreflightFrontend == nil {
+		opts.PreflightFrontend = pkgfrontend.ValidateFrontendTestDependencies
 	}
 	return Run(ctx, opts)
 }

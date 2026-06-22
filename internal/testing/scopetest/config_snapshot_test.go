@@ -18,7 +18,6 @@ func configSnapshotFixture() *config.Config {
 		TmpPath:               "/tmp/tmp",
 		DefaultChoysumPath:    "/tmp/.choysum",
 		ConfigPath:            "/tmp/config.yaml",
-		NpmPath:               "/tmp/node_modules",
 		ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json",
 		Compile:               &config.CompileConfig{BundleMode: "bundle"},
 		Auth: &config.AuthConfig{

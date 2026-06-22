@@ -181,8 +181,8 @@ function jsonEquals(a: any, b: any) {
   }
 }
 
-const internalRule: RuleItem = {
-  validator: (_r, value, cb) => {
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (typeof value === 'string') {
       try {
         value = JSON.parse(value);
@@ -198,7 +198,7 @@ const internalRule: RuleItem = {
     if (Array.isArray(value) && !props.allowArray) return cb(new Error('不允许数组'));
     cb();
   },
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 
 const bufferOptions = computed(() => ({

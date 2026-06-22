@@ -5,12 +5,17 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -47,6 +52,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				os.Exit(1)
 			}
 			runtimeOptions := cliRuntimeOptionsFromScope(env)
+			ensureInstallModulesTsconfig(env, runtimeOptions.modulesPath)
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
@@ -133,9 +139,95 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					os.Exit(1)
 				}
 			}
+
+			// Auto-trigger type fetch after successful install for IDE support.
+			runTypeFetchAfterInstall(ctx, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
+}
+
+func ensureInstallModulesTsconfig(env scope.Scope, modulesPath string) {
+	modulesPath = strings.TrimSpace(modulesPath)
+	if modulesPath == "" {
+		return
+	}
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		env.Logger().Warn("install: ensure modules tsconfig failed", "path", tsconfigPath, "error", err)
+		return
+	}
+	env.Logger().Debug("install: ensured modules tsconfig", "path", tsconfigPath)
+}
+
+// runTypeFetchAfterInstall triggers a best-effort type fetch for all modules
+// after a successful install. Failures are logged but do not fail the install.
+func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
+	runtimeOpts, ok := scope.PathsRuntimeOptionsFromScope(env)
+	if !ok {
+		return
+	}
+	modulesPath := runtimeOpts.ModulesPath
+	if modulesPath == "" {
+		return
+	}
+	defaultPath := runtimeOpts.DefaultChoysumPath
+	if defaultPath == "" {
+		defaultPath = ".choysum"
+	}
+	typesDir := filepath.Join(defaultPath, "pkg", "types")
+	upstream := runtimeOpts.ESMUpstreamURL
+	if upstream == "" {
+		upstream = config.DefaultESMUpstreamURL
+	}
+
+	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
+	if transport, ok := client.Transport.(*http.Transport); ok {
+		defer transport.CloseIdleConnections()
+	}
+	session := esmresolver.NewTypeFetchSession(0)
+	var allResults []esmresolver.TypeFetchResult
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+
+	entries, err := os.ReadDir(modulesPath)
+	if err != nil {
+		env.Logger().Warn("type-fetch: read modules dir failed", "error", err)
+		return
+	}
+	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			env.Logger().Info("type-fetch: interrupted", "error", err)
+			return
+		}
+		if !entry.IsDir() {
+			continue
+		}
+		moduleDir := filepath.Join(modulesPath, entry.Name())
+		if _, err := os.Stat(filepath.Join(moduleDir, "package.json")); err != nil {
+			continue
+		}
+		results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
+		if err != nil {
+			env.Logger().Warn("type-fetch: skipped module", "module", entry.Name(), "error", err)
+			continue
+		}
+		allResults = append(allResults, results...)
+		for _, r := range results {
+			if !r.FromCache {
+				env.Logger().Info("type-fetch: downloaded", "module", entry.Name(), "package", r.Package+"@"+r.Version)
+			}
+		}
+	}
+
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, allResults); err != nil {
+		env.Logger().Warn("type-fetch: update tsconfig failed", "path", tsconfigPath, "error", err)
+		return
+	}
+	if len(allResults) > 0 {
+		env.Logger().Info("type-fetch: updated tsconfig paths", "path", tsconfigPath)
+	} else {
+		env.Logger().Debug("type-fetch: ensured tsconfig", "path", tsconfigPath)
+	}
 }
