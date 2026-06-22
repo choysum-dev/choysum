@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-// Minimal file:// URL parser and formatter — replaces the npm 'url' package
+// Minimal URL parser and formatter — replaces the npm 'url' package
 // to avoid esm.sh CJS interop issues in QuickJS runtime.
 
 interface ParsedUrl {
@@ -37,29 +37,29 @@ function parse(url: string): ParsedUrl {
 
   // Match protocol (e.g. "file://")
   const protoMatch = url.match(/^([a-z][a-z0-9+\-.]*):\/\//i);
+  let rest = url;
   if (protoMatch) {
     result.protocol = protoMatch[1].toLowerCase();
     result.slashes = true;
-    const rest = url.slice(protoMatch[0].length);
-    // Split path from hash/search
-    const hashIdx = rest.indexOf('#');
-    const searchIdx = rest.indexOf('?');
-    let pathEnd = rest.length;
-    if (hashIdx >= 0) {
-      result.hash = rest.slice(hashIdx + 1);
-      pathEnd = hashIdx;
-    }
-    if (searchIdx >= 0 && searchIdx < pathEnd) {
-      result.search = rest.slice(searchIdx, pathEnd);
-      result.query = rest.slice(searchIdx + 1, pathEnd);
-      pathEnd = searchIdx;
-    }
-    result.pathname = rest.slice(0, pathEnd);
-    result.path = result.pathname + result.search;
-  } else {
-    result.pathname = url;
-    result.path = url;
+    rest = url.slice(protoMatch[0].length);
   }
+
+  // Split path from hash/search for both absolute and relative inputs.
+  const hashIdx = rest.indexOf('#');
+  const searchIdx = rest.indexOf('?');
+  let pathEnd = rest.length;
+  if (hashIdx >= 0) {
+    // Keep the leading '#' to match Node legacy url.parse behavior.
+    result.hash = rest.slice(hashIdx);
+    pathEnd = hashIdx;
+  }
+  if (searchIdx >= 0 && searchIdx < pathEnd) {
+    result.search = rest.slice(searchIdx, pathEnd);
+    result.query = rest.slice(searchIdx + 1, pathEnd);
+    pathEnd = searchIdx;
+  }
+  result.pathname = rest.slice(0, pathEnd);
+  result.path = result.pathname + result.search;
 
   return result;
 }
@@ -74,7 +74,7 @@ function format(urlObj: ParsedUrl): string {
     result += urlObj.search;
   }
   if (urlObj.hash) {
-    result += '#' + urlObj.hash;
+    result += urlObj.hash.startsWith('#') ? urlObj.hash : '#' + urlObj.hash;
   }
   return result;
 }
