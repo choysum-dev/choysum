@@ -87,8 +87,14 @@ func isDefineComponentCallWithOptions(ctx *tsParseCtx, expr *tsast.Node, allowNa
 		return false
 	}
 	if expr.Kind == tsast.KindIdentifier {
-		moduleSpec, referenceIdent := ctx.convertReferenceWithModuleSpec(expr.Text())
-		return moduleSpec == "vue" && referenceIdent == "defineComponent"
+		imp, ok := ctx.imports[expr.Text()]
+		if !ok {
+			return false
+		}
+		// Use the original (unresolved) module specifier to avoid false
+		// negatives when tsconfig paths remap "vue" to a .d.ts file.
+		originalSpec := strings.Trim(imp.ModuleSpecText, `"'`)
+		return originalSpec == "vue" && imp.ReferenceIdent == "defineComponent"
 	}
 	if allowNamespace && expr.Kind == tsast.KindPropertyAccessExpression {
 		propertyAccess := expr.AsPropertyAccessExpression()
@@ -101,8 +107,12 @@ func isDefineComponentCallWithOptions(ctx *tsParseCtx, expr *tsast.Node, allowNa
 		if propertyAccess.Expression.Kind != tsast.KindIdentifier {
 			return false
 		}
-		moduleSpec, _ := ctx.convertReferenceWithModuleSpec(propertyAccess.Expression.Text())
-		return moduleSpec == "vue"
+		imp, ok := ctx.imports[propertyAccess.Expression.Text()]
+		if !ok {
+			return false
+		}
+		originalSpec := strings.Trim(imp.ModuleSpecText, `"'`)
+		return originalSpec == "vue"
 	}
 	return false
 }

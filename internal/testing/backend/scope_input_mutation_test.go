@@ -108,7 +108,6 @@ func TestNewTestRuntimeScopeInputFromScopeCopiesRuntimeAndDBOptions(t *testing.T
 			TmpPath:               "/workspace/tmp",
 			DefaultChoysumPath:    "/workspace/.choysum",
 			ConfigPath:            "/workspace/config.yaml",
-			NpmPath:               "/workspace/node_modules",
 			NPMRegistryURL:        "https://registry.npmjs.org",
 			ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json",
 			Server: &config.ServerConfig{
@@ -142,9 +141,6 @@ func TestNewTestRuntimeScopeInputFromScopeCopiesRuntimeAndDBOptions(t *testing.T
 	}
 	if got := input.ConfigPath(); got != "/workspace/config.yaml" {
 		t.Fatalf("ConfigPath() = %q, want /workspace/config.yaml", got)
-	}
-	if got := input.NpmPath(); got != "/workspace/node_modules" {
-		t.Fatalf("NpmPath() = %q, want /workspace/node_modules", got)
 	}
 	if got := input.NpmRegistryURL(); got != "https://registry.npmjs.org" {
 		t.Fatalf("NpmRegistryURL() = %q, want https://registry.npmjs.org", got)

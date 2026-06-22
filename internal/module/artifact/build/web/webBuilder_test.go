@@ -22,6 +22,7 @@ import (
 	"github.com/antchfx/htmlquery"
 	"github.com/choysum-dev/choysum/internal/esbplugins"
 	defaultesbplugins "github.com/choysum-dev/choysum/internal/esbplugins/webprebuildplugin"
+	"github.com/choysum-dev/choysum/internal/esmresolver"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
@@ -885,7 +886,12 @@ func TestGetScriptNode_AppendsQuestionFilledImport_WithRuntimeTsconfigAliasMap(t
 		t.Fatalf("read parent OHeader failed: %v", err)
 	}
 
-	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: filepath.Join(repoRoot, "modules", "tsconfig.json")})
+	tsconfigPath := filepath.Join(repoRoot, "modules", "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("ensure modules tsconfig failed: %v", err)
+	}
+
+	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: tsconfigPath})
 	if err != nil {
 		t.Fatalf("parse tsconfig path alias failed: %v", err)
 	}
@@ -939,7 +945,12 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 		parser:       defaultparser.NewVueParser(testRuntimeScope, mod),
 	}
 
-	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: filepath.Join(modulesPath, "tsconfig.json")})
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, nil); err != nil {
+		t.Fatalf("ensure modules tsconfig failed: %v", err)
+	}
+
+	pathAlias, err := parser.ParseTsconfigPathAlias(&api.BuildOptions{Tsconfig: tsconfigPath})
 	if err != nil {
 		t.Fatalf("parse tsconfig alias failed: %v", err)
 	}

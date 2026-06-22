@@ -23,7 +23,6 @@ func newCLICompatTestRuntimeOptions(t *testing.T, indexURL string) cliRuntimeOpt
 	runtimeOptions := cliRuntimeOptions{
 		defaultChoysumPath:    filepath.Join(workspaceRoot, ".choysum"),
 		modulesPath:           filepath.Join(workspaceRoot, "modules"),
-		npmPath:               filepath.Join(workspaceRoot, "node_modules"),
 		tmpPath:               filepath.Join(workspaceRoot, "tmp"),
 		moduleCatalogIndexURL: indexURL,
 	}
@@ -39,7 +38,6 @@ func newCLICompatTestScope(runtimeOptions cliRuntimeOptions) *commandTestScope {
 		cfg: &config.Config{
 			DefaultChoysumPath: runtimeOptions.defaultChoysumPath,
 			ModulesPath:        runtimeOptions.modulesPath,
-			NpmPath:            runtimeOptions.npmPath,
 			TmpPath:            runtimeOptions.tmpPath,
 			ConfigPath:         filepath.Join(filepath.Dir(runtimeOptions.modulesPath), "config.yaml"),
 		},

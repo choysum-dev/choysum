@@ -15,6 +15,7 @@ type runtimeOptions struct {
 	modulesPath        string
 	distPath           string
 	defaultChoysumPath string
+	esmUpstreamURL     string
 	webBaseURL         string
 	frontendEnv        map[string]any
 	compileSourceMap   bool
@@ -38,6 +39,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, ser
 		opts.modulesPath = pathOpts.ModulesPath
 		opts.distPath = pathOpts.DistPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
+		opts.esmUpstreamURL = pathOpts.ESMUpstreamURL
 	}
 	if hasServerOpts {
 		opts.webBaseURL = serverOpts.WebBaseURL

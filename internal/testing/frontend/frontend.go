@@ -6,14 +6,18 @@ package frontend
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -33,6 +37,48 @@ type vitestCoverageSummary struct {
 			Pct float64 `json:"pct"`
 		} `json:"statements"`
 	} `json:"total"`
+}
+
+var errVitestEnvironmentMarkerFound = xfmt.Errorf("vitest environment marker found")
+
+// ValidateFrontendTestDependencies checks whether required frontend tooling and
+// modules are available in local module roots or global npm root.
+func ValidateFrontendTestDependencies(repoRoot string, app string) error {
+	repoRoot = strings.TrimSpace(repoRoot)
+	if repoRoot == "" {
+		wd, _ := os.Getwd()
+		repoRoot = wd
+	}
+	if strings.TrimSpace(repoRoot) == "" {
+		return xfmt.Errorf("vitest: cannot determine repo root")
+	}
+
+	app = strings.TrimSpace(app)
+	if app == "" {
+		return xfmt.Errorf("vitest: missing app")
+	}
+
+	if _, err := exec.LookPath("npx"); err != nil {
+		return xfmt.Errorf("vitest: npx not found. Install Node.js from https://nodejs.org")
+	}
+
+	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
+	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)
+	if err != nil {
+		return err
+	}
+	moduleRoots := append(localFrontendModuleRoots(repoRoot), globalNodeModulesRoot)
+	missingModules := noderuntime.MissingRequiredNodeModules(requiredModules, moduleRoots...)
+	if len(missingModules) > 0 {
+		return xfmt.Errorf(
+			"vitest: missing required modules for %s: %s. Install globally: npm install -g %s",
+			app,
+			strings.Join(missingModules, ", "),
+			strings.Join(missingModules, " "),
+		)
+	}
+
+	return nil
 }
 
 func RunOneAppFrontendTests(
@@ -60,9 +106,8 @@ func RunOneAppFrontendTests(
 		return true, err
 	}
 
-	app = strings.TrimSpace(app)
-	if app == "" {
-		return true, xfmt.Errorf("vitest: missing app")
+	if err := ValidateFrontendTestDependencies(repoRoot, app); err != nil {
+		return true, err
 	}
 
 	repoRoot = strings.TrimSpace(repoRoot)
@@ -70,23 +115,22 @@ func RunOneAppFrontendTests(
 		wd, _ := os.Getwd()
 		repoRoot = wd
 	}
-	if strings.TrimSpace(repoRoot) == "" {
-		return true, xfmt.Errorf("vitest: cannot determine repo root")
+	app = strings.TrimSpace(app)
+	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
+	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)
+	if err != nil {
+		return true, err
+	}
+	localModuleRoots := localFrontendModuleRoots(repoRoot)
+	missingLocalModules := noderuntime.MissingRequiredNodeModules(requiredModules, localModuleRoots...)
+	if len(missingLocalModules) > 0 {
+		cleanupGlobalLinks, err := ensureGlobalModuleLinks(repoRoot, globalNodeModulesRoot, missingLocalModules)
+		if err != nil {
+			return true, err
+		}
+		defer cleanupGlobalLinks()
 	}
 
-	if _, err := exec.LookPath("npx"); err != nil {
-		return true, xfmt.Errorf("vitest: missing npx (Node.js). Install Node/npm, then run `npm install` in repo root")
-	}
-	vitestBin := filepath.Join(repoRoot, "node_modules", ".bin", "vitest")
-	if _, err := os.Stat(vitestBin); err != nil {
-		return true, xfmt.Errorf("vitest: vitest is not installed. Run `npm install` in repo root (%s)", repoRoot)
-	}
-	if coverage {
-		providerPkg := filepath.Join(repoRoot, "node_modules", "@vitest", "coverage-v8", "package.json")
-		if _, err := os.Stat(providerPkg); err != nil {
-			return true, xfmt.Errorf("vitest: coverage requested but @vitest/coverage-v8 is not installed. Run `npm i -D @vitest/coverage-v8` in repo root")
-		}
-	}
 	junitPath = strings.TrimSpace(junitPath)
 	if junitPath != "" {
 		junitDir := filepath.Dir(junitPath)
@@ -116,12 +160,14 @@ func RunOneAppFrontendTests(
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
 	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx}"))
 	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,vue}"))
+	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
 
 	var b strings.Builder
 	b.WriteString("import { defineConfig } from 'vitest/config'\n")
 	b.WriteString("import vue from '@vitejs/plugin-vue'\n\n")
 	b.WriteString("import path from 'node:path'\n")
 	b.WriteString("export default defineConfig({\n")
+	b.WriteString("  cacheDir: " + strconv.Quote(viteCacheDir) + ",\n")
 	b.WriteString("  plugins: [vue()],\n")
 	b.WriteString("  resolve: {\n")
 	b.WriteString("    alias: {\n")
@@ -180,7 +226,8 @@ func RunOneAppFrontendTests(
 
 	c := exec.CommandContext(ctx, "npx", args...)
 	c.Dir = repoRoot
-	c.Env = append(os.Environ(), "NODE_PATH="+filepath.Join(repoRoot, "node_modules"))
+	nodePathValue := buildNodePath(repoRoot, globalNodeModulesRoot)
+	c.Env = replaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
 	c.Stdout = os.Stderr
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
@@ -229,4 +276,229 @@ func sanitizeFrontendAppToken(app string) string {
 		return "app"
 	}
 	return token
+}
+
+func collectRequiredFrontendModules(repoRoot string, app string) ([]string, error) {
+	required := map[string]struct{}{
+		"vitest":               {},
+		"vite":                 {},
+		"@bufbuild/protobuf":   {},
+		"@vitejs/plugin-vue":   {},
+		"vue":                  {},
+		"@vue/compiler-sfc":    {},
+		"@vue/shared":          {},
+		"@vue/server-renderer": {},
+		"@vue/test-utils":      {},
+		"sass-embedded":        {},
+	}
+
+	visitedModules := map[string]struct{}{}
+	var collectModuleDeps func(moduleName string) error
+	collectModuleDeps = func(moduleName string) error {
+		moduleName = strings.TrimSpace(moduleName)
+		if moduleName == "" {
+			return nil
+		}
+		if _, seen := visitedModules[moduleName]; seen {
+			return nil
+		}
+		visitedModules[moduleName] = struct{}{}
+
+		modulePkgPath := filepath.Join(repoRoot, "modules", moduleName, "package.json")
+		pkg, err := readFrontendModulePackage(modulePkgPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return xfmt.Errorf("vitest: read module package.json for %s: %w", moduleName, err)
+		}
+
+		for name := range pkg.Dependencies {
+			name = strings.TrimSpace(name)
+			if name == "" || strings.HasPrefix(name, "@choysum-dev/") {
+				continue
+			}
+			required[name] = struct{}{}
+		}
+		for name := range pkg.PeerDependencies {
+			name = strings.TrimSpace(name)
+			if name == "" || strings.HasPrefix(name, "@choysum-dev/") {
+				continue
+			}
+			required[name] = struct{}{}
+		}
+		for _, depModule := range pkg.Choysum.Depends {
+			if err := collectModuleDeps(depModule); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	if err := collectModuleDeps(app); err != nil {
+		return nil, err
+	}
+
+	usesHappyDOM, err := appUsesVitestEnvironment(repoRoot, app, "happy-dom")
+	if err != nil {
+		return nil, err
+	}
+	if usesHappyDOM {
+		required["happy-dom"] = struct{}{}
+	}
+
+	modules := make([]string, 0, len(required))
+	for name := range required {
+		if strings.TrimSpace(name) == "" {
+			continue
+		}
+		modules = append(modules, name)
+	}
+	sort.Strings(modules)
+	return modules, nil
+}
+
+type frontendModulePackage struct {
+	Dependencies     map[string]string `json:"dependencies"`
+	PeerDependencies map[string]string `json:"peerDependencies"`
+	Choysum          struct {
+		Depends []string `json:"depends"`
+	} `json:"choysum"`
+}
+
+func readFrontendModulePackage(path string) (frontendModulePackage, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return frontendModulePackage{}, err
+	}
+	var pkg frontendModulePackage
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return frontendModulePackage{}, xfmt.Errorf("parse package.json: %w", err)
+	}
+	if pkg.Dependencies == nil {
+		pkg.Dependencies = map[string]string{}
+	}
+	if pkg.PeerDependencies == nil {
+		pkg.PeerDependencies = map[string]string{}
+	}
+	return pkg, nil
+}
+
+func appUsesVitestEnvironment(repoRoot string, app string, environment string) (bool, error) {
+	environment = strings.TrimSpace(environment)
+	if environment == "" {
+		return false, nil
+	}
+
+	webRoot := filepath.Join(repoRoot, "modules", app, "web")
+	st, err := os.Stat(webRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, xfmt.Errorf("vitest: stat web root for %s: %w", app, err)
+	}
+	if !st.IsDir() {
+		return false, nil
+	}
+
+	marker := "@vitest-environment " + environment
+	found := false
+	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		name := d.Name()
+		if !strings.Contains(name, ".test.") && !strings.Contains(name, ".spec.") {
+			return nil
+		}
+		if !strings.HasSuffix(name, ".ts") &&
+			!strings.HasSuffix(name, ".tsx") &&
+			!strings.HasSuffix(name, ".js") &&
+			!strings.HasSuffix(name, ".jsx") &&
+			!strings.HasSuffix(name, ".mjs") &&
+			!strings.HasSuffix(name, ".cjs") {
+			return nil
+		}
+
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		if strings.Contains(string(raw), marker) {
+			found = true
+			return errVitestEnvironmentMarkerFound
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, errVitestEnvironmentMarkerFound) {
+		return false, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
+	}
+
+	return found, nil
+}
+
+func localFrontendModuleRoots(repoRoot string) []string {
+	modulesNodeModules := filepath.Join(repoRoot, "modules", "node_modules")
+	rootNodeModules := filepath.Join(repoRoot, "node_modules")
+	return []string{
+		modulesNodeModules,
+		rootNodeModules,
+	}
+}
+
+func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
+	cleanup, err := noderuntime.EnsureGlobalModuleLinksAt(
+		filepath.Join(repoRoot, "modules", "node_modules"),
+		globalNodeModulesRoot,
+		moduleNames,
+	)
+	if err != nil {
+		return nil, xfmt.Errorf("vitest: %w", err)
+	}
+	return cleanup, nil
+}
+
+func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
+	values := make([]string, 0, 4)
+	for _, localNodeModules := range localFrontendModuleRoots(repoRoot) {
+		if st, err := os.Stat(localNodeModules); err == nil && st.IsDir() {
+			values = append(values, localNodeModules)
+		}
+	}
+	if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
+		values = append(values, globalNodeModulesRoot)
+	}
+	if current := strings.TrimSpace(os.Getenv("NODE_PATH")); current != "" {
+		values = append(values, current)
+	}
+	return strings.Join(values, string(os.PathListSeparator))
+}
+
+func replaceOrAppendEnv(env []string, key string, value string) []string {
+	if strings.TrimSpace(key) == "" {
+		return env
+	}
+	needle := key + "="
+	replaced := false
+	out := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if strings.HasPrefix(entry, needle) {
+			if !replaced {
+				out = append(out, needle+value)
+				replaced = true
+			}
+			continue
+		}
+		out = append(out, entry)
+	}
+	if !replaced {
+		out = append(out, needle+value)
+	}
+	return out
 }

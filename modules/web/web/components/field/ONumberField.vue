@@ -189,9 +189,9 @@ const ONumberCell = defineComponent({
   },
 });
 
-const internalRule: RuleItem = {
+const internalRule = {
   type: 'number',
-  validator: (_r, value, cb) => {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
       return props.nullable ? cb() : cb(new Error('Value is required'));
     }
@@ -201,7 +201,7 @@ const internalRule: RuleItem = {
     cb();
   },
   trigger: 'blur',
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 

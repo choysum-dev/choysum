@@ -108,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
               msg ? cb(new Error(msg)) : cb();
             },
             trigger: 'blur',
-          },
+          } as any,
         ]"
         :error="serverErrorForRow(row, $index)"
         :show-message="true"
@@ -356,7 +356,7 @@ const effectiveRules = computed<RuleItem[]>(() => {
 
   if (serverError.value && binding.env.isEditMode) {
     rulesWithServerError.push({
-      validator: (_rule, _value, callback) => {
+      validator: (_rule: unknown, _value: unknown, callback: (error?: Error) => void) => {
         const currentError = fieldErrors?.value?.get(String(binding.prop));
         if (currentError) {
           callback(new Error(currentError));

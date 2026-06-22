@@ -308,13 +308,13 @@ function isValidValue(value: any): string | null {
   return null;
 }
 
-const internalRule: RuleItem = {
-  validator: (_r, value, cb) => {
+const internalRule = {
+  validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     const msg = isValidValue(value);
     if (msg) return cb(new Error(msg));
     cb();
   },
-};
+} as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => [...(props.rules || []), internalRule]);
 </script>
 

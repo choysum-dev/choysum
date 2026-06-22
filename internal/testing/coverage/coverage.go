@@ -374,7 +374,7 @@ func RunNycReport(ctx context.Context, repoRoot string, reportDir string, report
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return xfmt.Errorf("nyc report failed (did you run npm install?): %w", err)
+		return xfmt.Errorf("nyc report failed (nyc may not be installed — run: npm install -g nyc): %w", err)
 	}
 	return nil
 }

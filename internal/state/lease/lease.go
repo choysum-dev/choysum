@@ -6,9 +6,10 @@ package lease
 import (
 	"context"
 	"errors"
-	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
 	"strings"
 	"time"
+
+	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
 
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
@@ -115,7 +116,9 @@ func (l *Locker) Acquire(ctx context.Context, resource, ownerId string, ttl time
 
 func acquireLease(db *gorm.DB, resource, ownerId string, now, expiresAt time.Time) error {
 	newDB := func() *gorm.DB {
-		return db.Session(&gorm.Session{NewDB: true}).Unscoped()
+		// Keep the current transaction/connection when present. Using NewDB may
+		// detach to a different connection and cause SQLite self-lock waits.
+		return db.Session(&gorm.Session{}).Unscoped()
 	}
 
 	// Fast path: update existing expired/owned lease (also restores from soft delete).
@@ -226,7 +229,7 @@ func (l *Locker) Renew(ctx context.Context, resource, ownerId string, ttl time.D
 }
 
 func renewLeaseOnDB(db *gorm.DB, resource, ownerId string, expiresAt time.Time) error {
-	res := db.Session(&gorm.Session{NewDB: true}).Unscoped().Model(&leasemodel.IrLockLease{}).
+	res := db.Session(&gorm.Session{}).Unscoped().Model(&leasemodel.IrLockLease{}).
 		Where("resource = ? AND owner_id = ?", resource, ownerId).
 		Updates(map[string]any{"expires_at": expiresAt, "deleted_at": nil})
 	if res.Error != nil {
@@ -245,7 +248,7 @@ func (l *Locker) Release(ctx context.Context, resource, ownerId string) error {
 
 	if db, ok := l.sqliteSessionDB(ctx); ok {
 		newDB := func() *gorm.DB {
-			return db.Session(&gorm.Session{NewDB: true}).Unscoped()
+			return db.Session(&gorm.Session{}).Unscoped()
 		}
 		res := newDB().Where("resource = ? AND owner_id = ?", resource, ownerId).Delete(&leasemodel.IrLockLease{})
 		if res.Error != nil {
@@ -272,7 +275,7 @@ func (l *Locker) Release(ctx context.Context, resource, ownerId string) error {
 		}
 		err := l.runRequiresNew(ctx, func(runtimeScope scope.Scope) error {
 			newDB := func() *gorm.DB {
-				return runtimeScope.Session().WithContext(ctx).Session(&gorm.Session{NewDB: true}).Unscoped()
+				return runtimeScope.Session().WithContext(ctx).Session(&gorm.Session{}).Unscoped()
 			}
 
 			// Hard delete to avoid unique-index conflicts with soft deletes.

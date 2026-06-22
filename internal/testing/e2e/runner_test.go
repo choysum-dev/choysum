@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -92,6 +93,278 @@ func TestRunModuleInputValidation(t *testing.T) {
 	err = RunModule(context.Background(), RunOptions{Module: "auth", ModulesPath: modulesPath, Scenarios: []string{""}})
 	if err == nil || !strings.Contains(err.Error(), "scenario name cannot be empty") {
 		t.Fatalf("expected empty scenario error, got %v", err)
+	}
+}
+
+func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	runOneScenarioCalled := false
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		runOneScenarioCalled = true
+		return nil
+	}
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	t.Setenv("PATH", "")
+	err := RunModule(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		WorkDir:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	})
+	if err == nil || !strings.Contains(err.Error(), "playwright not found") {
+		t.Fatalf("expected playwright missing error, got %v", err)
+	}
+	if runOneScenarioCalled {
+		t.Fatalf("expected fast-fail before runOneScenario")
+	}
+}
+
+func TestRunModuleFastFailsWhenPlaywrightPackageMissing(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	runOneScenarioCalled := false
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		runOneScenarioCalled = true
+		return nil
+	}
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	binDir := t.TempDir()
+	writeExecFile(t, filepath.Join(binDir, "playwright"), "#!/bin/sh\nexit 0\n")
+	t.Setenv("PATH", binDir)
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
+
+	err := RunModule(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		WorkDir:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	})
+	if err == nil || !strings.Contains(err.Error(), "missing required modules for auth: @playwright/test") {
+		t.Fatalf("expected playwright package missing error, got %v", err)
+	}
+	if runOneScenarioCalled {
+		t.Fatalf("expected fast-fail before runOneScenario")
+	}
+}
+
+func TestRunModuleFastFailsWhenSpecImportDependencyMissing(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatalf("mkdir specs dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "deps.spec.ts"), []byte("import { test } from '@playwright/test'\nimport { createPromiseClient } from '@connectrpc/connect'\nvoid createPromiseClient\ntest('deps', async () => {})\n"), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	runOneScenarioCalled := false
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		runOneScenarioCalled = true
+		return nil
+	}
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	binDir := t.TempDir()
+	writeExecFile(t, filepath.Join(binDir, "playwright"), "#!/bin/sh\nexit 0\n")
+	t.Setenv("PATH", binDir)
+
+	globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+	if err := os.MkdirAll(filepath.Join(globalRoot, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir global playwright package: %v", err)
+	}
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+
+	err := RunModule(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		WorkDir:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	})
+	if err == nil || !strings.Contains(err.Error(), "@connectrpc/connect") {
+		t.Fatalf("expected spec-import dependency missing error, got %v", err)
+	}
+	if runOneScenarioCalled {
+		t.Fatalf("expected fast-fail before runOneScenario")
+	}
+}
+
+func TestRunModuleBuildsStaticDependencyCache(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatalf("mkdir specs dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "cache.spec.ts"), []byte("import { test } from '@playwright/test'\nimport { createPromiseClient } from '@connectrpc/connect'\nvoid createPromiseClient\ntest('cache', async () => {})\n"), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	npmPath := filepath.Join(t.TempDir(), "node_modules")
+	if err := os.MkdirAll(filepath.Join(npmPath, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir playwright package dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(npmPath, "@connectrpc", "connect"), 0o755); err != nil {
+		t.Fatalf("mkdir connect package dir: %v", err)
+	}
+	writeExecFile(t, filepath.Join(npmPath, ".bin", "playwright"), "#!/bin/sh\nexit 0\n")
+
+	oldRunOneScenarioHook := runOneScenarioHook
+	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
+
+	scenarioCalls := 0
+	var staticRequired []string
+	var staticSpecRequired []string
+	runOneScenarioHook = func(ctx context.Context, opts RunOptions, packages map[string]*sourceModulePackage, scenario string) error {
+		scenarioCalls++
+		staticRequired = append([]string{}, opts.staticRequiredModules...)
+		staticSpecRequired = append([]string{}, opts.staticSpecRequiredModules...)
+		return nil
+	}
+
+	err := RunModule(context.Background(), RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		NpmPath:     npmPath,
+		WorkDir:     t.TempDir(),
+		Stdout:      io.Discard,
+		Stderr:      io.Discard,
+	})
+	if err != nil {
+		t.Fatalf("RunModule error: %v", err)
+	}
+	if scenarioCalls != 1 {
+		t.Fatalf("expected one scenario invocation, got %d", scenarioCalls)
+	}
+	if !slices.Contains(staticSpecRequired, "@playwright/test") || !slices.Contains(staticSpecRequired, "@connectrpc/connect") {
+		t.Fatalf("expected cached spec required modules, got %#v", staticSpecRequired)
+	}
+	if !slices.Contains(staticRequired, "@playwright/test") || !slices.Contains(staticRequired, "@connectrpc/connect") {
+		t.Fatalf("expected cached runtime required modules, got %#v", staticRequired)
+	}
+}
+
+func TestRunModuleCanceledContextCleansResources(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","choysum":{"moduleName":"auth","application":"auth","e2e":{"specs":"e2e"}}}`)
+
+	specsDir := filepath.Join(modulesPath, "auth", "e2e")
+	if err := os.MkdirAll(specsDir, 0o755); err != nil {
+		t.Fatalf("mkdir specs dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(specsDir, "cancel.spec.ts"), []byte("import { test } from '@playwright/test'\ntest('cancel', async () => {})\n"), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	npmPath := filepath.Join(t.TempDir(), "node_modules")
+	if err := os.MkdirAll(filepath.Join(npmPath, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir global playwright package dir: %v", err)
+	}
+	writeExecFile(t, filepath.Join(npmPath, ".bin", "playwright"), "#!/bin/sh\nexit 0\n")
+
+	workDir := t.TempDir()
+	tmpPath := t.TempDir()
+
+	oldInstallForE2EHook := installForE2EHook
+	oldApplyScenarioFixturesHook := applyScenarioFixturesHook
+	oldSeedModuleIndexHook := seedModuleIndexHook
+	oldStartServerHook := startServerHook
+	oldWaitForHTTP200Hook := waitForHTTP200Hook
+	oldRunPlaywrightHook := runPlaywrightHook
+	defer func() {
+		installForE2EHook = oldInstallForE2EHook
+		applyScenarioFixturesHook = oldApplyScenarioFixturesHook
+		seedModuleIndexHook = oldSeedModuleIndexHook
+		startServerHook = oldStartServerHook
+		waitForHTTP200Hook = oldWaitForHTTP200Hook
+		runPlaywrightHook = oldRunPlaywrightHook
+	}()
+
+	installCalls := 0
+	capturedRunDir := ""
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var stderr strings.Builder
+	installForE2EHook = func(ctx context.Context, configPath string, moduleName string, withDemo bool) error {
+		installCalls++
+		capturedRunDir = filepath.Dir(configPath)
+		cancel()
+		return context.Canceled
+	}
+	applyScenarioFixturesHook = func(context.Context, string, []string, map[string]*sourceModulePackage, string, string, bool, io.Writer, *[]string) error {
+		t.Fatalf("applyScenarioFixturesHook should not run after canceled install")
+		return nil
+	}
+	seedModuleIndexHook = func(context.Context, string, map[string]*sourceModulePackage) error {
+		t.Fatalf("seedModuleIndexHook should not run after canceled install")
+		return nil
+	}
+	startServerHook = func(string, string, string, string) (*exec.Cmd, error) {
+		t.Fatalf("startServerHook should not run after canceled install")
+		return nil, nil
+	}
+	waitForHTTP200Hook = func(context.Context, string, time.Duration) error {
+		t.Fatalf("waitForHTTP200Hook should not run after canceled install")
+		return nil
+	}
+	runPlaywrightHook = func(context.Context, RunOptions, string, string, string) error {
+		t.Fatalf("runPlaywrightHook should not run after canceled install")
+		return nil
+	}
+
+	err := RunModule(ctx, RunOptions{
+		Module:      "auth",
+		ModulesPath: modulesPath,
+		NpmPath:     npmPath,
+		TmpPath:     tmpPath,
+		WorkDir:     workDir,
+		Stdout:      io.Discard,
+		Stderr:      &stderr,
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	if installCalls != 1 {
+		t.Fatalf("expected exactly one install call before cancel exit, got %d", installCalls)
+	}
+	if strings.TrimSpace(capturedRunDir) == "" {
+		t.Fatal("expected install hook to capture run dir")
+	}
+	if _, statErr := os.Stat(capturedRunDir); !os.IsNotExist(statErr) {
+		t.Fatalf("expected run dir cleanup on cancel, stat err=%v", statErr)
+	}
+	if _, statErr := os.Lstat(filepath.Join(workDir, "modules", "node_modules", "@playwright", "test")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected temporary global module link cleanup on cancel, lstat err=%v", statErr)
+	}
+	if !strings.Contains(stderr.String(), "canceled stage=scenario module=auth scenario=default") {
+		t.Fatalf("expected scenario cancellation stage log, got %q", stderr.String())
+	}
+}
+
+func TestRunModuleCanceledContextFastFailLogsEntryStage(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var stderr strings.Builder
+	err := RunModule(ctx, RunOptions{Module: "auth", Stderr: &stderr, Stdout: io.Discard})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled fast-fail, got %v", err)
+	}
+	if !strings.Contains(stderr.String(), "canceled stage=entry module=auth") {
+		t.Fatalf("expected entry cancellation stage log, got %q", stderr.String())
 	}
 }
 
@@ -358,13 +631,48 @@ func TestRunPlaywrightNoSpecs(t *testing.T) {
 }
 
 func TestRunPlaywrightBranches(t *testing.T) {
+	t.Setenv("PATH", "")
+
 	specsDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(specsDir, "ok.spec.ts"), []byte("test"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(specsDir, "ok.spec.ts"), []byte("import { test } from '@playwright/test'\nimport { createPromiseClient } from '@connectrpc/connect'\nvoid createPromiseClient\ntest('ok', async () => {})\n"), 0o644); err != nil {
 		t.Fatalf("write spec file: %v", err)
 	}
 	runtimePath := filepath.Join(t.TempDir(), "runtime.json")
+	runtimeGeneratedPB := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web", "auth", "pb", "auth_pb.ts")
+	if err := os.MkdirAll(filepath.Dir(runtimeGeneratedPB), 0o755); err != nil {
+		t.Fatalf("create runtime generated dir: %v", err)
+	}
+	if err := os.WriteFile(runtimeGeneratedPB, []byte("import { Message } from '@bufbuild/protobuf'\nexport const authPbMessage = Message\n"), 0o644); err != nil {
+		t.Fatalf("write runtime generated pb file: %v", err)
+	}
+	runtimeGeneratedModules, err := collectRuntimeGeneratedModules(runtimePath)
+	if err != nil {
+		t.Fatalf("collect runtime generated modules: %v", err)
+	}
+	if !slices.Contains(runtimeGeneratedModules, "@bufbuild/protobuf") {
+		t.Fatalf("expected runtime generated modules to include @bufbuild/protobuf, got %#v", runtimeGeneratedModules)
+	}
+	requiredFromSpecs, err := requiredPlaywrightModulesFromSpecFiles([]string{filepath.Join(specsDir, "ok.spec.ts")})
+	if err != nil {
+		t.Fatalf("collect required modules from specs: %v", err)
+	}
+	requiredSet := map[string]struct{}{}
+	for _, moduleName := range requiredFromSpecs {
+		requiredSet[moduleName] = struct{}{}
+	}
+	for _, moduleName := range runtimeGeneratedModules {
+		requiredSet[moduleName] = struct{}{}
+	}
+	requiredCombined := make([]string, 0, len(requiredSet))
+	for moduleName := range requiredSet {
+		requiredCombined = append(requiredCombined, moduleName)
+	}
+	runtimeMissing := missingRequiredNodeModules(requiredCombined, runtimeE2EModuleRoots(runtimePath)...)
+	if !slices.Contains(runtimeMissing, "@bufbuild/protobuf") {
+		t.Fatalf("expected runtime roots missing @bufbuild/protobuf before linking, got %#v", runtimeMissing)
+	}
 
-	err := runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
+	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
 	if err == nil || !strings.Contains(err.Error(), "playwright not found") {
 		t.Fatalf("expected missing playwright error, got %v", err)
 	}
@@ -373,7 +681,17 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	npmPath := filepath.Join(t.TempDir(), "node_modules")
 	binPath := filepath.Join(npmPath, ".bin", "playwright")
 	envPath := filepath.Join(t.TempDir(), "playwright-env.txt")
-	writeExecFile(t, binPath, "#!/bin/sh\nprintf '%s' \"$PW_DISABLE_TS_ESM\" > \""+envPath+"\"\nexit 0\n")
+	linkStatePath := filepath.Join(t.TempDir(), "playwright-link-state.txt")
+	if err := os.MkdirAll(filepath.Join(npmPath, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("create global playwright package dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(npmPath, "@connectrpc", "connect"), 0o755); err != nil {
+		t.Fatalf("create global connect package dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(npmPath, "@bufbuild", "protobuf"), 0o755); err != nil {
+		t.Fatalf("create global protobuf package dir: %v", err)
+	}
+	writeExecFile(t, binPath, "#!/bin/sh\nrun_dir=${CHOYSUM_E2E_RUNTIME_JSON%/*}\npw=0\nconnect=0\nrepo_pb=0\nruntime_pb=0\nif [ -L \"$PWD/modules/node_modules/@playwright/test\" ]; then pw=1; fi\nif [ -L \"$PWD/modules/node_modules/@connectrpc/connect\" ]; then connect=1; fi\nif [ -L \"$PWD/modules/node_modules/@bufbuild/protobuf\" ]; then repo_pb=1; fi\nif [ -L \"$run_dir/.choysum/generated/node_modules/@bufbuild/protobuf\" ]; then runtime_pb=1; fi\nif [ \"$pw\" = \"1\" ] && [ \"$connect\" = \"1\" ] && [ \"$repo_pb\" = \"1\" ] && [ \"$runtime_pb\" = \"1\" ]; then printf '%s' \"linked pw=$pw connect=$connect repo_pb=$repo_pb runtime_pb=$runtime_pb run_dir=$run_dir runtime=$CHOYSUM_E2E_RUNTIME_JSON\" > \""+linkStatePath+"\"; else printf '%s' \"missing pw=$pw connect=$connect repo_pb=$repo_pb runtime_pb=$runtime_pb run_dir=$run_dir runtime=$CHOYSUM_E2E_RUNTIME_JSON\" > \""+linkStatePath+"\"; fi\nprintf '%s' \"$PW_DISABLE_TS_ESM\" > \""+envPath+"\"\nexit 0\n")
 
 	err = runPlaywright(context.Background(), RunOptions{WorkDir: repoRoot, NpmPath: npmPath}, specsDir, "http://127.0.0.1:9999", runtimePath)
 	if err != nil {
@@ -385,6 +703,258 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 	if string(raw) != "1" {
 		t.Fatalf("expected PW_DISABLE_TS_ESM=1, got %q", string(raw))
+	}
+	rawLinkState, err := os.ReadFile(linkStatePath)
+	if err != nil {
+		t.Fatalf("read playwright link state file: %v", err)
+	}
+	if !strings.HasPrefix(string(rawLinkState), "linked") {
+		t.Fatalf("expected temporary playwright/connect/protobuf package links, got %q", string(rawLinkState))
+	}
+	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@playwright", "test")); !os.IsNotExist(err) {
+		t.Fatalf("expected temporary playwright package link cleaned, got err=%v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@connectrpc", "connect")); !os.IsNotExist(err) {
+		t.Fatalf("expected temporary connect package link cleaned, got err=%v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@bufbuild", "protobuf")); !os.IsNotExist(err) {
+		t.Fatalf("expected temporary protobuf package link cleaned, got err=%v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "node_modules", "@bufbuild", "protobuf")); !os.IsNotExist(err) {
+		t.Fatalf("expected temporary runtime protobuf package link cleaned, got err=%v", err)
+	}
+}
+
+func TestEnsureE2EGlobalModuleLinksAtCleansUpOnSymlinkFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink permission semantics differ on windows")
+	}
+
+	localRoot := filepath.Join(t.TempDir(), "local", "node_modules")
+	globalRoot := filepath.Join(t.TempDir(), "global", "node_modules")
+	if err := os.MkdirAll(filepath.Join(globalRoot, "left-pad"), 0o755); err != nil {
+		t.Fatalf("mkdir global left-pad: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(globalRoot, "@scoped", "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir global @scoped/pkg: %v", err)
+	}
+	if err := os.MkdirAll(localRoot, 0o755); err != nil {
+		t.Fatalf("mkdir local node_modules root: %v", err)
+	}
+
+	blockedScopeDir := filepath.Join(localRoot, "@scoped")
+	if err := os.MkdirAll(blockedScopeDir, 0o755); err != nil {
+		t.Fatalf("mkdir local @scoped dir: %v", err)
+	}
+	if err := os.Chmod(blockedScopeDir, 0o555); err != nil {
+		t.Fatalf("chmod local @scoped dir readonly: %v", err)
+	}
+	defer func() {
+		_ = os.Chmod(blockedScopeDir, 0o755)
+	}()
+
+	cleanup, err := ensureE2EGlobalModuleLinksAt(localRoot, globalRoot, []string{"left-pad", "@scoped/pkg"})
+	if err == nil {
+		cleanup()
+		t.Fatal("expected symlink failure for readonly scoped directory")
+	}
+	if _, statErr := os.Lstat(filepath.Join(localRoot, "left-pad")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected rollback to remove previously created left-pad link, lstat err=%v", statErr)
+	}
+}
+
+func TestRequiredPlaywrightModulesFromSpecFiles(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "imports.spec.ts")
+	content := `
+import { test } from '@playwright/test'
+import { createPromiseClient } from '@connectrpc/connect'
+import { rpc } from '@choysum-dev/core/web/rpc'
+import path from 'node:path'
+import alias from '@/lib/client'
+import rel from './local'
+const debounceModule = import('lodash/debounce')
+const workspaceImport = import('@choysum-dev/base/web/demo')
+void test
+void createPromiseClient
+void rpc
+void path
+void alias
+void rel
+void debounceModule
+void workspaceImport
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@connectrpc/connect", "@playwright/test", "lodash"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
+func TestCollectPackageModuleDependencies_IgnoresWorkspaceScopedModules(t *testing.T) {
+	pkg := &sourceModulePackage{
+		Dependencies: map[string]string{
+			"@choysum-dev/core":   "workspace:*",
+			"@connectrpc/connect": "^2.1.1",
+		},
+		PeerDependencies: map[string]string{
+			"@choysum-dev/base": "workspace:*",
+			"lodash":            "^4.17.21",
+		},
+	}
+
+	got := collectPackageModuleDependencies(pkg)
+	want := []string{"@connectrpc/connect", "lodash"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("collectPackageModuleDependencies = %#v, want %#v", got, want)
+	}
+}
+
+func TestParseJSImportSpecifiers_TrimsQuotedLiterals(t *testing.T) {
+	source := `
+import '@playwright/test'
+const deferred = import("@connectrpc/connect")
+void deferred
+`
+
+	paths := parseJSImportSpecifiers(source)
+	if !slices.Contains(paths, "@playwright/test") {
+		t.Fatalf("expected @playwright/test in parsed specifiers, got %v", paths)
+	}
+	if !slices.Contains(paths, "@connectrpc/connect") {
+		t.Fatalf("expected @connectrpc/connect in parsed specifiers, got %v", paths)
+	}
+	for _, p := range paths {
+		if strings.Contains(p, "\"") || strings.Contains(p, "'") {
+			t.Fatalf("parsed specifier should not include quotes, got %q", p)
+		}
+	}
+}
+
+func TestRequiredPlaywrightModulesFromSpecFilesIgnoresCommentedImports(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "comments.spec.ts")
+	content := `
+// import { broken } from '@comment/line'
+/*
+import { blocked } from '@comment/block'
+const deferred = import('@comment/dynamic')
+void deferred
+*/
+import { test } from '@playwright/test'
+import { createPromiseClient } from '@connectrpc/connect'
+void test
+void createPromiseClient
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@connectrpc/connect", "@playwright/test"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
+func TestRequiredPlaywrightModulesFromSpecFiles_CommentTokensInsideStrings(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "strings.spec.ts")
+	content := `
+const globPattern = "src/**/*.spec.ts/*not-a-comment*/"
+const url = "https://cdn.example.com/a//b"
+import { test } from '@playwright/test'
+const deferred = import('lodash/debounce')
+void globPattern
+void url
+void test
+void deferred
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@playwright/test", "lodash"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
+func TestRequiredPlaywrightModulesFromSpecFiles_IgnoresBuiltinModulesWithoutNodePrefix(t *testing.T) {
+	specFile := filepath.Join(t.TempDir(), "builtins.spec.ts")
+	content := `
+import net from 'net'
+import dns from 'dns/promises'
+import vm from 'vm'
+import { Worker } from 'worker_threads'
+import punycode from 'punycode'
+import querystring from 'querystring'
+import { StringDecoder } from 'string_decoder'
+const debounceModule = import('lodash/debounce')
+void net
+void dns
+void vm
+void Worker
+void punycode
+void querystring
+void StringDecoder
+void debounceModule
+`
+	if err := os.WriteFile(specFile, []byte(content), 0o644); err != nil {
+		t.Fatalf("write spec file: %v", err)
+	}
+
+	required, err := requiredPlaywrightModulesFromSpecFiles([]string{specFile})
+	if err != nil {
+		t.Fatalf("requiredPlaywrightModulesFromSpecFiles error: %v", err)
+	}
+	expected := []string{"@playwright/test", "lodash"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("required modules = %#v, want %#v", required, expected)
+	}
+}
+
+func TestCollectRuntimeGeneratedModules(t *testing.T) {
+	runtimePath := filepath.Join(t.TempDir(), "runtime", "runtime.json")
+	generatedRoot := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web", "auth", "pb")
+	if err := os.MkdirAll(generatedRoot, 0o755); err != nil {
+		t.Fatalf("mkdir generated root: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(generatedRoot, "auth_pb.ts"), []byte(`
+import { Message } from '@bufbuild/protobuf'
+import path from 'node:path'
+import local from './local'
+const debounceModule = import('lodash/debounce')
+void Message
+void path
+void local
+void debounceModule
+`), 0o644); err != nil {
+		t.Fatalf("write auth_pb.ts: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(generatedRoot, "types.d.ts"), []byte("import '@ignored/from-dts'\n"), 0o644); err != nil {
+		t.Fatalf("write types.d.ts: %v", err)
+	}
+
+	required, err := collectRuntimeGeneratedModules(runtimePath)
+	if err != nil {
+		t.Fatalf("collectRuntimeGeneratedModules error: %v", err)
+	}
+	expected := []string{"@bufbuild/protobuf", "lodash"}
+	if !reflect.DeepEqual(required, expected) {
+		t.Fatalf("runtime generated modules = %#v, want %#v", required, expected)
 	}
 }
 
