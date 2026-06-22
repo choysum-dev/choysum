@@ -1006,6 +1006,9 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	} else if err := json.Unmarshal(data, &tsconfig); err != nil {
 		return fmt.Errorf("parse tsconfig: %w", err)
 	}
+	if tsconfig == nil {
+		tsconfig = make(map[string]interface{})
+	}
 
 	// Navigate to compilerOptions.paths.
 	compilerOptions, ok := tsconfig["compilerOptions"].(map[string]interface{})
