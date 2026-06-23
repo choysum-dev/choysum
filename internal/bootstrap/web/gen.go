@@ -21,18 +21,24 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/bufbuild/protocompile"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/internal/module/artifact/generate/grpcwebplugin/gots"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 
 	// Register the default QuickJS compiler factory so jsexecutor.NewCompilerExecutor
 	// can resolve the "default" factory name via its init() side-effect.
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
+
+	// Register the QuickJS engine factory ("quickjs") so the executor can
+	// create QuickJS runtime instances for Vue SFC compilation.
+	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 
 	"github.com/evanw/esbuild/pkg/api"
 	"google.golang.org/protobuf/proto"
@@ -58,31 +64,28 @@ func run() error {
 		cacheDir = filepath.Join(home, ".choysum")
 	}
 
-	// Resolve working directories.
-	// When invoked via go generate, the working directory is internal/bootstrap/web/.
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("cannot determine working directory: %w", err)
+	// Resolve the web package directory from this source file's location.
+	// This works regardless of the current working directory (go generate,
+	// go run from repo root, etc.).
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return fmt.Errorf("cannot determine gen.go location")
 	}
+	webDir := filepath.Dir(thisFile)
+	repoRoot := filepath.Dir(filepath.Dir(filepath.Dir(webDir)))
 
 	// Proto file path relative to the repo root.
 	protoRel := filepath.Join("internal", "bootstrap", "proto", "bootstrap.proto")
-	// The proto directory used as the import root for protocompile.
-	repoRoot, err := filepath.Abs(filepath.Join(cwd, "..", "..", ".."))
-	if err != nil {
-		return fmt.Errorf("cannot resolve repo root: %w", err)
-	}
 	protoDir := repoRoot
-	genAssetsDir := filepath.Join(repoRoot, "internal", "module", "artifact", "generate", "assets")
 
-	// Output directories.
-	srcGenDir := filepath.Join(cwd, "src", "gen", "bootstrap")
-	distDir := filepath.Join(cwd, "dist")
+	// Output directories (always relative to the web package directory).
+	srcGenDir := filepath.Join(webDir, "src", "gen", "bootstrap")
+	distDir := filepath.Join(webDir, "dist")
 
 	// ---------------------------------------------------------------------------
 	// 1. Generate Connect-Web TypeScript client stubs from bootstrap.proto.
 	// ---------------------------------------------------------------------------
-	if err := generateProtoStubs(repoRoot, protoDir, genAssetsDir, protoRel, srcGenDir); err != nil {
+	if err := generateProtoStubs(protoDir, protoRel, srcGenDir); err != nil {
 		return fmt.Errorf("proto generation: %w", err)
 	}
 
@@ -91,8 +94,8 @@ func run() error {
 	// ---------------------------------------------------------------------------
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
-	tsconfigPath := filepath.Join(cwd, "tsconfig.json")
-	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, cwd); err == nil {
+	tsconfigPath := filepath.Join(webDir, "tsconfig.json")
+	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, webDir); err == nil {
 		if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, results); err != nil {
 			fmt.Fprintf(os.Stderr, "gen.go: warning: failed to update tsconfig paths: %v\n", err)
 		}
@@ -119,8 +122,8 @@ func run() error {
 	// ---------------------------------------------------------------------------
 	// 4. Build the bootstrap web application with esbuild.
 	// ---------------------------------------------------------------------------
-	entryPoint := filepath.Join(cwd, "src", "main.ts")
-	indexHTML := filepath.Join(cwd, "index.html")
+	entryPoint := filepath.Join(webDir, "src", "main.ts")
+	indexHTML := filepath.Join(webDir, "index.html")
 	outIndexHTML := filepath.Join(distDir, "index.html")
 
 	// Prepare the Vue SFC plugin with HTML index processing.
@@ -139,8 +142,23 @@ func run() error {
 	esmPlugin := esmresolver.New(
 		esmresolver.WithCacheDir(cacheDir),
 		esmresolver.WithTarget("es2020"),
-		esmresolver.WithModulePath(cwd),
+		esmresolver.WithModulePath(webDir),
 	).Plugin()
+
+	// CSS external plugin — element-plus CSS imports (e.g.
+	// 'element-plus/es/components/alert/style/css') resolve to CSS files
+	// wrapped as JS modules by esm.sh. Mark them as external so esbuild
+	// skips parsing CSS syntax as JavaScript. In production the bootstrap
+	// page loads element-plus styles from a CDN <link> tag in index.html.
+	cssExternalPlugin := api.Plugin{
+		Name: "bootstrap-css-external",
+		Setup: func(build api.PluginBuild) {
+			build.OnResolve(api.OnResolveOptions{Filter: `^element-plus\/.*\/style\/css$`},
+				func(args api.OnResolveArgs) (api.OnResolveResult, error) {
+					return api.OnResolveResult{External: true}, nil
+				})
+		},
+	}
 
 	// Ensure the dist directory exists.
 	if err := os.MkdirAll(distDir, 0o755); err != nil {
@@ -161,9 +179,10 @@ func run() error {
 		Banner: map[string]string{
 			"js": "if(typeof require==='undefined'){globalThis.require=function(m){return null;};}",
 		},
-		Tsconfig: filepath.Join(cwd, "tsconfig.json"),
+		Tsconfig: filepath.Join(webDir, "tsconfig.json"),
 		Plugins: []api.Plugin{
-			esmPlugin, // Must run before vuePlugin to resolve bare imports.
+			cssExternalPlugin, // Must run before esmPlugin to intercept CSS imports.
+			esmPlugin,
 			vuePlugin,
 		},
 		Write:    true,
@@ -187,7 +206,7 @@ func run() error {
 
 // generateProtoStubs compiles bootstrap.proto with protocompile and runs the
 // pure-Go gots generator to produce Connect-Web TypeScript client stubs.
-func generateProtoStubs(repoRoot, protoDir, genAssetsDir, protoRel, outDir string) error {
+func generateProtoStubs(protoDir, protoRel, outDir string) error {
 	// Use the relative path as the proto file name for protocompile.
 	protoFileName := protoRel
 
@@ -195,7 +214,6 @@ func generateProtoStubs(repoRoot, protoDir, genAssetsDir, protoRel, outDir strin
 		Resolver: protocompile.WithStandardImports(&protocompile.SourceResolver{
 			ImportPaths: []string{
 				protoDir,
-				genAssetsDir,
 			},
 		}),
 	}
@@ -242,6 +260,7 @@ func generateProtoStubs(repoRoot, protoDir, genAssetsDir, protoRel, outDir strin
 // satisfy the jsexecutor factory contract for the compiler executor.
 type bootstrapScope struct {
 	ctx context.Context
+	cfg *config.Config
 }
 
 func (s *bootstrapScope) Context() context.Context { return s.ctx }
@@ -257,10 +276,34 @@ func (s *bootstrapScope) Transactor() scope.Transactor {
 	return scope.NewRunSessionTransactor(s)
 }
 
+// FactoryInput returns a scope.FactoryInput that exposes the server config
+// so the executor can resolve the "quickjs" engine factory by name.
+func (s *bootstrapScope) FactoryInput() scope.FactoryInput {
+	return bootstrapFactoryInput{cfg: s.cfg}
+}
+
+type bootstrapFactoryInput struct {
+	cfg *config.Config
+}
+
+func (i bootstrapFactoryInput) Environment() string { return "" }
+func (i bootstrapFactoryInput) ServerConfig() *config.ServerConfig {
+	if i.cfg == nil {
+		return nil
+	}
+	return i.cfg.Server
+}
+
 // newCompilerExecutor creates an unstarted compiler executor using the
-// "default" factory registered by internal/defaultjsexecutor.
+// "default" factory registered by internal/defaultjsexecutor and the
+// "quickjs" engine factory registered by internal/defaultengine.
 func newCompilerExecutor() (jsexecutor.JsExecutor, error) {
-	scope := &bootstrapScope{ctx: context.Background()}
+	srvCfg := config.NewDefaultServerConfig()
+	srvCfg.JsEngineFactory = "quickjs"
+	scope := &bootstrapScope{
+		ctx: context.Background(),
+		cfg: &config.Config{Server: srvCfg},
+	}
 	exec, err := jsexecutor.NewCompilerExecutor(scope)
 	if err != nil {
 		return nil, fmt.Errorf("create compiler executor: %w", err)
