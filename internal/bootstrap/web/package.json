@@ -10,14 +10,14 @@
     "verify:bootstrap:release": "npm run typecheck && npm run build && cd ../../.. && go build ./... && cd internal/bootstrap/web && npm run test:bootstrap:e2e"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.7.0",
+    "@bufbuild/protobuf": "^2.12.1",
     "@connectrpc/connect": "^2.1.2",
     "@connectrpc/connect-web": "^2.1.2",
     "element-plus": "^2.14.2",
     "vue": "^3.5.38"
   },
   "devDependencies": {
-    "@bufbuild/protoc-gen-es": "2.12.0",
+    "@bufbuild/protoc-gen-es": "2.12.1",
     "@types/node": "^26.0.0",
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^6.0.3",
