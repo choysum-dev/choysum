@@ -473,7 +473,8 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 	}, nil
 }
 
-// isCSSURL reports whether the resolved remote URL path ends with .css.
+// isCSSURL reports whether the resolved remote URL path ends with .css or has
+// a .css. segment (e.g. .css.mjs from esm.sh CSS wrapping).
 func isCSSURL(rawURL string) bool {
 	lower := strings.ToLower(rawURL)
 	if idx := strings.Index(lower, "?"); idx >= 0 {
@@ -482,7 +483,7 @@ func isCSSURL(rawURL string) bool {
 	if idx := strings.Index(lower, "#"); idx >= 0 {
 		lower = lower[:idx]
 	}
-	return strings.HasSuffix(lower, ".css")
+	return strings.HasSuffix(lower, ".css") || strings.Contains(lower, ".css.")
 }
 
 // isLocalFilesystemPath reports whether path looks like an absolute local
@@ -552,7 +553,7 @@ func loaderForURL(rawURL string) api.Loader {
 	if idx := strings.Index(lower, "#"); idx >= 0 {
 		lower = lower[:idx]
 	}
-	if strings.HasSuffix(lower, ".css") {
+	if strings.HasSuffix(lower, ".css") || strings.Contains(lower, ".css.") {
 		return api.LoaderCSS
 	}
 	if strings.HasSuffix(lower, ".ts") || strings.HasSuffix(lower, ".tsx") || strings.HasSuffix(lower, ".mts") {

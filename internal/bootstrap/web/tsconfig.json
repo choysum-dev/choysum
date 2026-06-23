@@ -1,16 +1,44 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "strict": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "useDefineForClassFields": true,
+    "paths": {
+      "@bufbuild/protobuf": [
+        "../../../../.choysum/pkg/types/esm.sh_@bufbuild_protobuf@2.7.0_dist_esm_index.d.ts.d.ts"
+      ],
+      "@connectrpc/connect": [
+        "../../../../.choysum/pkg/types/esm.sh_@connectrpc_connect@2.1.2_dist_esm_index.d.ts.d.ts"
+      ],
+      "@connectrpc/connect-web": [
+        "../../../../.choysum/pkg/types/esm.sh_@connectrpc_connect-web@2.1.2_dist_esm_index.d.ts.d.ts"
+      ],
+      "element-plus": [
+        "../../../../.choysum/pkg/types/esm.sh_element-plus@2.14.2_es_index.d.ts.d.ts"
+      ],
+      "vue": [
+        "../../../../.choysum/pkg/types/esm.sh_vue@3.5.38_dist_vue.d.mts.d.ts"
+      ]
+    },
     "resolveJsonModule": true,
-    "jsx": "preserve",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"]
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "types": [
+      "vite/client"
+    ],
+    "useDefineForClassFields": true
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue", "vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.vue",
+    "vite.config.ts"
+  ]
 }
