@@ -322,7 +322,8 @@ export class URL {
   }
 
   parse(url: string, base?: string | URL) {
-    let parsed = parse(url);
+    const urlStr = typeof url === 'string' ? url : String(url);
+    let parsed = parse(urlStr);
     if (!parsed.protocol && base) {
       const baseSource = typeof base === 'string' ? base : base.toString();
       const baseParsed = parse(baseSource);
@@ -332,7 +333,7 @@ export class URL {
     }
 
     if (!parsed.protocol) {
-      throw new TypeError('Invalid URL: ' + url);
+      throw new TypeError('Invalid URL: ' + urlStr);
     }
 
     this.url = url;
@@ -378,4 +379,7 @@ export class URL {
 
 if (typeof (globalThis as any).URL === 'undefined') {
   (globalThis as any).URL = URL;
+}
+if (typeof (globalThis as any).URLSearchParams === 'undefined') {
+  (globalThis as any).URLSearchParams = URLSearchParamsShim;
 }
