@@ -29,29 +29,20 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
-
-      - name: Install protoc
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          go-version-file: go.mod
+          cache: true
 
       - name: Build Vue SFC embed asset (go generate)
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
-      - name: Install bootstrap npm dependencies
-        working-directory: internal/bootstrap/web
-        run: npm ci
+      - name: Generate bootstrap proto (gots)
+        run: go run ./scripts/dev/gen_bootstrap_proto.go
 
-      - name: Build bootstrap dist
-        working-directory: internal/bootstrap/web
-        run: npm run build
+      - name: Build bootstrap dist (native)
+        run: go run ./scripts/dev/bootstrap_web_build.go
 
       - name: Package embedded assets and checksums
         shell: bash
