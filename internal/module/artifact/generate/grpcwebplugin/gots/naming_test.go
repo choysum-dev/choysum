@@ -91,8 +91,8 @@ func TestProtoNameToExport(t *testing.T) {
 		in   string
 		want string
 	}{
-		{in: "IrApplication_Browse_Req", want: "IrApplicationBrowseReq"},
-		{in: "null_value", want: "NullValue"},
+		{in: "IrApplication_Browse_Req", want: "IrApplication_Browse_Req"},
+		{in: "null_value", want: "Null_Value"},
 		{in: "sessionService", want: "SessionService"},
 	}
 

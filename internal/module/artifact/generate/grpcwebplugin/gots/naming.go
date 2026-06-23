@@ -79,9 +79,10 @@ func ProtoNameToExport(name string) string {
 		return "_"
 	}
 	var b strings.Builder
-	for _, p := range parts {
-		// Keep inner casing in each underscore-delimited segment. This preserves
-		// identifiers like IrApplication_* instead of collapsing to Irapplication*.
+	for i, p := range parts {
+		if i > 0 {
+			b.WriteByte('_')
+		}
 		b.WriteString(upperFirst(p))
 	}
 	return EscapeTSIdentifier(b.String())
@@ -164,4 +165,22 @@ func isIdentifierStart(r rune) bool {
 
 func isIdentifierContinue(r rune) bool {
 	return isIdentifierStart(r) || unicode.IsDigit(r)
+}
+
+// toScreamingSnakeCase converts a PascalCase/camelCase identifier to
+// SCREAMING_SNAKE_CASE. For example, "InitializationState" becomes
+// "INITIALIZATION_STATE".
+func toScreamingSnakeCase(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	var b strings.Builder
+	for i, r := range name {
+		if i > 0 && unicode.IsUpper(r) && (i+1 < len(name) && unicode.IsLower(rune(name[i+1]))) {
+			b.WriteByte('_')
+		}
+		b.WriteRune(unicode.ToUpper(r))
+	}
+	return b.String()
 }

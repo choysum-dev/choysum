@@ -233,16 +233,24 @@ func renderFileDependencies(ctx *renderContext, fd *descriptorpb.FileDescriptorP
 	return deps
 }
 
-func renderEnumDecl(out *strings.Builder, enumName string, e *descriptorpb.EnumDescriptorProto) {
+func renderEnumDecl(out *strings.Builder, enumTypeName string, e *descriptorpb.EnumDescriptorProto) {
+	prefix := toScreamingSnakeCase(enumTypeName) + "_"
 	out.WriteString("// Enum ")
-	out.WriteString(enumName)
+	out.WriteString(enumTypeName)
 	out.WriteString("\n")
 	out.WriteString("export enum ")
-	out.WriteString(enumName)
+	out.WriteString(enumTypeName)
 	out.WriteString(" {\n")
 	for _, v := range e.GetValue() {
+		name := v.GetName()
+		if strings.HasPrefix(name, prefix) {
+			stripped := name[len(prefix):]
+			if len(stripped) > 0 && stripped[0] >= 'A' && stripped[0] <= 'Z' {
+				name = stripped
+			}
+		}
 		out.WriteString("  ")
-		out.WriteString(v.GetName())
+		out.WriteString(name)
 		out.WriteString(" = ")
 		out.WriteString(strconv.Itoa(int(v.GetNumber())))
 		out.WriteString(",\n")
