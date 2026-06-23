@@ -120,6 +120,9 @@ function parse(url: string): ParsedUrl {
     pathEnd = searchIdx;
   }
   result.pathname = rest.slice(0, pathEnd);
+  if (result.slashes && !result.pathname) {
+    result.pathname = '/';
+  }
   result.path = result.pathname + result.search;
 
   return result;
