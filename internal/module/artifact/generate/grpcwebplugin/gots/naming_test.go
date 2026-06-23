@@ -52,6 +52,7 @@ func TestProtoFieldToTSField(t *testing.T) {
 		want string
 	}{
 		{in: "", want: "_"},
+		{in: "___", want: "_"},
 		{in: "error_id", want: "errorId"},
 		{in: "grpc_code", want: "grpcCode"},
 		{in: "return_fields", want: "returnFields"},
@@ -59,6 +60,7 @@ func TestProtoFieldToTSField(t *testing.T) {
 		{in: "userId", want: "userId"},
 		{in: "default", want: "default_"},
 		{in: "1st_value", want: "_1stValue"},
+		{in: " _a _b ", want: "aB"},
 	}
 
 	for _, tc := range cases {
@@ -97,6 +99,8 @@ func TestProtoNameToExport(t *testing.T) {
 	}{
 		{in: "", want: "_"},
 		{in: "___", want: "_"},
+		{in: "@@@", want: "_"},
+		{in: "_bad_", want: "Bad"},
 		{in: "IrApplication_Browse_Req", want: "IrApplicationBrowseReq"},
 		{in: "null_value", want: "NullValue"},
 		{in: "sessionService", want: "SessionService"},
@@ -116,18 +120,99 @@ func TestToScreamingSnakeCase(t *testing.T) {
 		in   string
 		want string
 	}{
+		{in: "", want: ""},
+		{in: "   ", want: ""},
 		{in: "InitializationState", want: "INITIALIZATION_STATE"},
 		{in: "HTTPServer", want: "HTTP_SERVER"},
 		{in: "\tÅngströmValue\n", want: "ÅNGSTRÖM_VALUE"},
 		{in: "MyHTTP", want: "MY_HTTP"},
 		{in: "MyHTMLSomething", want: "MY_HTML_SOMETHING"},
 		{in: "v2HTTPServer", want: "V2_HTTP_SERVER"},
+		{in: "alllowercase", want: "ALLLOWERCASE"},
+		{in: "XMLParser3", want: "XML_PARSER3"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.in, func(t *testing.T) {
 			if got := toScreamingSnakeCase(tc.in); got != tc.want {
 				t.Fatalf("toScreamingSnakeCase(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestEscapeTSIdentifier(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "hello", want: "hello"},
+		{in: "", want: "_"},
+		{in: "1abc", want: "_1abc"},
+		{in: "let", want: "let_"},
+		{in: "break", want: "break_"},
+		{in: "__", want: "_"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			if got := EscapeTSIdentifier(tc.in); got != tc.want {
+				t.Fatalf("EscapeTSIdentifier(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUpperFirst(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "hello", want: "Hello"},
+		{in: "", want: ""},
+		{in: "h", want: "H"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			if got := upperFirst(tc.in); got != tc.want {
+				t.Fatalf("upperFirst(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSplitIdentifierParts(t *testing.T) {
+	cases := []struct {
+		in   string
+		want []string
+	}{
+		{in: "a_b", want: []string{"a", "b"}},
+		{in: "", want: nil},
+		{in: "_ a _ b ", want: []string{"a", "b"}},
+		{in: "___", want: nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			got := splitIdentifierParts(tc.in)
+			if tc.want == nil && got != nil {
+				t.Fatalf("splitIdentifierParts(%q) = %v, want nil", tc.in, got)
+				return
+			}
+			if tc.want != nil && got == nil {
+				t.Fatalf("splitIdentifierParts(%q) = nil, want %v", tc.in, tc.want)
+				return
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("splitIdentifierParts(%q) = %v, want %v", tc.in, got, tc.want)
+				return
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("splitIdentifierParts(%q) = %v, want %v", tc.in, got, tc.want)
+					return
+				}
 			}
 		})
 	}
