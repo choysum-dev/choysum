@@ -79,10 +79,7 @@ func ProtoNameToExport(name string) string {
 		return "_"
 	}
 	var b strings.Builder
-	for i, p := range parts {
-		if i > 0 {
-			b.WriteByte('_')
-		}
+	for _, p := range parts {
 		b.WriteString(upperFirst(p))
 	}
 	return EscapeTSIdentifier(b.String())
@@ -175,9 +172,10 @@ func toScreamingSnakeCase(name string) string {
 	if name == "" {
 		return ""
 	}
+	runes := []rune(name)
 	var b strings.Builder
-	for i, r := range name {
-		if i > 0 && unicode.IsUpper(r) && (i+1 < len(name) && unicode.IsLower(rune(name[i+1]))) {
+	for i, r := range runes {
+		if i > 0 && unicode.IsUpper(r) && (i+1 < len(runes) && unicode.IsLower(runes[i+1])) {
 			b.WriteByte('_')
 		}
 		b.WriteRune(unicode.ToUpper(r))

@@ -34,6 +34,9 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Build Vue SFC embed asset (go generate)
+        run: go generate ./pkg/jsengine/scripts/vuesfc/...
+
       - name: Generate bootstrap web assets (go generate)
         run: go generate ./internal/bootstrap/web/...
 

@@ -91,8 +91,8 @@ func TestProtoNameToExport(t *testing.T) {
 		in   string
 		want string
 	}{
-		{in: "IrApplication_Browse_Req", want: "IrApplication_Browse_Req"},
-		{in: "null_value", want: "Null_Value"},
+		{in: "IrApplication_Browse_Req", want: "IrApplicationBrowseReq"},
+		{in: "null_value", want: "NullValue"},
 		{in: "sessionService", want: "SessionService"},
 	}
 
@@ -100,6 +100,25 @@ func TestProtoNameToExport(t *testing.T) {
 		t.Run(tc.in, func(t *testing.T) {
 			if got := ProtoNameToExport(tc.in); got != tc.want {
 				t.Fatalf("ProtoNameToExport(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestToScreamingSnakeCase(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{in: "InitializationState", want: "INITIALIZATION_STATE"},
+		{in: "HTTPServer", want: "HTTP_SERVER"},
+		{in: "\tÅngströmValue\n", want: "ÅNGSTRÖM_VALUE"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			if got := toScreamingSnakeCase(tc.in); got != tc.want {
+				t.Fatalf("toScreamingSnakeCase(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
 	}

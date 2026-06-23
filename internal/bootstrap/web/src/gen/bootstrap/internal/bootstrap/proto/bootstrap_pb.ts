@@ -35,34 +35,34 @@ export enum InitializationStage {
 
 export const InitializationStageSchema = enumDesc(file_internal_bootstrap_proto_bootstrap, 1);
 
-// Message Workspace_Initialize_Req
-export type Workspace_Initialize_Req = Message<'bootstrap.Workspace_Initialize_Req'> & {
+// Message WorkspaceInitializeReq
+export type WorkspaceInitializeReq = Message<'bootstrap.Workspace_Initialize_Req'> & {
   adminUsername: string;
   password: string;
   idempotencyKey: string;
 };
 
-export const Workspace_Initialize_ReqSchema: GenMessage<Workspace_Initialize_Req> = messageDesc(file_internal_bootstrap_proto_bootstrap, 0);
+export const WorkspaceInitializeReqSchema: GenMessage<WorkspaceInitializeReq> = messageDesc(file_internal_bootstrap_proto_bootstrap, 0);
 
-// Message Workspace_Initialize_Resp
-export type Workspace_Initialize_Resp = Message<'bootstrap.Workspace_Initialize_Resp'> & {
+// Message WorkspaceInitializeResp
+export type WorkspaceInitializeResp = Message<'bootstrap.Workspace_Initialize_Resp'> & {
   accepted: boolean;
   operationId: string;
   nextPollAfterMs: bigint;
   state: InitializationState;
 };
 
-export const Workspace_Initialize_RespSchema: GenMessage<Workspace_Initialize_Resp> = messageDesc(file_internal_bootstrap_proto_bootstrap, 1);
+export const WorkspaceInitializeRespSchema: GenMessage<WorkspaceInitializeResp> = messageDesc(file_internal_bootstrap_proto_bootstrap, 1);
 
-// Message Workspace_GetInitializationStatus_Req
-export type Workspace_GetInitializationStatus_Req = Message<'bootstrap.Workspace_GetInitializationStatus_Req'> & {
+// Message WorkspaceGetInitializationStatusReq
+export type WorkspaceGetInitializationStatusReq = Message<'bootstrap.Workspace_GetInitializationStatus_Req'> & {
   operationId: string;
 };
 
-export const Workspace_GetInitializationStatus_ReqSchema: GenMessage<Workspace_GetInitializationStatus_Req> = messageDesc(file_internal_bootstrap_proto_bootstrap, 2);
+export const WorkspaceGetInitializationStatusReqSchema: GenMessage<WorkspaceGetInitializationStatusReq> = messageDesc(file_internal_bootstrap_proto_bootstrap, 2);
 
-// Message Workspace_GetInitializationStatus_Resp
-export type Workspace_GetInitializationStatus_Resp = Message<'bootstrap.Workspace_GetInitializationStatus_Resp'> & {
+// Message WorkspaceGetInitializationStatusResp
+export type WorkspaceGetInitializationStatusResp = Message<'bootstrap.Workspace_GetInitializationStatus_Resp'> & {
   operationId: string;
   state: InitializationState;
   stage: InitializationStage;
@@ -74,7 +74,7 @@ export type Workspace_GetInitializationStatus_Resp = Message<'bootstrap.Workspac
   nextPollAfterMs: bigint;
 };
 
-export const Workspace_GetInitializationStatus_RespSchema: GenMessage<Workspace_GetInitializationStatus_Resp> = messageDesc(file_internal_bootstrap_proto_bootstrap, 3);
+export const WorkspaceGetInitializationStatusRespSchema: GenMessage<WorkspaceGetInitializationStatusResp> = messageDesc(file_internal_bootstrap_proto_bootstrap, 3);
 
 // Service Workspace
 export const Workspace = serviceDesc(file_internal_bootstrap_proto_bootstrap, 0);
