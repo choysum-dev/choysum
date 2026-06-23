@@ -148,9 +148,12 @@ function normalizePath(pathname: string): string {
     normalized.push(segment);
   }
 
-  const joined = normalized.join('/');
+  let joined = normalized.join('/');
   if (isAbsolute) {
-    return '/' + joined;
+    joined = '/' + joined;
+  }
+  if (pathname.endsWith('/') && !joined.endsWith('/')) {
+    joined += '/';
   }
   return joined || '';
 }
