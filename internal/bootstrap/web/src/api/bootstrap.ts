@@ -5,9 +5,9 @@ import { ConnectError, createClient } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 
 import { InitializationState, Workspace } from '../gen/bootstrap/internal/bootstrap/proto/bootstrap_pb';
-import type { Workspace_GetInitializationStatus_Resp, Workspace_Initialize_Req } from '../gen/bootstrap/internal/bootstrap/proto/bootstrap_pb';
+import type { WorkspaceGetInitializationStatusResp, WorkspaceInitializeReq } from '../gen/bootstrap/internal/bootstrap/proto/bootstrap_pb';
 
-export type InitializeWorkspaceInput = Pick<Workspace_Initialize_Req, 'adminUsername' | 'password' | 'idempotencyKey'>;
+export type InitializeWorkspaceInput = Pick<WorkspaceInitializeReq, 'adminUsername' | 'password' | 'idempotencyKey'>;
 
 export interface InitializeWorkspaceResult {
   accepted: boolean;
@@ -22,7 +22,7 @@ export interface BootstrapAPIError extends Error {
 }
 
 export type InitializationStatus = Pick<
-  Workspace_GetInitializationStatus_Resp,
+  WorkspaceGetInitializationStatusResp,
   'operationId' | 'state' | 'stage' | 'progressPercent' | 'readyForLogin' | 'redirectUrl' | 'errorCode' | 'errorMessage' | 'nextPollAfterMs'
 >;
 

@@ -1,27 +1,11 @@
 {
   "name": "@choysum/bootstrap-web",
   "private": true,
-  "version": "0.0.0",
-  "scripts": {
-    "gen:grpc": "mkdir -p src/gen/bootstrap && protoc -I ../../.. -I ../../../internal/module/artifact/generate/assets --es_out=target=ts:src/gen/bootstrap ../../../internal/bootstrap/proto/bootstrap.proto",
-    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
-    "build": "npm run gen:grpc && vite build --config vite.config.ts",
-    "test:bootstrap:e2e": "cd ../../.. && go test ./internal/bootstrap/service/... -count=1 && go test ./internal/server -run 'TestServer(StartBootstrapModeServesBootstrapRoutes|RequestBootstrapModeSwitchTransitionsToApplicationAndRestarts)$' -count=1",
-    "verify:bootstrap:release": "npm run typecheck && npm run build && cd ../../.. && go build ./... && cd internal/bootstrap/web && npm run test:bootstrap:e2e"
-  },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.7.0",
-    "@connectrpc/connect": "^2.1.2",
-    "@connectrpc/connect-web": "^2.1.2",
-    "element-plus": "^2.14.2",
-    "vue": "^3.5.38"
-  },
-  "devDependencies": {
-    "@bufbuild/protoc-gen-es": "2.12.0",
-    "@types/node": "^26.0.0",
-    "@vitejs/plugin-vue": "^6.0.7",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.16",
-    "vue-tsc": "^3.3.5"
+    "@bufbuild/protobuf": "2.7.0",
+    "@connectrpc/connect": "2.1.2",
+    "@connectrpc/connect-web": "2.1.2",
+    "element-plus": "2.14.2",
+    "vue": "3.5.38"
   }
 }
