@@ -5,6 +5,7 @@ package web
 
 import (
 	"io/fs"
+	"strings"
 	"testing"
 )
 
@@ -37,5 +38,25 @@ func TestLoadDistFS_Disk(t *testing.T) {
 	}
 	if _, err := fs.ReadFile(distFS, "index.html"); err != nil {
 		t.Fatalf("ReadFile(index.html) error = %v", err)
+	}
+}
+
+func TestLoadDistFS_DefaultEmbedIndexIncludesBootstrapScript(t *testing.T) {
+	distFS, _, _, err := LoadDistFS("")
+	if err != nil {
+		t.Fatalf("LoadDistFS() error = %v", err)
+	}
+
+	indexHTML, err := fs.ReadFile(distFS, "index.html")
+	if err != nil {
+		t.Fatalf("ReadFile(index.html) error = %v", err)
+	}
+
+	htmlText := string(indexHTML)
+	if !strings.Contains(htmlText, "<script") {
+		t.Fatal("expected embedded bootstrap index.html to include a script tag")
+	}
+	if !strings.Contains(htmlText, `src="index.js"`) {
+		t.Fatal("expected embedded bootstrap index.html to reference index.js")
 	}
 }

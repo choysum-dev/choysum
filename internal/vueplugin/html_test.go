@@ -229,6 +229,52 @@ func TestHtmlProcessorFileFiltering(t *testing.T) {
 	}
 }
 
+func TestHtmlProcessorUsesMetafileWhenOutputFilesEmpty(t *testing.T) {
+	processor := DefaultHtmlProcessor(nil)
+
+	htmlContent := `<html><head></head><body></body></html>`
+	doc, err := html.Parse(strings.NewReader(htmlContent))
+	if err != nil {
+		t.Fatalf("Failed to parse HTML: %v", err)
+	}
+
+	opts := newOptions()
+	opts.IndexHtmlOptions.OutFile = "/test/dist/index.html"
+
+	build := &api.PluginBuild{
+		InitialOptions: &api.BuildOptions{
+			EntryPoints:    []string{"/test/src/main.ts"},
+			Outfile:        "/test/dist/index.js",
+			AbsWorkingDir:  "/test",
+			AllowOverwrite: true,
+		},
+	}
+
+	result := &api.BuildResult{
+		Metafile: `{"outputs":{"dist/index.js":{"entryPoint":"src/main.ts"},"dist/index.css":{"bytes":128},"dist/chunk-abc.js":{"bytes":64}}}`,
+	}
+
+	if err := processor(doc, result, opts, build); err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := html.Render(&buf, doc); err != nil {
+		t.Fatalf("Failed to render HTML: %v", err)
+	}
+
+	htmlResult := buf.String()
+	if !strings.Contains(htmlResult, `src="index.js"`) {
+		t.Error("Expected HTML to contain script tag for index.js")
+	}
+	if !strings.Contains(htmlResult, `href="index.css"`) {
+		t.Error("Expected HTML to contain link tag for index.css")
+	}
+	if strings.Contains(htmlResult, "chunk-abc.js") {
+		t.Error("Expected HTML to not contain non-entry chunk script")
+	}
+}
+
 func TestHtmlProcessorRemoveTagXPaths(t *testing.T) {
 	processor := DefaultHtmlProcessor(nil)
 
