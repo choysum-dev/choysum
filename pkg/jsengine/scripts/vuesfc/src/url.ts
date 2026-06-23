@@ -214,8 +214,9 @@ function encodeQueryComponent(value: string): string {
 class URLSearchParamsShim {
   private params: Array<[string, string]> = [];
 
-  constructor(search: string = '') {
-    const query = search.startsWith('?') ? search.slice(1) : search;
+  constructor(search: any = '') {
+    const searchStr = typeof search === 'string' ? search : String(search || '');
+    const query = searchStr.startsWith('?') ? searchStr.slice(1) : searchStr;
     if (!query) {
       return;
     }
