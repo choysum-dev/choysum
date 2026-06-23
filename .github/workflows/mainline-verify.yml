@@ -356,10 +356,6 @@ jobs:
 
   bootstrap-verify:
     name: main / bootstrap-verify
-    needs:
-      - prepare-embedded-assets
     uses: ./.github/workflows/bootstrap-verify.yml
     with:
       run_ref: ${{ inputs.ref || github.ref }}
-      embedded_assets_artifact_name: main-embedded-assets
-      embedded_assets_archive_path: .choysum/tmp/main-embedded-assets.tar.gz

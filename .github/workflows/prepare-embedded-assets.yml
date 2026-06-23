@@ -55,13 +55,9 @@ jobs:
         if: ${{ inputs.docs_only != 'true' }}
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
-      - name: Generate bootstrap proto (gots)
+      - name: Generate bootstrap web assets (go generate)
         if: ${{ inputs.docs_only != 'true' }}
-        run: go run ./scripts/dev/gen_bootstrap_proto.go
-
-      - name: Build bootstrap dist (native)
-        if: ${{ inputs.docs_only != 'true' }}
-        run: go run ./scripts/dev/bootstrap_web_build.go
+        run: go generate ./internal/bootstrap/web/...
 
       - name: Pack embedded assets
         if: ${{ inputs.docs_only != 'true' }}
@@ -77,70 +73,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.archive_path }}
-          if-no-files-found: error
-          retention-days: ${{ inputs.retention_days }}
-
-  prepare-embedded-assets-legacy:
-    name: prepare-embedded-assets-legacy
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Legacy npm path kept as non-blocking fallback during transition.
-    continue-on-error: true
-    steps:
-      - name: Skip legacy assets when docs-only routing is active
-        if: ${{ inputs.docs_only == 'true' }}
-        run: echo "legacy embedded assets skipped by routing"
-
-      - name: Checkout
-        if: ${{ inputs.docs_only != 'true' }}
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.run_ref }}
-
-      - name: Setup Node
-        if: ${{ inputs.docs_only != 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
-
-      - name: Install protoc
-        if: ${{ inputs.docs_only != 'true' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Build Vue SFC embed asset (go generate)
-        if: ${{ inputs.docs_only != 'true' }}
-        run: go generate ./pkg/jsengine/scripts/vuesfc/...
-
-      - name: Install bootstrap npm dependencies
-        if: ${{ inputs.docs_only != 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Build bootstrap dist
-        if: ${{ inputs.docs_only != 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm run build
-
-      - name: Pack legacy embedded assets
-        if: ${{ inputs.docs_only != 'true' }}
-        run: |
-          ARCHIVE_PATH="${{ inputs.archive_path }}"
-          mkdir -p "$(dirname "$ARCHIVE_PATH")"
-          tar -czf "$ARCHIVE_PATH" \
-            internal/bootstrap/web/dist \
-            pkg/jsengine/scripts/vuesfc/dist/index.js
-
-      - name: Upload legacy embedded assets
-        if: ${{ inputs.docs_only != 'true' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ inputs.artifact_name }}-legacy
           path: ${{ inputs.archive_path }}
           if-no-files-found: error
           retention-days: ${{ inputs.retention_days }}

@@ -95,8 +95,7 @@ jobs:
 
         go generate ./pkg/jsengine/scripts/vuesfc/...
 
-        go run ./scripts/dev/gen_bootstrap_proto.go
-        go run ./scripts/dev/bootstrap_web_build.go
+        go generate ./internal/bootstrap/web/...
 
         go build ./...
 

@@ -38,11 +38,8 @@ jobs:
       - name: Build Vue SFC embed asset (go generate)
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
-      - name: Generate bootstrap proto (gots)
-        run: go run ./scripts/dev/gen_bootstrap_proto.go
-
-      - name: Build bootstrap dist (native)
-        run: go run ./scripts/dev/bootstrap_web_build.go
+      - name: Generate bootstrap web assets (go generate)
+        run: go generate ./internal/bootstrap/web/...
 
       - name: Package embedded assets and checksums
         shell: bash

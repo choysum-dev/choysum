@@ -3,11 +3,12 @@
 
 //go:build ignore
 
-// bootstrap_web_build.go builds internal/bootstrap/web/dist using only Go
-// tooling (esbuild + esmresolver + vueplugin). No Node.js, npm, or Vite
-// required.
+// gen.go generates bootstrap web assets in place using only Go tooling.
+// It performs two steps:
+// 1. Generate bootstrap_pb.ts from bootstrap.proto via gots.
+// 2. Build dist assets and index.html via esbuild + esmresolver + vueplugin.
 //
-// Invoke via: go run ./scripts/dev/bootstrap_web_build.go
+// Invoke via: go generate ./internal/bootstrap/web/...
 
 package main
 
@@ -17,16 +18,23 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
+	"github.com/bufbuild/protocompile"
 	_ "github.com/choysum-dev/choysum/internal/defaultengine"
 	_ "github.com/choysum-dev/choysum/internal/defaultjsexecutor"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
+	"github.com/choysum-dev/choysum/internal/module/artifact/generate/grpcwebplugin/gots"
 	"github.com/choysum-dev/choysum/internal/vueplugin"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/evanw/esbuild/pkg/api"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/types/pluginpb"
 )
 
 // buildScope implements scope.Scope and scope.FactoryInputCarrier for a
@@ -78,30 +86,116 @@ func (i *buildFactoryInput) ServerConfig() *config.ServerConfig   { return i.cfg
 func main() {
 	start := time.Now()
 
+	bootstrapDir, repoRoot, err := resolvePaths()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap_web_generate: resolve paths: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := generateBootstrapProto(repoRoot, bootstrapDir); err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap_web_generate: proto generation: %v\n", err)
+		os.Exit(1)
+	}
+
 	cacheDir := resolveCacheDir()
-	bootstrapDir := "internal/bootstrap/web"
+	if err := buildBootstrapDist(cacheDir, bootstrapDir); err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap_web_generate: dist build: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("bootstrap_web_generate: completed (elapsed: %s)\n", time.Since(start).Round(time.Millisecond))
+}
+
+func resolvePaths() (bootstrapDir string, repoRoot string, err error) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", "", fmt.Errorf("cannot resolve caller path")
+	}
+	bootstrapDir = filepath.Dir(thisFile)
+	repoRoot = filepath.Clean(filepath.Join(bootstrapDir, "..", "..", ".."))
+	return bootstrapDir, repoRoot, nil
+}
+
+func generateBootstrapProto(repoRoot, bootstrapDir string) error {
+	protoRelPath := filepath.ToSlash(filepath.Join("internal", "bootstrap", "proto", "bootstrap.proto"))
+	protoDir := filepath.Join(repoRoot, "internal", "bootstrap", "proto")
+
+	compiler := protocompile.Compiler{
+		Resolver: protocompile.WithStandardImports(&protocompile.SourceResolver{
+			ImportPaths: []string{repoRoot, protoDir},
+		}),
+	}
+
+	fds, err := compiler.Compile(context.Background(), protoRelPath)
+	if err != nil {
+		return fmt.Errorf("compile %s: %w", protoRelPath, err)
+	}
+
+	req := &pluginpb.CodeGeneratorRequest{
+		FileToGenerate: []string{protoRelPath},
+		Parameter:      proto.String("target=ts"),
+	}
+	for _, fd := range fds {
+		req.ProtoFile = append(req.ProtoFile, protodesc.ToFileDescriptorProto(fd))
+	}
+
+	gen := gots.NewGenerator()
+	resp, err := gen.Generate(req)
+	if err != nil {
+		return fmt.Errorf("gots generate: %w", err)
+	}
+
+	outDir := filepath.Join(
+		bootstrapDir,
+		"src",
+		"gen",
+		"bootstrap",
+		"internal",
+		"bootstrap",
+		"proto",
+	)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", outDir, err)
+	}
+
+	spdxHeader := `// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+`
+
+	for _, file := range resp.GetFile() {
+		outPath := filepath.Join(outDir, filepath.Base(file.GetName()))
+		content := spdxHeader + file.GetContent()
+		if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", outPath, err)
+		}
+		fmt.Printf("bootstrap_web_generate: wrote %s\n", outPath)
+	}
+
+	return nil
+}
+
+func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 	srcDir := filepath.Join(bootstrapDir, "src")
 	distDir := filepath.Join(bootstrapDir, "dist")
 	assetsDir := filepath.Join(distDir, "assets")
 
 	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "bootstrap_web_build: mkdir assets: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("mkdir assets: %w", err)
 	}
 
-	// ----- 1. Fetch type definitions and update tsconfig for IDE support -----
+	// Fetch type definitions and update tsconfig for IDE support.
 	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
 	typesDir := filepath.Join(cacheDir, "pkg", "types")
 	if results, err := esmresolver.FetchTypesForModule(client, "https://esm.sh", typesDir, bootstrapDir); err == nil {
 		tsConfigPath := filepath.Join(bootstrapDir, "tsconfig.json")
 		if err := esmresolver.UpdateTsconfigPaths(tsConfigPath, results); err != nil {
-			fmt.Fprintf(os.Stderr, "bootstrap_web_build: warning: update tsconfig paths: %v\n", err)
+			fmt.Fprintf(os.Stderr, "bootstrap_web_generate: warning: update tsconfig paths: %v\n", err)
 		}
 	} else {
-		fmt.Fprintf(os.Stderr, "bootstrap_web_build: warning: type fetch: %v\n", err)
+		fmt.Fprintf(os.Stderr, "bootstrap_web_generate: warning: type fetch: %v\n", err)
 	}
 
-	// ----- 2. Create compiler executor (minimal scope, QuickJS engine) -----
 	cfg := &config.Config{
 		Server: &config.ServerConfig{
 			JsEngineFactory:   "quickjs",
@@ -112,16 +206,13 @@ func main() {
 
 	executor, err := jsexecutor.NewCompilerExecutor(runtimeScope)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bootstrap_web_build: create compiler executor: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("create compiler executor: %w", err)
 	}
 	if err := executor.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "bootstrap_web_build: start compiler executor: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("start compiler executor: %w", err)
 	}
 	defer executor.Stop()
 
-	// ----- 3. Build with esbuild + esmresolver + vueplugin -----
 	entryPoint := filepath.Join(srcDir, "main.ts")
 	indexHTML := filepath.Join(distDir, "index.html")
 	sourceHTML := filepath.Join(bootstrapDir, "index.html")
@@ -171,17 +262,23 @@ func main() {
 	})
 
 	if len(result.Errors) > 0 {
+		var b strings.Builder
 		for _, e := range result.Errors {
 			loc := ""
 			if e.Location != nil {
 				loc = fmt.Sprintf("%s:%d:%d ", e.Location.File, e.Location.Line, e.Location.Column)
 			}
-			fmt.Fprintf(os.Stderr, "bootstrap_web_build: %s%s\n", loc, e.Text)
+			msg := fmt.Sprintf("%s%s", loc, e.Text)
+			fmt.Fprintf(os.Stderr, "bootstrap_web_generate: %s\n", msg)
+			if b.Len() > 0 {
+				b.WriteString("; ")
+			}
+			b.WriteString(msg)
 		}
-		os.Exit(1)
+		return fmt.Errorf("esbuild failed: %s", b.String())
 	}
 
-	fmt.Printf("bootstrap_web_build: dist ready (elapsed: %s)\n", time.Since(start).Round(time.Millisecond))
+	return nil
 }
 
 func resolveCacheDir() string {
@@ -190,7 +287,7 @@ func resolveCacheDir() string {
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bootstrap_web_build: cannot determine home directory: %v\n", err)
+		fmt.Fprintf(os.Stderr, "bootstrap_web_generate: cannot determine home directory: %v\n", err)
 		os.Exit(1)
 	}
 	return filepath.Join(home, ".choysum")
