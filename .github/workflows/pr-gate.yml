@@ -431,7 +431,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-v1
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -488,7 +488,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-v1
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
@@ -533,10 +533,7 @@ jobs:
     name: pr / bootstrap-verify
     needs:
       - discover-impact
-      - prepare-embedded-assets
     uses: ./.github/workflows/bootstrap-verify.yml
     with:
       run_ref: ${{ inputs.ref || github.ref }}
-      embedded_assets_artifact_name: pr-embedded-assets
-      embedded_assets_archive_path: .choysum/tmp/pr-embedded-assets.tar.gz
       run_bootstrap_verify: ${{ needs.discover-impact.outputs.run_bootstrap_verify }}
