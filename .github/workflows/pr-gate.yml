@@ -124,12 +124,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup Node
-        if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
       - name: Run go build
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
         run: go build ./...
