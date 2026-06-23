@@ -324,7 +324,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('internal/bootstrap/web/package-lock.json') }}
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('go.mod') }}
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium

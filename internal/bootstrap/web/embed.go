@@ -21,6 +21,8 @@ const (
 	EnvBootstrapWebDistDir = "CHOYSUM_BOOTSTRAP_WEB_DIST_DIR"
 )
 
+//go:generate go run gen.go
+
 var (
 	//go:embed dist
 	embeddedDistFS embed.FS

@@ -74,8 +74,6 @@ jobs:
       with:
         node-version: 22
         cache: npm
-        cache-dependency-path: |
-          internal/bootstrap/web/package-lock.json
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -102,15 +100,8 @@ jobs:
       run: |
         set -euo pipefail
 
-        sudo apt-get update
-        sudo apt-get install -y protobuf-compiler
-
         go generate ./pkg/jsengine/scripts/vuesfc/...
-
-        pushd internal/bootstrap/web
-        npm ci
-        npm run build
-        popd
+        go run ./internal/bootstrap/web/gen.go
 
         go build ./...
 

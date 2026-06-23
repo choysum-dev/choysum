@@ -54,26 +54,18 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup Node
+      - name: Cache ESM and type definitions
         if: ${{ inputs.run_bootstrap_verify == 'true' }}
-        uses: actions/setup-node@v6
+        uses: actions/cache@v5
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: internal/bootstrap/web/package-lock.json
+          path: |
+            ~/.choysum/pkg/esm
+            ~/.choysum/pkg/types
+          key: ${{ runner.os }}-bootstrap-esm-${{ hashFiles('internal/bootstrap/web/package.json') }}
 
-      - name: Install protoc
+      - name: Build bootstrap web dist and verify
         if: ${{ inputs.run_bootstrap_verify == 'true' }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install bootstrap npm dependencies
-        if: ${{ inputs.run_bootstrap_verify == 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Run bootstrap verify
-        if: ${{ inputs.run_bootstrap_verify == 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm run verify:bootstrap:release
+          set -euo pipefail
+          go run ./internal/bootstrap/web/gen.go
+          go build ./...

@@ -44,34 +44,29 @@ jobs:
         with:
           ref: ${{ inputs.run_ref }}
 
-      - name: Setup Node
+      - name: Setup Go
         if: ${{ inputs.docs_only != 'true' }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-go@v6
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            internal/bootstrap/web/package-lock.json
+          go-version-file: go.mod
+          cache: true
 
-      - name: Install protoc
+      - name: Cache ESM and type definitions
         if: ${{ inputs.docs_only != 'true' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.choysum/pkg/esm
+            ~/.choysum/pkg/types
+          key: ${{ runner.os }}-bootstrap-esm-${{ hashFiles('internal/bootstrap/web/package.json') }}
 
       - name: Build Vue SFC embed asset (go generate)
         if: ${{ inputs.docs_only != 'true' }}
         run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
-      - name: Install bootstrap npm dependencies
+      - name: Build bootstrap web dist
         if: ${{ inputs.docs_only != 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm ci
-
-      - name: Build bootstrap dist
-        if: ${{ inputs.docs_only != 'true' }}
-        working-directory: internal/bootstrap/web
-        run: npm run build
+        run: go run ./internal/bootstrap/web/gen.go
 
       - name: Pack embedded assets
         if: ${{ inputs.docs_only != 'true' }}
