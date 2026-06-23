@@ -36,20 +36,14 @@ jobs:
           cache: npm
           cache-dependency-path: |
             internal/bootstrap/web/package-lock.json
-            pkg/jsengine/scripts/vuesfc/package-lock.json
 
       - name: Install protoc
         run: |
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
-      - name: Install Vue SFC npm dependencies
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm ci
-
-      - name: Build Vue SFC embed asset
-        working-directory: pkg/jsengine/scripts/vuesfc
-        run: npm run build
+      - name: Build Vue SFC embed asset (go generate)
+        run: go generate ./pkg/jsengine/scripts/vuesfc/...
 
       - name: Install bootstrap npm dependencies
         working-directory: internal/bootstrap/web
