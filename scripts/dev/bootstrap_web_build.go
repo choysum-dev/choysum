@@ -46,7 +46,7 @@ func (s *buildScope) WithContext(ctx context.Context) scope.Scope {
 	return &clone
 }
 func (s *buildScope) Context() context.Context { return s.ctx }
-func (s *buildScope) Logger() *slog.Logger    { return slog.Default() }
+func (s *buildScope) Logger() *slog.Logger     { return slog.Default() }
 
 // FactoryInput exposes enough config for ServerRuntimeOptionsFromScope to
 // return JsEngineFactory="quickjs" so the default engine factory can be
@@ -60,15 +60,15 @@ func (s *buildScope) FactoryInput() scope.FactoryInput {
 
 type buildFactoryInput struct{ cfg *config.Config }
 
-func (i *buildFactoryInput) Environment() string        { return "" }
-func (i *buildFactoryInput) ModulesPath() string        { return "" }
-func (i *buildFactoryInput) DistPath() string           { return "" }
-func (i *buildFactoryInput) TmpPath() string            { return "" }
-func (i *buildFactoryInput) DefaultChoysumPath() string { return "" }
-func (i *buildFactoryInput) ConfigPath() string         { return "" }
-func (i *buildFactoryInput) ESMUpstreamURL() string     { return "" }
-func (i *buildFactoryInput) NpmRegistryURL() string     { return "" }
-func (i *buildFactoryInput) ModuleCatalogIndexURL() string { return "" }
+func (i *buildFactoryInput) Environment() string                  { return "" }
+func (i *buildFactoryInput) ModulesPath() string                  { return "" }
+func (i *buildFactoryInput) DistPath() string                     { return "" }
+func (i *buildFactoryInput) TmpPath() string                      { return "" }
+func (i *buildFactoryInput) DefaultChoysumPath() string           { return "" }
+func (i *buildFactoryInput) ConfigPath() string                   { return "" }
+func (i *buildFactoryInput) ESMUpstreamURL() string               { return "" }
+func (i *buildFactoryInput) NpmRegistryURL() string               { return "" }
+func (i *buildFactoryInput) ModuleCatalogIndexURL() string        { return "" }
 func (i *buildFactoryInput) CompileConfig() *config.CompileConfig { return nil }
 func (i *buildFactoryInput) AuthConfig() *config.AuthConfig       { return nil }
 func (i *buildFactoryInput) TaskConfig() *config.TaskConfig       { return nil }
@@ -104,7 +104,7 @@ func main() {
 	// ----- 2. Create compiler executor (minimal scope, QuickJS engine) -----
 	cfg := &config.Config{
 		Server: &config.ServerConfig{
-			JsEngineFactory:  "quickjs",
+			JsEngineFactory:   "quickjs",
 			JsExecutorFactory: "default",
 		},
 	}
@@ -163,10 +163,10 @@ func main() {
 			),
 		},
 		Define: map[string]string{
-			"import.meta.env.MODE":      "'production'",
-			"import.meta.env.PROD":      "true",
-			"import.meta.env.DEV":       "false",
-			"import.meta.env.SSR":       "false",
+			"import.meta.env.MODE": "'production'",
+			"import.meta.env.PROD": "true",
+			"import.meta.env.DEV":  "false",
+			"import.meta.env.SSR":  "false",
 		},
 	})
 
