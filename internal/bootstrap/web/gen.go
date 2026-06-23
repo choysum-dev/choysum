@@ -160,7 +160,11 @@ func run() error {
 		},
 	}
 
-	// Ensure the dist directory exists.
+	// Clean any stale dist artifacts from a previous build, then recreate
+	// the directory so esbuild always writes into a fresh target.
+	if err := os.RemoveAll(distDir); err != nil {
+		return fmt.Errorf("clean dist dir: %w", err)
+	}
 	if err := os.MkdirAll(distDir, 0o755); err != nil {
 		return fmt.Errorf("create dist dir: %w", err)
 	}
@@ -203,14 +207,30 @@ func run() error {
 	fmt.Println("bootstrap-web: built dist/")
 
 	// Ensure dist/assets/ is non-empty so Go's embed directive includes it.
-	// embed skips empty directories, which breaks fs.ReadDir(assets) in tests.
+	// embed skips empty directories, which breaks fs.ReadDir(assets) in
+	// tests.  Only write a placeholder when the directory is truly empty
+	// (no real build output landed there) so we never overwrite a chunk
+	// that a future esbuild configuration might emit.
 	assetsDir := filepath.Join(distDir, "assets")
-	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
-		return fmt.Errorf("create assets dir: %w", err)
-	}
-	placeholder := filepath.Join(assetsDir, "bootstrap.js")
-	if err := os.WriteFile(placeholder, []byte("// bootstrap web asset placeholder\n"), 0o644); err != nil {
-		return fmt.Errorf("write bootstrap asset: %w", err)
+	if entries, err := os.ReadDir(assetsDir); err == nil && len(entries) == 0 {
+		// Directory exists but is empty — write a minimal placeholder so
+		// Go embed includes the directory.  The conditional write avoids
+		// overwriting any real build chunk that a future esbuild plugin
+		// might emit into assets/.
+		placeholder := filepath.Join(assetsDir, "bootstrap.js")
+		if err := os.WriteFile(placeholder, []byte("// bootstrap web asset placeholder\n"), 0o644); err != nil {
+			return fmt.Errorf("write bootstrap asset: %w", err)
+		}
+	} else if err != nil {
+		// Directory missing after build — create it with a placeholder
+		// so embed picks up the assets subtree.
+		if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+			return fmt.Errorf("create assets dir: %w", err)
+		}
+		placeholder := filepath.Join(assetsDir, "bootstrap.js")
+		if err := os.WriteFile(placeholder, []byte("// bootstrap web asset placeholder\n"), 0o644); err != nil {
+			return fmt.Errorf("write bootstrap asset: %w", err)
+		}
 	}
 
 	return nil
