@@ -113,6 +113,9 @@ func TestToScreamingSnakeCase(t *testing.T) {
 		{in: "InitializationState", want: "INITIALIZATION_STATE"},
 		{in: "HTTPServer", want: "HTTP_SERVER"},
 		{in: "\tÅngströmValue\n", want: "ÅNGSTRÖM_VALUE"},
+		{in: "MyHTTP", want: "MY_HTTP"},
+		{in: "MyHTMLSomething", want: "MY_HTML_SOMETHING"},
+		{in: "v2HTTPServer", want: "V2_HTTP_SERVER"},
 	}
 
 	for _, tc := range cases {

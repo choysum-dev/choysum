@@ -175,8 +175,13 @@ func toScreamingSnakeCase(name string) string {
 	runes := []rune(name)
 	var b strings.Builder
 	for i, r := range runes {
-		if i > 0 && unicode.IsUpper(r) && (i+1 < len(runes) && unicode.IsLower(runes[i+1])) {
-			b.WriteByte('_')
+		if i > 0 {
+			prev := runes[i-1]
+			if (unicode.IsLower(prev) || unicode.IsDigit(prev)) && unicode.IsUpper(r) {
+				b.WriteByte('_')
+			} else if unicode.IsUpper(prev) && unicode.IsUpper(r) && i+1 < len(runes) && unicode.IsLower(runes[i+1]) {
+				b.WriteByte('_')
+			}
 		}
 		b.WriteRune(unicode.ToUpper(r))
 	}

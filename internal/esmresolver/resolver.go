@@ -560,7 +560,7 @@ func loaderForURL(rawURL string) api.Loader {
 	if idx := strings.Index(lower, "#"); idx >= 0 {
 		lower = lower[:idx]
 	}
-	if hasCSSSuffix(lower) {
+	if strings.HasSuffix(lower, ".css") {
 		return api.LoaderCSS
 	}
 	if strings.HasSuffix(lower, ".ts") || strings.HasSuffix(lower, ".tsx") || strings.HasSuffix(lower, ".mts") {
