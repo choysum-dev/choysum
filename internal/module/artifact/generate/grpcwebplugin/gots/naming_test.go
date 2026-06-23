@@ -13,6 +13,7 @@ func TestProtoFileToTSFile(t *testing.T) {
 		{in: "error.proto", want: "error_pb.ts"},
 		{in: "auth/user.proto", want: "auth/user_pb.ts"},
 		{in: "google/protobuf/struct.proto", want: "google/protobuf/struct_pb.ts"},
+		{in: "auth.proto.backup", want: "auth.proto.backup_pb.ts"},
 	}
 
 	for _, tc := range cases {
@@ -33,6 +34,7 @@ func TestProtoFileToFileConst(t *testing.T) {
 		{in: "auth_service.proto", want: "file_auth_service"},
 		{in: "auth/session.proto", want: "file_auth_session"},
 		{in: "user-profile.proto", want: "file_user_profile"},
+		{in: "---.proto", want: "file_file"},
 	}
 
 	for _, tc := range cases {
@@ -49,6 +51,7 @@ func TestProtoFieldToTSField(t *testing.T) {
 		in   string
 		want string
 	}{
+		{in: "", want: "_"},
 		{in: "error_id", want: "errorId"},
 		{in: "grpc_code", want: "grpcCode"},
 		{in: "return_fields", want: "returnFields"},
@@ -75,6 +78,7 @@ func TestNestedNamesToExport(t *testing.T) {
 	}{
 		{name: "metadata entry", parts: []string{"ErrorInfo", "MetadataEntry"}, want: "ErrorInfo_MetadataEntry"},
 		{name: "simple nested", parts: []string{"User", "Profile"}, want: "User_Profile"},
+		{name: "all blank", parts: []string{"", "___"}, want: "_"},
 	}
 
 	for _, tc := range cases {
@@ -91,6 +95,8 @@ func TestProtoNameToExport(t *testing.T) {
 		in   string
 		want string
 	}{
+		{in: "", want: "_"},
+		{in: "___", want: "_"},
 		{in: "IrApplication_Browse_Req", want: "IrApplicationBrowseReq"},
 		{in: "null_value", want: "NullValue"},
 		{in: "sessionService", want: "SessionService"},
