@@ -343,6 +343,7 @@ export class URL {
     this.path = this.pathname + this.search;
     this.searchParams = new URLSearchParamsShim(this.search);
     this.href = this.toString();
+    this.url = this.href;
 
     this.origin = this.protocol && this.host ? this.protocol + '//' + this.host : '';
     if (this.auth) {
