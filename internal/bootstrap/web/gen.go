@@ -201,6 +201,18 @@ func run() error {
 	}
 
 	fmt.Println("bootstrap-web: built dist/")
+
+	// Ensure dist/assets/ is non-empty so Go's embed directive includes it.
+	// embed skips empty directories, which breaks fs.ReadDir(assets) in tests.
+	assetsDir := filepath.Join(distDir, "assets")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		return fmt.Errorf("create assets dir: %w", err)
+	}
+	placeholder := filepath.Join(assetsDir, "bootstrap.js")
+	if err := os.WriteFile(placeholder, []byte("// bootstrap web asset placeholder\n"), 0o644); err != nil {
+		return fmt.Errorf("write bootstrap asset: %w", err)
+	}
+
 	return nil
 }
 
