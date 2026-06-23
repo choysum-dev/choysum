@@ -77,3 +77,48 @@ jobs:
         if: ${{ inputs.run_bootstrap_verify == 'true' }}
         working-directory: internal/bootstrap/web
         run: npm run verify:bootstrap:release
+
+  bootstrap-verify-native:
+    name: bootstrap-verify-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Non-blocking during canary phase — native build runs alongside legacy
+    # but does NOT gate PR/mainline success.
+    continue-on-error: true
+    steps:
+      - name: Skip native verify when routing does not require it
+        if: ${{ inputs.run_bootstrap_verify != 'true' }}
+        run: echo "bootstrap native verify skipped by routing"
+
+      - name: Checkout
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Setup Go
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Generate bootstrap proto (gots)
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        run: go run ./scripts/dev/gen_bootstrap_proto.go
+
+      - name: Build bootstrap web (native)
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        run: go run ./scripts/dev/bootstrap_web_build.go
+
+      - name: Verify bootstrap embed contract
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        run: go test ./internal/bootstrap/web -count=1 -v
+
+      - name: Verify bootstrap service layer
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        run: go test ./internal/bootstrap/service/... -count=1 -v
+
+      - name: Verify full Go build
+        if: ${{ inputs.run_bootstrap_verify == 'true' }}
+        run: go build ./...

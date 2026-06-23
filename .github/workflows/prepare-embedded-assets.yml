@@ -90,3 +90,57 @@ jobs:
           path: ${{ inputs.archive_path }}
           if-no-files-found: error
           retention-days: ${{ inputs.retention_days }}
+
+  prepare-embedded-assets-native:
+    name: prepare-embedded-assets-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Non-blocking during canary phase.
+    continue-on-error: true
+    steps:
+      - name: Skip native assets when docs-only routing is active
+        if: ${{ inputs.docs_only == 'true' }}
+        run: echo "native embedded assets skipped by routing"
+
+      - name: Checkout
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Setup Go
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build Vue SFC embed asset (go generate)
+        if: ${{ inputs.docs_only != 'true' }}
+        run: go generate ./pkg/jsengine/scripts/vuesfc/...
+
+      - name: Generate bootstrap proto (gots)
+        if: ${{ inputs.docs_only != 'true' }}
+        run: go run ./scripts/dev/gen_bootstrap_proto.go
+
+      - name: Build bootstrap dist (native)
+        if: ${{ inputs.docs_only != 'true' }}
+        run: go run ./scripts/dev/bootstrap_web_build.go
+
+      - name: Pack native embedded assets
+        if: ${{ inputs.docs_only != 'true' }}
+        run: |
+          ARCHIVE_PATH="${{ inputs.archive_path }}"
+          mkdir -p "$(dirname "$ARCHIVE_PATH")"
+          tar -czf "$ARCHIVE_PATH" \
+            internal/bootstrap/web/dist \
+            pkg/jsengine/scripts/vuesfc/dist/index.js
+
+      - name: Upload native embedded assets
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact_name }}-native
+          path: ${{ inputs.archive_path }}
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention_days }}
