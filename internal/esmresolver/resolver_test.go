@@ -697,6 +697,48 @@ func TestLoaderForURL(t *testing.T) {
 	}
 }
 
+func TestTrimCSSWrapperSuffix(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "css js wrapper",
+			url:  "https://esm.sh/element-plus/theme-chalk/base.css.js?target=es2020",
+			want: "https://esm.sh/element-plus/theme-chalk/base.css?target=es2020",
+		},
+		{
+			name: "css mjs wrapper",
+			url:  "https://esm.sh/element-plus/theme-chalk/base.css.mjs#v=1",
+			want: "https://esm.sh/element-plus/theme-chalk/base.css#v=1",
+		},
+		{
+			name: "css ts wrapper",
+			url:  "./style.css.ts",
+			want: "./style.css",
+		},
+		{
+			name: "already css",
+			url:  "https://esm.sh/style.css?target=es2020",
+			want: "https://esm.sh/style.css?target=es2020",
+		},
+		{
+			name: "invalid url",
+			url:  "%zz",
+			want: "%zz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := trimCSSWrapperSuffix(tt.url); got != tt.want {
+				t.Fatalf("trimCSSWrapperSuffix(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
+	}
+}
+
 // ---- formatError tests ----
 
 func TestFormatError(t *testing.T) {
@@ -1033,6 +1075,26 @@ func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
 	}
 }
 
+func TestResolveInNamespace_CSSWrapperAfterResolution(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./style.css.js",
+		Importer: "https://esm.sh/pkg@1.0.0/index.js",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.External {
+		t.Fatalf("expected namespaced css resolution, got external result: %+v", result)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+}
+
 func TestResolveInNamespace_CSSURLToken_External(t *testing.T) {
 	r := New()
 	result, err := r.resolveInNamespace(api.OnResolveArgs{
@@ -1046,6 +1108,23 @@ func TestResolveInNamespace_CSSURLToken_External(t *testing.T) {
 		t.Fatal("expected CSS URL token to stay external")
 	}
 	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/pkg@1.0.0/style.css.mjs?target=es2020",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL token to stay external")
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css?target=es2020" {
 		t.Fatalf("Path = %q", result.Path)
 	}
 }
