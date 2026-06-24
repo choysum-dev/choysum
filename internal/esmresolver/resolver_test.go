@@ -707,9 +707,9 @@ func TestLoaderForURL(t *testing.T) {
 		{"https://esm.sh/pkg.mjs", api.LoaderJS},
 		{"https://esm.sh/pkg.css", api.LoaderCSS},
 		{"https://esm.sh/pkg.css?target=es2020", api.LoaderCSS},
-		{"https://esm.sh/pkg.css.mjs", api.LoaderJS},
-		{"https://esm.sh/pkg.css.js", api.LoaderJS},
-		{"https://esm.sh/pkg.css.ts#v=1", api.LoaderTS},
+		{"https://esm.sh/pkg.css.mjs", api.LoaderCSS},
+		{"https://esm.sh/pkg.css.js", api.LoaderCSS},
+		{"https://esm.sh/pkg.css.ts#v=1", api.LoaderCSS},
 		{"https://esm.sh/pkg.ts", api.LoaderTS},
 		{"https://esm.sh/pkg.tsx", api.LoaderTS},
 		{"https://esm.sh/pkg.mts", api.LoaderTS},
@@ -891,8 +891,11 @@ func TestResolveInNamespace_HTTP_CSSByExtension(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !result.External {
-		t.Fatal("expected CSS URL detected by extension to be external")
+	if result.External {
+		t.Fatalf("expected HTTP css import to stay in resolver namespace, got external result: %+v", result)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
 	}
 }
 
@@ -1045,12 +1048,15 @@ func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Resolves to a .css URL — should be marked external.
-	if !result.External {
-		t.Fatal("expected external after resolving to CSS URL")
+	// Resolved CSS imports should stay in namespace so they can be bundled.
+	if result.External {
+		t.Fatalf("expected namespaced css resolution, got external result: %+v", result)
 	}
 	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
 		t.Fatalf("Path = %q", result.Path)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
 	}
 }
 

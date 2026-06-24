@@ -410,10 +410,10 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		return api.OnResolveResult{}, nil
 	}
 
-	// Already an absolute HTTP(S) URL: resolve and handle CSS as external.
+	// Already an absolute HTTP(S) URL: resolve in namespace.
 	if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-		// CSS URLs should remain external.
-		if args.Kind == api.ResolveCSSURLToken || isCSSURL(args.Path) {
+		// CSS URL tokens in stylesheet content should remain external.
+		if args.Kind == api.ResolveCSSURLToken {
 			return api.OnResolveResult{Path: args.Path, External: true}, nil
 		}
 		return api.OnResolveResult{
@@ -462,8 +462,8 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		}
 	}
 
-	// CSS URLs from the upstream are marked external.
-	if args.Kind == api.ResolveCSSURLToken || isCSSURL(resolvedURL) {
+	// CSS URL tokens in stylesheet content should remain external.
+	if args.Kind == api.ResolveCSSURLToken {
 		return api.OnResolveResult{Path: resolvedURL, External: true}, nil
 	}
 
@@ -560,7 +560,7 @@ func loaderForURL(rawURL string) api.Loader {
 	if idx := strings.Index(lower, "#"); idx >= 0 {
 		lower = lower[:idx]
 	}
-	if strings.HasSuffix(lower, ".css") {
+	if hasCSSSuffix(lower) {
 		return api.LoaderCSS
 	}
 	if strings.HasSuffix(lower, ".ts") || strings.HasSuffix(lower, ".tsx") || strings.HasSuffix(lower, ".mts") {
