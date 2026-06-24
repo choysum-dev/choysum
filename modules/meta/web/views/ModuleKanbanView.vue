@@ -197,7 +197,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type IrModule from '@/meta/service/models/ir_module';
 import type IrModuleIndex from '@/meta/service/models/ir_module_index';
@@ -593,6 +593,23 @@ async function onSyncIndex() {
 
 onBeforeUnmount(() => {
   clearPolling();
+});
+
+/**
+ * Silently triggers a stale-aware index refresh on kanban entry.
+ * Failures are suppressed to avoid blocking page usability.
+ */
+onMounted(async () => {
+  try {
+    await (store as any).RequestSync({ originType: 'registry', ifStale: true });
+  } catch {
+    // registry unavailable — silently skip, page remains usable
+  }
+  try {
+    await (store as any).RequestSync({ originType: 'local', ifStale: true });
+  } catch {
+    // local scan failed — silently skip
+  }
 });
 </script>
 

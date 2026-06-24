@@ -132,8 +132,12 @@ export default class IrModuleIndex extends BaseModel {
     if (!force && !ifStale) return '';
 
     const fullMethod = 'meta.IrModuleIndex/Sync';
-    const runningJobId = await findRunningJobId(fullMethod);
-    if (runningJobId) return runningJobId;
+
+    // For force mode, skip if a job is already running.
+    if (force && !ifStale) {
+      const runningJobId = await findRunningJobId(fullMethod);
+      if (runningJobId) return runningJobId;
+    }
 
     const originType = normalizeOriginType(params.originType);
     if (ifStale && !force) {
@@ -148,10 +152,15 @@ export default class IrModuleIndex extends BaseModel {
       const rows = await repo.execute(query);
       const row = rows?.[0] as any;
       const lastBatchSyncAt = row?.lastBatchSyncAt ?? row?.last_batch_sync_at ?? null;
-      if (!lastBatchSyncAt) {
-        // stale: proceed
-      } else {
-        return '';
+      if (lastBatchSyncAt) {
+        const now = Date.now();
+        const lastTime = new Date(lastBatchSyncAt as string).getTime();
+        if (!isNaN(lastTime)) {
+          const ttlMs = originType === 'registry' ? 10 * 60 * 1000 : 1 * 60 * 1000;
+          if (now - lastTime < ttlMs) {
+            return ''; // within staleness window, skip
+          }
+        }
       }
     }
 
