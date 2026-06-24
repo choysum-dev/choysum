@@ -610,33 +610,6 @@ func TestResolver_Plugin_TS_File_Loader(t *testing.T) {
 	}
 }
 
-// ---- isCSSURL tests ----
-
-func TestIsCSSURL(t *testing.T) {
-	tests := []struct {
-		url  string
-		want bool
-	}{
-		{"https://esm.sh/style.css", true},
-		{"https://esm.sh/style.css?target=es2020", true},
-		{"https://esm.sh/style.CSS", true},
-		{"https://esm.sh/style.css.mjs", true},
-		{"https://esm.sh/style.css.js?target=es2020", true},
-		{"https://esm.sh/style.css.ts#frag", true},
-		{"https://esm.sh/style.js", false},
-		{"https://esm.sh/style.mjs", false},
-		{"https://esm.sh/styles.css/chunk.js", false},
-		{"https://esm.sh/style.css#fragment", true},
-		{"https://esm.sh/style.css?t=1#frag", true},
-		{"", false},
-	}
-	for _, tt := range tests {
-		if got := isCSSURL(tt.url); got != tt.want {
-			t.Fatalf("isCSSURL(%q) = %v, want %v", tt.url, got, tt.want)
-		}
-	}
-}
-
 // ---- isFragmentOnly tests ----
 
 func TestIsFragmentOnly(t *testing.T) {
@@ -707,9 +680,9 @@ func TestLoaderForURL(t *testing.T) {
 		{"https://esm.sh/pkg.mjs", api.LoaderJS},
 		{"https://esm.sh/pkg.css", api.LoaderCSS},
 		{"https://esm.sh/pkg.css?target=es2020", api.LoaderCSS},
-		{"https://esm.sh/pkg.css.mjs", api.LoaderJS},
-		{"https://esm.sh/pkg.css.js", api.LoaderJS},
-		{"https://esm.sh/pkg.css.ts#v=1", api.LoaderTS},
+		{"https://esm.sh/pkg.css.mjs", api.LoaderCSS},
+		{"https://esm.sh/pkg.css.js", api.LoaderCSS},
+		{"https://esm.sh/pkg.css.ts#v=1", api.LoaderCSS},
 		{"https://esm.sh/pkg.ts", api.LoaderTS},
 		{"https://esm.sh/pkg.tsx", api.LoaderTS},
 		{"https://esm.sh/pkg.mts", api.LoaderTS},
@@ -721,6 +694,53 @@ func TestLoaderForURL(t *testing.T) {
 		if got := loaderForURL(tt.url); got != tt.want {
 			t.Fatalf("loaderForURL(%q) = %v, want %v", tt.url, got, tt.want)
 		}
+	}
+}
+
+func TestTrimCSSWrapperSuffix(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "css js wrapper",
+			url:  "https://esm.sh/element-plus/theme-chalk/base.css.js?target=es2020",
+			want: "https://esm.sh/element-plus/theme-chalk/base.css?target=es2020",
+		},
+		{
+			name: "css mjs wrapper",
+			url:  "https://esm.sh/element-plus/theme-chalk/base.css.mjs#v=1",
+			want: "https://esm.sh/element-plus/theme-chalk/base.css#v=1",
+		},
+		{
+			name: "css ts wrapper",
+			url:  "./style.css.ts",
+			want: "./style.css",
+		},
+		{
+			name: "preserve escaped path segments",
+			url:  "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
+			want: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2020",
+		},
+		{
+			name: "already css",
+			url:  "https://esm.sh/style.css?target=es2020",
+			want: "https://esm.sh/style.css?target=es2020",
+		},
+		{
+			name: "invalid url",
+			url:  "%zz",
+			want: "%zz",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := trimCSSWrapperSuffix(tt.url); got != tt.want {
+				t.Fatalf("trimCSSWrapperSuffix(%q) = %q, want %q", tt.url, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -891,8 +911,11 @@ func TestResolveInNamespace_HTTP_CSSByExtension(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !result.External {
-		t.Fatal("expected CSS URL detected by extension to be external")
+	if result.External {
+		t.Fatalf("expected HTTP css import to stay in resolver namespace, got external result: %+v", result)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
 	}
 }
 
@@ -1045,11 +1068,102 @@ func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Resolves to a .css URL — should be marked external.
-	if !result.External {
-		t.Fatal("expected external after resolving to CSS URL")
+	// Resolved CSS imports should stay in namespace so they can be bundled.
+	if result.External {
+		t.Fatalf("expected namespaced css resolution, got external result: %+v", result)
 	}
 	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+}
+
+func TestResolveInNamespace_CSSWrapperAfterResolution(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path:     "./style.css.js",
+		Importer: "https://esm.sh/pkg@1.0.0/index.js",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.External {
+		t.Fatalf("expected namespaced css resolution, got external result: %+v", result)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+}
+
+func TestResolveInNamespace_CSSURLToken_External(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/pkg@1.0.0/style.css",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL token to stay external")
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/pkg@1.0.0/style.css.mjs?target=es2020",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL token to stay external")
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css?target=es2020" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_CSSWrapperURLToken_External_PreserveEscapedPath(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL token to stay external")
+	}
+	if result.Path != "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2020" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_NonCSSURLToken_InNamespace(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/pkg@1.0.0/index.js"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.External {
+		t.Fatal("expected non-CSS HTTP URL to stay in namespace")
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/index.js" {
 		t.Fatalf("Path = %q", result.Path)
 	}
 }

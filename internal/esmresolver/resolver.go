@@ -410,14 +410,15 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		return api.OnResolveResult{}, nil
 	}
 
-	// Already an absolute HTTP(S) URL: resolve and handle CSS as external.
+	// Already an absolute HTTP(S) URL: resolve in namespace.
 	if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-		// CSS URLs should remain external.
-		if args.Kind == api.ResolveCSSURLToken || isCSSURL(args.Path) {
-			return api.OnResolveResult{Path: args.Path, External: true}, nil
+		resolvedPath := trimCSSWrapperSuffix(args.Path)
+		// CSS URL tokens in stylesheet content should remain external.
+		if args.Kind == api.ResolveCSSURLToken {
+			return api.OnResolveResult{Path: resolvedPath, External: true}, nil
 		}
 		return api.OnResolveResult{
-			Path:      args.Path,
+			Path:      resolvedPath,
 			Namespace: "choysum-esm",
 		}, nil
 	}
@@ -462,8 +463,10 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 		}
 	}
 
-	// CSS URLs from the upstream are marked external.
-	if args.Kind == api.ResolveCSSURLToken || isCSSURL(resolvedURL) {
+	resolvedURL = trimCSSWrapperSuffix(resolvedURL)
+
+	// CSS URL tokens in stylesheet content should remain external.
+	if args.Kind == api.ResolveCSSURLToken {
 		return api.OnResolveResult{Path: resolvedURL, External: true}, nil
 	}
 
@@ -473,24 +476,48 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 	}, nil
 }
 
-// isCSSURL reports whether the resolved remote URL path uses a CSS extension
-// or an esm.sh CSS wrapper suffix such as .css.mjs.
-func isCSSURL(rawURL string) bool {
-	lower := strings.ToLower(rawURL)
-	if idx := strings.Index(lower, "?"); idx >= 0 {
-		lower = lower[:idx]
-	}
-	if idx := strings.Index(lower, "#"); idx >= 0 {
-		lower = lower[:idx]
-	}
-	return hasCSSSuffix(lower)
-}
-
 func hasCSSSuffix(path string) bool {
 	return strings.HasSuffix(path, ".css") ||
 		strings.HasSuffix(path, ".css.js") ||
 		strings.HasSuffix(path, ".css.mjs") ||
 		strings.HasSuffix(path, ".css.ts")
+}
+
+// trimCSSWrapperSuffix rewrites esm.sh CSS wrapper modules to their raw CSS URL
+// by removing the trailing JS/MJS/TS extension (e.g. .css.js -> .css).
+func trimCSSWrapperSuffix(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	trimExt := func(ext string) {
+		u.Path = u.Path[:len(u.Path)-len(ext)]
+		if u.RawPath == "" {
+			return
+		}
+		lowerRawPath := strings.ToLower(u.RawPath)
+		if strings.HasSuffix(lowerRawPath, ext) && len(u.RawPath) >= len(ext) {
+			u.RawPath = u.RawPath[:len(u.RawPath)-len(ext)]
+			return
+		}
+		// If RawPath cannot be synchronized safely, clear it to avoid path/encoding mismatch.
+		u.RawPath = ""
+	}
+
+	lowerPath := strings.ToLower(u.Path)
+	switch {
+	case strings.HasSuffix(lowerPath, ".css.js"):
+		trimExt(".js")
+	case strings.HasSuffix(lowerPath, ".css.mjs"):
+		trimExt(".mjs")
+	case strings.HasSuffix(lowerPath, ".css.ts"):
+		trimExt(".ts")
+	default:
+		return rawURL
+	}
+
+	return u.String()
 }
 
 // isLocalFilesystemPath reports whether path looks like an absolute local
@@ -560,7 +587,7 @@ func loaderForURL(rawURL string) api.Loader {
 	if idx := strings.Index(lower, "#"); idx >= 0 {
 		lower = lower[:idx]
 	}
-	if strings.HasSuffix(lower, ".css") {
+	if hasCSSSuffix(lower) {
 		return api.LoaderCSS
 	}
 	if strings.HasSuffix(lower, ".ts") || strings.HasSuffix(lower, ".tsx") || strings.HasSuffix(lower, ".mts") {
