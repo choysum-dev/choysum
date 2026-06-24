@@ -286,7 +286,19 @@ func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, 
 	case InputKindRegistry:
 		return c.resolveRegistry(ctx, parsed)
 	case InputKindLocal:
-		return c.resolveLocal(ctx, parsed)
+		mod, localErr := c.resolveLocal(ctx, parsed)
+		if localErr == nil {
+			return mod, nil
+		}
+		// When the module is not found locally, fall back to registry resolution.
+		if isModuleNotFoundError(localErr) {
+			mod, registryErr := c.resolveRegistry(ctx, parsed)
+			if registryErr == nil {
+				return mod, nil
+			}
+			return nil, xfmt.Errorf("module %s not found locally and registry fallback failed: %w", parsed.LocalName, registryErr)
+		}
+		return nil, localErr
 	default:
 		return nil, xfmt.Errorf("unsupported origin input kind: %s", parsed.Kind)
 	}
@@ -359,4 +371,17 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 		return nil, err
 	}
 	return mod, nil
+}
+
+// isModuleNotFoundError reports whether the error indicates the module was not
+// found in the local modules path (as opposed to a disk I/O or permission error).
+func isModuleNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "not found in modules path")
 }

@@ -249,35 +249,31 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 	})
 
-	t.Run("resolve local name does not fallback to registry binding", func(t *testing.T) {
-		runtimeScope.cfg.ModuleCatalogIndexURL = "https://index.acme.dev/v1/index.json"
+	t.Run("resolve local name falls back to registry when local is missing", func(t *testing.T) {
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v3")
+		defer catalog.Close()
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		fetchCalls := 0
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			fetchCalls++
-			return &meta.IrModule{Name: moduleName, Version: version}, nil
+			return &meta.IrModule{Name: moduleName, Version: "v3.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
-
-		if err := lockStore.UpsertBinding(WorkspaceRoot(runtimeScope), Binding{
-			ModuleName:      "auth",
-			OriginType:      OriginTypeRegistry,
-			OriginRef:       "auth@v2.0.0",
-			ResolvedVersion: "v2.0.0",
-		}); err != nil {
-			t.Fatalf("upsert lock binding: %v", err)
-		}
 
 		if err := os.RemoveAll(filepath.Join(modulesPath, "auth")); err != nil {
 			t.Fatalf("remove local module dir: %v", err)
 		}
 
-		_, err := coordinator.ResolveInstallModule(context.Background(), "auth")
-		if err == nil || !strings.Contains(err.Error(), "not found in modules path") {
-			t.Fatalf("expected local missing error, got %v", err)
+		mod, err := coordinator.ResolveInstallModule(context.Background(), "auth")
+		if err != nil {
+			t.Fatalf("expected registry fallback to succeed when local is missing, got %v", err)
 		}
-		if fetchCalls != 0 {
-			t.Fatalf("expected no registry fetch fallback, got %d calls", fetchCalls)
+		if mod == nil || mod.Version != "v3.0.0" {
+			t.Fatalf("unexpected fallback module: %#v", mod)
+		}
+		if fetchCalls != 1 {
+			t.Fatalf("expected 1 registry fetch call during fallback, got %d", fetchCalls)
 		}
 	})
 
