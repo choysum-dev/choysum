@@ -23,7 +23,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/choysum-dev/choysum/pkg/server/defaultserver"
 	"github.com/spf13/cobra"
-	"go.yaml.in/yaml/v3"
 )
 
 const (
@@ -347,9 +346,6 @@ func loadRunConfig(cfgPath string) (runLoadedConfig, *runError) {
 			next:     next,
 		}
 	}
-	if !configHasModulesPath(cfgPath) {
-		cfg.ModulesPath = "./modules"
-	}
 	cfgOptions := newScopeInputConfigOptions(snapshot.New(cfg))
 	cliOptions := newCliRuntimeOptionsFromScopeInputOptions(cfgOptions)
 	serverOptions := newRunServerRuntimeOptions(cfg.Server)
@@ -367,19 +363,6 @@ func cloneRunLogConfig(cfg *config.LogConfig) *config.LogConfig {
 	}
 	cloned := *cfg
 	return &cloned
-}
-
-func configHasModulesPath(cfgPath string) bool {
-	data, err := os.ReadFile(cfgPath)
-	if err != nil {
-		return true
-	}
-	var raw map[string]any
-	if err := yaml.Unmarshal(data, &raw); err != nil {
-		return true
-	}
-	_, ok := raw["modules_path"]
-	return ok
 }
 
 func validateRunConfig(scopeInput *runRuntimeScopeInput) *runError {
@@ -408,10 +391,6 @@ func validateRunModulesPath(options *cliRuntimeOptions) *runError {
 	}
 
 	path := options.modulesPath
-	if path == "" {
-		path = "./modules"
-		options.modulesPath = path
-	}
 	if strings.TrimSpace(path) == "" {
 		return &runError{
 			exitCode: 3,
@@ -454,18 +433,31 @@ func validateRunModulesPath(options *cliRuntimeOptions) *runError {
 	info, err := os.Lstat(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			if mkdirErr := os.MkdirAll(path, 0o755); mkdirErr != nil {
+				return &runError{
+					exitCode: 3,
+					errMsg:   "invalid config",
+					reason:   "path does not exist and cannot be created",
+					next:     runConfigFixValuesNext,
+				}
+			}
+			// Re-stat after creating the directory.
+			info, err = os.Lstat(path)
+			if err != nil {
+				return &runError{
+					exitCode: 3,
+					errMsg:   "invalid config",
+					reason:   "permission denied or not accessible",
+					next:     runConfigFixValuesNext,
+				}
+			}
+		} else {
 			return &runError{
 				exitCode: 3,
 				errMsg:   "invalid config",
-				reason:   "path does not exist",
+				reason:   "permission denied or not accessible",
 				next:     runConfigFixValuesNext,
 			}
-		}
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "permission denied or not accessible",
-			next:     runConfigFixValuesNext,
 		}
 	}
 	if info.Mode()&os.ModeSymlink != 0 {

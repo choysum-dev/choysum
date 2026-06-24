@@ -107,37 +107,6 @@ func TestURLScheme(t *testing.T) {
 	}
 }
 
-func TestConfigHasModulesPath(t *testing.T) {
-	missing := filepath.Join(t.TempDir(), "missing.yaml")
-	if !configHasModulesPath(missing) {
-		t.Fatal("expected missing config file to default to true")
-	}
-
-	invalidPath := filepath.Join(t.TempDir(), "invalid.yaml")
-	if err := os.WriteFile(invalidPath, []byte("modules_path: ["), 0o644); err != nil {
-		t.Fatalf("write invalid yaml: %v", err)
-	}
-	if !configHasModulesPath(invalidPath) {
-		t.Fatal("expected invalid yaml to default to true")
-	}
-
-	missingKeyPath := filepath.Join(t.TempDir(), "missing_key.yaml")
-	if err := os.WriteFile(missingKeyPath, []byte("db:\n  dialect: sqlite\n"), 0o644); err != nil {
-		t.Fatalf("write missing-key yaml: %v", err)
-	}
-	if configHasModulesPath(missingKeyPath) {
-		t.Fatal("expected config without modules_path to return false")
-	}
-
-	presentKeyPath := filepath.Join(t.TempDir(), "present_key.yaml")
-	if err := os.WriteFile(presentKeyPath, []byte("modules_path: ./modules\n"), 0o644); err != nil {
-		t.Fatalf("write present-key yaml: %v", err)
-	}
-	if !configHasModulesPath(presentKeyPath) {
-		t.Fatal("expected config with modules_path to return true")
-	}
-}
-
 func TestValidateRunDatabaseDsn(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -316,10 +285,15 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 	})
 
-	t.Run("path does not exist", func(t *testing.T) {
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: filepath.Join(t.TempDir(), "missing")})
-		if err == nil || err.reason != "path does not exist" {
-			t.Fatalf("expected missing path error, got %#v", err)
+	t.Run("path does not exist (auto-created)", func(t *testing.T) {
+		missingPath := filepath.Join(t.TempDir(), "missing")
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: missingPath})
+		if err != nil {
+			t.Fatalf("expected auto-created path to succeed, got %#v", err)
+		}
+		// Verify the directory was actually created.
+		if st, statErr := os.Stat(missingPath); statErr != nil || !st.IsDir() {
+			t.Fatalf("expected %s to be a directory after auto-creation", missingPath)
 		}
 	})
 

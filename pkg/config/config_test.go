@@ -516,7 +516,7 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
+func TestDefaultConfigUsesEmptyModulesWhenLocalDirMissing(t *testing.T) {
 	origWD, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("getwd: %v", err)
@@ -531,12 +531,8 @@ func TestDefaultConfigUsesRelativeModulesWhenLocalDirMissing(t *testing.T) {
 	}
 
 	cfg := defaultConfig()
-	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
-	if err := os.MkdirAll(wantModules, 0o755); err != nil {
-		t.Fatalf("mkdir expected path %q: %v", wantModules, err)
-	}
-	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModules) {
-		t.Fatalf("modules path = %q, want %q", cfg.ModulesPath, wantModules)
+	if strings.TrimSpace(cfg.ModulesPath) != "" {
+		t.Fatalf("expected modules_path empty when local modules dir missing, got %q", cfg.ModulesPath)
 	}
 	if strings.TrimSpace(cfg.DistPath) != "" {
 		t.Fatalf("expected dist_path empty before path invariants, got %q", cfg.DistPath)
