@@ -491,21 +491,29 @@ func trimCSSWrapperSuffix(rawURL string) string {
 		return rawURL
 	}
 
-	lowerPath := strings.ToLower(u.Path)
-	trimmed := false
-	switch {
-	case strings.HasSuffix(lowerPath, ".css.js"):
-		u.Path = u.Path[:len(u.Path)-len(".js")]
-		trimmed = true
-	case strings.HasSuffix(lowerPath, ".css.mjs"):
-		u.Path = u.Path[:len(u.Path)-len(".mjs")]
-		trimmed = true
-	case strings.HasSuffix(lowerPath, ".css.ts"):
-		u.Path = u.Path[:len(u.Path)-len(".ts")]
-		trimmed = true
+	trimExt := func(ext string) {
+		u.Path = u.Path[:len(u.Path)-len(ext)]
+		if u.RawPath == "" {
+			return
+		}
+		lowerRawPath := strings.ToLower(u.RawPath)
+		if strings.HasSuffix(lowerRawPath, ext) && len(u.RawPath) >= len(ext) {
+			u.RawPath = u.RawPath[:len(u.RawPath)-len(ext)]
+			return
+		}
+		// If RawPath cannot be synchronized safely, clear it to avoid path/encoding mismatch.
+		u.RawPath = ""
 	}
 
-	if !trimmed {
+	lowerPath := strings.ToLower(u.Path)
+	switch {
+	case strings.HasSuffix(lowerPath, ".css.js"):
+		trimExt(".js")
+	case strings.HasSuffix(lowerPath, ".css.mjs"):
+		trimExt(".mjs")
+	case strings.HasSuffix(lowerPath, ".css.ts"):
+		trimExt(".ts")
+	default:
 		return rawURL
 	}
 

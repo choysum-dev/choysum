@@ -719,6 +719,11 @@ func TestTrimCSSWrapperSuffix(t *testing.T) {
 			want: "./style.css",
 		},
 		{
+			name: "preserve escaped path segments",
+			url:  "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
+			want: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2020",
+		},
+		{
 			name: "already css",
 			url:  "https://esm.sh/style.css?target=es2020",
 			want: "https://esm.sh/style.css?target=es2020",
@@ -1125,6 +1130,23 @@ func TestResolveInNamespace_CSSWrapperURLToken_External(t *testing.T) {
 		t.Fatal("expected CSS URL token to stay external")
 	}
 	if result.Path != "https://esm.sh/pkg@1.0.0/style.css?target=es2020" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_CSSWrapperURLToken_External_PreserveEscapedPath(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css.js?target=es2020",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL token to stay external")
+	}
+	if result.Path != "https://esm.sh/@scope%2Fpkg/theme%2Fchalk/base.css?target=es2020" {
 		t.Fatalf("Path = %q", result.Path)
 	}
 }
