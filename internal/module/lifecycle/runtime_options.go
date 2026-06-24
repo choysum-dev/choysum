@@ -12,11 +12,12 @@ import (
 )
 
 type runtimeOptions struct {
-	modulesPath        string
-	distPath           string
-	tmpPath            string
-	defaultChoysumPath string
-	compileBundleMode  string
+	modulesPath           string
+	distPath              string
+	tmpPath               string
+	defaultChoysumPath    string
+	compileBundleMode     string
+	moduleCatalogIndexURL string
 }
 
 func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, compileOpts scope.CompileRuntimeOptions, hasCompileOpts bool) runtimeOptions {
@@ -30,6 +31,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 		opts.distPath = pathOpts.DistPath
 		opts.tmpPath = pathOpts.TmpPath
 		opts.defaultChoysumPath = pathOpts.DefaultChoysumPath
+		opts.moduleCatalogIndexURL = strings.TrimSpace(pathOpts.ModuleCatalogIndexURL)
 	}
 	if hasCompileOpts && strings.TrimSpace(compileOpts.BundleMode) != "" {
 		opts.compileBundleMode = compileOpts.BundleMode

@@ -287,8 +287,12 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 		return ctx.ThrowError(err)
 	}
 	originType := normalizeModuleIndexOriginType(params.OriginType)
-	if originType != "local" {
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType is not supported yet"))
+	switch originType {
+	case "local":
+	case "registry":
+		// implemented in syncModuleIndexRegistry below
+	default:
+		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType must be one of: local, registry"))
 	}
 
 	execCtx := jse.ExecContext()
@@ -302,9 +306,18 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 
 	txRoot := runtimeScope.WithContext(execCtx)
 	err = txRoot.Transactor().Required(execCtx, func(txScope scope.Scope, _ scope.Transaction) error {
-		stats, err := syncModuleIndexLocal(execCtx, txScope, cfg.lockerFactory)
-		if err != nil {
-			return err
+		var stats lifecycle.ModuleIndexSyncStats
+		var syncErr error
+		switch originType {
+		case "local":
+			stats, syncErr = syncModuleIndexLocal(execCtx, txScope, cfg.lockerFactory)
+		case "registry":
+			stats, syncErr = syncModuleIndexRegistry(execCtx, txScope, cfg.lockerFactory)
+		default:
+			return status.Error(codes.InvalidArgument, "originType must be one of: local, registry")
+		}
+		if syncErr != nil {
+			return syncErr
 		}
 		result.Total = stats.Total
 		result.Success = stats.Success
@@ -375,4 +388,8 @@ func normalizeModuleIndexOriginType(raw string) string {
 
 func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {
 	return lifecycle.SyncLocalModuleIndex(ctx, runtimeScope, lockerFactory)
+}
+
+func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {
+	return lifecycle.SyncRegistryModuleIndex(ctx, runtimeScope, lockerFactory)
 }

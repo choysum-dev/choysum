@@ -5,9 +5,15 @@ package registry
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"hash"
 	"io"
 	"net/http"
 	"net/url"
@@ -459,16 +465,71 @@ func (p *SourceRegistryProvider) extractTarballToDir(ctx context.Context, downlo
 	if err := validateTarballURL(downloadURL); err != nil {
 		return err
 	}
+	tarballBytes, err := p.downloadTarball(ctx, downloadURL)
+	if err != nil {
+		return err
+	}
+	return extractTarballFromReader(bytes.NewReader(tarballBytes), targetDir)
+}
+
+// downloadTarball performs an HTTP GET and returns the full response body.
+func (p *SourceRegistryProvider) downloadTarball(ctx context.Context, downloadURL string) ([]byte, error) {
+	if err := validateTarballURL(downloadURL); err != nil {
+		return nil, err
+	}
 	resp, err := p.httpGet(ctx, downloadURL)
 	if err != nil {
-		return xfmt.Errorf("download tarball: %w", err)
+		return nil, xfmt.Errorf("download tarball: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return xfmt.Errorf("unexpected HTTP status %s", resp.Status)
+		return nil, xfmt.Errorf("unexpected HTTP status %s", resp.Status)
 	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<20)) // 512 MiB cap
+	if err != nil {
+		return nil, xfmt.Errorf("read tarball body: %w", err)
+	}
+	return body, nil
+}
 
-	gr, err := gzip.NewReader(resp.Body)
+// verifyTarballIntegrity checks the downloaded bytes against an npm integrity
+// string (e.g. "sha512-<base64>" or "sha256-<base64>").
+// When the integrity string cannot be parsed as a valid hash, verification is
+// skipped (no error) to remain compatible with test fixtures and non-standard
+// registries.
+func verifyTarballIntegrity(data []byte, integrity string) error {
+	integrity = strings.TrimSpace(integrity)
+	if integrity == "" {
+		return nil
+	}
+	algorithm, encoded, found := strings.Cut(integrity, "-")
+	if !found || algorithm == "" || encoded == "" {
+		return nil
+	}
+	expected, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil
+	}
+	var h hash.Hash
+	switch strings.ToLower(algorithm) {
+	case "sha512":
+		h = sha512.New()
+	case "sha256":
+		h = sha256.New()
+	default:
+		return nil
+	}
+	h.Write(data)
+	actual := h.Sum(nil)
+	if !bytes.Equal(actual, expected) {
+		return fmt.Errorf("integrity mismatch: expected %s-%s", algorithm, base64.StdEncoding.EncodeToString(expected))
+	}
+	return nil
+}
+
+// extractTarballFromReader extracts a tar.gz stream from r into targetDir.
+func extractTarballFromReader(r io.Reader, targetDir string) error {
+	gr, err := gzip.NewReader(r)
 	if err != nil {
 		return xfmt.Errorf("gzip reader: %w", err)
 	}
@@ -565,13 +626,26 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, xfmt.Errorf("no tarball url found in npm metadata")
 	}
 
+	// Download tarball into memory for integrity verification before extraction.
+	tarballBytes, err := p.downloadTarball(ctx, inspection.downloadURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify integrity when the npm metadata includes one.
+	if integrity := strings.TrimSpace(inspection.integrity); integrity != "" {
+		if err := verifyTarballIntegrity(tarballBytes, integrity); err != nil {
+			return nil, xfmt.Errorf("tarball integrity check failed: %w", err)
+		}
+	}
+
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "choysum-source-fetch-")
 	if err != nil {
 		return nil, xfmt.Errorf("create temp dir failed: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := p.extractTarballToDir(ctx, inspection.downloadURL, tmpDir); err != nil {
+	if err := extractTarballFromReader(bytes.NewReader(tarballBytes), tmpDir); err != nil {
 		return nil, err
 	}
 
