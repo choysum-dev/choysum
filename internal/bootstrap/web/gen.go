@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,6 +36,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/types/pluginpb"
+)
+
+const (
+	envBootstrapWebMinify    = "CHOYSUM_BOOTSTRAP_WEB_MINIFY"
+	envBootstrapWebSourceMap = "CHOYSUM_BOOTSTRAP_WEB_SOURCEMAP"
 )
 
 // buildScope implements scope.Scope and scope.FactoryInputCarrier for a
@@ -216,19 +222,24 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 	entryPoint := filepath.Join(srcDir, "main.ts")
 	indexHTML := filepath.Join(distDir, "index.html")
 	sourceHTML := filepath.Join(bootstrapDir, "index.html")
+	minifyEnabled, sourceMapMode := resolveBootstrapBuildFlags()
 
 	result := api.Build(api.BuildOptions{
-		EntryPoints: []string{entryPoint},
-		Outdir:      assetsDir,
-		PublicPath:  "/bootstrap/assets",
-		Bundle:      true,
-		Format:      api.FormatESModule,
-		Splitting:   true,
-		Metafile:    true,
-		Write:       true,
-		EntryNames:  "[dir]/[name]-[hash]",
-		Platform:    api.PlatformBrowser,
-		Target:      api.ES2020,
+		EntryPoints:       []string{entryPoint},
+		Outdir:            assetsDir,
+		PublicPath:        "/bootstrap/assets",
+		Bundle:            true,
+		Format:            api.FormatESModule,
+		Splitting:         true,
+		Sourcemap:         sourceMapMode,
+		MinifyWhitespace:  minifyEnabled,
+		MinifyIdentifiers: minifyEnabled,
+		MinifySyntax:      minifyEnabled,
+		Metafile:          true,
+		Write:             true,
+		EntryNames:        "[dir]/[name]-[hash]",
+		Platform:          api.PlatformBrowser,
+		Target:            api.ES2020,
 		Loader: map[string]api.Loader{
 			".png":  api.LoaderFile,
 			".svg":  api.LoaderFile,
@@ -247,6 +258,9 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 				vueplugin.WithIndexHtmlOptions(vueplugin.IndexHtmlOptions{
 					SourceFile: sourceHTML,
 					OutFile:    indexHTML,
+					IndexHtmlProcessors: []vueplugin.IndexHtmlProcessor{
+						vueplugin.DefaultHtmlProcessor(&vueplugin.HtmlProcessorOptions{PathPrefix: "/bootstrap"}),
+					},
 					RemoveTagXPaths: []string{
 						`//script[@src="/src/main.ts"]`,
 					},
@@ -279,6 +293,35 @@ func buildBootstrapDist(cacheDir, bootstrapDir string) error {
 	}
 
 	return nil
+}
+
+func resolveBootstrapBuildFlags() (bool, api.SourceMap) {
+	minifyEnabled := true
+	if v, ok := envBool(envBootstrapWebMinify); ok {
+		minifyEnabled = v
+	}
+
+	sourceMapMode := api.SourceMapNone
+	if v, ok := envBool(envBootstrapWebSourceMap); ok && v {
+		sourceMapMode = api.SourceMapInline
+	}
+
+	return minifyEnabled, sourceMapMode
+}
+
+func envBool(name string) (bool, bool) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return false, false
+	}
+
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap_web_generate: warning: invalid %s=%q (expected true/false)\n", name, raw)
+		return false, false
+	}
+
+	return value, true
 }
 
 func resolveCacheDir() string {

@@ -48,7 +48,15 @@ func newBootstrapWebHandler(runtimeScope scope.Scope) (http.Handler, error) {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
-		if p == bootstrapBasePath || p == bootstrapBasePath+"/" {
+		if p == bootstrapBasePath {
+			target := bootstrapBasePath + "/"
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusFound)
+			return
+		}
+		if p == bootstrapBasePath+"/" {
 			serveIndex(w, r)
 			return
 		}

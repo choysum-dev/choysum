@@ -6,6 +6,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -154,5 +155,114 @@ func TestBootstrapWebHandlerLogsSuccessfulAssetRequestsAtDebug(t *testing.T) {
 	}
 	if !strings.Contains(logs, "status=200") || !strings.Contains(logs, "path="+assetPath) {
 		t.Fatalf("expected bootstrap successful asset log attrs, got %q", logs)
+	}
+}
+
+func TestBootstrapWebHandlerRedirectToCanonicalPath(t *testing.T) {
+	t.Setenv(bootstrapweb.EnvBootstrapWebSource, "embed")
+
+	runtimeScope := &freshnessTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	handler, err := newBootstrapWebHandler(runtimeScope)
+	if err != nil {
+		t.Fatalf("newBootstrapWebHandler() error = %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/bootstrap", nil))
+	if rr.Code != http.StatusFound {
+		t.Fatalf("GET /bootstrap status = %d, want %d", rr.Code, http.StatusFound)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/bootstrap/" {
+		t.Fatalf("GET /bootstrap Location = %q, want /bootstrap/", loc)
+	}
+}
+
+func TestBootstrapWebHandlerRedirectPreservesQueryParams(t *testing.T) {
+	t.Setenv(bootstrapweb.EnvBootstrapWebSource, "embed")
+
+	runtimeScope := &freshnessTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	handler, err := newBootstrapWebHandler(runtimeScope)
+	if err != nil {
+		t.Fatalf("newBootstrapWebHandler() error = %v", err)
+	}
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/bootstrap?foo=bar&baz=1", nil))
+	if rr.Code != http.StatusFound {
+		t.Fatalf("GET /bootstrap?foo=bar&baz=1 status = %d, want %d", rr.Code, http.StatusFound)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/bootstrap/?foo=bar&baz=1" {
+		t.Fatalf("GET /bootstrap?foo=bar&baz=1 Location = %q, want /bootstrap/?foo=bar&baz=1", loc)
+	}
+}
+
+func TestBootstrapServiceWebHandlers(t *testing.T) {
+	runtimeScope := &freshnessTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	svc, err := NewBootstrapService(runtimeScope)
+	if err != nil {
+		t.Fatalf("NewBootstrapService() error = %v", err)
+	}
+
+	handlers, err := svc.WebHandlers()
+	if err != nil {
+		t.Fatalf("WebHandlers() error = %v", err)
+	}
+	if len(handlers) != 3 {
+		t.Fatalf("WebHandlers() count = %d, want 3", len(handlers))
+	}
+	for _, path := range []string{"/", "/bootstrap", "/bootstrap/"} {
+		if _, ok := handlers[path]; !ok {
+			t.Fatalf("WebHandlers() missing path %q", path)
+		}
+	}
+
+	rr := httptest.NewRecorder()
+	handlers["/"].ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rr.Code != http.StatusFound {
+		t.Fatalf("GET / status = %d, want %d", rr.Code, http.StatusFound)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/bootstrap/" {
+		t.Fatalf("GET / Location = %q, want /bootstrap/", loc)
+	}
+}
+
+func TestBootstrapServiceNameAndDescs(t *testing.T) {
+	runtimeScope := &freshnessTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	svc, err := NewBootstrapService(runtimeScope)
+	if err != nil {
+		t.Fatalf("NewBootstrapService() error = %v", err)
+	}
+
+	if svc.Name() != "bootstrap" {
+		t.Fatalf("Name() = %q, want bootstrap", svc.Name())
+	}
+
+	descs, err := svc.ServiceDescs()
+	if err != nil {
+		t.Fatalf("ServiceDescs() error = %v", err)
+	}
+	if len(descs) != 1 {
+		t.Fatalf("ServiceDescs() count = %d, want 1", len(descs))
+	}
+
+	scripts := svc.ServiceScripts()
+	if scripts != nil {
+		t.Fatalf("ServiceScripts() = %#v, want nil", scripts)
 	}
 }
