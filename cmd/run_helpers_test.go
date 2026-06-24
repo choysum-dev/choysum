@@ -271,6 +271,34 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 	})
 
+	t.Run("mkdir failure due to read-only parent", func(t *testing.T) {
+		parent := filepath.Join(t.TempDir(), "readonly")
+		if err := os.MkdirAll(parent, 0o500); err != nil {
+			t.Skipf("mkdir parent: %v", err)
+		}
+		defer func() { _ = os.Chmod(parent, 0o700) }()
+		missingPath := filepath.Join(parent, "subdir")
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: missingPath})
+		if err == nil || !strings.Contains(err.reason, "cannot be created") {
+			t.Fatalf("expected mkdir failure, got %#v", err)
+		}
+	})
+
+	t.Run("unreadable directory after creation", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "readfail")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Chmod(dir, 0o000); err != nil {
+			t.Skipf("chmod: %v", err)
+		}
+		defer func() { _ = os.Chmod(dir, 0o755) }()
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: dir})
+		if err == nil || err.reason != "permission denied or not accessible" {
+			t.Fatalf("expected permission error, got %#v", err)
+		}
+	})
+
 	t.Run("path is symlink", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		realDir := filepath.Join(tmpDir, "real-modules")

@@ -579,6 +579,45 @@ default_choysum_path: ./.choysum-custom
 	}
 }
 
+func TestNewConfigDerivesModulesPathFromDefaultChoysumPathWhenOmitted(t *testing.T) {
+	t.Setenv("CHOYSUM_DEFAULT_CHOYSUM_PATH", "")
+
+	cfgPath := writeTestConfig(t, `
+default_choysum_path: ./.choysum-custom
+`)
+
+	cfg, err := NewConfig(cfgPath)
+	if err != nil {
+		t.Fatalf("NewConfig returned error: %v", err)
+	}
+
+	wantModulesPath := filepath.Join(filepath.Dir(cfgPath), ".choysum-custom", "modules")
+	wantModulesPath, _ = filepath.Abs(wantModulesPath)
+	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModulesPath) {
+		t.Fatalf("modules_path = %q, want %q", cfg.ModulesPath, wantModulesPath)
+	}
+}
+
+func TestNewConfigResolvesRelativeModulesPathAgainstConfigDir(t *testing.T) {
+	t.Setenv("CHOYSUM_DEFAULT_CHOYSUM_PATH", "")
+
+	cfgPath := writeTestConfig(t, `
+default_choysum_path: ./.choysum-custom
+modules_path: ./my-modules
+`)
+
+	cfg, err := NewConfig(cfgPath)
+	if err != nil {
+		t.Fatalf("NewConfig returned error: %v", err)
+	}
+
+	wantModulesPath := filepath.Join(filepath.Dir(cfgPath), "my-modules")
+	wantModulesPath, _ = filepath.Abs(wantModulesPath)
+	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModulesPath) {
+		t.Fatalf("modules_path = %q, want %q", cfg.ModulesPath, wantModulesPath)
+	}
+}
+
 func TestNewDefaultFrontendEnv(t *testing.T) {
 	t.Run("nil config falls back to root development env", func(t *testing.T) {
 		env := NewDefaultFrontendEnv(nil)
