@@ -124,8 +124,7 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	}
 
 	scriptBody := rwBootstrapScript.Body.String()
-	if strings.Contains(scriptBody, `import "https://`) || strings.Contains(scriptBody, `import 'https://`) ||
-		strings.Contains(scriptBody, `import "http://`) || strings.Contains(scriptBody, `import 'http://`) {
+	if hasCrossOriginImport(scriptBody) {
 		t.Fatalf("GET %s body contains cross-origin import statements that violate CSP self", scriptPath)
 	}
 
@@ -135,6 +134,15 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	if rwMissingAsset.Code != http.StatusNotFound {
 		t.Fatalf("GET /bootstrap/assets/not-found.js status = %d, want %d", rwMissingAsset.Code, http.StatusNotFound)
 	}
+}
+
+func hasCrossOriginImport(js string) bool {
+	for _, prefix := range []string{`import "https://`, `import 'https://`, `import "http://`, `import 'http://`, `from "https://`, `from 'https://`, `from "http://`, `from 'http://`} {
+		if strings.Contains(js, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestServerRequestBootstrapModeSwitchTransitionsToApplicationAndRestarts(t *testing.T) {

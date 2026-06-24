@@ -473,19 +473,6 @@ func (r *Resolver) resolveInNamespace(args api.OnResolveArgs) (api.OnResolveResu
 	}, nil
 }
 
-// isCSSURL reports whether the resolved remote URL path uses a CSS extension
-// or an esm.sh CSS wrapper suffix such as .css.mjs.
-func isCSSURL(rawURL string) bool {
-	lower := strings.ToLower(rawURL)
-	if idx := strings.Index(lower, "?"); idx >= 0 {
-		lower = lower[:idx]
-	}
-	if idx := strings.Index(lower, "#"); idx >= 0 {
-		lower = lower[:idx]
-	}
-	return hasCSSSuffix(lower)
-}
-
 func hasCSSSuffix(path string) bool {
 	return strings.HasSuffix(path, ".css") ||
 		strings.HasSuffix(path, ".css.js") ||

@@ -49,7 +49,11 @@ func newBootstrapWebHandler(runtimeScope scope.Scope) (http.Handler, error) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
 		if p == bootstrapBasePath {
-			http.Redirect(w, r, bootstrapBasePath+"/", http.StatusFound)
+			target := bootstrapBasePath + "/"
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusFound)
 			return
 		}
 		if p == bootstrapBasePath+"/" {

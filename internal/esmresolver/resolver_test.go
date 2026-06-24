@@ -610,33 +610,6 @@ func TestResolver_Plugin_TS_File_Loader(t *testing.T) {
 	}
 }
 
-// ---- isCSSURL tests ----
-
-func TestIsCSSURL(t *testing.T) {
-	tests := []struct {
-		url  string
-		want bool
-	}{
-		{"https://esm.sh/style.css", true},
-		{"https://esm.sh/style.css?target=es2020", true},
-		{"https://esm.sh/style.CSS", true},
-		{"https://esm.sh/style.css.mjs", true},
-		{"https://esm.sh/style.css.js?target=es2020", true},
-		{"https://esm.sh/style.css.ts#frag", true},
-		{"https://esm.sh/style.js", false},
-		{"https://esm.sh/style.mjs", false},
-		{"https://esm.sh/styles.css/chunk.js", false},
-		{"https://esm.sh/style.css#fragment", true},
-		{"https://esm.sh/style.css?t=1#frag", true},
-		{"", false},
-	}
-	for _, tt := range tests {
-		if got := isCSSURL(tt.url); got != tt.want {
-			t.Fatalf("isCSSURL(%q) = %v, want %v", tt.url, got, tt.want)
-		}
-	}
-}
-
 // ---- isFragmentOnly tests ----
 
 func TestIsFragmentOnly(t *testing.T) {
@@ -1057,6 +1030,40 @@ func TestResolveInNamespace_CSSAfterResolution(t *testing.T) {
 	}
 	if result.Namespace != "choysum-esm" {
 		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+}
+
+func TestResolveInNamespace_CSSURLToken_External(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{
+		Path: "https://esm.sh/pkg@1.0.0/style.css",
+		Kind: api.ResolveCSSURLToken,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.External {
+		t.Fatal("expected CSS URL token to stay external")
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/style.css" {
+		t.Fatalf("Path = %q", result.Path)
+	}
+}
+
+func TestResolveInNamespace_NonCSSURLToken_InNamespace(t *testing.T) {
+	r := New()
+	result, err := r.resolveInNamespace(api.OnResolveArgs{Path: "https://esm.sh/pkg@1.0.0/index.js"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.External {
+		t.Fatal("expected non-CSS HTTP URL to stay in namespace")
+	}
+	if result.Namespace != "choysum-esm" {
+		t.Fatalf("expected choysum-esm namespace, got %q", result.Namespace)
+	}
+	if result.Path != "https://esm.sh/pkg@1.0.0/index.js" {
+		t.Fatalf("Path = %q", result.Path)
 	}
 }
 
