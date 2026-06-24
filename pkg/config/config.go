@@ -303,7 +303,7 @@ func defaultConfig() *Config {
 	modulesPath := ""
 	if cwd, err := os.Getwd(); err == nil {
 		localModules := filepath.Join(cwd, "modules")
-		if info, statErr := os.Stat(localModules); statErr == nil && info.IsDir() {
+		if info, statErr := os.Lstat(localModules); statErr == nil && info.IsDir() {
 			modulesPath = localModules
 		}
 	}
