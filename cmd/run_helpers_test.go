@@ -542,8 +542,9 @@ db:
 		if err != nil {
 			t.Fatalf("loadRunConfig(valid) = %#v", err)
 		}
-		if got := loaded.scopeInput.ModulesPath(); got != "./modules" {
-			t.Fatalf("expected modules path fallback to ./modules, got %q", got)
+		wantAbs := filepath.Join(filepath.Dir(cfgPath), ".choysum", "modules")
+		if got := loaded.scopeInput.ModulesPath(); filepath.Clean(got) != filepath.Clean(wantAbs) {
+			t.Fatalf("expected modules path fallback to %q, got %q", wantAbs, got)
 		}
 	})
 
