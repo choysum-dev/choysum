@@ -25,6 +25,7 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
+	runtimeScope.cfg.Server.BindAddress = "127.0.0.1"
 	runtimeScope.cfg.Server.Port = 0
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
@@ -69,18 +70,62 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	if rwRoot.Code != http.StatusFound {
 		t.Fatalf("GET / status = %d, want %d", rwRoot.Code, http.StatusFound)
 	}
-	if loc := rwRoot.Header().Get("Location"); loc != "/bootstrap" {
-		t.Fatalf("GET / Location = %q, want /bootstrap", loc)
+	if loc := rwRoot.Header().Get("Location"); loc != "/bootstrap/" {
+		t.Fatalf("GET / Location = %q, want /bootstrap/", loc)
 	}
 
 	reqBootstrap := httptest.NewRequest(http.MethodGet, "http://example.com/bootstrap", nil)
 	rwBootstrap := httptest.NewRecorder()
 	h.ServeHTTP(rwBootstrap, reqBootstrap)
-	if rwBootstrap.Code != http.StatusOK {
-		t.Fatalf("GET /bootstrap status = %d, want %d", rwBootstrap.Code, http.StatusOK)
+	if rwBootstrap.Code != http.StatusFound {
+		t.Fatalf("GET /bootstrap status = %d, want %d", rwBootstrap.Code, http.StatusFound)
 	}
-	if !strings.Contains(strings.ToLower(rwBootstrap.Body.String()), "doctype html") {
-		t.Fatalf("GET /bootstrap body does not look like html: %q", rwBootstrap.Body.String())
+	if loc := rwBootstrap.Header().Get("Location"); loc != "/bootstrap/" {
+		t.Fatalf("GET /bootstrap Location = %q, want /bootstrap/", loc)
+	}
+
+	reqBootstrapCanonical := httptest.NewRequest(http.MethodGet, "http://example.com/bootstrap/", nil)
+	rwBootstrapCanonical := httptest.NewRecorder()
+	h.ServeHTTP(rwBootstrapCanonical, reqBootstrapCanonical)
+	if rwBootstrapCanonical.Code != http.StatusOK {
+		t.Fatalf("GET /bootstrap/ status = %d, want %d", rwBootstrapCanonical.Code, http.StatusOK)
+	}
+	body := rwBootstrapCanonical.Body.String()
+	if !strings.Contains(strings.ToLower(body), "doctype html") {
+		t.Fatalf("GET /bootstrap/ body does not look like html: %q", body)
+	}
+	if !strings.Contains(body, `src="/bootstrap/assets/`) {
+		t.Fatalf("GET /bootstrap/ body missing bootstrap script asset prefix: %q", body)
+	}
+	if !strings.Contains(body, `href="/bootstrap/assets/`) {
+		t.Fatalf("GET /bootstrap/ body missing bootstrap stylesheet asset prefix: %q", body)
+	}
+	if strings.Contains(body, `src="assets/`) || strings.Contains(body, `href="assets/`) {
+		t.Fatalf("GET /bootstrap/ body contains relative assets path that breaks /bootstrap: %q", body)
+	}
+
+	scriptAttr := `src="/bootstrap/assets/`
+	scriptAttrIndex := strings.Index(body, scriptAttr)
+	if scriptAttrIndex < 0 {
+		t.Fatalf("GET /bootstrap/ body missing bootstrap script src attribute: %q", body)
+	}
+	scriptPathStart := scriptAttrIndex + len(`src="`)
+	scriptPathEnd := strings.Index(body[scriptPathStart:], `"`)
+	if scriptPathEnd < 0 {
+		t.Fatalf("GET /bootstrap/ body script src attribute is not closed: %q", body)
+	}
+	scriptPath := body[scriptPathStart : scriptPathStart+scriptPathEnd]
+
+	reqBootstrapScript := httptest.NewRequest(http.MethodGet, "http://example.com"+scriptPath, nil)
+	rwBootstrapScript := httptest.NewRecorder()
+	h.ServeHTTP(rwBootstrapScript, reqBootstrapScript)
+	if rwBootstrapScript.Code != http.StatusOK {
+		t.Fatalf("GET %s status = %d, want %d", scriptPath, rwBootstrapScript.Code, http.StatusOK)
+	}
+
+	scriptBody := rwBootstrapScript.Body.String()
+	if hasCrossOriginImport(scriptBody) {
+		t.Fatalf("GET %s body contains cross-origin import statements that violate CSP self", scriptPath)
 	}
 
 	reqMissingAsset := httptest.NewRequest(http.MethodGet, "http://example.com/bootstrap/assets/not-found.js", nil)
@@ -89,6 +134,15 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	if rwMissingAsset.Code != http.StatusNotFound {
 		t.Fatalf("GET /bootstrap/assets/not-found.js status = %d, want %d", rwMissingAsset.Code, http.StatusNotFound)
 	}
+}
+
+func hasCrossOriginImport(js string) bool {
+	for _, prefix := range []string{`import "https://`, `import 'https://`, `import "http://`, `import 'http://`, `from "https://`, `from 'https://`, `from "http://`, `from 'http://`} {
+		if strings.Contains(js, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestServerRequestBootstrapModeSwitchTransitionsToApplicationAndRestarts(t *testing.T) {

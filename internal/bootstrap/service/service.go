@@ -96,7 +96,7 @@ func (s *BootstrapService) ServiceScripts() []*jsengine.JsScript {
 // WebHandlers returns the HTTP handlers that serve the bootstrap UI routes.
 func (s *BootstrapService) WebHandlers() (map[string]http.Handler, error) {
 	return map[string]http.Handler{
-		"/":           http.RedirectHandler("/bootstrap", http.StatusFound),
+		"/":           http.RedirectHandler("/bootstrap/", http.StatusFound),
 		"/bootstrap":  s.webHandler,
 		"/bootstrap/": s.webHandler,
 	}, nil
