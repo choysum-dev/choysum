@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"errors"
+	"net"
 	"strings"
 	"time"
 
@@ -27,14 +28,15 @@ import (
 )
 
 const (
-	bootstrapInitLeaseResource     = "system:init"
-	bootstrapInitLeaseTTL          = 60 * time.Second
-	bootstrapInitLeaseRenew        = 20 * time.Second
-	bootstrapDefaultPollAfterMs    = int64(1000)
-	bootstrapDefaultRedirectTo     = "/web/login"
-	bootstrapClientHashingPrefix   = "$CH$"
-	bootstrapAdminUsernameMaxBytes = 256
-	bootstrapPasswordMaxBytes      = 4096
+	bootstrapInitLeaseResource      = "system:init"
+	bootstrapInitLeaseTTL           = 60 * time.Second
+	bootstrapInitLeaseRenew         = 20 * time.Second
+	bootstrapDefaultPollAfterMs     = int64(1000)
+	bootstrapDefaultRedirectTo      = "/web/login"
+	bootstrapClientHashingPrefix    = "$CH$"
+	bootstrapAdminUsernameMaxBytes  = 256
+	bootstrapPasswordMaxBytes       = 4096
+	bootstrapModuleInstallTimeout   = 120 * time.Second
 )
 
 var (
@@ -70,7 +72,7 @@ type coordinator struct {
 	acquireInitLease        func(ctx context.Context) (*leaseHandle, error)
 	releaseInitLease        func(handle *leaseHandle)
 	checkWorkspaceFreshness func(ctx context.Context) error
-	installMinimalModules   func(ctx context.Context) error
+	installMinimalModules   func(ctx context.Context, operationID string) error
 	updateAdminAndMarker    func(ctx context.Context, input initializeInput) error
 	validateRuntimeReady    func(ctx context.Context) error
 	switchMode              func(ctx context.Context) error
@@ -185,7 +187,7 @@ func (c *coordinator) executeInitialization(ctx context.Context, operationID str
 
 	c.store.markStage(operationID, bootstrappb.InitializationStage_INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME, 35)
 	installCtx := modulestaging.WithOpID(ctx, operationID)
-	if err := c.installMinimalModules(installCtx); err != nil {
+	if err := c.installMinimalModules(installCtx, operationID); err != nil {
 		c.failOperation(operationID, bootstrappb.InitializationStage_INITIALIZATION_STAGE_ENSURE_MINIMAL_RUNTIME, err, bootstrapErrCodeRuntimePrepare, "failed to prepare required system components")
 		return
 	}
@@ -433,7 +435,36 @@ func (c *coordinator) checkRenewErr(handle *leaseHandle) error {
 	}
 }
 
-func (c *coordinator) defaultInstallMinimalModules(ctx context.Context) error {
+// isNetworkError reports whether err is caused by a network-level failure
+// (DNS, timeout, connection refused, TLS handshake) as opposed to a
+// business-logic error such as an invalid module version.
+func isNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	for _, keyword := range []string{
+		"connection refused",
+		"no such host",
+		"network is unreachable",
+		"tls handshake",
+		"context deadline exceeded",
+		"timeout",
+		"eof",
+		"connection reset",
+	} {
+		if strings.Contains(msg, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operationID string) error {
 	if c.runtimeScope == nil {
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "scope is not available", nil)
 	}
@@ -442,7 +473,11 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context) error {
 		return err
 	}
 
-	installCtx := ctx
+	// Add a timeout to prevent the bootstrap from hanging indefinitely during
+	// module download and installation (especially over slow networks).
+	installCtx, cancel := context.WithTimeout(ctx, bootstrapModuleInstallTimeout)
+	defer cancel()
+
 	txRoot := c.runtimeScope.WithContext(installCtx)
 	if err := txRoot.Transactor().Required(installCtx, func(txScope scope.Scope, tx scope.Transaction) error {
 		executor, err := jsexecutor.NewCompilerExecutor(txScope)
@@ -454,9 +489,28 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context) error {
 		}
 		defer executor.Stop()
 
+		c.store.markStageDetail(operationID, "downloading and installing core modules...")
+
 		moduleLifecycle := lifecycle.NewService(txScope, executor)
 		return moduleLifecycle.Install(tx.Context(), lifecycle.InstallRequest{Name: "document", WithDemo: false})
 	}); err != nil {
+		// Classify the error to produce an actionable message.
+		if errors.Is(err, context.DeadlineExceeded) {
+			return newBootstrapError(
+				bootstrapErrCodeModuleInstallTimeout,
+				"module installation timed out after "+bootstrapModuleInstallTimeout.String()+". "+
+					"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
+				err,
+			)
+		}
+		if isNetworkError(err) {
+			return newBootstrapError(
+				bootstrapErrCodeRuntimePrepare,
+				"unable to download required modules. "+
+					"Check your network connection or place the required module sources in ModulesPath.",
+				err,
+			)
+		}
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", err)
 	}
 

@@ -49,7 +49,7 @@ func TestCoordinatorStartInitializationSuccess(t *testing.T) {
 			callOrder = append(callOrder, "freshness")
 			return nil
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			if got, ok := modulestaging.OpIDFromContext(ctx); ok {
 				installOpID = got
 			}
@@ -255,7 +255,7 @@ func TestCoordinatorStartInitializationRejectsNonFreshBeforeInstallAndAdmin(t *t
 			_ = ctx
 			return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "workspace is not fresh", nil)
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			_ = ctx
 			installCalls++
 			return nil
@@ -417,7 +417,7 @@ func TestCoordinatorStartInitializationSkipsAdminWhenRuntimeNotReady(t *testing.
 			_ = ctx
 			return nil
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			_ = ctx
 			installCalls++
 			return nil

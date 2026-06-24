@@ -24,6 +24,7 @@ type operationSnapshot struct {
 	State           bootstrappb.InitializationState
 	Stage           bootstrappb.InitializationStage
 	ProgressPercent int32
+	StageDetail     string
 	ReadyForLogin   bool
 	RedirectURL     string
 	ErrorCode       string
@@ -39,6 +40,7 @@ type bootstrapStatusStore interface {
 	getOperation(operationID string) (operationSnapshot, bool)
 	markRunning(operationID string, stage bootstrappb.InitializationStage, progressPercent int32)
 	markStage(operationID string, stage bootstrappb.InitializationStage, progressPercent int32)
+	markStageDetail(operationID string, detail string)
 	markFailed(operationID string, stage bootstrappb.InitializationStage, code, message string)
 	markSucceeded(operationID string, redirectURL string)
 }
@@ -134,6 +136,12 @@ func (s *memoryStatusStore) markStage(operationID string, stage bootstrappb.Init
 		if op.State == bootstrappb.InitializationState_INITIALIZATION_STATE_PENDING {
 			op.State = bootstrappb.InitializationState_INITIALIZATION_STATE_RUNNING
 		}
+	})
+}
+
+func (s *memoryStatusStore) markStageDetail(operationID string, detail string) {
+	s.update(operationID, func(op *operationSnapshot) {
+		op.StageDetail = detail
 	})
 }
 
