@@ -1,0 +1,30 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com/choysum-dev/choysum/pkg/auth/grpcclient/authpb;authpb";
+
+// Minimal stable contract for pkg/auth/grpcclient.
+//
+// This file intentionally includes only the fallback permission-check RPC used
+// by the service guard. It is not a full copy of the runtime auth module proto.
+// Keep wire-compatible with runtime auth.User.CheckMethodAccess:
+// - Service name: auth.User
+// - Method name: CheckMethodAccess
+// - Field numbers must not change.
+
+service User {
+  rpc CheckMethodAccess(User_CheckMethodAccess_Req) returns (User_CheckMethodAccess_Resp);
+}
+
+message User_CheckMethodAccess_Req {
+  string companyId = 1;
+  string serviceFullName = 2;
+}
+
+message User_CheckMethodAccess_Resp {
+  bool result = 1;
+}
