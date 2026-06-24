@@ -437,7 +437,7 @@ func validateRunModulesPath(options *cliRuntimeOptions) *runError {
 				return &runError{
 					exitCode: 3,
 					errMsg:   "invalid config",
-					reason:   "path does not exist and cannot be created",
+					reason:   fmt.Sprintf("path does not exist and cannot be created: %v", mkdirErr),
 					next:     runConfigFixValuesNext,
 				}
 			}

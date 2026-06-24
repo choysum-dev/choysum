@@ -258,7 +258,8 @@ func (c *Config) applyPathInvariants() error {
 		return xfmt.Errorf("tmp_path must be a non-root directory")
 	}
 
-	if c.ModulesPath == "" {
+	c.ModulesPath = normalizePathRelativeToConfig(c.ConfigPath, c.ModulesPath)
+	if strings.TrimSpace(c.ModulesPath) == "" {
 		c.ModulesPath = filepath.Join(c.DefaultChoysumPath, "modules")
 	}
 	if !filepath.IsAbs(c.ModulesPath) {
