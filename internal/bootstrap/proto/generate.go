@@ -3,4 +3,4 @@
 
 package proto
 
-//go:generate protoc -I . -I ../../module/generator/assets --go_out=paths=source_relative:./bootstrappb --go-grpc_out=paths=source_relative:./bootstrappb ./bootstrap.proto
+//go:generate protoc -I . -I ../../module/artifact/generate/assets --go_out=paths=source_relative:./bootstrappb --go-grpc_out=paths=source_relative:./bootstrappb ./bootstrap.proto
