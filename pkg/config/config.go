@@ -175,9 +175,6 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 
 	c.normalizeJWTKeyPaths()
 
-	if !filepath.IsAbs(c.ModulesPath) {
-		c.ModulesPath, _ = filepath.Abs(c.ModulesPath)
-	}
 	if !filepath.IsAbs(c.DistPath) {
 		c.DistPath, _ = filepath.Abs(c.DistPath)
 	}
@@ -261,6 +258,18 @@ func (c *Config) applyPathInvariants() error {
 		return xfmt.Errorf("tmp_path must be a non-root directory")
 	}
 
+	c.ModulesPath = normalizePathRelativeToConfig(c.ConfigPath, c.ModulesPath)
+	if strings.TrimSpace(c.ModulesPath) == "" {
+		c.ModulesPath = filepath.Join(c.DefaultChoysumPath, "modules")
+	}
+	if !filepath.IsAbs(c.ModulesPath) {
+		c.ModulesPath, _ = filepath.Abs(c.ModulesPath)
+	}
+	c.ModulesPath = filepath.Clean(c.ModulesPath)
+	if strings.TrimSpace(c.ModulesPath) == "" {
+		return xfmt.Errorf("modules_path must not be empty")
+	}
+
 	if strings.TrimSpace(c.DistPath) == "" {
 		c.DistPath = filepath.Join(c.DefaultChoysumPath, "dist")
 	}
@@ -291,17 +300,19 @@ func (c *Config) applyDatabaseInvariants() {
 }
 
 func defaultConfig() *Config {
-	modulesPath := "./modules"
+	modulesPath := ""
 	if cwd, err := os.Getwd(); err == nil {
 		localModules := filepath.Join(cwd, "modules")
-		if info, statErr := os.Stat(localModules); statErr == nil && info.IsDir() {
+		if info, statErr := os.Lstat(localModules); statErr == nil && info.IsDir() {
 			modulesPath = localModules
 		}
 	}
-	var err error
-	modulesPath, err = filepath.Abs(modulesPath)
-	if err != nil {
-		panic(err)
+	if modulesPath != "" {
+		var err error
+		modulesPath, err = filepath.Abs(modulesPath)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &Config{

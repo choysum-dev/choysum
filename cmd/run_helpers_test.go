@@ -107,37 +107,6 @@ func TestURLScheme(t *testing.T) {
 	}
 }
 
-func TestConfigHasModulesPath(t *testing.T) {
-	missing := filepath.Join(t.TempDir(), "missing.yaml")
-	if !configHasModulesPath(missing) {
-		t.Fatal("expected missing config file to default to true")
-	}
-
-	invalidPath := filepath.Join(t.TempDir(), "invalid.yaml")
-	if err := os.WriteFile(invalidPath, []byte("modules_path: ["), 0o644); err != nil {
-		t.Fatalf("write invalid yaml: %v", err)
-	}
-	if !configHasModulesPath(invalidPath) {
-		t.Fatal("expected invalid yaml to default to true")
-	}
-
-	missingKeyPath := filepath.Join(t.TempDir(), "missing_key.yaml")
-	if err := os.WriteFile(missingKeyPath, []byte("db:\n  dialect: sqlite\n"), 0o644); err != nil {
-		t.Fatalf("write missing-key yaml: %v", err)
-	}
-	if configHasModulesPath(missingKeyPath) {
-		t.Fatal("expected config without modules_path to return false")
-	}
-
-	presentKeyPath := filepath.Join(t.TempDir(), "present_key.yaml")
-	if err := os.WriteFile(presentKeyPath, []byte("modules_path: ./modules\n"), 0o644); err != nil {
-		t.Fatalf("write present-key yaml: %v", err)
-	}
-	if !configHasModulesPath(presentKeyPath) {
-		t.Fatal("expected config with modules_path to return true")
-	}
-}
-
 func TestValidateRunDatabaseDsn(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -264,36 +233,10 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 	})
 
-	t.Run("empty path defaults to modules directory", func(t *testing.T) {
-		oldWd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("getwd: %v", err)
-		}
-		workDir := t.TempDir()
-		modulesDir := filepath.Join(workDir, "modules")
-		if err := os.MkdirAll(modulesDir, 0o755); err != nil {
-			t.Fatalf("mkdir modules: %v", err)
-		}
-		if err := os.Chdir(workDir); err != nil {
-			t.Fatalf("chdir: %v", err)
-		}
-		defer func() { _ = os.Chdir(oldWd) }()
-
-		runtimeOptions := &cliRuntimeOptions{}
-		if err := validateRunModulesPath(runtimeOptions); err != nil {
-			t.Fatalf("validateRunModulesPath(empty) = %#v", err)
-		}
-
-		gotPath, err := filepath.EvalSymlinks(runtimeOptions.modulesPath)
-		if err != nil {
-			t.Fatalf("evalsymlinks cfg modules path: %v", err)
-		}
-		wantPath, err := filepath.EvalSymlinks(modulesDir)
-		if err != nil {
-			t.Fatalf("evalsymlinks modules dir: %v", err)
-		}
-		if !filepath.IsAbs(runtimeOptions.modulesPath) || filepath.Clean(gotPath) != filepath.Clean(wantPath) {
-			t.Fatalf("expected normalized modules path %q, got %q", wantPath, gotPath)
+	t.Run("empty path returns missing required fields", func(t *testing.T) {
+		err := validateRunModulesPath(&cliRuntimeOptions{})
+		if err == nil || err.reason != "missing required fields" {
+			t.Fatalf("expected missing required fields error for empty path, got %#v", err)
 		}
 	})
 
@@ -316,10 +259,43 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 	})
 
-	t.Run("path does not exist", func(t *testing.T) {
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: filepath.Join(t.TempDir(), "missing")})
-		if err == nil || err.reason != "path does not exist" {
-			t.Fatalf("expected missing path error, got %#v", err)
+	t.Run("path does not exist (auto-created)", func(t *testing.T) {
+		missingPath := filepath.Join(t.TempDir(), "missing")
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: missingPath})
+		if err != nil {
+			t.Fatalf("expected auto-created path to succeed, got %#v", err)
+		}
+		// Verify the directory was actually created.
+		if st, statErr := os.Stat(missingPath); statErr != nil || !st.IsDir() {
+			t.Fatalf("expected %s to be a directory after auto-creation", missingPath)
+		}
+	})
+
+	t.Run("mkdir failure due to read-only parent", func(t *testing.T) {
+		parent := filepath.Join(t.TempDir(), "readonly")
+		if err := os.MkdirAll(parent, 0o500); err != nil {
+			t.Skipf("mkdir parent: %v", err)
+		}
+		defer func() { _ = os.Chmod(parent, 0o700) }()
+		missingPath := filepath.Join(parent, "subdir")
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: missingPath})
+		if err == nil || !strings.Contains(err.reason, "cannot be created") {
+			t.Fatalf("expected mkdir failure, got %#v", err)
+		}
+	})
+
+	t.Run("unreadable directory after creation", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "readfail")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.Chmod(dir, 0o000); err != nil {
+			t.Skipf("chmod: %v", err)
+		}
+		defer func() { _ = os.Chmod(dir, 0o755) }()
+		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: dir})
+		if err == nil || err.reason != "permission denied or not accessible" {
+			t.Fatalf("expected permission error, got %#v", err)
 		}
 	})
 
@@ -594,8 +570,9 @@ db:
 		if err != nil {
 			t.Fatalf("loadRunConfig(valid) = %#v", err)
 		}
-		if got := loaded.scopeInput.ModulesPath(); got != "./modules" {
-			t.Fatalf("expected modules path fallback to ./modules, got %q", got)
+		wantAbs := filepath.Join(filepath.Dir(cfgPath), ".choysum", "modules")
+		if got := loaded.scopeInput.ModulesPath(); filepath.Clean(got) != filepath.Clean(wantAbs) {
+			t.Fatalf("expected modules path fallback to %q, got %q", wantAbs, got)
 		}
 	})
 
@@ -619,6 +596,34 @@ db:
 		_, err := loadRunConfig(cfgPath)
 		if err == nil || err.reason != "invalid config values" {
 			t.Fatalf("expected invalid config values mapping, got %#v", err)
+		}
+	})
+
+	t.Run("missing config file returns file not found error", func(t *testing.T) {
+		missingPath := filepath.Join(t.TempDir(), "no-such-config.yaml")
+		_, err := loadRunConfig(missingPath)
+		if err == nil || err.reason != "file not found or permission denied" {
+			t.Fatalf("expected file not found error, got %#v", err)
+		}
+	})
+}
+
+func TestCloneRunLogConfig(t *testing.T) {
+	t.Run("nil returns default", func(t *testing.T) {
+		got := cloneRunLogConfig(nil)
+		if got == nil {
+			t.Fatal("expected non-nil default log config for nil input")
+		}
+	})
+
+	t.Run("non-nil returns a clone", func(t *testing.T) {
+		cfg := &config.LogConfig{Level: "debug"}
+		got := cloneRunLogConfig(cfg)
+		if got == cfg {
+			t.Fatal("expected a clone, not the same pointer")
+		}
+		if got.Level != "debug" {
+			t.Fatalf("expected Level=debug, got %q", got.Level)
 		}
 	})
 }
