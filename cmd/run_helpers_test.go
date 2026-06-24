@@ -598,6 +598,34 @@ db:
 			t.Fatalf("expected invalid config values mapping, got %#v", err)
 		}
 	})
+
+	t.Run("missing config file returns file not found error", func(t *testing.T) {
+		missingPath := filepath.Join(t.TempDir(), "no-such-config.yaml")
+		_, err := loadRunConfig(missingPath)
+		if err == nil || err.reason != "file not found or permission denied" {
+			t.Fatalf("expected file not found error, got %#v", err)
+		}
+	})
+}
+
+func TestCloneRunLogConfig(t *testing.T) {
+	t.Run("nil returns default", func(t *testing.T) {
+		got := cloneRunLogConfig(nil)
+		if got == nil {
+			t.Fatal("expected non-nil default log config for nil input")
+		}
+	})
+
+	t.Run("non-nil returns a clone", func(t *testing.T) {
+		cfg := &config.LogConfig{Level: "debug"}
+		got := cloneRunLogConfig(cfg)
+		if got == cfg {
+			t.Fatal("expected a clone, not the same pointer")
+		}
+		if got.Level != "debug" {
+			t.Fatalf("expected Level=debug, got %q", got.Level)
+		}
+	})
 }
 
 func TestValidateRunConfig(t *testing.T) {
