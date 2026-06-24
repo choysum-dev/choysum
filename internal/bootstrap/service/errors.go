@@ -33,6 +33,9 @@ func (e *bootstrapError) Error() string {
 		return ""
 	}
 	if e.message != "" {
+		if e.cause != nil {
+			return e.message + ": " + e.cause.Error()
+		}
 		return e.message
 	}
 	if e.cause != nil {
