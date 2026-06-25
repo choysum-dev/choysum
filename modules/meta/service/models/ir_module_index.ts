@@ -168,29 +168,21 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
     const registry = bucket.find(row => toText(row?.OriginType) === 'registry');
     const base = local || registry || bucket[0];
 
-    const originTypes = Array.from(
-      new Set(
-        bucket
-          .map(row => toText(row?.OriginType))
-          .filter(value => value === 'local' || value === 'registry')
-      )
-    ).sort((a, b) => {
-      if (a === b) return 0;
-      if (a === 'local') return -1;
-      if (b === 'local') return 1;
-      return a.localeCompare(b);
-    });
+    const originTypes = Array.from(new Set(bucket.map(row => toText(row?.OriginType)).filter(value => value === 'local' || value === 'registry'))).sort(
+      (a, b) => {
+        if (a === b) return 0;
+        if (a === 'local') return -1;
+        if (b === 'local') return 1;
+        return a.localeCompare(b);
+      }
+    );
 
     const localVersion = String(local?.Version || '').trim();
     const registryVersion = String(registry?.Version || '').trim();
     const installedStatus =
-      String(local?.InstalledStatus || '').trim() ||
-      String(registry?.InstalledStatus || '').trim() ||
-      String(base?.InstalledStatus || '').trim();
+      String(local?.InstalledStatus || '').trim() || String(registry?.InstalledStatus || '').trim() || String(base?.InstalledStatus || '').trim();
     const installedVersion =
-      String(local?.InstalledVersion || '').trim() ||
-      String(registry?.InstalledVersion || '').trim() ||
-      String(base?.InstalledVersion || '').trim();
+      String(local?.InstalledVersion || '').trim() || String(registry?.InstalledVersion || '').trim() || String(base?.InstalledVersion || '').trim();
 
     merged.push({
       ...base,
@@ -198,10 +190,7 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
       ModuleName: moduleName,
       OriginType: String(base?.OriginType || '').trim() || (originTypes[0] as string) || 'local',
       OriginTypes: originTypes.length ? originTypes.join(', ') : String(base?.OriginType || '').trim(),
-      OriginRef:
-        String(local?.OriginRef || '').trim() ||
-        String(registry?.OriginRef || '').trim() ||
-        String(base?.OriginRef || '').trim(),
+      OriginRef: String(local?.OriginRef || '').trim() || String(registry?.OriginRef || '').trim() || String(base?.OriginRef || '').trim(),
       Available: bucket.some(row => row?.Available !== false),
       Version: registryVersion || localVersion || String(base?.Version || '').trim(),
       LocalVersion: localVersion || undefined,
@@ -211,10 +200,7 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
       LastSyncAt: pickNewestTimestamp([local?.LastSyncAt, registry?.LastSyncAt, base?.LastSyncAt]),
       LastBatchSyncAt: pickNewestTimestamp([local?.LastBatchSyncAt, registry?.LastBatchSyncAt, base?.LastBatchSyncAt]),
       SyncRevision:
-        String(registry?.SyncRevision || '').trim() ||
-        String(local?.SyncRevision || '').trim() ||
-        String(base?.SyncRevision || '').trim() ||
-        undefined,
+        String(registry?.SyncRevision || '').trim() || String(local?.SyncRevision || '').trim() || String(base?.SyncRevision || '').trim() || undefined,
       InstalledStatus: installedStatus || 'uninstalled',
       InstalledVersion: installedVersion || undefined,
       LastErrorMessage:
