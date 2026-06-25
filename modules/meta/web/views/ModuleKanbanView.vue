@@ -32,10 +32,12 @@ SPDX-License-Identifier: Apache-2.0
     <template #fields>
       <OVirtualField :store="store" prop="ModuleName" />
       <OVirtualField :store="store" prop="Version" />
+      <OVirtualField :store="store" prop="LocalVersion" />
+      <OVirtualField :store="store" prop="RegistryVersion" />
       <OVirtualField :store="store" prop="InstalledStatus" />
       <OVirtualField :store="store" prop="InstalledVersion" />
       <OVirtualField :store="store" prop="Available" />
-      <OVirtualField :store="store" prop="OriginType" />
+      <OVirtualField :store="store" prop="OriginTypes" />
       <OVirtualField :store="store" prop="LastSyncAt" />
       <OVirtualField :store="store" prop="ManifestJson" />
     </template>
@@ -49,11 +51,15 @@ SPDX-License-Identifier: Apache-2.0
           }}</el-tag>
         </div>
         <div class="module-card__meta">
-          <span class="version">版本：{{ record.Version || '—' }}</span>
+          <span class="version">本地：{{ record.LocalVersion || '—' }}</span>
+          <span class="category">仓库：{{ record.RegistryVersion || '—' }}</span>
+        </div>
+        <div class="module-card__meta">
+          <span class="version">展示：{{ record.Version || '—' }}</span>
           <span class="category">已安装：{{ record.InstalledVersion || '—' }}</span>
         </div>
         <div class="module-card__meta">
-          <span class="app">来源：{{ record.OriginType || 'local' }}</span>
+          <span class="app">来源：{{ record.OriginTypes || record.OriginType || 'local' }}</span>
           <span class="updated">同步：{{ formatDate(record.LastSyncAt) || '—' }}</span>
         </div>
         <div class="module-card__desc">{{ manifestSummary(record.ManifestJson) || '暂无描述' }}</div>
@@ -223,7 +229,7 @@ const props = withDefaults(defineProps<{ store: WebModelStore<IrModuleIndex>; mo
 const { store, showHeader } = props;
 const moduleStore = props.moduleStore;
 
-const keywordFields = ['ModuleName', 'Version', 'InstalledStatus', 'InstalledVersion'];
+const keywordFields = ['ModuleName', 'Version', 'LocalVersion', 'RegistryVersion', 'OriginTypes', 'InstalledStatus', 'InstalledVersion'];
 
 const router = useRouter();
 const moduleInstallAction = defineAction('meta.action.module_install', {

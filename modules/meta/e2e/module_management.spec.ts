@@ -233,17 +233,24 @@ async function moduleStatusText(page: Page, moduleName: string) {
  */
 async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 120000) {
   const deadline = Date.now() + timeout;
+  const reloadIntervalMs = 5000;
+  let nextReloadAt = Date.now();
   let lastStatus = '';
 
   while (Date.now() < deadline) {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-    await waitForModuleList(page);
+    if (Date.now() >= nextReloadAt) {
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
+      await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
+      await waitForModuleList(page).catch(() => null);
+      nextReloadAt = Date.now() + reloadIntervalMs;
+    }
+
     lastStatus = await moduleStatusText(page, moduleName);
     if (lastStatus === expectedStatus) {
       return;
     }
-    await page.waitForTimeout(1000);
+
+    await page.waitForTimeout(lastStatus ? 1000 : 1500);
   }
 
   throw new Error(`module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus}`);
