@@ -121,7 +121,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				if factoryInput == nil {
 					return xfmt.Errorf("config is not initialized")
 				}
-				splitScope := scope.NewScope(baseScope.Context(), factoryInput, baseScope.Logger())
+				splitScope := rebuildCommandRuntimeScope(baseScope, factoryInput, baseScope.Logger())
 				if splitScope == nil {
 					return xfmt.Errorf("failed to initialize scope for tap stdout")
 				}

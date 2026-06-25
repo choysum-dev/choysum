@@ -1012,6 +1012,45 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	})
 
+	t.Run("test subtree pre-run does not initialize database", func(t *testing.T) {
+		oldWd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		workDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(workDir, "modules"), 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
+		}
+		if err := os.Chdir(workDir); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+		defer func() { _ = os.Chdir(oldWd) }()
+
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("CHOYSUM_DB_DIALECT", "postgres")
+		t.Setenv("CHOYSUM_DB_DSN", "postgres://127.0.0.1:1/choysum?sslmode=disable")
+		t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "dev-internal-key")
+
+		c := NewCommander(context.Background(), "test-version")
+		sub, _, err := c.rootCmd.Find([]string{"test", "typecheck"})
+		if err != nil {
+			t.Fatalf("find test typecheck subcommand: %v", err)
+		}
+
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Fatalf("PersistentPreRunE(test typecheck) panicked: %v", recovered)
+			}
+		}()
+
+		if err := c.rootCmd.PersistentPreRunE(sub, nil); err != nil {
+			t.Fatalf("PersistentPreRunE(test typecheck) = %v, want nil", err)
+		}
+		if c.runtimeScope == nil || scope.FactoryInputFromScope(c.runtimeScope) == nil {
+			t.Fatal("expected environment to be initialized for test subtree")
+		}
+	})
+
 	t.Run("missing default config falls back to built-in defaults", func(t *testing.T) {
 		oldWd, err := os.Getwd()
 		if err != nil {

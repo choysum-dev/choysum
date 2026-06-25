@@ -70,7 +70,8 @@ built-in defaults or load a non-default workspace config.`,
 				}
 			}
 
-			runtimeScope, runtimeOptions, err := newCommandRuntimeScope(ctx, cfgPath)
+			lightweightScope := shouldUseLightweightRuntimeScope(cmd)
+			runtimeScope, runtimeOptions, err := newCommandRuntimeScope(ctx, cfgPath, lightweightScope)
 			if err != nil {
 				initErr = err
 				return
@@ -96,7 +97,16 @@ built-in defaults or load a non-default workspace config.`,
 	return c
 }
 
-func newCommandRuntimeScope(ctx context.Context, cfgPath string) (scope.Scope, cliRuntimeOptions, error) {
+func shouldUseLightweightRuntimeScope(cmd *cobra.Command) bool {
+	for node := cmd; node != nil; node = node.Parent() {
+		if node.Name() == "test" {
+			return true
+		}
+	}
+	return false
+}
+
+func newCommandRuntimeScope(ctx context.Context, cfgPath string, lightweight bool) (scope.Scope, cliRuntimeOptions, error) {
 	cfg, err := config.LoadWithProvider(nil, cfgPath)
 	if err != nil {
 		return nil, cliRuntimeOptions{}, xfmt.Errorf("error reading config file %s: %w", cfgPath, err)
@@ -109,7 +119,14 @@ func newCommandRuntimeScope(ctx context.Context, cfgPath string) (scope.Scope, c
 	}
 
 	l := logger.NewLoggerWithWriter(cfg.Log, os.Stderr)
-	runtimeScope := scope.NewScope(ctx, newCommandRuntimeScopeInput(cfgOptions, runtimeOptions), l)
+	input := newCommandRuntimeScopeInput(cfgOptions, runtimeOptions)
+
+	var runtimeScope scope.Scope
+	if lightweight {
+		runtimeScope = newCommandRuntimeScopeWithoutDB(ctx, input, l)
+	} else {
+		runtimeScope = scope.NewScope(ctx, input, l)
+	}
 	if runtimeScope == nil {
 		return nil, cliRuntimeOptions{}, xfmt.Errorf("failed to initialize scope")
 	}
