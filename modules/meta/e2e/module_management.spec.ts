@@ -654,23 +654,53 @@ test('meta module management: kanban usable when registry sync fails', async ({ 
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
   const baseURL = runtime.baseURL;
-  await ensureLoggedIn(page, baseURL);
+  let forcedRegistrySyncFailures = 0;
+  const routeHandler = async (route: any) => {
+    const req = route.request();
+    const postData = req.postData() || '';
+    if (req.method() === 'POST' && postData.includes('meta.IrModuleIndex/RequestSync') && postData.includes('"originType":"registry"')) {
+      forcedRegistrySyncFailures += 1;
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'REGISTRY_UNAVAILABLE',
+            message: 'simulated registry outage in e2e',
+          },
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  };
 
-  // Lazy sync for registry runs on onMounted and may fail. The key assertion
-  // is that the board shell is still present and functional.
-  await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+  await page.route('**/*', routeHandler);
+  try {
+    await ensureLoggedIn(page, baseURL);
 
-  // The manual sync button should still work for local-only refresh.
-  const syncButton = page.getByRole('button', { name: '同步' });
-  if (await syncButton.isVisible().catch(() => false)) {
-    await syncButton.click();
-    // After manual sync, the board should refresh without error modals.
-    await page.waitForTimeout(2000);
+    // Lazy sync for registry runs on onMounted; this test forces registry
+    // RequestSync to fail and verifies the page still stays usable.
     await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
-  }
+    await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
 
-  // The page must not show an error overlay or become unresponsive.
-  const errorOverlay = page.locator('.el-message--error');
-  // An error toast for registry is acceptable; the page must still work.
-  await expect(page.locator('.okanban')).toBeVisible({ timeout: 10000 });
+    // The manual sync button should still work for local-only refresh.
+    const syncButton = page.getByRole('button', { name: '同步' });
+    if (await syncButton.isVisible().catch(() => false)) {
+      await syncButton.click();
+      await page.waitForTimeout(2000);
+      await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+    }
+
+    // The board remains interactive despite registry sync failures.
+    const searchInput = page.locator('.o-kanban__search .o-search__input');
+    if (await searchInput.isVisible().catch(() => false)) {
+      await searchInput.fill('partner');
+      await searchInput.press('Enter');
+      await waitForModuleList(page);
+      await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+    }
+  } finally {
+    await page.unroute('**/*', routeHandler);
+  }
 });

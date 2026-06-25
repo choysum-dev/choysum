@@ -12,9 +12,11 @@ import (
 	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -198,11 +200,11 @@ func (p *SourceRegistryProvider) fetchPackageMetadata(ctx context.Context, regis
 	}
 	resp, err := p.httpGet(ctx, metadataURL)
 	if err != nil {
-		return nil, "", xfmt.Errorf("get npm metadata: %w", err)
+		return nil, "", xfmt.Errorf("get npm metadata network error (%s): %w", classifyTransportError(err), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", xfmt.Errorf("error getting npm metadata url: %s status code: %d", metadataURL, resp.StatusCode)
+		return nil, "", xfmt.Errorf("error getting npm metadata url: %s status code: %d (http)", metadataURL, resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -479,11 +481,11 @@ func (p *SourceRegistryProvider) downloadTarball(ctx context.Context, downloadUR
 	}
 	resp, err := p.httpGet(ctx, downloadURL)
 	if err != nil {
-		return nil, xfmt.Errorf("download tarball: %w", err)
+		return nil, xfmt.Errorf("download tarball network error (%s): %w", classifyTransportError(err), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, xfmt.Errorf("unexpected HTTP status %s", resp.Status)
+		return nil, xfmt.Errorf("download tarball http error (status=%d): unexpected HTTP status %s", resp.StatusCode, resp.Status)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<20)) // 512 MiB cap
 	if err != nil {
@@ -492,11 +494,42 @@ func (p *SourceRegistryProvider) downloadTarball(ctx context.Context, downloadUR
 	return body, nil
 }
 
+func classifyTransportError(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Err != nil {
+		err = urlErr.Err
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return "dns"
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		if netErr.Timeout() {
+			return "timeout"
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "tls"):
+		return "tls"
+	case strings.Contains(msg, "no such host"):
+		return "dns"
+	case strings.Contains(msg, "timeout"), strings.Contains(msg, "deadline exceeded"):
+		return "timeout"
+	case strings.Contains(msg, "connection refused"), strings.Contains(msg, "connection reset"), strings.Contains(msg, "network is unreachable"):
+		return "connection"
+	default:
+		return "network"
+	}
+}
+
 // verifyTarballIntegrity checks the downloaded bytes against an npm integrity
 // string (e.g. "sha512-<base64>" or "sha256-<base64>").
-// When the integrity string cannot be parsed as a valid hash, verification is
-// skipped (no error) to remain compatible with test fixtures and non-standard
-// registries.
+// Invalid integrity metadata is treated as an error.
 func verifyTarballIntegrity(data []byte, integrity string) error {
 	integrity = strings.TrimSpace(integrity)
 	if integrity == "" {
@@ -504,11 +537,11 @@ func verifyTarballIntegrity(data []byte, integrity string) error {
 	}
 	algorithm, encoded, found := strings.Cut(integrity, "-")
 	if !found || algorithm == "" || encoded == "" {
-		return nil
+		return fmt.Errorf("invalid integrity format")
 	}
 	expected, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
-		return nil
+		return fmt.Errorf("invalid integrity encoding: %w", err)
 	}
 	var h hash.Hash
 	switch strings.ToLower(algorithm) {
@@ -517,7 +550,7 @@ func verifyTarballIntegrity(data []byte, integrity string) error {
 	case "sha256":
 		h = sha256.New()
 	default:
-		return nil
+		return fmt.Errorf("unsupported integrity algorithm: %s", algorithm)
 	}
 	h.Write(data)
 	actual := h.Sum(nil)
@@ -626,17 +659,16 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, xfmt.Errorf("no tarball url found in npm metadata")
 	}
 
+	contract.ReportFetchProgress(ctx, contract.FetchProgressStageDownload, moduleName)
 	// Download tarball into memory for integrity verification before extraction.
 	tarballBytes, err := p.downloadTarball(ctx, inspection.downloadURL)
 	if err != nil {
 		return nil, err
 	}
 
-	// Verify integrity when the npm metadata includes one.
-	if integrity := strings.TrimSpace(inspection.integrity); integrity != "" {
-		if err := verifyTarballIntegrity(tarballBytes, integrity); err != nil {
-			return nil, xfmt.Errorf("tarball integrity check failed: %w", err)
-		}
+	contract.ReportFetchProgress(ctx, contract.FetchProgressStageVerify, moduleName)
+	if err := verifyTarballIntegrity(tarballBytes, inspection.integrity); err != nil {
+		return nil, xfmt.Errorf("tarball integrity check failed: %w", err)
 	}
 
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "choysum-source-fetch-")
@@ -645,6 +677,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 	}
 	defer os.RemoveAll(tmpDir)
 
+	contract.ReportFetchProgress(ctx, contract.FetchProgressStageExtract, moduleName)
 	if err := extractTarballFromReader(bytes.NewReader(tarballBytes), tmpDir); err != nil {
 		return nil, err
 	}

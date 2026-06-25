@@ -44,6 +44,11 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		PackagePath: "internal/module/origin/registry",
 		OptionsType: "runtimeOptions",
 	},
+	"module_install_registry_fallback_enabled": {
+		Domain:      "module",
+		PackagePath: "internal/module/origin",
+		OptionsType: "runtimeOptions",
+	},
 	"default_choysum_path": {
 		Domain:      "cli",
 		PackagePath: "cmd",

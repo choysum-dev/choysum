@@ -284,20 +284,31 @@ func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, 
 
 	switch parsed.Kind {
 	case InputKindRegistry:
-		return c.resolveRegistry(ctx, parsed)
+		mod, err := c.resolveRegistry(ctx, parsed)
+		c.logResolveInstallOutcome(parsed, "registry", false, err)
+		return mod, err
 	case InputKindLocal:
 		mod, localErr := c.resolveLocal(ctx, parsed)
 		if localErr == nil {
+			c.logResolveInstallOutcome(parsed, "local", false, nil)
 			return mod, nil
 		}
 		// When the module is not found locally, fall back to registry resolution.
 		if isModuleNotFoundError(localErr) {
+			if !runtimeOptionsFromScope(c.runtimeScope).moduleInstallRegistryFallbackEnabled {
+				c.logResolveInstallOutcome(parsed, "local", false, localErr)
+				return nil, localErr
+			}
 			mod, registryErr := c.resolveRegistry(ctx, parsed)
 			if registryErr == nil {
+				c.logResolveInstallOutcome(parsed, "registry", true, nil)
 				return mod, nil
 			}
-			return nil, xfmt.Errorf("module %s not found locally and registry fallback failed: %w", parsed.LocalName, registryErr)
+			wrapped := xfmt.Errorf("module %s not found locally and registry fallback failed: %w", parsed.LocalName, registryErr)
+			c.logResolveInstallOutcome(parsed, "registry", true, wrapped)
+			return nil, wrapped
 		}
+		c.logResolveInstallOutcome(parsed, "local", false, localErr)
 		return nil, localErr
 	default:
 		return nil, xfmt.Errorf("unsupported origin input kind: %s", parsed.Kind)
@@ -384,4 +395,32 @@ func isModuleNotFoundError(err error) bool {
 	}
 	msg := err.Error()
 	return strings.Contains(msg, "not found in modules path")
+}
+
+func resolveInstallModuleName(parsed ParsedInput) string {
+	if name := strings.TrimSpace(parsed.ModuleName); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(parsed.LocalName); name != "" {
+		return name
+	}
+	return ""
+}
+
+func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigin string, fallback bool, err error) {
+	if c == nil || c.runtimeScope == nil || c.runtimeScope.Logger() == nil {
+		return
+	}
+	attrs := []any{
+		"module", resolveInstallModuleName(parsed),
+		"input_kind", string(parsed.Kind),
+		"resolved_origin", strings.TrimSpace(resolvedOrigin),
+		"fallback", fallback,
+	}
+	if err != nil {
+		attrs = append(attrs, "error", err.Error())
+		c.runtimeScope.Logger().Warn("origin install resolve failed", attrs...)
+		return
+	}
+	c.runtimeScope.Logger().Debug("origin install resolve succeeded", attrs...)
 }

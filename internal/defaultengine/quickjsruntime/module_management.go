@@ -380,10 +380,16 @@ func parseModuleIndexSyncParams(args []*quickjs.Value) (moduleIndexSyncParams, e
 
 func normalizeModuleIndexOriginType(raw string) string {
 	value := strings.TrimSpace(strings.ToLower(raw))
+	if value == "" {
+		return "local"
+	}
+	if value == "local" {
+		return "local"
+	}
 	if value == "registry" {
 		return "registry"
 	}
-	return "local"
+	return ""
 }
 
 func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {

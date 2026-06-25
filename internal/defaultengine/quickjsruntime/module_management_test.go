@@ -258,7 +258,7 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 	}{
 		{name: "registry", in: "registry", want: "registry"},
 		{name: "trimmed uppercase local", in: "  LOCAL ", want: "local"},
-		{name: "unsupported fallback", in: "remote", want: "local"},
+		{name: "unsupported invalid", in: "remote", want: ""},
 	}
 
 	for _, tt := range tests {

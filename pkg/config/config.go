@@ -22,14 +22,15 @@ const (
 )
 
 type Config struct {
-	ConfigPath            string `mapstructure:"-"`
-	ModulesPath           string `mapstructure:"modules_path"`
-	DistPath              string `mapstructure:"dist_path"`
-	NPMRegistryURL        string `mapstructure:"npm_registry_url"`
-	ModuleCatalogIndexURL string `mapstructure:"module_catalog_index_url"`
-	ESMUpstreamURL        string `mapstructure:"esm_upstream_url"`
-	DefaultChoysumPath    string `mapstructure:"default_choysum_path"`
-	TmpPath               string `mapstructure:"tmp_path"`
+	ConfigPath                           string `mapstructure:"-"`
+	ModulesPath                          string `mapstructure:"modules_path"`
+	DistPath                             string `mapstructure:"dist_path"`
+	NPMRegistryURL                       string `mapstructure:"npm_registry_url"`
+	ModuleCatalogIndexURL                string `mapstructure:"module_catalog_index_url"`
+	ModuleInstallRegistryFallbackEnabled bool   `mapstructure:"module_install_registry_fallback_enabled"`
+	ESMUpstreamURL                       string `mapstructure:"esm_upstream_url"`
+	DefaultChoysumPath                   string `mapstructure:"default_choysum_path"`
+	TmpPath                              string `mapstructure:"tmp_path"`
 
 	Log         *LogConfig      `mapstructure:"log"`
 	Db          *DbConfig       `mapstructure:"db"`
@@ -103,6 +104,7 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	}
 	applyDocumentViperDefaults(v)
 	applyTaskViperDefaults(v)
+	v.SetDefault("module_install_registry_fallback_enabled", true)
 	if err := bindConfigEnv(v); err != nil {
 		return stageError(LoadStageDecode, err)
 	}
@@ -316,21 +318,22 @@ func defaultConfig() *Config {
 	}
 
 	return &Config{
-		ModulesPath:           modulesPath,
-		DistPath:              "",
-		NPMRegistryURL:        DefaultNPMRegistryURL,
-		ModuleCatalogIndexURL: DefaultModuleCatalogIndexURL,
-		ESMUpstreamURL:        DefaultESMUpstreamURL,
-		DefaultChoysumPath:    "",
-		TmpPath:               "",
-		Log:                   NewDefaultLogConfig(),
-		Db:                    NewDefaultDbConfig(),
-		Compile:               NewDefaultCompileConfig(),
-		Server:                NewDefaultServerConfig(),
-		Document:              NewDefaultDocumentConfig(),
-		Task:                  NewDefaultTaskConfig(),
-		FrontendEnv:           make(map[string]any),
-		BackendEnv:            make(map[string]any),
+		ModulesPath:                          modulesPath,
+		DistPath:                             "",
+		NPMRegistryURL:                       DefaultNPMRegistryURL,
+		ModuleCatalogIndexURL:                DefaultModuleCatalogIndexURL,
+		ModuleInstallRegistryFallbackEnabled: true,
+		ESMUpstreamURL:                       DefaultESMUpstreamURL,
+		DefaultChoysumPath:                   "",
+		TmpPath:                              "",
+		Log:                                  NewDefaultLogConfig(),
+		Db:                                   NewDefaultDbConfig(),
+		Compile:                              NewDefaultCompileConfig(),
+		Server:                               NewDefaultServerConfig(),
+		Document:                             NewDefaultDocumentConfig(),
+		Task:                                 NewDefaultTaskConfig(),
+		FrontendEnv:                          make(map[string]any),
+		BackendEnv:                           make(map[string]any),
 	}
 }
 

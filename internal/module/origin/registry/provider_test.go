@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -102,6 +104,12 @@ func buildTarGz(t *testing.T, files map[string]string) []byte {
 		t.Fatalf("close gzip writer: %v", err)
 	}
 	return buf.Bytes()
+}
+
+func npmSHA512Integrity(data []byte) string {
+	h := sha512.New()
+	h.Write(data)
+	return "sha512-" + base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
 func buildPackageJSON(t *testing.T, moduleName, version string, entryPoints map[string]string) string {
@@ -278,6 +286,11 @@ func TestProviderFetchMaterializesModuleToModules(t *testing.T) {
 
 	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
 	tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-2.0.0.tgz"
+	tgz := buildTarGz(t, map[string]string{
+		"package/package.json":    buildPackageJSON(t, "auth", "2.0.0", map[string]string{"service": "./service/main.ts", "web": "./web/index.ts"}),
+		"package/service/main.ts": "export const main = true;",
+	})
+	integrity := npmSHA512Integrity(tgz)
 	metadata := buildMetadata(t, map[string]string{"latest": "2.0.0"}, map[string]any{
 		"2.0.0": map[string]any{
 			"name":    "@choysum-dev/auth",
@@ -288,12 +301,8 @@ func TestProviderFetchMaterializesModuleToModules(t *testing.T) {
 				"application": "auth",
 				"entryPoints": map[string]any{"service": "./service/main.ts", "web": "./web/index.ts"},
 			},
-			"dist": map[string]any{"tarball": tarballURL, "integrity": "sha512-auth-v200"},
+			"dist": map[string]any{"tarball": tarballURL, "integrity": integrity},
 		},
-	})
-	tgz := buildTarGz(t, map[string]string{
-		"package/package.json":    buildPackageJSON(t, "auth", "2.0.0", map[string]string{"service": "./service/main.ts", "web": "./web/index.ts"}),
-		"package/service/main.ts": "export const main = true;",
 	})
 
 	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -319,7 +328,7 @@ func TestProviderFetchMaterializesModuleToModules(t *testing.T) {
 	if mod.Name != "auth" || mod.Path != filepath.Join(modulesPath, "auth") {
 		t.Fatalf("unexpected fetched module: %#v", mod)
 	}
-	if mod.Tarball != tarballURL || mod.Integrity != "sha512-auth-v200" {
+	if mod.Tarball != tarballURL || mod.Integrity != integrity {
 		t.Fatalf("unexpected fetched distribution metadata: %#v", mod)
 	}
 	if _, err := os.Stat(filepath.Join(modulesPath, "auth", "service", "main.ts")); err != nil {
@@ -437,6 +446,72 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 		provider := NewProvider(runtimeScope, WithHTTPClient(client))
 		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "package.json not found in tarball") {
 			t.Fatalf("expected package.json not found error, got %v", err)
+		}
+	})
+
+	t.Run("malformed integrity metadata fails fetch", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+		tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.4.tgz"
+		tgz := buildTarGz(t, map[string]string{
+			"package/package.json": buildPackageJSON(t, "auth", "1.0.4", nil),
+		})
+		metadata := buildMetadata(t, map[string]string{"latest": "1.0.4"}, map[string]any{
+			"1.0.4": map[string]any{
+				"name":    "@choysum-dev/auth",
+				"version": "1.0.4",
+				"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
+				"dist":    map[string]any{"tarball": tarballURL, "integrity": "sha512-not-base64@@"},
+			},
+		})
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case metadataURL:
+				return httpResponse(http.StatusOK, metadata), nil
+			case tarballURL:
+				return httpResponse(http.StatusOK, tgz), nil
+			default:
+				t.Fatalf("unexpected request url: %s", req.URL.String())
+				return nil, nil
+			}
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "tarball integrity check failed") {
+			t.Fatalf("expected malformed integrity error, got %v", err)
+		}
+	})
+
+	t.Run("integrity mismatch fails fetch", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+		tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.5.tgz"
+		tgz := buildTarGz(t, map[string]string{
+			"package/package.json": buildPackageJSON(t, "auth", "1.0.5", nil),
+		})
+		metadata := buildMetadata(t, map[string]string{"latest": "1.0.5"}, map[string]any{
+			"1.0.5": map[string]any{
+				"name":    "@choysum-dev/auth",
+				"version": "1.0.5",
+				"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
+				"dist":    map[string]any{"tarball": tarballURL, "integrity": npmSHA512Integrity([]byte("different-content"))},
+			},
+		})
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case metadataURL:
+				return httpResponse(http.StatusOK, metadata), nil
+			case tarballURL:
+				return httpResponse(http.StatusOK, tgz), nil
+			default:
+				t.Fatalf("unexpected request url: %s", req.URL.String())
+				return nil, nil
+			}
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "integrity mismatch") {
+			t.Fatalf("expected integrity mismatch error, got %v", err)
 		}
 	})
 

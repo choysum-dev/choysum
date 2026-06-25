@@ -15,6 +15,7 @@ import (
 
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	origincontract "github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/state/lease"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -477,6 +478,22 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	// module download and installation (especially over slow networks).
 	installCtx, cancel := context.WithTimeout(ctx, bootstrapModuleInstallTimeout)
 	defer cancel()
+	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
+		moduleName = strings.TrimSpace(moduleName)
+		if moduleName == "" {
+			moduleName = "core module"
+		}
+		switch stage {
+		case origincontract.FetchProgressStageDownload:
+			c.store.markStageDetail(operationID, "downloading module package: "+moduleName+"...")
+		case origincontract.FetchProgressStageVerify:
+			c.store.markStageDetail(operationID, "verifying module package integrity: "+moduleName+"...")
+		case origincontract.FetchProgressStageExtract:
+			c.store.markStageDetail(operationID, "extracting module package: "+moduleName+"...")
+		default:
+			// Keep existing stage detail if unknown progress stage is received.
+		}
+	})
 
 	txRoot := c.runtimeScope.WithContext(installCtx)
 	if err := txRoot.Transactor().Required(installCtx, func(txScope scope.Scope, tx scope.Transaction) error {
@@ -489,7 +506,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		}
 		defer executor.Stop()
 
-		c.store.markStageDetail(operationID, "downloading and installing core modules...")
+		c.store.markStageDetail(operationID, "resolving core module installation plan...")
 
 		moduleLifecycle := lifecycle.NewService(txScope, executor)
 		return moduleLifecycle.Install(tx.Context(), lifecycle.InstallRequest{Name: "document", WithDemo: false})
@@ -513,6 +530,8 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		}
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", err)
 	}
+
+	c.store.markStageDetail(operationID, "core module installation completed")
 
 	return nil
 }
