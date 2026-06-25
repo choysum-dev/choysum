@@ -27,5 +27,6 @@ func toStatusResponse(op operationSnapshot) *bootstrappb.Workspace_GetInitializa
 		ErrorCode:       op.ErrorCode,
 		ErrorMessage:    op.ErrorMessage,
 		NextPollAfterMs: op.NextPollAfterMs,
+		StageDetail:     op.StageDetail,
 	}
 }

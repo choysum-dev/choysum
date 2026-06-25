@@ -28,15 +28,15 @@ import (
 )
 
 const (
-	bootstrapInitLeaseResource      = "system:init"
-	bootstrapInitLeaseTTL           = 60 * time.Second
-	bootstrapInitLeaseRenew         = 20 * time.Second
-	bootstrapDefaultPollAfterMs     = int64(1000)
-	bootstrapDefaultRedirectTo      = "/web/login"
-	bootstrapClientHashingPrefix    = "$CH$"
-	bootstrapAdminUsernameMaxBytes  = 256
-	bootstrapPasswordMaxBytes       = 4096
-	bootstrapModuleInstallTimeout   = 120 * time.Second
+	bootstrapInitLeaseResource     = "system:init"
+	bootstrapInitLeaseTTL          = 60 * time.Second
+	bootstrapInitLeaseRenew        = 20 * time.Second
+	bootstrapDefaultPollAfterMs    = int64(1000)
+	bootstrapDefaultRedirectTo     = "/web/login"
+	bootstrapClientHashingPrefix   = "$CH$"
+	bootstrapAdminUsernameMaxBytes = 256
+	bootstrapPasswordMaxBytes      = 4096
+	bootstrapModuleInstallTimeout  = 120 * time.Second
 )
 
 var (

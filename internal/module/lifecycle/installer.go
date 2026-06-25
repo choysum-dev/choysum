@@ -197,9 +197,13 @@ func (m *moduleInstaller) install() error {
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
-		if err := ensureModuleIndexDailySchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error ensuring module index schedule: %w", err)
-		}
+		// Daily Cron replaced by on-demand Lazy Sync triggered from ModuleKanbanView.
+		// The schedule is no longer created during install; existing schedules are
+		// harmless and will be cleaned up by eventual schedule GC or manual removal.
+		//
+		// if err := ensureModuleIndexDailySchedule(m.runtimeScope); err != nil {
+		// 	return xfmt.Errorf("error ensuring module index schedule: %w", err)
+		// }
 	}
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
 		if err := ensureDocumentAttachmentGCSchedule(m.runtimeScope); err != nil {

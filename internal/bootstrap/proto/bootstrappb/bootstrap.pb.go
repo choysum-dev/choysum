@@ -326,6 +326,7 @@ type Workspace_GetInitializationStatus_Resp struct {
 	ErrorCode       string                 `protobuf:"bytes,7,opt,name=error_code,json=errorCode,proto3" json:"error_code,omitempty"`
 	ErrorMessage    string                 `protobuf:"bytes,8,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
 	NextPollAfterMs int64                  `protobuf:"varint,9,opt,name=next_poll_after_ms,json=nextPollAfterMs,proto3" json:"next_poll_after_ms,omitempty"`
+	StageDetail     string                 `protobuf:"bytes,10,opt,name=stage_detail,json=stageDetail,proto3" json:"stage_detail,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -423,6 +424,13 @@ func (x *Workspace_GetInitializationStatus_Resp) GetNextPollAfterMs() int64 {
 	return 0
 }
 
+func (x *Workspace_GetInitializationStatus_Resp) GetStageDetail() string {
+	if x != nil {
+		return x.StageDetail
+	}
+	return ""
+}
+
 var File_bootstrap_proto protoreflect.FileDescriptor
 
 const file_bootstrap_proto_rawDesc = "" +
@@ -438,7 +446,7 @@ const file_bootstrap_proto_rawDesc = "" +
 	"\x12next_poll_after_ms\x18\x03 \x01(\x03R\x0fnextPollAfterMs\x124\n" +
 	"\x05state\x18\x04 \x01(\x0e2\x1e.bootstrap.InitializationStateR\x05state\"J\n" +
 	"%Workspace_GetInitializationStatus_Req\x12!\n" +
-	"\foperation_id\x18\x01 \x01(\tR\voperationId\"\x9e\x03\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\"\xc1\x03\n" +
 	"&Workspace_GetInitializationStatus_Resp\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\x124\n" +
 	"\x05state\x18\x02 \x01(\x0e2\x1e.bootstrap.InitializationStateR\x05state\x124\n" +
@@ -449,7 +457,9 @@ const file_bootstrap_proto_rawDesc = "" +
 	"\n" +
 	"error_code\x18\a \x01(\tR\terrorCode\x12#\n" +
 	"\rerror_message\x18\b \x01(\tR\ferrorMessage\x12+\n" +
-	"\x12next_poll_after_ms\x18\t \x01(\x03R\x0fnextPollAfterMs*\xc4\x01\n" +
+	"\x12next_poll_after_ms\x18\t \x01(\x03R\x0fnextPollAfterMs\x12!\n" +
+	"\fstage_detail\x18\n" +
+	" \x01(\tR\vstageDetail*\xc4\x01\n" +
 	"\x13InitializationState\x12$\n" +
 	" INITIALIZATION_STATE_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cINITIALIZATION_STATE_PENDING\x10\x01\x12 \n" +

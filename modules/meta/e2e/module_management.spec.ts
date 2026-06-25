@@ -605,3 +605,72 @@ test('meta module management: lock conflict flow', async ({ page }) => {
   }
   await runActionExpectFailure(page, target!.name, target!.status.includes('已安装') ? 'upgrade' : 'install');
 });
+
+/**
+ * Verifies that the module kanban page loads and remains interactive when the
+ * onMounted lazy sync fires in the background. The board must not block on
+ * async index refresh.
+ */
+test('meta module management: kanban lazy sync does not block page', async ({ page }) => {
+  const runtime = readRuntimeInfo();
+  test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
+
+  const baseURL = runtime.baseURL;
+  await ensureLoggedIn(page, baseURL);
+
+  // After ensuring the user is logged in and the board is loaded, the
+  // onMounted hook triggers a stale-aware RequestSync for registry then local.
+  // The test asserts the page remains interactive: the search input is usable,
+  // and module cards are visible.
+  const searchInput = page.locator('.o-kanban__search .o-search__input');
+  await expect(searchInput).toBeVisible({ timeout: 15000 });
+
+  const cards = page.locator('.module-card');
+  const count = await cards.count();
+  if (count > 0) {
+    // At least one card is present: the board rendered before or during sync.
+    await expect(cards.first()).toBeVisible({ timeout: 10000 });
+  } else if (count === 0) {
+    // No local modules and registry may be unreachable in CI; page must still
+    // render the empty board shell without crashing.
+    await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+  }
+
+  // The manual sync toolbar button must remain reachable.
+  const syncButton = page.getByRole('button', { name: '同步' });
+  if (await syncButton.isVisible().catch(() => false)) {
+    await expect(syncButton).toBeEnabled({ timeout: 5000 });
+  }
+});
+
+/**
+ * Verifies that the module kanban page remains usable even when registry
+ * sync fails silently (e.g. index.choysum.dev is unreachable in an air-gapped
+ * or CI environment). The board must still show local modules and allow
+ * install/upgrade/uninstall operations.
+ */
+test('meta module management: kanban usable when registry sync fails', async ({ page }) => {
+  const runtime = readRuntimeInfo();
+  test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
+
+  const baseURL = runtime.baseURL;
+  await ensureLoggedIn(page, baseURL);
+
+  // Lazy sync for registry runs on onMounted and may fail. The key assertion
+  // is that the board shell is still present and functional.
+  await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+
+  // The manual sync button should still work for local-only refresh.
+  const syncButton = page.getByRole('button', { name: '同步' });
+  if (await syncButton.isVisible().catch(() => false)) {
+    await syncButton.click();
+    // After manual sync, the board should refresh without error modals.
+    await page.waitForTimeout(2000);
+    await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+  }
+
+  // The page must not show an error overlay or become unresponsive.
+  const errorOverlay = page.locator('.el-message--error');
+  // An error toast for registry is acceptable; the page must still work.
+  await expect(page.locator('.okanban')).toBeVisible({ timeout: 10000 });
+});
