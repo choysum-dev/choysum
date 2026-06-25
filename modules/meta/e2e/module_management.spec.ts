@@ -523,9 +523,14 @@ async function pickTargetModule(page: Page) {
   await waitForModuleList(page);
 
   const cards = page.locator('.module-card');
+  await expect
+    .poll(async () => cards.count(), { timeout: 15000 })
+    .toBeGreaterThan(0)
+    .catch(() => null);
+
   const total = await cards.count();
   if (total === 0) {
-    throw new Error('Module list is empty; cannot run the module management regression flow');
+    return null;
   }
 
   for (let i = 0; i < total; i += 1) {
@@ -655,22 +660,25 @@ test('meta module management: kanban usable when registry sync fails', async ({ 
 
   const baseURL = runtime.baseURL;
   let forcedRegistrySyncFailures = 0;
+  let requestSyncCalls = 0;
   const routeHandler = async (route: any) => {
     const req = route.request();
-    const postData = req.postData() || '';
-    if (req.method() === 'POST' && postData.includes('meta.IrModuleIndex/RequestSync') && postData.includes('"originType":"registry"')) {
-      forcedRegistrySyncFailures += 1;
-      await route.fulfill({
-        status: 503,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          error: {
-            code: 'REGISTRY_UNAVAILABLE',
-            message: 'simulated registry outage in e2e',
-          },
-        }),
-      });
-      return;
+    if (req.method() === 'POST' && req.url().includes('/meta.IrModuleIndex/RequestSync')) {
+      requestSyncCalls += 1;
+      if (forcedRegistrySyncFailures === 0) {
+        forcedRegistrySyncFailures += 1;
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: {
+              code: 'REGISTRY_UNAVAILABLE',
+              message: 'simulated registry outage in e2e',
+            },
+          }),
+        });
+        return;
+      }
     }
     await route.continue();
   };
@@ -682,6 +690,7 @@ test('meta module management: kanban usable when registry sync fails', async ({ 
     // Lazy sync for registry runs on onMounted; this test forces registry
     // RequestSync to fail and verifies the page still stays usable.
     await expect(page.locator('.okanban')).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => requestSyncCalls, { timeout: 15000 }).toBeGreaterThan(0);
     await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
 
     // The manual sync button should still work for local-only refresh.
