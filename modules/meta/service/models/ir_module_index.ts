@@ -216,7 +216,7 @@ function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): Mo
   if (fields.length === 0) return rows;
 
   return rows.map(row => {
-    const projected = Object.create(null) as ModuleIndexRecord;
+    const projected = {} as ModuleIndexRecord;
     for (const field of fields) {
       (projected as any)[field] = (row as any)?.[field];
     }

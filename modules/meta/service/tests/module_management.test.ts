@@ -790,6 +790,45 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
   }
 });
 
+test('meta.IrModuleIndex Search projection keeps object prototype and blocks dangerous fields', async () => {
+  resetRequestContext();
+
+  const now = new Date();
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+    {
+      Id: 'idx_local',
+      ModuleName: 'auth',
+      OriginType: 'local',
+      OriginRef: 'local',
+      Available: true,
+      Version: '1.0.0',
+      ManifestJson: { source: 'local' },
+      LocalPath: '/modules/auth',
+      LastSyncAt: now,
+      LastBatchSyncAt: now,
+      SyncRevision: 'r1',
+      LastErrorMessage: '',
+      InstalledStatus: 'installed',
+      InstalledVersion: '1.0.0',
+    },
+  ]);
+
+  try {
+    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(1);
+    expect(rows[0].ModuleName).toBe('auth');
+    expect(Object.getPrototypeOf(rows[0])).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(rows[0], '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(rows[0], 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(rows[0], 'prototype')).toBe(false);
+  } finally {
+    restoreGroupedRepo();
+    restoreBaseSearch();
+  }
+});
+
 test('meta.IrModuleIndex Count uses grouped module count', async () => {
   resetRequestContext();
 
