@@ -17,6 +17,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	origincontract "github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/state/lease"
+	configpkg "github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -37,7 +38,7 @@ const (
 	bootstrapClientHashingPrefix   = "$CH$"
 	bootstrapAdminUsernameMaxBytes = 256
 	bootstrapPasswordMaxBytes      = 4096
-	bootstrapModuleInstallTimeout  = 120 * time.Second
+	bootstrapModuleInstallTimeout  = time.Duration(configpkg.DefaultBootstrapModuleInstallTimeoutSeconds) * time.Second
 )
 
 var (
@@ -465,6 +466,14 @@ func isNetworkError(err error) bool {
 	return false
 }
 
+func (c *coordinator) moduleInstallTimeout() time.Duration {
+	runtimeTimeoutSeconds := runtimeOptionsFromScope(c.runtimeScope).bootstrapModuleInstallTimeoutSeconds
+	if runtimeTimeoutSeconds <= 0 {
+		return bootstrapModuleInstallTimeout
+	}
+	return time.Duration(runtimeTimeoutSeconds) * time.Second
+}
+
 func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operationID string) error {
 	if c.runtimeScope == nil {
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "scope is not available", nil)
@@ -476,7 +485,8 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 
 	// Add a timeout to prevent the bootstrap from hanging indefinitely during
 	// module download and installation (especially over slow networks).
-	installCtx, cancel := context.WithTimeout(ctx, bootstrapModuleInstallTimeout)
+	installTimeout := c.moduleInstallTimeout()
+	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
 	defer cancel()
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
@@ -515,7 +525,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		if errors.Is(err, context.DeadlineExceeded) {
 			return newBootstrapError(
 				bootstrapErrCodeModuleInstallTimeout,
-				"module installation timed out after "+bootstrapModuleInstallTimeout.String()+". "+
+				"module installation timed out after "+installTimeout.String()+". "+
 					"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
 				err,
 			)

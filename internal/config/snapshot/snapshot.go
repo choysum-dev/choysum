@@ -15,6 +15,7 @@ type ConfigSnapshot struct {
 	NPMRegistryURL                       string
 	ModuleCatalogIndexURL                string
 	ModuleInstallRegistryFallbackEnabled bool
+	BootstrapModuleInstallTimeoutSeconds int
 	ESMUpstreamURL                       string
 	Log                                  *config.LogConfig
 	Compile                              *config.CompileConfig
@@ -40,6 +41,7 @@ func New(cfg *config.Config) *ConfigSnapshot {
 		NPMRegistryURL:                       cfg.NPMRegistryURL,
 		ModuleCatalogIndexURL:                cfg.ModuleCatalogIndexURL,
 		ModuleInstallRegistryFallbackEnabled: cfg.ModuleInstallRegistryFallbackEnabled,
+		BootstrapModuleInstallTimeoutSeconds: cfg.BootstrapModuleInstallTimeoutSeconds,
 		ESMUpstreamURL:                       cfg.ESMUpstreamURL,
 		Log:                                  cloneLogConfig(cfg.Log),
 		Compile:                              cloneCompileConfig(cfg.Compile),

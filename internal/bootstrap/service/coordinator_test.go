@@ -482,6 +482,33 @@ func TestCoordinatorStartInitializationSkipsAdminWhenRuntimeNotReady(t *testing.
 	}
 }
 
+func TestCoordinatorModuleInstallTimeoutDefaultsToConstant(t *testing.T) {
+	t.Parallel()
+
+	c := &coordinator{}
+	if got := c.moduleInstallTimeout(); got != bootstrapModuleInstallTimeout {
+		t.Fatalf("moduleInstallTimeout() = %v, want %v", got, bootstrapModuleInstallTimeout)
+	}
+}
+
+func TestCoordinatorModuleInstallTimeoutUsesRuntimeOverride(t *testing.T) {
+	t.Parallel()
+
+	c := &coordinator{runtimeScope: &freshnessTestScope{config: &config.Config{BootstrapModuleInstallTimeoutSeconds: 42}}}
+	if got := c.moduleInstallTimeout(); got != 42*time.Second {
+		t.Fatalf("moduleInstallTimeout() = %v, want %v", got, 42*time.Second)
+	}
+}
+
+func TestCoordinatorModuleInstallTimeoutIgnoresNonPositiveOverride(t *testing.T) {
+	t.Parallel()
+
+	c := &coordinator{runtimeScope: &freshnessTestScope{config: &config.Config{BootstrapModuleInstallTimeoutSeconds: -1}}}
+	if got := c.moduleInstallTimeout(); got != bootstrapModuleInstallTimeout {
+		t.Fatalf("moduleInstallTimeout() = %v, want %v", got, bootstrapModuleInstallTimeout)
+	}
+}
+
 func TestNormalizeWirePasswordRejectsRawPassword(t *testing.T) {
 	_, err := normalizeWirePassword("plain-password")
 	if err == nil {

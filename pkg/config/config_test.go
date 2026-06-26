@@ -340,6 +340,50 @@ auth:
 	}
 }
 
+func TestNewConfigAutoGeneratesAuthInternalKeyOutsideProduction(t *testing.T) {
+	t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "")
+
+	cfgPath := writeTestConfig(t, `
+default_choysum_path: ./.choysum-custom
+server:
+  environment: development
+auth:
+  enabled: true
+`)
+
+	cfg, err := NewConfig(cfgPath)
+	if err != nil {
+		t.Fatalf("NewConfig returned error: %v", err)
+	}
+
+	if cfg.Auth == nil {
+		t.Fatal("expected auth config to be initialized")
+	}
+	if strings.TrimSpace(cfg.Auth.InternalKey) == "" {
+		t.Fatal("expected generated auth.internalKey outside production")
+	}
+}
+
+func TestNewConfigRequiresExplicitAuthInternalKeyInProduction(t *testing.T) {
+	t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "")
+
+	cfgPath := writeTestConfig(t, `
+default_choysum_path: ./.choysum-custom
+server:
+  environment: production
+auth:
+  enabled: true
+`)
+
+	_, err := NewConfig(cfgPath)
+	if err == nil {
+		t.Fatal("expected production auth.internalKey validation error")
+	}
+	if !strings.Contains(err.Error(), "auth.internalKey must be explicitly configured") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestNewConfigAuthHttpAuthDefaultsWithPartialSection(t *testing.T) {
 	cfgPath := writeTestConfig(t, `
 default_choysum_path: ./.choysum-custom
@@ -514,6 +558,9 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
 		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
 	}
+	if cfg.BootstrapModuleInstallTimeoutSeconds != DefaultBootstrapModuleInstallTimeoutSeconds {
+		t.Fatalf("expected bootstrap_module_install_timeout_seconds default %d, got %d", DefaultBootstrapModuleInstallTimeoutSeconds, cfg.BootstrapModuleInstallTimeoutSeconds)
+	}
 }
 
 func TestDefaultConfigUsesEmptyModulesWhenLocalDirMissing(t *testing.T) {
@@ -548,6 +595,9 @@ func TestDefaultConfigUsesEmptyModulesWhenLocalDirMissing(t *testing.T) {
 	}
 	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
 		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
+	}
+	if cfg.BootstrapModuleInstallTimeoutSeconds != DefaultBootstrapModuleInstallTimeoutSeconds {
+		t.Fatalf("expected bootstrap_module_install_timeout_seconds default %d, got %d", DefaultBootstrapModuleInstallTimeoutSeconds, cfg.BootstrapModuleInstallTimeoutSeconds)
 	}
 	if cfg.Log == nil || cfg.Db == nil || cfg.Compile == nil || cfg.Server == nil || cfg.Task == nil {
 		t.Fatalf("expected nested defaults to be initialized: %#v", cfg)
@@ -676,9 +726,11 @@ modules_path: from-config
 		envModules := filepath.Join(t.TempDir(), "env-modules")
 		envNPMRegistryURL := "https://registry.npmmirror.com"
 		envModuleCatalogIndexURL := "https://index.example.dev/v1/index.json"
+		envBootstrapInstallTimeoutSeconds := 777
 		t.Setenv("CHOYSUM_TEST_MODULES_PATH", envModules)
 		t.Setenv("CHOYSUM_TEST_NPM_REGISTRY_URL", envNPMRegistryURL)
 		t.Setenv("CHOYSUM_TEST_MODULE_CATALOG_INDEX_URL", envModuleCatalogIndexURL)
+		t.Setenv("CHOYSUM_TEST_BOOTSTRAP_MODULE_INSTALL_TIMEOUT_SECONDS", "777")
 
 		cfg := defaultConfig()
 		if err := cfg.unmarshal(cfgPath, WithEnvPrefix("CHOYSUM_TEST")); err != nil {
@@ -692,6 +744,9 @@ modules_path: from-config
 		}
 		if cfg.ModuleCatalogIndexURL != envModuleCatalogIndexURL {
 			t.Fatalf("module_catalog_index_url = %q, want env override %q", cfg.ModuleCatalogIndexURL, envModuleCatalogIndexURL)
+		}
+		if cfg.BootstrapModuleInstallTimeoutSeconds != envBootstrapInstallTimeoutSeconds {
+			t.Fatalf("bootstrap_module_install_timeout_seconds = %d, want env override %d", cfg.BootstrapModuleInstallTimeoutSeconds, envBootstrapInstallTimeoutSeconds)
 		}
 	})
 
@@ -848,6 +903,36 @@ modules_path: from-config
 		}
 		if !strings.Contains(err.Error(), "post failed") {
 			t.Fatalf("expected post hook message, got %v", err)
+		}
+	})
+}
+
+func TestNewConfigBootstrapModuleInstallTimeoutSeconds(t *testing.T) {
+	t.Run("respects explicit config value", func(t *testing.T) {
+		cfgPath := writeTestConfig(t, `
+bootstrap_module_install_timeout_seconds: 321
+`)
+
+		cfg, err := NewConfig(cfgPath)
+		if err != nil {
+			t.Fatalf("NewConfig() error = %v", err)
+		}
+		if cfg.BootstrapModuleInstallTimeoutSeconds != 321 {
+			t.Fatalf("bootstrap_module_install_timeout_seconds = %d, want 321", cfg.BootstrapModuleInstallTimeoutSeconds)
+		}
+	})
+
+	t.Run("non-positive value falls back to default", func(t *testing.T) {
+		cfgPath := writeTestConfig(t, `
+bootstrap_module_install_timeout_seconds: -5
+`)
+
+		cfg, err := NewConfig(cfgPath)
+		if err != nil {
+			t.Fatalf("NewConfig() error = %v", err)
+		}
+		if cfg.BootstrapModuleInstallTimeoutSeconds != DefaultBootstrapModuleInstallTimeoutSeconds {
+			t.Fatalf("bootstrap_module_install_timeout_seconds = %d, want %d", cfg.BootstrapModuleInstallTimeoutSeconds, DefaultBootstrapModuleInstallTimeoutSeconds)
 		}
 	})
 }

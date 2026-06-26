@@ -83,6 +83,13 @@ func (i configFactoryInput) ModuleCatalogIndexURL() string {
 	return i.cfg.ModuleCatalogIndexURL
 }
 
+func (i configFactoryInput) BootstrapModuleInstallTimeoutSeconds() int {
+	if i.cfg == nil {
+		return 0
+	}
+	return i.cfg.BootstrapModuleInstallTimeoutSeconds
+}
+
 func (i configFactoryInput) CompileConfig() *config.CompileConfig {
 	if i.cfg == nil {
 		return nil
