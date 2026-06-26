@@ -135,9 +135,10 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 }
 
 type registrySourceResolution struct {
-	registryURL string
-	packageName string
-	integrity   string
+	registryURL      string
+	packageName      string
+	integrity        string
+	preferredVersion string
 }
 
 func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) string {
@@ -167,6 +168,19 @@ func resolveBindingIntegrity(catalogIntegrity string, mod *meta.IrModule) string
 	return strings.TrimSpace(catalogIntegrity)
 }
 
+func resolveRegistryRequestedVersion(requestedVersion, preferredVersion string) string {
+	requestedVersion = strings.TrimSpace(requestedVersion)
+	if requestedVersion != "" {
+		if strings.EqualFold(requestedVersion, "latest") {
+			if preferred := strings.TrimSpace(preferredVersion); preferred != "" {
+				return preferred
+			}
+		}
+		return requestedVersion
+	}
+	return strings.TrimSpace(preferredVersion)
+}
+
 func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
@@ -175,7 +189,8 @@ func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput
 	if err != nil {
 		return nil, err
 	}
-	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
+	effectiveVersion := resolveRegistryRequestedVersion(parsed.Version, resolved.preferredVersion)
+	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, effectiveVersion)
 }
 
 func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (registrySourceResolution, error) {
@@ -205,6 +220,12 @@ func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedIn
 	}
 	if item.Source != nil {
 		resolved.integrity = strings.TrimSpace(item.Source.Integrity)
+		if sourceVersion := strings.TrimSpace(item.Source.Version); sourceVersion != "" {
+			resolved.preferredVersion = sourceVersion
+		}
+	}
+	if resolved.preferredVersion == "" {
+		resolved.preferredVersion = strings.TrimSpace(item.LatestVersion)
 	}
 	c.cacheRegistrySourceResolution(cacheKey, resolved)
 
@@ -366,7 +387,8 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 	if err != nil {
 		return nil, err
 	}
-	mod, err := c.registryProvider.Fetch(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
+	effectiveVersion := resolveRegistryRequestedVersion(parsed.Version, resolved.preferredVersion)
+	mod, err := c.registryProvider.Fetch(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, effectiveVersion)
 	if err != nil {
 		return nil, err
 	}

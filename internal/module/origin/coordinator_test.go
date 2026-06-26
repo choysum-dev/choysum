@@ -296,10 +296,10 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
 
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
-			if version != "latest" {
-				t.Fatalf("expected provider to receive latest, got %s", version)
+			if version != "v2.0.0" {
+				t.Fatalf("expected provider to receive catalog latest version v2.0.0, got %s", version)
 			}
-			return &meta.IrModule{Name: "auth", Version: "v2.1.0", Integrity: "sha512-provider-auth-v210", Path: filepath.Join(modulesPath, "auth")}, nil
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0", Integrity: "sha512-provider-auth-v200", Path: filepath.Join(modulesPath, "auth")}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
@@ -307,7 +307,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveInstallModule(registry latest) error = %v", err)
 		}
-		if mod == nil || mod.Version != "v2.1.0" {
+		if mod == nil || mod.Version != "v2.0.0" {
 			t.Fatalf("unexpected resolved registry module: %#v", mod)
 		}
 		binding, ok, err := lockStore.LookupBinding(WorkspaceRoot(runtimeScope), "auth")
@@ -317,10 +317,10 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected registry binding to exist after latest install")
 		}
-		if binding.OriginRef != "auth@v2.1.0" || binding.ResolvedVersion != "v2.1.0" {
+		if binding.OriginRef != "auth@v2.0.0" || binding.ResolvedVersion != "v2.0.0" {
 			t.Fatalf("expected latest ref to pin resolved version, got %#v", binding)
 		}
-		if binding.Integrity != "sha512-provider-auth-v210" {
+		if binding.Integrity != "sha512-provider-auth-v200" {
 			t.Fatalf("unexpected integrity for latest install: %#v", binding)
 		}
 	})
@@ -333,6 +333,9 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		fetchCalls := 0
 		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
 			fetchCalls++
+			if version != "v2.0.0" {
+				t.Fatalf("expected fallback to request catalog latest version v2.0.0, got %s", version)
+			}
 			return &meta.IrModule{Name: moduleName, Version: "v3.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
