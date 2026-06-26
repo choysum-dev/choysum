@@ -226,10 +226,11 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:           modulesPath,
-			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
-			DefaultChoysumPath:    t.TempDir(),
-			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
+			ModulesPath:                          modulesPath,
+			ConfigPath:                           filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:                   t.TempDir(),
+			ModuleCatalogIndexURL:                config.DefaultModuleCatalogIndexURL,
+			ModuleInstallRegistryFallbackEnabled: true,
 		},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
@@ -419,10 +420,11 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:           modulesPath,
-			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
-			DefaultChoysumPath:    t.TempDir(),
-			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
+			ModulesPath:                          modulesPath,
+			ConfigPath:                           filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:                   t.TempDir(),
+			ModuleCatalogIndexURL:                config.DefaultModuleCatalogIndexURL,
+			ModuleInstallRegistryFallbackEnabled: true,
 		},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))

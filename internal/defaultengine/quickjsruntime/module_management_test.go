@@ -24,6 +24,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type moduleIndexTestScope struct {
@@ -370,6 +372,57 @@ func TestRunModuleIndexSyncSingleOriginUsesSingleTransaction(t *testing.T) {
 	}
 	if !result.Ok || result.Total != 5 || result.Success != 4 || result.Failed != 1 {
 		t.Fatalf("unexpected result = %#v", result)
+	}
+}
+
+func TestRunModuleIndexSyncPassesTransactionContextToRunner(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
+
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, txScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+		if originType != "local" {
+			t.Fatalf("originType = %q, want local", originType)
+		}
+		if runCtx == nil {
+			t.Fatal("runner context should not be nil")
+		}
+		if runCtx != txScope.Context() {
+			t.Fatal("runner context should match transaction scope context")
+		}
+		if _, ok := scope.TransactionFromContext(runCtx); !ok {
+			t.Fatal("runner context should carry transaction")
+		}
+		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 1, Failed: 0}, nil
+	})
+	if err != nil {
+		t.Fatalf("runModuleIndexSync(local) error = %v", err)
+	}
+}
+
+func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
+
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+		if originType == "registry" {
+			return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Canceled, "sync canceled")
+		}
+		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Unavailable, "sync failed")
+	})
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Canceled {
+		t.Fatalf("expected canceled status, got %v", err)
 	}
 }
 

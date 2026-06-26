@@ -500,7 +500,7 @@ func (p *SourceRegistryProvider) extractTarballToDir(ctx context.Context, downlo
 
 // downloadTarballToFile performs an HTTP GET, streams the response body into
 // targetPath, and computes sha256/sha512 digests along the way.
-func (p *SourceRegistryProvider) downloadTarballToFile(ctx context.Context, downloadURL, targetPath string) (*tarballIntegritySums, error) {
+func (p *SourceRegistryProvider) downloadTarballToFile(ctx context.Context, downloadURL, targetPath string) (sums *tarballIntegritySums, err error) {
 	if err := validateTarballURL(downloadURL); err != nil {
 		return nil, err
 	}
@@ -517,22 +517,30 @@ func (p *SourceRegistryProvider) downloadTarballToFile(ctx context.Context, down
 	if err != nil {
 		return nil, xfmt.Errorf("create tarball file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		if outFile == nil {
+			return
+		}
+		if closeErr := outFile.Close(); closeErr != nil && err == nil {
+			err = xfmt.Errorf("close tarball file: %w", closeErr)
+		}
+	}()
 
 	sha256Hasher := sha256.New()
 	sha512Hasher := sha512.New()
 	writer := io.MultiWriter(outFile, sha256Hasher, sha512Hasher)
-	if _, err := io.Copy(writer, io.LimitReader(resp.Body, 512<<20)); err != nil { // 512 MiB cap
+	if _, err = io.Copy(writer, io.LimitReader(resp.Body, 512<<20)); err != nil { // 512 MiB cap
 		return nil, xfmt.Errorf("read tarball body: %w", err)
 	}
-	if err := outFile.Sync(); err != nil {
+	if err = outFile.Sync(); err != nil {
 		return nil, xfmt.Errorf("flush tarball file: %w", err)
 	}
 
-	return &tarballIntegritySums{
+	sums = &tarballIntegritySums{
 		sha256: sha256Hasher.Sum(nil),
 		sha512: sha512Hasher.Sum(nil),
-	}, nil
+	}
+	return sums, nil
 }
 
 func classifyTransportError(err error) string {

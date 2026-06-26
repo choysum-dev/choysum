@@ -20,7 +20,7 @@ type runtimeOptions struct {
 
 func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) runtimeOptions {
 	if !hasPathOpts {
-		return runtimeOptions{moduleInstallRegistryFallbackEnabled: true}
+		return runtimeOptions{moduleInstallRegistryFallbackEnabled: false}
 	}
 	moduleCatalogIndexURL := strings.TrimSpace(pathOpts.ModuleCatalogIndexURL)
 	if moduleCatalogIndexURL == "" {

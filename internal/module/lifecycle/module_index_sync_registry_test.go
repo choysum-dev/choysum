@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -23,13 +24,8 @@ func (f catalogRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, erro
 }
 
 func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
-	originalClient := catalogIndexHTTPClient
-	defer func() {
-		catalogIndexHTTPClient = originalClient
-	}()
-
 	requestedURL := ""
-	catalogIndexHTTPClient = &http.Client{
+	testClient := &http.Client{
 		Transport: catalogRoundTripFunc(func(req *http.Request) (*http.Response, error) {
 			requestedURL = req.URL.String()
 			return &http.Response{
@@ -41,7 +37,7 @@ func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
 		}),
 	}
 
-	index, err := fetchCatalogIndex(context.Background(), "")
+	index, err := fetchCatalogIndexWithClient(context.Background(), "", testClient)
 	if err != nil {
 		t.Fatalf("fetchCatalogIndex() error = %v", err)
 	}
@@ -56,32 +52,13 @@ func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
 func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
-	runtimeScope.cfg.ModuleCatalogIndexURL = "https://index.example.dev/v1/index.json"
 
-	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@legacy/choysum-auth", Available: true, Version: nullString("1.0.0")}).Error; err != nil {
-		t.Fatalf("seed legacy auth row: %v", err)
-	}
-	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@choysum-dev/auth", Available: false, Version: nullString("0.9.0")}).Error; err != nil {
-		t.Fatalf("seed current auth row: %v", err)
-	}
-	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "orphan", OriginType: "registry", OriginRef: "@legacy/orphan", Available: true, Version: nullString("0.1.0")}).Error; err != nil {
-		t.Fatalf("seed orphan row: %v", err)
-	}
-
-	originalClient := catalogIndexHTTPClient
-	defer func() {
-		catalogIndexHTTPClient = originalClient
-	}()
-	catalogIndexHTTPClient = &http.Client{
-		Transport: catalogRoundTripFunc(func(req *http.Request) (*http.Response, error) {
-			if req.URL.String() != "https://index.example.dev/v1/index.json" {
-				t.Fatalf("unexpected request URL: %s", req.URL.String())
-			}
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Status:     "200 OK",
-				Header:     make(http.Header),
-				Body: io.NopCloser(strings.NewReader(`{
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/v1/index.json" {
+			t.Fatalf("unexpected request path: %s", req.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{
   "modules": {
     "auth": {
       "name": "auth",
@@ -92,9 +69,19 @@ func TestSyncRegistryModuleIndexUpsertsVersionAndReconcilesByOriginRef(t *testin
       }
     }
   }
-}`)),
-			}, nil
-		}),
+}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@legacy/choysum-auth", Available: true, Version: nullString("1.0.0")}).Error; err != nil {
+		t.Fatalf("seed legacy auth row: %v", err)
+	}
+	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "auth", OriginType: "registry", OriginRef: "@choysum-dev/auth", Available: false, Version: nullString("0.9.0")}).Error; err != nil {
+		t.Fatalf("seed current auth row: %v", err)
+	}
+	if err := db.Create(&metadata.IrModuleIndex{ModuleName: "orphan", OriginType: "registry", OriginRef: "@legacy/orphan", Available: true, Version: nullString("0.1.0")}).Error; err != nil {
+		t.Fatalf("seed orphan row: %v", err)
 	}
 
 	stats, err := SyncRegistryModuleIndex(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {

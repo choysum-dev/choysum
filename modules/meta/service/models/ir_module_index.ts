@@ -205,11 +205,12 @@ function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): a
 
 function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
   if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
-  const fields = Array.from(new Set(requestedFields.map(field => String(field || '').trim()).filter(Boolean)));
+  const blockedFields = new Set(['__proto__', 'constructor', 'prototype']);
+  const fields = Array.from(new Set(requestedFields.map(field => String(field || '').trim()).filter(field => !!field && !blockedFields.has(field))));
   if (fields.length === 0) return rows;
 
   return rows.map(row => {
-    const projected: ModuleIndexRecord = {};
+    const projected = Object.create(null) as ModuleIndexRecord;
     for (const field of fields) {
       (projected as any)[field] = (row as any)?.[field];
     }
@@ -378,7 +379,19 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
   for (const row of running || []) {
     const jobId = String((row as any)?.Id || '').trim();
     if (!jobId) continue;
-    const runningOrigin = normalizeOriginType((row as any)?.PayloadJson?.originType);
+
+    let payload = (row as any)?.PayloadJson;
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload);
+      } catch {
+        payload = undefined;
+      }
+    }
+    const originValue = payload && typeof payload === 'object' ? (payload as any).originType : undefined;
+    if (!String(originValue || '').trim()) continue;
+
+    const runningOrigin = normalizeOriginType(String(originValue));
     if (!runningOrigin) continue;
     if (canReuseRunningSync(requestedOrigin, runningOrigin)) {
       return jobId;

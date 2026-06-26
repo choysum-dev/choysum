@@ -181,12 +181,38 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 			hasError = true
 			runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
 		} else {
+			orphanedIDs := make([]string, 0)
+			type moduleOriginKey struct {
+				moduleName string
+				originRef  string
+			}
+			orphanedKeys := make([]moduleOriginKey, 0)
 			for _, row := range existing {
 				if _, ok := seen[registrySyncSeenKey(row.ModuleName, row.OriginRef)]; ok {
 					continue
 				}
-				moduleName := row.ModuleName
-				originRef := row.OriginRef
+				if row.Id.Valid && row.Id.String != "" {
+					orphanedIDs = append(orphanedIDs, row.Id.String)
+					continue
+				}
+				orphanedKeys = append(orphanedKeys, moduleOriginKey{moduleName: row.ModuleName, originRef: row.OriginRef})
+			}
+
+			if len(orphanedIDs) > 0 {
+				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+					return txSession.WithContext(ctx).
+						Model(&metadata.IrModuleIndex{}).
+						Where("id IN ?", orphanedIDs).
+						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
+				}); err != nil {
+					hasError = true
+					runtimeScope.Logger().Warn("module index reconcile rows update failed", "count", len(orphanedIDs), "error", err)
+				}
+			}
+
+			for _, key := range orphanedKeys {
+				moduleName := key.moduleName
+				originRef := key.originRef
 				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 					return txSession.WithContext(ctx).
 						Model(&metadata.IrModuleIndex{}).
@@ -228,6 +254,10 @@ func resolveRegistryIndexURL(runtimeScope scope.Scope) string {
 
 // fetchCatalogIndex performs an HTTP GET and decodes the static index.json payload.
 func fetchCatalogIndex(ctx context.Context, indexURL string) (*catalogIndexDocument, error) {
+	return fetchCatalogIndexWithClient(ctx, indexURL, catalogIndexHTTPClient)
+}
+
+func fetchCatalogIndexWithClient(ctx context.Context, indexURL string, client *http.Client) (*catalogIndexDocument, error) {
 	indexURL = strings.TrimSpace(indexURL)
 	if indexURL == "" {
 		indexURL = config.DefaultModuleCatalogIndexURL
@@ -236,7 +266,6 @@ func fetchCatalogIndex(ctx context.Context, indexURL string) (*catalogIndexDocum
 	if err != nil {
 		return nil, fmt.Errorf("create registry index request: %w", err)
 	}
-	client := catalogIndexHTTPClient
 	if client == nil {
 		client = http.DefaultClient
 	}

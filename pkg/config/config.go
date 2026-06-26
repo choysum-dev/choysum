@@ -107,7 +107,7 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	}
 	applyDocumentViperDefaults(v)
 	applyTaskViperDefaults(v)
-	v.SetDefault("module_install_registry_fallback_enabled", true)
+	v.SetDefault("module_install_registry_fallback_enabled", false)
 	v.SetDefault("bootstrap_module_install_timeout_seconds", DefaultBootstrapModuleInstallTimeoutSeconds)
 	if err := bindConfigEnv(v); err != nil {
 		return stageError(LoadStageDecode, err)
@@ -329,7 +329,7 @@ func defaultConfig() *Config {
 		DistPath:                             "",
 		NPMRegistryURL:                       DefaultNPMRegistryURL,
 		ModuleCatalogIndexURL:                DefaultModuleCatalogIndexURL,
-		ModuleInstallRegistryFallbackEnabled: true,
+		ModuleInstallRegistryFallbackEnabled: false,
 		BootstrapModuleInstallTimeoutSeconds: DefaultBootstrapModuleInstallTimeoutSeconds,
 		ESMUpstreamURL:                       DefaultESMUpstreamURL,
 		DefaultChoysumPath:                   "",

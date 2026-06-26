@@ -6,6 +6,7 @@ package quickjsruntime
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -400,7 +401,7 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 		stats := lifecycle.ModuleIndexSyncStats{}
 		txErr := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
 			var err error
-			stats, err = runner(ctx, txScope, target)
+			stats, err = runner(txScope.Context(), txScope, target)
 			return err
 		})
 		return stats, txErr
@@ -415,6 +416,9 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 			result.Success += stats.Success
 			result.Failed += stats.Failed
 			if syncErr != nil {
+				if isCancellationOrDeadlineError(syncErr) {
+					return result, syncErr
+				}
 				partialErrors = append(partialErrors, target+": "+syncErr.Error())
 				continue
 			}
@@ -440,6 +444,20 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 	result.Failed = stats.Failed
 	result.Ok = true
 	return result, nil
+}
+
+func isCancellationOrDeadlineError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	return st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded
 }
 
 func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {

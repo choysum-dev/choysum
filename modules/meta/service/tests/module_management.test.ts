@@ -235,13 +235,19 @@ function uid(prefix: string): string {
  * Asserts an async operation throws and the message contains the given fragment.
  */
 async function expectAsyncErrorContains(run: () => Promise<any>, fragment: string): Promise<void> {
+  let captured: unknown;
   try {
     await run();
-    throw new Error(`expected async error containing ${fragment}`);
   } catch (err: any) {
-    const message = String(err?.message || err || '');
-    expect(message.includes(fragment)).toBe(true);
+    captured = err;
   }
+
+  if (captured == null) {
+    throw new Error('__expected_async_throw__');
+  }
+
+  const message = String((captured as any)?.message || captured || '');
+  expect(message.includes(fragment)).toBe(true);
 }
 
 test('meta.IrModule PlanOperation returns blockers for missing module', async () => {
