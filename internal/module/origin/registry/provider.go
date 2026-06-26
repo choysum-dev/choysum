@@ -481,10 +481,10 @@ func (p *SourceRegistryProvider) extractTarballToDir(ctx context.Context, downlo
 		return xfmt.Errorf("create temp tarball file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
 	if err := tmpFile.Close(); err != nil {
 		return xfmt.Errorf("close temp tarball file: %w", err)
 	}
-	defer os.Remove(tmpPath)
 
 	if _, err := p.downloadTarballToFile(ctx, downloadURL, tmpPath); err != nil {
 		return err
