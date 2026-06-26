@@ -312,7 +312,7 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 	}
 }
 
-func TestRunModuleIndexSyncAllUsesPerOriginTransactions(t *testing.T) {
+func TestRunModuleIndexSyncAllDoesNotWrapOriginsInOuterTransactions(t *testing.T) {
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -332,8 +332,8 @@ func TestRunModuleIndexSyncAllUsesPerOriginTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(all) error = %v", err)
 	}
-	if counting.requiredCalls != 2 {
-		t.Fatalf("required transaction calls = %d, want 2", counting.requiredCalls)
+	if counting.requiredCalls != 0 {
+		t.Fatalf("required transaction calls = %d, want 0", counting.requiredCalls)
 	}
 	if !reflect.DeepEqual(called, []string{"registry", "local"}) {
 		t.Fatalf("origin call order = %#v, want [registry local]", called)
@@ -349,7 +349,7 @@ func TestRunModuleIndexSyncAllUsesPerOriginTransactions(t *testing.T) {
 	}
 }
 
-func TestRunModuleIndexSyncSingleOriginUsesSingleTransaction(t *testing.T) {
+func TestRunModuleIndexSyncSingleOriginDoesNotUseOuterTransaction(t *testing.T) {
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -367,15 +367,15 @@ func TestRunModuleIndexSyncSingleOriginUsesSingleTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runModuleIndexSync(local) error = %v", err)
 	}
-	if counting.requiredCalls != 1 {
-		t.Fatalf("required transaction calls = %d, want 1", counting.requiredCalls)
+	if counting.requiredCalls != 0 {
+		t.Fatalf("required transaction calls = %d, want 0", counting.requiredCalls)
 	}
 	if !result.Ok || result.Total != 5 || result.Success != 4 || result.Failed != 1 {
 		t.Fatalf("unexpected result = %#v", result)
 	}
 }
 
-func TestRunModuleIndexSyncPassesTransactionContextToRunner(t *testing.T) {
+func TestRunModuleIndexSyncPassesScopeContextToRunner(t *testing.T) {
 	runtimeScope := &moduleIndexTestScope{
 		ctx:    context.Background(),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -383,18 +383,18 @@ func TestRunModuleIndexSyncPassesTransactionContextToRunner(t *testing.T) {
 	}
 	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
 
-	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, txScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, runScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
 		if originType != "local" {
 			t.Fatalf("originType = %q, want local", originType)
 		}
 		if runCtx == nil {
 			t.Fatal("runner context should not be nil")
 		}
-		if runCtx != txScope.Context() {
-			t.Fatal("runner context should match transaction scope context")
+		if runCtx != runScope.Context() {
+			t.Fatal("runner context should match scope context")
 		}
-		if _, ok := scope.TransactionFromContext(runCtx); !ok {
-			t.Fatal("runner context should carry transaction")
+		if _, ok := scope.TransactionFromContext(runCtx); ok {
+			t.Fatal("runner context should not carry transaction")
 		}
 		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 1, Failed: 0}, nil
 	})

@@ -337,7 +337,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 			if version != "v2.0.0" {
 				t.Fatalf("expected fallback to request catalog latest version v2.0.0, got %s", version)
 			}
-			return &meta.IrModule{Name: moduleName, Version: "v3.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
+			return &meta.IrModule{Name: moduleName, Version: "v2.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
 		}}
 		coordinator := NewCoordinator(runtimeScope, WithLockStore(lockStore), WithRegistryProvider(provider))
 
@@ -349,7 +349,7 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected registry fallback to succeed when local is missing, got %v", err)
 		}
-		if mod == nil || mod.Version != "v3.0.0" {
+		if mod == nil || mod.Version != "v2.0.0" {
 			t.Fatalf("unexpected fallback module: %#v", mod)
 		}
 		if fetchCalls != 1 {

@@ -505,22 +505,23 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		}
 	})
 
-	txRoot := c.runtimeScope.WithContext(installCtx)
-	if err := txRoot.Transactor().Required(installCtx, func(txScope scope.Scope, tx scope.Transaction) error {
-		executor, err := jsexecutor.NewCompilerExecutor(txScope)
-		if err != nil {
-			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to prepare the module installer", err)
-		}
-		if err := executor.Start(); err != nil {
-			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to start the module installer", err)
-		}
-		defer executor.Stop()
+	installScope := c.runtimeScope.WithContext(installCtx)
+	if installScope == nil {
+		installScope = c.runtimeScope
+	}
+	executor, err := jsexecutor.NewCompilerExecutor(installScope)
+	if err != nil {
+		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to prepare the module installer", err)
+	}
+	if err := executor.Start(); err != nil {
+		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to start the module installer", err)
+	}
+	defer executor.Stop()
 
-		c.store.markStageDetail(operationID, "resolving core module installation plan...")
+	c.store.markStageDetail(operationID, "resolving core module installation plan...")
 
-		moduleLifecycle := lifecycle.NewService(txScope, executor)
-		return moduleLifecycle.Install(tx.Context(), lifecycle.InstallRequest{Name: "document", WithDemo: false})
-	}); err != nil {
+	moduleLifecycle := lifecycle.NewService(installScope, executor)
+	if err := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false}); err != nil {
 		// Classify the error to produce an actionable message.
 		if errors.Is(err, context.DeadlineExceeded) {
 			return newBootstrapError(

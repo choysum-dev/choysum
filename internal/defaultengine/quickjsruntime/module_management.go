@@ -396,22 +396,23 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 		return result, status.Error(codes.Internal, "module index sync runner is nil")
 	}
 
-	txRoot := runtimeScope.WithContext(ctx)
-	runOriginInTx := func(target string) (lifecycle.ModuleIndexSyncStats, error) {
-		stats := lifecycle.ModuleIndexSyncStats{}
-		txErr := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, _ scope.Transaction) error {
-			var err error
-			stats, err = runner(txScope.Context(), txScope, target)
-			return err
-		})
-		return stats, txErr
+	runOrigin := func(target string) (lifecycle.ModuleIndexSyncStats, error) {
+		runnerScope := runtimeScope.WithContext(ctx)
+		if runnerScope == nil {
+			runnerScope = runtimeScope
+		}
+		runnerCtx := runnerScope.Context()
+		if runnerCtx == nil {
+			runnerCtx = ctx
+		}
+		return runner(runnerCtx, runnerScope, target)
 	}
 
 	if originType == "all" {
 		partialErrors := make([]string, 0, 2)
 		successfulOrigins := 0
 		for _, target := range []string{"registry", "local"} {
-			stats, syncErr := runOriginInTx(target)
+			stats, syncErr := runOrigin(target)
 			result.Total += stats.Total
 			result.Success += stats.Success
 			result.Failed += stats.Failed
@@ -435,7 +436,7 @@ func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originTyp
 		return result, nil
 	}
 
-	stats, syncErr := runOriginInTx(originType)
+	stats, syncErr := runOrigin(originType)
 	if syncErr != nil {
 		return result, syncErr
 	}
