@@ -35,7 +35,14 @@ type ModuleIndexRecord = {
   RegistryVersion?: string;
 };
 
+function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
+  const emptyArray = Array.isArray(condition) && condition.length === 0;
+  const emptyObject = !Array.isArray(condition) && condition && typeof condition === 'object' && Object.keys(condition).length === 0;
+  return emptyArray || emptyObject ? (['Available', '=', true] as any) : condition;
+}
+
 type SortSpec = { field: string; desc: boolean };
+type GroupSortSpec = { field: string; order: 'asc' | 'desc' };
 
 function toText(value: unknown): string {
   return String(value ?? '')
@@ -117,6 +124,83 @@ function normalizeFields(raw: unknown): string[] {
     out.push(field);
   }
   return out;
+}
+
+function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
+  if (Object.prototype.hasOwnProperty.call(source, 'withDeleted')) {
+    target.withDeleted = !!(source as any).withDeleted;
+  }
+  if (Object.prototype.hasOwnProperty.call(source, 'onlyDeleted')) {
+    target.onlyDeleted = !!(source as any).onlyDeleted;
+  }
+}
+
+function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
+  supported: boolean;
+  orderBy: GroupSortSpec[];
+  aggregateFields: Array<{ field: string; agg: 'max'; alias: string }>;
+} {
+  const orderBy: GroupSortSpec[] = [];
+  const aggregateFields: Array<{ field: string; agg: 'max'; alias: string }> = [];
+  const aggregateAliasByField = new Map<string, string>();
+
+  const ensureAggregateAlias = (field: string, alias: string): string => {
+    const existing = aggregateAliasByField.get(field);
+    if (existing) return existing;
+    aggregateAliasByField.set(field, alias);
+    aggregateFields.push({ field, agg: 'max', alias });
+    return alias;
+  };
+
+  for (const spec of sortSpecs) {
+    const order: 'asc' | 'desc' = spec.desc ? 'desc' : 'asc';
+    if (spec.field === 'ModuleName') {
+      orderBy.push({ field: 'ModuleName', order });
+      continue;
+    }
+    if (spec.field === 'Available') {
+      orderBy.push({ field: ensureAggregateAlias('Available', '__order_available'), order });
+      continue;
+    }
+    if (spec.field === 'LastSyncAt') {
+      orderBy.push({ field: ensureAggregateAlias('LastSyncAt', '__order_last_sync_at'), order });
+      continue;
+    }
+    if (spec.field === 'LastBatchSyncAt') {
+      orderBy.push({ field: ensureAggregateAlias('LastBatchSyncAt', '__order_last_batch_sync_at'), order });
+      continue;
+    }
+    return { supported: false, orderBy: [], aggregateFields: [] };
+  }
+
+  if (!orderBy.some(item => item.field === 'ModuleName')) {
+    orderBy.push({ field: 'ModuleName', order: 'asc' });
+  }
+
+  return {
+    supported: true,
+    orderBy,
+    aggregateFields,
+  };
+}
+
+function extractGroupedModuleNames(rows: any[]): string[] {
+  const out: string[] = [];
+  for (const row of rows || []) {
+    const moduleName = String((row as any)?.ModuleName ?? (row as any)?.module_name ?? '').trim();
+    if (!moduleName) continue;
+    out.push(moduleName);
+  }
+  return out;
+}
+
+function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): any {
+  if (!Array.isArray(moduleNames) || moduleNames.length === 0) {
+    return ['Id', '=', '__never_match__'] as any;
+  }
+  return {
+    And: [baseCondition as any, ['ModuleName', 'in', moduleNames] as any],
+  } as any;
 }
 
 function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
@@ -396,16 +480,37 @@ export default class IrModuleIndex extends BaseModel {
     condition: any[] | Record<string, any> = [],
     options?: any
   ): Promise<T[]> {
-    const emptyArray = Array.isArray(condition) && condition.length === 0;
-    const emptyObject = !Array.isArray(condition) && condition && typeof condition === 'object' && Object.keys(condition).length === 0;
-    const normalized = emptyArray || emptyObject ? (['Available', '=', true] as any) : condition;
-
+    const normalized = normalizeSearchCondition(condition);
     const rawOptions = { ...(options || {}) };
+    const requestedFields = normalizeFields(rawOptions.fields);
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
     const offset = normalizeOffset(rawOptions.offset);
     const limit = normalizeLimit(rawOptions.limit);
-    const requestedFields = normalizeFields(rawOptions.fields);
-    const aggregationRequiredFields = [
+    const sortPlan = buildSortPushdownPlan(sortSpecs);
+
+    const readGroupOptions: Record<string, unknown> = {
+      groupby: 'ModuleName',
+      fields: sortPlan.aggregateFields.map(item => `${item.field}:${item.agg}`),
+    };
+    if (sortPlan.supported) {
+      readGroupOptions.offset = offset;
+      if (limit != null) {
+        readGroupOptions.limit = limit;
+      }
+      readGroupOptions.orderBy = sortPlan.orderBy;
+    }
+    applySoftDeleteOptions(readGroupOptions, rawOptions);
+
+    const groupedRows = await this.getRepository().readGroup({
+      ...readGroupOptions,
+      condition: normalized,
+    } as any);
+    const groupedModuleNames = extractGroupedModuleNames(groupedRows as any[]);
+    if (groupedModuleNames.length === 0) {
+      return [] as unknown as T[];
+    }
+
+    const detailFields = [
       'Id',
       'ModuleName',
       'OriginType',
@@ -421,18 +526,37 @@ export default class IrModuleIndex extends BaseModel {
       'InstalledStatus',
       'InstalledVersion',
     ];
-    rawOptions.fields = Array.from(new Set([...requestedFields, ...aggregationRequiredFields]));
-    delete rawOptions.limit;
-    delete rawOptions.offset;
+    const detailOptions: Record<string, unknown> = {
+      fields: detailFields,
+      limit: Math.max(groupedModuleNames.length * 2, groupedModuleNames.length),
+      orderBy: [{ field: 'ModuleName', order: 'asc' }],
+    };
+    applySoftDeleteOptions(detailOptions, rawOptions);
 
-    const rows = (await (BaseModel as any).Search.call(this, normalized, rawOptions)) as any[];
-    const merged = aggregateRows((rows || []).map(toPlainRecord));
-    merged.sort((a, b) => compareBySpecs(a, b, sortSpecs));
+    const detailRows = (await (BaseModel as any).Search.call(this, buildModuleNamesCondition(normalized, groupedModuleNames), detailOptions)) as any[];
 
-    const start = offset;
-    const end = limit == null ? undefined : start + limit;
-    const paged = merged.slice(start, end);
-    return projectFields(paged, requestedFields) as unknown as T[];
+    const mergedByModule = new Map<string, ModuleIndexRecord>();
+    for (const row of aggregateRows((detailRows || []).map(toPlainRecord))) {
+      const moduleName = String(row?.ModuleName || '').trim();
+      if (!moduleName) continue;
+      mergedByModule.set(moduleName, row);
+    }
+
+    const ordered: ModuleIndexRecord[] = [];
+    for (const moduleName of groupedModuleNames) {
+      const hit = mergedByModule.get(moduleName);
+      if (hit) ordered.push(hit);
+    }
+
+    let finalRows = ordered;
+    if (!sortPlan.supported) {
+      ordered.sort((a, b) => compareBySpecs(a, b, sortSpecs));
+      const start = offset;
+      const end = limit == null ? undefined : start + limit;
+      finalRows = ordered.slice(start, end);
+    }
+
+    return projectFields(finalRows, requestedFields) as unknown as T[];
   }
 
   static async Count<T extends BaseModel>(
@@ -440,19 +564,13 @@ export default class IrModuleIndex extends BaseModel {
     condition: any[] | Record<string, any> = [],
     options?: any
   ): Promise<number> {
-    const emptyArray = Array.isArray(condition) && condition.length === 0;
-    const emptyObject = !Array.isArray(condition) && condition && typeof condition === 'object' && Object.keys(condition).length === 0;
-    const normalized = emptyArray || emptyObject ? (['Available', '=', true] as any) : condition;
-
-    const rawOptions = { ...(options || {}) };
-    delete rawOptions.limit;
-    delete rawOptions.offset;
-    delete rawOptions.fields;
-    delete rawOptions.orderBy;
-
-    const rows = (await (BaseModel as any).Search.call(this, normalized, rawOptions)) as any[];
-    const merged = aggregateRows((rows || []).map(toPlainRecord));
-    return merged.length;
+    const normalized = normalizeSearchCondition(condition);
+    const readGroupCountOptions: Record<string, unknown> = {
+      groupby: 'ModuleName',
+      condition: normalized,
+    };
+    applySoftDeleteOptions(readGroupCountOptions, { ...(options || {}) });
+    return await this.getRepository().readGroupCount(readGroupCountOptions as any);
   }
 
   static async RequestSync(params: RequestSyncParams = {}): Promise<string> {

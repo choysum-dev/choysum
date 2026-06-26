@@ -721,6 +721,61 @@ func TestIsTableMissingInSessionBranches(t *testing.T) {
 	}
 }
 
+func TestWithModuleIndexWriteRetrySQLiteRetriesAtTransactionBoundary(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	session := runtimeScope.session
+
+	attempt := 0
+	err := withModuleIndexWriteRetry(context.Background(), runtimeScope, session, func(txSession *scope.Session) error {
+		attempt++
+		if attempt == 1 {
+			if err := txSession.Create(&metadata.IrModuleIndex{
+				ModuleName: "auth",
+				OriginType: "local",
+				OriginRef:  "local",
+				Available:  true,
+			}).Error; err != nil {
+				return err
+			}
+			return errors.New("database is locked")
+		}
+
+		var count int64
+		if err := txSession.Model(&metadata.IrModuleIndex{}).
+			Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "local", "local").
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count != 0 {
+			return errors.New("retry observed rows from failed attempt")
+		}
+
+		return txSession.Create(&metadata.IrModuleIndex{
+			ModuleName: "auth",
+			OriginType: "local",
+			OriginRef:  "local",
+			Available:  true,
+		}).Error
+	})
+	if err != nil {
+		t.Fatalf("withModuleIndexWriteRetry() error = %v", err)
+	}
+	if attempt != 2 {
+		t.Fatalf("retry attempts = %d, want 2", attempt)
+	}
+
+	var persisted int64
+	if err := db.Model(&metadata.IrModuleIndex{}).
+		Where("module_name = ? AND origin_type = ? AND origin_ref = ?", "auth", "local", "local").
+		Count(&persisted).Error; err != nil {
+		t.Fatalf("count persisted rows: %v", err)
+	}
+	if persisted != 1 {
+		t.Fatalf("persisted rows = %d, want 1", persisted)
+	}
+}
+
 func TestReadPackageJSONAndHelpers(t *testing.T) {
 	packageJSONPath := filepath.Join(t.TempDir(), "package.json")
 	if err := os.WriteFile(packageJSONPath, []byte(`{"name":"@acme/choysum-meta","version":"0.1.0","choysum":{"moduleName":"meta","application":"meta"}}`), 0o644); err != nil {

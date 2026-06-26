@@ -341,17 +341,6 @@ func (m *ModuleManager) Peek(ctx context.Context, name string) (*meta.IrModule, 
 	coordinator := m.newOriginCoordinator()
 	module, err := coordinator.Peek(ctx, name)
 	if err != nil {
-		parsed, parseErr := moduleorigin.ParseInput(strings.TrimSpace(name))
-		if parseErr == nil && parsed.Kind == moduleorigin.InputKindLocal && strings.Contains(err.Error(), "not found in modules path") {
-			// During install planning, dependencies are often referenced as local names
-			// (for example "core"). Retry through ResolveInstallModule so registry
-			// fallback can provide the dependency manifest.
-			module, resolveErr := coordinator.ResolveInstallModule(ctx, name)
-			if resolveErr == nil {
-				return module, nil
-			}
-			return nil, xfmt.Errorf("error peeking module %s: %w", name, resolveErr)
-		}
 		return nil, xfmt.Errorf("error peeking module %s: %w", name, err)
 	}
 	return module, nil

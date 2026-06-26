@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -144,8 +145,8 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 	}
 
 	if !hasError {
-		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-			return session.WithContext(ctx).
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
 				Model(&metadata.IrModuleIndex{}).
 				Where("origin_type = ? AND origin_ref = ?", "local", "local").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error
@@ -258,8 +259,8 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, ses
 		LastErrorMessage: nullString(""),
 	}
 
-	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-		return session.WithContext(ctx).
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+		return txSession.WithContext(ctx).
 			Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "sync_revision", "last_error_message"}),
@@ -281,8 +282,8 @@ func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, ses
 		SyncRevision:     nullString(revision),
 		LastErrorMessage: nullString(msg),
 	}
-	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-		return session.WithContext(ctx).
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+		return txSession.WithContext(ctx).
 			Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 				DoUpdates: clause.AssignmentColumns([]string{"available", "sync_revision", "last_error_message"}),
@@ -299,8 +300,8 @@ func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, sess
 	for name := range seen {
 		names = append(names, name)
 	}
-	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-		query := session.WithContext(ctx).
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+		query := txSession.WithContext(ctx).
 			Model(&metadata.IrModuleIndex{}).
 			Where("origin_type = ? AND origin_ref = ?", "local", "local")
 		if len(names) > 0 {
@@ -367,9 +368,12 @@ func isTableMissingInSession(session *scope.Session, tableName string) bool {
 	return !session.DB.Migrator().HasTable(tableName)
 }
 
-func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, op func() error) error {
+func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, op func(txSession *scope.Session) error) error {
 	if session == nil || session.DB == nil {
 		return errors.New("module index session is unavailable")
+	}
+	if op == nil {
+		return errors.New("module index write operation is required")
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -384,7 +388,11 @@ func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, se
 
 	var lastErr error
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		if err := op(); err != nil {
+		err := session.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			txSession := &scope.Session{DB: tx.WithContext(ctx)}
+			return op(txSession)
+		})
+		if err != nil {
 			lastErr = err
 			if maxRetries == 1 || !isSQLiteLockError(err) || attempt == maxRetries-1 {
 				return err

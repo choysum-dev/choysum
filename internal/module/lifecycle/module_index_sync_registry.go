@@ -144,8 +144,8 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 		}
 
 		// Use a lightweight Upsert; no revision tracking for registry entries.
-		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-			return session.WithContext(ctx).
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
 				Model(&metadata.IrModuleIndex{}).
 				Clauses(clause.OnConflict{
 					Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
@@ -172,8 +172,8 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	// Mark registry entries absent from the current catalog snapshot as unavailable.
 	if len(seen) > 0 {
 		existing := make([]metadata.IrModuleIndex, 0)
-		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-			return session.WithContext(ctx).
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
 				Model(&metadata.IrModuleIndex{}).
 				Where("origin_type = ?", "registry").
 				Find(&existing).Error
@@ -187,8 +187,8 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				}
 				moduleName := row.ModuleName
 				originRef := row.OriginRef
-				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-					return session.WithContext(ctx).
+				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+					return txSession.WithContext(ctx).
 						Model(&metadata.IrModuleIndex{}).
 						Where("module_name = ? AND origin_type = ? AND origin_ref = ?", moduleName, "registry", originRef).
 						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
@@ -201,8 +201,8 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	}
 
 	if !hasError {
-		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
-			return session.WithContext(ctx).
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
 				Model(&metadata.IrModuleIndex{}).
 				Where("origin_type = ?", "registry").
 				Updates(map[string]any{"last_batch_sync_at": now}).Error

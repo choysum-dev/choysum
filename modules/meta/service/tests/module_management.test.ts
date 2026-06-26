@@ -186,6 +186,20 @@ function mockIrModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
 }
 
 /**
+ * Replaces IrModuleIndex repository grouped-read methods for Search/Count tests.
+ */
+function mockIrModuleIndexGroupedRepo(groupRows: Array<Record<string, any>>, groupCount?: number): () => void {
+  const original = (IrModuleIndex as any).getRepository;
+  (IrModuleIndex as any).getRepository = () => ({
+    readGroup: async () => groupRows,
+    readGroupCount: async () => (typeof groupCount === 'number' ? groupCount : groupRows.length),
+  });
+  return () => {
+    (IrModuleIndex as any).getRepository = original;
+  };
+}
+
+/**
  * Replaces Job.Search with a fixed result set for the duration of a test.
  */
 function mockJobSearch(result: any[]): () => void {
@@ -720,6 +734,7 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
   resetRequestContext();
 
   const now = new Date();
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
   const restoreBaseSearch = mockIrModuleIndexBaseSearch([
     {
       Id: 'idx_local',
@@ -764,6 +779,19 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
     expect(rows[0].OriginType).toBeUndefined();
     expect(rows[0].LocalVersion).toBeUndefined();
   } finally {
+    restoreGroupedRepo();
     restoreBaseSearch();
+  }
+});
+
+test('meta.IrModuleIndex Count uses grouped module count', async () => {
+  resetRequestContext();
+
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([], 7);
+  try {
+    const total = await (IrModuleIndex as any).Count([], {});
+    expect(total).toBe(7);
+  } finally {
+    restoreGroupedRepo();
   }
 });
