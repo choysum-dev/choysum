@@ -492,6 +492,42 @@ func TestProviderFetchErrorScenarios(t *testing.T) {
 		}
 	})
 
+	t.Run("oversized tarball fails fetch with explicit limit error", func(t *testing.T) {
+		modulesPath := t.TempDir()
+		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
+		metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+		tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.6.tgz"
+		metadata := buildMetadata(t, map[string]string{"latest": "1.0.6"}, map[string]any{
+			"1.0.6": map[string]any{
+				"name":    "@choysum-dev/auth",
+				"version": "1.0.6",
+				"choysum": map[string]any{"moduleName": "auth", "application": "auth"},
+				"dist":    map[string]any{"tarball": tarballURL},
+			},
+		})
+		client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			switch req.URL.String() {
+			case metadataURL:
+				return httpResponse(http.StatusOK, metadata), nil
+			case tarballURL:
+				return &http.Response{
+					StatusCode:    http.StatusOK,
+					Status:        "200 OK",
+					Header:        make(http.Header),
+					Body:          io.NopCloser(bytes.NewReader([]byte("small-body"))),
+					ContentLength: maxTarballSizeBytes + 1,
+				}, nil
+			default:
+				t.Fatalf("unexpected request url: %s", req.URL.String())
+				return nil, nil
+			}
+		})}
+		provider := NewProvider(runtimeScope, WithHTTPClient(client))
+		if _, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "latest"); err == nil || !strings.Contains(err.Error(), "tarball size exceeds maximum limit") {
+			t.Fatalf("expected explicit tarball size limit error, got %v", err)
+		}
+	})
+
 	t.Run("malformed integrity metadata fails fetch", func(t *testing.T) {
 		modulesPath := t.TempDir()
 		runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}

@@ -394,7 +394,7 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
         payload = undefined;
       }
     }
-    const originValue = payload && typeof payload === 'object' ? (payload as any).originType : undefined;
+    const originValue = (payload as any)?.originType;
     if (!String(originValue || '').trim()) continue;
 
     const runningOrigin = normalizeOriginType(String(originValue));

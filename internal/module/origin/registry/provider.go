@@ -41,6 +41,11 @@ type SourceRegistryProvider struct {
 	client       *http.Client
 }
 
+const (
+	maxTarballSizeBytes int64  = 512 << 20
+	maxTarballSizeLabel string = "512 MiB"
+)
+
 type ProviderOption func(*SourceRegistryProvider)
 
 func WithHTTPClient(client *http.Client) ProviderOption {
@@ -525,12 +530,19 @@ func (p *SourceRegistryProvider) downloadTarballToFile(ctx context.Context, down
 			err = xfmt.Errorf("close tarball file: %w", closeErr)
 		}
 	}()
+	if resp.ContentLength > maxTarballSizeBytes {
+		return nil, xfmt.Errorf("tarball size exceeds maximum limit of %s", maxTarballSizeLabel)
+	}
 
 	sha256Hasher := sha256.New()
 	sha512Hasher := sha512.New()
 	writer := io.MultiWriter(outFile, sha256Hasher, sha512Hasher)
-	if _, err = io.Copy(writer, io.LimitReader(resp.Body, 512<<20)); err != nil { // 512 MiB cap
-		return nil, xfmt.Errorf("read tarball body: %w", err)
+	copied, copyErr := io.Copy(writer, io.LimitReader(resp.Body, maxTarballSizeBytes+1))
+	if copyErr != nil {
+		return nil, xfmt.Errorf("read tarball body: %w", copyErr)
+	}
+	if copied > maxTarballSizeBytes {
+		return nil, xfmt.Errorf("tarball size exceeds maximum limit of %s", maxTarballSizeLabel)
 	}
 	if err = outFile.Sync(); err != nil {
 		return nil, xfmt.Errorf("flush tarball file: %w", err)
