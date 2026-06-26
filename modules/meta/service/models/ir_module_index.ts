@@ -242,7 +242,7 @@ function toPlainRecord(input: any): ModuleIndexRecord {
 
 function pickNewestTimestamp(values: Array<Date | string | null | undefined>): Date | string | null | undefined {
   let picked: Date | string | null | undefined;
-  let pickedTs = -1;
+  let pickedTs = -Infinity;
   for (const value of values) {
     if (!value) continue;
     const ts = value instanceof Date ? value.getTime() : Date.parse(String(value));
@@ -547,7 +547,7 @@ export default class IrModuleIndex extends BaseModel {
     ];
     const detailOptions: Record<string, unknown> = {
       fields: detailFields,
-      limit: Math.max(groupedModuleNames.length * 2, groupedModuleNames.length),
+      limit: groupedModuleNames.length * 2,
       orderBy: [{ field: 'ModuleName', order: 'asc' }],
     };
     applySoftDeleteOptions(detailOptions, rawOptions);

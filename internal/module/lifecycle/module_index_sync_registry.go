@@ -166,6 +166,10 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 				Create(&records).Error
 		}); err != nil {
 			runtimeScope.Logger().Warn("module index batch upsert failed", "count", len(records), "error", err)
+			if isSQLiteLockError(err) {
+				stats.Failed += len(records)
+				return stats, err
+			}
 			for _, record := range records {
 				entry := record
 				if rowErr := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
