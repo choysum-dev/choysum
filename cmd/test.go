@@ -24,6 +24,9 @@ func newTestCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRun
 	cmd := &cobra.Command{
 		Use:   "test",
 		Short: "Run test commands",
+		Annotations: map[string]string{
+			lightweightScopeAnnotation: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return xfmt.Errorf("test: requires a subcommand (unit|typecheck|e2e)")
 		},

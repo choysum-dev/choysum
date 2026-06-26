@@ -1001,6 +1001,39 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	}
 
+	t.Run("test subtree carries lightweight annotation", func(t *testing.T) {
+		testCmd, _, err := commander.rootCmd.Find([]string{"test"})
+		if err != nil {
+			t.Fatalf("find test subcommand: %v", err)
+		}
+		if testCmd == nil {
+			t.Fatal("expected test subcommand")
+		}
+		if got := testCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
+			t.Fatalf("test annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		}
+
+		typecheckCmd, _, err := commander.rootCmd.Find([]string{"test", "typecheck"})
+		if err != nil {
+			t.Fatalf("find test typecheck subcommand: %v", err)
+		}
+		if !shouldUseLightweightRuntimeScope(typecheckCmd) {
+			t.Fatal("expected lightweight scope for test subtree")
+		}
+	})
+
+	t.Run("lightweight scope detection ignores bare command name", func(t *testing.T) {
+		root := &cobra.Command{Use: "root"}
+		plainTest := &cobra.Command{Use: "test"}
+		leaf := &cobra.Command{Use: "leaf"}
+		root.AddCommand(plainTest)
+		plainTest.AddCommand(leaf)
+
+		if shouldUseLightweightRuntimeScope(leaf) {
+			t.Fatal("expected lightweight scope to remain disabled without annotation")
+		}
+	})
+
 	t.Run("run skips config bootstrap", func(t *testing.T) {
 		c := NewCommander(context.Background(), "test-version")
 		sub, _, err := c.rootCmd.Find([]string{"run"})

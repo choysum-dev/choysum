@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
@@ -17,6 +18,8 @@ import (
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
+
+const lightweightScopeAnnotation = "lightweightScope"
 
 // Command owns the root Cobra command and the lazily initialized runtime scope used by subcommands.
 type Command struct {
@@ -99,7 +102,10 @@ built-in defaults or load a non-default workspace config.`,
 
 func shouldUseLightweightRuntimeScope(cmd *cobra.Command) bool {
 	for node := cmd; node != nil; node = node.Parent() {
-		if node.Name() == "test" {
+		if node.Annotations == nil {
+			continue
+		}
+		if value, ok := node.Annotations[lightweightScopeAnnotation]; ok && strings.EqualFold(strings.TrimSpace(value), "true") {
 			return true
 		}
 	}

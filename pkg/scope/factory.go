@@ -218,7 +218,7 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 		ModulesPath:                          pathsInput.ModulesPath(),
 		DistPath:                             pathsInput.DistPath(),
 		TmpPath:                              pathsInput.TmpPath(),
-		ModuleInstallRegistryFallbackEnabled: true,
+		ModuleInstallRegistryFallbackEnabled: false,
 	}
 	if defaultsInput, ok := input.(PathsDefaultInput); ok {
 		options.DefaultChoysumPath = defaultsInput.DefaultChoysumPath()
