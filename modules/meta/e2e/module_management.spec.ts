@@ -140,7 +140,8 @@ async function findModuleCardByName(page: Page, moduleName: string): Promise<Loc
 
 async function openModuleCard(page: Page, moduleName: string): Promise<Locator>;
 async function openModuleCard(page: Page, moduleName: string, opts: { allowMissing: true }): Promise<Locator | null>;
-async function openModuleCard(page: Page, moduleName: string, opts?: { allowMissing?: boolean }): Promise<Locator | null> {
+async function openModuleCard(page: Page, moduleName: string, opts: { allowMissing: true; skipReload?: boolean }): Promise<Locator | null>;
+async function openModuleCard(page: Page, moduleName: string, opts?: { allowMissing?: boolean; skipReload?: boolean }): Promise<Locator | null> {
   const initialCard = await findModuleCardByName(page, moduleName);
   if (initialCard && (await initialCard.isVisible().catch(() => false))) return initialCard;
 
@@ -148,6 +149,13 @@ async function openModuleCard(page: Page, moduleName: string, opts?: { allowMiss
 
   const searchedCard = await findModuleCardByName(page, moduleName);
   if (searchedCard && (await searchedCard.isVisible().catch(() => false))) return searchedCard;
+
+  if (opts?.skipReload) {
+    if (opts.allowMissing) {
+      return null;
+    }
+    throw new Error(`module card not found: ${moduleName}`);
+  }
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
@@ -211,7 +219,7 @@ async function inferModuleStatusFromActions(card: Locator) {
  * Reads the current status label shown on a module card.
  */
 async function moduleStatusText(page: Page, moduleName: string) {
-  const card = await openModuleCard(page, moduleName, { allowMissing: true });
+  const card = await openModuleCard(page, moduleName, { allowMissing: true, skipReload: true });
   if (!card) {
     return '';
   }
@@ -233,7 +241,7 @@ async function moduleStatusText(page: Page, moduleName: string) {
  */
 async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 120000) {
   const deadline = Date.now() + timeout;
-  const reloadIntervalMs = 5000;
+  const reloadIntervalMs = 15000;
   let nextReloadAt = Date.now();
   let lastStatus = '';
 
