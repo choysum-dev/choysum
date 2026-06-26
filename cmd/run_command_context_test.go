@@ -9,10 +9,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/choysum-dev/choysum/pkg/server"
 	"github.com/choysum-dev/choysum/pkg/server/defaultserver"
 )
+
+type runExitPanic struct {
+	code int
+}
 
 func TestRunCommandTreatsContextCanceledAsGracefulStop(t *testing.T) {
 	tests := []struct {
@@ -39,15 +44,46 @@ func TestRunCommandTreatsContextCanceledAsGracefulStop(t *testing.T) {
 				runServerFactory = originalFactory
 			})
 
+			originalScopeFactory := runRuntimeScopeFactory
+			runRuntimeScopeFactory = func(runRuntimeScopeInput, *config.LogConfig) (scope.Scope, error) {
+				return &commandTestScope{}, nil
+			}
+			t.Cleanup(func() {
+				runRuntimeScopeFactory = originalScopeFactory
+			})
+
+			originalExit := runExit
+			runExit = func(code int) {
+				panic(runExitPanic{code: code})
+			}
+			t.Cleanup(func() {
+				runExit = originalExit
+			})
+
 			cmd := newRunCmd()
 			cmd.Flags().String("config", "", "")
 			if err := cmd.Flags().Set("config", configPath); err != nil {
 				t.Fatalf("set config flag: %v", err)
 			}
 
-			output := captureStderr(t, func() {
-				cmd.Run(cmd, []string{"web"})
-			})
+			output := ""
+			var recovered any
+			func() {
+				defer func() {
+					recovered = recover()
+				}()
+				output = captureStderr(t, func() {
+					cmd.Run(cmd, []string{"web"})
+				})
+			}()
+
+			if recovered != nil {
+				exitPanic, ok := recovered.(runExitPanic)
+				if !ok {
+					panic(recovered)
+				}
+				t.Fatalf("unexpected exit code: %d, stderr=%q", exitPanic.code, output)
+			}
 
 			if !stub.serveCalled {
 				t.Fatal("expected server Serve to be called")

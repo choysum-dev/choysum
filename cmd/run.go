@@ -32,6 +32,8 @@ const (
 )
 
 var runServerFactory = defaultserver.NewServer
+var runExit = os.Exit
+var runRuntimeScopeFactory = newRuntimeScopeForRun
 
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -58,14 +60,14 @@ func newRunCmd() *cobra.Command {
 
 			dbOptions := loadedConfig.scopeInput.dbOptions
 
-			runtimeScope, envErr := newRuntimeScopeForRun(loadedConfig.scopeInput, loadedConfig.logConfig)
+			runtimeScope, envErr := runRuntimeScopeFactory(loadedConfig.scopeInput, loadedConfig.logConfig)
 			if envErr != nil {
 				printErrorBlock(
 					fmt.Sprintf("cannot connect to database (dialect=%s)", dbOptions.dialect),
 					"network unreachable / authentication failed / permission denied / database not found (DSN redacted)",
 					"verify database reachability and credentials; rerun 'choysum run' to update config if needed",
 				)
-				os.Exit(4)
+				runExit(4)
 			}
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -84,7 +86,7 @@ func newRunCmd() *cobra.Command {
 					err.Error(),
 					"fix the underlying issue and rerun 'choysum run'",
 				)
-				os.Exit(1)
+				runExit(1)
 			}
 		},
 	}
@@ -100,7 +102,7 @@ type runError struct {
 
 func (e *runError) exit() {
 	printErrorBlock(e.errMsg, e.reason, e.next)
-	os.Exit(e.exitCode)
+	runExit(e.exitCode)
 }
 
 func resolveRunConfigPath(cmd *cobra.Command) (string, *runError) {
