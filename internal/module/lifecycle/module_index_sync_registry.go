@@ -113,6 +113,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	seen := make(map[string]struct{})
 	now := time.Now().UTC()
 	hasError := false
+	records := make([]metadata.IrModuleIndex, 0, len(index.Modules))
 
 	for moduleName, module := range index.Modules {
 		select {
@@ -143,7 +144,18 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 			continue
 		}
 
-		// Use a lightweight Upsert; no revision tracking for registry entries.
+		records = append(records, metadata.IrModuleIndex{
+			ModuleName:   name,
+			OriginType:   "registry",
+			OriginRef:    originRef,
+			Available:    true,
+			Version:      nullString(module.LatestVersion),
+			LastSyncAt:   &now,
+			ManifestJson: manifestJSON,
+		})
+	}
+
+	if len(records) > 0 {
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
 			return txSession.WithContext(ctx).
 				Model(&metadata.IrModuleIndex{}).
@@ -151,22 +163,30 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 					Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
 					DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
 				}).
-				Create(&metadata.IrModuleIndex{
-					ModuleName:   name,
-					OriginType:   "registry",
-					OriginRef:    originRef,
-					Available:    true,
-					Version:      nullString(module.LatestVersion),
-					LastSyncAt:   &now,
-					ManifestJson: manifestJSON,
-				}).Error
+				Create(&records).Error
 		}); err != nil {
-			stats.Failed++
-			hasError = true
-			runtimeScope.Logger().Warn("module index upsert failed", "module", name, "error", err)
-			continue
+			runtimeScope.Logger().Warn("module index batch upsert failed", "count", len(records), "error", err)
+			for _, record := range records {
+				entry := record
+				if rowErr := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+					return txSession.WithContext(ctx).
+						Model(&metadata.IrModuleIndex{}).
+						Clauses(clause.OnConflict{
+							Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+							DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
+						}).
+						Create(&entry).Error
+				}); rowErr != nil {
+					stats.Failed++
+					hasError = true
+					runtimeScope.Logger().Warn("module index upsert failed", "module", entry.ModuleName, "error", rowErr)
+					continue
+				}
+				stats.Success++
+			}
+		} else {
+			stats.Success += len(records)
 		}
-		stats.Success++
 	}
 
 	// Mark registry entries absent from the current catalog snapshot as unavailable.

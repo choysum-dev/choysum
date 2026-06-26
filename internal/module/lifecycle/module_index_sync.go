@@ -379,7 +379,7 @@ func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, se
 		ctx = context.Background()
 	}
 
-	dialect := strings.ToLower(strings.TrimSpace(session.Dialector.Name()))
+	dialect := strings.ToLower(strings.TrimSpace(session.DB.Dialector.Name()))
 	maxRetries := 1
 	baseSleep := 150 * time.Millisecond
 	if dialect == "sqlite" || dialect == "sqlite3" {

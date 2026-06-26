@@ -198,8 +198,14 @@ function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): a
   if (!Array.isArray(moduleNames) || moduleNames.length === 0) {
     return ['Id', '=', '__never_match__'] as any;
   }
+  const inCondition = ['ModuleName', 'in', moduleNames] as any;
+  const isEmptyArray = Array.isArray(baseCondition) && baseCondition.length === 0;
+  const isEmptyObject = !!baseCondition && !Array.isArray(baseCondition) && typeof baseCondition === 'object' && Object.keys(baseCondition).length === 0;
+  if (!baseCondition || isEmptyArray || isEmptyObject) {
+    return inCondition;
+  }
   return {
-    And: [baseCondition as any, ['ModuleName', 'in', moduleNames] as any],
+    And: [baseCondition as any, inCondition],
   } as any;
 }
 
