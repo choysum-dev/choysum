@@ -83,6 +83,11 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		return stats, status.Error(codes.InvalidArgument, "modules_path is required")
 	}
 
+	session, ok := scope.SessionForScope(ctx, runtimeScope)
+	if !ok || session == nil || session.DB == nil {
+		return stats, errors.New("module index session is unavailable")
+	}
+
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
 		return stats, err
@@ -117,14 +122,14 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		packageJSONData, version, err := readPackageJSON(packageJSONPath)
 		if err != nil {
 			hasError = true
-			if upsertErr := upsertModuleIndexFailure(ctx, runtimeScope, name, revision, err); upsertErr != nil {
+			if upsertErr := upsertModuleIndexFailure(ctx, runtimeScope, session, name, revision, err); upsertErr != nil {
 				runtimeScope.Logger().Warn("module index failure upsert failed", "module", name, "error", upsertErr)
 			}
 			stats.Failed++
 			continue
 		}
 
-		if upsertErr := upsertModuleIndexSuccess(ctx, runtimeScope, name, revision, version, packageJSONData, now); upsertErr != nil {
+		if upsertErr := upsertModuleIndexSuccess(ctx, runtimeScope, session, name, revision, version, packageJSONData, now); upsertErr != nil {
 			hasError = true
 			runtimeScope.Logger().Warn("module index upsert failed", "module", name, "error", upsertErr)
 			stats.Failed++
@@ -133,17 +138,19 @@ func SyncLocalModuleIndex(ctx context.Context, runtimeScope scope.Scope, lockerF
 		stats.Success++
 	}
 
-	if err := reconcileMissingModules(ctx, runtimeScope, seen); err != nil {
+	if err := reconcileMissingModules(ctx, runtimeScope, session, seen); err != nil {
 		hasError = true
 		runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
 	}
 
 	if !hasError {
-		if err := runtimeScope.Session().WithContext(ctx).
-			Model(&metadata.IrModuleIndex{}).
-			Where("origin_type = ? AND origin_ref = ?", "local", "local").
-			Updates(map[string]any{"last_batch_sync_at": now}).Error; err != nil {
-			if !isTableMissingInSession(runtimeScope.Session(), "meta_ir_module_index") {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+			return session.WithContext(ctx).
+				Model(&metadata.IrModuleIndex{}).
+				Where("origin_type = ? AND origin_ref = ?", "local", "local").
+				Updates(map[string]any{"last_batch_sync_at": now}).Error
+		}); err != nil {
+			if !isTableMissingInSession(session, "meta_ir_module_index") {
 				runtimeScope.Logger().Warn("module index sync timestamp update failed", "error", err)
 			}
 		}
@@ -229,7 +236,7 @@ func readPackageJSON(path string) ([]byte, string, error) {
 	return data, version, nil
 }
 
-func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, moduleName, revision, version string, raw []byte, now time.Time) error {
+func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, moduleName, revision, version string, raw []byte, now time.Time) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -251,15 +258,17 @@ func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, mod
 		LastErrorMessage: nullString(""),
 	}
 
-	return runtimeScope.Session().WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
-			DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "sync_revision", "last_error_message"}),
-		}).
-		Create(&entry).Error
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+		return session.WithContext(ctx).
+			Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "sync_revision", "last_error_message"}),
+			}).
+			Create(&entry).Error
+	})
 }
 
-func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, moduleName, revision string, cause error) error {
+func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, moduleName, revision string, cause error) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -272,32 +281,36 @@ func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, mod
 		SyncRevision:     nullString(revision),
 		LastErrorMessage: nullString(msg),
 	}
-	return runtimeScope.Session().WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
-			DoUpdates: clause.AssignmentColumns([]string{"available", "sync_revision", "last_error_message"}),
-		}).
-		Create(&entry).Error
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+		return session.WithContext(ctx).
+			Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+				DoUpdates: clause.AssignmentColumns([]string{"available", "sync_revision", "last_error_message"}),
+			}).
+			Create(&entry).Error
+	})
 }
 
-func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, seen map[string]struct{}) error {
+func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, seen map[string]struct{}) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	query := runtimeScope.Session().WithContext(ctx).
-		Model(&metadata.IrModuleIndex{}).
-		Where("origin_type = ? AND origin_ref = ?", "local", "local")
-	if len(seen) > 0 {
-		names := make([]string, 0, len(seen))
-		for name := range seen {
-			names = append(names, name)
-		}
-		query = query.Where("module_name NOT IN ?", names)
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
 	}
-	return query.Updates(map[string]any{
-		"available":          false,
-		"last_error_message": "package.json not found",
-	}).Error
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+		query := session.WithContext(ctx).
+			Model(&metadata.IrModuleIndex{}).
+			Where("origin_type = ? AND origin_ref = ?", "local", "local")
+		if len(names) > 0 {
+			query = query.Where("module_name NOT IN ?", names)
+		}
+		return query.Updates(map[string]any{
+			"available":          false,
+			"last_error_message": "package.json not found",
+		}).Error
+	})
 }
 
 func SanitizeModuleIndexError(runtimeScope scope.Scope, cause error) string {
@@ -352,4 +365,54 @@ func isTableMissingInSession(session *scope.Session, tableName string) bool {
 		return false
 	}
 	return !session.DB.Migrator().HasTable(tableName)
+}
+
+func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, op func() error) error {
+	if session == nil || session.DB == nil {
+		return errors.New("module index session is unavailable")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dialect := strings.ToLower(strings.TrimSpace(session.Dialector.Name()))
+	maxRetries := 1
+	baseSleep := 150 * time.Millisecond
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		maxRetries = 8
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if err := op(); err != nil {
+			lastErr = err
+			if maxRetries == 1 || !isSQLiteLockError(err) || attempt == maxRetries-1 {
+				return err
+			}
+			sleep := time.Duration(attempt+1) * baseSleep
+			if runtimeScope != nil {
+				runtimeScope.Logger().Warn("module index sqlite lock retry", "attempt", attempt+1, "sleep", sleep, "error", err)
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(sleep):
+			}
+			continue
+		}
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return nil
+}
+
+func isSQLiteLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "database is locked") || strings.Contains(msg, "database is busy") || strings.Contains(msg, "locking protocol")
 }

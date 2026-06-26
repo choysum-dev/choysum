@@ -568,3 +568,44 @@ test('meta.IrModuleIndex RequestSync skips enqueue when not stale', async () => 
     restoreRepo();
   }
 });
+
+test('meta.IrModuleIndex RequestSync(all) skips enqueue when both origins are fresh', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: new Date() }]);
+  const restoreSearch = mockJobSearch([]);
+
+  let enqueueCalled = false;
+  const originalEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => {
+    enqueueCalled = true;
+    return { Id: 'job_unexpected' };
+  };
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ ifStale: true, force: false });
+    expect(jobId).toBe('');
+    expect(enqueueCalled).toBe(false);
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+    restoreRepo();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync(all) enqueues when stale', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: null }]);
+  const restoreSearch = mockJobSearch([]);
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ ifStale: true, force: false });
+    expect(jobId).toBeTruthy();
+  } finally {
+    restoreSearch();
+    restoreRepo();
+  }
+});

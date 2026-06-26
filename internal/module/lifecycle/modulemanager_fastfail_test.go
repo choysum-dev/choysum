@@ -15,8 +15,12 @@ import (
 )
 
 type fastFailOriginCoordinator struct {
-	peekErr    error
-	peekInputs []string
+	peekErr              error
+	peekModule           *meta.IrModule
+	peekInputs           []string
+	resolveInstallErr    error
+	resolveInstallModule *meta.IrModule
+	resolveInstallInputs []string
 }
 
 func (f *fastFailOriginCoordinator) Peek(_ context.Context, input string) (*meta.IrModule, error) {
@@ -24,10 +28,20 @@ func (f *fastFailOriginCoordinator) Peek(_ context.Context, input string) (*meta
 	if f.peekErr != nil {
 		return nil, f.peekErr
 	}
+	if f.peekModule != nil {
+		return f.peekModule, nil
+	}
 	return &meta.IrModule{Name: "task"}, nil
 }
 
-func (f *fastFailOriginCoordinator) ResolveInstallModule(context.Context, string) (*meta.IrModule, error) {
+func (f *fastFailOriginCoordinator) ResolveInstallModule(_ context.Context, input string) (*meta.IrModule, error) {
+	f.resolveInstallInputs = append(f.resolveInstallInputs, input)
+	if f.resolveInstallErr != nil {
+		return nil, f.resolveInstallErr
+	}
+	if f.resolveInstallModule != nil {
+		return f.resolveInstallModule, nil
+	}
 	return nil, errors.New("not implemented")
 }
 
@@ -126,6 +140,36 @@ func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 	}
 	if len(coordinator.peekInputs) != 1 || coordinator.peekInputs[0] != "task@1.0.0" {
 		t.Fatalf("peek inputs = %#v, want [task@1.0.0]", coordinator.peekInputs)
+	}
+}
+
+func TestModuleManagerPeekFallsBackToResolveInstallWhenLocalMissing(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	coordinator := &fastFailOriginCoordinator{
+		peekErr:              errors.New("module core not found in modules path"),
+		resolveInstallModule: &meta.IrModule{Name: "core", Version: "v1.0.0"},
+	}
+
+	manager := NewModuleManager(
+		runtimeScope,
+		nil,
+		WithOriginCoordinatorFactory(func(scope.Scope) OriginCoordinator { return coordinator }),
+	)
+	manager.bootstrapOnce.Do(func() {})
+
+	mod, err := manager.Peek(context.Background(), "core")
+	if err != nil {
+		t.Fatalf("Peek() error = %v", err)
+	}
+	if mod == nil || mod.Name != "core" || mod.Version != "v1.0.0" {
+		t.Fatalf("unexpected module from Peek(): %#v", mod)
+	}
+	if len(coordinator.peekInputs) != 1 || coordinator.peekInputs[0] != "core" {
+		t.Fatalf("peek inputs = %#v, want [core]", coordinator.peekInputs)
+	}
+	if len(coordinator.resolveInstallInputs) != 1 || coordinator.resolveInstallInputs[0] != "core" {
+		t.Fatalf("resolve install inputs = %#v, want [core]", coordinator.resolveInstallInputs)
 	}
 }
 

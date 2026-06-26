@@ -99,10 +99,10 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ originType: 'local', force: true, ifStale: false });
-    ElMessage.success(jobId ? `已触发同步任务：${jobId}` : '已触发同步任务');
+    const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
+    ElMessage.success(jobId ? `已触发同步任务：all:${jobId}` : '已触发同步任务');
   } catch (error: any) {
-    ElMessage.error(error?.message || '触发同步失败');
+    ElMessage.warning(`同步失败：${error?.message || 'request failed'}`);
   } finally {
     syncLoading.value = false;
   }

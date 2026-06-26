@@ -256,6 +256,8 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 		in   string
 		want string
 	}{
+		{name: "empty defaults all", in: "", want: "all"},
+		{name: "all", in: "all", want: "all"},
 		{name: "registry", in: "registry", want: "registry"},
 		{name: "trimmed uppercase local", in: "  LOCAL ", want: "local"},
 		{name: "unsupported invalid", in: "remote", want: ""},

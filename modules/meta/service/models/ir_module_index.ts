@@ -7,9 +7,10 @@ import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 
 type ModuleOriginType = 'local' | 'registry';
+type ModuleSyncOriginType = ModuleOriginType | 'all';
 
 type RequestSyncParams = {
-  originType?: ModuleOriginType;
+  originType?: ModuleSyncOriginType;
   force?: boolean;
   ifStale?: boolean;
 };
@@ -214,10 +215,12 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   return merged;
 }
 
-function normalizeOriginType(value?: string): ModuleOriginType {
+function normalizeOriginType(value?: string): ModuleSyncOriginType {
   const raw = String(value || '')
     .trim()
     .toLowerCase();
+  if (raw === 'all') return 'all';
+  if (raw === '') return 'all';
   if (raw === 'registry') return 'registry';
   return 'local';
 }
@@ -441,24 +444,39 @@ export default class IrModuleIndex extends BaseModel {
     const originType = normalizeOriginType(params.originType);
     if (ifStale && !force) {
       const repo = this.getRepository();
-      let query = repo
-        .selectQueryBuilder()
-        .select((eb: any) => eb.fn.max('last_batch_sync_at').as('last_batch_sync_at'))
-        .where('meta_ir_module_index.origin_type' as any, '=', originType as any);
-      if (originType === 'local') {
-        query = query.where('meta_ir_module_index.origin_ref' as any, '=', 'local');
-      }
-      const rows = await repo.execute(query);
-      const row = rows?.[0] as any;
-      const lastBatchSyncAt = row?.lastBatchSyncAt ?? row?.last_batch_sync_at ?? null;
-      if (lastBatchSyncAt) {
-        const now = Date.now();
+      const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
+        let query = repo
+          .selectQueryBuilder()
+          .select((eb: any) => eb.fn.max('last_batch_sync_at').as('last_batch_sync_at'))
+          .where('meta_ir_module_index.origin_type' as any, '=', target as any);
+        if (target === 'local') {
+          query = query.where('meta_ir_module_index.origin_ref' as any, '=', 'local');
+        }
+        const rows = await repo.execute(query);
+        const row = rows?.[0] as any;
+        const lastBatchSyncAt = row?.lastBatchSyncAt ?? row?.last_batch_sync_at ?? null;
+        if (!lastBatchSyncAt) {
+          return true;
+        }
+
         const lastTime = new Date(lastBatchSyncAt as string).getTime();
-        if (!isNaN(lastTime)) {
-          const ttlMs = originType === 'registry' ? 10 * 60 * 1000 : 1 * 60 * 1000;
-          if (now - lastTime < ttlMs) {
-            return ''; // within staleness window, skip
-          }
+        if (isNaN(lastTime)) {
+          return true;
+        }
+
+        const ttlMs = target === 'registry' ? 10 * 60 * 1000 : 1 * 60 * 1000;
+        return Date.now() - lastTime >= ttlMs;
+      };
+
+      if (originType === 'all') {
+        const [registryStale, localStale] = await Promise.all([isOriginStale('registry'), isOriginStale('local')]);
+        if (!registryStale && !localStale) {
+          return ''; // both origins are still fresh
+        }
+      } else {
+        const stale = await isOriginStale(originType);
+        if (!stale) {
+          return ''; // within staleness window, skip
         }
       }
     }
@@ -468,7 +486,7 @@ export default class IrModuleIndex extends BaseModel {
     return String((job as any)?.Id || '').trim();
   }
 
-  static async Sync(originType?: ModuleOriginType, force?: boolean): Promise<any> {
+  static async Sync(originType?: ModuleSyncOriginType, force?: boolean): Promise<any> {
     const bridge = getModuleManagementBridge();
     const syncIndex = (bridge as any)?.syncIndex;
     if (typeof syncIndex !== 'function') {

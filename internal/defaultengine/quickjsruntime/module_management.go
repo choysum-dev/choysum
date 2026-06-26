@@ -291,8 +291,10 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 	case "local":
 	case "registry":
 		// implemented in syncModuleIndexRegistry below
+	case "all":
+		// sequentially sync registry and local in a single backend request
 	default:
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType must be one of: local, registry"))
+		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
 	}
 
 	execCtx := jse.ExecContext()
@@ -306,16 +308,43 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 
 	txRoot := runtimeScope.WithContext(execCtx)
 	err = txRoot.Transactor().Required(execCtx, func(txScope scope.Scope, _ scope.Transaction) error {
-		var stats lifecycle.ModuleIndexSyncStats
-		var syncErr error
-		switch originType {
-		case "local":
-			stats, syncErr = syncModuleIndexLocal(execCtx, txScope, cfg.lockerFactory)
-		case "registry":
-			stats, syncErr = syncModuleIndexRegistry(execCtx, txScope, cfg.lockerFactory)
-		default:
-			return status.Error(codes.InvalidArgument, "originType must be one of: local, registry")
+		runOriginSync := func(target string) (lifecycle.ModuleIndexSyncStats, error) {
+			switch target {
+			case "local":
+				return syncModuleIndexLocal(execCtx, txScope, cfg.lockerFactory)
+			case "registry":
+				return syncModuleIndexRegistry(execCtx, txScope, cfg.lockerFactory)
+			default:
+				return lifecycle.ModuleIndexSyncStats{}, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all")
+			}
 		}
+
+		if originType == "all" {
+			partialErrors := make([]string, 0, 2)
+			successfulOrigins := 0
+			for _, target := range []string{"registry", "local"} {
+				stats, syncErr := runOriginSync(target)
+				result.Total += stats.Total
+				result.Success += stats.Success
+				result.Failed += stats.Failed
+				if syncErr != nil {
+					partialErrors = append(partialErrors, target+": "+syncErr.Error())
+					continue
+				}
+				successfulOrigins++
+			}
+
+			if successfulOrigins == 0 {
+				return status.Error(codes.Unavailable, "module index sync failed for all origins: "+strings.Join(partialErrors, "; "))
+			}
+			result.Ok = true
+			if len(partialErrors) > 0 {
+				result.Error = strings.Join(partialErrors, "; ")
+			}
+			return nil
+		}
+
+		stats, syncErr := runOriginSync(originType)
 		if syncErr != nil {
 			return syncErr
 		}
@@ -381,13 +410,16 @@ func parseModuleIndexSyncParams(args []*quickjs.Value) (moduleIndexSyncParams, e
 func normalizeModuleIndexOriginType(raw string) string {
 	value := strings.TrimSpace(strings.ToLower(raw))
 	if value == "" {
-		return "local"
+		return "all"
 	}
 	if value == "local" {
 		return "local"
 	}
 	if value == "registry" {
 		return "registry"
+	}
+	if value == "all" {
+		return "all"
 	}
 	return ""
 }

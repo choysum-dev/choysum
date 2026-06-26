@@ -103,6 +103,11 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 		return stats, nil
 	}
 
+	session, ok := scope.SessionForScope(ctx, runtimeScope)
+	if !ok || session == nil || session.DB == nil {
+		return stats, errors.New("module index session is unavailable")
+	}
+
 	seen := make(map[string]struct{})
 	now := time.Now()
 	hasError := false
@@ -137,20 +142,22 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 		}
 
 		// Use a lightweight Upsert; no revision tracking for registry entries.
-		if err := runtimeScope.Session().WithContext(ctx).
-			Model(&metadata.IrModuleIndex{}).
-			Clauses(clause.OnConflict{
-				Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
-				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
-			}).
-			Create(&metadata.IrModuleIndex{
-				ModuleName:   name,
-				OriginType:   "registry",
-				OriginRef:    originRef,
-				Available:    true,
-				LastSyncAt:   &now,
-				ManifestJson: manifestJSON,
-			}).Error; err != nil {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+			return session.WithContext(ctx).
+				Model(&metadata.IrModuleIndex{}).
+				Clauses(clause.OnConflict{
+					Columns:   []clause.Column{{Name: "module_name"}, {Name: "origin_type"}, {Name: "origin_ref"}},
+					DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
+				}).
+				Create(&metadata.IrModuleIndex{
+					ModuleName:   name,
+					OriginType:   "registry",
+					OriginRef:    originRef,
+					Available:    true,
+					LastSyncAt:   &now,
+					ManifestJson: manifestJSON,
+				}).Error
+		}); err != nil {
 			stats.Failed++
 			hasError = true
 			runtimeScope.Logger().Warn("module index upsert failed", "module", name, "error", err)
@@ -165,22 +172,26 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 		for name := range seen {
 			names = append(names, name)
 		}
-		if err := runtimeScope.Session().WithContext(ctx).
-			Model(&metadata.IrModuleIndex{}).
-			Where("origin_type = ?", "registry").
-			Where("module_name NOT IN ?", names).
-			Updates(map[string]any{"available": false, "last_sync_at": now}).Error; err != nil {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+			return session.WithContext(ctx).
+				Model(&metadata.IrModuleIndex{}).
+				Where("origin_type = ?", "registry").
+				Where("module_name NOT IN ?", names).
+				Updates(map[string]any{"available": false, "last_sync_at": now}).Error
+		}); err != nil {
 			hasError = true
 			runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
 		}
 	}
 
 	if !hasError {
-		if err := runtimeScope.Session().WithContext(ctx).
-			Model(&metadata.IrModuleIndex{}).
-			Where("origin_type = ?", "registry").
-			Updates(map[string]any{"last_batch_sync_at": now}).Error; err != nil {
-			if !isTableMissingInSession(runtimeScope.Session(), "meta_ir_module_index") {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+			return session.WithContext(ctx).
+				Model(&metadata.IrModuleIndex{}).
+				Where("origin_type = ?", "registry").
+				Updates(map[string]any{"last_batch_sync_at": now}).Error
+		}); err != nil {
+			if !isTableMissingInSession(session, "meta_ir_module_index") {
 				runtimeScope.Logger().Warn("module index sync timestamp update failed", "error", err)
 			}
 		}
