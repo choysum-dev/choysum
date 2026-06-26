@@ -129,3 +129,24 @@ func TestGenerateTsExportsMapDirectly(t *testing.T) {
 		t.Fatalf("unexpected vue export reference: %q", got)
 	}
 }
+
+func TestGenerateTsExportsMapPreservesDotDirectories(t *testing.T) {
+	plugin := &BasePlugin{}
+	results := []*parser.ParserResult{
+		{
+			Path: "/Users/demo/.choysum/modules/base/service/models/locale.ts",
+			Exports: map[string]*parser.Export{
+				"default": {ReferenceIdent: "Locale", ModuleSpecPath: "/Users/demo/.choysum/modules/base/service/models/locale"},
+			},
+		},
+	}
+
+	plugin.generateTsExportsMap(results)
+
+	if _, ok := plugin.TsExports["/Users/demo/.choysum/modules/base/service/models/locale"]; !ok {
+		t.Fatalf("expected ts export map key to preserve dot directories, got %#v", plugin.TsExports)
+	}
+	if _, badKey := plugin.TsExports["/Users/demo/"]; badKey {
+		t.Fatalf("unexpected truncated ts export key for dot directory path: %#v", plugin.TsExports)
+	}
+}
