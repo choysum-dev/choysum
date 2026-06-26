@@ -144,7 +144,10 @@ func performQuery(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, arg
 		}
 		sleep := deadlockRetrySleep(dialect, attempt)
 		logger.Warn("db query deadlock retry", "error", err, "attempt", attempt+1, "sleep", sleep)
-		time.Sleep(sleep)
+		if waitErr := waitForDeadlockRetry(session, sleep); waitErr != nil {
+			logger.Warn("db query deadlock retry canceled", "error", waitErr, "attempt", attempt+1)
+			return ctx.ThrowError(waitErr)
+		}
 	}
 
 	jsonData, err := json.Marshal(results)
@@ -206,7 +209,10 @@ func performExecute(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, a
 		}
 		sleep := deadlockRetrySleep(dialect, attempt)
 		logger.Warn("db execute deadlock retry", "error", tx.Error, "attempt", attempt+1, "sleep", sleep)
-		time.Sleep(sleep)
+		if waitErr := waitForDeadlockRetry(session, sleep); waitErr != nil {
+			logger.Warn("db execute deadlock retry canceled", "error", waitErr, "attempt", attempt+1)
+			return ctx.ThrowError(waitErr)
+		}
 	}
 
 	jsonData, err := json.Marshal(map[string]interface{}{"LastInsertId": nil, "RowsAffected": rowsAffected})
@@ -272,6 +278,26 @@ func deadlockRetrySleep(dialect string, attempt int) time.Duration {
 		base = 150 * time.Millisecond
 	}
 	return time.Duration(attempt+1) * base
+}
+
+func waitForDeadlockRetry(session *scope.Session, sleep time.Duration) error {
+	if sleep <= 0 {
+		return nil
+	}
+	if session == nil || session.Statement == nil || session.Statement.Context == nil {
+		time.Sleep(sleep)
+		return nil
+	}
+
+	timer := time.NewTimer(sleep)
+	defer timer.Stop()
+
+	select {
+	case <-session.Statement.Context.Done():
+		return session.Statement.Context.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func performSavepoint(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, args []*quickjs.Value, logger *slog.Logger) *quickjs.Value {

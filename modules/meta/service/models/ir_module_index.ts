@@ -575,7 +575,9 @@ export default class IrModuleIndex extends BaseModel {
       finalRows = ordered.slice(start, end);
     }
 
-    return projectFields(finalRows, requestedFields) as unknown as T[];
+    const projected = projectFields(finalRows, requestedFields);
+    const hydrateFields = requestedFields.length > 0 ? (requestedFields as any) : undefined;
+    return projected.map(row => this.Hydrate(row as any, hydrateFields)) as unknown as T[];
   }
 
   static async Count<T extends BaseModel>(

@@ -780,6 +780,7 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
     const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
+    expect(typeof rows[0].toPlainObject).toBe('function');
     expect(rows[0].ModuleName).toBe('auth');
     expect(rows[0].RegistryVersion).toBe('2.0.0');
     expect(rows[0].OriginType).toBeUndefined();
@@ -790,7 +791,7 @@ test('meta.IrModuleIndex Search honors requested fields after aggregation', asyn
   }
 });
 
-test('meta.IrModuleIndex Search projection keeps object prototype and blocks dangerous fields', async () => {
+test('meta.IrModuleIndex Search projection returns model instances and blocks dangerous fields', async () => {
   resetRequestContext();
 
   const now = new Date();
@@ -819,10 +820,13 @@ test('meta.IrModuleIndex Search projection keeps object prototype and blocks dan
     expect(Array.isArray(rows)).toBe(true);
     expect(rows.length).toBe(1);
     expect(rows[0].ModuleName).toBe('auth');
-    expect(Object.getPrototypeOf(rows[0])).toBe(Object.prototype);
-    expect(Object.prototype.hasOwnProperty.call(rows[0], '__proto__')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(rows[0], 'constructor')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(rows[0], 'prototype')).toBe(false);
+    expect(typeof rows[0].toPlainObject).toBe('function');
+
+    const plain = rows[0].toPlainObject();
+    expect(Object.getPrototypeOf(plain)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(plain, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(plain, 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(plain, 'prototype')).toBe(false);
   } finally {
     restoreGroupedRepo();
     restoreBaseSearch();
