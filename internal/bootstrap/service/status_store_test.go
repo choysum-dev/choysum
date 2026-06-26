@@ -74,6 +74,50 @@ func TestStatusStoreMarkSucceededClearsActiveOperation(t *testing.T) {
 	}
 }
 
+func TestStatusStoreStageTransitionsClearStageDetail(t *testing.T) {
+	store := newMemoryStatusStore(func() time.Time { return time.Unix(500, 0) })
+
+	_, outcome, _ := store.beginOperation("op-1", "idem-a", 1000)
+	if outcome != beginCreated {
+		t.Fatalf("begin outcome = %v, want %v", outcome, beginCreated)
+	}
+
+	store.markStageDetail("op-1", "collecting module graph")
+	store.markStage("op-1", bootstrappb.InitializationStage_INITIALIZATION_STAGE_UPDATE_ADMIN, 55)
+	op, ok := store.getOperation("op-1")
+	if !ok {
+		t.Fatal("expected operation op-1 to exist")
+	}
+	if op.StageDetail != "" {
+		t.Fatalf("stage detail after markStage = %q, want empty", op.StageDetail)
+	}
+
+	store.markStageDetail("op-1", "building runtime assets")
+	store.markRunning("op-1", bootstrappb.InitializationStage_INITIALIZATION_STAGE_SWITCH_MODE, 75)
+	op, _ = store.getOperation("op-1")
+	if op.StageDetail != "" {
+		t.Fatalf("stage detail after markRunning = %q, want empty", op.StageDetail)
+	}
+
+	store.markStageDetail("op-1", "finalizing")
+	store.markFailed("op-1", bootstrappb.InitializationStage_INITIALIZATION_STAGE_UPDATE_ADMIN, "BOOTSTRAP_FAILED", "failed")
+	op, _ = store.getOperation("op-1")
+	if op.StageDetail != "" {
+		t.Fatalf("stage detail after markFailed = %q, want empty", op.StageDetail)
+	}
+
+	_, outcome, _ = store.beginOperation("op-2", "idem-b", 1000)
+	if outcome != beginCreated {
+		t.Fatalf("second begin outcome = %v, want %v", outcome, beginCreated)
+	}
+	store.markStageDetail("op-2", "ready")
+	store.markSucceeded("op-2", "/web/login")
+	op, _ = store.getOperation("op-2")
+	if op.StageDetail != "" {
+		t.Fatalf("stage detail after markSucceeded = %q, want empty", op.StageDetail)
+	}
+}
+
 func TestStatusStoreContractBeginAndMarkSucceededConcurrentRelease(t *testing.T) {
 	store := newInMemoryStatusStore(func() time.Time { return time.Unix(400, 0) })
 

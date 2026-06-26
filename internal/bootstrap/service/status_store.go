@@ -123,6 +123,7 @@ func (s *memoryStatusStore) markRunning(operationID string, stage bootstrappb.In
 		op.State = bootstrappb.InitializationState_INITIALIZATION_STATE_RUNNING
 		op.Stage = stage
 		op.ProgressPercent = clampProgress(progressPercent)
+		op.StageDetail = ""
 		op.ErrorCode = ""
 		op.ErrorMessage = ""
 		op.CompletedAt = nil
@@ -133,6 +134,7 @@ func (s *memoryStatusStore) markStage(operationID string, stage bootstrappb.Init
 	s.update(operationID, func(op *operationSnapshot) {
 		op.Stage = stage
 		op.ProgressPercent = clampProgress(progressPercent)
+		op.StageDetail = ""
 		if op.State == bootstrappb.InitializationState_INITIALIZATION_STATE_PENDING {
 			op.State = bootstrappb.InitializationState_INITIALIZATION_STATE_RUNNING
 		}
@@ -150,6 +152,7 @@ func (s *memoryStatusStore) markFailed(operationID string, stage bootstrappb.Ini
 		now := s.now().UTC()
 		op.State = bootstrappb.InitializationState_INITIALIZATION_STATE_FAILED
 		op.Stage = stage
+		op.StageDetail = ""
 		op.ErrorCode = code
 		op.ErrorMessage = message
 		op.ReadyForLogin = false
@@ -167,6 +170,7 @@ func (s *memoryStatusStore) markSucceeded(operationID string, redirectURL string
 		op.State = bootstrappb.InitializationState_INITIALIZATION_STATE_SUCCEEDED
 		op.Stage = bootstrappb.InitializationStage_INITIALIZATION_STAGE_DONE
 		op.ProgressPercent = 100
+		op.StageDetail = ""
 		op.ReadyForLogin = true
 		op.RedirectURL = redirectURL
 		op.ErrorCode = ""

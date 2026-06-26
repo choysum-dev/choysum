@@ -529,35 +529,51 @@ func classifyTransportError(err error) string {
 
 // verifyTarballIntegrity checks the downloaded bytes against an npm integrity
 // string (e.g. "sha512-<base64>" or "sha256-<base64>").
+// Multiple digests separated by whitespace are treated as alternatives and
+// verification succeeds when any supported digest matches.
 // Invalid integrity metadata is treated as an error.
 func verifyTarballIntegrity(data []byte, integrity string) error {
 	integrity = strings.TrimSpace(integrity)
 	if integrity == "" {
 		return nil
 	}
-	algorithm, encoded, found := strings.Cut(integrity, "-")
-	if !found || algorithm == "" || encoded == "" {
+	tokens := strings.Fields(integrity)
+	if len(tokens) == 0 {
 		return fmt.Errorf("invalid integrity format")
 	}
-	expected, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return fmt.Errorf("invalid integrity encoding: %w", err)
+
+	supportedDigests := 0
+	for _, token := range tokens {
+		algorithm, encoded, found := strings.Cut(strings.TrimSpace(token), "-")
+		if !found || algorithm == "" || encoded == "" {
+			return fmt.Errorf("invalid integrity format")
+		}
+		expected, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return fmt.Errorf("invalid integrity encoding: %w", err)
+		}
+
+		var h hash.Hash
+		switch strings.ToLower(algorithm) {
+		case "sha512":
+			h = sha512.New()
+		case "sha256":
+			h = sha256.New()
+		default:
+			continue
+		}
+
+		supportedDigests++
+		h.Write(data)
+		if bytes.Equal(h.Sum(nil), expected) {
+			return nil
+		}
 	}
-	var h hash.Hash
-	switch strings.ToLower(algorithm) {
-	case "sha512":
-		h = sha512.New()
-	case "sha256":
-		h = sha256.New()
-	default:
-		return fmt.Errorf("unsupported integrity algorithm: %s", algorithm)
+
+	if supportedDigests == 0 {
+		return fmt.Errorf("unsupported integrity algorithm")
 	}
-	h.Write(data)
-	actual := h.Sum(nil)
-	if !bytes.Equal(actual, expected) {
-		return fmt.Errorf("integrity mismatch: expected %s-%s", algorithm, base64.StdEncoding.EncodeToString(expected))
-	}
-	return nil
+	return fmt.Errorf("integrity mismatch")
 }
 
 // extractTarballFromReader extracts a tar.gz stream from r into targetDir.

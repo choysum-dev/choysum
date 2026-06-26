@@ -54,7 +54,12 @@ func fallbackInternalKeyForProcess() (string, error) {
 }
 
 func isProductionEnvironment(environment string) bool {
-	return strings.EqualFold(strings.TrimSpace(environment), "production")
+	switch strings.ToLower(strings.TrimSpace(environment)) {
+	case "production", "prod":
+		return true
+	default:
+		return false
+	}
 }
 
 // HttpAuthConfig configures HTTP request authentication behavior.

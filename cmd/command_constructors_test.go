@@ -1013,18 +1013,12 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 	})
 
 	t.Run("test subtree pre-run does not initialize database", func(t *testing.T) {
-		oldWd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("getwd: %v", err)
-		}
+		var err error
 		workDir := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(workDir, "modules"), 0o755); err != nil {
 			t.Fatalf("mkdir modules: %v", err)
 		}
-		if err := os.Chdir(workDir); err != nil {
-			t.Fatalf("chdir: %v", err)
-		}
-		defer func() { _ = os.Chdir(oldWd) }()
+		t.Chdir(workDir)
 
 		t.Setenv("HOME", t.TempDir())
 		t.Setenv("CHOYSUM_DB_DIALECT", "postgres")
@@ -1052,10 +1046,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 	})
 
 	t.Run("missing default config falls back to built-in defaults", func(t *testing.T) {
-		oldWd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("getwd: %v", err)
-		}
+		var err error
 		workDir := t.TempDir()
 		homeDir := t.TempDir()
 		modulesDir := filepath.Join(workDir, "modules")
@@ -1069,10 +1060,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		if err := os.WriteFile(dbPath, []byte{}, 0o644); err != nil {
 			t.Fatalf("write db file: %v", err)
 		}
-		if err := os.Chdir(workDir); err != nil {
-			t.Fatalf("chdir: %v", err)
-		}
-		defer func() { _ = os.Chdir(oldWd) }()
+		t.Chdir(workDir)
 		t.Setenv("HOME", homeDir)
 		t.Setenv("CHOYSUM_DB_DIALECT", "sqlite")
 		t.Setenv("CHOYSUM_DB_DSN", dbPath)

@@ -119,6 +119,20 @@ function normalizeFields(raw: unknown): string[] {
   return out;
 }
 
+function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
+  if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
+  const fields = Array.from(new Set(requestedFields.map(field => String(field || '').trim()).filter(Boolean)));
+  if (fields.length === 0) return rows;
+
+  return rows.map(row => {
+    const projected: ModuleIndexRecord = {};
+    for (const field of fields) {
+      (projected as any)[field] = (row as any)?.[field];
+    }
+    return projected;
+  });
+}
+
 function toPlainRecord(input: any): ModuleIndexRecord {
   if (!input || typeof input !== 'object') return {};
   if (typeof input.toPlainObject === 'function') {
@@ -215,14 +229,21 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   return merged;
 }
 
-function normalizeOriginType(value?: string): ModuleSyncOriginType {
+function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
   const raw = String(value || '')
     .trim()
     .toLowerCase();
   if (raw === 'all') return 'all';
   if (raw === '') return 'all';
+  if (raw === 'local') return 'local';
   if (raw === 'registry') return 'registry';
-  return 'local';
+  return '';
+}
+
+function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {
+  if (requested === 'all') return running === 'all';
+  if (running === 'all') return true;
+  return running === requested;
 }
 
 function getBackendEnv(): Record<string, unknown> {
@@ -259,7 +280,7 @@ function getModuleManagementBridge(): any {
   return root.moduleManagement;
 }
 
-async function findRunningJobId(fullMethod: string): Promise<string> {
+async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncOriginType): Promise<string> {
   const running = await Job.Search(
     {
       And: [
@@ -268,10 +289,18 @@ async function findRunningJobId(fullMethod: string): Promise<string> {
         ['Status', 'in', ['queued', 'dispatching'] as any],
       ],
     } as any,
-    { limit: 1, orderBy: { field: 'CreatedAt', order: 'desc' } as any, fields: ['Id'] as any } as any
+    { limit: 20, orderBy: { field: 'CreatedAt', order: 'desc' } as any, fields: ['Id', 'PayloadJson'] as any } as any
   );
-  const jobId = String(running?.[0]?.Id || '').trim();
-  return jobId;
+  for (const row of running || []) {
+    const jobId = String((row as any)?.Id || '').trim();
+    if (!jobId) continue;
+    const runningOrigin = normalizeOriginType((row as any)?.PayloadJson?.originType);
+    if (!runningOrigin) continue;
+    if (canReuseRunningSync(requestedOrigin, runningOrigin)) {
+      return jobId;
+    }
+  }
+  return '';
 }
 
 @Model('IrModuleIndex', {
@@ -402,7 +431,8 @@ export default class IrModuleIndex extends BaseModel {
 
     const start = offset;
     const end = limit == null ? undefined : start + limit;
-    return merged.slice(start, end) as unknown as T[];
+    const paged = merged.slice(start, end);
+    return projectFields(paged, requestedFields) as unknown as T[];
   }
 
   static async Count<T extends BaseModel>(
@@ -429,6 +459,10 @@ export default class IrModuleIndex extends BaseModel {
     const force = !!params.force;
     const ifStale = !!params.ifStale;
     if (!force && !ifStale) return '';
+    const originType = normalizeOriginType(params.originType);
+    if (!originType) {
+      throw new Error('originType must be one of: local, registry, all');
+    }
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
       return '';
@@ -436,12 +470,11 @@ export default class IrModuleIndex extends BaseModel {
 
     const fullMethod = 'meta.IrModuleIndex/Sync';
 
-    // Reuse an in-flight sync job so stale-triggered calls do not enqueue
-    // competing writers against the same index table on sqlite.
-    const runningJobId = await findRunningJobId(fullMethod);
-    if (runningJobId) return runningJobId;
-
-    const originType = normalizeOriginType(params.originType);
+    // Reuse in-flight jobs for non-force requests to reduce contention.
+    if (!force) {
+      const runningJobId = await findRunningJobId(fullMethod, originType);
+      if (runningJobId) return runningJobId;
+    }
     if (ifStale && !force) {
       const repo = this.getRepository();
       const isOriginStale = async (target: ModuleOriginType): Promise<boolean> => {
@@ -492,6 +525,10 @@ export default class IrModuleIndex extends BaseModel {
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');
     }
-    return await syncIndex({ originType: normalizeOriginType(originType), force: !!force });
+    const normalizedOriginType = normalizeOriginType(originType);
+    if (!normalizedOriginType) {
+      throw new Error('originType must be one of: local, registry, all');
+    }
+    return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }
 }

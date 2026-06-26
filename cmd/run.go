@@ -68,6 +68,7 @@ func newRunCmd() *cobra.Command {
 					"verify database reachability and credentials; rerun 'choysum run' to update config if needed",
 				)
 				runExit(4)
+				return
 			}
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

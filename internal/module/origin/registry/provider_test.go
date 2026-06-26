@@ -336,6 +336,49 @@ func TestProviderFetchMaterializesModuleToModules(t *testing.T) {
 	}
 }
 
+func TestProviderFetchAcceptsAlternativeIntegrityDigests(t *testing.T) {
+	t.Parallel()
+
+	modulesPath := t.TempDir()
+	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: modulesPath}}
+
+	metadataURL := "https://registry.npmjs.org/@choysum-dev%2Fauth"
+	tarballURL := "https://registry.npmjs.org/@choysum-dev/auth/-/auth-2.1.0.tgz"
+	tgz := buildTarGz(t, map[string]string{
+		"package/package.json": buildPackageJSON(t, "auth", "2.1.0", map[string]string{"service": "./service/main.ts"}),
+	})
+	integrity := npmSHA512Integrity([]byte("different-content")) + " " + npmSHA512Integrity(tgz)
+	metadata := buildMetadata(t, map[string]string{"latest": "2.1.0"}, map[string]any{
+		"2.1.0": map[string]any{
+			"name":    "@choysum-dev/auth",
+			"version": "2.1.0",
+			"choysum": map[string]any{"moduleName": "auth", "application": "auth", "entryPoints": map[string]any{"service": "./service/main.ts"}},
+			"dist":    map[string]any{"tarball": tarballURL, "integrity": integrity},
+		},
+	})
+
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		switch req.URL.String() {
+		case metadataURL:
+			return httpResponse(http.StatusOK, metadata), nil
+		case tarballURL:
+			return httpResponse(http.StatusOK, tgz), nil
+		default:
+			t.Fatalf("unexpected request url: %s", req.URL.String())
+			return nil, nil
+		}
+	})}
+
+	provider := NewProvider(runtimeScope, WithHTTPClient(client))
+	mod, err := provider.Fetch(context.Background(), "https://registry.npmjs.org", "auth", "@choysum-dev/auth", "v2.1.0")
+	if err != nil {
+		t.Fatalf("Fetch() error = %v", err)
+	}
+	if mod == nil || mod.Name != "auth" || mod.Version != "v2.1.0" {
+		t.Fatalf("unexpected module: %#v", mod)
+	}
+}
+
 func TestProviderPeekManifestConcurrentRequests(t *testing.T) {
 	t.Parallel()
 

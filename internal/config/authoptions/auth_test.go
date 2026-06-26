@@ -72,4 +72,12 @@ func TestNormalizeAndMergeAuthConfigRequiresExplicitInternalKeyInProduction(t *t
 	if merged.InternalKey != "prod-secret" {
 		t.Fatalf("internalKey = %q, want trimmed explicit key", merged.InternalKey)
 	}
+
+	_, err = NormalizeAndMergeAuthConfig(&AuthConfig{}, t.TempDir(), "prod")
+	if err == nil {
+		t.Fatal("expected prod auth.internalKey validation error")
+	}
+	if !strings.Contains(err.Error(), "auth.internalKey must be explicitly configured") {
+		t.Fatalf("unexpected prod alias error: %v", err)
+	}
 }

@@ -42,6 +42,8 @@ type catalogIndexEntry struct {
 	Integrity string `json:"integrity,omitempty"`
 }
 
+var catalogIndexHTTPClient = &http.Client{Timeout: 15 * time.Second}
+
 // SyncRegistryModuleIndex fetches the static module catalog index from
 // index.choysum.dev and upserts discovered modules into meta_ir_module_index
 // with origin_type=registry.
@@ -109,7 +111,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	}
 
 	seen := make(map[string]struct{})
-	now := time.Now()
+	now := time.Now().UTC()
 	hasError := false
 
 	for moduleName, module := range index.Modules {
@@ -131,7 +133,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 		if originRef == "" {
 			originRef = name
 		}
-		seen[name] = struct{}{}
+		seen[registrySyncSeenKey(name, originRef)] = struct{}{}
 
 		manifestJSON, err := json.Marshal(module)
 		if err != nil {
@@ -154,6 +156,7 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 					OriginType:   "registry",
 					OriginRef:    originRef,
 					Available:    true,
+					Version:      nullString(module.LatestVersion),
 					LastSyncAt:   &now,
 					ManifestJson: manifestJSON,
 				}).Error
@@ -166,21 +169,34 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 		stats.Success++
 	}
 
-	// Mark registry entries absent from the index as unavailable.
+	// Mark registry entries absent from the current catalog snapshot as unavailable.
 	if len(seen) > 0 {
-		names := make([]string, 0, len(seen))
-		for name := range seen {
-			names = append(names, name)
-		}
+		existing := make([]metadata.IrModuleIndex, 0)
 		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
 			return session.WithContext(ctx).
 				Model(&metadata.IrModuleIndex{}).
 				Where("origin_type = ?", "registry").
-				Where("module_name NOT IN ?", names).
-				Updates(map[string]any{"available": false, "last_sync_at": now}).Error
+				Find(&existing).Error
 		}); err != nil {
 			hasError = true
 			runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
+		} else {
+			for _, row := range existing {
+				if _, ok := seen[registrySyncSeenKey(row.ModuleName, row.OriginRef)]; ok {
+					continue
+				}
+				moduleName := row.ModuleName
+				originRef := row.OriginRef
+				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func() error {
+					return session.WithContext(ctx).
+						Model(&metadata.IrModuleIndex{}).
+						Where("module_name = ? AND origin_type = ? AND origin_ref = ?", moduleName, "registry", originRef).
+						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
+				}); err != nil {
+					hasError = true
+					runtimeScope.Logger().Warn("module index reconcile row update failed", "module", moduleName, "origin_ref", originRef, "error", err)
+				}
+			}
 		}
 	}
 
@@ -220,7 +236,10 @@ func fetchCatalogIndex(ctx context.Context, indexURL string) (*catalogIndexDocum
 	if err != nil {
 		return nil, fmt.Errorf("create registry index request: %w", err)
 	}
-	client := http.DefaultClient
+	client := catalogIndexHTTPClient
+	if client == nil {
+		client = http.DefaultClient
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch registry index: %w", err)
@@ -241,4 +260,8 @@ func fetchCatalogIndex(ctx context.Context, indexURL string) (*catalogIndexDocum
 		index.Modules = map[string]catalogIndexModule{}
 	}
 	return index, nil
+}
+
+func registrySyncSeenKey(moduleName, originRef string) string {
+	return strings.TrimSpace(moduleName) + "\x00" + strings.TrimSpace(originRef)
 }
