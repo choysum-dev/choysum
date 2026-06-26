@@ -552,6 +552,10 @@ async function pickTargetModule(page: Page) {
 }
 
 test('meta module management: install/upgrade/uninstall flow', async ({ page }) => {
+  // This flow executes up to three heavy module operations (install/upgrade/uninstall)
+  // and can exceed 10 minutes on cold CI runners with slower network/disk.
+  test.setTimeout(20 * 60 * 1000);
+
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
   const baseURL = runtime.baseURL;
