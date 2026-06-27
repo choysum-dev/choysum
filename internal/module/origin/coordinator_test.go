@@ -388,6 +388,44 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 	})
 
+	t.Run("resolve local name falls back when bootstrap context override is enabled", func(t *testing.T) {
+		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v3")
+		defer catalog.Close()
+		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
+
+		fetchCalls := 0
+		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			fetchCalls++
+			if version != "v2.0.0" {
+				t.Fatalf("expected bootstrap fallback to request catalog latest version v2.0.0, got %s", version)
+			}
+			return &meta.IrModule{Name: moduleName, Version: "v2.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
+		}}
+
+		toggleInput := fallbackToggleFactoryInput{
+			cfg:     runtimeScope.cfg,
+			enabled: false,
+		}
+		runtimeScopeNoFallback := &sourceTestScopeWithFactoryInput{sourceTestScope: runtimeScope, input: toggleInput}
+		coordinator := NewCoordinator(runtimeScopeNoFallback, WithLockStore(lockStore), WithRegistryProvider(provider))
+
+		if err := os.RemoveAll(filepath.Join(modulesPath, "auth")); err != nil {
+			t.Fatalf("remove local module dir: %v", err)
+		}
+
+		ctx := WithBootstrapRegistryFallback(context.Background())
+		mod, err := coordinator.ResolveInstallModule(ctx, "auth")
+		if err != nil {
+			t.Fatalf("expected bootstrap context fallback to succeed, got %v", err)
+		}
+		if mod == nil || mod.Version != "v2.0.0" {
+			t.Fatalf("unexpected bootstrap fallback module: %#v", mod)
+		}
+		if fetchCalls != 1 {
+			t.Fatalf("expected 1 registry fetch call when bootstrap context override is enabled, got %d", fetchCalls)
+		}
+	})
+
 	t.Run("resolve registry ref rejects empty catalog npm package", func(t *testing.T) {
 		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org", "")
 		defer catalog.Close()
