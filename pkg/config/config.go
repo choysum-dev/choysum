@@ -29,7 +29,6 @@ type Config struct {
 	DistPath                             string `mapstructure:"dist_path"`
 	NPMRegistryURL                       string `mapstructure:"npm_registry_url"`
 	ModuleCatalogIndexURL                string `mapstructure:"module_catalog_index_url"`
-	ModuleInstallRegistryFallbackEnabled bool   `mapstructure:"module_install_registry_fallback_enabled"`
 	BootstrapModuleInstallTimeoutSeconds int    `mapstructure:"bootstrap_module_install_timeout_seconds"`
 	ESMUpstreamURL                       string `mapstructure:"esm_upstream_url"`
 	DefaultChoysumPath                   string `mapstructure:"default_choysum_path"`
@@ -107,7 +106,6 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	}
 	applyDocumentViperDefaults(v)
 	applyTaskViperDefaults(v)
-	v.SetDefault("module_install_registry_fallback_enabled", false)
 	v.SetDefault("bootstrap_module_install_timeout_seconds", DefaultBootstrapModuleInstallTimeoutSeconds)
 	if err := bindConfigEnv(v); err != nil {
 		return stageError(LoadStageDecode, err)
@@ -329,7 +327,6 @@ func defaultConfig() *Config {
 		DistPath:                             "",
 		NPMRegistryURL:                       DefaultNPMRegistryURL,
 		ModuleCatalogIndexURL:                DefaultModuleCatalogIndexURL,
-		ModuleInstallRegistryFallbackEnabled: false,
 		BootstrapModuleInstallTimeoutSeconds: DefaultBootstrapModuleInstallTimeoutSeconds,
 		ESMUpstreamURL:                       DefaultESMUpstreamURL,
 		DefaultChoysumPath:                   "",

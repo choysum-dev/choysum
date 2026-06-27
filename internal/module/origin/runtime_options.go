@@ -11,16 +11,15 @@ import (
 )
 
 type runtimeOptions struct {
-	modulesPath                          string
-	configPath                           string
-	defaultChoysumPath                   string
-	moduleCatalogIndexURL                string
-	moduleInstallRegistryFallbackEnabled bool
+	modulesPath           string
+	configPath            string
+	defaultChoysumPath    string
+	moduleCatalogIndexURL string
 }
 
 func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) runtimeOptions {
 	if !hasPathOpts {
-		return runtimeOptions{moduleInstallRegistryFallbackEnabled: false}
+		return runtimeOptions{}
 	}
 	moduleCatalogIndexURL := strings.TrimSpace(pathOpts.ModuleCatalogIndexURL)
 	if moduleCatalogIndexURL == "" {
@@ -28,11 +27,10 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool) run
 	}
 
 	return runtimeOptions{
-		modulesPath:                          pathOpts.ModulesPath,
-		configPath:                           pathOpts.ConfigPath,
-		defaultChoysumPath:                   pathOpts.DefaultChoysumPath,
-		moduleCatalogIndexURL:                moduleCatalogIndexURL,
-		moduleInstallRegistryFallbackEnabled: pathOpts.ModuleInstallRegistryFallbackEnabled,
+		modulesPath:           pathOpts.ModulesPath,
+		configPath:            pathOpts.ConfigPath,
+		defaultChoysumPath:    pathOpts.DefaultChoysumPath,
+		moduleCatalogIndexURL: moduleCatalogIndexURL,
 	}
 }
 
