@@ -318,20 +318,22 @@ func (b *WebModuleBuilder) validate(buildResult *module.BuildResult) error {
 		}
 
 		normalizedPath := normalizeWebBuilderPath(rawPath)
+		if normalizedPath == "" {
+			continue
+		}
+		result.VueComponent.Path = normalizedPath
+		result.VueComponent.Extends = normalizeWebBuilderPath(result.VueComponent.Extends)
+
 		if existing := normalizedPathMap[normalizedPath]; existing != nil {
 			pathComponentMap[rawPath] = existing
+			pathComponentMap[result.VueComponent.Path] = existing
 			continue
 		}
 
-		normalizedComponent := *result.VueComponent
-		normalizedComponent.Path = normalizedPath
-		normalizedComponent.Extends = normalizeWebBuilderPath(result.VueComponent.Extends)
-		componentRef := &normalizedComponent
-
-		normalizedPathMap[normalizedPath] = componentRef
-		componentMap[componentRef.Name] = append(componentMap[componentRef.Name], componentRef)
-		pathComponentMap[componentRef.Path] = componentRef
-		pathComponentMap[rawPath] = componentRef
+		normalizedPathMap[normalizedPath] = result.VueComponent
+		componentMap[result.VueComponent.Name] = append(componentMap[result.VueComponent.Name], result.VueComponent)
+		pathComponentMap[result.VueComponent.Path] = result.VueComponent
+		pathComponentMap[rawPath] = result.VueComponent
 	}
 
 	// Validate inheritance relationships
@@ -1398,13 +1400,25 @@ func (b *WebModuleBuilder) persist(buildResult *module.BuildResult) error {
 	}
 	mod.UiResources = uiResources
 
+	seenComponentPaths := make(map[string]struct{})
 	for _, result := range parserResults {
 		if result.VueComponent == nil {
 			continue
 		}
-		if webBuilderPathWithinRoot(result.VueComponent.Path, mod.Path) {
-			mod.Components = append(mod.Components, result.VueComponent)
+		normalizedPath := normalizeWebBuilderPath(result.VueComponent.Path)
+		if normalizedPath == "" {
+			continue
 		}
+		if !webBuilderPathWithinRoot(normalizedPath, mod.Path) {
+			continue
+		}
+		if _, exists := seenComponentPaths[normalizedPath]; exists {
+			continue
+		}
+		seenComponentPaths[normalizedPath] = struct{}{}
+		result.VueComponent.Path = normalizedPath
+		result.VueComponent.Extends = normalizeWebBuilderPath(result.VueComponent.Extends)
+		mod.Components = append(mod.Components, result.VueComponent)
 	}
 
 	if mod.Id.Valid {

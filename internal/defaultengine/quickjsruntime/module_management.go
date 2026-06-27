@@ -228,18 +228,25 @@ func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sco
 		err = compilerExecutor.Start()
 	}
 	if err == nil {
-		defer compilerExecutor.Stop()
-		moduleLifecycle := newModuleLifecycleForModuleManagement(opScope, compilerExecutor, cfg)
-		switch action {
-		case "install":
-			err = moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo})
-		case "uninstall":
-			err = moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName})
-		case "upgrade":
-			err = moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo})
-		default:
-			err = status.Error(codes.InvalidArgument, "unknown action")
-		}
+		err = func() (opErr error) {
+			defer func() {
+				if stopErr := compilerExecutor.Stop(); opErr == nil && stopErr != nil {
+					opErr = stopErr
+				}
+			}()
+
+			moduleLifecycle := newModuleLifecycleForModuleManagement(opScope, compilerExecutor, cfg)
+			switch action {
+			case "install":
+				return moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo})
+			case "uninstall":
+				return moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName})
+			case "upgrade":
+				return moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo})
+			default:
+				return status.Error(codes.InvalidArgument, "unknown action")
+			}
+		}()
 	}
 	if err == nil {
 		result.Ok = true

@@ -158,6 +158,37 @@ func TestFindModuleSpecAndReferenceIdent(t *testing.T) {
 			t.Fatalf("unexpected symlinked extensionless export resolution: %q %q", moduleSpec, referenceIdent)
 		}
 	})
+
+	t.Run("resolves exports across directory and index module spec forms", func(t *testing.T) {
+		realRoot := filepath.Join(t.TempDir(), "real")
+		realDecoratorDir := filepath.Join(realRoot, "modules", "core", "service", "orm", "decorator")
+		if err := os.MkdirAll(realDecoratorDir, 0o755); err != nil {
+			t.Fatalf("mkdir decorator directory: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realDecoratorDir, "index.ts"), []byte("export const Model = () => null;\n"), 0o644); err != nil {
+			t.Fatalf("write decorator index file: %v", err)
+		}
+
+		directorySpec := realDecoratorDir
+		indexSpec := filepath.Join(realDecoratorDir, "index")
+		plugin := &BasePlugin{
+			TsExports: map[string]map[string]*parser.Export{
+				directorySpec: {
+					"Model": {ReferenceIdent: "Model", ModuleSpecPath: directorySpec},
+				},
+			},
+		}
+
+		moduleSpec, referenceIdent := plugin.FindModuleSpecAndReferenceIdent(indexSpec, "Model")
+		if moduleSpec != directorySpec || referenceIdent != "Model" {
+			t.Fatalf("unexpected directory/index export resolution: %q %q", moduleSpec, referenceIdent)
+		}
+
+		moduleSpec, referenceIdent = plugin.FindModuleSpecAndReferenceIdent(filepath.Join(realDecoratorDir, "index.ts"), "Model")
+		if moduleSpec != directorySpec || referenceIdent != "Model" {
+			t.Fatalf("unexpected directory/index.ts export resolution: %q %q", moduleSpec, referenceIdent)
+		}
+	})
 }
 
 func TestGenerateTsExportsMapDirectly(t *testing.T) {

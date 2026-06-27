@@ -114,7 +114,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
-							if strings.Contains(peekErr.Error(), "not found in modules path") {
+							if isLocalInstallMissingError(peekErr) {
 								peekErr = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
 							}
 							return peekErr
@@ -129,7 +129,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					txScope.Logger().Debug("module installed", "module", moduleName)
 					return nil
 				}); err != nil {
-					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && strings.Contains(err.Error(), "not found in modules path") {
+					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && isLocalInstallMissingError(err) {
 						err = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
 					}
 					attrs := []any{"error", err}
@@ -147,6 +147,14 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
+}
+
+func isLocalInstallMissingError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "not found in modules path") || strings.Contains(msg, "not found locally and registry fallback failed")
 }
 
 func ensureInstallModulesTsconfig(env scope.Scope, modulesPath string) {

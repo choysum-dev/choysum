@@ -151,13 +151,12 @@ func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
 	}
 
 	candidates := []struct {
-		path       string
-		trimSuffix string
-		trimToDir  bool
+		path      string
+		trimToDir bool
 	}{
 		{path: trimmed},
-		{path: trimmed + ".ts", trimSuffix: ".ts"},
-		{path: trimmed + ".vue", trimSuffix: ".vue"},
+		{path: trimmed + ".ts"},
+		{path: trimmed + ".vue"},
 		{path: filepath.Join(trimmed, "index.ts"), trimToDir: true},
 	}
 
@@ -167,16 +166,22 @@ func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
 			continue
 		}
 		normalized := filepath.Clean(resolved)
-		if candidate.trimToDir {
-			normalized = filepath.Dir(normalized)
+		if candidate.trimToDir || filepath.Base(normalized) == "index.ts" {
+			return filepath.Dir(normalized)
 		}
-		if candidate.trimSuffix != "" {
-			normalized = strings.TrimSuffix(normalized, candidate.trimSuffix)
-		}
+		normalized = strings.TrimSuffix(normalized, ".ts")
+		normalized = strings.TrimSuffix(normalized, ".vue")
 		return normalized
 	}
 
-	return filepath.Clean(trimmed)
+	fallback := filepath.Clean(trimmed)
+	switch filepath.Base(fallback) {
+	case "index", "index.ts", "index.vue":
+		return filepath.Dir(fallback)
+	}
+	fallback = strings.TrimSuffix(fallback, ".ts")
+	fallback = strings.TrimSuffix(fallback, ".vue")
+	return fallback
 }
 
 func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Export {

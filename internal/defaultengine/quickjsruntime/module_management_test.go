@@ -292,7 +292,8 @@ func TestWithModuleManagementProviderUsesExecContextBoundRuntimeScope(t *testing
 
 func TestWithModuleManagementProvider_ModuleOpDoesNotUseOuterTransaction(t *testing.T) {
 	type ctxKey struct{}
-	runtimeCtx := context.WithValue(context.Background(), ctxKey{}, "runtime")
+	runtimeKey := ctxKey{}
+	runtimeCtx := context.WithValue(context.Background(), runtimeKey, "runtime")
 	engineName := "module-management-provider-no-tx-test-engine"
 	registerModuleManagementTestJsEngine(engineName)
 	serverCfg := config.NewDefaultServerConfig()
@@ -360,11 +361,17 @@ func TestWithModuleManagementProvider_ModuleOpDoesNotUseOuterTransaction(t *test
 	if _, ok := scope.TransactionFromContext(factoryScope.Context()); ok {
 		t.Fatal("factory scope context should not carry transaction")
 	}
+	if got := factoryScope.Context().Value(runtimeKey); got != "runtime" {
+		t.Fatalf("factory scope context value = %#v, want runtime", got)
+	}
 	if installCtx == nil {
 		t.Fatal("expected install context to be captured")
 	}
 	if _, ok := scope.TransactionFromContext(installCtx); ok {
 		t.Fatal("install context should not carry transaction")
+	}
+	if got := installCtx.Value(runtimeKey); got != "runtime" {
+		t.Fatalf("install context value = %#v, want runtime", got)
 	}
 }
 

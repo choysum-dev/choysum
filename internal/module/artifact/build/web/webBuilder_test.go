@@ -2514,6 +2514,62 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	}
 }
 
+func TestPersist_DeduplicatesSymlinkAliasComponents(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}, &meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+		t.Fatalf("automigrate components failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	realRoot := filepath.Join(t.TempDir(), "real")
+	moduleRealRoot := filepath.Join(realRoot, "modules", "auth")
+	realComponentPath := filepath.Join(moduleRealRoot, "web", "views", "DashboardView.vue")
+	if err := os.MkdirAll(filepath.Dir(realComponentPath), 0o755); err != nil {
+		t.Fatalf("mkdir real component directory: %v", err)
+	}
+	if err := os.WriteFile(realComponentPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatalf("write real component file: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "auth")
+	aliasComponentPath := filepath.Join(moduleAliasRoot, "web", "views", "DashboardView.vue")
+
+	mod := &meta.IrModule{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "mod_auth_symlink", Valid: true}},
+		Name:      "auth",
+		Path:      moduleAliasRoot,
+	}
+	buildResult := withParserResults(
+		&module.BuildResult{Module: mod},
+		&parser.ParserResult{Path: realComponentPath, VueComponent: &meta.IrComponent{Name: "DashboardView", Path: realComponentPath}},
+		&parser.ParserResult{Path: aliasComponentPath, VueComponent: &meta.IrComponent{Name: "DashboardView", Path: aliasComponentPath}},
+	)
+
+	if err := b.persist(buildResult); err != nil {
+		t.Fatalf("persist returned error: %v", err)
+	}
+
+	wantPath := normalizeWebBuilderPath(realComponentPath)
+	if len(mod.Components) != 1 {
+		t.Fatalf("expected one deduplicated component, got %#v", mod.Components)
+	}
+	if mod.Components[0].Path != wantPath {
+		t.Fatalf("expected normalized persisted component path %q, got %q", wantPath, mod.Components[0].Path)
+	}
+
+	var componentRows []*meta.IrComponent
+	if err := testRuntimeScope.db.Where("module_id = ?", mod.Id.String).Find(&componentRows).Error; err != nil {
+		t.Fatalf("query persisted components failed: %v", err)
+	}
+	if len(componentRows) != 1 || componentRows[0].Path != wantPath {
+		t.Fatalf("expected one normalized persisted component row, got %#v", componentRows)
+	}
+}
+
 func TestExtractUiResources_DuplicateWithoutOverrideFails(t *testing.T) {
 	module := &meta.IrModule{Name: "auth"}
 

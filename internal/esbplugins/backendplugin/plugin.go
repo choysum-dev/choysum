@@ -122,8 +122,8 @@ func normalizeBackendPluginModuleSpecPath(path string) string {
 		if normalized == "" {
 			continue
 		}
-		if candidate.trimToDir {
-			normalized = filepath.Dir(normalized)
+		if candidate.trimToDir || filepath.Base(normalized) == "index.ts" {
+			return filepath.Dir(normalized)
 		}
 		normalized = strings.TrimSuffix(normalized, ".ts")
 		normalized = strings.TrimSuffix(normalized, ".vue")
@@ -131,6 +131,10 @@ func normalizeBackendPluginModuleSpecPath(path string) string {
 	}
 
 	fallback := filepath.Clean(trimmed)
+	switch filepath.Base(fallback) {
+	case "index", "index.ts", "index.vue":
+		return filepath.Dir(fallback)
+	}
 	fallback = strings.TrimSuffix(fallback, ".ts")
 	fallback = strings.TrimSuffix(fallback, ".vue")
 	return fallback
@@ -223,6 +227,8 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 		if model == nil {
 			continue
 		}
+
+		model.Path = normalizeBackendPluginPath(model.Path)
 
 		if parserResult.ModelExtendsProperty != nil {
 			moduleSpec, referenceIdent := p.FindModuleSpecAndReferenceIdent(parserResult.ModelExtendsProperty.ModuleSpecPath, parserResult.ModelExtendsProperty.ReferenceIdent)
@@ -420,6 +426,9 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	// 1. Collect external paths
 	var externalPaths []string
 	for _, result := range parserResults {
+		if result.ModelClassNode == nil {
+			continue
+		}
 		if !backendPluginPathWithinRoot(result.Path, moduleAbsPath) {
 			externalPaths = append(externalPaths, result.Path)
 		}
@@ -429,12 +438,16 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	externalAppMap := make(map[string]string)
 	externalModuleAppMap := make(map[string]string)
 	runtimeOptions := p.resolvedRuntimeOptions()
-	modulesPath := strings.TrimSpace(runtimeOptions.modulesPath)
+	normalizedModulesPath := normalizeBackendPluginPath(runtimeOptions.modulesPath)
 	moduleNameFromPath := func(path string) string {
-		if modulesPath == "" {
+		if normalizedModulesPath == "" {
 			return ""
 		}
-		rel, err := filepath.Rel(modulesPath, path)
+		normalizedPath := normalizeBackendPluginPath(path)
+		if normalizedPath == "" {
+			return ""
+		}
+		rel, err := filepath.Rel(normalizedModulesPath, normalizedPath)
 		if err != nil {
 			return ""
 		}
@@ -450,6 +463,11 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	}
 
 	if len(externalPaths) > 0 {
+		var session *scope.Session
+		if p.Env != nil {
+			session = p.Env.Session()
+		}
+
 		queryPathSet := make(map[string]struct{})
 		moduleNameSet := make(map[string]struct{})
 		var queryPaths []string
@@ -485,9 +503,9 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 			}
 		}
 
-		if len(moduleNames) > 0 {
+		if session != nil && len(moduleNames) > 0 {
 			var modules []meta.IrModule
-			if err := p.Env.Session().Where("name IN ?", moduleNames).Find(&modules).Error; err == nil {
+			if err := session.Where("name IN ?", moduleNames).Find(&modules).Error; err == nil {
 				for _, mod := range modules {
 					name := strings.TrimSpace(mod.Name)
 					app := strings.TrimSpace(mod.ApplicationStr)
@@ -498,22 +516,24 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 			}
 		}
 
-		var models []meta.IrModel
-		if err := p.Env.Session().
-			Preload("Module.Application").
-			Where("path IN ?", queryPaths).
-			Find(&models).Error; err != nil {
-			return xfmt.Errorf("failed to batch load external models: %w", err)
-		}
+		if session != nil && len(queryPaths) > 0 && session.Migrator().HasTable(&meta.IrModel{}) {
+			var models []meta.IrModel
+			if err := session.
+				Preload("Module.Application").
+				Where("path IN ?", queryPaths).
+				Find(&models).Error; err != nil {
+				return xfmt.Errorf("failed to batch load external models: %w", err)
+			}
 
-		for _, m := range models {
-			if m.Module != nil && m.Module.Application != nil {
-				appName := m.Module.Application.Name
-				externalAppMap[m.Path] = appName
-				if strings.HasSuffix(m.Path, ".ts") {
-					externalAppMap[strings.TrimSuffix(m.Path, ".ts")] = appName
-				} else {
-					externalAppMap[m.Path+".ts"] = appName
+			for _, m := range models {
+				if m.Module != nil && m.Module.Application != nil {
+					appName := m.Module.Application.Name
+					externalAppMap[m.Path] = appName
+					if strings.HasSuffix(m.Path, ".ts") {
+						externalAppMap[strings.TrimSuffix(m.Path, ".ts")] = appName
+					} else {
+						externalAppMap[m.Path+".ts"] = appName
+					}
 				}
 			}
 		}
