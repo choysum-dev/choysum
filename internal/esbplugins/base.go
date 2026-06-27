@@ -200,11 +200,12 @@ func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Expo
 	if normalizedModuleSpec == "" {
 		return nil
 	}
+	normalizedModuleSpecSlash := filepath.ToSlash(normalizedModuleSpec)
 	for key, exports := range p.TsExports {
 		if key == "" {
 			continue
 		}
-		if p.normalizeModuleSpecPath(key) == normalizedModuleSpec {
+		if filepath.ToSlash(p.normalizeModuleSpecPath(key)) == normalizedModuleSpecSlash {
 			return exports
 		}
 	}

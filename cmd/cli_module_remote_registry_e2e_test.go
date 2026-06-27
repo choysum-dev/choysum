@@ -413,7 +413,7 @@ func TestCLIModuleRemoteRejectsLegacyRegistryURLConfig(t *testing.T) {
 	}
 }
 
-func TestCLIInstallLocalMissingGuidance(t *testing.T) {
+func TestCLIInstallLocalMissingPreservesFallbackCauseWithGuidance(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
@@ -421,8 +421,11 @@ func TestCLIInstallLocalMissingGuidance(t *testing.T) {
 	if code == 0 {
 		t.Fatalf("expected install to fail for missing local module, output=%s", output)
 	}
-	if !strings.Contains(output, "module missing not found in modules path") {
-		t.Fatalf("expected local missing error in output, got %q", output)
+	if !strings.Contains(output, "not found locally and registry fallback failed") {
+		t.Fatalf("expected registry fallback failure to be preserved in output, got %q", output)
+	}
+	if strings.Contains(output, "module missing not found in modules path") {
+		t.Fatalf("expected output not to collapse to local-only missing message, got %q", output)
 	}
 	if !strings.Contains(output, "choysum module fetch <module>@<version>") {
 		t.Fatalf("expected module fetch guidance in output, got %q", output)

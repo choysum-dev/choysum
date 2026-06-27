@@ -189,6 +189,27 @@ func TestFindModuleSpecAndReferenceIdent(t *testing.T) {
 			t.Fatalf("unexpected directory/index.ts export resolution: %q %q", moduleSpec, referenceIdent)
 		}
 	})
+
+	t.Run("resolves exports when separators differ between key and lookup", func(t *testing.T) {
+		if filepath.Separator != '\\' {
+			t.Skip("separator normalization via filepath.ToSlash differs on non-Windows platforms")
+		}
+
+		keySpec := `C:\repo\modules\core\service\orm\decorator`
+		lookupSpec := filepath.ToSlash(keySpec)
+		plugin := &BasePlugin{
+			TsExports: map[string]map[string]*parser.Export{
+				keySpec: {
+					"Model": {ReferenceIdent: "Model", ModuleSpecPath: keySpec},
+				},
+			},
+		}
+
+		moduleSpec, referenceIdent := plugin.FindModuleSpecAndReferenceIdent(lookupSpec, "Model")
+		if moduleSpec != keySpec || referenceIdent != "Model" {
+			t.Fatalf("unexpected separator-normalized export resolution: %q %q", moduleSpec, referenceIdent)
+		}
+	})
 }
 
 func TestGenerateTsExportsMapDirectly(t *testing.T) {
