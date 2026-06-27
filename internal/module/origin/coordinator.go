@@ -316,10 +316,6 @@ func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, 
 		}
 		// When the module is not found locally, fall back to registry resolution.
 		if isModuleNotFoundError(localErr) {
-			if !runtimeOptionsFromScope(c.runtimeScope).moduleInstallRegistryFallbackEnabled {
-				c.logResolveInstallOutcome(parsed, "local", false, localErr)
-				return nil, localErr
-			}
 			mod, registryErr := c.resolveRegistry(ctx, parsed)
 			if registryErr == nil {
 				c.logResolveInstallOutcome(parsed, "registry", true, nil)
