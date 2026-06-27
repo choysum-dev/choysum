@@ -15,7 +15,6 @@ import (
 
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
-	"github.com/choysum-dev/choysum/internal/module/origin"
 	origincontract "github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/state/lease"
 	configpkg "github.com/choysum-dev/choysum/pkg/config"
@@ -488,7 +487,6 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	installTimeout := c.moduleInstallTimeout()
 	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
 	defer cancel()
-	installCtx = origin.WithBootstrapRegistryFallback(installCtx)
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
 		if moduleName == "" {

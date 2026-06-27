@@ -28,11 +28,6 @@ type sourceTestScope struct {
 	cfg *config.Config
 }
 
-type sourceTestScopeWithFactoryInput struct {
-	*sourceTestScope
-	input scope.FactoryInput
-}
-
 func (e *sourceTestScope) Run(fn func(scope.Scope) error) error { return fn(e) }
 func (e *sourceTestScope) Transactor() scope.Transactor {
 	return scopetest.NewPassthroughTransactor(e)
@@ -51,77 +46,6 @@ func (e *sourceTestScope) Config() *config.Config { return e.cfg }
 
 func (e *sourceTestScope) FactoryInput() scope.FactoryInput {
 	return scopetest.FactoryInputFromConfig(e.Config())
-}
-
-func (e *sourceTestScopeWithFactoryInput) FactoryInput() scope.FactoryInput {
-	if e == nil {
-		return nil
-	}
-	if e.input != nil {
-		return e.input
-	}
-	if e.sourceTestScope == nil {
-		return nil
-	}
-	return e.sourceTestScope.FactoryInput()
-}
-
-type fallbackToggleFactoryInput struct {
-	cfg     *config.Config
-	enabled bool
-}
-
-func (i fallbackToggleFactoryInput) Environment() string {
-	if i.cfg == nil || i.cfg.Server == nil {
-		return ""
-	}
-	return i.cfg.Server.Environment
-}
-
-func (i fallbackToggleFactoryInput) ModulesPath() string {
-	if i.cfg == nil {
-		return ""
-	}
-	return i.cfg.ModulesPath
-}
-
-func (i fallbackToggleFactoryInput) DistPath() string {
-	if i.cfg == nil {
-		return ""
-	}
-	return i.cfg.DistPath
-}
-
-func (i fallbackToggleFactoryInput) TmpPath() string {
-	if i.cfg == nil {
-		return ""
-	}
-	return i.cfg.TmpPath
-}
-
-func (i fallbackToggleFactoryInput) DefaultChoysumPath() string {
-	if i.cfg == nil {
-		return ""
-	}
-	return i.cfg.DefaultChoysumPath
-}
-
-func (i fallbackToggleFactoryInput) ConfigPath() string {
-	if i.cfg == nil {
-		return ""
-	}
-	return i.cfg.ConfigPath
-}
-
-func (i fallbackToggleFactoryInput) ModuleCatalogIndexURL() string {
-	if i.cfg == nil {
-		return ""
-	}
-	return i.cfg.ModuleCatalogIndexURL
-}
-
-func (i fallbackToggleFactoryInput) ModuleInstallRegistryFallbackEnabled() bool {
-	return i.enabled
 }
 
 type fakeRegistryProvider struct {
@@ -226,11 +150,10 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:                          modulesPath,
-			ConfigPath:                           filepath.Join(workspaceRoot, "config.yaml"),
-			DefaultChoysumPath:                   t.TempDir(),
-			ModuleCatalogIndexURL:                config.DefaultModuleCatalogIndexURL,
-			ModuleInstallRegistryFallbackEnabled: true,
+			ModulesPath:           modulesPath,
+			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:    t.TempDir(),
+			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
 		},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))
@@ -357,75 +280,6 @@ func TestCoordinatorResolveLocalAndRegistry(t *testing.T) {
 		}
 	})
 
-	t.Run("resolve local name does not fall back when registry fallback is disabled", func(t *testing.T) {
-		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v3")
-		defer catalog.Close()
-		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
-
-		fetchCalls := 0
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
-			fetchCalls++
-			return &meta.IrModule{Name: moduleName, Version: "v3.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
-		}}
-
-		toggleInput := fallbackToggleFactoryInput{
-			cfg:     runtimeScope.cfg,
-			enabled: false,
-		}
-		runtimeScopeNoFallback := &sourceTestScopeWithFactoryInput{sourceTestScope: runtimeScope, input: toggleInput}
-		coordinator := NewCoordinator(runtimeScopeNoFallback, WithLockStore(lockStore), WithRegistryProvider(provider))
-
-		if err := os.RemoveAll(filepath.Join(modulesPath, "auth")); err != nil {
-			t.Fatalf("remove local module dir: %v", err)
-		}
-
-		_, err := coordinator.ResolveInstallModule(context.Background(), "auth")
-		if err == nil || !strings.Contains(err.Error(), "not found in modules path") {
-			t.Fatalf("expected local missing error when fallback disabled, got %v", err)
-		}
-		if fetchCalls != 0 {
-			t.Fatalf("expected 0 registry fetch calls when fallback is disabled, got %d", fetchCalls)
-		}
-	})
-
-	t.Run("resolve local name falls back when bootstrap context override is enabled", func(t *testing.T) {
-		catalog := startCoordinatorCatalogServer(t, "@acme/choysum-auth", "https://registry.npmjs.org", "sha512-catalog-auth-v3")
-		defer catalog.Close()
-		runtimeScope.cfg.ModuleCatalogIndexURL = catalog.URL + "/v1/index.json"
-
-		fetchCalls := 0
-		provider := &fakeRegistryProvider{fetchFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
-			fetchCalls++
-			if version != "v2.0.0" {
-				t.Fatalf("expected bootstrap fallback to request catalog latest version v2.0.0, got %s", version)
-			}
-			return &meta.IrModule{Name: moduleName, Version: "v2.0.0", Path: filepath.Join(modulesPath, moduleName)}, nil
-		}}
-
-		toggleInput := fallbackToggleFactoryInput{
-			cfg:     runtimeScope.cfg,
-			enabled: false,
-		}
-		runtimeScopeNoFallback := &sourceTestScopeWithFactoryInput{sourceTestScope: runtimeScope, input: toggleInput}
-		coordinator := NewCoordinator(runtimeScopeNoFallback, WithLockStore(lockStore), WithRegistryProvider(provider))
-
-		if err := os.RemoveAll(filepath.Join(modulesPath, "auth")); err != nil {
-			t.Fatalf("remove local module dir: %v", err)
-		}
-
-		ctx := WithBootstrapRegistryFallback(context.Background())
-		mod, err := coordinator.ResolveInstallModule(ctx, "auth")
-		if err != nil {
-			t.Fatalf("expected bootstrap context fallback to succeed, got %v", err)
-		}
-		if mod == nil || mod.Version != "v2.0.0" {
-			t.Fatalf("unexpected bootstrap fallback module: %#v", mod)
-		}
-		if fetchCalls != 1 {
-			t.Fatalf("expected 1 registry fetch call when bootstrap context override is enabled, got %d", fetchCalls)
-		}
-	})
-
 	t.Run("resolve registry ref rejects empty catalog npm package", func(t *testing.T) {
 		catalog := startCoordinatorCatalogServer(t, "", "https://registry.npmjs.org", "")
 		defer catalog.Close()
@@ -458,11 +312,10 @@ func TestCoordinatorPurgeEndToEnd(t *testing.T) {
 	runtimeScope := &sourceTestScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
-			ModulesPath:                          modulesPath,
-			ConfigPath:                           filepath.Join(workspaceRoot, "config.yaml"),
-			DefaultChoysumPath:                   t.TempDir(),
-			ModuleCatalogIndexURL:                config.DefaultModuleCatalogIndexURL,
-			ModuleInstallRegistryFallbackEnabled: true,
+			ModulesPath:           modulesPath,
+			ConfigPath:            filepath.Join(workspaceRoot, "config.yaml"),
+			DefaultChoysumPath:    t.TempDir(),
+			ModuleCatalogIndexURL: config.DefaultModuleCatalogIndexURL,
 		},
 	}
 	lockStore := NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))

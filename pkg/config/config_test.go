@@ -561,9 +561,6 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	if cfg.BootstrapModuleInstallTimeoutSeconds != DefaultBootstrapModuleInstallTimeoutSeconds {
 		t.Fatalf("expected bootstrap_module_install_timeout_seconds default %d, got %d", DefaultBootstrapModuleInstallTimeoutSeconds, cfg.BootstrapModuleInstallTimeoutSeconds)
 	}
-	if cfg.ModuleInstallRegistryFallbackEnabled {
-		t.Fatal("expected module_install_registry_fallback_enabled default to be false")
-	}
 }
 
 func TestDefaultConfigUsesEmptyModulesWhenLocalDirMissing(t *testing.T) {
@@ -601,9 +598,6 @@ func TestDefaultConfigUsesEmptyModulesWhenLocalDirMissing(t *testing.T) {
 	}
 	if cfg.BootstrapModuleInstallTimeoutSeconds != DefaultBootstrapModuleInstallTimeoutSeconds {
 		t.Fatalf("expected bootstrap_module_install_timeout_seconds default %d, got %d", DefaultBootstrapModuleInstallTimeoutSeconds, cfg.BootstrapModuleInstallTimeoutSeconds)
-	}
-	if cfg.ModuleInstallRegistryFallbackEnabled {
-		t.Fatal("expected module_install_registry_fallback_enabled default to be false")
 	}
 	if cfg.Log == nil || cfg.Db == nil || cfg.Compile == nil || cfg.Server == nil || cfg.Task == nil {
 		t.Fatalf("expected nested defaults to be initialized: %#v", cfg)

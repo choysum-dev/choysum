@@ -42,10 +42,6 @@ type ModuleCatalogIndexURLInput interface {
 	ModuleCatalogIndexURL() string
 }
 
-type ModuleInstallRegistryFallbackEnabledInput interface {
-	ModuleInstallRegistryFallbackEnabled() bool
-}
-
 type ESMUpstreamURLInput interface {
 	ESMUpstreamURL() string
 }
@@ -125,16 +121,15 @@ type DatabaseInput interface {
 }
 
 type PathsRuntimeOptions struct {
-	ModulesPath                          string
-	DistPath                             string
-	TmpPath                              string
-	DefaultChoysumPath                   string
-	ConfigPath                           string
-	NpmPath                              string
-	NpmRegistryURL                       string
-	ModuleCatalogIndexURL                string
-	ModuleInstallRegistryFallbackEnabled bool
-	ESMUpstreamURL                       string
+	ModulesPath           string
+	DistPath              string
+	TmpPath               string
+	DefaultChoysumPath    string
+	ConfigPath            string
+	NpmPath               string
+	NpmRegistryURL        string
+	ModuleCatalogIndexURL string
+	ESMUpstreamURL        string
 }
 
 type CompileRuntimeOptions struct {
@@ -215,10 +210,9 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 		return PathsRuntimeOptions{}, false
 	}
 	options := PathsRuntimeOptions{
-		ModulesPath:                          pathsInput.ModulesPath(),
-		DistPath:                             pathsInput.DistPath(),
-		TmpPath:                              pathsInput.TmpPath(),
-		ModuleInstallRegistryFallbackEnabled: false,
+		ModulesPath: pathsInput.ModulesPath(),
+		DistPath:    pathsInput.DistPath(),
+		TmpPath:     pathsInput.TmpPath(),
 	}
 	if defaultsInput, ok := input.(PathsDefaultInput); ok {
 		options.DefaultChoysumPath = defaultsInput.DefaultChoysumPath()
@@ -234,9 +228,6 @@ func PathsRuntimeOptionsFromInput(input FactoryInput) (PathsRuntimeOptions, bool
 	}
 	if moduleCatalogIndexURLInput, ok := input.(ModuleCatalogIndexURLInput); ok {
 		options.ModuleCatalogIndexURL = moduleCatalogIndexURLInput.ModuleCatalogIndexURL()
-	}
-	if registryFallbackInput, ok := input.(ModuleInstallRegistryFallbackEnabledInput); ok {
-		options.ModuleInstallRegistryFallbackEnabled = registryFallbackInput.ModuleInstallRegistryFallbackEnabled()
 	}
 	if esmUpstreamInput, ok := input.(ESMUpstreamURLInput); ok {
 		options.ESMUpstreamURL = esmUpstreamInput.ESMUpstreamURL()

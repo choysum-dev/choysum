@@ -18,7 +18,6 @@ type scopeInputConfigOptions struct {
 	ConfigPath                           string
 	NPMRegistryURL                       string
 	ModuleCatalogIndexURL                string
-	ModuleInstallRegistryFallbackEnabled bool
 	BootstrapModuleInstallTimeoutSeconds int
 	ESMUpstreamURL                       string
 	Log                                  *config.LogConfig
@@ -43,7 +42,6 @@ func newScopeInputConfigOptions(snap *snapshot.ConfigSnapshot) *scopeInputConfig
 		ConfigPath:                           snap.ConfigPath,
 		NPMRegistryURL:                       snap.NPMRegistryURL,
 		ModuleCatalogIndexURL:                snap.ModuleCatalogIndexURL,
-		ModuleInstallRegistryFallbackEnabled: snap.ModuleInstallRegistryFallbackEnabled,
 		BootstrapModuleInstallTimeoutSeconds: snap.BootstrapModuleInstallTimeoutSeconds,
 		ESMUpstreamURL:                       snap.ESMUpstreamURL,
 		Log:                                  snap.CopyLogConfig(),
@@ -290,13 +288,6 @@ func (i commandRuntimeScopeInput) ModuleCatalogIndexURL() string {
 		return ""
 	}
 	return i.options.ModuleCatalogIndexURL
-}
-
-func (i commandRuntimeScopeInput) ModuleInstallRegistryFallbackEnabled() bool {
-	if i.options == nil {
-		return true
-	}
-	return i.options.ModuleInstallRegistryFallbackEnabled
 }
 
 func (i commandRuntimeScopeInput) BootstrapModuleInstallTimeoutSeconds() int {
@@ -625,13 +616,6 @@ func (i runRuntimeScopeInput) ModuleCatalogIndexURL() string {
 		return ""
 	}
 	return i.options.ModuleCatalogIndexURL
-}
-
-func (i runRuntimeScopeInput) ModuleInstallRegistryFallbackEnabled() bool {
-	if i.options == nil {
-		return true
-	}
-	return i.options.ModuleInstallRegistryFallbackEnabled
 }
 
 func (i runRuntimeScopeInput) BootstrapModuleInstallTimeoutSeconds() int {
