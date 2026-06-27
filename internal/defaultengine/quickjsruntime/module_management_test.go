@@ -290,6 +290,84 @@ func TestWithModuleManagementProviderUsesExecContextBoundRuntimeScope(t *testing
 	}
 }
 
+func TestWithModuleManagementProvider_ModuleOpDoesNotUseOuterTransaction(t *testing.T) {
+	type ctxKey struct{}
+	runtimeCtx := context.WithValue(context.Background(), ctxKey{}, "runtime")
+	engineName := "module-management-provider-no-tx-test-engine"
+	registerModuleManagementTestJsEngine(engineName)
+	serverCfg := config.NewDefaultServerConfig()
+	serverCfg.JsEngineFactory = engineName
+
+	counting := &moduleIndexCountingTransactor{}
+	baseScope := &moduleIndexTestScope{
+		ctx:        context.Background(),
+		logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:        &config.Config{Server: serverCfg},
+		transactor: counting,
+	}
+	counting.inner = scopetest.NewPassthroughTransactor(baseScope)
+
+	var installCtx context.Context
+	var factoryScope scope.Scope
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.moduleLifecycleFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, _ statepkg.LockerFactory) lifecycle.Service {
+				factoryScope = runtimeScope
+				return moduleManagementTestManager{install: func(ctx context.Context, name string) error {
+					installCtx = ctx
+					if name != "auth" {
+						return errors.New("unexpected module name")
+					}
+					if _, ok := scope.TransactionFromContext(ctx); ok {
+						return errors.New("module operation context should not carry transaction")
+					}
+					return nil
+				}}
+			}
+		}),
+	))
+
+	evalString(t, engine, `(function() {
+		globalThis.$choysum = globalThis.$choysum || {};
+		globalThis.$choysum.__rpc__ = async function(req) {
+			return {
+				id: req.id,
+				result: await $choysum.moduleManagement.install({ moduleName: req.service, withDemo: false }),
+				context: {}
+			};
+		};
+		return "ok";
+	})()`)
+
+	resp, err := engine.Execute(runtimeCtx, &jsengine.JsRequest{Id: "req-no-tx", Service: "auth"})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	result, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected result object, got %#v", resp.Result)
+	}
+	if got, ok := result["ok"].(bool); !ok || !got {
+		t.Fatalf("expected successful module management result, got %#v", result)
+	}
+	if counting.requiredCalls != 0 {
+		t.Fatalf("required transaction calls = %d, want 0", counting.requiredCalls)
+	}
+	if factoryScope == nil {
+		t.Fatal("expected module manager factory to receive a runtime scope")
+	}
+	if _, ok := scope.TransactionFromContext(factoryScope.Context()); ok {
+		t.Fatal("factory scope context should not carry transaction")
+	}
+	if installCtx == nil {
+		t.Fatal("expected install context to be captured")
+	}
+	if _, ok := scope.TransactionFromContext(installCtx); ok {
+		t.Fatal("install context should not carry transaction")
+	}
+}
+
 func TestNormalizeModuleIndexOriginType(t *testing.T) {
 	tests := []struct {
 		name string

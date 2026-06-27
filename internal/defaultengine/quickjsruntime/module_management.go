@@ -218,39 +218,32 @@ func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sco
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 
 	result := moduleOpResult{Ok: false}
-	txRoot := runtimeScope.WithContext(execCtx)
-	err = txRoot.Transactor().Required(execCtx, func(txScope scope.Scope, _ scope.Transaction) error {
-		compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
-		if err != nil {
-			return err
-		}
-		if err := compilerExecutor.Start(); err != nil {
-			return err
-		}
+	opScope := runtimeScope.WithContext(execCtx)
+	if opScope == nil {
+		opScope = runtimeScope
+	}
+
+	compilerExecutor, err := jsexecutor.NewCompilerExecutor(opScope)
+	if err == nil {
+		err = compilerExecutor.Start()
+	}
+	if err == nil {
 		defer compilerExecutor.Stop()
-
-		moduleLifecycle := newModuleLifecycleForModuleManagement(txScope, compilerExecutor, cfg)
-
+		moduleLifecycle := newModuleLifecycleForModuleManagement(opScope, compilerExecutor, cfg)
 		switch action {
 		case "install":
-			if err := moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo}); err != nil {
-				return err
-			}
+			err = moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo})
 		case "uninstall":
-			if err := moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName}); err != nil {
-				return err
-			}
+			err = moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName})
 		case "upgrade":
-			if err := moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo}); err != nil {
-				return err
-			}
+			err = moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo})
 		default:
-			return status.Error(codes.InvalidArgument, "unknown action")
+			err = status.Error(codes.InvalidArgument, "unknown action")
 		}
-
+	}
+	if err == nil {
 		result.Ok = true
-		return nil
-	})
+	}
 
 	if err != nil {
 		info := oerrors.GetErrorInfo(err)
