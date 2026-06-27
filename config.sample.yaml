@@ -6,11 +6,13 @@
 # Common env names:
 #   CHOYSUM_DEFAULT_CHOYSUM_PATH
 #   CHOYSUM_AUTH_INTERNAL_KEY
+#   CHOYSUM_SERVER_ENVIRONMENT
 #   CHOYSUM_DB_DIALECT
 #   CHOYSUM_DB_DSN
 #   CHOYSUM_NPM_REGISTRY_URL
 #   CHOYSUM_ESM_UPSTREAM_URL
 #   CHOYSUM_MODULE_CATALOG_INDEX_URL
+#   CHOYSUM_BOOTSTRAP_MODULE_INSTALL_TIMEOUT_SECONDS
 #   CHOYSUM_COMPILE_MINIFY
 #   CHOYSUM_COMPILE_SOURCEMAP
 #   CHOYSUM_SERVER_HOT_RELOAD
@@ -25,13 +27,19 @@ default_choysum_path: ./.choysum
 # compile:
 #   minify: false
 #   sourcemap: true
+# bootstrap_module_install_timeout_seconds: 600
 # server:
+#   environment: development
 #   hotReload: true
 #   enabledTLS: true
 #   tlsCaFile: /absolute/path/to/.choysum/cert/ca.crt
 #   tlsCertFile: /absolute/path/to/.choysum/cert/server.crt
 #   tlsKeyFile: /absolute/path/to/.choysum/cert/server.key
 # Generate those local TLS files with ./scripts/dev/generate-local-tls-certs.sh.
+# auth:
+#   # Required when server.environment=production.
+#   # In non-production, an in-process random fallback key is generated when omitted.
+#   internalKey: replace-with-strong-secret
 
 # ---- ESM dependency resolution ----
 # The ESM resolver replaces node_modules for bare-import resolution (e.g. import

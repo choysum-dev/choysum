@@ -44,6 +44,16 @@ var configRootOwnerMap = map[string]ConfigRootOwner{
 		PackagePath: "internal/module/origin/registry",
 		OptionsType: "runtimeOptions",
 	},
+	"module_install_registry_fallback_enabled": {
+		Domain:      "module",
+		PackagePath: "internal/module/origin",
+		OptionsType: "runtimeOptions",
+	},
+	"bootstrap_module_install_timeout_seconds": {
+		Domain:      "bootstrap",
+		PackagePath: "internal/bootstrap/service",
+		OptionsType: "coordinator",
+	},
 	"default_choysum_path": {
 		Domain:      "cli",
 		PackagePath: "cmd",

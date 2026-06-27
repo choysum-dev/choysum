@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -16,20 +17,23 @@ import (
 var maxProcs = runtime.GOMAXPROCS(0)
 
 const (
-	DefaultNPMRegistryURL        = "https://registry.npmjs.org"
-	DefaultModuleCatalogIndexURL = "https://index.choysum.dev/v1/index.json"
-	DefaultESMUpstreamURL        = "https://esm.sh"
+	DefaultNPMRegistryURL                       = "https://registry.npmjs.org"
+	DefaultModuleCatalogIndexURL                = "https://index.choysum.dev/v1/index.json"
+	DefaultESMUpstreamURL                       = "https://esm.sh"
+	DefaultBootstrapModuleInstallTimeoutSeconds = int((10 * time.Minute) / time.Second)
 )
 
 type Config struct {
-	ConfigPath            string `mapstructure:"-"`
-	ModulesPath           string `mapstructure:"modules_path"`
-	DistPath              string `mapstructure:"dist_path"`
-	NPMRegistryURL        string `mapstructure:"npm_registry_url"`
-	ModuleCatalogIndexURL string `mapstructure:"module_catalog_index_url"`
-	ESMUpstreamURL        string `mapstructure:"esm_upstream_url"`
-	DefaultChoysumPath    string `mapstructure:"default_choysum_path"`
-	TmpPath               string `mapstructure:"tmp_path"`
+	ConfigPath                           string `mapstructure:"-"`
+	ModulesPath                          string `mapstructure:"modules_path"`
+	DistPath                             string `mapstructure:"dist_path"`
+	NPMRegistryURL                       string `mapstructure:"npm_registry_url"`
+	ModuleCatalogIndexURL                string `mapstructure:"module_catalog_index_url"`
+	ModuleInstallRegistryFallbackEnabled bool   `mapstructure:"module_install_registry_fallback_enabled"`
+	BootstrapModuleInstallTimeoutSeconds int    `mapstructure:"bootstrap_module_install_timeout_seconds"`
+	ESMUpstreamURL                       string `mapstructure:"esm_upstream_url"`
+	DefaultChoysumPath                   string `mapstructure:"default_choysum_path"`
+	TmpPath                              string `mapstructure:"tmp_path"`
 
 	Log         *LogConfig      `mapstructure:"log"`
 	Db          *DbConfig       `mapstructure:"db"`
@@ -103,6 +107,8 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	}
 	applyDocumentViperDefaults(v)
 	applyTaskViperDefaults(v)
+	v.SetDefault("module_install_registry_fallback_enabled", false)
+	v.SetDefault("bootstrap_module_install_timeout_seconds", DefaultBootstrapModuleInstallTimeoutSeconds)
 	if err := bindConfigEnv(v); err != nil {
 		return stageError(LoadStageDecode, err)
 	}
@@ -148,6 +154,9 @@ func (c *Config) unmarshal(configPath string, opts ...Option) error {
 	}
 	if err := ValidateModuleCatalogIndexURL(c.ModuleCatalogIndexURL); err != nil {
 		return stageError(LoadStageValidate, err)
+	}
+	if c.BootstrapModuleInstallTimeoutSeconds <= 0 {
+		c.BootstrapModuleInstallTimeoutSeconds = DefaultBootstrapModuleInstallTimeoutSeconds
 	}
 
 	if err := c.normalizeAndMergeAuthConfig(); err != nil {
@@ -316,21 +325,23 @@ func defaultConfig() *Config {
 	}
 
 	return &Config{
-		ModulesPath:           modulesPath,
-		DistPath:              "",
-		NPMRegistryURL:        DefaultNPMRegistryURL,
-		ModuleCatalogIndexURL: DefaultModuleCatalogIndexURL,
-		ESMUpstreamURL:        DefaultESMUpstreamURL,
-		DefaultChoysumPath:    "",
-		TmpPath:               "",
-		Log:                   NewDefaultLogConfig(),
-		Db:                    NewDefaultDbConfig(),
-		Compile:               NewDefaultCompileConfig(),
-		Server:                NewDefaultServerConfig(),
-		Document:              NewDefaultDocumentConfig(),
-		Task:                  NewDefaultTaskConfig(),
-		FrontendEnv:           make(map[string]any),
-		BackendEnv:            make(map[string]any),
+		ModulesPath:                          modulesPath,
+		DistPath:                             "",
+		NPMRegistryURL:                       DefaultNPMRegistryURL,
+		ModuleCatalogIndexURL:                DefaultModuleCatalogIndexURL,
+		ModuleInstallRegistryFallbackEnabled: false,
+		BootstrapModuleInstallTimeoutSeconds: DefaultBootstrapModuleInstallTimeoutSeconds,
+		ESMUpstreamURL:                       DefaultESMUpstreamURL,
+		DefaultChoysumPath:                   "",
+		TmpPath:                              "",
+		Log:                                  NewDefaultLogConfig(),
+		Db:                                   NewDefaultDbConfig(),
+		Compile:                              NewDefaultCompileConfig(),
+		Server:                               NewDefaultServerConfig(),
+		Document:                             NewDefaultDocumentConfig(),
+		Task:                                 NewDefaultTaskConfig(),
+		FrontendEnv:                          make(map[string]any),
+		BackendEnv:                           make(map[string]any),
 	}
 }
 

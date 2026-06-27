@@ -24,27 +24,67 @@ import (
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type moduleIndexTestScope struct {
-	ctx    context.Context
-	logger *slog.Logger
-	cfg    *config.Config
+	ctx        context.Context
+	logger     *slog.Logger
+	cfg        *config.Config
+	transactor scope.Transactor
 }
 
 func (e *moduleIndexTestScope) Run(fn func(runtimeScope scope.Scope) error) error { return fn(e) }
 func (e *moduleIndexTestScope) Transactor() scope.Transactor {
+	if e.transactor != nil {
+		return e.transactor
+	}
 	return scopetest.NewPassthroughTransactor(e)
 }
 func (e *moduleIndexTestScope) Session() *scope.Session { return nil }
 func (e *moduleIndexTestScope) WithContext(ctx context.Context) scope.Scope {
-	return &moduleIndexTestScope{ctx: ctx, logger: e.logger, cfg: e.cfg}
+	return &moduleIndexTestScope{ctx: ctx, logger: e.logger, cfg: e.cfg, transactor: e.transactor}
 }
 func (e *moduleIndexTestScope) Context() context.Context { return e.ctx }
 func (e *moduleIndexTestScope) Logger() *slog.Logger     { return e.logger }
 func (e *moduleIndexTestScope) Config() *config.Config   { return e.cfg }
 func (e *moduleIndexTestScope) FactoryInput() scope.FactoryInput {
 	return scopetest.FactoryInputFromConfig(e.cfg)
+}
+
+type moduleIndexCountingTransactor struct {
+	inner         scope.Transactor
+	requiredCalls int
+}
+
+func (t *moduleIndexCountingTransactor) Do(ctx context.Context, opts scope.TransactionOptions, fn scope.TxFunc) error {
+	if t.inner == nil {
+		return scope.ErrTransactorUnavailable
+	}
+	return t.inner.Do(ctx, opts, fn)
+}
+
+func (t *moduleIndexCountingTransactor) Required(ctx context.Context, fn scope.TxFunc) error {
+	t.requiredCalls++
+	if t.inner == nil {
+		return scope.ErrTransactorUnavailable
+	}
+	return t.inner.Required(ctx, fn)
+}
+
+func (t *moduleIndexCountingTransactor) RequiresNew(ctx context.Context, fn scope.TxFunc) error {
+	if t.inner == nil {
+		return scope.ErrTransactorUnavailable
+	}
+	return t.inner.RequiresNew(ctx, fn)
+}
+
+func (t *moduleIndexCountingTransactor) Nested(ctx context.Context, fn scope.TxFunc) error {
+	if t.inner == nil {
+		return scope.ErrTransactorUnavailable
+	}
+	return t.inner.Nested(ctx, fn)
 }
 
 type moduleManagementTestManager struct {
@@ -256,9 +296,11 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 		in   string
 		want string
 	}{
+		{name: "empty defaults all", in: "", want: "all"},
+		{name: "all", in: "all", want: "all"},
 		{name: "registry", in: "registry", want: "registry"},
 		{name: "trimmed uppercase local", in: "  LOCAL ", want: "local"},
-		{name: "unsupported fallback", in: "remote", want: "local"},
+		{name: "unsupported invalid", in: "remote", want: ""},
 	}
 
 	for _, tt := range tests {
@@ -267,6 +309,120 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 				t.Fatalf("normalizeModuleIndexOriginType(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRunModuleIndexSyncAllDoesNotWrapOriginsInOuterTransactions(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &moduleIndexCountingTransactor{inner: scopetest.NewPassthroughTransactor(runtimeScope)}
+	runtimeScope.transactor = counting
+
+	called := make([]string, 0, 2)
+	result, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+		called = append(called, originType)
+		if originType == "registry" {
+			return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, errors.New("registry unavailable")
+		}
+		return lifecycle.ModuleIndexSyncStats{Total: 2, Success: 2, Failed: 0}, nil
+	})
+	if err != nil {
+		t.Fatalf("runModuleIndexSync(all) error = %v", err)
+	}
+	if counting.requiredCalls != 0 {
+		t.Fatalf("required transaction calls = %d, want 0", counting.requiredCalls)
+	}
+	if !reflect.DeepEqual(called, []string{"registry", "local"}) {
+		t.Fatalf("origin call order = %#v, want [registry local]", called)
+	}
+	if !result.Ok {
+		t.Fatalf("result.Ok = false, want true; result = %#v", result)
+	}
+	if result.Total != 3 || result.Success != 2 || result.Failed != 1 {
+		t.Fatalf("unexpected stats result = %#v", result)
+	}
+	if !strings.Contains(result.Error, "registry") {
+		t.Fatalf("expected partial error to mention registry, got %q", result.Error)
+	}
+}
+
+func TestRunModuleIndexSyncSingleOriginDoesNotUseOuterTransaction(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	counting := &moduleIndexCountingTransactor{inner: scopetest.NewPassthroughTransactor(runtimeScope)}
+	runtimeScope.transactor = counting
+
+	result, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+		if originType != "local" {
+			t.Fatalf("originType = %q, want local", originType)
+		}
+		return lifecycle.ModuleIndexSyncStats{Total: 5, Success: 4, Failed: 1}, nil
+	})
+	if err != nil {
+		t.Fatalf("runModuleIndexSync(local) error = %v", err)
+	}
+	if counting.requiredCalls != 0 {
+		t.Fatalf("required transaction calls = %d, want 0", counting.requiredCalls)
+	}
+	if !result.Ok || result.Total != 5 || result.Success != 4 || result.Failed != 1 {
+		t.Fatalf("unexpected result = %#v", result)
+	}
+}
+
+func TestRunModuleIndexSyncPassesScopeContextToRunner(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
+
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "local", func(runCtx context.Context, runScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+		if originType != "local" {
+			t.Fatalf("originType = %q, want local", originType)
+		}
+		if runCtx == nil {
+			t.Fatal("runner context should not be nil")
+		}
+		if runCtx != runScope.Context() {
+			t.Fatal("runner context should match scope context")
+		}
+		if _, ok := scope.TransactionFromContext(runCtx); ok {
+			t.Fatal("runner context should not carry transaction")
+		}
+		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 1, Failed: 0}, nil
+	})
+	if err != nil {
+		t.Fatalf("runModuleIndexSync(local) error = %v", err)
+	}
+}
+
+func TestRunModuleIndexSyncAllPreservesCancellationError(t *testing.T) {
+	runtimeScope := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:    &config.Config{ModulesPath: t.TempDir()},
+	}
+	runtimeScope.transactor = scopetest.NewPassthroughTransactor(runtimeScope)
+
+	_, err := runModuleIndexSync(context.Background(), runtimeScope, "all", func(_ context.Context, _ scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error) {
+		if originType == "registry" {
+			return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Canceled, "sync canceled")
+		}
+		return lifecycle.ModuleIndexSyncStats{Total: 1, Success: 0, Failed: 1}, status.Error(codes.Unavailable, "sync failed")
+	})
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+	st, ok := status.FromError(err)
+	if !ok || st.Code() != codes.Canceled {
+		t.Fatalf("expected canceled status, got %v", err)
 	}
 }
 

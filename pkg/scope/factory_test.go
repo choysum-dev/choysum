@@ -36,6 +36,11 @@ type factoryTestInput struct {
 	cfg         *config.Config
 }
 
+type factoryTestInputWithFallback struct {
+	factoryTestInput
+	fallbackEnabled bool
+}
+
 func (i factoryTestInput) Environment() string {
 	return i.environment
 }
@@ -74,6 +79,10 @@ func (i factoryTestInput) ModuleCatalogIndexURL() string {
 		return ""
 	}
 	return i.cfg.ModuleCatalogIndexURL
+}
+
+func (i factoryTestInputWithFallback) ModuleInstallRegistryFallbackEnabled() bool {
+	return i.fallbackEnabled
 }
 
 func (i factoryTestInput) CompileBundleMode() string {
@@ -393,5 +402,30 @@ func TestPathsRuntimeOptionsFromInputUsesPathsInputValues(t *testing.T) {
 	}
 	if options.ModuleCatalogIndexURL != cfg.ModuleCatalogIndexURL {
 		t.Fatalf("ModuleCatalogIndexURL = %q, want %q", options.ModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
+	}
+	if options.ModuleInstallRegistryFallbackEnabled {
+		t.Fatalf("ModuleInstallRegistryFallbackEnabled = true, want false")
+	}
+}
+
+func TestPathsRuntimeOptionsFromInputUsesRegistryFallbackOverride(t *testing.T) {
+	cfg := &config.Config{
+		ModulesPath:           "/tmp/modules",
+		DistPath:              "/tmp/dist",
+		TmpPath:               "/tmp/tmp",
+		ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json",
+	}
+
+	input := factoryTestInputWithFallback{
+		factoryTestInput: factoryTestInput{cfg: cfg},
+		fallbackEnabled:  true,
+	}
+
+	options, ok := PathsRuntimeOptionsFromInput(input)
+	if !ok {
+		t.Fatal("PathsRuntimeOptionsFromInput() ok = false, want true")
+	}
+	if !options.ModuleInstallRegistryFallbackEnabled {
+		t.Fatal("ModuleInstallRegistryFallbackEnabled = false, want true")
 	}
 }

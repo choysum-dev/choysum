@@ -33,11 +33,13 @@ SPDX-License-Identifier: Apache-2.0
 
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
     <OVarCharField prop="ModuleName" label="模块名" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="Version" label="版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="LocalVersion" label="本地版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="RegistryVersion" label="仓库版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="Version" label="展示版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <OVarCharField prop="InstalledStatus" label="安装状态" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <OVarCharField prop="InstalledVersion" label="已装版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <OBooleanField prop="Available" label="可用" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <OVarCharField prop="OriginType" label="来源" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="OriginTypes" label="来源" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <OVarCharField prop="LocalPath" label="路径" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <ODateTimeField prop="LastSyncAt" label="同步时间" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
@@ -97,10 +99,10 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ originType: 'local', force: true, ifStale: false });
-    ElMessage.success(jobId ? `已触发同步任务：${jobId}` : '已触发同步任务');
+    const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
+    ElMessage.success(jobId ? `已触发同步任务：all:${jobId}` : '已触发同步任务');
   } catch (error: any) {
-    ElMessage.error(error?.message || '触发同步失败');
+    ElMessage.warning(`同步失败：${error?.message || 'request failed'}`);
   } finally {
     syncLoading.value = false;
   }

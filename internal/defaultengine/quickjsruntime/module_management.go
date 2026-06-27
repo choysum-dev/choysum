@@ -6,6 +6,7 @@ package quickjsruntime
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -54,6 +55,8 @@ type moduleIndexSyncResult struct {
 	DurationMs int64  `json:"durationMs"`
 	Error      string `json:"error,omitempty"`
 }
+
+type moduleIndexSyncRunner func(ctx context.Context, runtimeScope scope.Scope, originType string) (lifecycle.ModuleIndexSyncStats, error)
 
 // ModuleManagementOption configures the QuickJS module-management runtime plugin.
 type ModuleManagementOption interface {
@@ -287,8 +290,14 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 		return ctx.ThrowError(err)
 	}
 	originType := normalizeModuleIndexOriginType(params.OriginType)
-	if originType != "local" {
-		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType is not supported yet"))
+	switch originType {
+	case "local":
+	case "registry":
+		// implemented in syncModuleIndexRegistry below
+	case "all":
+		// sequentially sync registry and local in a single backend request
+	default:
+		return ctx.ThrowError(status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all"))
 	}
 
 	execCtx := jse.ExecContext()
@@ -298,19 +307,15 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 
 	start := time.Now()
-	result := moduleIndexSyncResult{Ok: false, OriginType: originType}
-
-	txRoot := runtimeScope.WithContext(execCtx)
-	err = txRoot.Transactor().Required(execCtx, func(txScope scope.Scope, _ scope.Transaction) error {
-		stats, err := syncModuleIndexLocal(execCtx, txScope, cfg.lockerFactory)
-		if err != nil {
-			return err
+	result, err := runModuleIndexSync(execCtx, runtimeScope, originType, func(runCtx context.Context, txScope scope.Scope, target string) (lifecycle.ModuleIndexSyncStats, error) {
+		switch target {
+		case "local":
+			return syncModuleIndexLocal(runCtx, txScope, cfg.lockerFactory)
+		case "registry":
+			return syncModuleIndexRegistry(runCtx, txScope, cfg.lockerFactory)
+		default:
+			return lifecycle.ModuleIndexSyncStats{}, status.Error(codes.InvalidArgument, "originType must be one of: local, registry, all")
 		}
-		result.Total = stats.Total
-		result.Success = stats.Success
-		result.Failed = stats.Failed
-		result.Ok = true
-		return nil
 	})
 
 	result.DurationMs = time.Since(start).Milliseconds()
@@ -367,12 +372,99 @@ func parseModuleIndexSyncParams(args []*quickjs.Value) (moduleIndexSyncParams, e
 
 func normalizeModuleIndexOriginType(raw string) string {
 	value := strings.TrimSpace(strings.ToLower(raw))
+	if value == "" {
+		return "all"
+	}
+	if value == "local" {
+		return "local"
+	}
 	if value == "registry" {
 		return "registry"
 	}
-	return "local"
+	if value == "all" {
+		return "all"
+	}
+	return ""
+}
+
+func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originType string, runner moduleIndexSyncRunner) (moduleIndexSyncResult, error) {
+	result := moduleIndexSyncResult{Ok: false, OriginType: originType}
+	if runtimeScope == nil {
+		return result, status.Error(codes.Internal, "runtime scope is nil")
+	}
+	if runner == nil {
+		return result, status.Error(codes.Internal, "module index sync runner is nil")
+	}
+
+	runOrigin := func(target string) (lifecycle.ModuleIndexSyncStats, error) {
+		runnerScope := runtimeScope.WithContext(ctx)
+		if runnerScope == nil {
+			runnerScope = runtimeScope
+		}
+		runnerCtx := runnerScope.Context()
+		if runnerCtx == nil {
+			runnerCtx = ctx
+		}
+		return runner(runnerCtx, runnerScope, target)
+	}
+
+	if originType == "all" {
+		partialErrors := make([]string, 0, 2)
+		successfulOrigins := 0
+		for _, target := range []string{"registry", "local"} {
+			stats, syncErr := runOrigin(target)
+			result.Total += stats.Total
+			result.Success += stats.Success
+			result.Failed += stats.Failed
+			if syncErr != nil {
+				if isCancellationOrDeadlineError(syncErr) {
+					return result, syncErr
+				}
+				partialErrors = append(partialErrors, target+": "+syncErr.Error())
+				continue
+			}
+			successfulOrigins++
+		}
+
+		if successfulOrigins == 0 {
+			return result, status.Error(codes.Unavailable, "module index sync failed for all origins: "+strings.Join(partialErrors, "; "))
+		}
+		result.Ok = true
+		if len(partialErrors) > 0 {
+			result.Error = strings.Join(partialErrors, "; ")
+		}
+		return result, nil
+	}
+
+	stats, syncErr := runOrigin(originType)
+	if syncErr != nil {
+		return result, syncErr
+	}
+	result.Total = stats.Total
+	result.Success = stats.Success
+	result.Failed = stats.Failed
+	result.Ok = true
+	return result, nil
+}
+
+func isCancellationOrDeadlineError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	return st.Code() == codes.Canceled || st.Code() == codes.DeadlineExceeded
 }
 
 func syncModuleIndexLocal(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {
 	return lifecycle.SyncLocalModuleIndex(ctx, runtimeScope, lockerFactory)
+}
+
+func syncModuleIndexRegistry(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleIndexSyncStats, error) {
+	return lifecycle.SyncRegistryModuleIndex(ctx, runtimeScope, lockerFactory)
 }

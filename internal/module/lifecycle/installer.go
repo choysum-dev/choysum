@@ -197,8 +197,8 @@ func (m *moduleInstaller) install() error {
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
-		if err := ensureModuleIndexDailySchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error ensuring module index schedule: %w", err)
+		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
+			return xfmt.Errorf("error disabling legacy module index schedule: %w", err)
 		}
 	}
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
@@ -273,6 +273,17 @@ func ensureModuleIndexDailySchedule(runtimeScope scope.Scope) error {
 		"updated_at":            time.Now().UTC(),
 	}
 	return db.Model(&task.Schedule{}).Where("id = ?", existing.Id).Updates(updates).Error
+}
+
+func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
+	db, err := installerScheduleDB(runtimeScope)
+	if err != nil {
+		return err
+	}
+	if !db.Migrator().HasTable((&task.Schedule{}).TableName()) {
+		return nil
+	}
+	return db.Where("name = ?", "meta.module_index.daily_sync").Delete(&task.Schedule{}).Error
 }
 
 func ensureDocumentAttachmentGCSchedule(runtimeScope scope.Scope) error {

@@ -48,7 +48,7 @@ func rebuildScopeWithRuntimeLogLevel(runtimeScope scope.Scope, level string, com
 	}
 	logCfg := cloneCommandLogConfig(scope.LogConfigFromScope(runtimeScope))
 	logCfg.Level = normalizedLevel
-	rebuiltScope := scope.NewScope(runtimeScope.Context(), factoryInput, logger.NewLoggerWithWriter(logCfg, os.Stderr))
+	rebuiltScope := rebuildCommandRuntimeScope(runtimeScope, factoryInput, logger.NewLoggerWithWriter(logCfg, os.Stderr))
 	if rebuiltScope == nil {
 		return nil, xfmt.Errorf("failed to initialize scope for runtime log level")
 	}

@@ -5,10 +5,17 @@ package registry
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,6 +40,11 @@ type SourceRegistryProvider struct {
 	runtimeScope scope.Scope
 	client       *http.Client
 }
+
+const (
+	maxTarballSizeBytes int64  = 512 << 20
+	maxTarballSizeLabel string = "512 MiB"
+)
 
 type ProviderOption func(*SourceRegistryProvider)
 
@@ -192,11 +204,11 @@ func (p *SourceRegistryProvider) fetchPackageMetadata(ctx context.Context, regis
 	}
 	resp, err := p.httpGet(ctx, metadataURL)
 	if err != nil {
-		return nil, "", xfmt.Errorf("get npm metadata: %w", err)
+		return nil, "", xfmt.Errorf("get npm metadata network error (%s): %w", classifyTransportError(err), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", xfmt.Errorf("error getting npm metadata url: %s status code: %d", metadataURL, resp.StatusCode)
+		return nil, "", xfmt.Errorf("error getting npm metadata url: %s status code: %d (http)", metadataURL, resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -322,6 +334,16 @@ type packageInspection struct {
 	module      *meta.IrModule
 	downloadURL string
 	integrity   string
+}
+
+type tarballIntegrityDigest struct {
+	algorithm string
+	expected  []byte
+}
+
+type tarballIntegritySums struct {
+	sha256 []byte
+	sha512 []byte
 }
 
 func (p *SourceRegistryProvider) inspectRegistryPackage(ctx context.Context, registryURL, moduleName, packageName, version string) (*packageInspection, error) {
@@ -459,16 +481,190 @@ func (p *SourceRegistryProvider) extractTarballToDir(ctx context.Context, downlo
 	if err := validateTarballURL(downloadURL); err != nil {
 		return err
 	}
+	tmpFile, err := os.CreateTemp("", "choysum-source-tarball-*.tgz")
+	if err != nil {
+		return xfmt.Errorf("create temp tarball file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer os.Remove(tmpPath)
+	if err := tmpFile.Close(); err != nil {
+		return xfmt.Errorf("close temp tarball file: %w", err)
+	}
+
+	if _, err := p.downloadTarballToFile(ctx, downloadURL, tmpPath); err != nil {
+		return err
+	}
+	tarballFile, err := os.Open(tmpPath)
+	if err != nil {
+		return xfmt.Errorf("open downloaded tarball file: %w", err)
+	}
+	defer tarballFile.Close()
+
+	return extractTarballFromReader(tarballFile, targetDir)
+}
+
+// downloadTarballToFile performs an HTTP GET, streams the response body into
+// targetPath, and computes sha256/sha512 digests along the way.
+func (p *SourceRegistryProvider) downloadTarballToFile(ctx context.Context, downloadURL, targetPath string) (sums *tarballIntegritySums, err error) {
+	if err := validateTarballURL(downloadURL); err != nil {
+		return nil, err
+	}
 	resp, err := p.httpGet(ctx, downloadURL)
 	if err != nil {
-		return xfmt.Errorf("download tarball: %w", err)
+		return nil, xfmt.Errorf("download tarball network error (%s): %w", classifyTransportError(err), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return xfmt.Errorf("unexpected HTTP status %s", resp.Status)
+		return nil, xfmt.Errorf("download tarball http error (status=%d): unexpected HTTP status %s", resp.StatusCode, resp.Status)
 	}
 
-	gr, err := gzip.NewReader(resp.Body)
+	outFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	if err != nil {
+		return nil, xfmt.Errorf("create tarball file: %w", err)
+	}
+	defer func() {
+		if outFile == nil {
+			return
+		}
+		if closeErr := outFile.Close(); closeErr != nil && err == nil {
+			err = xfmt.Errorf("close tarball file: %w", closeErr)
+		}
+	}()
+	if resp.ContentLength > maxTarballSizeBytes {
+		return nil, xfmt.Errorf("tarball size exceeds maximum limit of %s", maxTarballSizeLabel)
+	}
+
+	sha256Hasher := sha256.New()
+	sha512Hasher := sha512.New()
+	writer := io.MultiWriter(outFile, sha256Hasher, sha512Hasher)
+	copied, copyErr := io.Copy(writer, io.LimitReader(resp.Body, maxTarballSizeBytes+1))
+	if copyErr != nil {
+		return nil, xfmt.Errorf("read tarball body: %w", copyErr)
+	}
+	if copied > maxTarballSizeBytes {
+		return nil, xfmt.Errorf("tarball size exceeds maximum limit of %s", maxTarballSizeLabel)
+	}
+	if err = outFile.Sync(); err != nil {
+		return nil, xfmt.Errorf("flush tarball file: %w", err)
+	}
+
+	sums = &tarballIntegritySums{
+		sha256: sha256Hasher.Sum(nil),
+		sha512: sha512Hasher.Sum(nil),
+	}
+	return sums, nil
+}
+
+func classifyTransportError(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) && urlErr.Err != nil {
+		err = urlErr.Err
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return "dns"
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		if netErr.Timeout() {
+			return "timeout"
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "tls"):
+		return "tls"
+	case strings.Contains(msg, "no such host"):
+		return "dns"
+	case strings.Contains(msg, "timeout"), strings.Contains(msg, "deadline exceeded"):
+		return "timeout"
+	case strings.Contains(msg, "connection refused"), strings.Contains(msg, "connection reset"), strings.Contains(msg, "network is unreachable"):
+		return "connection"
+	default:
+		return "network"
+	}
+}
+
+func parseTarballIntegrityDigests(integrity string) ([]tarballIntegrityDigest, error) {
+	integrity = strings.TrimSpace(integrity)
+	if integrity == "" {
+		return nil, nil
+	}
+	tokens := strings.Fields(integrity)
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("invalid integrity format")
+	}
+
+	digests := make([]tarballIntegrityDigest, 0, len(tokens))
+	for _, token := range tokens {
+		algorithm, encoded, found := strings.Cut(strings.TrimSpace(token), "-")
+		if !found || algorithm == "" || encoded == "" {
+			return nil, fmt.Errorf("invalid integrity format")
+		}
+		expected, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("invalid integrity encoding: %w", err)
+		}
+		digests = append(digests, tarballIntegrityDigest{algorithm: strings.ToLower(algorithm), expected: expected})
+	}
+	return digests, nil
+}
+
+func verifyTarballIntegritySums(sums *tarballIntegritySums, integrity string) error {
+	if sums == nil {
+		return fmt.Errorf("missing tarball digest")
+	}
+	digests, err := parseTarballIntegrityDigests(integrity)
+	if err != nil {
+		return err
+	}
+	if len(digests) == 0 {
+		return nil
+	}
+
+	supportedDigests := 0
+	for _, digest := range digests {
+		var actual []byte
+		switch digest.algorithm {
+		case "sha512":
+			actual = sums.sha512
+		case "sha256":
+			actual = sums.sha256
+		default:
+			continue
+		}
+		supportedDigests++
+		if bytes.Equal(actual, digest.expected) {
+			return nil
+		}
+	}
+
+	if supportedDigests == 0 {
+		return fmt.Errorf("unsupported integrity algorithm")
+	}
+	return fmt.Errorf("integrity mismatch")
+}
+
+// verifyTarballIntegrity checks the downloaded bytes against an npm integrity
+// string (e.g. "sha512-<base64>" or "sha256-<base64>").
+// Multiple digests separated by whitespace are treated as alternatives and
+// verification succeeds when any supported digest matches.
+// Invalid integrity metadata is treated as an error.
+func verifyTarballIntegrity(data []byte, integrity string) error {
+	sha256Digest := sha256.Sum256(data)
+	sha512Digest := sha512.Sum512(data)
+	return verifyTarballIntegritySums(&tarballIntegritySums{
+		sha256: append([]byte(nil), sha256Digest[:]...),
+		sha512: append([]byte(nil), sha512Digest[:]...),
+	}, integrity)
+}
+
+// extractTarballFromReader extracts a tar.gz stream from r into targetDir.
+func extractTarballFromReader(r io.Reader, targetDir string) error {
+	gr, err := gzip.NewReader(r)
 	if err != nil {
 		return xfmt.Errorf("gzip reader: %w", err)
 	}
@@ -570,8 +766,26 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, xfmt.Errorf("create temp dir failed: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
+	tarballPath := filepath.Join(tmpDir, "__choysum_download.tar.gz")
 
-	if err := p.extractTarballToDir(ctx, inspection.downloadURL, tmpDir); err != nil {
+	contract.ReportFetchProgress(ctx, contract.FetchProgressStageDownload, moduleName)
+	downloadedSums, err := p.downloadTarballToFile(ctx, inspection.downloadURL, tarballPath)
+	if err != nil {
+		return nil, err
+	}
+
+	contract.ReportFetchProgress(ctx, contract.FetchProgressStageVerify, moduleName)
+	if err := verifyTarballIntegritySums(downloadedSums, inspection.integrity); err != nil {
+		return nil, xfmt.Errorf("tarball integrity check failed: %w", err)
+	}
+
+	contract.ReportFetchProgress(ctx, contract.FetchProgressStageExtract, moduleName)
+	tarballFile, err := os.Open(tarballPath)
+	if err != nil {
+		return nil, xfmt.Errorf("open downloaded tarball file: %w", err)
+	}
+	defer tarballFile.Close()
+	if err := extractTarballFromReader(tarballFile, tmpDir); err != nil {
 		return nil, err
 	}
 

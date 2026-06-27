@@ -12,14 +12,15 @@ import (
 )
 
 const (
-	bootstrapErrCodeGateError         = "BOOTSTRAP_GATE_ERROR"
-	bootstrapErrCodeConflict          = "BOOTSTRAP_CONFLICT"
-	bootstrapErrCodeInputInvalid      = "BOOTSTRAP_INPUT_INVALID"
-	bootstrapErrCodeWorkspaceNotFresh = "BOOTSTRAP_WORKSPACE_NOT_FRESH"
-	bootstrapErrCodeRuntimePrepare    = "BOOTSTRAP_RUNTIME_PREPARE_FAILED"
-	bootstrapErrCodeAdminUpdateFailed = "BOOTSTRAP_ADMIN_UPDATE_FAILED"
-	bootstrapErrCodeRuntimeNotReady   = "BOOTSTRAP_RUNTIME_NOT_READY"
-	bootstrapErrCodeSwitchFailed      = "BOOTSTRAP_SWITCH_FAILED"
+	bootstrapErrCodeGateError            = "BOOTSTRAP_GATE_ERROR"
+	bootstrapErrCodeConflict             = "BOOTSTRAP_CONFLICT"
+	bootstrapErrCodeInputInvalid         = "BOOTSTRAP_INPUT_INVALID"
+	bootstrapErrCodeWorkspaceNotFresh    = "BOOTSTRAP_WORKSPACE_NOT_FRESH"
+	bootstrapErrCodeRuntimePrepare       = "BOOTSTRAP_RUNTIME_PREPARE_FAILED"
+	bootstrapErrCodeAdminUpdateFailed    = "BOOTSTRAP_ADMIN_UPDATE_FAILED"
+	bootstrapErrCodeRuntimeNotReady      = "BOOTSTRAP_RUNTIME_NOT_READY"
+	bootstrapErrCodeSwitchFailed         = "BOOTSTRAP_SWITCH_FAILED"
+	bootstrapErrCodeModuleInstallTimeout = "BOOTSTRAP_MODULE_INSTALL_TIMEOUT"
 )
 
 type bootstrapError struct {
@@ -94,7 +95,7 @@ func mapBootstrapCodeToGRPCCode(code string) codes.Code {
 		return codes.InvalidArgument
 	case bootstrapErrCodeConflict:
 		return codes.Aborted
-	case bootstrapErrCodeWorkspaceNotFresh, bootstrapErrCodeRuntimePrepare, bootstrapErrCodeRuntimeNotReady:
+	case bootstrapErrCodeWorkspaceNotFresh, bootstrapErrCodeRuntimePrepare, bootstrapErrCodeRuntimeNotReady, bootstrapErrCodeModuleInstallTimeout:
 		return codes.FailedPrecondition
 	case bootstrapErrCodeSwitchFailed:
 		return codes.Unavailable

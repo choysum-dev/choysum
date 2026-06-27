@@ -49,7 +49,7 @@ func TestCoordinatorStartInitializationSuccess(t *testing.T) {
 			callOrder = append(callOrder, "freshness")
 			return nil
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			if got, ok := modulestaging.OpIDFromContext(ctx); ok {
 				installOpID = got
 			}
@@ -255,7 +255,7 @@ func TestCoordinatorStartInitializationRejectsNonFreshBeforeInstallAndAdmin(t *t
 			_ = ctx
 			return newBootstrapError(bootstrapErrCodeWorkspaceNotFresh, "workspace is not fresh", nil)
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			_ = ctx
 			installCalls++
 			return nil
@@ -417,7 +417,7 @@ func TestCoordinatorStartInitializationSkipsAdminWhenRuntimeNotReady(t *testing.
 			_ = ctx
 			return nil
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			_ = ctx
 			installCalls++
 			return nil
@@ -479,6 +479,33 @@ func TestCoordinatorStartInitializationSkipsAdminWhenRuntimeNotReady(t *testing.
 	}
 	if !released {
 		t.Fatal("expected lease release to be called")
+	}
+}
+
+func TestCoordinatorModuleInstallTimeoutDefaultsToConstant(t *testing.T) {
+	t.Parallel()
+
+	c := &coordinator{}
+	if got := c.moduleInstallTimeout(); got != bootstrapModuleInstallTimeout {
+		t.Fatalf("moduleInstallTimeout() = %v, want %v", got, bootstrapModuleInstallTimeout)
+	}
+}
+
+func TestCoordinatorModuleInstallTimeoutUsesRuntimeOverride(t *testing.T) {
+	t.Parallel()
+
+	c := &coordinator{runtimeScope: &freshnessTestScope{config: &config.Config{BootstrapModuleInstallTimeoutSeconds: 42}}}
+	if got := c.moduleInstallTimeout(); got != 42*time.Second {
+		t.Fatalf("moduleInstallTimeout() = %v, want %v", got, 42*time.Second)
+	}
+}
+
+func TestCoordinatorModuleInstallTimeoutIgnoresNonPositiveOverride(t *testing.T) {
+	t.Parallel()
+
+	c := &coordinator{runtimeScope: &freshnessTestScope{config: &config.Config{BootstrapModuleInstallTimeoutSeconds: -1}}}
+	if got := c.moduleInstallTimeout(); got != bootstrapModuleInstallTimeout {
+		t.Fatalf("moduleInstallTimeout() = %v, want %v", got, bootstrapModuleInstallTimeout)
 	}
 }
 

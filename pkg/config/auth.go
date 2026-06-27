@@ -44,7 +44,11 @@ func (c *Config) normalizeAndMergeAuthConfig() error {
 	if c == nil {
 		return xfmt.Errorf("config is required")
 	}
-	merged, err := authoptions.NormalizeAndMergeAuthConfig(c.Auth, c.DefaultChoysumPath)
+	serverEnvironment := ""
+	if c.Server != nil {
+		serverEnvironment = c.Server.Environment
+	}
+	merged, err := authoptions.NormalizeAndMergeAuthConfig(c.Auth, c.DefaultChoysumPath, serverEnvironment)
 	if err != nil {
 		return err
 	}

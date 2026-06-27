@@ -132,7 +132,7 @@ func performQuery(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, arg
 	}
 
 	var results []map[string]interface{}
-	const maxDeadlockRetries = 3
+	maxDeadlockRetries := maxDeadlockRetriesForDialect(dialect)
 	for attempt := 0; attempt < maxDeadlockRetries; attempt++ {
 		err := session.Raw(sql, params...).Scan(&results).Error
 		if err == nil {
@@ -142,9 +142,12 @@ func performQuery(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, arg
 			logger.Error("db query failed", "error", err)
 			return ctx.ThrowError(err)
 		}
-		sleep := time.Duration(80*(attempt+1)) * time.Millisecond
+		sleep := deadlockRetrySleep(dialect, attempt)
 		logger.Warn("db query deadlock retry", "error", err, "attempt", attempt+1, "sleep", sleep)
-		time.Sleep(sleep)
+		if waitErr := waitForDeadlockRetry(session, sleep); waitErr != nil {
+			logger.Warn("db query deadlock retry canceled", "error", waitErr, "attempt", attempt+1)
+			return ctx.ThrowError(waitErr)
+		}
 	}
 
 	jsonData, err := json.Marshal(results)
@@ -193,7 +196,7 @@ func performExecute(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, a
 	}
 
 	var rowsAffected int64
-	const maxDeadlockRetries = 3
+	maxDeadlockRetries := maxDeadlockRetriesForDialect(dialect)
 	for attempt := 0; attempt < maxDeadlockRetries; attempt++ {
 		tx := session.Exec(sql, params...)
 		if tx.Error == nil {
@@ -204,9 +207,12 @@ func performExecute(ctx *quickjs.Context, engine *quickjsengine.QuickjsEngine, a
 			logger.Error("db execute failed", "error", tx.Error)
 			return ctx.ThrowError(tx.Error)
 		}
-		sleep := time.Duration(80*(attempt+1)) * time.Millisecond
+		sleep := deadlockRetrySleep(dialect, attempt)
 		logger.Warn("db execute deadlock retry", "error", tx.Error, "attempt", attempt+1, "sleep", sleep)
-		time.Sleep(sleep)
+		if waitErr := waitForDeadlockRetry(session, sleep); waitErr != nil {
+			logger.Warn("db execute deadlock retry canceled", "error", waitErr, "attempt", attempt+1)
+			return ctx.ThrowError(waitErr)
+		}
 	}
 
 	jsonData, err := json.Marshal(map[string]interface{}{"LastInsertId": nil, "RowsAffected": rowsAffected})
@@ -256,6 +262,41 @@ func isDeadlockErr(err error, dialect string) bool {
 			strings.Contains(message, "locking protocol")
 	default:
 		return false
+	}
+}
+
+func maxDeadlockRetriesForDialect(dialect string) int {
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		return 8
+	}
+	return 3
+}
+
+func deadlockRetrySleep(dialect string, attempt int) time.Duration {
+	base := 80 * time.Millisecond
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		base = 150 * time.Millisecond
+	}
+	return time.Duration(attempt+1) * base
+}
+
+func waitForDeadlockRetry(session *scope.Session, sleep time.Duration) error {
+	if sleep <= 0 {
+		return nil
+	}
+	if session == nil || session.Statement == nil || session.Statement.Context == nil {
+		time.Sleep(sleep)
+		return nil
+	}
+
+	timer := time.NewTimer(sleep)
+	defer timer.Stop()
+
+	select {
+	case <-session.Statement.Context.Done():
+		return session.Statement.Context.Err()
+	case <-timer.C:
+		return nil
 	}
 }
 
