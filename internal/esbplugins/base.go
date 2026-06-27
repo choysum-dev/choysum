@@ -144,22 +144,88 @@ func (p *BasePlugin) generateTsExportsMap(parserResults []*parser.ParserResult) 
 	p.TsExports = exportMap
 }
 
+func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+
+	candidates := []struct {
+		path       string
+		trimSuffix string
+		trimToDir  bool
+	}{
+		{path: trimmed},
+		{path: trimmed + ".ts", trimSuffix: ".ts"},
+		{path: trimmed + ".vue", trimSuffix: ".vue"},
+		{path: filepath.Join(trimmed, "index.ts"), trimToDir: true},
+	}
+
+	for _, candidate := range candidates {
+		resolved, err := filepath.EvalSymlinks(candidate.path)
+		if err != nil {
+			continue
+		}
+		normalized := filepath.Clean(resolved)
+		if candidate.trimToDir {
+			normalized = filepath.Dir(normalized)
+		}
+		if candidate.trimSuffix != "" {
+			normalized = strings.TrimSuffix(normalized, candidate.trimSuffix)
+		}
+		return normalized
+	}
+
+	return filepath.Clean(trimmed)
+}
+
+func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Export {
+	if p == nil {
+		return nil
+	}
+	moduleSpec = strings.TrimSpace(moduleSpec)
+	if moduleSpec == "" {
+		return nil
+	}
+	if exports, ok := p.TsExports[moduleSpec]; ok {
+		return exports
+	}
+
+	normalizedModuleSpec := p.normalizeModuleSpecPath(moduleSpec)
+	if normalizedModuleSpec == "" {
+		return nil
+	}
+	for key, exports := range p.TsExports {
+		if key == "" {
+			continue
+		}
+		if p.normalizeModuleSpecPath(key) == normalizedModuleSpec {
+			return exports
+		}
+	}
+	return nil
+}
+
 // FindModuleSpecAndReferenceIdent resolves an export through the collected TypeScript export map.
 func (p *BasePlugin) FindModuleSpecAndReferenceIdent(moduleSpec string, referenceIdent string) (string, string) {
-	v, ok := p.TsExports[moduleSpec][referenceIdent]
+	exports := p.resolveTsExports(moduleSpec)
+	if exports == nil {
+		return "", ""
+	}
+	v, ok := exports[referenceIdent]
 	if ok {
 		if referenceIdent == "default" {
 			return v.ModuleSpecPath, "default"
 		}
 		return v.ModuleSpecPath, v.ReferenceIdent
 	} else {
-		if defaultExport, hasDefault := p.TsExports[moduleSpec]["default"]; hasDefault {
+		if defaultExport, hasDefault := exports["default"]; hasDefault {
 			if defaultExport.ReferenceIdent == referenceIdent {
 				return defaultExport.ModuleSpecPath, "default"
 			}
 		}
 
-		wildcardExport, ok := p.TsExports[moduleSpec]["*"]
+		wildcardExport, ok := exports["*"]
 		if !ok {
 			return "", ""
 		}

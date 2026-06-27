@@ -772,10 +772,37 @@ func TestCoordinatorPeekBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("local module missing", func(t *testing.T) {
+	t.Run("local module missing falls back to registry", func(t *testing.T) {
+		if err := os.RemoveAll(filepath.Join(modulesPath, "auth")); err != nil {
+			t.Fatalf("remove local module dir: %v", err)
+		}
+
+		peekCalls := 0
+		provider := &fakeRegistryProvider{peekFn: func(ctx context.Context, registryURL, moduleName, packageName, version string) (*meta.IrModule, error) {
+			peekCalls++
+			if registryURL != "https://registry.npmjs.org" || moduleName != "auth" || packageName != "auth" || version != "v2.0.0" {
+				t.Fatalf("unexpected provider peek args: registry=%s module=%s package=%s version=%s", registryURL, moduleName, packageName, version)
+			}
+			return &meta.IrModule{Name: "auth", Version: "v2.0.0"}, nil
+		}}
+
+		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(provider), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
+		mod, err := coordinator.Peek(context.Background(), "auth")
+		if err != nil {
+			t.Fatalf("Peek(local fallback) error = %v", err)
+		}
+		if mod == nil || mod.Name != "auth" || mod.Version != "v2.0.0" {
+			t.Fatalf("unexpected Peek(local fallback) module: %#v", mod)
+		}
+		if peekCalls != 1 {
+			t.Fatalf("provider peek calls = %d, want 1", peekCalls)
+		}
+	})
+
+	t.Run("local module missing reports fallback error when registry source is unavailable", func(t *testing.T) {
 		coordinator := NewCoordinator(runtimeScope, WithRegistryProvider(&fakeRegistryProvider{}), WithLockStore(NewLockStore(WithLockStoreDefaultChoysumPath(runtimeScope.cfg.DefaultChoysumPath))))
-		if _, err := coordinator.Peek(context.Background(), "missing"); err == nil || !strings.Contains(err.Error(), "not found in modules path") {
-			t.Fatalf("expected local missing error, got %v", err)
+		if _, err := coordinator.Peek(context.Background(), "missing"); err == nil || !strings.Contains(err.Error(), "not found locally and registry fallback failed") {
+			t.Fatalf("expected local fallback error, got %v", err)
 		}
 	})
 

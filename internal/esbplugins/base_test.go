@@ -4,6 +4,8 @@
 package esbplugins
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -109,6 +111,51 @@ func TestFindModuleSpecAndReferenceIdent(t *testing.T) {
 		moduleSpec, referenceIdent := plugin.FindModuleSpecAndReferenceIdent("ui/index", "Missing")
 		if moduleSpec != "" || referenceIdent != "" {
 			t.Fatalf("expected empty resolution, got %q %q", moduleSpec, referenceIdent)
+		}
+	})
+
+	t.Run("resolves exports across symlinked module spec aliases", func(t *testing.T) {
+		realRoot := filepath.Join(t.TempDir(), "real")
+		realServiceDir := filepath.Join(realRoot, "modules", "core", "service")
+		if err := os.MkdirAll(filepath.Join(realServiceDir, "models"), 0o755); err != nil {
+			t.Fatalf("mkdir real service directory: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realServiceDir, "index.ts"), []byte("export default class BaseModel {}\n"), 0o644); err != nil {
+			t.Fatalf("write real index file: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(realServiceDir, "models", "currency.ts"), []byte("export class Currency {}\n"), 0o644); err != nil {
+			t.Fatalf("write real model file: %v", err)
+		}
+
+		aliasRoot := filepath.Join(t.TempDir(), "alias")
+		if err := os.Symlink(realRoot, aliasRoot); err != nil {
+			t.Skipf("symlink not supported in this environment: %v", err)
+		}
+
+		aliasServiceSpec := filepath.Join(aliasRoot, "modules", "core", "service")
+		aliasModelSpec := filepath.Join(aliasServiceSpec, "models", "currency")
+		realServiceSpec := filepath.Join(realRoot, "modules", "core", "service")
+		realModelSpec := filepath.Join(realServiceSpec, "models", "currency")
+
+		plugin := &BasePlugin{
+			TsExports: map[string]map[string]*parser.Export{
+				aliasServiceSpec: {
+					"default": {ReferenceIdent: "BaseModel", ModuleSpecPath: aliasServiceSpec},
+				},
+				aliasModelSpec: {
+					"Currency": {ReferenceIdent: "Currency", ModuleSpecPath: aliasModelSpec},
+				},
+			},
+		}
+
+		moduleSpec, referenceIdent := plugin.FindModuleSpecAndReferenceIdent(realServiceSpec, "BaseModel")
+		if moduleSpec != aliasServiceSpec || referenceIdent != "default" {
+			t.Fatalf("unexpected symlinked directory export resolution: %q %q", moduleSpec, referenceIdent)
+		}
+
+		moduleSpec, referenceIdent = plugin.FindModuleSpecAndReferenceIdent(realModelSpec, "Currency")
+		if moduleSpec != aliasModelSpec || referenceIdent != "Currency" {
+			t.Fatalf("unexpected symlinked extensionless export resolution: %q %q", moduleSpec, referenceIdent)
 		}
 	})
 }

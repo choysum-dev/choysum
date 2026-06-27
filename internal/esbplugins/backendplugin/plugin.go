@@ -6,6 +6,7 @@ package backendplugin
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -65,6 +66,83 @@ func normalizeBackendPluginImportPath(path string) string {
 	}
 	normalized := filepath.ToSlash(filepath.Clean(trimmed))
 	return strings.TrimSuffix(normalized, ".ts")
+}
+
+func normalizeBackendPluginPath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(trimmed); err == nil {
+		trimmed = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
+		trimmed = resolved
+	}
+	return filepath.Clean(trimmed)
+}
+
+func backendPluginPathWithinRoot(path string, root string) bool {
+	normalizedPath := normalizeBackendPluginPath(path)
+	normalizedRoot := normalizeBackendPluginPath(root)
+	if normalizedPath == "" || normalizedRoot == "" {
+		return false
+	}
+	if normalizedPath == normalizedRoot {
+		return true
+	}
+	rel, err := filepath.Rel(normalizedRoot, normalizedPath)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+func normalizeBackendPluginModuleSpecPath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+
+	candidates := []struct {
+		path      string
+		trimToDir bool
+	}{
+		{path: trimmed},
+		{path: trimmed + ".ts"},
+		{path: trimmed + ".vue"},
+		{path: filepath.Join(trimmed, "index.ts"), trimToDir: true},
+	}
+
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate.path); err != nil {
+			continue
+		}
+		normalized := normalizeBackendPluginPath(candidate.path)
+		if normalized == "" {
+			continue
+		}
+		if candidate.trimToDir {
+			normalized = filepath.Dir(normalized)
+		}
+		normalized = strings.TrimSuffix(normalized, ".ts")
+		normalized = strings.TrimSuffix(normalized, ".vue")
+		return normalized
+	}
+
+	fallback := filepath.Clean(trimmed)
+	fallback = strings.TrimSuffix(fallback, ".ts")
+	fallback = strings.TrimSuffix(fallback, ".vue")
+	return fallback
+}
+
+func backendPluginSameModuleSpecPath(a string, b string) bool {
+	normalizedA := normalizeBackendPluginModuleSpecPath(a)
+	normalizedB := normalizeBackendPluginModuleSpecPath(b)
+	if normalizedA == "" || normalizedB == "" {
+		return false
+	}
+	return filepath.ToSlash(normalizedA) == filepath.ToSlash(normalizedB)
 }
 
 func (p *BackendPlugin) isEntryPointPath(path string) bool {
@@ -137,7 +215,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 
 	moduleAbsPath := p.Module.Path
 	for _, parserResult := range parserResults {
-		if !strings.HasPrefix(parserResult.Path, moduleAbsPath) {
+		if !backendPluginPathWithinRoot(parserResult.Path, moduleAbsPath) {
 			continue
 		}
 
@@ -171,7 +249,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 			}
 
 			modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(p.Env)
-			if decorator.ModuleSpecPath == modelDecoratorModuleSpec && decorator.ReferenceIdent == modelDecoratorReferenceIdent {
+			if backendPluginSameModuleSpecPath(decorator.ModuleSpecPath, modelDecoratorModuleSpec) && decorator.ReferenceIdent == modelDecoratorReferenceIdent {
 				appName := model.Application
 				if len(decorator.Arguments) > 0 {
 					arg := decorator.Arguments[0]
@@ -257,7 +335,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 			// Recognize the new Field decorator only.
 			isField := false
 			for _, decorator := range field.Decorators {
-				if decorator.Name == "Field" && decorator.ModuleSpecPath == fieldDecoratorModuleSpec && decorator.ReferenceIdent == fieldDecoratorReferenceIdent {
+				if decorator.Name == "Field" && backendPluginSameModuleSpecPath(decorator.ModuleSpecPath, fieldDecoratorModuleSpec) && decorator.ReferenceIdent == fieldDecoratorReferenceIdent {
 					isField = true
 					break
 				}
@@ -342,7 +420,7 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	// 1. Collect external paths
 	var externalPaths []string
 	for _, result := range parserResults {
-		if !strings.HasPrefix(result.Path, moduleAbsPath) {
+		if !backendPluginPathWithinRoot(result.Path, moduleAbsPath) {
 			externalPaths = append(externalPaths, result.Path)
 		}
 	}
@@ -442,7 +520,7 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	}
 
 	getAppForPath := func(path string) (string, error) {
-		if strings.HasPrefix(path, moduleAbsPath) {
+		if backendPluginPathWithinRoot(path, moduleAbsPath) {
 			return p.Module.ApplicationStr, nil
 		}
 		if app, ok := externalAppMap[path]; ok {
@@ -468,7 +546,7 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 		var modelDecorator *parser.Decorator
 		for _, d := range result.ModelClassNode.Decorators {
 			moduleSpec, referenceIdent := p.FindModuleSpecAndReferenceIdent(d.ModuleSpecPath, d.ReferenceIdent)
-			if moduleSpec == modelDecoratorModuleSpec && referenceIdent == modelDecoratorReferenceIdent {
+			if backendPluginSameModuleSpecPath(moduleSpec, modelDecoratorModuleSpec) && referenceIdent == modelDecoratorReferenceIdent {
 				modelDecorator = d
 				break
 			}
@@ -665,7 +743,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 			return ""
 		}
 		for _, d := range m.Decorators {
-			if d.Name != "Model" || d.ModuleSpecPath != modelDecoratorModuleSpec || d.ReferenceIdent != modelDecoratorReferenceIdent {
+			if d.Name != "Model" || !backendPluginSameModuleSpecPath(d.ModuleSpecPath, modelDecoratorModuleSpec) || d.ReferenceIdent != modelDecoratorReferenceIdent {
 				continue
 			}
 			for _, arg := range d.Arguments {
@@ -757,7 +835,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 	}
 
 	for _, parserResult := range parserResults {
-		if !strings.HasPrefix(parserResult.Path, moduleAbsPath) {
+		if !backendPluginPathWithinRoot(parserResult.Path, moduleAbsPath) {
 			continue
 		}
 		model := parserResult.Model
@@ -767,7 +845,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 
 		for _, field := range model.Fields {
 			for _, decorator := range field.Decorators {
-				if decorator.Name != "Field" || decorator.ModuleSpecPath != fieldDecoratorModuleSpec || decorator.ReferenceIdent != fieldDecoratorReferenceIdent {
+				if decorator.Name != "Field" || !backendPluginSameModuleSpecPath(decorator.ModuleSpecPath, fieldDecoratorModuleSpec) || decorator.ReferenceIdent != fieldDecoratorReferenceIdent {
 					continue
 				}
 				if len(decorator.Arguments) == 0 {

@@ -4532,6 +4532,68 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 			t.Fatalf("expected validate to ignore unrelated components, got %v", err)
 		}
 	})
+
+	t.Run("deduplicates symlink alias component paths", func(t *testing.T) {
+		realRoot := filepath.Join(t.TempDir(), "real")
+		realComponentPath := filepath.Join(realRoot, "views", "CompanyListView.vue")
+		if err := os.MkdirAll(filepath.Dir(realComponentPath), 0o755); err != nil {
+			t.Fatalf("mkdir component directory: %v", err)
+		}
+		if err := os.WriteFile(realComponentPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+			t.Fatalf("write component file: %v", err)
+		}
+
+		aliasRoot := filepath.Join(t.TempDir(), "alias")
+		if err := os.Symlink(realRoot, aliasRoot); err != nil {
+			t.Skipf("symlink not supported in this environment: %v", err)
+		}
+		aliasComponentPath := filepath.Join(aliasRoot, "views", "CompanyListView.vue")
+
+		buildResult := withParserResults(&module.BuildResult{},
+			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: realComponentPath}},
+			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: aliasComponentPath}},
+		)
+		if err := b.validate(buildResult); err != nil {
+			t.Fatalf("expected validate to deduplicate symlink alias paths, got %v", err)
+		}
+	})
+}
+
+func TestWebBuilderPathWithinRoot_ResolvesSymlinkAliases(t *testing.T) {
+	realRoot := filepath.Join(t.TempDir(), "real")
+	moduleRealRoot := filepath.Join(realRoot, "modules", "base")
+	insideRealPath := filepath.Join(moduleRealRoot, "web", "views", "CompanyListView.vue")
+	if err := os.MkdirAll(filepath.Dir(insideRealPath), 0o755); err != nil {
+		t.Fatalf("mkdir inside real path: %v", err)
+	}
+	if err := os.WriteFile(insideRealPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatalf("write inside real file: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "base")
+	insideAliasPath := filepath.Join(moduleAliasRoot, "web", "views", "CompanyListView.vue")
+	if !webBuilderPathWithinRoot(insideRealPath, moduleAliasRoot) {
+		t.Fatalf("expected real path %q to be within alias module root %q", insideRealPath, moduleAliasRoot)
+	}
+	if !webBuilderPathWithinRoot(insideAliasPath, moduleAliasRoot) {
+		t.Fatalf("expected alias path %q to be within alias module root %q", insideAliasPath, moduleAliasRoot)
+	}
+
+	outsideRealPath := filepath.Join(realRoot, "modules", "auth", "web", "views", "LoginView.vue")
+	if err := os.MkdirAll(filepath.Dir(outsideRealPath), 0o755); err != nil {
+		t.Fatalf("mkdir outside real path: %v", err)
+	}
+	if err := os.WriteFile(outsideRealPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatalf("write outside real file: %v", err)
+	}
+	if webBuilderPathWithinRoot(outsideRealPath, moduleAliasRoot) {
+		t.Fatalf("expected outside path %q not to be within alias module root %q", outsideRealPath, moduleAliasRoot)
+	}
 }
 
 func TestReparseXPathComponentsPropertyNode(t *testing.T) {
