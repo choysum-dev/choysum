@@ -196,12 +196,10 @@ func SyncRegistryModuleIndex(ctx context.Context, runtimeScope scope.Scope, lock
 	// Mark registry entries absent from the current catalog snapshot as unavailable.
 	if len(seen) > 0 {
 		existing := make([]metadata.IrModuleIndex, 0)
-		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
-			return txSession.WithContext(ctx).
-				Model(&metadata.IrModuleIndex{}).
-				Where("origin_type = ?", "registry").
-				Find(&existing).Error
-		}); err != nil {
+		if err := session.WithContext(ctx).
+			Model(&metadata.IrModuleIndex{}).
+			Where("origin_type = ?", "registry").
+			Find(&existing).Error; err != nil {
 			hasError = true
 			runtimeScope.Logger().Warn("module index reconcile failed", "error", err)
 		} else {

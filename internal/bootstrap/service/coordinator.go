@@ -456,7 +456,6 @@ func isNetworkError(err error) bool {
 		"tls handshake",
 		"context deadline exceeded",
 		"timeout",
-		"eof",
 		"connection reset",
 	} {
 		if strings.Contains(msg, keyword) {
