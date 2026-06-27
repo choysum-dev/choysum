@@ -401,10 +401,12 @@ func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, se
 			if runtimeScope != nil {
 				runtimeScope.Logger().Warn("module index sqlite lock retry", "attempt", attempt+1, "sleep", sleep, "error", err)
 			}
+			timer := time.NewTimer(sleep)
 			select {
 			case <-ctx.Done():
+				timer.Stop()
 				return ctx.Err()
-			case <-time.After(sleep):
+			case <-timer.C:
 			}
 			continue
 		}
