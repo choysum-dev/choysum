@@ -181,7 +181,7 @@ func TestWorkspaceServerInitializeFlowReadyForLoginRedirect(t *testing.T) {
 			released = true
 			close(handle.stopCh)
 		},
-		installMinimalModules: func(ctx context.Context) error {
+		installMinimalModules: func(ctx context.Context, operationID string) error {
 			_ = ctx
 			return nil
 		},

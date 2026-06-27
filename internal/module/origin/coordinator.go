@@ -135,9 +135,10 @@ func (c *Coordinator) peekLocalModule(moduleName string) (*meta.IrModule, error)
 }
 
 type registrySourceResolution struct {
-	registryURL string
-	packageName string
-	integrity   string
+	registryURL      string
+	packageName      string
+	integrity        string
+	preferredVersion string
 }
 
 func canonicalRegistryOriginRef(parsed ParsedInput, resolvedVersion string) string {
@@ -167,6 +168,19 @@ func resolveBindingIntegrity(catalogIntegrity string, mod *meta.IrModule) string
 	return strings.TrimSpace(catalogIntegrity)
 }
 
+func resolveRegistryRequestedVersion(requestedVersion, preferredVersion string) string {
+	requestedVersion = strings.TrimSpace(requestedVersion)
+	if requestedVersion != "" {
+		if strings.EqualFold(requestedVersion, "latest") {
+			if preferred := strings.TrimSpace(preferredVersion); preferred != "" {
+				return preferred
+			}
+		}
+		return requestedVersion
+	}
+	return strings.TrimSpace(preferredVersion)
+}
+
 func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput) (*meta.IrModule, error) {
 	if c.registryProvider == nil {
 		return nil, xfmt.Errorf("registry provider is nil")
@@ -175,7 +189,8 @@ func (c *Coordinator) peekRegistryModule(ctx context.Context, parsed ParsedInput
 	if err != nil {
 		return nil, err
 	}
-	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
+	effectiveVersion := resolveRegistryRequestedVersion(parsed.Version, resolved.preferredVersion)
+	return c.registryProvider.PeekManifest(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, effectiveVersion)
 }
 
 func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedInput) (registrySourceResolution, error) {
@@ -205,6 +220,12 @@ func (c *Coordinator) resolveRegistrySource(ctx context.Context, parsed ParsedIn
 	}
 	if item.Source != nil {
 		resolved.integrity = strings.TrimSpace(item.Source.Integrity)
+		if sourceVersion := strings.TrimSpace(item.Source.Version); sourceVersion != "" {
+			resolved.preferredVersion = sourceVersion
+		}
+	}
+	if resolved.preferredVersion == "" {
+		resolved.preferredVersion = strings.TrimSpace(item.LatestVersion)
 	}
 	c.cacheRegistrySourceResolution(cacheKey, resolved)
 
@@ -284,9 +305,32 @@ func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, 
 
 	switch parsed.Kind {
 	case InputKindRegistry:
-		return c.resolveRegistry(ctx, parsed)
+		mod, err := c.resolveRegistry(ctx, parsed)
+		c.logResolveInstallOutcome(parsed, "registry", false, err)
+		return mod, err
 	case InputKindLocal:
-		return c.resolveLocal(ctx, parsed)
+		mod, localErr := c.resolveLocal(ctx, parsed)
+		if localErr == nil {
+			c.logResolveInstallOutcome(parsed, "local", false, nil)
+			return mod, nil
+		}
+		// When the module is not found locally, fall back to registry resolution.
+		if isModuleNotFoundError(localErr) {
+			if !runtimeOptionsFromScope(c.runtimeScope).moduleInstallRegistryFallbackEnabled {
+				c.logResolveInstallOutcome(parsed, "local", false, localErr)
+				return nil, localErr
+			}
+			mod, registryErr := c.resolveRegistry(ctx, parsed)
+			if registryErr == nil {
+				c.logResolveInstallOutcome(parsed, "registry", true, nil)
+				return mod, nil
+			}
+			wrapped := xfmt.Errorf("module %s not found locally and registry fallback failed: %w", parsed.LocalName, registryErr)
+			c.logResolveInstallOutcome(parsed, "registry", true, wrapped)
+			return nil, wrapped
+		}
+		c.logResolveInstallOutcome(parsed, "local", false, localErr)
+		return nil, localErr
 	default:
 		return nil, xfmt.Errorf("unsupported origin input kind: %s", parsed.Kind)
 	}
@@ -343,7 +387,8 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 	if err != nil {
 		return nil, err
 	}
-	mod, err := c.registryProvider.Fetch(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, parsed.Version)
+	effectiveVersion := resolveRegistryRequestedVersion(parsed.Version, resolved.preferredVersion)
+	mod, err := c.registryProvider.Fetch(ctx, resolved.registryURL, parsed.ModuleName, resolved.packageName, effectiveVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -359,4 +404,45 @@ func (c *Coordinator) resolveRegistry(ctx context.Context, parsed ParsedInput) (
 		return nil, err
 	}
 	return mod, nil
+}
+
+// isModuleNotFoundError reports whether the error indicates the module was not
+// found in the local modules path (as opposed to a disk I/O or permission error).
+func isModuleNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return true
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "not found in modules path")
+}
+
+func resolveInstallModuleName(parsed ParsedInput) string {
+	if name := strings.TrimSpace(parsed.ModuleName); name != "" {
+		return name
+	}
+	if name := strings.TrimSpace(parsed.LocalName); name != "" {
+		return name
+	}
+	return ""
+}
+
+func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigin string, fallback bool, err error) {
+	if c == nil || c.runtimeScope == nil || c.runtimeScope.Logger() == nil {
+		return
+	}
+	attrs := []any{
+		"module", resolveInstallModuleName(parsed),
+		"input_kind", string(parsed.Kind),
+		"resolved_origin", strings.TrimSpace(resolvedOrigin),
+		"fallback", fallback,
+	}
+	if err != nil {
+		attrs = append(attrs, "error", err.Error())
+		c.runtimeScope.Logger().Warn("origin install resolve failed", attrs...)
+		return
+	}
+	c.runtimeScope.Logger().Debug("origin install resolve succeeded", attrs...)
 }

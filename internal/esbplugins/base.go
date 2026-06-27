@@ -131,7 +131,7 @@ func (p *BasePlugin) generateTsExportsMap(parserResults []*parser.ParserResult) 
 		exportModuleName := ""
 		ext := filepath.Ext(parserResult.Path)
 		if ext == ".ts" {
-			exportModuleName = strings.Split(parserResult.Path, ".")[0]
+			exportModuleName = strings.TrimSuffix(parserResult.Path, ext)
 		} else if ext == ".vue" {
 			exportModuleName = parserResult.Path
 		}

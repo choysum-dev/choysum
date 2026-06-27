@@ -67,7 +67,8 @@ async function updateSchedule(scheduleId: string): Promise<void> {
 }
 
 export class MetaModuleIndexHooks {
-  @HookPostInit()
+  // Daily Cron replaced by on-demand Lazy Sync triggered from ModuleKanbanView.
+  // @HookPostInit()
   static async ensureModuleIndexDailySync(): Promise<void> {
     const items = await listScheduleByName(scheduleName);
     const existing = items[0];

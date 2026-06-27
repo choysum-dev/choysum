@@ -84,7 +84,7 @@ func TestFactoryInputFromConfigExposesModulesPath(t *testing.T) {
 		t.Fatalf("FactoryInputFromConfig(nil) = %#v, want nil", got)
 	}
 
-	input := FactoryInputFromConfig(&config.Config{ModulesPath: "/workspace/modules", ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json"})
+	input := FactoryInputFromConfig(&config.Config{ModulesPath: "/workspace/modules", ModuleCatalogIndexURL: "https://index.example.dev/v1/index.json", BootstrapModuleInstallTimeoutSeconds: 222})
 	if input == nil {
 		t.Fatal("FactoryInputFromConfig() returned nil input")
 	}
@@ -100,7 +100,18 @@ func TestFactoryInputFromConfigExposesModulesPath(t *testing.T) {
 		t.Fatalf("PathsRuntimeOptionsFromInput().ModuleCatalogIndexURL = %q, want https://index.example.dev/v1/index.json", paths.ModuleCatalogIndexURL)
 	}
 
+	timeoutInput, ok := input.(interface{ BootstrapModuleInstallTimeoutSeconds() int })
+	if !ok {
+		t.Fatal("FactoryInputFromConfig() does not expose BootstrapModuleInstallTimeoutSeconds")
+	}
+	if got := timeoutInput.BootstrapModuleInstallTimeoutSeconds(); got != 222 {
+		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() = %d, want 222", got)
+	}
+
 	if got := (configFactoryInput{}).ModuleCatalogIndexURL(); got != "" {
 		t.Fatalf("configFactoryInput{}.ModuleCatalogIndexURL() = %q, want empty", got)
+	}
+	if got := (configFactoryInput{}).BootstrapModuleInstallTimeoutSeconds(); got != 0 {
+		t.Fatalf("configFactoryInput{}.BootstrapModuleInstallTimeoutSeconds() = %d, want 0", got)
 	}
 }

@@ -11,22 +11,24 @@ import (
 )
 
 type scopeInputConfigOptions struct {
-	ModulesPath           string
-	DistPath              string
-	TmpPath               string
-	DefaultChoysumPath    string
-	ConfigPath            string
-	NPMRegistryURL        string
-	ModuleCatalogIndexURL string
-	ESMUpstreamURL        string
-	Log                   *config.LogConfig
-	Compile               *config.CompileConfig
-	Auth                  *config.AuthConfig
-	Server                *config.ServerConfig
-	Task                  *config.TaskConfig
-	FrontendEnv           map[string]any
-	BackendEnv            map[string]any
-	Db                    *config.DbConfig
+	ModulesPath                          string
+	DistPath                             string
+	TmpPath                              string
+	DefaultChoysumPath                   string
+	ConfigPath                           string
+	NPMRegistryURL                       string
+	ModuleCatalogIndexURL                string
+	ModuleInstallRegistryFallbackEnabled bool
+	BootstrapModuleInstallTimeoutSeconds int
+	ESMUpstreamURL                       string
+	Log                                  *config.LogConfig
+	Compile                              *config.CompileConfig
+	Auth                                 *config.AuthConfig
+	Server                               *config.ServerConfig
+	Task                                 *config.TaskConfig
+	FrontendEnv                          map[string]any
+	BackendEnv                           map[string]any
+	Db                                   *config.DbConfig
 }
 
 func newScopeInputConfigOptions(snap *snapshot.ConfigSnapshot) *scopeInputConfigOptions {
@@ -34,22 +36,24 @@ func newScopeInputConfigOptions(snap *snapshot.ConfigSnapshot) *scopeInputConfig
 		return nil
 	}
 	return &scopeInputConfigOptions{
-		ModulesPath:           snap.ModulesPath,
-		DistPath:              snap.DistPath,
-		TmpPath:               snap.TmpPath,
-		DefaultChoysumPath:    snap.DefaultChoysumPath,
-		ConfigPath:            snap.ConfigPath,
-		NPMRegistryURL:        snap.NPMRegistryURL,
-		ModuleCatalogIndexURL: snap.ModuleCatalogIndexURL,
-		ESMUpstreamURL:        snap.ESMUpstreamURL,
-		Log:                   snap.CopyLogConfig(),
-		Compile:               snap.CopyCompileConfig(),
-		Auth:                  snap.CopyAuthConfig(),
-		Server:                snap.CopyServerConfig(),
-		Task:                  snap.CopyTaskConfig(),
-		FrontendEnv:           snap.CopyFrontendEnv(),
-		BackendEnv:            snap.CopyBackendEnv(),
-		Db:                    cloneScopeInputDbConfig(snap.Db),
+		ModulesPath:                          snap.ModulesPath,
+		DistPath:                             snap.DistPath,
+		TmpPath:                              snap.TmpPath,
+		DefaultChoysumPath:                   snap.DefaultChoysumPath,
+		ConfigPath:                           snap.ConfigPath,
+		NPMRegistryURL:                       snap.NPMRegistryURL,
+		ModuleCatalogIndexURL:                snap.ModuleCatalogIndexURL,
+		ModuleInstallRegistryFallbackEnabled: snap.ModuleInstallRegistryFallbackEnabled,
+		BootstrapModuleInstallTimeoutSeconds: snap.BootstrapModuleInstallTimeoutSeconds,
+		ESMUpstreamURL:                       snap.ESMUpstreamURL,
+		Log:                                  snap.CopyLogConfig(),
+		Compile:                              snap.CopyCompileConfig(),
+		Auth:                                 snap.CopyAuthConfig(),
+		Server:                               snap.CopyServerConfig(),
+		Task:                                 snap.CopyTaskConfig(),
+		FrontendEnv:                          snap.CopyFrontendEnv(),
+		BackendEnv:                           snap.CopyBackendEnv(),
+		Db:                                   cloneScopeInputDbConfig(snap.Db),
 	}
 }
 
@@ -286,6 +290,20 @@ func (i commandRuntimeScopeInput) ModuleCatalogIndexURL() string {
 		return ""
 	}
 	return i.options.ModuleCatalogIndexURL
+}
+
+func (i commandRuntimeScopeInput) ModuleInstallRegistryFallbackEnabled() bool {
+	if i.options == nil {
+		return true
+	}
+	return i.options.ModuleInstallRegistryFallbackEnabled
+}
+
+func (i commandRuntimeScopeInput) BootstrapModuleInstallTimeoutSeconds() int {
+	if i.options == nil {
+		return 0
+	}
+	return i.options.BootstrapModuleInstallTimeoutSeconds
 }
 
 func (i commandRuntimeScopeInput) CompileBundleMode() string {
@@ -607,6 +625,20 @@ func (i runRuntimeScopeInput) ModuleCatalogIndexURL() string {
 		return ""
 	}
 	return i.options.ModuleCatalogIndexURL
+}
+
+func (i runRuntimeScopeInput) ModuleInstallRegistryFallbackEnabled() bool {
+	if i.options == nil {
+		return true
+	}
+	return i.options.ModuleInstallRegistryFallbackEnabled
+}
+
+func (i runRuntimeScopeInput) BootstrapModuleInstallTimeoutSeconds() int {
+	if i.options == nil {
+		return 0
+	}
+	return i.options.BootstrapModuleInstallTimeoutSeconds
 }
 
 func (i runRuntimeScopeInput) CompileBundleMode() string {

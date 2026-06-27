@@ -4,8 +4,11 @@
 package authoptions
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/spf13/viper"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -27,6 +30,36 @@ type AuthConfig struct {
 	JobTokenAllowedSANs []string                      `mapstructure:"jobTokenAllowedSANs"`
 	AuthzDecisionLog    string                        `mapstructure:"authzDecisionLog"`
 	AuthzDecisionAudit  bool                          `mapstructure:"authzDecisionAudit"`
+}
+
+var (
+	processFallbackInternalKeyOnce sync.Once
+	processFallbackInternalKey     string
+	processFallbackInternalKeyErr  error
+)
+
+func fallbackInternalKeyForProcess() (string, error) {
+	processFallbackInternalKeyOnce.Do(func() {
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			processFallbackInternalKeyErr = err
+			return
+		}
+		processFallbackInternalKey = "dev-auto-" + hex.EncodeToString(buf)
+	})
+	if processFallbackInternalKeyErr != nil {
+		return "", processFallbackInternalKeyErr
+	}
+	return processFallbackInternalKey, nil
+}
+
+func isProductionEnvironment(environment string) bool {
+	switch strings.ToLower(strings.TrimSpace(environment)) {
+	case "production", "prod":
+		return true
+	default:
+		return false
+	}
 }
 
 // HttpAuthConfig configures HTTP request authentication behavior.
@@ -117,14 +150,14 @@ func RejectLegacyJWTIdentityCacheKeys(v *viper.Viper) error {
 }
 
 // NormalizeAndMergeAuthConfig merges user auth settings with defaults derived from the Choysum path.
-func NormalizeAndMergeAuthConfig(cfg *AuthConfig, defaultChoysumPath string) (*AuthConfig, error) {
+func NormalizeAndMergeAuthConfig(cfg *AuthConfig, defaultChoysumPath string, serverEnvironment string) (*AuthConfig, error) {
 	defaults, err := NewDefaultAuthConfigWithChoysumRoot(defaultChoysumPath)
 	if err != nil {
 		return nil, xfmt.Errorf("new default auth config: %w", err)
 	}
 
 	if cfg == nil {
-		return defaults, nil
+		cfg = defaults
 	}
 
 	if strings.TrimSpace(cfg.Type) == "" {
@@ -152,6 +185,18 @@ func NormalizeAndMergeAuthConfig(cfg *AuthConfig, defaultChoysumPath string) (*A
 	}
 	if len(cfg.JobTokenAllowedSANs) == 0 {
 		cfg.JobTokenAllowedSANs = defaults.JobTokenAllowedSANs
+	}
+
+	cfg.InternalKey = strings.TrimSpace(cfg.InternalKey)
+	if cfg.InternalKey == "" {
+		if isProductionEnvironment(serverEnvironment) {
+			return nil, xfmt.Errorf("auth.internalKey must be explicitly configured when server.environment is production")
+		}
+		fallback, err := fallbackInternalKeyForProcess()
+		if err != nil {
+			return nil, xfmt.Errorf("generate development auth.internalKey fallback: %w", err)
+		}
+		cfg.InternalKey = fallback
 	}
 
 	return cfg, nil

@@ -7,6 +7,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/sha512"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -67,6 +69,12 @@ func buildRemoteRegistryTarGz(t *testing.T, files map[string]string) []byte {
 	return buf.Bytes()
 }
 
+func npmSHA512Integrity(data []byte) string {
+	h := sha512.New()
+	h.Write(data)
+	return "sha512-" + base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
+
 func startRemoteRegistryCatalogAndNPMServer(t *testing.T, moduleName, latestVersion string) *httptest.Server {
 	t.Helper()
 
@@ -88,10 +96,10 @@ func startRemoteRegistryCatalogAndNPMServer(t *testing.T, moduleName, latestVers
 	metadataPathEscaped := "/" + url.PathEscape(packageName)
 	metadataPathPlain := "/" + packageName
 	tarballPath := fmt.Sprintf("/tarballs/choysum-%s-%s.tgz", moduleName, npmVersion)
-	integrity := "sha512-" + moduleName + "-" + npmVersion
 
 	packageJSON := fmt.Sprintf(`{"name":"%s","version":"%s","description":"%s module","license":"Apache-2.0","author":"test","choysum":{"moduleName":"%s","application":"%s","category":"test","depends":[]}}`, packageName, npmVersion, moduleName, moduleName, moduleName)
 	tarballBody := buildRemoteRegistryTarGz(t, map[string]string{"package/package.json": packageJSON})
+	integrity := npmSHA512Integrity(tarballBody)
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

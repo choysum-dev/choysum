@@ -7,9 +7,14 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
+type bootstrapModuleInstallTimeoutInput interface {
+	BootstrapModuleInstallTimeoutSeconds() int
+}
+
 type runtimeOptions struct {
-	distPath  string
-	dbDialect string
+	distPath                             string
+	dbDialect                            string
+	bootstrapModuleInstallTimeoutSeconds int
 }
 
 func newRuntimeOptions(paths scope.PathsRuntimeOptions, hasPaths bool, dbOpts scope.DatabaseRuntimeOptions, hasDB bool) runtimeOptions {
@@ -29,5 +34,11 @@ func runtimeOptionsFromScope(runtimeScope scope.Scope) runtimeOptions {
 	}
 	paths, hasPaths := scope.PathsRuntimeOptionsFromScope(runtimeScope)
 	dbOpts, hasDB := scope.DatabaseRuntimeOptionsFromScope(runtimeScope)
-	return newRuntimeOptions(paths, hasPaths, dbOpts, hasDB)
+	opts := newRuntimeOptions(paths, hasPaths, dbOpts, hasDB)
+	if input := scope.FactoryInputFromScope(runtimeScope); input != nil {
+		if timeoutInput, ok := input.(bootstrapModuleInstallTimeoutInput); ok {
+			opts.bootstrapModuleInstallTimeoutSeconds = timeoutInput.BootstrapModuleInstallTimeoutSeconds()
+		}
+	}
+	return opts
 }

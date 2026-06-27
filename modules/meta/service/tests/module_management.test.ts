@@ -186,6 +186,20 @@ function mockIrModuleIndexRepo(rows: Array<Record<string, any>>): () => void {
 }
 
 /**
+ * Replaces IrModuleIndex repository grouped-read methods for Search/Count tests.
+ */
+function mockIrModuleIndexGroupedRepo(groupRows: Array<Record<string, any>>, groupCount?: number): () => void {
+  const original = (IrModuleIndex as any).getRepository;
+  (IrModuleIndex as any).getRepository = () => ({
+    readGroup: async () => groupRows,
+    readGroupCount: async () => (typeof groupCount === 'number' ? groupCount : groupRows.length),
+  });
+  return () => {
+    (IrModuleIndex as any).getRepository = original;
+  };
+}
+
+/**
  * Replaces Job.Search with a fixed result set for the duration of a test.
  */
 function mockJobSearch(result: any[]): () => void {
@@ -197,12 +211,43 @@ function mockJobSearch(result: any[]): () => void {
 }
 
 /**
+ * Replaces BaseModel.Search used by IrModuleIndex aggregate Search.
+ */
+function mockIrModuleIndexBaseSearch(result: any[]): () => void {
+  const baseModelCtor: any = Object.getPrototypeOf(IrModuleIndex);
+  const original = baseModelCtor.Search;
+  baseModelCtor.Search = async () => result;
+  return () => {
+    baseModelCtor.Search = original;
+  };
+}
+
+/**
  * Generates a stable unique suffix for module-management test fixtures.
  */
 function uid(prefix: string): string {
   const xid = (globalThis as any).$choysum?.xid?.New?.();
   const u = typeof xid === 'string' && xid.trim() ? xid.trim() : String(Date.now());
   return `${prefix}_${u}`;
+}
+
+/**
+ * Asserts an async operation throws and the message contains the given fragment.
+ */
+async function expectAsyncErrorContains(run: () => Promise<any>, fragment: string): Promise<void> {
+  let captured: unknown;
+  try {
+    await run();
+  } catch (err: any) {
+    captured = err;
+  }
+
+  if (captured == null) {
+    throw new Error('__expected_async_throw__');
+  }
+
+  const message = String((captured as any)?.message || captured || '');
+  expect(message.includes(fragment)).toBe(true);
 }
 
 test('meta.IrModule PlanOperation returns blockers for missing module', async () => {
@@ -566,5 +611,236 @@ test('meta.IrModuleIndex RequestSync skips enqueue when not stale', async () => 
     (Job as any).EnqueueJob = originalEnqueue;
     restoreSearch();
     restoreRepo();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync(all) skips enqueue when both origins are fresh', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: new Date() }]);
+  const restoreSearch = mockJobSearch([]);
+
+  let enqueueCalled = false;
+  const originalEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => {
+    enqueueCalled = true;
+    return { Id: 'job_unexpected' };
+  };
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ ifStale: true, force: false });
+    expect(jobId).toBe('');
+    expect(enqueueCalled).toBe(false);
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+    restoreRepo();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync(all) enqueues when stale', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreRepo = mockIrModuleIndexRepo([{ last_batch_sync_at: null }]);
+  const restoreSearch = mockJobSearch([]);
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ ifStale: true, force: false });
+    expect(jobId).toBeTruthy();
+  } finally {
+    restoreSearch();
+    restoreRepo();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync reuses running job for non-force requests', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_sync', PayloadJson: { originType: 'local' } }]);
+  let enqueueCalled = false;
+  const originalEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => {
+    enqueueCalled = true;
+    return { Id: 'job_unexpected' };
+  };
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    expect(jobId).toBe('job_running_sync');
+    expect(enqueueCalled).toBe(false);
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync ignores incompatible running origin and enqueues', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_registry', PayloadJson: { originType: 'registry' } }]);
+  const originalEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => ({ Id: 'job_local_sync' });
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', ifStale: true, force: false });
+    expect(jobId).toBe('job_local_sync');
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync(force) does not reuse running job', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  const restoreSearch = mockJobSearch([{ Id: 'job_running_sync', PayloadJson: { originType: 'local' } }]);
+  const originalEnqueue = (Job as any).EnqueueJob;
+  (Job as any).EnqueueJob = async () => ({ Id: 'job_forced_sync' });
+
+  try {
+    const jobId = await IrModuleIndex.RequestSync({ originType: 'local', force: true, ifStale: false });
+    expect(jobId).toBe('job_forced_sync');
+  } finally {
+    (Job as any).EnqueueJob = originalEnqueue;
+    restoreSearch();
+  }
+});
+
+test('meta.IrModuleIndex RequestSync rejects invalid originType', async () => {
+  resetRequestContext();
+  ensureJobMock();
+
+  await expectAsyncErrorContains(
+    () => IrModuleIndex.RequestSync({ originType: 'remote' as any, force: true, ifStale: false }),
+    'originType must be one of: local, registry, all'
+  );
+});
+
+test('meta.IrModuleIndex Sync rejects invalid originType before bridge call', async () => {
+  resetRequestContext();
+  ensureModuleManagementBridge();
+
+  const root: any = (globalThis as any).$choysum;
+  let called = false;
+  root.moduleManagement.syncIndex = async () => {
+    called = true;
+    return { ok: true };
+  };
+
+  await expectAsyncErrorContains(() => IrModuleIndex.Sync('remote' as any, false), 'originType must be one of: local, registry, all');
+  expect(called).toBe(false);
+});
+
+test('meta.IrModuleIndex Search honors requested fields after aggregation', async () => {
+  resetRequestContext();
+
+  const now = new Date();
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+    {
+      Id: 'idx_local',
+      ModuleName: 'auth',
+      OriginType: 'local',
+      OriginRef: 'local',
+      Available: true,
+      Version: '1.0.0',
+      ManifestJson: { source: 'local' },
+      LocalPath: '/modules/auth',
+      LastSyncAt: now,
+      LastBatchSyncAt: now,
+      SyncRevision: 'r1',
+      LastErrorMessage: '',
+      InstalledStatus: 'installed',
+      InstalledVersion: '1.0.0',
+    },
+    {
+      Id: 'idx_registry',
+      ModuleName: 'auth',
+      OriginType: 'registry',
+      OriginRef: '@choysum-dev/auth',
+      Available: true,
+      Version: '2.0.0',
+      ManifestJson: { source: 'registry' },
+      LocalPath: '',
+      LastSyncAt: now,
+      LastBatchSyncAt: now,
+      SyncRevision: 'r2',
+      LastErrorMessage: '',
+      InstalledStatus: 'installed',
+      InstalledVersion: '1.0.0',
+    },
+  ]);
+
+  try {
+    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', 'RegistryVersion'], limit: 10 });
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(1);
+    expect(typeof rows[0].toPlainObject).toBe('function');
+    expect(rows[0].ModuleName).toBe('auth');
+    expect(rows[0].RegistryVersion).toBe('2.0.0');
+    expect(rows[0].OriginType).toBeUndefined();
+    expect(rows[0].LocalVersion).toBeUndefined();
+  } finally {
+    restoreGroupedRepo();
+    restoreBaseSearch();
+  }
+});
+
+test('meta.IrModuleIndex Search projection returns model instances and blocks dangerous fields', async () => {
+  resetRequestContext();
+
+  const now = new Date();
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+    {
+      Id: 'idx_local',
+      ModuleName: 'auth',
+      OriginType: 'local',
+      OriginRef: 'local',
+      Available: true,
+      Version: '1.0.0',
+      ManifestJson: { source: 'local' },
+      LocalPath: '/modules/auth',
+      LastSyncAt: now,
+      LastBatchSyncAt: now,
+      SyncRevision: 'r1',
+      LastErrorMessage: '',
+      InstalledStatus: 'installed',
+      InstalledVersion: '1.0.0',
+    },
+  ]);
+
+  try {
+    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', '__proto__', 'constructor', 'prototype'], limit: 10 });
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(1);
+    expect(rows[0].ModuleName).toBe('auth');
+    expect(typeof rows[0].toPlainObject).toBe('function');
+
+    const plain = rows[0].toPlainObject();
+    expect(Object.getPrototypeOf(plain)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(plain, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(plain, 'constructor')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(plain, 'prototype')).toBe(false);
+  } finally {
+    restoreGroupedRepo();
+    restoreBaseSearch();
+  }
+});
+
+test('meta.IrModuleIndex Count uses grouped module count', async () => {
+  resetRequestContext();
+
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([], 7);
+  try {
+    const total = await (IrModuleIndex as any).Count([], {});
+    expect(total).toBe(7);
+  } finally {
+    restoreGroupedRepo();
   }
 });

@@ -1001,6 +1001,39 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	}
 
+	t.Run("test subtree carries lightweight annotation", func(t *testing.T) {
+		testCmd, _, err := commander.rootCmd.Find([]string{"test"})
+		if err != nil {
+			t.Fatalf("find test subcommand: %v", err)
+		}
+		if testCmd == nil {
+			t.Fatal("expected test subcommand")
+		}
+		if got := testCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
+			t.Fatalf("test annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		}
+
+		typecheckCmd, _, err := commander.rootCmd.Find([]string{"test", "typecheck"})
+		if err != nil {
+			t.Fatalf("find test typecheck subcommand: %v", err)
+		}
+		if !shouldUseLightweightRuntimeScope(typecheckCmd) {
+			t.Fatal("expected lightweight scope for test subtree")
+		}
+	})
+
+	t.Run("lightweight scope detection ignores bare command name", func(t *testing.T) {
+		root := &cobra.Command{Use: "root"}
+		plainTest := &cobra.Command{Use: "test"}
+		leaf := &cobra.Command{Use: "leaf"}
+		root.AddCommand(plainTest)
+		plainTest.AddCommand(leaf)
+
+		if shouldUseLightweightRuntimeScope(leaf) {
+			t.Fatal("expected lightweight scope to remain disabled without annotation")
+		}
+	})
+
 	t.Run("run skips config bootstrap", func(t *testing.T) {
 		c := NewCommander(context.Background(), "test-version")
 		sub, _, err := c.rootCmd.Find([]string{"run"})
@@ -1012,11 +1045,41 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	})
 
-	t.Run("missing default config falls back to built-in defaults", func(t *testing.T) {
-		oldWd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("getwd: %v", err)
+	t.Run("test subtree pre-run does not initialize database", func(t *testing.T) {
+		var err error
+		workDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(workDir, "modules"), 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
 		}
+		t.Chdir(workDir)
+
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("CHOYSUM_DB_DIALECT", "postgres")
+		t.Setenv("CHOYSUM_DB_DSN", "postgres://127.0.0.1:1/choysum?sslmode=disable")
+		t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "dev-internal-key")
+
+		c := NewCommander(context.Background(), "test-version")
+		sub, _, err := c.rootCmd.Find([]string{"test", "typecheck"})
+		if err != nil {
+			t.Fatalf("find test typecheck subcommand: %v", err)
+		}
+
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Fatalf("PersistentPreRunE(test typecheck) panicked: %v", recovered)
+			}
+		}()
+
+		if err := c.rootCmd.PersistentPreRunE(sub, nil); err != nil {
+			t.Fatalf("PersistentPreRunE(test typecheck) = %v, want nil", err)
+		}
+		if c.runtimeScope == nil || scope.FactoryInputFromScope(c.runtimeScope) == nil {
+			t.Fatal("expected environment to be initialized for test subtree")
+		}
+	})
+
+	t.Run("missing default config falls back to built-in defaults", func(t *testing.T) {
+		var err error
 		workDir := t.TempDir()
 		homeDir := t.TempDir()
 		modulesDir := filepath.Join(workDir, "modules")
@@ -1030,10 +1093,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		if err := os.WriteFile(dbPath, []byte{}, 0o644); err != nil {
 			t.Fatalf("write db file: %v", err)
 		}
-		if err := os.Chdir(workDir); err != nil {
-			t.Fatalf("chdir: %v", err)
-		}
-		defer func() { _ = os.Chdir(oldWd) }()
+		t.Chdir(workDir)
 		t.Setenv("HOME", homeDir)
 		t.Setenv("CHOYSUM_DB_DIALECT", "sqlite")
 		t.Setenv("CHOYSUM_DB_DSN", dbPath)

@@ -32,10 +32,12 @@ SPDX-License-Identifier: Apache-2.0
     <template #fields>
       <OVirtualField :store="store" prop="ModuleName" />
       <OVirtualField :store="store" prop="Version" />
+      <OVirtualField :store="store" prop="LocalVersion" />
+      <OVirtualField :store="store" prop="RegistryVersion" />
       <OVirtualField :store="store" prop="InstalledStatus" />
       <OVirtualField :store="store" prop="InstalledVersion" />
       <OVirtualField :store="store" prop="Available" />
-      <OVirtualField :store="store" prop="OriginType" />
+      <OVirtualField :store="store" prop="OriginTypes" />
       <OVirtualField :store="store" prop="LastSyncAt" />
       <OVirtualField :store="store" prop="ManifestJson" />
     </template>
@@ -49,11 +51,15 @@ SPDX-License-Identifier: Apache-2.0
           }}</el-tag>
         </div>
         <div class="module-card__meta">
-          <span class="version">版本：{{ record.Version || '—' }}</span>
+          <span class="version">本地：{{ record.LocalVersion || '—' }}</span>
+          <span class="category">仓库：{{ record.RegistryVersion || '—' }}</span>
+        </div>
+        <div class="module-card__meta">
+          <span class="version">展示：{{ record.Version || '—' }}</span>
           <span class="category">已安装：{{ record.InstalledVersion || '—' }}</span>
         </div>
         <div class="module-card__meta">
-          <span class="app">来源：{{ record.OriginType || 'local' }}</span>
+          <span class="app">来源：{{ record.OriginTypes || record.OriginType || 'local' }}</span>
           <span class="updated">同步：{{ formatDate(record.LastSyncAt) || '—' }}</span>
         </div>
         <div class="module-card__desc">{{ manifestSummary(record.ManifestJson) || '暂无描述' }}</div>
@@ -197,7 +203,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type IrModule from '@/meta/service/models/ir_module';
 import type IrModuleIndex from '@/meta/service/models/ir_module_index';
@@ -223,7 +229,7 @@ const props = withDefaults(defineProps<{ store: WebModelStore<IrModuleIndex>; mo
 const { store, showHeader } = props;
 const moduleStore = props.moduleStore;
 
-const keywordFields = ['ModuleName', 'Version', 'InstalledStatus', 'InstalledVersion'];
+const keywordFields = ['ModuleName', 'Version', 'LocalVersion', 'RegistryVersion', 'OriginTypes', 'InstalledStatus', 'InstalledVersion'];
 
 const router = useRouter();
 const moduleInstallAction = defineAction('meta.action.module_install', {
@@ -582,10 +588,10 @@ async function onSyncIndex() {
   if (syncLoading.value) return;
   syncLoading.value = true;
   try {
-    const jobId = await (store as any).RequestSync({ originType: 'local', force: true, ifStale: false });
-    ElMessage.success(jobId ? `已触发同步任务：${jobId}` : '已触发同步任务');
+    const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
+    ElMessage.success(jobId ? `已触发同步任务：all:${jobId}` : '已触发同步任务');
   } catch (error: any) {
-    ElMessage.error(error?.message || '触发同步失败');
+    ElMessage.warning(`同步失败：${error?.message || 'request failed'}`);
   } finally {
     syncLoading.value = false;
   }
@@ -593,6 +599,18 @@ async function onSyncIndex() {
 
 onBeforeUnmount(() => {
   clearPolling();
+});
+
+/**
+ * Silently triggers a stale-aware index refresh on kanban entry.
+ * Failures are suppressed to avoid blocking page usability.
+ */
+onMounted(async () => {
+  try {
+    await (store as any).RequestSync({ ifStale: true });
+  } catch {
+    // sync unavailable — silently skip, page remains usable
+  }
 });
 </script>
 

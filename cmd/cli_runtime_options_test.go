@@ -70,14 +70,15 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 
 	input := newCommandRuntimeScopeInput(
 		&scopeInputConfigOptions{
-			ModulesPath:           "/options/modules",
-			DistPath:              "/options/dist",
-			TmpPath:               "/options/tmp",
-			DefaultChoysumPath:    "/options/default",
-			ConfigPath:            "/options/config.yaml",
-			NPMRegistryURL:        "https://registry.example.com",
-			ModuleCatalogIndexURL: "https://index.example.com/v1/index.json",
-			Server:                &config.ServerConfig{Environment: "production"},
+			ModulesPath:                          "/options/modules",
+			DistPath:                             "/options/dist",
+			TmpPath:                              "/options/tmp",
+			DefaultChoysumPath:                   "/options/default",
+			ConfigPath:                           "/options/config.yaml",
+			NPMRegistryURL:                       "https://registry.example.com",
+			ModuleCatalogIndexURL:                "https://index.example.com/v1/index.json",
+			BootstrapModuleInstallTimeoutSeconds: 333,
+			Server:                               &config.ServerConfig{Environment: "production"},
 		},
 		cliRuntimeOptions{modulesPath: "/runtime/modules", tmpPath: "/runtime/tmp"},
 	)
@@ -105,6 +106,9 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	}
 	if got := input.ModuleCatalogIndexURL(); got != "https://index.example.com/v1/index.json" {
 		t.Fatalf("ModuleCatalogIndexURL() = %q, want %q", got, "https://index.example.com/v1/index.json")
+	}
+	if got := input.BootstrapModuleInstallTimeoutSeconds(); got != 333 {
+		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() = %d, want %d", got, 333)
 	}
 
 	fallback := newCommandRuntimeScopeInput(
@@ -137,6 +141,9 @@ func TestCommandRuntimeScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	if got := nilOptionsInput.ModuleCatalogIndexURL(); got != "" {
 		t.Fatalf("ModuleCatalogIndexURL() with nil options = %q, want empty", got)
 	}
+	if got := nilOptionsInput.BootstrapModuleInstallTimeoutSeconds(); got != 0 {
+		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() with nil options = %d, want 0", got)
+	}
 }
 
 func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
@@ -144,10 +151,11 @@ func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 
 	input := newRunRuntimeScopeInput(
 		&scopeInputConfigOptions{
-			ModulesPath:           "/options/modules",
-			TmpPath:               "/options/tmp",
-			NPMRegistryURL:        "https://registry.options.example",
-			ModuleCatalogIndexURL: "https://index.options.example/v1/index.json",
+			ModulesPath:                          "/options/modules",
+			TmpPath:                              "/options/tmp",
+			NPMRegistryURL:                       "https://registry.options.example",
+			ModuleCatalogIndexURL:                "https://index.options.example/v1/index.json",
+			BootstrapModuleInstallTimeoutSeconds: 444,
 		},
 		cliRuntimeOptions{},
 		runServerRuntimeOptions{},
@@ -163,6 +171,9 @@ func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 	if got := input.ModuleCatalogIndexURL(); got != "https://index.options.example/v1/index.json" {
 		t.Fatalf("ModuleCatalogIndexURL() fallback = %q, want %q", got, "https://index.options.example/v1/index.json")
 	}
+	if got := input.BootstrapModuleInstallTimeoutSeconds(); got != 444 {
+		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() fallback = %d, want %d", got, 444)
+	}
 
 	nilOptions := newRunRuntimeScopeInput(nil, cliRuntimeOptions{}, runServerRuntimeOptions{}, runDBRuntimeOptions{})
 	if got := nilOptions.ModulesPath(); got != "" {
@@ -173,6 +184,9 @@ func TestRunRuntimeScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 	}
 	if got := nilOptions.ModuleCatalogIndexURL(); got != "" {
 		t.Fatalf("ModuleCatalogIndexURL() with nil options = %q, want empty", got)
+	}
+	if got := nilOptions.BootstrapModuleInstallTimeoutSeconds(); got != 0 {
+		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() with nil options = %d, want 0", got)
 	}
 }
 

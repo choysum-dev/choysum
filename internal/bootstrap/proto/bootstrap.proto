@@ -55,6 +55,7 @@ message Workspace_GetInitializationStatus_Resp {
   string error_code = 7;
   string error_message = 8;
   int64 next_poll_after_ms = 9;
+  string stage_detail = 10;
 }
 
 service Workspace {
