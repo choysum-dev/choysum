@@ -29,6 +29,39 @@ type BasePlugin struct {
 	Mu               sync.RWMutex
 }
 
+// NormalizePath resolves absolute path, follows symlinks when possible,
+// and returns a cleaned path string.
+func NormalizePath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(trimmed); err == nil {
+		trimmed = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
+		trimmed = resolved
+	}
+	return filepath.Clean(trimmed)
+}
+
+// PathWithinRoot reports whether path is equal to root or inside root.
+func PathWithinRoot(path string, root string) bool {
+	normalizedPath := NormalizePath(path)
+	normalizedRoot := NormalizePath(root)
+	if normalizedPath == "" || normalizedRoot == "" {
+		return false
+	}
+	if normalizedPath == normalizedRoot {
+		return true
+	}
+	rel, err := filepath.Rel(normalizedRoot, normalizedPath)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 // NewBasePlugin creates shared plugin state for a module entry point.
 func NewBasePlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint string) *BasePlugin {
 	return &BasePlugin{

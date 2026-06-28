@@ -69,33 +69,11 @@ func normalizeBackendPluginImportPath(path string) string {
 }
 
 func normalizeBackendPluginPath(path string) string {
-	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		return ""
-	}
-	if abs, err := filepath.Abs(trimmed); err == nil {
-		trimmed = abs
-	}
-	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
-		trimmed = resolved
-	}
-	return filepath.Clean(trimmed)
+	return esbplugins.NormalizePath(path)
 }
 
 func backendPluginPathWithinRoot(path string, root string) bool {
-	normalizedPath := normalizeBackendPluginPath(path)
-	normalizedRoot := normalizeBackendPluginPath(root)
-	if normalizedPath == "" || normalizedRoot == "" {
-		return false
-	}
-	if normalizedPath == normalizedRoot {
-		return true
-	}
-	rel, err := filepath.Rel(normalizedRoot, normalizedPath)
-	if err != nil {
-		return false
-	}
-	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	return esbplugins.PathWithinRoot(path, root)
 }
 
 func normalizeBackendPluginModuleSpecPath(path string) string {
