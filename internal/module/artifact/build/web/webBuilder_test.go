@@ -4605,12 +4605,14 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 		}
 		aliasComponentPath := filepath.Join(aliasRoot, "views", "CompanyListView.vue")
 
-		buildResult := withParserResults(&module.BuildResult{},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: realComponentPath}},
-			&parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: aliasComponentPath}},
-		)
+		realResult := &parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: realComponentPath}}
+		aliasResult := &parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: aliasComponentPath}}
+		buildResult := withParserResults(&module.BuildResult{}, realResult, aliasResult)
 		if err := b.validate(buildResult); err != nil {
 			t.Fatalf("expected validate to deduplicate symlink alias paths, got %v", err)
+		}
+		if aliasResult.VueComponent != realResult.VueComponent {
+			t.Fatalf("expected deduplicated parser results to share canonical component pointer")
 		}
 	})
 }

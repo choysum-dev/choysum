@@ -23,6 +23,8 @@ type BasePlugin struct {
 	Wg               sync.WaitGroup
 	ParserResultChan chan *parser.ParserResult
 	TsExports        map[string]map[string]*parser.Export
+	normalizedTsExp  map[string]map[string]*parser.Export
+	normalizedTsSize int
 	ParserResults    []*parser.ParserResult
 	Mu               sync.RWMutex
 }
@@ -35,6 +37,7 @@ func NewBasePlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint s
 		EntryPoint:       entryPoint,
 		ParserResultChan: make(chan *parser.ParserResult),
 		TsExports:        make(map[string]map[string]*parser.Export),
+		normalizedTsExp:  make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
 	}
 }
@@ -85,6 +88,8 @@ func (p *BasePlugin) PublishParserResult(parserResult *parser.ParserResult) {
 // SetParserResults stores parser results for later lookups.
 func (p *BasePlugin) SetParserResults(parserResults []*parser.ParserResult) error {
 	p.ParserResults = parserResults
+	p.normalizedTsExp = nil
+	p.normalizedTsSize = 0
 	return nil
 }
 
@@ -142,6 +147,33 @@ func (p *BasePlugin) generateTsExportsMap(parserResults []*parser.ParserResult) 
 		}
 	}
 	p.TsExports = exportMap
+	p.rebuildNormalizedTsExports()
+}
+
+func (p *BasePlugin) rebuildNormalizedTsExports() {
+	normalized := make(map[string]map[string]*parser.Export, len(p.TsExports))
+	for key, exports := range p.TsExports {
+		if key == "" {
+			continue
+		}
+		normalizedKey := p.normalizeModuleSpecPath(key)
+		if normalizedKey == "" {
+			continue
+		}
+		normalized[filepath.ToSlash(normalizedKey)] = exports
+	}
+	p.normalizedTsExp = normalized
+	p.normalizedTsSize = len(p.TsExports)
+}
+
+func (p *BasePlugin) normalizedTsExports() map[string]map[string]*parser.Export {
+	if p == nil {
+		return nil
+	}
+	if p.normalizedTsExp == nil || p.normalizedTsSize != len(p.TsExports) {
+		p.rebuildNormalizedTsExports()
+	}
+	return p.normalizedTsExp
 }
 
 func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
@@ -201,13 +233,8 @@ func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Expo
 		return nil
 	}
 	normalizedModuleSpecSlash := filepath.ToSlash(normalizedModuleSpec)
-	for key, exports := range p.TsExports {
-		if key == "" {
-			continue
-		}
-		if filepath.ToSlash(p.normalizeModuleSpecPath(key)) == normalizedModuleSpecSlash {
-			return exports
-		}
+	if exports, ok := p.normalizedTsExports()[normalizedModuleSpecSlash]; ok {
+		return exports
 	}
 	return nil
 }

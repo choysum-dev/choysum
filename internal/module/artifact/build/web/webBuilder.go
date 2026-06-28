@@ -325,6 +325,7 @@ func (b *WebModuleBuilder) validate(buildResult *module.BuildResult) error {
 		result.VueComponent.Extends = normalizeWebBuilderPath(result.VueComponent.Extends)
 
 		if existing := normalizedPathMap[normalizedPath]; existing != nil {
+			result.VueComponent = existing
 			pathComponentMap[rawPath] = existing
 			pathComponentMap[result.VueComponent.Path] = existing
 			continue
