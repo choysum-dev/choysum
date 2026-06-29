@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
@@ -484,23 +483,29 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 
 	progress := logger.NewProgressLine(os.Stderr)
 	installCtx = logger.WithProgressLine(installCtx, progress)
-	var frameCounter atomic.Int64
+	spinnerTicker := logger.NewProgressTicker(progress, logger.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+	defer spinnerTicker.Stop()
+	installCtx = logger.WithProgressTicker(installCtx, spinnerTicker)
+
+	updateFetchProgressMessage := func(message string) {
+		spinnerTicker.SetMessage(message)
+	}
+
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
 		if moduleName == "" {
 			moduleName = "core module"
 		}
-		frame := int(frameCounter.Add(1))
 		switch stage {
 		case origincontract.FetchProgressStageDownload:
 			c.store.markStageDetail(operationID, "downloading module package: "+moduleName+"...")
-			progress.Update(frame, moduleName+"  downloading from registry...")
+			updateFetchProgressMessage(moduleName + "  downloading from registry...")
 		case origincontract.FetchProgressStageVerify:
 			c.store.markStageDetail(operationID, "verifying module package integrity: "+moduleName+"...")
-			progress.Update(frame, moduleName+"  verifying package...")
+			updateFetchProgressMessage(moduleName + "  verifying package...")
 		case origincontract.FetchProgressStageExtract:
 			c.store.markStageDetail(operationID, "extracting module package: "+moduleName+"...")
-			progress.Update(frame, moduleName+"  extracting package...")
+			updateFetchProgressMessage(moduleName + "  extracting package...")
 		default:
 			// Keep existing stage detail if unknown progress stage is received.
 		}
@@ -520,6 +525,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	defer executor.Stop()
 
 	c.store.markStageDetail(operationID, "resolving core module installation plan...")
+	spinnerTicker.SetMessage("document: preparing metadata tables")
 
 	moduleLifecycle := lifecycle.NewService(installScope, executor)
 	if err := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false}); err != nil {
@@ -546,7 +552,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", err)
 	}
 	if progress != nil {
-		progress.Done("✓", "core module installation completed")
+		progress.Done("", "")
 	}
 
 	c.store.markStageDetail(operationID, "core module installation completed")

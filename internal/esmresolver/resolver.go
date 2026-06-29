@@ -360,10 +360,12 @@ func (r *Resolver) Plugin() api.Plugin {
 					attrs := []any{
 						"upstream", r.upstream,
 						"target", r.target,
+						"metric_scope", "cumulative",
 						"cache_hit", hit,
 						"cache_miss", miss,
 						"downloads", downloads,
 						"download_duration_ms", downloadMs,
+						"cumulative_download_duration_ms", downloadMs,
 						"errors", errors,
 					}
 					if downloads > 0 || errors > 0 {

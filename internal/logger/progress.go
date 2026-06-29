@@ -8,13 +8,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
+	"time"
 )
 
 // braille spinner frames (same as npm)
 var progressSpinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 type progressLineContextKey struct{}
+type progressTickerContextKey struct{}
 
 var progressOutputBarrier struct {
 	mu     sync.Mutex
@@ -58,6 +61,146 @@ func (w *progressAwareWriter) Write(p []byte) (int, error) {
 type ProgressLine struct {
 	w   io.Writer
 	tty bool
+}
+
+func (p *ProgressLine) IsTTY() bool {
+	return p != nil && p.tty
+}
+
+const defaultProgressTickerInterval = 120 * time.Millisecond
+
+type ProgressTickerOptions struct {
+	Interval time.Duration
+	OnTick   func(now time.Time, message string)
+}
+
+// ProgressTicker continuously refreshes a single-line progress message.
+// Use SetMessage to update the current message, Clear to hide it, and Stop
+// to terminate the background ticker goroutine.
+type ProgressTicker struct {
+	line     *ProgressLine
+	interval time.Duration
+	onTick   func(now time.Time, message string)
+
+	mu      sync.Mutex
+	frame   int
+	message string
+
+	stopOnce sync.Once
+	stopCh   chan struct{}
+	doneCh   chan struct{}
+}
+
+func NewProgressTicker(line *ProgressLine, opts ProgressTickerOptions) *ProgressTicker {
+	interval := opts.Interval
+	if interval <= 0 {
+		interval = defaultProgressTickerInterval
+	}
+	ticker := &ProgressTicker{
+		line:     line,
+		interval: interval,
+		onTick:   opts.OnTick,
+	}
+	if line == nil {
+		return ticker
+	}
+
+	ticker.stopCh = make(chan struct{})
+	ticker.doneCh = make(chan struct{})
+	go ticker.run()
+	return ticker
+}
+
+// WithProgressTicker stores a ProgressTicker in ctx so nested operations can
+// reuse the same redraw loop instead of creating competing ticker goroutines.
+func WithProgressTicker(ctx context.Context, ticker *ProgressTicker) context.Context {
+	if ticker == nil {
+		return ctx
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, progressTickerContextKey{}, ticker)
+}
+
+// ProgressTickerFromContext returns a ProgressTicker from ctx when present.
+func ProgressTickerFromContext(ctx context.Context) *ProgressTicker {
+	if ctx == nil {
+		return nil
+	}
+	ticker, _ := ctx.Value(progressTickerContextKey{}).(*ProgressTicker)
+	return ticker
+}
+
+func (p *ProgressTicker) run() {
+	defer close(p.doneCh)
+	ticker := time.NewTicker(p.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-p.stopCh:
+			return
+		case now := <-ticker.C:
+			p.mu.Lock()
+			message := p.message
+			if message != "" {
+				p.frame++
+			}
+			frame := p.frame
+			onTick := p.onTick
+			p.mu.Unlock()
+
+			if message != "" && p.line != nil {
+				p.line.Update(frame, message)
+			}
+			if onTick != nil {
+				onTick(now, message)
+			}
+		}
+	}
+}
+
+// SetMessage updates the current ticker message and performs an immediate redraw.
+func (p *ProgressTicker) SetMessage(message string) {
+	if p == nil {
+		return
+	}
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return
+	}
+
+	p.mu.Lock()
+	p.message = message
+	p.frame++
+	frame := p.frame
+	p.mu.Unlock()
+
+	if p.line != nil {
+		p.line.Update(frame, message)
+	}
+}
+
+// Clear removes the current message so the background ticker no longer redraws.
+func (p *ProgressTicker) Clear() {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	p.message = ""
+	p.mu.Unlock()
+}
+
+// Stop terminates the background ticker goroutine.
+func (p *ProgressTicker) Stop() {
+	if p == nil || p.stopCh == nil {
+		return
+	}
+	p.stopOnce.Do(func() {
+		close(p.stopCh)
+		<-p.doneCh
+	})
 }
 
 // WithProgressLine stores a ProgressLine in ctx so downstream operations can

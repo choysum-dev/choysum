@@ -137,7 +137,9 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 			name: "peek dependency error",
 			root: &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, errors.New("peek dep failed") },
+				peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+					return nil, errors.New("peek dep failed")
+				},
 			},
 			want: "peek dependency dep: peek dep failed",
 		},
@@ -334,5 +336,43 @@ func TestBuildPlan_UninstallDetectsDependentCycle(t *testing.T) {
 	_, err := BuildPlan(context.Background(), OpUninstall, root, r)
 	if err == nil || err.Error() != "dependent cycle detected: base -> auth -> base" {
 		t.Fatalf("unexpected uninstall cycle error: %v", err)
+	}
+}
+
+func TestBuildPlan_AffectedAppsSortedForStableLogs(t *testing.T) {
+	root := &meta.IrModule{
+		Name:           "root",
+		ApplicationStr: "zeta",
+		DependsStr:     []byte(` ["dep_b", "dep_a", "webmod"] `),
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+			switch name {
+			case "dep_a":
+				return &meta.IrModule{Name: "dep_a", ApplicationStr: "alpha"}, nil
+			case "dep_b":
+				return &meta.IrModule{Name: "dep_b", ApplicationStr: "beta"}, nil
+			case "webmod":
+				return &meta.IrModule{Name: "webmod", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+	}
+
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan error: %v", err)
+	}
+
+	if len(plan.AffectedApps) != 3 {
+		t.Fatalf("expected 3 affected apps, got %v", plan.AffectedApps)
+	}
+	want := []string{"alpha", "beta", "zeta"}
+	for i := range want {
+		if plan.AffectedApps[i] != want[i] {
+			t.Fatalf("expected sorted affected apps %v, got %v", want, plan.AffectedApps)
+		}
 	}
 }

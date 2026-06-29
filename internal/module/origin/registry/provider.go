@@ -768,7 +768,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		resolvedVersion = strings.TrimSpace(inspection.module.Version)
 	}
 	if p.runtimeScope.Logger() != nil {
-		p.runtimeScope.Logger().Info("origin registry fetch started",
+		p.runtimeScope.Logger().Debug("origin registry fetch started",
 			"module", moduleName,
 			"registry_host", registryHost,
 			"package", packageName,
