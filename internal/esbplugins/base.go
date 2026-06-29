@@ -233,7 +233,8 @@ func NormalizeModuleSpecPath(path string) string {
 			continue
 		}
 		normalized := filepath.Clean(resolved)
-		if candidate.trimToDir || filepath.Base(normalized) == "index.ts" {
+		base := filepath.Base(normalized)
+		if candidate.trimToDir || base == "index" || base == "index.ts" || base == "index.vue" {
 			return filepath.Dir(normalized)
 		}
 		normalized = strings.TrimSuffix(normalized, ".ts")

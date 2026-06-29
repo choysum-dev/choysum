@@ -249,3 +249,33 @@ func TestGenerateTsExportsMapPreservesDotDirectories(t *testing.T) {
 		t.Fatalf("unexpected truncated ts export key for dot directory path: %#v", plugin.TsExports)
 	}
 }
+
+func TestNormalizeModuleSpecPathExistingIndexAliasesResolveToDirectory(t *testing.T) {
+	decoratorDir := filepath.Join(t.TempDir(), "service", "orm", "decorator")
+	if err := os.MkdirAll(decoratorDir, 0o755); err != nil {
+		t.Fatalf("mkdir decorator directory: %v", err)
+	}
+
+	indexNoExt := filepath.Join(decoratorDir, "index")
+	if err := os.WriteFile(indexNoExt, []byte("placeholder\n"), 0o644); err != nil {
+		t.Fatalf("write index file without extension: %v", err)
+	}
+	indexVue := filepath.Join(decoratorDir, "index.vue")
+	if err := os.WriteFile(indexVue, []byte("<template/>\n"), 0o644); err != nil {
+		t.Fatalf("write index.vue file: %v", err)
+	}
+
+	expectedDir, err := filepath.EvalSymlinks(decoratorDir)
+	if err != nil {
+		expectedDir = filepath.Clean(decoratorDir)
+	} else {
+		expectedDir = filepath.Clean(expectedDir)
+	}
+
+	if got := NormalizeModuleSpecPath(indexNoExt); got != expectedDir {
+		t.Fatalf("NormalizeModuleSpecPath(index no extension) = %q, want %q", got, expectedDir)
+	}
+	if got := NormalizeModuleSpecPath(indexVue); got != expectedDir {
+		t.Fatalf("NormalizeModuleSpecPath(index.vue) = %q, want %q", got, expectedDir)
+	}
+}
