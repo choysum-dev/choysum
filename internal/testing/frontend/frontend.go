@@ -43,7 +43,7 @@ var errVitestEnvironmentMarkerFound = xfmt.Errorf("vitest environment marker fou
 
 // ValidateFrontendTestDependencies checks whether required frontend tooling and
 // modules are available in local module roots or global npm root.
-func ValidateFrontendTestDependencies(repoRoot string, app string) error {
+func ValidateFrontendTestDependencies(repoRoot string, app string, coverage bool) error {
 	repoRoot = strings.TrimSpace(repoRoot)
 	if repoRoot == "" {
 		wd, _ := os.Getwd()
@@ -63,19 +63,13 @@ func ValidateFrontendTestDependencies(repoRoot string, app string) error {
 	}
 
 	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
-	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)
+	requiredModules, err := collectRequiredFrontendModules(repoRoot, app, coverage)
 	if err != nil {
 		return err
 	}
 	moduleRoots := append(localFrontendModuleRoots(repoRoot), globalNodeModulesRoot)
-	missingModules := noderuntime.MissingRequiredNodeModules(requiredModules, moduleRoots...)
-	if len(missingModules) > 0 {
-		return xfmt.Errorf(
-			"vitest: missing required modules for %s: %s. Install globally: npm install -g %s",
-			app,
-			strings.Join(missingModules, ", "),
-			strings.Join(missingModules, " "),
-		)
+	if err := noderuntime.PreflightRequiredNodeModules("vitest", app, requiredModules, moduleRoots...); err != nil {
+		return err
 	}
 
 	return nil
@@ -106,7 +100,7 @@ func RunOneAppFrontendTests(
 		return true, err
 	}
 
-	if err := ValidateFrontendTestDependencies(repoRoot, app); err != nil {
+	if err := ValidateFrontendTestDependencies(repoRoot, app, coverage); err != nil {
 		return true, err
 	}
 
@@ -117,7 +111,7 @@ func RunOneAppFrontendTests(
 	}
 	app = strings.TrimSpace(app)
 	globalNodeModulesRoot := noderuntime.ResolveGlobalNpmRootBestEffort()
-	requiredModules, err := collectRequiredFrontendModules(repoRoot, app)
+	requiredModules, err := collectRequiredFrontendModules(repoRoot, app, coverage)
 	if err != nil {
 		return true, err
 	}
@@ -151,7 +145,7 @@ func RunOneAppFrontendTests(
 		return true, xfmt.Errorf("vitest: create tmp dir: %w", err)
 	}
 
-	configPath := filepath.Join(vitestTmpDir, fmt.Sprintf("%s.%d.vitest.config.ts", app, time.Now().UnixNano()))
+	configPath := filepath.Join(vitestTmpDir, fmt.Sprintf("%s.%d.vitest.config.cjs", app, time.Now().UnixNano()))
 	cleanup := func() { _ = os.Remove(configPath) }
 	if !keep {
 		defer cleanup()
@@ -163,10 +157,12 @@ func RunOneAppFrontendTests(
 	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
 
 	var b strings.Builder
-	b.WriteString("import { defineConfig } from 'vitest/config'\n")
-	b.WriteString("import vue from '@vitejs/plugin-vue'\n\n")
-	b.WriteString("import path from 'node:path'\n")
-	b.WriteString("export default defineConfig({\n")
+	b.WriteString("const path = require('node:path')\n")
+	b.WriteString("const { createRequire } = require('node:module')\n")
+	b.WriteString("const requireFromCwd = createRequire(path.resolve(process.cwd(), 'package.json'))\n")
+	b.WriteString("const { defineConfig } = requireFromCwd('vitest/config')\n")
+	b.WriteString("const vue = requireFromCwd('@vitejs/plugin-vue')\n\n")
+	b.WriteString("module.exports = defineConfig({\n")
 	b.WriteString("  cacheDir: " + strconv.Quote(viteCacheDir) + ",\n")
 	b.WriteString("  plugins: [vue()],\n")
 	b.WriteString("  resolve: {\n")
@@ -278,7 +274,7 @@ func sanitizeFrontendAppToken(app string) string {
 	return token
 }
 
-func collectRequiredFrontendModules(repoRoot string, app string) ([]string, error) {
+func collectRequiredFrontendModules(repoRoot string, app string, coverage bool) ([]string, error) {
 	required := map[string]struct{}{
 		"vitest":               {},
 		"vite":                 {},
@@ -290,6 +286,9 @@ func collectRequiredFrontendModules(repoRoot string, app string) ([]string, erro
 		"@vue/server-renderer": {},
 		"@vue/test-utils":      {},
 		"sass-embedded":        {},
+	}
+	if coverage {
+		required["@vitest/coverage-v8"] = struct{}{}
 	}
 
 	visitedModules := map[string]struct{}{}
@@ -465,19 +464,20 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 }
 
 func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
-	values := make([]string, 0, 4)
-	for _, localNodeModules := range localFrontendModuleRoots(repoRoot) {
-		if st, err := os.Stat(localNodeModules); err == nil && st.IsDir() {
-			values = append(values, localNodeModules)
+	nodePathEntries := make([]string, 0, 4)
+	localNodeModulesRoots := localFrontendModuleRoots(repoRoot)
+	for _, localNodeModulesRoot := range localNodeModulesRoots {
+		if st, err := os.Stat(localNodeModulesRoot); err == nil && st.IsDir() {
+			nodePathEntries = append(nodePathEntries, localNodeModulesRoot)
 		}
 	}
 	if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
-		values = append(values, globalNodeModulesRoot)
+		nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
 	}
-	if current := strings.TrimSpace(os.Getenv("NODE_PATH")); current != "" {
-		values = append(values, current)
+	if existingNodePath := strings.TrimSpace(os.Getenv("NODE_PATH")); existingNodePath != "" {
+		nodePathEntries = append(nodePathEntries, existingNodePath)
 	}
-	return strings.Join(values, string(os.PathListSeparator))
+	return strings.Join(nodePathEntries, string(os.PathListSeparator))
 }
 
 func replaceOrAppendEnv(env []string, key string, value string) []string {
@@ -485,20 +485,20 @@ func replaceOrAppendEnv(env []string, key string, value string) []string {
 		return env
 	}
 	needle := key + "="
-	replaced := false
-	out := make([]string, 0, len(env)+1)
+	didReplaceExisting := false
+	updatedEnv := make([]string, 0, len(env)+1)
 	for _, entry := range env {
 		if strings.HasPrefix(entry, needle) {
-			if !replaced {
-				out = append(out, needle+value)
-				replaced = true
+			if !didReplaceExisting {
+				updatedEnv = append(updatedEnv, needle+value)
+				didReplaceExisting = true
 			}
 			continue
 		}
-		out = append(out, entry)
+		updatedEnv = append(updatedEnv, entry)
 	}
-	if !replaced {
-		out = append(out, needle+value)
+	if !didReplaceExisting {
+		updatedEnv = append(updatedEnv, needle+value)
 	}
-	return out
+	return updatedEnv
 }

@@ -32,6 +32,13 @@ func ensureFrontendRequiredModulesAt(t *testing.T, moduleRoot string) {
 	}
 }
 
+func ensureFrontendCoverageProviderAt(t *testing.T, moduleRoot string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(moduleRoot, "@vitest", "coverage-v8"), 0o755); err != nil {
+		t.Fatalf("mkdir required coverage module @vitest/coverage-v8: %v", err)
+	}
+}
+
 func ensureFrontendRequiredModules(t *testing.T, repoRoot string) {
 	t.Helper()
 	ensureFrontendRequiredModulesAt(t, filepath.Join(repoRoot, "node_modules"))
@@ -73,7 +80,7 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		}
 	})
 
-	t.Run("rejects missing required modules with global install guidance", func(t *testing.T) {
+	t.Run("rejects missing required modules with remediation guidance", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		binDir := filepath.Join(t.TempDir(), "bin")
 		globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
@@ -98,8 +105,11 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		if !strings.Contains(err.Error(), "missing required modules") {
 			t.Fatalf("expected missing required modules message, got %v", err)
 		}
+		if !strings.Contains(err.Error(), "Ensure these modules are available") {
+			t.Fatalf("expected remediation guidance, got %v", err)
+		}
 		if !strings.Contains(err.Error(), "npm install -g") {
-			t.Fatalf("expected global install guidance, got %v", err)
+			t.Fatalf("expected npm global install hint, got %v", err)
 		}
 		if !strings.Contains(err.Error(), "@vueuse/core") {
 			t.Fatalf("expected app dependency in missing list, got %v", err)
@@ -186,14 +196,17 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
 		writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
 		t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-root"))
 		ensureFrontendRequiredModules(t, repoRoot)
 
 		// vitest is on PATH, but @vitest/coverage-v8 is not installed.
-		// vitest itself will report the missing coverage provider at runtime;
-		// our pre-flight no longer guards this case.
+		// Coverage runs must fail in preflight with a clear dependency error.
 		failed, err := runFrontendTest(context.Background(), repoRoot, "auth", "", true, false, false, false, "coverage", 0, 0, 0, 0, repoRoot, false)
-		if err != nil {
-			t.Fatalf("expected no pre-flight error, got failed=%v err=%v", failed, err)
+		if err == nil {
+			t.Fatalf("expected pre-flight dependency error, got failed=%v", failed)
+		}
+		if !strings.Contains(err.Error(), "@vitest/coverage-v8") {
+			t.Fatalf("expected missing coverage provider in error, got failed=%v err=%v", failed, err)
 		}
 	})
 
@@ -299,6 +312,7 @@ func TestRunOneAppFrontendTestsKeepTmpConfig(t *testing.T) {
 	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	ensureFrontendRequiredModules(t, repoRoot)
+	ensureFrontendCoverageProviderAt(t, filepath.Join(repoRoot, "node_modules"))
 
 	captureDefault := filepath.Join(t.TempDir(), "default-config.txt")
 	t.Setenv("CHOYSUM_CAPTURE_CONFIG", captureDefault)
@@ -344,6 +358,7 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	ensureFrontendRequiredModules(t, repoRoot)
+	ensureFrontendCoverageProviderAt(t, filepath.Join(repoRoot, "node_modules"))
 
 	capturePath := filepath.Join(t.TempDir(), "config.txt")
 	t.Setenv("CHOYSUM_CAPTURE_CONFIG", capturePath)
@@ -418,6 +433,7 @@ func TestRunOneAppFrontendTestsCoverageCheck(t *testing.T) {
 	writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	ensureFrontendRequiredModules(t, repoRoot)
+	ensureFrontendCoverageProviderAt(t, filepath.Join(repoRoot, "node_modules"))
 
 	summaryPath := filepath.Join(repoRoot, "cov", "fe", "auth", "coverage-summary.json")
 	if err := os.MkdirAll(filepath.Dir(summaryPath), 0o755); err != nil {

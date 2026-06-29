@@ -116,8 +116,11 @@ func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 		Stdout:      io.Discard,
 		Stderr:      io.Discard,
 	})
-	if err == nil || !strings.Contains(err.Error(), "playwright not found") {
+	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
 		t.Fatalf("expected playwright missing error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npm install -g @playwright/test") {
+		t.Fatalf("expected npm global install hint in error, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatalf("expected fast-fail before runOneScenario")
@@ -148,8 +151,11 @@ func TestRunModuleFastFailsWhenPlaywrightPackageMissing(t *testing.T) {
 		Stdout:      io.Discard,
 		Stderr:      io.Discard,
 	})
-	if err == nil || !strings.Contains(err.Error(), "missing required modules for auth: @playwright/test") {
+	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
 		t.Fatalf("expected playwright package missing error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npm install -g @playwright/test") {
+		t.Fatalf("expected npm global install hint in error, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatalf("expected fast-fail before runOneScenario")
@@ -673,7 +679,7 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 
 	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
-	if err == nil || !strings.Contains(err.Error(), "playwright not found") {
+	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
 		t.Fatalf("expected missing playwright error, got %v", err)
 	}
 

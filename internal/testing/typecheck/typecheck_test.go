@@ -33,6 +33,12 @@ func TestTypecheckApp_AllowsNpxWithoutGlobalVueTsc(t *testing.T) {
 	}
 
 	t.Setenv("PATH", binDir)
+	if err := os.MkdirAll(filepath.Join(repoRoot, "node_modules", "vue-tsc"), 0o755); err != nil {
+		t.Fatalf("mkdir local vue-tsc module: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatalf("write local vue-tsc package.json: %v", err)
+	}
 
 	opts := RunOptions{
 		ModulesPath: modulesPath,

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -94,6 +95,42 @@ func TestMissingRequiredNodeModules(t *testing.T) {
 	}
 	if ModuleInstalledInRoots("@connectrpc/connect", root) {
 		t.Fatal("expected @connectrpc/connect to be missing")
+	}
+}
+
+func TestNormalizeModuleRoots(t *testing.T) {
+	got := NormalizeModuleRoots("", " /a ", "/a", "/b", "")
+	want := []string{"/a", "/b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("NormalizeModuleRoots() = %#v, want %#v", got, want)
+	}
+}
+
+func TestPreflightRequiredNodeModules(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir playwright package: %v", err)
+	}
+
+	if err := PreflightRequiredNodeModules("e2e", "auth", []string{"@playwright/test"}, root); err != nil {
+		t.Fatalf("expected preflight success, got %v", err)
+	}
+
+	err := PreflightRequiredNodeModules("e2e", "auth", []string{"@playwright/test", "@connectrpc/connect"}, root)
+	if err == nil {
+		t.Fatal("expected missing module error")
+	}
+	errText := err.Error()
+	for _, want := range []string{
+		"preflight failed for auth. tests were not started.",
+		"missing required modules:",
+		"@connectrpc/connect",
+		"install globally:",
+		"npm install -g",
+	} {
+		if !strings.Contains(errText, want) {
+			t.Fatalf("expected %q in error, got %q", want, errText)
+		}
 	}
 }
 

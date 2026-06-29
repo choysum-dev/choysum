@@ -77,6 +77,16 @@ func noopRunFrontend(context.Context, string, string, string, string, bool, bool
 	return false, nil
 }
 
+func writeRunnerExec(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir %s: %v", filepath.Dir(path), err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
 func TestRun(t *testing.T) {
 	newEnv := func(modulesPath string) *testStubScope {
 		return &testStubScope{
@@ -373,7 +383,7 @@ func TestRun(t *testing.T) {
 			},
 			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
 			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return true, nil },
-			PreflightFrontend: func(repoRoot string, app string) error {
+			PreflightFrontend: func(repoRoot string, app string, coverage bool) error {
 				return preflightErr
 			},
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
@@ -387,6 +397,58 @@ func TestRun(t *testing.T) {
 		}
 		if backendCalls != 0 {
 			t.Fatalf("expected backend not to run after frontend preflight failure, got %d calls", backendCalls)
+		}
+	})
+
+	t.Run("aggregates coverage and frontend preflight errors in a single block", func(t *testing.T) {
+		var stderr strings.Builder
+		backendCalls := 0
+		preflightErr := errors.New("frontend deps missing")
+		binDir := t.TempDir()
+		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir)
+
+		err := Run(context.Background(), RunOptions{
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "auth",
+			RunBE:       true,
+			RunFE:       true,
+			Coverage:    true,
+			Stdout:      io.Discard,
+			Stderr:      &stderr,
+			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
+				return []string{"auth"}, nil
+			},
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return true, nil },
+			PreflightFrontend: func(repoRoot string, app string, coverage bool) error {
+				return preflightErr
+			},
+			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
+				backendCalls++
+				return false, nil
+			},
+			RunFrontend: noopRunFrontend,
+		})
+		if err == nil || !strings.Contains(err.Error(), "tests failed") {
+			t.Fatalf("expected aggregated tests failed error, got %v", err)
+		}
+		if backendCalls != 0 {
+			t.Fatalf("expected backend not to run after preflight failures, got %d calls", backendCalls)
+		}
+		errText := stderr.String()
+		for _, want := range []string{
+			"Error: preflight failed for auth. tests were not started.",
+			"missing required modules: istanbul-lib-instrument",
+			"npm install -g istanbul-lib-instrument",
+			"additional preflight errors:",
+			"- frontend dependency preflight:",
+			"frontend deps missing",
+		} {
+			if !strings.Contains(errText, want) {
+				t.Fatalf("expected %q in aggregated preflight output, got %q", want, errText)
+			}
 		}
 	})
 
@@ -516,12 +578,23 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("coverage report and check branches return errors when tooling missing", func(t *testing.T) {
-		t.Setenv("PATH", "")
+		repoRoot := t.TempDir()
+		binDir := t.TempDir()
+		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir)
+		marker := filepath.Join(repoRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatalf("mkdir coverage marker dir: %v", err)
+		}
+		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("write coverage marker: %v", err)
+		}
+
 		err := Run(context.Background(), RunOptions{
 			Env:               newEnv(t.TempDir()),
 			ModulesPath:       t.TempDir(),
 			Target:            "auth",
-			RepoRoot:          t.TempDir(),
+			RepoRoot:          repoRoot,
 			RunBE:             true,
 			Coverage:          true,
 			CoverageReport:    true,
@@ -538,7 +611,7 @@ func TestRun(t *testing.T) {
 			},
 			RunFrontend: noopRunFrontend,
 		})
-		if err == nil || !strings.Contains(err.Error(), "--coverage-report requires node") {
+		if err == nil || !strings.Contains(err.Error(), "--coverage-report requires npx") {
 			t.Fatalf("expected coverage report tooling error, got %v", err)
 		}
 
@@ -546,7 +619,7 @@ func TestRun(t *testing.T) {
 			Env:           newEnv(t.TempDir()),
 			ModulesPath:   t.TempDir(),
 			Target:        "auth",
-			RepoRoot:      t.TempDir(),
+			RepoRoot:      repoRoot,
 			RunBE:         true,
 			Coverage:      true,
 			CoverageCheck: true,
@@ -563,7 +636,7 @@ func TestRun(t *testing.T) {
 			},
 			RunFrontend: noopRunFrontend,
 		})
-		if err == nil || !strings.Contains(err.Error(), "--coverage-check requires node") {
+		if err == nil || !strings.Contains(err.Error(), "--coverage-check requires npx") {
 			t.Fatalf("expected coverage check tooling error, got %v", err)
 		}
 	})

@@ -4,6 +4,7 @@
 package coverage
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	_ "embed"
@@ -17,6 +18,7 @@ import (
 	"time"
 	"unicode"
 
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
@@ -43,8 +45,8 @@ func CoverageRunIDFromContext(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	v, _ := ctx.Value(coverageRunIDContextKey{}).(string)
-	return strings.TrimSpace(v)
+	runIDValue, _ := ctx.Value(coverageRunIDContextKey{}).(string)
+	return strings.TrimSpace(runIDValue)
 }
 
 // NewCoverageRunID generates a unique run ID safe for file names.
@@ -64,16 +66,16 @@ func FindRepoRootFromCwd() string {
 	if err != nil {
 		return "."
 	}
-	cur := cwd
+	scanDir := cwd
 	for {
-		if _, err := os.Stat(filepath.Join(cur, "go.mod")); err == nil {
-			return cur
+		if _, err := os.Stat(filepath.Join(scanDir, "go.mod")); err == nil {
+			return scanDir
 		}
-		parent := filepath.Dir(cur)
-		if parent == cur {
+		parent := filepath.Dir(scanDir)
+		if parent == scanDir {
 			return cwd
 		}
-		cur = parent
+		scanDir = parent
 	}
 }
 
@@ -86,9 +88,6 @@ func FindRepoRootFromCwd() string {
 // - dist/bundles/tests.js
 //
 // Each target writes/updates its corresponding .map file when possible.
-//
-// Note: this still relies on Node's module resolution to find `istanbul-lib-instrument`.
-// We set cmd.Dir=repoRoot so `require()` can resolve from repoRoot/node_modules.
 func InstrumentDistBundle(ctx context.Context, repoRoot string, distPath string, app string) error {
 	return InstrumentDistBundleWithTmpRoot(ctx, repoRoot, distPath, app, "")
 }
@@ -120,6 +119,8 @@ func InstrumentDistBundleWithTmpRoot(ctx context.Context, repoRoot string, distP
 		return xfmt.Errorf("instrument bundle for coverage: no dist bundle found for app %q under %s", app, distPath)
 	}
 
+	moduleRootDir := resolveCoverageModuleRoot(repoRoot)
+
 	runID := testingpathing.TestingRunIDFromContext(ctx)
 	scriptPath, cleanup, err := writeInstrumentScriptTempFileWithTmpRoot(repoRoot, tmpRoot, runID)
 	if err != nil {
@@ -129,31 +130,232 @@ func InstrumentDistBundleWithTmpRoot(ctx context.Context, repoRoot string, distP
 
 	for _, inPath := range targets {
 		outMapPath := inPath + ".map"
-		cmd := exec.CommandContext(ctx, nodePath, scriptPath, "--in", inPath, "--out", inPath, "--out-map", outMapPath)
-		cmd.Dir = repoRoot
-		cmd.Stdout = os.Stderr
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := runCoverageInstrumentWithNode(ctx, nodePath, repoRoot, scriptPath, inPath, outMapPath, moduleRootDir); err != nil {
 			return xfmt.Errorf("instrument bundle for coverage (%s): %w", inPath, err)
 		}
 	}
 	return nil
 }
 
+// PreflightInstrumentationPrerequisites validates coverage instrumentation prerequisites
+// without mutating filesystem state or running the instrument script.
+func PreflightInstrumentationPrerequisites(repoRoot string) error {
+	repoRoot = strings.TrimSpace(repoRoot)
+	if repoRoot == "" {
+		repoRoot = FindRepoRootFromCwd()
+	}
+
+	if _, err := exec.LookPath("node"); err != nil {
+		return xfmt.Errorf("--coverage requires node in PATH")
+	}
+
+	if strings.TrimSpace(resolveCoverageModuleRoot(repoRoot)) == "" {
+		if err := missingCoverageModulesError(repoRoot); err != nil {
+			return err
+		}
+		return xfmt.Errorf("coverage: missing required modules")
+	}
+
+	return nil
+}
+
+func resolveCoverageModuleRoot(repoRoot string) string {
+	moduleRootCandidates := coverageModuleRootCandidates(repoRoot)
+	for _, moduleRootCandidate := range moduleRootCandidates {
+		if hasCoverageModuleInRoot(moduleRootCandidate) {
+			return moduleRootCandidate
+		}
+	}
+	return ""
+}
+
+func coverageModuleRootCandidates(repoRoot string) []string {
+	repoRoot = strings.TrimSpace(repoRoot)
+	globalNodeModulesRoot := strings.TrimSpace(noderuntime.ResolveGlobalNpmRootBestEffort())
+	return []string{
+		repoRoot,
+		filepath.Join(repoRoot, "modules"),
+		filepath.Join(repoRoot, ".choysum"),
+		filepath.Join(repoRoot, ".choysum", "generated"),
+		globalNodeModulesRoot,
+		filepath.Join(globalNodeModulesRoot, "nyc"),
+	}
+}
+
+func coverageCheckedModuleRoots(repoRoot string) []string {
+	moduleRootCandidates := coverageModuleRootCandidates(repoRoot)
+	checkedModuleRoots := make([]string, 0, len(moduleRootCandidates)*2)
+	for _, moduleRootCandidate := range moduleRootCandidates {
+		moduleRootCandidate = strings.TrimSpace(moduleRootCandidate)
+		if moduleRootCandidate == "" {
+			continue
+		}
+		checkedModuleRoots = append(
+			checkedModuleRoots,
+			filepath.Join(moduleRootCandidate, "node_modules"),
+			moduleRootCandidate,
+		)
+	}
+	return noderuntime.NormalizeModuleRoots(checkedModuleRoots...)
+}
+
+func missingCoverageModulesError(repoRoot string) error {
+	return &noderuntime.MissingNodeModulesPreflightError{
+		Tool:               "coverage",
+		Target:             "coverage",
+		MissingModules:     []string{"istanbul-lib-instrument"},
+		CheckedModuleRoots: coverageCheckedModuleRoots(repoRoot),
+	}
+}
+
+func hasCoverageModuleInRoot(rootDir string) bool {
+	rootDir = strings.TrimSpace(rootDir)
+	if rootDir == "" {
+		return false
+	}
+	moduleManifestCandidates := []string{
+		filepath.Join(rootDir, "node_modules", "istanbul-lib-instrument", "package.json"),
+		filepath.Join(rootDir, "istanbul-lib-instrument", "package.json"),
+	}
+	for _, moduleManifestPath := range moduleManifestCandidates {
+		if _, err := os.Stat(moduleManifestPath); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func runCoverageInstrumentWithNode(ctx context.Context, nodePath string, repoRoot string, scriptPath string, inPath string, outMapPath string, moduleRootDir string) error {
+	if strings.TrimSpace(moduleRootDir) == "" {
+		if err := missingCoverageModulesError(repoRoot); err != nil {
+			return err
+		}
+		return xfmt.Errorf("coverage: missing required modules")
+	}
+
+	var stderr bytes.Buffer
+	cmd := exec.CommandContext(ctx, nodePath, scriptPath, "--in", inPath, "--out", inPath, "--out-map", outMapPath)
+	cmd.Dir = repoRoot
+	nodePathValue := buildCoverageNodePath(repoRoot, moduleRootDir)
+	cmd.Env = replaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	if err := cmd.Run(); err != nil {
+		if isMissingIstanbulLibError(stderr.String()) {
+			if preflightErr := missingCoverageModulesError(repoRoot); preflightErr != nil {
+				return preflightErr
+			}
+			return xfmt.Errorf("coverage: missing required modules")
+		}
+		return err
+	}
+	return nil
+}
+
+func buildCoverageNodePath(repoRoot string, moduleRootDir string) string {
+	nodePathEntries := make([]string, 0, 8)
+
+	localNodeModulesRoots := []string{
+		filepath.Join(repoRoot, "modules", "node_modules"),
+		filepath.Join(repoRoot, "node_modules"),
+	}
+	for _, localNodeModulesRoot := range localNodeModulesRoots {
+		if st, err := os.Stat(localNodeModulesRoot); err == nil && st.IsDir() {
+			nodePathEntries = append(nodePathEntries, localNodeModulesRoot)
+		}
+	}
+
+	globalNodeModulesRoot := strings.TrimSpace(noderuntime.ResolveGlobalNpmRootBestEffort())
+	if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
+		nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
+	}
+
+	if moduleRoot := strings.TrimSpace(moduleRootDir); moduleRoot != "" {
+		moduleManifestInNodeModules := filepath.Join(moduleRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+		if _, err := os.Stat(moduleManifestInNodeModules); err == nil {
+			nodePathEntries = append(nodePathEntries, filepath.Join(moduleRoot, "node_modules"))
+		}
+		moduleManifestInModuleRoot := filepath.Join(moduleRoot, "istanbul-lib-instrument", "package.json")
+		if _, err := os.Stat(moduleManifestInModuleRoot); err == nil {
+			nodePathEntries = append(nodePathEntries, moduleRoot)
+		}
+	}
+
+	if existingNodePath := strings.TrimSpace(os.Getenv("NODE_PATH")); existingNodePath != "" {
+		nodePathEntries = append(nodePathEntries, existingNodePath)
+	}
+
+	uniqueNodePathEntries := make([]string, 0, len(nodePathEntries))
+	seenNodePathEntries := make(map[string]struct{}, len(nodePathEntries))
+	for _, nodePathEntry := range nodePathEntries {
+		nodePathEntry = strings.TrimSpace(nodePathEntry)
+		if nodePathEntry == "" {
+			continue
+		}
+		if _, ok := seenNodePathEntries[nodePathEntry]; ok {
+			continue
+		}
+		seenNodePathEntries[nodePathEntry] = struct{}{}
+		uniqueNodePathEntries = append(uniqueNodePathEntries, nodePathEntry)
+	}
+
+	return strings.Join(uniqueNodePathEntries, string(os.PathListSeparator))
+}
+
+func replaceOrAppendEnv(env []string, key string, value string) []string {
+	if strings.TrimSpace(key) == "" {
+		return env
+	}
+	needle := key + "="
+	didReplaceExisting := false
+	updatedEnv := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if strings.HasPrefix(entry, needle) {
+			if !didReplaceExisting {
+				updatedEnv = append(updatedEnv, needle+value)
+				didReplaceExisting = true
+			}
+			continue
+		}
+		updatedEnv = append(updatedEnv, entry)
+	}
+	if !didReplaceExisting {
+		updatedEnv = append(updatedEnv, needle+value)
+	}
+	return updatedEnv
+}
+
+func isMissingIstanbulLibError(stderr string) bool {
+	stderr = strings.TrimSpace(stderr)
+	if stderr == "" {
+		return false
+	}
+	if strings.Contains(stderr, "Cannot find module 'istanbul-lib-instrument'") {
+		return true
+	}
+	if strings.Contains(stderr, "Cannot find package 'istanbul-lib-instrument'") {
+		return true
+	}
+	if strings.Contains(stderr, "ERR_MODULE_NOT_FOUND") && strings.Contains(stderr, "istanbul-lib-instrument") {
+		return true
+	}
+	return false
+}
+
 func existingInstrumentTargets(distPath string, app string) []string {
-	candidates := []string{
+	instrumentTargetCandidates := []string{
 		filepath.Join(distPath, "apps", app, "index.js"),
 		filepath.Join(distPath, "apps", app, "tests.js"),
 		filepath.Join(distPath, "bundles", "index.js"),
 		filepath.Join(distPath, "bundles", "tests.js"),
 	}
-	targets := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		if _, err := os.Stat(candidate); err == nil {
-			targets = append(targets, candidate)
+	instrumentTargets := make([]string, 0, len(instrumentTargetCandidates))
+	for _, instrumentTargetPath := range instrumentTargetCandidates {
+		if _, err := os.Stat(instrumentTargetPath); err == nil {
+			instrumentTargets = append(instrumentTargets, instrumentTargetPath)
 		}
 	}
-	return targets
+	return instrumentTargets
 }
 
 func resolveCoverageTmpBaseDir(repoRoot string, tmpRoot string) (string, error) {
@@ -211,9 +413,9 @@ func writeInstrumentScriptTempFileWithTmpRoot(repoRoot string, tmpRoot string, r
 
 	baseDir := ""
 	if coverageTmpDir, err := resolveCoverageTmpBaseDirWithRunID(repoRoot, tmpRoot, runID); err == nil {
-		candidate := filepath.Join(coverageTmpDir, "instrument")
-		if mkErr := os.MkdirAll(candidate, 0o755); mkErr == nil {
-			baseDir = candidate
+		instrumentScriptTempBaseDir := filepath.Join(coverageTmpDir, "instrument")
+		if mkErr := os.MkdirAll(instrumentScriptTempBaseDir, 0o755); mkErr == nil {
+			baseDir = instrumentScriptTempBaseDir
 		}
 	}
 
@@ -374,7 +576,7 @@ func RunNycReport(ctx context.Context, repoRoot string, reportDir string, report
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return xfmt.Errorf("nyc report failed (nyc may not be installed — run: npm install -g nyc): %w", err)
+		return xfmt.Errorf("nyc report failed: ensure nyc is resolvable by npx --no-install: %w", err)
 	}
 	return nil
 }
@@ -576,15 +778,15 @@ func SplitCoverageGlobs(v string) []string {
 			return false
 		}
 	})
-	out := make([]string, 0, len(parts))
+	globs := make([]string, 0, len(parts))
 	for _, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
-		out = append(out, p)
+		globs = append(globs, p)
 	}
-	return out
+	return globs
 }
 
 // SplitCoverageReporters is an alias of SplitCoverageGlobs.
@@ -592,7 +794,7 @@ func SplitCoverageReporters(v string) []string { return SplitCoverageGlobs(v) }
 
 func ValidateCoverageReporters(reporters []string) ([]string, error) {
 	// We only allow a conservative set to avoid typos silently producing no output.
-	allowed := map[string]struct{}{
+	allowedReporterSet := map[string]struct{}{
 		"text":         {},
 		"html":         {},
 		"lcov":         {},
@@ -600,22 +802,22 @@ func ValidateCoverageReporters(reporters []string) ([]string, error) {
 		"text-summary": {},
 		"json-summary": {},
 	}
-	seen := map[string]struct{}{}
-	out := make([]string, 0, len(reporters))
+	seenReporterSet := map[string]struct{}{}
+	validatedReporters := make([]string, 0, len(reporters))
 	for _, r := range reporters {
 		r = strings.TrimSpace(r)
 		if r == "" {
 			continue
 		}
 		r = strings.ToLower(r)
-		if _, ok := allowed[r]; !ok {
+		if _, ok := allowedReporterSet[r]; !ok {
 			return nil, xfmt.Errorf("unsupported coverage reporter %q (allowed: text, html, lcov, lcovonly, text-summary, json-summary)", r)
 		}
-		if _, ok := seen[r]; ok {
+		if _, ok := seenReporterSet[r]; ok {
 			continue
 		}
-		seen[r] = struct{}{}
-		out = append(out, r)
+		seenReporterSet[r] = struct{}{}
+		validatedReporters = append(validatedReporters, r)
 	}
-	return out, nil
+	return validatedReporters, nil
 }

@@ -165,6 +165,37 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		}
 	})
 
+	t.Run("coverage preflight fails before runtime preparation", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-root"))
+
+		baseScope := &testStubScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), DistPath: t.TempDir()}}
+		makeScopeCalled := false
+		makeTestScopeHook = func(ctx context.Context, base scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
+			makeScopeCalled = true
+			return baseScope, func() {}, nil
+		}
+
+		var progress strings.Builder
+		oldProgressWriter := backendProgressWriter
+		backendProgressWriter = &progress
+		defer func() { backendProgressWriter = oldProgressWriter }()
+
+		failed, err := RunOneAppBackendTests(context.Background(), baseScope, "auth", repoRoot, "sqlite", "", "", false, "", "", false, true)
+		if failed {
+			t.Fatalf("expected failed=false on preflight error")
+		}
+		if err == nil || !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+			t.Fatalf("expected coverage preflight error, got %v", err)
+		}
+		if makeScopeCalled {
+			t.Fatalf("expected preflight failure before makeTestScope")
+		}
+		if progress.Len() != 0 {
+			t.Fatalf("expected no runtime preparation logs before preflight failure, got %q", progress.String())
+		}
+	})
+
 	t.Run("compiler creation error still triggers cleanup", func(t *testing.T) {
 		cleanupCalled := false
 		repoRoot := t.TempDir()

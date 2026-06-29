@@ -150,8 +150,8 @@ func TestResolveNpxPath(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "npx not found") {
 			t.Fatalf("expected npx not found error, got %v", err)
 		}
-		if !strings.Contains(err.Error(), "nodejs.org") {
-			t.Fatalf("expected install hint with nodejs.org, got %v", err)
+		if !strings.Contains(err.Error(), "Ensure Node.js/npm is installed") {
+			t.Fatalf("expected remediation hint, got %v", err)
 		}
 	})
 }
