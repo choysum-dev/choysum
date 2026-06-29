@@ -103,10 +103,21 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 		s.runtimeScope.Logger().Debug("js executor reloading", "init_script_count", len(result.InitScripts))
 		startedAt := time.Now()
 		if err := s.jsExecutor.Reload(result.InitScripts...); err != nil {
-			return result.summary(), xfmt.Errorf("Failed to reload js executor: %w", err)
+			if !strings.Contains(strings.ToLower(err.Error()), "not started") {
+				return result.summary(), xfmt.Errorf("Failed to reload js executor: %w", err)
+			}
+			s.runtimeScope.Logger().Debug("js executor reload fallback to cold start", "reason", err)
+			s.jsExecutor.SetJsScripts(result.InitScripts)
+			if startErr := s.jsExecutor.Start(); startErr != nil {
+				return result.summary(), xfmt.Errorf("Failed to start js executor: %w", startErr)
+			}
+			result.Reload = false
+			result.JSRuntimeDurationMs = time.Since(startedAt).Milliseconds()
+			s.runtimeScope.Logger().Info("js executor started", result.startupLogFields()...)
+		} else {
+			result.JSRuntimeDurationMs = time.Since(startedAt).Milliseconds()
+			s.runtimeScope.Logger().Info("js executor reloaded", result.startupLogFields()...)
 		}
-		result.JSRuntimeDurationMs = time.Since(startedAt).Milliseconds()
-		s.runtimeScope.Logger().Info("js executor reloaded", result.startupLogFields()...)
 	}
 	result.JSRuntimeActivated = true
 

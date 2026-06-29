@@ -62,7 +62,7 @@ func (s *GRPCWebServer) startRuntimeOwners(reload bool, opts runtimeOptions) (st
 		return startupPhaseModeRuntime, modeRuntime, taskRuntimeStartupSummary{}, err
 	}
 	taskRuntime := s.startTaskRuntime()
-	if err := s.startTransportIngress(opts); err != nil {
+	if err := s.startTransportIngress(opts, reload); err != nil {
 		return startupPhaseTransportIngress, modeRuntime, taskRuntime, err
 	}
 	return "", modeRuntime, taskRuntime, nil

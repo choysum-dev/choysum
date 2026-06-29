@@ -4,8 +4,10 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -25,8 +27,7 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
-	runtimeScope.cfg.Server.BindAddress = "127.0.0.1"
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Server.JsEngineFactory = "missing"
@@ -189,10 +190,12 @@ func TestServerRequestBootstrapModeSwitchTransitionsToApplicationAndRestarts(t *
 
 func TestServerRequestBootstrapModeSwitchDefaultRestartUsesColdStart(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
+	var logBuf bytes.Buffer
+	runtimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 
@@ -218,6 +221,19 @@ func TestServerRequestBootstrapModeSwitchDefaultRestartUsesColdStart(t *testing.
 
 	if err := srv.requestBootstrapModeSwitch(context.Background()); err != nil {
 		t.Fatalf("requestBootstrapModeSwitch() error = %v", err)
+	}
+	logs := logBuf.String()
+	if !strings.Contains(logs, "server restarting") {
+		t.Fatalf("expected mode-switch restart wording in logs, got %q", logs)
+	}
+	if strings.Contains(logs, "server stopped") {
+		t.Fatalf("did not expect stop wording during mode-switch restart, got %q", logs)
+	}
+	if !strings.Contains(logs, "application server ready") || !strings.Contains(logs, "access_url=") {
+		t.Fatalf("expected application server ready log with access_url, got %q", logs)
+	}
+	if strings.Contains(logs, "http server listening") {
+		t.Fatalf("expected reload startup to suppress duplicate http server listening log, got %q", logs)
 	}
 
 	assertRunStateMode(t, srv, runplan.RunModeApplication, "after default bootstrap mode switch restart")

@@ -4,10 +4,13 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +19,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	pkgrunner "github.com/choysum-dev/choysum/internal/testing/runner"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -41,6 +45,11 @@ type commandExitScope struct {
 type commandRunErrScope struct {
 	commandExitScope
 	runErr error
+}
+
+type commandBufferLoggerScope struct {
+	*commandTestScope
+	logger *slog.Logger
 }
 
 type commandErrorTransactor struct{ err error }
@@ -91,6 +100,29 @@ func (e *commandRunErrScope) WithContext(ctx context.Context) scope.Scope {
 	return &commandRunErrScope{
 		commandExitScope: commandExitScope{commandTestScope: commandTestScope{ctx: ctx, cfg: e.cfg}},
 		runErr:           e.runErr,
+	}
+}
+
+func (e *commandBufferLoggerScope) Logger() *slog.Logger {
+	if e != nil && e.logger != nil {
+		return e.logger
+	}
+	if e != nil && e.commandTestScope != nil {
+		return e.commandTestScope.Logger()
+	}
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func (e *commandBufferLoggerScope) WithContext(ctx context.Context) scope.Scope {
+	if e == nil {
+		return &commandBufferLoggerScope{commandTestScope: &commandTestScope{ctx: ctx}}
+	}
+	if e.commandTestScope == nil {
+		return &commandBufferLoggerScope{commandTestScope: &commandTestScope{ctx: ctx}, logger: e.logger}
+	}
+	return &commandBufferLoggerScope{
+		commandTestScope: &commandTestScope{ctx: ctx, cfg: e.cfg},
+		logger:           e.logger,
 	}
 }
 
@@ -309,6 +341,220 @@ func TestNewTypeFetchCmdHidden(t *testing.T) {
 	cmd := newTypeFetchCmd(func() scope.Scope { return nil })
 	if !cmd.Hidden {
 		t.Fatalf("expected type-fetch command to be hidden")
+	}
+}
+
+func TestNewTypeFetchCmd_Run_SingleModuleCachedSummary(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	typesDir := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types")
+	cacheFile := filepath.Join(typesDir, "dep@1.0.0.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
+		t.Fatalf("mkdir cache dir: %v", err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("export declare const x: number;"), 0o644); err != nil {
+		t.Fatalf("write cache file: %v", err)
+	}
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"app", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	for _, want := range []string{
+		"Ensured tsconfig exists:",
+		"[app] completed: 1 cached, 0 fetched",
+		"Type fetch complete: 1 cached, 0 fetched.",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected output to contain %q, got %q", want, output)
+		}
+	}
+	if strings.Contains(output, "[app] cached dep@1.0.0") || strings.Contains(output, "[app] fetched dep@1.0.0") {
+		t.Fatalf("expected per-package cached/fetched lines to be suppressed, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_SingleModuleNoDependenciesUsesNeutralSummary(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "empty", `{}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"empty", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if !strings.Contains(output, "[empty] completed: 0 cached, 0 fetched") {
+		t.Fatalf("expected neutral zero-result summary, got %q", output)
+	}
+	if strings.Contains(output, "no dependencies found") {
+		t.Fatalf("unexpected no-dependencies phrasing, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_OfflineSingleAppReturnsError(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "broken", `{"dependencies":`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"broken", "--offline"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected type-fetch to return error for invalid package.json")
+	}
+	if !strings.Contains(err.Error(), "parse package.json") {
+		t.Fatalf("expected parse package.json error, got %v", err)
+	}
+	if !strings.Contains(out.String(), "[broken] error:") {
+		t.Fatalf("expected command output to include broken app error, got %q", out.String())
+	}
+}
+
+func TestRunTypeFetchAfterInstall_LogsModuleAndOverallSummaries(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	typesDir := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types")
+	cacheFile := filepath.Join(typesDir, "dep@1.0.0.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
+		t.Fatalf("mkdir cache dir: %v", err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("export declare const x: number;"), 0o644); err != nil {
+		t.Fatalf("write cache file: %v", err)
+	}
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	env := &commandBufferLoggerScope{
+		commandTestScope: &commandTestScope{cfg: cfg},
+		logger:           logger,
+	}
+
+	ticker := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	ctx := logutil.WithProgressTicker(context.Background(), ticker)
+
+	runTypeFetchAfterInstall(ctx, env)
+
+	output := logs.String()
+	for _, want := range []string{
+		"type-fetch: module completed",
+		"module=app",
+		"cached=1",
+		"fetched=0",
+		"type-fetch: completed",
+		"modules=1",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected logs to contain %q, got %q", want, output)
+		}
+	}
+}
+
+func TestRunTypeFetchAfterInstall_ContextCanceledDoesNotLogSkippedModule(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case requestStarted <- struct{}{}:
+		default:
+		}
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	cfg.ESMUpstreamURL = server.URL
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	env := &commandBufferLoggerScope{
+		commandTestScope: &commandTestScope{cfg: cfg},
+		logger:           logger,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-requestStarted:
+			cancel()
+		case <-time.After(2 * time.Second):
+			cancel()
+		}
+	}()
+
+	runTypeFetchAfterInstall(ctx, env)
+
+	output := logs.String()
+	if !strings.Contains(output, "type-fetch: interrupted") {
+		t.Fatalf("expected interrupted log, got %q", output)
+	}
+	if strings.Contains(output, "type-fetch: skipped module") {
+		t.Fatalf("unexpected skipped-module warning on cancellation, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_ContextCanceledReturnsContextError(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case requestStarted <- struct{}{}:
+		default:
+		}
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"app", "--upstream", server.URL})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cmd.SetContext(ctx)
+	go func() {
+		select {
+		case <-requestStarted:
+			cancel()
+		case <-time.After(2 * time.Second):
+			cancel()
+		}
+	}()
+
+	err := cmd.Execute()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	output := out.String()
+	if strings.Contains(output, "[app] error: context canceled") || strings.Contains(output, "[app] error: context cancelled") {
+		t.Fatalf("unexpected generic cancellation output, got %q", output)
 	}
 }
 

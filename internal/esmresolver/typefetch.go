@@ -21,6 +21,7 @@ import (
 	tsast "github.com/buke/typescript-go-internal/pkg/ast"
 	tscore "github.com/buke/typescript-go-internal/pkg/core"
 	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 )
 
 // TypeFetchResult holds the outcome of a type fetch operation.
@@ -44,6 +45,64 @@ type typeFetchState struct {
 	requestSem chan struct{}
 	visitedMu  sync.Mutex
 	visited    map[string]*visitEntry
+}
+
+func writeTypeFetchProgressLine(message string) {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return
+	}
+	line := logutil.NewProgressLine(os.Stderr)
+	if line != nil && line.IsTTY() {
+		line.Done("", message)
+		return
+	}
+	fmt.Fprintln(os.Stderr, message)
+}
+
+func beginTypeFetchTransitiveProgress(ctx context.Context, rootPkg string, total int, topLevel bool) (func(int), func()) {
+	if total < 200 || !topLevel {
+		return func(int) {}, func() {}
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	rootPkg = strings.TrimSpace(rootPkg)
+	if rootPkg == "" {
+		rootPkg = "unknown"
+	}
+	messageFor := func(completed int) string {
+		return fmt.Sprintf("%s: fetching transitive types (%d/%d)", rootPkg, completed, total)
+	}
+
+	ticker := logutil.ProgressTickerFromContext(ctx)
+	ownsTicker := false
+	if ticker == nil {
+		progressLine := logutil.NewProgressLine(os.Stderr)
+		if progressLine != nil && progressLine.IsTTY() {
+			ticker = logutil.NewProgressTicker(progressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+			ownsTicker = true
+		}
+	}
+	if ticker != nil {
+		ticker.SetMessage(messageFor(0))
+		return func(completed int) {
+				ticker.SetMessage(messageFor(completed))
+			}, func() {
+				if !ownsTicker {
+					return
+				}
+				ticker.Clear()
+				ticker.Stop()
+			}
+	}
+
+	writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] info: %s has %d transitive type imports", rootPkg, total))
+	return func(completed int) {
+		if completed > 0 && completed%200 == 0 {
+			writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] info: %s transitive progress %d/%d", rootPkg, completed, total))
+		}
+	}, func() {}
 }
 
 // TypeFetchSession shares fetch state across multiple module fetch calls.
@@ -366,9 +425,9 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 
 	var allTransitive []TypeFetchResult
 	total := len(resolvedImports)
-	if total >= 200 {
-		fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s has %d transitive type imports\n", rootPkg, total)
-	}
+	isTopLevelFetch := strings.TrimSpace(rootVersion) != ""
+	updateTransitiveProgress, stopTransitiveProgress := beginTypeFetchTransitiveProgress(ctx, rootPkg, total, isTopLevelFetch)
+	defer stopTransitiveProgress()
 
 	// Process transitive imports concurrently so that the download semaphore
 	// (withRequestSlot) is fully utilised. Without this, the recursive
@@ -391,16 +450,14 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 				resolvedURL := imp.ResolvedURL
 				pkgName := typePkgNameFromURL(resolvedURL)
 				_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
+				completedNow := 0
 				mu.Lock()
 				if err == nil {
 					allTransitive = append(allTransitive, subTransitive...)
 				}
-				if total >= 200 {
-					completed++
-					if completed%200 == 0 {
-						fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, completed, total)
-					}
-				}
+				completed++
+				completedNow = completed
+				updateTransitiveProgress(completedNow)
 				mu.Unlock()
 			}(imp)
 		}
@@ -848,11 +905,12 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 	}
 	sort.Strings(depNames)
 
-	var results []TypeFetchResult
-	for idx, name := range depNames {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
+	type dependencyFetchTarget struct {
+		name    string
+		version string
+	}
+	targets := make([]dependencyFetchTarget, 0, len(depNames))
+	for _, name := range depNames {
 		verRange := deps[name]
 		if strings.HasPrefix(verRange, "workspace:") || strings.HasPrefix(verRange, "file:") || strings.HasPrefix(verRange, "link:") {
 			continue
@@ -861,19 +919,53 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 		if version == "" || version == "*" {
 			continue
 		}
+		targets = append(targets, dependencyFetchTarget{name: name, version: version})
+	}
+	if len(targets) == 0 {
+		return nil, nil
+	}
 
+	ticker := logutil.ProgressTickerFromContext(ctx)
+	moduleName := strings.TrimSpace(filepath.Base(moduleDir))
+	if moduleName == "" {
+		moduleName = "module"
+	}
+	setModuleProgress := func(current int, pkg, version string) {
+		if ticker == nil {
+			return
+		}
+		message := fmt.Sprintf("[%s] fetching dependency types (%d/%d)", moduleName, current, len(targets))
+		pkg = strings.TrimSpace(pkg)
+		version = strings.TrimSpace(version)
+		if pkg != "" {
+			if version != "" {
+				message = fmt.Sprintf("%s: %s@%s", message, pkg, version)
+			} else {
+				message = fmt.Sprintf("%s: %s", message, pkg)
+			}
+		}
+		ticker.SetMessage(message)
+	}
+	setModuleProgress(0, "", "")
+
+	var results []TypeFetchResult
+	for idx, target := range targets {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		name := target.name
+		version := target.version
+
+		setModuleProgress(idx+1, name, version)
 		start := time.Now()
-		fmt.Fprintf(os.Stderr, "[esm-type-fetch] (%d/%d) start %s@%s\n", idx+1, len(depNames), name, version)
-
 		result, transitive, err := fetchTypeDefinitionWithState(ctx, client, upstream, typesDir, name, version, state)
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return nil, ctxErr
 			}
-			fmt.Fprintf(os.Stderr, "[esm-type-fetch] warn: %s@%s (%s): %v\n", name, version, time.Since(start).Round(time.Millisecond), err)
+			writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] warn: [%s] %s@%s (%s): %v", moduleName, name, version, time.Since(start).Round(time.Millisecond), err))
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "[esm-type-fetch] (%d/%d) done %s@%s in %s\n", idx+1, len(depNames), name, version, time.Since(start).Round(time.Millisecond))
 		if result != nil {
 			results = append(results, *result)
 		}

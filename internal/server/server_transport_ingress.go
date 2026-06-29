@@ -14,16 +14,17 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
-func (s *GRPCWebServer) startHTTPServer(h http.Handler) error {
+func (s *GRPCWebServer) startHTTPServer(h http.Handler, suppressListeningLog bool) error {
 	opts := s.resolvedRuntimeOptions()
 	serverHandle, err := transport.StartHTTPServer(h, transport.HTTPServerOptions{
-		Address:          s.address.Addr,
-		ExistingListener: s.listener,
-		HasProxy:         s.proxy != nil,
-		EnableTLS:        opts.enabledTLS,
-		TLSCertFile:      opts.tlsCertFile,
-		TLSKeyFile:       opts.tlsKeyFile,
-		Logger:           s.runtimeScope.Logger(),
+		Address:              s.address.Addr,
+		ExistingListener:     s.listener,
+		HasProxy:             s.proxy != nil,
+		EnableTLS:            opts.enabledTLS,
+		TLSCertFile:          opts.tlsCertFile,
+		TLSKeyFile:           opts.tlsKeyFile,
+		SuppressListeningLog: suppressListeningLog,
+		Logger:               s.runtimeScope.Logger(),
 	})
 	if err != nil {
 		return err
@@ -48,9 +49,9 @@ func (s *GRPCWebServer) stopHTTPRuntime() {
 	s.listener = nil
 }
 
-func (s *GRPCWebServer) startTransportIngress(opts runtimeOptions) error {
+func (s *GRPCWebServer) startTransportIngress(opts runtimeOptions, reload bool) error {
 	s.syncGRPCWebProxy(opts)
-	return s.startHTTPServer(h2c.NewHandler(s.newProtocolRouter(), &http2.Server{}))
+	return s.startHTTPServer(h2c.NewHandler(s.newProtocolRouter(), &http2.Server{}), reload)
 }
 
 func (s *GRPCWebServer) newGRPCWebProxy() *grpcweb.WrappedGrpcServer {

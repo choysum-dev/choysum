@@ -6,8 +6,11 @@ package service
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -568,4 +571,170 @@ func TestNormalizeWirePasswordValidations(t *testing.T) {
 			t.Fatalf("normalized hash = %q", got)
 		}
 	})
+}
+
+func TestIsNetworkError(t *testing.T) {
+	if isNetworkError(nil) {
+		t.Fatal("expected nil error is not a network error")
+	}
+
+	if !isNetworkError(&net.OpError{Op: "dial", Err: fmt.Errorf("connection refused")}) {
+		t.Fatal("expected net.OpError to be a network error")
+	}
+	if !isNetworkError(&net.DNSError{Err: "no such host"}) {
+		t.Fatal("expected net.DNSError to be a network error")
+	}
+	if !isNetworkError(context.DeadlineExceeded) {
+		t.Fatal("expected context deadline exceeded to be a network error")
+	}
+
+	if isNetworkError(errors.New("invalid module version")) {
+		t.Fatal("expected business logic error is not a network error")
+	}
+	if isNetworkError(fmt.Errorf("something failed")) {
+		t.Fatal("expected generic error is not a network error")
+	}
+}
+
+func TestContainsControlChars(t *testing.T) {
+	if containsControlChars("normal string") {
+		t.Fatal("expected normal string has no control chars")
+	}
+	if !containsControlChars("with\x00null") {
+		t.Fatal("expected null byte is a control char")
+	}
+	if !containsControlChars("with\nnewline") {
+		t.Fatal("expected newline is a control char")
+	}
+	if !containsControlChars("with\rcarriage") {
+		t.Fatal("expected carriage return is a control char")
+	}
+	if containsControlChars("") {
+		t.Fatal("expected empty string has no control chars")
+	}
+}
+
+func TestOperationDurationMs(t *testing.T) {
+	c := &coordinator{now: func() time.Time {
+		return time.Date(2026, 1, 1, 0, 0, 1, 0, time.UTC)
+	}}
+
+	if got := c.operationDurationMs(time.Time{}); got != 0 {
+		t.Fatalf("operationDurationMs(zero) = %d, want 0", got)
+	}
+
+	past := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	if got := c.operationDurationMs(past); got != 1000 {
+		t.Fatalf("operationDurationMs(past) = %d, want 1000", got)
+	}
+
+	future := time.Date(2026, 1, 1, 0, 0, 2, 0, time.UTC)
+	if got := c.operationDurationMs(future); got != 0 {
+		t.Fatalf("operationDurationMs(future) = %d, want 0", got)
+	}
+}
+
+func TestWrapBootstrapError(t *testing.T) {
+	if got := wrapBootstrapError(nil, "FALLBACK", "fallback msg"); got == nil {
+		t.Fatal("expected fallback error for nil input")
+	} else if bootstrapErrorCode(got) != "FALLBACK" || got.Error() != "fallback msg" {
+		t.Fatalf("wrapBootstrapError(nil) = code=%q msg=%q", bootstrapErrorCode(got), got.Error())
+	}
+
+	be := newBootstrapError("ORIGINAL", "original msg", nil)
+	if got := wrapBootstrapError(be, "FALLBACK", "ignored"); got != be {
+		t.Fatalf("expected same bootstrap error returned, got %#v", got)
+	}
+
+	plain := errors.New("plain error")
+	got := wrapBootstrapError(plain, "FALLBACK", "prefix")
+	if bootstrapErrorCode(got) != "FALLBACK" || !strings.Contains(got.Error(), "prefix") || !strings.Contains(got.Error(), "plain error") {
+		t.Fatalf("wrapBootstrapError(plain) = code=%q msg=%q", bootstrapErrorCode(got), got.Error())
+	}
+}
+
+func TestValidateInitializeInput(t *testing.T) {
+	t.Run("empty username", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: "", Password: "secret"})
+		if err == nil || !strings.Contains(err.Error(), "admin_username is required") {
+			t.Fatalf("expected username required error, got %v", err)
+		}
+	})
+	t.Run("whitespace username", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: " admin", Password: "secret"})
+		if err == nil || !strings.Contains(err.Error(), "leading/trailing whitespace") {
+			t.Fatalf("expected whitespace error, got %v", err)
+		}
+	})
+	t.Run("control char in username", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: "ad\nmin", Password: "secret"})
+		if err == nil || !strings.Contains(err.Error(), "control characters") {
+			t.Fatalf("expected control char error, got %v", err)
+		}
+	})
+	t.Run("username too long", func(t *testing.T) {
+		longName := strings.Repeat("a", bootstrapAdminUsernameMaxBytes+1)
+		err := validateInitializeInput(initializeInput{AdminUsername: longName, Password: "secret"})
+		if err == nil || !strings.Contains(err.Error(), "too long") {
+			t.Fatalf("expected too long error, got %v", err)
+		}
+	})
+	t.Run("empty password", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: "admin", Password: ""})
+		if err == nil || !strings.Contains(err.Error(), "password is required") {
+			t.Fatalf("expected password required error, got %v", err)
+		}
+	})
+	t.Run("multiline password", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: "admin", Password: "line1\nline2"})
+		if err == nil || !strings.Contains(err.Error(), "single line") {
+			t.Fatalf("expected single line error, got %v", err)
+		}
+	})
+	t.Run("control char in idempotency key", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: "admin", Password: "secret", IdempotencyKey: "key\000bad"})
+		if err == nil || !strings.Contains(err.Error(), "idempotency_key contains control") {
+			t.Fatalf("expected idempotency key control error, got %v", err)
+		}
+	})
+	t.Run("valid input", func(t *testing.T) {
+		err := validateInitializeInput(initializeInput{AdminUsername: "admin", Password: "secret"})
+		if err != nil {
+			t.Fatalf("expected no error for valid input, got %v", err)
+		}
+	})
+}
+
+func TestCheckRenewErr(t *testing.T) {
+	c := &coordinator{}
+	if err := c.checkRenewErr(nil); err != nil {
+		t.Fatalf("checkRenewErr(nil) = %v, want nil", err)
+	}
+
+	noErrCh := make(chan error, 1)
+	noErrCh <- nil
+	handle := &leaseHandle{stopCh: make(chan struct{}), renewErr: noErrCh}
+	if err := c.checkRenewErr(handle); err != nil {
+		t.Fatalf("checkRenewErr(no-err) = %v, want nil", err)
+	}
+
+	errCh := make(chan error, 1)
+	errCh <- errors.New("lease expired")
+	handle2 := &leaseHandle{stopCh: make(chan struct{}), renewErr: errCh}
+	if err := c.checkRenewErr(handle2); err == nil {
+		t.Fatal("expected error when renew chan has error")
+	} else if bootstrapErrorCode(err) != bootstrapErrCodeGateError {
+		t.Fatalf("checkRenewErr err code = %q, want %q", bootstrapErrorCode(err), bootstrapErrCodeGateError)
+	}
+}
+
+func TestDefaultReleaseInitLease_NilHandle(t *testing.T) {
+	c := &coordinator{}
+	c.defaultReleaseInitLease(nil) // must not panic
+}
+
+func TestIsRecoverableSqliteLeaseErr_NilErr(t *testing.T) {
+	if isRecoverableSqliteLeaseErr(nil, nil) {
+		t.Fatal("expected nil error is not recoverable")
+	}
 }

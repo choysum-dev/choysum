@@ -9,6 +9,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -26,6 +27,10 @@ type Coordinator struct {
 	registryProvider registry.Provider
 	resolutionCache  map[string]registrySourceResolution
 	cacheMu          sync.RWMutex
+
+	resolveFallbackMu     sync.Mutex
+	resolveFallbackCount  int
+	resolveFallbackModule map[string]struct{}
 }
 
 type Option func(*Coordinator)
@@ -50,10 +55,11 @@ func NewCoordinator(runtimeScope scope.Scope, opts ...Option) *Coordinator {
 	runtimeOpts := runtimeOptionsFromScope(runtimeScope)
 	defaultChoysumPath := strings.TrimSpace(runtimeOpts.defaultChoysumPath)
 	c := &Coordinator{
-		runtimeScope:     runtimeScope,
-		lockStore:        NewLockStore(WithLockStoreDefaultChoysumPath(defaultChoysumPath)),
-		registryProvider: registry.NewProvider(runtimeScope),
-		resolutionCache:  make(map[string]registrySourceResolution),
+		runtimeScope:          runtimeScope,
+		lockStore:             NewLockStore(WithLockStoreDefaultChoysumPath(defaultChoysumPath)),
+		registryProvider:      registry.NewProvider(runtimeScope),
+		resolutionCache:       make(map[string]registrySourceResolution),
+		resolveFallbackModule: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -446,6 +452,44 @@ func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigi
 	if err != nil {
 		attrs = append(attrs, "error", err.Error())
 		c.runtimeScope.Logger().Warn("origin install resolve failed", attrs...)
+		return
+	}
+	if fallback {
+		moduleName := resolveInstallModuleName(parsed)
+		c.resolveFallbackMu.Lock()
+		c.resolveFallbackCount++
+		count := c.resolveFallbackCount
+		if c.resolveFallbackModule == nil {
+			c.resolveFallbackModule = make(map[string]struct{})
+		}
+		if moduleName != "" {
+			c.resolveFallbackModule[moduleName] = struct{}{}
+		}
+		uniqueModules := make([]string, 0, len(c.resolveFallbackModule))
+		for name := range c.resolveFallbackModule {
+			uniqueModules = append(uniqueModules, name)
+		}
+		sort.Strings(uniqueModules)
+		c.resolveFallbackMu.Unlock()
+
+		logAttrs := []any{
+			"module", moduleName,
+			"from_origin", "local",
+			"to_origin", strings.TrimSpace(resolvedOrigin),
+			"reason", "local_not_found",
+			"fallback_count", count,
+		}
+		c.runtimeScope.Logger().Debug("origin install resolve fallback", logAttrs...)
+		if count > 1 && count%5 == 0 {
+			summaryAttrs := []any{
+				"fallback_count", count,
+				"unique_modules_count", len(uniqueModules),
+			}
+			if len(uniqueModules) > 0 {
+				summaryAttrs = append(summaryAttrs, "unique_modules", uniqueModules)
+			}
+			c.runtimeScope.Logger().Debug("origin install resolve fallback summary", summaryAttrs...)
+		}
 		return
 	}
 	c.runtimeScope.Logger().Debug("origin install resolve succeeded", attrs...)

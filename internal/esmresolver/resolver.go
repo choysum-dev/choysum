@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -38,6 +39,8 @@ type Metrics struct {
 	Errors    atomic.Int64
 	// total download duration in milliseconds (atomic)
 	DownloadDurationMs atomic.Int64
+	// DownloadedPkgs tracks unique package names that were downloaded (deduplicated by package name).
+	DownloadedPkgs sync.Map
 }
 
 const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
@@ -45,6 +48,23 @@ const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
 // Snapshot returns a point-in-time copy of the metrics.
 func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int64) {
 	return m.CacheHit.Load(), m.CacheMiss.Load(), m.Downloads.Load(), m.Errors.Load(), m.DownloadDurationMs.Load()
+}
+
+// SnapshotDownloadedPkgs returns a sorted list of unique package names that
+// were downloaded in the current build.
+func (m *Metrics) SnapshotDownloadedPkgs() []string {
+	if m == nil {
+		return nil
+	}
+	pkgs := make([]string, 0)
+	m.DownloadedPkgs.Range(func(key, _ any) bool {
+		if s, ok := key.(string); ok && s != "" {
+			pkgs = append(pkgs, s)
+		}
+		return true
+	})
+	sort.Strings(pkgs)
+	return pkgs
 }
 
 // Resolver is an esbuild plugin that intercepts bare imports and resolves them
@@ -281,21 +301,28 @@ func (r *Resolver) Plugin() api.Plugin {
 				pkg := extractPkgFromURL(url, r.upstream)
 				cacheKey := sha256Hex(url)
 				cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
+				metrics := r.metrics
 
 				// Try cache first, verify integrity if metadata present.
 				if content, ok := r.readCache(cacheFile); ok {
-					r.metrics.CacheHit.Add(1)
+					if metrics != nil {
+						metrics.CacheHit.Add(1)
+					}
 					return api.OnLoadResult{
 						Contents: ptr(content),
 						Loader:   loaderForURL(url),
 					}, nil
 				}
 
-				r.metrics.CacheMiss.Add(1)
+				if metrics != nil {
+					metrics.CacheMiss.Add(1)
+				}
 
 				// Offline mode: cache miss is a hard error.
 				if r.offline {
-					r.metrics.Errors.Add(1)
+					if metrics != nil {
+						metrics.Errors.Add(1)
+					}
 					return api.OnLoadResult{}, r.formatError("cache miss (offline)", pkg, url,
 						"run 'choysum install' with network access to populate the cache")
 				}
@@ -307,11 +334,19 @@ func (r *Resolver) Plugin() api.Plugin {
 				}
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
 					downloadStart := time.Now()
-					r.metrics.Downloads.Add(1)
+					if metrics != nil {
+						metrics.Downloads.Add(1)
+					}
 					content, dlErr := r.downloadWithRetry(url)
-					r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
+					if metrics != nil {
+						metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
+					}
 					if dlErr != nil {
 						return fetchResult{}, dlErr
+					}
+					// Record the package name for downstream observability.
+					if metrics != nil && pkg != "" {
+						metrics.DownloadedPkgs.Store(pkg, struct{}{})
 					}
 					if writeErr := r.writeCache(cacheFile, []byte(content)); writeErr != nil {
 						if r.logger != nil {
@@ -321,7 +356,9 @@ func (r *Resolver) Plugin() api.Plugin {
 					return fetchResult{content: content}, nil
 				})
 				if err != nil {
-					r.metrics.Errors.Add(1)
+					if metrics != nil {
+						metrics.Errors.Add(1)
+					}
 					return api.OnLoadResult{}, r.formatError("download failed", pkg, url, err.Error())
 				}
 				result := v.(fetchResult)
@@ -336,13 +373,34 @@ func (r *Resolver) Plugin() api.Plugin {
 			build.OnEnd(func(result *api.BuildResult) (api.OnEndResult, error) {
 				if r.logger != nil && r.metrics != nil {
 					hit, miss, downloads, errors, downloadMs := r.metrics.Snapshot()
-					r.logger.Info("esm resolver metrics",
+					attrs := []any{
+						"upstream", r.upstream,
+						"target", r.target,
+						"metric_scope", "cumulative",
 						"cache_hit", hit,
 						"cache_miss", miss,
 						"downloads", downloads,
-						"download_duration_ms", downloadMs,
+						"cumulative_download_duration_ms", downloadMs,
 						"errors", errors,
-					)
+					}
+					if downloads > 0 || errors > 0 {
+						r.logger.Info("esm resolver metrics", attrs...)
+						downloadedPkgs := r.metrics.SnapshotDownloadedPkgs()
+						if len(downloadedPkgs) > 0 {
+							pkgs := downloadedPkgs
+							limit := 20
+							if len(pkgs) > limit {
+								pkgs = pkgs[:limit]
+							}
+							r.logger.Debug("esm resolver downloaded packages",
+								"packages_count", len(downloadedPkgs),
+								"packages_limit", limit,
+								"packages", pkgs,
+							)
+						}
+					} else {
+						r.logger.Debug("esm resolver metrics", attrs...)
+					}
 				}
 				return api.OnEndResult{}, nil
 			})

@@ -60,7 +60,7 @@ func TestServerServeFallsThroughToServeAfterValidation(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Server.JsEngineFactory = "missing"
@@ -88,7 +88,7 @@ func TestServerServeFallsThroughToServeAfterValidation(t *testing.T) {
 func TestServerServeReturnsWrappedStartError(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Server.JsEngineFactory = "missing"
@@ -106,7 +106,7 @@ func TestServerServeReturnsWrappedStartError(t *testing.T) {
 func TestServerServeReturnsRestartErrorAfterWatchedFileChange(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 
@@ -167,7 +167,7 @@ func TestServerServeReturnsNilWhenWatchHandlerCanceled(t *testing.T) {
 		},
 	}}
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 
@@ -225,7 +225,7 @@ func TestServerServeReturnsNilWhenWatchHandlerCanceled(t *testing.T) {
 func TestServerServeRestartsOnWatchedFileChangeAndStopsOnContextCancel(t *testing.T) {
 	runtimeScope := (&noSessionServerScope{serverTestScope: newRichServerTestScope(t)}).WithContext(context.Background()).(*noSessionServerScope)
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 	ctx, cancel := context.WithCancel(runtimeScope.Context())

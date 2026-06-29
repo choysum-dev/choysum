@@ -214,7 +214,7 @@ func TestModuleUpgraderLogUpgradeStepIncludesOperationContext(t *testing.T) {
 	var logBuf bytes.Buffer
 	testScope := &testLogScope{
 		ctx:    staging.WithOpID(context.Background(), "op-test-123"),
-		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
 
 	upgrader := &moduleUpgrader{runtimeScope: testScope}
@@ -241,7 +241,7 @@ func TestModuleUpgraderLogUpgradeStepPrefersOperationContextOpID(t *testing.T) {
 	var logBuf bytes.Buffer
 	testScope := &testLogScope{
 		ctx:    context.Background(),
-		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})),
 	}
 
 	upgrader := &moduleUpgrader{runtimeScope: testScope, ctx: &opContext{opid: "op-shared-456"}}
@@ -273,7 +273,7 @@ func TestLogModuleOperationStepUsesInstallAndUninstallMessages(t *testing.T) {
 			var logBuf bytes.Buffer
 			testScope := &testLogScope{
 				ctx:    context.Background(),
-				logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+				logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})),
 			}
 
 			logModuleOperationStep(testScope, &opContext{opid: "op-shared-789"}, tt.op, tt.module, tt.step, time.Now().Add(-25*time.Millisecond))
