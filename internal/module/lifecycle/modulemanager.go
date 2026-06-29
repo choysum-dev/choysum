@@ -21,6 +21,7 @@ import (
 	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
 
 	"github.com/choysum-dev/choysum/internal/distmanifest"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	internalbackendbuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/backend"
 	internalwebmodulebuilder "github.com/choysum-dev/choysum/internal/module/artifact/build/web"
 	modulegenerator "github.com/choysum-dev/choysum/internal/module/artifact/generate"
@@ -632,6 +633,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, rootModule.Name)
 		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(plan)...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
+		moduleInstallProgressLine := logutil.ProgressLineFromContext(stageCtx)
+		progressFrame := 0
+		totalInstallModules := len(plan.ModuleOrder)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -643,7 +647,21 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		}
 		started := time.Now()
 		err = pipeline.Execute(stageCtx, plan, rootModule, pipeline.Callbacks{
-			Logger:                         logger,
+			Logger: logger,
+			OnInstallProgress: func(progress pipeline.ModuleInstallProgress) {
+				if moduleInstallProgressLine == nil || totalInstallModules == 0 {
+					return
+				}
+				if progress.Stage != pipeline.ModuleInstallProgressStageStarted {
+					return
+				}
+				moduleName := strings.TrimSpace(progress.Module)
+				if moduleName == "" {
+					moduleName = "unknown"
+				}
+				progressFrame++
+				moduleInstallProgressLine.Update(progressFrame, fmt.Sprintf("installing modules (%d/%d): %s", progress.Current, totalInstallModules, moduleName))
+			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,
 			Install: func(mod *meta.IrModule) error {

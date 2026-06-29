@@ -483,6 +483,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	defer cancel()
 
 	progress := logger.NewProgressLine(os.Stderr)
+	installCtx = logger.WithProgressLine(installCtx, progress)
 	var frameCounter atomic.Int64
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
@@ -522,6 +523,9 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 
 	moduleLifecycle := lifecycle.NewService(installScope, executor)
 	if err := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false}); err != nil {
+		if progress != nil {
+			progress.Done("✗", "core module installation failed")
+		}
 		// Classify the error to produce an actionable message.
 		if errors.Is(err, context.DeadlineExceeded) {
 			return newBootstrapError(
@@ -540,6 +544,9 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 			)
 		}
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", err)
+	}
+	if progress != nil {
+		progress.Done("✓", "core module installation completed")
 	}
 
 	c.store.markStageDetail(operationID, "core module installation completed")

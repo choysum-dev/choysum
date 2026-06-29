@@ -21,6 +21,9 @@ import (
 
 type Callbacks struct {
 	Logger *slog.Logger
+	// OnInstallProgress receives install-loop progress events for rendering
+	// interactive UI feedback (for example a single-line spinner).
+	OnInstallProgress func(progress ModuleInstallProgress)
 
 	ResolveInstallModuleFromOrigin func(ctx context.Context, name string) (*meta.IrModule, error)
 	ResolveInstalledModule         func(name string) (*meta.IrModule, error)
@@ -52,6 +55,23 @@ type Callbacks struct {
 	GenerateApp         func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error
 	BuildBackendBundles func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
 	GlobalWebBuild      func(ctx context.Context, distWebStagingDir string) error
+}
+
+type ModuleInstallProgressStage string
+
+const (
+	ModuleInstallProgressStageStarted   ModuleInstallProgressStage = "started"
+	ModuleInstallProgressStageCompleted ModuleInstallProgressStage = "completed"
+	ModuleInstallProgressStageFailed    ModuleInstallProgressStage = "failed"
+)
+
+type ModuleInstallProgress struct {
+	Current  int
+	Total    int
+	Module   string
+	Stage    ModuleInstallProgressStage
+	Duration time.Duration
+	Err      error
 }
 
 // ModulesAppTargets describes per-application module output directories.
@@ -823,7 +843,8 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		}
 		moduleStageStarted := logModuleStageStarted()
 		generated := map[string]bool{}
-		for _, name := range plan.ModuleOrder {
+		totalModules := len(plan.ModuleOrder)
+		for index, name := range plan.ModuleOrder {
 			if err := checkCtx(); err != nil {
 				return err
 			}
@@ -840,14 +861,45 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if mod == nil {
 				continue
 			}
+			moduleName := strings.TrimSpace(mod.Name)
+			if moduleName == "" {
+				moduleName = strings.TrimSpace(name)
+			}
+			if cb.OnInstallProgress != nil {
+				cb.OnInstallProgress(ModuleInstallProgress{
+					Current: index + 1,
+					Total:   totalModules,
+					Module:  moduleName,
+					Stage:   ModuleInstallProgressStageStarted,
+				})
+			}
 			installStarted := time.Now()
 			if err := cb.Install(mod); err != nil {
+				if cb.OnInstallProgress != nil {
+					cb.OnInstallProgress(ModuleInstallProgress{
+						Current:  index + 1,
+						Total:    totalModules,
+						Module:   moduleName,
+						Stage:    ModuleInstallProgressStageFailed,
+						Duration: time.Since(installStarted),
+						Err:      err,
+					})
+				}
 				return err
 			}
 			logStep(slog.LevelInfo, "module installed",
-				"module", mod.Name,
+				"installed_module", mod.Name,
 				"duration_ms", time.Since(installStarted).Milliseconds(),
 			)
+			if cb.OnInstallProgress != nil {
+				cb.OnInstallProgress(ModuleInstallProgress{
+					Current:  index + 1,
+					Total:    totalModules,
+					Module:   moduleName,
+					Stage:    ModuleInstallProgressStageCompleted,
+					Duration: time.Since(installStarted),
+				})
+			}
 			app := strings.TrimSpace(mod.ApplicationStr)
 			if app != "" && !generated[app] {
 				if err := generateModulesForApp(app); err != nil {

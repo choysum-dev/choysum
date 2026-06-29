@@ -20,13 +20,14 @@ type HTTPServerHandle struct {
 }
 
 type HTTPServerOptions struct {
-	Address          string
-	ExistingListener net.Listener
-	HasProxy         bool
-	EnableTLS        bool
-	TLSCertFile      string
-	TLSKeyFile       string
-	Logger           *slog.Logger
+	Address              string
+	ExistingListener     net.Listener
+	HasProxy             bool
+	EnableTLS            bool
+	TLSCertFile          string
+	TLSKeyFile           string
+	SuppressListeningLog bool
+	Logger               *slog.Logger
 }
 
 func StartHTTPServer(handler http.Handler, opts HTTPServerOptions) (*HTTPServerHandle, error) {
@@ -53,13 +54,17 @@ func StartHTTPServer(handler http.Handler, opts HTTPServerOptions) (*HTTPServerH
 		scheme := "http"
 		if opts.EnableTLS {
 			scheme = "https"
-			logger.Info("http server listening", httpServerListeningLogFields(opts.Address, listenAddress, scheme, opts.HasProxy)...)
+			if !opts.SuppressListeningLog {
+				logger.Info("http server listening", httpServerListeningLogFields(opts.Address, listenAddress, scheme, opts.HasProxy)...)
+			}
 			if err := srv.ServeTLS(ln, opts.TLSCertFile, opts.TLSKeyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				logger.Error("http server serve failed", "error", err)
 			}
 			return
 		}
-		logger.Info("http server listening", httpServerListeningLogFields(opts.Address, listenAddress, scheme, opts.HasProxy)...)
+		if !opts.SuppressListeningLog {
+			logger.Info("http server listening", httpServerListeningLogFields(opts.Address, listenAddress, scheme, opts.HasProxy)...)
+		}
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("http server serve failed", "error", err)
 		}
@@ -74,13 +79,13 @@ func httpServerListeningLogFields(configuredAddress, listenAddress, scheme strin
 		"scheme", scheme,
 		"grpc_web_proxy", hasProxy,
 	}
-	if accessURL := httpServerAccessURL(configuredAddress, listenAddress, scheme); accessURL != "" {
+	if accessURL := HTTPServerAccessURL(configuredAddress, listenAddress, scheme); accessURL != "" {
 		fields = append(fields, "access_url", accessURL)
 	}
 	return fields
 }
 
-func httpServerAccessURL(configuredAddress, listenAddress, scheme string) string {
+func HTTPServerAccessURL(configuredAddress, listenAddress, scheme string) string {
 	if strings.TrimSpace(scheme) == "" {
 		return ""
 	}

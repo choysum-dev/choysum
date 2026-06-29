@@ -28,7 +28,7 @@ func (s *GRPCWebServer) executeBootstrapModeSwitchPlan(plan bootstrapModeSwitchP
 
 	result := s.executeRestartPlan(recoveryExecutionPlan{
 		action:       recoveryActionModeSwitchRestart,
-		reload:       false,
+		reload:       true,
 		wrapStopErr:  true,
 		wrapStartErr: true,
 		executor:     s.runtimeRecovery.modeSwitchRestartExecutor,

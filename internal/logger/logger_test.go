@@ -193,6 +193,33 @@ func TestNewHandlerAndLoggerWithWriter(t *testing.T) {
 	}
 }
 
+func TestProgressLineKeepsStructuredLogsOnSeparateLine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	if line == nil {
+		t.Fatal("expected progress line")
+	}
+
+	logger := NewLoggerWithWriter(testLogConfig("text", "info"), buf)
+	line.Update(0, "extracting package")
+	logger.Info("origin registry fetch completed", "module", "core")
+	line.Done("✓", "core module installation completed")
+
+	out := buf.String()
+	if strings.Contains(out, "extracting packagetime=") || strings.Contains(out, "extracting packagelevel=") {
+		t.Fatalf("expected spinner and structured log to stay on separate lines, got %q", out)
+	}
+	if !strings.Contains(out, "\r\x1b[K\n") {
+		t.Fatalf("expected progress barrier newline before structured log, got %q", out)
+	}
+	if !strings.Contains(out, "msg=\"origin registry fetch completed\"") {
+		t.Fatalf("expected structured log output, got %q", out)
+	}
+}
+
 func TestDevslogHandlerTraceErrorKeepsQuickJSFrames(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
 	stubConsoleTerminalWriter(t, false)

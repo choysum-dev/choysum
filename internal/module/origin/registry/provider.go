@@ -762,7 +762,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, xfmt.Errorf("no tarball url found in npm metadata")
 	}
 
-	registryHost := registryHostFromURL(registryURL)
+	registryHost := p.registryHostForLog(registryURL, inspection.downloadURL)
 	resolvedVersion := ""
 	if inspection.module != nil {
 		resolvedVersion = strings.TrimSpace(inspection.module.Version)
@@ -892,4 +892,14 @@ func registryHostFromURL(rawURL string) string {
 		return rawURL
 	}
 	return u.Host
+}
+
+func (p *SourceRegistryProvider) registryHostForLog(registryURL, downloadURL string) string {
+	if host := strings.TrimSpace(registryHostFromURL(registryURL)); host != "" {
+		return host
+	}
+	if host := strings.TrimSpace(registryHostFromURL(p.defaultRegistryURL())); host != "" {
+		return host
+	}
+	return strings.TrimSpace(registryHostFromURL(downloadURL))
 }

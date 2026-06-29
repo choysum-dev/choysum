@@ -223,8 +223,8 @@ func TestHTTPServerAccessURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := httpServerAccessURL(tt.configuredAddress, tt.listenAddress, tt.scheme); got != tt.want {
-				t.Fatalf("httpServerAccessURL() = %q, want %q", got, tt.want)
+			if got := HTTPServerAccessURL(tt.configuredAddress, tt.listenAddress, tt.scheme); got != tt.want {
+				t.Fatalf("HTTPServerAccessURL() = %q, want %q", got, tt.want)
 			}
 		})
 	}

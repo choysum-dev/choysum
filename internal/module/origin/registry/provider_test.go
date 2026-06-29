@@ -741,6 +741,25 @@ func TestProviderFetchRequiresModulesPath(t *testing.T) {
 	}
 }
 
+func TestRegistryHostForLogFallsBackToDefaultAndTarball(t *testing.T) {
+	t.Parallel()
+
+	runtimeScope := &providerTestScope{ctx: context.Background(), cfg: &config.Config{ModulesPath: t.TempDir(), NPMRegistryURL: "https://registry.npmmirror.com/"}}
+	provider := NewProvider(runtimeScope)
+
+	if got := provider.registryHostForLog("https://registry.npmjs.org", "https://registry.npmmirror.com/@choysum-dev/auth/-/auth-1.0.0.tgz"); got != "registry.npmjs.org" {
+		t.Fatalf("registryHostForLog(explicit) = %q, want registry.npmjs.org", got)
+	}
+	if got := provider.registryHostForLog("", "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.0.tgz"); got != "registry.npmmirror.com" {
+		t.Fatalf("registryHostForLog(default) = %q, want registry.npmmirror.com", got)
+	}
+
+	runtimeScope.cfg.NPMRegistryURL = ""
+	if got := provider.registryHostForLog("", "https://registry.npmjs.org/@choysum-dev/auth/-/auth-1.0.0.tgz"); got != "registry.npmjs.org" {
+		t.Fatalf("registryHostForLog(tarball fallback) = %q, want registry.npmjs.org", got)
+	}
+}
+
 func TestProviderFetchCopyModuleToModulesFailure(t *testing.T) {
 	t.Parallel()
 
