@@ -199,9 +199,50 @@ func (m *ModuleManager) ensureMetaTables() error {
 				return nil
 			}
 
-			txScope.Logger().Info("meta base table bootstrap started")
+			logger := txScope.Logger()
+			startedAt := time.Now()
+			if logger != nil {
+				logger.Info("meta base table bootstrap started", "entity_count", len(m.entities))
+			}
+
+			const (
+				metaBootstrapHeartbeatThreshold = 5 * time.Second
+				metaBootstrapHeartbeatInterval  = 5 * time.Second
+			)
+			stopHeartbeat := func() {}
+			if logger != nil {
+				stopCh := make(chan struct{})
+				doneCh := make(chan struct{})
+				go func() {
+					defer close(doneCh)
+					ticker := time.NewTicker(250 * time.Millisecond)
+					defer ticker.Stop()
+					lastHeartbeatAt := startedAt
+					for {
+						select {
+						case <-stopCh:
+							return
+						case now := <-ticker.C:
+							elapsed := now.Sub(startedAt)
+							if elapsed >= metaBootstrapHeartbeatThreshold && now.Sub(lastHeartbeatAt) >= metaBootstrapHeartbeatInterval {
+								logger.Info("meta base table bootstrap heartbeat", "elapsed_ms", elapsed.Milliseconds())
+								lastHeartbeatAt = now
+							}
+						}
+					}
+				}()
+				stopHeartbeat = func() {
+					close(stopCh)
+					<-doneCh
+				}
+			}
+			defer stopHeartbeat()
+
 			if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
 				return xfmt.Errorf("auto migrate meta entities: %w", err)
+			}
+			if logger != nil {
+				logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
 			}
 			return nil
 		})
@@ -626,22 +667,81 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		}, opid); err != nil {
 			return err
 		}
-		plan, err := plan.BuildPlan(ctx, plan.OpInstall, rootModule, m)
-		if err != nil {
-			return err
+		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.OpInstall, rootModule.Name)
+		rootModuleName := strings.TrimSpace(rootModule.Name)
+		if rootModuleName == "" {
+			rootModuleName = "unknown"
 		}
-		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, rootModule.Name)
-		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(plan)...)
-		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		moduleInstallProgressLine := logutil.ProgressLineFromContext(stageCtx)
-		totalInstallModules := len(plan.ModuleOrder)
-		stopInstallSpinner := func() {}
+		isInteractiveTTY := moduleInstallProgressLine != nil && moduleInstallProgressLine.IsTTY()
+		totalInstallModules := 0
+		const (
+			moduleOpStageHeartbeatThreshold = 5 * time.Second
+			moduleOpStageHeartbeatInterval  = 5 * time.Second
+		)
 		var installSpinnerState struct {
-			mu      sync.Mutex
-			frame   int
-			message string
+			mu              sync.Mutex
+			heartbeatStage  string
+			stageStartedAt  time.Time
+			lastHeartbeatAt time.Time
+			active          bool
+			planningStep    string
+			resolvedModules int
+			resolvedDeps    int
+			currentModule   string
+			currentIndex    int
+			totalModules    int
 		}
-		if moduleInstallProgressLine != nil && totalInstallModules > 0 {
+		spinnerTicker := logutil.ProgressTickerFromContext(stageCtx)
+		ownsSpinnerTicker := false
+		if spinnerTicker == nil {
+			spinnerTicker = logutil.NewProgressTicker(moduleInstallProgressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+			ownsSpinnerTicker = true
+		}
+		if ownsSpinnerTicker {
+			defer spinnerTicker.Stop()
+		}
+
+		planningStepLabel := func(rawStep string) string {
+			switch strings.TrimSpace(rawStep) {
+			case "resolve_dependencies":
+				return "Resolving dependencies"
+			case "resolve_modules":
+				return "Resolving modules"
+			case "resolve_web_build":
+				return "Evaluating web build requirements"
+			case "waiting_plan_result":
+				return "Preparing plan"
+			default:
+				step := strings.ReplaceAll(strings.TrimSpace(rawStep), "_", " ")
+				if step == "" {
+					return ""
+				}
+				return strings.ToUpper(step[:1]) + step[1:]
+			}
+		}
+		heartbeatStageLabel := func(rawStage string) string {
+			switch strings.TrimSpace(rawStage) {
+			case "planning":
+				return "Planning module operation"
+			case "finalizing.phase_end":
+				return "Finalizing phase end"
+			case "finalizing.index_refresh":
+				return "Refreshing module index"
+			case "finalizing.index_sync":
+				return "Syncing module index"
+			default:
+				stage := strings.ReplaceAll(strings.TrimSpace(rawStage), ".", " ")
+				stage = strings.ReplaceAll(stage, "_", " ")
+				if stage == "" {
+					return ""
+				}
+				return strings.ToUpper(stage[:1]) + stage[1:]
+			}
+		}
+
+		stopHeartbeat := func() {}
+		if logger != nil && !isInteractiveTTY {
 			stopCh := make(chan struct{})
 			doneCh := make(chan struct{})
 			go func() {
@@ -652,26 +752,151 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 					select {
 					case <-stopCh:
 						return
-					case <-ticker.C:
+					case now := <-ticker.C:
 						installSpinnerState.mu.Lock()
-						msg := installSpinnerState.message
-						if msg != "" {
-							installSpinnerState.frame++
+						active := installSpinnerState.active
+						heartbeatStage := installSpinnerState.heartbeatStage
+						stageStartedAt := installSpinnerState.stageStartedAt
+						lastHeartbeatAt := installSpinnerState.lastHeartbeatAt
+						planningStep := installSpinnerState.planningStep
+						resolvedModules := installSpinnerState.resolvedModules
+						resolvedDeps := installSpinnerState.resolvedDeps
+						currentModule := installSpinnerState.currentModule
+						currentIndex := installSpinnerState.currentIndex
+						totalModules := installSpinnerState.totalModules
+						heartbeatDue := false
+						if active && heartbeatStage != "" && !stageStartedAt.IsZero() {
+							elapsed := now.Sub(stageStartedAt)
+							if elapsed >= moduleOpStageHeartbeatThreshold && now.Sub(lastHeartbeatAt) >= moduleOpStageHeartbeatInterval {
+								heartbeatDue = true
+								installSpinnerState.lastHeartbeatAt = now
+							}
 						}
-						frame := installSpinnerState.frame
 						installSpinnerState.mu.Unlock()
-						if msg != "" {
-							moduleInstallProgressLine.Update(frame, msg)
+
+						if heartbeatDue {
+							attrs := []any{
+								"stage", heartbeatStage,
+								"elapsed_ms", now.Sub(stageStartedAt).Milliseconds(),
+							}
+							if stageLabel := heartbeatStageLabel(heartbeatStage); stageLabel != "" {
+								attrs = append(attrs, "stage_label", stageLabel)
+							}
+							if planningStep != "" {
+								attrs = append(attrs, "planning_step", planningStepLabel(planningStep))
+							}
+							if resolvedModules > 0 {
+								attrs = append(attrs, "resolved_modules", resolvedModules)
+							}
+							if resolvedDeps > 0 {
+								attrs = append(attrs, "resolved_dependencies", resolvedDeps)
+							}
+							if currentModule != "" {
+								attrs = append(attrs, "current_module", currentModule)
+							}
+							if currentIndex > 0 {
+								attrs = append(attrs, "current_index", currentIndex)
+							}
+							if totalModules > 0 {
+								attrs = append(attrs, "total_modules", totalModules)
+							}
+							logger.Info("module operation stage heartbeat", attrs...)
 						}
 					}
 				}
 			}()
-			stopInstallSpinner = func() {
+			stopHeartbeat = func() {
 				close(stopCh)
 				<-doneCh
 			}
 		}
-		defer stopInstallSpinner()
+		defer stopHeartbeat()
+
+		setSpinnerMessage := func(message string) {
+			message = strings.TrimSpace(message)
+			if message == "" {
+				return
+			}
+			installSpinnerState.mu.Lock()
+			installSpinnerState.active = true
+			installSpinnerState.mu.Unlock()
+			spinnerTicker.SetMessage(message)
+		}
+		setSpinnerStage := func(stage, message string) {
+			stage = strings.TrimSpace(stage)
+			now := time.Now()
+			installSpinnerState.mu.Lock()
+			installSpinnerState.heartbeatStage = stage
+			installSpinnerState.stageStartedAt = now
+			installSpinnerState.lastHeartbeatAt = now
+			installSpinnerState.active = true
+			if !strings.EqualFold(stage, "planning") {
+				installSpinnerState.planningStep = ""
+				installSpinnerState.resolvedModules = 0
+				installSpinnerState.resolvedDeps = 0
+			}
+			installSpinnerState.mu.Unlock()
+			spinnerTicker.SetMessage(message)
+		}
+		clearSpinnerState := func() {
+			installSpinnerState.mu.Lock()
+			installSpinnerState.heartbeatStage = ""
+			installSpinnerState.stageStartedAt = time.Time{}
+			installSpinnerState.lastHeartbeatAt = time.Time{}
+			installSpinnerState.active = false
+			installSpinnerState.planningStep = ""
+			installSpinnerState.resolvedModules = 0
+			installSpinnerState.resolvedDeps = 0
+			installSpinnerState.currentModule = ""
+			installSpinnerState.currentIndex = 0
+			installSpinnerState.totalModules = 0
+			installSpinnerState.mu.Unlock()
+			spinnerTicker.Clear()
+		}
+		planningSpinnerMessage := func(progress plan.BuildPlanProgress) string {
+			base := fmt.Sprintf("%s: planning module operation", rootModuleName)
+			step := planningStepLabel(progress.Step)
+			currentModule := strings.TrimSpace(progress.CurrentModule)
+			switch {
+			case step != "" && currentModule != "":
+				return fmt.Sprintf("%s (%s for %s)", base, step, currentModule)
+			case step != "":
+				return fmt.Sprintf("%s (%s)", base, step)
+			case currentModule != "":
+				return fmt.Sprintf("%s (%s)", base, currentModule)
+			default:
+				return base
+			}
+		}
+		started := time.Now()
+		planningStarted := time.Now()
+		logger.Info("module operation planning started")
+		setSpinnerStage("planning", planningSpinnerMessage(plan.BuildPlanProgress{Step: "waiting_plan_result"}))
+		installSpinnerState.mu.Lock()
+		installSpinnerState.planningStep = "waiting_plan_result"
+		installSpinnerState.mu.Unlock()
+		planningCtx := plan.WithBuildPlanProgressReporter(ctx, func(progress plan.BuildPlanProgress) {
+			currentModule := strings.TrimSpace(progress.CurrentModule)
+			installSpinnerState.mu.Lock()
+			installSpinnerState.planningStep = strings.TrimSpace(progress.Step)
+			installSpinnerState.resolvedModules = progress.ResolvedModules
+			installSpinnerState.resolvedDeps = progress.ResolvedDependencies
+			if currentModule != "" {
+				installSpinnerState.currentModule = currentModule
+			}
+			installSpinnerState.mu.Unlock()
+			setSpinnerMessage(planningSpinnerMessage(progress))
+		})
+		opPlan, err := plan.BuildPlan(planningCtx, plan.OpInstall, rootModule, m)
+		clearSpinnerState()
+		if err != nil {
+			return err
+		}
+		planningDuration := time.Since(planningStarted)
+		logger.Info("module operation planning completed", "duration_ms", planningDuration.Milliseconds())
+		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(opPlan)...)
+		logger.Debug("module operation plan details", "modules", opPlan.ModuleOrder, "apps", opPlan.AffectedApps)
+		totalInstallModules = len(opPlan.ModuleOrder)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -681,8 +906,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				return m.buildBackendBundlesToDir(stageCtx, distBundlesStagingDir, affectedProtoStaging)
 			}
 		}
-		started := time.Now()
-		err = pipeline.Execute(stageCtx, plan, rootModule, pipeline.Callbacks{
+		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
 			OnInstallProgress: func(progress pipeline.ModuleInstallProgress) {
 				if moduleInstallProgressLine == nil || totalInstallModules == 0 {
@@ -692,24 +916,17 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				if moduleName == "" {
 					moduleName = "unknown"
 				}
-				message := fmt.Sprintf("installing modules (%d/%d): %s", progress.Current, totalInstallModules, moduleName)
+				message := fmt.Sprintf("%s: installing modules (%d/%d)", moduleName, progress.Current, totalInstallModules)
 				if progress.Stage == pipeline.ModuleInstallProgressStageFailed {
-					message = fmt.Sprintf("failed installing module (%d/%d): %s", progress.Current, totalInstallModules, moduleName)
+					message = fmt.Sprintf("%s: failed installing module (%d/%d)", moduleName, progress.Current, totalInstallModules)
 				}
-
-				installSpinnerState.mu.Lock()
 				switch progress.Stage {
 				case pipeline.ModuleInstallProgressStageStarted, pipeline.ModuleInstallProgressStageFailed:
-					installSpinnerState.message = message
-					installSpinnerState.frame++
-					frame := installSpinnerState.frame
-					installSpinnerState.mu.Unlock()
-					moduleInstallProgressLine.Update(frame, message)
+					setSpinnerMessage(message)
 					return
 				case pipeline.ModuleInstallProgressStageCompleted:
-					installSpinnerState.message = ""
+					clearSpinnerState()
 				}
-				installSpinnerState.mu.Unlock()
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,
@@ -760,11 +977,33 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			},
 		})
 		if err != nil {
+			clearSpinnerState()
 			return err
 		}
-		for _, name := range plan.ModuleOrder {
+
+		logger.Info("module operation finalizing started")
+		finalizingStarted := time.Now()
+
+		totalFinalizingModules := len(opPlan.ModuleOrder)
+		setSpinnerStage(
+			"finalizing.phase_end",
+			fmt.Sprintf("%s: finalizing phase end (%d modules)", rootModuleName, totalFinalizingModules),
+		)
+		phaseEndStarted := time.Now()
+		for i, name := range opPlan.ModuleOrder {
+			moduleName := strings.TrimSpace(name)
+			if moduleName == "" {
+				moduleName = "unknown"
+			}
+			installSpinnerState.mu.Lock()
+			installSpinnerState.currentModule = moduleName
+			installSpinnerState.currentIndex = i + 1
+			installSpinnerState.totalModules = totalFinalizingModules
+			installSpinnerState.mu.Unlock()
+			setSpinnerMessage(fmt.Sprintf("%s: finalizing phase end (%d/%d)", moduleName, i+1, totalFinalizingModules))
 			mod, err := m.Load(name)
 			if err != nil {
+				clearSpinnerState()
 				return err
 			}
 			if mod == nil {
@@ -776,17 +1015,43 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 			if runner := scripts.NewRunner(m.runtimeScope, m.jsExecutor, mod); runner != nil {
 				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version}); err != nil {
+					clearSpinnerState()
 					return err
 				}
 			}
 		}
-		if err := m.refreshModuleIndexForLocalModules(ctx, plan.ModuleOrder); err != nil {
+		phaseEndDuration := time.Since(phaseEndStarted)
+		logger.Info("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
+
+		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: finalizing index refresh", rootModuleName))
+		indexRefreshStarted := time.Now()
+		if err := m.refreshModuleIndexForLocalModules(ctx, opPlan.ModuleOrder); err != nil {
+			clearSpinnerState()
 			return err
 		}
-		if err := m.syncModuleIndexAfterInstall(ctx, logger, plan.ModuleOrder); err != nil {
+		indexRefreshDuration := time.Since(indexRefreshStarted)
+		logger.Info("module operation finalizing index refresh completed", "step", "index_refresh", "duration_ms", indexRefreshDuration.Milliseconds())
+
+		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: finalizing index sync", rootModuleName))
+		indexSyncStarted := time.Now()
+		if err := m.syncModuleIndexAfterInstall(ctx, logger, opPlan.ModuleOrder); err != nil {
+			clearSpinnerState()
 			return err
 		}
-		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
+		indexSyncDuration := time.Since(indexSyncStarted)
+		logger.Info("module operation finalizing index sync completed", "step", "index_sync", "duration_ms", indexSyncDuration.Milliseconds())
+		clearSpinnerState()
+
+		finalizingDuration := time.Since(finalizingStarted)
+		logger.Info(
+			"module operation finalizing completed",
+			"duration_ms", finalizingDuration.Milliseconds(),
+			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
+			"index_refresh_duration_ms", indexRefreshDuration.Milliseconds(),
+			"index_sync_duration_ms", indexSyncDuration.Milliseconds(),
+		)
+
+		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(opPlan, time.Since(started))...)
 		return nil
 	})
 }
