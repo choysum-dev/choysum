@@ -5,6 +5,7 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -625,5 +626,104 @@ func TestProgressTicker_ClearSuppressesRedrawUntilNextMessage(t *testing.T) {
 	afterResume := strings.Count(buf.String(), "\r\x1b[K")
 	if afterResume <= afterWait {
 		t.Fatalf("expected redraw after SetMessage(), before=%d after=%d", afterWait, afterResume)
+	}
+}
+
+func TestWithProgressTicker_NilTickerReturnsInput(t *testing.T) {
+	ctx := context.Background()
+	result := WithProgressTicker(ctx, nil)
+	if result != ctx {
+		t.Fatal("expected WithProgressTicker with nil ticker to return input context")
+	}
+	if ProgressTickerFromContext(ctx) != nil {
+		t.Fatal("expected nil-ticker context to return nil")
+	}
+}
+
+func TestWithProgressTicker_NilContextUsesBackground(t *testing.T) {
+	ticker := NewProgressTicker(nil, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	if ticker == nil {
+		t.Fatal("expected non-nil ticker")
+	}
+	ctx := WithProgressTicker(nil, ticker)
+	if ctx == nil {
+		t.Fatal("expected non-nil context when input is nil")
+	}
+	if got := ProgressTickerFromContext(ctx); got != ticker {
+		t.Fatalf("expected ticker roundtrip, got %#v", got)
+	}
+}
+
+func TestProgressTickerFromContext_MissingKeyReturnsNil(t *testing.T) {
+	if got := ProgressTickerFromContext(nil); got != nil {
+		t.Fatalf("expected nil for nil context, got %#v", got)
+	}
+	if got := ProgressTickerFromContext(context.Background()); got != nil {
+		t.Fatalf("expected nil for context without ticker, got %#v", got)
+	}
+}
+
+func TestWithProgressLine_NilLineReturnsInput(t *testing.T) {
+	ctx := context.Background()
+	result := WithProgressLine(ctx, nil)
+	if result != ctx {
+		t.Fatal("expected WithProgressLine with nil line to return input context")
+	}
+	if ProgressLineFromContext(ctx) != nil {
+		t.Fatal("expected nil-line context to return nil")
+	}
+}
+
+func TestWithProgressLine_NilContextUsesBackground(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+	line := NewProgressLine(bytes.NewBuffer(nil))
+	ctx := WithProgressLine(nil, line)
+	if ctx == nil {
+		t.Fatal("expected non-nil context when input is nil")
+	}
+	if got := ProgressLineFromContext(ctx); got != line {
+		t.Fatalf("expected line roundtrip, got %#v", got)
+	}
+}
+
+func TestProgressLineFromContext_MissingKeyReturnsNil(t *testing.T) {
+	if got := ProgressLineFromContext(nil); got != nil {
+		t.Fatalf("expected nil for nil context, got %#v", got)
+	}
+	if got := ProgressLineFromContext(context.Background()); got != nil {
+		t.Fatalf("expected nil for context without line, got %#v", got)
+	}
+}
+
+func TestProgressAwareWriter_UnwrapNilReceiver(t *testing.T) {
+	var w *progressAwareWriter
+	if got := w.Unwrap(); got != nil {
+		t.Fatalf("expected nil from nil receiver Unwrap, got %#v", got)
+	}
+}
+
+func TestWrapProgressAwareWriter_DoubleWrapIdempotent(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	first := wrapProgressAwareWriter(buf)
+	second := wrapProgressAwareWriter(first)
+	if first != second {
+		t.Fatal("expected double-wrap to be idempotent")
+	}
+}
+
+func TestProgressLine_DoneWithEmptySymbolUsesPlainFormat(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	line.Done("", "task complete")
+	out := buf.String()
+	if !strings.Contains(out, "task complete") {
+		t.Fatalf("expected plain Done output, got %q", out)
+	}
+	if strings.Contains(out, "\r\x1b[K") {
+		t.Fatalf("expected non-TTY Done with empty symbol to avoid escape sequences, got %q", out)
 	}
 }

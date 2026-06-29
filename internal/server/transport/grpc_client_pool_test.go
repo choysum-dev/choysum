@@ -229,3 +229,97 @@ func TestHTTPServerAccessURL(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPServerAccessURL_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name              string
+		configuredAddress string
+		listenAddress     string
+		scheme            string
+		want              string
+	}{
+		{
+			name:              "empty scheme returns empty",
+			configuredAddress: "127.0.0.1:9527",
+			listenAddress:     "127.0.0.1:9527",
+			scheme:            "",
+			want:              "",
+		},
+		{
+			name:              "invalid listen address returns empty",
+			configuredAddress: "127.0.0.1:9527",
+			listenAddress:     "bad",
+			scheme:            "http",
+			want:              "",
+		},
+		{
+			name:              "empty configured uses listen",
+			configuredAddress: "",
+			listenAddress:     "10.0.0.1:8080",
+			scheme:            "http",
+			want:              "http://10.0.0.1:8080",
+		},
+		{
+			name:              "ipv6 loopback maps to localhost",
+			configuredAddress: "127.0.0.1:3000",
+			listenAddress:     "[::1]:3000",
+			scheme:            "http",
+			want:              "http://127.0.0.1:3000",
+		},
+		{
+			name:              "wildcard ipv6 maps to localhost",
+			configuredAddress: "127.0.0.1:3000",
+			listenAddress:     "[::]:3000",
+			scheme:            "http",
+			want:              "http://127.0.0.1:3000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := HTTPServerAccessURL(tt.configuredAddress, tt.listenAddress, tt.scheme); got != tt.want {
+				t.Fatalf("HTTPServerAccessURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHTTPServerAddressHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		address string
+		want    string
+	}{
+		{name: "standard host port", address: "127.0.0.1:9527", want: "127.0.0.1"},
+		{name: "ipv6 brackets", address: "[::1]:8080", want: "::1"},
+		{name: "no port", address: "localhost", want: ""},
+		{name: "empty", address: "", want: ""},
+		{name: "wildcard ipv4", address: "0.0.0.0:80", want: "0.0.0.0"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := httpServerAddressHost(tt.address); got != tt.want {
+				t.Fatalf("httpServerAddressHost(%q) = %q, want %q", tt.address, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHTTPServerIsWildcardHost(t *testing.T) {
+	if !httpServerIsWildcardHost("0.0.0.0") {
+		t.Fatal("expected 0.0.0.0 is wildcard")
+	}
+	if !httpServerIsWildcardHost("::") {
+		t.Fatal("expected :: is wildcard")
+	}
+	if httpServerIsWildcardHost("127.0.0.1") {
+		t.Fatal("expected 127.0.0.1 is not wildcard")
+	}
+	if httpServerIsWildcardHost("") {
+		t.Fatal("expected empty string is not wildcard")
+	}
+	if httpServerIsWildcardHost("localhost") {
+		t.Fatal("expected localhost is not wildcard")
+	}
+}
