@@ -551,9 +551,6 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		}
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", err)
 	}
-	if progress != nil {
-		progress.Done("", "")
-	}
 
 	c.store.markStageDetail(operationID, "core module installation completed")
 
