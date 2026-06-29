@@ -228,6 +228,9 @@ func NormalizeModuleSpecPath(path string) string {
 	}
 
 	for _, candidate := range candidates {
+		if !filepath.IsAbs(candidate.path) {
+			continue
+		}
 		resolved, err := filepath.EvalSymlinks(candidate.path)
 		if err != nil {
 			continue

@@ -279,3 +279,20 @@ func TestNormalizeModuleSpecPathExistingIndexAliasesResolveToDirectory(t *testin
 		t.Fatalf("NormalizeModuleSpecPath(index.vue) = %q, want %q", got, expectedDir)
 	}
 }
+
+func TestNormalizeModuleSpecPathRelativeSpecifierIgnoresCwdSymlink(t *testing.T) {
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+
+	targetDir := filepath.Join(t.TempDir(), "node_modules", "lodash")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatalf("mkdir symlink target: %v", err)
+	}
+	if err := os.Symlink(targetDir, filepath.Join(cwd, "lodash")); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	if got := NormalizeModuleSpecPath("lodash"); got != "lodash" {
+		t.Fatalf("NormalizeModuleSpecPath(relative specifier) = %q, want %q", got, "lodash")
+	}
+}
