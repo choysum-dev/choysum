@@ -634,8 +634,44 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(plan)...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		moduleInstallProgressLine := logutil.ProgressLineFromContext(stageCtx)
-		progressFrame := 0
 		totalInstallModules := len(plan.ModuleOrder)
+		stopInstallSpinner := func() {}
+		var installSpinnerState struct {
+			mu      sync.Mutex
+			frame   int
+			message string
+		}
+		if moduleInstallProgressLine != nil && totalInstallModules > 0 {
+			stopCh := make(chan struct{})
+			doneCh := make(chan struct{})
+			go func() {
+				defer close(doneCh)
+				ticker := time.NewTicker(120 * time.Millisecond)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-stopCh:
+						return
+					case <-ticker.C:
+						installSpinnerState.mu.Lock()
+						msg := installSpinnerState.message
+						if msg != "" {
+							installSpinnerState.frame++
+						}
+						frame := installSpinnerState.frame
+						installSpinnerState.mu.Unlock()
+						if msg != "" {
+							moduleInstallProgressLine.Update(frame, msg)
+						}
+					}
+				}
+			}()
+			stopInstallSpinner = func() {
+				close(stopCh)
+				<-doneCh
+			}
+		}
+		defer stopInstallSpinner()
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -652,15 +688,28 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				if moduleInstallProgressLine == nil || totalInstallModules == 0 {
 					return
 				}
-				if progress.Stage != pipeline.ModuleInstallProgressStageStarted {
-					return
-				}
 				moduleName := strings.TrimSpace(progress.Module)
 				if moduleName == "" {
 					moduleName = "unknown"
 				}
-				progressFrame++
-				moduleInstallProgressLine.Update(progressFrame, fmt.Sprintf("installing modules (%d/%d): %s", progress.Current, totalInstallModules, moduleName))
+				message := fmt.Sprintf("installing modules (%d/%d): %s", progress.Current, totalInstallModules, moduleName)
+				if progress.Stage == pipeline.ModuleInstallProgressStageFailed {
+					message = fmt.Sprintf("failed installing module (%d/%d): %s", progress.Current, totalInstallModules, moduleName)
+				}
+
+				installSpinnerState.mu.Lock()
+				switch progress.Stage {
+				case pipeline.ModuleInstallProgressStageStarted, pipeline.ModuleInstallProgressStageFailed:
+					installSpinnerState.message = message
+					installSpinnerState.frame++
+					frame := installSpinnerState.frame
+					installSpinnerState.mu.Unlock()
+					moduleInstallProgressLine.Update(frame, message)
+					return
+				case pipeline.ModuleInstallProgressStageCompleted:
+					installSpinnerState.message = ""
+				}
+				installSpinnerState.mu.Unlock()
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,
 			ResolveInstalledModule:         m.Load,

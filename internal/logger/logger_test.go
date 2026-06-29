@@ -212,11 +212,19 @@ func TestProgressLineKeepsStructuredLogsOnSeparateLine(t *testing.T) {
 	if strings.Contains(out, "extracting packagetime=") || strings.Contains(out, "extracting packagelevel=") {
 		t.Fatalf("expected spinner and structured log to stay on separate lines, got %q", out)
 	}
-	if !strings.Contains(out, "\r\x1b[K\n") {
-		t.Fatalf("expected progress barrier newline before structured log, got %q", out)
+	if !strings.Contains(out, "\r\x1b[K") {
+		t.Fatalf("expected progress barrier line clear before structured log, got %q", out)
 	}
 	if !strings.Contains(out, "msg=\"origin registry fetch completed\"") {
 		t.Fatalf("expected structured log output, got %q", out)
+	}
+}
+
+func TestUnwrapTerminalWriterPreservesUnderlyingWriter(t *testing.T) {
+	underlying := bytes.NewBuffer(nil)
+	wrapped := wrapProgressAwareWriter(underlying)
+	if got := unwrapTerminalWriter(wrapped); got != underlying {
+		t.Fatalf("unwrapTerminalWriter() = %#v, want %#v", got, underlying)
 	}
 }
 

@@ -25,6 +25,13 @@ type progressAwareWriter struct {
 	w io.Writer
 }
 
+func (w *progressAwareWriter) Unwrap() io.Writer {
+	if w == nil {
+		return nil
+	}
+	return w.w
+}
+
 func wrapProgressAwareWriter(w io.Writer) io.Writer {
 	if w == nil {
 		return nil
@@ -39,7 +46,7 @@ func (w *progressAwareWriter) Write(p []byte) (int, error) {
 	progressOutputBarrier.mu.Lock()
 	defer progressOutputBarrier.mu.Unlock()
 	if progressOutputBarrier.active {
-		_, _ = fmt.Fprint(w.w, "\r\x1b[K\n")
+		_, _ = fmt.Fprint(w.w, "\r\x1b[K")
 		progressOutputBarrier.active = false
 	}
 	return w.w.Write(p)

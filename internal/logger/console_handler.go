@@ -30,6 +30,7 @@ const (
 
 var (
 	consoleTerminalWriter = func(w io.Writer) bool {
+		w = unwrapTerminalWriter(w)
 		file, ok := w.(*os.File)
 		if !ok {
 			return false
@@ -38,6 +39,21 @@ var (
 	}
 	consoleWorkingDirectory = os.Getwd
 )
+
+func unwrapTerminalWriter(w io.Writer) io.Writer {
+	for w != nil {
+		unwrapper, ok := w.(interface{ Unwrap() io.Writer })
+		if !ok {
+			return w
+		}
+		next := unwrapper.Unwrap()
+		if next == nil || next == w {
+			return w
+		}
+		w = next
+	}
+	return w
+}
 
 type consoleGroupOrAttrs struct {
 	group string
