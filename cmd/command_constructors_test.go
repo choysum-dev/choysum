@@ -381,6 +381,30 @@ func TestNewTypeFetchCmd_Run_SingleModuleCachedSummary(t *testing.T) {
 	}
 }
 
+func TestNewTypeFetchCmd_Run_SingleModuleNoDependenciesUsesNeutralSummary(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "empty", `{}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"empty", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if !strings.Contains(output, "[empty] completed: 0 cached, 0 fetched") {
+		t.Fatalf("expected neutral zero-result summary, got %q", output)
+	}
+	if strings.Contains(output, "no dependencies found") {
+		t.Fatalf("unexpected no-dependencies phrasing, got %q", output)
+	}
+}
+
 func TestNewTypeFetchCmd_Run_OfflineSingleAppReturnsError(t *testing.T) {
 	modulesPath := t.TempDir()
 	cfg := newCommandTestConfig(modulesPath)

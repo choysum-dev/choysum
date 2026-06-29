@@ -909,23 +909,32 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
 			OnInstallProgress: func(progress pipeline.ModuleInstallProgress) {
-				if moduleInstallProgressLine == nil || totalInstallModules == 0 {
+				if totalInstallModules == 0 {
 					return
 				}
 				moduleName := strings.TrimSpace(progress.Module)
 				if moduleName == "" {
 					moduleName = "unknown"
 				}
+				installSpinnerState.mu.Lock()
+				installSpinnerState.currentModule = moduleName
+				installSpinnerState.currentIndex = progress.Current
+				installSpinnerState.totalModules = totalInstallModules
+				installSpinnerState.mu.Unlock()
+
 				message := fmt.Sprintf("%s: installing modules (%d/%d)", moduleName, progress.Current, totalInstallModules)
 				if progress.Stage == pipeline.ModuleInstallProgressStageFailed {
 					message = fmt.Sprintf("%s: failed installing module (%d/%d)", moduleName, progress.Current, totalInstallModules)
 				}
 				switch progress.Stage {
 				case pipeline.ModuleInstallProgressStageStarted, pipeline.ModuleInstallProgressStageFailed:
-					setSpinnerMessage(message)
+					setSpinnerStage("installing.modules", message)
 					return
 				case pipeline.ModuleInstallProgressStageCompleted:
 					clearSpinnerState()
+				}
+				if moduleInstallProgressLine == nil {
+					return
 				}
 			},
 			ResolveInstallModuleFromOrigin: m.resolveInstallModuleFromOrigin,

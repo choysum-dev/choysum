@@ -887,25 +887,36 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				}
 				return err
 			}
+			installDuration := time.Since(installStarted)
 			logStep(slog.LevelInfo, "module installed",
 				"installed_module", mod.Name,
-				"duration_ms", time.Since(installStarted).Milliseconds(),
+				"duration_ms", installDuration.Milliseconds(),
 			)
+			app := strings.TrimSpace(mod.ApplicationStr)
+			if app != "" && !generated[app] {
+				if err := generateModulesForApp(app); err != nil {
+					if cb.OnInstallProgress != nil {
+						cb.OnInstallProgress(ModuleInstallProgress{
+							Current:  index + 1,
+							Total:    totalModules,
+							Module:   moduleName,
+							Stage:    ModuleInstallProgressStageFailed,
+							Duration: installDuration,
+							Err:      err,
+						})
+					}
+					return err
+				}
+				generated[app] = true
+			}
 			if cb.OnInstallProgress != nil {
 				cb.OnInstallProgress(ModuleInstallProgress{
 					Current:  index + 1,
 					Total:    totalModules,
 					Module:   moduleName,
 					Stage:    ModuleInstallProgressStageCompleted,
-					Duration: time.Since(installStarted),
+					Duration: installDuration,
 				})
-			}
-			app := strings.TrimSpace(mod.ApplicationStr)
-			if app != "" && !generated[app] {
-				if err := generateModulesForApp(app); err != nil {
-					return err
-				}
-				generated[app] = true
 			}
 		}
 		logModuleStageCompleted(moduleStageStarted)

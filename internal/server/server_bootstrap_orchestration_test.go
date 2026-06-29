@@ -8,12 +8,10 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -198,25 +196,8 @@ func TestServerRequestBootstrapModeSwitchDefaultRestartUsesColdStart(t *testing.
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
-	portListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("Listen() error = %v", err)
-	}
-	_, freePort, err := net.SplitHostPort(portListener.Addr().String())
-	if err != nil {
-		_ = portListener.Close()
-		t.Fatalf("SplitHostPort() error = %v", err)
-	}
-	parsedPort, err := strconv.Atoi(freePort)
-	if err != nil {
-		_ = portListener.Close()
-		t.Fatalf("Atoi(%q) error = %v", freePort, err)
-	}
-	if err := portListener.Close(); err != nil {
-		t.Fatalf("close temporary listener: %v", err)
-	}
 	runtimeScope.cfg.Server.BindAddress = "127.0.0.1"
-	runtimeScope.cfg.Server.Port = parsedPort
+	runtimeScope.cfg.Server.Port = 0
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 
@@ -244,7 +225,7 @@ func TestServerRequestBootstrapModeSwitchDefaultRestartUsesColdStart(t *testing.
 		t.Fatalf("requestBootstrapModeSwitch() error = %v", err)
 	}
 	logs := logBuf.String()
-	if !strings.Contains(logs, "server restarting in application mode") {
+	if !strings.Contains(logs, "server restarting") {
 		t.Fatalf("expected mode-switch restart wording in logs, got %q", logs)
 	}
 	if strings.Contains(logs, "server stopped") {

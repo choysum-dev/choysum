@@ -84,7 +84,7 @@ func (s *GRPCWebServer) stop(reload bool) error {
 	s.stopTelemetryRuntime()
 
 	if reload {
-		s.runtimeScope.Logger().Info("server restarting in application mode")
+		s.runtimeScope.Logger().Info("server restarting")
 	} else {
 		s.runtimeScope.Logger().Info("server stopped")
 	}

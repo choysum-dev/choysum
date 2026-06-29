@@ -485,6 +485,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	installCtx = logger.WithProgressLine(installCtx, progress)
 	spinnerTicker := logger.NewProgressTicker(progress, logger.ProgressTickerOptions{Interval: 120 * time.Millisecond})
 	defer spinnerTicker.Stop()
+	defer spinnerTicker.Clear()
 	installCtx = logger.WithProgressTicker(installCtx, spinnerTicker)
 
 	updateFetchProgressMessage := func(message string) {

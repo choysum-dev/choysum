@@ -325,14 +325,14 @@ func (r *Resolver) Plugin() api.Plugin {
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
 					downloadStart := time.Now()
 					r.metrics.Downloads.Add(1)
-					// Record the package name for downstream observability.
-					if pkg != "" {
-						r.metrics.DownloadedPkgs.Store(pkg, struct{}{})
-					}
 					content, dlErr := r.downloadWithRetry(url)
 					r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
 					if dlErr != nil {
 						return fetchResult{}, dlErr
+					}
+					// Record the package name for downstream observability.
+					if pkg != "" {
+						r.metrics.DownloadedPkgs.Store(pkg, struct{}{})
 					}
 					if writeErr := r.writeCache(cacheFile, []byte(content)); writeErr != nil {
 						if r.logger != nil {

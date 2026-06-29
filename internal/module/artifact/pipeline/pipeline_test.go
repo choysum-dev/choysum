@@ -331,8 +331,18 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 	if !strings.Contains(logs, `"apps":["base","task"]`) {
 		t.Fatalf("expected summarized app names in info logs, got %q", logs)
 	}
-	if !strings.Contains(logs, `"duration_ms":`) {
-		t.Fatalf("expected normalized duration_ms in app stage summary, got %q", logs)
+	appStageSummaryFound := false
+	for _, line := range strings.Split(strings.TrimSpace(logs), "\n") {
+		if !strings.Contains(line, `"msg":"pipeline app stage completed"`) {
+			continue
+		}
+		appStageSummaryFound = true
+		if !strings.Contains(line, `"duration_ms":`) {
+			t.Fatalf("expected duration_ms on app stage summary record, got %q", line)
+		}
+	}
+	if !appStageSummaryFound {
+		t.Fatalf("expected app stage summary record in logs, got %q", logs)
 	}
 }
 func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
@@ -1150,6 +1160,54 @@ func TestExecuteInstallGeneratesModulesOncePerApplication(t *testing.T) {
 	}
 	if appTargetsCalls != 1 || generateCalls != 1 {
 		t.Fatalf("expected single module generation for shared app, got appTargets=%d generate=%d", appTargetsCalls, generateCalls)
+	}
+}
+
+func TestExecuteInstallProgressReportsFailedWhenPostInstallGenerationFails(t *testing.T) {
+	ctx := staging.WithTmpRoot(context.Background(), t.TempDir())
+	root := &meta.IrModule{Name: "core", ApplicationStr: "base"}
+	genErr := errors.New("generate app failed")
+	rootDir := t.TempDir()
+
+	progressEvents := make([]ModuleInstallProgress, 0, 2)
+	err := Execute(ctx, planner.Plan{
+		Op:          planner.OpInstall,
+		ModuleOrder: []string{"core"},
+	}, root, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+			return root, nil
+		},
+		Install: func(module *meta.IrModule) error {
+			return nil
+		},
+		OnInstallProgress: func(progress ModuleInstallProgress) {
+			progressEvents = append(progressEvents, progress)
+		},
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return "", ModulesAppTargets{
+				ProtoDir:   filepath.Join(rootDir, "proto", appName),
+				WebDir:     filepath.Join(rootDir, "web", appName),
+				ServiceDir: filepath.Join(rootDir, "service", appName),
+			}, nil
+		},
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			return genErr
+		},
+	})
+	if !errors.Is(err, genErr) {
+		t.Fatalf("Execute() error = %v, want %v", err, genErr)
+	}
+	if len(progressEvents) != 2 {
+		t.Fatalf("progress events = %d, want 2", len(progressEvents))
+	}
+	if progressEvents[0].Stage != ModuleInstallProgressStageStarted {
+		t.Fatalf("first progress stage = %q, want started", progressEvents[0].Stage)
+	}
+	if progressEvents[1].Stage != ModuleInstallProgressStageFailed {
+		t.Fatalf("second progress stage = %q, want failed", progressEvents[1].Stage)
+	}
+	if !errors.Is(progressEvents[1].Err, genErr) {
+		t.Fatalf("failed progress err = %v, want %v", progressEvents[1].Err, genErr)
 	}
 }
 

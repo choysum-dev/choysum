@@ -183,11 +183,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				allResults = append(allResults, results...)
 				clearCommandProgress()
-				if len(results) == 0 {
-					cmd.Printf("[%s] no dependencies found\n", appName)
-				} else {
-					cmd.Printf("[%s] completed: %d cached, %d fetched\n", appName, appCached, appFetched)
-				}
+				cmd.Printf("[%s] completed: %d cached, %d fetched\n", appName, appCached, appFetched)
 			}
 			clearCommandProgress()
 

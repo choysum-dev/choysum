@@ -753,6 +753,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	fetchStarted := time.Now()
 
 	inspection, err := p.inspectRegistryPackage(ctx, registryURL, moduleName, packageName, version)
 	if err != nil {
@@ -875,7 +876,7 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 			"registry_host", registryHost,
 			"package", packageName,
 			"resolved_version", resolvedVersion,
-			"duration_ms", time.Since(dlStart).Milliseconds(),
+			"duration_ms", time.Since(fetchStarted).Milliseconds(),
 		)
 	}
 	return module, nil

@@ -1391,6 +1391,78 @@ func TestResolver_WithLogger(t *testing.T) {
 	}
 }
 
+func TestResolver_DownloadedPkgsTracksOnlySuccessfulFetches(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "export const x = 1;")
+		}))
+		defer server.Close()
+
+		dir := t.TempDir()
+		r := New(
+			WithUpstream(server.URL),
+			WithCacheDir(dir),
+			WithTarget("es2020"),
+		)
+
+		entry := filepath.Join(dir, "entry.ts")
+		if err := os.WriteFile(entry, []byte(`import { x } from "ok-pkg"; console.log(x);`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		result := api.Build(api.BuildOptions{
+			EntryPoints: []string{entry},
+			Bundle:      true,
+			Write:       false,
+			Plugins:     []api.Plugin{r.Plugin()},
+			Platform:    api.PlatformBrowser,
+		})
+		if len(result.Errors) > 0 {
+			t.Fatalf("build failed: %v", result.Errors)
+		}
+
+		pkgs := r.metrics.SnapshotDownloadedPkgs()
+		if len(pkgs) != 1 || pkgs[0] != "ok-pkg" {
+			t.Fatalf("downloaded packages = %#v, want [ok-pkg]", pkgs)
+		}
+	})
+
+	t.Run("failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "boom", http.StatusBadGateway)
+		}))
+		defer server.Close()
+
+		dir := t.TempDir()
+		r := New(
+			WithUpstream(server.URL),
+			WithCacheDir(dir),
+			WithTarget("es2020"),
+		)
+
+		entry := filepath.Join(dir, "entry.ts")
+		if err := os.WriteFile(entry, []byte(`import { x } from "bad-pkg"; console.log(x);`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		result := api.Build(api.BuildOptions{
+			EntryPoints: []string{entry},
+			Bundle:      true,
+			Write:       false,
+			Plugins:     []api.Plugin{r.Plugin()},
+			Platform:    api.PlatformBrowser,
+		})
+		if len(result.Errors) == 0 {
+			t.Fatal("expected build failure for bad-pkg")
+		}
+
+		pkgs := r.metrics.SnapshotDownloadedPkgs()
+		if len(pkgs) != 0 {
+			t.Fatalf("downloaded packages = %#v, want []", pkgs)
+		}
+	})
+}
+
 // ---- resolveLockfile tests ----
 
 func TestResolveLockfile_WithLockfilePath(t *testing.T) {

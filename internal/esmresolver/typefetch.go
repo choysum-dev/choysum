@@ -47,6 +47,19 @@ type typeFetchState struct {
 	visited    map[string]*visitEntry
 }
 
+func writeTypeFetchProgressLine(message string) {
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return
+	}
+	line := logutil.NewProgressLine(os.Stderr)
+	if line != nil && line.IsTTY() {
+		line.Done("", message)
+		return
+	}
+	fmt.Fprintln(os.Stderr, message)
+}
+
 func beginTypeFetchTransitiveProgress(ctx context.Context, rootPkg string, total int, topLevel bool) (func(int), func()) {
 	if total < 200 || !topLevel {
 		return func(int) {}, func() {}
@@ -84,10 +97,10 @@ func beginTypeFetchTransitiveProgress(ctx context.Context, rootPkg string, total
 			}
 	}
 
-	fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s has %d transitive type imports\n", rootPkg, total)
+	writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] info: %s has %d transitive type imports", rootPkg, total))
 	return func(completed int) {
 		if completed > 0 && completed%200 == 0 {
-			fmt.Fprintf(os.Stderr, "[esm-type-fetch] info: %s transitive progress %d/%d\n", rootPkg, completed, total)
+			writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] info: %s transitive progress %d/%d", rootPkg, completed, total))
 		}
 	}, func() {}
 }
@@ -950,7 +963,7 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return nil, ctxErr
 			}
-			fmt.Fprintf(os.Stderr, "[esm-type-fetch] warn: [%s] %s@%s (%s): %v\n", moduleName, name, version, time.Since(start).Round(time.Millisecond), err)
+			writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] warn: [%s] %s@%s (%s): %v", moduleName, name, version, time.Since(start).Round(time.Millisecond), err))
 			continue
 		}
 		if result != nil {

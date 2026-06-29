@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ type progressTickerContextKey struct{}
 var progressOutputBarrier struct {
 	mu     sync.Mutex
 	active bool
+	writer io.Writer
 }
 
 type progressAwareWriter struct {
@@ -45,12 +47,37 @@ func wrapProgressAwareWriter(w io.Writer) io.Writer {
 	return &progressAwareWriter{w: w}
 }
 
+func unwrapProgressWriter(w io.Writer) io.Writer {
+	for {
+		wrapped, ok := w.(*progressAwareWriter)
+		if !ok || wrapped == nil {
+			return w
+		}
+		w = wrapped.w
+	}
+}
+
+func sameProgressWriter(left, right io.Writer) bool {
+	left = unwrapProgressWriter(left)
+	right = unwrapProgressWriter(right)
+	if left == nil || right == nil {
+		return false
+	}
+	leftType := reflect.TypeOf(left)
+	rightType := reflect.TypeOf(right)
+	if leftType != rightType || !leftType.Comparable() {
+		return false
+	}
+	return left == right
+}
+
 func (w *progressAwareWriter) Write(p []byte) (int, error) {
 	progressOutputBarrier.mu.Lock()
 	defer progressOutputBarrier.mu.Unlock()
-	if progressOutputBarrier.active {
+	if progressOutputBarrier.active && sameProgressWriter(progressOutputBarrier.writer, w.w) {
 		_, _ = fmt.Fprint(w.w, "\r\x1b[K")
 		progressOutputBarrier.active = false
+		progressOutputBarrier.writer = nil
 	}
 	return w.w.Write(p)
 }
@@ -189,7 +216,12 @@ func (p *ProgressTicker) Clear() {
 	}
 	p.mu.Lock()
 	p.message = ""
+	line := p.line
 	p.mu.Unlock()
+
+	if line != nil {
+		line.Clear()
+	}
 }
 
 // Stop terminates the background ticker goroutine.
@@ -248,6 +280,21 @@ func (p *ProgressLine) Update(frame int, message string) {
 	glyph := progressSpinnerFrames[frame%len(progressSpinnerFrames)]
 	fmt.Fprintf(p.w, "\r\x1b[K%s %s", glyph, message)
 	progressOutputBarrier.active = true
+	progressOutputBarrier.writer = unwrapProgressWriter(p.w)
+}
+
+// Clear erases the currently rendered progress line without emitting a newline.
+func (p *ProgressLine) Clear() {
+	if p == nil || !p.tty {
+		return
+	}
+	progressOutputBarrier.mu.Lock()
+	defer progressOutputBarrier.mu.Unlock()
+	fmt.Fprint(p.w, "\r\x1b[K")
+	if sameProgressWriter(progressOutputBarrier.writer, p.w) {
+		progressOutputBarrier.active = false
+		progressOutputBarrier.writer = nil
+	}
 }
 
 // Done finalises the line with a result symbol and message, then
@@ -263,5 +310,8 @@ func (p *ProgressLine) Done(symbol, message string) {
 		return
 	}
 	fmt.Fprintf(p.w, "\r\x1b[K%s %s\n", symbol, message)
-	progressOutputBarrier.active = false
+	if sameProgressWriter(progressOutputBarrier.writer, p.w) {
+		progressOutputBarrier.active = false
+		progressOutputBarrier.writer = nil
+	}
 }

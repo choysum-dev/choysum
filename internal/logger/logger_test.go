@@ -220,6 +220,58 @@ func TestProgressLineKeepsStructuredLogsOnSeparateLine(t *testing.T) {
 	}
 }
 
+func TestProgressBarrierIsScopedPerWriter(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	stderrBuf := bytes.NewBuffer(nil)
+	stdoutBuf := bytes.NewBuffer(nil)
+
+	line := NewProgressLine(stderrBuf)
+	if line == nil {
+		t.Fatal("expected progress line")
+	}
+	line.Update(0, "fetching")
+
+	wrappedStdout := wrapProgressAwareWriter(stdoutBuf)
+	if _, err := wrappedStdout.Write([]byte("stdout message\n")); err != nil {
+		t.Fatalf("write stdout: %v", err)
+	}
+	if strings.Contains(stdoutBuf.String(), "\r\x1b[K") {
+		t.Fatalf("expected stdout stream to remain untouched by stderr progress barrier, got %q", stdoutBuf.String())
+	}
+
+	wrappedStderr := wrapProgressAwareWriter(stderrBuf)
+	if _, err := wrappedStderr.Write([]byte("stderr message\n")); err != nil {
+		t.Fatalf("write stderr: %v", err)
+	}
+	if got := strings.Count(stderrBuf.String(), "\r\x1b[K"); got < 2 {
+		t.Fatalf("expected stderr stream to include progress clear from wrapped write, got %q", stderrBuf.String())
+	}
+}
+
+func TestProgressTickerClearErasesRenderedLine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	if line == nil {
+		t.Fatal("expected progress line")
+	}
+
+	ticker := NewProgressTicker(line, ProgressTickerOptions{})
+	defer ticker.Stop()
+
+	ticker.SetMessage("installing")
+	before := strings.Count(buf.String(), "\r\x1b[K")
+	ticker.Clear()
+	after := strings.Count(buf.String(), "\r\x1b[K")
+	if after <= before {
+		t.Fatalf("expected Clear() to erase rendered line, got output %q", buf.String())
+	}
+}
+
 func TestUnwrapTerminalWriterPreservesUnderlyingWriter(t *testing.T) {
 	underlying := bytes.NewBuffer(nil)
 	wrapped := wrapProgressAwareWriter(underlying)

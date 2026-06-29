@@ -405,7 +405,7 @@ async function pollInitialization(currentOperationId: string, nextPollAfterMs: b
   }
 
   setFailureState('Setup is taking longer than expected.', {
-    details: 'Setup is still running in the background. Keep this page open or refresh to continue tracking the latest setup status.',
+    details: 'Refresh the page to continue tracking the latest setup status.',
   });
 }
 
