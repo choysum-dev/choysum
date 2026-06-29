@@ -41,7 +41,7 @@ var (
 )
 
 func unwrapTerminalWriter(w io.Writer) io.Writer {
-	for w != nil {
+	for i := 0; i < 20 && w != nil; i++ {
 		unwrapper, ok := w.(interface{ Unwrap() io.Writer })
 		if !ok {
 			return w

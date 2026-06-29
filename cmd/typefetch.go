@@ -130,6 +130,7 @@ When <app> is specified, fetches types for that module only.`,
 			var spinnerTicker *logutil.ProgressTicker
 			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine != nil && progressLine.IsTTY() {
 				spinnerTicker = logutil.NewProgressTicker(progressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+				defer spinnerTicker.Clear()
 				defer spinnerTicker.Stop()
 				ctx = logutil.WithProgressTicker(ctx, spinnerTicker)
 			}
