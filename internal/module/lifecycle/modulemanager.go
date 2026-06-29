@@ -434,6 +434,24 @@ func moduleOpLogger(logger *slog.Logger, opid string, op plan.OpType, moduleName
 
 const moduleOpInfoNameListLimit = 8
 
+type installSpinnerStateData struct {
+	heartbeatStage  string
+	stageStartedAt  time.Time
+	lastHeartbeatAt time.Time
+	active          bool
+	planningStep    string
+	resolvedModules int
+	resolvedDeps    int
+	currentModule   string
+	currentIndex    int
+	totalModules    int
+}
+
+type installSpinnerStateHolder struct {
+	mu   sync.Mutex
+	data installSpinnerStateData
+}
+
 func summarizeModuleOpInfoNames(values []string) []string {
 	if len(values) == 0 {
 		return nil
@@ -679,19 +697,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			moduleOpStageHeartbeatThreshold = 5 * time.Second
 			moduleOpStageHeartbeatInterval  = 5 * time.Second
 		)
-		var installSpinnerState struct {
-			mu              sync.Mutex
-			heartbeatStage  string
-			stageStartedAt  time.Time
-			lastHeartbeatAt time.Time
-			active          bool
-			planningStep    string
-			resolvedModules int
-			resolvedDeps    int
-			currentModule   string
-			currentIndex    int
-			totalModules    int
-		}
+		var installSpinnerState installSpinnerStateHolder
 		spinnerTicker := logutil.ProgressTickerFromContext(stageCtx)
 		ownsSpinnerTicker := false
 		if spinnerTicker == nil {
@@ -754,51 +760,42 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 						return
 					case now := <-ticker.C:
 						installSpinnerState.mu.Lock()
-						active := installSpinnerState.active
-						heartbeatStage := installSpinnerState.heartbeatStage
-						stageStartedAt := installSpinnerState.stageStartedAt
-						lastHeartbeatAt := installSpinnerState.lastHeartbeatAt
-						planningStep := installSpinnerState.planningStep
-						resolvedModules := installSpinnerState.resolvedModules
-						resolvedDeps := installSpinnerState.resolvedDeps
-						currentModule := installSpinnerState.currentModule
-						currentIndex := installSpinnerState.currentIndex
-						totalModules := installSpinnerState.totalModules
 						heartbeatDue := false
-						if active && heartbeatStage != "" && !stageStartedAt.IsZero() {
-							elapsed := now.Sub(stageStartedAt)
-							if elapsed >= moduleOpStageHeartbeatThreshold && now.Sub(lastHeartbeatAt) >= moduleOpStageHeartbeatInterval {
+						if installSpinnerState.data.active && installSpinnerState.data.heartbeatStage != "" && !installSpinnerState.data.stageStartedAt.IsZero() {
+							elapsed := now.Sub(installSpinnerState.data.stageStartedAt)
+							if elapsed >= moduleOpStageHeartbeatThreshold && now.Sub(installSpinnerState.data.lastHeartbeatAt) >= moduleOpStageHeartbeatInterval {
 								heartbeatDue = true
-								installSpinnerState.lastHeartbeatAt = now
+								installSpinnerState.data.lastHeartbeatAt = now
 							}
 						}
+						state := installSpinnerState.data
 						installSpinnerState.mu.Unlock()
 
 						if heartbeatDue {
 							attrs := []any{
-								"stage", heartbeatStage,
-								"elapsed_ms", now.Sub(stageStartedAt).Milliseconds(),
+								"stage", state.heartbeatStage,
+								"elapsed_ms", now.Sub(state.stageStartedAt).Milliseconds(),
 							}
-							if stageLabel := heartbeatStageLabel(heartbeatStage); stageLabel != "" {
+							if stageLabel := heartbeatStageLabel(state.heartbeatStage); stageLabel != "" {
 								attrs = append(attrs, "stage_label", stageLabel)
 							}
-							if planningStep != "" {
-								attrs = append(attrs, "planning_step", planningStepLabel(planningStep))
+							if state.planningStep != "" {
+								attrs = append(attrs, "planning_step", planningStepLabel(state.planningStep))
 							}
-							if resolvedModules > 0 {
-								attrs = append(attrs, "resolved_modules", resolvedModules)
+							if state.resolvedModules > 0 {
+								attrs = append(attrs, "resolved_modules", state.resolvedModules)
 							}
-							if resolvedDeps > 0 {
-								attrs = append(attrs, "resolved_dependencies", resolvedDeps)
+							if state.resolvedDeps > 0 {
+								attrs = append(attrs, "resolved_dependencies", state.resolvedDeps)
 							}
-							if currentModule != "" {
-								attrs = append(attrs, "current_module", currentModule)
+							if state.currentModule != "" {
+								attrs = append(attrs, "current_module", state.currentModule)
 							}
-							if currentIndex > 0 {
-								attrs = append(attrs, "current_index", currentIndex)
+							if state.currentIndex > 0 {
+								attrs = append(attrs, "current_index", state.currentIndex)
 							}
-							if totalModules > 0 {
-								attrs = append(attrs, "total_modules", totalModules)
+							if state.totalModules > 0 {
+								attrs = append(attrs, "total_modules", state.totalModules)
 							}
 							logger.Info("module operation stage heartbeat", attrs...)
 						}
@@ -818,7 +815,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				return
 			}
 			installSpinnerState.mu.Lock()
-			installSpinnerState.active = true
+			installSpinnerState.data.active = true
 			installSpinnerState.mu.Unlock()
 			spinnerTicker.SetMessage(message)
 		}
@@ -826,30 +823,21 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			stage = strings.TrimSpace(stage)
 			now := time.Now()
 			installSpinnerState.mu.Lock()
-			installSpinnerState.heartbeatStage = stage
-			installSpinnerState.stageStartedAt = now
-			installSpinnerState.lastHeartbeatAt = now
-			installSpinnerState.active = true
+			installSpinnerState.data.heartbeatStage = stage
+			installSpinnerState.data.stageStartedAt = now
+			installSpinnerState.data.lastHeartbeatAt = now
+			installSpinnerState.data.active = true
 			if !strings.EqualFold(stage, "planning") {
-				installSpinnerState.planningStep = ""
-				installSpinnerState.resolvedModules = 0
-				installSpinnerState.resolvedDeps = 0
+				installSpinnerState.data.planningStep = ""
+				installSpinnerState.data.resolvedModules = 0
+				installSpinnerState.data.resolvedDeps = 0
 			}
 			installSpinnerState.mu.Unlock()
 			spinnerTicker.SetMessage(message)
 		}
 		clearSpinnerState := func() {
 			installSpinnerState.mu.Lock()
-			installSpinnerState.heartbeatStage = ""
-			installSpinnerState.stageStartedAt = time.Time{}
-			installSpinnerState.lastHeartbeatAt = time.Time{}
-			installSpinnerState.active = false
-			installSpinnerState.planningStep = ""
-			installSpinnerState.resolvedModules = 0
-			installSpinnerState.resolvedDeps = 0
-			installSpinnerState.currentModule = ""
-			installSpinnerState.currentIndex = 0
-			installSpinnerState.totalModules = 0
+			installSpinnerState.data = installSpinnerStateData{}
 			installSpinnerState.mu.Unlock()
 			spinnerTicker.Clear()
 		}
@@ -873,16 +861,16 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		logger.Info("module operation planning started")
 		setSpinnerStage("planning", planningSpinnerMessage(plan.BuildPlanProgress{Step: "waiting_plan_result"}))
 		installSpinnerState.mu.Lock()
-		installSpinnerState.planningStep = "waiting_plan_result"
+		installSpinnerState.data.planningStep = "waiting_plan_result"
 		installSpinnerState.mu.Unlock()
 		planningCtx := plan.WithBuildPlanProgressReporter(ctx, func(progress plan.BuildPlanProgress) {
 			currentModule := strings.TrimSpace(progress.CurrentModule)
 			installSpinnerState.mu.Lock()
-			installSpinnerState.planningStep = strings.TrimSpace(progress.Step)
-			installSpinnerState.resolvedModules = progress.ResolvedModules
-			installSpinnerState.resolvedDeps = progress.ResolvedDependencies
+			installSpinnerState.data.planningStep = strings.TrimSpace(progress.Step)
+			installSpinnerState.data.resolvedModules = progress.ResolvedModules
+			installSpinnerState.data.resolvedDeps = progress.ResolvedDependencies
 			if currentModule != "" {
-				installSpinnerState.currentModule = currentModule
+				installSpinnerState.data.currentModule = currentModule
 			}
 			installSpinnerState.mu.Unlock()
 			setSpinnerMessage(planningSpinnerMessage(progress))
@@ -917,9 +905,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 					moduleName = "unknown"
 				}
 				installSpinnerState.mu.Lock()
-				installSpinnerState.currentModule = moduleName
-				installSpinnerState.currentIndex = progress.Current
-				installSpinnerState.totalModules = totalInstallModules
+				installSpinnerState.data.currentModule = moduleName
+				installSpinnerState.data.currentIndex = progress.Current
+				installSpinnerState.data.totalModules = totalInstallModules
 				installSpinnerState.mu.Unlock()
 
 				message := fmt.Sprintf("%s: installing modules (%d/%d)", moduleName, progress.Current, totalInstallModules)
@@ -1005,9 +993,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				moduleName = "unknown"
 			}
 			installSpinnerState.mu.Lock()
-			installSpinnerState.currentModule = moduleName
-			installSpinnerState.currentIndex = i + 1
-			installSpinnerState.totalModules = totalFinalizingModules
+			installSpinnerState.data.currentModule = moduleName
+			installSpinnerState.data.currentIndex = i + 1
+			installSpinnerState.data.totalModules = totalFinalizingModules
 			installSpinnerState.mu.Unlock()
 			setSpinnerMessage(fmt.Sprintf("%s: finalizing phase end (%d/%d)", moduleName, i+1, totalFinalizingModules))
 			mod, err := m.Load(name)
