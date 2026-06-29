@@ -364,7 +364,6 @@ func (r *Resolver) Plugin() api.Plugin {
 						"cache_hit", hit,
 						"cache_miss", miss,
 						"downloads", downloads,
-						"download_duration_ms", downloadMs,
 						"cumulative_download_duration_ms", downloadMs,
 						"errors", errors,
 					}

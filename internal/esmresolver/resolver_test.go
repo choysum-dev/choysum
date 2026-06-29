@@ -1383,6 +1383,12 @@ func TestResolver_WithLogger(t *testing.T) {
 	if !strings.Contains(output, "cache_miss") {
 		t.Fatalf("expected cache_miss in metrics: %s", output)
 	}
+	if !strings.Contains(output, "cumulative_download_duration_ms") {
+		t.Fatalf("expected cumulative_download_duration_ms in metrics: %s", output)
+	}
+	if strings.Contains(output, " download_duration_ms=") {
+		t.Fatalf("unexpected duplicate download_duration_ms in metrics: %s", output)
+	}
 }
 
 // ---- resolveLockfile tests ----
