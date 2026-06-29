@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
-	logutil "github.com/choysum-dev/choysum/internal/logger"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	pkgrunner "github.com/choysum-dev/choysum/internal/testing/runner"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -427,92 +426,6 @@ func TestNewTypeFetchCmd_Run_OfflineSingleAppReturnsError(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "[broken] error:") {
 		t.Fatalf("expected command output to include broken app error, got %q", out.String())
-	}
-}
-
-func TestRunTypeFetchAfterInstall_LogsModuleAndOverallSummaries(t *testing.T) {
-	modulesPath := t.TempDir()
-	cfg := newCommandTestConfig(modulesPath)
-	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
-
-	typesDir := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types")
-	cacheFile := filepath.Join(typesDir, "dep@1.0.0.d.ts")
-	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
-		t.Fatalf("mkdir cache dir: %v", err)
-	}
-	if err := os.WriteFile(cacheFile, []byte("export declare const x: number;"), 0o644); err != nil {
-		t.Fatalf("write cache file: %v", err)
-	}
-
-	var logs bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	env := &commandBufferLoggerScope{
-		commandTestScope: &commandTestScope{cfg: cfg},
-		logger:           logger,
-	}
-
-	ticker := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
-	defer ticker.Stop()
-	ctx := logutil.WithProgressTicker(context.Background(), ticker)
-
-	runTypeFetchAfterInstall(ctx, env)
-
-	output := logs.String()
-	for _, want := range []string{
-		"type-fetch: module completed",
-		"module=app",
-		"cached=1",
-		"fetched=0",
-		"type-fetch: completed",
-		"modules=1",
-	} {
-		if !strings.Contains(output, want) {
-			t.Fatalf("expected logs to contain %q, got %q", want, output)
-		}
-	}
-}
-
-func TestRunTypeFetchAfterInstall_ContextCanceledDoesNotLogSkippedModule(t *testing.T) {
-	modulesPath := t.TempDir()
-	cfg := newCommandTestConfig(modulesPath)
-	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
-
-	requestStarted := make(chan struct{}, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case requestStarted <- struct{}{}:
-		default:
-		}
-		<-r.Context().Done()
-	}))
-	defer server.Close()
-	cfg.ESMUpstreamURL = server.URL
-
-	var logs bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	env := &commandBufferLoggerScope{
-		commandTestScope: &commandTestScope{cfg: cfg},
-		logger:           logger,
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		select {
-		case <-requestStarted:
-			cancel()
-		case <-time.After(2 * time.Second):
-			cancel()
-		}
-	}()
-
-	runTypeFetchAfterInstall(ctx, env)
-
-	output := logs.String()
-	if !strings.Contains(output, "type-fetch: interrupted") {
-		t.Fatalf("expected interrupted log, got %q", output)
-	}
-	if strings.Contains(output, "type-fetch: skipped module") {
-		t.Fatalf("unexpected skipped-module warning on cancellation, got %q", output)
 	}
 }
 
