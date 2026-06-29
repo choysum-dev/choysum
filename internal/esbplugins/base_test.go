@@ -296,3 +296,55 @@ func TestNormalizeModuleSpecPathRelativeSpecifierIgnoresCwdSymlink(t *testing.T)
 		t.Fatalf("NormalizeModuleSpecPath(relative specifier) = %q, want %q", got, "lodash")
 	}
 }
+
+func TestNormalizePathAndPathWithinRootForNonExistingFileUnderSymlinkParent(t *testing.T) {
+	realRoot := filepath.Join(t.TempDir(), "real")
+	moduleRealRoot := filepath.Join(realRoot, "modules", "base")
+	if err := os.MkdirAll(filepath.Join(moduleRealRoot, "service", "models"), 0o755); err != nil {
+		t.Fatalf("mkdir module models directory: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "base")
+	nonExistingAliasPath := filepath.Join(moduleAliasRoot, "service", "models", "new_model.ts")
+
+	expectedDir, err := filepath.EvalSymlinks(filepath.Dir(nonExistingAliasPath))
+	if err != nil {
+		t.Fatalf("resolve expected parent symlink: %v", err)
+	}
+	expectedPath := filepath.Clean(filepath.Join(expectedDir, filepath.Base(nonExistingAliasPath)))
+
+	if got := NormalizePath(nonExistingAliasPath); got != expectedPath {
+		t.Fatalf("NormalizePath(non-existing path under alias) = %q, want %q", got, expectedPath)
+	}
+	if !PathWithinRoot(nonExistingAliasPath, moduleAliasRoot) {
+		t.Fatalf("expected non-existing alias path %q to be within alias root %q", nonExistingAliasPath, moduleAliasRoot)
+	}
+}
+
+func TestNormalizePathForDeepNonExistingPathUsesNearestExistingSymlinkAncestor(t *testing.T) {
+	realRoot := filepath.Join(t.TempDir(), "real")
+	if err := os.MkdirAll(realRoot, 0o755); err != nil {
+		t.Fatalf("mkdir real root: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	deepNonExisting := filepath.Join(aliasRoot, "modules", "crm", "service", "models", "lead.ts")
+	resolvedAliasRoot, err := filepath.EvalSymlinks(aliasRoot)
+	if err != nil {
+		t.Fatalf("resolve alias root symlink: %v", err)
+	}
+	expected := filepath.Clean(filepath.Join(resolvedAliasRoot, "modules", "crm", "service", "models", "lead.ts"))
+
+	if got := NormalizePath(deepNonExisting); got != expected {
+		t.Fatalf("NormalizePath(deep non-existing path) = %q, want %q", got, expected)
+	}
+}

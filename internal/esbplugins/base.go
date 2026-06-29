@@ -41,6 +41,26 @@ func NormalizePath(path string) string {
 	}
 	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
 		trimmed = resolved
+	} else {
+		ancestor := filepath.Dir(trimmed)
+		remainder := []string{filepath.Base(trimmed)}
+		for {
+			if resolvedAncestor, ancestorErr := filepath.EvalSymlinks(ancestor); ancestorErr == nil {
+				candidate := resolvedAncestor
+				for i := len(remainder) - 1; i >= 0; i-- {
+					candidate = filepath.Join(candidate, remainder[i])
+				}
+				trimmed = candidate
+				break
+			}
+
+			parent := filepath.Dir(ancestor)
+			if parent == ancestor {
+				break
+			}
+			remainder = append(remainder, filepath.Base(ancestor))
+			ancestor = parent
+		}
 	}
 	return filepath.Clean(trimmed)
 }
