@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	cfg "github.com/choysum-dev/choysum/pkg/config"
@@ -761,6 +762,21 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 		return nil, xfmt.Errorf("no tarball url found in npm metadata")
 	}
 
+	registryHost := registryHostFromURL(registryURL)
+	resolvedVersion := ""
+	if inspection.module != nil {
+		resolvedVersion = strings.TrimSpace(inspection.module.Version)
+	}
+	if p.runtimeScope.Logger() != nil {
+		p.runtimeScope.Logger().Info("origin registry fetch started",
+			"module", moduleName,
+			"registry_host", registryHost,
+			"package", packageName,
+			"requested_version", version,
+			"resolved_version", resolvedVersion,
+		)
+	}
+
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "choysum-source-fetch-")
 	if err != nil {
 		return nil, xfmt.Errorf("create temp dir failed: %w", err)
@@ -768,17 +784,34 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 	defer os.RemoveAll(tmpDir)
 	tarballPath := filepath.Join(tmpDir, "__choysum_download.tar.gz")
 
+	dlStart := time.Now()
 	contract.ReportFetchProgress(ctx, contract.FetchProgressStageDownload, moduleName)
 	downloadedSums, err := p.downloadTarballToFile(ctx, inspection.downloadURL, tarballPath)
 	if err != nil {
 		return nil, err
 	}
+	if p.runtimeScope.Logger() != nil {
+		p.runtimeScope.Logger().Debug("origin registry fetch stage",
+			"module", moduleName,
+			"stage", "download",
+			"duration_ms", time.Since(dlStart).Milliseconds(),
+		)
+	}
 
+	vStart := time.Now()
 	contract.ReportFetchProgress(ctx, contract.FetchProgressStageVerify, moduleName)
 	if err := verifyTarballIntegritySums(downloadedSums, inspection.integrity); err != nil {
 		return nil, xfmt.Errorf("tarball integrity check failed: %w", err)
 	}
+	if p.runtimeScope.Logger() != nil {
+		p.runtimeScope.Logger().Debug("origin registry fetch stage",
+			"module", moduleName,
+			"stage", "verify",
+			"duration_ms", time.Since(vStart).Milliseconds(),
+		)
+	}
 
+	eStart := time.Now()
 	contract.ReportFetchProgress(ctx, contract.FetchProgressStageExtract, moduleName)
 	tarballFile, err := os.Open(tarballPath)
 	if err != nil {
@@ -825,7 +858,38 @@ func (p *SourceRegistryProvider) Fetch(ctx context.Context, registryURL, moduleN
 	if err != nil {
 		return nil, err
 	}
+	if p.runtimeScope.Logger() != nil {
+		p.runtimeScope.Logger().Debug("origin registry fetch stage",
+			"module", moduleName,
+			"stage", "extract",
+			"duration_ms", time.Since(eStart).Milliseconds(),
+		)
+	}
+
 	module.Tarball = inspection.downloadURL
 	module.Integrity = inspection.integrity
+
+	if p.runtimeScope.Logger() != nil {
+		p.runtimeScope.Logger().Info("origin registry fetch completed",
+			"module", moduleName,
+			"registry_host", registryHost,
+			"package", packageName,
+			"resolved_version", resolvedVersion,
+			"duration_ms", time.Since(dlStart).Milliseconds(),
+		)
+	}
 	return module, nil
+}
+
+// registryHostFromURL extracts the host component from a registry URL for
+// logging purposes. Returns the raw input on parse failure.
+func registryHostFromURL(rawURL string) string {
+	if rawURL == "" {
+		return ""
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	return u.Host
 }

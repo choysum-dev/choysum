@@ -7,12 +7,15 @@ import (
 	"context"
 	"errors"
 	"net"
+	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
 
+	"github.com/choysum-dev/choysum/internal/logger"
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	origincontract "github.com/choysum-dev/choysum/internal/module/origin/contract"
@@ -124,13 +127,7 @@ func (c *coordinator) startInitialization(ctx context.Context, input initializeI
 		return op, false, newBootstrapError(bootstrapErrCodeConflict, msg, nil)
 	case beginCreated:
 		if c.runtimeScope != nil && c.runtimeScope.Logger() != nil {
-			c.runtimeScope.Logger().Info(
-				"bootstrap initialization accepted",
-				"operation_id", op.OperationID,
-				"state", op.State.String(),
-				"stage", op.Stage.String(),
-				"duration_ms", int64(0),
-			)
+			c.runtimeScope.Logger().Info("bootstrap initialization started")
 		}
 		if ctx == nil {
 			ctx = context.Background()
@@ -232,10 +229,7 @@ func (c *coordinator) executeInitialization(ctx context.Context, operationID str
 		op, ok := c.store.getOperation(operationID)
 		if ok {
 			c.runtimeScope.Logger().Info(
-				"bootstrap initialization succeeded",
-				"operation_id", op.OperationID,
-				"state", op.State.String(),
-				"stage", op.Stage.String(),
+				"bootstrap initialization completed",
 				"duration_ms", c.operationDurationMs(op.CreatedAt),
 			)
 		}
@@ -487,18 +481,25 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	installTimeout := c.moduleInstallTimeout()
 	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
 	defer cancel()
+
+	progress := logger.NewProgressLine(os.Stderr)
+	var frameCounter atomic.Int64
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
 		if moduleName == "" {
 			moduleName = "core module"
 		}
+		frame := int(frameCounter.Add(1))
 		switch stage {
 		case origincontract.FetchProgressStageDownload:
 			c.store.markStageDetail(operationID, "downloading module package: "+moduleName+"...")
+			progress.Update(frame, moduleName+"  downloading from registry...")
 		case origincontract.FetchProgressStageVerify:
 			c.store.markStageDetail(operationID, "verifying module package integrity: "+moduleName+"...")
+			progress.Update(frame, moduleName+"  verifying package...")
 		case origincontract.FetchProgressStageExtract:
 			c.store.markStageDetail(operationID, "extracting module package: "+moduleName+"...")
+			progress.Update(frame, moduleName+"  extracting package...")
 		default:
 			// Keep existing stage detail if unknown progress stage is received.
 		}

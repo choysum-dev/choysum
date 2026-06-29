@@ -78,6 +78,8 @@ func (s *GRPCWebServer) requestBootstrapModeSwitch(ctx context.Context) error {
 		result.logFields()...,
 	)
 
+	s.runtimeScope.Logger().Info("application server ready")
+
 	return nil
 }
 

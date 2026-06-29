@@ -448,5 +448,14 @@ func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigi
 		c.runtimeScope.Logger().Warn("origin install resolve failed", attrs...)
 		return
 	}
+	if fallback {
+		c.runtimeScope.Logger().Info("origin install resolve fallback",
+			"module", resolveInstallModuleName(parsed),
+			"from_origin", "local",
+			"to_origin", strings.TrimSpace(resolvedOrigin),
+			"reason", "local_not_found",
+		)
+		return
+	}
 	c.runtimeScope.Logger().Debug("origin install resolve succeeded", attrs...)
 }

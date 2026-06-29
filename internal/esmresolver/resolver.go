@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -38,6 +39,8 @@ type Metrics struct {
 	Errors    atomic.Int64
 	// total download duration in milliseconds (atomic)
 	DownloadDurationMs atomic.Int64
+	// DownloadedPkgs tracks unique package names that were downloaded (deduplicated by package name).
+	DownloadedPkgs sync.Map
 }
 
 const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
@@ -45,6 +48,20 @@ const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
 // Snapshot returns a point-in-time copy of the metrics.
 func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int64) {
 	return m.CacheHit.Load(), m.CacheMiss.Load(), m.Downloads.Load(), m.Errors.Load(), m.DownloadDurationMs.Load()
+}
+
+// SnapshotDownloadedPkgs returns a sorted list of unique package names that
+// were downloaded in the current build.
+func (m *Metrics) SnapshotDownloadedPkgs() []string {
+	pkgs := make([]string, 0)
+	m.DownloadedPkgs.Range(func(key, _ any) bool {
+		if s, ok := key.(string); ok && s != "" {
+			pkgs = append(pkgs, s)
+		}
+		return true
+	})
+	sort.Strings(pkgs)
+	return pkgs
 }
 
 // Resolver is an esbuild plugin that intercepts bare imports and resolves them
@@ -308,6 +325,10 @@ func (r *Resolver) Plugin() api.Plugin {
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
 					downloadStart := time.Now()
 					r.metrics.Downloads.Add(1)
+					// Record the package name for downstream observability.
+					if pkg != "" {
+						r.metrics.DownloadedPkgs.Store(pkg, struct{}{})
+					}
 					content, dlErr := r.downloadWithRetry(url)
 					r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
 					if dlErr != nil {
@@ -336,13 +357,33 @@ func (r *Resolver) Plugin() api.Plugin {
 			build.OnEnd(func(result *api.BuildResult) (api.OnEndResult, error) {
 				if r.logger != nil && r.metrics != nil {
 					hit, miss, downloads, errors, downloadMs := r.metrics.Snapshot()
-					r.logger.Info("esm resolver metrics",
+					attrs := []any{
+						"upstream", r.upstream,
+						"target", r.target,
 						"cache_hit", hit,
 						"cache_miss", miss,
 						"downloads", downloads,
 						"download_duration_ms", downloadMs,
 						"errors", errors,
-					)
+					}
+					if downloads > 0 || errors > 0 {
+						r.logger.Info("esm resolver metrics", attrs...)
+						downloadedPkgs := r.metrics.SnapshotDownloadedPkgs()
+						if len(downloadedPkgs) > 0 {
+							pkgs := downloadedPkgs
+							limit := 20
+							if len(pkgs) > limit {
+								pkgs = pkgs[:limit]
+							}
+							r.logger.Debug("esm resolver downloaded packages",
+								"packages_count", len(downloadedPkgs),
+								"packages_limit", limit,
+								"packages", pkgs,
+							)
+						}
+					} else {
+						r.logger.Debug("esm resolver metrics", attrs...)
+					}
 				}
 				return api.OnEndResult{}, nil
 			})

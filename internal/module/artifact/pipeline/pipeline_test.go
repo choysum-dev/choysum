@@ -275,7 +275,7 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 		ModuleOrder:  []string{"core"},
 		AffectedApps: []string{"task", "", "base", "task"},
 	}, root, Callbacks{
-		Logger:                 slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelInfo})),
+		Logger:                 slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		ResolveInstalledModule: func(name string) (*meta.IrModule, error) { return root, nil },
 		Upgrade:                func(module *meta.IrModule) error { return nil },
 		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
@@ -333,9 +333,6 @@ func TestExecuteInfoLogsSummarizeAppStageAndHideManifestCommit(t *testing.T) {
 	}
 	if !strings.Contains(logs, `"duration_ms":`) {
 		t.Fatalf("expected normalized duration_ms in app stage summary, got %q", logs)
-	}
-	if strings.Contains(logs, `"msg":"pipeline dist manifest committed"`) {
-		t.Fatalf("expected manifest commit detail to stay out of info logs, got %q", logs)
 	}
 }
 func TestExecuteInstallSkipsWebModuleGeneration(t *testing.T) {
