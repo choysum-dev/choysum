@@ -376,3 +376,68 @@ func TestBuildPlan_AffectedAppsSortedForStableLogs(t *testing.T) {
 		}
 	}
 }
+
+func TestWithBuildPlanProgressReporter_NilReporterReturnsSameCtx(t *testing.T) {
+	ctx := context.Background()
+	result := WithBuildPlanProgressReporter(ctx, nil)
+	if result != ctx {
+		t.Fatal("expected same ctx when reporter is nil")
+	}
+}
+
+func TestWithBuildPlanProgressReporter_NilContextUsesBackground(t *testing.T) {
+	result := WithBuildPlanProgressReporter(nil, func(progress BuildPlanProgress) {})
+	if result == nil {
+		t.Fatal("expected non-nil ctx when input ctx is nil")
+	}
+	reporter := BuildPlanProgressReporterFromContext(result)
+	if reporter == nil {
+		t.Fatal("expected reporter stored in ctx")
+	}
+}
+
+func TestBuildPlanProgressReporterFromContext_NilContext(t *testing.T) {
+	reporter := BuildPlanProgressReporterFromContext(nil)
+	if reporter != nil {
+		t.Fatal("expected nil reporter from nil context")
+	}
+}
+
+func TestBuildPlanProgressReporterFromContext_MissingReporter(t *testing.T) {
+	reporter := BuildPlanProgressReporterFromContext(context.Background())
+	if reporter != nil {
+		t.Fatal("expected nil reporter when none stored")
+	}
+}
+
+func TestBuildPlanProgressReporterFromContext_StoredReporter(t *testing.T) {
+	var received BuildPlanProgress
+	ctx := WithBuildPlanProgressReporter(context.Background(), func(p BuildPlanProgress) {
+		received = p
+	})
+	reporter := BuildPlanProgressReporterFromContext(ctx)
+	if reporter == nil {
+		t.Fatal("expected stored reporter")
+	}
+	reporter(BuildPlanProgress{Step: "test_step", CurrentModule: "test_module"})
+	if received.Step != "test_step" || received.CurrentModule != "test_module" {
+		t.Fatalf("reporter received = %+v, want step=test_step module=test_module", received)
+	}
+}
+
+func TestReportBuildPlanProgress_NoReporterStored(t *testing.T) {
+	// Should not panic when no reporter is in context.
+	reportBuildPlanProgress(context.Background(), BuildPlanProgress{Step: "nop"})
+}
+
+func TestReportBuildPlanProgress_WithReporter(t *testing.T) {
+	var steps []string
+	ctx := WithBuildPlanProgressReporter(context.Background(), func(p BuildPlanProgress) {
+		steps = append(steps, p.Step)
+	})
+	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_dependencies"})
+	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "topological_sort"})
+	if len(steps) != 2 || steps[0] != "resolve_dependencies" || steps[1] != "topological_sort" {
+		t.Fatalf("steps = %v, want [resolve_dependencies, topological_sort]", steps)
+	}
+}

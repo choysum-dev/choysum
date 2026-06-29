@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/pkg/config"
 )
@@ -449,4 +450,115 @@ func TestConsoleHandlerPlainErrorStaysSingleLine(t *testing.T) {
 	if strings.Contains(out, "\n  error:\n") {
 		t.Fatalf("expected plain error to avoid multiline trace block, got %q", out)
 	}
+}
+
+func TestNewProgressLine_NilWriterReturnsNil(t *testing.T) {
+	if line := NewProgressLine(nil); line != nil {
+		t.Fatal("expected nil ProgressLine for nil writer")
+	}
+}
+
+func TestProgressLine_NilReceiverMethodsAreNoops(t *testing.T) {
+	var line *ProgressLine
+	line.Update(0, "test") // should not panic
+	line.Clear()           // should not panic
+	line.Done("✓", "done") // should not panic
+}
+
+func TestProgressLine_NonTTYUpdateIsNoop(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	if line == nil {
+		t.Fatal("expected non-nil line")
+	}
+	line.Update(0, "should not appear")
+	if out := buf.String(); out != "" {
+		t.Fatalf("expected empty output for non-TTY Update, got %q", out)
+	}
+}
+
+func TestProgressLine_NonTTYClearIsNoop(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	line.Clear()
+	if out := buf.String(); out != "" {
+		t.Fatalf("expected empty output for non-TTY Clear, got %q", out)
+	}
+}
+
+func TestProgressLine_NonTTYDoneUsesPlainPrintln(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	line.Done("✓", "installation complete")
+	out := buf.String()
+	if !strings.Contains(out, "installation complete") {
+		t.Fatalf("expected plain Done output, got %q", out)
+	}
+	if strings.Contains(out, "\r\x1b[K") {
+		t.Fatalf("expected non-TTY Done to avoid escape sequences, got %q", out)
+	}
+}
+
+func TestProgressTicker_SetMessageOnNilTickerIsNoop(t *testing.T) {
+	var ticker *ProgressTicker
+	ticker.SetMessage("test") // should not panic
+}
+
+func TestProgressTicker_ClearOnNilTickerIsNoop(t *testing.T) {
+	var ticker *ProgressTicker
+	ticker.Clear() // should not panic
+}
+
+func TestProgressTicker_StopOnNilTickerIsNoop(t *testing.T) {
+	var ticker *ProgressTicker
+	ticker.Stop() // should not panic
+}
+
+func TestNewProgressTicker_NilLineSkipsBackgroundGoroutine(t *testing.T) {
+	ticker := NewProgressTicker(nil, ProgressTickerOptions{
+		Interval: 10 * time.Millisecond,
+		OnTick:   func(now time.Time, message string) {},
+	})
+	// Nil line means no background goroutine: Stop/Clear must be safe no-ops.
+	ticker.Stop()
+	ticker.Clear()
+}
+
+func TestProgressTicker_StopStopsBackgroundRedraws(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	ticker.SetMessage("running")
+	time.Sleep(50 * time.Millisecond)
+	ticker.Stop()
+	beforeStop := strings.Count(buf.String(), "\r\x1b[K")
+	time.Sleep(50 * time.Millisecond)
+	afterStop := strings.Count(buf.String(), "\r\x1b[K")
+	if afterStop != beforeStop {
+		t.Fatalf("expected no further redraws after Stop(), before=%d after=%d", beforeStop, afterStop)
+	}
+}
+
+func TestProgressTicker_ClearAfterStopIsIdempotent(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	ticker.SetMessage("running")
+	ticker.Stop()
+	ticker.Clear() // should not panic or redraw after stop
 }
