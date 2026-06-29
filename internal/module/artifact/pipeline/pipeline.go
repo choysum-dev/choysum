@@ -57,6 +57,8 @@ type Callbacks struct {
 	GlobalWebBuild      func(ctx context.Context, distWebStagingDir string) error
 }
 
+// ModuleInstallProgressStage labels a discrete phase inside a module
+// install pipeline execution.
 type ModuleInstallProgressStage string
 
 const (
@@ -65,6 +67,8 @@ const (
 	ModuleInstallProgressStageFailed    ModuleInstallProgressStage = "failed"
 )
 
+// ModuleInstallProgress carries progress information for a single module
+// inside an install/uninstall/upgrade pipeline run.
 type ModuleInstallProgress struct {
 	Current  int
 	Total    int

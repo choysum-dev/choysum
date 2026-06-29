@@ -5,6 +5,8 @@ package plan
 
 import "context"
 
+// BuildPlanProgress carries incremental progress information during
+// dependency resolution and build planning.
 type BuildPlanProgress struct {
 	Step                 string
 	CurrentModule        string
@@ -12,10 +14,14 @@ type BuildPlanProgress struct {
 	ResolvedDependencies int
 }
 
+// BuildPlanProgressReporter is a callback that receives incremental
+// build-plan progress events.
 type BuildPlanProgressReporter func(progress BuildPlanProgress)
 
 type buildPlanProgressReporterContextKey struct{}
 
+// WithBuildPlanProgressReporter stores a BuildPlanProgressReporter in ctx
+// so downstream planning operations can report progress.
 func WithBuildPlanProgressReporter(ctx context.Context, reporter BuildPlanProgressReporter) context.Context {
 	if reporter == nil {
 		return ctx
@@ -26,6 +32,8 @@ func WithBuildPlanProgressReporter(ctx context.Context, reporter BuildPlanProgre
 	return context.WithValue(ctx, buildPlanProgressReporterContextKey{}, reporter)
 }
 
+// BuildPlanProgressReporterFromContext returns a BuildPlanProgressReporter
+// from ctx when one has been stored via WithBuildPlanProgressReporter.
 func BuildPlanProgressReporterFromContext(ctx context.Context) BuildPlanProgressReporter {
 	if ctx == nil {
 		return nil

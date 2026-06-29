@@ -85,6 +85,10 @@ func httpServerListeningLogFields(configuredAddress, listenAddress, scheme strin
 	return fields
 }
 
+// HTTPServerAccessURL constructs a human-readable access URL from the
+// configured and actual listen addresses.  When the configured host is
+// a wildcard address it is replaced with the listening host (or
+// "localhost" as a last resort) so the returned URL is always clickable.
 func HTTPServerAccessURL(configuredAddress, listenAddress, scheme string) string {
 	if strings.TrimSpace(scheme) == "" {
 		return ""

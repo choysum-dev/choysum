@@ -96,6 +96,8 @@ func (p *ProgressLine) IsTTY() bool {
 
 const defaultProgressTickerInterval = 120 * time.Millisecond
 
+// ProgressTickerOptions configures the interval and per-tick behaviour
+// of a ProgressTicker.
 type ProgressTickerOptions struct {
 	Interval time.Duration
 	OnTick   func(now time.Time, message string)
@@ -118,6 +120,9 @@ type ProgressTicker struct {
 	doneCh   chan struct{}
 }
 
+// NewProgressTicker starts a ProgressTicker that redraws line at the
+// configured interval.  When line is nil the ticker runs without rendering
+// and is useful for pure heartbeat callbacks.
 func NewProgressTicker(line *ProgressLine, opts ProgressTickerOptions) *ProgressTicker {
 	interval := opts.Interval
 	if interval <= 0 {
