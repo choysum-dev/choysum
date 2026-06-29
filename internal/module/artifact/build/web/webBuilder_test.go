@@ -2514,6 +2514,62 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 	}
 }
 
+func TestPersist_DeduplicatesSymlinkAliasComponents(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}, &meta.IrUiResource{}, &meta.IrUiResourceMenuRoute{}, &meta.IrUiResourceRouteAction{}); err != nil {
+		t.Fatalf("automigrate components failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	realRoot := filepath.Join(t.TempDir(), "real")
+	moduleRealRoot := filepath.Join(realRoot, "modules", "auth")
+	realComponentPath := filepath.Join(moduleRealRoot, "web", "views", "DashboardView.vue")
+	if err := os.MkdirAll(filepath.Dir(realComponentPath), 0o755); err != nil {
+		t.Fatalf("mkdir real component directory: %v", err)
+	}
+	if err := os.WriteFile(realComponentPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatalf("write real component file: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "auth")
+	aliasComponentPath := filepath.Join(moduleAliasRoot, "web", "views", "DashboardView.vue")
+
+	mod := &meta.IrModule{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "mod_auth_symlink", Valid: true}},
+		Name:      "auth",
+		Path:      moduleAliasRoot,
+	}
+	buildResult := withParserResults(
+		&module.BuildResult{Module: mod},
+		&parser.ParserResult{Path: realComponentPath, VueComponent: &meta.IrComponent{Name: "DashboardView", Path: realComponentPath}},
+		&parser.ParserResult{Path: aliasComponentPath, VueComponent: &meta.IrComponent{Name: "DashboardView", Path: aliasComponentPath}},
+	)
+
+	if err := b.persist(buildResult); err != nil {
+		t.Fatalf("persist returned error: %v", err)
+	}
+
+	wantPath := normalizeWebBuilderPath(realComponentPath)
+	if len(mod.Components) != 1 {
+		t.Fatalf("expected one deduplicated component, got %#v", mod.Components)
+	}
+	if mod.Components[0].Path != wantPath {
+		t.Fatalf("expected normalized persisted component path %q, got %q", wantPath, mod.Components[0].Path)
+	}
+
+	var componentRows []*meta.IrComponent
+	if err := testRuntimeScope.db.Where("module_id = ?", mod.Id.String).Find(&componentRows).Error; err != nil {
+		t.Fatalf("query persisted components failed: %v", err)
+	}
+	if len(componentRows) != 1 || componentRows[0].Path != wantPath {
+		t.Fatalf("expected one normalized persisted component row, got %#v", componentRows)
+	}
+}
+
 func TestExtractUiResources_DuplicateWithoutOverrideFails(t *testing.T) {
 	module := &meta.IrModule{Name: "auth"}
 
@@ -4532,6 +4588,70 @@ func TestValidateWrapsBuildResultErrors(t *testing.T) {
 			t.Fatalf("expected validate to ignore unrelated components, got %v", err)
 		}
 	})
+
+	t.Run("deduplicates symlink alias component paths", func(t *testing.T) {
+		realRoot := filepath.Join(t.TempDir(), "real")
+		realComponentPath := filepath.Join(realRoot, "views", "CompanyListView.vue")
+		if err := os.MkdirAll(filepath.Dir(realComponentPath), 0o755); err != nil {
+			t.Fatalf("mkdir component directory: %v", err)
+		}
+		if err := os.WriteFile(realComponentPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+			t.Fatalf("write component file: %v", err)
+		}
+
+		aliasRoot := filepath.Join(t.TempDir(), "alias")
+		if err := os.Symlink(realRoot, aliasRoot); err != nil {
+			t.Skipf("symlink not supported in this environment: %v", err)
+		}
+		aliasComponentPath := filepath.Join(aliasRoot, "views", "CompanyListView.vue")
+
+		realResult := &parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: realComponentPath}}
+		aliasResult := &parser.ParserResult{VueComponent: &meta.IrComponent{Name: "CompanyListView", Path: aliasComponentPath}}
+		buildResult := withParserResults(&module.BuildResult{}, realResult, aliasResult)
+		if err := b.validate(buildResult); err != nil {
+			t.Fatalf("expected validate to deduplicate symlink alias paths, got %v", err)
+		}
+		if aliasResult.VueComponent != realResult.VueComponent {
+			t.Fatalf("expected deduplicated parser results to share canonical component pointer")
+		}
+	})
+}
+
+func TestWebBuilderPathWithinRoot_ResolvesSymlinkAliases(t *testing.T) {
+	realRoot := filepath.Join(t.TempDir(), "real")
+	moduleRealRoot := filepath.Join(realRoot, "modules", "base")
+	insideRealPath := filepath.Join(moduleRealRoot, "web", "views", "CompanyListView.vue")
+	if err := os.MkdirAll(filepath.Dir(insideRealPath), 0o755); err != nil {
+		t.Fatalf("mkdir inside real path: %v", err)
+	}
+	if err := os.WriteFile(insideRealPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatalf("write inside real file: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "base")
+	insideAliasPath := filepath.Join(moduleAliasRoot, "web", "views", "CompanyListView.vue")
+	if !webBuilderPathWithinRoot(insideRealPath, moduleAliasRoot) {
+		t.Fatalf("expected real path %q to be within alias module root %q", insideRealPath, moduleAliasRoot)
+	}
+	if !webBuilderPathWithinRoot(insideAliasPath, moduleAliasRoot) {
+		t.Fatalf("expected alias path %q to be within alias module root %q", insideAliasPath, moduleAliasRoot)
+	}
+
+	outsideRealPath := filepath.Join(realRoot, "modules", "auth", "web", "views", "LoginView.vue")
+	if err := os.MkdirAll(filepath.Dir(outsideRealPath), 0o755); err != nil {
+		t.Fatalf("mkdir outside real path: %v", err)
+	}
+	if err := os.WriteFile(outsideRealPath, []byte("<template><div/></template>\n"), 0o644); err != nil {
+		t.Fatalf("write outside real file: %v", err)
+	}
+	if webBuilderPathWithinRoot(outsideRealPath, moduleAliasRoot) {
+		t.Fatalf("expected outside path %q not to be within alias module root %q", outsideRealPath, moduleAliasRoot)
+	}
 }
 
 func TestReparseXPathComponentsPropertyNode(t *testing.T) {

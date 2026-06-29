@@ -215,42 +215,44 @@ func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sco
 	if execCtx == nil {
 		execCtx = context.Background()
 	}
+	execCtx = scope.ContextWithoutTransaction(execCtx)
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 
 	result := moduleOpResult{Ok: false}
-	txRoot := runtimeScope.WithContext(execCtx)
-	err = txRoot.Transactor().Required(execCtx, func(txScope scope.Scope, _ scope.Transaction) error {
-		compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
+	opScope := runtimeScope.WithContext(execCtx)
+	if opScope == nil {
+		opScope = runtimeScope
+	}
+
+	err = func() (opErr error) {
+		compilerExecutor, err := jsexecutor.NewCompilerExecutor(opScope)
 		if err != nil {
 			return err
 		}
 		if err := compilerExecutor.Start(); err != nil {
 			return err
 		}
-		defer compilerExecutor.Stop()
+		defer func() {
+			if stopErr := compilerExecutor.Stop(); opErr == nil && stopErr != nil {
+				opErr = stopErr
+			}
+		}()
 
-		moduleLifecycle := newModuleLifecycleForModuleManagement(txScope, compilerExecutor, cfg)
-
+		moduleLifecycle := newModuleLifecycleForModuleManagement(opScope, compilerExecutor, cfg)
 		switch action {
 		case "install":
-			if err := moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo}); err != nil {
-				return err
-			}
+			return moduleLifecycle.Install(execCtx, lifecycle.InstallRequest{Name: params.ModuleName, WithDemo: params.WithDemo})
 		case "uninstall":
-			if err := moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName}); err != nil {
-				return err
-			}
+			return moduleLifecycle.Uninstall(execCtx, lifecycle.UninstallRequest{Name: params.ModuleName})
 		case "upgrade":
-			if err := moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo}); err != nil {
-				return err
-			}
+			return moduleLifecycle.Upgrade(execCtx, lifecycle.UpgradeRequest{Input: params.ModuleName, WithDemo: params.WithDemo})
 		default:
 			return status.Error(codes.InvalidArgument, "unknown action")
 		}
-
+	}()
+	if err == nil {
 		result.Ok = true
-		return nil
-	})
+	}
 
 	if err != nil {
 		info := oerrors.GetErrorInfo(err)
