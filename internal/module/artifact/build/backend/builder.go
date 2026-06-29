@@ -60,7 +60,6 @@ type ModuleBuilder struct {
 func normalizeModuleSourcePath(path string) string {
 	return esbplugins.NormalizePath(path)
 }
-
 func pathWithinModuleRoot(path string, root string) bool {
 	return esbplugins.PathWithinRoot(path, root)
 }
