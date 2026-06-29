@@ -562,3 +562,29 @@ func TestProgressTicker_ClearAfterStopIsIdempotent(t *testing.T) {
 	ticker.Stop()
 	ticker.Clear() // should not panic or redraw after stop
 }
+
+func TestProgressTicker_ClearSuppressesRedrawUntilNextMessage(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	defer ticker.Stop()
+
+	ticker.SetMessage("running")
+	time.Sleep(40 * time.Millisecond)
+	ticker.Clear()
+	afterClear := strings.Count(buf.String(), "\r\x1b[K")
+	time.Sleep(40 * time.Millisecond)
+	afterWait := strings.Count(buf.String(), "\r\x1b[K")
+	if afterWait != afterClear {
+		t.Fatalf("expected no redraw after Clear() without a new message, before=%d after=%d", afterClear, afterWait)
+	}
+
+	ticker.SetMessage("resume")
+	afterResume := strings.Count(buf.String(), "\r\x1b[K")
+	if afterResume <= afterWait {
+		t.Fatalf("expected redraw after SetMessage(), before=%d after=%d", afterWait, afterResume)
+	}
+}

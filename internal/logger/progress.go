@@ -178,15 +178,13 @@ func (p *ProgressTicker) run() {
 			message := p.message
 			if message != "" {
 				p.frame++
+				if p.line != nil {
+					p.line.Update(p.frame, message)
+				}
 			}
-			frame := p.frame
 			onTick := p.onTick
-			line := p.line
 			p.mu.Unlock()
 
-			if line != nil {
-				line.Update(frame, message)
-			}
 			if onTick != nil {
 				onTick(now, message)
 			}
@@ -205,14 +203,11 @@ func (p *ProgressTicker) SetMessage(message string) {
 	}
 
 	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.message = message
 	p.frame++
-	frame := p.frame
-	line := p.line
-	p.mu.Unlock()
-
-	if line != nil {
-		line.Update(frame, message)
+	if p.line != nil {
+		p.line.Update(p.frame, message)
 	}
 }
 
@@ -222,12 +217,10 @@ func (p *ProgressTicker) Clear() {
 		return
 	}
 	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.message = ""
-	line := p.line
-	p.mu.Unlock()
-
-	if line != nil {
-		line.Clear()
+	if p.line != nil {
+		p.line.Clear()
 	}
 }
 

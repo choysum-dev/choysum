@@ -457,8 +457,8 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 				}
 				completed++
 				completedNow = completed
-				mu.Unlock()
 				updateTransitiveProgress(completedNow)
+				mu.Unlock()
 			}(imp)
 		}
 		wg.Wait()
