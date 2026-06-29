@@ -23,8 +23,63 @@ type BasePlugin struct {
 	Wg               sync.WaitGroup
 	ParserResultChan chan *parser.ParserResult
 	TsExports        map[string]map[string]*parser.Export
+	normalizedTsExp  map[string]map[string]*parser.Export
+	normalizedTsSize int
 	ParserResults    []*parser.ParserResult
 	Mu               sync.RWMutex
+}
+
+// NormalizePath resolves absolute path, follows symlinks when possible,
+// and returns a cleaned path string.
+func NormalizePath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+	if abs, err := filepath.Abs(trimmed); err == nil {
+		trimmed = abs
+	}
+	if resolved, err := filepath.EvalSymlinks(trimmed); err == nil {
+		trimmed = resolved
+	} else {
+		ancestor := filepath.Dir(trimmed)
+		remainder := []string{filepath.Base(trimmed)}
+		for {
+			if resolvedAncestor, ancestorErr := filepath.EvalSymlinks(ancestor); ancestorErr == nil {
+				candidate := resolvedAncestor
+				for i := len(remainder) - 1; i >= 0; i-- {
+					candidate = filepath.Join(candidate, remainder[i])
+				}
+				trimmed = candidate
+				break
+			}
+
+			parent := filepath.Dir(ancestor)
+			if parent == ancestor {
+				break
+			}
+			remainder = append(remainder, filepath.Base(ancestor))
+			ancestor = parent
+		}
+	}
+	return filepath.Clean(trimmed)
+}
+
+// PathWithinRoot reports whether path is equal to root or inside root.
+func PathWithinRoot(path string, root string) bool {
+	normalizedPath := NormalizePath(path)
+	normalizedRoot := NormalizePath(root)
+	if normalizedPath == "" || normalizedRoot == "" {
+		return false
+	}
+	if normalizedPath == normalizedRoot {
+		return true
+	}
+	rel, err := filepath.Rel(normalizedRoot, normalizedPath)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 // NewBasePlugin creates shared plugin state for a module entry point.
@@ -35,6 +90,7 @@ func NewBasePlugin(runtimeScope scope.Scope, module *meta.IrModule, entryPoint s
 		EntryPoint:       entryPoint,
 		ParserResultChan: make(chan *parser.ParserResult),
 		TsExports:        make(map[string]map[string]*parser.Export),
+		normalizedTsExp:  make(map[string]map[string]*parser.Export),
 		ParserResults:    make([]*parser.ParserResult, 0),
 	}
 }
@@ -85,6 +141,8 @@ func (p *BasePlugin) PublishParserResult(parserResult *parser.ParserResult) {
 // SetParserResults stores parser results for later lookups.
 func (p *BasePlugin) SetParserResults(parserResults []*parser.ParserResult) error {
 	p.ParserResults = parserResults
+	p.normalizedTsExp = nil
+	p.normalizedTsSize = 0
 	return nil
 }
 
@@ -142,24 +200,128 @@ func (p *BasePlugin) generateTsExportsMap(parserResults []*parser.ParserResult) 
 		}
 	}
 	p.TsExports = exportMap
+	p.rebuildNormalizedTsExports()
+}
+
+func (p *BasePlugin) rebuildNormalizedTsExports() {
+	normalized := make(map[string]map[string]*parser.Export, len(p.TsExports))
+	for key, exports := range p.TsExports {
+		if key == "" {
+			continue
+		}
+		normalizedKey := NormalizeModuleSpecPath(key)
+		if normalizedKey == "" {
+			continue
+		}
+		normalized[filepath.ToSlash(normalizedKey)] = exports
+	}
+	p.normalizedTsExp = normalized
+	p.normalizedTsSize = len(p.TsExports)
+}
+
+func (p *BasePlugin) normalizedTsExports() map[string]map[string]*parser.Export {
+	if p == nil {
+		return nil
+	}
+	if p.normalizedTsExp == nil || p.normalizedTsSize != len(p.TsExports) {
+		p.rebuildNormalizedTsExports()
+	}
+	return p.normalizedTsExp
+}
+
+// NormalizeModuleSpecPath resolves a module spec to a canonical form so that
+// extension and index aliases can be matched consistently.
+func NormalizeModuleSpecPath(path string) string {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return ""
+	}
+
+	candidates := []struct {
+		path      string
+		trimToDir bool
+	}{
+		{path: trimmed},
+		{path: trimmed + ".ts"},
+		{path: trimmed + ".vue"},
+		{path: filepath.Join(trimmed, "index.ts"), trimToDir: true},
+	}
+
+	for _, candidate := range candidates {
+		if !filepath.IsAbs(candidate.path) {
+			continue
+		}
+		resolved, err := filepath.EvalSymlinks(candidate.path)
+		if err != nil {
+			continue
+		}
+		normalized := filepath.Clean(resolved)
+		base := filepath.Base(normalized)
+		if candidate.trimToDir || base == "index" || base == "index.ts" || base == "index.vue" {
+			return filepath.Dir(normalized)
+		}
+		normalized = strings.TrimSuffix(normalized, ".ts")
+		normalized = strings.TrimSuffix(normalized, ".vue")
+		return normalized
+	}
+
+	fallback := filepath.Clean(trimmed)
+	switch filepath.Base(fallback) {
+	case "index", "index.ts", "index.vue":
+		return filepath.Dir(fallback)
+	}
+	fallback = strings.TrimSuffix(fallback, ".ts")
+	fallback = strings.TrimSuffix(fallback, ".vue")
+	return fallback
+}
+
+func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
+	return NormalizeModuleSpecPath(path)
+}
+
+func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Export {
+	if p == nil {
+		return nil
+	}
+	moduleSpec = strings.TrimSpace(moduleSpec)
+	if moduleSpec == "" {
+		return nil
+	}
+	if exports, ok := p.TsExports[moduleSpec]; ok {
+		return exports
+	}
+
+	normalizedModuleSpec := NormalizeModuleSpecPath(moduleSpec)
+	if normalizedModuleSpec == "" {
+		return nil
+	}
+	normalizedModuleSpecSlash := filepath.ToSlash(normalizedModuleSpec)
+	if exports, ok := p.normalizedTsExports()[normalizedModuleSpecSlash]; ok {
+		return exports
+	}
+	return nil
 }
 
 // FindModuleSpecAndReferenceIdent resolves an export through the collected TypeScript export map.
 func (p *BasePlugin) FindModuleSpecAndReferenceIdent(moduleSpec string, referenceIdent string) (string, string) {
-	v, ok := p.TsExports[moduleSpec][referenceIdent]
+	exports := p.resolveTsExports(moduleSpec)
+	if exports == nil {
+		return "", ""
+	}
+	v, ok := exports[referenceIdent]
 	if ok {
 		if referenceIdent == "default" {
 			return v.ModuleSpecPath, "default"
 		}
 		return v.ModuleSpecPath, v.ReferenceIdent
 	} else {
-		if defaultExport, hasDefault := p.TsExports[moduleSpec]["default"]; hasDefault {
+		if defaultExport, hasDefault := exports["default"]; hasDefault {
 			if defaultExport.ReferenceIdent == referenceIdent {
 				return defaultExport.ModuleSpecPath, "default"
 			}
 		}
 
-		wildcardExport, ok := p.TsExports[moduleSpec]["*"]
+		wildcardExport, ok := exports["*"]
 		if !ok {
 			return "", ""
 		}

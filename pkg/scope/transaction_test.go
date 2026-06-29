@@ -90,6 +90,24 @@ func TestContextWithTransactionAndTransactionFromContext(t *testing.T) {
 	}
 }
 
+func TestContextWithoutTransactionClearsOnlyTransactionMarker(t *testing.T) {
+	tx := &contextTestTransaction{ctx: context.Background(), session: &Session{}}
+	ctx := ContextWithTransaction(context.WithValue(context.Background(), "marker", "v"), tx)
+
+	cleared := ContextWithoutTransaction(ctx)
+	if loaded, ok := TransactionFromContext(cleared); ok || loaded != nil {
+		t.Fatalf("TransactionFromContext(cleared) = %#v, %v", loaded, ok)
+	}
+	if got := cleared.Value("marker"); got != "v" {
+		t.Fatalf("context marker = %#v, want v", got)
+	}
+
+	backgroundCleared := ContextWithoutTransaction(nil)
+	if backgroundCleared == nil {
+		t.Fatal("ContextWithoutTransaction(nil) should return non-nil context")
+	}
+}
+
 func TestNewRunSessionTransactorRequiredUsesRunAndTransactionContext(t *testing.T) {
 	runCalls := 0
 	scope := &runSessionTestScope{ctx: context.Background(), session: &Session{}, runCalls: &runCalls}

@@ -57,6 +57,10 @@ type ModuleBuilder struct {
 	tsPathAlias     map[string]string
 }
 
+func pathWithinModuleRoot(path string, root string) bool {
+	return esbplugins.PathWithinRoot(path, root)
+}
+
 func (b *ModuleBuilder) bindRuntimeState(ctx context.Context) func() {
 	if b == nil || b.runtimeScope == nil || ctx == nil {
 		return func() {}
@@ -780,7 +784,7 @@ func (b *ModuleBuilder) persist(buildResult *module.BuildResult) error {
 			continue
 		}
 		// only save models that are in the same path as the module
-		if strings.HasPrefix(result.Path, mod.Path) {
+		if pathWithinModuleRoot(result.Path, mod.Path) {
 			mod.Models = append(mod.Models, result.Model)
 		}
 	}

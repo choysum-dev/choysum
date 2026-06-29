@@ -114,9 +114,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
-							if strings.Contains(peekErr.Error(), "not found in modules path") {
-								peekErr = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
-							}
 							return peekErr
 						}
 					}
@@ -129,8 +126,8 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					txScope.Logger().Debug("module installed", "module", moduleName)
 					return nil
 				}); err != nil {
-					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) && strings.Contains(err.Error(), "not found in modules path") {
-						err = xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
+					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
+						err = rewriteLocalInstallLookupError(moduleName, err)
 					}
 					attrs := []any{"error", err}
 					attrs = append(attrs, moduleCommandFailureAttrs("install")...)
@@ -147,6 +144,34 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
 	cmd.Flags().StringVar(&cliCompatVersion, "cli-compat-version", "", "override CLI compatibility version for module compatibility checks")
 	return cmd
+}
+
+func rewriteLocalInstallLookupError(moduleName string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if isLocalInstallMissingError(err) {
+		return xfmt.Errorf("module %s not found in modules path; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", moduleName)
+	}
+	if isLocalInstallRegistryFallbackError(err) {
+		return xfmt.Errorf("%w; run `choysum module fetch <module>@<version>` or `choysum install <module>@<version>`", err)
+	}
+	return err
+}
+
+func isLocalInstallMissingError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "not found in modules path")
+}
+
+func isLocalInstallRegistryFallbackError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "not found locally and registry fallback failed")
 }
 
 func ensureInstallModulesTsconfig(env scope.Scope, modulesPath string) {
