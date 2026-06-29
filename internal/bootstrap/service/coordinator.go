@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -500,13 +501,13 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		switch stage {
 		case origincontract.FetchProgressStageDownload:
 			c.store.markStageDetail(operationID, "downloading module package: "+moduleName+"...")
-			updateFetchProgressMessage(moduleName + "  downloading from registry...")
+			updateFetchProgressMessage(fmt.Sprintf("%s: downloading from registry...", moduleName))
 		case origincontract.FetchProgressStageVerify:
 			c.store.markStageDetail(operationID, "verifying module package integrity: "+moduleName+"...")
-			updateFetchProgressMessage(moduleName + "  verifying package...")
+			updateFetchProgressMessage(fmt.Sprintf("%s: verifying package...", moduleName))
 		case origincontract.FetchProgressStageExtract:
 			c.store.markStageDetail(operationID, "extracting module package: "+moduleName+"...")
-			updateFetchProgressMessage(moduleName + "  extracting package...")
+			updateFetchProgressMessage(fmt.Sprintf("%s: extracting package...", moduleName))
 		default:
 			// Keep existing stage detail if unknown progress stage is received.
 		}
