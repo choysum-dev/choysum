@@ -5,19 +5,14 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/choysum-dev/choysum/internal/esmresolver"
-	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
-	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -138,9 +133,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					os.Exit(1)
 				}
 			}
-
-			// Auto-trigger type fetch after successful install for IDE support.
-			runTypeFetchAfterInstall(ctx, env)
 		},
 	}
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data declared by package.json")
@@ -187,130 +179,4 @@ func ensureInstallModulesTsconfig(env scope.Scope, modulesPath string) {
 		return
 	}
 	env.Logger().Debug("install: ensured modules tsconfig", "path", tsconfigPath)
-}
-
-// runTypeFetchAfterInstall triggers a best-effort type fetch for all modules
-// after a successful install. Failures are logged but do not fail the install.
-func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
-	runtimeOpts, ok := scope.PathsRuntimeOptionsFromScope(env)
-	if !ok {
-		return
-	}
-	modulesPath := runtimeOpts.ModulesPath
-	if modulesPath == "" {
-		return
-	}
-	defaultPath := runtimeOpts.DefaultChoysumPath
-	if defaultPath == "" {
-		defaultPath = ".choysum"
-	}
-	typesDir := filepath.Join(defaultPath, "pkg", "types")
-	upstream := runtimeOpts.ESMUpstreamURL
-	if upstream == "" {
-		upstream = config.DefaultESMUpstreamURL
-	}
-
-	client := esmresolver.NewTypeFetchHTTPClient(30 * time.Second)
-	if transport, ok := client.Transport.(*http.Transport); ok {
-		defer transport.CloseIdleConnections()
-	}
-	ticker := logutil.ProgressTickerFromContext(ctx)
-	ownsTicker := false
-	if ticker == nil {
-		progressLine := logutil.NewProgressLine(os.Stderr)
-		if progressLine != nil && progressLine.IsTTY() {
-			ticker = logutil.NewProgressTicker(progressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
-			ownsTicker = true
-			ctx = logutil.WithProgressTicker(ctx, ticker)
-		}
-	}
-	if ticker != nil {
-		defer ticker.Clear()
-	}
-	if ownsTicker {
-		defer ticker.Stop()
-	}
-	setTypeFetchProgress := func(message string) {
-		if ticker == nil {
-			return
-		}
-		ticker.SetMessage(message)
-	}
-	clearTypeFetchProgress := func() {
-		if ticker == nil {
-			return
-		}
-		ticker.Clear()
-	}
-
-	session := esmresolver.NewTypeFetchSession(0)
-	var allResults []esmresolver.TypeFetchResult
-	totalCached := 0
-	totalFetched := 0
-	processedModules := 0
-	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
-
-	entries, err := os.ReadDir(modulesPath)
-	if err != nil {
-		env.Logger().Warn("type-fetch: read modules dir failed", "error", err)
-		return
-	}
-	moduleNames := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		moduleDir := filepath.Join(modulesPath, entry.Name())
-		if _, err := os.Stat(filepath.Join(moduleDir, "package.json")); err != nil {
-			continue
-		}
-		moduleNames = append(moduleNames, entry.Name())
-	}
-
-	for i, moduleName := range moduleNames {
-		if err := ctx.Err(); err != nil {
-			clearTypeFetchProgress()
-			env.Logger().Info("type-fetch: interrupted", "error", err)
-			return
-		}
-		moduleDir := filepath.Join(modulesPath, moduleName)
-		setTypeFetchProgress(fmt.Sprintf("[%s] fetching dependency types (%d/%d)", moduleName, i+1, len(moduleNames)))
-		results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
-		if err != nil {
-			clearTypeFetchProgress()
-			if ctxErr := ctx.Err(); ctxErr != nil {
-				env.Logger().Info("type-fetch: interrupted", "error", ctxErr)
-				return
-			}
-			env.Logger().Warn("type-fetch: skipped module", "module", moduleName, "error", err)
-			continue
-		}
-		processedModules++
-		moduleCached := 0
-		moduleFetched := 0
-		allResults = append(allResults, results...)
-		for _, r := range results {
-			if r.FromCache {
-				totalCached++
-				moduleCached++
-			} else {
-				totalFetched++
-				moduleFetched++
-			}
-		}
-		clearTypeFetchProgress()
-		env.Logger().Info("type-fetch: module completed", "module", moduleName, "cached", moduleCached, "fetched", moduleFetched)
-	}
-	clearTypeFetchProgress()
-	env.Logger().Info("type-fetch: completed", "modules", processedModules, "cached", totalCached, "fetched", totalFetched)
-
-	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, allResults); err != nil {
-		env.Logger().Warn("type-fetch: update tsconfig failed", "path", tsconfigPath, "error", err)
-		return
-	}
-	if len(allResults) > 0 {
-		env.Logger().Info("type-fetch: updated tsconfig paths", "path", tsconfigPath)
-	} else {
-		env.Logger().Debug("type-fetch: ensured tsconfig", "path", tsconfigPath)
-	}
 }
