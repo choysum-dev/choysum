@@ -162,6 +162,9 @@ When <app> is specified, fetches types for that module only.`,
 				results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
 				if err != nil {
 					clearCommandProgress()
+					if ctxErr := ctx.Err(); ctxErr != nil {
+						return ctxErr
+					}
 					cmd.Printf("[%s] error: %v\n", appName, err)
 					// When the user explicitly targets a single app (not --all),
 					// any failure should be fatal so the caller gets a non-zero

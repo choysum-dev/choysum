@@ -9,6 +9,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -467,6 +469,92 @@ func TestRunTypeFetchAfterInstall_LogsModuleAndOverallSummaries(t *testing.T) {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected logs to contain %q, got %q", want, output)
 		}
+	}
+}
+
+func TestRunTypeFetchAfterInstall_ContextCanceledDoesNotLogSkippedModule(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case requestStarted <- struct{}{}:
+		default:
+		}
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+	cfg.ESMUpstreamURL = server.URL
+
+	var logs bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	env := &commandBufferLoggerScope{
+		commandTestScope: &commandTestScope{cfg: cfg},
+		logger:           logger,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-requestStarted:
+			cancel()
+		case <-time.After(2 * time.Second):
+			cancel()
+		}
+	}()
+
+	runTypeFetchAfterInstall(ctx, env)
+
+	output := logs.String()
+	if !strings.Contains(output, "type-fetch: interrupted") {
+		t.Fatalf("expected interrupted log, got %q", output)
+	}
+	if strings.Contains(output, "type-fetch: skipped module") {
+		t.Fatalf("unexpected skipped-module warning on cancellation, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_ContextCanceledReturnsContextError(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	requestStarted := make(chan struct{}, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case requestStarted <- struct{}{}:
+		default:
+		}
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"app", "--upstream", server.URL})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cmd.SetContext(ctx)
+	go func() {
+		select {
+		case <-requestStarted:
+			cancel()
+		case <-time.After(2 * time.Second):
+			cancel()
+		}
+	}()
+
+	err := cmd.Execute()
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	output := out.String()
+	if strings.Contains(output, "[app] error: context canceled") || strings.Contains(output, "[app] error: context cancelled") {
+		t.Fatalf("unexpected generic cancellation output, got %q", output)
 	}
 }
 

@@ -518,6 +518,9 @@ func TestProgressLine_NonTTYDoneUsesPlainPrintln(t *testing.T) {
 	line := NewProgressLine(buf)
 	line.Done("✓", "installation complete")
 	out := buf.String()
+	if !strings.Contains(out, "✓ installation complete") {
+		t.Fatalf("expected symbol-preserving plain Done output, got %q", out)
+	}
 	if !strings.Contains(out, "installation complete") {
 		t.Fatalf("expected plain Done output, got %q", out)
 	}

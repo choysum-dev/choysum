@@ -278,6 +278,10 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 		results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
 		if err != nil {
 			clearTypeFetchProgress()
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				env.Logger().Info("type-fetch: interrupted", "error", ctxErr)
+				return
+			}
 			env.Logger().Warn("type-fetch: skipped module", "module", moduleName, "error", err)
 			continue
 		}

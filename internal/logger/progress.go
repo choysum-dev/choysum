@@ -310,7 +310,11 @@ func (p *ProgressLine) Done(symbol, message string) {
 		return
 	}
 	if !p.tty {
-		fmt.Fprintln(p.w, message)
+		if strings.TrimSpace(symbol) != "" {
+			fmt.Fprintf(p.w, "%s %s\n", symbol, message)
+		} else {
+			fmt.Fprintln(p.w, message)
+		}
 		return
 	}
 	progressOutputBarrier.mu.Lock()

@@ -187,12 +187,12 @@ func newHandler(logCfg *config.LogConfig, w io.Writer) slog.Handler {
 }
 
 func NewLogger(logCfg *config.LogConfig) *slog.Logger {
-	return withIdentity(slog.New(newHandler(logCfg, wrapProgressAwareWriter(os.Stdout))))
+	return withIdentity(slog.New(newHandler(logCfg, wrapProgressAwareWriter(os.Stderr))))
 }
 
 func NewLoggerWithWriter(logCfg *config.LogConfig, w io.Writer) *slog.Logger {
 	if w == nil {
-		w = os.Stdout
+		w = os.Stderr
 	}
 	return withIdentity(slog.New(newHandler(logCfg, wrapProgressAwareWriter(w))))
 }
