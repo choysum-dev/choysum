@@ -1463,6 +1463,40 @@ func TestResolver_DownloadedPkgsTracksOnlySuccessfulFetches(t *testing.T) {
 	})
 }
 
+func TestResolver_OnLoadHandlesNilMetricsAfterPluginSetup(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "export const x = 1;")
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	r := New(
+		WithUpstream(server.URL),
+		WithCacheDir(dir),
+		WithTarget("es2020"),
+	)
+	plugin := r.Plugin()
+
+	// Simulate external mutation after setup; OnLoad should remain defensive.
+	r.metrics = nil
+
+	entry := filepath.Join(dir, "entry.ts")
+	if err := os.WriteFile(entry, []byte(`import { x } from "ok-pkg"; console.log(x);`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result := api.Build(api.BuildOptions{
+		EntryPoints: []string{entry},
+		Bundle:      true,
+		Write:       false,
+		Plugins:     []api.Plugin{plugin},
+		Platform:    api.PlatformBrowser,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("build failed: %v", result.Errors)
+	}
+}
+
 // ---- resolveLockfile tests ----
 
 func TestResolveLockfile_WithLockfilePath(t *testing.T) {

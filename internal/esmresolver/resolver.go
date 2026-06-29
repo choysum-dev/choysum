@@ -298,21 +298,28 @@ func (r *Resolver) Plugin() api.Plugin {
 				pkg := extractPkgFromURL(url, r.upstream)
 				cacheKey := sha256Hex(url)
 				cacheFile := filepath.Join(r.codeCacheDir(), cacheKey[:2], cacheKey[2:])
+				metrics := r.metrics
 
 				// Try cache first, verify integrity if metadata present.
 				if content, ok := r.readCache(cacheFile); ok {
-					r.metrics.CacheHit.Add(1)
+					if metrics != nil {
+						metrics.CacheHit.Add(1)
+					}
 					return api.OnLoadResult{
 						Contents: ptr(content),
 						Loader:   loaderForURL(url),
 					}, nil
 				}
 
-				r.metrics.CacheMiss.Add(1)
+				if metrics != nil {
+					metrics.CacheMiss.Add(1)
+				}
 
 				// Offline mode: cache miss is a hard error.
 				if r.offline {
-					r.metrics.Errors.Add(1)
+					if metrics != nil {
+						metrics.Errors.Add(1)
+					}
 					return api.OnLoadResult{}, r.formatError("cache miss (offline)", pkg, url,
 						"run 'choysum install' with network access to populate the cache")
 				}
@@ -324,15 +331,19 @@ func (r *Resolver) Plugin() api.Plugin {
 				}
 				v, err, _ := r.singleflight.Do(cacheKey, func() (any, error) {
 					downloadStart := time.Now()
-					r.metrics.Downloads.Add(1)
+					if metrics != nil {
+						metrics.Downloads.Add(1)
+					}
 					content, dlErr := r.downloadWithRetry(url)
-					r.metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
+					if metrics != nil {
+						metrics.DownloadDurationMs.Add(time.Since(downloadStart).Milliseconds())
+					}
 					if dlErr != nil {
 						return fetchResult{}, dlErr
 					}
 					// Record the package name for downstream observability.
-					if pkg != "" {
-						r.metrics.DownloadedPkgs.Store(pkg, struct{}{})
+					if metrics != nil && pkg != "" {
+						metrics.DownloadedPkgs.Store(pkg, struct{}{})
 					}
 					if writeErr := r.writeCache(cacheFile, []byte(content)); writeErr != nil {
 						if r.logger != nil {
@@ -342,7 +353,9 @@ func (r *Resolver) Plugin() api.Plugin {
 					return fetchResult{content: content}, nil
 				})
 				if err != nil {
-					r.metrics.Errors.Add(1)
+					if metrics != nil {
+						metrics.Errors.Add(1)
+					}
 					return api.OnLoadResult{}, r.formatError("download failed", pkg, url, err.Error())
 				}
 				result := v.(fetchResult)
