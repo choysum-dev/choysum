@@ -137,7 +137,7 @@ func NewProgressTicker(line *ProgressLine, opts ProgressTickerOptions) *Progress
 		interval: interval,
 		onTick:   opts.OnTick,
 	}
-	if line == nil {
+	if line == nil || (!line.IsTTY() && opts.OnTick == nil) {
 		return ticker
 	}
 

@@ -549,7 +549,25 @@ func TestNewProgressTicker_NilLineSkipsBackgroundGoroutine(t *testing.T) {
 		Interval: 10 * time.Millisecond,
 		OnTick:   func(now time.Time, message string) {},
 	})
+	if ticker.stopCh != nil || ticker.doneCh != nil {
+		t.Fatalf("expected nil channels when no background goroutine starts, stopCh=%v doneCh=%v", ticker.stopCh, ticker.doneCh)
+	}
 	// Nil line means no background goroutine: Stop/Clear must be safe no-ops.
+	ticker.Stop()
+	ticker.Clear()
+}
+
+func TestNewProgressTicker_NonTTYLineWithoutOnTickSkipsBackgroundGoroutine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	if ticker.stopCh != nil || ticker.doneCh != nil {
+		t.Fatalf("expected nil channels when non-TTY ticker has no callback, stopCh=%v doneCh=%v", ticker.stopCh, ticker.doneCh)
+	}
+	// Non-TTY with no callback means no background goroutine: Stop/Clear remain safe no-ops.
 	ticker.Stop()
 	ticker.Clear()
 }
