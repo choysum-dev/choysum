@@ -1142,12 +1142,13 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 	}
 
 	wantCommands := map[string]bool{
-		"install":   false,
-		"upgrade":   false,
-		"uninstall": false,
-		"module":    false,
-		"run":       false,
-		"test":      false,
+		"install":    false,
+		"upgrade":    false,
+		"uninstall":  false,
+		"module":     false,
+		"run":        false,
+		"test":       false,
+		"type-fetch": false,
 	}
 	for _, sub := range commander.rootCmd.Commands() {
 		if _, ok := wantCommands[sub.Name()]; ok {
@@ -1160,7 +1161,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	}
 
-	t.Run("test subtree carries lightweight annotation", func(t *testing.T) {
+	t.Run("test subtree and type-fetch carry lightweight annotation", func(t *testing.T) {
 		testCmd, _, err := commander.rootCmd.Find([]string{"test"})
 		if err != nil {
 			t.Fatalf("find test subcommand: %v", err)
@@ -1178,6 +1179,20 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		if !shouldUseLightweightRuntimeScope(typecheckCmd) {
 			t.Fatal("expected lightweight scope for test subtree")
+		}
+
+		typeFetchCmd, _, err := commander.rootCmd.Find([]string{"type-fetch"})
+		if err != nil {
+			t.Fatalf("find type-fetch subcommand: %v", err)
+		}
+		if typeFetchCmd == nil {
+			t.Fatal("expected type-fetch subcommand")
+		}
+		if got := typeFetchCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
+			t.Fatalf("type-fetch annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		}
+		if !shouldUseLightweightRuntimeScope(typeFetchCmd) {
+			t.Fatal("expected lightweight scope for type-fetch")
 		}
 	})
 
@@ -1234,6 +1249,39 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		if c.runtimeScope == nil || scope.FactoryInputFromScope(c.runtimeScope) == nil {
 			t.Fatal("expected environment to be initialized for test subtree")
+		}
+	})
+
+	t.Run("type-fetch pre-run does not initialize database", func(t *testing.T) {
+		var err error
+		workDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(workDir, "modules"), 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
+		}
+		t.Chdir(workDir)
+
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("CHOYSUM_DB_DIALECT", "postgres")
+		t.Setenv("CHOYSUM_DB_DSN", "postgres://127.0.0.1:1/choysum?sslmode=disable")
+		t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "dev-internal-key")
+
+		c := NewCommander(context.Background(), "test-version")
+		sub, _, err := c.rootCmd.Find([]string{"type-fetch"})
+		if err != nil {
+			t.Fatalf("find type-fetch subcommand: %v", err)
+		}
+
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Fatalf("PersistentPreRunE(type-fetch) panicked: %v", recovered)
+			}
+		}()
+
+		if err := c.rootCmd.PersistentPreRunE(sub, nil); err != nil {
+			t.Fatalf("PersistentPreRunE(type-fetch) = %v, want nil", err)
+		}
+		if c.runtimeScope == nil || scope.FactoryInputFromScope(c.runtimeScope) == nil {
+			t.Fatal("expected environment to be initialized for type-fetch")
 		}
 	})
 

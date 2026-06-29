@@ -34,6 +34,9 @@ func newTypeFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "type-fetch [<app>]",
 		Short: "Fetch type definitions (.d.ts) for module dependencies",
+		Annotations: map[string]string{
+			lightweightScopeAnnotation: "true",
+		},
 		Long: `Scans the module's package.json for dependencies, downloads their
 type definitions (.d.ts) from the configured ESM upstream, and caches them
 locally for IDE support.
