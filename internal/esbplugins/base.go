@@ -189,7 +189,7 @@ func (p *BasePlugin) rebuildNormalizedTsExports() {
 		if key == "" {
 			continue
 		}
-		normalizedKey := p.normalizeModuleSpecPath(key)
+		normalizedKey := NormalizeModuleSpecPath(key)
 		if normalizedKey == "" {
 			continue
 		}
@@ -209,7 +209,9 @@ func (p *BasePlugin) normalizedTsExports() map[string]map[string]*parser.Export 
 	return p.normalizedTsExp
 }
 
-func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
+// NormalizeModuleSpecPath resolves a module spec to a canonical form so that
+// extension and index aliases can be matched consistently.
+func NormalizeModuleSpecPath(path string) string {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
 		return ""
@@ -249,6 +251,10 @@ func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
 	return fallback
 }
 
+func (p *BasePlugin) normalizeModuleSpecPath(path string) string {
+	return NormalizeModuleSpecPath(path)
+}
+
 func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Export {
 	if p == nil {
 		return nil
@@ -261,7 +267,7 @@ func (p *BasePlugin) resolveTsExports(moduleSpec string) map[string]*parser.Expo
 		return exports
 	}
 
-	normalizedModuleSpec := p.normalizeModuleSpecPath(moduleSpec)
+	normalizedModuleSpec := NormalizeModuleSpecPath(moduleSpec)
 	if normalizedModuleSpec == "" {
 		return nil
 	}

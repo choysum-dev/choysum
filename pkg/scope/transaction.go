@@ -71,6 +71,15 @@ func TransactionFromContext(ctx context.Context) (Transaction, bool) {
 	return tx, ok && tx != nil
 }
 
+// ContextWithoutTransaction returns a context that preserves all existing values
+// except the scope transaction marker.
+func ContextWithoutTransaction(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, transactionContextKey{}, nil)
+}
+
 type runSessionTransactor struct {
 	scope Scope
 }

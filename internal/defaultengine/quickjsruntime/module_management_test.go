@@ -91,6 +91,16 @@ type moduleManagementTestManager struct {
 	install func(context.Context, string) error
 }
 
+type moduleManagementContextTransaction struct{}
+
+func (moduleManagementContextTransaction) Context() context.Context { return context.Background() }
+func (moduleManagementContextTransaction) Session() *scope.Session  { return nil }
+func (moduleManagementContextTransaction) Savepoint(string) error   { return nil }
+func (moduleManagementContextTransaction) RollbackToSavepoint(string) error {
+	return nil
+}
+func (moduleManagementContextTransaction) ReleaseSavepoint(string) error { return nil }
+
 func (m moduleManagementTestManager) Install(ctx context.Context, req lifecycle.InstallRequest) error {
 	if m.install != nil {
 		return m.install(ctx, req.Name)
@@ -294,6 +304,7 @@ func TestWithModuleManagementProvider_ModuleOpDoesNotUseOuterTransaction(t *test
 	type ctxKey struct{}
 	runtimeKey := ctxKey{}
 	runtimeCtx := context.WithValue(context.Background(), runtimeKey, "runtime")
+	runtimeCtx = scope.ContextWithTransaction(runtimeCtx, moduleManagementContextTransaction{})
 	engineName := "module-management-provider-no-tx-test-engine"
 	registerModuleManagementTestJsEngine(engineName)
 	serverCfg := config.NewDefaultServerConfig()

@@ -6,7 +6,6 @@ package backendplugin
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -77,45 +76,7 @@ func backendPluginPathWithinRoot(path string, root string) bool {
 }
 
 func normalizeBackendPluginModuleSpecPath(path string) string {
-	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		return ""
-	}
-
-	candidates := []struct {
-		path      string
-		trimToDir bool
-	}{
-		{path: trimmed},
-		{path: trimmed + ".ts"},
-		{path: trimmed + ".vue"},
-		{path: filepath.Join(trimmed, "index.ts"), trimToDir: true},
-	}
-
-	for _, candidate := range candidates {
-		if _, err := os.Stat(candidate.path); err != nil {
-			continue
-		}
-		normalized := normalizeBackendPluginPath(candidate.path)
-		if normalized == "" {
-			continue
-		}
-		if candidate.trimToDir || filepath.Base(normalized) == "index.ts" {
-			return filepath.Dir(normalized)
-		}
-		normalized = strings.TrimSuffix(normalized, ".ts")
-		normalized = strings.TrimSuffix(normalized, ".vue")
-		return normalized
-	}
-
-	fallback := filepath.Clean(trimmed)
-	switch filepath.Base(fallback) {
-	case "index", "index.ts", "index.vue":
-		return filepath.Dir(fallback)
-	}
-	fallback = strings.TrimSuffix(fallback, ".ts")
-	fallback = strings.TrimSuffix(fallback, ".vue")
-	return fallback
+	return esbplugins.NormalizeModuleSpecPath(path)
 }
 
 func backendPluginSameModuleSpecPath(a string, b string) bool {

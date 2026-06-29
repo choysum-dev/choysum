@@ -215,6 +215,7 @@ func performModuleOp(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngine, sco
 	if execCtx == nil {
 		execCtx = context.Background()
 	}
+	execCtx = scope.ContextWithoutTransaction(execCtx)
 	runtimeScope := jsengine.ResolveScope(scopeProvider, execCtx)
 
 	result := moduleOpResult{Ok: false}
