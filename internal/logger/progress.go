@@ -73,11 +73,15 @@ func sameProgressWriter(left, right io.Writer) bool {
 
 func (w *progressAwareWriter) Write(p []byte) (int, error) {
 	progressOutputBarrier.mu.Lock()
-	defer progressOutputBarrier.mu.Unlock()
-	if progressOutputBarrier.active && sameProgressWriter(progressOutputBarrier.writer, w.w) {
-		_, _ = fmt.Fprint(w.w, "\r\x1b[K")
+	shouldClear := progressOutputBarrier.active && sameProgressWriter(progressOutputBarrier.writer, w.w)
+	if shouldClear {
 		progressOutputBarrier.active = false
 		progressOutputBarrier.writer = nil
+	}
+	progressOutputBarrier.mu.Unlock()
+
+	if shouldClear {
+		_, _ = fmt.Fprint(w.w, "\r\x1b[K")
 	}
 	return w.w.Write(p)
 }
@@ -275,12 +279,13 @@ func (p *ProgressLine) Update(frame int, message string) {
 	if p == nil || !p.tty {
 		return
 	}
-	progressOutputBarrier.mu.Lock()
-	defer progressOutputBarrier.mu.Unlock()
 	glyph := progressSpinnerFrames[frame%len(progressSpinnerFrames)]
-	fmt.Fprintf(p.w, "\r\x1b[K%s %s", glyph, message)
+	progressOutputBarrier.mu.Lock()
 	progressOutputBarrier.active = true
 	progressOutputBarrier.writer = unwrapProgressWriter(p.w)
+	progressOutputBarrier.mu.Unlock()
+
+	fmt.Fprintf(p.w, "\r\x1b[K%s %s", glyph, message)
 }
 
 // Clear erases the currently rendered progress line without emitting a newline.
@@ -289,12 +294,13 @@ func (p *ProgressLine) Clear() {
 		return
 	}
 	progressOutputBarrier.mu.Lock()
-	defer progressOutputBarrier.mu.Unlock()
-	fmt.Fprint(p.w, "\r\x1b[K")
 	if sameProgressWriter(progressOutputBarrier.writer, p.w) {
 		progressOutputBarrier.active = false
 		progressOutputBarrier.writer = nil
 	}
+	progressOutputBarrier.mu.Unlock()
+
+	fmt.Fprint(p.w, "\r\x1b[K")
 }
 
 // Done finalises the line with a result symbol and message, then
@@ -303,15 +309,16 @@ func (p *ProgressLine) Done(symbol, message string) {
 	if p == nil {
 		return
 	}
-	progressOutputBarrier.mu.Lock()
-	defer progressOutputBarrier.mu.Unlock()
 	if !p.tty {
 		fmt.Fprintln(p.w, message)
 		return
 	}
-	fmt.Fprintf(p.w, "\r\x1b[K%s %s\n", symbol, message)
+	progressOutputBarrier.mu.Lock()
 	if sameProgressWriter(progressOutputBarrier.writer, p.w) {
 		progressOutputBarrier.active = false
 		progressOutputBarrier.writer = nil
 	}
+	progressOutputBarrier.mu.Unlock()
+
+	fmt.Fprintf(p.w, "\r\x1b[K%s %s\n", symbol, message)
 }

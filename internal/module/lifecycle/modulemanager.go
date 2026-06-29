@@ -215,7 +215,7 @@ func (m *ModuleManager) ensureMetaTables() error {
 				doneCh := make(chan struct{})
 				go func() {
 					defer close(doneCh)
-					ticker := time.NewTicker(250 * time.Millisecond)
+					ticker := time.NewTicker(metaBootstrapHeartbeatInterval)
 					defer ticker.Stop()
 					lastHeartbeatAt := startedAt
 					for {
@@ -746,7 +746,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			doneCh := make(chan struct{})
 			go func() {
 				defer close(doneCh)
-				ticker := time.NewTicker(120 * time.Millisecond)
+				ticker := time.NewTicker(moduleOpStageHeartbeatInterval)
 				defer ticker.Stop()
 				for {
 					select {

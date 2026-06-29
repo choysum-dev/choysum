@@ -1342,6 +1342,13 @@ func TestMetrics_Concurrency(t *testing.T) {
 	}
 }
 
+func TestMetrics_SnapshotDownloadedPkgs_NilReceiver(t *testing.T) {
+	var m *Metrics
+	if got := m.SnapshotDownloadedPkgs(); got != nil {
+		t.Fatalf("SnapshotDownloadedPkgs() on nil receiver = %#v, want nil", got)
+	}
+}
+
 func TestResolver_WithLogger(t *testing.T) {
 	var buf strings.Builder
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))

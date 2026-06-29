@@ -53,6 +53,9 @@ func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int
 // SnapshotDownloadedPkgs returns a sorted list of unique package names that
 // were downloaded in the current build.
 func (m *Metrics) SnapshotDownloadedPkgs() []string {
+	if m == nil {
+		return nil
+	}
 	pkgs := make([]string, 0)
 	m.DownloadedPkgs.Range(func(key, _ any) bool {
 		if s, ok := key.(string); ok && s != "" {
