@@ -83,6 +83,90 @@ func migrateBackendPluginMetadata(t *testing.T, db *gorm.DB) {
 	}
 }
 
+func TestBackendPluginPathWithinRoot_ResolvesSymlinkAliases(t *testing.T) {
+	realRoot := filepath.Join(t.TempDir(), "real")
+	moduleRealRoot := filepath.Join(realRoot, "modules", "base")
+	insideRealPath := filepath.Join(moduleRealRoot, "service", "models", "currency.ts")
+	if err := os.MkdirAll(filepath.Dir(insideRealPath), 0o755); err != nil {
+		t.Fatalf("mkdir inside real path: %v", err)
+	}
+	if err := os.WriteFile(insideRealPath, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatalf("write inside real file: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	moduleAliasRoot := filepath.Join(aliasRoot, "modules", "base")
+	insideAliasPath := filepath.Join(moduleAliasRoot, "service", "models", "currency.ts")
+	if !backendPluginPathWithinRoot(insideRealPath, moduleAliasRoot) {
+		t.Fatalf("expected real path %q to be within alias module root %q", insideRealPath, moduleAliasRoot)
+	}
+	if !backendPluginPathWithinRoot(insideAliasPath, moduleAliasRoot) {
+		t.Fatalf("expected alias path %q to be within alias module root %q", insideAliasPath, moduleAliasRoot)
+	}
+
+	outsideRealPath := filepath.Join(realRoot, "modules", "auth", "service", "models", "user.ts")
+	if err := os.MkdirAll(filepath.Dir(outsideRealPath), 0o755); err != nil {
+		t.Fatalf("mkdir outside real path: %v", err)
+	}
+	if err := os.WriteFile(outsideRealPath, []byte("export {};\n"), 0o644); err != nil {
+		t.Fatalf("write outside real file: %v", err)
+	}
+	if backendPluginPathWithinRoot(outsideRealPath, moduleAliasRoot) {
+		t.Fatalf("expected outside path %q not to be within alias module root %q", outsideRealPath, moduleAliasRoot)
+	}
+}
+
+func TestBackendPluginSameModuleSpecPath_ResolvesSymlinkAndExtensionlessSpecs(t *testing.T) {
+	realRoot := filepath.Join(t.TempDir(), "real")
+	realDecoratorSpec := filepath.Join(realRoot, "modules", "core", "service", "orm", "decorator", "model")
+	realDecoratorFile := realDecoratorSpec + ".ts"
+	if err := os.MkdirAll(filepath.Dir(realDecoratorFile), 0o755); err != nil {
+		t.Fatalf("mkdir decorator dir: %v", err)
+	}
+	if err := os.WriteFile(realDecoratorFile, []byte("export const Model = () => null;\n"), 0o644); err != nil {
+		t.Fatalf("write decorator file: %v", err)
+	}
+
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	aliasDecoratorSpec := filepath.Join(aliasRoot, "modules", "core", "service", "orm", "decorator", "model")
+	if !backendPluginSameModuleSpecPath(realDecoratorSpec, aliasDecoratorSpec) {
+		t.Fatalf("expected extensionless module specs to match across symlink aliases: %q vs %q", realDecoratorSpec, aliasDecoratorSpec)
+	}
+	if !backendPluginSameModuleSpecPath(realDecoratorFile, aliasDecoratorSpec) {
+		t.Fatalf("expected .ts and extensionless specs to match across symlink aliases: %q vs %q", realDecoratorFile, aliasDecoratorSpec)
+	}
+
+	realDecoratorDir := filepath.Dir(realDecoratorFile)
+	realDecoratorIndexFile := filepath.Join(realDecoratorDir, "index.ts")
+	if err := os.WriteFile(realDecoratorIndexFile, []byte("export { Model } from './model';\n"), 0o644); err != nil {
+		t.Fatalf("write decorator index file: %v", err)
+	}
+	aliasDecoratorIndexSpec := filepath.Join(aliasRoot, "modules", "core", "service", "orm", "decorator", "index")
+	if !backendPluginSameModuleSpecPath(realDecoratorDir, aliasDecoratorIndexSpec) {
+		t.Fatalf("expected directory and index specs to match across symlink aliases: %q vs %q", realDecoratorDir, aliasDecoratorIndexSpec)
+	}
+	if !backendPluginSameModuleSpecPath(realDecoratorIndexFile, aliasDecoratorIndexSpec) {
+		t.Fatalf("expected index.ts and index specs to match across symlink aliases: %q vs %q", realDecoratorIndexFile, aliasDecoratorIndexSpec)
+	}
+
+	realFieldSpec := filepath.Join(realRoot, "modules", "core", "service", "orm", "decorator", "field")
+	realFieldFile := realFieldSpec + ".ts"
+	if err := os.WriteFile(realFieldFile, []byte("export const Field = () => null;\n"), 0o644); err != nil {
+		t.Fatalf("write field file: %v", err)
+	}
+	if backendPluginSameModuleSpecPath(realFieldSpec, aliasDecoratorSpec) {
+		t.Fatalf("expected different decorator specs not to match: %q vs %q", realFieldSpec, aliasDecoratorSpec)
+	}
+}
+
 func mustIndex(t *testing.T, s string, sub string) int {
 	t.Helper()
 	idx := strings.Index(s, sub)
@@ -358,6 +442,58 @@ func TestInjectModelApplication_EmptyModulesPathStillProcessesModelDecorator(t *
 
 	if err := plugin.injectModelApplication([]*parser.ParserResult{result}); err == nil || !strings.Contains(err.Error(), "application not found for model path") {
 		t.Fatalf("expected application resolution failure for empty modules path, got %v", err)
+	}
+}
+
+func TestInjectModelApplication_DerivesExternalModuleNameFromNormalizedPathWithoutModelTable(t *testing.T) {
+	testRuntimeScope, db := newPluginSessionTestScope(t)
+	if err := db.AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatalf("automigrate modules failed: %v", err)
+	}
+
+	realRoot := filepath.Join(t.TempDir(), "real")
+	realModulesPath := filepath.Join(realRoot, "modules")
+	if err := os.MkdirAll(realModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir real modules path: %v", err)
+	}
+	aliasRoot := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(realRoot, aliasRoot); err != nil {
+		t.Skipf("symlink not supported in this environment: %v", err)
+	}
+
+	testRuntimeScope.cfg.ModulesPath = filepath.Join(aliasRoot, "modules")
+	if err := db.Create(&meta.IrModule{Name: "crm", ApplicationStr: "crm"}).Error; err != nil {
+		t.Fatalf("seed external module failed: %v", err)
+	}
+
+	plugin := newBackendPluginForInjectTest(t, testRuntimeScope)
+	plugin.Module.Path = filepath.Join(realModulesPath, "auth")
+	modelDecoratorModuleSpec, _ := meta.ModelDecoratorModuleSpec(testRuntimeScope)
+
+	raw := "@Model('Lead')\nexport default class Lead {}\n"
+	argEnd := mustIndex(t, raw, "'Lead'") + len("'Lead'")
+	externalModelPath := filepath.Join(realModulesPath, "crm", "service", "lead.ts")
+	if err := os.MkdirAll(filepath.Dir(externalModelPath), 0o755); err != nil {
+		t.Fatalf("mkdir external model dir: %v", err)
+	}
+	if err := os.WriteFile(externalModelPath, []byte("export default class Lead {}\n"), 0o644); err != nil {
+		t.Fatalf("write external model file: %v", err)
+	}
+	result := &parser.ParserResult{
+		Path:       externalModelPath,
+		RawContent: raw,
+		ModelClassNode: &parser.Class{Decorators: []*parser.Decorator{{
+			ModuleSpecPath: modelDecoratorModuleSpec,
+			ReferenceIdent: "Model",
+			Arguments:      []*parser.Argument{{Type: "Literal", End: argEnd}},
+		}}},
+	}
+
+	if err := plugin.injectModelApplication([]*parser.ParserResult{result}); err != nil {
+		t.Fatalf("injectModelApplication failed: %v", err)
+	}
+	if !strings.Contains(result.Content, "application: 'crm'") {
+		t.Fatalf("expected external module application to be derived from module path, got:\n%s", result.Content)
 	}
 }
 

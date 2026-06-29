@@ -186,6 +186,14 @@ func (b *WebModuleBuilder) prebuild() (*module.BuildResult, error) {
 	}, parserResults), nil
 }
 
+func normalizeWebBuilderPath(path string) string {
+	return esbplugins.NormalizePath(path)
+}
+
+func webBuilderPathWithinRoot(path string, root string) bool {
+	return esbplugins.PathWithinRoot(path, root)
+}
+
 // Check inheritance relationship for components with the same name
 func (b *WebModuleBuilder) checkInheritanceChain(components []*meta.IrComponent, pathComponentMap map[string]*meta.IrComponent) error {
 	getInheritancePath := func(component *meta.IrComponent) []string {
@@ -275,12 +283,36 @@ func (b *WebModuleBuilder) validate(buildResult *module.BuildResult) error {
 	componentMap := make(map[string][]*meta.IrComponent)
 	// 2. Create path to component mapping for quick parent lookup
 	pathComponentMap := make(map[string]*meta.IrComponent)
+	normalizedPathMap := make(map[string]*meta.IrComponent)
 
 	for _, result := range module.ParserResults(buildResult) {
-		if result.VueComponent != nil {
-			componentMap[result.VueComponent.Name] = append(componentMap[result.VueComponent.Name], result.VueComponent)
-			pathComponentMap[result.VueComponent.Path] = result.VueComponent
+		if result.VueComponent == nil {
+			continue
 		}
+
+		rawPath := strings.TrimSpace(result.VueComponent.Path)
+		if rawPath == "" {
+			continue
+		}
+
+		normalizedPath := normalizeWebBuilderPath(rawPath)
+		if normalizedPath == "" {
+			continue
+		}
+		result.VueComponent.Path = normalizedPath
+		result.VueComponent.Extends = normalizeWebBuilderPath(result.VueComponent.Extends)
+
+		if existing := normalizedPathMap[normalizedPath]; existing != nil {
+			result.VueComponent = existing
+			pathComponentMap[rawPath] = existing
+			pathComponentMap[result.VueComponent.Path] = existing
+			continue
+		}
+
+		normalizedPathMap[normalizedPath] = result.VueComponent
+		componentMap[result.VueComponent.Name] = append(componentMap[result.VueComponent.Name], result.VueComponent)
+		pathComponentMap[result.VueComponent.Path] = result.VueComponent
+		pathComponentMap[rawPath] = result.VueComponent
 	}
 
 	// Validate inheritance relationships
@@ -1347,13 +1379,25 @@ func (b *WebModuleBuilder) persist(buildResult *module.BuildResult) error {
 	}
 	mod.UiResources = uiResources
 
+	seenComponentPaths := make(map[string]struct{})
 	for _, result := range parserResults {
 		if result.VueComponent == nil {
 			continue
 		}
-		if strings.HasPrefix(result.VueComponent.Path, mod.Path) {
-			mod.Components = append(mod.Components, result.VueComponent)
+		normalizedPath := normalizeWebBuilderPath(result.VueComponent.Path)
+		if normalizedPath == "" {
+			continue
 		}
+		if !webBuilderPathWithinRoot(normalizedPath, mod.Path) {
+			continue
+		}
+		if _, exists := seenComponentPaths[normalizedPath]; exists {
+			continue
+		}
+		seenComponentPaths[normalizedPath] = struct{}{}
+		result.VueComponent.Path = normalizedPath
+		result.VueComponent.Extends = normalizeWebBuilderPath(result.VueComponent.Extends)
+		mod.Components = append(mod.Components, result.VueComponent)
 	}
 
 	if mod.Id.Valid {

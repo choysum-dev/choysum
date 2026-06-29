@@ -284,7 +284,15 @@ func (c *Coordinator) Peek(ctx context.Context, input string) (*meta.IrModule, e
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
-		return nil, xfmt.Errorf("module %s not found in modules path", moduleName)
+		fallbackParsed := parsed
+		if strings.TrimSpace(fallbackParsed.ModuleName) == "" {
+			fallbackParsed.ModuleName = moduleName
+		}
+		mod, registryErr := c.peekRegistryModule(ctx, fallbackParsed)
+		if registryErr == nil {
+			return mod, nil
+		}
+		return nil, xfmt.Errorf("module %s not found locally and registry fallback failed: %w", moduleName, registryErr)
 	default:
 		return nil, xfmt.Errorf("unsupported origin input kind: %s", parsed.Kind)
 	}

@@ -67,6 +67,59 @@ func normalizeBackendPluginImportPath(path string) string {
 	return strings.TrimSuffix(normalized, ".ts")
 }
 
+func normalizeBackendPluginPath(path string) string {
+	return esbplugins.NormalizePath(path)
+}
+
+func backendPluginPathWithinRoot(path string, root string) bool {
+	return esbplugins.PathWithinRoot(path, root)
+}
+
+func normalizeBackendPluginModuleSpecPath(path string) string {
+	return esbplugins.NormalizeModuleSpecPath(path)
+}
+
+func backendPluginSameModuleSpecPath(a string, b string) bool {
+	normalizedA := normalizeBackendPluginModuleSpecPath(a)
+	normalizedB := normalizeBackendPluginModuleSpecPath(b)
+	if normalizedA == "" || normalizedB == "" {
+		return false
+	}
+	return filepath.ToSlash(normalizedA) == filepath.ToSlash(normalizedB)
+}
+
+func newBackendPluginModuleSpecPathComparer() func(a string, b string) bool {
+	normalizedCache := make(map[string]string)
+	normalizedModuleSpecPath := func(path string) string {
+		path = strings.TrimSpace(path)
+		if path == "" {
+			return ""
+		}
+		if normalized, ok := normalizedCache[path]; ok {
+			return normalized
+		}
+		normalized := normalizeBackendPluginModuleSpecPath(path)
+		normalizedCache[path] = normalized
+		return normalized
+	}
+	return func(a string, b string) bool {
+		normalizedA := normalizedModuleSpecPath(a)
+		normalizedB := normalizedModuleSpecPath(b)
+		if normalizedA == "" || normalizedB == "" {
+			return false
+		}
+		return filepath.ToSlash(normalizedA) == filepath.ToSlash(normalizedB)
+	}
+}
+
+func isBackendPluginIrModelTableMissingError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "no such table: meta_ir_model") || strings.Contains(msg, `relation "meta_ir_model" does not exist`)
+}
+
 func (p *BackendPlugin) isEntryPointPath(path string) bool {
 	if p.SameFilePath(path, p.EntryPoint) {
 		return true
@@ -134,10 +187,12 @@ func (p *BackendPlugin) appendEntryPointImports(content string) string {
 func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.ParserResult) error {
 	// Use the new Field decorator only.
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(p.Env)
+	modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(p.Env)
+	sameModuleSpecPath := newBackendPluginModuleSpecPathComparer()
 
 	moduleAbsPath := p.Module.Path
 	for _, parserResult := range parserResults {
-		if !strings.HasPrefix(parserResult.Path, moduleAbsPath) {
+		if !backendPluginPathWithinRoot(parserResult.Path, moduleAbsPath) {
 			continue
 		}
 
@@ -145,6 +200,8 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 		if model == nil {
 			continue
 		}
+
+		model.Path = normalizeBackendPluginPath(model.Path)
 
 		if parserResult.ModelExtendsProperty != nil {
 			moduleSpec, referenceIdent := p.FindModuleSpecAndReferenceIdent(parserResult.ModelExtendsProperty.ModuleSpecPath, parserResult.ModelExtendsProperty.ReferenceIdent)
@@ -170,8 +227,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 				decorator.ReferenceIdent = referenceIdent
 			}
 
-			modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(p.Env)
-			if decorator.ModuleSpecPath == modelDecoratorModuleSpec && decorator.ReferenceIdent == modelDecoratorReferenceIdent {
+			if sameModuleSpecPath(decorator.ModuleSpecPath, modelDecoratorModuleSpec) && decorator.ReferenceIdent == modelDecoratorReferenceIdent {
 				appName := model.Application
 				if len(decorator.Arguments) > 0 {
 					arg := decorator.Arguments[0]
@@ -257,7 +313,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 			// Recognize the new Field decorator only.
 			isField := false
 			for _, decorator := range field.Decorators {
-				if decorator.Name == "Field" && decorator.ModuleSpecPath == fieldDecoratorModuleSpec && decorator.ReferenceIdent == fieldDecoratorReferenceIdent {
+				if decorator.Name == "Field" && sameModuleSpecPath(decorator.ModuleSpecPath, fieldDecoratorModuleSpec) && decorator.ReferenceIdent == fieldDecoratorReferenceIdent {
 					isField = true
 					break
 				}
@@ -275,6 +331,7 @@ func (p *BackendPlugin) replaceModuleSpecReferenceIdent(parserResults []*parser.
 func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserResult) error {
 	modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(p.Env)
 	moduleAbsPath := p.Module.Path
+	sameModuleSpecPath := newBackendPluginModuleSpecPathComparer()
 
 	type contentEdit struct {
 		rawPos int
@@ -342,7 +399,10 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	// 1. Collect external paths
 	var externalPaths []string
 	for _, result := range parserResults {
-		if !strings.HasPrefix(result.Path, moduleAbsPath) {
+		if result.ModelClassNode == nil {
+			continue
+		}
+		if !backendPluginPathWithinRoot(result.Path, moduleAbsPath) {
 			externalPaths = append(externalPaths, result.Path)
 		}
 	}
@@ -351,12 +411,16 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	externalAppMap := make(map[string]string)
 	externalModuleAppMap := make(map[string]string)
 	runtimeOptions := p.resolvedRuntimeOptions()
-	modulesPath := strings.TrimSpace(runtimeOptions.modulesPath)
+	normalizedModulesPath := normalizeBackendPluginPath(runtimeOptions.modulesPath)
 	moduleNameFromPath := func(path string) string {
-		if modulesPath == "" {
+		if normalizedModulesPath == "" {
 			return ""
 		}
-		rel, err := filepath.Rel(modulesPath, path)
+		normalizedPath := normalizeBackendPluginPath(path)
+		if normalizedPath == "" {
+			return ""
+		}
+		rel, err := filepath.Rel(normalizedModulesPath, normalizedPath)
 		if err != nil {
 			return ""
 		}
@@ -372,6 +436,11 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 	}
 
 	if len(externalPaths) > 0 {
+		var session *scope.Session
+		if p.Env != nil {
+			session = p.Env.Session()
+		}
+
 		queryPathSet := make(map[string]struct{})
 		moduleNameSet := make(map[string]struct{})
 		var queryPaths []string
@@ -407,9 +476,9 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 			}
 		}
 
-		if len(moduleNames) > 0 {
+		if session != nil && len(moduleNames) > 0 {
 			var modules []meta.IrModule
-			if err := p.Env.Session().Where("name IN ?", moduleNames).Find(&modules).Error; err == nil {
+			if err := session.Where("name IN ?", moduleNames).Find(&modules).Error; err == nil {
 				for _, mod := range modules {
 					name := strings.TrimSpace(mod.Name)
 					app := strings.TrimSpace(mod.ApplicationStr)
@@ -420,29 +489,34 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 			}
 		}
 
-		var models []meta.IrModel
-		if err := p.Env.Session().
-			Preload("Module.Application").
-			Where("path IN ?", queryPaths).
-			Find(&models).Error; err != nil {
-			return xfmt.Errorf("failed to batch load external models: %w", err)
-		}
+		if session != nil && len(queryPaths) > 0 {
+			var models []meta.IrModel
+			if err := session.
+				Preload("Module.Application").
+				Where("path IN ?", queryPaths).
+				Find(&models).Error; err != nil {
+				if !isBackendPluginIrModelTableMissingError(err) {
+					return xfmt.Errorf("failed to batch load external models: %w", err)
+				}
+				models = nil
+			}
 
-		for _, m := range models {
-			if m.Module != nil && m.Module.Application != nil {
-				appName := m.Module.Application.Name
-				externalAppMap[m.Path] = appName
-				if strings.HasSuffix(m.Path, ".ts") {
-					externalAppMap[strings.TrimSuffix(m.Path, ".ts")] = appName
-				} else {
-					externalAppMap[m.Path+".ts"] = appName
+			for _, m := range models {
+				if m.Module != nil && m.Module.Application != nil {
+					appName := m.Module.Application.Name
+					externalAppMap[m.Path] = appName
+					if strings.HasSuffix(m.Path, ".ts") {
+						externalAppMap[strings.TrimSuffix(m.Path, ".ts")] = appName
+					} else {
+						externalAppMap[m.Path+".ts"] = appName
+					}
 				}
 			}
 		}
 	}
 
 	getAppForPath := func(path string) (string, error) {
-		if strings.HasPrefix(path, moduleAbsPath) {
+		if backendPluginPathWithinRoot(path, moduleAbsPath) {
 			return p.Module.ApplicationStr, nil
 		}
 		if app, ok := externalAppMap[path]; ok {
@@ -468,7 +542,7 @@ func (p *BackendPlugin) injectModelApplication(parserResults []*parser.ParserRes
 		var modelDecorator *parser.Decorator
 		for _, d := range result.ModelClassNode.Decorators {
 			moduleSpec, referenceIdent := p.FindModuleSpecAndReferenceIdent(d.ModuleSpecPath, d.ReferenceIdent)
-			if moduleSpec == modelDecoratorModuleSpec && referenceIdent == modelDecoratorReferenceIdent {
+			if sameModuleSpecPath(moduleSpec, modelDecoratorModuleSpec) && referenceIdent == modelDecoratorReferenceIdent {
 				modelDecorator = d
 				break
 			}
@@ -627,6 +701,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 	fieldDecoratorModuleSpec, fieldDecoratorReferenceIdent := meta.FieldDecoratorModuleSpec(p.Env)
 	modelDecoratorModuleSpec, modelDecoratorReferenceIdent := meta.ModelDecoratorModuleSpec(p.Env)
 	moduleAbsPath := p.Module.Path
+	sameModuleSpecPath := newBackendPluginModuleSpecPathComparer()
 
 	findModelName := func(modelPath string) string {
 		moduleName := ""
@@ -665,7 +740,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 			return ""
 		}
 		for _, d := range m.Decorators {
-			if d.Name != "Model" || d.ModuleSpecPath != modelDecoratorModuleSpec || d.ReferenceIdent != modelDecoratorReferenceIdent {
+			if d.Name != "Model" || !sameModuleSpecPath(d.ModuleSpecPath, modelDecoratorModuleSpec) || d.ReferenceIdent != modelDecoratorReferenceIdent {
 				continue
 			}
 			for _, arg := range d.Arguments {
@@ -757,7 +832,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 	}
 
 	for _, parserResult := range parserResults {
-		if !strings.HasPrefix(parserResult.Path, moduleAbsPath) {
+		if !backendPluginPathWithinRoot(parserResult.Path, moduleAbsPath) {
 			continue
 		}
 		model := parserResult.Model
@@ -767,7 +842,7 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 
 		for _, field := range model.Fields {
 			for _, decorator := range field.Decorators {
-				if decorator.Name != "Field" || decorator.ModuleSpecPath != fieldDecoratorModuleSpec || decorator.ReferenceIdent != fieldDecoratorReferenceIdent {
+				if decorator.Name != "Field" || !sameModuleSpecPath(decorator.ModuleSpecPath, fieldDecoratorModuleSpec) || decorator.ReferenceIdent != fieldDecoratorReferenceIdent {
 					continue
 				}
 				if len(decorator.Arguments) == 0 {
