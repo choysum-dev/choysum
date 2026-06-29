@@ -27,8 +27,7 @@ func TestServerStartBootstrapModeServesBootstrapRoutes(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
-	runtimeScope.cfg.Server.BindAddress = "127.0.0.1"
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Server.JsEngineFactory = "missing"
@@ -196,8 +195,7 @@ func TestServerRequestBootstrapModeSwitchDefaultRestartUsesColdStart(t *testing.
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.DistPath = t.TempDir()
 	runtimeScope.cfg.Compile.BundleMode = "bundle"
-	runtimeScope.cfg.Server.BindAddress = "127.0.0.1"
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 

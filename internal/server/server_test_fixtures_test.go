@@ -13,6 +13,7 @@ import (
 	"io"
 	"log/slog"
 	"math/big"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -347,6 +348,29 @@ func newRichServerTestScope(t *testing.T) *serverTestScope {
 			Db:      config.NewDefaultDbConfig(),
 		},
 	}
+}
+
+func assignEphemeralServerPort(t *testing.T, cfg *config.Config) {
+	t.Helper()
+	if cfg == nil || cfg.Server == nil {
+		t.Fatal("assignEphemeralServerPort() requires cfg.Server")
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen() error = %v", err)
+	}
+	addr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		_ = ln.Close()
+		t.Fatalf("Listen() returned non-TCP address %T", ln.Addr())
+	}
+	if err := ln.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	cfg.Server.BindAddress = "127.0.0.1"
+	cfg.Server.Port = addr.Port
 }
 
 func writeTestTLSFiles(t *testing.T) (caPath string, certPath string, keyPath string) {
