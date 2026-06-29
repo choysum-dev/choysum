@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/esmresolver"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -212,8 +214,40 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 	if transport, ok := client.Transport.(*http.Transport); ok {
 		defer transport.CloseIdleConnections()
 	}
+	ticker := logutil.ProgressTickerFromContext(ctx)
+	ownsTicker := false
+	if ticker == nil {
+		progressLine := logutil.NewProgressLine(os.Stderr)
+		if progressLine != nil && progressLine.IsTTY() {
+			ticker = logutil.NewProgressTicker(progressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+			ownsTicker = true
+			ctx = logutil.WithProgressTicker(ctx, ticker)
+		}
+	}
+	if ticker != nil {
+		defer ticker.Clear()
+	}
+	if ownsTicker {
+		defer ticker.Stop()
+	}
+	setTypeFetchProgress := func(message string) {
+		if ticker == nil {
+			return
+		}
+		ticker.SetMessage(message)
+	}
+	clearTypeFetchProgress := func() {
+		if ticker == nil {
+			return
+		}
+		ticker.Clear()
+	}
+
 	session := esmresolver.NewTypeFetchSession(0)
 	var allResults []esmresolver.TypeFetchResult
+	totalCached := 0
+	totalFetched := 0
+	processedModules := 0
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
 
 	entries, err := os.ReadDir(modulesPath)
@@ -221,11 +255,8 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 		env.Logger().Warn("type-fetch: read modules dir failed", "error", err)
 		return
 	}
+	moduleNames := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if err := ctx.Err(); err != nil {
-			env.Logger().Info("type-fetch: interrupted", "error", err)
-			return
-		}
 		if !entry.IsDir() {
 			continue
 		}
@@ -233,18 +264,41 @@ func runTypeFetchAfterInstall(ctx context.Context, env scope.Scope) {
 		if _, err := os.Stat(filepath.Join(moduleDir, "package.json")); err != nil {
 			continue
 		}
+		moduleNames = append(moduleNames, entry.Name())
+	}
+
+	for i, moduleName := range moduleNames {
+		if err := ctx.Err(); err != nil {
+			clearTypeFetchProgress()
+			env.Logger().Info("type-fetch: interrupted", "error", err)
+			return
+		}
+		moduleDir := filepath.Join(modulesPath, moduleName)
+		setTypeFetchProgress(fmt.Sprintf("[%s] fetching dependency types (%d/%d)", moduleName, i+1, len(moduleNames)))
 		results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
 		if err != nil {
-			env.Logger().Warn("type-fetch: skipped module", "module", entry.Name(), "error", err)
+			clearTypeFetchProgress()
+			env.Logger().Warn("type-fetch: skipped module", "module", moduleName, "error", err)
 			continue
 		}
+		processedModules++
+		moduleCached := 0
+		moduleFetched := 0
 		allResults = append(allResults, results...)
 		for _, r := range results {
-			if !r.FromCache {
-				env.Logger().Info("type-fetch: downloaded", "module", entry.Name(), "package", r.Package+"@"+r.Version)
+			if r.FromCache {
+				totalCached++
+				moduleCached++
+			} else {
+				totalFetched++
+				moduleFetched++
 			}
 		}
+		clearTypeFetchProgress()
+		env.Logger().Info("type-fetch: module completed", "module", moduleName, "cached", moduleCached, "fetched", moduleFetched)
 	}
+	clearTypeFetchProgress()
+	env.Logger().Info("type-fetch: completed", "modules", processedModules, "cached", totalCached, "fetched", totalFetched)
 
 	if err := esmresolver.UpdateTsconfigPaths(tsconfigPath, allResults); err != nil {
 		env.Logger().Warn("type-fetch: update tsconfig failed", "path", tsconfigPath, "error", err)
