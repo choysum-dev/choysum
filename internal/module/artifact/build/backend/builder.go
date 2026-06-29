@@ -57,9 +57,6 @@ type ModuleBuilder struct {
 	tsPathAlias     map[string]string
 }
 
-func normalizeModuleSourcePath(path string) string {
-	return esbplugins.NormalizePath(path)
-}
 func pathWithinModuleRoot(path string, root string) bool {
 	return esbplugins.PathWithinRoot(path, root)
 }
