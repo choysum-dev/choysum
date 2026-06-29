@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -402,11 +403,16 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	// Rewire import/export module specifiers to local cache paths so TypeScript
 	// can follow the graph even when files are flattened into a shared cache dir.
 	rewritten := rewriteTypeImportSpecifiers(string(content), cacheFile, typesDir, resolvedImports)
+	rewritten = rewriteLocalCachedBridgeSpecifiers(rewritten)
+	rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
 	if rewritten != string(content) {
 		content = []byte(rewritten)
 		if err := writeTypeCacheFile(cacheFile, content); err != nil {
 			return nil, nil, err
 		}
+	}
+	if err := normalizeBridgeCachedTypeChildren(cacheFile, imports); err != nil {
+		return nil, nil, err
 	}
 
 	// On cache hits, avoid repeatedly traversing massive transitive graphs.
@@ -486,6 +492,232 @@ type typeImportRewriteSpan struct {
 	quote byte
 }
 
+var typeModuleAugmentationURLPattern = regexp.MustCompile(`(?m)declare\s+module\s+(['"])(https?://esm\.sh/[^'"]+)(['"])`)
+
+var typeModuleBridgePackages = map[string]struct{}{
+	"moment": {},
+	"pinia":  {},
+	"vue":    {},
+}
+
+func bridgedBareSpecifierForTypeURL(rawURL string) string {
+	pkg := esmTypeURLBarePackage(rawURL)
+	if pkg == "" {
+		return ""
+	}
+	if _, ok := typeModuleBridgePackages[pkg]; !ok {
+		return ""
+	}
+	return pkg
+}
+
+func esmTypeURLBarePackage(rawURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return ""
+	}
+	if parsed.Host != "esm.sh" {
+		return ""
+	}
+
+	path := strings.Trim(parsed.Path, "/")
+	if path == "" {
+		return ""
+	}
+
+	segments := strings.Split(path, "/")
+	if len(segments) == 0 {
+		return ""
+	}
+
+	first, err := url.PathUnescape(segments[0])
+	if err != nil {
+		first = segments[0]
+	}
+	first = strings.TrimSpace(first)
+	if first == "" {
+		return ""
+	}
+
+	candidate := first
+	if strings.HasPrefix(first, "@") {
+		if strings.Contains(first, "/") {
+			candidate = first
+		} else if len(segments) > 1 {
+			second, err := url.PathUnescape(segments[1])
+			if err != nil {
+				second = segments[1]
+			}
+			second = strings.TrimSpace(second)
+			if second != "" {
+				candidate = first + "/" + second
+			}
+		}
+	}
+
+	if at := strings.LastIndex(candidate, "@"); at > 0 {
+		candidate = candidate[:at]
+	}
+	return strings.TrimSpace(candidate)
+}
+
+func rewriteTypeModuleAugmentationSpecifiers(content string) string {
+	if strings.TrimSpace(content) == "" {
+		return content
+	}
+
+	return typeModuleAugmentationURLPattern.ReplaceAllStringFunc(content, func(match string) string {
+		sub := typeModuleAugmentationURLPattern.FindStringSubmatch(match)
+		if len(sub) != 4 {
+			return match
+		}
+
+		quote := sub[1]
+		rawURL := sub[2]
+		if sub[3] != quote {
+			return match
+		}
+		bridged := bridgedBareSpecifierForTypeURL(rawURL)
+		if bridged == "" {
+			return match
+		}
+
+		oldValue := quote + rawURL + quote
+		newValue := quote + bridged + quote
+		return strings.Replace(match, oldValue, newValue, 1)
+	})
+}
+
+func bridgedBareSpecifierForLocalCacheSpecifier(specifier string) string {
+	trimmed := strings.TrimSpace(filepath.ToSlash(specifier))
+	if trimmed == "" {
+		return ""
+	}
+	base := filepath.Base(trimmed)
+	if !strings.HasPrefix(base, "esm.sh_") {
+		return ""
+	}
+
+	rest := strings.TrimPrefix(base, "esm.sh_")
+	at := strings.Index(rest, "@")
+	if at <= 0 {
+		return ""
+	}
+	pkg := strings.TrimSpace(rest[:at])
+	if pkg == "" {
+		return ""
+	}
+	if _, ok := typeModuleBridgePackages[pkg]; !ok {
+		return ""
+	}
+	return pkg
+}
+
+func rewriteLocalCachedBridgeSpecifiers(content string) string {
+	spans := collectTypeImportRewriteSpans(content)
+	if len(spans) == 0 {
+		return content
+	}
+
+	sort.SliceStable(spans, func(i, j int) bool {
+		return spans[i].start > spans[j].start
+	})
+
+	out := content
+	for _, span := range spans {
+		bridged := bridgedBareSpecifierForLocalCacheSpecifier(span.value)
+		if bridged == "" {
+			continue
+		}
+		if span.start < 0 || span.end > len(out) || span.start >= span.end {
+			continue
+		}
+		quote := span.quote
+		if quote == 0 {
+			quote = '"'
+		}
+		replacement := string(quote) + bridged + string(quote)
+		out = out[:span.start] + replacement + out[span.end:]
+	}
+
+	return out
+}
+
+func shouldNormalizeBridgeChildCacheFile(specifier string) bool {
+	base := filepath.Base(filepath.ToSlash(strings.TrimSpace(specifier)))
+	if base == "" {
+		return false
+	}
+	for _, prefix := range []string{
+		"esm.sh_moment-timezone@",
+		"esm.sh_moment@",
+		"esm.sh_pinia-plugin-persistedstate@",
+		"esm.sh_pinia@",
+		"esm.sh_vue-router@",
+		"esm.sh_vue@",
+	} {
+		if strings.HasPrefix(base, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error {
+	cleanPath := filepath.Clean(filePath)
+	if cleanPath == "" {
+		return nil
+	}
+	if seen[cleanPath] {
+		return nil
+	}
+	seen[cleanPath] = true
+
+	contentBytes, err := os.ReadFile(cleanPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	content := string(contentBytes)
+
+	rewritten := rewriteLocalCachedBridgeSpecifiers(content)
+	rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
+	if rewritten != content {
+		if err := writeTypeCacheFile(cleanPath, []byte(rewritten)); err != nil {
+			return err
+		}
+	}
+
+	imports := parseDTSImports(rewritten)
+	for _, importPath := range imports {
+		if !isLocalCachedTypeSpecifier(importPath) || !shouldNormalizeBridgeChildCacheFile(importPath) {
+			continue
+		}
+		childPath := filepath.Clean(filepath.Join(filepath.Dir(cleanPath), filepath.FromSlash(importPath)))
+		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeBridgeCachedTypeChildren(cacheFile string, imports []string) error {
+	seen := map[string]bool{filepath.Clean(cacheFile): true}
+	for _, importPath := range imports {
+		if !isLocalCachedTypeSpecifier(importPath) || !shouldNormalizeBridgeChildCacheFile(importPath) {
+			continue
+		}
+		childPath := filepath.Clean(filepath.Join(filepath.Dir(cacheFile), filepath.FromSlash(importPath)))
+		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []resolvedTypeImport) string {
 	if len(imports) == 0 {
 		return content
@@ -493,6 +725,11 @@ func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []
 
 	rewriteMap := make(map[string]string, len(imports))
 	for _, imp := range imports {
+		if bridged := bridgedBareSpecifierForTypeURL(imp.ResolvedURL); bridged != "" {
+			rewriteMap[imp.Original] = bridged
+			continue
+		}
+
 		localPath := typeCachePathForURL(typesDir, imp.ResolvedURL)
 		rel, err := filepath.Rel(filepath.Dir(cacheFile), localPath)
 		if err != nil {
