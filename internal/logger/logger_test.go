@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -69,6 +70,23 @@ var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func stripANSI(in string) string {
 	return ansiRegexp.ReplaceAllString(in, "")
+}
+
+type concurrentBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (w *concurrentBuffer) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.Write(p)
+}
+
+func (w *concurrentBuffer) String() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.String()
 }
 
 func TestExtractPCFromErrorAndGetFileLineFromPC(t *testing.T) {
@@ -567,7 +585,7 @@ func TestProgressTicker_ClearSuppressesRedrawUntilNextMessage(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	stubConsoleTerminalWriter(t, true)
 
-	buf := bytes.NewBuffer(nil)
+	buf := &concurrentBuffer{}
 	line := NewProgressLine(buf)
 	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
 	defer ticker.Stop()
