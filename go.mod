@@ -18,7 +18,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/improbable-eng/grpc-web v0.15.0
-	github.com/minio/minio-go/v7 v7.2.0
+	github.com/minio/minio-go/v7 v7.2.1
 	github.com/mwitkow/grpc-proxy v0.0.0-20250813121105-2866842de9a5
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/otiai10/copy v1.14.1
@@ -46,7 +46,7 @@ require (
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/driver/sqlite v1.6.0
-	gorm.io/gorm v1.31.1
+	gorm.io/gorm v1.31.2
 )
 
 require (
@@ -93,7 +93,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0
-	go.yaml.in/yaml/v3 v3.0.4
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.37.0
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
