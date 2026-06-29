@@ -21,6 +21,9 @@ import (
 
 type Callbacks struct {
 	Logger *slog.Logger
+	// OnInstallProgress receives install-loop progress events for rendering
+	// interactive UI feedback (for example a single-line spinner).
+	OnInstallProgress func(progress ModuleInstallProgress)
 
 	ResolveInstallModuleFromOrigin func(ctx context.Context, name string) (*meta.IrModule, error)
 	ResolveInstalledModule         func(name string) (*meta.IrModule, error)
@@ -52,6 +55,27 @@ type Callbacks struct {
 	GenerateApp         func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error
 	BuildBackendBundles func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
 	GlobalWebBuild      func(ctx context.Context, distWebStagingDir string) error
+}
+
+// ModuleInstallProgressStage labels a discrete phase inside a module
+// install pipeline execution.
+type ModuleInstallProgressStage string
+
+const (
+	ModuleInstallProgressStageStarted   ModuleInstallProgressStage = "started"
+	ModuleInstallProgressStageCompleted ModuleInstallProgressStage = "completed"
+	ModuleInstallProgressStageFailed    ModuleInstallProgressStage = "failed"
+)
+
+// ModuleInstallProgress carries progress information for a single module
+// inside an install/uninstall/upgrade pipeline run.
+type ModuleInstallProgress struct {
+	Current  int
+	Total    int
+	Module   string
+	Stage    ModuleInstallProgressStage
+	Duration time.Duration
+	Err      error
 }
 
 // ModulesAppTargets describes per-application module output directories.
@@ -177,7 +201,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		if len(infoModules) > 0 {
 			attrs = append(attrs, "modules", infoModules)
 		}
-		logStep(slog.LevelInfo, "pipeline module stage started", attrs...)
+		logStep(slog.LevelDebug, "pipeline module stage started", attrs...)
 		return time.Now()
 	}
 	logModuleStageCompleted := func(started time.Time) {
@@ -189,7 +213,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			attrs = append(attrs, "modules", infoModules)
 		}
 		attrs = append(attrs, "duration", time.Since(started))
-		logStep(slog.LevelInfo, "pipeline module stage completed", attrs...)
+		logStep(slog.LevelDebug, "pipeline module stage completed", attrs...)
 	}
 
 	// generateModulesForApp stages and commits api outputs (proto/web/service/runtimeProto) for a single app.
@@ -363,7 +387,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if len(infoApps) > 0 {
 				attrs = append(attrs, "apps", infoApps)
 			}
-			logStep(slog.LevelInfo, "pipeline app stage started", attrs...)
+			logStep(slog.LevelDebug, "pipeline app stage started", attrs...)
 		}
 
 		type appStages struct {
@@ -605,7 +629,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				attrs = append(attrs, "apps", infoApps)
 			}
 			attrs = append(attrs, "duration", time.Since(appStageStarted))
-			logStep(slog.LevelInfo, "pipeline app stage completed", attrs...)
+			logStep(slog.LevelDebug, "pipeline app stage completed", attrs...)
 		}
 
 		// Phase 2: commit all apps after all succeeded.
@@ -823,7 +847,8 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		}
 		moduleStageStarted := logModuleStageStarted()
 		generated := map[string]bool{}
-		for _, name := range plan.ModuleOrder {
+		totalModules := len(plan.ModuleOrder)
+		for index, name := range plan.ModuleOrder {
 			if err := checkCtx(); err != nil {
 				return err
 			}
@@ -840,15 +865,62 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if mod == nil {
 				continue
 			}
+			moduleName := strings.TrimSpace(mod.Name)
+			if moduleName == "" {
+				moduleName = strings.TrimSpace(name)
+			}
+			if cb.OnInstallProgress != nil {
+				cb.OnInstallProgress(ModuleInstallProgress{
+					Current: index + 1,
+					Total:   totalModules,
+					Module:  moduleName,
+					Stage:   ModuleInstallProgressStageStarted,
+				})
+			}
+			installStarted := time.Now()
 			if err := cb.Install(mod); err != nil {
+				if cb.OnInstallProgress != nil {
+					cb.OnInstallProgress(ModuleInstallProgress{
+						Current:  index + 1,
+						Total:    totalModules,
+						Module:   moduleName,
+						Stage:    ModuleInstallProgressStageFailed,
+						Duration: time.Since(installStarted),
+						Err:      err,
+					})
+				}
 				return err
 			}
+			installDuration := time.Since(installStarted)
+			logStep(slog.LevelInfo, "module installed",
+				"installed_module", mod.Name,
+				"duration_ms", installDuration.Milliseconds(),
+			)
 			app := strings.TrimSpace(mod.ApplicationStr)
 			if app != "" && !generated[app] {
 				if err := generateModulesForApp(app); err != nil {
+					if cb.OnInstallProgress != nil {
+						cb.OnInstallProgress(ModuleInstallProgress{
+							Current:  index + 1,
+							Total:    totalModules,
+							Module:   moduleName,
+							Stage:    ModuleInstallProgressStageFailed,
+							Duration: installDuration,
+							Err:      err,
+						})
+					}
 					return err
 				}
 				generated[app] = true
+			}
+			if cb.OnInstallProgress != nil {
+				cb.OnInstallProgress(ModuleInstallProgress{
+					Current:  index + 1,
+					Total:    totalModules,
+					Module:   moduleName,
+					Stage:    ModuleInstallProgressStageCompleted,
+					Duration: installDuration,
+				})
 			}
 		}
 		logModuleStageCompleted(moduleStageStarted)
@@ -911,9 +983,14 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if mod == nil {
 				continue
 			}
+			upgradeStarted := time.Now()
 			if err := cb.Upgrade(mod); err != nil {
 				return err
 			}
+			logStep(slog.LevelInfo, "module upgraded",
+				"module", mod.Name,
+				"duration_ms", time.Since(upgradeStarted).Milliseconds(),
+			)
 		}
 		logModuleStageCompleted(moduleStageStarted)
 		return runAppStage()

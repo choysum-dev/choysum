@@ -6,6 +6,7 @@ package plan
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -57,6 +58,7 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.IrModule, r Resolver) 
 
 	switch op {
 	case OpInstall:
+		reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_dependencies", CurrentModule: strings.TrimSpace(root.Name)})
 		order, err := topoByDependsStr(ctx, root, r, addApp)
 		if err != nil {
 			return Plan{}, err
@@ -77,6 +79,7 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.IrModule, r Resolver) 
 
 	// If a web module is currently installed, keep global web build enabled.
 	// This is intentionally conservative because dist/web aggregates imports across modules/apps.
+	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_web_build"})
 	if !needsGlobalWebBuild {
 		webMod, err := r.Load("web")
 		if err != nil {
@@ -91,6 +94,7 @@ func BuildPlan(ctx context.Context, op OpType, root *meta.IrModule, r Resolver) 
 	for app := range apps {
 		plan.AffectedApps = append(plan.AffectedApps, app)
 	}
+	sort.Strings(plan.AffectedApps)
 
 	return plan, nil
 }
@@ -100,6 +104,8 @@ func topoByDependsStr(ctx context.Context, root *meta.IrModule, r Resolver, addA
 	stack := []string{}
 	onStack := map[string]bool{}
 	order := []string{}
+	resolvedModules := 0
+	resolvedDependencies := 0
 
 	var dfs func(mod *meta.IrModule) error
 	dfs = func(mod *meta.IrModule) error {
@@ -159,6 +165,13 @@ func topoByDependsStr(ctx context.Context, root *meta.IrModule, r Resolver, addA
 				continue
 			}
 			seen[dep] = true
+			resolvedDependencies++
+			reportBuildPlanProgress(ctx, BuildPlanProgress{
+				Step:                 "resolve_dependencies",
+				CurrentModule:        dep,
+				ResolvedModules:      resolvedModules,
+				ResolvedDependencies: resolvedDependencies,
+			})
 
 			depMod, err := r.Load(dep)
 			if err != nil {
@@ -177,6 +190,13 @@ func topoByDependsStr(ctx context.Context, root *meta.IrModule, r Resolver, addA
 
 		visited[name] = true
 		order = append(order, name)
+		resolvedModules++
+		reportBuildPlanProgress(ctx, BuildPlanProgress{
+			Step:                 "resolve_modules",
+			CurrentModule:        name,
+			ResolvedModules:      resolvedModules,
+			ResolvedDependencies: resolvedDependencies,
+		})
 		return nil
 	}
 

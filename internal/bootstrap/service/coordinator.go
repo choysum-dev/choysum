@@ -6,13 +6,16 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"os"
 	"strings"
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
 
+	"github.com/choysum-dev/choysum/internal/logger"
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	origincontract "github.com/choysum-dev/choysum/internal/module/origin/contract"
@@ -124,13 +127,7 @@ func (c *coordinator) startInitialization(ctx context.Context, input initializeI
 		return op, false, newBootstrapError(bootstrapErrCodeConflict, msg, nil)
 	case beginCreated:
 		if c.runtimeScope != nil && c.runtimeScope.Logger() != nil {
-			c.runtimeScope.Logger().Info(
-				"bootstrap initialization accepted",
-				"operation_id", op.OperationID,
-				"state", op.State.String(),
-				"stage", op.Stage.String(),
-				"duration_ms", int64(0),
-			)
+			c.runtimeScope.Logger().Info("bootstrap initialization started")
 		}
 		if ctx == nil {
 			ctx = context.Background()
@@ -232,10 +229,7 @@ func (c *coordinator) executeInitialization(ctx context.Context, operationID str
 		op, ok := c.store.getOperation(operationID)
 		if ok {
 			c.runtimeScope.Logger().Info(
-				"bootstrap initialization succeeded",
-				"operation_id", op.OperationID,
-				"state", op.State.String(),
-				"stage", op.Stage.String(),
+				"bootstrap initialization completed",
 				"duration_ms", c.operationDurationMs(op.CreatedAt),
 			)
 		}
@@ -487,6 +481,18 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	installTimeout := c.moduleInstallTimeout()
 	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
 	defer cancel()
+
+	progress := logger.NewProgressLine(os.Stderr)
+	installCtx = logger.WithProgressLine(installCtx, progress)
+	spinnerTicker := logger.NewProgressTicker(progress, logger.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+	defer spinnerTicker.Clear()
+	defer spinnerTicker.Stop()
+	installCtx = logger.WithProgressTicker(installCtx, spinnerTicker)
+
+	updateFetchProgressMessage := func(message string) {
+		spinnerTicker.SetMessage(message)
+	}
+
 	installCtx = origincontract.WithFetchProgressReporter(installCtx, func(stage origincontract.FetchProgressStage, moduleName string) {
 		moduleName = strings.TrimSpace(moduleName)
 		if moduleName == "" {
@@ -495,10 +501,13 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		switch stage {
 		case origincontract.FetchProgressStageDownload:
 			c.store.markStageDetail(operationID, "downloading module package: "+moduleName+"...")
+			updateFetchProgressMessage(fmt.Sprintf("%s: downloading from registry...", moduleName))
 		case origincontract.FetchProgressStageVerify:
 			c.store.markStageDetail(operationID, "verifying module package integrity: "+moduleName+"...")
+			updateFetchProgressMessage(fmt.Sprintf("%s: verifying package...", moduleName))
 		case origincontract.FetchProgressStageExtract:
 			c.store.markStageDetail(operationID, "extracting module package: "+moduleName+"...")
+			updateFetchProgressMessage(fmt.Sprintf("%s: extracting package...", moduleName))
 		default:
 			// Keep existing stage detail if unknown progress stage is received.
 		}
@@ -518,9 +527,13 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	defer executor.Stop()
 
 	c.store.markStageDetail(operationID, "resolving core module installation plan...")
+	spinnerTicker.SetMessage("document: preparing metadata tables")
 
 	moduleLifecycle := lifecycle.NewService(installScope, executor)
 	if err := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false}); err != nil {
+		if progress != nil {
+			progress.Done("✗", "core module installation failed")
+		}
 		// Classify the error to produce an actionable message.
 		if errors.Is(err, context.DeadlineExceeded) {
 			return newBootstrapError(

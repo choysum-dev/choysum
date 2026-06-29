@@ -90,7 +90,7 @@ func TestServerStopReloadCleansResources(t *testing.T) {
 func TestServerStartAndRestartLifecycle(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 
@@ -144,7 +144,7 @@ func TestServerStartAndRestartLifecycle(t *testing.T) {
 
 func TestServerStartWithAuthAndGrpcWebProxyRegistersJobToken(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = true
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Auth.Enabled = true
@@ -188,7 +188,7 @@ func TestServerStartWithAuthAndGrpcWebProxyRegistersJobToken(t *testing.T) {
 func TestServerRestartClearsProxyWhenGrpcWebProxyDisabled(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = true
 	runtimeScope.cfg.Server.HotReload = false
 
@@ -217,7 +217,7 @@ func TestServerRestartClearsProxyWhenGrpcWebProxyDisabled(t *testing.T) {
 
 func TestServerStartContinuesWhenJobTokenRegistryRegistrationFails(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 	runtimeScope.cfg.Auth.Enabled = true
@@ -292,7 +292,7 @@ func TestServerStartReturnsRegisterApplicationServicesError(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Compile.BundleMode = "application"
 	runtimeScope.cfg.DistPath = t.TempDir()
 
@@ -325,7 +325,7 @@ func TestServerRunStartupLifecycleResultSuccess(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Compile.BundleMode = "application"
 	runtimeScope.cfg.DistPath = t.TempDir()
 
@@ -411,7 +411,7 @@ func TestServerRunStartupLifecycleCarriesAuthDegradeSummary(t *testing.T) {
 	runtimeScope.cfg.Auth.Type = "missing"
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Compile.BundleMode = "application"
 	runtimeScope.cfg.DistPath = t.TempDir()
 
@@ -449,7 +449,7 @@ func TestServerStartReturnsJsExecutorStartError(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Compile.BundleMode = "application"
 	runtimeScope.cfg.DistPath = t.TempDir()
 
@@ -513,7 +513,7 @@ func TestServerStartReloadReturnsJsExecutorReloadError(t *testing.T) {
 	runtimeScope.cfg.Auth.Enabled = false
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = true
 	runtimeScope.cfg.Server.HotReload = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Compile.BundleMode = "application"
 	runtimeScope.cfg.DistPath = t.TempDir()
 
@@ -588,7 +588,7 @@ func TestServerRestartVariantsSurfaceReloadStartErrors(t *testing.T) {
 		t.Helper()
 		runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 		runtimeScope.cfg.Auth.Enabled = false
-		runtimeScope.cfg.Server.Port = 0
+		assignEphemeralServerPort(t, runtimeScope.cfg)
 		runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 		runtimeScope.cfg.Server.HotReload = false
 
@@ -637,7 +637,7 @@ func TestServerRestartVariantsSurfaceStopErrors(t *testing.T) {
 		t.Helper()
 		runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 		runtimeScope.cfg.Auth.Enabled = false
-		runtimeScope.cfg.Server.Port = 0
+		assignEphemeralServerPort(t, runtimeScope.cfg)
 		runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 		runtimeScope.cfg.Server.HotReload = false
 

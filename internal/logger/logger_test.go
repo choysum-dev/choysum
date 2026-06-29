@@ -5,6 +5,7 @@ package logger
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +14,9 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/pkg/config"
 )
@@ -68,6 +71,23 @@ var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
 func stripANSI(in string) string {
 	return ansiRegexp.ReplaceAllString(in, "")
+}
+
+type concurrentBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (w *concurrentBuffer) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.Write(p)
+}
+
+func (w *concurrentBuffer) String() string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.String()
 }
 
 func TestExtractPCFromErrorAndGetFileLineFromPC(t *testing.T) {
@@ -190,6 +210,93 @@ func TestNewHandlerAndLoggerWithWriter(t *testing.T) {
 	}
 	if handler := newHandler(testLogConfig("unknown", "error"), io.Discard); handler == nil {
 		t.Fatal("expected fallback text handler")
+	}
+}
+
+func TestProgressLineKeepsStructuredLogsOnSeparateLine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	if line == nil {
+		t.Fatal("expected progress line")
+	}
+
+	logger := NewLoggerWithWriter(testLogConfig("text", "info"), buf)
+	line.Update(0, "extracting package")
+	logger.Info("origin registry fetch completed", "module", "core")
+	line.Done("✓", "core module installation completed")
+
+	out := buf.String()
+	if strings.Contains(out, "extracting packagetime=") || strings.Contains(out, "extracting packagelevel=") {
+		t.Fatalf("expected spinner and structured log to stay on separate lines, got %q", out)
+	}
+	if !strings.Contains(out, "\r\x1b[K") {
+		t.Fatalf("expected progress barrier line clear before structured log, got %q", out)
+	}
+	if !strings.Contains(out, "msg=\"origin registry fetch completed\"") {
+		t.Fatalf("expected structured log output, got %q", out)
+	}
+}
+
+func TestProgressBarrierIsScopedPerWriter(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	stderrBuf := bytes.NewBuffer(nil)
+	stdoutBuf := bytes.NewBuffer(nil)
+
+	line := NewProgressLine(stderrBuf)
+	if line == nil {
+		t.Fatal("expected progress line")
+	}
+	line.Update(0, "fetching")
+
+	wrappedStdout := wrapProgressAwareWriter(stdoutBuf)
+	if _, err := wrappedStdout.Write([]byte("stdout message\n")); err != nil {
+		t.Fatalf("write stdout: %v", err)
+	}
+	if strings.Contains(stdoutBuf.String(), "\r\x1b[K") {
+		t.Fatalf("expected stdout stream to remain untouched by stderr progress barrier, got %q", stdoutBuf.String())
+	}
+
+	wrappedStderr := wrapProgressAwareWriter(stderrBuf)
+	if _, err := wrappedStderr.Write([]byte("stderr message\n")); err != nil {
+		t.Fatalf("write stderr: %v", err)
+	}
+	if got := strings.Count(stderrBuf.String(), "\r\x1b[K"); got < 2 {
+		t.Fatalf("expected stderr stream to include progress clear from wrapped write, got %q", stderrBuf.String())
+	}
+}
+
+func TestProgressTickerClearErasesRenderedLine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	if line == nil {
+		t.Fatal("expected progress line")
+	}
+
+	ticker := NewProgressTicker(line, ProgressTickerOptions{})
+	defer ticker.Stop()
+
+	ticker.SetMessage("installing")
+	before := strings.Count(buf.String(), "\r\x1b[K")
+	ticker.Clear()
+	after := strings.Count(buf.String(), "\r\x1b[K")
+	if after <= before {
+		t.Fatalf("expected Clear() to erase rendered line, got output %q", buf.String())
+	}
+}
+
+func TestUnwrapTerminalWriterPreservesUnderlyingWriter(t *testing.T) {
+	underlying := bytes.NewBuffer(nil)
+	wrapped := wrapProgressAwareWriter(underlying)
+	if got := unwrapTerminalWriter(wrapped); got != underlying {
+		t.Fatalf("unwrapTerminalWriter() = %#v, want %#v", got, underlying)
 	}
 }
 
@@ -361,5 +468,262 @@ func TestConsoleHandlerPlainErrorStaysSingleLine(t *testing.T) {
 	}
 	if strings.Contains(out, "\n  error:\n") {
 		t.Fatalf("expected plain error to avoid multiline trace block, got %q", out)
+	}
+}
+
+func TestNewProgressLine_NilWriterReturnsNil(t *testing.T) {
+	if line := NewProgressLine(nil); line != nil {
+		t.Fatal("expected nil ProgressLine for nil writer")
+	}
+}
+
+func TestProgressLine_NilReceiverMethodsAreNoops(t *testing.T) {
+	var line *ProgressLine
+	line.Update(0, "test") // should not panic
+	line.Clear()           // should not panic
+	line.Done("✓", "done") // should not panic
+}
+
+func TestProgressLine_NonTTYUpdateIsNoop(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	if line == nil {
+		t.Fatal("expected non-nil line")
+	}
+	line.Update(0, "should not appear")
+	if out := buf.String(); out != "" {
+		t.Fatalf("expected empty output for non-TTY Update, got %q", out)
+	}
+}
+
+func TestProgressLine_NonTTYClearIsNoop(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	line.Clear()
+	if out := buf.String(); out != "" {
+		t.Fatalf("expected empty output for non-TTY Clear, got %q", out)
+	}
+}
+
+func TestProgressLine_NonTTYDoneUsesPlainPrintln(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	line.Done("✓", "installation complete")
+	out := buf.String()
+	if !strings.Contains(out, "✓ installation complete") {
+		t.Fatalf("expected symbol-preserving plain Done output, got %q", out)
+	}
+	if !strings.Contains(out, "installation complete") {
+		t.Fatalf("expected plain Done output, got %q", out)
+	}
+	if strings.Contains(out, "\r\x1b[K") {
+		t.Fatalf("expected non-TTY Done to avoid escape sequences, got %q", out)
+	}
+}
+
+func TestProgressTicker_SetMessageOnNilTickerIsNoop(t *testing.T) {
+	var ticker *ProgressTicker
+	ticker.SetMessage("test") // should not panic
+}
+
+func TestProgressTicker_ClearOnNilTickerIsNoop(t *testing.T) {
+	var ticker *ProgressTicker
+	ticker.Clear() // should not panic
+}
+
+func TestProgressTicker_StopOnNilTickerIsNoop(t *testing.T) {
+	var ticker *ProgressTicker
+	ticker.Stop() // should not panic
+}
+
+func TestNewProgressTicker_NilLineSkipsBackgroundGoroutine(t *testing.T) {
+	ticker := NewProgressTicker(nil, ProgressTickerOptions{
+		Interval: 10 * time.Millisecond,
+		OnTick:   func(now time.Time, message string) {},
+	})
+	if ticker.stopCh != nil || ticker.doneCh != nil {
+		t.Fatalf("expected nil channels when no background goroutine starts, stopCh=%v doneCh=%v", ticker.stopCh, ticker.doneCh)
+	}
+	// Nil line means no background goroutine: Stop/Clear must be safe no-ops.
+	ticker.Stop()
+	ticker.Clear()
+}
+
+func TestNewProgressTicker_NonTTYLineWithoutOnTickSkipsBackgroundGoroutine(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	if ticker.stopCh != nil || ticker.doneCh != nil {
+		t.Fatalf("expected nil channels when non-TTY ticker has no callback, stopCh=%v doneCh=%v", ticker.stopCh, ticker.doneCh)
+	}
+	// Non-TTY with no callback means no background goroutine: Stop/Clear remain safe no-ops.
+	ticker.Stop()
+	ticker.Clear()
+}
+
+func TestProgressTicker_StopStopsBackgroundRedraws(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	ticker.SetMessage("running")
+	time.Sleep(50 * time.Millisecond)
+	ticker.Stop()
+	beforeStop := strings.Count(buf.String(), "\r\x1b[K")
+	time.Sleep(50 * time.Millisecond)
+	afterStop := strings.Count(buf.String(), "\r\x1b[K")
+	if afterStop != beforeStop {
+		t.Fatalf("expected no further redraws after Stop(), before=%d after=%d", beforeStop, afterStop)
+	}
+}
+
+func TestProgressTicker_ClearAfterStopIsIdempotent(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	ticker.SetMessage("running")
+	ticker.Stop()
+	ticker.Clear() // should not panic or redraw after stop
+}
+
+func TestProgressTicker_ClearSuppressesRedrawUntilNextMessage(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, true)
+
+	buf := &concurrentBuffer{}
+	line := NewProgressLine(buf)
+	ticker := NewProgressTicker(line, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	defer ticker.Stop()
+
+	ticker.SetMessage("running")
+	time.Sleep(40 * time.Millisecond)
+	ticker.Clear()
+	afterClear := strings.Count(buf.String(), "\r\x1b[K")
+	time.Sleep(40 * time.Millisecond)
+	afterWait := strings.Count(buf.String(), "\r\x1b[K")
+	if afterWait != afterClear {
+		t.Fatalf("expected no redraw after Clear() without a new message, before=%d after=%d", afterClear, afterWait)
+	}
+
+	ticker.SetMessage("resume")
+	afterResume := strings.Count(buf.String(), "\r\x1b[K")
+	if afterResume <= afterWait {
+		t.Fatalf("expected redraw after SetMessage(), before=%d after=%d", afterWait, afterResume)
+	}
+}
+
+func TestWithProgressTicker_NilTickerReturnsInput(t *testing.T) {
+	ctx := context.Background()
+	result := WithProgressTicker(ctx, nil)
+	if result != ctx {
+		t.Fatal("expected WithProgressTicker with nil ticker to return input context")
+	}
+	if ProgressTickerFromContext(ctx) != nil {
+		t.Fatal("expected nil-ticker context to return nil")
+	}
+}
+
+func TestWithProgressTicker_NilContextUsesBackground(t *testing.T) {
+	ticker := NewProgressTicker(nil, ProgressTickerOptions{Interval: 10 * time.Millisecond})
+	if ticker == nil {
+		t.Fatal("expected non-nil ticker")
+	}
+	ctx := WithProgressTicker(nil, ticker)
+	if ctx == nil {
+		t.Fatal("expected non-nil context when input is nil")
+	}
+	if got := ProgressTickerFromContext(ctx); got != ticker {
+		t.Fatalf("expected ticker roundtrip, got %#v", got)
+	}
+}
+
+func TestProgressTickerFromContext_MissingKeyReturnsNil(t *testing.T) {
+	if got := ProgressTickerFromContext(nil); got != nil {
+		t.Fatalf("expected nil for nil context, got %#v", got)
+	}
+	if got := ProgressTickerFromContext(context.Background()); got != nil {
+		t.Fatalf("expected nil for context without ticker, got %#v", got)
+	}
+}
+
+func TestWithProgressLine_NilLineReturnsInput(t *testing.T) {
+	ctx := context.Background()
+	result := WithProgressLine(ctx, nil)
+	if result != ctx {
+		t.Fatal("expected WithProgressLine with nil line to return input context")
+	}
+	if ProgressLineFromContext(ctx) != nil {
+		t.Fatal("expected nil-line context to return nil")
+	}
+}
+
+func TestWithProgressLine_NilContextUsesBackground(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+	line := NewProgressLine(bytes.NewBuffer(nil))
+	ctx := WithProgressLine(nil, line)
+	if ctx == nil {
+		t.Fatal("expected non-nil context when input is nil")
+	}
+	if got := ProgressLineFromContext(ctx); got != line {
+		t.Fatalf("expected line roundtrip, got %#v", got)
+	}
+}
+
+func TestProgressLineFromContext_MissingKeyReturnsNil(t *testing.T) {
+	if got := ProgressLineFromContext(nil); got != nil {
+		t.Fatalf("expected nil for nil context, got %#v", got)
+	}
+	if got := ProgressLineFromContext(context.Background()); got != nil {
+		t.Fatalf("expected nil for context without line, got %#v", got)
+	}
+}
+
+func TestProgressAwareWriter_UnwrapNilReceiver(t *testing.T) {
+	var w *progressAwareWriter
+	if got := w.Unwrap(); got != nil {
+		t.Fatalf("expected nil from nil receiver Unwrap, got %#v", got)
+	}
+}
+
+func TestWrapProgressAwareWriter_DoubleWrapIdempotent(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	first := wrapProgressAwareWriter(buf)
+	second := wrapProgressAwareWriter(first)
+	if first != second {
+		t.Fatal("expected double-wrap to be idempotent")
+	}
+}
+
+func TestProgressLine_DoneWithEmptySymbolUsesPlainFormat(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	stubConsoleTerminalWriter(t, false)
+
+	buf := bytes.NewBuffer(nil)
+	line := NewProgressLine(buf)
+	line.Done("", "task complete")
+	out := buf.String()
+	if !strings.Contains(out, "task complete") {
+		t.Fatalf("expected plain Done output, got %q", out)
+	}
+	if strings.Contains(out, "\r\x1b[K") {
+		t.Fatalf("expected non-TTY Done with empty symbol to avoid escape sequences, got %q", out)
 	}
 }

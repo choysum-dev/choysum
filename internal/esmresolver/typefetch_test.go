@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,7 +17,38 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 )
+
+type typeFetchErrorRoundTripper struct{}
+
+func (typeFetchErrorRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("network blocked in test")
+}
+
+func captureTypeFetchStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	defer r.Close()
+
+	oldStderr := os.Stderr
+	os.Stderr = w
+	defer func() { os.Stderr = oldStderr }()
+
+	fn()
+	if err := w.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+	data, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("read stderr: %v", err)
+	}
+	return string(data)
+}
 
 func TestReadPackageJSON(t *testing.T) {
 	dir := t.TempDir()
@@ -411,6 +443,118 @@ func TestFetchTypesForModule(t *testing.T) {
 		if r.FromCache {
 			t.Fatalf("expected download for %s@%s", r.Package, r.Version)
 		}
+	}
+}
+
+func TestBeginTypeFetchTransitiveProgress_FallbackLogs(t *testing.T) {
+	output := captureTypeFetchStderr(t, func() {
+		updateProgress, stopProgress := beginTypeFetchTransitiveProgress(context.Background(), "pkg", 400, true)
+		updateProgress(199)
+		updateProgress(200)
+		updateProgress(400)
+		stopProgress()
+	})
+
+	for _, want := range []string{
+		"[esm-type-fetch] info: pkg has 400 transitive type imports",
+		"[esm-type-fetch] info: pkg transitive progress 200/400",
+		"[esm-type-fetch] info: pkg transitive progress 400/400",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected stderr to contain %q, got %q", want, output)
+		}
+	}
+}
+
+func TestBeginTypeFetchTransitiveProgress_WithContextTickerSuppressesFallbackOutput(t *testing.T) {
+	ticker := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	ctx := logutil.WithProgressTicker(context.Background(), ticker)
+
+	output := captureTypeFetchStderr(t, func() {
+		updateProgress, stopProgress := beginTypeFetchTransitiveProgress(ctx, "pkg", 400, true)
+		updateProgress(200)
+		stopProgress()
+	})
+
+	if strings.TrimSpace(output) != "" {
+		t.Fatalf("expected no fallback stderr output with context ticker, got %q", output)
+	}
+}
+
+func TestFetchTypesForModuleWithState_WarnOutputWithoutVerboseStartDone(t *testing.T) {
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "warnmod")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("mkdir module dir: %v", err)
+	}
+	pkg := &PackageJSON{Dependencies: map[string]string{"dep": "1.0.0"}}
+	data, _ := json.Marshal(pkg)
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), data, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	ticker := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	ctx := logutil.WithProgressTicker(context.Background(), ticker)
+	client := &http.Client{Transport: typeFetchErrorRoundTripper{}}
+
+	var (
+		results []TypeFetchResult
+		runErr  error
+	)
+	output := captureTypeFetchStderr(t, func() {
+		results, runErr = fetchTypesForModuleWithState(ctx, client, "https://esm.sh", filepath.Join(dir, "types"), moduleDir, nil)
+	})
+
+	if runErr != nil {
+		t.Fatalf("fetchTypesForModuleWithState error = %v", runErr)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected no results on network-blocked dependency fetch, got %d", len(results))
+	}
+	if !strings.Contains(output, "[esm-type-fetch] warn: [warnmod] dep@1.0.0") {
+		t.Fatalf("expected warn output to include module-scoped package message, got %q", output)
+	}
+	if strings.Contains(output, ") start ") || strings.Contains(output, ") done ") {
+		t.Fatalf("expected start/done verbose lines to be suppressed, got %q", output)
+	}
+}
+
+func TestFetchTypesForModuleWithState_CachedDependency(t *testing.T) {
+	dir := t.TempDir()
+	moduleDir := filepath.Join(dir, "cachedmod")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("mkdir module dir: %v", err)
+	}
+	pkg := &PackageJSON{Dependencies: map[string]string{"dep": "1.0.0"}}
+	data, _ := json.Marshal(pkg)
+	if err := os.WriteFile(filepath.Join(moduleDir, "package.json"), data, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	typesDir := filepath.Join(dir, "types")
+	cacheFile := filepath.Join(typesDir, "dep@1.0.0.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
+		t.Fatalf("mkdir cache dir: %v", err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("export declare const x: number;"), 0o644); err != nil {
+		t.Fatalf("write cache file: %v", err)
+	}
+
+	ticker := logutil.NewProgressTicker(nil, logutil.ProgressTickerOptions{})
+	defer ticker.Stop()
+	ctx := logutil.WithProgressTicker(context.Background(), ticker)
+
+	results, err := fetchTypesForModuleWithState(ctx, nil, "https://esm.sh", typesDir, moduleDir, nil)
+	if err != nil {
+		t.Fatalf("fetchTypesForModuleWithState error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 cached result, got %d", len(results))
+	}
+	if !results[0].FromCache {
+		t.Fatalf("expected cached result, got %#v", results[0])
 	}
 }
 

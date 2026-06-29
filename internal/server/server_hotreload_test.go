@@ -352,7 +352,7 @@ func TestServerServeRestartSuccessLogIncludesWatchCounters(t *testing.T) {
 	baseScope.logger = slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	runtimeScope := (&noSessionServerScope{serverTestScope: baseScope}).WithContext(context.Background()).(*noSessionServerScope)
 	runtimeScope.cfg.Auth.Enabled = false
-	runtimeScope.cfg.Server.Port = 0
+	assignEphemeralServerPort(t, runtimeScope.cfg)
 	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
 	runtimeScope.cfg.Server.HotReload = false
 

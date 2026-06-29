@@ -83,6 +83,10 @@ func (s *GRPCWebServer) stop(reload bool) error {
 	s.stopGRPCTransport()
 	s.stopTelemetryRuntime()
 
-	s.runtimeScope.Logger().Info("server stopped")
+	if reload {
+		s.runtimeScope.Logger().Info("server restarting")
+	} else {
+		s.runtimeScope.Logger().Info("server stopped")
+	}
 	return nil
 }

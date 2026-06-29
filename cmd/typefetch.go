@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/esmresolver"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -125,20 +127,44 @@ When <app> is specified, fetches types for that module only.`,
 				ctx = context.Background()
 			}
 
+			var spinnerTicker *logutil.ProgressTicker
+			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine != nil && progressLine.IsTTY() {
+				spinnerTicker = logutil.NewProgressTicker(progressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+				defer spinnerTicker.Clear()
+				defer spinnerTicker.Stop()
+				ctx = logutil.WithProgressTicker(ctx, spinnerTicker)
+			}
+			setCommandProgress := func(message string) {
+				if spinnerTicker == nil {
+					return
+				}
+				spinnerTicker.SetMessage(message)
+			}
+			clearCommandProgress := func() {
+				if spinnerTicker == nil {
+					return
+				}
+				spinnerTicker.Clear()
+			}
+
 			session := esmresolver.NewTypeFetchSession(0)
 
 			totalCached := 0
 			totalFetched := 0
 			var allResults []esmresolver.TypeFetchResult
 
-			for _, appName := range appNames {
+			for i, appName := range appNames {
 				if err := ctx.Err(); err != nil {
 					return err
 				}
 				moduleDir := filepath.Join(modulesPath, appName)
-				cmd.Printf("[%s] fetching dependency types...\n", appName)
+				setCommandProgress(fmt.Sprintf("[%s] fetching dependency types (%d/%d)", appName, i+1, len(appNames)))
 				results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
 				if err != nil {
+					clearCommandProgress()
+					if ctxErr := ctx.Err(); ctxErr != nil {
+						return ctxErr
+					}
 					cmd.Printf("[%s] error: %v\n", appName, err)
 					// When the user explicitly targets a single app (not --all),
 					// any failure should be fatal so the caller gets a non-zero
@@ -148,20 +174,22 @@ When <app> is specified, fetches types for that module only.`,
 					}
 					continue
 				}
+				appCached := 0
+				appFetched := 0
 				for _, r := range results {
 					if r.FromCache {
 						totalCached++
-						cmd.Printf("[%s] cached %s@%s → %s\n", appName, r.Package, r.Version, r.CachedPath)
+						appCached++
 					} else {
 						totalFetched++
-						cmd.Printf("[%s] fetched %s@%s → %s\n", appName, r.Package, r.Version, r.CachedPath)
+						appFetched++
 					}
 				}
 				allResults = append(allResults, results...)
-				if len(results) == 0 {
-					cmd.Printf("[%s] no dependencies found\n", appName)
-				}
+				clearCommandProgress()
+				cmd.Printf("[%s] completed: %d cached, %d fetched\n", appName, appCached, appFetched)
 			}
+			clearCommandProgress()
 
 			cmd.Printf("\nType fetch complete: %d cached, %d fetched.\n", totalCached, totalFetched)
 			cmd.Printf("Types directory: %s\n", typesDir)

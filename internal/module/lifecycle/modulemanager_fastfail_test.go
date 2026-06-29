@@ -118,6 +118,21 @@ func TestModuleManagerUpgradeFastFailWhenLocalModuleMissing(t *testing.T) {
 	}
 }
 
+func TestModuleManagerMigrateBaseModuleSucceedsWithValidDB(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+
+	if err := manager.migrateBaseModule(); err != nil {
+		t.Fatalf("migrateBaseModule() error = %v", err)
+	}
+	// Second call must be idempotent.
+	if err := manager.migrateBaseModule(); err != nil {
+		t.Fatalf("second migrateBaseModule() error = %v", err)
+	}
+}
+
 func TestModuleManagerUpgradeFastFailWhenRegistryPeekFails(t *testing.T) {
 	db := newModuleIndexSyncDB(t)
 	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)

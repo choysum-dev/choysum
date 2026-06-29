@@ -119,6 +119,8 @@ const redirectCountdown = ref<number | null>(null);
 const failureCode = ref('');
 const failureDetails = ref('');
 
+const initializationPollMaxDurationMs = 30 * 60 * 1000;
+
 const canSubmit = computed(() => adminUsername.value.trim().length > 0 && password.value.length > 0);
 const isRedirectingAfterSuccess = computed(() => redirectCountdown.value !== null);
 const hasFailureState = computed(() => latestStatus.value?.state === InitializationState.FAILED || failureCode.value !== '' || failureDetails.value !== '');
@@ -354,8 +356,9 @@ async function redirectToLoginWithCountdown(targetUrl: string, seconds = 3): Pro
 async function pollInitialization(currentOperationId: string, nextPollAfterMs: bigint): Promise<void> {
   let pollMs = toPollMs(nextPollAfterMs);
   let consecutiveTransientErrors = 0;
+  const pollStartedAt = Date.now();
 
-  for (let attempt = 0; attempt < 120; attempt++) {
+  while (Date.now() - pollStartedAt < initializationPollMaxDurationMs) {
     await delay(pollMs);
 
     let status: InitializationStatus;
@@ -402,7 +405,7 @@ async function pollInitialization(currentOperationId: string, nextPollAfterMs: b
   }
 
   setFailureState('Setup is taking longer than expected.', {
-    details: 'Refresh the page and check the latest setup status before trying again.',
+    details: 'Refresh the page to continue tracking the latest setup status.',
   });
 }
 

@@ -149,7 +149,7 @@ func TestServerMoreHTTPAndProtocolRouterPaths(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	if err := startSrv.startHTTPServer(http.NotFoundHandler()); err != nil {
+	if err := startSrv.startHTTPServer(http.NotFoundHandler(), false); err != nil {
 		t.Fatalf("startHTTPServer() error = %v", err)
 	}
 	if startSrv.listener == nil || startSrv.httpServer == nil {
@@ -189,7 +189,7 @@ func TestServerMoreHTTPAndProtocolRouterPaths(t *testing.T) {
 	}
 	if err := tlsSrv.startHTTPServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-	})); err != nil {
+	}), false); err != nil {
 		t.Fatalf("startHTTPServer() with TLS error = %v", err)
 	}
 	if tlsSrv.listener != tlsListener {

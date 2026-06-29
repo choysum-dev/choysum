@@ -137,7 +137,9 @@ func TestBuildPlanInstallDependencyErrors(t *testing.T) {
 			name: "peek dependency error",
 			root: &meta.IrModule{Name: "auth", DependsStr: []byte(` ["dep"] `)},
 			res: fakeResolver{
-				peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, errors.New("peek dep failed") },
+				peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+					return nil, errors.New("peek dep failed")
+				},
 			},
 			want: "peek dependency dep: peek dep failed",
 		},
@@ -334,5 +336,108 @@ func TestBuildPlan_UninstallDetectsDependentCycle(t *testing.T) {
 	_, err := BuildPlan(context.Background(), OpUninstall, root, r)
 	if err == nil || err.Error() != "dependent cycle detected: base -> auth -> base" {
 		t.Fatalf("unexpected uninstall cycle error: %v", err)
+	}
+}
+
+func TestBuildPlan_AffectedAppsSortedForStableLogs(t *testing.T) {
+	root := &meta.IrModule{
+		Name:           "root",
+		ApplicationStr: "zeta",
+		DependsStr:     []byte(` ["dep_b", "dep_a", "webmod"] `),
+	}
+	r := fakeResolver{
+		peek: func(ctx context.Context, name string) (*meta.IrModule, error) {
+			switch name {
+			case "dep_a":
+				return &meta.IrModule{Name: "dep_a", ApplicationStr: "alpha"}, nil
+			case "dep_b":
+				return &meta.IrModule{Name: "dep_b", ApplicationStr: "beta"}, nil
+			case "webmod":
+				return &meta.IrModule{Name: "webmod", ApplicationStr: "web", WebEntryPoint: "web/index.ts"}, nil
+			default:
+				return nil, nil
+			}
+		},
+		load: func(name string) (*meta.IrModule, error) { return nil, nil },
+	}
+
+	plan, err := BuildPlan(context.Background(), OpInstall, root, r)
+	if err != nil {
+		t.Fatalf("BuildPlan error: %v", err)
+	}
+
+	if len(plan.AffectedApps) != 3 {
+		t.Fatalf("expected 3 affected apps, got %v", plan.AffectedApps)
+	}
+	want := []string{"alpha", "beta", "zeta"}
+	for i := range want {
+		if plan.AffectedApps[i] != want[i] {
+			t.Fatalf("expected sorted affected apps %v, got %v", want, plan.AffectedApps)
+		}
+	}
+}
+
+func TestWithBuildPlanProgressReporter_NilReporterReturnsSameCtx(t *testing.T) {
+	ctx := context.Background()
+	result := WithBuildPlanProgressReporter(ctx, nil)
+	if result != ctx {
+		t.Fatal("expected same ctx when reporter is nil")
+	}
+}
+
+func TestWithBuildPlanProgressReporter_NilContextUsesBackground(t *testing.T) {
+	result := WithBuildPlanProgressReporter(nil, func(progress BuildPlanProgress) {})
+	if result == nil {
+		t.Fatal("expected non-nil ctx when input ctx is nil")
+	}
+	reporter := BuildPlanProgressReporterFromContext(result)
+	if reporter == nil {
+		t.Fatal("expected reporter stored in ctx")
+	}
+}
+
+func TestBuildPlanProgressReporterFromContext_NilContext(t *testing.T) {
+	reporter := BuildPlanProgressReporterFromContext(nil)
+	if reporter != nil {
+		t.Fatal("expected nil reporter from nil context")
+	}
+}
+
+func TestBuildPlanProgressReporterFromContext_MissingReporter(t *testing.T) {
+	reporter := BuildPlanProgressReporterFromContext(context.Background())
+	if reporter != nil {
+		t.Fatal("expected nil reporter when none stored")
+	}
+}
+
+func TestBuildPlanProgressReporterFromContext_StoredReporter(t *testing.T) {
+	var received BuildPlanProgress
+	ctx := WithBuildPlanProgressReporter(context.Background(), func(p BuildPlanProgress) {
+		received = p
+	})
+	reporter := BuildPlanProgressReporterFromContext(ctx)
+	if reporter == nil {
+		t.Fatal("expected stored reporter")
+	}
+	reporter(BuildPlanProgress{Step: "test_step", CurrentModule: "test_module"})
+	if received.Step != "test_step" || received.CurrentModule != "test_module" {
+		t.Fatalf("reporter received = %+v, want step=test_step module=test_module", received)
+	}
+}
+
+func TestReportBuildPlanProgress_NoReporterStored(t *testing.T) {
+	// Should not panic when no reporter is in context.
+	reportBuildPlanProgress(context.Background(), BuildPlanProgress{Step: "nop"})
+}
+
+func TestReportBuildPlanProgress_WithReporter(t *testing.T) {
+	var steps []string
+	ctx := WithBuildPlanProgressReporter(context.Background(), func(p BuildPlanProgress) {
+		steps = append(steps, p.Step)
+	})
+	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "resolve_dependencies"})
+	reportBuildPlanProgress(ctx, BuildPlanProgress{Step: "topological_sort"})
+	if len(steps) != 2 || steps[0] != "resolve_dependencies" || steps[1] != "topological_sort" {
+		t.Fatalf("steps = %v, want [resolve_dependencies, topological_sort]", steps)
 	}
 }

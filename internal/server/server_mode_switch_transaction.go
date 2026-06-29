@@ -10,6 +10,7 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/distmanifest"
 	"github.com/choysum-dev/choysum/internal/server/runplan"
+	"github.com/choysum-dev/choysum/internal/server/transport"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
@@ -78,7 +79,33 @@ func (s *GRPCWebServer) requestBootstrapModeSwitch(ctx context.Context) error {
 		result.logFields()...,
 	)
 
+	s.runtimeScope.Logger().Info("application server ready", s.applicationServerReadyLogFields()...)
+
 	return nil
+}
+
+func (s *GRPCWebServer) applicationServerReadyLogFields() []any {
+	configuredAddress := ""
+	if s != nil && s.address != nil {
+		configuredAddress = strings.TrimSpace(s.address.Addr)
+	}
+	listenAddress := configuredAddress
+	if s != nil && s.listener != nil && s.listener.Addr() != nil {
+		listenAddress = strings.TrimSpace(s.listener.Addr().String())
+	}
+	if listenAddress == "" {
+		return nil
+	}
+
+	scheme := "http"
+	if s != nil && s.resolvedRuntimeOptions().enabledTLS {
+		scheme = "https"
+	}
+	fields := []any{"address", listenAddress}
+	if accessURL := transport.HTTPServerAccessURL(configuredAddress, listenAddress, scheme); accessURL != "" {
+		fields = append(fields, "access_url", accessURL)
+	}
+	return fields
 }
 
 func (r bootstrapModeSwitchResult) logFields() []any {
