@@ -370,8 +370,8 @@ func TestNewTypeFetchCmd_Run_SingleModuleCachedSummary(t *testing.T) {
 	output := out.String()
 	for _, want := range []string{
 		"Ensured tsconfig exists:",
-		"[app] completed: 1 cached, 0 fetched",
-		"Type fetch complete: 1 cached, 0 fetched.",
+		"[app] completed: direct targets=1 (cached=1, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)",
+		"Type fetch complete: direct targets=1 (cached=1, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0).",
 	} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected output to contain %q, got %q", want, output)
@@ -398,7 +398,7 @@ func TestNewTypeFetchCmd_Run_SingleModuleNoDependenciesUsesNeutralSummary(t *tes
 	}
 
 	output := out.String()
-	if !strings.Contains(output, "[empty] completed: 0 cached, 0 fetched") {
+	if !strings.Contains(output, "[empty] completed: direct targets=0 (cached=0, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)") {
 		t.Fatalf("expected neutral zero-result summary, got %q", output)
 	}
 	if strings.Contains(output, "no dependencies found") {
@@ -424,8 +424,260 @@ func TestNewTypeFetchCmd_Run_OfflineSingleAppReturnsError(t *testing.T) {
 	if !strings.Contains(err.Error(), "parse package.json") {
 		t.Fatalf("expected parse package.json error, got %v", err)
 	}
-	if !strings.Contains(out.String(), "[broken] error:") {
-		t.Fatalf("expected command output to include broken app error, got %q", out.String())
+	if !strings.Contains(out.String(), "resolve module depends closure") {
+		t.Fatalf("expected command output to include closure resolution error, got %q", out.String())
+	}
+}
+
+func TestNewTypeFetchCmd_Run_SingleModuleIncludesDependsClosureByDefault(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+	writeCommandPackage(t, modulesPath, "base", `{"dependencies":{"dep":"1.0.0"}}`)
+
+	typesDir := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types")
+	cacheFile := filepath.Join(typesDir, "dep@1.0.0.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
+		t.Fatalf("mkdir cache dir: %v", err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("export declare const x: number;"), 0o644); err != nil {
+		t.Fatalf("write cache file: %v", err)
+	}
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"auth", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	for _, want := range []string{
+		"[auth] completed: direct targets=0 (cached=0, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)",
+		"[base] completed: direct targets=1 (cached=1, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)",
+		"Type fetch complete: direct targets=1 (cached=1, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0).",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected output to contain %q, got %q", want, output)
+		}
+	}
+}
+
+func TestNewTypeFetchCmd_Run_SingleModuleMissingDependsDefaultError(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	cmd.SetArgs([]string{"auth", "--offline"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected missing depends modules error")
+	}
+	if !strings.Contains(err.Error(), "missing depends modules") || !strings.Contains(err.Error(), "base") {
+		t.Fatalf("expected missing depends modules error for base, got %v", err)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_SingleModuleMissingDependsWarn(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"auth", "--offline", "--missing-dep-policy", "warn"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if !strings.Contains(output, "Warning: missing depends modules (skipped): base") {
+		t.Fatalf("expected warning for missing depends module, got %q", output)
+	}
+	if !strings.Contains(output, "[auth] completed: direct targets=0 (cached=0, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)") {
+		t.Fatalf("expected auth summary line, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_SingleModuleWithDependsDisabledSkipsClosure(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"auth", "--offline", "--with-depends=false"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if strings.Contains(output, "missing depends modules") {
+		t.Fatalf("expected no missing depends warning, got %q", output)
+	}
+	if !strings.Contains(output, "[auth] completed: direct targets=0 (cached=0, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)") {
+		t.Fatalf("expected auth summary line, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_InvalidMissingDepPolicy(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	cmd.SetArgs([]string{"auth", "--offline", "--missing-dep-policy", "skip"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected invalid missing-dep-policy error")
+	}
+	if !strings.Contains(err.Error(), "invalid --missing-dep-policy") {
+		t.Fatalf("expected invalid policy error, got %v", err)
+	}
+}
+
+func TestResolveTypeFetchDependsClosure_RejectsTraversalDependsPath(t *testing.T) {
+	modulesPath := t.TempDir()
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["../escape"]}}`)
+
+	_, _, err := resolveTypeFetchDependsClosure(modulesPath, "auth")
+	if err == nil {
+		t.Fatal("expected traversal depends module path to be rejected")
+	}
+	if !strings.Contains(err.Error(), `invalid module path "../escape"`) {
+		t.Fatalf("expected invalid module path error, got %v", err)
+	}
+}
+
+func TestTypeFetchModulePackagePath(t *testing.T) {
+	modulesPath := t.TempDir()
+
+	t.Run("resolves module package path inside modules root", func(t *testing.T) {
+		got, err := typeFetchModulePackagePath(modulesPath, "auth")
+		if err != nil {
+			t.Fatalf("typeFetchModulePackagePath error: %v", err)
+		}
+		want := filepath.Join(modulesPath, "auth", "package.json")
+		if filepath.Clean(got) != filepath.Clean(want) {
+			t.Fatalf("unexpected package path: got %s want %s", got, want)
+		}
+	})
+
+	t.Run("rejects empty modules path", func(t *testing.T) {
+		_, err := typeFetchModulePackagePath("", "auth")
+		if err == nil || !strings.Contains(err.Error(), "modules path is required") {
+			t.Fatalf("expected modules path required error, got %v", err)
+		}
+	})
+
+	t.Run("rejects empty module name", func(t *testing.T) {
+		_, err := typeFetchModulePackagePath(modulesPath, "")
+		if err == nil || !strings.Contains(err.Error(), "module name is required") {
+			t.Fatalf("expected module name required error, got %v", err)
+		}
+	})
+
+	t.Run("rejects traversal module path", func(t *testing.T) {
+		_, err := typeFetchModulePackagePath(modulesPath, "../escape")
+		if err == nil || !strings.Contains(err.Error(), `invalid module path "../escape"`) {
+			t.Fatalf("expected invalid module path error, got %v", err)
+		}
+	})
+}
+
+func TestReadTypeFetchModulePackage_EmptyFile(t *testing.T) {
+	dir := t.TempDir()
+	pkgPath := filepath.Join(dir, "package.json")
+	if err := os.WriteFile(pkgPath, []byte("\n  \n"), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	pkg, err := readTypeFetchModulePackage(pkgPath)
+	if err != nil {
+		t.Fatalf("readTypeFetchModulePackage failed: %v", err)
+	}
+	if len(pkg.Choysum.Depends) != 0 {
+		t.Fatalf("expected no depends for empty package json, got %+v", pkg.Choysum.Depends)
+	}
+}
+
+func TestValidateTypeFetchDependsCompleteness_RejectsTraversalDependsPath(t *testing.T) {
+	modulesPath := t.TempDir()
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["../escape"]}}`)
+
+	_, err := validateTypeFetchDependsCompleteness(modulesPath, []string{"auth"})
+	if err == nil {
+		t.Fatal("expected traversal depends module path to be rejected")
+	}
+	if !strings.Contains(err.Error(), `invalid module path "../escape"`) {
+		t.Fatalf("expected invalid module path error, got %v", err)
+	}
+}
+
+func TestValidateTypeFetchDependsCompleteness_FlagsExcludedInstalledDependency(t *testing.T) {
+	modulesPath := t.TempDir()
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+	writeCommandPackage(t, modulesPath, "base", `{}`)
+
+	missing, err := validateTypeFetchDependsCompleteness(modulesPath, []string{"auth"})
+	if err != nil {
+		t.Fatalf("validateTypeFetchDependsCompleteness failed: %v", err)
+	}
+	if len(missing) != 1 || missing[0] != "base" {
+		t.Fatalf("expected missing depends [base], got %+v", missing)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_AllModulesMissingDependsDefaultWarn(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--all", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if !strings.Contains(output, "Warning: missing depends modules (skipped): base") {
+		t.Fatalf("expected warning for missing depends module, got %q", output)
+	}
+	if !strings.Contains(output, "[auth] completed: direct targets=0 (cached=0, fetched=0, reused=0, failed=0), transitive (cached=0, fetched=0)") {
+		t.Fatalf("expected auth summary line, got %q", output)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_AllModulesMissingDependsError(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	cmd.SetArgs([]string{"--all", "--offline", "--missing-dep-policy", "error"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected missing depends modules error")
+	}
+	if !strings.Contains(err.Error(), "missing depends modules") || !strings.Contains(err.Error(), "base") {
+		t.Fatalf("expected missing depends modules error for base, got %v", err)
 	}
 }
 
@@ -1142,12 +1394,13 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 	}
 
 	wantCommands := map[string]bool{
-		"install":   false,
-		"upgrade":   false,
-		"uninstall": false,
-		"module":    false,
-		"run":       false,
-		"test":      false,
+		"install":    false,
+		"upgrade":    false,
+		"uninstall":  false,
+		"module":     false,
+		"run":        false,
+		"test":       false,
+		"type-fetch": false,
 	}
 	for _, sub := range commander.rootCmd.Commands() {
 		if _, ok := wantCommands[sub.Name()]; ok {
@@ -1160,7 +1413,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	}
 
-	t.Run("test subtree carries lightweight annotation", func(t *testing.T) {
+	t.Run("test subtree and type-fetch carry lightweight annotation", func(t *testing.T) {
 		testCmd, _, err := commander.rootCmd.Find([]string{"test"})
 		if err != nil {
 			t.Fatalf("find test subcommand: %v", err)
@@ -1178,6 +1431,20 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		if !shouldUseLightweightRuntimeScope(typecheckCmd) {
 			t.Fatal("expected lightweight scope for test subtree")
+		}
+
+		typeFetchCmd, _, err := commander.rootCmd.Find([]string{"type-fetch"})
+		if err != nil {
+			t.Fatalf("find type-fetch subcommand: %v", err)
+		}
+		if typeFetchCmd == nil {
+			t.Fatal("expected type-fetch subcommand")
+		}
+		if got := typeFetchCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
+			t.Fatalf("type-fetch annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		}
+		if !shouldUseLightweightRuntimeScope(typeFetchCmd) {
+			t.Fatal("expected lightweight scope for type-fetch")
 		}
 	})
 
@@ -1234,6 +1501,39 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		if c.runtimeScope == nil || scope.FactoryInputFromScope(c.runtimeScope) == nil {
 			t.Fatal("expected environment to be initialized for test subtree")
+		}
+	})
+
+	t.Run("type-fetch pre-run does not initialize database", func(t *testing.T) {
+		var err error
+		workDir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(workDir, "modules"), 0o755); err != nil {
+			t.Fatalf("mkdir modules: %v", err)
+		}
+		t.Chdir(workDir)
+
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("CHOYSUM_DB_DIALECT", "postgres")
+		t.Setenv("CHOYSUM_DB_DSN", "postgres://127.0.0.1:1/choysum?sslmode=disable")
+		t.Setenv("CHOYSUM_AUTH_INTERNAL_KEY", "dev-internal-key")
+
+		c := NewCommander(context.Background(), "test-version")
+		sub, _, err := c.rootCmd.Find([]string{"type-fetch"})
+		if err != nil {
+			t.Fatalf("find type-fetch subcommand: %v", err)
+		}
+
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				t.Fatalf("PersistentPreRunE(type-fetch) panicked: %v", recovered)
+			}
+		}()
+
+		if err := c.rootCmd.PersistentPreRunE(sub, nil); err != nil {
+			t.Fatalf("PersistentPreRunE(type-fetch) = %v, want nil", err)
+		}
+		if c.runtimeScope == nil || scope.FactoryInputFromScope(c.runtimeScope) == nil {
+			t.Fatal("expected environment to be initialized for type-fetch")
 		}
 	})
 
