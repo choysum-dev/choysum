@@ -5,10 +5,12 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -28,6 +30,8 @@ func (*offlineTransport) RoundTrip(*http.Request) (*http.Response, error) {
 
 func newTypeFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 	var all bool
+	var withDepends bool
+	var missingDepPolicy string
 	var upstream string
 	var offline bool
 
@@ -120,6 +124,36 @@ When <app> is specified, fetches types for that module only.`,
 				appNames = []string{args[0]}
 			}
 
+			singleModuleMode := !all && len(args) == 1
+			policy, err := resolveTypeFetchMissingDepPolicy(missingDepPolicy, singleModuleMode)
+			if err != nil {
+				return err
+			}
+			if withDepends && singleModuleMode {
+				expanded, missingDepends, err := resolveTypeFetchDependsClosure(modulesPath, args[0])
+				if err != nil {
+					return xfmt.Errorf("type-fetch: resolve module depends closure: %w", err)
+				}
+				appNames = expanded
+				if len(missingDepends) > 0 {
+					if policy == typeFetchMissingDepPolicyError {
+						return xfmt.Errorf("type-fetch: missing depends modules: %s", strings.Join(missingDepends, ", "))
+					}
+					cmd.Printf("Warning: missing depends modules (skipped): %s\n", strings.Join(missingDepends, ", "))
+				}
+			} else if withDepends {
+				missingDepends, err := validateTypeFetchDependsCompleteness(modulesPath, appNames)
+				if err != nil {
+					return xfmt.Errorf("type-fetch: validate module depends completeness: %w", err)
+				}
+				if len(missingDepends) > 0 {
+					if policy == typeFetchMissingDepPolicyError {
+						return xfmt.Errorf("type-fetch: missing depends modules: %s", strings.Join(missingDepends, ", "))
+					}
+					cmd.Printf("Warning: missing depends modules (skipped): %s\n", strings.Join(missingDepends, ", "))
+				}
+			}
+
 			if len(appNames) == 0 {
 				cmd.Println("No modules found with package.json.")
 				return nil
@@ -152,8 +186,13 @@ When <app> is specified, fetches types for that module only.`,
 
 			session := esmresolver.NewTypeFetchSession(0)
 
-			totalCached := 0
-			totalFetched := 0
+			totalDirectTargets := 0
+			totalDirectCached := 0
+			totalDirectFetched := 0
+			totalDirectReused := 0
+			totalDirectFailed := 0
+			totalTransitiveCached := 0
+			totalTransitiveFetched := 0
 			var allResults []esmresolver.TypeFetchResult
 
 			for i, appName := range appNames {
@@ -162,7 +201,7 @@ When <app> is specified, fetches types for that module only.`,
 				}
 				moduleDir := filepath.Join(modulesPath, appName)
 				setCommandProgress(fmt.Sprintf("[%s] fetching dependency types (%d/%d)", appName, i+1, len(appNames)))
-				results, err := session.FetchTypesForModule(ctx, client, upstream, typesDir, moduleDir)
+				results, stats, err := session.FetchTypesForModuleWithStats(ctx, client, upstream, typesDir, moduleDir)
 				if err != nil {
 					clearCommandProgress()
 					if ctxErr := ctx.Err(); ctxErr != nil {
@@ -177,24 +216,37 @@ When <app> is specified, fetches types for that module only.`,
 					}
 					continue
 				}
-				appCached := 0
-				appFetched := 0
-				for _, r := range results {
-					if r.FromCache {
-						totalCached++
-						appCached++
-					} else {
-						totalFetched++
-						appFetched++
-					}
-				}
+				totalDirectTargets += stats.DirectTargets
+				totalDirectCached += stats.DirectCached
+				totalDirectFetched += stats.DirectFetched
+				totalDirectReused += stats.DirectReused
+				totalDirectFailed += stats.DirectFailed
+				totalTransitiveCached += stats.TransitiveCached
+				totalTransitiveFetched += stats.TransitiveFetched
 				allResults = append(allResults, results...)
 				clearCommandProgress()
-				cmd.Printf("[%s] completed: %d cached, %d fetched\n", appName, appCached, appFetched)
+				cmd.Printf("[%s] completed: direct targets=%d (cached=%d, fetched=%d, reused=%d, failed=%d), transitive (cached=%d, fetched=%d)\n",
+					appName,
+					stats.DirectTargets,
+					stats.DirectCached,
+					stats.DirectFetched,
+					stats.DirectReused,
+					stats.DirectFailed,
+					stats.TransitiveCached,
+					stats.TransitiveFetched,
+				)
 			}
 			clearCommandProgress()
 
-			cmd.Printf("\nType fetch complete: %d cached, %d fetched.\n", totalCached, totalFetched)
+			cmd.Printf("\nType fetch complete: direct targets=%d (cached=%d, fetched=%d, reused=%d, failed=%d), transitive (cached=%d, fetched=%d).\n",
+				totalDirectTargets,
+				totalDirectCached,
+				totalDirectFetched,
+				totalDirectReused,
+				totalDirectFailed,
+				totalTransitiveCached,
+				totalTransitiveFetched,
+			)
 			cmd.Printf("Types directory: %s\n", typesDir)
 
 			// Update tsconfig paths for IDE support.
@@ -214,8 +266,167 @@ When <app> is specified, fetches types for that module only.`,
 	}
 
 	cmd.Flags().BoolVar(&all, "all", false, "fetch types for all installed modules")
+	cmd.Flags().BoolVar(&withDepends, "with-depends", true, "include choysum.depends closure for single-app fetch and validate depends completeness for multi-app fetch")
+	cmd.Flags().StringVar(&missingDepPolicy, "missing-dep-policy", "", "policy for missing choysum.depends modules: error|warn (default: error for single-app, warn otherwise)")
 	cmd.Flags().StringVar(&upstream, "upstream", "", "override ESM upstream URL")
 	cmd.Flags().BoolVar(&offline, "offline", false, "use only cached types, do not fetch")
 
 	return cmd
+}
+
+type typeFetchModulePackage struct {
+	Choysum struct {
+		Depends []string `json:"depends"`
+	} `json:"choysum"`
+}
+
+const (
+	typeFetchMissingDepPolicyError = "error"
+	typeFetchMissingDepPolicyWarn  = "warn"
+)
+
+func resolveTypeFetchMissingDepPolicy(raw string, singleModuleMode bool) (string, error) {
+	policy := strings.ToLower(strings.TrimSpace(raw))
+	if policy == "" {
+		if singleModuleMode {
+			return typeFetchMissingDepPolicyError, nil
+		}
+		return typeFetchMissingDepPolicyWarn, nil
+	}
+	switch policy {
+	case typeFetchMissingDepPolicyError, typeFetchMissingDepPolicyWarn:
+		return policy, nil
+	default:
+		return "", xfmt.Errorf("type-fetch: invalid --missing-dep-policy %q (want error|warn)", raw)
+	}
+}
+
+func readTypeFetchModulePackage(path string) (typeFetchModulePackage, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return typeFetchModulePackage{}, err
+	}
+	if strings.TrimSpace(string(data)) == "" {
+		return typeFetchModulePackage{}, nil
+	}
+	var pkg typeFetchModulePackage
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return typeFetchModulePackage{}, xfmt.Errorf("parse package.json: %w", err)
+	}
+	return pkg, nil
+}
+
+func resolveTypeFetchDependsClosure(modulesPath string, rootModule string) ([]string, []string, error) {
+	rootModule = strings.TrimSpace(rootModule)
+	if rootModule == "" {
+		return nil, nil, xfmt.Errorf("missing module name")
+	}
+
+	queue := []string{rootModule}
+	seen := make(map[string]struct{})
+	closure := make([]string, 0)
+	missingSet := make(map[string]struct{})
+
+	for len(queue) > 0 {
+		moduleName := strings.TrimSpace(queue[0])
+		queue = queue[1:]
+		if moduleName == "" {
+			continue
+		}
+		if _, ok := seen[moduleName]; ok {
+			continue
+		}
+		seen[moduleName] = struct{}{}
+
+		pkgPath := filepath.Join(modulesPath, moduleName, "package.json")
+		pkg, err := readTypeFetchModulePackage(pkgPath)
+		if err != nil {
+			if os.IsNotExist(err) && moduleName != rootModule {
+				missingSet[moduleName] = struct{}{}
+				continue
+			}
+			return nil, nil, xfmt.Errorf("%s: %w", moduleName, err)
+		}
+
+		closure = append(closure, moduleName)
+		for _, dep := range pkg.Choysum.Depends {
+			depModule := strings.TrimSpace(dep)
+			if depModule == "" {
+				continue
+			}
+			if _, ok := seen[depModule]; ok {
+				continue
+			}
+
+			depPkgPath := filepath.Join(modulesPath, depModule, "package.json")
+			if _, err := os.Stat(depPkgPath); err != nil {
+				if os.IsNotExist(err) {
+					missingSet[depModule] = struct{}{}
+					continue
+				}
+				return nil, nil, xfmt.Errorf("stat depends module %q for %q: %w", depModule, moduleName, err)
+			}
+			queue = append(queue, depModule)
+		}
+	}
+
+	missingModules := make([]string, 0, len(missingSet))
+	for name := range missingSet {
+		missingModules = append(missingModules, name)
+	}
+	sort.Strings(missingModules)
+
+	return closure, missingModules, nil
+}
+
+func validateTypeFetchDependsCompleteness(modulesPath string, moduleNames []string) ([]string, error) {
+	availableModules := make(map[string]struct{}, len(moduleNames))
+	for _, moduleName := range moduleNames {
+		trimmed := strings.TrimSpace(moduleName)
+		if trimmed == "" {
+			continue
+		}
+		availableModules[trimmed] = struct{}{}
+	}
+
+	missingSet := make(map[string]struct{})
+	for _, moduleName := range moduleNames {
+		trimmed := strings.TrimSpace(moduleName)
+		if trimmed == "" {
+			continue
+		}
+
+		pkgPath := filepath.Join(modulesPath, trimmed, "package.json")
+		pkg, err := readTypeFetchModulePackage(pkgPath)
+		if err != nil {
+			return nil, xfmt.Errorf("%s: %w", trimmed, err)
+		}
+
+		for _, dep := range pkg.Choysum.Depends {
+			depModule := strings.TrimSpace(dep)
+			if depModule == "" {
+				continue
+			}
+			if _, ok := availableModules[depModule]; ok {
+				continue
+			}
+
+			depPkgPath := filepath.Join(modulesPath, depModule, "package.json")
+			if _, err := os.Stat(depPkgPath); err != nil {
+				if os.IsNotExist(err) {
+					missingSet[depModule] = struct{}{}
+					continue
+				}
+				return nil, xfmt.Errorf("stat depends module %q for %q: %w", depModule, trimmed, err)
+			}
+		}
+	}
+
+	missingModules := make([]string, 0, len(missingSet))
+	for name := range missingSet {
+		missingModules = append(missingModules, name)
+	}
+	sort.Strings(missingModules)
+
+	return missingModules, nil
 }

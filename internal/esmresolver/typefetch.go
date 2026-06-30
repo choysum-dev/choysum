@@ -33,9 +33,26 @@ type TypeFetchResult struct {
 	FromCache  bool
 }
 
+// TypeFetchModuleStats summarizes one module fetch run.
+//
+// Direct* fields are counts over direct dependency targets from package.json.
+// Transitive* fields are counts over recursively fetched/imported type files.
+type TypeFetchModuleStats struct {
+	DirectTargets     int
+	DirectCached      int
+	DirectFetched     int
+	DirectReused      int
+	DirectFailed      int
+	TransitiveCached  int
+	TransitiveFetched int
+}
+
 const defaultTypeFetchRequestTimeout = 30 * time.Second
 const defaultTypeFetchParallelism = 16
 const maxTypeFetchDownloadBytes int64 = 10 * 1024 * 1024
+const defaultTypeFetchTransitiveRetryAttempts = 2
+
+var typeFetchRequestTimeout = defaultTypeFetchRequestTimeout
 
 type visitEntry struct {
 	ch      chan struct{}
@@ -120,15 +137,20 @@ func NewTypeFetchSession(parallelism int) *TypeFetchSession {
 }
 
 func (s *TypeFetchSession) FetchTypesForModule(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
+	results, _, err := s.FetchTypesForModuleWithStats(ctx, client, upstream, typesDir, moduleDir)
+	return results, err
+}
+
+func (s *TypeFetchSession) FetchTypesForModuleWithStats(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, TypeFetchModuleStats, error) {
 	if s == nil {
-		return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, nil)
+		return fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, nil)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.state == nil {
-		return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, nil)
+		return fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, nil)
 	}
-	return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, s.state)
+	return fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, s.state)
 }
 
 func newTypeFetchState(parallelism int) *typeFetchState {
@@ -181,11 +203,22 @@ func (s *typeFetchState) acquireVisit(url string) (bool, func(bool)) {
 }
 
 func (s *typeFetchState) withRequestSlot(run func() error) error {
+	return s.withRequestSlotContext(context.Background(), run)
+}
+
+func (s *typeFetchState) withRequestSlotContext(ctx context.Context, run func() error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if s == nil || s.requestSem == nil {
 		return run()
 	}
 
-	s.requestSem <- struct{}{}
+	select {
+	case s.requestSem <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	defer func() { <-s.requestSem }()
 	return run()
 }
@@ -193,7 +226,7 @@ func (s *typeFetchState) withRequestSlot(run func() error) error {
 // NewTypeFetchHTTPClient builds an HTTP client tuned for resilient type fetch.
 func NewTypeFetchHTTPClient(timeout time.Duration) *http.Client {
 	if timeout <= 0 {
-		timeout = defaultTypeFetchRequestTimeout
+		timeout = typeFetchRequestTimeout
 	}
 
 	transport := &http.Transport{
@@ -256,7 +289,7 @@ func (p *PackageJSON) CollectDependencies() map[string]string {
 // type dependencies that were fetched.
 func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version string) (*TypeFetchResult, []TypeFetchResult, error) {
 	if client == nil {
-		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+		client = NewTypeFetchHTTPClient(typeFetchRequestTimeout)
 	}
 
 	state := newTypeFetchState(defaultTypeFetchParallelism)
@@ -268,7 +301,7 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 		ctx = context.Background()
 	}
 	if client == nil {
-		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+		client = NewTypeFetchHTTPClient(typeFetchRequestTimeout)
 	}
 	if state == nil {
 		state = newTypeFetchState(defaultTypeFetchParallelism)
@@ -284,15 +317,16 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 	spec := pkg + "@" + version
 	discoverURL := fmt.Sprintf("%s/%s?dts", strings.TrimRight(upstream, "/"), spec)
 
-	reqCtx, cancel := context.WithTimeout(ctx, defaultTypeFetchRequestTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodHead, discoverURL, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create discover request: %w", err)
-	}
 	var resp *http.Response
-	err = state.withRequestSlot(func() error {
+	err := state.withRequestSlotContext(ctx, func() error {
+		reqCtx, cancel := context.WithTimeout(ctx, typeFetchRequestTimeout)
+		defer cancel()
+
+		req, reqErr := http.NewRequestWithContext(reqCtx, http.MethodHead, discoverURL, nil)
+		if reqErr != nil {
+			return fmt.Errorf("create discover request: %w", reqErr)
+		}
+
 		var doErr error
 		resp, doErr = client.Do(req)
 		return doErr
@@ -442,9 +476,12 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	// package with thousands of transitive imports into an hour-long wait.
 	if total > 0 {
 		var (
-			wg        sync.WaitGroup
-			mu        sync.Mutex
-			completed int
+			wg              sync.WaitGroup
+			mu              sync.Mutex
+			completed       int
+			failedCount     int
+			failedSample    string
+			failedSampleErr error
 		)
 		for _, imp := range resolvedImports {
 			if err := ctx.Err(); err != nil {
@@ -455,11 +492,17 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 				defer wg.Done()
 				resolvedURL := imp.ResolvedURL
 				pkgName := typePkgNameFromURL(resolvedURL)
-				_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
+				subTransitive, err := fetchTypeRecursiveWithRetry(ctx, client, typesDir, resolvedURL, pkgName, state, localAncestors, defaultTypeFetchTransitiveRetryAttempts)
 				completedNow := 0
 				mu.Lock()
 				if err == nil {
 					allTransitive = append(allTransitive, subTransitive...)
+				} else {
+					failedCount++
+					if failedSample == "" {
+						failedSample = resolvedURL
+						failedSampleErr = err
+					}
 				}
 				completed++
 				completedNow = completed
@@ -468,6 +511,14 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 			}(imp)
 		}
 		wg.Wait()
+
+		if failedCount > 0 && isTopLevelFetch {
+			message := fmt.Sprintf("[esm-type-fetch] warn: %s transitive fetch had %d/%d failures", rootPkg, failedCount, total)
+			if failedSample != "" && failedSampleErr != nil {
+				message = fmt.Sprintf("%s (example: %s: %v)", message, failedSample, failedSampleErr)
+			}
+			writeTypeFetchProgressLine(message)
+		}
 	}
 
 	result := &TypeFetchResult{
@@ -478,6 +529,28 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	}
 	success = true
 	return result, allTransitive, nil
+}
+
+func fetchTypeRecursiveWithRetry(ctx context.Context, client *http.Client, typesDir, resolvedURL, pkgName string, state *typeFetchState, ancestors map[string]bool, attempts int) ([]TypeFetchResult, error) {
+	if attempts <= 0 {
+		attempts = 1
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, ancestors)
+		if err == nil {
+			return subTransitive, nil
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("transitive fetch failed")
+	}
+	return nil, lastErr
 }
 
 type resolvedTypeImport struct {
@@ -1111,10 +1184,23 @@ func typePkgNameFromURL(rawURL string) string {
 // definitions for all dependencies (including transitive imports).
 // Returns all fetched type results (direct + transitive).
 func FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
-	return fetchTypesForModuleWithState(context.Background(), client, upstream, typesDir, moduleDir, nil)
+	results, _, err := FetchTypesForModuleWithStats(client, upstream, typesDir, moduleDir)
+	return results, err
+}
+
+// FetchTypesForModuleWithStats fetches types and returns detailed module-level
+// accounting (direct targets + transitive totals) in addition to fetch results.
+func FetchTypesForModuleWithStats(client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, TypeFetchModuleStats, error) {
+	return fetchTypesForModuleWithStateAndStats(context.Background(), client, upstream, typesDir, moduleDir, nil)
 }
 
 func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string, state *typeFetchState) ([]TypeFetchResult, error) {
+	results, _, err := fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, state)
+	return results, err
+}
+
+func fetchTypesForModuleWithStateAndStats(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string, state *typeFetchState) ([]TypeFetchResult, TypeFetchModuleStats, error) {
+	stats := TypeFetchModuleStats{}
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -1128,12 +1214,12 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 	pkgPath := filepath.Join(moduleDir, "package.json")
 	pkg, err := ReadPackageJSON(pkgPath)
 	if err != nil {
-		return nil, err
+		return nil, stats, err
 	}
 
 	deps := pkg.CollectDependencies()
 	if len(deps) == 0 {
-		return nil, nil
+		return nil, stats, nil
 	}
 
 	depNames := make([]string, 0, len(deps))
@@ -1159,8 +1245,9 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 		targets = append(targets, dependencyFetchTarget{name: name, version: version})
 	}
 	if len(targets) == 0 {
-		return nil, nil
+		return nil, stats, nil
 	}
+	stats.DirectTargets = len(targets)
 
 	ticker := logutil.ProgressTickerFromContext(ctx)
 	moduleName := strings.TrimSpace(filepath.Base(moduleDir))
@@ -1188,7 +1275,7 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 	var results []TypeFetchResult
 	for idx, target := range targets {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, stats, err
 		}
 		name := target.name
 		version := target.version
@@ -1197,18 +1284,33 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 		start := time.Now()
 		result, transitive, err := fetchTypeDefinitionWithState(ctx, client, upstream, typesDir, name, version, state)
 		if err != nil {
+			stats.DirectFailed++
 			if ctxErr := ctx.Err(); ctxErr != nil {
-				return nil, ctxErr
+				return nil, stats, ctxErr
 			}
 			writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] warn: [%s] %s@%s (%s): %v", moduleName, name, version, time.Since(start).Round(time.Millisecond), err))
 			continue
 		}
 		if result != nil {
 			results = append(results, *result)
+			if result.FromCache {
+				stats.DirectCached++
+			} else {
+				stats.DirectFetched++
+			}
+		} else {
+			stats.DirectReused++
+		}
+		for _, tr := range transitive {
+			if tr.FromCache {
+				stats.TransitiveCached++
+			} else {
+				stats.TransitiveFetched++
+			}
 		}
 		results = append(results, transitive...)
 	}
-	return results, nil
+	return results, stats, nil
 }
 
 func typesCachePath(typesDir, pkg, version string) string {
@@ -1275,22 +1377,27 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, cancel := context.WithTimeout(ctx, defaultTypeFetchRequestTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create download request for %s: %w", rawURL, err)
-	}
 
 	var resp *http.Response
-	err = state.withRequestSlot(func() error {
+	var reqCancel context.CancelFunc
+	err := state.withRequestSlotContext(ctx, func() error {
+		reqCtx, cancel := context.WithTimeout(ctx, typeFetchRequestTimeout)
+		reqCancel = cancel
+
+		req, reqErr := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, nil)
+		if reqErr != nil {
+			return fmt.Errorf("create download request for %s: %w", rawURL, reqErr)
+		}
+
 		var doErr error
 		resp, doErr = client.Do(req)
 		return doErr
 	})
 	if err != nil {
 		return nil, fmt.Errorf("download types from %s: %w", rawURL, err)
+	}
+	if reqCancel != nil {
+		defer reqCancel()
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

@@ -286,6 +286,152 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	}
 }
 
+func TestFetchTypeDefinition_RequestTimeoutStartsAfterSlotAcquired(t *testing.T) {
+	oldTimeout := typeFetchRequestTimeout
+	typeFetchRequestTimeout = 100 * time.Millisecond
+	defer func() { typeFetchRequestTimeout = oldTimeout }()
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+"/types/pkg@1.0.0/index.d.ts")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		fmt.Fprint(w, "export declare const x: number;")
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	state := newTypeFetchState(1)
+
+	// Occupy the only request slot long enough to exceed request timeout if
+	// timeout starts before waiting for the slot.
+	state.requestSem <- struct{}{}
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		<-state.requestSem
+	}()
+
+	result, _, err := fetchTypeDefinitionWithState(context.Background(), nil, srv.URL, typesDir, "pkg", "1.0.0", state)
+	if err != nil {
+		t.Fatalf("fetchTypeDefinitionWithState failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func TestFetchTypeDefinition_TransitiveChildRetryRecoversInSameRun(t *testing.T) {
+	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
+	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
+	subCalls := 0
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case typesURLPath:
+				fmt.Fprint(w, `export * from "./sub.d.ts";`)
+				return
+			case subURLPath:
+				subCalls++
+				if subCalls == 1 {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					return
+				}
+				fmt.Fprint(w, "export declare const sub: string;")
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	result, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+	if err != nil {
+		t.Fatalf("FetchTypeDefinition failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.FromCache {
+		t.Fatal("expected fetched result, got cache hit")
+	}
+	if subCalls != 2 {
+		t.Fatalf("expected sub.d.ts to be retried once (2 calls total), got %d", subCalls)
+	}
+
+	depPath := typeCachePathForURL(typesDir, srv.URL+subURLPath)
+	if _, err := os.Stat(depPath); err != nil {
+		t.Fatalf("expected retried transitive type file at %s: %v", depPath, err)
+	}
+}
+
+func TestFetchTypeDefinition_TransitiveChildRetryExhaustedWarns(t *testing.T) {
+	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
+	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case typesURLPath:
+				fmt.Fprint(w, `export * from "./sub.d.ts";`)
+				return
+			case subURLPath:
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	output := captureTypeFetchStderr(t, func() {
+		result, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+		if err != nil {
+			t.Fatalf("FetchTypeDefinition failed: %v", err)
+		}
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+	})
+
+	if !strings.Contains(output, "[esm-type-fetch] warn: pkg transitive fetch had 1/1 failures") {
+		t.Fatalf("expected transitive failure warning in stderr, got %q", output)
+	}
+	if !strings.Contains(output, "example:") || !strings.Contains(output, subURLPath) {
+		t.Fatalf("expected warning to include failing URL sample, got %q", output)
+	}
+
+	depPath := typeCachePathForURL(typesDir, srv.URL+subURLPath)
+	if _, err := os.Stat(depPath); !os.IsNotExist(err) {
+		t.Fatalf("expected transitive child cache file to be absent after exhausted retries, err=%v", err)
+	}
+}
+
 func TestFetchTypeDefinition_CircularImports_NoDeadlock(t *testing.T) {
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1359,6 +1505,27 @@ func TestWithRequestSlot_NilState(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("expected fn to be called when state is nil")
+	}
+}
+
+func TestWithRequestSlotContext_CanceledWhileWaiting(t *testing.T) {
+	state := newTypeFetchState(1)
+	state.requestSem <- struct{}{}
+	defer func() { <-state.requestSem }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	called := false
+	err := state.withRequestSlotContext(ctx, func() error {
+		called = true
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	if called {
+		t.Fatal("expected run func not to be called when context canceled before slot acquisition")
 	}
 }
 
