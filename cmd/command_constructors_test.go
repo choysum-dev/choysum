@@ -1449,74 +1449,38 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 	})
 
 	t.Run("module lightweight annotation is subcommand-scoped", func(t *testing.T) {
-		searchCmd, _, err := commander.rootCmd.Find([]string{"module", "search"})
-		if err != nil {
-			t.Fatalf("find module search subcommand: %v", err)
-		}
-		if searchCmd == nil {
-			t.Fatal("expected module search subcommand")
-		}
-		if got := searchCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
-			t.Fatalf("module search annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
-		}
-		if !shouldUseLightweightRuntimeScope(searchCmd) {
-			t.Fatal("expected lightweight scope for module search")
-		}
-
-		infoCmd, _, err := commander.rootCmd.Find([]string{"module", "info"})
-		if err != nil {
-			t.Fatalf("find module info subcommand: %v", err)
-		}
-		if infoCmd == nil {
-			t.Fatal("expected module info subcommand")
-		}
-		if got := infoCmd.Annotations[lightweightScopeAnnotation]; got != "" {
-			t.Fatalf("module info annotation %q = %q, want empty", lightweightScopeAnnotation, got)
-		}
-		if shouldUseLightweightRuntimeScope(infoCmd) {
-			t.Fatal("expected module info to keep full runtime scope")
+		testCases := []struct {
+			name            string
+			subcommand      []string
+			wantAnnotation  string
+			wantLightweight bool
+		}{
+			{name: "search", subcommand: []string{"module", "search"}, wantAnnotation: "true", wantLightweight: true},
+			{name: "info", subcommand: []string{"module", "info"}, wantAnnotation: "", wantLightweight: false},
+			{name: "list", subcommand: []string{"module", "list"}, wantAnnotation: "", wantLightweight: false},
+			{name: "fetch", subcommand: []string{"module", "fetch"}, wantAnnotation: "true", wantLightweight: true},
+			{name: "purge", subcommand: []string{"module", "purge"}, wantAnnotation: "", wantLightweight: false},
 		}
 
-		listCmd, _, err := commander.rootCmd.Find([]string{"module", "list"})
-		if err != nil {
-			t.Fatalf("find module list subcommand: %v", err)
-		}
-		if listCmd == nil {
-			t.Fatal("expected module list subcommand")
-		}
-		if got := listCmd.Annotations[lightweightScopeAnnotation]; got != "" {
-			t.Fatalf("module list annotation %q = %q, want empty", lightweightScopeAnnotation, got)
-		}
-		if shouldUseLightweightRuntimeScope(listCmd) {
-			t.Fatal("expected module list to keep full runtime scope")
-		}
+		for _, tc := range testCases {
+			tc := tc
+			t.Run(tc.name, func(t *testing.T) {
+				subCmd, _, err := commander.rootCmd.Find(tc.subcommand)
+				if err != nil {
+					t.Fatalf("find %s subcommand: %v", strings.Join(tc.subcommand, " "), err)
+				}
+				if subCmd == nil {
+					t.Fatalf("expected %s subcommand", strings.Join(tc.subcommand, " "))
+				}
+				if got := subCmd.Annotations[lightweightScopeAnnotation]; got != tc.wantAnnotation {
+					t.Fatalf("%s annotation %q = %q, want %q", strings.Join(tc.subcommand, " "), lightweightScopeAnnotation, got, tc.wantAnnotation)
+				}
 
-		fetchCmd, _, err := commander.rootCmd.Find([]string{"module", "fetch"})
-		if err != nil {
-			t.Fatalf("find module fetch subcommand: %v", err)
-		}
-		if fetchCmd == nil {
-			t.Fatal("expected module fetch subcommand")
-		}
-		if got := fetchCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
-			t.Fatalf("module fetch annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
-		}
-		if !shouldUseLightweightRuntimeScope(fetchCmd) {
-			t.Fatal("expected lightweight scope for module fetch")
-		}
-
-		purgeCmd, _, err := commander.rootCmd.Find([]string{"module", "purge"})
-		if err != nil {
-			t.Fatalf("find module purge subcommand: %v", err)
-		}
-		if purgeCmd == nil {
-			t.Fatal("expected module purge subcommand")
-		}
-		if got := purgeCmd.Annotations[lightweightScopeAnnotation]; got != "" {
-			t.Fatalf("module purge annotation %q = %q, want empty", lightweightScopeAnnotation, got)
-		}
-		if shouldUseLightweightRuntimeScope(purgeCmd) {
-			t.Fatal("expected module purge to keep full runtime scope")
+				gotLightweight := shouldUseLightweightRuntimeScope(subCmd)
+				if gotLightweight != tc.wantLightweight {
+					t.Fatalf("%s lightweight scope = %t, want %t", strings.Join(tc.subcommand, " "), gotLightweight, tc.wantLightweight)
+				}
+			})
 		}
 	})
 
