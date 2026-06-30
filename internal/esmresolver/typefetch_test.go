@@ -1063,7 +1063,7 @@ import { Ref2 } from "./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts";`
 	if !strings.Contains(rewritten, `from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts"`) {
 		t.Fatalf("expected non-bridge local cache import to remain unchanged, got: %q", rewritten)
 	}
-	if !strings.Contains(rewritten, `Ref2 } from"vue"`) {
+	if strings.Contains(rewritten, `"./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts"`) || strings.Count(rewritten, `"vue"`) != 2 {
 		t.Fatalf("expected custom-host local cache import to bridge, got: %q", rewritten)
 	}
 }

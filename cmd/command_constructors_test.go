@@ -569,8 +569,9 @@ func TestTypeFetchModulePackagePath(t *testing.T) {
 		if err != nil {
 			t.Fatalf("typeFetchModulePackagePath error: %v", err)
 		}
-		if !strings.HasSuffix(filepath.ToSlash(got), "/auth/package.json") {
-			t.Fatalf("unexpected package path: %s", got)
+		want := filepath.Join(modulesPath, "auth", "package.json")
+		if filepath.Clean(got) != filepath.Clean(want) {
+			t.Fatalf("unexpected package path: got %s want %s", got, want)
 		}
 	})
 
