@@ -126,6 +126,9 @@ func (i RunScopeInput) TmpPath() string {
 }
 
 func (i RunScopeInput) DefaultChoysumPath() string {
+	if strings.TrimSpace(i.cliOptions.DefaultChoysumPath) != "" {
+		return i.cliOptions.DefaultChoysumPath
+	}
 	if i.options == nil {
 		return ""
 	}
@@ -154,6 +157,9 @@ func (i RunScopeInput) NpmRegistryURL() string {
 }
 
 func (i RunScopeInput) ModuleCatalogIndexURL() string {
+	if strings.TrimSpace(i.cliOptions.ModuleCatalogIndexURL) != "" {
+		return i.cliOptions.ModuleCatalogIndexURL
+	}
 	if i.options == nil {
 		return ""
 	}
@@ -245,6 +251,9 @@ func (i RunScopeInput) ServerConfig() *config.ServerConfig {
 }
 
 func (i RunScopeInput) ServerBindAddress() string {
+	if strings.TrimSpace(i.serverOptions.BindAddress) != "" {
+		return i.serverOptions.BindAddress
+	}
 	if i.options == nil || i.options.Server == nil {
 		return ""
 	}
@@ -252,6 +261,9 @@ func (i RunScopeInput) ServerBindAddress() string {
 }
 
 func (i RunScopeInput) ServerPort() int {
+	if i.serverOptions.Port > 0 {
+		return i.serverOptions.Port
+	}
 	if i.options == nil || i.options.Server == nil {
 		return 0
 	}
@@ -378,6 +390,9 @@ func (i RunScopeInput) DatabaseDialect() string {
 }
 
 func (i RunScopeInput) DatabaseDSN() string {
+	if strings.TrimSpace(i.dbOptions.DSN) != "" {
+		return i.dbOptions.DSN
+	}
 	if i.options == nil || i.options.Db == nil {
 		return ""
 	}

@@ -180,7 +180,11 @@ func SelectLatestCompatibleCatalogVersion(item *sourceregistry.CatalogModule, cl
 	if err != nil {
 		return "", err
 	}
-	return versions[len(versions)-1], nil
+	latest := latestCatalogVersion(versions)
+	if latest == "" {
+		return "", xfmt.Errorf("ERR_MODULE_NO_COMPATIBLE_VERSION: No compatible version found for module '%s' with CLI version '%s'.", strings.TrimSpace(item.Name), strings.TrimSpace(cliVersion))
+	}
+	return latest, nil
 }
 
 func FilterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliVersion string) (*sourceregistry.CatalogModule, error) {
@@ -193,7 +197,7 @@ func FilterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliV
 	}
 	filtered := *item
 	filtered.Versions = append([]string{}, versions...)
-	filtered.LatestVersion = versions[len(versions)-1]
+	filtered.LatestVersion = latestCatalogVersion(versions)
 	if len(filtered.VersionCLIRanges) > 0 {
 		ranges := make(map[string]string, len(versions))
 		for _, version := range versions {
@@ -217,6 +221,33 @@ func FilterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliV
 		}
 	}
 	return &filtered, nil
+}
+
+func latestCatalogVersion(versions []string) string {
+	latest := ""
+	latestNormalized := ""
+
+	for _, version := range versions {
+		version = strings.TrimSpace(version)
+		if version == "" {
+			continue
+		}
+
+		normalized, isSemVer := NormalizeCatalogModuleVersion(version)
+		if !isSemVer {
+			if latestNormalized == "" {
+				latest = version
+			}
+			continue
+		}
+
+		if latestNormalized == "" || modsemver.Compare(normalized, latestNormalized) > 0 {
+			latest = version
+			latestNormalized = normalized
+		}
+	}
+
+	return latest
 }
 
 func ResolveCompatibleRegistryLatestVersion(ctx context.Context, runtimeScope scope.Scope, indexURL, moduleName, cliVersion string) (string, error) {

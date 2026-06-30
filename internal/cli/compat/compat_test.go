@@ -180,6 +180,34 @@ func TestCompatibleCatalogVersionsAndSelection(t *testing.T) {
 			t.Fatalf("SelectLatestCompatibleCatalogVersion() = %q, want %q", latest, "v1.3.0")
 		}
 	})
+
+	t.Run("selects latest compatible from unsorted versions", func(t *testing.T) {
+		item := &sourceregistry.CatalogModule{
+			Name:     "demo",
+			Versions: []string{"v1.9.0", "v1.10.0", "v1.2.0"},
+			VersionCLIRanges: map[string]string{
+				"v1.9.0":  ">=1.0.0 <2.0.0",
+				"v1.10.0": ">=1.0.0 <2.0.0",
+				"v1.2.0":  ">=1.0.0 <2.0.0",
+			},
+		}
+
+		latest, err := SelectLatestCompatibleCatalogVersion(item, "v1.5.0")
+		if err != nil {
+			t.Fatalf("SelectLatestCompatibleCatalogVersion() error = %v", err)
+		}
+		if latest != "v1.10.0" {
+			t.Fatalf("SelectLatestCompatibleCatalogVersion() = %q, want %q", latest, "v1.10.0")
+		}
+
+		filtered, err := FilterCatalogModuleByCompatibility(item, "v1.5.0")
+		if err != nil {
+			t.Fatalf("FilterCatalogModuleByCompatibility() error = %v", err)
+		}
+		if filtered.LatestVersion != "v1.10.0" {
+			t.Fatalf("FilterCatalogModuleByCompatibility().LatestVersion = %q, want %q", filtered.LatestVersion, "v1.10.0")
+		}
+	})
 }
 
 func TestCompatHelpersAdditionalCoverage(t *testing.T) {

@@ -143,7 +143,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				}
 				logCfg := cliruntime.CloneLogConfig(scope.LogConfigFromScope(baseScope))
 				logCfg.Level = normalizedLevel
-				quietScope := cliruntime.RebuildScope(baseScope, factoryInput, logger.NewLoggerWithWriter(logCfg, os.Stderr))
+				quietScope := cliruntime.RebuildScope(baseScope, factoryInput, logger.NewLoggerWithWriter(logCfg, cmd.ErrOrStderr()))
 				if quietScope == nil {
 					return xfmt.Errorf("failed to initialize scope for runtime log level")
 				}

@@ -276,6 +276,9 @@ func SQLitePathFromDSN(dsn string) (string, error) {
 		}
 		return parsed.Opaque, nil
 	}
+	if queryIndex := strings.Index(trimmed, "?"); queryIndex >= 0 {
+		return strings.TrimSpace(trimmed[:queryIndex]), nil
+	}
 	return trimmed, nil
 }
 

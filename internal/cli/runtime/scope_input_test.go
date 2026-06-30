@@ -62,7 +62,12 @@ func TestCommandScopeInputPathPriorityAndNilOptions(t *testing.T) {
 			BootstrapModuleInstallTimeoutSeconds: 333,
 			Server:                               &config.ServerConfig{Environment: "production"},
 		},
-		Options{ModulesPath: "/runtime/modules", TmpPath: "/runtime/tmp"},
+		Options{
+			ModulesPath:           "/runtime/modules",
+			TmpPath:               "/runtime/tmp",
+			DefaultChoysumPath:    "/runtime/default",
+			ModuleCatalogIndexURL: "https://index.runtime.example.com/v1/index.json",
+		},
 	)
 
 	if got := input.Environment(); got != "production" {
@@ -77,8 +82,8 @@ func TestCommandScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	if got := input.DistPath(); got != "/options/dist" {
 		t.Fatalf("DistPath() = %q, want %q", got, "/options/dist")
 	}
-	if got := input.DefaultChoysumPath(); got != "/options/default" {
-		t.Fatalf("DefaultChoysumPath() = %q, want %q", got, "/options/default")
+	if got := input.DefaultChoysumPath(); got != "/runtime/default" {
+		t.Fatalf("DefaultChoysumPath() runtime override = %q, want %q", got, "/runtime/default")
 	}
 	if got := input.ConfigPath(); got != "/options/config.yaml" {
 		t.Fatalf("ConfigPath() = %q, want %q", got, "/options/config.yaml")
@@ -86,15 +91,15 @@ func TestCommandScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	if got := input.NpmRegistryURL(); got != "https://registry.example.com" {
 		t.Fatalf("NpmRegistryURL() = %q, want %q", got, "https://registry.example.com")
 	}
-	if got := input.ModuleCatalogIndexURL(); got != "https://index.example.com/v1/index.json" {
-		t.Fatalf("ModuleCatalogIndexURL() = %q, want %q", got, "https://index.example.com/v1/index.json")
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.runtime.example.com/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() runtime override = %q, want %q", got, "https://index.runtime.example.com/v1/index.json")
 	}
 	if got := input.BootstrapModuleInstallTimeoutSeconds(); got != 333 {
 		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() = %d, want %d", got, 333)
 	}
 
 	fallback := NewCommandScopeInput(
-		&ScopeInputConfigOptions{ModulesPath: "/fallback/modules", TmpPath: "/fallback/tmp"},
+		&ScopeInputConfigOptions{ModulesPath: "/fallback/modules", TmpPath: "/fallback/tmp", DefaultChoysumPath: "/fallback/default", ModuleCatalogIndexURL: "https://index.fallback.example/v1/index.json"},
 		Options{},
 	)
 	if got := fallback.ModulesPath(); got != "/fallback/modules" {
@@ -102,6 +107,12 @@ func TestCommandScopeInputPathPriorityAndNilOptions(t *testing.T) {
 	}
 	if got := fallback.TmpPath(); got != "/fallback/tmp" {
 		t.Fatalf("TmpPath() fallback = %q, want %q", got, "/fallback/tmp")
+	}
+	if got := fallback.DefaultChoysumPath(); got != "/fallback/default" {
+		t.Fatalf("DefaultChoysumPath() fallback = %q, want %q", got, "/fallback/default")
+	}
+	if got := fallback.ModuleCatalogIndexURL(); got != "https://index.fallback.example/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() fallback = %q, want %q", got, "https://index.fallback.example/v1/index.json")
 	}
 
 	nilOptionsInput := NewCommandScopeInput(nil, Options{ModulesPath: "/runtime/modules", TmpPath: "/runtime/tmp"})
@@ -133,26 +144,44 @@ func TestRunScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 		&ScopeInputConfigOptions{
 			ModulesPath:                          "/options/modules",
 			TmpPath:                              "/options/tmp",
+			DefaultChoysumPath:                   "/options/default",
 			NPMRegistryURL:                       "https://registry.options.example",
 			ModuleCatalogIndexURL:                "https://index.options.example/v1/index.json",
 			BootstrapModuleInstallTimeoutSeconds: 444,
+			Server:                               &config.ServerConfig{BindAddress: "127.0.0.1", Port: 8080},
+			Db:                                   &config.DbConfig{Dialect: "sqlite", DSN: "/options/db.sqlite"},
 		},
-		Options{},
-		RunServerOptions{},
-		RunDBOptions{},
+		Options{DefaultChoysumPath: "/runtime/default", ModuleCatalogIndexURL: "https://index.runtime.example/v1/index.json"},
+		RunServerOptions{BindAddress: "0.0.0.0", Port: 9000},
+		RunDBOptions{Dialect: "mysql", DSN: "mysql://runtime"},
 	)
 
 	if got := input.ModulesPath(); got != "/options/modules" {
 		t.Fatalf("ModulesPath() fallback = %q, want %q", got, "/options/modules")
 	}
+	if got := input.DefaultChoysumPath(); got != "/runtime/default" {
+		t.Fatalf("DefaultChoysumPath() runtime override = %q, want %q", got, "/runtime/default")
+	}
 	if got := input.NpmRegistryURL(); got != "https://registry.options.example" {
 		t.Fatalf("NpmRegistryURL() fallback = %q, want %q", got, "https://registry.options.example")
 	}
-	if got := input.ModuleCatalogIndexURL(); got != "https://index.options.example/v1/index.json" {
-		t.Fatalf("ModuleCatalogIndexURL() fallback = %q, want %q", got, "https://index.options.example/v1/index.json")
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.runtime.example/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() runtime override = %q, want %q", got, "https://index.runtime.example/v1/index.json")
 	}
 	if got := input.BootstrapModuleInstallTimeoutSeconds(); got != 444 {
 		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() fallback = %d, want %d", got, 444)
+	}
+	if got := input.ServerBindAddress(); got != "0.0.0.0" {
+		t.Fatalf("ServerBindAddress() resolved options = %q, want %q", got, "0.0.0.0")
+	}
+	if got := input.ServerPort(); got != 9000 {
+		t.Fatalf("ServerPort() resolved options = %d, want %d", got, 9000)
+	}
+	if got := input.DatabaseDialect(); got != "mysql" {
+		t.Fatalf("DatabaseDialect() resolved options = %q, want %q", got, "mysql")
+	}
+	if got := input.DatabaseDSN(); got != "mysql://runtime" {
+		t.Fatalf("DatabaseDSN() resolved options = %q, want %q", got, "mysql://runtime")
 	}
 
 	nilOptions := NewRunScopeInput(nil, Options{}, RunServerOptions{}, RunDBOptions{})
@@ -168,6 +197,63 @@ func TestRunScopeInputPathFallbackAndRegistryURL(t *testing.T) {
 	if got := nilOptions.BootstrapModuleInstallTimeoutSeconds(); got != 0 {
 		t.Fatalf("BootstrapModuleInstallTimeoutSeconds() with nil options = %d, want 0", got)
 	}
+}
+
+func TestRunScopeInputResolvedGetterFallbacks(t *testing.T) {
+	input := NewRunScopeInput(
+		&ScopeInputConfigOptions{
+			DefaultChoysumPath:    "/options/default",
+			ModuleCatalogIndexURL: "https://index.options.example/v1/index.json",
+			Server:                &config.ServerConfig{BindAddress: "127.0.0.1", Port: 8081},
+			Db:                    &config.DbConfig{Dialect: "sqlite", DSN: "/options/fallback.sqlite"},
+		},
+		Options{},
+		RunServerOptions{},
+		RunDBOptions{},
+	)
+
+	if got := input.DefaultChoysumPath(); got != "/options/default" {
+		t.Fatalf("DefaultChoysumPath() fallback = %q, want %q", got, "/options/default")
+	}
+	if got := input.ModuleCatalogIndexURL(); got != "https://index.options.example/v1/index.json" {
+		t.Fatalf("ModuleCatalogIndexURL() fallback = %q, want %q", got, "https://index.options.example/v1/index.json")
+	}
+	if got := input.ServerBindAddress(); got != "127.0.0.1" {
+		t.Fatalf("ServerBindAddress() fallback = %q, want %q", got, "127.0.0.1")
+	}
+	if got := input.ServerPort(); got != 8081 {
+		t.Fatalf("ServerPort() fallback = %d, want %d", got, 8081)
+	}
+	if got := input.DatabaseDSN(); got != "/options/fallback.sqlite" {
+		t.Fatalf("DatabaseDSN() fallback = %q, want %q", got, "/options/fallback.sqlite")
+	}
+}
+
+func TestRunScopeOptionsValidation(t *testing.T) {
+	t.Run("run server options defaults and validate", func(t *testing.T) {
+		opts := NewRunServerOptions(nil)
+		if opts.BindAddress == "" || opts.Port <= 0 {
+			t.Fatalf("NewRunServerOptions(nil) = %#v, expected default bindAddress and positive port", opts)
+		}
+		if err := opts.Validate(); err != nil {
+			t.Fatalf("RunServerOptions.Validate() error = %v", err)
+		}
+	})
+
+	t.Run("run server options invalid", func(t *testing.T) {
+		if err := (RunServerOptions{}).Validate(); err == nil {
+			t.Fatal("RunServerOptions.Validate() expected error for empty bindAddress/port")
+		}
+	})
+
+	t.Run("run db options validate", func(t *testing.T) {
+		if err := (RunDBOptions{Dialect: "sqlite"}).Validate(); err != nil {
+			t.Fatalf("RunDBOptions.Validate() error = %v", err)
+		}
+		if err := (RunDBOptions{}).Validate(); err == nil {
+			t.Fatal("RunDBOptions.Validate() expected error for empty dialect")
+		}
+	})
 }
 
 func TestCommandScopeInputMutationIsolation(t *testing.T) {

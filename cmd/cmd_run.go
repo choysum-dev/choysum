@@ -58,11 +58,7 @@ func newRunCmd() *cobra.Command {
 
 			runtimeScope, envErr := runRuntimeScopeFactory(loadedConfig.scopeInput, loadedConfig.logConfig)
 			if envErr != nil {
-				clioutput.PrintErrorBlock(
-					fmt.Sprintf("cannot connect to database (dialect=%s)", dbOptions.Dialect),
-					"network unreachable / authentication failed / permission denied / database not found (DSN redacted)",
-					"verify database reachability and credentials; rerun 'choysum run' to update config if needed",
-				)
+				printRunScopeInitError(envErr, dbOptions.Dialect)
 				runExit(4)
 				return
 			}
@@ -104,6 +100,47 @@ type runError struct {
 func (e *runError) exit() {
 	clioutput.PrintErrorBlock(e.errMsg, e.reason, e.next)
 	runExit(e.exitCode)
+}
+
+func printRunScopeInitError(err error, dbDialect string) {
+	if isLikelyRunScopeDBInitError(err, dbDialect) {
+		clioutput.PrintErrorBlock(
+			fmt.Sprintf("cannot connect to database (dialect=%s)", strings.TrimSpace(dbDialect)),
+			"network unreachable / authentication failed / permission denied / database not found (DSN redacted)",
+			"verify database reachability and credentials; rerun 'choysum run' to update config if needed",
+		)
+		return
+	}
+
+	reason := "scope initialization failed"
+	if err != nil && strings.TrimSpace(err.Error()) != "" {
+		reason = err.Error()
+	}
+	clioutput.PrintErrorBlock(
+		"failed to initialize runtime scope",
+		reason,
+		"fix configuration/runtime initialization and rerun 'choysum run'",
+	)
+}
+
+func isLikelyRunScopeDBInitError(err error, dbDialect string) bool {
+	message := ""
+	if err != nil {
+		message = strings.ToLower(err.Error())
+	}
+
+	for _, keyword := range []string{"database", "dsn", "sqlite", "postgres", "mysql", "sql"} {
+		if strings.Contains(message, keyword) {
+			return true
+		}
+	}
+
+	dialect := strings.ToLower(strings.TrimSpace(dbDialect))
+	if dialect == "sqlite" || dialect == "postgres" || dialect == "mysql" {
+		return strings.Contains(message, dialect)
+	}
+
+	return false
 }
 
 func resolveRunConfigPath(cmd *cobra.Command) (string, *runError) {

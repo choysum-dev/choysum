@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,6 +24,33 @@ import (
 
 type runExitPanic struct {
 	code int
+}
+
+func captureStderrWithPanic(t *testing.T, fn func()) (string, any) {
+	t.Helper()
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	oldStderr := os.Stderr
+	os.Stderr = writer
+
+	var recovered any
+	func() {
+		defer func() {
+			recovered = recover()
+			_ = writer.Close()
+			os.Stderr = oldStderr
+		}()
+		fn()
+	}()
+
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatalf("read stderr: %v", err)
+	}
+	return string(data), recovered
 }
 
 func runtimeValidationToRunError(err *cliruntime.RunValidationError) *runError {
@@ -121,6 +149,96 @@ func TestRunCommandTreatsContextCanceledAsGracefulStop(t *testing.T) {
 	}
 }
 
+func TestRunCommandScopeInitErrorOutput(t *testing.T) {
+	tests := []struct {
+		name             string
+		scopeErr         error
+		wantErrorTitle   string
+		wantReasonSubstr string
+		avoidSubstr      string
+	}{
+		{
+			name:             "generic scope init failure",
+			scopeErr:         fmt.Errorf("scope factory not registered"),
+			wantErrorTitle:   "ERROR: failed to initialize runtime scope",
+			wantReasonSubstr: "scope factory not registered",
+			avoidSubstr:      "ERROR: cannot connect to database",
+		},
+		{
+			name:             "db-like scope init failure",
+			scopeErr:         fmt.Errorf("database connection refused"),
+			wantErrorTitle:   "ERROR: cannot connect to database (dialect=",
+			wantReasonSubstr: "network unreachable / authentication failed / permission denied / database not found",
+			avoidSubstr:      "ERROR: failed to initialize runtime scope",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configPath, _, _ := writeTempInitializedRunConfig(t, false)
+
+			originalScopeFactory := runRuntimeScopeFactory
+			runRuntimeScopeFactory = func(cliruntime.RunScopeInput, *config.LogConfig) (scope.Scope, error) {
+				return nil, tt.scopeErr
+			}
+			t.Cleanup(func() {
+				runRuntimeScopeFactory = originalScopeFactory
+			})
+
+			serverCalled := false
+			originalFactory := runServerFactory
+			runServerFactory = func(scope.Scope, ...defaultserver.Option) server.Server {
+				serverCalled = true
+				return &runCommandStubServer{}
+			}
+			t.Cleanup(func() {
+				runServerFactory = originalFactory
+			})
+
+			originalExit := runExit
+			runExit = func(code int) {
+				panic(runExitPanic{code: code})
+			}
+			t.Cleanup(func() {
+				runExit = originalExit
+			})
+
+			cmd := newRunCmd()
+			cmd.Flags().String("config", "", "")
+			if err := cmd.Flags().Set("config", configPath); err != nil {
+				t.Fatalf("set config flag: %v", err)
+			}
+
+			output, recovered := captureStderrWithPanic(t, func() {
+				cmd.Run(cmd, nil)
+			})
+
+			exitPanic, ok := recovered.(runExitPanic)
+			if !ok {
+				if recovered != nil {
+					panic(recovered)
+				}
+				t.Fatalf("expected runExit panic, got nil")
+			}
+			if exitPanic.code != 4 {
+				t.Fatalf("exit code = %d, want 4", exitPanic.code)
+			}
+			if serverCalled {
+				t.Fatal("server factory should not be called when scope initialization fails")
+			}
+			if !strings.Contains(output, tt.wantErrorTitle) {
+				t.Fatalf("expected stderr to contain %q, got %q", tt.wantErrorTitle, output)
+			}
+			if !strings.Contains(output, tt.wantReasonSubstr) {
+				t.Fatalf("expected stderr to contain %q, got %q", tt.wantReasonSubstr, output)
+			}
+			if tt.avoidSubstr != "" && strings.Contains(output, tt.avoidSubstr) {
+				t.Fatalf("did not expect stderr to contain %q, got %q", tt.avoidSubstr, output)
+			}
+		})
+	}
+}
+
 type runCommandStubServer struct {
 	serveErr      error
 	serveCalled   bool
@@ -142,6 +260,7 @@ func TestSqlitePathFromDsn(t *testing.T) {
 		wantErr string
 	}{
 		{name: "plain path trimmed", dsn: "  /tmp/test.db  ", want: "/tmp/test.db"},
+		{name: "plain path with query", dsn: "  /tmp/test.db?mode=rwc&_fk=1  ", want: "/tmp/test.db"},
 		{name: "file scheme path", dsn: "file:///tmp/test.db?mode=ro", want: "/tmp/test.db"},
 		{name: "file opaque path", dsn: "file:test.db?cache=shared", want: "test.db"},
 		{name: "unsupported scheme", dsn: "postgres://localhost/db", wantErr: "unsupported sqlite dsn scheme"},

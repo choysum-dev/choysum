@@ -255,6 +255,9 @@ func (i CommandScopeInput) TmpPath() string {
 }
 
 func (i CommandScopeInput) DefaultChoysumPath() string {
+	if strings.TrimSpace(i.runtimeOptions.DefaultChoysumPath) != "" {
+		return i.runtimeOptions.DefaultChoysumPath
+	}
 	if i.options == nil {
 		return ""
 	}
@@ -283,6 +286,9 @@ func (i CommandScopeInput) NpmRegistryURL() string {
 }
 
 func (i CommandScopeInput) ModuleCatalogIndexURL() string {
+	if strings.TrimSpace(i.runtimeOptions.ModuleCatalogIndexURL) != "" {
+		return i.runtimeOptions.ModuleCatalogIndexURL
+	}
 	if i.options == nil {
 		return ""
 	}
