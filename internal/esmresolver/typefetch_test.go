@@ -262,7 +262,6 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
-	_ = transitive
 	if result.FromCache {
 		t.Fatal("expected download, got cache hit")
 	}
@@ -271,6 +270,19 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	}
 
 	depPath := typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/sub.d.ts")
+	if len(transitive) == 0 {
+		t.Fatal("expected transitive results to include imported type files")
+	}
+	hasDepResult := false
+	for _, tr := range transitive {
+		if tr.CachedPath == depPath {
+			hasDepResult = true
+			break
+		}
+	}
+	if !hasDepResult {
+		t.Fatalf("expected transitive results to include %s, got %+v", depPath, transitive)
+	}
 	if _, err := os.Stat(depPath); err != nil {
 		t.Fatalf("expected transitive type file at %s: %v", depPath, err)
 	}
@@ -288,7 +300,7 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 
 func TestFetchTypeDefinition_RequestTimeoutStartsAfterSlotAcquired(t *testing.T) {
 	oldTimeout := typeFetchRequestTimeout
-	typeFetchRequestTimeout = 100 * time.Millisecond
+	typeFetchRequestTimeout = 300 * time.Millisecond
 	defer func() { typeFetchRequestTimeout = oldTimeout }()
 
 	var srv *httptest.Server
@@ -310,7 +322,7 @@ func TestFetchTypeDefinition_RequestTimeoutStartsAfterSlotAcquired(t *testing.T)
 	// timeout starts before waiting for the slot.
 	state.requestSem <- struct{}{}
 	go func() {
-		time.Sleep(150 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		<-state.requestSem
 	}()
 
@@ -1042,6 +1054,17 @@ import { X } from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts";`
 	}
 	if !strings.Contains(rewritten, `from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts"`) {
 		t.Fatalf("expected non-bridge local cache import to remain unchanged, got: %q", rewritten)
+	}
+}
+
+func TestBridgedBareSpecifierForLocalCacheSpecifier_ScopedPackage(t *testing.T) {
+	const scopedPkg = "@scope/pkg"
+	typeModuleBridgePackages[scopedPkg] = struct{}{}
+	defer delete(typeModuleBridgePackages, scopedPkg)
+
+	got := bridgedBareSpecifierForLocalCacheSpecifier("./esm.sh_@scope_pkg@1.2.3_dist_index.d.ts.d.ts")
+	if got != scopedPkg {
+		t.Fatalf("bridgedBareSpecifierForLocalCacheSpecifier() = %q, want %q", got, scopedPkg)
 	}
 }
 

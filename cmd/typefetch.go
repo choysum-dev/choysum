@@ -316,6 +316,33 @@ func readTypeFetchModulePackage(path string) (typeFetchModulePackage, error) {
 	return pkg, nil
 }
 
+func typeFetchModulePackagePath(modulesPath string, moduleName string) (string, error) {
+	modulesRoot := strings.TrimSpace(modulesPath)
+	if modulesRoot == "" {
+		return "", xfmt.Errorf("modules path is required")
+	}
+	trimmedModule := strings.TrimSpace(moduleName)
+	if trimmedModule == "" {
+		return "", xfmt.Errorf("module name is required")
+	}
+
+	rootAbs, err := filepath.Abs(modulesRoot)
+	if err != nil {
+		return "", xfmt.Errorf("resolve modules path: %w", err)
+	}
+
+	pkgPath := filepath.Clean(filepath.Join(rootAbs, trimmedModule, "package.json"))
+	rel, err := filepath.Rel(rootAbs, pkgPath)
+	if err != nil {
+		return "", xfmt.Errorf("resolve module path %q: %w", moduleName, err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", xfmt.Errorf("invalid module path %q", moduleName)
+	}
+
+	return pkgPath, nil
+}
+
 func resolveTypeFetchDependsClosure(modulesPath string, rootModule string) ([]string, []string, error) {
 	rootModule = strings.TrimSpace(rootModule)
 	if rootModule == "" {
@@ -338,7 +365,10 @@ func resolveTypeFetchDependsClosure(modulesPath string, rootModule string) ([]st
 		}
 		seen[moduleName] = struct{}{}
 
-		pkgPath := filepath.Join(modulesPath, moduleName, "package.json")
+		pkgPath, err := typeFetchModulePackagePath(modulesPath, moduleName)
+		if err != nil {
+			return nil, nil, xfmt.Errorf("%s: %w", moduleName, err)
+		}
 		pkg, err := readTypeFetchModulePackage(pkgPath)
 		if err != nil {
 			if os.IsNotExist(err) && moduleName != rootModule {
@@ -358,7 +388,10 @@ func resolveTypeFetchDependsClosure(modulesPath string, rootModule string) ([]st
 				continue
 			}
 
-			depPkgPath := filepath.Join(modulesPath, depModule, "package.json")
+			depPkgPath, err := typeFetchModulePackagePath(modulesPath, depModule)
+			if err != nil {
+				return nil, nil, xfmt.Errorf("resolve depends module %q for %q: %w", depModule, moduleName, err)
+			}
 			if _, err := os.Stat(depPkgPath); err != nil {
 				if os.IsNotExist(err) {
 					missingSet[depModule] = struct{}{}
@@ -396,7 +429,10 @@ func validateTypeFetchDependsCompleteness(modulesPath string, moduleNames []stri
 			continue
 		}
 
-		pkgPath := filepath.Join(modulesPath, trimmed, "package.json")
+		pkgPath, err := typeFetchModulePackagePath(modulesPath, trimmed)
+		if err != nil {
+			return nil, xfmt.Errorf("%s: %w", trimmed, err)
+		}
 		pkg, err := readTypeFetchModulePackage(pkgPath)
 		if err != nil {
 			return nil, xfmt.Errorf("%s: %w", trimmed, err)
@@ -411,7 +447,10 @@ func validateTypeFetchDependsCompleteness(modulesPath string, moduleNames []stri
 				continue
 			}
 
-			depPkgPath := filepath.Join(modulesPath, depModule, "package.json")
+			depPkgPath, err := typeFetchModulePackagePath(modulesPath, depModule)
+			if err != nil {
+				return nil, xfmt.Errorf("resolve depends module %q for %q: %w", depModule, trimmed, err)
+			}
 			if _, err := os.Stat(depPkgPath); err != nil {
 				if os.IsNotExist(err) {
 					missingSet[depModule] = struct{}{}

@@ -548,6 +548,32 @@ func TestNewTypeFetchCmd_Run_InvalidMissingDepPolicy(t *testing.T) {
 	}
 }
 
+func TestResolveTypeFetchDependsClosure_RejectsTraversalDependsPath(t *testing.T) {
+	modulesPath := t.TempDir()
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["../escape"]}}`)
+
+	_, _, err := resolveTypeFetchDependsClosure(modulesPath, "auth")
+	if err == nil {
+		t.Fatal("expected traversal depends module path to be rejected")
+	}
+	if !strings.Contains(err.Error(), `invalid module path "../escape"`) {
+		t.Fatalf("expected invalid module path error, got %v", err)
+	}
+}
+
+func TestValidateTypeFetchDependsCompleteness_RejectsTraversalDependsPath(t *testing.T) {
+	modulesPath := t.TempDir()
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["../escape"]}}`)
+
+	_, err := validateTypeFetchDependsCompleteness(modulesPath, []string{"auth"})
+	if err == nil {
+		t.Fatal("expected traversal depends module path to be rejected")
+	}
+	if !strings.Contains(err.Error(), `invalid module path "../escape"`) {
+		t.Fatalf("expected invalid module path error, got %v", err)
+	}
+}
+
 func TestNewTypeFetchCmd_Run_AllModulesMissingDependsDefaultWarn(t *testing.T) {
 	modulesPath := t.TempDir()
 	cfg := newCommandTestConfig(modulesPath)

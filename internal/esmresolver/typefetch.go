@@ -538,9 +538,14 @@ func fetchTypeRecursiveWithRetry(ctx context.Context, client *http.Client, types
 
 	var lastErr error
 	for attempt := 1; attempt <= attempts; attempt++ {
-		_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, ancestors)
+		subResult, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, ancestors)
 		if err == nil {
-			return subTransitive, nil
+			results := make([]TypeFetchResult, 0, len(subTransitive)+1)
+			if subResult != nil {
+				results = append(results, *subResult)
+			}
+			results = append(results, subTransitive...)
+			return results, nil
 		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return nil, ctxErr
@@ -672,11 +677,16 @@ func bridgedBareSpecifierForLocalCacheSpecifier(specifier string) string {
 	}
 
 	rest := strings.TrimPrefix(base, "esm.sh_")
-	at := strings.Index(rest, "@")
+	at := strings.LastIndex(rest, "@")
 	if at <= 0 {
 		return ""
 	}
 	pkg := strings.TrimSpace(rest[:at])
+	if strings.HasPrefix(pkg, "@") && !strings.Contains(pkg, "/") {
+		if sep := strings.Index(pkg, "_"); sep > 1 {
+			pkg = pkg[:sep] + "/" + pkg[sep+1:]
+		}
+	}
 	if pkg == "" {
 		return ""
 	}
@@ -1378,37 +1388,38 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 		ctx = context.Background()
 	}
 
-	var resp *http.Response
-	var reqCancel context.CancelFunc
+	var body []byte
 	err := state.withRequestSlotContext(ctx, func() error {
 		reqCtx, cancel := context.WithTimeout(ctx, typeFetchRequestTimeout)
-		reqCancel = cancel
+		defer cancel()
 
 		req, reqErr := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, nil)
 		if reqErr != nil {
 			return fmt.Errorf("create download request for %s: %w", rawURL, reqErr)
 		}
 
-		var doErr error
-		resp, doErr = client.Do(req)
-		return doErr
+		resp, doErr := client.Do(req)
+		if doErr != nil {
+			return doErr
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("http %d", resp.StatusCode)
+		}
+
+		body, doErr = io.ReadAll(io.LimitReader(resp.Body, maxTypeFetchDownloadBytes+1))
+		if doErr != nil {
+			return fmt.Errorf("read types body from %s: %w", rawURL, doErr)
+		}
+		if int64(len(body)) > maxTypeFetchDownloadBytes {
+			return fmt.Errorf("response exceeds %d bytes", maxTypeFetchDownloadBytes)
+		}
+
+		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("download types from %s: %w", rawURL, err)
-	}
-	if reqCancel != nil {
-		defer reqCancel()
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download types from %s: http %d", rawURL, resp.StatusCode)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxTypeFetchDownloadBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("read types body from %s: %w", rawURL, err)
-	}
-	if int64(len(body)) > maxTypeFetchDownloadBytes {
-		return nil, fmt.Errorf("download types from %s: response exceeds %d bytes", rawURL, maxTypeFetchDownloadBytes)
 	}
 
 	return body, nil
