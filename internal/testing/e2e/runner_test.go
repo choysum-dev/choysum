@@ -109,6 +109,7 @@ func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
 
 	t.Setenv("PATH", "")
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
 	err := RunModule(context.Background(), RunOptions{
 		Module:      "auth",
 		ModulesPath: modulesPath,

@@ -9,10 +9,20 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
+func resetGlobalNpmRootCacheForTest() {
+	globalNpmRootOnce = sync.Once{}
+	globalNpmRootCache = ""
+	globalNpmRootErr = nil
+}
+
 func TestResolveGlobalNpmRootUsesOverride(t *testing.T) {
+	resetGlobalNpmRootCacheForTest()
+	defer resetGlobalNpmRootCacheForTest()
+
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "/tmp/custom-node-modules")
 	got, err := ResolveGlobalNpmRoot()
 	if err != nil {
@@ -20,6 +30,56 @@ func TestResolveGlobalNpmRootUsesOverride(t *testing.T) {
 	}
 	if got != "/tmp/custom-node-modules" {
 		t.Fatalf("ResolveGlobalNpmRoot returned %q, want %q", got, "/tmp/custom-node-modules")
+	}
+
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "/tmp/another-node-modules")
+	got, err = ResolveGlobalNpmRoot()
+	if err != nil {
+		t.Fatalf("ResolveGlobalNpmRoot second call returned error: %v", err)
+	}
+	if got != "/tmp/another-node-modules" {
+		t.Fatalf("ResolveGlobalNpmRoot second call returned %q, want %q", got, "/tmp/another-node-modules")
+	}
+}
+
+func TestResolveGlobalNpmRootCachesCommandResult(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script helper is non-portable on windows")
+	}
+
+	resetGlobalNpmRootCacheForTest()
+	defer resetGlobalNpmRootCacheForTest()
+
+	binDir := t.TempDir()
+	countFile := filepath.Join(t.TempDir(), "npm-call-count.txt")
+	writeExecFile(t, filepath.Join(binDir, "npm"), "#!/bin/sh\nset -eu\ncount_file=\"${CHOYSUM_NPM_COUNT_FILE}\"\ncount=0\nif [ -f \"$count_file\" ]; then\n  count=$(cat \"$count_file\")\nfi\ncount=$((count + 1))\nprintf '%s' \"$count\" > \"$count_file\"\nprintf '%s\\n' \"${CHOYSUM_NPM_VALUE}\"\n")
+	t.Setenv("PATH", binDir)
+	t.Setenv("CHOYSUM_NPM_COUNT_FILE", countFile)
+	t.Setenv("CHOYSUM_NPM_VALUE", "/tmp/npm-root-first")
+
+	first, err := ResolveGlobalNpmRoot()
+	if err != nil {
+		t.Fatalf("ResolveGlobalNpmRoot first call error: %v", err)
+	}
+	if first != "/tmp/npm-root-first" {
+		t.Fatalf("ResolveGlobalNpmRoot first call = %q, want %q", first, "/tmp/npm-root-first")
+	}
+
+	t.Setenv("CHOYSUM_NPM_VALUE", "/tmp/npm-root-second")
+	second, err := ResolveGlobalNpmRoot()
+	if err != nil {
+		t.Fatalf("ResolveGlobalNpmRoot second call error: %v", err)
+	}
+	if second != "/tmp/npm-root-first" {
+		t.Fatalf("ResolveGlobalNpmRoot second call = %q, want cached %q", second, "/tmp/npm-root-first")
+	}
+
+	rawCount, err := os.ReadFile(countFile)
+	if err != nil {
+		t.Fatalf("read npm call count: %v", err)
+	}
+	if strings.TrimSpace(string(rawCount)) != "1" {
+		t.Fatalf("expected npm command to run once, count=%q", strings.TrimSpace(string(rawCount)))
 	}
 }
 

@@ -10,6 +10,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+)
+
+var (
+	globalNpmRootOnce  sync.Once
+	globalNpmRootCache string
+	globalNpmRootErr   error
 )
 
 type MissingNodeModulesPreflightError struct {
@@ -128,11 +135,15 @@ func ResolveGlobalNpmRoot() (string, error) {
 	if override := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); override != "" {
 		return override, nil
 	}
-	out, err := exec.Command("npm", "root", "-g").Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
+	globalNpmRootOnce.Do(func() {
+		out, err := exec.Command("npm", "root", "-g").Output()
+		if err != nil {
+			globalNpmRootErr = err
+			return
+		}
+		globalNpmRootCache = strings.TrimSpace(string(out))
+	})
+	return globalNpmRootCache, globalNpmRootErr
 }
 
 func ResolveGlobalNpmRootBestEffort() string {
