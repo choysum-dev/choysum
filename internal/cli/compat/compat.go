@@ -1,30 +1,28 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package cmd
+package compat
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	msemver "github.com/Masterminds/semver/v3"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
 	"github.com/choysum-dev/choysum/pkg/scope"
-	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
 	modsemver "golang.org/x/mod/semver"
 )
 
-const cliCompatVersionEnv = "CHOYSUM_CLI_COMPAT_VERSION"
+const CLICompatVersionEnv = "CHOYSUM_CLI_COMPAT_VERSION"
 
-type resolvedCLICompatVersion struct {
+type ResolvedCLICompatVersion struct {
 	Version string
 	Source  string
 }
 
-func normalizeCLICompatVersion(raw string) (string, bool) {
+func NormalizeCLICompatVersion(raw string) (string, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", false
@@ -39,48 +37,40 @@ func normalizeCLICompatVersion(raw string) (string, bool) {
 	return candidate, true
 }
 
-func parseCLICompatVersion(raw string) (string, error) {
-	normalized, ok := normalizeCLICompatVersion(raw)
+func ParseCLICompatVersion(raw string) (string, error) {
+	normalized, ok := NormalizeCLICompatVersion(raw)
 	if !ok {
 		return "", xfmt.Errorf("ERR_CLI_COMPAT_VERSION_INVALID: Invalid CLI compatibility version %q. Expected SemVer like '1.7.0' or 'v1.7.0'.", strings.TrimSpace(raw))
 	}
 	return normalized, nil
 }
 
-func resolveCLICompatVersion(flagValue, runtimeVersion string) (resolvedCLICompatVersion, error) {
+func ResolveCLICompatVersion(flagValue, runtimeVersion, envValue string) (ResolvedCLICompatVersion, error) {
 	if strings.TrimSpace(flagValue) != "" {
-		normalized, err := parseCLICompatVersion(flagValue)
+		normalized, err := ParseCLICompatVersion(flagValue)
 		if err != nil {
-			return resolvedCLICompatVersion{}, err
+			return ResolvedCLICompatVersion{}, err
 		}
-		return resolvedCLICompatVersion{Version: normalized, Source: "flag"}, nil
+		return ResolvedCLICompatVersion{Version: normalized, Source: "flag"}, nil
 	}
 
-	if envValue := strings.TrimSpace(os.Getenv(cliCompatVersionEnv)); envValue != "" {
-		normalized, err := parseCLICompatVersion(envValue)
+	if strings.TrimSpace(envValue) != "" {
+		normalized, err := ParseCLICompatVersion(envValue)
 		if err != nil {
-			return resolvedCLICompatVersion{}, err
+			return ResolvedCLICompatVersion{}, err
 		}
-		return resolvedCLICompatVersion{Version: normalized, Source: "env"}, nil
+		return ResolvedCLICompatVersion{Version: normalized, Source: "env"}, nil
 	}
 
-	if normalized, ok := normalizeCLICompatVersion(runtimeVersion); ok {
-		return resolvedCLICompatVersion{Version: normalized, Source: "runtime"}, nil
+	if normalized, ok := NormalizeCLICompatVersion(runtimeVersion); ok {
+		return ResolvedCLICompatVersion{Version: normalized, Source: "runtime"}, nil
 	}
 
-	return resolvedCLICompatVersion{}, nil
+	return ResolvedCLICompatVersion{}, nil
 }
 
-func resolveCLICompatVersionForCommand(cmd *cobra.Command, flagValue string) (resolvedCLICompatVersion, error) {
-	runtimeVersion := ""
-	if cmd != nil && cmd.Root() != nil {
-		runtimeVersion = strings.TrimSpace(cmd.Root().Version)
-	}
-	return resolveCLICompatVersion(flagValue, runtimeVersion)
-}
-
-func cliVersionForConstraint(cliVersion string) (*msemver.Version, error) {
-	normalized, ok := normalizeCLICompatVersion(cliVersion)
+func CLIVersionForConstraint(cliVersion string) (*msemver.Version, error) {
+	normalized, ok := NormalizeCLICompatVersion(cliVersion)
 	if !ok {
 		return nil, xfmt.Errorf("ERR_CLI_COMPAT_VERSION_INVALID: Invalid CLI compatibility version %q. Expected SemVer like '1.7.0' or 'v1.7.0'.", strings.TrimSpace(cliVersion))
 	}
@@ -91,7 +81,7 @@ func cliVersionForConstraint(cliVersion string) (*msemver.Version, error) {
 	return version, nil
 }
 
-func catalogCandidateVersions(item *sourceregistry.CatalogModule) []string {
+func CatalogCandidateVersions(item *sourceregistry.CatalogModule) []string {
 	if item == nil {
 		return nil
 	}
@@ -112,7 +102,7 @@ func catalogCandidateVersions(item *sourceregistry.CatalogModule) []string {
 	return nil
 }
 
-func normalizeCatalogModuleVersion(raw string) (string, bool) {
+func NormalizeCatalogModuleVersion(raw string) (string, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", false
@@ -127,12 +117,12 @@ func normalizeCatalogModuleVersion(raw string) (string, bool) {
 	return candidate, true
 }
 
-func containsCatalogVersion(versions []string, target string) bool {
+func ContainsCatalogVersion(versions []string, target string) bool {
 	target = strings.TrimSpace(target)
 	if target == "" {
 		return false
 	}
-	targetNormalized, targetIsSemVer := normalizeCatalogModuleVersion(target)
+	targetNormalized, targetIsSemVer := NormalizeCatalogModuleVersion(target)
 	for _, version := range versions {
 		version = strings.TrimSpace(version)
 		if version == "" {
@@ -144,14 +134,14 @@ func containsCatalogVersion(versions []string, target string) bool {
 		if !targetIsSemVer {
 			continue
 		}
-		if normalized, ok := normalizeCatalogModuleVersion(version); ok && normalized == targetNormalized {
+		if normalized, ok := NormalizeCatalogModuleVersion(version); ok && normalized == targetNormalized {
 			return true
 		}
 	}
 	return false
 }
 
-func compatibleCatalogVersions(item *sourceregistry.CatalogModule, cliVersion string) ([]string, error) {
+func CompatibleCatalogVersions(item *sourceregistry.CatalogModule, cliVersion string) ([]string, error) {
 	if item == nil {
 		return nil, xfmt.Errorf("remote module is nil")
 	}
@@ -160,13 +150,13 @@ func compatibleCatalogVersions(item *sourceregistry.CatalogModule, cliVersion st
 		moduleName = "<unknown>"
 	}
 
-	version, err := cliVersionForConstraint(cliVersion)
+	version, err := CLIVersionForConstraint(cliVersion)
 	if err != nil {
 		return nil, err
 	}
 
 	compatible := make([]string, 0)
-	for _, moduleVersion := range catalogCandidateVersions(item) {
+	for _, moduleVersion := range CatalogCandidateVersions(item) {
 		cliRange, ok := item.CLIRangeForVersion(moduleVersion)
 		if !ok || strings.TrimSpace(cliRange) == "" {
 			return nil, xfmt.Errorf("ERR_MODULE_CLI_RANGE_MISSING: Module '%s' is missing required field 'choysum.cli'.", moduleName)
@@ -185,19 +175,19 @@ func compatibleCatalogVersions(item *sourceregistry.CatalogModule, cliVersion st
 	return compatible, nil
 }
 
-func selectLatestCompatibleCatalogVersion(item *sourceregistry.CatalogModule, cliVersion string) (string, error) {
-	versions, err := compatibleCatalogVersions(item, cliVersion)
+func SelectLatestCompatibleCatalogVersion(item *sourceregistry.CatalogModule, cliVersion string) (string, error) {
+	versions, err := CompatibleCatalogVersions(item, cliVersion)
 	if err != nil {
 		return "", err
 	}
 	return versions[len(versions)-1], nil
 }
 
-func filterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliVersion string) (*sourceregistry.CatalogModule, error) {
+func FilterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliVersion string) (*sourceregistry.CatalogModule, error) {
 	if item == nil {
 		return nil, xfmt.Errorf("remote module is nil")
 	}
-	versions, err := compatibleCatalogVersions(item, cliVersion)
+	versions, err := CompatibleCatalogVersions(item, cliVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -229,58 +219,31 @@ func filterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliV
 	return &filtered, nil
 }
 
-func resolveCompatibleRegistryLatestVersion(ctx context.Context, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, moduleName, cliVersion string) (string, error) {
-	indexURL, err := resolveModuleCatalogIndexURL(runtimeOptions)
-	if err != nil {
-		return "", err
-	}
+func ResolveCompatibleRegistryLatestVersion(ctx context.Context, runtimeScope scope.Scope, indexURL, moduleName, cliVersion string) (string, error) {
 	catalog := sourceregistry.NewCatalog(runtimeScope)
-	item, err := catalog.Info(ctx, indexURL, strings.TrimSpace(moduleName))
+	item, err := catalog.Info(ctx, strings.TrimSpace(indexURL), strings.TrimSpace(moduleName))
 	if err != nil {
 		return "", xfmt.Errorf("query remote module info failed (module=%s): %w", strings.TrimSpace(moduleName), err)
 	}
-	version, err := selectLatestCompatibleCatalogVersion(item, cliVersion)
+	version, err := SelectLatestCompatibleCatalogVersion(item, cliVersion)
 	if err != nil {
 		return "", err
 	}
 	return version, nil
 }
 
-func resolveRegistryBackedUpgradeInput(ctx context.Context, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, moduleName, cliVersion string) (string, bool, error) {
-	moduleName = strings.TrimSpace(moduleName)
-	if moduleName == "" {
-		return "", false, xfmt.Errorf("module name is empty")
-	}
-	if err := runtimeOptions.Validate(); err != nil {
-		return "", false, err
-	}
-
-	registryBacked, err := hasRegistryOriginBinding(runtimeScope, runtimeOptions, moduleName)
-	if err != nil {
-		return "", false, err
-	}
-	if !registryBacked {
-		return moduleName, false, nil
-	}
-
-	compatibleVersion, err := resolveCompatibleRegistryLatestVersion(ctx, runtimeScope, runtimeOptions, moduleName, cliVersion)
-	if err != nil {
-		return "", true, err
-	}
-	return moduleName + "@" + compatibleVersion, true, nil
-}
-
-func hasRegistryOriginBinding(runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, moduleName string) (bool, error) {
+func HasRegistryOriginBinding(runtimeScope scope.Scope, defaultChoysumPath, moduleName string) (bool, error) {
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return false, xfmt.Errorf("module name is empty")
 	}
-	if err := runtimeOptions.Validate(); err != nil {
-		return false, err
+	defaultChoysumPath = strings.TrimSpace(defaultChoysumPath)
+	if defaultChoysumPath == "" {
+		return false, xfmt.Errorf("cli runtime options: defaultChoysumPath is required")
 	}
 
 	workspaceRoot := internalorigin.WorkspaceRoot(runtimeScope)
-	lockStore := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(runtimeOptions.defaultChoysumPath))
+	lockStore := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(defaultChoysumPath))
 	binding, ok, err := lockStore.LookupBinding(workspaceRoot, moduleName)
 	if err != nil {
 		return false, xfmt.Errorf("lookup module origin binding failed: %w", err)
@@ -288,6 +251,6 @@ func hasRegistryOriginBinding(runtimeScope scope.Scope, runtimeOptions cliRuntim
 	return ok && strings.TrimSpace(binding.OriginType) == internalorigin.OriginTypeRegistry, nil
 }
 
-func cliCompatFilterSkippedWarning() string {
+func CompatFilterSkippedWarning() string {
 	return "WARN_CLI_COMPAT_FILTER_SKIPPED: Compatibility filtering is skipped in '--all' mode because no CLI compatibility version is available."
 }

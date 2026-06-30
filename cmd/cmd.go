@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -22,9 +23,9 @@ const lightweightScopeAnnotation = "lightweightScope"
 
 // Command owns the root Cobra command and the lazily initialized runtime scope used by subcommands.
 type Command struct {
-	rootCmd           *cobra.Command
-	runtimeScope      scope.Scope
-	cliRuntimeOptions cliRuntimeOptions
+	rootCmd        *cobra.Command
+	runtimeScope   scope.Scope
+	runtimeOptions cliruntime.Options
 }
 
 // Execute runs the configured root Cobra command.
@@ -79,13 +80,13 @@ built-in defaults or load a non-default workspace config.`,
 				return
 			}
 			c.runtimeScope = runtimeScope
-			c.cliRuntimeOptions = runtimeOptions
+			c.runtimeOptions = runtimeOptions
 		})
 		return initErr
 	}
 
 	envGetter := func() scope.Scope { return c.runtimeScope }
-	cliOptionsGetter := func() cliRuntimeOptions { return c.cliRuntimeOptions }
+	cliOptionsGetter := func() cliruntime.Options { return c.runtimeOptions }
 
 	c.rootCmd.AddCommand(
 		newInstallCmd(envGetter),
@@ -111,29 +112,34 @@ func shouldUseLightweightRuntimeScope(cmd *cobra.Command) bool {
 	return false
 }
 
-func newCommandRuntimeScope(ctx context.Context, cfgPath string, lightweight bool) (scope.Scope, cliRuntimeOptions, error) {
+func newCommandRuntimeScope(ctx context.Context, cfgPath string, lightweight bool) (scope.Scope, cliruntime.Options, error) {
 	cfg, err := config.LoadWithProvider(nil, cfgPath)
 	if err != nil {
-		return nil, cliRuntimeOptions{}, xfmt.Errorf("error reading config file %s: %w", cfgPath, err)
+		return nil, cliruntime.Options{}, xfmt.Errorf("error reading config file %s: %w", cfgPath, err)
 	}
 
-	cfgOptions := newScopeInputConfigOptions(snapshot.New(cfg))
-	runtimeOptions := newCliRuntimeOptionsFromScopeInputOptions(cfgOptions)
+	cfgOptions := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	runtimeOptions := cliruntime.Options{
+		DefaultChoysumPath:    cfgOptions.DefaultChoysumPath,
+		ModulesPath:           cfgOptions.ModulesPath,
+		TmpPath:               cfgOptions.TmpPath,
+		ModuleCatalogIndexURL: strings.TrimSpace(cfgOptions.ModuleCatalogIndexURL),
+	}
 	if err := runtimeOptions.Validate(); err != nil {
-		return nil, cliRuntimeOptions{}, xfmt.Errorf("invalid cli runtime options: %w", err)
+		return nil, cliruntime.Options{}, xfmt.Errorf("invalid cli runtime options: %w", err)
 	}
 
 	l := logger.NewLoggerWithWriter(cfg.Log, os.Stderr)
-	input := newCommandRuntimeScopeInput(cfgOptions, runtimeOptions)
+	input := cliruntime.NewCommandScopeInput(cfgOptions, runtimeOptions)
 
 	var runtimeScope scope.Scope
 	if lightweight {
-		runtimeScope = newCommandRuntimeScopeWithoutDB(ctx, input, l)
+		runtimeScope = cliruntime.NewScopeWithoutDB(ctx, input, l)
 	} else {
 		runtimeScope = scope.NewScope(ctx, input, l)
 	}
 	if runtimeScope == nil {
-		return nil, cliRuntimeOptions{}, xfmt.Errorf("failed to initialize scope")
+		return nil, cliruntime.Options{}, xfmt.Errorf("failed to initialize scope")
 	}
 
 	return runtimeScope, runtimeOptions, nil

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 
+	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -22,18 +23,18 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			env := envGetter()
 			if env == nil {
-				printCLIError("scope is not initialized")
+				clioutput.PrintError("scope is not initialized")
 				os.Exit(1)
 			}
 			if len(args) == 0 {
-				printCLIError("Please specify the module name")
+				clioutput.PrintError("Please specify the module name")
 				os.Exit(1)
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			env := envGetter()
 			if env == nil {
-				printCLIError("scope is not initialized")
+				clioutput.PrintError("scope is not initialized")
 				os.Exit(1)
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -65,8 +66,8 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				return nil
 			}); err != nil {
 				attrs := []any{"error", err}
-				attrs = append(attrs, moduleCommandFailureAttrs("uninstall")...)
-				attrs = append(attrs, currentOrRequestedAttr("module", "modules", currentModule, args)...)
+				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("uninstall")...)
+				attrs = append(attrs, clioutput.CurrentOrRequestedAttr("module", "modules", currentModule, args)...)
 				env.Logger().Error("module uninstall failed", attrs...)
 				os.Exit(1)
 			}

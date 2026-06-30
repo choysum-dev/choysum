@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package cmd
+package output
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 func TestPrintErrorBlock_OutputFormat(t *testing.T) {
 	output := captureStderr(t, func() {
-		printErrorBlock("failed", "because", "do next")
+		PrintErrorBlock("failed", "because", "do next")
 	})
 
 	expected := "ERROR: failed\nREASON: because\nNEXT: do next\n"
@@ -21,9 +21,9 @@ func TestPrintErrorBlock_OutputFormat(t *testing.T) {
 	}
 }
 
-func TestPrintCLIWarning_OutputFormat(t *testing.T) {
+func TestPrintWarning_OutputFormat(t *testing.T) {
 	output := captureStderr(t, func() {
-		printCLIWarning("check config")
+		PrintWarning("check config")
 	})
 
 	expected := "WARN: check config\n"
@@ -32,9 +32,9 @@ func TestPrintCLIWarning_OutputFormat(t *testing.T) {
 	}
 }
 
-func TestPrintCLIError_OutputFormat(t *testing.T) {
+func TestPrintError_OutputFormat(t *testing.T) {
 	output := captureStderr(t, func() {
-		printCLIError("scope is not initialized")
+		PrintError("scope is not initialized")
 	})
 
 	expected := "ERROR: scope is not initialized\n"
@@ -44,6 +44,8 @@ func TestPrintCLIError_OutputFormat(t *testing.T) {
 }
 
 func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+
 	old := os.Stderr
 	reader, writer, err := os.Pipe()
 	if err != nil {

@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	pkgrunner "github.com/choysum-dev/choysum/internal/testing/runner"
@@ -75,9 +77,14 @@ func (e *commandTestScope) FactoryInput() scope.FactoryInput {
 	if e == nil || e.cfg == nil {
 		return nil
 	}
-	options := newScopeInputConfigOptions(snapshot.New(e.cfg))
-	runtimeOptions := newCliRuntimeOptionsFromScopeInputOptions(options)
-	return newCommandRuntimeScopeInput(options, runtimeOptions)
+	options := cliruntime.NewScopeInputConfigOptions(snapshot.New(e.cfg))
+	runtimeOptions := cliruntime.Options{
+		DefaultChoysumPath:    options.DefaultChoysumPath,
+		ModulesPath:           options.ModulesPath,
+		TmpPath:               options.TmpPath,
+		ModuleCatalogIndexURL: strings.TrimSpace(options.ModuleCatalogIndexURL),
+	}
+	return cliruntime.NewCommandScopeInput(options, runtimeOptions)
 }
 
 func (e *commandExitScope) Logger() *slog.Logger {
@@ -169,25 +176,25 @@ func registerCommandHelperEngines() {
 }
 
 func TestRequireCliRuntimeOptions(t *testing.T) {
-	if _, err := requireCliRuntimeOptions(nil); err == nil || !strings.Contains(err.Error(), "getter is not initialized") {
+	if _, err := cliruntime.RequireOptions(nil); err == nil || !strings.Contains(err.Error(), "getter is not initialized") {
 		t.Fatalf("expected nil getter error, got %v", err)
 	}
 
-	if _, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return cliRuntimeOptions{} }); err == nil || !strings.Contains(err.Error(), "defaultChoysumPath is required") {
+	if _, err := cliruntime.RequireOptions(func() cliruntime.Options { return cliruntime.Options{} }); err == nil || !strings.Contains(err.Error(), "defaultChoysumPath is required") {
 		t.Fatalf("expected Validate() error from getter options, got %v", err)
 	}
 
-	want := cliRuntimeOptions{
-		defaultChoysumPath: "/workspace/.choysum",
-		modulesPath:        "/workspace/modules",
-		tmpPath:            "/workspace/.choysum/tmp",
+	want := cliruntime.Options{
+		DefaultChoysumPath: "/workspace/.choysum",
+		ModulesPath:        "/workspace/modules",
+		TmpPath:            "/workspace/.choysum/tmp",
 	}
-	got, err := requireCliRuntimeOptions(func() cliRuntimeOptions { return want })
+	got, err := cliruntime.RequireOptions(func() cliruntime.Options { return want })
 	if err != nil {
-		t.Fatalf("requireCliRuntimeOptions(valid) error = %v", err)
+		t.Fatalf("RequireOptions(valid) error = %v", err)
 	}
 	if got != want {
-		t.Fatalf("requireCliRuntimeOptions(valid) = %#v, want %#v", got, want)
+		t.Fatalf("RequireOptions(valid) = %#v, want %#v", got, want)
 	}
 }
 
@@ -213,14 +220,14 @@ func newCommandTestConfig(modulesPath string) *config.Config {
 	}
 }
 
-func commandRuntimeOptionsFromScope(scopeGetter func() scope.Scope) func() cliRuntimeOptions {
-	return func() cliRuntimeOptions {
+func commandRuntimeOptionsFromScope(scopeGetter func() scope.Scope) func() cliruntime.Options {
+	return func() cliruntime.Options {
 		runtimeScope := scopeGetter()
 		if runtimeScope == nil {
-			return newCliRuntimeOptions(scope.PathsRuntimeOptions{}, false)
+			return cliruntime.NewOptions(scope.PathsRuntimeOptions{}, false)
 		}
 		pathOpts, hasPathOpts := scope.PathsRuntimeOptionsFromScope(runtimeScope)
-		return newCliRuntimeOptions(pathOpts, hasPathOpts)
+		return cliruntime.NewOptions(pathOpts, hasPathOpts)
 	}
 }
 
@@ -1661,7 +1668,7 @@ func TestPrintErrorBlock(t *testing.T) {
 	os.Stderr = w
 	defer func() { os.Stderr = oldStderr }()
 
-	printErrorBlock("boom", "because", "retry")
+	clioutput.PrintErrorBlock("boom", "because", "retry")
 	_ = w.Close()
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -1673,6 +1680,29 @@ func TestPrintErrorBlock(t *testing.T) {
 			t.Fatalf("expected output to contain %q, got %q", want, out)
 		}
 	}
+}
+
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+
+	old := os.Stderr
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stderr = writer
+	t.Cleanup(func() {
+		os.Stderr = old
+	})
+
+	fn()
+	_ = writer.Close()
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, reader); err != nil {
+		t.Fatalf("read stderr: %v", err)
+	}
+	return buf.String()
 }
 
 func TestPersistentConfigFlagExistsOnRoot(t *testing.T) {

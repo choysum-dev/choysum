@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package cmd
+package output
 
 import "testing"
 
@@ -22,7 +22,7 @@ func attrsMapFromList(t *testing.T, attrs []any) map[string]any {
 }
 
 func TestCurrentOrRequestedAttrUsesCurrentValue(t *testing.T) {
-	attrs := attrsMapFromList(t, currentOrRequestedAttr("input", "inputs", " core ", []string{"base", "task"}))
+	attrs := attrsMapFromList(t, CurrentOrRequestedAttr("input", "inputs", " core ", []string{"base", "task"}))
 	if got := attrs["input"]; got != "core" {
 		t.Fatalf("input = %#v, want core", got)
 	}
@@ -32,7 +32,7 @@ func TestCurrentOrRequestedAttrUsesCurrentValue(t *testing.T) {
 }
 
 func TestCurrentOrRequestedAttrFallsBackToRequestedList(t *testing.T) {
-	attrs := attrsMapFromList(t, currentOrRequestedAttr("module", "modules", "", []string{" base ", "", "task"}))
+	attrs := attrsMapFromList(t, CurrentOrRequestedAttr("module", "modules", "", []string{" base ", "", "task"}))
 	modules, ok := attrs["modules"].([]string)
 	if !ok || len(modules) != 2 || modules[0] != "base" || modules[1] != "task" {
 		t.Fatalf("modules = %#v, want [base task]", attrs["modules"])
@@ -43,7 +43,7 @@ func TestCurrentOrRequestedAttrFallsBackToRequestedList(t *testing.T) {
 }
 
 func TestModuleInstallFailureAttrsAddsResolvedModuleWhenDifferent(t *testing.T) {
-	attrs := attrsMapFromList(t, moduleInstallFailureAttrs("registry/base@1.0.0", "base"))
+	attrs := attrsMapFromList(t, ModuleInstallFailureAttrs("registry/base@1.0.0", "base"))
 	if got := attrs["input"]; got != "registry/base@1.0.0" {
 		t.Fatalf("input = %#v, want registry/base@1.0.0", got)
 	}
@@ -53,7 +53,7 @@ func TestModuleInstallFailureAttrsAddsResolvedModuleWhenDifferent(t *testing.T) 
 }
 
 func TestModuleInstallFailureAttrsAvoidsDuplicateModuleField(t *testing.T) {
-	attrs := attrsMapFromList(t, moduleInstallFailureAttrs("core", "core"))
+	attrs := attrsMapFromList(t, ModuleInstallFailureAttrs("core", "core"))
 	if got := attrs["input"]; got != "core" {
 		t.Fatalf("input = %#v, want core", got)
 	}
@@ -63,14 +63,14 @@ func TestModuleInstallFailureAttrsAvoidsDuplicateModuleField(t *testing.T) {
 }
 
 func TestModuleCommandFailureAttrsAddsOperation(t *testing.T) {
-	attrs := attrsMapFromList(t, moduleCommandFailureAttrs(" upgrade "))
+	attrs := attrsMapFromList(t, ModuleCommandFailureAttrs(" upgrade "))
 	if got := attrs["operation"]; got != "upgrade" {
 		t.Fatalf("operation = %#v, want upgrade", got)
 	}
 }
 
 func TestModuleCommandFailureAttrsOmitsBlankOperation(t *testing.T) {
-	if attrs := moduleCommandFailureAttrs("   "); attrs != nil {
+	if attrs := ModuleCommandFailureAttrs("   "); attrs != nil {
 		t.Fatalf("expected blank operation to be omitted, got %#v", attrs)
 	}
 }

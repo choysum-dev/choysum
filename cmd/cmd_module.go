@@ -13,18 +13,20 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
+	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
-	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-func newModuleCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newModuleCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "module",
 		Short: "Inspect and manage module sources",
@@ -41,7 +43,7 @@ func newModuleCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliR
 	return cmd
 }
 
-func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var remote bool
 	cmd := &cobra.Command{
 		Use:   "search <query>",
@@ -55,7 +57,7 @@ func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func(
 			if err != nil {
 				return err
 			}
-			runtimeOptions, err := requireCliRuntimeOptionsForCommand("module", runtimeOptionsGetter)
+			runtimeOptions, err := cliruntime.RequireOptionsForCommand("module", runtimeOptionsGetter)
 			if err != nil {
 				return err
 			}
@@ -69,14 +71,14 @@ func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func(
 	return cmd
 }
 
-func runModuleSearchLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, rawQuery string) error {
+func runModuleSearchLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options, rawQuery string) error {
 	query := strings.ToLower(strings.TrimSpace(rawQuery))
 	if query == "" {
 		return xfmt.Errorf("query is required")
 	}
 
 	workspaceRoot := internalorigin.WorkspaceRoot(runtimeScope)
-	store := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(runtimeOptions.defaultChoysumPath))
+	store := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(runtimeOptions.DefaultChoysumPath))
 	lockFile, err := store.Read(workspaceRoot)
 	if err != nil {
 		return xfmt.Errorf("read modules lock: %w", err)
@@ -89,7 +91,7 @@ func runModuleSearchLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeO
 		}
 	}
 
-	if entries, err := os.ReadDir(runtimeOptions.modulesPath); err == nil {
+	if entries, err := os.ReadDir(runtimeOptions.ModulesPath); err == nil {
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
@@ -117,7 +119,7 @@ func runModuleSearchLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeO
 	return nil
 }
 
-func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, rawQuery string) error {
+func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options, rawQuery string) error {
 	query := strings.TrimSpace(rawQuery)
 	if query == "" {
 		return xfmt.Errorf("query is required")
@@ -142,7 +144,7 @@ func runModuleSearchRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtime
 	return nil
 }
 
-func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var remote bool
 	var showAll bool
 	var cliCompatVersion string
@@ -156,7 +158,7 @@ func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 				return err
 			}
 			if remote {
-				runtimeOptions, err := requireCliRuntimeOptionsForCommand("module", runtimeOptionsGetter)
+				runtimeOptions, err := cliruntime.RequireOptionsForCommand("module", runtimeOptionsGetter)
 				if err != nil {
 					return err
 				}
@@ -208,7 +210,7 @@ func runModuleInfoLocal(cmd *cobra.Command, envGetter func() scope.Scope, input 
 	return nil
 }
 
-func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, input string, cliCompatVersion string, showAll bool) error {
+func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options, input string, cliCompatVersion string, showAll bool) error {
 	raw := strings.TrimSpace(input)
 	if raw == "" {
 		return xfmt.Errorf("module input is required")
@@ -220,7 +222,11 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 			moduleName = parsed.ModuleName
 			version := strings.TrimSpace(parsed.Version)
 			if version != "" && !strings.EqualFold(version, "latest") {
-				resolvedCompat, compatErr := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+				runtimeVersion := ""
+				if cmd != nil && cmd.Root() != nil {
+					runtimeVersion = strings.TrimSpace(cmd.Root().Version)
+				}
+				resolvedCompat, compatErr := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 				if compatErr != nil {
 					return compatErr
 				}
@@ -232,15 +238,15 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 					if catalogErr != nil {
 						return catalogErr
 					}
-					compatibleVersions, compatibilityErr := compatibleCatalogVersions(catalogItem, resolvedCompat.Version)
+					compatibleVersions, compatibilityErr := clicompat.CompatibleCatalogVersions(catalogItem, resolvedCompat.Version)
 					if compatibilityErr != nil {
 						return compatibilityErr
 					}
-					if !containsCatalogVersion(compatibleVersions, version) {
+					if !clicompat.ContainsCatalogVersion(compatibleVersions, version) {
 						return xfmt.Errorf("ERR_MODULE_NO_COMPATIBLE_VERSION: No compatible version found for module '%s' with CLI version '%s'.", strings.TrimSpace(moduleName), strings.TrimSpace(resolvedCompat.Version))
 					}
 				} else if strings.TrimSpace(resolvedCompat.Version) == "" {
-					printCLIWarning(cliCompatFilterSkippedWarning())
+					clioutput.PrintWarning(clicompat.CompatFilterSkippedWarning())
 				}
 
 				coordinator, ctx, err := newCoordinatorForCommand(func() scope.Scope { return runtimeScope }, cmd)
@@ -264,7 +270,11 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 		return err
 	}
 
-	resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+	runtimeVersion := ""
+	if cmd != nil && cmd.Root() != nil {
+		runtimeVersion = strings.TrimSpace(cmd.Root().Version)
+	}
+	resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 	if err != nil {
 		return err
 	}
@@ -277,13 +287,13 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 	itemForOutput := item
 	if showAll {
 		if strings.TrimSpace(resolvedCompat.Version) == "" {
-			printCLIWarning(cliCompatFilterSkippedWarning())
+			clioutput.PrintWarning(clicompat.CompatFilterSkippedWarning())
 		}
 	} else {
 		if strings.TrimSpace(resolvedCompat.Version) == "" {
 			return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
 		}
-		filtered, err := filterCatalogModuleByCompatibility(item, resolvedCompat.Version)
+		filtered, err := clicompat.FilterCatalogModuleByCompatibility(item, resolvedCompat.Version)
 		if err != nil {
 			return err
 		}
@@ -298,7 +308,7 @@ func runModuleInfoRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 	return nil
 }
 
-func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var remote bool
 	var showAll bool
 	var cliCompatVersion string
@@ -311,7 +321,7 @@ func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 			if err != nil {
 				return err
 			}
-			runtimeOptions, err := requireCliRuntimeOptionsForCommand("module", runtimeOptionsGetter)
+			runtimeOptions, err := cliruntime.RequireOptionsForCommand("module", runtimeOptionsGetter)
 			if err != nil {
 				return err
 			}
@@ -327,7 +337,7 @@ func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 	return cmd
 }
 
-func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions) error {
+func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options) error {
 	if views, hasIndex, err := queryModuleIndexViews(runtimeScope, ""); err != nil {
 		return err
 	} else if hasIndex && len(views) > 0 {
@@ -351,7 +361,7 @@ func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOpt
 	}
 
 	workspaceRoot := internalorigin.WorkspaceRoot(runtimeScope)
-	store := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(runtimeOptions.defaultChoysumPath))
+	store := internalorigin.NewLockStore(internalorigin.WithLockStoreDefaultChoysumPath(runtimeOptions.DefaultChoysumPath))
 	lockFile, err := store.Read(workspaceRoot)
 	if err != nil {
 		return xfmt.Errorf("read modules lock: %w", err)
@@ -377,8 +387,12 @@ func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOpt
 	return nil
 }
 
-func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, cliCompatVersion string, showAll bool) error {
-	resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options, cliCompatVersion string, showAll bool) error {
+	runtimeVersion := ""
+	if cmd != nil && cmd.Root() != nil {
+		runtimeVersion = strings.TrimSpace(cmd.Root().Version)
+	}
+	resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 	if err != nil {
 		return err
 	}
@@ -393,7 +407,7 @@ func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 		}
 		filteredItems := make([]sourceregistry.CatalogModule, 0, len(items))
 		for i := range items {
-			filtered, err := filterCatalogModuleByCompatibility(&items[i], resolvedCompat.Version)
+			filtered, err := clicompat.FilterCatalogModuleByCompatibility(&items[i], resolvedCompat.Version)
 			if err != nil {
 				if strings.Contains(err.Error(), "ERR_MODULE_NO_COMPATIBLE_VERSION") {
 					continue
@@ -404,7 +418,7 @@ func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 		}
 		items = filteredItems
 	} else if strings.TrimSpace(resolvedCompat.Version) == "" {
-		printCLIWarning(cliCompatFilterSkippedWarning())
+		clioutput.PrintWarning(clicompat.CompatFilterSkippedWarning())
 	}
 
 	if len(items) == 0 {
@@ -423,7 +437,7 @@ func runModuleListRemote(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOp
 	return nil
 }
 
-func listRemoteCatalogModules(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, query string) ([]sourceregistry.CatalogModule, error) {
+func listRemoteCatalogModules(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options, query string) ([]sourceregistry.CatalogModule, error) {
 	indexURL, err := resolveModuleCatalogIndexURL(runtimeOptions)
 	if err != nil {
 		return nil, err
@@ -436,7 +450,7 @@ func listRemoteCatalogModules(cmd *cobra.Command, runtimeScope scope.Scope, runt
 	return items, nil
 }
 
-func loadRemoteModuleInfo(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliRuntimeOptions, moduleName string) (*sourceregistry.CatalogModule, error) {
+func loadRemoteModuleInfo(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOptions cliruntime.Options, moduleName string) (*sourceregistry.CatalogModule, error) {
 	indexURL, err := resolveModuleCatalogIndexURL(runtimeOptions)
 	if err != nil {
 		return nil, err
@@ -449,15 +463,8 @@ func loadRemoteModuleInfo(cmd *cobra.Command, runtimeScope scope.Scope, runtimeO
 	return item, nil
 }
 
-func resolveModuleCatalogIndexURL(runtimeOptions cliRuntimeOptions) (string, error) {
-	indexURL := strings.TrimSpace(runtimeOptions.moduleCatalogIndexURL)
-	if indexURL == "" {
-		indexURL = config.DefaultModuleCatalogIndexURL
-	}
-	if err := config.ValidateModuleCatalogIndexURL(indexURL); err != nil {
-		return "", err
-	}
-	return indexURL, nil
+func resolveModuleCatalogIndexURL(runtimeOptions cliruntime.Options) (string, error) {
+	return cliruntime.ResolveModuleCatalogIndexURL(runtimeOptions)
 }
 
 func contextFromCommand(cmd *cobra.Command) context.Context {

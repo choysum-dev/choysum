@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	pkge2e "github.com/choysum-dev/choysum/internal/testing/e2e"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
@@ -23,7 +24,7 @@ func isNoE2ESpecsError(err error) bool {
 	return testsemantics.IsModuleNoE2ESpecsError(err)
 }
 
-func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var scenarios []string
 	var withDemo bool
 	var keep bool
@@ -53,7 +54,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			if baseScope == nil {
 				return fmt.Errorf("scope is not initialized")
 			}
-			runtimeOptions, err := requireCliRuntimeOptionsForCommand("e2e", runtimeOptionsGetter)
+			runtimeOptions, err := cliruntime.RequireOptionsForCommand("e2e", runtimeOptionsGetter)
 			if err != nil {
 				return err
 			}
@@ -73,7 +74,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			if !cmd.Flags().Changed("runtime-log-level") && verbose {
 				resolvedRuntimeLogLevel = "debug"
 			}
-			normalizedRuntimeLogLevel, err := normalizeRuntimeLogLevelFlag(resolvedRuntimeLogLevel, "test e2e")
+			normalizedRuntimeLogLevel, err := cliruntime.NormalizeRuntimeLogLevelFlag(resolvedRuntimeLogLevel, "test e2e")
 			if err != nil {
 				return err
 			}
@@ -86,17 +87,17 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 				if testingpathing.TestingRunIDFromContext(ctx) == "" {
 					ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
 				}
-				mods, err := resolveE2EModules(runtimeOptions.modulesPath)
+				mods, err := resolveE2EModules(runtimeOptions.ModulesPath)
 				if err != nil {
 					return err
 				}
 				if len(mods) == 0 {
-					return fmt.Errorf("%s", testsemantics.NoRunnableE2EModulesMessage(runtimeOptions.modulesPath))
+					return fmt.Errorf("%s", testsemantics.NoRunnableE2EModulesMessage(runtimeOptions.ModulesPath))
 				}
 				for _, mod := range mods {
 					opts := pkge2e.RunOptions{
-						ModulesPath:     runtimeOptions.modulesPath,
-						TmpPath:         runtimeOptions.tmpPath,
+						ModulesPath:     runtimeOptions.ModulesPath,
+						TmpPath:         runtimeOptions.TmpPath,
 						Module:          mod,
 						Scenarios:       scenarios,
 						WithDemo:        withDemo,
@@ -119,8 +120,8 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRunt
 			}
 
 			opts := pkge2e.RunOptions{
-				ModulesPath:     runtimeOptions.modulesPath,
-				TmpPath:         runtimeOptions.tmpPath,
+				ModulesPath:     runtimeOptions.ModulesPath,
+				TmpPath:         runtimeOptions.TmpPath,
 				Module:          moduleName,
 				Scenarios:       scenarios,
 				WithDemo:        withDemo,

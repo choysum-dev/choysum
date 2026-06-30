@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -22,6 +23,17 @@ import (
 
 type runExitPanic struct {
 	code int
+}
+
+func runtimeValidationToRunError(err *cliruntime.RunValidationError) *runError {
+	if err == nil {
+		return nil
+	}
+	code := err.ExitCode
+	if code == 0 {
+		code = 3
+	}
+	return &runError{exitCode: code, errMsg: err.ErrMsg, reason: err.Reason, next: err.Next}
 }
 
 func TestRunCommandTreatsContextCanceledAsGracefulStop(t *testing.T) {
@@ -50,7 +62,7 @@ func TestRunCommandTreatsContextCanceledAsGracefulStop(t *testing.T) {
 			})
 
 			originalScopeFactory := runRuntimeScopeFactory
-			runRuntimeScopeFactory = func(runRuntimeScopeInput, *config.LogConfig) (scope.Scope, error) {
+			runRuntimeScopeFactory = func(cliruntime.RunScopeInput, *config.LogConfig) (scope.Scope, error) {
 				return &commandTestScope{}, nil
 			}
 			t.Cleanup(func() {
@@ -138,18 +150,18 @@ func TestSqlitePathFromDsn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := sqlitePathFromDsn(tt.dsn)
+			got, err := cliruntime.SQLitePathFromDSN(tt.dsn)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("sqlitePathFromDsn(%q) error = %v, want substring %q", tt.dsn, err, tt.wantErr)
+					t.Fatalf("SQLitePathFromDSN(%q) error = %v, want substring %q", tt.dsn, err, tt.wantErr)
 				}
 				return
 			}
 			if err != nil {
-				t.Fatalf("sqlitePathFromDsn(%q) error = %v", tt.dsn, err)
+				t.Fatalf("SQLitePathFromDSN(%q) error = %v", tt.dsn, err)
 			}
 			if got != tt.want {
-				t.Fatalf("sqlitePathFromDsn(%q) = %q, want %q", tt.dsn, got, tt.want)
+				t.Fatalf("SQLitePathFromDSN(%q) = %q, want %q", tt.dsn, got, tt.want)
 			}
 		})
 	}
@@ -170,8 +182,8 @@ func TestHasPathListSeparator(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := hasPathListSeparator(tt.path); got != tt.want {
-			t.Fatalf("hasPathListSeparator(%q) = %v, want %v", tt.path, got, tt.want)
+		if got := cliruntime.HasPathListSeparator(tt.path); got != tt.want {
+			t.Fatalf("HasPathListSeparator(%q) = %v, want %v", tt.path, got, tt.want)
 		}
 	}
 }
@@ -188,8 +200,8 @@ func TestContainsControl(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := containsControl(tt.value); got != tt.want {
-			t.Fatalf("containsControl(%q) = %v, want %v", tt.value, got, tt.want)
+		if got := cliruntime.ContainsControl(tt.value); got != tt.want {
+			t.Fatalf("ContainsControl(%q) = %v, want %v", tt.value, got, tt.want)
 		}
 	}
 }
@@ -207,8 +219,8 @@ func TestURLScheme(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := urlScheme(tt.dsn); got != tt.want {
-			t.Fatalf("urlScheme(%q) = %q, want %q", tt.dsn, got, tt.want)
+		if got := cliruntime.URLScheme(tt.dsn); got != tt.want {
+			t.Fatalf("URLScheme(%q) = %q, want %q", tt.dsn, got, tt.want)
 		}
 	}
 }
@@ -228,15 +240,15 @@ func TestValidateRunDatabaseDsn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateRunDatabaseDsn(tt.dialect, tt.dsn)
+			err := runtimeValidationToRunError(cliruntime.ValidateRunDatabaseDSN(tt.dialect, tt.dsn))
 			if tt.wantReason == "" {
 				if err != nil {
-					t.Fatalf("validateRunDatabaseDsn(%q, %q) = %v", tt.dialect, tt.dsn, err)
+					t.Fatalf("ValidateRunDatabaseDSN(%q, %q) = %v", tt.dialect, tt.dsn, err)
 				}
 				return
 			}
 			if err == nil || err.reason != tt.wantReason {
-				t.Fatalf("validateRunDatabaseDsn(%q, %q) = %#v, want reason %q", tt.dialect, tt.dsn, err, tt.wantReason)
+				t.Fatalf("ValidateRunDatabaseDSN(%q, %q) = %#v, want reason %q", tt.dialect, tt.dsn, err, tt.wantReason)
 			}
 		})
 	}
@@ -273,15 +285,15 @@ func TestValidateRunSqlite(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateRunSqlite(tt.dsn, false)
+			err := runtimeValidationToRunError(cliruntime.ValidateRunSQLite(tt.dsn, false, nil))
 			if tt.wantReason == "" {
 				if err != nil {
-					t.Fatalf("validateRunSqlite(%q) = %v", tt.dsn, err)
+					t.Fatalf("ValidateRunSQLite(%q) = %v", tt.dsn, err)
 				}
 				return
 			}
 			if err == nil || err.reason != tt.wantReason {
-				t.Fatalf("validateRunSqlite(%q) = %#v, want reason %q", tt.dsn, err, tt.wantReason)
+				t.Fatalf("ValidateRunSQLite(%q) = %#v, want reason %q", tt.dsn, err, tt.wantReason)
 			}
 		})
 	}
@@ -290,8 +302,8 @@ func TestValidateRunSqlite(t *testing.T) {
 func TestValidateRunSqliteAllowsDefaultCreate(t *testing.T) {
 	missingPath := filepath.Join(t.TempDir(), "state", "choysum.sqlite")
 	missingDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", missingPath)
-	if err := validateRunSqlite(missingDSN, true); err != nil {
-		t.Fatalf("validateRunSqlite(default create) = %#v", err)
+	if err := runtimeValidationToRunError(cliruntime.ValidateRunSQLite(missingDSN, true, nil)); err != nil {
+		t.Fatalf("ValidateRunSQLite(default create) = %#v", err)
 	}
 }
 
@@ -299,32 +311,32 @@ func TestValidateRunSqliteAllowCreateStillValidatesPragmas(t *testing.T) {
 	missingPath := filepath.Join(t.TempDir(), "state", "choysum.sqlite")
 	missingDSN := fmt.Sprintf("file:%s?mode=rwc", missingPath)
 
-	err := validateRunSqlite(missingDSN, true)
+	err := runtimeValidationToRunError(cliruntime.ValidateRunSQLite(missingDSN, true, nil))
 	if err == nil || err.reason != "sqlite dsn missing required params: _fk=1, _busy_timeout>0, _journal_mode=WAL" {
-		t.Fatalf("validateRunSqlite(allowCreate with missing pragmas) = %#v, want missing pragmas error", err)
+		t.Fatalf("ValidateRunSQLite(allowCreate with missing pragmas) = %#v, want missing pragmas error", err)
 	}
 }
 
 func TestValidateRunSQLitePragmasAndDSNQueryErrors(t *testing.T) {
 	t.Run("invalid file uri query parse", func(t *testing.T) {
-		err := validateRunSQLitePragmas("file://%zz")
+		err := runtimeValidationToRunError(cliruntime.ValidateRunSQLitePragmas("file://%zz"))
 		if err == nil || err.reason != "sqlite dsn query params are invalid" {
-			t.Fatalf("validateRunSQLitePragmas(file://%%zz) = %#v, want query params invalid error", err)
+			t.Fatalf("ValidateRunSQLitePragmas(file://%%zz) = %#v, want query params invalid error", err)
 		}
 	})
 
 	t.Run("invalid plain query encoding", func(t *testing.T) {
-		if _, err := sqliteDSNQueryParams("/tmp/choysum.sqlite?mode=%zz"); err == nil {
-			t.Fatal("expected sqliteDSNQueryParams() to fail for invalid query escape")
+		if _, err := cliruntime.SQLiteDSNQueryParams("/tmp/choysum.sqlite?mode=%zz"); err == nil {
+			t.Fatal("expected SQLiteDSNQueryParams() to fail for invalid query escape")
 		}
 	})
 }
 
 func TestPrepareRunDatabaseCreatesDefaultSqliteParent(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "state", "choysum.sqlite")
-	err := prepareRunDatabase(runDBRuntimeOptions{dialect: "sqlite", dsn: dbPath, allowCreate: true})
+	err := runtimeValidationToRunError(cliruntime.PrepareRunDatabase(runDBRuntimeOptions{Dialect: "sqlite", DSN: dbPath, AllowCreate: true}))
 	if err != nil {
-		t.Fatalf("prepareRunDatabase() = %#v", err)
+		t.Fatalf("PrepareRunDatabase() = %#v", err)
 	}
 	if info, statErr := os.Stat(filepath.Dir(dbPath)); statErr != nil || !info.IsDir() {
 		t.Fatalf("expected sqlite parent dir to exist, stat err=%v info=%#v", statErr, info)
@@ -333,14 +345,16 @@ func TestPrepareRunDatabaseCreatesDefaultSqliteParent(t *testing.T) {
 
 func TestValidateRunModulesPath(t *testing.T) {
 	t.Run("missing required fields", func(t *testing.T) {
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: "   "})
+		_, e := cliruntime.ValidateRunModulesPath("   ")
+		err := runtimeValidationToRunError(e)
 		if err == nil || err.reason != "missing required fields" {
 			t.Fatalf("expected missing required fields error, got %#v", err)
 		}
 	})
 
 	t.Run("empty path returns missing required fields", func(t *testing.T) {
-		err := validateRunModulesPath(&cliRuntimeOptions{})
+		_, e := cliruntime.ValidateRunModulesPath("")
+		err := runtimeValidationToRunError(e)
 		if err == nil || err.reason != "missing required fields" {
 			t.Fatalf("expected missing required fields error for empty path, got %#v", err)
 		}
@@ -357,9 +371,10 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 		for _, tt := range cases {
 			t.Run(tt.name, func(t *testing.T) {
-				err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: tt.path})
+				_, e := cliruntime.ValidateRunModulesPath(tt.path)
+				err := runtimeValidationToRunError(e)
 				if err == nil || err.reason != "invalid value" {
-					t.Fatalf("validateRunModulesPath(%q) = %#v, want invalid value", tt.path, err)
+					t.Fatalf("ValidateRunModulesPath(%q) = %#v, want invalid value", tt.path, err)
 				}
 			})
 		}
@@ -367,7 +382,8 @@ func TestValidateRunModulesPath(t *testing.T) {
 
 	t.Run("path does not exist (auto-created)", func(t *testing.T) {
 		missingPath := filepath.Join(t.TempDir(), "missing")
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: missingPath})
+		_, e := cliruntime.ValidateRunModulesPath(missingPath)
+		err := runtimeValidationToRunError(e)
 		if err != nil {
 			t.Fatalf("expected auto-created path to succeed, got %#v", err)
 		}
@@ -384,7 +400,8 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 		defer func() { _ = os.Chmod(parent, 0o700) }()
 		missingPath := filepath.Join(parent, "subdir")
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: missingPath})
+		_, e := cliruntime.ValidateRunModulesPath(missingPath)
+		err := runtimeValidationToRunError(e)
 		if err == nil || !strings.Contains(err.reason, "cannot be created") {
 			t.Fatalf("expected mkdir failure, got %#v", err)
 		}
@@ -399,7 +416,8 @@ func TestValidateRunModulesPath(t *testing.T) {
 			t.Skipf("chmod: %v", err)
 		}
 		defer func() { _ = os.Chmod(dir, 0o755) }()
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: dir})
+		_, e := cliruntime.ValidateRunModulesPath(dir)
+		err := runtimeValidationToRunError(e)
 		if err == nil || err.reason != "permission denied or not accessible" {
 			t.Fatalf("expected permission error, got %#v", err)
 		}
@@ -415,7 +433,8 @@ func TestValidateRunModulesPath(t *testing.T) {
 		if err := os.Symlink(realDir, linkDir); err != nil {
 			t.Fatalf("create symlink: %v", err)
 		}
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: linkDir})
+		_, e := cliruntime.ValidateRunModulesPath(linkDir)
+		err := runtimeValidationToRunError(e)
 		if err == nil || err.reason != "invalid value" {
 			t.Fatalf("expected symlink path error, got %#v", err)
 		}
@@ -426,7 +445,8 @@ func TestValidateRunModulesPath(t *testing.T) {
 		if err := os.WriteFile(filePath, []byte("not a dir"), 0o644); err != nil {
 			t.Fatalf("write file path: %v", err)
 		}
-		err := validateRunModulesPath(&cliRuntimeOptions{modulesPath: filePath})
+		_, e := cliruntime.ValidateRunModulesPath(filePath)
+		err := runtimeValidationToRunError(e)
 		if err == nil || err.reason != "invalid value" {
 			t.Fatalf("expected non-directory error, got %#v", err)
 		}
@@ -447,19 +467,20 @@ func TestValidateRunModulesPath(t *testing.T) {
 		}
 		defer func() { _ = os.Chdir(oldWd) }()
 
-		runtimeOptions := &cliRuntimeOptions{modulesPath: "modules"}
-		if err := validateRunModulesPath(runtimeOptions); err != nil {
-			t.Fatalf("validateRunModulesPath(valid relative) = %#v", err)
+		normalized, e := cliruntime.ValidateRunModulesPath("modules")
+		runErr := runtimeValidationToRunError(e)
+		if runErr != nil {
+			t.Fatalf("ValidateRunModulesPath(valid relative) = %#v", runErr)
 		}
 		wantPath, err := filepath.EvalSymlinks(modulesDir)
 		if err != nil {
 			t.Fatalf("evalsymlinks modules dir: %v", err)
 		}
-		gotPath, err := filepath.EvalSymlinks(runtimeOptions.modulesPath)
+		gotPath, err := filepath.EvalSymlinks(normalized)
 		if err != nil {
 			t.Fatalf("evalsymlinks cfg modules path: %v", err)
 		}
-		if !filepath.IsAbs(runtimeOptions.modulesPath) || filepath.Clean(gotPath) != filepath.Clean(wantPath) {
+		if !filepath.IsAbs(normalized) || filepath.Clean(gotPath) != filepath.Clean(wantPath) {
 			t.Fatalf("expected relative modules path to normalize to %q, got %q", wantPath, gotPath)
 		}
 	})
@@ -474,7 +495,7 @@ func TestHasParentSymlink(t *testing.T) {
 	if err := os.MkdirAll(regularParent, 0o755); err != nil {
 		t.Fatalf("mkdir regular parent: %v", err)
 	}
-	if got := hasParentSymlink(filepath.Join(regularParent, "app.db")); got {
+	if got := cliruntime.HasParentSymlink(filepath.Join(regularParent, "app.db")); got {
 		t.Fatal("expected regular parent directories to have no symlink")
 	}
 
@@ -486,7 +507,7 @@ func TestHasParentSymlink(t *testing.T) {
 	if err := os.Symlink(realDir, linkDir); err != nil {
 		t.Fatalf("create parent symlink: %v", err)
 	}
-	if got := hasParentSymlink(filepath.Join(linkDir, "app.db")); !got {
+	if got := cliruntime.HasParentSymlink(filepath.Join(linkDir, "app.db")); !got {
 		t.Fatal("expected symlinked parent directory to be detected")
 	}
 }
@@ -652,15 +673,16 @@ func TestLoadRunConfig(t *testing.T) {
 		if filepath.Clean(gotModulesPath) != filepath.Clean(wantModulesPath) {
 			t.Fatalf("modules path = %q, want %q", gotModulesPath, wantModulesPath)
 		}
-		if got := loaded.scopeInput.dbOptions.dialect; got != "sqlite" {
+		dbOptions := loaded.scopeInput.DBOptions()
+		if got := dbOptions.Dialect; got != "sqlite" {
 			t.Fatalf("db dialect = %q, want sqlite", got)
 		}
 		wantDBRoot, _ := filepath.Abs(filepath.Join(homeDir, ".choysum"))
 		wantDBDSN := config.DefaultSQLiteDSN(wantDBRoot)
-		if got := loaded.scopeInput.dbOptions.dsn; got != wantDBDSN {
+		if got := dbOptions.DSN; got != wantDBDSN {
 			t.Fatalf("db dsn = %q, want %q", got, wantDBDSN)
 		}
-		if !loaded.scopeInput.dbOptions.allowCreate {
+		if !dbOptions.AllowCreate {
 			t.Fatal("expected default sqlite path to allow first-run creation")
 		}
 	})
@@ -716,7 +738,7 @@ db:
 
 func TestCloneRunLogConfig(t *testing.T) {
 	t.Run("nil returns default", func(t *testing.T) {
-		got := cloneRunLogConfig(nil)
+		got := cliruntime.CloneLogConfig(nil)
 		if got == nil {
 			t.Fatal("expected non-nil default log config for nil input")
 		}
@@ -724,7 +746,7 @@ func TestCloneRunLogConfig(t *testing.T) {
 
 	t.Run("non-nil returns a clone", func(t *testing.T) {
 		cfg := &config.LogConfig{Level: "debug"}
-		got := cloneRunLogConfig(cfg)
+		got := cliruntime.CloneLogConfig(cfg)
 		if got == cfg {
 			t.Fatal("expected a clone, not the same pointer")
 		}
@@ -760,11 +782,17 @@ func TestValidateRunConfig(t *testing.T) {
 				DSN:     dbDSN,
 			},
 		}
-		scopeInput := newRunRuntimeScopeInput(
-			newScopeInputConfigOptions(snapshot.New(cfg)),
-			newCliRuntimeOptionsFromScopeInputOptions(newScopeInputConfigOptions(snapshot.New(cfg))),
-			newRunServerRuntimeOptions(cfg.Server),
-			newRunDBRuntimeOptions(cfg),
+		cfgOptions := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+		scopeInput := cliruntime.NewRunScopeInput(
+			cfgOptions,
+			cliruntime.Options{
+				DefaultChoysumPath:    cfgOptions.DefaultChoysumPath,
+				ModulesPath:           cfgOptions.ModulesPath,
+				TmpPath:               cfgOptions.TmpPath,
+				ModuleCatalogIndexURL: strings.TrimSpace(cfgOptions.ModuleCatalogIndexURL),
+			},
+			cliruntime.NewRunServerOptions(cfg.Server),
+			cliruntime.NewRunDBOptions(cfg),
 		)
 		if err := validateRunConfig(&scopeInput); err != nil {
 			t.Fatalf("validateRunConfig(valid) = %#v", err)
@@ -774,29 +802,29 @@ func TestValidateRunConfig(t *testing.T) {
 
 func TestValidateRunDb(t *testing.T) {
 	t.Run("missing dialect", func(t *testing.T) {
-		err := validateRunDb(runDBRuntimeOptions{dsn: "postgres://localhost/app"})
+		err := runtimeValidationToRunError(cliruntime.ValidateRunDB(runDBRuntimeOptions{DSN: "postgres://localhost/app"}))
 		if err == nil || err.reason != "missing required fields" {
 			t.Fatalf("expected missing dialect error, got %#v", err)
 		}
 	})
 
 	t.Run("invalid dialect", func(t *testing.T) {
-		err := validateRunDb(runDBRuntimeOptions{dialect: "oracle", dsn: "oracle://localhost/app"})
+		err := runtimeValidationToRunError(cliruntime.ValidateRunDB(runDBRuntimeOptions{Dialect: "oracle", DSN: "oracle://localhost/app"}))
 		if err == nil || err.reason != "invalid value" {
 			t.Fatalf("expected invalid dialect error, got %#v", err)
 		}
 	})
 
 	t.Run("missing dsn", func(t *testing.T) {
-		err := validateRunDb(runDBRuntimeOptions{dialect: "postgres", dsn: "   "})
+		err := runtimeValidationToRunError(cliruntime.ValidateRunDB(runDBRuntimeOptions{Dialect: "postgres", DSN: "   "}))
 		if err == nil || err.reason != "missing required fields" {
 			t.Fatalf("expected missing dsn error, got %#v", err)
 		}
 	})
 
 	t.Run("postgres valid", func(t *testing.T) {
-		if err := validateRunDb(runDBRuntimeOptions{dialect: "postgres", dsn: "postgres://localhost/app"}); err != nil {
-			t.Fatalf("validateRunDb(valid postgres) = %#v", err)
+		if err := runtimeValidationToRunError(cliruntime.ValidateRunDB(runDBRuntimeOptions{Dialect: "postgres", DSN: "postgres://localhost/app"})); err != nil {
+			t.Fatalf("ValidateRunDB(valid postgres) = %#v", err)
 		}
 	})
 }

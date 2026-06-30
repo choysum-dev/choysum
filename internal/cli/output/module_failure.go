@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package cmd
+package output
 
 import "strings"
 
-func moduleCommandFailureAttrs(operation string) []any {
+func ModuleCommandFailureAttrs(operation string) []any {
 	operation = strings.TrimSpace(operation)
 	if operation == "" {
 		return nil
@@ -31,7 +31,7 @@ func normalizedRequestedValues(values []string) []string {
 	return result
 }
 
-func currentOrRequestedAttr(singular string, plural string, current string, requested []string) []any {
+func CurrentOrRequestedAttr(singular string, plural string, current string, requested []string) []any {
 	current = strings.TrimSpace(current)
 	if current != "" {
 		return []any{singular, current}
@@ -46,8 +46,8 @@ func currentOrRequestedAttr(singular string, plural string, current string, requ
 	return []any{plural, values}
 }
 
-func moduleInstallFailureAttrs(input string, moduleName string) []any {
-	attrs := currentOrRequestedAttr("input", "inputs", input, nil)
+func ModuleInstallFailureAttrs(input string, moduleName string) []any {
+	attrs := CurrentOrRequestedAttr("input", "inputs", input, nil)
 	moduleName = strings.TrimSpace(moduleName)
 	input = strings.TrimSpace(input)
 	if moduleName == "" || moduleName == input {

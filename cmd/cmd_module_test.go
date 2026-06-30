@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	sourceregistry "github.com/choysum-dev/choysum/internal/module/origin/registry"
@@ -70,8 +72,14 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 	envGetter := func() scope.Scope {
 		return &commandTestScope{ctx: context.Background(), cfg: cfg}
 	}
-	runtimeOptionsGetter := func() cliRuntimeOptions {
-		return newCliRuntimeOptionsFromScopeInputOptions(newScopeInputConfigOptions(snapshot.New(cfg)))
+	runtimeOptionsGetter := func() cliruntime.Options {
+		options := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+		return cliruntime.Options{
+			DefaultChoysumPath:    options.DefaultChoysumPath,
+			ModulesPath:           options.ModulesPath,
+			TmpPath:               options.TmpPath,
+			ModuleCatalogIndexURL: strings.TrimSpace(options.ModuleCatalogIndexURL),
+		}
 	}
 
 	moduleCmd := newModuleCmd(envGetter, runtimeOptionsGetter)
@@ -125,7 +133,7 @@ func TestNewModuleCmd_SubcommandsAndWorkflow(t *testing.T) {
 }
 
 func TestNewModuleCmd_RequiresRuntimeScope(t *testing.T) {
-	moduleCmd := newModuleCmd(func() scope.Scope { return nil }, func() cliRuntimeOptions { return cliRuntimeOptions{} })
+	moduleCmd := newModuleCmd(func() scope.Scope { return nil }, func() cliruntime.Options { return cliruntime.Options{} })
 	if _, err := executeCommandForTest(t, moduleCmd, "fetch", "auth"); err == nil || !strings.Contains(err.Error(), "scope is not initialized") {
 		t.Fatalf("expected environment initialization error, got %v", err)
 	}
@@ -136,7 +144,7 @@ func TestNewModuleCmd_RuntimeOptionsPrefix(t *testing.T) {
 	scopeGetter := func() scope.Scope {
 		return &commandTestScope{ctx: context.Background(), cfg: newCommandTestConfig(modulesPath)}
 	}
-	moduleCmd := newModuleCmd(scopeGetter, func() cliRuntimeOptions { return cliRuntimeOptions{} })
+	moduleCmd := newModuleCmd(scopeGetter, func() cliruntime.Options { return cliruntime.Options{} })
 
 	if _, err := executeCommandForTest(t, moduleCmd, "search", "auth"); err == nil || !strings.Contains(err.Error(), "module: invalid runtime options") {
 		t.Fatalf("expected prefixed runtime options error, got %v", err)
@@ -144,7 +152,7 @@ func TestNewModuleCmd_RuntimeOptionsPrefix(t *testing.T) {
 }
 
 func TestModuleUtilityHelpers(t *testing.T) {
-	defaultURL, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{})
+	defaultURL, err := resolveModuleCatalogIndexURL(cliruntime.Options{})
 	if err != nil {
 		t.Fatalf("resolveModuleCatalogIndexURL(default) error = %v", err)
 	}
@@ -152,7 +160,7 @@ func TestModuleUtilityHelpers(t *testing.T) {
 		t.Fatalf("resolveModuleCatalogIndexURL(default) = %q, want %q", defaultURL, config.DefaultModuleCatalogIndexURL)
 	}
 
-	customURL, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{moduleCatalogIndexURL: " https://index.acme.dev/v1/index.json "})
+	customURL, err := resolveModuleCatalogIndexURL(cliruntime.Options{ModuleCatalogIndexURL: " https://index.acme.dev/v1/index.json "})
 	if err != nil {
 		t.Fatalf("resolveModuleCatalogIndexURL(custom) error = %v", err)
 	}
@@ -160,7 +168,7 @@ func TestModuleUtilityHelpers(t *testing.T) {
 		t.Fatalf("resolveModuleCatalogIndexURL(custom) = %q, want %q", customURL, "https://index.acme.dev/v1/index.json")
 	}
 
-	if _, err := resolveModuleCatalogIndexURL(cliRuntimeOptions{moduleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}); err == nil || !strings.Contains(err.Error(), "index.json") {
+	if _, err := resolveModuleCatalogIndexURL(cliruntime.Options{ModuleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}); err == nil || !strings.Contains(err.Error(), "index.json") {
 		t.Fatalf("expected invalid module_catalog_index_url error, got %v", err)
 	}
 
@@ -221,7 +229,7 @@ func TestFilterCatalogModuleByCompatibility_SourceConsistency(t *testing.T) {
 	}
 
 	t.Run("drops source when filtered latest changes", func(t *testing.T) {
-		filtered, err := filterCatalogModuleByCompatibility(item, "v1.5.0")
+		filtered, err := clicompat.FilterCatalogModuleByCompatibility(item, "v1.5.0")
 		if err != nil {
 			t.Fatalf("filterCatalogModuleByCompatibility() error = %v", err)
 		}
@@ -234,7 +242,7 @@ func TestFilterCatalogModuleByCompatibility_SourceConsistency(t *testing.T) {
 	})
 
 	t.Run("keeps source when filtered latest unchanged", func(t *testing.T) {
-		filtered, err := filterCatalogModuleByCompatibility(item, "v2.1.0")
+		filtered, err := clicompat.FilterCatalogModuleByCompatibility(item, "v2.1.0")
 		if err != nil {
 			t.Fatalf("filterCatalogModuleByCompatibility() error = %v", err)
 		}
@@ -258,7 +266,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 	})
 	defer catalogServer.Close()
 
-	runtimeOptions := cliRuntimeOptions{moduleCatalogIndexURL: catalogServer.URL + "/v1/index.json"}
+	runtimeOptions := cliruntime.Options{ModuleCatalogIndexURL: catalogServer.URL + "/v1/index.json"}
 
 	t.Run("search validates query", func(t *testing.T) {
 		cmd := &cobra.Command{}
@@ -274,7 +282,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		defer failingCatalog.Close()
 
 		cmd := &cobra.Command{}
-		err := runModuleSearchRemote(cmd, runtimeScope, cliRuntimeOptions{moduleCatalogIndexURL: failingCatalog.URL + "/v1/index.json"}, "auth")
+		err := runModuleSearchRemote(cmd, runtimeScope, cliruntime.Options{ModuleCatalogIndexURL: failingCatalog.URL + "/v1/index.json"}, "auth")
 		if err == nil {
 			t.Fatal("expected remote catalog query error")
 		}
@@ -324,7 +332,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 
 		emptyServer := startRemoteRegistryCatalogServer(t, nil)
 		defer emptyServer.Close()
-		emptyOptions := cliRuntimeOptions{moduleCatalogIndexURL: emptyServer.URL + "/v1/index.json"}
+		emptyOptions := cliruntime.Options{ModuleCatalogIndexURL: emptyServer.URL + "/v1/index.json"}
 
 		var emptyOut bytes.Buffer
 		emptyCmd := &cobra.Command{}
@@ -365,7 +373,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 		listCmd := &cobra.Command{}
 		listCmd.SetOut(&out)
 
-		err := runModuleListRemote(listCmd, runtimeScope, cliRuntimeOptions{moduleCatalogIndexURL: compatibleCatalog.URL + "/v1/index.json"}, "v0.0.0-0", false)
+		err := runModuleListRemote(listCmd, runtimeScope, cliruntime.Options{ModuleCatalogIndexURL: compatibleCatalog.URL + "/v1/index.json"}, "v0.0.0-0", false)
 		if err != nil {
 			t.Fatalf("runModuleListRemote(compat-filtered) error = %v", err)
 		}
@@ -408,7 +416,7 @@ func TestModuleRemoteCommandBranches(t *testing.T) {
 			}
 		}
 
-		invalidOptions := cliRuntimeOptions{moduleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}
+		invalidOptions := cliruntime.Options{ModuleCatalogIndexURL: "https://index.acme.dev/v1/catalog.json"}
 		if err := runModuleInfoRemote(cmd, runtimeScope, invalidOptions, "auth", "v0.0.0-0", false); err == nil || !strings.Contains(err.Error(), "index.json") {
 			t.Fatalf("expected invalid catalog index url validation error, got %v", err)
 		}
@@ -432,7 +440,7 @@ func TestModuleRemoteCompatibilityEdgeBranches(t *testing.T) {
 	})
 	defer compatibleCatalog.Close()
 
-	runtimeOptions := cliRuntimeOptions{moduleCatalogIndexURL: compatibleCatalog.URL + "/v1/index.json"}
+	runtimeOptions := cliruntime.Options{ModuleCatalogIndexURL: compatibleCatalog.URL + "/v1/index.json"}
 
 	t.Run("list all allows unresolved compat version", func(t *testing.T) {
 		var out bytes.Buffer
@@ -478,7 +486,7 @@ func TestModuleRemoteCompatibilityEdgeBranches(t *testing.T) {
 		}))
 		defer malformedCatalog.Close()
 
-		err := runModuleListRemote(&cobra.Command{}, runtimeScope, cliRuntimeOptions{moduleCatalogIndexURL: malformedCatalog.URL + "/v1/index.json"}, "v1.5.0", false)
+		err := runModuleListRemote(&cobra.Command{}, runtimeScope, cliruntime.Options{ModuleCatalogIndexURL: malformedCatalog.URL + "/v1/index.json"}, "v1.5.0", false)
 		if err == nil || !strings.Contains(err.Error(), "ERR_MODULE_CLI_RANGE_MISSING") {
 			t.Fatalf("runModuleListRemote(malformed cli range) error = %v, want missing-range error", err)
 		}

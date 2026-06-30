@@ -8,19 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 
+	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
-	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/config"
-	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/choysum-dev/choysum/pkg/server/defaultserver"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +30,7 @@ const (
 
 var runServerFactory = defaultserver.NewServer
 var runExit = os.Exit
-var runRuntimeScopeFactory = newRuntimeScopeForRun
+var runRuntimeScopeFactory = cliruntime.NewScopeForRun
 
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -54,16 +51,15 @@ func newRunCmd() *cobra.Command {
 			if runErr := resolveRunStartupOptions(&loadedConfig.scopeInput); runErr != nil {
 				runErr.exit()
 			}
-			if runErr := prepareRunDatabase(loadedConfig.scopeInput.dbOptions); runErr != nil {
-				runErr.exit()
+			dbOptions := loadedConfig.scopeInput.DBOptions()
+			if dbErr := cliruntime.PrepareRunDatabase(dbOptions); dbErr != nil {
+				(&runError{exitCode: dbErr.ExitCode, errMsg: dbErr.ErrMsg, reason: dbErr.Reason, next: dbErr.Next}).exit()
 			}
-
-			dbOptions := loadedConfig.scopeInput.dbOptions
 
 			runtimeScope, envErr := runRuntimeScopeFactory(loadedConfig.scopeInput, loadedConfig.logConfig)
 			if envErr != nil {
-				printErrorBlock(
-					fmt.Sprintf("cannot connect to database (dialect=%s)", dbOptions.dialect),
+				clioutput.PrintErrorBlock(
+					fmt.Sprintf("cannot connect to database (dialect=%s)", dbOptions.Dialect),
 					"network unreachable / authentication failed / permission denied / database not found (DSN redacted)",
 					"verify database reachability and credentials; rerun 'choysum run' to update config if needed",
 				)
@@ -71,7 +67,11 @@ func newRunCmd() *cobra.Command {
 				return
 			}
 
-			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+			baseCtx := cmd.Context()
+			if baseCtx == nil {
+				baseCtx = context.Background()
+			}
+			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt, syscall.SIGTERM)
 			defer stop()
 
 			// Re-bind scope with the runtime context (for server side gating/options).
@@ -82,7 +82,7 @@ func newRunCmd() *cobra.Command {
 				if errors.Is(err, context.Canceled) {
 					return
 				}
-				printErrorBlock(
+				clioutput.PrintErrorBlock(
 					"server exited unexpectedly",
 					err.Error(),
 					"fix the underlying issue and rerun 'choysum run'",
@@ -102,7 +102,7 @@ type runError struct {
 }
 
 func (e *runError) exit() {
-	printErrorBlock(e.errMsg, e.reason, e.next)
+	clioutput.PrintErrorBlock(e.errMsg, e.reason, e.next)
 	runExit(e.exitCode)
 }
 
@@ -137,7 +137,7 @@ func resolveRunConfigPath(cmd *cobra.Command) (string, *runError) {
 		cfgPath = path
 	}
 
-	if containsControl(cfgPath) {
+	if cliruntime.ContainsControl(cfgPath) {
 		return "", &runError{
 			exitCode: 2,
 			errMsg:   "invalid config flag",
@@ -211,74 +211,16 @@ func resolveRunConfigPath(cmd *cobra.Command) (string, *runError) {
 	return cfgPath, nil
 }
 
-type runServerRuntimeOptions struct {
-	bindAddress string
-	port        int
-	enabledTLS  bool
-}
+type runServerRuntimeOptions = cliruntime.RunServerOptions
 
-type runDBRuntimeOptions struct {
-	dialect     string
-	dsn         string
-	allowCreate bool
-}
+type runDBRuntimeOptions = cliruntime.RunDBOptions
 
 type runLoadedConfig struct {
-	scopeInput runRuntimeScopeInput
+	scopeInput cliruntime.RunScopeInput
 	logConfig  *config.LogConfig
 }
 
-func newRunServerRuntimeOptions(serverCfg *config.ServerConfig) runServerRuntimeOptions {
-	defaults := config.NewDefaultServerConfig()
-	options := runServerRuntimeOptions{
-		bindAddress: defaults.BindAddress,
-		port:        defaults.Port,
-		enabledTLS:  defaults.EnabledTLS,
-	}
-	if serverCfg == nil {
-		return options
-	}
-	if strings.TrimSpace(serverCfg.BindAddress) != "" {
-		options.bindAddress = serverCfg.BindAddress
-	}
-	if serverCfg.Port > 0 {
-		options.port = serverCfg.Port
-	}
-	options.enabledTLS = serverCfg.EnabledTLS
-	return options
-}
-
-func (o runServerRuntimeOptions) Validate() error {
-	if strings.TrimSpace(o.bindAddress) == "" {
-		return fmt.Errorf("run server options: bindAddress is required")
-	}
-	if o.port <= 0 {
-		return fmt.Errorf("run server options: port must be positive")
-	}
-	return nil
-}
-
-func newRunDBRuntimeOptions(cfg *config.Config) runDBRuntimeOptions {
-	if cfg == nil || cfg.Db == nil {
-		return runDBRuntimeOptions{}
-	}
-	dialect := strings.ToLower(strings.TrimSpace(cfg.Db.Dialect))
-	dsn := cfg.Db.DSN
-	return runDBRuntimeOptions{
-		dialect:     dialect,
-		dsn:         dsn,
-		allowCreate: dialect == "sqlite" && isDefaultRunSqlitePath(dsn, config.DefaultSQLitePath(cfg.DefaultChoysumPath)),
-	}
-}
-
-func (o runDBRuntimeOptions) Validate() error {
-	if strings.TrimSpace(o.dialect) == "" {
-		return fmt.Errorf("run db options: dialect is required")
-	}
-	return nil
-}
-
-func resolveRunStartupOptions(scopeInput *runRuntimeScopeInput) *runError {
+func resolveRunStartupOptions(scopeInput *cliruntime.RunScopeInput) *runError {
 	if scopeInput == nil {
 		return &runError{
 			exitCode: 3,
@@ -288,7 +230,7 @@ func resolveRunStartupOptions(scopeInput *runRuntimeScopeInput) *runError {
 		}
 	}
 
-	cliOptions := scopeInput.cliOptions
+	cliOptions := scopeInput.CLIOptions()
 	if err := cliOptions.Validate(); err != nil {
 		return &runError{
 			exitCode: 3,
@@ -298,7 +240,7 @@ func resolveRunStartupOptions(scopeInput *runRuntimeScopeInput) *runError {
 		}
 	}
 
-	serverOptions := scopeInput.serverOptions
+	serverOptions := scopeInput.ServerOptions()
 	if err := serverOptions.Validate(); err != nil {
 		return &runError{
 			exitCode: 3,
@@ -308,7 +250,7 @@ func resolveRunStartupOptions(scopeInput *runRuntimeScopeInput) *runError {
 		}
 	}
 
-	dbOptions := scopeInput.dbOptions
+	dbOptions := scopeInput.DBOptions()
 	if err := dbOptions.Validate(); err != nil {
 		return &runError{
 			exitCode: 3,
@@ -349,26 +291,23 @@ func loadRunConfig(cfgPath string) (runLoadedConfig, *runError) {
 			next:     next,
 		}
 	}
-	cfgOptions := newScopeInputConfigOptions(snapshot.New(cfg))
-	cliOptions := newCliRuntimeOptionsFromScopeInputOptions(cfgOptions)
-	serverOptions := newRunServerRuntimeOptions(cfg.Server)
-	dbOptions := newRunDBRuntimeOptions(cfg)
+	cfgOptions := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	cliOptions := cliruntime.Options{
+		DefaultChoysumPath:    cfgOptions.DefaultChoysumPath,
+		ModulesPath:           cfgOptions.ModulesPath,
+		TmpPath:               cfgOptions.TmpPath,
+		ModuleCatalogIndexURL: strings.TrimSpace(cfgOptions.ModuleCatalogIndexURL),
+	}
+	serverOptions := cliruntime.NewRunServerOptions(cfg.Server)
+	dbOptions := cliruntime.NewRunDBOptions(cfg)
 
 	return runLoadedConfig{
-		scopeInput: newRunRuntimeScopeInput(cfgOptions, cliOptions, serverOptions, dbOptions),
-		logConfig:  cloneRunLogConfig(cfg.Log),
+		scopeInput: cliruntime.NewRunScopeInput(cfgOptions, cliOptions, serverOptions, dbOptions),
+		logConfig:  cliruntime.CloneLogConfig(cfg.Log),
 	}, nil
 }
 
-func cloneRunLogConfig(cfg *config.LogConfig) *config.LogConfig {
-	if cfg == nil {
-		return config.NewDefaultLogConfig()
-	}
-	cloned := *cfg
-	return &cloned
-}
-
-func validateRunConfig(scopeInput *runRuntimeScopeInput) *runError {
+func validateRunConfig(scopeInput *cliruntime.RunScopeInput) *runError {
 	if scopeInput == nil {
 		return &runError{
 			exitCode: 3,
@@ -377,522 +316,16 @@ func validateRunConfig(scopeInput *runRuntimeScopeInput) *runError {
 			next:     runConfigFixValuesNext,
 		}
 	}
-	if err := validateRunModulesPath(&scopeInput.cliOptions); err != nil {
-		return err
+	cliOptions := scopeInput.CLIOptions()
+	normalizedModulesPath, moduleErr := cliruntime.ValidateRunModulesPath(cliOptions.ModulesPath)
+	if moduleErr != nil {
+		return &runError{exitCode: moduleErr.ExitCode, errMsg: moduleErr.ErrMsg, reason: moduleErr.Reason, next: moduleErr.Next}
 	}
-	return validateRunDb(scopeInput.dbOptions)
-}
-
-func validateRunModulesPath(options *cliRuntimeOptions) *runError {
-	if options == nil {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "missing required fields",
-			next:     runConfigFixValuesNext,
-		}
-	}
-
-	path := options.modulesPath
-	if strings.TrimSpace(path) == "" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "missing required fields",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if strings.TrimSpace(path) != path {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "invalid value",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if containsControl(path) {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "invalid value",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if hasPathListSeparator(path) {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "invalid value",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if !filepath.IsAbs(path) {
-		absPath, err := filepath.Abs(path)
-		if err == nil {
-			path = absPath
-			options.modulesPath = absPath
-		}
-	}
-	info, err := os.Lstat(path)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			if mkdirErr := os.MkdirAll(path, 0o755); mkdirErr != nil {
-				return &runError{
-					exitCode: 3,
-					errMsg:   "invalid config",
-					reason:   fmt.Sprintf("path does not exist and cannot be created: %v", mkdirErr),
-					next:     runConfigFixValuesNext,
-				}
-			}
-			// Re-stat after creating the directory.
-			info, err = os.Lstat(path)
-			if err != nil {
-				return &runError{
-					exitCode: 3,
-					errMsg:   "invalid config",
-					reason:   "permission denied or not accessible",
-					next:     runConfigFixValuesNext,
-				}
-			}
-		} else {
-			return &runError{
-				exitCode: 3,
-				errMsg:   "invalid config",
-				reason:   "permission denied or not accessible",
-				next:     runConfigFixValuesNext,
-			}
-		}
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "invalid value",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if !info.IsDir() {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "invalid value",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if _, err := os.ReadDir(path); err != nil {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "permission denied or not accessible",
-			next:     runConfigFixValuesNext,
-		}
+	cliOptions.ModulesPath = normalizedModulesPath
+	*scopeInput = cliruntime.NewRunScopeInput(scopeInput.ConfigOptions(), cliOptions, scopeInput.ServerOptions(), scopeInput.DBOptions())
+	dbErr := cliruntime.ValidateRunDBWithWarning(scopeInput.DBOptions(), clioutput.PrintWarning)
+	if dbErr != nil {
+		return &runError{exitCode: dbErr.ExitCode, errMsg: dbErr.ErrMsg, reason: dbErr.Reason, next: dbErr.Next}
 	}
 	return nil
-}
-
-func validateRunDb(dbOptions runDBRuntimeOptions) *runError {
-	dialect := strings.ToLower(strings.TrimSpace(dbOptions.dialect))
-	if dialect == "" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "missing required fields",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if dialect != "sqlite" && dialect != "postgres" && dialect != "mysql" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "invalid value",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if dbOptions.dsn == "" || strings.TrimSpace(dbOptions.dsn) == "" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "missing required fields",
-			next:     runConfigFixValuesNext,
-		}
-	}
-
-	if dialect == "sqlite" {
-		return validateRunSqlite(dbOptions.dsn, dbOptions.allowCreate)
-	}
-	return validateRunDatabaseDsn(dialect, dbOptions.dsn)
-}
-
-func prepareRunDatabase(dbOptions runDBRuntimeOptions) *runError {
-	if strings.ToLower(strings.TrimSpace(dbOptions.dialect)) != "sqlite" || !dbOptions.allowCreate {
-		return nil
-	}
-	return prepareRunSqlite(dbOptions.dsn)
-}
-
-func prepareRunSqlite(dsn string) *runError {
-	path, err := sqlitePathFromDsn(dsn)
-	if err != nil {
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "permission denied or not accessible",
-			next:     runSqlitePathNext(true),
-		}
-	}
-	return nil
-}
-
-func validateRunDatabaseDsn(dialect, dsn string) *runError {
-	if containsControl(dsn) {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid database dsn",
-			reason:   "dsn contains NUL (\\x00) or newline (\\n/\\r)",
-			next:     "remove control characters from dsn and retry; if it comes from config, fix the config and rerun",
-		}
-	}
-	if strings.TrimSpace(dsn) == "" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid config",
-			reason:   "missing required fields",
-			next:     runConfigFixValuesNext,
-		}
-	}
-	if strings.TrimSpace(dsn) != dsn {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid database dsn",
-			reason:   "dsn has leading or trailing whitespace",
-			next:     "remove leading/trailing whitespace from dsn and retry; if it comes from config, fix the config and rerun",
-		}
-	}
-
-	if scheme := urlScheme(dsn); scheme != "" {
-		scheme = strings.ToLower(scheme)
-		expected := dialect
-		if scheme == "postgresql" {
-			scheme = "postgres"
-		}
-		if scheme != expected {
-			return &runError{
-				exitCode: 3,
-				errMsg:   "invalid config",
-				reason:   "db.dialect conflicts with dsn scheme",
-				next:     "make db.dialect and dsn scheme consistent and retry",
-			}
-		}
-	}
-
-	return nil
-}
-
-func validateRunSqlite(dsn string, allowCreate bool) *runError {
-	if containsControl(dsn) {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path contains NUL (\\x00) or newline (\\n/\\r)",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if strings.TrimSpace(dsn) == "" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite dsn",
-			reason:   "sqlite dsn must not be empty or whitespace",
-			next:     "use a sqlite file path or file: URI and not :memory:; for run, the path must be absolute",
-		}
-	}
-	if strings.EqualFold(strings.TrimSpace(dsn), ":memory:") {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite dsn",
-			reason:   "sqlite dsn must not be :memory:",
-			next:     "use a sqlite file path or file: URI and not :memory:; for run, the path must be absolute",
-		}
-	}
-	if strings.TrimSpace(dsn) != dsn {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path has leading or trailing whitespace",
-			next:     "choose a valid sqlite file path and retry; for run, ensure the path is absolute and the DB file already exists and is a regular file",
-		}
-	}
-	path, parseErr := sqlitePathFromDsn(dsn)
-	if parseErr != nil {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite dsn",
-			reason:   "sqlite dsn must be a file: URI or plain file path (other URI schemes are not allowed)",
-			next:     "use a sqlite file path or file: URI and not :memory:; for run, the path must be absolute",
-		}
-	}
-	if strings.TrimSpace(path) == "" {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite dsn",
-			reason:   "sqlite dsn must not be empty or whitespace",
-			next:     "use a sqlite file path or file: URI and not :memory:; for run, the path must be absolute",
-		}
-	}
-	if strings.EqualFold(strings.TrimSpace(path), ":memory:") {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite dsn",
-			reason:   "sqlite dsn must not be :memory:",
-			next:     "use a sqlite file path or file: URI and not :memory:; for run, the path must be absolute",
-		}
-	}
-	if strings.TrimSpace(path) != path {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path has leading or trailing whitespace",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if !filepath.IsAbs(path) {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path is not absolute",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if hasParentSymlink(path) {
-		printCLIWarning("sqlite parent directory is a symlink")
-	}
-	info, err := os.Lstat(path)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			if allowCreate {
-				if pragmaErr := validateRunSQLitePragmas(dsn); pragmaErr != nil {
-					return pragmaErr
-				}
-				return nil
-			}
-			return &runError{
-				exitCode: 3,
-				errMsg:   "invalid sqlite path",
-				reason:   "path does not exist",
-				next:     runSqlitePathNext(false),
-			}
-		}
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "permission denied or not accessible",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if info.IsDir() {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path is a directory",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path is a symlink",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if !info.Mode().IsRegular() {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite path",
-			reason:   "path is not a regular file",
-			next:     runSqlitePathNext(allowCreate),
-		}
-	}
-	if pragmaErr := validateRunSQLitePragmas(dsn); pragmaErr != nil {
-		return pragmaErr
-	}
-	return nil
-}
-
-func runSqlitePathNext(allowCreate bool) string {
-	if allowCreate {
-		return "choose a valid sqlite file path and retry; for run, ensure the path is absolute and accessible"
-	}
-	return "choose a valid sqlite file path and retry; for run, ensure the path is absolute and the DB file already exists and is a regular file"
-}
-
-func validateRunSQLitePragmas(dsn string) *runError {
-	params, err := sqliteDSNQueryParams(dsn)
-	if err != nil {
-		return &runError{
-			exitCode: 3,
-			errMsg:   "invalid sqlite dsn",
-			reason:   "sqlite dsn query params are invalid",
-			next:     "set sqlite dsn like file:/absolute/path/choysum.sqlite?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL and retry",
-		}
-	}
-
-	missing := make([]string, 0, 3)
-	if strings.TrimSpace(params.Get("_fk")) != "1" {
-		missing = append(missing, "_fk=1")
-	}
-
-	busyTimeoutRaw := strings.TrimSpace(params.Get("_busy_timeout"))
-	busyTimeoutMs, parseErr := strconv.Atoi(busyTimeoutRaw)
-	if busyTimeoutRaw == "" || parseErr != nil || busyTimeoutMs <= 0 {
-		missing = append(missing, "_busy_timeout>0")
-	}
-
-	if !strings.EqualFold(strings.TrimSpace(params.Get("_journal_mode")), "WAL") {
-		missing = append(missing, "_journal_mode=WAL")
-	}
-
-	if len(missing) == 0 {
-		return nil
-	}
-
-	return &runError{
-		exitCode: 3,
-		errMsg:   "invalid sqlite dsn",
-		reason:   fmt.Sprintf("sqlite dsn missing required params: %s", strings.Join(missing, ", ")),
-		next:     "set sqlite dsn like file:/absolute/path/choysum.sqlite?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL and retry",
-	}
-}
-
-func sqliteDSNQueryParams(dsn string) (url.Values, error) {
-	trimmed := strings.TrimSpace(dsn)
-	if strings.HasPrefix(strings.ToLower(trimmed), "file:") || strings.Contains(trimmed, "://") {
-		parsed, err := url.Parse(trimmed)
-		if err != nil {
-			return nil, err
-		}
-		return parsed.Query(), nil
-	}
-	queryIndex := strings.Index(trimmed, "?")
-	if queryIndex < 0 {
-		return url.Values{}, nil
-	}
-	return url.ParseQuery(trimmed[queryIndex+1:])
-}
-
-func isDefaultRunSqlitePath(dsn string, defaultPath string) bool {
-	if strings.TrimSpace(dsn) == "" || strings.TrimSpace(defaultPath) == "" {
-		return false
-	}
-	path, err := sqlitePathFromDsn(dsn)
-	if err != nil {
-		return false
-	}
-	return filepath.Clean(path) == filepath.Clean(defaultPath)
-}
-
-func sqlitePathFromDsn(dsn string) (string, error) {
-	trimmed := strings.TrimSpace(dsn)
-	if strings.HasPrefix(strings.ToLower(trimmed), "file:") || strings.Contains(trimmed, "://") {
-		parsed, err := url.Parse(trimmed)
-		if err != nil {
-			return "", err
-		}
-		scheme := strings.ToLower(parsed.Scheme)
-		if scheme != "" && scheme != "file" {
-			return "", errors.New("unsupported sqlite dsn scheme")
-		}
-		if parsed.Path != "" {
-			return parsed.Path, nil
-		}
-		return parsed.Opaque, nil
-	}
-	return trimmed, nil
-}
-
-func newRuntimeScopeForRun(scopeInput runRuntimeScopeInput, logConfig *config.LogConfig) (scope.Scope, error) {
-	if err := scopeInput.cliOptions.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid cli runtime options: %w", err)
-	}
-	if err := scopeInput.serverOptions.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid run server options: %w", err)
-	}
-	if err := scopeInput.dbOptions.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid run db options: %w", err)
-	}
-	if scopeInput.options == nil {
-		return nil, fmt.Errorf("config is required")
-	}
-
-	var runtimeScope scope.Scope
-	var panicErr any
-
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				panicErr = r
-			}
-		}()
-		l := logger.NewLoggerWithWriter(cloneRunLogConfig(logConfig), os.Stderr)
-		runtimeScope = scope.NewScope(context.Background(), scopeInput, l)
-	}()
-
-	if panicErr != nil {
-		return nil, fmt.Errorf("failed to initialize scope: %v", panicErr)
-	}
-	if runtimeScope == nil {
-		return nil, fmt.Errorf("failed to initialize scope")
-	}
-	return runtimeScope, nil
-}
-
-func hasPathListSeparator(path string) bool {
-	if runtime.GOOS == "windows" {
-		if strings.Contains(path, ";") {
-			return true
-		}
-		if strings.Contains(path, ":") {
-			if len(path) >= 3 && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) && path[1] == ':' && (path[2] == '\\' || path[2] == '/') {
-				return false
-			}
-			return true
-		}
-		return false
-	}
-	return strings.Contains(path, ":")
-}
-
-func containsControl(value string) bool {
-	return strings.ContainsRune(value, '\x00') || strings.ContainsRune(value, '\n') || strings.ContainsRune(value, '\r')
-}
-
-func urlScheme(dsn string) string {
-	value := strings.ToLower(dsn)
-	if strings.HasPrefix(value, "postgres://") || strings.HasPrefix(value, "postgresql://") || strings.HasPrefix(value, "mysql://") {
-		idx := strings.Index(value, "://")
-		if idx > 0 {
-			return value[:idx]
-		}
-	}
-	return ""
-}
-
-func hasParentSymlink(path string) bool {
-	current := filepath.Dir(path)
-	for {
-		info, err := os.Lstat(current)
-		if err != nil {
-			return false
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return true
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			return false
-		}
-		current = parent
-	}
 }

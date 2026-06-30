@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
+	"github.com/choysum-dev/choysum/internal/logger"
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
 	pkgrunner "github.com/choysum-dev/choysum/internal/testing/runner"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -20,7 +22,7 @@ import (
 
 var runTestRunnerWithDefaults = pkgrunner.RunWithDefaults
 
-func newTestCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newTestCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test",
 		Short: "Run test commands",
@@ -39,7 +41,7 @@ func newTestCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRun
 	return cmd
 }
 
-func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var dbDialect string
 	var dbFile string
 	var dbDSN string
@@ -111,11 +113,11 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				return xfmt.Errorf("scope is not initialized")
 			}
 
-			runtimeOptions, err := requireCliRuntimeOptionsForCommand("test unit", runtimeOptionsGetter)
+			runtimeOptions, err := cliruntime.RequireOptionsForCommand("test unit", runtimeOptionsGetter)
 			if err != nil {
 				return err
 			}
-			modulesPath := strings.TrimSpace(runtimeOptions.modulesPath)
+			modulesPath := strings.TrimSpace(runtimeOptions.ModulesPath)
 
 			// Default: TAP to stdout, business logs to stderr.
 			// This keeps TAP machine-parseable. Use --tap-stdout=false to revert legacy mixed output.
@@ -124,17 +126,28 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				if factoryInput == nil {
 					return xfmt.Errorf("config is not initialized")
 				}
-				splitScope := rebuildCommandRuntimeScope(baseScope, factoryInput, baseScope.Logger())
+				splitScope := cliruntime.RebuildScope(baseScope, factoryInput, baseScope.Logger())
 				if splitScope == nil {
 					return xfmt.Errorf("failed to initialize scope for tap stdout")
 				}
 				baseScope = splitScope
 			}
 			if runBE {
-				quietScope, err := rebuildScopeWithRuntimeLogLevel(baseScope, runtimeLogLevel, "test unit")
+				normalizedLevel, err := cliruntime.NormalizeRuntimeLogLevelFlag(runtimeLogLevel, "test unit")
 				if err != nil {
 					return err
 				}
+				factoryInput := scope.FactoryInputFromScope(baseScope)
+				if factoryInput == nil {
+					return xfmt.Errorf("config is not initialized")
+				}
+				logCfg := cliruntime.CloneLogConfig(scope.LogConfigFromScope(baseScope))
+				logCfg.Level = normalizedLevel
+				quietScope := cliruntime.RebuildScope(baseScope, factoryInput, logger.NewLoggerWithWriter(logCfg, os.Stderr))
+				if quietScope == nil {
+					return xfmt.Errorf("failed to initialize scope for runtime log level")
+				}
+
 				baseScope = quietScope
 			}
 

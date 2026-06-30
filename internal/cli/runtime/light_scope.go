@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package cmd
+package runtime
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type commandRuntimeScope struct {
 	logger *slog.Logger
 }
 
-func newCommandRuntimeScopeWithoutDB(ctx context.Context, input scope.FactoryInput, logger *slog.Logger) scope.Scope {
+func NewScopeWithoutDB(ctx context.Context, input scope.FactoryInput, logger *slog.Logger) scope.Scope {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -27,12 +27,12 @@ func newCommandRuntimeScopeWithoutDB(ctx context.Context, input scope.FactoryInp
 	return &commandRuntimeScope{ctx: ctx, input: input, logger: logger}
 }
 
-func rebuildCommandRuntimeScope(runtimeScope scope.Scope, factoryInput scope.FactoryInput, logger *slog.Logger) scope.Scope {
+func RebuildScope(runtimeScope scope.Scope, factoryInput scope.FactoryInput, logger *slog.Logger) scope.Scope {
 	if runtimeScope == nil {
 		return nil
 	}
 	if _, ok := runtimeScope.(*commandRuntimeScope); ok {
-		return newCommandRuntimeScopeWithoutDB(runtimeScope.Context(), factoryInput, logger)
+		return NewScopeWithoutDB(runtimeScope.Context(), factoryInput, logger)
 	}
 	return scope.NewScope(runtimeScope.Context(), factoryInput, logger)
 }

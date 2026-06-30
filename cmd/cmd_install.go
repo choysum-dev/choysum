@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
+	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
@@ -29,27 +32,31 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			env := envGetter()
 			if env == nil {
-				printCLIError("scope is not initialized")
+				clioutput.PrintError("scope is not initialized")
 				os.Exit(1)
 			}
 			if len(args) == 0 {
-				printCLIError("Please specify the module name")
+				clioutput.PrintError("Please specify the module name")
 				os.Exit(1)
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			env := envGetter()
 			if env == nil {
-				printCLIError("scope is not initialized")
+				clioutput.PrintError("scope is not initialized")
 				os.Exit(1)
 			}
-			resolvedCompat, err := resolveCLICompatVersionForCommand(cmd, cliCompatVersion)
+			runtimeVersion := ""
+			if cmd != nil && cmd.Root() != nil {
+				runtimeVersion = strings.TrimSpace(cmd.Root().Version)
+			}
+			resolvedCompat, err := clicompat.ResolveCLICompatVersion(cliCompatVersion, runtimeVersion, strings.TrimSpace(os.Getenv(clicompat.CLICompatVersionEnv)))
 			if err != nil {
 				env.Logger().Error("module compatibility version resolution failed", "error", err)
 				os.Exit(1)
 			}
-			runtimeOptions := cliRuntimeOptionsFromScope(env)
-			ensureInstallModulesTsconfig(env, runtimeOptions.modulesPath)
+			runtimeOptions := cliruntime.OptionsFromScope(env)
+			ensureInstallModulesTsconfig(env, runtimeOptions.ModulesPath)
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
@@ -76,7 +83,12 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 						env.Logger().Error("module install failed", "input", input, "error", err)
 						os.Exit(1)
 					}
-					compatibleVersion, compatErr := resolveCompatibleRegistryLatestVersion(ctx, env, runtimeOptions, parsed.ModuleName, resolvedCompat.Version)
+					indexURL, indexErr := resolveModuleCatalogIndexURL(runtimeOptions)
+					if indexErr != nil {
+						env.Logger().Error("module install failed", "input", input, "error", indexErr)
+						os.Exit(1)
+					}
+					compatibleVersion, compatErr := clicompat.ResolveCompatibleRegistryLatestVersion(ctx, env, indexURL, parsed.ModuleName, resolvedCompat.Version)
 					if compatErr != nil {
 						env.Logger().Error("module install failed", "input", input, "error", compatErr)
 						os.Exit(1)
@@ -127,8 +139,8 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 						err = rewriteLocalInstallLookupError(moduleName, err)
 					}
 					attrs := []any{"error", err}
-					attrs = append(attrs, moduleCommandFailureAttrs("install")...)
-					attrs = append(attrs, moduleInstallFailureAttrs(input, moduleName)...)
+					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("install")...)
+					attrs = append(attrs, clioutput.ModuleInstallFailureAttrs(input, moduleName)...)
 					env.Logger().Error("module install failed", attrs...)
 					os.Exit(1)
 				}

@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	pkgtypecheck "github.com/choysum-dev/choysum/internal/testing/typecheck"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliRuntimeOptions) *cobra.Command {
+func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cliruntime.Options) *cobra.Command {
 	var all bool
 	var keep bool
 
@@ -38,7 +39,7 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 			if baseScope == nil {
 				return xfmt.Errorf("typecheck: invalid scope")
 			}
-			runtimeOptions, err := requireCliRuntimeOptionsForCommand("typecheck", runtimeOptionsGetter)
+			runtimeOptions, err := cliruntime.RequireOptionsForCommand("typecheck", runtimeOptionsGetter)
 			if err != nil {
 				return err
 			}
@@ -54,10 +55,10 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 			}
 
 			opts := pkgtypecheck.RunOptions{
-				ModulesPath: runtimeOptions.modulesPath,
-				NpmPath:     filepath.Join(runtimeOptions.modulesPath, "node_modules"),
+				ModulesPath: runtimeOptions.ModulesPath,
+				NpmPath:     filepath.Join(runtimeOptions.ModulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
-				TmpPath:     runtimeOptions.tmpPath,
+				TmpPath:     runtimeOptions.TmpPath,
 				Target:      target,
 				Keep:        keep,
 				Stdout:      cmd.OutOrStdout(),

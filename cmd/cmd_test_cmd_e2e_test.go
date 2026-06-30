@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 
+	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/driver/sqlite"
@@ -1175,7 +1176,7 @@ func TestCLIModuleRemoteInfoNotFound(t *testing.T) {
 
 func TestCLIModuleRemoteListRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -1193,7 +1194,7 @@ func TestCLIModuleRemoteListRequiresCompatVersionInDev(t *testing.T) {
 
 func TestCLIModuleRemoteListAllAllowsUnresolvedCompatVersion(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -1214,7 +1215,7 @@ func TestCLIModuleRemoteListAllAllowsUnresolvedCompatVersion(t *testing.T) {
 
 func TestCLIModuleRemoteInfoRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -1232,7 +1233,7 @@ func TestCLIModuleRemoteInfoRequiresCompatVersionInDev(t *testing.T) {
 
 func TestCLIModuleRemoteInfoAllAllowsUnresolvedCompatVersion(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 	configPath := writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
 
 	srv := startRemoteRegistryCatalogServer(t, []remoteCatalogModule{{Name: "auth", LatestVersion: "v1.0.0", Versions: []string{"v1.0.0"}}})
@@ -1422,7 +1423,7 @@ func TestCLIUpgradeFlowWithGlobalRegistryIndex(t *testing.T) {
 
 func TestCLIUpgradeLatestRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1528,7 +1529,7 @@ func TestCLIUpgradeLocalRegistryBindingUsesCompatFilter(t *testing.T) {
 
 func TestCLIUpgradeLocalRegistryBindingRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
@@ -1641,7 +1642,7 @@ func TestCLIUpgradeLocalRegistryBindingNoCompatibleVersion(t *testing.T) {
 
 func TestCLIInstallLatestRequiresCompatVersionInDev(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv(cliCompatVersionEnv, "")
+	t.Setenv(clicompat.CLICompatVersionEnv, "")
 
 	workspaceRoot := t.TempDir()
 	modulesPath := filepath.Join(workspaceRoot, "modules")
