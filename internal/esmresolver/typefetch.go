@@ -572,12 +572,19 @@ type typeImportRewriteSpan struct {
 
 var typeModuleAugmentationURLPattern = regexp.MustCompile(`(?m)declare\s+module\s+(['"])(https?://[^/'"]+/[^'"]+)(['"])`)
 
+// These packages require bare-specifier rewrites so module augmentations from
+// fetched .d.ts files attach to the runtime package names TypeScript resolves.
+// Without this bridge, URL/local-cache specifiers can bypass declaration merges
+// for common ecosystems like Vue/Pinia/Moment.
 var typeModuleBridgePackages = map[string]struct{}{
 	"moment": {},
 	"pinia":  {},
 	"vue":    {},
 }
 
+// Some bridge-sensitive packages emit nested cached children that also contain
+// URL/local-cache module augmentations. Normalizing this allowlist keeps child
+// declarations aligned with the same bare-specifier bridge behavior.
 var normalizeBridgeChildPackages = map[string]struct{}{
 	"moment":                      {},
 	"moment-timezone":             {},
@@ -703,6 +710,9 @@ func bridgedBareSpecifierForLocalCacheSpecifier(specifier string) string {
 }
 
 func localCachedTypeSpecifierPackage(specifier string) (string, bool) {
+	// This parser intentionally reverse-engineers typeCachePathForURL filenames:
+	// <hostToken>_<packageAndVersion>.d.ts, where scoped packages encode '/' as
+	// '_' and optional build tokens may appear as vNNN_ prefixes.
 	trimmed := strings.TrimSpace(filepath.ToSlash(specifier))
 	if trimmed == "" {
 		return "", false
