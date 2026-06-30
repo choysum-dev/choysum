@@ -405,6 +405,8 @@ func TestRun(t *testing.T) {
 		backendCalls := 0
 		preflightErr := errors.New("frontend deps missing")
 		binDir := t.TempDir()
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
 		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
 		t.Setenv("PATH", binDir)
 
@@ -412,6 +414,7 @@ func TestRun(t *testing.T) {
 			Env:         newEnv(t.TempDir()),
 			ModulesPath: t.TempDir(),
 			Target:      "auth",
+			RepoRoot:    repoRoot,
 			RunBE:       true,
 			RunFE:       true,
 			Coverage:    true,
