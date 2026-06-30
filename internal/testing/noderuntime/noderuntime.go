@@ -78,6 +78,7 @@ func NormalizeModuleRoots(moduleRoots ...string) []string {
 		if moduleRoot == "" {
 			continue
 		}
+		moduleRoot = filepath.Clean(moduleRoot)
 		if _, exists := seenRoots[moduleRoot]; exists {
 			continue
 		}

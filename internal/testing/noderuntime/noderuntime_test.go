@@ -121,7 +121,7 @@ func TestMissingRequiredNodeModules(t *testing.T) {
 }
 
 func TestNormalizeModuleRoots(t *testing.T) {
-	got := NormalizeModuleRoots("", " /a ", "/a", "/b", "")
+	got := NormalizeModuleRoots("", " /a ", "/a/", "/b/../b", "/b", "")
 	want := []string{"/a", "/b"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("NormalizeModuleRoots() = %#v, want %#v", got, want)

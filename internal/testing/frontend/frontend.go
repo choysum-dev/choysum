@@ -490,7 +490,7 @@ func replaceOrAppendEnv(env []string, key string, value string) []string {
 	didReplaceExisting := false
 	updatedEnv := make([]string, 0, len(env)+1)
 	for _, entry := range env {
-		if strings.HasPrefix(entry, needle) {
+		if len(entry) > len(key) && entry[len(key)] == '=' && strings.EqualFold(entry[:len(key)], key) {
 			if !didReplaceExisting {
 				updatedEnv = append(updatedEnv, needle+value)
 				didReplaceExisting = true

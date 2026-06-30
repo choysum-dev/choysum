@@ -328,6 +328,18 @@ func TestBuildNodePathSkipsEmptyGlobalRootAndKeepsExistingNodePath(t *testing.T)
 	}
 }
 
+func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
+	env := []string{"Node_Path=/old", "PATH=/bin"}
+	updated := replaceOrAppendEnv(env, "NODE_PATH", "/new")
+
+	if len(updated) != 2 {
+		t.Fatalf("replaceOrAppendEnv() len = %d, want 2 (%#v)", len(updated), updated)
+	}
+	if updated[0] != "NODE_PATH=/new" {
+		t.Fatalf("replaceOrAppendEnv() first entry = %q, want %q", updated[0], "NODE_PATH=/new")
+	}
+}
+
 func TestRunOneAppFrontendTestsKeepTmpConfig(t *testing.T) {
 	repoRoot := t.TempDir()
 	binDir := filepath.Join(t.TempDir(), "bin")
