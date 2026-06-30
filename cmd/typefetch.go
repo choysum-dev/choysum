@@ -452,12 +452,11 @@ func validateTypeFetchDependsCompleteness(modulesPath string, moduleNames []stri
 				return nil, xfmt.Errorf("resolve depends module %q for %q: %w", depModule, trimmed, err)
 			}
 			if _, err := os.Stat(depPkgPath); err != nil {
-				if os.IsNotExist(err) {
-					missingSet[depModule] = struct{}{}
-					continue
+				if !os.IsNotExist(err) {
+					return nil, xfmt.Errorf("stat depends module %q for %q: %w", depModule, trimmed, err)
 				}
-				return nil, xfmt.Errorf("stat depends module %q for %q: %w", depModule, trimmed, err)
 			}
+			missingSet[depModule] = struct{}{}
 		}
 	}
 

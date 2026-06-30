@@ -626,6 +626,20 @@ func TestValidateTypeFetchDependsCompleteness_RejectsTraversalDependsPath(t *tes
 	}
 }
 
+func TestValidateTypeFetchDependsCompleteness_FlagsExcludedInstalledDependency(t *testing.T) {
+	modulesPath := t.TempDir()
+	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["base"]}}`)
+	writeCommandPackage(t, modulesPath, "base", `{}`)
+
+	missing, err := validateTypeFetchDependsCompleteness(modulesPath, []string{"auth"})
+	if err != nil {
+		t.Fatalf("validateTypeFetchDependsCompleteness failed: %v", err)
+	}
+	if len(missing) != 1 || missing[0] != "base" {
+		t.Fatalf("expected missing depends [base], got %+v", missing)
+	}
+}
+
 func TestNewTypeFetchCmd_Run_AllModulesMissingDependsDefaultWarn(t *testing.T) {
 	modulesPath := t.TempDir()
 	cfg := newCommandTestConfig(modulesPath)
