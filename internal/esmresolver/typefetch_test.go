@@ -262,7 +262,6 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
-	_ = transitive
 	if result.FromCache {
 		t.Fatal("expected download, got cache hit")
 	}
@@ -271,6 +270,19 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	}
 
 	depPath := typeCachePathForURL(typesDir, srv.URL+"/types/pkg@1.0.0/sub.d.ts")
+	if len(transitive) == 0 {
+		t.Fatal("expected transitive results to include imported type files")
+	}
+	hasDepResult := false
+	for _, tr := range transitive {
+		if tr.CachedPath == depPath {
+			hasDepResult = true
+			break
+		}
+	}
+	if !hasDepResult {
+		t.Fatalf("expected transitive results to include %s, got %+v", depPath, transitive)
+	}
 	if _, err := os.Stat(depPath); err != nil {
 		t.Fatalf("expected transitive type file at %s: %v", depPath, err)
 	}
@@ -283,6 +295,152 @@ func TestFetchTypeDefinition_DiscoverAndDownload(t *testing.T) {
 	rewritten := string(data)
 	if !strings.Contains(rewritten, filepath.Base(depPath)) {
 		t.Fatalf("expected rewritten import to local cache file, got: %q", rewritten)
+	}
+}
+
+func TestFetchTypeDefinition_RequestTimeoutStartsAfterSlotAcquired(t *testing.T) {
+	oldTimeout := typeFetchRequestTimeout
+	typeFetchRequestTimeout = 300 * time.Millisecond
+	defer func() { typeFetchRequestTimeout = oldTimeout }()
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+"/types/pkg@1.0.0/index.d.ts")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		fmt.Fprint(w, "export declare const x: number;")
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	state := newTypeFetchState(1)
+
+	// Occupy the only request slot long enough to exceed request timeout if
+	// timeout starts before waiting for the slot.
+	state.requestSem <- struct{}{}
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		<-state.requestSem
+	}()
+
+	result, _, err := fetchTypeDefinitionWithState(context.Background(), nil, srv.URL, typesDir, "pkg", "1.0.0", state)
+	if err != nil {
+		t.Fatalf("fetchTypeDefinitionWithState failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func TestFetchTypeDefinition_TransitiveChildRetryRecoversInSameRun(t *testing.T) {
+	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
+	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
+	subCalls := 0
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case typesURLPath:
+				fmt.Fprint(w, `export * from "./sub.d.ts";`)
+				return
+			case subURLPath:
+				subCalls++
+				if subCalls == 1 {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					return
+				}
+				fmt.Fprint(w, "export declare const sub: string;")
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	result, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+	if err != nil {
+		t.Fatalf("FetchTypeDefinition failed: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.FromCache {
+		t.Fatal("expected fetched result, got cache hit")
+	}
+	if subCalls != 2 {
+		t.Fatalf("expected sub.d.ts to be retried once (2 calls total), got %d", subCalls)
+	}
+
+	depPath := typeCachePathForURL(typesDir, srv.URL+subURLPath)
+	if _, err := os.Stat(depPath); err != nil {
+		t.Fatalf("expected retried transitive type file at %s: %v", depPath, err)
+	}
+}
+
+func TestFetchTypeDefinition_TransitiveChildRetryExhaustedWarns(t *testing.T) {
+	typesURLPath := "/types/pkg@1.0.0/index.d.ts"
+	subURLPath := "/types/pkg@1.0.0/sub.d.ts"
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("x-typescript-types", srv.URL+typesURLPath)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			switch r.URL.Path {
+			case typesURLPath:
+				fmt.Fprint(w, `export * from "./sub.d.ts";`)
+				return
+			case subURLPath:
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	output := captureTypeFetchStderr(t, func() {
+		result, _, err := FetchTypeDefinition(nil, srv.URL, typesDir, "pkg", "1.0.0")
+		if err != nil {
+			t.Fatalf("FetchTypeDefinition failed: %v", err)
+		}
+		if result == nil {
+			t.Fatal("expected non-nil result")
+		}
+	})
+
+	if !strings.Contains(output, "[esm-type-fetch] warn: pkg transitive fetch had 1/1 failures") {
+		t.Fatalf("expected transitive failure warning in stderr, got %q", output)
+	}
+	if !strings.Contains(output, "example:") || !strings.Contains(output, subURLPath) {
+		t.Fatalf("expected warning to include failing URL sample, got %q", output)
+	}
+
+	depPath := typeCachePathForURL(typesDir, srv.URL+subURLPath)
+	if _, err := os.Stat(depPath); !os.IsNotExist(err) {
+		t.Fatalf("expected transitive child cache file to be absent after exhausted retries, err=%v", err)
 	}
 }
 
@@ -837,14 +995,197 @@ export * from "./sub.d.ts";`
 	}
 }
 
+func TestRewriteTypeImportSpecifiers_BridgesVueImportToBare(t *testing.T) {
+	typesDir := t.TempDir()
+	cacheFile := filepath.Join(typesDir, "root.d.ts")
+
+	content := `import { ComputedRef } from "./vue.d.mts";`
+	rewritten := rewriteTypeImportSpecifiers(content, cacheFile, typesDir, []resolvedTypeImport{
+		{Original: "./vue.d.mts", ResolvedURL: "https://esm.sh/vue@3.5.30/dist/vue.d.mts"},
+	})
+
+	if !strings.Contains(rewritten, `"vue"`) || strings.Contains(rewritten, `"./vue.d.mts"`) {
+		t.Fatalf("expected vue import to bridge to bare specifier, got: %q", rewritten)
+	}
+}
+
+func TestRewriteTypeModuleAugmentationSpecifiers(t *testing.T) {
+	content := `
+declare module 'https://esm.sh/pinia@3.0.4/dist/pinia.d.ts' {
+  interface DefineStoreOptionsBase<S, Store> {
+    persist?: boolean
+  }
+}
+
+declare module 'https://esm.sh/moment@2.30.1/ts3.1-typings/moment.d.ts' {
+	interface Moment {
+		tz(): string | undefined
+	}
+}
+
+declare module 'https://esm.sh/not-bridged@1.0.0/index.d.ts' {
+  interface X {}
+}
+
+declare module 'https://mirror.example.com/vue@3.5.35/dist/vue.d.mts' {
+	interface Y {}
+}
+`
+	rewritten := rewriteTypeModuleAugmentationSpecifiers(content)
+
+	if !strings.Contains(rewritten, `declare module 'pinia'`) {
+		t.Fatalf("expected pinia module augmentation to be bridged, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, `declare module 'moment'`) {
+		t.Fatalf("expected moment module augmentation to be bridged, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, `declare module 'https://esm.sh/not-bridged@1.0.0/index.d.ts'`) {
+		t.Fatalf("expected non-bridged module augmentation to remain unchanged, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, `declare module 'vue'`) {
+		t.Fatalf("expected custom-host vue augmentation to be bridged, got: %q", rewritten)
+	}
+}
+
+func TestRewriteLocalCachedBridgeSpecifiers(t *testing.T) {
+	content := `import { Ref } from "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts";
+import { defineStore } from "./esm.sh_pinia@3.0.4_dist_pinia.d.ts.d.ts";
+import { X } from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts";
+import { Ref2 } from "./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts";`
+
+	rewritten := rewriteLocalCachedBridgeSpecifiers(content)
+	if !strings.Contains(rewritten, `"vue"`) || strings.Contains(rewritten, `"./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts"`) {
+		t.Fatalf("expected vue local cache import to bridge, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, `"pinia"`) || strings.Contains(rewritten, `"./esm.sh_pinia@3.0.4_dist_pinia.d.ts.d.ts"`) {
+		t.Fatalf("expected pinia local cache import to bridge, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, `from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts"`) {
+		t.Fatalf("expected non-bridge local cache import to remain unchanged, got: %q", rewritten)
+	}
+	if strings.Contains(rewritten, `"./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts"`) || strings.Count(rewritten, `"vue"`) != 2 {
+		t.Fatalf("expected custom-host local cache import to bridge, got: %q", rewritten)
+	}
+}
+
+func TestBridgedBareSpecifierForLocalCacheSpecifier_ScopedPackage(t *testing.T) {
+	const scopedPkg = "@scope/pkg"
+	typeModuleBridgePackages[scopedPkg] = struct{}{}
+	defer delete(typeModuleBridgePackages, scopedPkg)
+
+	got := bridgedBareSpecifierForLocalCacheSpecifier("./esm.sh_@scope_pkg@1.2.3_dist_index.d.ts.d.ts")
+	if got != scopedPkg {
+		t.Fatalf("bridgedBareSpecifierForLocalCacheSpecifier() = %q, want %q", got, scopedPkg)
+	}
+}
+
+func TestBridgedBareSpecifierForLocalCacheSpecifier_BuildPrefix(t *testing.T) {
+	got := bridgedBareSpecifierForLocalCacheSpecifier("./esm.sh_v135_vue@3.5.35_dist_vue.d.mts.d.ts")
+	if got != "vue" {
+		t.Fatalf("bridgedBareSpecifierForLocalCacheSpecifier() = %q, want %q", got, "vue")
+	}
+}
+
+func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "root.d.ts")
+	child := filepath.Join(dir, "esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts")
+
+	if err := os.WriteFile(root, []byte(`export * from "./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts";`), 0o644); err != nil {
+		t.Fatalf("write root: %v", err)
+	}
+	if err := os.WriteFile(child, []byte(`declare module 'https://esm.sh/vue@3.5.35/dist/vue.d.mts' { interface X {} }`), 0o644); err != nil {
+		t.Fatalf("write child: %v", err)
+	}
+
+	if err := normalizeBridgeCachedTypeChildren(root, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"}); err != nil {
+		t.Fatalf("normalizeBridgeCachedTypeChildren: %v", err)
+	}
+
+	data, err := os.ReadFile(child)
+	if err != nil {
+		t.Fatalf("read child: %v", err)
+	}
+	if !strings.Contains(string(data), `declare module 'vue'`) {
+		t.Fatalf("expected child augmentation to be bridged to bare vue, got: %q", string(data))
+	}
+}
+
+func TestNormalizeBridgeCachedTypeChildren_ConcurrentSharedChild(t *testing.T) {
+	dir := t.TempDir()
+	rootA := filepath.Join(dir, "root-a.d.ts")
+	rootB := filepath.Join(dir, "root-b.d.ts")
+	child := filepath.Join(dir, "esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts")
+
+	if err := os.WriteFile(rootA, []byte(`export * from "./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts";`), 0o644); err != nil {
+		t.Fatalf("write rootA: %v", err)
+	}
+	if err := os.WriteFile(rootB, []byte(`export * from "./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts";`), 0o644); err != nil {
+		t.Fatalf("write rootB: %v", err)
+	}
+	if err := os.WriteFile(child, []byte(`declare module 'https://mirror.example.com/vue@3.5.35/dist/vue.d.mts' { interface X {} }`), 0o644); err != nil {
+		t.Fatalf("write child: %v", err)
+	}
+
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- normalizeBridgeCachedTypeChildren(rootA, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+	}()
+	go func() {
+		errCh <- normalizeBridgeCachedTypeChildren(rootB, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+	}()
+
+	for i := 0; i < 2; i++ {
+		if err := <-errCh; err != nil {
+			t.Fatalf("normalizeBridgeCachedTypeChildren concurrent run failed: %v", err)
+		}
+	}
+
+	data, err := os.ReadFile(child)
+	if err != nil {
+		t.Fatalf("read child: %v", err)
+	}
+	if !strings.Contains(string(data), `declare module 'vue'`) {
+		t.Fatalf("expected child augmentation to be bridged to bare vue, got: %q", string(data))
+	}
+}
+
+func TestEsmTypeURLBarePackage(t *testing.T) {
+	tests := []struct {
+		rawURL string
+		want   string
+	}{
+		{rawURL: "https://esm.sh/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://esm.sh/v135/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://esm.sh/pinia@3.0.4/dist/pinia.d.ts", want: "pinia"},
+		{rawURL: "https://esm.sh/v135/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
+		{rawURL: "https://esm.sh/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
+		{rawURL: "https://mirror.example.com/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://mirror.example.com/v135/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://mirror.example.com/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
+		{rawURL: "https://mirror.example.com/not-bridged@1.0.0/index.d.ts", want: "not-bridged"},
+		{rawURL: "./local/path.d.ts", want: ""},
+	}
+
+	for _, tt := range tests {
+		if got := esmTypeURLBarePackage(tt.rawURL); got != tt.want {
+			t.Fatalf("esmTypeURLBarePackage(%q) = %q, want %q", tt.rawURL, got, tt.want)
+		}
+	}
+}
+
 func TestIsLocalCachedTypeSpecifier(t *testing.T) {
 	tests := []struct {
 		path string
 		want bool
 	}{
 		{path: "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "./esm.sh_v135_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "./mirror.example.com_v135_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
 		{path: "../esm.sh_kysely@0.29.2_dist_index.d.ts.d.ts", want: true},
 		{path: "./runtime-dom.d.ts", want: false},
+		{path: "./local_vue@3.5.35_dist_vue.d.mts.d.ts", want: false},
 		{path: "https://esm.sh/vue@3.5.35/dist/vue.d.mts", want: false},
 		{path: "node", want: false},
 	}
@@ -1254,6 +1595,27 @@ func TestWithRequestSlot_NilState(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("expected fn to be called when state is nil")
+	}
+}
+
+func TestWithRequestSlotContext_CanceledWhileWaiting(t *testing.T) {
+	state := newTypeFetchState(1)
+	state.requestSem <- struct{}{}
+	defer func() { <-state.requestSem }()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	called := false
+	err := state.withRequestSlotContext(ctx, func() error {
+		called = true
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled error, got %v", err)
+	}
+	if called {
+		t.Fatal("expected run func not to be called when context canceled before slot acquisition")
 	}
 }
 

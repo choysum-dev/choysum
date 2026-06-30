@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -32,9 +33,26 @@ type TypeFetchResult struct {
 	FromCache  bool
 }
 
+// TypeFetchModuleStats summarizes one module fetch run.
+//
+// Direct* fields are counts over direct dependency targets from package.json.
+// Transitive* fields are counts over recursively fetched/imported type files.
+type TypeFetchModuleStats struct {
+	DirectTargets     int
+	DirectCached      int
+	DirectFetched     int
+	DirectReused      int
+	DirectFailed      int
+	TransitiveCached  int
+	TransitiveFetched int
+}
+
 const defaultTypeFetchRequestTimeout = 30 * time.Second
 const defaultTypeFetchParallelism = 16
 const maxTypeFetchDownloadBytes int64 = 10 * 1024 * 1024
+const defaultTypeFetchTransitiveRetryAttempts = 2
+
+var typeFetchRequestTimeout = defaultTypeFetchRequestTimeout
 
 type visitEntry struct {
 	ch      chan struct{}
@@ -119,15 +137,20 @@ func NewTypeFetchSession(parallelism int) *TypeFetchSession {
 }
 
 func (s *TypeFetchSession) FetchTypesForModule(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
+	results, _, err := s.FetchTypesForModuleWithStats(ctx, client, upstream, typesDir, moduleDir)
+	return results, err
+}
+
+func (s *TypeFetchSession) FetchTypesForModuleWithStats(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, TypeFetchModuleStats, error) {
 	if s == nil {
-		return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, nil)
+		return fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, nil)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.state == nil {
-		return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, nil)
+		return fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, nil)
 	}
-	return fetchTypesForModuleWithState(ctx, client, upstream, typesDir, moduleDir, s.state)
+	return fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, s.state)
 }
 
 func newTypeFetchState(parallelism int) *typeFetchState {
@@ -180,11 +203,22 @@ func (s *typeFetchState) acquireVisit(url string) (bool, func(bool)) {
 }
 
 func (s *typeFetchState) withRequestSlot(run func() error) error {
+	return s.withRequestSlotContext(context.Background(), run)
+}
+
+func (s *typeFetchState) withRequestSlotContext(ctx context.Context, run func() error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if s == nil || s.requestSem == nil {
 		return run()
 	}
 
-	s.requestSem <- struct{}{}
+	select {
+	case s.requestSem <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	defer func() { <-s.requestSem }()
 	return run()
 }
@@ -192,7 +226,7 @@ func (s *typeFetchState) withRequestSlot(run func() error) error {
 // NewTypeFetchHTTPClient builds an HTTP client tuned for resilient type fetch.
 func NewTypeFetchHTTPClient(timeout time.Duration) *http.Client {
 	if timeout <= 0 {
-		timeout = defaultTypeFetchRequestTimeout
+		timeout = typeFetchRequestTimeout
 	}
 
 	transport := &http.Transport{
@@ -255,7 +289,7 @@ func (p *PackageJSON) CollectDependencies() map[string]string {
 // type dependencies that were fetched.
 func FetchTypeDefinition(client *http.Client, upstream, typesDir, pkg, version string) (*TypeFetchResult, []TypeFetchResult, error) {
 	if client == nil {
-		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+		client = NewTypeFetchHTTPClient(typeFetchRequestTimeout)
 	}
 
 	state := newTypeFetchState(defaultTypeFetchParallelism)
@@ -267,7 +301,7 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 		ctx = context.Background()
 	}
 	if client == nil {
-		client = NewTypeFetchHTTPClient(defaultTypeFetchRequestTimeout)
+		client = NewTypeFetchHTTPClient(typeFetchRequestTimeout)
 	}
 	if state == nil {
 		state = newTypeFetchState(defaultTypeFetchParallelism)
@@ -283,15 +317,16 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 	spec := pkg + "@" + version
 	discoverURL := fmt.Sprintf("%s/%s?dts", strings.TrimRight(upstream, "/"), spec)
 
-	reqCtx, cancel := context.WithTimeout(ctx, defaultTypeFetchRequestTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodHead, discoverURL, nil)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create discover request: %w", err)
-	}
 	var resp *http.Response
-	err = state.withRequestSlot(func() error {
+	err := state.withRequestSlotContext(ctx, func() error {
+		reqCtx, cancel := context.WithTimeout(ctx, typeFetchRequestTimeout)
+		defer cancel()
+
+		req, reqErr := http.NewRequestWithContext(reqCtx, http.MethodHead, discoverURL, nil)
+		if reqErr != nil {
+			return fmt.Errorf("create discover request: %w", reqErr)
+		}
+
 		var doErr error
 		resp, doErr = client.Do(req)
 		return doErr
@@ -402,11 +437,16 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	// Rewire import/export module specifiers to local cache paths so TypeScript
 	// can follow the graph even when files are flattened into a shared cache dir.
 	rewritten := rewriteTypeImportSpecifiers(string(content), cacheFile, typesDir, resolvedImports)
+	rewritten = rewriteLocalCachedBridgeSpecifiers(rewritten)
+	rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
 	if rewritten != string(content) {
 		content = []byte(rewritten)
 		if err := writeTypeCacheFile(cacheFile, content); err != nil {
 			return nil, nil, err
 		}
+	}
+	if err := normalizeBridgeCachedTypeChildren(cacheFile, imports); err != nil {
+		return nil, nil, err
 	}
 
 	// On cache hits, avoid repeatedly traversing massive transitive graphs.
@@ -436,9 +476,12 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	// package with thousands of transitive imports into an hour-long wait.
 	if total > 0 {
 		var (
-			wg        sync.WaitGroup
-			mu        sync.Mutex
-			completed int
+			wg              sync.WaitGroup
+			mu              sync.Mutex
+			completed       int
+			failedCount     int
+			failedSample    string
+			failedSampleErr error
 		)
 		for _, imp := range resolvedImports {
 			if err := ctx.Err(); err != nil {
@@ -449,11 +492,17 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 				defer wg.Done()
 				resolvedURL := imp.ResolvedURL
 				pkgName := typePkgNameFromURL(resolvedURL)
-				_, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, localAncestors)
+				subTransitive, err := fetchTypeRecursiveWithRetry(ctx, client, typesDir, resolvedURL, pkgName, state, localAncestors, defaultTypeFetchTransitiveRetryAttempts)
 				completedNow := 0
 				mu.Lock()
 				if err == nil {
 					allTransitive = append(allTransitive, subTransitive...)
+				} else {
+					failedCount++
+					if failedSample == "" {
+						failedSample = resolvedURL
+						failedSampleErr = err
+					}
 				}
 				completed++
 				completedNow = completed
@@ -462,6 +511,14 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 			}(imp)
 		}
 		wg.Wait()
+
+		if failedCount > 0 && isTopLevelFetch {
+			message := fmt.Sprintf("[esm-type-fetch] warn: %s transitive fetch had %d/%d failures", rootPkg, failedCount, total)
+			if failedSample != "" && failedSampleErr != nil {
+				message = fmt.Sprintf("%s (example: %s: %v)", message, failedSample, failedSampleErr)
+			}
+			writeTypeFetchProgressLine(message)
+		}
 	}
 
 	result := &TypeFetchResult{
@@ -472,6 +529,33 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	}
 	success = true
 	return result, allTransitive, nil
+}
+
+func fetchTypeRecursiveWithRetry(ctx context.Context, client *http.Client, typesDir, resolvedURL, pkgName string, state *typeFetchState, ancestors map[string]bool, attempts int) ([]TypeFetchResult, error) {
+	if attempts <= 0 {
+		attempts = 1
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		subResult, subTransitive, err := fetchTypeRecursive(ctx, client, typesDir, resolvedURL, pkgName, "", state, ancestors)
+		if err == nil {
+			results := make([]TypeFetchResult, 0, len(subTransitive)+1)
+			if subResult != nil {
+				results = append(results, *subResult)
+			}
+			results = append(results, subTransitive...)
+			return results, nil
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("transitive fetch failed")
+	}
+	return nil, lastErr
 }
 
 type resolvedTypeImport struct {
@@ -486,6 +570,334 @@ type typeImportRewriteSpan struct {
 	quote byte
 }
 
+var typeModuleAugmentationURLPattern = regexp.MustCompile(`(?m)declare\s+module\s+(['"])(https?://[^/'"]+/[^'"]+)(['"])`)
+
+// These packages require bare-specifier rewrites so module augmentations from
+// fetched .d.ts files attach to the runtime package names TypeScript resolves.
+// Without this bridge, URL/local-cache specifiers can bypass declaration merges
+// for common ecosystems like Vue/Pinia/Moment.
+var typeModuleBridgePackages = map[string]struct{}{
+	"moment": {},
+	"pinia":  {},
+	"vue":    {},
+}
+
+// Some bridge-sensitive packages emit nested cached children that also contain
+// URL/local-cache module augmentations. Normalizing this allowlist keeps child
+// declarations aligned with the same bare-specifier bridge behavior.
+var normalizeBridgeChildPackages = map[string]struct{}{
+	"moment":                      {},
+	"moment-timezone":             {},
+	"pinia":                       {},
+	"pinia-plugin-persistedstate": {},
+	"vue":                         {},
+	"vue-router":                  {},
+}
+
+var bridgeNormalizeFileLocks sync.Map
+
+func bridgedBareSpecifierForTypeURL(rawURL string) string {
+	pkg := esmTypeURLBarePackage(rawURL)
+	if pkg == "" {
+		return ""
+	}
+	if _, ok := typeModuleBridgePackages[pkg]; !ok {
+		return ""
+	}
+	return pkg
+}
+
+func esmTypeURLBarePackage(rawURL string) string {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return ""
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return ""
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return ""
+	}
+
+	path := strings.Trim(parsed.Path, "/")
+	if path == "" {
+		return ""
+	}
+
+	segments := strings.Split(path, "/")
+	if len(segments) == 0 {
+		return ""
+	}
+	pkgSegmentIndex := 0
+	if len(segments) > 1 {
+		firstSegment, segErr := url.PathUnescape(segments[0])
+		if segErr != nil {
+			firstSegment = segments[0]
+		}
+		firstSegment = strings.TrimSpace(firstSegment)
+		if isTypeURLBuildVersionToken(firstSegment) {
+			pkgSegmentIndex = 1
+		}
+	}
+
+	first, err := url.PathUnescape(segments[pkgSegmentIndex])
+	if err != nil {
+		first = segments[pkgSegmentIndex]
+	}
+	first = strings.TrimSpace(first)
+	if first == "" {
+		return ""
+	}
+
+	candidate := first
+	if strings.HasPrefix(first, "@") {
+		if strings.Contains(first, "/") {
+			candidate = first
+		} else if len(segments) > pkgSegmentIndex+1 {
+			second, err := url.PathUnescape(segments[pkgSegmentIndex+1])
+			if err != nil {
+				second = segments[pkgSegmentIndex+1]
+			}
+			second = strings.TrimSpace(second)
+			if second != "" {
+				candidate = first + "/" + second
+			}
+		}
+	}
+
+	if at := strings.LastIndex(candidate, "@"); at > 0 {
+		candidate = candidate[:at]
+	}
+	return strings.TrimSpace(candidate)
+}
+
+func rewriteTypeModuleAugmentationSpecifiers(content string) string {
+	if strings.TrimSpace(content) == "" {
+		return content
+	}
+
+	return typeModuleAugmentationURLPattern.ReplaceAllStringFunc(content, func(match string) string {
+		sub := typeModuleAugmentationURLPattern.FindStringSubmatch(match)
+		if len(sub) != 4 {
+			return match
+		}
+
+		quote := sub[1]
+		rawURL := sub[2]
+		if sub[3] != quote {
+			return match
+		}
+		bridged := bridgedBareSpecifierForTypeURL(rawURL)
+		if bridged == "" {
+			return match
+		}
+
+		oldValue := quote + rawURL + quote
+		newValue := quote + bridged + quote
+		return strings.Replace(match, oldValue, newValue, 1)
+	})
+}
+
+func bridgedBareSpecifierForLocalCacheSpecifier(specifier string) string {
+	pkg, ok := localCachedTypeSpecifierPackage(specifier)
+	if !ok {
+		return ""
+	}
+	if _, ok := typeModuleBridgePackages[pkg]; !ok {
+		return ""
+	}
+	return pkg
+}
+
+func localCachedTypeSpecifierPackage(specifier string) (string, bool) {
+	// This parser intentionally reverse-engineers typeCachePathForURL filenames:
+	// <hostToken>_<packageAndVersion>.d.ts, where scoped packages encode '/' as
+	// '_' and optional build tokens may appear as vNNN_ prefixes.
+	trimmed := strings.TrimSpace(filepath.ToSlash(specifier))
+	if trimmed == "" {
+		return "", false
+	}
+	base := filepath.Base(trimmed)
+	if strings.TrimSpace(base) == "" {
+		return "", false
+	}
+
+	sep := strings.Index(base, "_")
+	if sep <= 0 || sep >= len(base)-1 {
+		return "", false
+	}
+	hostToken := strings.TrimSpace(base[:sep])
+	if hostToken == "" {
+		return "", false
+	}
+	if !strings.Contains(hostToken, ".") && !strings.Contains(hostToken, ":") && hostToken != "localhost" {
+		return "", false
+	}
+
+	rest := trimTypeBuildPrefix(base[sep+1:])
+	at := strings.LastIndex(rest, "@")
+	if at <= 0 {
+		return "", false
+	}
+
+	pkg := strings.TrimSpace(rest[:at])
+	if strings.HasPrefix(pkg, "@") && !strings.Contains(pkg, "/") {
+		if scopeSep := strings.Index(pkg, "_"); scopeSep > 1 {
+			pkg = pkg[:scopeSep] + "/" + pkg[scopeSep+1:]
+		}
+	}
+	pkg = strings.TrimSpace(pkg)
+	if pkg == "" {
+		return "", false
+	}
+
+	return pkg, true
+}
+
+func isTypeURLBuildVersionToken(token string) bool {
+	if len(token) < 2 || token[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(token); i++ {
+		if token[i] < '0' || token[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func trimTypeBuildPrefix(rest string) string {
+	rest = strings.TrimSpace(rest)
+	if len(rest) < 3 || rest[0] != 'v' {
+		return rest
+	}
+	underscore := strings.IndexByte(rest, '_')
+	if underscore <= 1 || underscore+1 >= len(rest) {
+		return rest
+	}
+	for i := 1; i < underscore; i++ {
+		if rest[i] < '0' || rest[i] > '9' {
+			return rest
+		}
+	}
+	return rest[underscore+1:]
+}
+
+func rewriteLocalCachedBridgeSpecifiers(content string) string {
+	spans := collectTypeImportRewriteSpans(content)
+	if len(spans) == 0 {
+		return content
+	}
+
+	sort.SliceStable(spans, func(i, j int) bool {
+		return spans[i].start > spans[j].start
+	})
+
+	out := content
+	for _, span := range spans {
+		bridged := bridgedBareSpecifierForLocalCacheSpecifier(span.value)
+		if bridged == "" {
+			continue
+		}
+		if span.start < 0 || span.end > len(out) || span.start >= span.end {
+			continue
+		}
+		quote := span.quote
+		if quote == 0 {
+			quote = '"'
+		}
+		replacement := string(quote) + bridged + string(quote)
+		out = out[:span.start] + replacement + out[span.end:]
+	}
+
+	return out
+}
+
+func shouldNormalizeBridgeChildCacheFile(specifier string) bool {
+	pkg, ok := localCachedTypeSpecifierPackage(specifier)
+	if !ok {
+		return false
+	}
+	_, ok = normalizeBridgeChildPackages[pkg]
+	return ok
+}
+
+func lockBridgeNormalizeFile(path string) func() {
+	locker, _ := bridgeNormalizeFileLocks.LoadOrStore(path, &sync.Mutex{})
+	mu := locker.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
+func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error {
+	cleanPath := filepath.Clean(filePath)
+	if cleanPath == "" {
+		return nil
+	}
+	if seen[cleanPath] {
+		return nil
+	}
+	seen[cleanPath] = true
+
+	var rewritten string
+	var imports []string
+	if err := func() error {
+		unlock := lockBridgeNormalizeFile(cleanPath)
+		defer unlock()
+
+		contentBytes, err := os.ReadFile(cleanPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		content := string(contentBytes)
+
+		rewritten = rewriteLocalCachedBridgeSpecifiers(content)
+		rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
+		if rewritten != content {
+			if err := writeTypeCacheFile(cleanPath, []byte(rewritten)); err != nil {
+				return err
+			}
+		}
+
+		imports = parseDTSImports(rewritten)
+		return nil
+	}(); err != nil {
+		return err
+	}
+	if len(imports) == 0 {
+		return nil
+	}
+
+	for _, importPath := range imports {
+		if !isLocalCachedTypeSpecifier(importPath) || !shouldNormalizeBridgeChildCacheFile(importPath) {
+			continue
+		}
+		childPath := filepath.Clean(filepath.Join(filepath.Dir(cleanPath), filepath.FromSlash(importPath)))
+		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeBridgeCachedTypeChildren(cacheFile string, imports []string) error {
+	seen := map[string]bool{filepath.Clean(cacheFile): true}
+	for _, importPath := range imports {
+		if !isLocalCachedTypeSpecifier(importPath) || !shouldNormalizeBridgeChildCacheFile(importPath) {
+			continue
+		}
+		childPath := filepath.Clean(filepath.Join(filepath.Dir(cacheFile), filepath.FromSlash(importPath)))
+		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []resolvedTypeImport) string {
 	if len(imports) == 0 {
 		return content
@@ -493,6 +905,11 @@ func rewriteTypeImportSpecifiers(content, cacheFile, typesDir string, imports []
 
 	rewriteMap := make(map[string]string, len(imports))
 	for _, imp := range imports {
+		if bridged := bridgedBareSpecifierForTypeURL(imp.ResolvedURL); bridged != "" {
+			rewriteMap[imp.Original] = bridged
+			continue
+		}
+
 		localPath := typeCachePathForURL(typesDir, imp.ResolvedURL)
 		rel, err := filepath.Rel(filepath.Dir(cacheFile), localPath)
 		if err != nil {
@@ -685,12 +1102,8 @@ func collectTypeImportRewriteSpans(content string) []typeImportRewriteSpan {
 }
 
 func isLocalCachedTypeSpecifier(importPath string) bool {
-	p := filepath.ToSlash(strings.TrimSpace(importPath))
-	if p == "" {
-		return false
-	}
-	base := filepath.Base(p)
-	return strings.HasPrefix(base, "esm.sh_")
+	_, ok := localCachedTypeSpecifierPackage(importPath)
+	return ok
 }
 
 // parseDTSImports uses the TypeScript AST parser to extract module specifiers
@@ -874,10 +1287,23 @@ func typePkgNameFromURL(rawURL string) string {
 // definitions for all dependencies (including transitive imports).
 // Returns all fetched type results (direct + transitive).
 func FetchTypesForModule(client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, error) {
-	return fetchTypesForModuleWithState(context.Background(), client, upstream, typesDir, moduleDir, nil)
+	results, _, err := FetchTypesForModuleWithStats(client, upstream, typesDir, moduleDir)
+	return results, err
+}
+
+// FetchTypesForModuleWithStats fetches types and returns detailed module-level
+// accounting (direct targets + transitive totals) in addition to fetch results.
+func FetchTypesForModuleWithStats(client *http.Client, upstream, typesDir, moduleDir string) ([]TypeFetchResult, TypeFetchModuleStats, error) {
+	return fetchTypesForModuleWithStateAndStats(context.Background(), client, upstream, typesDir, moduleDir, nil)
 }
 
 func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string, state *typeFetchState) ([]TypeFetchResult, error) {
+	results, _, err := fetchTypesForModuleWithStateAndStats(ctx, client, upstream, typesDir, moduleDir, state)
+	return results, err
+}
+
+func fetchTypesForModuleWithStateAndStats(ctx context.Context, client *http.Client, upstream, typesDir, moduleDir string, state *typeFetchState) ([]TypeFetchResult, TypeFetchModuleStats, error) {
+	stats := TypeFetchModuleStats{}
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -891,12 +1317,12 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 	pkgPath := filepath.Join(moduleDir, "package.json")
 	pkg, err := ReadPackageJSON(pkgPath)
 	if err != nil {
-		return nil, err
+		return nil, stats, err
 	}
 
 	deps := pkg.CollectDependencies()
 	if len(deps) == 0 {
-		return nil, nil
+		return nil, stats, nil
 	}
 
 	depNames := make([]string, 0, len(deps))
@@ -922,8 +1348,9 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 		targets = append(targets, dependencyFetchTarget{name: name, version: version})
 	}
 	if len(targets) == 0 {
-		return nil, nil
+		return nil, stats, nil
 	}
+	stats.DirectTargets = len(targets)
 
 	ticker := logutil.ProgressTickerFromContext(ctx)
 	moduleName := strings.TrimSpace(filepath.Base(moduleDir))
@@ -951,7 +1378,7 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 	var results []TypeFetchResult
 	for idx, target := range targets {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, stats, err
 		}
 		name := target.name
 		version := target.version
@@ -960,18 +1387,33 @@ func fetchTypesForModuleWithState(ctx context.Context, client *http.Client, upst
 		start := time.Now()
 		result, transitive, err := fetchTypeDefinitionWithState(ctx, client, upstream, typesDir, name, version, state)
 		if err != nil {
+			stats.DirectFailed++
 			if ctxErr := ctx.Err(); ctxErr != nil {
-				return nil, ctxErr
+				return nil, stats, ctxErr
 			}
 			writeTypeFetchProgressLine(fmt.Sprintf("[esm-type-fetch] warn: [%s] %s@%s (%s): %v", moduleName, name, version, time.Since(start).Round(time.Millisecond), err))
 			continue
 		}
 		if result != nil {
 			results = append(results, *result)
+			if result.FromCache {
+				stats.DirectCached++
+			} else {
+				stats.DirectFetched++
+			}
+		} else {
+			stats.DirectReused++
+		}
+		for _, tr := range transitive {
+			if tr.FromCache {
+				stats.TransitiveCached++
+			} else {
+				stats.TransitiveFetched++
+			}
 		}
 		results = append(results, transitive...)
 	}
-	return results, nil
+	return results, stats, nil
 }
 
 func typesCachePath(typesDir, pkg, version string) string {
@@ -1038,33 +1480,39 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx, cancel := context.WithTimeout(ctx, defaultTypeFetchRequestTimeout)
-	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create download request for %s: %w", rawURL, err)
-	}
+	var body []byte
+	err := state.withRequestSlotContext(ctx, func() error {
+		reqCtx, cancel := context.WithTimeout(ctx, typeFetchRequestTimeout)
+		defer cancel()
 
-	var resp *http.Response
-	err = state.withRequestSlot(func() error {
-		var doErr error
-		resp, doErr = client.Do(req)
-		return doErr
+		req, reqErr := http.NewRequestWithContext(reqCtx, http.MethodGet, rawURL, nil)
+		if reqErr != nil {
+			return fmt.Errorf("create download request for %s: %w", rawURL, reqErr)
+		}
+
+		resp, doErr := client.Do(req)
+		if doErr != nil {
+			return doErr
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("http %d", resp.StatusCode)
+		}
+
+		body, doErr = io.ReadAll(io.LimitReader(resp.Body, maxTypeFetchDownloadBytes+1))
+		if doErr != nil {
+			return fmt.Errorf("read types body from %s: %w", rawURL, doErr)
+		}
+		if int64(len(body)) > maxTypeFetchDownloadBytes {
+			return fmt.Errorf("response exceeds %d bytes", maxTypeFetchDownloadBytes)
+		}
+
+		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("download types from %s: %w", rawURL, err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download types from %s: http %d", rawURL, resp.StatusCode)
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxTypeFetchDownloadBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("read types body from %s: %w", rawURL, err)
-	}
-	if int64(len(body)) > maxTypeFetchDownloadBytes {
-		return nil, fmt.Errorf("download types from %s: response exceeds %d bytes", rawURL, maxTypeFetchDownloadBytes)
 	}
 
 	return body, nil
