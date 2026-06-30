@@ -621,10 +621,21 @@ func esmTypeURLBarePackage(rawURL string) string {
 	if len(segments) == 0 {
 		return ""
 	}
+	pkgSegmentIndex := 0
+	if len(segments) > 1 {
+		firstSegment, segErr := url.PathUnescape(segments[0])
+		if segErr != nil {
+			firstSegment = segments[0]
+		}
+		firstSegment = strings.TrimSpace(firstSegment)
+		if isTypeURLBuildVersionToken(firstSegment) {
+			pkgSegmentIndex = 1
+		}
+	}
 
-	first, err := url.PathUnescape(segments[0])
+	first, err := url.PathUnescape(segments[pkgSegmentIndex])
 	if err != nil {
-		first = segments[0]
+		first = segments[pkgSegmentIndex]
 	}
 	first = strings.TrimSpace(first)
 	if first == "" {
@@ -635,10 +646,10 @@ func esmTypeURLBarePackage(rawURL string) string {
 	if strings.HasPrefix(first, "@") {
 		if strings.Contains(first, "/") {
 			candidate = first
-		} else if len(segments) > 1 {
-			second, err := url.PathUnescape(segments[1])
+		} else if len(segments) > pkgSegmentIndex+1 {
+			second, err := url.PathUnescape(segments[pkgSegmentIndex+1])
 			if err != nil {
-				second = segments[1]
+				second = segments[pkgSegmentIndex+1]
 			}
 			second = strings.TrimSpace(second)
 			if second != "" {
@@ -713,7 +724,7 @@ func localCachedTypeSpecifierPackage(specifier string) (string, bool) {
 		return "", false
 	}
 
-	rest := base[sep+1:]
+	rest := trimTypeBuildPrefix(base[sep+1:])
 	at := strings.LastIndex(rest, "@")
 	if at <= 0 {
 		return "", false
@@ -731,6 +742,35 @@ func localCachedTypeSpecifierPackage(specifier string) (string, bool) {
 	}
 
 	return pkg, true
+}
+
+func isTypeURLBuildVersionToken(token string) bool {
+	if len(token) < 2 || token[0] != 'v' {
+		return false
+	}
+	for i := 1; i < len(token); i++ {
+		if token[i] < '0' || token[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func trimTypeBuildPrefix(rest string) string {
+	rest = strings.TrimSpace(rest)
+	if len(rest) < 3 || rest[0] != 'v' {
+		return rest
+	}
+	underscore := strings.IndexByte(rest, '_')
+	if underscore <= 1 || underscore+1 >= len(rest) {
+		return rest
+	}
+	for i := 1; i < underscore; i++ {
+		if rest[i] < '0' || rest[i] > '9' {
+			return rest
+		}
+	}
+	return rest[underscore+1:]
 }
 
 func rewriteLocalCachedBridgeSpecifiers(content string) string {

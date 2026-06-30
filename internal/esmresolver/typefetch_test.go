@@ -1079,6 +1079,13 @@ func TestBridgedBareSpecifierForLocalCacheSpecifier_ScopedPackage(t *testing.T) 
 	}
 }
 
+func TestBridgedBareSpecifierForLocalCacheSpecifier_BuildPrefix(t *testing.T) {
+	got := bridgedBareSpecifierForLocalCacheSpecifier("./esm.sh_v135_vue@3.5.35_dist_vue.d.mts.d.ts")
+	if got != "vue" {
+		t.Fatalf("bridgedBareSpecifierForLocalCacheSpecifier() = %q, want %q", got, "vue")
+	}
+}
+
 func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "root.d.ts")
@@ -1149,9 +1156,12 @@ func TestEsmTypeURLBarePackage(t *testing.T) {
 		want   string
 	}{
 		{rawURL: "https://esm.sh/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://esm.sh/v135/vue@3.5.35/dist/vue.d.mts", want: "vue"},
 		{rawURL: "https://esm.sh/pinia@3.0.4/dist/pinia.d.ts", want: "pinia"},
+		{rawURL: "https://esm.sh/v135/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
 		{rawURL: "https://esm.sh/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
 		{rawURL: "https://mirror.example.com/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://mirror.example.com/v135/vue@3.5.35/dist/vue.d.mts", want: "vue"},
 		{rawURL: "https://mirror.example.com/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
 		{rawURL: "https://mirror.example.com/not-bridged@1.0.0/index.d.ts", want: "not-bridged"},
 		{rawURL: "./local/path.d.ts", want: ""},
@@ -1170,7 +1180,9 @@ func TestIsLocalCachedTypeSpecifier(t *testing.T) {
 		want bool
 	}{
 		{path: "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "./esm.sh_v135_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
 		{path: "./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "./mirror.example.com_v135_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
 		{path: "../esm.sh_kysely@0.29.2_dist_index.d.ts.d.ts", want: true},
 		{path: "./runtime-dom.d.ts", want: false},
 		{path: "./local_vue@3.5.35_dist_vue.d.mts.d.ts", want: false},
