@@ -731,6 +731,46 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 }
 
+func TestResolvePlaywrightCommandSearchesAcceptedPreflightRoots(t *testing.T) {
+	t.Run("finds playwright in modules node_modules bin", func(t *testing.T) {
+		workDir := t.TempDir()
+		t.Setenv("PATH", "")
+		playwrightPath := filepath.Join(workDir, "modules", "node_modules", ".bin", "playwright")
+		writeExecFile(t, playwrightPath, "#!/bin/sh\nexit 0\n")
+
+		gotBin, gotBinDir, err := resolvePlaywrightCommand(RunOptions{WorkDir: workDir})
+		if err != nil {
+			t.Fatalf("resolvePlaywrightCommand() error = %v", err)
+		}
+		if gotBin != playwrightPath {
+			t.Fatalf("playwright bin = %q, want %q", gotBin, playwrightPath)
+		}
+		if gotBinDir != filepath.Dir(playwrightPath) {
+			t.Fatalf("playwright bin dir = %q, want %q", gotBinDir, filepath.Dir(playwrightPath))
+		}
+	})
+
+	t.Run("finds playwright in global npm root bin", func(t *testing.T) {
+		workDir := t.TempDir()
+		globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+		t.Setenv("PATH", "")
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+		playwrightPath := filepath.Join(globalRoot, ".bin", "playwright")
+		writeExecFile(t, playwrightPath, "#!/bin/sh\nexit 0\n")
+
+		gotBin, gotBinDir, err := resolvePlaywrightCommand(RunOptions{WorkDir: workDir})
+		if err != nil {
+			t.Fatalf("resolvePlaywrightCommand() error = %v", err)
+		}
+		if gotBin != playwrightPath {
+			t.Fatalf("playwright bin = %q, want %q", gotBin, playwrightPath)
+		}
+		if gotBinDir != filepath.Dir(playwrightPath) {
+			t.Fatalf("playwright bin dir = %q, want %q", gotBinDir, filepath.Dir(playwrightPath))
+		}
+	})
+}
+
 func TestEnsureE2EGlobalModuleLinksAtCleansUpOnSymlinkFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink permission semantics differ on windows")

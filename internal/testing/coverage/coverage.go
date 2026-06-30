@@ -168,15 +168,16 @@ func resolveCoverageModuleRoot(repoRoot string) string {
 
 func coverageModuleRootCandidates(repoRoot string) []string {
 	repoRoot = strings.TrimSpace(repoRoot)
-	globalNodeModulesRoot := strings.TrimSpace(noderuntime.ResolveGlobalNpmRootBestEffort())
-	return []string{
+	candidates := []string{
 		repoRoot,
 		filepath.Join(repoRoot, "modules"),
 		filepath.Join(repoRoot, ".choysum"),
 		filepath.Join(repoRoot, ".choysum", "generated"),
-		globalNodeModulesRoot,
-		filepath.Join(globalNodeModulesRoot, "nyc"),
 	}
+	if globalNodeModulesRoot := strings.TrimSpace(noderuntime.ResolveGlobalNpmRootBestEffort()); globalNodeModulesRoot != "" {
+		candidates = append(candidates, globalNodeModulesRoot, filepath.Join(globalNodeModulesRoot, "nyc"))
+	}
+	return candidates
 }
 
 func coverageCheckedModuleRoots(repoRoot string) []string {
@@ -256,9 +257,10 @@ func buildCoverageNodePath(repoRoot string, moduleRootDir string) string {
 		}
 	}
 
-	globalNodeModulesRoot := strings.TrimSpace(noderuntime.ResolveGlobalNpmRootBestEffort())
-	if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
-		nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
+	if globalNodeModulesRoot := strings.TrimSpace(noderuntime.ResolveGlobalNpmRootBestEffort()); globalNodeModulesRoot != "" {
+		if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
+			nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
+		}
 	}
 
 	if moduleRoot := strings.TrimSpace(moduleRootDir); moduleRoot != "" {

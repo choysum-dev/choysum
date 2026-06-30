@@ -305,6 +305,29 @@ func TestEnsureGlobalModuleLinksCleansUpOnSymlinkFailure(t *testing.T) {
 	}
 }
 
+func TestBuildNodePathSkipsEmptyGlobalRootAndKeepsExistingNodePath(t *testing.T) {
+	repoRoot := t.TempDir()
+	localModules := filepath.Join(repoRoot, "modules", "node_modules")
+	if err := os.MkdirAll(localModules, 0o755); err != nil {
+		t.Fatalf("mkdir local modules root: %v", err)
+	}
+
+	existing := filepath.Join(t.TempDir(), "existing-node-path")
+	t.Setenv("NODE_PATH", existing)
+
+	nodePath := buildNodePath(repoRoot, "")
+	entries := filepath.SplitList(nodePath)
+	if len(entries) != 2 {
+		t.Fatalf("buildNodePath() entries = %#v, want local modules + existing NODE_PATH", entries)
+	}
+	if entries[0] != localModules {
+		t.Fatalf("first node path entry = %q, want %q", entries[0], localModules)
+	}
+	if entries[1] != existing {
+		t.Fatalf("second node path entry = %q, want %q", entries[1], existing)
+	}
+}
+
 func TestRunOneAppFrontendTestsKeepTmpConfig(t *testing.T) {
 	repoRoot := t.TempDir()
 	binDir := filepath.Join(t.TempDir(), "bin")

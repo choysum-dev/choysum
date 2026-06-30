@@ -190,6 +190,8 @@ func Run(ctx context.Context, opts RunOptions) error {
 	overallFailed := false
 	ranAnyBE := false
 	needsJUnitAppDisambiguation := len(apps) > 1
+	coveragePreflightChecked := false
+	var coveragePreflightErr error
 	for _, app := range apps {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -213,8 +215,12 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 		preflightIssues := make([]preflightIssue, 0, 2)
 		if opts.Coverage && hasBETests {
-			if err := cov.PreflightInstrumentationPrerequisites(opts.RepoRoot); err != nil {
-				preflightIssues = append(preflightIssues, preflightIssue{stage: "coverage dependency preflight", err: err})
+			if !coveragePreflightChecked {
+				coveragePreflightErr = cov.PreflightInstrumentationPrerequisites(opts.RepoRoot)
+				coveragePreflightChecked = true
+			}
+			if coveragePreflightErr != nil {
+				preflightIssues = append(preflightIssues, preflightIssue{stage: "coverage dependency preflight", err: coveragePreflightErr})
 			}
 		}
 		if hasFETests {

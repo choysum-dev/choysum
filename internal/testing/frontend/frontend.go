@@ -471,8 +471,10 @@ func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
 			nodePathEntries = append(nodePathEntries, localNodeModulesRoot)
 		}
 	}
-	if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
-		nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
+	if globalNodeModulesRoot != "" {
+		if st, err := os.Stat(globalNodeModulesRoot); err == nil && st.IsDir() {
+			nodePathEntries = append(nodePathEntries, globalNodeModulesRoot)
+		}
 	}
 	if existingNodePath := strings.TrimSpace(os.Getenv("NODE_PATH")); existingNodePath != "" {
 		nodePathEntries = append(nodePathEntries, existingNodePath)

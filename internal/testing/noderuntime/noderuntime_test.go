@@ -23,6 +23,28 @@ func TestResolveGlobalNpmRootUsesOverride(t *testing.T) {
 	}
 }
 
+func TestMissingNodeModulesPreflightErrorFormatting(t *testing.T) {
+	t.Run("nil receiver returns generic message", func(t *testing.T) {
+		var err *MissingNodeModulesPreflightError
+		if got := err.Error(); got != "missing node modules" {
+			t.Fatalf("nil error message = %q, want %q", got, "missing node modules")
+		}
+	})
+
+	t.Run("falls back to tool name when target empty", func(t *testing.T) {
+		err := (&MissingNodeModulesPreflightError{
+			Tool:           "typecheck",
+			MissingModules: []string{"vite", "vue-tsc"},
+		}).Error()
+		if !strings.Contains(err, "preflight failed for typecheck. tests were not started.") {
+			t.Fatalf("expected fallback target to use tool name, got %q", err)
+		}
+		if !strings.Contains(err, "npm install -g vite vue-tsc") {
+			t.Fatalf("expected install command in error, got %q", err)
+		}
+	})
+}
+
 func TestFindExecutablePrefersPath(t *testing.T) {
 	binDir := t.TempDir()
 	writeExecFile(t, filepath.Join(binDir, "playwright"), "#!/bin/sh\nexit 0\n")

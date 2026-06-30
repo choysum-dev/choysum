@@ -222,6 +222,18 @@ func TestWriteInstrumentScriptTempFileRejectsEmptyScript(t *testing.T) {
 }
 
 func TestResolveCoverageModuleRoot(t *testing.T) {
+	t.Run("does not include relative nyc candidate when global root is empty", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "")
+
+		candidates := coverageModuleRootCandidates(repoRoot)
+		for _, candidate := range candidates {
+			if candidate == "nyc" {
+				t.Fatalf("unexpected relative nyc candidate: %#v", candidates)
+			}
+		}
+	})
+
 	t.Run("falls back to repo node_modules marker", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global"))

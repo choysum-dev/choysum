@@ -403,6 +403,7 @@ func TestRun(t *testing.T) {
 	t.Run("aggregates coverage and frontend preflight errors in a single block", func(t *testing.T) {
 		var stderr strings.Builder
 		backendCalls := 0
+		coverageSeen := false
 		preflightErr := errors.New("frontend deps missing")
 		binDir := t.TempDir()
 		repoRoot := t.TempDir()
@@ -426,6 +427,7 @@ func TestRun(t *testing.T) {
 			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
 			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return true, nil },
 			PreflightFrontend: func(repoRoot string, app string, coverage bool) error {
+				coverageSeen = coverage
 				return preflightErr
 			},
 			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
@@ -440,6 +442,9 @@ func TestRun(t *testing.T) {
 		if backendCalls != 0 {
 			t.Fatalf("expected backend not to run after preflight failures, got %d calls", backendCalls)
 		}
+		if !coverageSeen {
+			t.Fatal("expected coverage=true to be forwarded to PreflightFrontend")
+		}
 		errText := stderr.String()
 		for _, want := range []string{
 			"Error: preflight failed for auth. tests were not started.",
@@ -452,6 +457,47 @@ func TestRun(t *testing.T) {
 			if !strings.Contains(errText, want) {
 				t.Fatalf("expected %q in aggregated preflight output, got %q", want, errText)
 			}
+		}
+	})
+
+	t.Run("reuses cached coverage preflight error across backend apps", func(t *testing.T) {
+		var stderr strings.Builder
+		backendCalls := 0
+		binDir := t.TempDir()
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
+		writeRunnerExec(t, filepath.Join(binDir, "node"), "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir)
+
+		err := Run(context.Background(), RunOptions{
+			Env:         newEnv(t.TempDir()),
+			ModulesPath: t.TempDir(),
+			Target:      "all",
+			RepoRoot:    repoRoot,
+			RunBE:       true,
+			Coverage:    true,
+			Stdout:      io.Discard,
+			Stderr:      &stderr,
+			ResolveApps: func(runtimeScope scope.Scope, arg string, runBE bool, runFE bool) ([]string, error) {
+				return []string{"auth", "base"}, nil
+			},
+			HasBackendTests:  func(modulesPath string, app string) (bool, error) { return true, nil },
+			HasFrontendTests: func(modulesPath string, app string) (bool, error) { return false, nil },
+			RunBackend: func(context.Context, scope.Scope, string, string, string, string, string, bool, string, string, bool, bool) (bool, error) {
+				backendCalls++
+				return false, nil
+			},
+			RunFrontend: noopRunFrontend,
+		})
+		if err == nil || !strings.Contains(err.Error(), "tests failed") {
+			t.Fatalf("expected aggregated tests failed error, got %v", err)
+		}
+		if backendCalls != 0 {
+			t.Fatalf("expected backend not to run after preflight failures, got %d calls", backendCalls)
+		}
+		errText := stderr.String()
+		if strings.Count(errText, "missing required modules: istanbul-lib-instrument") != 2 {
+			t.Fatalf("expected per-app coverage preflight output for two apps, got %q", errText)
 		}
 	})
 

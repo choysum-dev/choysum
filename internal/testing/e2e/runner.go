@@ -918,10 +918,15 @@ module.exports = {
 }
 
 func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
+	searchRoots := append([]string{}, localE2EModuleRoots(opts.WorkDir)...)
+	if npmPath := strings.TrimSpace(opts.NpmPath); npmPath != "" {
+		searchRoots = append(searchRoots, npmPath)
+	}
+	searchRoots = append(searchRoots, resolvePlaywrightGlobalNodeModulesRoot(opts))
+
 	playwrightBin, binDir, found := noderuntime.FindExecutable(
 		"playwright",
-		opts.NpmPath,
-		filepath.Join(strings.TrimSpace(opts.WorkDir), "node_modules"),
+		searchRoots...,
 	)
 	if !found {
 		moduleName := strings.TrimSpace(opts.Module)

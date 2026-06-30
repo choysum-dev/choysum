@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -51,4 +52,33 @@ func TestTypecheckApp_AllowsNpxWithoutGlobalVueTsc(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected success with npx-resolved vue-tsc, got: %v", err)
 	}
+}
+
+func TestResolveViteClientDTS(t *testing.T) {
+	t.Run("prefers first existing module root", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		firstRoot := filepath.Join(t.TempDir(), "first-node-modules")
+		secondRoot := filepath.Join(t.TempDir(), "second-node-modules")
+		if err := os.MkdirAll(filepath.Join(secondRoot, "vite"), 0o755); err != nil {
+			t.Fatalf("mkdir second root vite dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(secondRoot, "vite", "client.d.ts"), []byte("declare interface ImportMetaEnv {}\n"), 0o644); err != nil {
+			t.Fatalf("write vite client types: %v", err)
+		}
+
+		got := resolveViteClientDTS(repoRoot, firstRoot, secondRoot)
+		want := filepath.Join(secondRoot, "vite", "client.d.ts")
+		if got != want {
+			t.Fatalf("resolveViteClientDTS() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("falls back to repo root vite path when no candidates exist", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		got := resolveViteClientDTS(repoRoot, "", strings.Repeat(" ", 2))
+		want := filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts")
+		if got != want {
+			t.Fatalf("resolveViteClientDTS() fallback = %q, want %q", got, want)
+		}
+	})
 }
