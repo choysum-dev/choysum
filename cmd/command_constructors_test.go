@@ -1448,6 +1448,42 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 	})
 
+	t.Run("module lightweight annotation is subcommand-scoped", func(t *testing.T) {
+		testCases := []struct {
+			name            string
+			subcommand      []string
+			wantAnnotation  string
+			wantLightweight bool
+		}{
+			{name: "search", subcommand: []string{"module", "search"}, wantAnnotation: "true", wantLightweight: true},
+			{name: "info", subcommand: []string{"module", "info"}, wantAnnotation: "", wantLightweight: false},
+			{name: "list", subcommand: []string{"module", "list"}, wantAnnotation: "", wantLightweight: false},
+			{name: "fetch", subcommand: []string{"module", "fetch"}, wantAnnotation: "true", wantLightweight: true},
+			{name: "purge", subcommand: []string{"module", "purge"}, wantAnnotation: "", wantLightweight: false},
+		}
+
+		for _, tc := range testCases {
+			tc := tc
+			t.Run(tc.name, func(t *testing.T) {
+				subCmd, _, err := commander.rootCmd.Find(tc.subcommand)
+				if err != nil {
+					t.Fatalf("find %s subcommand: %v", strings.Join(tc.subcommand, " "), err)
+				}
+				if subCmd == nil {
+					t.Fatalf("expected %s subcommand", strings.Join(tc.subcommand, " "))
+				}
+				if got := subCmd.Annotations[lightweightScopeAnnotation]; got != tc.wantAnnotation {
+					t.Fatalf("%s annotation %q = %q, want %q", strings.Join(tc.subcommand, " "), lightweightScopeAnnotation, got, tc.wantAnnotation)
+				}
+
+				gotLightweight := shouldUseLightweightRuntimeScope(subCmd)
+				if gotLightweight != tc.wantLightweight {
+					t.Fatalf("%s lightweight scope = %t, want %t", strings.Join(tc.subcommand, " "), gotLightweight, tc.wantLightweight)
+				}
+			})
+		}
+	})
+
 	t.Run("lightweight scope detection ignores bare command name", func(t *testing.T) {
 		root := &cobra.Command{Use: "root"}
 		plainTest := &cobra.Command{Use: "test"}
