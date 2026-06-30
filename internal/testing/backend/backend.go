@@ -517,6 +517,11 @@ func RunOneAppBackendTests(
 	if err := ctx.Err(); err != nil {
 		return true, err
 	}
+	if coverage && prepareBackendHook == nil {
+		if err := cov.PreflightInstrumentationPrerequisites(repoRoot); err != nil {
+			return false, err
+		}
+	}
 	prepareStarted := time.Now()
 	writeBackendProgress("# prepare runtime %s\n", app)
 

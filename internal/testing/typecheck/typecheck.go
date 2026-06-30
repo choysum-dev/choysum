@@ -213,23 +213,35 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		return errNoTypecheckInputs
 	}
 
+	hasWebSources := false
+	if st, err := os.Stat(filepath.Join(modulesRoot, app, "web")); err == nil && st.IsDir() {
+		hasWebSources = true
+	}
+
+	requiredModules := []string{"vue-tsc"}
+	if hasWebSources {
+		requiredModules = append(requiredModules, "vite")
+	}
+	moduleRoots := []string{
+		filepath.Join(repoRoot, "node_modules"),
+		filepath.Join(modulesRoot, "node_modules"),
+		strings.TrimSpace(opts.NpmPath),
+		noderuntime.ResolveGlobalNpmRootBestEffort(),
+	}
+	if err := noderuntime.PreflightRequiredNodeModules("typecheck", app, requiredModules, moduleRoots...); err != nil {
+		return err
+	}
+
 	npxPath, err := resolveNpxPath(opts.NpmPath)
 	if err != nil {
 		return err
 	}
 
-	hasWebSources := false
-	if st, err := os.Stat(filepath.Join(modulesRoot, app, "web")); err == nil && st.IsDir() {
-		hasWebSources = true
-	}
 	var viteClientTypesPath string
 	if hasWebSources {
-		if _, _, found := noderuntime.FindExecutable("vite", filepath.Join(repoRoot, "node_modules")); !found {
-			return xfmt.Errorf("typecheck: vite is not installed. Run: npm install -g vite")
-		}
-		// Resolve vite/client.d.ts from the global npm root so TypeScript
-		// can find DOM-related type declarations (e.g. ImportMeta).
-		viteClientTypesPath = resolveGlobalViteClientDTS(repoRoot)
+		// Reuse the same module roots as preflight so the selected
+		// vite/client.d.ts path always matches the locations that satisfied vite.
+		viteClientTypesPath = resolveViteClientDTS(repoRoot, moduleRoots...)
 	}
 
 	tmpTsconfigRoot, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, tmpRoot, "typecheck")
@@ -371,22 +383,19 @@ func resolveNpxPath(npmPath string) (string, error) {
 	if npxPath, _, found := noderuntime.FindExecutable("npx"); found {
 		return npxPath, nil
 	}
-	return "", xfmt.Errorf("typecheck: npx not found. Install Node.js from https://nodejs.org")
+	return "", xfmt.Errorf("typecheck: npx not found. Ensure Node.js/npm is installed and npx is in PATH")
 }
 
-// resolveGlobalViteClientDTS returns the path to vite/client.d.ts,
-// preferring a local node_modules copy and falling back to the global
-// npm prefix when vite is installed globally.
-func resolveGlobalViteClientDTS(repoRoot string) string {
-	local := filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts")
-	if _, err := os.Stat(local); err == nil {
-		return local
+// resolveViteClientDTS returns the first existing vite/client.d.ts path from the
+// provided module roots and falls back to repoRoot/node_modules for clear errors.
+func resolveViteClientDTS(repoRoot string, moduleRoots ...string) string {
+	for _, moduleRoot := range noderuntime.NormalizeModuleRoots(moduleRoots...) {
+		viteClientPath := filepath.Join(moduleRoot, "vite", "client.d.ts")
+		if _, err := os.Stat(viteClientPath); err == nil {
+			return viteClientPath
+		}
 	}
-	globalRoot, err := globalNpmRoot()
-	if err != nil {
-		return local
-	}
-	return filepath.Join(globalRoot, "vite", "client.d.ts")
+	return filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts")
 }
 
 // resolveTypeRoots returns typeRoots entries for the generated tsconfig,

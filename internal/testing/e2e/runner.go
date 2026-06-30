@@ -281,10 +281,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 		}
 	}
 
-	if _, _, err := resolvePlaywrightCommand(opts); err != nil {
+	if err := preflightPlaywrightRuntimeDependency(opts, opts.Module, requiredModules); err != nil {
 		return err
 	}
-	if err := preflightPlaywrightRuntimeDependency(opts, opts.Module, requiredModules); err != nil {
+	if _, _, err := resolvePlaywrightCommand(opts); err != nil {
 		return err
 	}
 
@@ -886,9 +886,8 @@ module.exports = {
 	defer cleanupRuntimeLinks()
 
 	moduleRoots := append(append([]string{}, localModuleRoots...), globalNodeModulesRoot)
-	missingModules := missingRequiredNodeModules(requiredModules, moduleRoots...)
-	if len(missingModules) > 0 {
-		return missingE2EModuleError(strings.TrimSpace(opts.Module), missingModules)
+	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredModules, moduleRoots...); err != nil {
+		return err
 	}
 
 	cmd := exec.CommandContext(ctx, playwrightBin, args[1:]...)
@@ -919,13 +918,26 @@ module.exports = {
 }
 
 func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
+	searchRoots := append([]string{}, localE2EModuleRoots(opts.WorkDir)...)
+	if npmPath := strings.TrimSpace(opts.NpmPath); npmPath != "" {
+		searchRoots = append(searchRoots, npmPath)
+	}
+	searchRoots = append(searchRoots, resolvePlaywrightGlobalNodeModulesRoot(opts))
+
 	playwrightBin, binDir, found := noderuntime.FindExecutable(
 		"playwright",
-		opts.NpmPath,
-		filepath.Join(strings.TrimSpace(opts.WorkDir), "node_modules"),
+		searchRoots...,
 	)
 	if !found {
-		return "", "", xfmt.Errorf("playwright not found. Run: npm install -g @playwright/test && npx playwright install")
+		moduleName := strings.TrimSpace(opts.Module)
+		if moduleName == "" {
+			moduleName = "e2e"
+		}
+		moduleRoots := append(localE2EModuleRoots(opts.WorkDir), resolvePlaywrightGlobalNodeModulesRoot(opts))
+		if err := noderuntime.PreflightRequiredNodeModules("e2e", moduleName, []string{"@playwright/test"}, moduleRoots...); err != nil {
+			return "", "", err
+		}
+		return "", "", xfmt.Errorf("e2e: playwright executable could not be resolved from PATH or local node_modules/.bin")
 	}
 
 	return playwrightBin, binDir, nil
@@ -933,11 +945,7 @@ func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
 
 func preflightPlaywrightRuntimeDependency(opts RunOptions, moduleName string, requiredModules []string) error {
 	moduleRoots := append(localE2EModuleRoots(opts.WorkDir), resolvePlaywrightGlobalNodeModulesRoot(opts))
-	missingModules := missingRequiredNodeModules(requiredModules, moduleRoots...)
-	if len(missingModules) == 0 {
-		return nil
-	}
-	return missingE2EModuleError(moduleName, missingModules)
+	return noderuntime.PreflightRequiredNodeModules("e2e", moduleName, requiredModules, moduleRoots...)
 }
 
 func resolvePlaywrightGlobalNodeModulesRoot(opts RunOptions) string {
@@ -1043,19 +1051,6 @@ func buildNodePathValues(moduleRoots []string, existingNodePath string) string {
 
 func resolveGlobalNpmRoot() string {
 	return noderuntime.ResolveGlobalNpmRootBestEffort()
-}
-
-func missingE2EModuleError(moduleName string, missingModules []string) error {
-	moduleName = strings.TrimSpace(moduleName)
-	if moduleName == "" {
-		moduleName = "e2e"
-	}
-	return xfmt.Errorf(
-		"e2e: missing required modules for %s: %s. Install globally: npm install -g %s",
-		moduleName,
-		strings.Join(missingModules, ", "),
-		strings.Join(missingModules, " "),
-	)
 }
 
 func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModulePackage) (string, error) {

@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { createRequire } = require('module');
 
-const requireFromCwd = createRequire(path.resolve(process.cwd(), '__choysum_coverage_require__.cjs'));
+const requireFromCwd = createRequire(path.resolve(process.cwd(), 'package.json'));
 
 function argValue(name) {
   const idx = process.argv.indexOf(name);
@@ -89,6 +89,15 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error(err && err.stack ? err.stack : String(err));
+  const text = err && err.stack ? err.stack : String(err);
+  if (
+    text.includes("Cannot find module 'istanbul-lib-instrument'") ||
+    text.includes("Cannot find package 'istanbul-lib-instrument'") ||
+    (text.includes('ERR_MODULE_NOT_FOUND') && text.includes('istanbul-lib-instrument'))
+  ) {
+    console.error('missing required module istanbul-lib-instrument');
+  } else {
+    console.error(text);
+  }
   process.exit(1);
 });

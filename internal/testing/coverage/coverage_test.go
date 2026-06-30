@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 )
 
 func TestReadGoModulePathAndFilterHandwrittenGoCoverProfile(t *testing.T) {
@@ -221,6 +223,222 @@ func TestWriteInstrumentScriptTempFileRejectsEmptyScript(t *testing.T) {
 	}
 }
 
+func TestResolveCoverageModuleRoot(t *testing.T) {
+	t.Run("does not include relative nyc candidate when global root is empty", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "")
+
+		candidates := coverageModuleRootCandidates(repoRoot)
+		for _, candidate := range candidates {
+			if candidate == "nyc" {
+				t.Fatalf("unexpected relative nyc candidate: %#v", candidates)
+			}
+		}
+	})
+
+	t.Run("falls back to repo node_modules marker", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global"))
+		marker := filepath.Join(repoRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatalf("MkdirAll repo marker dir: %v", err)
+		}
+		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("WriteFile repo marker: %v", err)
+		}
+
+		if got := resolveCoverageModuleRoot(repoRoot); got != repoRoot {
+			t.Fatalf("resolveCoverageModuleRoot() = %q, want repoRoot %q", got, repoRoot)
+		}
+	})
+
+	t.Run("supports modules node_modules marker", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global"))
+		modulesRoot := filepath.Join(repoRoot, "modules")
+		marker := filepath.Join(modulesRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatalf("MkdirAll modules marker dir: %v", err)
+		}
+		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("WriteFile modules marker: %v", err)
+		}
+
+		if got := resolveCoverageModuleRoot(repoRoot); got != modulesRoot {
+			t.Fatalf("resolveCoverageModuleRoot() = %q, want modules root %q", got, modulesRoot)
+		}
+	})
+
+	t.Run("uses configured global module root when repo missing marker", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		globalRoot := filepath.Join(t.TempDir(), "global-root")
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+		marker := filepath.Join(globalRoot, "istanbul-lib-instrument", "package.json")
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatalf("MkdirAll global marker dir: %v", err)
+		}
+		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("WriteFile global marker: %v", err)
+		}
+
+		if got := resolveCoverageModuleRoot(repoRoot); got != globalRoot {
+			t.Fatalf("resolveCoverageModuleRoot() = %q, want globalRoot %q", got, globalRoot)
+		}
+	})
+
+	t.Run("uses nyc nested dependency under global root", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		globalRoot := filepath.Join(t.TempDir(), "global-root")
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+		nycRoot := filepath.Join(globalRoot, "nyc")
+		marker := filepath.Join(nycRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatalf("MkdirAll nyc marker dir: %v", err)
+		}
+		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("WriteFile nyc marker: %v", err)
+		}
+
+		if got := resolveCoverageModuleRoot(repoRoot); got != nycRoot {
+			t.Fatalf("resolveCoverageModuleRoot() = %q, want nyc root %q", got, nycRoot)
+		}
+	})
+}
+
+func TestRunCoverageInstrumentWithNodeMapsMissingModuleError(t *testing.T) {
+	nodePath := writeExecutable(t, t.TempDir(), "node", "#!/bin/sh\necho \"Error: Cannot find module 'istanbul-lib-instrument'\" 1>&2\nexit 1\n")
+
+	err := runCoverageInstrumentWithNode(
+		context.Background(),
+		nodePath,
+		t.TempDir(),
+		filepath.Join(t.TempDir(), "instrument.cjs"),
+		filepath.Join(t.TempDir(), "in.js"),
+		filepath.Join(t.TempDir(), "out.js.map"),
+		"/tmp/fake-base",
+	)
+	if err == nil {
+		t.Fatal("expected missing module error")
+	}
+	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+		t.Fatalf("expected missing module mapping, got %v", err)
+	}
+}
+
+func TestRunCoverageInstrumentWithNodeMapsMissingModuleSentinelError(t *testing.T) {
+	nodePath := writeExecutable(t, t.TempDir(), "node", "#!/bin/sh\necho \"missing required module istanbul-lib-instrument\" 1>&2\nexit 1\n")
+
+	err := runCoverageInstrumentWithNode(
+		context.Background(),
+		nodePath,
+		t.TempDir(),
+		filepath.Join(t.TempDir(), "instrument.cjs"),
+		filepath.Join(t.TempDir(), "in.js"),
+		filepath.Join(t.TempDir(), "out.js.map"),
+		"/tmp/fake-base",
+	)
+	if err == nil {
+		t.Fatal("expected missing module error")
+	}
+	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+		t.Fatalf("expected missing module mapping, got %v", err)
+	}
+}
+
+func TestBuildCoverageNodePathSplitsExistingNodePathEntries(t *testing.T) {
+	repoRoot := t.TempDir()
+	first := filepath.Join(t.TempDir(), "first")
+	second := filepath.Join(t.TempDir(), "second")
+	t.Setenv("NODE_PATH", first+string(os.PathListSeparator)+second)
+
+	nodePath := buildCoverageNodePath(repoRoot, "")
+	entries := filepath.SplitList(nodePath)
+	for _, want := range []string{first, second} {
+		found := false
+		for _, entry := range entries {
+			if entry == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected NODE_PATH entry %q in %q", want, nodePath)
+		}
+	}
+}
+
+func TestBuildCoverageNodePathNormalizesAndDeduplicatesEntries(t *testing.T) {
+	repoRoot := t.TempDir()
+	localModules := filepath.Join(repoRoot, "modules", "node_modules")
+	if err := os.MkdirAll(localModules, 0o755); err != nil {
+		t.Fatalf("mkdir local modules root: %v", err)
+	}
+
+	moduleRoot := filepath.Join(t.TempDir(), "module-root")
+	moduleManifest := filepath.Join(moduleRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+	if err := os.MkdirAll(filepath.Dir(moduleManifest), 0o755); err != nil {
+		t.Fatalf("mkdir module manifest dir: %v", err)
+	}
+	if err := os.WriteFile(moduleManifest, []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write module manifest: %v", err)
+	}
+
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-root"))
+	t.Setenv(
+		"NODE_PATH",
+		filepath.Join(localModules, ".")+
+			string(os.PathListSeparator)+
+			localModules+string(filepath.Separator)+
+			string(os.PathListSeparator)+
+			filepath.Join(moduleRoot, "..", "module-root", "node_modules"),
+	)
+
+	nodePath := buildCoverageNodePath(repoRoot, moduleRoot)
+	entries := filepath.SplitList(nodePath)
+	if len(entries) != 2 {
+		t.Fatalf("buildCoverageNodePath() entries = %#v, want 2 normalized unique entries", entries)
+	}
+	if entries[0] != localModules {
+		t.Fatalf("first node path entry = %q, want %q", entries[0], localModules)
+	}
+	if entries[1] != filepath.Join(moduleRoot, "node_modules") {
+		t.Fatalf("second node path entry = %q, want %q", entries[1], filepath.Join(moduleRoot, "node_modules"))
+	}
+}
+
+func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
+	env := []string{"Node_Path=/old", "PATH=/bin"}
+	updated := noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", "/new")
+
+	if len(updated) != 2 {
+		t.Fatalf("ReplaceOrAppendEnv() len = %d, want 2 (%#v)", len(updated), updated)
+	}
+	if updated[0] != "NODE_PATH=/new" {
+		t.Fatalf("ReplaceOrAppendEnv() first entry = %q, want %q", updated[0], "NODE_PATH=/new")
+	}
+}
+
+func TestRunCoverageInstrumentWithNodeFailsFastWhenModuleRootMissing(t *testing.T) {
+	err := runCoverageInstrumentWithNode(
+		context.Background(),
+		"node",
+		t.TempDir(),
+		filepath.Join(t.TempDir(), "instrument.cjs"),
+		filepath.Join(t.TempDir(), "in.js"),
+		filepath.Join(t.TempDir(), "out.js.map"),
+		"",
+	)
+	if err == nil {
+		t.Fatal("expected missing module-root error")
+	}
+	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+		t.Fatalf("expected missing module guidance, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npm install -g istanbul-lib-instrument") {
+		t.Fatalf("expected npm global install hint in guidance, got %v", err)
+	}
+}
+
 func TestWriteCoverageJSONAndSplitHelpers(t *testing.T) {
 	repoRoot := t.TempDir()
 	if err := WriteCoverageJSON(repoRoot, "portal", `{"ok":true}`); err != nil {
@@ -333,13 +551,21 @@ func TestInstrumentDistBundleValidatesInputsAndInvokesNode(t *testing.T) {
 	})
 
 	t.Run("prefers app bundle then falls back to bundles", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		marker := filepath.Join(repoRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+		if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+			t.Fatalf("MkdirAll repo marker dir: %v", err)
+		}
+		if err := os.WriteFile(marker, []byte("{}"), 0o644); err != nil {
+			t.Fatalf("WriteFile repo marker: %v", err)
+		}
+
 		binDir := t.TempDir()
 		capture := filepath.Join(t.TempDir(), "node.args")
 		writeExecutable(t, binDir, "node", "#!/bin/sh\nprintf '%s\n' \"$@\" >> \"$CHOYSUM_CAPTURE\"\nprintf '%s\n' '---' >> \"$CHOYSUM_CAPTURE\"\n")
 		t.Setenv("PATH", binDir)
 		t.Setenv("CHOYSUM_CAPTURE", capture)
 
-		repoRoot := t.TempDir()
 		distPath := filepath.Join(t.TempDir(), "dist")
 		appIndex := filepath.Join(distPath, "apps", "portal", "index.js")
 		if err := os.MkdirAll(filepath.Dir(appIndex), 0o755); err != nil {

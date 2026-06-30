@@ -207,6 +207,47 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("includes modules node_modules vite client types when repo copy is absent", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		tmpPath := t.TempDir()
+		npmPath, copyPath, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		if err := os.RemoveAll(filepath.Join(repoRoot, "node_modules", "vite")); err != nil {
+			t.Fatalf("RemoveAll repo vite: %v", err)
+		}
+
+		makeDir(t, filepath.Join(modulesPath, "auth", "web"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "web", "index.ts"), "export const auth = 1\n")
+		makeDir(t, filepath.Join(modulesPath, "node_modules", "vite"))
+		writeFile(t, filepath.Join(modulesPath, "node_modules", "vite", "package.json"), "{}\n")
+		writeFile(t, filepath.Join(modulesPath, "node_modules", "vite", "client.d.ts"), "declare interface ImportMetaEnv {}\n")
+
+		tsconfigPathCapture := filepath.Join(t.TempDir(), "tsconfig-path.txt")
+		t.Setenv("CHOYSUM_CAPTURE_TSCONFIG_PATH", tsconfigPathCapture)
+		t.Setenv("CHOYSUM_COPY_TSCONFIG", copyPath)
+
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     tmpPath,
+			Stderr:      &strings.Builder{},
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+
+		captured, err := os.ReadFile(copyPath)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", copyPath, err)
+		}
+		capturedText := string(captured)
+		moduleViteClientPath := filepath.ToSlash(filepath.Join(modulesPath, "node_modules", "vite", "client.d.ts"))
+		if !strings.Contains(capturedText, moduleViteClientPath) {
+			t.Fatalf("expected captured tsconfig to contain %q, got %q", moduleViteClientPath, capturedText)
+		}
+	})
+
 	t.Run("keeps temp tsconfig when keep is enabled", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()
@@ -308,6 +349,9 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		writeFile(t, vueTscPath, "#!/bin/sh\nexit 0\n")
 		t.Setenv("PATH", binDir)
 
+		makeDir(t, filepath.Join(repoRoot, "node_modules", "vue-tsc"))
+		writeFile(t, filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), "{}\n")
+
 		makeDir(t, filepath.Join(modulesPath, "auth", "web"))
 		writeFile(t, filepath.Join(modulesPath, "auth", "web", "index.ts"), "export const auth = 1\n")
 
@@ -318,8 +362,11 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 			TmpPath:     t.TempDir(),
 			Stderr:      &strings.Builder{},
 		}, "auth")
-		if err == nil || !strings.Contains(err.Error(), "vite is not installed") {
+		if err == nil || !strings.Contains(err.Error(), "missing required modules: vite") {
 			t.Fatalf("expected vite missing error, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "npm install -g vite") {
+			t.Fatalf("expected npm global install hint, got %v", err)
 		}
 	})
 
@@ -337,6 +384,8 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 
 		makeDir(t, filepath.Join(repoRoot, "node_modules", "vite"))
 		writeFile(t, filepath.Join(repoRoot, "node_modules", "vite", "client.d.ts"), "declare module 'vite/client' {}\n")
+		makeDir(t, filepath.Join(repoRoot, "node_modules", "vue-tsc"))
+		writeFile(t, filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), "{}\n")
 		makeDir(t, filepath.Join(repoRoot, "node_modules", ".bin"))
 		writeFile(t, filepath.Join(repoRoot, "node_modules", ".bin", "vite"), "#!/bin/sh\nexit 0\n")
 
