@@ -223,7 +223,7 @@ func RunOneAppFrontendTests(
 	c := exec.CommandContext(ctx, "npx", args...)
 	c.Dir = repoRoot
 	nodePathValue := buildNodePath(repoRoot, globalNodeModulesRoot)
-	c.Env = replaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
+	c.Env = noderuntime.ReplaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
 	c.Stdout = os.Stderr
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
@@ -480,27 +480,4 @@ func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
 		nodePathEntries = append(nodePathEntries, existingNodePath)
 	}
 	return strings.Join(nodePathEntries, string(os.PathListSeparator))
-}
-
-func replaceOrAppendEnv(env []string, key string, value string) []string {
-	if strings.TrimSpace(key) == "" {
-		return env
-	}
-	needle := key + "="
-	didReplaceExisting := false
-	updatedEnv := make([]string, 0, len(env)+1)
-	for _, entry := range env {
-		if len(entry) > len(key) && entry[len(key)] == '=' && strings.EqualFold(entry[:len(key)], key) {
-			if !didReplaceExisting {
-				updatedEnv = append(updatedEnv, needle+value)
-				didReplaceExisting = true
-			}
-			continue
-		}
-		updatedEnv = append(updatedEnv, entry)
-	}
-	if !didReplaceExisting {
-		updatedEnv = append(updatedEnv, needle+value)
-	}
-	return updatedEnv
 }

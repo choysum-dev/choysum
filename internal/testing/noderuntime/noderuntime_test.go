@@ -188,6 +188,23 @@ func TestNormalizeModuleRoots(t *testing.T) {
 	}
 }
 
+func TestNormalizeStringList(t *testing.T) {
+	got := NormalizeStringList([]string{"", " vite ", "vue", "vite", "vue ", "  "})
+	want := []string{"vite", "vue"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("NormalizeStringList() = %#v, want %#v", got, want)
+	}
+}
+
+func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
+	env := []string{"Node_Path=/old", "PATH=/bin"}
+	got := ReplaceOrAppendEnv(env, "NODE_PATH", "/new")
+	want := []string{"NODE_PATH=/new", "PATH=/bin"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ReplaceOrAppendEnv() = %#v, want %#v", got, want)
+	}
+}
+
 func TestPreflightRequiredNodeModules(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "@playwright", "test"), 0o755); err != nil {

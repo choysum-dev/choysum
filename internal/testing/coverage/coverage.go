@@ -232,7 +232,7 @@ func runCoverageInstrumentWithNode(ctx context.Context, nodePath string, repoRoo
 	cmd := exec.CommandContext(ctx, nodePath, scriptPath, "--in", inPath, "--out", inPath, "--out-map", outMapPath)
 	cmd.Dir = repoRoot
 	nodePathValue := buildCoverageNodePath(repoRoot, moduleRootDir)
-	cmd.Env = replaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
+	cmd.Env = noderuntime.ReplaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 	if err := cmd.Run(); err != nil {
@@ -295,29 +295,6 @@ func buildCoverageNodePath(repoRoot string, moduleRootDir string) string {
 	}
 
 	return strings.Join(uniqueNodePathEntries, string(os.PathListSeparator))
-}
-
-func replaceOrAppendEnv(env []string, key string, value string) []string {
-	if strings.TrimSpace(key) == "" {
-		return env
-	}
-	needle := key + "="
-	didReplaceExisting := false
-	updatedEnv := make([]string, 0, len(env)+1)
-	for _, entry := range env {
-		if len(entry) > len(key) && entry[len(key)] == '=' && strings.EqualFold(entry[:len(key)], key) {
-			if !didReplaceExisting {
-				updatedEnv = append(updatedEnv, needle+value)
-				didReplaceExisting = true
-			}
-			continue
-		}
-		updatedEnv = append(updatedEnv, entry)
-	}
-	if !didReplaceExisting {
-		updatedEnv = append(updatedEnv, needle+value)
-	}
-	return updatedEnv
 }
 
 func isMissingIstanbulLibError(stderr string) bool {

@@ -37,7 +37,7 @@ func (e *MissingNodeModulesPreflightError) Error() string {
 			target = "runtime"
 		}
 	}
-	missingModules := normalizeStringList(e.MissingModules)
+	missingModules := NormalizeStringList(e.MissingModules)
 	missingModulesText := formatModuleList(missingModules, 8)
 	installCommand := formatInstallCommand(missingModules)
 	return fmt.Sprintf(
@@ -97,7 +97,7 @@ func NormalizeModuleRoots(moduleRoots ...string) []string {
 
 func PreflightRequiredNodeModules(tool string, target string, required []string, moduleRoots ...string) error {
 	normalizedModuleRoots := NormalizeModuleRoots(moduleRoots...)
-	requiredModules := normalizeStringList(required)
+	requiredModules := NormalizeStringList(required)
 	missingModules := MissingRequiredNodeModules(requiredModules, normalizedModuleRoots...)
 	if len(missingModules) == 0 {
 		return nil
@@ -110,7 +110,7 @@ func PreflightRequiredNodeModules(tool string, target string, required []string,
 	}
 }
 
-func normalizeStringList(values []string) []string {
+func NormalizeStringList(values []string) []string {
 	if len(values) == 0 {
 		return nil
 	}
@@ -129,6 +129,29 @@ func normalizeStringList(values []string) []string {
 	}
 	sort.Strings(normalizedValues)
 	return normalizedValues
+}
+
+func ReplaceOrAppendEnv(env []string, key string, value string) []string {
+	if strings.TrimSpace(key) == "" {
+		return env
+	}
+	needle := key + "="
+	didReplaceExisting := false
+	updatedEnv := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if len(entry) > len(key) && entry[len(key)] == '=' && strings.EqualFold(entry[:len(key)], key) {
+			if !didReplaceExisting {
+				updatedEnv = append(updatedEnv, needle+value)
+				didReplaceExisting = true
+			}
+			continue
+		}
+		updatedEnv = append(updatedEnv, entry)
+	}
+	if !didReplaceExisting {
+		updatedEnv = append(updatedEnv, needle+value)
+	}
+	return updatedEnv
 }
 
 func ResolveGlobalNpmRoot() (string, error) {

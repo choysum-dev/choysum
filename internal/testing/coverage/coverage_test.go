@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 )
 
 func TestReadGoModulePathAndFilterHandwrittenGoCoverProfile(t *testing.T) {
@@ -367,13 +369,13 @@ func TestBuildCoverageNodePathSplitsExistingNodePathEntries(t *testing.T) {
 
 func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
 	env := []string{"Node_Path=/old", "PATH=/bin"}
-	updated := replaceOrAppendEnv(env, "NODE_PATH", "/new")
+	updated := noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", "/new")
 
 	if len(updated) != 2 {
-		t.Fatalf("replaceOrAppendEnv() len = %d, want 2 (%#v)", len(updated), updated)
+		t.Fatalf("ReplaceOrAppendEnv() len = %d, want 2 (%#v)", len(updated), updated)
 	}
 	if updated[0] != "NODE_PATH=/new" {
-		t.Fatalf("replaceOrAppendEnv() first entry = %q, want %q", updated[0], "NODE_PATH=/new")
+		t.Fatalf("ReplaceOrAppendEnv() first entry = %q, want %q", updated[0], "NODE_PATH=/new")
 	}
 }
 

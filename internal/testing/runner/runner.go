@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
@@ -336,7 +335,7 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 		nonModuleDetails = append(nonModuleDetails, fmt.Sprintf("- %s:\n%s", stage, indentMultiline(detail, "  ")))
 	}
 
-	normalizedMissingModules := normalizeAndSortStrings(missingModules)
+	normalizedMissingModules := noderuntime.NormalizeStringList(missingModules)
 	if len(normalizedMissingModules) > 0 {
 		fmt.Fprintf(&b, "\nmissing required modules: %s", strings.Join(normalizedMissingModules, ", "))
 		fmt.Fprintf(&b, "\ninstall globally:\n  npm install -g %s", strings.Join(normalizedMissingModules, " "))
@@ -367,28 +366,6 @@ func indentMultiline(text string, indent string) string {
 	}
 	return strings.Join(parts, "\n")
 }
-
-func normalizeAndSortStrings(values []string) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	seen := make(map[string]struct{}, len(values))
-	normalized := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			continue
-		}
-		if _, exists := seen[value]; exists {
-			continue
-		}
-		seen[value] = struct{}{}
-		normalized = append(normalized, value)
-	}
-	sort.Strings(normalized)
-	return normalized
-}
-
 func resolveJUnitReportPath(basePath string, app string, scope string, needApp bool, needScope bool) string {
 	basePath = strings.TrimSpace(basePath)
 	if basePath == "" {
