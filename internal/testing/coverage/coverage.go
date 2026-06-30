@@ -150,10 +150,7 @@ func PreflightInstrumentationPrerequisites(repoRoot string) error {
 	}
 
 	if strings.TrimSpace(resolveCoverageModuleRoot(repoRoot)) == "" {
-		if err := missingCoverageModulesError(repoRoot); err != nil {
-			return err
-		}
-		return xfmt.Errorf("coverage: missing required modules")
+		return missingCoverageModulesError(repoRoot)
 	}
 
 	return nil
@@ -227,10 +224,7 @@ func hasCoverageModuleInRoot(rootDir string) bool {
 
 func runCoverageInstrumentWithNode(ctx context.Context, nodePath string, repoRoot string, scriptPath string, inPath string, outMapPath string, moduleRootDir string) error {
 	if strings.TrimSpace(moduleRootDir) == "" {
-		if err := missingCoverageModulesError(repoRoot); err != nil {
-			return err
-		}
-		return xfmt.Errorf("coverage: missing required modules")
+		return missingCoverageModulesError(repoRoot)
 	}
 
 	var stderr bytes.Buffer
@@ -242,10 +236,7 @@ func runCoverageInstrumentWithNode(ctx context.Context, nodePath string, repoRoo
 	cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
 	if err := cmd.Run(); err != nil {
 		if isMissingIstanbulLibError(stderr.String()) {
-			if preflightErr := missingCoverageModulesError(repoRoot); preflightErr != nil {
-				return preflightErr
-			}
-			return xfmt.Errorf("coverage: missing required modules")
+			return missingCoverageModulesError(repoRoot)
 		}
 		return err
 	}
@@ -282,7 +273,9 @@ func buildCoverageNodePath(repoRoot string, moduleRootDir string) string {
 	}
 
 	if existingNodePath := strings.TrimSpace(os.Getenv("NODE_PATH")); existingNodePath != "" {
-		nodePathEntries = append(nodePathEntries, existingNodePath)
+		for _, nodePathEntry := range filepath.SplitList(existingNodePath) {
+			nodePathEntries = append(nodePathEntries, nodePathEntry)
+		}
 	}
 
 	uniqueNodePathEntries := make([]string, 0, len(nodePathEntries))
@@ -329,6 +322,9 @@ func isMissingIstanbulLibError(stderr string) bool {
 	stderr = strings.TrimSpace(stderr)
 	if stderr == "" {
 		return false
+	}
+	if strings.Contains(stderr, "missing required module istanbul-lib-instrument") {
+		return true
 	}
 	if strings.Contains(stderr, "Cannot find module 'istanbul-lib-instrument'") {
 		return true

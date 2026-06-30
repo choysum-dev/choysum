@@ -311,6 +311,48 @@ func TestRunCoverageInstrumentWithNodeMapsMissingModuleError(t *testing.T) {
 	}
 }
 
+func TestRunCoverageInstrumentWithNodeMapsMissingModuleSentinelError(t *testing.T) {
+	nodePath := writeExecutable(t, t.TempDir(), "node", "#!/bin/sh\necho \"missing required module istanbul-lib-instrument\" 1>&2\nexit 1\n")
+
+	err := runCoverageInstrumentWithNode(
+		context.Background(),
+		nodePath,
+		t.TempDir(),
+		filepath.Join(t.TempDir(), "instrument.cjs"),
+		filepath.Join(t.TempDir(), "in.js"),
+		filepath.Join(t.TempDir(), "out.js.map"),
+		"/tmp/fake-base",
+	)
+	if err == nil {
+		t.Fatal("expected missing module error")
+	}
+	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+		t.Fatalf("expected missing module mapping, got %v", err)
+	}
+}
+
+func TestBuildCoverageNodePathSplitsExistingNodePathEntries(t *testing.T) {
+	repoRoot := t.TempDir()
+	first := filepath.Join(t.TempDir(), "first")
+	second := filepath.Join(t.TempDir(), "second")
+	t.Setenv("NODE_PATH", first+string(os.PathListSeparator)+second)
+
+	nodePath := buildCoverageNodePath(repoRoot, "")
+	entries := filepath.SplitList(nodePath)
+	for _, want := range []string{first, second} {
+		found := false
+		for _, entry := range entries {
+			if entry == want {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected NODE_PATH entry %q in %q", want, nodePath)
+		}
+	}
+}
+
 func TestRunCoverageInstrumentWithNodeFailsFastWhenModuleRootMissing(t *testing.T) {
 	err := runCoverageInstrumentWithNode(
 		context.Background(),
