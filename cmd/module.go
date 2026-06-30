@@ -150,9 +150,6 @@ func newModuleInfoCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 		Use:   "info <module|module@version>",
 		Short: "Inspect source metadata for a module input",
 		Args:  cobra.ExactArgs(1),
-		Annotations: map[string]string{
-			lightweightScopeAnnotation: "true",
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			env, err := requireCommandScope(envGetter)
 			if err != nil {
@@ -309,9 +306,6 @@ func newModuleListCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() 
 		Use:   "list",
 		Short: "List modules in source lock bindings or remote module catalog index",
 		Args:  cobra.NoArgs,
-		Annotations: map[string]string{
-			lightweightScopeAnnotation: "true",
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			env, err := requireCommandScope(envGetter)
 			if err != nil {

@@ -1470,11 +1470,11 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		if infoCmd == nil {
 			t.Fatal("expected module info subcommand")
 		}
-		if got := infoCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
-			t.Fatalf("module info annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		if got := infoCmd.Annotations[lightweightScopeAnnotation]; got != "" {
+			t.Fatalf("module info annotation %q = %q, want empty", lightweightScopeAnnotation, got)
 		}
-		if !shouldUseLightweightRuntimeScope(infoCmd) {
-			t.Fatal("expected lightweight scope for module info")
+		if shouldUseLightweightRuntimeScope(infoCmd) {
+			t.Fatal("expected module info to keep full runtime scope")
 		}
 
 		listCmd, _, err := commander.rootCmd.Find([]string{"module", "list"})
@@ -1484,11 +1484,11 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		if listCmd == nil {
 			t.Fatal("expected module list subcommand")
 		}
-		if got := listCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
-			t.Fatalf("module list annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		if got := listCmd.Annotations[lightweightScopeAnnotation]; got != "" {
+			t.Fatalf("module list annotation %q = %q, want empty", lightweightScopeAnnotation, got)
 		}
-		if !shouldUseLightweightRuntimeScope(listCmd) {
-			t.Fatal("expected lightweight scope for module list")
+		if shouldUseLightweightRuntimeScope(listCmd) {
+			t.Fatal("expected module list to keep full runtime scope")
 		}
 
 		fetchCmd, _, err := commander.rootCmd.Find([]string{"module", "fetch"})
