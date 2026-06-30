@@ -109,6 +109,7 @@ func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 	defer func() { runOneScenarioHook = oldRunOneScenarioHook }()
 
 	t.Setenv("PATH", "")
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-node-modules"))
 	err := RunModule(context.Background(), RunOptions{
 		Module:      "auth",
 		ModulesPath: modulesPath,
@@ -116,8 +117,11 @@ func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 		Stdout:      io.Discard,
 		Stderr:      io.Discard,
 	})
-	if err == nil || !strings.Contains(err.Error(), "playwright not found") {
+	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
 		t.Fatalf("expected playwright missing error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npm install -g @playwright/test") {
+		t.Fatalf("expected npm global install hint in error, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatalf("expected fast-fail before runOneScenario")
@@ -148,8 +152,11 @@ func TestRunModuleFastFailsWhenPlaywrightPackageMissing(t *testing.T) {
 		Stdout:      io.Discard,
 		Stderr:      io.Discard,
 	})
-	if err == nil || !strings.Contains(err.Error(), "missing required modules for auth: @playwright/test") {
+	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
 		t.Fatalf("expected playwright package missing error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npm install -g @playwright/test") {
+		t.Fatalf("expected npm global install hint in error, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatalf("expected fast-fail before runOneScenario")
@@ -673,7 +680,7 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 
 	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
-	if err == nil || !strings.Contains(err.Error(), "playwright not found") {
+	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
 		t.Fatalf("expected missing playwright error, got %v", err)
 	}
 
@@ -723,6 +730,46 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "node_modules", "@bufbuild", "protobuf")); !os.IsNotExist(err) {
 		t.Fatalf("expected temporary runtime protobuf package link cleaned, got err=%v", err)
 	}
+}
+
+func TestResolvePlaywrightCommandSearchesAcceptedPreflightRoots(t *testing.T) {
+	t.Run("finds playwright in modules node_modules bin", func(t *testing.T) {
+		workDir := t.TempDir()
+		t.Setenv("PATH", "")
+		playwrightPath := filepath.Join(workDir, "modules", "node_modules", ".bin", "playwright")
+		writeExecFile(t, playwrightPath, "#!/bin/sh\nexit 0\n")
+
+		gotBin, gotBinDir, err := resolvePlaywrightCommand(RunOptions{WorkDir: workDir})
+		if err != nil {
+			t.Fatalf("resolvePlaywrightCommand() error = %v", err)
+		}
+		if gotBin != playwrightPath {
+			t.Fatalf("playwright bin = %q, want %q", gotBin, playwrightPath)
+		}
+		if gotBinDir != filepath.Dir(playwrightPath) {
+			t.Fatalf("playwright bin dir = %q, want %q", gotBinDir, filepath.Dir(playwrightPath))
+		}
+	})
+
+	t.Run("finds playwright in global npm root bin", func(t *testing.T) {
+		workDir := t.TempDir()
+		globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+		t.Setenv("PATH", "")
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+		playwrightPath := filepath.Join(globalRoot, ".bin", "playwright")
+		writeExecFile(t, playwrightPath, "#!/bin/sh\nexit 0\n")
+
+		gotBin, gotBinDir, err := resolvePlaywrightCommand(RunOptions{WorkDir: workDir})
+		if err != nil {
+			t.Fatalf("resolvePlaywrightCommand() error = %v", err)
+		}
+		if gotBin != playwrightPath {
+			t.Fatalf("playwright bin = %q, want %q", gotBin, playwrightPath)
+		}
+		if gotBinDir != filepath.Dir(playwrightPath) {
+			t.Fatalf("playwright bin dir = %q, want %q", gotBinDir, filepath.Dir(playwrightPath))
+		}
+	})
 }
 
 func TestEnsureE2EGlobalModuleLinksAtCleansUpOnSymlinkFailure(t *testing.T) {

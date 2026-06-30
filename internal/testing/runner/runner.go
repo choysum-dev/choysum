@@ -5,6 +5,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	cov "github.com/choysum-dev/choysum/internal/testing/coverage"
+	"github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -56,7 +58,12 @@ type FrontendRunnerFunc func(
 	coverageStatements int,
 ) (bool, error)
 
-type FrontendPreflightFunc func(repoRoot string, app string) error
+type FrontendPreflightFunc func(repoRoot string, app string, coverage bool) error
+
+type preflightIssue struct {
+	stage string
+	err   error
+}
 
 type RunOptions struct {
 	Env         scope.Scope
@@ -152,7 +159,7 @@ func Run(ctx context.Context, opts RunOptions) error {
 
 	preflightFrontend := opts.PreflightFrontend
 	if preflightFrontend == nil {
-		preflightFrontend = func(string, string) error { return nil }
+		preflightFrontend = func(string, string, bool) error { return nil }
 	}
 
 	apps, err := opts.ResolveApps(opts.Env, opts.Target, opts.RunBE, opts.RunFE)
@@ -182,6 +189,8 @@ func Run(ctx context.Context, opts RunOptions) error {
 	overallFailed := false
 	ranAnyBE := false
 	needsJUnitAppDisambiguation := len(apps) > 1
+	coveragePreflightChecked := false
+	var coveragePreflightErr error
 	for _, app := range apps {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -203,15 +212,29 @@ func Run(ctx context.Context, opts RunOptions) error {
 			hasFETests = f
 		}
 
-		if hasFETests {
-			if err := preflightFrontend(opts.RepoRoot, app); err != nil {
-				overallFailed = true
-				if opts.FailFast {
-					return err
-				}
-				fmt.Fprintln(opts.Stderr, err)
-				continue
+		preflightIssues := make([]preflightIssue, 0, 2)
+		if opts.Coverage && hasBETests {
+			if !coveragePreflightChecked {
+				coveragePreflightErr = cov.PreflightInstrumentationPrerequisites(opts.RepoRoot)
+				coveragePreflightChecked = true
 			}
+			if coveragePreflightErr != nil {
+				preflightIssues = append(preflightIssues, preflightIssue{stage: "coverage dependency preflight", err: coveragePreflightErr})
+			}
+		}
+		if hasFETests {
+			if err := preflightFrontend(opts.RepoRoot, app, opts.Coverage); err != nil {
+				preflightIssues = append(preflightIssues, preflightIssue{stage: "frontend dependency preflight", err: err})
+			}
+		}
+		if len(preflightIssues) > 0 {
+			overallFailed = true
+			aggregatedPreflightErr := formatPreflightIssues(app, preflightIssues)
+			if opts.FailFast {
+				return aggregatedPreflightErr
+			}
+			fmt.Fprintf(opts.Stderr, "Error: %v\n", aggregatedPreflightErr)
+			continue
 		}
 
 		if opts.WithTypecheck && (hasBETests || hasFETests) {
@@ -277,6 +300,72 @@ func Run(ctx context.Context, opts RunOptions) error {
 	return nil
 }
 
+func formatPreflightIssues(app string, issues []preflightIssue) error {
+	app = strings.TrimSpace(app)
+	if app == "" {
+		app = "app"
+	}
+	if len(issues) == 0 {
+		return xfmt.Errorf("preflight failed for %s", app)
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "preflight failed for %s. tests were not started.", app)
+	missingModules := make([]string, 0, 16)
+	nonModuleDetails := make([]string, 0, len(issues))
+
+	for _, issue := range issues {
+		var missingModulesErr *noderuntime.MissingNodeModulesPreflightError
+		if errors.As(issue.err, &missingModulesErr) {
+			missingModules = append(missingModules, missingModulesErr.MissingModules...)
+			continue
+		}
+
+		stage := strings.TrimSpace(issue.stage)
+		if stage == "" {
+			stage = "preflight"
+		}
+		detail := "unknown error"
+		if issue.err != nil {
+			detail = strings.TrimSpace(issue.err.Error())
+			if detail == "" {
+				detail = "unknown error"
+			}
+		}
+		nonModuleDetails = append(nonModuleDetails, fmt.Sprintf("- %s:\n%s", stage, indentMultiline(detail, "  ")))
+	}
+
+	normalizedMissingModules := noderuntime.NormalizeStringList(missingModules)
+	if len(normalizedMissingModules) > 0 {
+		fmt.Fprintf(&b, "\nmissing required modules: %s", strings.Join(normalizedMissingModules, ", "))
+		fmt.Fprintf(&b, "\ninstall globally:\n  npm install -g %s", strings.Join(normalizedMissingModules, " "))
+	}
+
+	if len(nonModuleDetails) > 0 {
+		fmt.Fprintf(&b, "\nadditional preflight errors:")
+		for _, detail := range nonModuleDetails {
+			fmt.Fprintf(&b, "\n%s", detail)
+		}
+	}
+
+	return xfmt.Errorf("%s", b.String())
+}
+
+func indentMultiline(text string, indent string) string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return indent + "unknown error"
+	}
+	parts := strings.Split(text, "\n")
+	for i, part := range parts {
+		if strings.TrimSpace(part) == "" {
+			parts[i] = ""
+			continue
+		}
+		parts[i] = indent + part
+	}
+	return strings.Join(parts, "\n")
+}
 func resolveJUnitReportPath(basePath string, app string, scope string, needApp bool, needScope bool) string {
 	basePath = strings.TrimSpace(basePath)
 	if basePath == "" {

@@ -8,18 +8,165 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 )
+
+var (
+	globalNpmRootOnce  sync.Once
+	globalNpmRootCache string
+	globalNpmRootErr   error
+)
+
+type MissingNodeModulesPreflightError struct {
+	Tool               string
+	Target             string
+	MissingModules     []string
+	CheckedModuleRoots []string
+}
+
+func (e *MissingNodeModulesPreflightError) Error() string {
+	if e == nil {
+		return "missing node modules"
+	}
+	target := strings.TrimSpace(e.Target)
+	if target == "" {
+		target = strings.TrimSpace(e.Tool)
+		if target == "" {
+			target = "runtime"
+		}
+	}
+	missingModules := NormalizeStringList(e.MissingModules)
+	missingModulesText := formatModuleList(missingModules, 8)
+	installCommand := formatInstallCommand(missingModules)
+	return fmt.Sprintf(
+		"preflight failed for %s. tests were not started.\nmissing required modules: %s\ninstall globally:\n  %s",
+		target,
+		missingModulesText,
+		installCommand,
+	)
+}
+
+func formatModuleList(modules []string, perLine int) string {
+	if len(modules) == 0 {
+		return "<none>"
+	}
+	if perLine <= 0 {
+		perLine = len(modules)
+	}
+
+	var b strings.Builder
+	for i, module := range modules {
+		if i > 0 {
+			if i%perLine == 0 {
+				b.WriteString(",\n  ")
+			} else {
+				b.WriteString(", ")
+			}
+		}
+		b.WriteString(module)
+	}
+	return b.String()
+}
+
+func formatInstallCommand(modules []string) string {
+	if len(modules) == 0 {
+		return "npm install -g"
+	}
+	return "npm install -g " + strings.Join(modules, " ")
+}
+
+func NormalizeModuleRoots(moduleRoots ...string) []string {
+	normalizedRoots := make([]string, 0, len(moduleRoots))
+	seenRoots := make(map[string]struct{}, len(moduleRoots))
+	for _, moduleRoot := range moduleRoots {
+		moduleRoot = strings.TrimSpace(moduleRoot)
+		if moduleRoot == "" {
+			continue
+		}
+		moduleRoot = filepath.Clean(moduleRoot)
+		if _, exists := seenRoots[moduleRoot]; exists {
+			continue
+		}
+		seenRoots[moduleRoot] = struct{}{}
+		normalizedRoots = append(normalizedRoots, moduleRoot)
+	}
+	return normalizedRoots
+}
+
+func PreflightRequiredNodeModules(tool string, target string, required []string, moduleRoots ...string) error {
+	normalizedModuleRoots := NormalizeModuleRoots(moduleRoots...)
+	requiredModules := NormalizeStringList(required)
+	missingModules := MissingRequiredNodeModules(requiredModules, normalizedModuleRoots...)
+	if len(missingModules) == 0 {
+		return nil
+	}
+	return &MissingNodeModulesPreflightError{
+		Tool:               tool,
+		Target:             target,
+		MissingModules:     missingModules,
+		CheckedModuleRoots: normalizedModuleRoots,
+	}
+}
+
+func NormalizeStringList(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	normalizedValues := make([]string, 0, len(values))
+	seenValues := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seenValues[value]; exists {
+			continue
+		}
+		seenValues[value] = struct{}{}
+		normalizedValues = append(normalizedValues, value)
+	}
+	sort.Strings(normalizedValues)
+	return normalizedValues
+}
+
+func ReplaceOrAppendEnv(env []string, key string, value string) []string {
+	if strings.TrimSpace(key) == "" {
+		return env
+	}
+	needle := key + "="
+	didReplaceExisting := false
+	updatedEnv := make([]string, 0, len(env)+1)
+	for _, entry := range env {
+		if len(entry) > len(key) && entry[len(key)] == '=' && strings.EqualFold(entry[:len(key)], key) {
+			if !didReplaceExisting {
+				updatedEnv = append(updatedEnv, needle+value)
+				didReplaceExisting = true
+			}
+			continue
+		}
+		updatedEnv = append(updatedEnv, entry)
+	}
+	if !didReplaceExisting {
+		updatedEnv = append(updatedEnv, needle+value)
+	}
+	return updatedEnv
+}
 
 func ResolveGlobalNpmRoot() (string, error) {
 	if override := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); override != "" {
 		return override, nil
 	}
-	out, err := exec.Command("npm", "root", "-g").Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(out)), nil
+	globalNpmRootOnce.Do(func() {
+		out, err := exec.Command("npm", "root", "-g").Output()
+		if err != nil {
+			globalNpmRootErr = err
+			return
+		}
+		globalNpmRootCache = strings.TrimSpace(string(out))
+	})
+	return globalNpmRootCache, globalNpmRootErr
 }
 
 func ResolveGlobalNpmRootBestEffort() string {

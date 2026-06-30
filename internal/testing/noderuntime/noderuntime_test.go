@@ -8,10 +8,21 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
+	"sync"
 	"testing"
 )
 
+func resetGlobalNpmRootCacheForTest() {
+	globalNpmRootOnce = sync.Once{}
+	globalNpmRootCache = ""
+	globalNpmRootErr = nil
+}
+
 func TestResolveGlobalNpmRootUsesOverride(t *testing.T) {
+	resetGlobalNpmRootCacheForTest()
+	defer resetGlobalNpmRootCacheForTest()
+
 	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "/tmp/custom-node-modules")
 	got, err := ResolveGlobalNpmRoot()
 	if err != nil {
@@ -20,6 +31,78 @@ func TestResolveGlobalNpmRootUsesOverride(t *testing.T) {
 	if got != "/tmp/custom-node-modules" {
 		t.Fatalf("ResolveGlobalNpmRoot returned %q, want %q", got, "/tmp/custom-node-modules")
 	}
+
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", "/tmp/another-node-modules")
+	got, err = ResolveGlobalNpmRoot()
+	if err != nil {
+		t.Fatalf("ResolveGlobalNpmRoot second call returned error: %v", err)
+	}
+	if got != "/tmp/another-node-modules" {
+		t.Fatalf("ResolveGlobalNpmRoot second call returned %q, want %q", got, "/tmp/another-node-modules")
+	}
+}
+
+func TestResolveGlobalNpmRootCachesCommandResult(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script helper is non-portable on windows")
+	}
+
+	resetGlobalNpmRootCacheForTest()
+	defer resetGlobalNpmRootCacheForTest()
+
+	binDir := t.TempDir()
+	countFile := filepath.Join(t.TempDir(), "npm-call-count.txt")
+	writeExecFile(t, filepath.Join(binDir, "npm"), "#!/bin/sh\nset -eu\ncount_file=\"${CHOYSUM_NPM_COUNT_FILE}\"\ncount=0\nif [ -f \"$count_file\" ]; then\n  count=$(cat \"$count_file\")\nfi\ncount=$((count + 1))\nprintf '%s' \"$count\" > \"$count_file\"\nprintf '%s\\n' \"${CHOYSUM_NPM_VALUE}\"\n")
+	t.Setenv("PATH", binDir)
+	t.Setenv("CHOYSUM_NPM_COUNT_FILE", countFile)
+	t.Setenv("CHOYSUM_NPM_VALUE", "/tmp/npm-root-first")
+
+	first, err := ResolveGlobalNpmRoot()
+	if err != nil {
+		t.Fatalf("ResolveGlobalNpmRoot first call error: %v", err)
+	}
+	if first != "/tmp/npm-root-first" {
+		t.Fatalf("ResolveGlobalNpmRoot first call = %q, want %q", first, "/tmp/npm-root-first")
+	}
+
+	t.Setenv("CHOYSUM_NPM_VALUE", "/tmp/npm-root-second")
+	second, err := ResolveGlobalNpmRoot()
+	if err != nil {
+		t.Fatalf("ResolveGlobalNpmRoot second call error: %v", err)
+	}
+	if second != "/tmp/npm-root-first" {
+		t.Fatalf("ResolveGlobalNpmRoot second call = %q, want cached %q", second, "/tmp/npm-root-first")
+	}
+
+	rawCount, err := os.ReadFile(countFile)
+	if err != nil {
+		t.Fatalf("read npm call count: %v", err)
+	}
+	if strings.TrimSpace(string(rawCount)) != "1" {
+		t.Fatalf("expected npm command to run once, count=%q", strings.TrimSpace(string(rawCount)))
+	}
+}
+
+func TestMissingNodeModulesPreflightErrorFormatting(t *testing.T) {
+	t.Run("nil receiver returns generic message", func(t *testing.T) {
+		var err *MissingNodeModulesPreflightError
+		if got := err.Error(); got != "missing node modules" {
+			t.Fatalf("nil error message = %q, want %q", got, "missing node modules")
+		}
+	})
+
+	t.Run("falls back to tool name when target empty", func(t *testing.T) {
+		err := (&MissingNodeModulesPreflightError{
+			Tool:           "typecheck",
+			MissingModules: []string{"vite", "vue-tsc"},
+		}).Error()
+		if !strings.Contains(err, "preflight failed for typecheck. tests were not started.") {
+			t.Fatalf("expected fallback target to use tool name, got %q", err)
+		}
+		if !strings.Contains(err, "npm install -g vite vue-tsc") {
+			t.Fatalf("expected install command in error, got %q", err)
+		}
+	})
 }
 
 func TestFindExecutablePrefersPath(t *testing.T) {
@@ -94,6 +177,59 @@ func TestMissingRequiredNodeModules(t *testing.T) {
 	}
 	if ModuleInstalledInRoots("@connectrpc/connect", root) {
 		t.Fatal("expected @connectrpc/connect to be missing")
+	}
+}
+
+func TestNormalizeModuleRoots(t *testing.T) {
+	got := NormalizeModuleRoots("", " /a ", "/a/", "/b/../b", "/b", "")
+	want := []string{"/a", "/b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("NormalizeModuleRoots() = %#v, want %#v", got, want)
+	}
+}
+
+func TestNormalizeStringList(t *testing.T) {
+	got := NormalizeStringList([]string{"", " vite ", "vue", "vite", "vue ", "  "})
+	want := []string{"vite", "vue"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("NormalizeStringList() = %#v, want %#v", got, want)
+	}
+}
+
+func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
+	env := []string{"Node_Path=/old", "PATH=/bin"}
+	got := ReplaceOrAppendEnv(env, "NODE_PATH", "/new")
+	want := []string{"NODE_PATH=/new", "PATH=/bin"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ReplaceOrAppendEnv() = %#v, want %#v", got, want)
+	}
+}
+
+func TestPreflightRequiredNodeModules(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir playwright package: %v", err)
+	}
+
+	if err := PreflightRequiredNodeModules("e2e", "auth", []string{"@playwright/test"}, root); err != nil {
+		t.Fatalf("expected preflight success, got %v", err)
+	}
+
+	err := PreflightRequiredNodeModules("e2e", "auth", []string{"@playwright/test", "@connectrpc/connect"}, root)
+	if err == nil {
+		t.Fatal("expected missing module error")
+	}
+	errText := err.Error()
+	for _, want := range []string{
+		"preflight failed for auth. tests were not started.",
+		"missing required modules:",
+		"@connectrpc/connect",
+		"install globally:",
+		"npm install -g",
+	} {
+		if !strings.Contains(errText, want) {
+			t.Fatalf("expected %q in error, got %q", want, errText)
+		}
 	}
 }
 
