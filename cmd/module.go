@@ -47,6 +47,9 @@ func newModuleSearchCmd(envGetter func() scope.Scope, runtimeOptionsGetter func(
 		Use:   "search <query>",
 		Short: "Search modules from local workspace or remote module catalog index",
 		Args:  cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			lightweightScopeAnnotation: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			env, err := requireCommandScope(envGetter)
 			if err != nil {
@@ -534,6 +537,9 @@ func newModuleFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 		Use:   "fetch <module|module@version>",
 		Short: "Fetch a module from source and bind it in modules.lock.json",
 		Args:  cobra.ExactArgs(1),
+		Annotations: map[string]string{
+			lightweightScopeAnnotation: "true",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			coordinator, ctx, err := newCoordinatorForCommand(envGetter, cmd)
 			if err != nil {
