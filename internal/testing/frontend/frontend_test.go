@@ -330,6 +330,48 @@ func TestBuildNodePathSkipsEmptyGlobalRootAndKeepsExistingNodePath(t *testing.T)
 	}
 }
 
+func TestBuildNodePathSplitsNormalizesAndDeduplicatesEntries(t *testing.T) {
+	repoRoot := t.TempDir()
+	localModules := filepath.Join(repoRoot, "modules", "node_modules")
+	if err := os.MkdirAll(localModules, 0o755); err != nil {
+		t.Fatalf("mkdir local modules root: %v", err)
+	}
+
+	globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+	if err := os.MkdirAll(globalRoot, 0o755); err != nil {
+		t.Fatalf("mkdir global root: %v", err)
+	}
+
+	extraRoot := filepath.Join(t.TempDir(), "extra-root")
+	if err := os.MkdirAll(extraRoot, 0o755); err != nil {
+		t.Fatalf("mkdir extra root: %v", err)
+	}
+
+	t.Setenv(
+		"NODE_PATH",
+		filepath.Join(localModules, ".")+
+			string(os.PathListSeparator)+
+			globalRoot+string(filepath.Separator)+
+			string(os.PathListSeparator)+
+			filepath.Join(extraRoot, "..", filepath.Base(extraRoot)),
+	)
+
+	nodePath := buildNodePath(repoRoot, globalRoot)
+	entries := filepath.SplitList(nodePath)
+	if len(entries) != 3 {
+		t.Fatalf("buildNodePath() entries = %#v, want 3 normalized unique entries", entries)
+	}
+	if entries[0] != localModules {
+		t.Fatalf("first node path entry = %q, want %q", entries[0], localModules)
+	}
+	if entries[1] != globalRoot {
+		t.Fatalf("second node path entry = %q, want %q", entries[1], globalRoot)
+	}
+	if entries[2] != extraRoot {
+		t.Fatalf("third node path entry = %q, want %q", entries[2], extraRoot)
+	}
+}
+
 func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
 	env := []string{"Node_Path=/old", "PATH=/bin"}
 	updated := noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", "/new")

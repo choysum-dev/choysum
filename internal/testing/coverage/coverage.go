@@ -280,21 +280,7 @@ func buildCoverageNodePath(repoRoot string, moduleRootDir string) string {
 		}
 	}
 
-	uniqueNodePathEntries := make([]string, 0, len(nodePathEntries))
-	seenNodePathEntries := make(map[string]struct{}, len(nodePathEntries))
-	for _, nodePathEntry := range nodePathEntries {
-		nodePathEntry = strings.TrimSpace(nodePathEntry)
-		if nodePathEntry == "" {
-			continue
-		}
-		if _, ok := seenNodePathEntries[nodePathEntry]; ok {
-			continue
-		}
-		seenNodePathEntries[nodePathEntry] = struct{}{}
-		uniqueNodePathEntries = append(uniqueNodePathEntries, nodePathEntry)
-	}
-
-	return strings.Join(uniqueNodePathEntries, string(os.PathListSeparator))
+	return strings.Join(noderuntime.NormalizeModuleRoots(nodePathEntries...), string(os.PathListSeparator))
 }
 
 func isMissingIstanbulLibError(stderr string) bool {

@@ -464,7 +464,7 @@ func ensureGlobalModuleLinks(repoRoot string, globalNodeModulesRoot string, modu
 }
 
 func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
-	nodePathEntries := make([]string, 0, 4)
+	nodePathEntries := make([]string, 0, 8)
 	localNodeModulesRoots := localFrontendModuleRoots(repoRoot)
 	for _, localNodeModulesRoot := range localNodeModulesRoots {
 		if st, err := os.Stat(localNodeModulesRoot); err == nil && st.IsDir() {
@@ -477,7 +477,9 @@ func buildNodePath(repoRoot string, globalNodeModulesRoot string) string {
 		}
 	}
 	if existingNodePath := strings.TrimSpace(os.Getenv("NODE_PATH")); existingNodePath != "" {
-		nodePathEntries = append(nodePathEntries, existingNodePath)
+		for _, nodePathEntry := range filepath.SplitList(existingNodePath) {
+			nodePathEntries = append(nodePathEntries, nodePathEntry)
+		}
 	}
-	return strings.Join(nodePathEntries, string(os.PathListSeparator))
+	return strings.Join(noderuntime.NormalizeModuleRoots(nodePathEntries...), string(os.PathListSeparator))
 }

@@ -367,6 +367,45 @@ func TestBuildCoverageNodePathSplitsExistingNodePathEntries(t *testing.T) {
 	}
 }
 
+func TestBuildCoverageNodePathNormalizesAndDeduplicatesEntries(t *testing.T) {
+	repoRoot := t.TempDir()
+	localModules := filepath.Join(repoRoot, "modules", "node_modules")
+	if err := os.MkdirAll(localModules, 0o755); err != nil {
+		t.Fatalf("mkdir local modules root: %v", err)
+	}
+
+	moduleRoot := filepath.Join(t.TempDir(), "module-root")
+	moduleManifest := filepath.Join(moduleRoot, "node_modules", "istanbul-lib-instrument", "package.json")
+	if err := os.MkdirAll(filepath.Dir(moduleManifest), 0o755); err != nil {
+		t.Fatalf("mkdir module manifest dir: %v", err)
+	}
+	if err := os.WriteFile(moduleManifest, []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write module manifest: %v", err)
+	}
+
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", filepath.Join(t.TempDir(), "missing-global-root"))
+	t.Setenv(
+		"NODE_PATH",
+		filepath.Join(localModules, ".")+
+			string(os.PathListSeparator)+
+			localModules+string(filepath.Separator)+
+			string(os.PathListSeparator)+
+			filepath.Join(moduleRoot, "..", "module-root", "node_modules"),
+	)
+
+	nodePath := buildCoverageNodePath(repoRoot, moduleRoot)
+	entries := filepath.SplitList(nodePath)
+	if len(entries) != 2 {
+		t.Fatalf("buildCoverageNodePath() entries = %#v, want 2 normalized unique entries", entries)
+	}
+	if entries[0] != localModules {
+		t.Fatalf("first node path entry = %q, want %q", entries[0], localModules)
+	}
+	if entries[1] != filepath.Join(moduleRoot, "node_modules") {
+		t.Fatalf("second node path entry = %q, want %q", entries[1], filepath.Join(moduleRoot, "node_modules"))
+	}
+}
+
 func TestReplaceOrAppendEnvCaseInsensitiveKeyMatch(t *testing.T) {
 	env := []string{"Node_Path=/old", "PATH=/bin"}
 	updated := noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", "/new")
