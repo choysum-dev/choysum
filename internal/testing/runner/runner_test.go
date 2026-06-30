@@ -749,6 +749,24 @@ func TestResolveJUnitReportPath(t *testing.T) {
 	}
 }
 
+func TestIndentMultiline(t *testing.T) {
+	t.Run("returns indented unknown error for blank input", func(t *testing.T) {
+		got := indentMultiline(" \n\t ", "  ")
+		want := "  unknown error"
+		if got != want {
+			t.Fatalf("indentMultiline() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("does not add trailing whitespace for empty lines", func(t *testing.T) {
+		got := indentMultiline("line1\n\nline2\n", "  ")
+		want := "  line1\n\n  line2"
+		if got != want {
+			t.Fatalf("indentMultiline() = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestRunWithDefaults(t *testing.T) {
 	err := RunWithDefaults(context.Background(), RunOptions{
 		RunBE:       true,

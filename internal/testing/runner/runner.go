@@ -353,11 +353,16 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 }
 
 func indentMultiline(text string, indent string) string {
-	if strings.TrimSpace(text) == "" {
-		return strings.TrimSpace(indent) + "unknown error"
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return indent + "unknown error"
 	}
 	parts := strings.Split(text, "\n")
 	for i, part := range parts {
+		if strings.TrimSpace(part) == "" {
+			parts[i] = ""
+			continue
+		}
 		parts[i] = indent + part
 	}
 	return strings.Join(parts, "\n")
