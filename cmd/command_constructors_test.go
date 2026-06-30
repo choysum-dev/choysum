@@ -561,6 +561,57 @@ func TestResolveTypeFetchDependsClosure_RejectsTraversalDependsPath(t *testing.T
 	}
 }
 
+func TestTypeFetchModulePackagePath(t *testing.T) {
+	modulesPath := t.TempDir()
+
+	t.Run("resolves module package path inside modules root", func(t *testing.T) {
+		got, err := typeFetchModulePackagePath(modulesPath, "auth")
+		if err != nil {
+			t.Fatalf("typeFetchModulePackagePath error: %v", err)
+		}
+		if !strings.HasSuffix(filepath.ToSlash(got), "/auth/package.json") {
+			t.Fatalf("unexpected package path: %s", got)
+		}
+	})
+
+	t.Run("rejects empty modules path", func(t *testing.T) {
+		_, err := typeFetchModulePackagePath("", "auth")
+		if err == nil || !strings.Contains(err.Error(), "modules path is required") {
+			t.Fatalf("expected modules path required error, got %v", err)
+		}
+	})
+
+	t.Run("rejects empty module name", func(t *testing.T) {
+		_, err := typeFetchModulePackagePath(modulesPath, "")
+		if err == nil || !strings.Contains(err.Error(), "module name is required") {
+			t.Fatalf("expected module name required error, got %v", err)
+		}
+	})
+
+	t.Run("rejects traversal module path", func(t *testing.T) {
+		_, err := typeFetchModulePackagePath(modulesPath, "../escape")
+		if err == nil || !strings.Contains(err.Error(), `invalid module path "../escape"`) {
+			t.Fatalf("expected invalid module path error, got %v", err)
+		}
+	})
+}
+
+func TestReadTypeFetchModulePackage_EmptyFile(t *testing.T) {
+	dir := t.TempDir()
+	pkgPath := filepath.Join(dir, "package.json")
+	if err := os.WriteFile(pkgPath, []byte("\n  \n"), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	pkg, err := readTypeFetchModulePackage(pkgPath)
+	if err != nil {
+		t.Fatalf("readTypeFetchModulePackage failed: %v", err)
+	}
+	if len(pkg.Choysum.Depends) != 0 {
+		t.Fatalf("expected no depends for empty package json, got %+v", pkg.Choysum.Depends)
+	}
+}
+
 func TestValidateTypeFetchDependsCompleteness_RejectsTraversalDependsPath(t *testing.T) {
 	modulesPath := t.TempDir()
 	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["../escape"]}}`)

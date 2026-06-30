@@ -1026,6 +1026,10 @@ declare module 'https://esm.sh/moment@2.30.1/ts3.1-typings/moment.d.ts' {
 declare module 'https://esm.sh/not-bridged@1.0.0/index.d.ts' {
   interface X {}
 }
+
+declare module 'https://mirror.example.com/vue@3.5.35/dist/vue.d.mts' {
+	interface Y {}
+}
 `
 	rewritten := rewriteTypeModuleAugmentationSpecifiers(content)
 
@@ -1038,12 +1042,16 @@ declare module 'https://esm.sh/not-bridged@1.0.0/index.d.ts' {
 	if !strings.Contains(rewritten, `declare module 'https://esm.sh/not-bridged@1.0.0/index.d.ts'`) {
 		t.Fatalf("expected non-bridged module augmentation to remain unchanged, got: %q", rewritten)
 	}
+	if !strings.Contains(rewritten, `declare module 'vue'`) {
+		t.Fatalf("expected custom-host vue augmentation to be bridged, got: %q", rewritten)
+	}
 }
 
 func TestRewriteLocalCachedBridgeSpecifiers(t *testing.T) {
 	content := `import { Ref } from "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts";
 import { defineStore } from "./esm.sh_pinia@3.0.4_dist_pinia.d.ts.d.ts";
-import { X } from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts";`
+import { X } from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts";
+import { Ref2 } from "./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts";`
 
 	rewritten := rewriteLocalCachedBridgeSpecifiers(content)
 	if !strings.Contains(rewritten, `"vue"`) || strings.Contains(rewritten, `"./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts"`) {
@@ -1054,6 +1062,9 @@ import { X } from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts";`
 	}
 	if !strings.Contains(rewritten, `from "./esm.sh_other@1.0.0_dist_index.d.ts.d.ts"`) {
 		t.Fatalf("expected non-bridge local cache import to remain unchanged, got: %q", rewritten)
+	}
+	if !strings.Contains(rewritten, `Ref2 } from"vue"`) {
+		t.Fatalf("expected custom-host local cache import to bridge, got: %q", rewritten)
 	}
 }
 
@@ -1093,6 +1104,45 @@ func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.
 	}
 }
 
+func TestNormalizeBridgeCachedTypeChildren_ConcurrentSharedChild(t *testing.T) {
+	dir := t.TempDir()
+	rootA := filepath.Join(dir, "root-a.d.ts")
+	rootB := filepath.Join(dir, "root-b.d.ts")
+	child := filepath.Join(dir, "esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts")
+
+	if err := os.WriteFile(rootA, []byte(`export * from "./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts";`), 0o644); err != nil {
+		t.Fatalf("write rootA: %v", err)
+	}
+	if err := os.WriteFile(rootB, []byte(`export * from "./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts";`), 0o644); err != nil {
+		t.Fatalf("write rootB: %v", err)
+	}
+	if err := os.WriteFile(child, []byte(`declare module 'https://mirror.example.com/vue@3.5.35/dist/vue.d.mts' { interface X {} }`), 0o644); err != nil {
+		t.Fatalf("write child: %v", err)
+	}
+
+	errCh := make(chan error, 2)
+	go func() {
+		errCh <- normalizeBridgeCachedTypeChildren(rootA, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+	}()
+	go func() {
+		errCh <- normalizeBridgeCachedTypeChildren(rootB, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+	}()
+
+	for i := 0; i < 2; i++ {
+		if err := <-errCh; err != nil {
+			t.Fatalf("normalizeBridgeCachedTypeChildren concurrent run failed: %v", err)
+		}
+	}
+
+	data, err := os.ReadFile(child)
+	if err != nil {
+		t.Fatalf("read child: %v", err)
+	}
+	if !strings.Contains(string(data), `declare module 'vue'`) {
+		t.Fatalf("expected child augmentation to be bridged to bare vue, got: %q", string(data))
+	}
+}
+
 func TestEsmTypeURLBarePackage(t *testing.T) {
 	tests := []struct {
 		rawURL string
@@ -1101,7 +1151,10 @@ func TestEsmTypeURLBarePackage(t *testing.T) {
 		{rawURL: "https://esm.sh/vue@3.5.35/dist/vue.d.mts", want: "vue"},
 		{rawURL: "https://esm.sh/pinia@3.0.4/dist/pinia.d.ts", want: "pinia"},
 		{rawURL: "https://esm.sh/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
-		{rawURL: "https://cdn.example.com/vue@3.5.35/dist/vue.d.mts", want: ""},
+		{rawURL: "https://mirror.example.com/vue@3.5.35/dist/vue.d.mts", want: "vue"},
+		{rawURL: "https://mirror.example.com/@scope/pkg@1.2.3/dist/index.d.ts", want: "@scope/pkg"},
+		{rawURL: "https://mirror.example.com/not-bridged@1.0.0/index.d.ts", want: "not-bridged"},
+		{rawURL: "./local/path.d.ts", want: ""},
 	}
 
 	for _, tt := range tests {
@@ -1117,8 +1170,10 @@ func TestIsLocalCachedTypeSpecifier(t *testing.T) {
 		want bool
 	}{
 		{path: "./esm.sh_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
+		{path: "./mirror.example.com_vue@3.5.35_dist_vue.d.mts.d.ts", want: true},
 		{path: "../esm.sh_kysely@0.29.2_dist_index.d.ts.d.ts", want: true},
 		{path: "./runtime-dom.d.ts", want: false},
+		{path: "./local_vue@3.5.35_dist_vue.d.mts.d.ts", want: false},
 		{path: "https://esm.sh/vue@3.5.35/dist/vue.d.mts", want: false},
 		{path: "node", want: false},
 	}
