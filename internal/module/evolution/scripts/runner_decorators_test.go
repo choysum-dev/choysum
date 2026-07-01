@@ -35,6 +35,30 @@ type reloadCountingExecutor struct {
 	reloadCalls int
 }
 
+func prepareRunnerModuleSource(t *testing.T, testRuntimeScope *scriptsTestScope, moduleName string, serviceEntryPoint string, content string) {
+	t.Helper()
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+	serviceEntryPoint = strings.TrimSpace(serviceEntryPoint)
+	if serviceEntryPoint == "" {
+		serviceEntryPoint = "service/index.ts"
+	}
+	entryPath := filepath.Join(testRuntimeScope.cfg.ModulesPath, moduleName, serviceEntryPoint)
+	if err := os.MkdirAll(filepath.Dir(entryPath), 0o755); err != nil {
+		t.Fatalf("mkdir entry dir: %v", err)
+	}
+	if strings.TrimSpace(content) == "" {
+		content = "export const migration = {}\n"
+	}
+	if err := os.WriteFile(entryPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write entry point: %v", err)
+	}
+}
+
 func (e *reloadCountingExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
 	return e.inner.Execute(ctx, request)
 }
@@ -103,7 +127,7 @@ func TestRunnerHelpers(t *testing.T) {
 	if script, err := runner.buildModuleEntryScript(context.Background()); err != nil || script != nil {
 		t.Fatalf("expected nil entry script for empty entrypoint, got %#v err=%v", script, err)
 	}
-	if resolved, err := runner.resolveScripts(context.Background()); err != nil || resolved != nil {
+	if resolved, err := runner.resolveScripts(context.Background(), false); err != nil || resolved != nil {
 		t.Fatalf("expected nil resolveScripts with no runtime scripts, got %#v err=%v", resolved, err)
 	}
 }
@@ -118,12 +142,52 @@ func TestResolveScripts_PrefersBuildErrorWhenRuntimeScriptsMissing(t *testing.T)
 	}
 
 	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"})
-	resolved, err := runner.resolveScripts(context.Background())
+	resolved, err := runner.resolveScripts(context.Background(), false)
 	if err == nil {
 		t.Fatalf("expected resolveScripts error when fallback build fails, got scripts=%#v", resolved)
 	}
 	if !strings.Contains(err.Error(), "service/missing.ts") {
 		t.Fatalf("expected resolveScripts to return build error mentioning missing entrypoint, got %v", err)
+	}
+}
+
+func TestResolveScripts_SourceFirstUnlessPhaseEnd(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	entryPoint := filepath.Join(testRuntimeScope.cfg.ModulesPath, "base", "service", "index.ts")
+	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
+		t.Fatalf("mkdir entry dir: %v", err)
+	}
+	if err := os.WriteFile(entryPoint, []byte("export const migration = {}\n"), 0o644); err != nil {
+		t.Fatalf("write entry point: %v", err)
+	}
+	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+
+	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
+	sourceFirstScripts, err := runner.resolveScripts(context.Background(), false)
+	if err != nil {
+		t.Fatalf("resolveScripts(source-first) error = %v", err)
+	}
+	if len(sourceFirstScripts) != 1 {
+		t.Fatalf("expected one source-first script, got %#v", sourceFirstScripts)
+	}
+	if sourceFirstScripts[0] == nil || strings.EqualFold(strings.TrimSpace(sourceFirstScripts[0].FileName), strings.TrimSpace(bundlePath)) {
+		t.Fatalf("expected source-first resolution to avoid runtime bundle, got %#v", sourceFirstScripts[0])
+	}
+
+	runtimeFirstScripts, err := runner.resolveScripts(context.Background(), true)
+	if err != nil {
+		t.Fatalf("resolveScripts(runtime-first) error = %v", err)
+	}
+	if len(runtimeFirstScripts) != 1 || runtimeFirstScripts[0] == nil || !strings.EqualFold(strings.TrimSpace(runtimeFirstScripts[0].FileName), strings.TrimSpace(bundlePath)) {
+		t.Fatalf("expected runtime-first resolution to use runtime bundle %q, got %#v", bundlePath, runtimeFirstScripts)
 	}
 }
 
@@ -233,6 +297,7 @@ func TestRunnerValidationAndParsingHelpers(t *testing.T) {
 func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
 	moduleRef := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
 
 	var services []string
@@ -269,7 +334,7 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	if !reflect.DeepEqual(executor.GetJsScripts(), prevScripts) {
 		t.Fatalf("expected executor scripts restored, got %#v", executor.GetJsScripts())
 	}
-	if got := loadedByService["__choysum_migration_list__"]; !reflect.DeepEqual(got, []string{bundlePath, "migration_wrapper.js"}) {
+	if got := loadedByService["__choysum_migration_list__"]; len(got) != 2 || got[0] == "" || strings.EqualFold(strings.TrimSpace(got[0]), strings.TrimSpace(bundlePath)) || got[1] != "migration_wrapper.js" {
 		t.Fatalf("unexpected scripts used for registry load: %#v", got)
 	}
 	if !reflect.DeepEqual(services, []string{"__choysum_migration_list__", "__choysum_migration__", "__choysum_migration__"}) {
@@ -327,6 +392,7 @@ func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
 func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
 	moduleRef := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
 
 	t.Run("Validate restores previous scripts on registry error", func(t *testing.T) {

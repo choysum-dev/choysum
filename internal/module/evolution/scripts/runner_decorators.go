@@ -88,7 +88,7 @@ func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
 		return nil
 	}
 
-	scripts, err := r.resolveScripts(ctx)
+	scripts, err := r.resolveScripts(ctx, opts.Phase == PhaseEnd)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion str
 		return fmt.Errorf("js executor is nil")
 	}
 
-	scripts, err := r.resolveScripts(ctx)
+	scripts, err := r.resolveScripts(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -158,17 +158,36 @@ func deriveRuntimeScope(ctx context.Context, baseScope scope.Scope) scope.Scope 
 	return baseScope
 }
 
-func (r *Runner) resolveScripts(ctx context.Context) ([]*jsengine.JsScript, error) {
-	runtimeScripts, runtimeErr := LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
-	if len(runtimeScripts) > 0 {
-		return runtimeScripts, nil
+func (r *Runner) resolveScripts(ctx context.Context, preferRuntimeScripts bool) ([]*jsengine.JsScript, error) {
+	if preferRuntimeScripts {
+		runtimeScripts, runtimeErr := LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+		if len(runtimeScripts) > 0 {
+			return runtimeScripts, nil
+		}
+		script, buildErr := r.buildModuleEntryScript(ctx)
+		if buildErr == nil && script != nil {
+			return []*jsengine.JsScript{script}, nil
+		}
+		if buildErr != nil {
+			return nil, buildErr
+		}
+		if runtimeErr != nil {
+			return nil, runtimeErr
+		}
+		return nil, nil
 	}
+
 	script, buildErr := r.buildModuleEntryScript(ctx)
 	if buildErr == nil && script != nil {
 		return []*jsengine.JsScript{script}, nil
 	}
 	if buildErr != nil {
 		return nil, buildErr
+	}
+
+	runtimeScripts, runtimeErr := LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	if len(runtimeScripts) > 0 {
+		return runtimeScripts, nil
 	}
 	if runtimeErr != nil {
 		return nil, runtimeErr
