@@ -78,6 +78,25 @@ jobs:
       docs_only: ${{ needs.discover-impact.outputs.docs_only }}
       target_modules_json: ${{ needs.discover-impact.outputs.impacted_modules_json }}
 
+  build-choysum-cli:
+    name: pr / build-choysum-cli
+    if: >-
+      ${{ needs.discover-impact.outputs.docs_only != 'true' &&
+      (needs.discover-impact.outputs.impacted_modules_json != '[]' ||
+      needs.discover-impact.outputs.impacted_smoke_e2e_modules_json != '[]' ||
+      needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]') }}
+    needs:
+      - discover-impact
+      - prepare-embedded-assets
+    uses: ./.github/workflows/build-choysum-cli.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      embedded_assets_artifact_name: pr-embedded-assets
+      embedded_assets_archive_path: .choysum/tmp/pr-embedded-assets.tar.gz
+      choysum_artifact_name: pr-choysum-cli
+      choysum_binary_path: .choysum/tmp/choysum
+      retention_days: 1
+
   go-test:
     name: pr / go-test
     needs:
@@ -159,6 +178,7 @@ jobs:
       - prepare-embedded-assets
       - discover-impact
       - prepare-root-node-modules
+      - build-choysum-cli
     strategy:
       fail-fast: false
       matrix:
@@ -189,11 +209,14 @@ jobs:
       - name: Add local node_modules bin to PATH
         run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v8
         with:
-          go-version-file: go.mod
-          cache: true
+          name: pr-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -201,7 +224,9 @@ jobs:
           node-version: 22
 
       - name: Run module typecheck
-        run: go run . test typecheck ${{ matrix.module }}
+        run: |
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          "$CHOYSUM_BIN" test typecheck ${{ matrix.module }}
 
   typecheck-all:
     name: pr / typecheck-all
@@ -230,6 +255,7 @@ jobs:
       - prepare-embedded-assets
       - discover-impact
       - prepare-root-node-modules
+      - build-choysum-cli
     strategy:
       fail-fast: false
       matrix:
@@ -263,11 +289,14 @@ jobs:
       - name: Add local node_modules bin to PATH
         run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v8
         with:
-          go-version-file: go.mod
-          cache: true
+          name: pr-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -287,7 +316,8 @@ jobs:
           mkdir -p "$coverage_root" "$junit_root"
 
           set +e
-          go run . test unit "${{ matrix.module }}" \
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          "$CHOYSUM_BIN" test unit "${{ matrix.module }}" \
             --coverage \
             --coverage-report \
             --fe-coverage-all \
@@ -390,6 +420,7 @@ jobs:
       - prepare-embedded-assets
       - discover-impact
       - prepare-root-node-modules
+      - build-choysum-cli
     strategy:
       fail-fast: false
       matrix:
@@ -417,11 +448,17 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v8
         with:
-          go-version-file: go.mod
-          cache: true
+          name: pr-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -438,7 +475,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run smoke E2E suite
-        run: go run . test e2e ${{ matrix.module }} -- smoke.spec.ts
+        run: |
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          "$CHOYSUM_BIN" test e2e ${{ matrix.module }} -- smoke.spec.ts
 
   e2e-shard-targeted:
     name: pr / e2e-shard-targeted (${{ matrix.module }})
@@ -447,6 +486,7 @@ jobs:
       - prepare-embedded-assets
       - discover-impact
       - prepare-root-node-modules
+      - build-choysum-cli
     strategy:
       fail-fast: false
       matrix:
@@ -474,11 +514,17 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Download choysum CLI
+        uses: actions/download-artifact@v8
         with:
-          go-version-file: go.mod
-          cache: true
+          name: pr-choysum-cli
+          path: .choysum/tmp
+
+      - name: Make choysum CLI executable
+        run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -495,7 +541,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run targeted E2E suite
-        run: go run . test e2e ${{ matrix.module }}
+        run: |
+          CHOYSUM_BIN="$(pwd)/.choysum/tmp/choysum"
+          "$CHOYSUM_BIN" test e2e ${{ matrix.module }}
 
   e2e-all:
     name: pr / e2e-all
