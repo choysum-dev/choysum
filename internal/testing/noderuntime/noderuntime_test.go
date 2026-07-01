@@ -96,11 +96,29 @@ func TestMissingNodeModulesPreflightErrorFormatting(t *testing.T) {
 			Tool:           "typecheck",
 			MissingModules: []string{"vite", "vue-tsc"},
 		}).Error()
-		if !strings.Contains(err, "preflight failed for typecheck. tests were not started.") {
+		if !strings.Contains(err, "typecheck preflight failed for typecheck. tests were not started.") {
 			t.Fatalf("expected fallback target to use tool name, got %q", err)
 		}
 		if !strings.Contains(err, "npm install -g vite vue-tsc") {
 			t.Fatalf("expected install command in error, got %q", err)
+		}
+	})
+}
+
+func TestFormatMissingModulesSummary(t *testing.T) {
+	t.Run("prints full list when module count is within sample size", func(t *testing.T) {
+		got := FormatMissingModulesSummary([]string{"vite", "vue-tsc"}, 3)
+		want := "missing 2 required module(s): vite, vue-tsc"
+		if got != want {
+			t.Fatalf("FormatMissingModulesSummary() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("prints sampled list when module count exceeds sample size", func(t *testing.T) {
+		got := FormatMissingModulesSummary([]string{"a", "b", "c", "d"}, 2)
+		want := "missing 4 required module(s) (sample: a, b, ...)"
+		if got != want {
+			t.Fatalf("FormatMissingModulesSummary() = %q, want %q", got, want)
 		}
 	})
 }
@@ -221,11 +239,11 @@ func TestPreflightRequiredNodeModules(t *testing.T) {
 	}
 	errText := err.Error()
 	for _, want := range []string{
-		"preflight failed for auth. tests were not started.",
-		"missing required modules:",
-		"@connectrpc/connect",
-		"install globally:",
+		"e2e preflight failed for auth. tests were not started.",
+		"missing 1 required module(s): @connectrpc/connect",
+		"install command:",
 		"npm install -g",
+		"retry:\n  go run . test e2e auth",
 	} {
 		if !strings.Contains(errText, want) {
 			t.Fatalf("expected %q in error, got %q", want, errText)

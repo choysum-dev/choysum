@@ -117,11 +117,14 @@ func TestRunModuleFastFailsWhenPlaywrightMissing(t *testing.T) {
 		Stdout:      io.Discard,
 		Stderr:      io.Discard,
 	})
-	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
+	if err == nil || !strings.Contains(err.Error(), "missing 1 required module(s): @playwright/test") {
 		t.Fatalf("expected playwright missing error, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "npm install -g @playwright/test") {
 		t.Fatalf("expected npm global install hint in error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npx playwright install --with-deps chromium") {
+		t.Fatalf("expected playwright browser install hint in error, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatalf("expected fast-fail before runOneScenario")
@@ -152,11 +155,14 @@ func TestRunModuleFastFailsWhenPlaywrightPackageMissing(t *testing.T) {
 		Stdout:      io.Discard,
 		Stderr:      io.Discard,
 	})
-	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
+	if err == nil || !strings.Contains(err.Error(), "missing 1 required module(s): @playwright/test") {
 		t.Fatalf("expected playwright package missing error, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "npm install -g @playwright/test") {
 		t.Fatalf("expected npm global install hint in error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "npx playwright install --with-deps chromium") {
+		t.Fatalf("expected playwright browser install hint in error, got %v", err)
 	}
 	if runOneScenarioCalled {
 		t.Fatalf("expected fast-fail before runOneScenario")
@@ -680,7 +686,7 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 
 	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
-	if err == nil || !strings.Contains(err.Error(), "missing required modules: @playwright/test") {
+	if err == nil || !strings.Contains(err.Error(), "missing 1 required module(s): @playwright/test") {
 		t.Fatalf("expected missing playwright error, got %v", err)
 	}
 
@@ -1230,5 +1236,25 @@ func TestInstallForE2EAndSeedModuleIndexRuntimeBranches(t *testing.T) {
 	err = seedModuleIndexForE2E(context.Background(), configPath, manifests)
 	if err != nil {
 		t.Fatalf("seedModuleIndexForE2E error: %v", err)
+	}
+}
+
+func TestMergeRequiredE2ERuntimeModulesUsesDirNameMapping(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","dependencies":{"left-pad":"^1.3.0"}}`)
+
+	closure := []string{"auth-module-key"}
+	packages := map[string]*sourceModulePackage{
+		"auth-module-key": {DirName: "auth"},
+	}
+
+	got, err := mergeRequiredE2ERuntimeModules(modulesPath, closure, packages, []string{"@playwright/test"})
+	if err != nil {
+		t.Fatalf("mergeRequiredE2ERuntimeModules error: %v", err)
+	}
+
+	want := []string{"@playwright/test", "left-pad"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("mergeRequiredE2ERuntimeModules() = %#v, want %#v", got, want)
 	}
 }

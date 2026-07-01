@@ -335,6 +335,228 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("prints soft guidance when mapped type assets are missing", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
+		writeFile(t, filepath.Join(modulesPath, "tsconfig.json"), `{
+		  "compilerOptions": {
+		    "paths": {
+		      "lodash": ["./.choysum/pkg/types/lodash@4.17.21.d.ts"]
+		    }
+		  }
+		}`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+		got := stderr.String()
+		if !strings.Contains(got, "Warning: type declarations may be incomplete") {
+			t.Fatalf("expected soft precheck warning, got %q", got)
+		}
+		if !strings.Contains(got, "recommended action:\n  go run . type-fetch auth") {
+			t.Fatalf("expected type-fetch command hint, got %q", got)
+		}
+	})
+
+	t.Run("suppresses soft guidance when tsconfig paths have no matching entry", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
+		writeFile(t, filepath.Join(modulesPath, "tsconfig.json"), `{
+		  "compilerOptions": {
+		    "paths": {
+		      "moment": ["./.choysum/pkg/types/moment@2.29.4.d.ts"]
+		    }
+		  }
+		}`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+		if strings.Contains(stderr.String(), "Warning: type declarations may be incomplete") {
+			t.Fatalf("did not expect soft precheck warning, got %q", stderr.String())
+		}
+	})
+
+	t.Run("suppresses soft guidance when wildcard-mapped type asset exists", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
+
+		cachedTypePath := filepath.Join(modulesPath, ".choysum", "pkg", "types", "lodash@4.17.21.d.ts")
+		makeDir(t, filepath.Dir(cachedTypePath))
+		writeFile(t, cachedTypePath, "declare const lodash: any\nexport default lodash\n")
+		writeFile(t, filepath.Join(modulesPath, "tsconfig.json"), `{
+		  "compilerOptions": {
+		    "paths": {
+		      "lodash": ["./.choysum/pkg/types/lodash@*.d.ts"]
+		    }
+		  }
+		}`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+		if strings.Contains(stderr.String(), "Warning: type declarations may be incomplete") {
+			t.Fatalf("did not expect soft precheck warning, got %q", stderr.String())
+		}
+	})
+
+	t.Run("returns dependency collection error during soft precheck", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &strings.Builder{},
+		}, "auth")
+		if err == nil || !strings.Contains(err.Error(), "typecheck: collect module dependencies:") {
+			t.Fatalf("expected dependency collection error, got %v", err)
+		}
+	})
+
+	t.Run("parses tsconfig paths from JSONC with comments and trailing commas", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
+
+		cachedTypePath := filepath.Join(modulesPath, ".choysum", "pkg", "types", "lodash@4.17.21.d.ts")
+		makeDir(t, filepath.Dir(cachedTypePath))
+		writeFile(t, cachedTypePath, "declare const lodash: any\nexport default lodash\n")
+		writeFile(t, filepath.Join(modulesPath, "tsconfig.json"), `{
+		  // Path mappings for type-fetch artifacts
+		  "compilerOptions": {
+		    "paths": {
+		      /* cached lodash types */
+		      "lodash": ["./.choysum/pkg/types/lodash@4.17.21.d.ts"],
+		    },
+		    "plugins": [
+		      {"name": "demo", "note": "escaped quote \" and slash \\\\"},
+		    ],
+		  },
+		}`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+		if strings.Contains(stderr.String(), "Warning: type declarations may be incomplete") {
+			t.Fatalf("did not expect soft precheck warning for JSONC with cached type file, got %q", stderr.String())
+		}
+	})
+
+	t.Run("suppresses soft guidance when tsconfig paths already point to cached type files", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
+
+		cachedTypePath := filepath.Join(modulesPath, ".choysum", "pkg", "types", "lodash@4.17.21.d.ts")
+		makeDir(t, filepath.Dir(cachedTypePath))
+		writeFile(t, cachedTypePath, "declare const lodash: any\nexport default lodash\n")
+		writeFile(t, filepath.Join(modulesPath, "tsconfig.json"), `{
+		  "compilerOptions": {
+		    "paths": {
+		      "lodash": ["./.choysum/pkg/types/lodash@4.17.21.d.ts"]
+		    }
+		  }
+		}`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+		if strings.Contains(stderr.String(), "Warning: type declarations may be incomplete") {
+			t.Fatalf("did not expect soft precheck warning, got %q", stderr.String())
+		}
+	})
+
+	t.Run("appends type-fetch guidance when diagnostics indicate missing type declarations", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "printf \"error TS2307: Cannot find module 'missing-lib' or its corresponding type declarations.\"; exit 7\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err == nil {
+			t.Fatal("expected typecheck command error")
+		}
+		if !strings.Contains(err.Error(), "typecheck failed for auth") {
+			t.Fatalf("expected wrapped typecheck failure, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "go run . type-fetch auth") {
+			t.Fatalf("expected type-fetch guidance in error, got %v", err)
+		}
+	})
+
 	t.Run("returns clear error when web app vite client types are missing", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()
@@ -352,21 +574,31 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		makeDir(t, filepath.Join(repoRoot, "node_modules", "vue-tsc"))
 		writeFile(t, filepath.Join(repoRoot, "node_modules", "vue-tsc", "package.json"), "{}\n")
 
+		makeDir(t, filepath.Join(modulesPath, "auth"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
 		makeDir(t, filepath.Join(modulesPath, "auth", "web"))
 		writeFile(t, filepath.Join(modulesPath, "auth", "web", "index.ts"), "export const auth = 1\n")
+
+		var stderr strings.Builder
 
 		err := TypecheckApp(context.Background(), RunOptions{
 			ModulesPath: modulesPath,
 			NpmPath:     npmPath,
 			RepoRoot:    repoRoot,
 			TmpPath:     t.TempDir(),
-			Stderr:      &strings.Builder{},
+			Stderr:      &stderr,
 		}, "auth")
-		if err == nil || !strings.Contains(err.Error(), "missing required modules: vite") {
+		if err == nil || !strings.Contains(err.Error(), "missing 1 required module(s): vite") {
 			t.Fatalf("expected vite missing error, got %v", err)
 		}
 		if !strings.Contains(err.Error(), "npm install -g vite") {
 			t.Fatalf("expected npm global install hint, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "install command:") {
+			t.Fatalf("expected structured install command section, got %v", err)
+		}
+		if !strings.Contains(err.Error(), "retry:\n  go run . test typecheck auth") {
+			t.Fatalf("expected retry hint in error, got %v", err)
 		}
 	})
 

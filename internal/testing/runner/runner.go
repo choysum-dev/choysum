@@ -306,11 +306,11 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 		app = "app"
 	}
 	if len(issues) == 0 {
-		return xfmt.Errorf("preflight failed for %s", app)
+		return xfmt.Errorf("unit preflight failed for %s", app)
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "preflight failed for %s. tests were not started.", app)
+	fmt.Fprintf(&b, "unit preflight failed for %s. tests were not started.", app)
 	missingModules := make([]string, 0, 16)
 	nonModuleDetails := make([]string, 0, len(issues))
 
@@ -337,8 +337,9 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 
 	normalizedMissingModules := noderuntime.NormalizeStringList(missingModules)
 	if len(normalizedMissingModules) > 0 {
-		fmt.Fprintf(&b, "\nmissing required modules: %s", strings.Join(normalizedMissingModules, ", "))
-		fmt.Fprintf(&b, "\ninstall globally:\n  npm install -g %s", strings.Join(normalizedMissingModules, " "))
+		fmt.Fprintf(&b, "\n%s", noderuntime.FormatMissingModulesSummary(normalizedMissingModules, 3))
+		fmt.Fprintf(&b, "\ninstall command:\n  npm install -g %s", strings.Join(normalizedMissingModules, " "))
+		fmt.Fprintf(&b, "\nretry:\n  go run . test unit %s", app)
 	}
 
 	if len(nonModuleDetails) > 0 {
@@ -347,6 +348,7 @@ func formatPreflightIssues(app string, issues []preflightIssue) error {
 			fmt.Fprintf(&b, "\n%s", detail)
 		}
 	}
+	b.WriteString("\n")
 
 	return xfmt.Errorf("%s", b.String())
 }
