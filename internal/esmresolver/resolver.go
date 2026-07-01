@@ -493,10 +493,7 @@ func rewriteProductionSpecifier(specifier string) string {
 	}
 
 	suffixStart := len(specifier)
-	if i := strings.Index(specifier, "?"); i >= 0 && i < suffixStart {
-		suffixStart = i
-	}
-	if i := strings.Index(specifier, "#"); i >= 0 && i < suffixStart {
+	if i := strings.IndexAny(specifier, "?#"); i >= 0 {
 		suffixStart = i
 	}
 	core := specifier[:suffixStart]
