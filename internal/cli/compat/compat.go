@@ -226,6 +226,8 @@ func FilterCatalogModuleByCompatibility(item *sourceregistry.CatalogModule, cliV
 func latestCatalogVersion(versions []string) string {
 	latest := ""
 	latestNormalized := ""
+	hasSemVer := false
+	hasFallback := false
 
 	for _, version := range versions {
 		version = strings.TrimSpace(version)
@@ -235,15 +237,17 @@ func latestCatalogVersion(versions []string) string {
 
 		normalized, isSemVer := NormalizeCatalogModuleVersion(version)
 		if !isSemVer {
-			if latestNormalized == "" {
+			if !hasSemVer && !hasFallback {
 				latest = version
+				hasFallback = true
 			}
 			continue
 		}
 
-		if latestNormalized == "" || modsemver.Compare(normalized, latestNormalized) > 0 {
+		if !hasSemVer || modsemver.Compare(normalized, latestNormalized) > 0 {
 			latest = version
 			latestNormalized = normalized
+			hasSemVer = true
 		}
 	}
 

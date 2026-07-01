@@ -211,6 +211,20 @@ func TestCompatibleCatalogVersionsAndSelection(t *testing.T) {
 }
 
 func TestCompatHelpersAdditionalCoverage(t *testing.T) {
+	t.Run("latestCatalogVersion keeps first non-semver fallback", func(t *testing.T) {
+		got := latestCatalogVersion([]string{"snapshot-a", "snapshot-b", "snapshot-c"})
+		if got != "snapshot-a" {
+			t.Fatalf("latestCatalogVersion(non-semver) = %q, want %q", got, "snapshot-a")
+		}
+	})
+
+	t.Run("latestCatalogVersion prefers semver over non-semver fallback", func(t *testing.T) {
+		got := latestCatalogVersion([]string{"snapshot-a", "v1.2.0", "snapshot-b", "v1.1.0"})
+		if got != "v1.2.0" {
+			t.Fatalf("latestCatalogVersion(mixed) = %q, want %q", got, "v1.2.0")
+		}
+	})
+
 	t.Run("catalog candidates for nil module", func(t *testing.T) {
 		if candidates := CatalogCandidateVersions(nil); candidates != nil {
 			t.Fatalf("CatalogCandidateVersions(nil) = %#v, want nil", candidates)
