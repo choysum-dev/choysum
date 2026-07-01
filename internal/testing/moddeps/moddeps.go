@@ -60,7 +60,8 @@ func CollectExternalModuleDependencies(modulesPath string, moduleNames []string,
 	for len(pending) > 0 {
 		moduleName := strings.TrimSpace(pending[0])
 		pending = pending[1:]
-		if moduleName == "" {
+		if moduleName == "" || moduleName == "." || moduleName == ".." ||
+			strings.Contains(moduleName, "/") || strings.Contains(moduleName, "\\") {
 			continue
 		}
 		if _, seen := visited[moduleName]; seen {
