@@ -55,6 +55,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			runtimeOptions := cliruntime.OptionsFromScope(env)
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
+			runtimeOptionsValidated := false
 
 			type upgradePlan struct {
 				requestedInput string
@@ -112,8 +113,11 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 						resolvedInput = strings.TrimSpace(parsed.ModuleName) + "@" + compatibleVersion
 					}
 				case internalorigin.InputKindLocal:
-					if err := runtimeOptions.Validate(); err != nil {
-						exitUpgradeError(currentInput, err)
+					if !runtimeOptionsValidated {
+						if err := runtimeOptions.Validate(); err != nil {
+							exitUpgradeError(currentInput, err)
+						}
+						runtimeOptionsValidated = true
 					}
 					registryBacked, bindErr := clicompat.HasRegistryOriginBinding(env, runtimeOptions.DefaultChoysumPath, parsed.LocalName)
 					if bindErr != nil {

@@ -4,6 +4,7 @@
 package compat
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -211,6 +212,18 @@ func TestCompatibleCatalogVersionsAndSelection(t *testing.T) {
 }
 
 func TestCompatHelpersAdditionalCoverage(t *testing.T) {
+	t.Run("resolve compatible latest rejects nil runtime scope", func(t *testing.T) {
+		if _, err := ResolveCompatibleRegistryLatestVersion(context.Background(), nil, "https://example.com/v1/index.json", "demo", "v1.0.0"); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
+			t.Fatalf("ResolveCompatibleRegistryLatestVersion(nil scope) error = %v, want nil-scope error", err)
+		}
+	})
+
+	t.Run("registry origin binding rejects nil runtime scope", func(t *testing.T) {
+		if _, err := HasRegistryOriginBinding(nil, "/tmp/.choysum", "demo"); err == nil || !strings.Contains(err.Error(), "runtime scope is nil") {
+			t.Fatalf("HasRegistryOriginBinding(nil scope) error = %v, want nil-scope error", err)
+		}
+	})
+
 	t.Run("latestCatalogVersion keeps first non-semver fallback", func(t *testing.T) {
 		got := latestCatalogVersion([]string{"snapshot-a", "snapshot-b", "snapshot-c"})
 		if got != "snapshot-a" {

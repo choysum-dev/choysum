@@ -255,6 +255,9 @@ func latestCatalogVersion(versions []string) string {
 }
 
 func ResolveCompatibleRegistryLatestVersion(ctx context.Context, runtimeScope scope.Scope, indexURL, moduleName, cliVersion string) (string, error) {
+	if runtimeScope == nil {
+		return "", xfmt.Errorf("runtime scope is nil")
+	}
 	catalog := sourceregistry.NewCatalog(runtimeScope)
 	item, err := catalog.Info(ctx, strings.TrimSpace(indexURL), strings.TrimSpace(moduleName))
 	if err != nil {
@@ -268,6 +271,9 @@ func ResolveCompatibleRegistryLatestVersion(ctx context.Context, runtimeScope sc
 }
 
 func HasRegistryOriginBinding(runtimeScope scope.Scope, defaultChoysumPath, moduleName string) (bool, error) {
+	if runtimeScope == nil {
+		return false, xfmt.Errorf("runtime scope is nil")
+	}
 	moduleName = strings.TrimSpace(moduleName)
 	if moduleName == "" {
 		return false, xfmt.Errorf("module name is empty")
