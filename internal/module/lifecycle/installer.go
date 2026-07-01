@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
@@ -38,6 +39,66 @@ type moduleInstaller struct {
 	ctx           *opContext
 
 	builder module.Builder
+}
+
+type moduleInstallBreakdown struct {
+	resolve  time.Duration
+	build    time.Duration
+	generate time.Duration
+	db       time.Duration
+	script   time.Duration
+}
+
+func (b moduleInstallBreakdown) total() time.Duration {
+	return b.resolve + b.build + b.generate + b.db + b.script
+}
+
+func (b moduleInstallBreakdown) dominant() (string, time.Duration) {
+	dominantStep := "resolve"
+	dominantDuration := b.resolve
+	if b.build > dominantDuration {
+		dominantStep = "build"
+		dominantDuration = b.build
+	}
+	if b.generate > dominantDuration {
+		dominantStep = "generate"
+		dominantDuration = b.generate
+	}
+	if b.db > dominantDuration {
+		dominantStep = "db"
+		dominantDuration = b.db
+	}
+	if b.script > dominantDuration {
+		dominantStep = "script"
+		dominantDuration = b.script
+	}
+	return dominantStep, dominantDuration
+}
+
+func logModuleInstallBreakdown(runtimeScope scope.Scope, opCtx *opContext, moduleName string, breakdown moduleInstallBreakdown) {
+	if runtimeScope == nil || runtimeScope.Logger() == nil {
+		return
+	}
+	ctx := runtimeScope.Context()
+	opid := ""
+	if opCtx != nil {
+		opid = strings.TrimSpace(opCtx.opid)
+	}
+	if opid == "" {
+		ctx, opid = ensureOpIDInContext(ctx)
+	}
+	logger := moduleOpLogger(runtimeScope.Logger(), opid, plan.OpInstall, strings.TrimSpace(moduleName))
+	dominantStep, dominantDuration := breakdown.dominant()
+	logger.Log(ctx, slog.LevelInfo, "module install breakdown",
+		"resolve_ms", breakdown.resolve.Milliseconds(),
+		"build_ms", breakdown.build.Milliseconds(),
+		"generate_ms", breakdown.generate.Milliseconds(),
+		"db_ms", breakdown.db.Milliseconds(),
+		"script_ms", breakdown.script.Milliseconds(),
+		"dominant_step", dominantStep,
+		"dominant_duration_ms", dominantDuration.Milliseconds(),
+		"total_ms", breakdown.total().Milliseconds(),
+	)
 }
 
 func (m *moduleInstaller) restoreModuleIfSoftDeleted() error {
@@ -106,6 +167,8 @@ func (m *moduleInstaller) assertDependenciesInstalled() error {
 }
 
 func (m *moduleInstaller) install() error {
+	breakdown := moduleInstallBreakdown{}
+
 	prepareStarted := time.Now()
 	if err := m.restoreModuleIfSoftDeleted(); err != nil {
 		return err
@@ -119,6 +182,7 @@ func (m *moduleInstaller) install() error {
 	if err := m.validate(); err != nil {
 		return xfmt.Errorf("error validating module: %w", err)
 	}
+	breakdown.resolve = time.Since(prepareStarted)
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepPrepare, prepareStarted)
 
 	var buildResult *module.BuildResult
@@ -129,6 +193,7 @@ func (m *moduleInstaller) install() error {
 			return xfmt.Errorf("error building module: %w", err)
 		}
 		buildResult = result
+		breakdown.build = time.Since(buildStarted)
 		logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepBuild, buildStarted)
 	}
 
@@ -148,6 +213,7 @@ func (m *moduleInstaller) install() error {
 			return xfmt.Errorf("error running pre_init hook for module %s: %w", m.module.Name, err)
 		}
 	}
+	breakdown.script += time.Since(initializeStarted)
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepInitialize, initializeStarted)
 
 	migrator := schema.NewMigrator(m.runtimeScope, m.module)
@@ -155,6 +221,7 @@ func (m *moduleInstaller) install() error {
 	if err := migrator.Migrate(); err != nil {
 		return xfmt.Errorf("error migrating module: %w", err)
 	}
+	breakdown.db += time.Since(schemaStarted)
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSchema, schemaStarted)
 
 	dataLoader := dataloader.New(m.runtimeScope)
@@ -166,6 +233,7 @@ func (m *moduleInstaller) install() error {
 	if err := dataLoader.ApplyModule(applyCtx, m.module, dataloader.ApplyOptions{WithDemo: m.ctx != nil && m.ctx.withDemo}); err != nil {
 		return xfmt.Errorf("error applying data for module %s: %w", m.module.Name, err)
 	}
+	breakdown.generate = time.Since(dataStarted)
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepData, dataStarted)
 
 	saveStarted := time.Now()
@@ -178,9 +246,11 @@ func (m *moduleInstaller) install() error {
 	if err := m.runtimeScope.Session().Save(m.module).Error; err != nil {
 		return xfmt.Errorf("error saving module: %w", err)
 	}
+	breakdown.db += time.Since(saveStarted)
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepSave, saveStarted)
 
 	finalizeStarted := time.Now()
+	postInitHookStarted := time.Now()
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
 	} else if hookRunner != nil {
@@ -196,6 +266,9 @@ func (m *moduleInstaller) install() error {
 			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
 		}
 	}
+	breakdown.script += time.Since(postInitHookStarted)
+
+	scheduleStarted := time.Now()
 	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
 		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
 			return xfmt.Errorf("error disabling legacy module index schedule: %w", err)
@@ -206,7 +279,9 @@ func (m *moduleInstaller) install() error {
 			return xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
 		}
 	}
+	breakdown.db += time.Since(scheduleStarted)
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepFinalize, finalizeStarted)
+	logModuleInstallBreakdown(m.runtimeScope, m.ctx, m.module.Name, breakdown)
 
 	return nil
 }
