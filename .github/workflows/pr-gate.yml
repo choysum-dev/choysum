@@ -76,6 +76,7 @@ jobs:
       archive_path: .choysum/tmp/pr-root-node-modules.tar.gz
       retention_days: 1
       docs_only: ${{ needs.discover-impact.outputs.docs_only }}
+      target_modules_json: ${{ needs.discover-impact.outputs.impacted_modules_json }}
 
   go-test:
     name: pr / go-test
