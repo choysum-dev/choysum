@@ -1050,10 +1050,17 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 				fromVersion = opCtx.getFromVersion(name)
 			}
 			if runner := scripts.NewRunner(m.runtimeScope, m.jsExecutor, mod); runner != nil {
+				modulePhaseEndStarted := time.Now()
 				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version}); err != nil {
 					clearSpinnerState()
 					return err
 				}
+				logger.Info(
+					"module operation finalizing phase end module completed",
+					"step", "phase_end",
+					"phase_module", moduleName,
+					"duration_ms", time.Since(modulePhaseEndStarted).Milliseconds(),
+				)
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
@@ -1504,9 +1511,16 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				fromVersion = opCtx.getFromVersion(moduleName)
 			}
 			if runner := scripts.NewRunner(m.runtimeScope, m.jsExecutor, mod); runner != nil {
+				modulePhaseEndStarted := time.Now()
 				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version}); err != nil {
 					return rollbackUpgradeOrigin(err)
 				}
+				logger.Info(
+					"module operation finalizing phase end module completed",
+					"step", "phase_end",
+					"phase_module", strings.TrimSpace(moduleName),
+					"duration_ms", time.Since(modulePhaseEndStarted).Milliseconds(),
+				)
 			}
 		}
 		if err := m.refreshModuleIndexForLocalModules(ctx, plan.ModuleOrder); err != nil {

@@ -156,10 +156,17 @@ func deriveRuntimeScope(ctx context.Context, baseScope scope.Scope) scope.Scope 
 }
 
 func (r *Runner) resolveScripts(ctx context.Context) ([]*jsengine.JsScript, error) {
+	runtimeScripts, runtimeErr := LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	if len(runtimeScripts) > 0 {
+		return runtimeScripts, nil
+	}
 	if script, err := r.buildModuleEntryScript(ctx); err == nil && script != nil {
 		return []*jsengine.JsScript{script}, nil
 	}
-	return LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	return nil, nil
 }
 
 func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript, error) {
