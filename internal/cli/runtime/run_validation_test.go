@@ -51,19 +51,12 @@ func TestValidateRunModulesPath(t *testing.T) {
 	})
 
 	t.Run("relative path is normalized", func(t *testing.T) {
-		oldWd, err := os.Getwd()
-		if err != nil {
-			t.Fatalf("getwd: %v", err)
-		}
 		workDir := t.TempDir()
 		modulesDir := filepath.Join(workDir, "modules")
 		if err := os.MkdirAll(modulesDir, 0o755); err != nil {
 			t.Fatalf("mkdir modules: %v", err)
 		}
-		if err := os.Chdir(workDir); err != nil {
-			t.Fatalf("chdir: %v", err)
-		}
-		defer func() { _ = os.Chdir(oldWd) }()
+		t.Chdir(workDir)
 
 		normalized, runErr := ValidateRunModulesPath("modules")
 		if runErr != nil {

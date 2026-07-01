@@ -119,6 +119,9 @@ func newCommandRuntimeScope(ctx context.Context, cfgPath string, lightweight boo
 	}
 
 	cfgOptions := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	if cfgOptions == nil {
+		return nil, cliruntime.Options{}, xfmt.Errorf("failed to parse config options")
+	}
 	runtimeOptions := cliruntime.Options{
 		DefaultChoysumPath:    cfgOptions.DefaultChoysumPath,
 		ModulesPath:           cfgOptions.ModulesPath,

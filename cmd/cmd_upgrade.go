@@ -56,8 +56,18 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
 
-			// Create a transaction-bound module manager for the upgrade batch.
-			txRoot := env.WithContext(ctx)
+			type upgradePlan struct {
+				requestedInput string
+				resolvedInput  string
+			}
+			exitUpgradeError := func(currentInput string, runErr error) {
+				attrs := []any{"error", runErr}
+				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
+				attrs = append(attrs, clioutput.CurrentOrRequestedAttr("input", "inputs", currentInput, args)...)
+				env.Logger().Error("module upgrade failed", attrs...)
+				os.Exit(1)
+			}
+
 			currentInput := ""
 			resolvedIndexURL := ""
 			resolveIndexURL := func() (string, error) {
@@ -71,6 +81,64 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				resolvedIndexURL = indexURL
 				return resolvedIndexURL, nil
 			}
+			plans := make([]upgradePlan, 0, len(args))
+			for _, input := range args {
+				moduleInput := strings.TrimSpace(input)
+				currentInput = moduleInput
+				if moduleInput == "" {
+					exitUpgradeError(currentInput, xfmt.Errorf("module name is empty"))
+				}
+
+				parsed, parseErr := internalorigin.ParseInput(moduleInput)
+				if parseErr != nil {
+					exitUpgradeError(currentInput, xfmt.Errorf("error parsing module input %s: %w", moduleInput, parseErr))
+				}
+
+				resolvedInput := moduleInput
+				switch parsed.Kind {
+				case internalorigin.InputKindRegistry:
+					if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
+						if strings.TrimSpace(resolvedCompat.Version) == "" {
+							exitUpgradeError(currentInput, xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'."))
+						}
+						indexURL, indexErr := resolveIndexURL()
+						if indexErr != nil {
+							exitUpgradeError(currentInput, indexErr)
+						}
+						compatibleVersion, compatErr := clicompat.ResolveCompatibleRegistryLatestVersion(ctx, env, indexURL, parsed.ModuleName, resolvedCompat.Version)
+						if compatErr != nil {
+							exitUpgradeError(currentInput, compatErr)
+						}
+						resolvedInput = strings.TrimSpace(parsed.ModuleName) + "@" + compatibleVersion
+					}
+				case internalorigin.InputKindLocal:
+					if err := runtimeOptions.Validate(); err != nil {
+						exitUpgradeError(currentInput, err)
+					}
+					registryBacked, bindErr := clicompat.HasRegistryOriginBinding(env, runtimeOptions.DefaultChoysumPath, parsed.LocalName)
+					if bindErr != nil {
+						exitUpgradeError(currentInput, bindErr)
+					}
+					if registryBacked {
+						if strings.TrimSpace(resolvedCompat.Version) == "" {
+							exitUpgradeError(currentInput, xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'."))
+						}
+						indexURL, indexErr := resolveIndexURL()
+						if indexErr != nil {
+							exitUpgradeError(currentInput, indexErr)
+						}
+						compatibleVersion, compatErr := clicompat.ResolveCompatibleRegistryLatestVersion(ctx, env, indexURL, parsed.LocalName, resolvedCompat.Version)
+						if compatErr != nil {
+							exitUpgradeError(currentInput, compatErr)
+						}
+						resolvedInput = parsed.LocalName + "@" + compatibleVersion
+					}
+				}
+				plans = append(plans, upgradePlan{requestedInput: moduleInput, resolvedInput: resolvedInput})
+			}
+
+			// Create a transaction-bound module manager for the upgrade batch.
+			txRoot := env.WithContext(ctx)
 			if err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
 				compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
 				if err != nil {
@@ -82,72 +150,17 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				defer compilerExecutor.Stop()
 
 				moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)
-				for _, input := range args {
-					moduleInput := strings.TrimSpace(input)
-					currentInput = moduleInput
-					if moduleInput == "" {
-						return xfmt.Errorf("module name is empty")
+				for _, plan := range plans {
+					currentInput = plan.requestedInput
+					txScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
+					if err := moduleLifecycle.Upgrade(tx.Context(), lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo}); err != nil {
+						return xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err)
 					}
-
-					parsed, err := internalorigin.ParseInput(moduleInput)
-					if err != nil {
-						return xfmt.Errorf("error parsing module input %s: %w", moduleInput, err)
-					}
-
-					upgradeInput := moduleInput
-					switch parsed.Kind {
-					case internalorigin.InputKindRegistry:
-						if strings.EqualFold(strings.TrimSpace(parsed.Version), "latest") {
-							if strings.TrimSpace(resolvedCompat.Version) == "" {
-								return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
-							}
-							indexURL, indexErr := resolveIndexURL()
-							if indexErr != nil {
-								return indexErr
-							}
-							compatibleVersion, compatErr := clicompat.ResolveCompatibleRegistryLatestVersion(tx.Context(), txScope, indexURL, parsed.ModuleName, resolvedCompat.Version)
-							if compatErr != nil {
-								return compatErr
-							}
-							upgradeInput = strings.TrimSpace(parsed.ModuleName) + "@" + compatibleVersion
-						}
-					case internalorigin.InputKindLocal:
-						if err := runtimeOptions.Validate(); err != nil {
-							return err
-						}
-						registryBacked, bindErr := clicompat.HasRegistryOriginBinding(txScope, runtimeOptions.DefaultChoysumPath, parsed.LocalName)
-						if bindErr != nil {
-							return bindErr
-						}
-						if registryBacked {
-							if strings.TrimSpace(resolvedCompat.Version) == "" {
-								return xfmt.Errorf("ERR_CLI_COMPAT_VERSION_UNRESOLVED: Cannot resolve a CLI compatibility version in development mode. Provide '--cli-compat-version' or set 'CHOYSUM_CLI_COMPAT_VERSION'.")
-							}
-							indexURL, indexErr := resolveIndexURL()
-							if indexErr != nil {
-								return indexErr
-							}
-							compatibleVersion, compatErr := clicompat.ResolveCompatibleRegistryLatestVersion(tx.Context(), txScope, indexURL, parsed.LocalName, resolvedCompat.Version)
-							if compatErr != nil {
-								return compatErr
-							}
-							upgradeInput = parsed.LocalName + "@" + compatibleVersion
-						}
-					}
-
-					txScope.Logger().Debug("module upgrade started", "input", upgradeInput)
-					if err := moduleLifecycle.Upgrade(tx.Context(), lifecycle.UpgradeRequest{Input: upgradeInput, WithDemo: withDemo}); err != nil {
-						return xfmt.Errorf("error upgrading module %s: %w", moduleInput, err)
-					}
-					txScope.Logger().Debug("module upgraded", "input", upgradeInput)
+					txScope.Logger().Debug("module upgraded", "input", plan.resolvedInput)
 				}
 				return nil
 			}); err != nil {
-				attrs := []any{"error", err}
-				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("upgrade")...)
-				attrs = append(attrs, clioutput.CurrentOrRequestedAttr("input", "inputs", currentInput, args)...)
-				env.Logger().Error("module upgrade failed", attrs...)
-				os.Exit(1)
+				exitUpgradeError(currentInput, err)
 			}
 		},
 	}

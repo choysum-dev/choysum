@@ -78,6 +78,9 @@ func (e *commandTestScope) FactoryInput() scope.FactoryInput {
 		return nil
 	}
 	options := cliruntime.NewScopeInputConfigOptions(snapshot.New(e.cfg))
+	if options == nil {
+		return nil
+	}
 	runtimeOptions := cliruntime.Options{
 		DefaultChoysumPath:    options.DefaultChoysumPath,
 		ModulesPath:           options.ModulesPath,
@@ -201,7 +204,13 @@ func TestRequireCliRuntimeOptions(t *testing.T) {
 func newCommandExitConfig(jsEngineFactory string) *config.Config {
 	serverCfg := config.NewDefaultServerConfig()
 	serverCfg.JsEngineFactory = jsEngineFactory
-	return &config.Config{Server: serverCfg, Log: config.NewDefaultLogConfig()}
+	return &config.Config{
+		ModulesPath:        "/tmp/choysum-test/modules",
+		DefaultChoysumPath: "/tmp/choysum-test/.choysum",
+		TmpPath:            "/tmp/choysum-test/.choysum/tmp",
+		Server:             serverCfg,
+		Log:                config.NewDefaultLogConfig(),
+	}
 }
 
 func newCommandTestConfig(modulesPath string) *config.Config {

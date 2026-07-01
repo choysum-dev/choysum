@@ -329,6 +329,14 @@ func loadRunConfig(cfgPath string) (runLoadedConfig, *runError) {
 		}
 	}
 	cfgOptions := cliruntime.NewScopeInputConfigOptions(snapshot.New(cfg))
+	if cfgOptions == nil {
+		return runLoadedConfig{}, &runError{
+			exitCode: 3,
+			errMsg:   "invalid config",
+			reason:   "failed to parse config options",
+			next:     runConfigFixValuesNext,
+		}
+	}
 	cliOptions := cliruntime.Options{
 		DefaultChoysumPath:    cfgOptions.DefaultChoysumPath,
 		ModulesPath:           cfgOptions.ModulesPath,
