@@ -108,6 +108,25 @@ func TestRunnerHelpers(t *testing.T) {
 	}
 }
 
+func TestResolveScripts_PrefersBuildErrorWhenRuntimeScriptsMissing(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"})
+	resolved, err := runner.resolveScripts(context.Background())
+	if err == nil {
+		t.Fatalf("expected resolveScripts error when fallback build fails, got scripts=%#v", resolved)
+	}
+	if !strings.Contains(err.Error(), "service/missing.ts") {
+		t.Fatalf("expected resolveScripts to return build error mentioning missing entrypoint, got %v", err)
+	}
+}
+
 func TestBuildModuleEntryScript_PrefersContextSessionForBuilderRuntimeState(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")

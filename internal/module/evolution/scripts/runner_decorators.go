@@ -163,8 +163,12 @@ func (r *Runner) resolveScripts(ctx context.Context) ([]*jsengine.JsScript, erro
 	if len(runtimeScripts) > 0 {
 		return runtimeScripts, nil
 	}
-	if script, err := r.buildModuleEntryScript(ctx); err == nil && script != nil {
+	script, buildErr := r.buildModuleEntryScript(ctx)
+	if buildErr == nil && script != nil {
 		return []*jsengine.JsScript{script}, nil
+	}
+	if buildErr != nil {
+		return nil, buildErr
 	}
 	if runtimeErr != nil {
 		return nil, runtimeErr
