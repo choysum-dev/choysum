@@ -502,12 +502,7 @@ func rewriteProductionSpecifier(specifier string) string {
 	core := specifier[:suffixStart]
 	suffix := specifier[suffixStart:]
 
-	base := core
-	subpath := ""
-	if slash := strings.Index(core, "/"); slash >= 0 {
-		base = core[:slash]
-		subpath = core[slash+1:]
-	}
+	base, subpath, _ := strings.Cut(core, "/")
 
 	if base != vueI18nBareSpecifier && !strings.HasPrefix(base, vueI18nBareSpecifier+"@") {
 		return specifier

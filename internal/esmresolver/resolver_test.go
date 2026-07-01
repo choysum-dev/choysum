@@ -1783,6 +1783,26 @@ func TestRewriteProductionSpecifier(t *testing.T) {
 			want: "vue-i18n/dist/vue-i18n.esm-bundler.js",
 		},
 		{
+			name: "empty specifier",
+			spec: "",
+			want: "",
+		},
+		{
+			name: "versioned with subpath untouched",
+			spec: "vue-i18n@11.4.6/dist/foo.js",
+			want: "vue-i18n@11.4.6/dist/foo.js",
+		},
+		{
+			name: "hash only no query",
+			spec: "vue-i18n#frag",
+			want: "vue-i18n/dist/vue-i18n.esm-browser.prod.js#frag",
+		},
+		{
+			name: "whitespace trimmed",
+			spec: " vue-i18n ",
+			want: "vue-i18n/dist/vue-i18n.esm-browser.prod.js",
+		},
+		{
 			name: "other package untouched",
 			spec: "vue",
 			want: "vue",
