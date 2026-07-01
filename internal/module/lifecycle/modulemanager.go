@@ -1540,6 +1540,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			if runner := scripts.NewRunner(m.runtimeScope, m.jsExecutor, mod); runner != nil {
 				modulePhaseEndStarted := time.Now()
 				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version, ReuseExecutorScripts: m.jsExecutor != nil}); err != nil {
+					clearSpinnerState()
 					return rollbackUpgradeOrigin(err)
 				}
 				logger.Info(
