@@ -160,6 +160,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				currentInput = plan.requestedInput
 				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
 				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo}); err != nil {
+					_ = compilerExecutor.Stop()
 					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err))
 				}
 				upgradeScope.Logger().Debug("module upgraded", "input", plan.resolvedInput)
