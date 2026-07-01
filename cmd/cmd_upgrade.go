@@ -137,30 +137,24 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				plans = append(plans, upgradePlan{requestedInput: moduleInput, resolvedInput: resolvedInput})
 			}
 
-			// Create a transaction-bound module manager for the upgrade batch.
-			txRoot := env.WithContext(ctx)
-			if err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-				compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
-				if err != nil {
-					return xfmt.Errorf("Error creating compiler executor: %w", err)
-				}
-				if err := compilerExecutor.Start(); err != nil {
-					return xfmt.Errorf("Error starting compiler executor: %w", err)
-				}
-				defer compilerExecutor.Stop()
+			upgradeScope := env.WithContext(ctx)
+			compilerExecutor, err := jsexecutor.NewCompilerExecutor(upgradeScope)
+			if err != nil {
+				exitUpgradeError(currentInput, xfmt.Errorf("Error creating compiler executor: %w", err))
+			}
+			if err := compilerExecutor.Start(); err != nil {
+				exitUpgradeError(currentInput, xfmt.Errorf("Error starting compiler executor: %w", err))
+			}
+			defer compilerExecutor.Stop()
 
-				moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)
-				for _, plan := range plans {
-					currentInput = plan.requestedInput
-					txScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
-					if err := moduleLifecycle.Upgrade(tx.Context(), lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo}); err != nil {
-						return xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err)
-					}
-					txScope.Logger().Debug("module upgraded", "input", plan.resolvedInput)
+			moduleLifecycle := lifecycle.NewService(upgradeScope, compilerExecutor)
+			for _, plan := range plans {
+				currentInput = plan.requestedInput
+				upgradeScope.Logger().Debug("module upgrade started", "input", plan.resolvedInput)
+				if err := moduleLifecycle.Upgrade(ctx, lifecycle.UpgradeRequest{Input: plan.resolvedInput, WithDemo: withDemo}); err != nil {
+					exitUpgradeError(currentInput, xfmt.Errorf("error upgrading module %s: %w", plan.requestedInput, err))
 				}
-				return nil
-			}); err != nil {
-				exitUpgradeError(currentInput, err)
+				upgradeScope.Logger().Debug("module upgraded", "input", plan.resolvedInput)
 			}
 		},
 	}
