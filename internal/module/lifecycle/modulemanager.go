@@ -881,8 +881,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			return err
 		}
 		planningDuration := time.Since(planningStarted)
-		logger.Info("module operation planning completed", "duration_ms", planningDuration.Milliseconds())
-		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(opPlan)...)
+		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(opPlan), "duration_ms", planningDuration.Milliseconds())...)
 		logger.Debug("module operation plan details", "modules", opPlan.ModuleOrder, "apps", opPlan.AffectedApps)
 		totalInstallModules = len(opPlan.ModuleOrder)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
@@ -1018,7 +1017,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 		}
 		phaseEndDuration := time.Since(phaseEndStarted)
-		logger.Info("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
+		logger.Debug("module operation finalizing phase end completed", "step", "phase_end", "duration_ms", phaseEndDuration.Milliseconds())
 
 		setSpinnerStage("finalizing.index_refresh", fmt.Sprintf("%s: finalizing index refresh", rootModuleName))
 		indexRefreshStarted := time.Now()
@@ -1027,7 +1026,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			return err
 		}
 		indexRefreshDuration := time.Since(indexRefreshStarted)
-		logger.Info("module operation finalizing index refresh completed", "step", "index_refresh", "duration_ms", indexRefreshDuration.Milliseconds())
+		logger.Debug("module operation finalizing index refresh completed", "step", "index_refresh", "duration_ms", indexRefreshDuration.Milliseconds())
 
 		setSpinnerStage("finalizing.index_sync", fmt.Sprintf("%s: finalizing index sync", rootModuleName))
 		indexSyncStarted := time.Now()
@@ -1036,19 +1035,17 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			return err
 		}
 		indexSyncDuration := time.Since(indexSyncStarted)
-		logger.Info("module operation finalizing index sync completed", "step", "index_sync", "duration_ms", indexSyncDuration.Milliseconds())
+		logger.Debug("module operation finalizing index sync completed", "step", "index_sync", "duration_ms", indexSyncDuration.Milliseconds())
 		clearSpinnerState()
 
 		finalizingDuration := time.Since(finalizingStarted)
-		logger.Info(
-			"module operation finalizing completed",
-			"duration_ms", finalizingDuration.Milliseconds(),
+		completedAttrs := append(moduleOperationCompletedInfoAttrs(opPlan, time.Since(started)),
+			"finalizing_duration_ms", finalizingDuration.Milliseconds(),
 			"phase_end_duration_ms", phaseEndDuration.Milliseconds(),
 			"index_refresh_duration_ms", indexRefreshDuration.Milliseconds(),
 			"index_sync_duration_ms", indexSyncDuration.Milliseconds(),
 		)
-
-		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(opPlan, time.Since(started))...)
+		logger.Info("module operation completed", completedAttrs...)
 		return nil
 	})
 }
@@ -1084,12 +1081,14 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 		}, opid); err != nil {
 			return err
 		}
+		planningStarted := time.Now()
 		plan, err := plan.BuildPlan(ctx, plan.OpUninstall, mod, m)
 		if err != nil {
 			return err
 		}
+		planningDuration := time.Since(planningStarted)
 		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
-		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(plan)...)
+		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
@@ -1232,6 +1231,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}, opid); err != nil {
 			return rollbackUpgradeOrigin(err)
 		}
+		planningStarted := time.Now()
 		plan, err := plan.BuildPlan(ctx, plan.OpUpgrade, mod, m)
 		if err != nil {
 			return rollbackUpgradeOrigin(err)
@@ -1245,8 +1245,9 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 				plan.AffectedApps = apps
 			}
 		}
+		planningDuration := time.Since(planningStarted)
 		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
-		logger.Info("module operation plan", moduleOperationPlanInfoAttrs(plan)...)
+		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
