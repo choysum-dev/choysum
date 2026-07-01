@@ -219,6 +219,80 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 	}
 }
 
+func TestExecuteInstallEmitsUnifiedProgressEvents(t *testing.T) {
+	rootDir := t.TempDir()
+	distRoot := filepath.Join(rootDir, "dist")
+	modulesRoot := filepath.Join(rootDir, "modules")
+	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	pl := planner.Plan{
+		Op:                  planner.OpInstall,
+		ModuleOrder:         []string{"base"},
+		AffectedApps:        []string{"crm"},
+		NeedsGlobalWebBuild: true,
+	}
+
+	var events []ProgressEvent
+	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), pl, root, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
+		Install:                        func(module *meta.IrModule) error { return nil },
+		OnProgress: func(event ProgressEvent) {
+			events = append(events, event)
+		},
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
+			}, nil
+		},
+		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
+		},
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+				return err
+			}
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+				return err
+			}
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
+		},
+		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
+		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
+			return writeStageFile(distBundlesStagingDir, "index.js", "console.log('bundles')")
+		},
+		WebTarget: func() (string, error) { return filepath.Join(distRoot, "web"), nil },
+		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
+			return writeStageFile(distWebStagingDir, "index.html", "<html></html>")
+		},
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	counts := map[ProgressStage]int{}
+	for _, event := range events {
+		counts[event.Stage]++
+	}
+
+	for _, stage := range []ProgressStage{
+		ProgressStageModuleInstallStarted,
+		ProgressStageModuleInstallCompleted,
+		ProgressStageAppStageStarted,
+		ProgressStageAppBuildStarted,
+		ProgressStageAppGenerateStarted,
+		ProgressStageBundlesBuildStarted,
+		ProgressStageBundlesBuildCompleted,
+		ProgressStageWebBuildStarted,
+		ProgressStageWebBuildCompleted,
+		ProgressStageAppStageCompleted,
+	} {
+		if counts[stage] == 0 {
+			t.Fatalf("expected progress stage %s to be emitted, got events=%v", stage, counts)
+		}
+	}
+}
+
 func TestExecuteInstallAppStageSuccessWithRuntimeProtoTarget(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")
@@ -2016,4 +2090,54 @@ func writeBlockerFile(t *testing.T, path string) {
 	if err := os.WriteFile(path, []byte("blocker"), 0o644); err != nil {
 		t.Fatalf("WriteFile(%s): %v", path, err)
 	}
+}
+
+func TestSummarizeInfoNames(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		count, names := summarizeInfoNames(nil)
+		if count != 0 || names != nil {
+			t.Fatalf("summarizeInfoNames(nil) = (%d, %#v), want (0, nil)", count, names)
+		}
+	})
+
+	t.Run("single", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"base"})
+		if count != 1 || len(names) != 1 || names[0] != "base" {
+			t.Fatalf("summarizeInfoNames([base]) = (%d, %#v), want (1, [base])", count, names)
+		}
+	})
+
+	t.Run("dedup", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"base", "base", "core"})
+		if count != 2 || len(names) != 2 || names[0] != "base" || names[1] != "core" {
+			t.Fatalf("summarizeInfoNames([base, base, core]) = (%d, %#v), want (2, [base core])", count, names)
+		}
+	})
+
+	t.Run("empty strings skipped", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"", "base", "", "core"})
+		if count != 2 || len(names) != 2 || names[0] != "base" || names[1] != "core" {
+			t.Fatalf("summarizeInfoNames with empties = (%d, %#v), want (2, [base core])", count, names)
+		}
+	})
+
+	t.Run("all empty returns zero", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"", "", ""})
+		if count != 0 || names != nil {
+			t.Fatalf("summarizeInfoNames(all empty) = (%d, %#v), want (0, nil)", count, names)
+		}
+	})
+
+	t.Run("over limit returns count only", func(t *testing.T) {
+		values := make([]string, infoSummaryNameListLimit+1)
+		for i := range values {
+			values[i] = "m" + string(rune('a'+i%26))
+			// Ensure uniqueness by appending index.
+			values[i] = values[i] + string(rune('0'+i/26))
+		}
+		count, names := summarizeInfoNames(values)
+		if count != len(values) || names != nil {
+			t.Fatalf("summarizeInfoNames(over limit) = (%d, %#v), want (%d, nil)", count, names, len(values))
+		}
+	})
 }
