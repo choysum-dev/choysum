@@ -154,20 +154,7 @@ func TestResolveScripts_PrefersBuildErrorWhenRuntimeScriptsMissing(t *testing.T)
 func TestResolveScripts_SourceFirstUnlessPhaseEnd(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
-	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
-		t.Fatalf("mkdir modules path: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
-		t.Fatalf("write tsconfig: %v", err)
-	}
-
-	entryPoint := filepath.Join(testRuntimeScope.cfg.ModulesPath, "base", "service", "index.ts")
-	if err := os.MkdirAll(filepath.Dir(entryPoint), 0o755); err != nil {
-		t.Fatalf("mkdir entry dir: %v", err)
-	}
-	if err := os.WriteFile(entryPoint, []byte("export const migration = {}\n"), 0o644); err != nil {
-		t.Fatalf("write entry point: %v", err)
-	}
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
 	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
 
 	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
@@ -443,4 +430,127 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 			t.Fatalf("unexpected failed history row: %#v", row)
 		}
 	})
+}
+
+type failingReloadExecutor struct {
+	inner interface {
+		Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error)
+		GetJsScripts() []*jsengine.JsScript
+		SetJsScripts(scripts []*jsengine.JsScript)
+		Reload(scripts ...*jsengine.JsScript) error
+	}
+	reloadErr error
+	reloaded  [][]*jsengine.JsScript
+}
+
+func (e *failingReloadExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return e.inner.Execute(ctx, request)
+}
+
+func (e *failingReloadExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.inner.GetJsScripts()
+}
+
+func (e *failingReloadExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.inner.SetJsScripts(scripts)
+}
+
+func (e *failingReloadExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.reloaded = append(e.reloaded, append([]*jsengine.JsScript(nil), scripts...))
+	if e.reloadErr != nil {
+		return e.reloadErr
+	}
+	return e.inner.Reload(scripts...)
+}
+
+func TestEquivalentScripts(t *testing.T) {
+	scriptA := &jsengine.JsScript{FileName: "a.js", Content: "a"}
+	scriptB := &jsengine.JsScript{FileName: "b.js", Content: "b"}
+
+	t.Run("equal", func(t *testing.T) {
+		if !equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{scriptA}) {
+			t.Fatal("expected equal")
+		}
+	})
+
+	t.Run("different length", func(t *testing.T) {
+		if equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{scriptA, scriptB}) {
+			t.Fatal("expected not equal for different lengths")
+		}
+	})
+
+	t.Run("different file name", func(t *testing.T) {
+		if equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{scriptB}) {
+			t.Fatal("expected not equal for different file names")
+		}
+	})
+
+	t.Run("different content", func(t *testing.T) {
+		a2 := &jsengine.JsScript{FileName: "a.js", Content: "a2"}
+		if equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{a2}) {
+			t.Fatal("expected not equal for different content")
+		}
+	})
+
+	t.Run("nil elements equal", func(t *testing.T) {
+		if !equivalentScripts([]*jsengine.JsScript{nil}, []*jsengine.JsScript{nil}) {
+			t.Fatal("expected equal for nil elements")
+		}
+	})
+
+	t.Run("nil vs non-nil", func(t *testing.T) {
+		if equivalentScripts([]*jsengine.JsScript{nil}, []*jsengine.JsScript{scriptA}) {
+			t.Fatal("expected not equal for nil vs non-nil")
+		}
+	})
+
+	t.Run("both empty", func(t *testing.T) {
+		if !equivalentScripts(nil, nil) {
+			t.Fatal("expected equal for nil slices")
+		}
+	})
+}
+
+func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: "ok"}, nil
+	}}
+	baseExecutor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
+	prevScript := &jsengine.JsScript{FileName: "prev.js", Content: "prev"}
+	baseExecutor.SetJsScripts([]*jsengine.JsScript{prevScript})
+
+	executor := &failingReloadExecutor{
+		inner:     baseExecutor,
+		reloadErr: errors.New("reload boom"),
+	}
+
+	runner := &Runner{
+		runtimeScope: testRuntimeScope,
+		jsExecutor:   executor,
+		module:       &meta.IrModule{Name: "base", ApplicationStr: "core"},
+	}
+
+	newScript := &jsengine.JsScript{FileName: "new.js", Content: "new"}
+	_, err := runner.executeWithScripts(context.Background(), []*jsengine.JsScript{newScript}, &jsengine.JsRequest{Id: "1", Service: "__choysum_migration__"}, false)
+	if err == nil || !strings.Contains(err.Error(), "reload boom") {
+		t.Fatalf("expected reload error, got %v", err)
+	}
+
+	// Verify executor scripts were restored to previous.
+	restored := executor.GetJsScripts()
+	if len(restored) != 1 || restored[0].FileName != "prev.js" {
+		t.Fatalf("expected previous scripts restored, got %#v", restored)
+	}
+
+	// Verify both reloads happened (new scripts then rollback).
+	if len(executor.reloaded) != 2 {
+		t.Fatalf("expected 2 reload attempts, got %d", len(executor.reloaded))
+	}
+	if executor.reloaded[0][0].FileName != "new.js" {
+		t.Fatalf("expected first reload with new scripts, got %#v", executor.reloaded[0])
+	}
+	if executor.reloaded[1][0].FileName != "prev.js" {
+		t.Fatalf("expected second reload with prev scripts, got %#v", executor.reloaded[1])
+	}
 }

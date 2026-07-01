@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/module/artifact/pipeline"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	moduleplan "github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -504,4 +505,171 @@ func TestReleaseLeaseWithContextFallback_FallbackExpectedErrorsSkipWarn(t *testi
 			}
 		})
 	}
+}
+
+func TestHandlePipelineSharedProgress(t *testing.T) {
+	stages := make(map[string]string)
+	setSpinnerStage := func(stage, message string) {
+		stages[stage] = message
+	}
+
+	t.Run("app stage started with event total", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageAppStageStarted,
+			Total: 3,
+		}, "base", 5, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_stage"]; !strings.Contains(msg, "base: building application artifacts (3 apps)") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("app stage started fallback to affectedAppsCount", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageAppStageStarted,
+			Total: 0,
+		}, "base", 4, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_stage"]; !strings.Contains(msg, "4 apps") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("app build started with progress", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage:   pipeline.ProgressStageAppBuildStarted,
+			App:     "crm",
+			Current: 2,
+			Total:   5,
+		}, "base", 3, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_build"]; !strings.Contains(msg, "crm: building backend app artifacts (2/5)") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("app build started without progress", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageAppBuildStarted,
+			App:   "crm",
+		}, "base", 3, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_build"]; msg != "crm: building backend app artifacts" {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("app build started with empty app falls back to unknown", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageAppBuildStarted,
+		}, "base", 3, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_build"]; !strings.Contains(msg, "unknown: building backend app artifacts") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("app generate started with progress", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage:   pipeline.ProgressStageAppGenerateStarted,
+			App:     "crm",
+			Current: 1,
+			Total:   3,
+		}, "base", 3, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_generate"]; !strings.Contains(msg, "crm: generating app modules (1/3)") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("app generate started without progress", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageAppGenerateStarted,
+			App:   "crm",
+		}, "base", 3, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.app_generate"]; msg != "crm: generating app modules" {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("bundles build started", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageBundlesBuildStarted,
+		}, "base", 7, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.bundles_build"]; !strings.Contains(msg, "apps=7") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("web build started", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageWebBuildStarted,
+		}, "base", 2, setSpinnerStage)
+		if !ok {
+			t.Fatal("expected handled")
+		}
+		if msg := stages["pipeline.web_build"]; !strings.Contains(msg, "apps=2") {
+			t.Fatalf("unexpected message: %q", msg)
+		}
+	})
+
+	t.Run("unknown stage returns false", func(t *testing.T) {
+		for k := range stages {
+			delete(stages, k)
+		}
+		ok := handlePipelineSharedProgress(pipeline.ProgressEvent{
+			Stage: pipeline.ProgressStageAppStageCompleted,
+		}, "base", 3, setSpinnerStage)
+		if ok {
+			t.Fatal("expected unhandled for non-shared stage")
+		}
+		if len(stages) != 0 {
+			t.Fatalf("expected no stage updates, got %#v", stages)
+		}
+	})
 }

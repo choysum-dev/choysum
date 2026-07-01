@@ -2091,3 +2091,53 @@ func writeBlockerFile(t *testing.T, path string) {
 		t.Fatalf("WriteFile(%s): %v", path, err)
 	}
 }
+
+func TestSummarizeInfoNames(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		count, names := summarizeInfoNames(nil)
+		if count != 0 || names != nil {
+			t.Fatalf("summarizeInfoNames(nil) = (%d, %#v), want (0, nil)", count, names)
+		}
+	})
+
+	t.Run("single", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"base"})
+		if count != 1 || len(names) != 1 || names[0] != "base" {
+			t.Fatalf("summarizeInfoNames([base]) = (%d, %#v), want (1, [base])", count, names)
+		}
+	})
+
+	t.Run("dedup", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"base", "base", "core"})
+		if count != 2 || len(names) != 2 || names[0] != "base" || names[1] != "core" {
+			t.Fatalf("summarizeInfoNames([base, base, core]) = (%d, %#v), want (2, [base core])", count, names)
+		}
+	})
+
+	t.Run("empty strings skipped", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"", "base", "", "core"})
+		if count != 2 || len(names) != 2 || names[0] != "base" || names[1] != "core" {
+			t.Fatalf("summarizeInfoNames with empties = (%d, %#v), want (2, [base core])", count, names)
+		}
+	})
+
+	t.Run("all empty returns zero", func(t *testing.T) {
+		count, names := summarizeInfoNames([]string{"", "", ""})
+		if count != 0 || names != nil {
+			t.Fatalf("summarizeInfoNames(all empty) = (%d, %#v), want (0, nil)", count, names)
+		}
+	})
+
+	t.Run("over limit returns count only", func(t *testing.T) {
+		values := make([]string, infoSummaryNameListLimit+1)
+		for i := range values {
+			values[i] = "m" + string(rune('a'+i%26))
+			// Ensure uniqueness by appending index.
+			values[i] = values[i] + string(rune('0'+i/26))
+		}
+		count, names := summarizeInfoNames(values)
+		if count != len(values) || names != nil {
+			t.Fatalf("summarizeInfoNames(over limit) = (%d, %#v), want (%d, nil)", count, names, len(values))
+		}
+	})
+}

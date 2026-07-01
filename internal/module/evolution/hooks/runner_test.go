@@ -4,6 +4,7 @@
 package hooks
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -630,4 +631,122 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 			t.Fatalf("expected one reload for reused scripts, got %d", countingExecutor.reloadCalls)
 		}
 	})
+}
+
+type hooksFailingReloadExecutor struct {
+	inner interface {
+		Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error)
+		GetJsScripts() []*jsengine.JsScript
+		SetJsScripts(scripts []*jsengine.JsScript)
+		Reload(scripts ...*jsengine.JsScript) error
+	}
+	reloadErr error
+	reloaded  [][]*jsengine.JsScript
+}
+
+func (e *hooksFailingReloadExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return e.inner.Execute(ctx, request)
+}
+
+func (e *hooksFailingReloadExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.inner.GetJsScripts()
+}
+
+func (e *hooksFailingReloadExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.inner.SetJsScripts(scripts)
+}
+
+func (e *hooksFailingReloadExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.reloaded = append(e.reloaded, append([]*jsengine.JsScript(nil), scripts...))
+	if e.reloadErr != nil {
+		return e.reloadErr
+	}
+	return e.inner.Reload(scripts...)
+}
+
+func TestRunPhaseNonRequiredHookUnavailable(t *testing.T) {
+	t.Run("non-required phase ignores script resolution failure", func(t *testing.T) {
+		testRuntimeScope := newHooksTestScope(t)
+		var logBuf bytes.Buffer
+		testRuntimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		engine := &hooksSelectiveEngine{}
+		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"}}
+
+		// PostInit is not required by default, and buildModuleEntryScript will fail.
+		err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{})
+		if err != nil {
+			t.Fatalf("expected non-required phase to ignore resolution failure, got %v", err)
+		}
+		logs := logBuf.String()
+		if !strings.Contains(logs, "hook script unavailable") {
+			t.Fatalf("expected unavailable warning in logs, got %q", logs)
+		}
+	})
+
+	t.Run("non-required phase ignores hook execution failure", func(t *testing.T) {
+		testRuntimeScope := newHooksTestScope(t)
+		writeHooksRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+		var logBuf bytes.Buffer
+		testRuntimeScope.logger = slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		engine := &hooksSelectiveEngine{execute: func(_ context.Context, _ *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+			return nil, errors.New("hook execution boom")
+		}}
+		executor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"}}
+
+		err := runner.RunPhase(context.Background(), PhasePostInit, RunOptions{})
+		if err != nil {
+			t.Fatalf("expected non-required phase to ignore execution failure, got %v", err)
+		}
+		logs := logBuf.String()
+		if !strings.Contains(logs, "hook execution failed") {
+			t.Fatalf("expected execution failed warning in logs, got %q", logs)
+		}
+	})
+}
+
+func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
+	testRuntimeScope := newHooksTestScope(t)
+	engine := &hooksSelectiveEngine{execute: func(_ context.Context, _ *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: "1", Result: nil}, nil
+	}}
+	baseExecutor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+	prevScript := &jsengine.JsScript{FileName: "prev.js", Content: "prev"}
+	baseExecutor.SetJsScripts([]*jsengine.JsScript{prevScript})
+
+	executor := &hooksFailingReloadExecutor{
+		inner:     baseExecutor,
+		reloadErr: errors.New("reload boom"),
+	}
+
+	runner := &Runner{
+		runtimeScope: testRuntimeScope,
+		jsExecutor:   executor,
+		module:       &meta.IrModule{Name: "base", ApplicationStr: "core"},
+	}
+
+	lastErr := error(nil)
+	newScript := &jsengine.JsScript{FileName: "new.js", Content: "new"}
+	err := runner.executeWithScripts(context.Background(), []*jsengine.JsScript{newScript}, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
+	if err == nil || !strings.Contains(err.Error(), "reload boom") {
+		t.Fatalf("expected reload error, got %v", err)
+	}
+
+	// Verify executor scripts were restored to previous.
+	restored := executor.GetJsScripts()
+	if len(restored) != 1 || restored[0].FileName != "prev.js" {
+		t.Fatalf("expected previous scripts restored, got %#v", restored)
+	}
+
+	// Verify both reloads happened (new scripts then rollback).
+	if len(executor.reloaded) != 2 {
+		t.Fatalf("expected 2 reload attempts, got %d", len(executor.reloaded))
+	}
+	if executor.reloaded[0][0].FileName != "new.js" {
+		t.Fatalf("expected first reload with new scripts, got %#v", executor.reloaded[0])
+	}
+	if executor.reloaded[1][0].FileName != "prev.js" {
+		t.Fatalf("expected second reload with prev scripts, got %#v", executor.reloaded[1])
+	}
 }
