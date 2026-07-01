@@ -219,6 +219,80 @@ func TestExecuteInstallAppStageSuccess(t *testing.T) {
 	}
 }
 
+func TestExecuteInstallEmitsUnifiedProgressEvents(t *testing.T) {
+	rootDir := t.TempDir()
+	distRoot := filepath.Join(rootDir, "dist")
+	modulesRoot := filepath.Join(rootDir, "modules")
+	root := &meta.IrModule{Name: "base", ApplicationStr: "crm"}
+	pl := planner.Plan{
+		Op:                  planner.OpInstall,
+		ModuleOrder:         []string{"base"},
+		AffectedApps:        []string{"crm"},
+		NeedsGlobalWebBuild: true,
+	}
+
+	var events []ProgressEvent
+	err := Execute(staging.WithTmpRoot(context.Background(), t.TempDir()), pl, root, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) { return root, nil },
+		Install:                        func(module *meta.IrModule) error { return nil },
+		OnProgress: func(event ProgressEvent) {
+			events = append(events, event)
+		},
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   filepath.Join(modulesRoot, "api", "proto", appName),
+				WebDir:     filepath.Join(modulesRoot, "api", "web", appName),
+				ServiceDir: filepath.Join(modulesRoot, "api", "service", appName),
+			}, nil
+		},
+		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+			return writeStageFile(distAppStagingDir, "index.js", "console.log('backend')")
+		},
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "index.proto", "syntax = \"proto3\";"); err != nil {
+				return err
+			}
+			if err := writeStageFile(modulesStaging.WebDir, "index.ts", "export const web = true"); err != nil {
+				return err
+			}
+			return writeStageFile(modulesStaging.ServiceDir, "index.ts", "export const service = true")
+		},
+		BundlesTarget: func() (string, error) { return filepath.Join(distRoot, "bundles"), nil },
+		BuildBackendBundles: func(ctx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
+			return writeStageFile(distBundlesStagingDir, "index.js", "console.log('bundles')")
+		},
+		WebTarget: func() (string, error) { return filepath.Join(distRoot, "web"), nil },
+		GlobalWebBuild: func(ctx context.Context, distWebStagingDir string) error {
+			return writeStageFile(distWebStagingDir, "index.html", "<html></html>")
+		},
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	counts := map[ProgressStage]int{}
+	for _, event := range events {
+		counts[event.Stage]++
+	}
+
+	for _, stage := range []ProgressStage{
+		ProgressStageModuleInstallStarted,
+		ProgressStageModuleInstallCompleted,
+		ProgressStageAppStageStarted,
+		ProgressStageAppBuildStarted,
+		ProgressStageAppGenerateStarted,
+		ProgressStageBundlesBuildStarted,
+		ProgressStageBundlesBuildCompleted,
+		ProgressStageWebBuildStarted,
+		ProgressStageWebBuildCompleted,
+		ProgressStageAppStageCompleted,
+	} {
+		if counts[stage] == 0 {
+			t.Fatalf("expected progress stage %s to be emitted, got events=%v", stage, counts)
+		}
+	}
+}
+
 func TestExecuteInstallAppStageSuccessWithRuntimeProtoTarget(t *testing.T) {
 	rootDir := t.TempDir()
 	distRoot := filepath.Join(rootDir, "dist")

@@ -730,6 +730,16 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			switch strings.TrimSpace(rawStage) {
 			case "planning":
 				return "Planning module operation"
+			case "pipeline.app_stage":
+				return "Building application artifacts"
+			case "pipeline.app_build":
+				return "Building backend app artifacts"
+			case "pipeline.app_generate":
+				return "Generating app modules"
+			case "pipeline.bundles_build":
+				return "Building backend bundles (global)"
+			case "pipeline.web_build":
+				return "Building global web assets (global)"
 			case "finalizing.phase_end":
 				return "Finalizing phase end"
 			case "finalizing.index_refresh":
@@ -895,6 +905,36 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		}
 		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
+			OnProgress: func(event pipeline.ProgressEvent) {
+				appName := strings.TrimSpace(event.App)
+				if appName == "" {
+					appName = "unknown"
+				}
+				switch event.Stage {
+				case pipeline.ProgressStageAppStageStarted:
+					totalApps := event.Total
+					if totalApps < 1 {
+						totalApps = len(opPlan.AffectedApps)
+					}
+					setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
+				case pipeline.ProgressStageAppBuildStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
+				case pipeline.ProgressStageAppGenerateStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
+				case pipeline.ProgressStageBundlesBuildStarted:
+					setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", len(opPlan.AffectedApps)))
+				case pipeline.ProgressStageWebBuildStarted:
+					setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", len(opPlan.AffectedApps)))
+				}
+			},
 			OnInstallProgress: func(progress pipeline.ModuleInstallProgress) {
 				if totalInstallModules == 0 {
 					return
@@ -1090,6 +1130,31 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
 		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
+		rootModuleName := strings.TrimSpace(mod.Name)
+		if rootModuleName == "" {
+			rootModuleName = "unknown"
+		}
+		moduleProgressLine := logutil.ProgressLineFromContext(stageCtx)
+		spinnerTicker := logutil.ProgressTickerFromContext(stageCtx)
+		ownsSpinnerTicker := false
+		if spinnerTicker == nil {
+			spinnerTicker = logutil.NewProgressTicker(moduleProgressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+			ownsSpinnerTicker = true
+		}
+		if ownsSpinnerTicker {
+			defer spinnerTicker.Stop()
+		}
+		setSpinnerStage := func(stage, message string) {
+			_ = stage
+			message = strings.TrimSpace(message)
+			if message == "" {
+				return
+			}
+			spinnerTicker.SetMessage(message)
+		}
+		clearSpinnerState := func() {
+			spinnerTicker.Clear()
+		}
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -1101,7 +1166,53 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 		}
 		started := time.Now()
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
-			Logger:                 logger,
+			Logger: logger,
+			OnProgress: func(event pipeline.ProgressEvent) {
+				appName := strings.TrimSpace(event.App)
+				if appName == "" {
+					appName = "unknown"
+				}
+				moduleName := strings.TrimSpace(event.Module)
+				if moduleName == "" {
+					moduleName = "unknown"
+				}
+				switch event.Stage {
+				case pipeline.ProgressStageModuleUninstallStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: uninstalling modules (%d/%d)", moduleName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: uninstalling module", moduleName))
+				case pipeline.ProgressStageModuleUninstallFailed:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: failed uninstalling module (%d/%d)", moduleName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: failed uninstalling module", moduleName))
+				case pipeline.ProgressStageAppStageStarted:
+					totalApps := event.Total
+					if totalApps < 1 {
+						totalApps = len(plan.AffectedApps)
+					}
+					setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
+				case pipeline.ProgressStageAppBuildStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
+				case pipeline.ProgressStageAppGenerateStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
+				case pipeline.ProgressStageBundlesBuildStarted:
+					setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", len(plan.AffectedApps)))
+				case pipeline.ProgressStageWebBuildStarted:
+					setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", len(plan.AffectedApps)))
+				}
+			},
 			ResolveInstalledModule: m.Load,
 			Install: func(mod *meta.IrModule) error {
 				return m.installWithCtx(mod, opCtx)
@@ -1151,8 +1262,10 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 			},
 		})
 		if err != nil {
+			clearSpinnerState()
 			return err
 		}
+		clearSpinnerState()
 		logger.Info("module operation completed", moduleOperationCompletedInfoAttrs(plan, time.Since(started))...)
 		return nil
 	})
@@ -1249,6 +1362,31 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
 		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
+		rootModuleName := strings.TrimSpace(mod.Name)
+		if rootModuleName == "" {
+			rootModuleName = "unknown"
+		}
+		moduleProgressLine := logutil.ProgressLineFromContext(stageCtx)
+		spinnerTicker := logutil.ProgressTickerFromContext(stageCtx)
+		ownsSpinnerTicker := false
+		if spinnerTicker == nil {
+			spinnerTicker = logutil.NewProgressTicker(moduleProgressLine, logutil.ProgressTickerOptions{Interval: 120 * time.Millisecond})
+			ownsSpinnerTicker = true
+		}
+		if ownsSpinnerTicker {
+			defer spinnerTicker.Stop()
+		}
+		setSpinnerStage := func(stage, message string) {
+			_ = stage
+			message = strings.TrimSpace(message)
+			if message == "" {
+				return
+			}
+			spinnerTicker.SetMessage(message)
+		}
+		clearSpinnerState := func() {
+			spinnerTicker.Clear()
+		}
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
@@ -1260,7 +1398,53 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}
 		started := time.Now()
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
-			Logger:                 logger,
+			Logger: logger,
+			OnProgress: func(event pipeline.ProgressEvent) {
+				appName := strings.TrimSpace(event.App)
+				if appName == "" {
+					appName = "unknown"
+				}
+				moduleName := strings.TrimSpace(event.Module)
+				if moduleName == "" {
+					moduleName = "unknown"
+				}
+				switch event.Stage {
+				case pipeline.ProgressStageModuleUpgradeStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading modules (%d/%d)", moduleName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: upgrading module", moduleName))
+				case pipeline.ProgressStageModuleUpgradeFailed:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module (%d/%d)", moduleName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
+				case pipeline.ProgressStageAppStageStarted:
+					totalApps := event.Total
+					if totalApps < 1 {
+						totalApps = len(plan.AffectedApps)
+					}
+					setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
+				case pipeline.ProgressStageAppBuildStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
+				case pipeline.ProgressStageAppGenerateStarted:
+					if event.Total > 0 && event.Current > 0 {
+						setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
+						return
+					}
+					setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
+				case pipeline.ProgressStageBundlesBuildStarted:
+					setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", len(plan.AffectedApps)))
+				case pipeline.ProgressStageWebBuildStarted:
+					setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", len(plan.AffectedApps)))
+				}
+			},
 			ResolveInstalledModule: m.Load,
 			Upgrade: func(mod *meta.IrModule) error {
 				return m.upgradeWithCtx(mod, opCtx)
@@ -1303,8 +1487,10 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			},
 		})
 		if err != nil {
+			clearSpinnerState()
 			return rollbackUpgradeOrigin(err)
 		}
+		clearSpinnerState()
 		for _, moduleName := range plan.ModuleOrder {
 			mod, err := m.Load(moduleName)
 			if err != nil {

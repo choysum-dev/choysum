@@ -24,6 +24,8 @@ type Callbacks struct {
 	// OnInstallProgress receives install-loop progress events for rendering
 	// interactive UI feedback (for example a single-line spinner).
 	OnInstallProgress func(progress ModuleInstallProgress)
+	// OnProgress receives unified stage progress events across pipeline execution.
+	OnProgress func(event ProgressEvent)
 
 	ResolveInstallModuleFromOrigin func(ctx context.Context, name string) (*meta.IrModule, error)
 	ResolveInstalledModule         func(name string) (*meta.IrModule, error)
@@ -74,6 +76,42 @@ type ModuleInstallProgress struct {
 	Total    int
 	Module   string
 	Stage    ModuleInstallProgressStage
+	Duration time.Duration
+	Err      error
+}
+
+// ProgressStage labels coarse-grained pipeline stages for UX progress rendering.
+type ProgressStage string
+
+const (
+	ProgressStageModuleInstallStarted     ProgressStage = "module.install.started"
+	ProgressStageModuleInstallCompleted   ProgressStage = "module.install.completed"
+	ProgressStageModuleInstallFailed      ProgressStage = "module.install.failed"
+	ProgressStageModuleUninstallStarted   ProgressStage = "module.uninstall.started"
+	ProgressStageModuleUninstallCompleted ProgressStage = "module.uninstall.completed"
+	ProgressStageModuleUninstallFailed    ProgressStage = "module.uninstall.failed"
+	ProgressStageModuleUpgradeStarted     ProgressStage = "module.upgrade.started"
+	ProgressStageModuleUpgradeCompleted   ProgressStage = "module.upgrade.completed"
+	ProgressStageModuleUpgradeFailed      ProgressStage = "module.upgrade.failed"
+	ProgressStageAppStageStarted          ProgressStage = "app.stage.started"
+	ProgressStageAppStageCompleted        ProgressStage = "app.stage.completed"
+	ProgressStageAppBuildStarted          ProgressStage = "app.build.started"
+	ProgressStageAppBuildCompleted        ProgressStage = "app.build.completed"
+	ProgressStageAppGenerateStarted       ProgressStage = "app.generate.started"
+	ProgressStageAppGenerateCompleted     ProgressStage = "app.generate.completed"
+	ProgressStageBundlesBuildStarted      ProgressStage = "bundles.build.started"
+	ProgressStageBundlesBuildCompleted    ProgressStage = "bundles.build.completed"
+	ProgressStageWebBuildStarted          ProgressStage = "web.build.started"
+	ProgressStageWebBuildCompleted        ProgressStage = "web.build.completed"
+)
+
+// ProgressEvent carries stage transition details for user-facing progress views.
+type ProgressEvent struct {
+	Stage    ProgressStage
+	Current  int
+	Total    int
+	App      string
+	Module   string
 	Duration time.Duration
 	Err      error
 }
@@ -181,6 +219,12 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			return
 		}
 		logger.Log(ctx, level, msg, normalizeLogAttrs(attrs)...)
+	}
+	emitProgress := func(event ProgressEvent) {
+		if cb.OnProgress == nil {
+			return
+		}
+		cb.OnProgress(event)
 	}
 
 	checkCtx := func() error {
@@ -388,6 +432,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				attrs = append(attrs, "apps", infoApps)
 			}
 			logStep(slog.LevelDebug, "pipeline app stage started", attrs...)
+			emitProgress(ProgressEvent{Stage: ProgressStageAppStageStarted, Total: appsCount})
 		}
 
 		type appStages struct {
@@ -493,6 +538,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		}
 
 		// Phase 1: prepare + build/generate into staging dirs (no commits).
+		appIndex := 0
 		for _, app := range apps {
 			if err := checkCtx(); err != nil {
 				return err
@@ -502,6 +548,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				continue
 			}
 			seen[app] = true
+			appIndex++
 
 			distAppDir, modulesTargets, err := cb.AppTargets(app)
 			if err != nil {
@@ -585,17 +632,21 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			stages = append(stages, appStages{app: app, distStage: distStage, protoStage: protoStage, runtimeProtoStage: runtimeProtoStage, webStage: webStage, serviceStage: serviceStage})
 
 			if distStage != nil {
+				emitProgress(ProgressEvent{Stage: ProgressStageAppBuildStarted, App: app, Current: appIndex, Total: appsCount})
 				buildStarted := time.Now()
 				if err := cb.BuildBackendApp(stageCtx, app, distStage.StagingDir); err != nil {
 					for i := len(stages) - 1; i >= 0; i-- {
 						abortStages(stages[i])
 					}
+					emitProgress(ProgressEvent{Stage: ProgressStageAppBuildCompleted, App: app, Current: appIndex, Total: appsCount, Duration: time.Since(buildStarted), Err: err})
 					logStep(slog.LevelError, "pipeline backend build failed", "app", app, "duration", time.Since(buildStarted), "error", err)
 					return err
 				}
+				emitProgress(ProgressEvent{Stage: ProgressStageAppBuildCompleted, App: app, Current: appIndex, Total: appsCount, Duration: time.Since(buildStarted)})
 				logStep(slog.LevelDebug, "pipeline backend built", "app", app, "duration", time.Since(buildStarted))
 			}
 
+			emitProgress(ProgressEvent{Stage: ProgressStageAppGenerateStarted, App: app, Current: appIndex, Total: appsCount})
 			genStarted := time.Now()
 			distStagingDir := ""
 			if distStage != nil {
@@ -609,6 +660,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				for i := len(stages) - 1; i >= 0; i-- {
 					abortStages(stages[i])
 				}
+				emitProgress(ProgressEvent{Stage: ProgressStageAppGenerateCompleted, App: app, Current: appIndex, Total: appsCount, Duration: time.Since(genStarted), Err: err})
 				logStep(slog.LevelError, "pipeline app generation failed", "app", app, "duration", time.Since(genStarted), "error", err)
 				return err
 			}
@@ -617,10 +669,12 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 					for i := len(stages) - 1; i >= 0; i-- {
 						abortStages(stages[i])
 					}
+					emitProgress(ProgressEvent{Stage: ProgressStageAppGenerateCompleted, App: app, Current: appIndex, Total: appsCount, Duration: time.Since(genStarted), Err: err})
 					logStep(slog.LevelError, "pipeline runtime proto sync failed", "app", app, "duration", time.Since(genStarted), "error", err)
 					return err
 				}
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageAppGenerateCompleted, App: app, Current: appIndex, Total: appsCount, Duration: time.Since(genStarted)})
 			logStep(slog.LevelDebug, "pipeline app generated", "app", app, "duration", time.Since(genStarted))
 		}
 		if appsCount > 0 {
@@ -630,6 +684,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			}
 			attrs = append(attrs, "duration", time.Since(appStageStarted))
 			logStep(slog.LevelDebug, "pipeline app stage completed", attrs...)
+			emitProgress(ProgressEvent{Stage: ProgressStageAppStageCompleted, Total: appsCount, Duration: time.Since(appStageStarted)})
 		}
 
 		// Phase 2: commit all apps after all succeeded.
@@ -691,15 +746,18 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 					affectedProtoStaging[s.app] = s.protoStage.StagingDir
 				}
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageBundlesBuildStarted})
 			bundlesBuildStarted := time.Now()
 			if err := cb.BuildBackendBundles(stageCtx, bundlesStage.StagingDir, affectedProtoStaging); err != nil {
 				for i := len(stages) - 1; i >= 0; i-- {
 					abortStages(stages[i])
 				}
+				emitProgress(ProgressEvent{Stage: ProgressStageBundlesBuildCompleted, Duration: time.Since(bundlesBuildStarted), Err: err})
 				logStep(slog.LevelError, "pipeline bundles build failed", "duration", time.Since(bundlesBuildStarted), "error", err)
 				rollbackCommitted()
 				return err
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageBundlesBuildCompleted, Duration: time.Since(bundlesBuildStarted)})
 			logStep(slog.LevelInfo, "pipeline bundles built", "duration", time.Since(bundlesBuildStarted))
 
 			bundlesCommitStarted := time.Now()
@@ -811,12 +869,15 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		defer webStage.Abort()
 		logStep(slog.LevelDebug, "pipeline prepared web staging", "duration", time.Since(prepareWebStarted), "web_target", distWebDir)
 
+		emitProgress(ProgressEvent{Stage: ProgressStageWebBuildStarted})
 		webBuildStarted := time.Now()
 		if err := cb.GlobalWebBuild(stageCtx, webStage.StagingDir); err != nil {
+			emitProgress(ProgressEvent{Stage: ProgressStageWebBuildCompleted, Duration: time.Since(webBuildStarted), Err: err})
 			logStep(slog.LevelError, "pipeline web build failed", "duration", time.Since(webBuildStarted), "error", err)
 			rollbackCommitted()
 			return err
 		}
+		emitProgress(ProgressEvent{Stage: ProgressStageWebBuildCompleted, Duration: time.Since(webBuildStarted)})
 		logStep(slog.LevelInfo, "pipeline web built", "duration", time.Since(webBuildStarted))
 
 		webCommitStarted := time.Now()
@@ -877,8 +938,10 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 					Stage:   ModuleInstallProgressStageStarted,
 				})
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallStarted, Current: index + 1, Total: totalModules, Module: moduleName})
 			installStarted := time.Now()
 			if err := cb.Install(mod); err != nil {
+				emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallFailed, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(installStarted), Err: err})
 				if cb.OnInstallProgress != nil {
 					cb.OnInstallProgress(ModuleInstallProgress{
 						Current:  index + 1,
@@ -892,6 +955,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				return err
 			}
 			installDuration := time.Since(installStarted)
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallCompleted, Current: index + 1, Total: totalModules, Module: moduleName, Duration: installDuration})
 			logStep(slog.LevelInfo, "module installed",
 				"installed_module", mod.Name,
 				"duration_ms", installDuration.Milliseconds(),
@@ -934,7 +998,8 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			return fmt.Errorf("Uninstall callback is required for uninstall")
 		}
 		moduleStageStarted := logModuleStageStarted()
-		for _, name := range plan.ModuleOrder {
+		totalModules := len(plan.ModuleOrder)
+		for index, name := range plan.ModuleOrder {
 			if err := checkCtx(); err != nil {
 				return err
 			}
@@ -951,9 +1016,17 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if mod == nil {
 				continue
 			}
+			moduleName := strings.TrimSpace(mod.Name)
+			if moduleName == "" {
+				moduleName = strings.TrimSpace(name)
+			}
+			uninstallStarted := time.Now()
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleUninstallStarted, Current: index + 1, Total: totalModules, Module: moduleName})
 			if err := cb.Uninstall(mod); err != nil {
+				emitProgress(ProgressEvent{Stage: ProgressStageModuleUninstallFailed, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(uninstallStarted), Err: err})
 				return err
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleUninstallCompleted, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(uninstallStarted)})
 		}
 		logModuleStageCompleted(moduleStageStarted)
 		return runAppStage()
@@ -966,7 +1039,8 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			return fmt.Errorf("Upgrade callback is required for upgrade")
 		}
 		moduleStageStarted := logModuleStageStarted()
-		for _, name := range plan.ModuleOrder {
+		totalModules := len(plan.ModuleOrder)
+		for index, name := range plan.ModuleOrder {
 			if err := checkCtx(); err != nil {
 				return err
 			}
@@ -983,10 +1057,17 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if mod == nil {
 				continue
 			}
+			moduleName := strings.TrimSpace(mod.Name)
+			if moduleName == "" {
+				moduleName = strings.TrimSpace(name)
+			}
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleUpgradeStarted, Current: index + 1, Total: totalModules, Module: moduleName})
 			upgradeStarted := time.Now()
 			if err := cb.Upgrade(mod); err != nil {
+				emitProgress(ProgressEvent{Stage: ProgressStageModuleUpgradeFailed, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(upgradeStarted), Err: err})
 				return err
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleUpgradeCompleted, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(upgradeStarted)})
 			logStep(slog.LevelInfo, "module upgraded",
 				"module", mod.Name,
 				"duration_ms", time.Since(upgradeStarted).Milliseconds(),
