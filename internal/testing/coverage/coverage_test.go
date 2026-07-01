@@ -320,7 +320,7 @@ func TestRunCoverageInstrumentWithNodeMapsMissingModuleError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected missing module error")
 	}
-	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+	if !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
 		t.Fatalf("expected missing module mapping, got %v", err)
 	}
 }
@@ -340,7 +340,7 @@ func TestRunCoverageInstrumentWithNodeMapsMissingModuleSentinelError(t *testing.
 	if err == nil {
 		t.Fatal("expected missing module error")
 	}
-	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+	if !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
 		t.Fatalf("expected missing module mapping, got %v", err)
 	}
 }
@@ -431,7 +431,7 @@ func TestRunCoverageInstrumentWithNodeFailsFastWhenModuleRootMissing(t *testing.
 	if err == nil {
 		t.Fatal("expected missing module-root error")
 	}
-	if !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+	if !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
 		t.Fatalf("expected missing module guidance, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "npm install -g istanbul-lib-instrument") {

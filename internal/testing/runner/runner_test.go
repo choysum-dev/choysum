@@ -447,9 +447,11 @@ func TestRun(t *testing.T) {
 		}
 		errText := stderr.String()
 		for _, want := range []string{
-			"Error: preflight failed for auth. tests were not started.",
-			"missing required modules: istanbul-lib-instrument",
+			"Error: unit preflight failed for auth. tests were not started.",
+			"missing 1 required module(s): istanbul-lib-instrument",
 			"npm install -g istanbul-lib-instrument",
+			"retry:",
+			"go run . test unit auth",
 			"additional preflight errors:",
 			"- frontend dependency preflight:",
 			"frontend deps missing",
@@ -496,7 +498,7 @@ func TestRun(t *testing.T) {
 			t.Fatalf("expected backend not to run after preflight failures, got %d calls", backendCalls)
 		}
 		errText := stderr.String()
-		if strings.Count(errText, "missing required modules: istanbul-lib-instrument") != 2 {
+		if strings.Count(errText, "missing 1 required module(s): istanbul-lib-instrument") != 2 {
 			t.Fatalf("expected per-app coverage preflight output for two apps, got %q", errText)
 		}
 	})

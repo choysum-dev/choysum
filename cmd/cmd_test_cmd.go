@@ -267,6 +267,12 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 				cmd.SilenceUsage = true
 				return xfmt.Errorf("test run canceled: %w", err)
 			}
+			if strings.TrimSpace(err.Error()) == "tests failed" {
+				// Detailed per-app failures are already printed by the runner; suppress
+				// the trailing generic "Error: tests failed" line from Cobra.
+				cmd.SilenceUsage = true
+				cmd.SilenceErrors = true
+			}
 			return err
 		},
 	}

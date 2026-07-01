@@ -185,7 +185,7 @@ func TestRunOneAppBackendTestsWithInjectedHooks(t *testing.T) {
 		if failed {
 			t.Fatalf("expected failed=false on preflight error")
 		}
-		if err == nil || !strings.Contains(err.Error(), "missing required modules: istanbul-lib-instrument") {
+		if err == nil || !strings.Contains(err.Error(), "missing 1 required module(s): istanbul-lib-instrument") {
 			t.Fatalf("expected coverage preflight error, got %v", err)
 		}
 		if makeScopeCalled {
