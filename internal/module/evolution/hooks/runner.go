@@ -239,20 +239,6 @@ func (r *Runner) buildHookWrapperScript() *jsengine.JsScript {
 	return &jsengine.JsScript{FileName: "hook_wrapper.js", Content: content}
 }
 
-func (r *Runner) buildHookEnvScript() *jsengine.JsScript {
-	app := strings.TrimSpace(r.module.ApplicationStr)
-	if app == "" {
-		app = strings.TrimSpace(r.module.Name)
-	}
-	moduleName := strings.TrimSpace(r.module.Name)
-	if app == "" || moduleName == "" {
-		return nil
-	}
-	content := fmt.Sprintf(`globalThis.CHOYSUM_APP_NAME = %q;
-globalThis.CHOYSUM_MODULE_NAME = %q;`, app, moduleName)
-	return &jsengine.JsScript{FileName: "hook_env.js", Content: content}
-}
-
 type execCtxPayload struct {
 	requestId string
 	payload   map[string]any

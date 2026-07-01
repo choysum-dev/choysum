@@ -266,17 +266,11 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	testRuntimeScope.cfg.Auth.InternalKey = "internal-secret"
 	runner := &Runner{runtimeScope: testRuntimeScope, module: &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.0.0"}}
 
-	if script := runner.buildHookEnvScript(); script == nil || !strings.Contains(script.Content, `CHOYSUM_MODULE_NAME = "base"`) {
-		t.Fatalf("unexpected hook env script: %#v", script)
-	}
 	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
 		t.Fatalf("unexpected hook wrapper script: %#v", script)
 	}
 	runner.module.ApplicationStr = ""
 	runner.module.Name = ""
-	if script := runner.buildHookEnvScript(); script != nil {
-		t.Fatalf("expected nil hook env script when module name is missing, got %#v", script)
-	}
 	if script := runner.buildHookWrapperScript(); script == nil {
 		t.Fatalf("expected generic hook wrapper script when module info is missing")
 	}

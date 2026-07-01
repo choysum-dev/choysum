@@ -192,13 +192,9 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithTarget("es2020"),
-		}
-		if b.module != nil {
-			resolverOpts = append(resolverOpts,
-				esmresolver.WithModulePath(b.module.Path),
-				esmresolver.WithModuleName(b.module.Name),
-				esmresolver.WithApplicationName(b.module.ApplicationStr),
-			)
+			esmresolver.WithModulePath(b.module.Path),
+			esmresolver.WithModuleName(b.module.Name),
+			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
 		if b.runtimeScope != nil {
 			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
@@ -215,13 +211,9 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithTarget("es2020"),
-		}
-		if b.module != nil {
-			resolverOpts = append(resolverOpts,
-				esmresolver.WithModulePath(b.module.Path),
-				esmresolver.WithModuleName(b.module.Name),
-				esmresolver.WithApplicationName(b.module.ApplicationStr),
-			)
+			esmresolver.WithModulePath(b.module.Path),
+			esmresolver.WithModuleName(b.module.Name),
+			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
 		if b.runtimeScope != nil {
 			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))

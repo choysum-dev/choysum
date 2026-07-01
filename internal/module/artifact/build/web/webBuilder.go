@@ -2230,13 +2230,9 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		// other plugins process them.
 		webResolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-		}
-		if b.module != nil {
-			webResolverOpts = append(webResolverOpts,
-				esmresolver.WithModulePath(b.module.Path),
-				esmresolver.WithModuleName(b.module.Name),
-				esmresolver.WithApplicationName(b.module.ApplicationStr),
-			)
+			esmresolver.WithModulePath(b.module.Path),
+			esmresolver.WithModuleName(b.module.Name),
+			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
@@ -2252,13 +2248,9 @@ func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugin
 		// other plugins process them.
 		webResolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
-		}
-		if b.module != nil {
-			webResolverOpts = append(webResolverOpts,
-				esmresolver.WithModulePath(b.module.Path),
-				esmresolver.WithModuleName(b.module.Name),
-				esmresolver.WithApplicationName(b.module.ApplicationStr),
-			)
+			esmresolver.WithModulePath(b.module.Path),
+			esmresolver.WithModuleName(b.module.Name),
+			esmresolver.WithApplicationName(b.module.ApplicationStr),
 		}
 		if b.runtimeScope != nil {
 			webResolverOpts = append(webResolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
