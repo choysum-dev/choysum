@@ -209,7 +209,7 @@ func (m *moduleInstaller) install() error {
 				hookScripts = append(hookScripts, script)
 			}
 		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePreInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
 			return xfmt.Errorf("error running pre_init hook for module %s: %w", m.module.Name, err)
 		}
 	}
@@ -262,7 +262,7 @@ func (m *moduleInstaller) install() error {
 				hookScripts = append(hookScripts, script)
 			}
 		}
-		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts}); err != nil {
+		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
 			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
 		}
 	}
