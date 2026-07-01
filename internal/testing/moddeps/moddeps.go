@@ -22,18 +22,25 @@ type modulePackageManifest struct {
 
 // MergeRequiredModules merges multiple module lists, removes duplicates, and sorts results.
 func MergeRequiredModules(moduleLists ...[]string) []string {
-	totalLen := 0
+	seen := make(map[string]struct{})
 	for _, modules := range moduleLists {
-		totalLen += len(modules)
+		for _, moduleName := range modules {
+			moduleName = strings.TrimSpace(moduleName)
+			if moduleName == "" {
+				continue
+			}
+			seen[moduleName] = struct{}{}
+		}
 	}
-	if totalLen == 0 {
+	if len(seen) == 0 {
 		return nil
 	}
-	merged := make([]string, 0, totalLen)
-	for _, modules := range moduleLists {
-		merged = append(merged, modules...)
+	out := make([]string, 0, len(seen))
+	for moduleName := range seen {
+		out = append(out, moduleName)
 	}
-	return normalizeStringList(merged)
+	sort.Strings(out)
+	return out
 }
 
 // CollectExternalModuleDependencies scans package.json files under modulesPath and collects
@@ -87,30 +94,6 @@ func CollectExternalModuleDependencies(modulesPath string, moduleNames []string,
 	}
 	sort.Strings(out)
 	return out, nil
-}
-
-func normalizeStringList(values []string) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	normalizedValues := make([]string, 0, len(values))
-	seenValues := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			continue
-		}
-		if _, exists := seenValues[value]; exists {
-			continue
-		}
-		seenValues[value] = struct{}{}
-		normalizedValues = append(normalizedValues, value)
-	}
-	if len(normalizedValues) == 0 {
-		return nil
-	}
-	sort.Strings(normalizedValues)
-	return normalizedValues
 }
 
 func appendExternalDependencyNames(out map[string]struct{}, dependencies map[string]string) {
