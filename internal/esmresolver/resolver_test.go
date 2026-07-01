@@ -550,6 +550,70 @@ func TestResolver_Plugin_OnResolve_OnLoad_Integration(t *testing.T) {
 	}
 }
 
+func TestResolver_Plugin_RewritesVueI18nToProdEntry(t *testing.T) {
+	var (
+		mu            sync.Mutex
+		requestedPath string
+		requestedTgt  string
+	)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		requestedPath = r.URL.Path
+		requestedTgt = r.URL.Query().Get("target")
+		mu.Unlock()
+		fmt.Fprint(w, "export const createI18n = () => ({});")
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	lockPath := filepath.Join(dir, "esm.lock")
+	lock := &EsmLockfile{
+		Version: lockfileVersion,
+		Packages: map[string]LockEntry{
+			"vue-i18n": {Version: "11.4.6"},
+		},
+	}
+	if err := WriteLockfile(lockPath, lock); err != nil {
+		t.Fatal(err)
+	}
+
+	r := New(
+		WithUpstream(server.URL),
+		WithCacheDir(dir),
+		WithTarget("es2020"),
+		WithLockfile(lockPath),
+	)
+
+	entry := filepath.Join(dir, "entry.ts")
+	if err := os.WriteFile(entry, []byte(`import { createI18n } from "vue-i18n"; console.log(createI18n);`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result := api.Build(api.BuildOptions{
+		EntryPoints: []string{entry},
+		Bundle:      true,
+		Write:       false,
+		Plugins:     []api.Plugin{r.Plugin()},
+		Platform:    api.PlatformBrowser,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("build failed: %v", result.Errors)
+	}
+
+	mu.Lock()
+	gotPath := requestedPath
+	gotTarget := requestedTgt
+	mu.Unlock()
+
+	if gotPath != "/vue-i18n@11.4.6/dist/vue-i18n.esm-browser.prod.js" {
+		t.Fatalf("requested path = %q, want /vue-i18n@11.4.6/dist/vue-i18n.esm-browser.prod.js", gotPath)
+	}
+	if gotTarget != "es2020" {
+		t.Fatalf("requested target = %q, want es2020", gotTarget)
+	}
+}
+
 func TestResolver_Plugin_CSS_External(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, ".css") {
@@ -1689,6 +1753,68 @@ func TestLockedSpecifier_NoLockfile(t *testing.T) {
 	}
 	if got != "vue" {
 		t.Fatalf("lockedSpecifier = %q, want vue", got)
+	}
+}
+
+func TestRewriteProductionSpecifier(t *testing.T) {
+	tests := []struct {
+		name string
+		spec string
+		want string
+	}{
+		{
+			name: "vue i18n bare",
+			spec: "vue-i18n",
+			want: "vue-i18n/dist/vue-i18n.esm-browser.prod.js",
+		},
+		{
+			name: "vue i18n versioned",
+			spec: "vue-i18n@11.4.6",
+			want: "vue-i18n@11.4.6/dist/vue-i18n.esm-browser.prod.js",
+		},
+		{
+			name: "preserve query and hash",
+			spec: "vue-i18n?target=es2022#frag",
+			want: "vue-i18n/dist/vue-i18n.esm-browser.prod.js?target=es2022#frag",
+		},
+		{
+			name: "explicit subpath untouched",
+			spec: "vue-i18n/dist/vue-i18n.esm-bundler.js",
+			want: "vue-i18n/dist/vue-i18n.esm-bundler.js",
+		},
+		{
+			name: "empty specifier",
+			spec: "",
+			want: "",
+		},
+		{
+			name: "versioned with subpath untouched",
+			spec: "vue-i18n@11.4.6/dist/foo.js",
+			want: "vue-i18n@11.4.6/dist/foo.js",
+		},
+		{
+			name: "hash only no query",
+			spec: "vue-i18n#frag",
+			want: "vue-i18n/dist/vue-i18n.esm-browser.prod.js#frag",
+		},
+		{
+			name: "whitespace trimmed",
+			spec: " vue-i18n ",
+			want: "vue-i18n/dist/vue-i18n.esm-browser.prod.js",
+		},
+		{
+			name: "other package untouched",
+			spec: "vue",
+			want: "vue",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := rewriteProductionSpecifier(tt.spec); got != tt.want {
+				t.Fatalf("rewriteProductionSpecifier(%q) = %q, want %q", tt.spec, got, tt.want)
+			}
+		})
 	}
 }
 

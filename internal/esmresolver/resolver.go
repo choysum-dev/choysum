@@ -45,6 +45,11 @@ type Metrics struct {
 
 const maxResolverDownloadBytes int64 = 50 * 1024 * 1024
 
+const (
+	vueI18nBareSpecifier = "vue-i18n"
+	vueI18nProdEntryPath = "dist/vue-i18n.esm-browser.prod.js"
+)
+
 // Snapshot returns a point-in-time copy of the metrics.
 func (m *Metrics) Snapshot() (hit, miss, downloads, errors int64, downloadMs int64) {
 	return m.CacheHit.Load(), m.CacheMiss.Load(), m.Downloads.Load(), m.Errors.Load(), m.DownloadDurationMs.Load()
@@ -300,6 +305,7 @@ func (r *Resolver) Plugin() api.Plugin {
 					r.metrics.Errors.Add(1)
 					return api.OnResolveResult{}, r.formatError("lockfile error", args.Path, r.effectiveLockfilePath(), lockErr.Error())
 				}
+				spec = rewriteProductionSpecifier(spec)
 
 				// CSS imports from any target are external.
 				if args.Kind == api.ResolveCSSURLToken {
@@ -475,6 +481,34 @@ func (r *Resolver) lockedSpecifier(specifier string) (string, error) {
 		return "", err
 	}
 	return LookupLockedSpec(lock, specifier), nil
+}
+
+// rewriteProductionSpecifier rewrites selected package bare specifiers to
+// explicit production entry files when upstream defaults are known to resolve
+// to development variants.
+func rewriteProductionSpecifier(specifier string) string {
+	specifier = strings.TrimSpace(specifier)
+	if specifier == "" {
+		return specifier
+	}
+
+	suffixStart := len(specifier)
+	if i := strings.IndexAny(specifier, "?#"); i >= 0 {
+		suffixStart = i
+	}
+	core := specifier[:suffixStart]
+	suffix := specifier[suffixStart:]
+
+	base, subpath, _ := strings.Cut(core, "/")
+
+	if base != vueI18nBareSpecifier && !strings.HasPrefix(base, vueI18nBareSpecifier+"@") {
+		return specifier
+	}
+	if strings.TrimSpace(subpath) != "" {
+		return specifier
+	}
+
+	return base + "/" + vueI18nProdEntryPath + suffix
 }
 
 // resolveInNamespace handles import resolution for files already inside the
