@@ -29,12 +29,15 @@ jobs:
 
   prepare-root-node-modules:
     name: nightly / prepare-root-node-modules
+    needs:
+      - discover-modules
     uses: ./.github/workflows/prepare-root-node-modules.yml
     with:
       run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: nightly-root-node-modules
       archive_path: .choysum/tmp/nightly-root-node-modules.tar.gz
       retention_days: 1
+      target_modules_json: ${{ needs.discover-modules.outputs.e2e_modules_json }}
 
   discover-modules:
     name: nightly / discover-modules
