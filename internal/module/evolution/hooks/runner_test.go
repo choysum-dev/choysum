@@ -87,6 +87,33 @@ type hooksSelectiveEngine struct {
 	execute       func(ctx context.Context, req *jsengine.JsRequest, loaded []*jsengine.JsScript) (*jsengine.JsResponse, error)
 }
 
+type hooksReloadCountingExecutor struct {
+	inner interface {
+		Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error)
+		GetJsScripts() []*jsengine.JsScript
+		SetJsScripts(scripts []*jsengine.JsScript)
+		Reload(scripts ...*jsengine.JsScript) error
+	}
+	reloadCalls int
+}
+
+func (e *hooksReloadCountingExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return e.inner.Execute(ctx, request)
+}
+
+func (e *hooksReloadCountingExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.inner.GetJsScripts()
+}
+
+func (e *hooksReloadCountingExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.inner.SetJsScripts(scripts)
+}
+
+func (e *hooksReloadCountingExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.reloadCalls++
+	return e.inner.Reload(scripts...)
+}
+
 func (e *hooksSelectiveEngine) Load(scripts []*jsengine.JsScript) error {
 	e.loadedScripts = append([]*jsengine.JsScript(nil), scripts...)
 	return nil
@@ -242,7 +269,7 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	if script := runner.buildHookEnvScript(); script == nil || !strings.Contains(script.Content, `CHOYSUM_MODULE_NAME = "base"`) {
 		t.Fatalf("unexpected hook env script: %#v", script)
 	}
-	if script := runner.buildHookWrapperScript(PhasePostInit); script == nil || !strings.Contains(script.Content, `__hookRegistry__["post_init"]`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
+	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
 		t.Fatalf("unexpected hook wrapper script: %#v", script)
 	}
 	runner.module.ApplicationStr = ""
@@ -250,8 +277,8 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	if script := runner.buildHookEnvScript(); script != nil {
 		t.Fatalf("expected nil hook env script when module name is missing, got %#v", script)
 	}
-	if script := runner.buildHookWrapperScript(PhasePostInit); script != nil {
-		t.Fatalf("expected nil hook wrapper when module info is missing, got %#v", script)
+	if script := runner.buildHookWrapperScript(); script == nil {
+		t.Fatalf("expected generic hook wrapper script when module info is missing")
 	}
 
 	runner.module.Name = "base"
@@ -467,7 +494,7 @@ func TestRunnerRunPhaseExecutionPaths(t *testing.T) {
 		if !reflect.DeepEqual(executor.GetJsScripts(), prevScripts) {
 			t.Fatalf("expected scripts restored, got %#v", executor.GetJsScripts())
 		}
-		if got := loadedByService["__choysum_hook__"]; !reflect.DeepEqual(got, []string{"hook_env.js", bundlePath, "hook_wrapper.js"}) {
+		if got := loadedByService["__choysum_hook__"]; !reflect.DeepEqual(got, []string{bundlePath, "hook_wrapper.js"}) {
 			t.Fatalf("unexpected loaded scripts: %#v", got)
 		}
 		if len(requests) != 1 || requests[0].Service != "__choysum_hook__" {
@@ -540,7 +567,7 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 
-		err := runner.executeWithScripts(context.Background(), []*jsengine.JsScript{{FileName: "hook.js", Content: "1"}}, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr)
+		err := runner.executeWithScripts(context.Background(), []*jsengine.JsScript{{FileName: "hook.js", Content: "1"}}, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
 		if !errors.Is(err, errHookRetriable) {
 			t.Fatalf("expected retriable error, got %v", err)
 		}
@@ -561,7 +588,7 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 
-		err := runner.executeWithScripts(context.Background(), nil, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr)
+		err := runner.executeWithScripts(context.Background(), nil, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
 		if !errors.Is(err, errHookRetriable) {
 			t.Fatalf("expected retriable timeout, got %v", err)
 		}
@@ -579,12 +606,34 @@ func TestExecuteWithScriptsHandlesFailureModes(t *testing.T) {
 		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: executor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
 		lastErr := error(nil)
 
-		err := runner.executeWithScripts(context.Background(), nil, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr)
+		err := runner.executeWithScripts(context.Background(), nil, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, false)
 		if err == nil || errors.Is(err, errHookRetriable) || !strings.Contains(err.Error(), "HOOK_UNSUPPORTED") {
 			t.Fatalf("expected non-retriable unsupported error, got %v", err)
 		}
 		if lastErr == nil || !strings.Contains(lastErr.Error(), "HOOK_UNSUPPORTED") {
 			t.Fatalf("unexpected lastErr: %v", lastErr)
+		}
+	})
+
+	t.Run("reuses loaded scripts when requested", func(t *testing.T) {
+		testRuntimeScope := newHooksTestScope(t)
+		engine := &hooksSelectiveEngine{execute: func(_ context.Context, _ *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+			return &jsengine.JsResponse{Id: "1", Result: nil}, nil
+		}}
+		baseExecutor := newHooksTestExecutorWithEngine(t, testRuntimeScope, engine)
+		countingExecutor := &hooksReloadCountingExecutor{inner: baseExecutor}
+		runner := &Runner{runtimeScope: testRuntimeScope, jsExecutor: countingExecutor, module: &meta.IrModule{Name: "base", ApplicationStr: "core"}}
+		lastErr := error(nil)
+		scripts := []*jsengine.JsScript{{FileName: "hook.js", Content: "1"}}
+
+		if err := runner.executeWithScripts(context.Background(), scripts, &jsengine.JsRequest{Id: "1", Service: "__choysum_hook__"}, &lastErr, true); err != nil {
+			t.Fatalf("first executeWithScripts error = %v", err)
+		}
+		if err := runner.executeWithScripts(context.Background(), scripts, &jsengine.JsRequest{Id: "2", Service: "__choysum_hook__"}, &lastErr, true); err != nil {
+			t.Fatalf("second executeWithScripts error = %v", err)
+		}
+		if countingExecutor.reloadCalls != 1 {
+			t.Fatalf("expected one reload for reused scripts, got %d", countingExecutor.reloadCalls)
 		}
 	})
 }

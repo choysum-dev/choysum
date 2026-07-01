@@ -897,6 +897,13 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		isBundleMode := strings.EqualFold(strings.TrimSpace(runtimeOpts.compileBundleMode), "bundle")
 		var bundlesTargetFn func() (string, error)
 		var buildBundlesFn func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error
+		if m.jsExecutor != nil {
+			previousExecutorScripts := m.jsExecutor.GetJsScripts()
+			defer func() {
+				m.jsExecutor.SetJsScripts(previousExecutorScripts)
+				_ = m.jsExecutor.Reload(previousExecutorScripts...)
+			}()
+		}
 		if isBundleMode {
 			bundlesTargetFn = func() (string, error) { return config.BundlesDir(runtimeOpts.distPath), nil }
 			buildBundlesFn = func(stageCtx context.Context, distBundlesStagingDir string, affectedProtoStaging map[string]string) error {
@@ -1026,13 +1033,6 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			fmt.Sprintf("%s: finalizing phase end (%d modules)", rootModuleName, totalFinalizingModules),
 		)
 		phaseEndStarted := time.Now()
-		if m.jsExecutor != nil {
-			previousExecutorScripts := m.jsExecutor.GetJsScripts()
-			defer func() {
-				m.jsExecutor.SetJsScripts(previousExecutorScripts)
-				_ = m.jsExecutor.Reload(previousExecutorScripts...)
-			}()
-		}
 		for i, name := range opPlan.ModuleOrder {
 			moduleName := strings.TrimSpace(name)
 			if moduleName == "" {

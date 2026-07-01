@@ -55,6 +55,10 @@ type ModuleBuilder struct {
 	tsParser        parser.Parser
 	tsParserFactory func(scope.Scope, *meta.IrModule) parser.Parser
 	tsPathAlias     map[string]string
+
+	// Cached entry-point imports reused across prebuild/build in one builder run.
+	entryPointImportsCacheValid bool
+	entryPointImportsCache      []string
 }
 
 func pathWithinModuleRoot(path string, root string) bool {
@@ -78,8 +82,12 @@ func (b *ModuleBuilder) bindRuntimeState(ctx context.Context) func() {
 	prevScope := b.runtimeScope
 	prevParser := b.tsParser
 	prevAlias := b.tsPathAlias
+	prevEntryImportsValid := b.entryPointImportsCacheValid
+	prevEntryImports := b.entryPointImportsCache
 	b.runtimeScope = runtimeScope
 	b.tsPathAlias = nil
+	b.entryPointImportsCacheValid = false
+	b.entryPointImportsCache = nil
 	if b.tsParserFactory != nil {
 		b.tsParser = b.tsParserFactory(b.runtimeScope, b.module)
 	}
@@ -87,6 +95,8 @@ func (b *ModuleBuilder) bindRuntimeState(ctx context.Context) func() {
 		b.runtimeScope = prevScope
 		b.tsParser = prevParser
 		b.tsPathAlias = prevAlias
+		b.entryPointImportsCacheValid = prevEntryImportsValid
+		b.entryPointImportsCache = prevEntryImports
 	}
 }
 
@@ -222,6 +232,11 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 }
 
 func (b *ModuleBuilder) entryPointImports() []string {
+	if b.entryPointImportsCacheValid {
+		cached := make([]string, len(b.entryPointImportsCache))
+		copy(cached, b.entryPointImportsCache)
+		return cached
+	}
 	imports := make([]string, 0)
 	if b == nil || b.runtimeScope == nil || b.runtimeScope.Session() == nil {
 		return imports
@@ -275,6 +290,10 @@ func (b *ModuleBuilder) entryPointImports() []string {
 		seen[importPath] = struct{}{}
 		imports = append(imports, importPath)
 	}
+
+	b.entryPointImportsCacheValid = true
+	b.entryPointImportsCache = make([]string, len(imports))
+	copy(b.entryPointImportsCache, imports)
 
 	return imports
 }
