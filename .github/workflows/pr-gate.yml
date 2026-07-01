@@ -448,6 +448,9 @@ jobs:
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
 
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
         with:
@@ -510,6 +513,9 @@ jobs:
 
       - name: Extract root node_modules
         run: tar -xzf .choysum/tmp/pr-root-node-modules.tar.gz -C .
+
+      - name: Add local node_modules bin to PATH
+        run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
 
       - name: Download choysum CLI
         uses: actions/download-artifact@v8
