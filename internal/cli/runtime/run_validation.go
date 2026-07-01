@@ -314,6 +314,13 @@ func URLScheme(dsn string) string {
 }
 
 func HasParentSymlink(path string) bool {
+	if !filepath.IsAbs(path) {
+		absPath, err := filepath.Abs(path)
+		if err == nil {
+			path = absPath
+		}
+	}
+
 	current := filepath.Dir(path)
 	for {
 		info, err := os.Lstat(current)

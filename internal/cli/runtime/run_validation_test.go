@@ -348,6 +348,11 @@ func TestRuntimeValidationMiscHelpers(t *testing.T) {
 	if !HasParentSymlink(filepath.Join(linkDir, "app.db")) {
 		t.Fatal("HasParentSymlink should be true for symlinked parent")
 	}
+
+	t.Chdir(tmpDir)
+	if !HasParentSymlink(filepath.Join("link", "app.db")) {
+		t.Fatal("HasParentSymlink should be true for relative path under symlinked parent")
+	}
 }
 
 func TestSQLitePathFromDSN(t *testing.T) {
