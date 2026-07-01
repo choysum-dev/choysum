@@ -955,7 +955,6 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				return err
 			}
 			installDuration := time.Since(installStarted)
-			emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallCompleted, Current: index + 1, Total: totalModules, Module: moduleName, Duration: installDuration})
 			logStep(slog.LevelInfo, "module installed",
 				"installed_module", mod.Name,
 				"duration_ms", installDuration.Milliseconds(),
@@ -963,6 +962,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			app := strings.TrimSpace(mod.ApplicationStr)
 			if app != "" && !generated[app] {
 				if err := generateModulesForApp(app); err != nil {
+					emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallFailed, Current: index + 1, Total: totalModules, Module: moduleName, Duration: installDuration, Err: err})
 					if cb.OnInstallProgress != nil {
 						cb.OnInstallProgress(ModuleInstallProgress{
 							Current:  index + 1,
@@ -977,6 +977,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				}
 				generated[app] = true
 			}
+			emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallCompleted, Current: index + 1, Total: totalModules, Module: moduleName, Duration: installDuration})
 			if cb.OnInstallProgress != nil {
 				cb.OnInstallProgress(ModuleInstallProgress{
 					Current:  index + 1,

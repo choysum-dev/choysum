@@ -192,10 +192,13 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithTarget("es2020"),
-			esmresolver.WithModulePath(b.module.Path),
 		}
 		if b.module != nil {
-			resolverOpts = append(resolverOpts, esmresolver.WithModuleName(b.module.Name), esmresolver.WithApplicationName(b.module.ApplicationStr))
+			resolverOpts = append(resolverOpts,
+				esmresolver.WithModulePath(b.module.Path),
+				esmresolver.WithModuleName(b.module.Name),
+				esmresolver.WithApplicationName(b.module.ApplicationStr),
+			)
 		}
 		if b.runtimeScope != nil {
 			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
@@ -212,10 +215,13 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 		resolverOpts := []esmresolver.Option{
 			esmresolver.WithCacheDir(runtimeOptions.defaultChoysumPath),
 			esmresolver.WithTarget("es2020"),
-			esmresolver.WithModulePath(b.module.Path),
 		}
 		if b.module != nil {
-			resolverOpts = append(resolverOpts, esmresolver.WithModuleName(b.module.Name), esmresolver.WithApplicationName(b.module.ApplicationStr))
+			resolverOpts = append(resolverOpts,
+				esmresolver.WithModulePath(b.module.Path),
+				esmresolver.WithModuleName(b.module.Name),
+				esmresolver.WithApplicationName(b.module.ApplicationStr),
+			)
 		}
 		if b.runtimeScope != nil {
 			resolverOpts = append(resolverOpts, esmresolver.WithLogger(b.runtimeScope.Logger()))
@@ -232,15 +238,15 @@ func (b *ModuleBuilder) buildOptions(prebuild bool) *api.BuildOptions {
 }
 
 func (b *ModuleBuilder) entryPointImports() []string {
+	if b == nil || b.runtimeScope == nil || b.runtimeScope.Session() == nil {
+		return make([]string, 0)
+	}
 	if b.entryPointImportsCacheValid {
 		cached := make([]string, len(b.entryPointImportsCache))
 		copy(cached, b.entryPointImportsCache)
 		return cached
 	}
 	imports := make([]string, 0)
-	if b == nil || b.runtimeScope == nil || b.runtimeScope.Session() == nil {
-		return imports
-	}
 	runtimeOptions := b.resolvedRuntimeOptions()
 
 	var installModules []*meta.IrModule

@@ -366,6 +366,8 @@ func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsS
 	if changedScripts {
 		r.jsExecutor.SetJsScripts(scripts)
 		if err := r.jsExecutor.Reload(scripts...); err != nil {
+			r.jsExecutor.SetJsScripts(prevScripts)
+			_ = r.jsExecutor.Reload(prevScripts...)
 			return err
 		}
 	}

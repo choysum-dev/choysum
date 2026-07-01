@@ -901,7 +901,9 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			previousExecutorScripts := m.jsExecutor.GetJsScripts()
 			defer func() {
 				m.jsExecutor.SetJsScripts(previousExecutorScripts)
-				_ = m.jsExecutor.Reload(previousExecutorScripts...)
+				if err := m.jsExecutor.Reload(previousExecutorScripts...); err != nil {
+					logger.Warn("failed to restore js executor scripts", "error", err)
+				}
 			}()
 		}
 		if isBundleMode {
@@ -1519,7 +1521,7 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 			}
 			if runner := scripts.NewRunner(m.runtimeScope, m.jsExecutor, mod); runner != nil {
 				modulePhaseEndStarted := time.Now()
-				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version}); err != nil {
+				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version, ReuseExecutorScripts: m.jsExecutor != nil}); err != nil {
 					return rollbackUpgradeOrigin(err)
 				}
 				logger.Info(
