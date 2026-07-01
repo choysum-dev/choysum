@@ -22,7 +22,14 @@ type modulePackageManifest struct {
 
 // MergeRequiredModules merges multiple module lists, removes duplicates, and sorts results.
 func MergeRequiredModules(moduleLists ...[]string) []string {
-	merged := make([]string, 0)
+	totalLen := 0
+	for _, modules := range moduleLists {
+		totalLen += len(modules)
+	}
+	if totalLen == 0 {
+		return nil
+	}
+	merged := make([]string, 0, totalLen)
 	for _, modules := range moduleLists {
 		merged = append(merged, modules...)
 	}
@@ -71,6 +78,9 @@ func CollectExternalModuleDependencies(modulesPath string, moduleNames []string,
 		}
 	}
 
+	if len(required) == 0 {
+		return nil, nil
+	}
 	out := make([]string, 0, len(required))
 	for moduleName := range required {
 		out = append(out, moduleName)
@@ -96,6 +106,9 @@ func normalizeStringList(values []string) []string {
 		seenValues[value] = struct{}{}
 		normalizedValues = append(normalizedValues, value)
 	}
+	if len(normalizedValues) == 0 {
+		return nil
+	}
 	sort.Strings(normalizedValues)
 	return normalizedValues
 }
@@ -119,12 +132,6 @@ func readModulePackageManifest(path string) (modulePackageManifest, error) {
 	var pkg modulePackageManifest
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return modulePackageManifest{}, fmt.Errorf("parse package.json: %w", err)
-	}
-	if pkg.Dependencies == nil {
-		pkg.Dependencies = map[string]string{}
-	}
-	if pkg.PeerDependencies == nil {
-		pkg.PeerDependencies = map[string]string{}
 	}
 	return pkg, nil
 }
