@@ -74,6 +74,8 @@ type Resolver struct {
 	cacheDir     string
 	target       string
 	offline      bool
+	moduleName   string
+	application  string
 	client       *http.Client
 	singleflight singleflight.Group
 	lockfilePath string       // path to esm.lock for version pinning
@@ -112,6 +114,26 @@ func WithTarget(target string) Option {
 	return func(r *Resolver) {
 		if target != "" {
 			r.target = target
+		}
+	}
+}
+
+// WithModuleName sets a module label for resolver observability logs.
+func WithModuleName(name string) Option {
+	return func(r *Resolver) {
+		name = strings.TrimSpace(name)
+		if name != "" {
+			r.moduleName = name
+		}
+	}
+}
+
+// WithApplicationName sets an application label for resolver observability logs.
+func WithApplicationName(name string) Option {
+	return func(r *Resolver) {
+		name = strings.TrimSpace(name)
+		if name != "" {
+			r.application = name
 		}
 	}
 }
@@ -376,13 +398,21 @@ func (r *Resolver) Plugin() api.Plugin {
 					attrs := []any{
 						"upstream", r.upstream,
 						"target", r.target,
+					}
+					if r.moduleName != "" {
+						attrs = append(attrs, "module", r.moduleName)
+					}
+					if r.application != "" {
+						attrs = append(attrs, "application", r.application)
+					}
+					attrs = append(attrs,
 						"metric_scope", "cumulative",
 						"cache_hit", hit,
 						"cache_miss", miss,
 						"downloads", downloads,
 						"cumulative_download_duration_ms", downloadMs,
 						"errors", errors,
-					}
+					)
 					if downloads > 0 || errors > 0 {
 						r.logger.Info("esm resolver metrics", attrs...)
 						downloadedPkgs := r.metrics.SnapshotDownloadedPkgs()
