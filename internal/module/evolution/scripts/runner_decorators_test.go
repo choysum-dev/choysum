@@ -25,6 +25,57 @@ import (
 	"gorm.io/gorm"
 )
 
+type reloadCountingExecutor struct {
+	inner interface {
+		Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error)
+		GetJsScripts() []*jsengine.JsScript
+		SetJsScripts(scripts []*jsengine.JsScript)
+		Reload(scripts ...*jsengine.JsScript) error
+	}
+	reloadCalls int
+}
+
+func prepareRunnerModuleSource(t *testing.T, testRuntimeScope *scriptsTestScope, moduleName string, serviceEntryPoint string, content string) {
+	t.Helper()
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+	serviceEntryPoint = strings.TrimSpace(serviceEntryPoint)
+	if serviceEntryPoint == "" {
+		serviceEntryPoint = "service/index.ts"
+	}
+	entryPath := filepath.Join(testRuntimeScope.cfg.ModulesPath, moduleName, serviceEntryPoint)
+	if err := os.MkdirAll(filepath.Dir(entryPath), 0o755); err != nil {
+		t.Fatalf("mkdir entry dir: %v", err)
+	}
+	if strings.TrimSpace(content) == "" {
+		content = "export const migration = {}\n"
+	}
+	if err := os.WriteFile(entryPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write entry point: %v", err)
+	}
+}
+
+func (e *reloadCountingExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return e.inner.Execute(ctx, request)
+}
+
+func (e *reloadCountingExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.inner.GetJsScripts()
+}
+
+func (e *reloadCountingExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.inner.SetJsScripts(scripts)
+}
+
+func (e *reloadCountingExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.reloadCalls++
+	return e.inner.Reload(scripts...)
+}
+
 func TestFilterRegistry_SortsAndFiltersByVersionPhaseAndOrder(t *testing.T) {
 	entries := []RegistryEntry{
 		{Version: "0.2.0", Phase: PhasePre, Order: 2, Name: "b"},
@@ -67,20 +118,63 @@ func TestRunnerHelpers(t *testing.T) {
 	}
 
 	runner.module.Name = ""
-	if wrapper := runner.buildMigrationWrapperScript(); wrapper != nil {
-		t.Fatalf("expected nil wrapper without module name, got %#v", wrapper)
-	}
-	runner.module.Name = "base"
 	if wrapper := runner.buildMigrationWrapperScript(); wrapper == nil || !strings.Contains(wrapper.Content, `__choysum_migration_list__`) || !strings.Contains(wrapper.Content, `MIGRATION_FAILED`) {
 		t.Fatalf("unexpected migration wrapper: %#v", wrapper)
 	}
+	runner.module.Name = "base"
 
 	runner.module.ServiceEntryPoint = ""
 	if script, err := runner.buildModuleEntryScript(context.Background()); err != nil || script != nil {
 		t.Fatalf("expected nil entry script for empty entrypoint, got %#v err=%v", script, err)
 	}
-	if resolved, err := runner.resolveScripts(context.Background()); err != nil || resolved != nil {
+	if resolved, err := runner.resolveScripts(context.Background(), false); err != nil || resolved != nil {
 		t.Fatalf("expected nil resolveScripts with no runtime scripts, got %#v err=%v", resolved, err)
+	}
+}
+
+func TestResolveScripts_PrefersBuildErrorWhenRuntimeScriptsMissing(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	if err := os.MkdirAll(testRuntimeScope.cfg.ModulesPath, 0o755); err != nil {
+		t.Fatalf("mkdir modules path: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testRuntimeScope.cfg.ModulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"baseUrl":".","paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/missing.ts"})
+	resolved, err := runner.resolveScripts(context.Background(), false)
+	if err == nil {
+		t.Fatalf("expected resolveScripts error when fallback build fails, got scripts=%#v", resolved)
+	}
+	if !strings.Contains(err.Error(), "service/missing.ts") {
+		t.Fatalf("expected resolveScripts to return build error mentioning missing entrypoint, got %v", err)
+	}
+}
+
+func TestResolveScripts_SourceFirstUnlessPhaseEnd(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(t.TempDir(), ".choysum")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
+	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+
+	runner := NewRunner(testRuntimeScope, nil, &meta.IrModule{Name: "base", ApplicationStr: "core", ServiceEntryPoint: "service/index.ts"})
+	sourceFirstScripts, err := runner.resolveScripts(context.Background(), false)
+	if err != nil {
+		t.Fatalf("resolveScripts(source-first) error = %v", err)
+	}
+	if len(sourceFirstScripts) != 1 {
+		t.Fatalf("expected one source-first script, got %#v", sourceFirstScripts)
+	}
+	if sourceFirstScripts[0] == nil || strings.EqualFold(strings.TrimSpace(sourceFirstScripts[0].FileName), strings.TrimSpace(bundlePath)) {
+		t.Fatalf("expected source-first resolution to avoid runtime bundle, got %#v", sourceFirstScripts[0])
+	}
+
+	runtimeFirstScripts, err := runner.resolveScripts(context.Background(), true)
+	if err != nil {
+		t.Fatalf("resolveScripts(runtime-first) error = %v", err)
+	}
+	if len(runtimeFirstScripts) != 1 || runtimeFirstScripts[0] == nil || !strings.EqualFold(strings.TrimSpace(runtimeFirstScripts[0].FileName), strings.TrimSpace(bundlePath)) {
+		t.Fatalf("expected runtime-first resolution to use runtime bundle %q, got %#v", bundlePath, runtimeFirstScripts)
 	}
 }
 
@@ -190,6 +284,7 @@ func TestRunnerValidationAndParsingHelpers(t *testing.T) {
 func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	bundlePath := writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
 	moduleRef := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
 
 	var services []string
@@ -226,13 +321,13 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	if !reflect.DeepEqual(executor.GetJsScripts(), prevScripts) {
 		t.Fatalf("expected executor scripts restored, got %#v", executor.GetJsScripts())
 	}
-	if got := loadedByService["__choysum_migration_list__"]; !reflect.DeepEqual(got, []string{bundlePath, "migration_wrapper.js"}) {
+	if got := loadedByService["__choysum_migration_list__"]; len(got) != 2 || got[0] == "" || strings.EqualFold(strings.TrimSpace(got[0]), strings.TrimSpace(bundlePath)) || got[1] != "migration_wrapper.js" {
 		t.Fatalf("unexpected scripts used for registry load: %#v", got)
 	}
 	if !reflect.DeepEqual(services, []string{"__choysum_migration_list__", "__choysum_migration__", "__choysum_migration__"}) {
 		t.Fatalf("unexpected service sequence: %#v", services)
 	}
-	if !reflect.DeepEqual(migrationArgs, [][]interface{}{{"1.1.0", "pre", "init"}, {"1.2.0", "pre", "seed"}}) {
+	if !reflect.DeepEqual(migrationArgs, [][]interface{}{{"core", "base", "1.1.0", "pre", "init"}, {"core", "base", "1.2.0", "pre", "seed"}}) {
 		t.Fatalf("unexpected migration args: %#v", migrationArgs)
 	}
 
@@ -251,9 +346,40 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	}
 }
 
+func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+
+	engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		switch req.Service {
+		case "__choysum_migration_list__":
+			return &jsengine.JsResponse{Id: req.Id, Result: []map[string]any{}}, nil
+		default:
+			return &jsengine.JsResponse{Id: req.Id, Result: "ok"}, nil
+		}
+	}}
+	baseExecutor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
+	countingExecutor := &reloadCountingExecutor{inner: baseExecutor}
+
+	runnerBase := NewRunner(testRuntimeScope, countingExecutor, &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
+	if err := runnerBase.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
+		t.Fatalf("runnerBase RunPhase() error = %v", err)
+	}
+
+	runnerTask := NewRunner(testRuntimeScope, countingExecutor, &meta.IrModule{Name: "task", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
+	if err := runnerTask.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
+		t.Fatalf("runnerTask RunPhase() error = %v", err)
+	}
+
+	if countingExecutor.reloadCalls != 1 {
+		t.Fatalf("expected a single reload across reused script runs, got %d", countingExecutor.reloadCalls)
+	}
+}
+
 func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 	testRuntimeScope := newScriptsTestScope(t)
 	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+	prepareRunnerModuleSource(t, testRuntimeScope, "base", "service/index.ts", "export const migration = {}\n")
 	moduleRef := &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"}
 
 	t.Run("Validate restores previous scripts on registry error", func(t *testing.T) {
@@ -304,4 +430,127 @@ func TestRunnerValidateAndRunPhaseFailurePaths(t *testing.T) {
 			t.Fatalf("unexpected failed history row: %#v", row)
 		}
 	})
+}
+
+type failingReloadExecutor struct {
+	inner interface {
+		Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error)
+		GetJsScripts() []*jsengine.JsScript
+		SetJsScripts(scripts []*jsengine.JsScript)
+		Reload(scripts ...*jsengine.JsScript) error
+	}
+	reloadErr error
+	reloaded  [][]*jsengine.JsScript
+}
+
+func (e *failingReloadExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return e.inner.Execute(ctx, request)
+}
+
+func (e *failingReloadExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.inner.GetJsScripts()
+}
+
+func (e *failingReloadExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.inner.SetJsScripts(scripts)
+}
+
+func (e *failingReloadExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.reloaded = append(e.reloaded, append([]*jsengine.JsScript(nil), scripts...))
+	if e.reloadErr != nil {
+		return e.reloadErr
+	}
+	return e.inner.Reload(scripts...)
+}
+
+func TestEquivalentScripts(t *testing.T) {
+	scriptA := &jsengine.JsScript{FileName: "a.js", Content: "a"}
+	scriptB := &jsengine.JsScript{FileName: "b.js", Content: "b"}
+
+	t.Run("equal", func(t *testing.T) {
+		if !equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{scriptA}) {
+			t.Fatal("expected equal")
+		}
+	})
+
+	t.Run("different length", func(t *testing.T) {
+		if equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{scriptA, scriptB}) {
+			t.Fatal("expected not equal for different lengths")
+		}
+	})
+
+	t.Run("different file name", func(t *testing.T) {
+		if equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{scriptB}) {
+			t.Fatal("expected not equal for different file names")
+		}
+	})
+
+	t.Run("different content", func(t *testing.T) {
+		a2 := &jsengine.JsScript{FileName: "a.js", Content: "a2"}
+		if equivalentScripts([]*jsengine.JsScript{scriptA}, []*jsengine.JsScript{a2}) {
+			t.Fatal("expected not equal for different content")
+		}
+	})
+
+	t.Run("nil elements equal", func(t *testing.T) {
+		if !equivalentScripts([]*jsengine.JsScript{nil}, []*jsengine.JsScript{nil}) {
+			t.Fatal("expected equal for nil elements")
+		}
+	})
+
+	t.Run("nil vs non-nil", func(t *testing.T) {
+		if equivalentScripts([]*jsengine.JsScript{nil}, []*jsengine.JsScript{scriptA}) {
+			t.Fatal("expected not equal for nil vs non-nil")
+		}
+	})
+
+	t.Run("both empty", func(t *testing.T) {
+		if !equivalentScripts(nil, nil) {
+			t.Fatal("expected equal for nil slices")
+		}
+	})
+}
+
+func TestExecuteWithScriptsReloadFailureRollback(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		return &jsengine.JsResponse{Id: req.Id, Result: "ok"}, nil
+	}}
+	baseExecutor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
+	prevScript := &jsengine.JsScript{FileName: "prev.js", Content: "prev"}
+	baseExecutor.SetJsScripts([]*jsengine.JsScript{prevScript})
+
+	executor := &failingReloadExecutor{
+		inner:     baseExecutor,
+		reloadErr: errors.New("reload boom"),
+	}
+
+	runner := &Runner{
+		runtimeScope: testRuntimeScope,
+		jsExecutor:   executor,
+		module:       &meta.IrModule{Name: "base", ApplicationStr: "core"},
+	}
+
+	newScript := &jsengine.JsScript{FileName: "new.js", Content: "new"}
+	_, err := runner.executeWithScripts(context.Background(), []*jsengine.JsScript{newScript}, &jsengine.JsRequest{Id: "1", Service: "__choysum_migration__"}, false)
+	if err == nil || !strings.Contains(err.Error(), "reload boom") {
+		t.Fatalf("expected reload error, got %v", err)
+	}
+
+	// Verify executor scripts were restored to previous.
+	restored := executor.GetJsScripts()
+	if len(restored) != 1 || restored[0].FileName != "prev.js" {
+		t.Fatalf("expected previous scripts restored, got %#v", restored)
+	}
+
+	// Verify both reloads happened (new scripts then rollback).
+	if len(executor.reloaded) != 2 {
+		t.Fatalf("expected 2 reload attempts, got %d", len(executor.reloaded))
+	}
+	if executor.reloaded[0][0].FileName != "new.js" {
+		t.Fatalf("expected first reload with new scripts, got %#v", executor.reloaded[0])
+	}
+	if executor.reloaded[1][0].FileName != "prev.js" {
+		t.Fatalf("expected second reload with prev scripts, got %#v", executor.reloaded[1])
+	}
 }

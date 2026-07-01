@@ -39,6 +39,9 @@ const (
 type RunOptions struct {
 	Scripts     []*jsengine.JsScript
 	FromVersion string
+	// ReuseExecutorScripts keeps loaded scripts on the shared executor between
+	// phase runs so callers can amortize reload costs across module loops.
+	ReuseExecutorScripts bool
 }
 
 type Runner struct {
@@ -77,12 +80,11 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		}
 		return err
 	}
-	if envScript := r.buildHookEnvScript(); envScript != nil {
-		scripts = append([]*jsengine.JsScript{envScript}, scripts...)
-	}
-	if wrapper := r.buildHookWrapperScript(phase); wrapper != nil {
+	if wrapper := r.buildHookWrapperScript(); wrapper != nil {
 		scripts = append(scripts, wrapper)
 	}
+	appName, moduleName := r.moduleSelector()
+	phaseName := strings.TrimSpace(string(phase))
 
 	attempts := 1
 	if resolved.Retry > 0 {
@@ -96,6 +98,7 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 		req := &jsengine.JsRequest{
 			Id:      jsCtx.requestId,
 			Service: "__choysum_hook__",
+			Args:    []interface{}{appName, moduleName, phaseName},
 			Context: jsCtx.payload,
 		}
 
@@ -105,7 +108,7 @@ func (r *Runner) RunPhase(ctx context.Context, phase Phase, opts RunOptions) err
 			ctxWithTimeout, cancel = context.WithTimeout(execCtx, resolved.Timeout)
 		}
 
-		execErr := r.executeWithScripts(ctxWithTimeout, scripts, req, &lastErr)
+		execErr := r.executeWithScripts(ctxWithTimeout, scripts, req, &lastErr, opts.ReuseExecutorScripts)
 		if cancel != nil {
 			cancel()
 		}
@@ -189,54 +192,51 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 	return ScriptFromBuildResult(result)
 }
 
-func (r *Runner) buildHookWrapperScript(phase Phase) *jsengine.JsScript {
-	app := strings.TrimSpace(r.module.ApplicationStr)
-	if app == "" {
-		app = strings.TrimSpace(r.module.Name)
+func (r *Runner) moduleSelector() (string, string) {
+	if r == nil || r.module == nil {
+		return "", ""
 	}
 	moduleName := strings.TrimSpace(r.module.Name)
-	if app == "" || moduleName == "" {
+	appName := strings.TrimSpace(r.module.ApplicationStr)
+	if appName == "" {
+		appName = moduleName
+	}
+	return appName, moduleName
+}
+
+func (r *Runner) buildHookWrapperScript() *jsengine.JsScript {
+	if r == nil || r.module == nil {
 		return nil
 	}
-	ph := strings.TrimSpace(string(phase))
-	if ph == "" {
-		return nil
-	}
-	content := fmt.Sprintf(`(() => {
-	globalThis.CHOYSUM_APP_NAME = %q;
-	globalThis.CHOYSUM_MODULE_NAME = %q;
-  const root = globalThis[%q];
-  const moduleRoot = root && root[%q];
-  const registry = moduleRoot && moduleRoot.__hookRegistry__ && moduleRoot.__hookRegistry__[%q];
-  const hook = moduleRoot && moduleRoot.hook;
-  globalThis.__choysum_hook__ = async function () {
-    if (!registry || registry.length === 0) {
+	content := `(() => {
+	const resolveModuleRoot = (app, moduleName) => {
+		const root = globalThis[app];
+		return root && root[moduleName];
+	};
+
+	globalThis.__choysum_hook__ = async function (app, moduleName, phase) {
+		if (!app || !moduleName || !phase) {
+			return;
+		}
+		globalThis.CHOYSUM_APP_NAME = app;
+		globalThis.CHOYSUM_MODULE_NAME = moduleName;
+		const moduleRoot = resolveModuleRoot(app, moduleName);
+		const registryRoot = moduleRoot && moduleRoot.__hookRegistry__;
+		const registry = registryRoot && registryRoot[phase];
+		const hook = moduleRoot && moduleRoot.hook;
+		if (!registry || registry.length === 0) {
       return;
     }
     for (const name of registry) {
       const fn = hook && hook[name];
       if (typeof fn !== 'function') {
-        throw new Error('HOOK_UNSUPPORTED: hook not found %s.%s.hook.' + name);
+		throw new Error('HOOK_UNSUPPORTED: hook not found ' + app + '.' + moduleName + '.hook.' + name);
       }
       await fn();
     }
   };
-})();`, app, moduleName, app, moduleName, ph, app, moduleName)
+})();`
 	return &jsengine.JsScript{FileName: "hook_wrapper.js", Content: content}
-}
-
-func (r *Runner) buildHookEnvScript() *jsengine.JsScript {
-	app := strings.TrimSpace(r.module.ApplicationStr)
-	if app == "" {
-		app = strings.TrimSpace(r.module.Name)
-	}
-	moduleName := strings.TrimSpace(r.module.Name)
-	if app == "" || moduleName == "" {
-		return nil
-	}
-	content := fmt.Sprintf(`globalThis.CHOYSUM_APP_NAME = %q;
-globalThis.CHOYSUM_MODULE_NAME = %q;`, app, moduleName)
-	return &jsengine.JsScript{FileName: "hook_env.js", Content: content}
 }
 
 type execCtxPayload struct {
@@ -328,17 +328,40 @@ func (r *Runner) buildExecContext(ctx context.Context) context.Context {
 
 var errHookRetriable = errors.New("hook retriable")
 
-func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest, lastErr *error) error {
+func equivalentScripts(a []*jsengine.JsScript, b []*jsengine.JsScript) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] == nil && b[i] == nil {
+			continue
+		}
+		if a[i] == nil || b[i] == nil {
+			return false
+		}
+		if a[i].FileName != b[i].FileName || a[i].Content != b[i].Content {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Runner) executeWithScripts(ctx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest, lastErr *error, reuseExecutorScripts bool) error {
 	prevScripts := r.jsExecutor.GetJsScripts()
-	defer func() {
-		r.jsExecutor.SetJsScripts(prevScripts)
-		_ = r.jsExecutor.Reload(prevScripts...)
-	}()
-	if len(scripts) > 0 {
+	changedScripts := len(scripts) > 0 && !equivalentScripts(prevScripts, scripts)
+	if changedScripts {
 		r.jsExecutor.SetJsScripts(scripts)
 		if err := r.jsExecutor.Reload(scripts...); err != nil {
+			r.jsExecutor.SetJsScripts(prevScripts)
+			_ = r.jsExecutor.Reload(prevScripts...)
 			return err
 		}
+	}
+	if changedScripts && !reuseExecutorScripts {
+		defer func() {
+			r.jsExecutor.SetJsScripts(prevScripts)
+			_ = r.jsExecutor.Reload(prevScripts...)
+		}()
 	}
 
 	resp, err := r.jsExecutor.Execute(ctx, req)

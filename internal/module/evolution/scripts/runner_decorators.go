@@ -34,6 +34,9 @@ type RunOptions struct {
 	FromVersion string
 	ToVersion   string
 	Phase       Phase
+	// ReuseExecutorScripts keeps loaded scripts on the shared executor between
+	// calls so callers can amortize reload cost across module loops.
+	ReuseExecutorScripts bool
 }
 
 type Migration struct {
@@ -85,7 +88,7 @@ func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
 		return nil
 	}
 
-	scripts, err := r.resolveScripts(ctx)
+	scripts, err := r.resolveScripts(ctx, opts.Phase == PhaseEnd)
 	if err != nil {
 		return err
 	}
@@ -96,7 +99,7 @@ func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
 		scripts = append(scripts, wrapper)
 	}
 
-	registry, err := r.loadRegistry(ctx, scripts, opts.FromVersion)
+	registry, err := r.loadRegistry(ctx, scripts, opts.FromVersion, opts.ReuseExecutorScripts)
 	if err != nil {
 		return err
 	}
@@ -114,7 +117,7 @@ func (r *Runner) RunPhase(ctx context.Context, opts RunOptions) error {
 			Order:      entry.Order,
 			Checksum:   checksumForEntry(entry),
 		}
-		if err := r.runOne(ctx, scripts, migration, opts.FromVersion); err != nil {
+		if err := r.runOne(ctx, scripts, migration, opts.FromVersion, opts.ReuseExecutorScripts); err != nil {
 			return err
 		}
 	}
@@ -129,7 +132,7 @@ func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion str
 		return fmt.Errorf("js executor is nil")
 	}
 
-	scripts, err := r.resolveScripts(ctx)
+	scripts, err := r.resolveScripts(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -139,7 +142,7 @@ func (r *Runner) Validate(ctx context.Context, fromVersion string, toVersion str
 	if wrapper := r.buildMigrationWrapperScript(); wrapper != nil {
 		scripts = append(scripts, wrapper)
 	}
-	if _, err := r.loadRegistry(ctx, scripts, fromVersion); err != nil {
+	if _, err := r.loadRegistry(ctx, scripts, fromVersion, false); err != nil {
 		return err
 	}
 	return nil
@@ -155,11 +158,53 @@ func deriveRuntimeScope(ctx context.Context, baseScope scope.Scope) scope.Scope 
 	return baseScope
 }
 
-func (r *Runner) resolveScripts(ctx context.Context) ([]*jsengine.JsScript, error) {
-	if script, err := r.buildModuleEntryScript(ctx); err == nil && script != nil {
+func (r *Runner) resolveScripts(ctx context.Context, preferRuntimeScripts bool) ([]*jsengine.JsScript, error) {
+	if preferRuntimeScripts {
+		runtimeScripts, runtimeErr := LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+		if len(runtimeScripts) > 0 {
+			return runtimeScripts, nil
+		}
+		script, buildErr := r.buildModuleEntryScript(ctx)
+		if buildErr == nil && script != nil {
+			return []*jsengine.JsScript{script}, nil
+		}
+		if buildErr != nil {
+			return nil, buildErr
+		}
+		if runtimeErr != nil {
+			return nil, runtimeErr
+		}
+		return nil, nil
+	}
+
+	script, buildErr := r.buildModuleEntryScript(ctx)
+	if buildErr == nil && script != nil {
 		return []*jsengine.JsScript{script}, nil
 	}
-	return LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	if buildErr != nil {
+		return nil, buildErr
+	}
+
+	runtimeScripts, runtimeErr := LoadRuntimeScripts(deriveRuntimeScope(ctx, r.runtimeScope), r.module)
+	if len(runtimeScripts) > 0 {
+		return runtimeScripts, nil
+	}
+	if runtimeErr != nil {
+		return nil, runtimeErr
+	}
+	return nil, nil
+}
+
+func (r *Runner) moduleSelector() (string, string) {
+	if r == nil || r.module == nil {
+		return "", ""
+	}
+	moduleName := strings.TrimSpace(r.module.Name)
+	appName := strings.TrimSpace(r.module.ApplicationStr)
+	if appName == "" {
+		appName = moduleName
+	}
+	return appName, moduleName
 }
 
 func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript, error) {
@@ -188,44 +233,45 @@ func (r *Runner) buildModuleEntryScript(ctx context.Context) (*jsengine.JsScript
 }
 
 func (r *Runner) buildMigrationWrapperScript() *jsengine.JsScript {
-	app := strings.TrimSpace(r.module.ApplicationStr)
-	if app == "" {
-		app = strings.TrimSpace(r.module.Name)
-	}
-	moduleName := strings.TrimSpace(r.module.Name)
-	if app == "" || moduleName == "" {
+	if r == nil || r.module == nil {
 		return nil
 	}
-	content := fmt.Sprintf(`(() => {
-  const root = globalThis[%q];
-  const moduleRoot = root && root[%q];
-  const registry = moduleRoot && moduleRoot.__migrationRegistry__;
-  const migration = moduleRoot && moduleRoot.migration;
-
-  globalThis.__choysum_migration_list__ = function () {
-    return Array.isArray(registry) ? registry : [];
+	content := `(() => {
+	const resolveModuleRoot = (app, moduleName) => {
+		const root = globalThis[app];
+		return root && root[moduleName];
   };
 
-  globalThis.__choysum_migration__ = async function (version, phase, name) {
+	globalThis.__choysum_migration_list__ = function (app, moduleName) {
+		const moduleRoot = resolveModuleRoot(app, moduleName);
+		const registry = moduleRoot && moduleRoot.__migrationRegistry__;
+		return Array.isArray(registry) ? registry : [];
+	};
+
+	globalThis.__choysum_migration__ = async function (app, moduleName, version, phase, name) {
+		const moduleRoot = resolveModuleRoot(app, moduleName);
+		const migration = moduleRoot && moduleRoot.migration;
     const fn = migration && migration[version] && migration[version][phase] && migration[version][phase][name];
     if (typeof fn !== 'function') {
-      throw new Error('MIGRATION_FAILED: migration not found %s.%s.migration.' + version + '.' + phase + '.' + name);
+			throw new Error('MIGRATION_FAILED: migration not found ' + app + '.' + moduleName + '.migration.' + version + '.' + phase + '.' + name);
     }
     await fn();
   };
-})();`, app, moduleName, app, moduleName)
+})();`
 	return &jsengine.JsScript{FileName: "migration_wrapper.js", Content: content}
 }
 
-func (r *Runner) loadRegistry(ctx context.Context, scripts []*jsengine.JsScript, fromVersion string) ([]RegistryEntry, error) {
+func (r *Runner) loadRegistry(ctx context.Context, scripts []*jsengine.JsScript, fromVersion string, reuseExecutorScripts bool) ([]RegistryEntry, error) {
+	appName, moduleName := r.moduleSelector()
 	jsCtx := BuildJsContext(ctx, r.runtimeScope, r.module, r.module.Version, fromVersion)
 	req := &jsengine.JsRequest{
 		Id:      jsCtx.requestId,
 		Service: "__choysum_migration_list__",
+		Args:    []interface{}{appName, moduleName},
 		Context: jsCtx.payload,
 	}
 
-	resp, err := r.executeWithScripts(jsCtx.execCtx, scripts, req)
+	resp, err := r.executeWithScripts(jsCtx.execCtx, scripts, req, reuseExecutorScripts)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +281,7 @@ func (r *Runner) loadRegistry(ctx context.Context, scripts []*jsengine.JsScript,
 	return decodeRegistry(resp.Result)
 }
 
-func (r *Runner) runOne(ctx context.Context, scripts []*jsengine.JsScript, migration Migration, fromVersion string) error {
+func (r *Runner) runOne(ctx context.Context, scripts []*jsengine.JsScript, migration Migration, fromVersion string, reuseExecutorScripts bool) error {
 	if r.store == nil {
 		return fmt.Errorf("history store is nil")
 	}
@@ -254,15 +300,16 @@ func (r *Runner) runOne(ctx context.Context, scripts []*jsengine.JsScript, migra
 		return nil
 	}
 
+	appName, moduleName := r.moduleSelector()
 	jsCtx := BuildJsContext(ctx, r.runtimeScope, r.module, migration.Version, fromVersion)
 	req := &jsengine.JsRequest{
 		Id:      jsCtx.requestId,
 		Service: "__choysum_migration__",
-		Args:    []interface{}{migration.Version, string(migration.Phase), migration.Name},
+		Args:    []interface{}{appName, moduleName, migration.Version, string(migration.Phase), migration.Name},
 		Context: jsCtx.payload,
 	}
 
-	if _, err := r.executeWithScripts(jsCtx.execCtx, scripts, req); err != nil {
+	if _, err := r.executeWithScripts(jsCtx.execCtx, scripts, req, reuseExecutorScripts); err != nil {
 		_ = r.store.MarkFailed(ctx, entry, err.Error())
 		return err
 	}
@@ -272,20 +319,43 @@ func (r *Runner) runOne(ctx context.Context, scripts []*jsengine.JsScript, migra
 	return nil
 }
 
-func (r *Runner) executeWithScripts(execCtx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+func equivalentScripts(a []*jsengine.JsScript, b []*jsengine.JsScript) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] == nil && b[i] == nil {
+			continue
+		}
+		if a[i] == nil || b[i] == nil {
+			return false
+		}
+		if a[i].FileName != b[i].FileName || a[i].Content != b[i].Content {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Runner) executeWithScripts(execCtx context.Context, scripts []*jsengine.JsScript, req *jsengine.JsRequest, reuseExecutorScripts bool) (*jsengine.JsResponse, error) {
 	if r.jsExecutor == nil {
 		return nil, fmt.Errorf("js executor is nil")
 	}
 	prevScripts := r.jsExecutor.GetJsScripts()
-	defer func() {
-		r.jsExecutor.SetJsScripts(prevScripts)
-		_ = r.jsExecutor.Reload(prevScripts...)
-	}()
-	if len(scripts) > 0 {
+	changedScripts := len(scripts) > 0 && !equivalentScripts(prevScripts, scripts)
+	if changedScripts {
 		r.jsExecutor.SetJsScripts(scripts)
 		if err := r.jsExecutor.Reload(scripts...); err != nil {
+			r.jsExecutor.SetJsScripts(prevScripts)
+			_ = r.jsExecutor.Reload(prevScripts...)
 			return nil, err
 		}
+	}
+	if changedScripts && !reuseExecutorScripts {
+		defer func() {
+			r.jsExecutor.SetJsScripts(prevScripts)
+			_ = r.jsExecutor.Reload(prevScripts...)
+		}()
 	}
 
 	resp, err := r.jsExecutor.Execute(execCtx, req)
