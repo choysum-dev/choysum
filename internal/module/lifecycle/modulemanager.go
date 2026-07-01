@@ -1385,6 +1385,15 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		}
 		planningDuration := time.Since(planningStarted)
 		logger := moduleOpLogger(m.runtimeScope.Logger(), opid, plan.Op, mod.Name)
+		if m.jsExecutor != nil {
+			previousExecutorScripts := m.jsExecutor.GetJsScripts()
+			defer func() {
+				m.jsExecutor.SetJsScripts(previousExecutorScripts)
+				if err := m.jsExecutor.Reload(previousExecutorScripts...); err != nil {
+					logger.Warn("failed to restore js executor scripts", "error", err)
+				}
+			}()
+		}
 		logger.Info("module operation plan", append(moduleOperationPlanInfoAttrs(plan), "duration_ms", planningDuration.Milliseconds())...)
 		logger.Debug("module operation plan details", "modules", plan.ModuleOrder, "apps", plan.AffectedApps)
 		rootModuleName := strings.TrimSpace(mod.Name)
