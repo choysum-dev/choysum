@@ -505,6 +505,50 @@ func moduleOperationCompletedInfoAttrs(opPlan plan.Plan, duration time.Duration)
 	return attrs
 }
 
+func handlePipelineSharedProgress(
+	event pipeline.ProgressEvent,
+	rootModuleName string,
+	affectedAppsCount int,
+	setSpinnerStage func(stage, message string),
+) bool {
+	appName := strings.TrimSpace(event.App)
+	if appName == "" {
+		appName = "unknown"
+	}
+
+	switch event.Stage {
+	case pipeline.ProgressStageAppStageStarted:
+		totalApps := event.Total
+		if totalApps < 1 {
+			totalApps = affectedAppsCount
+		}
+		setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
+		return true
+	case pipeline.ProgressStageAppBuildStarted:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
+		return true
+	case pipeline.ProgressStageAppGenerateStarted:
+		if event.Total > 0 && event.Current > 0 {
+			setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
+			return true
+		}
+		setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
+		return true
+	case pipeline.ProgressStageBundlesBuildStarted:
+		setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", affectedAppsCount))
+		return true
+	case pipeline.ProgressStageWebBuildStarted:
+		setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", affectedAppsCount))
+		return true
+	default:
+		return false
+	}
+}
+
 func nullString(value string) sql.NullString {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -915,34 +959,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 		err = pipeline.Execute(stageCtx, opPlan, rootModule, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
-				appName := strings.TrimSpace(event.App)
-				if appName == "" {
-					appName = "unknown"
-				}
-				switch event.Stage {
-				case pipeline.ProgressStageAppStageStarted:
-					totalApps := event.Total
-					if totalApps < 1 {
-						totalApps = len(opPlan.AffectedApps)
-					}
-					setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
-				case pipeline.ProgressStageAppBuildStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
-				case pipeline.ProgressStageAppGenerateStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
-				case pipeline.ProgressStageBundlesBuildStarted:
-					setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", len(opPlan.AffectedApps)))
-				case pipeline.ProgressStageWebBuildStarted:
-					setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", len(opPlan.AffectedApps)))
-				}
+				_ = handlePipelineSharedProgress(event, rootModuleName, len(opPlan.AffectedApps), setSpinnerStage)
 			},
 			OnInstallProgress: func(progress pipeline.ModuleInstallProgress) {
 				if totalInstallModules == 0 {
@@ -1193,10 +1210,6 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
-				appName := strings.TrimSpace(event.App)
-				if appName == "" {
-					appName = "unknown"
-				}
 				moduleName := strings.TrimSpace(event.Module)
 				if moduleName == "" {
 					moduleName = "unknown"
@@ -1214,28 +1227,8 @@ func (m *ModuleManager) Uninstall(ctx context.Context, name string) error {
 						return
 					}
 					setSpinnerStage("uninstalling.modules", fmt.Sprintf("%s: failed uninstalling module", moduleName))
-				case pipeline.ProgressStageAppStageStarted:
-					totalApps := event.Total
-					if totalApps < 1 {
-						totalApps = len(plan.AffectedApps)
-					}
-					setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
-				case pipeline.ProgressStageAppBuildStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
-				case pipeline.ProgressStageAppGenerateStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
-				case pipeline.ProgressStageBundlesBuildStarted:
-					setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", len(plan.AffectedApps)))
-				case pipeline.ProgressStageWebBuildStarted:
-					setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", len(plan.AffectedApps)))
+				default:
+					_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 				}
 			},
 			ResolveInstalledModule: m.Load,
@@ -1434,10 +1427,6 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 		err = pipeline.Execute(stageCtx, plan, mod, pipeline.Callbacks{
 			Logger: logger,
 			OnProgress: func(event pipeline.ProgressEvent) {
-				appName := strings.TrimSpace(event.App)
-				if appName == "" {
-					appName = "unknown"
-				}
 				moduleName := strings.TrimSpace(event.Module)
 				if moduleName == "" {
 					moduleName = "unknown"
@@ -1455,28 +1444,8 @@ func (m *ModuleManager) Upgrade(ctx context.Context, name string) error {
 						return
 					}
 					setSpinnerStage("upgrading.modules", fmt.Sprintf("%s: failed upgrading module", moduleName))
-				case pipeline.ProgressStageAppStageStarted:
-					totalApps := event.Total
-					if totalApps < 1 {
-						totalApps = len(plan.AffectedApps)
-					}
-					setSpinnerStage("pipeline.app_stage", fmt.Sprintf("%s: building application artifacts (%d apps)", rootModuleName, totalApps))
-				case pipeline.ProgressStageAppBuildStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts (%d/%d)", appName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("pipeline.app_build", fmt.Sprintf("%s: building backend app artifacts", appName))
-				case pipeline.ProgressStageAppGenerateStarted:
-					if event.Total > 0 && event.Current > 0 {
-						setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules (%d/%d)", appName, event.Current, event.Total))
-						return
-					}
-					setSpinnerStage("pipeline.app_generate", fmt.Sprintf("%s: generating app modules", appName))
-				case pipeline.ProgressStageBundlesBuildStarted:
-					setSpinnerStage("pipeline.bundles_build", fmt.Sprintf("building backend bundles (global, apps=%d)", len(plan.AffectedApps)))
-				case pipeline.ProgressStageWebBuildStarted:
-					setSpinnerStage("pipeline.web_build", fmt.Sprintf("building global web assets (global, apps=%d)", len(plan.AffectedApps)))
+				default:
+					_ = handlePipelineSharedProgress(event, rootModuleName, len(plan.AffectedApps), setSpinnerStage)
 				}
 			},
 			ResolveInstalledModule: m.Load,
