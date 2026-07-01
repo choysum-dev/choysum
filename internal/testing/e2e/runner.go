@@ -37,6 +37,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/logger"
 	dataloader "github.com/choysum-dev/choysum/internal/module/evolution/data"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
@@ -264,7 +265,10 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil {
 		return err
 	}
-	requiredModules := mergeRequiredE2ERuntimeModules(packages, closure, specRequiredModules)
+	requiredModules, err := mergeRequiredE2ERuntimeModules(opts.ModulesPath, closure, specRequiredModules)
+	if err != nil {
+		return err
+	}
 	opts.staticSpecRequiredModules = cloneStringSlice(specRequiredModules)
 	opts.staticRequiredModules = cloneStringSlice(requiredModules)
 
@@ -347,7 +351,7 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	}
 	requiredRuntimeModules := cloneStringSlice(opts.staticRequiredModules)
 	if len(requiredRuntimeModules) == 0 {
-		requiredRuntimeModules, err = collectRequiredE2ERuntimeModules(packages, closure, specsDir)
+		requiredRuntimeModules, err = collectRequiredE2ERuntimeModules(opts.ModulesPath, closure, specsDir)
 		if err != nil {
 			return err
 		}
@@ -1064,42 +1068,21 @@ func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModule
 	return filepath.Join(modulesPath, pkg.DirName, specsRel), nil
 }
 
-func collectRequiredE2ERuntimeModules(packages map[string]*sourceModulePackage, closure []string, specsDir string) ([]string, error) {
+func collectRequiredE2ERuntimeModules(modulesPath string, closure []string, specsDir string) ([]string, error) {
 	fromSpecs, err := collectRequiredPlaywrightModules(specsDir)
 	if err != nil {
 		return nil, err
 	}
-	return mergeRequiredE2ERuntimeModules(packages, closure, fromSpecs), nil
+	return mergeRequiredE2ERuntimeModules(modulesPath, closure, fromSpecs)
 }
 
-func mergeRequiredE2ERuntimeModules(packages map[string]*sourceModulePackage, closure []string, specRequiredModules []string) []string {
-	required := map[string]struct{}{}
-	for _, moduleName := range specRequiredModules {
-		if strings.TrimSpace(moduleName) == "" {
-			continue
-		}
-		required[moduleName] = struct{}{}
+func mergeRequiredE2ERuntimeModules(modulesPath string, closure []string, specRequiredModules []string) ([]string, error) {
+	moduleDeps, err := moddeps.CollectExternalModuleDependencies(modulesPath, closure, false)
+	if err != nil {
+		return nil, xfmt.Errorf("collect module dependencies: %w", err)
 	}
 
-	for _, moduleName := range closure {
-		pkg := packages[strings.TrimSpace(moduleName)]
-		if pkg == nil {
-			continue
-		}
-		for _, depName := range collectPackageModuleDependencies(pkg) {
-			required[depName] = struct{}{}
-		}
-	}
-
-	out := make([]string, 0, len(required))
-	for moduleName := range required {
-		if strings.TrimSpace(moduleName) == "" {
-			continue
-		}
-		out = append(out, moduleName)
-	}
-	sort.Strings(out)
-	return out
+	return moddeps.MergeRequiredModules(specRequiredModules, moduleDeps), nil
 }
 
 func collectPackageModuleDependencies(pkg *sourceModulePackage) []string {

@@ -8,9 +8,24 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestTypecheckRequiredModules(t *testing.T) {
+	got := typecheckRequiredModules(false)
+	want := []string{"vue-tsc"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("typecheckRequiredModules(false) = %#v, want %#v", got, want)
+	}
+
+	got = typecheckRequiredModules(true)
+	want = []string{"vite", "vue-tsc"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("typecheckRequiredModules(true) = %#v, want %#v", got, want)
+	}
+}
 
 func TestTypecheckApp_AllowsNpxWithoutGlobalVueTsc(t *testing.T) {
 	ctx := context.Background()
