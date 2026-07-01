@@ -131,7 +131,7 @@ func readModulePackageManifest(path string) (modulePackageManifest, error) {
 
 	var pkg modulePackageManifest
 	if err := json.Unmarshal(data, &pkg); err != nil {
-		return modulePackageManifest{}, fmt.Errorf("parse package.json: %w", err)
+		return modulePackageManifest{}, fmt.Errorf("parse package.json at %s: %w", path, err)
 	}
 	return pkg, nil
 }
