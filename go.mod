@@ -59,6 +59,7 @@ require (
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
+	github.com/tailscale/hujson v0.0.0-20260302212456-ecc657c15afd // indirect
 	github.com/tinylib/msgp v1.6.1 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
 )

@@ -456,7 +456,7 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("parses tsconfig paths from JSONC with comments", func(t *testing.T) {
+	t.Run("parses tsconfig paths from JSONC with comments and trailing commas", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()
 		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
@@ -471,9 +471,12 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		  "compilerOptions": {
 		    "paths": {
 		      /* cached lodash types */
-		      "lodash": ["./.choysum/pkg/types/lodash@4.17.21.d.ts"]
-		    }
-		  }
+		      "lodash": ["./.choysum/pkg/types/lodash@4.17.21.d.ts"],
+		    },
+		    "plugins": [
+		      {"name": "demo", "note": "escaped quote \" and slash \\\\"},
+		    ],
+		  },
 		}`)
 
 		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")

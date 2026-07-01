@@ -20,6 +20,7 @@ import (
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
+	"github.com/tailscale/hujson"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
@@ -600,71 +601,18 @@ func readModuleTSConfigPaths(modulesRoot string) map[string][]string {
 		} `json:"compilerOptions"`
 	}
 	if err := json.Unmarshal(data, &tsconfig); err != nil {
-		// tsconfig.json often contains comments (JSONC). Fall back to a
-		// comment-stripped parse so the soft precheck is not silently skipped.
-		if err := json.Unmarshal(stripJSONCComments(data), &tsconfig); err != nil {
+		// tsconfig.json is often JSONC (comments/trailing commas).
+		// Use hujson to standardize into strict JSON before unmarshaling.
+		jsoncValue, parseErr := hujson.Parse(data)
+		if parseErr != nil {
+			return nil
+		}
+		jsoncValue.Standardize()
+		if err := json.Unmarshal(jsoncValue.Pack(), &tsconfig); err != nil {
 			return nil
 		}
 	}
 	return tsconfig.CompilerOptions.Paths
-}
-
-// stripJSONCComments removes // line comments and /* */ block comments from
-// JSONC content, preserving quoted string contents.
-func stripJSONCComments(data []byte) []byte {
-	out := make([]byte, 0, len(data))
-	inString := false
-	inLineComment := false
-	inBlockComment := false
-	var prev byte
-
-	for i := 0; i < len(data); i++ {
-		b := data[i]
-
-		switch {
-		case inLineComment:
-			if b == '\n' {
-				inLineComment = false
-				out = append(out, b)
-			}
-
-		case inBlockComment:
-			if b == '/' && prev == '*' {
-				inBlockComment = false
-			}
-			prev = b
-
-		case inString:
-			out = append(out, b)
-			if b == '"' && prev != '\\' {
-				inString = false
-			}
-			prev = b
-
-		default:
-			if b == '/' && i+1 < len(data) {
-				next := data[i+1]
-				if next == '/' {
-					inLineComment = true
-					i++
-					continue
-				}
-				if next == '*' {
-					inBlockComment = true
-					i++
-					prev = 0
-					continue
-				}
-			}
-			if b == '"' && prev != '\\' {
-				inString = true
-			}
-			out = append(out, b)
-			prev = b
-		}
-	}
-
-	return out
 }
 
 func hasAnyExistingTypeAsset(pathEntries []string, modulesRoot string) bool {
