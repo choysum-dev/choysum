@@ -53,7 +53,11 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 				os.Exit(1)
 			}
 			runtimeOptions := cliruntime.OptionsFromScope(env)
-			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+			baseCtx := context.Background()
+			if cmd != nil && cmd.Context() != nil {
+				baseCtx = cmd.Context()
+			}
+			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt)
 			defer stop()
 			runtimeOptionsValidated := false
 
@@ -144,10 +148,10 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			upgradeScope := env.WithContext(ctx)
 			compilerExecutor, err := jsexecutor.NewCompilerExecutor(upgradeScope)
 			if err != nil {
-				exitUpgradeError(currentInput, xfmt.Errorf("Error creating compiler executor: %w", err))
+				exitUpgradeError("", xfmt.Errorf("Error creating compiler executor: %w", err))
 			}
 			if err := compilerExecutor.Start(); err != nil {
-				exitUpgradeError(currentInput, xfmt.Errorf("Error starting compiler executor: %w", err))
+				exitUpgradeError("", xfmt.Errorf("Error starting compiler executor: %w", err))
 			}
 			defer compilerExecutor.Stop()
 
