@@ -1026,6 +1026,13 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			fmt.Sprintf("%s: finalizing phase end (%d modules)", rootModuleName, totalFinalizingModules),
 		)
 		phaseEndStarted := time.Now()
+		if m.jsExecutor != nil {
+			previousExecutorScripts := m.jsExecutor.GetJsScripts()
+			defer func() {
+				m.jsExecutor.SetJsScripts(previousExecutorScripts)
+				_ = m.jsExecutor.Reload(previousExecutorScripts...)
+			}()
+		}
 		for i, name := range opPlan.ModuleOrder {
 			moduleName := strings.TrimSpace(name)
 			if moduleName == "" {
@@ -1051,7 +1058,7 @@ func (m *ModuleManager) Install(ctx context.Context, name string) error {
 			}
 			if runner := scripts.NewRunner(m.runtimeScope, m.jsExecutor, mod); runner != nil {
 				modulePhaseEndStarted := time.Now()
-				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version}); err != nil {
+				if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhaseEnd, FromVersion: fromVersion, ToVersion: mod.Version, ReuseExecutorScripts: m.jsExecutor != nil}); err != nil {
 					clearSpinnerState()
 					return err
 				}

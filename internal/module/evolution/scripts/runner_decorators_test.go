@@ -25,6 +25,33 @@ import (
 	"gorm.io/gorm"
 )
 
+type reloadCountingExecutor struct {
+	inner interface {
+		Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error)
+		GetJsScripts() []*jsengine.JsScript
+		SetJsScripts(scripts []*jsengine.JsScript)
+		Reload(scripts ...*jsengine.JsScript) error
+	}
+	reloadCalls int
+}
+
+func (e *reloadCountingExecutor) Execute(ctx context.Context, request *jsengine.JsRequest) (*jsengine.JsResponse, error) {
+	return e.inner.Execute(ctx, request)
+}
+
+func (e *reloadCountingExecutor) GetJsScripts() []*jsengine.JsScript {
+	return e.inner.GetJsScripts()
+}
+
+func (e *reloadCountingExecutor) SetJsScripts(scripts []*jsengine.JsScript) {
+	e.inner.SetJsScripts(scripts)
+}
+
+func (e *reloadCountingExecutor) Reload(scripts ...*jsengine.JsScript) error {
+	e.reloadCalls++
+	return e.inner.Reload(scripts...)
+}
+
 func TestFilterRegistry_SortsAndFiltersByVersionPhaseAndOrder(t *testing.T) {
 	entries := []RegistryEntry{
 		{Version: "0.2.0", Phase: PhasePre, Order: 2, Name: "b"},
@@ -67,13 +94,10 @@ func TestRunnerHelpers(t *testing.T) {
 	}
 
 	runner.module.Name = ""
-	if wrapper := runner.buildMigrationWrapperScript(); wrapper != nil {
-		t.Fatalf("expected nil wrapper without module name, got %#v", wrapper)
-	}
-	runner.module.Name = "base"
 	if wrapper := runner.buildMigrationWrapperScript(); wrapper == nil || !strings.Contains(wrapper.Content, `__choysum_migration_list__`) || !strings.Contains(wrapper.Content, `MIGRATION_FAILED`) {
 		t.Fatalf("unexpected migration wrapper: %#v", wrapper)
 	}
+	runner.module.Name = "base"
 
 	runner.module.ServiceEntryPoint = ""
 	if script, err := runner.buildModuleEntryScript(context.Background()); err != nil || script != nil {
@@ -232,7 +256,7 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	if !reflect.DeepEqual(services, []string{"__choysum_migration_list__", "__choysum_migration__", "__choysum_migration__"}) {
 		t.Fatalf("unexpected service sequence: %#v", services)
 	}
-	if !reflect.DeepEqual(migrationArgs, [][]interface{}{{"1.1.0", "pre", "init"}, {"1.2.0", "pre", "seed"}}) {
+	if !reflect.DeepEqual(migrationArgs, [][]interface{}{{"core", "base", "1.1.0", "pre", "init"}, {"core", "base", "1.2.0", "pre", "seed"}}) {
 		t.Fatalf("unexpected migration args: %#v", migrationArgs)
 	}
 
@@ -248,6 +272,36 @@ func TestRunnerRunPhaseExecutesMigrationsAndRestoresScripts(t *testing.T) {
 	}
 	if history[1].Status != "success" || history[1].Version != "1.2.0" || history[1].Script != "seed" {
 		t.Fatalf("unexpected second history row: %#v", history[1])
+	}
+}
+
+func TestRunnerRunPhaseReuseExecutorScriptsAvoidsRedundantReload(t *testing.T) {
+	testRuntimeScope := newScriptsTestScope(t)
+	writeScriptsRuntimeBundle(t, testRuntimeScope, "console.log('bundle')")
+
+	engine := &scriptsSelectiveEngine{execute: func(req *jsengine.JsRequest, _ []*jsengine.JsScript) (*jsengine.JsResponse, error) {
+		switch req.Service {
+		case "__choysum_migration_list__":
+			return &jsengine.JsResponse{Id: req.Id, Result: []map[string]any{}}, nil
+		default:
+			return &jsengine.JsResponse{Id: req.Id, Result: "ok"}, nil
+		}
+	}}
+	baseExecutor := newScriptsTestExecutorWithEngine(t, testRuntimeScope, engine)
+	countingExecutor := &reloadCountingExecutor{inner: baseExecutor}
+
+	runnerBase := NewRunner(testRuntimeScope, countingExecutor, &meta.IrModule{Name: "base", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
+	if err := runnerBase.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
+		t.Fatalf("runnerBase RunPhase() error = %v", err)
+	}
+
+	runnerTask := NewRunner(testRuntimeScope, countingExecutor, &meta.IrModule{Name: "task", ApplicationStr: "core", Version: "1.2.0", ServiceEntryPoint: "service/index.ts"})
+	if err := runnerTask.RunPhase(context.Background(), RunOptions{FromVersion: "1.0.0", ToVersion: "1.2.0", Phase: PhaseEnd, ReuseExecutorScripts: true}); err != nil {
+		t.Fatalf("runnerTask RunPhase() error = %v", err)
+	}
+
+	if countingExecutor.reloadCalls != 1 {
+		t.Fatalf("expected a single reload across reused script runs, got %d", countingExecutor.reloadCalls)
 	}
 }
 
