@@ -456,6 +456,43 @@ func TestTypecheckApp_AdditionalPaths(t *testing.T) {
 		}
 	})
 
+	t.Run("parses tsconfig paths from JSONC with comments", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		modulesPath := t.TempDir()
+		makeDir(t, filepath.Join(modulesPath, "auth", "service"))
+		writeFile(t, filepath.Join(modulesPath, "auth", "service", "index.ts"), "export const auth = 1\n")
+		writeFile(t, filepath.Join(modulesPath, "auth", "package.json"), `{"dependencies":{"lodash":"^4.17.21"}}`)
+
+		cachedTypePath := filepath.Join(modulesPath, ".choysum", "pkg", "types", "lodash@4.17.21.d.ts")
+		makeDir(t, filepath.Dir(cachedTypePath))
+		writeFile(t, cachedTypePath, "declare const lodash: any\nexport default lodash\n")
+		writeFile(t, filepath.Join(modulesPath, "tsconfig.json"), `{
+		  // Path mappings for type-fetch artifacts
+		  "compilerOptions": {
+		    "paths": {
+		      /* cached lodash types */
+		      "lodash": ["./.choysum/pkg/types/lodash@4.17.21.d.ts"]
+		    }
+		  }
+		}`)
+
+		npmPath, _, _ := makeFakeTypecheckTooling(t, repoRoot, "exit 0\n")
+		var stderr strings.Builder
+		err := TypecheckApp(context.Background(), RunOptions{
+			ModulesPath: modulesPath,
+			NpmPath:     npmPath,
+			RepoRoot:    repoRoot,
+			TmpPath:     t.TempDir(),
+			Stderr:      &stderr,
+		}, "auth")
+		if err != nil {
+			t.Fatalf("TypecheckApp returned error: %v", err)
+		}
+		if strings.Contains(stderr.String(), "Warning: type declarations may be incomplete") {
+			t.Fatalf("did not expect soft precheck warning for JSONC with cached type file, got %q", stderr.String())
+		}
+	})
+
 	t.Run("suppresses soft guidance when tsconfig paths already point to cached type files", func(t *testing.T) {
 		repoRoot := t.TempDir()
 		modulesPath := t.TempDir()
