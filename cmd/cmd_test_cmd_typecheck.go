@@ -20,8 +20,9 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 	var keep bool
 
 	cmd := &cobra.Command{
-		Use:   "typecheck <app>",
-		Short: "Type-check modules (service + web)",
+		Use:          "typecheck <app>",
+		Short:        "Type-check modules (service + web)",
+		SilenceUsage: true,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if all {
 				if len(args) != 0 {

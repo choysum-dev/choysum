@@ -30,22 +30,40 @@ func (e *MissingNodeModulesPreflightError) Error() string {
 	if e == nil {
 		return "missing node modules"
 	}
+	tool := strings.TrimSpace(e.Tool)
 	target := strings.TrimSpace(e.Target)
 	if target == "" {
-		target = strings.TrimSpace(e.Tool)
+		target = tool
 		if target == "" {
 			target = "runtime"
 		}
 	}
 	missingModules := NormalizeStringList(e.MissingModules)
-	missingModulesText := formatModuleList(missingModules, 8)
 	installCommand := formatInstallCommand(missingModules)
-	return fmt.Sprintf(
-		"preflight failed for %s. tests were not started.\nmissing required modules: %s\ninstall globally:\n  %s",
-		target,
-		missingModulesText,
-		installCommand,
-	)
+
+	var b strings.Builder
+	if tool == "" {
+		fmt.Fprintf(&b, "preflight failed for %s. tests were not started.", target)
+	} else {
+		fmt.Fprintf(&b, "%s preflight failed for %s. tests were not started.", tool, target)
+	}
+	fmt.Fprintf(&b, "\n%s", formatMissingModulesSummary(missingModules, 3))
+	fmt.Fprintf(&b, "\ninstall command:\n  %s", installCommand)
+
+	recommendedCommands := recommendedCommandsBeforeRetry(tool, missingModules)
+	if len(recommendedCommands) > 0 {
+		fmt.Fprintf(&b, "\nrecommended before retry:")
+		for _, command := range recommendedCommands {
+			fmt.Fprintf(&b, "\n  %s", command)
+		}
+	}
+
+	if retryCommand := preflightRetryCommand(tool, target); retryCommand != "" {
+		fmt.Fprintf(&b, "\nretry:\n  %s", retryCommand)
+	}
+	b.WriteString("\n")
+
+	return b.String()
 }
 
 func formatModuleList(modules []string, perLine int) string {
@@ -75,6 +93,58 @@ func formatInstallCommand(modules []string) string {
 		return "npm install -g"
 	}
 	return "npm install -g " + strings.Join(modules, " ")
+}
+
+func formatMissingModulesSummary(modules []string, sampleSize int) string {
+	modules = NormalizeStringList(modules)
+	if len(modules) == 0 {
+		return "missing required modules: <none>"
+	}
+	if sampleSize <= 0 {
+		sampleSize = 3
+	}
+	if len(modules) <= sampleSize {
+		return fmt.Sprintf("missing %d required module(s): %s", len(modules), strings.Join(modules, ", "))
+	}
+	return fmt.Sprintf(
+		"missing %d required module(s) (sample: %s, ...)",
+		len(modules),
+		strings.Join(modules[:sampleSize], ", "),
+	)
+}
+
+func recommendedCommandsBeforeRetry(tool string, missingModules []string) []string {
+	if strings.TrimSpace(tool) != "e2e" {
+		return nil
+	}
+	for _, moduleName := range NormalizeStringList(missingModules) {
+		if moduleName == "@playwright/test" {
+			return []string{"npx playwright install --with-deps chromium"}
+		}
+	}
+	return nil
+}
+
+func preflightRetryCommand(tool string, target string) string {
+	tool = strings.TrimSpace(tool)
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return ""
+	}
+
+	subcommand := ""
+	switch tool {
+	case "typecheck":
+		subcommand = "typecheck"
+	case "e2e":
+		subcommand = "e2e"
+	case "unit":
+		subcommand = "unit"
+	}
+	if subcommand == "" {
+		return ""
+	}
+	return fmt.Sprintf("go run . test %s %s", subcommand, target)
 }
 
 func NormalizeModuleRoots(moduleRoots ...string) []string {

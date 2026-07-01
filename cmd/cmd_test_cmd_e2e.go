@@ -36,8 +36,9 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 	var runtimeLogLevel string
 
 	cmd := &cobra.Command{
-		Use:   "e2e <module> [-- <playwrightArgs...>]",
-		Short: "Run module-scoped system E2E (choysum run + Playwright)",
+		Use:          "e2e <module> [-- <playwrightArgs...>]",
+		Short:        "Run module-scoped system E2E (choysum run + Playwright)",
+		SilenceUsage: true,
 		Long: "Run module-scoped system E2E (choysum run + Playwright).\n\n" +
 			"<module> refers to the module directory name under the modules path (e.g. modules/auth -> auth), not package.json's name.",
 		Args: func(cmd *cobra.Command, args []string) error {

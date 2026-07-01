@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testsemantics "github.com/choysum-dev/choysum/internal/testing/semantics"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
@@ -225,8 +226,9 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		strings.TrimSpace(opts.NpmPath),
 		noderuntime.ResolveGlobalNpmRootBestEffort(),
 	}
+	warnedMissingTypeAssets := warnMissingTypeAssetsPrecheck(opts.Stderr, modulesRoot, app)
 	if err := noderuntime.PreflightRequiredNodeModules("typecheck", app, requiredModules, moduleRoots...); err != nil {
-		return err
+		return formatTypecheckPreflightError(app, err, warnedMissingTypeAssets)
 	}
 
 	npxPath, err := resolveNpxPath(opts.NpmPath)
@@ -354,7 +356,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		}
 	}
 	if err != nil {
-		return xfmt.Errorf("typecheck failed for %s: %w", app, err)
+		return formatTypecheckFailureWithGuidance(app, err, string(out), warnedMissingTypeAssets)
 	}
 	fmt.Fprintf(opts.Stderr, "# typecheck %s ok\n", app)
 	return nil
@@ -374,6 +376,160 @@ func typecheckRequiredModules(hasWebSources bool) []string {
 		return []string{"vite", "vue-tsc"}
 	}
 	return []string{"vue-tsc"}
+}
+
+func formatTypecheckFailureWithGuidance(app string, runErr error, output string, warnedMissingTypeAssets bool) error {
+	baseErr := xfmt.Errorf("typecheck failed for %s: %w", app, runErr)
+	if !warnedMissingTypeAssets && !shouldSuggestTypeFetchFromOutput(output) {
+		return baseErr
+	}
+
+	app = strings.TrimSpace(app)
+	if app == "" {
+		app = "<app>"
+	}
+	return xfmt.Errorf(
+		"%w\nrecommended action:\n  go run . type-fetch %s",
+		baseErr,
+		app,
+	)
+}
+
+func shouldSuggestTypeFetchFromOutput(output string) bool {
+	output = strings.ToLower(strings.TrimSpace(output))
+	if output == "" {
+		return false
+	}
+	if strings.Contains(output, "ts2307") || strings.Contains(output, "ts7016") {
+		return true
+	}
+	if strings.Contains(output, "cannot find module") && strings.Contains(output, "type declaration") {
+		return true
+	}
+	return false
+}
+
+func warnMissingTypeAssetsPrecheck(stderr io.Writer, modulesRoot string, app string) bool {
+	if stderr == nil {
+		return false
+	}
+
+	externalModules, err := moddeps.CollectExternalModuleDependencies(modulesRoot, []string{app}, true)
+	if err != nil || len(externalModules) == 0 {
+		return false
+	}
+
+	missingModules := missingTypeAssetModules(modulesRoot, externalModules)
+	if len(missingModules) == 0 {
+		return false
+	}
+
+	preview := strings.Join(missingModules, ", ")
+	if len(missingModules) > 3 {
+		preview = strings.Join(missingModules[:3], ", ") + ", ..."
+	}
+
+	_, _ = fmt.Fprintf(
+		stderr,
+		"Warning: type declarations may be incomplete for %s.\nmissing %d module(s) (sample: %s)\nrecommended action:\n  go run . type-fetch %s\n\n",
+		app,
+		len(missingModules),
+		preview,
+		app,
+	)
+	return true
+}
+
+func formatTypecheckPreflightError(app string, preflightErr error, warnedMissingTypeAssets bool) error {
+	var missingErr *noderuntime.MissingNodeModulesPreflightError
+	if !errors.As(preflightErr, &missingErr) {
+		return preflightErr
+	}
+
+	app = strings.TrimSpace(app)
+	if app == "" {
+		app = "<app>"
+	}
+
+	missingModules := noderuntime.NormalizeStringList(missingErr.MissingModules)
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "typecheck preflight failed for %s. tests were not started.\n", app)
+	fmt.Fprintf(&b, "%s\n", formatMissingModulesSummary(missingModules, 3))
+	fmt.Fprintf(&b, "install command:\n  npm install -g %s\n", strings.Join(missingModules, " "))
+	if warnedMissingTypeAssets {
+		fmt.Fprintf(&b, "recommended before retry:\n  go run . type-fetch %s\n", app)
+	}
+	fmt.Fprintf(&b, "retry:\n  go run . test typecheck %s", app)
+	b.WriteString("\n")
+	return errors.New(b.String())
+}
+
+func formatMissingModulesSummary(modules []string, sampleSize int) string {
+	modules = noderuntime.NormalizeStringList(modules)
+	if len(modules) == 0 {
+		return "missing required modules: <none>"
+	}
+	if sampleSize <= 0 {
+		sampleSize = 3
+	}
+	if len(modules) <= sampleSize {
+		return fmt.Sprintf("missing %d required module(s): %s", len(modules), strings.Join(modules, ", "))
+	}
+	return fmt.Sprintf(
+		"missing %d required module(s) (sample: %s, ...)",
+		len(modules),
+		strings.Join(modules[:sampleSize], ", "),
+	)
+}
+
+func missingTypeAssetModules(modulesRoot string, expectedModules []string) []string {
+	pathsByModule := readModuleTSConfigPaths(modulesRoot)
+	missing := make([]string, 0)
+	for _, moduleName := range noderuntime.NormalizeStringList(expectedModules) {
+		if hasAnyExistingTypeAsset(pathsByModule[moduleName], modulesRoot) {
+			continue
+		}
+		missing = append(missing, moduleName)
+	}
+	return missing
+}
+
+func readModuleTSConfigPaths(modulesRoot string) map[string][]string {
+	tsconfigPath := filepath.Join(modulesRoot, "tsconfig.json")
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		return nil
+	}
+
+	var tsconfig struct {
+		CompilerOptions struct {
+			Paths map[string][]string `json:"paths"`
+		} `json:"compilerOptions"`
+	}
+	if err := json.Unmarshal(data, &tsconfig); err != nil {
+		return nil
+	}
+	return tsconfig.CompilerOptions.Paths
+}
+
+func hasAnyExistingTypeAsset(pathEntries []string, modulesRoot string) bool {
+	for _, entry := range pathEntries {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+
+		resolvedPath := entry
+		if !filepath.IsAbs(resolvedPath) {
+			resolvedPath = filepath.Join(modulesRoot, filepath.FromSlash(resolvedPath))
+		}
+
+		if st, err := os.Stat(resolvedPath); err == nil && !st.IsDir() {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveNpxPath(npmPath string) (string, error) {

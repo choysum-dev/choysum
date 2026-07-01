@@ -104,10 +104,10 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected missing modules error, got failed=%v", failed)
 		}
-		if !strings.Contains(err.Error(), "missing required modules") {
+		if !strings.Contains(err.Error(), "required module(s)") {
 			t.Fatalf("expected missing required modules message, got %v", err)
 		}
-		if !strings.Contains(err.Error(), "install globally:") {
+		if !strings.Contains(err.Error(), "install command:") {
 			t.Fatalf("expected remediation guidance, got %v", err)
 		}
 		if !strings.Contains(err.Error(), "npm install -g") {

@@ -96,7 +96,7 @@ func TestMissingNodeModulesPreflightErrorFormatting(t *testing.T) {
 			Tool:           "typecheck",
 			MissingModules: []string{"vite", "vue-tsc"},
 		}).Error()
-		if !strings.Contains(err, "preflight failed for typecheck. tests were not started.") {
+		if !strings.Contains(err, "typecheck preflight failed for typecheck. tests were not started.") {
 			t.Fatalf("expected fallback target to use tool name, got %q", err)
 		}
 		if !strings.Contains(err, "npm install -g vite vue-tsc") {
@@ -221,11 +221,11 @@ func TestPreflightRequiredNodeModules(t *testing.T) {
 	}
 	errText := err.Error()
 	for _, want := range []string{
-		"preflight failed for auth. tests were not started.",
-		"missing required modules:",
-		"@connectrpc/connect",
-		"install globally:",
+		"e2e preflight failed for auth. tests were not started.",
+		"missing 1 required module(s): @connectrpc/connect",
+		"install command:",
 		"npm install -g",
+		"retry:\n  go run . test e2e auth",
 	} {
 		if !strings.Contains(errText, want) {
 			t.Fatalf("expected %q in error, got %q", want, errText)
