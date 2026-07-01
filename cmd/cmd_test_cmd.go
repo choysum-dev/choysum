@@ -286,7 +286,7 @@ func newTestUnitCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() cl
 	cmd.Flags().BoolVar(&failIfNoTests, "fail-if-no-tests", false, "exit non-zero if no tests found")
 	cmd.Flags().BoolVar(&withTypecheck, "with-typecheck", false, "run TypeScript typecheck for modules/<app>/service + modules/<app>/web before tests (equivalent to 'choysum test typecheck <app>'; requires npm install)")
 	cmd.Flags().StringVar(&pattern, "pattern", "", "run tests whose names match this regex")
-	cmd.Flags().BoolVar(&failFast, "fail-fast", false, "stop after first failure")
+	cmd.Flags().BoolVar(&failFast, "fail-fast", true, "stop after first failure (set --fail-fast=false to continue running remaining apps)")
 	cmd.Flags().BoolVar(&tapStdout, "tap-stdout", true, "print TAP to stdout and logs to stderr (set false to revert legacy mixed output)")
 	cmd.Flags().StringVar(&runtimeLogLevel, "runtime-log-level", "warn", "runtime log level during backend test setup/execution (debug|info|warn|error; default: warn)")
 	cmd.Flags().BoolVar(&scopeBE, "be", false, "run backend (QuickJS) tests")

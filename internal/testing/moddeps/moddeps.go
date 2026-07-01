@@ -22,11 +22,25 @@ type modulePackageManifest struct {
 
 // MergeRequiredModules merges multiple module lists, removes duplicates, and sorts results.
 func MergeRequiredModules(moduleLists ...[]string) []string {
-	merged := make([]string, 0)
+	seen := make(map[string]struct{})
 	for _, modules := range moduleLists {
-		merged = append(merged, modules...)
+		for _, moduleName := range modules {
+			moduleName = strings.TrimSpace(moduleName)
+			if moduleName == "" {
+				continue
+			}
+			seen[moduleName] = struct{}{}
+		}
 	}
-	return normalizeStringList(merged)
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for moduleName := range seen {
+		out = append(out, moduleName)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // CollectExternalModuleDependencies scans package.json files under modulesPath and collects
@@ -46,7 +60,8 @@ func CollectExternalModuleDependencies(modulesPath string, moduleNames []string,
 	for len(pending) > 0 {
 		moduleName := strings.TrimSpace(pending[0])
 		pending = pending[1:]
-		if moduleName == "" {
+		if moduleName == "" || moduleName == "." || moduleName == ".." ||
+			strings.Contains(moduleName, "/") || strings.Contains(moduleName, "\\") {
 			continue
 		}
 		if _, seen := visited[moduleName]; seen {
@@ -71,33 +86,15 @@ func CollectExternalModuleDependencies(modulesPath string, moduleNames []string,
 		}
 	}
 
+	if len(required) == 0 {
+		return nil, nil
+	}
 	out := make([]string, 0, len(required))
 	for moduleName := range required {
 		out = append(out, moduleName)
 	}
 	sort.Strings(out)
 	return out, nil
-}
-
-func normalizeStringList(values []string) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	normalizedValues := make([]string, 0, len(values))
-	seenValues := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			continue
-		}
-		if _, exists := seenValues[value]; exists {
-			continue
-		}
-		seenValues[value] = struct{}{}
-		normalizedValues = append(normalizedValues, value)
-	}
-	sort.Strings(normalizedValues)
-	return normalizedValues
 }
 
 func appendExternalDependencyNames(out map[string]struct{}, dependencies map[string]string) {
@@ -118,13 +115,7 @@ func readModulePackageManifest(path string) (modulePackageManifest, error) {
 
 	var pkg modulePackageManifest
 	if err := json.Unmarshal(data, &pkg); err != nil {
-		return modulePackageManifest{}, fmt.Errorf("parse package.json: %w", err)
-	}
-	if pkg.Dependencies == nil {
-		pkg.Dependencies = map[string]string{}
-	}
-	if pkg.PeerDependencies == nil {
-		pkg.PeerDependencies = map[string]string{}
+		return modulePackageManifest{}, fmt.Errorf("parse package.json at %s: %w", path, err)
 	}
 	return pkg, nil
 }

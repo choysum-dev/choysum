@@ -858,6 +858,46 @@ func TestNewTestUnitCmd_KeepFlagBehavior(t *testing.T) {
 	}
 }
 
+func TestNewTestUnitCmd_FailFastDefaultBehavior(t *testing.T) {
+	oldRunner := runTestRunnerWithDefaults
+	defer func() { runTestRunnerWithDefaults = oldRunner }()
+
+	captured := pkgrunner.RunOptions{}
+	runTestRunnerWithDefaults = func(ctx context.Context, opts pkgrunner.RunOptions) error {
+		captured = opts
+		return nil
+	}
+
+	newCmd := func() *cobra.Command {
+		cmd := newTestUnitCmdFromScope(func() scope.Scope {
+			return &commandTestScope{cfg: newCommandTestConfig(t.TempDir())}
+		})
+		if err := cmd.Flags().Set("tap-stdout", "false"); err != nil {
+			t.Fatalf("set --tap-stdout=false: %v", err)
+		}
+		return cmd
+	}
+
+	cmd := newCmd()
+	if err := cmd.RunE(cmd, []string{"auth"}); err != nil {
+		t.Fatalf("run default fail-fast flags: %v", err)
+	}
+	if !captured.FailFast {
+		t.Fatalf("expected fail-fast=true by default")
+	}
+
+	cmd = newCmd()
+	if err := cmd.Flags().Set("fail-fast", "false"); err != nil {
+		t.Fatalf("set --fail-fast=false: %v", err)
+	}
+	if err := cmd.RunE(cmd, []string{"auth"}); err != nil {
+		t.Fatalf("run --fail-fast=false: %v", err)
+	}
+	if captured.FailFast {
+		t.Fatalf("expected fail-fast=false when --fail-fast=false is set")
+	}
+}
+
 func TestNewTestUnitCmd_RuntimeLogLevel(t *testing.T) {
 	oldRunner := runTestRunnerWithDefaults
 	defer func() { runTestRunnerWithDefaults = oldRunner }()
