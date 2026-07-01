@@ -542,11 +542,10 @@ func matchTSConfigPathPattern(pattern string, moduleName string) ([]string, bool
 				starMatches = append(starMatches, remain)
 				return starMatches, true
 			}
-			index := strings.LastIndex(remain, segment)
-			if index < 0 || index+len(segment) != len(remain) {
+			if !strings.HasSuffix(remain, segment) {
 				return nil, false
 			}
-			starMatches = append(starMatches, remain[:index])
+			starMatches = append(starMatches, remain[:len(remain)-len(segment)])
 			return starMatches, true
 		}
 

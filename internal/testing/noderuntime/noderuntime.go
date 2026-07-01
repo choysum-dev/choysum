@@ -66,28 +66,6 @@ func (e *MissingNodeModulesPreflightError) Error() string {
 	return b.String()
 }
 
-func formatModuleList(modules []string, perLine int) string {
-	if len(modules) == 0 {
-		return "<none>"
-	}
-	if perLine <= 0 {
-		perLine = len(modules)
-	}
-
-	var b strings.Builder
-	for i, module := range modules {
-		if i > 0 {
-			if i%perLine == 0 {
-				b.WriteString(",\n  ")
-			} else {
-				b.WriteString(", ")
-			}
-		}
-		b.WriteString(module)
-	}
-	return b.String()
-}
-
 func formatInstallCommand(modules []string) string {
 	if len(modules) == 0 {
 		return "npm install -g"
@@ -99,7 +77,7 @@ func formatInstallCommand(modules []string) string {
 func FormatMissingModulesSummary(modules []string, sampleSize int) string {
 	modules = NormalizeStringList(modules)
 	if len(modules) == 0 {
-		return "missing required modules: <none>"
+		return "missing 0 required modules"
 	}
 	if sampleSize <= 0 {
 		sampleSize = 3
