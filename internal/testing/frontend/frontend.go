@@ -12,11 +12,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	moddeps "github.com/choysum-dev/choysum/internal/testing/moddeps"
 	noderuntime "github.com/choysum-dev/choysum/internal/testing/noderuntime"
 	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -275,68 +275,25 @@ func sanitizeFrontendAppToken(app string) string {
 }
 
 func collectRequiredFrontendModules(repoRoot string, app string, coverage bool) ([]string, error) {
-	required := map[string]struct{}{
-		"vitest":               {},
-		"vite":                 {},
-		"@bufbuild/protobuf":   {},
-		"@vitejs/plugin-vue":   {},
-		"vue":                  {},
-		"@vue/compiler-sfc":    {},
-		"@vue/shared":          {},
-		"@vue/server-renderer": {},
-		"@vue/test-utils":      {},
-		"sass-embedded":        {},
+	baseRequired := []string{
+		"vitest",
+		"vite",
+		"@bufbuild/protobuf",
+		"@vitejs/plugin-vue",
+		"vue",
+		"@vue/compiler-sfc",
+		"@vue/shared",
+		"@vue/server-renderer",
+		"@vue/test-utils",
+		"sass-embedded",
 	}
 	if coverage {
-		required["@vitest/coverage-v8"] = struct{}{}
+		baseRequired = append(baseRequired, "@vitest/coverage-v8")
 	}
 
-	visitedModules := map[string]struct{}{}
-	var collectModuleDeps func(moduleName string) error
-	collectModuleDeps = func(moduleName string) error {
-		moduleName = strings.TrimSpace(moduleName)
-		if moduleName == "" {
-			return nil
-		}
-		if _, seen := visitedModules[moduleName]; seen {
-			return nil
-		}
-		visitedModules[moduleName] = struct{}{}
-
-		modulePkgPath := filepath.Join(repoRoot, "modules", moduleName, "package.json")
-		pkg, err := readFrontendModulePackage(modulePkgPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil
-			}
-			return xfmt.Errorf("vitest: read module package.json for %s: %w", moduleName, err)
-		}
-
-		for name := range pkg.Dependencies {
-			name = strings.TrimSpace(name)
-			if name == "" || strings.HasPrefix(name, "@choysum-dev/") {
-				continue
-			}
-			required[name] = struct{}{}
-		}
-		for name := range pkg.PeerDependencies {
-			name = strings.TrimSpace(name)
-			if name == "" || strings.HasPrefix(name, "@choysum-dev/") {
-				continue
-			}
-			required[name] = struct{}{}
-		}
-		for _, depModule := range pkg.Choysum.Depends {
-			if err := collectModuleDeps(depModule); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
-	if err := collectModuleDeps(app); err != nil {
-		return nil, err
+	moduleDeps, err := moddeps.CollectExternalModuleDependencies(filepath.Join(repoRoot, "modules"), []string{app}, true)
+	if err != nil {
+		return nil, xfmt.Errorf("vitest: %w", err)
 	}
 
 	usesHappyDOM, err := appUsesVitestEnvironment(repoRoot, app, "happy-dom")
@@ -344,44 +301,10 @@ func collectRequiredFrontendModules(repoRoot string, app string, coverage bool) 
 		return nil, err
 	}
 	if usesHappyDOM {
-		required["happy-dom"] = struct{}{}
+		return moddeps.MergeRequiredModules(baseRequired, moduleDeps, []string{"happy-dom"}), nil
 	}
 
-	modules := make([]string, 0, len(required))
-	for name := range required {
-		if strings.TrimSpace(name) == "" {
-			continue
-		}
-		modules = append(modules, name)
-	}
-	sort.Strings(modules)
-	return modules, nil
-}
-
-type frontendModulePackage struct {
-	Dependencies     map[string]string `json:"dependencies"`
-	PeerDependencies map[string]string `json:"peerDependencies"`
-	Choysum          struct {
-		Depends []string `json:"depends"`
-	} `json:"choysum"`
-}
-
-func readFrontendModulePackage(path string) (frontendModulePackage, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return frontendModulePackage{}, err
-	}
-	var pkg frontendModulePackage
-	if err := json.Unmarshal(data, &pkg); err != nil {
-		return frontendModulePackage{}, xfmt.Errorf("parse package.json: %w", err)
-	}
-	if pkg.Dependencies == nil {
-		pkg.Dependencies = map[string]string{}
-	}
-	if pkg.PeerDependencies == nil {
-		pkg.PeerDependencies = map[string]string{}
-	}
-	return pkg, nil
+	return moddeps.MergeRequiredModules(baseRequired, moduleDeps), nil
 }
 
 func appUsesVitestEnvironment(repoRoot string, app string, environment string) (bool, error) {

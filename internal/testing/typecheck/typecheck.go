@@ -218,10 +218,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		hasWebSources = true
 	}
 
-	requiredModules := []string{"vue-tsc"}
-	if hasWebSources {
-		requiredModules = append(requiredModules, "vite")
-	}
+	requiredModules := typecheckRequiredModules(hasWebSources)
 	moduleRoots := []string{
 		filepath.Join(repoRoot, "node_modules"),
 		filepath.Join(modulesRoot, "node_modules"),
@@ -370,6 +367,13 @@ func sanitizeAppToken(app string) string {
 		return "app"
 	}
 	return token
+}
+
+func typecheckRequiredModules(hasWebSources bool) []string {
+	if hasWebSources {
+		return []string{"vite", "vue-tsc"}
+	}
+	return []string{"vue-tsc"}
 }
 
 func resolveNpxPath(npmPath string) (string, error) {
