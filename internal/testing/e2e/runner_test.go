@@ -1238,3 +1238,23 @@ func TestInstallForE2EAndSeedModuleIndexRuntimeBranches(t *testing.T) {
 		t.Fatalf("seedModuleIndexForE2E error: %v", err)
 	}
 }
+
+func TestMergeRequiredE2ERuntimeModulesUsesDirNameMapping(t *testing.T) {
+	modulesPath := t.TempDir()
+	writePackageFile(t, modulesPath, "auth", `{"name":"@choysum-dev/auth","version":"0.0.0","dependencies":{"left-pad":"^1.3.0"}}`)
+
+	closure := []string{"auth-module-key"}
+	packages := map[string]*sourceModulePackage{
+		"auth-module-key": {DirName: "auth"},
+	}
+
+	got, err := mergeRequiredE2ERuntimeModules(modulesPath, closure, packages, []string{"@playwright/test"})
+	if err != nil {
+		t.Fatalf("mergeRequiredE2ERuntimeModules error: %v", err)
+	}
+
+	want := []string{"@playwright/test", "left-pad"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("mergeRequiredE2ERuntimeModules() = %#v, want %#v", got, want)
+	}
+}

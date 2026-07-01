@@ -226,7 +226,10 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 		strings.TrimSpace(opts.NpmPath),
 		noderuntime.ResolveGlobalNpmRootBestEffort(),
 	}
-	warnedMissingTypeAssets := warnMissingTypeAssetsPrecheck(opts.Stderr, modulesRoot, app)
+	warnedMissingTypeAssets, err := warnMissingTypeAssetsPrecheck(opts.Stderr, modulesRoot, app)
+	if err != nil {
+		return err
+	}
 	if err := noderuntime.PreflightRequiredNodeModules("typecheck", app, requiredModules, moduleRoots...); err != nil {
 		return formatTypecheckPreflightError(app, err, warnedMissingTypeAssets)
 	}
@@ -409,19 +412,22 @@ func shouldSuggestTypeFetchFromOutput(output string) bool {
 	return false
 }
 
-func warnMissingTypeAssetsPrecheck(stderr io.Writer, modulesRoot string, app string) bool {
+func warnMissingTypeAssetsPrecheck(stderr io.Writer, modulesRoot string, app string) (bool, error) {
 	if stderr == nil {
-		return false
+		return false, nil
 	}
 
 	externalModules, err := moddeps.CollectExternalModuleDependencies(modulesRoot, []string{app}, true)
-	if err != nil || len(externalModules) == 0 {
-		return false
+	if err != nil {
+		return false, xfmt.Errorf("typecheck: collect module dependencies: %w", err)
+	}
+	if len(externalModules) == 0 {
+		return false, nil
 	}
 
 	missingModules := missingTypeAssetModules(modulesRoot, externalModules)
 	if len(missingModules) == 0 {
-		return false
+		return false, nil
 	}
 
 	preview := strings.Join(missingModules, ", ")
@@ -437,7 +443,7 @@ func warnMissingTypeAssetsPrecheck(stderr io.Writer, modulesRoot string, app str
 		preview,
 		app,
 	)
-	return true
+	return true, nil
 }
 
 func formatTypecheckPreflightError(app string, preflightErr error, warnedMissingTypeAssets bool) error {
@@ -455,7 +461,7 @@ func formatTypecheckPreflightError(app string, preflightErr error, warnedMissing
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "typecheck preflight failed for %s. tests were not started.\n", app)
-	fmt.Fprintf(&b, "%s\n", formatMissingModulesSummary(missingModules, 3))
+	fmt.Fprintf(&b, "%s\n", noderuntime.FormatMissingModulesSummary(missingModules, 3))
 	fmt.Fprintf(&b, "install command:\n  npm install -g %s\n", strings.Join(missingModules, " "))
 	if warnedMissingTypeAssets {
 		fmt.Fprintf(&b, "recommended before retry:\n  go run . type-fetch %s\n", app)
@@ -465,34 +471,121 @@ func formatTypecheckPreflightError(app string, preflightErr error, warnedMissing
 	return errors.New(b.String())
 }
 
-func formatMissingModulesSummary(modules []string, sampleSize int) string {
-	modules = noderuntime.NormalizeStringList(modules)
-	if len(modules) == 0 {
-		return "missing required modules: <none>"
-	}
-	if sampleSize <= 0 {
-		sampleSize = 3
-	}
-	if len(modules) <= sampleSize {
-		return fmt.Sprintf("missing %d required module(s): %s", len(modules), strings.Join(modules, ", "))
-	}
-	return fmt.Sprintf(
-		"missing %d required module(s) (sample: %s, ...)",
-		len(modules),
-		strings.Join(modules[:sampleSize], ", "),
-	)
-}
-
 func missingTypeAssetModules(modulesRoot string, expectedModules []string) []string {
 	pathsByModule := readModuleTSConfigPaths(modulesRoot)
+	if len(pathsByModule) == 0 {
+		return nil
+	}
+
 	missing := make([]string, 0)
 	for _, moduleName := range noderuntime.NormalizeStringList(expectedModules) {
-		if hasAnyExistingTypeAsset(pathsByModule[moduleName], modulesRoot) {
+		pathEntries, hasPathMapping := resolveTypePathEntries(pathsByModule, moduleName)
+		if !hasPathMapping {
+			continue
+		}
+		if hasAnyExistingTypeAsset(pathEntries, modulesRoot) {
 			continue
 		}
 		missing = append(missing, moduleName)
 	}
 	return missing
+}
+
+func resolveTypePathEntries(pathsByModule map[string][]string, moduleName string) ([]string, bool) {
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return nil, false
+	}
+
+	entries, ok := pathsByModule[moduleName]
+	if ok {
+		return entries, true
+	}
+
+	resolved := make([]string, 0, 4)
+	hasMapping := false
+	for key, valueEntries := range pathsByModule {
+		replacements, matched := matchTSConfigPathPattern(strings.TrimSpace(key), moduleName)
+		if !matched {
+			continue
+		}
+		hasMapping = true
+		for _, entry := range valueEntries {
+			resolved = append(resolved, applyPathPatternReplacements(entry, replacements))
+		}
+	}
+
+	return resolved, hasMapping
+}
+
+func matchTSConfigPathPattern(pattern string, moduleName string) ([]string, bool) {
+	if pattern == "" {
+		return nil, false
+	}
+	if !strings.Contains(pattern, "*") {
+		return nil, pattern == moduleName
+	}
+
+	parts := strings.Split(pattern, "*")
+	starMatches := make([]string, 0, len(parts)-1)
+	remain := moduleName
+
+	if !strings.HasPrefix(remain, parts[0]) {
+		return nil, false
+	}
+	remain = strings.TrimPrefix(remain, parts[0])
+
+	for i := 1; i < len(parts); i++ {
+		segment := parts[i]
+		if i == len(parts)-1 {
+			if segment == "" {
+				starMatches = append(starMatches, remain)
+				return starMatches, true
+			}
+			index := strings.LastIndex(remain, segment)
+			if index < 0 || index+len(segment) != len(remain) {
+				return nil, false
+			}
+			starMatches = append(starMatches, remain[:index])
+			return starMatches, true
+		}
+
+		if segment == "" {
+			starMatches = append(starMatches, "")
+			continue
+		}
+
+		index := strings.Index(remain, segment)
+		if index < 0 {
+			return nil, false
+		}
+		starMatches = append(starMatches, remain[:index])
+		remain = remain[index+len(segment):]
+	}
+
+	return starMatches, true
+}
+
+func applyPathPatternReplacements(pathPattern string, replacements []string) string {
+	if len(replacements) == 0 || !strings.Contains(pathPattern, "*") {
+		return pathPattern
+	}
+
+	var b strings.Builder
+	replacementIndex := 0
+	for _, ch := range pathPattern {
+		if ch != '*' {
+			b.WriteRune(ch)
+			continue
+		}
+		if replacementIndex < len(replacements) {
+			b.WriteString(replacements[replacementIndex])
+			replacementIndex++
+			continue
+		}
+		b.WriteRune(ch)
+	}
+	return b.String()
 }
 
 func readModuleTSConfigPaths(modulesRoot string) map[string][]string {
@@ -523,6 +616,19 @@ func hasAnyExistingTypeAsset(pathEntries []string, modulesRoot string) bool {
 		resolvedPath := entry
 		if !filepath.IsAbs(resolvedPath) {
 			resolvedPath = filepath.Join(modulesRoot, filepath.FromSlash(resolvedPath))
+		}
+
+		if strings.ContainsAny(resolvedPath, "*?[]") {
+			matches, err := filepath.Glob(resolvedPath)
+			if err != nil {
+				continue
+			}
+			for _, match := range matches {
+				if st, err := os.Stat(match); err == nil && !st.IsDir() {
+					return true
+				}
+			}
+			continue
 		}
 
 		if st, err := os.Stat(resolvedPath); err == nil && !st.IsDir() {

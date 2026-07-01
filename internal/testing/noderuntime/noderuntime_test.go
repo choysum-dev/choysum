@@ -105,6 +105,24 @@ func TestMissingNodeModulesPreflightErrorFormatting(t *testing.T) {
 	})
 }
 
+func TestFormatMissingModulesSummary(t *testing.T) {
+	t.Run("prints full list when module count is within sample size", func(t *testing.T) {
+		got := FormatMissingModulesSummary([]string{"vite", "vue-tsc"}, 3)
+		want := "missing 2 required module(s): vite, vue-tsc"
+		if got != want {
+			t.Fatalf("FormatMissingModulesSummary() = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("prints sampled list when module count exceeds sample size", func(t *testing.T) {
+		got := FormatMissingModulesSummary([]string{"a", "b", "c", "d"}, 2)
+		want := "missing 4 required module(s) (sample: a, b, ...)"
+		if got != want {
+			t.Fatalf("FormatMissingModulesSummary() = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestFindExecutablePrefersPath(t *testing.T) {
 	binDir := t.TempDir()
 	writeExecFile(t, filepath.Join(binDir, "playwright"), "#!/bin/sh\nexit 0\n")

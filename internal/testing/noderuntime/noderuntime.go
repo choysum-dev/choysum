@@ -47,7 +47,7 @@ func (e *MissingNodeModulesPreflightError) Error() string {
 	} else {
 		fmt.Fprintf(&b, "%s preflight failed for %s. tests were not started.", tool, target)
 	}
-	fmt.Fprintf(&b, "\n%s", formatMissingModulesSummary(missingModules, 3))
+	fmt.Fprintf(&b, "\n%s", FormatMissingModulesSummary(missingModules, 3))
 	fmt.Fprintf(&b, "\ninstall command:\n  %s", installCommand)
 
 	recommendedCommands := recommendedCommandsBeforeRetry(tool, missingModules)
@@ -95,7 +95,8 @@ func formatInstallCommand(modules []string) string {
 	return "npm install -g " + strings.Join(modules, " ")
 }
 
-func formatMissingModulesSummary(modules []string, sampleSize int) string {
+// FormatMissingModulesSummary renders a stable, compact summary line for missing modules.
+func FormatMissingModulesSummary(modules []string, sampleSize int) string {
 	modules = NormalizeStringList(modules)
 	if len(modules) == 0 {
 		return "missing required modules: <none>"

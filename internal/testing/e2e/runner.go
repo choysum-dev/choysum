@@ -265,7 +265,7 @@ func RunModule(ctx context.Context, opts RunOptions) error {
 	if err != nil {
 		return err
 	}
-	requiredModules, err := mergeRequiredE2ERuntimeModules(opts.ModulesPath, closure, specRequiredModules)
+	requiredModules, err := mergeRequiredE2ERuntimeModules(opts.ModulesPath, closure, packages, specRequiredModules)
 	if err != nil {
 		return err
 	}
@@ -351,7 +351,7 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	}
 	requiredRuntimeModules := cloneStringSlice(opts.staticRequiredModules)
 	if len(requiredRuntimeModules) == 0 {
-		requiredRuntimeModules, err = collectRequiredE2ERuntimeModules(opts.ModulesPath, closure, specsDir)
+		requiredRuntimeModules, err = collectRequiredE2ERuntimeModules(opts.ModulesPath, closure, packages, specsDir)
 		if err != nil {
 			return err
 		}
@@ -1068,16 +1068,29 @@ func resolveE2ESpecsDir(modulesPath string, moduleName string, pkg *sourceModule
 	return filepath.Join(modulesPath, pkg.DirName, specsRel), nil
 }
 
-func collectRequiredE2ERuntimeModules(modulesPath string, closure []string, specsDir string) ([]string, error) {
+func collectRequiredE2ERuntimeModules(modulesPath string, closure []string, packages map[string]*sourceModulePackage, specsDir string) ([]string, error) {
 	fromSpecs, err := collectRequiredPlaywrightModules(specsDir)
 	if err != nil {
 		return nil, err
 	}
-	return mergeRequiredE2ERuntimeModules(modulesPath, closure, fromSpecs)
+	return mergeRequiredE2ERuntimeModules(modulesPath, closure, packages, fromSpecs)
 }
 
-func mergeRequiredE2ERuntimeModules(modulesPath string, closure []string, specRequiredModules []string) ([]string, error) {
-	moduleDeps, err := moddeps.CollectExternalModuleDependencies(modulesPath, closure, false)
+func mergeRequiredE2ERuntimeModules(modulesPath string, closure []string, packages map[string]*sourceModulePackage, specRequiredModules []string) ([]string, error) {
+	moduleDirClosure := make([]string, 0, len(closure))
+	for _, moduleName := range closure {
+		moduleName = strings.TrimSpace(moduleName)
+		if moduleName == "" {
+			continue
+		}
+		dirName := moduleName
+		if pkg := packages[moduleName]; pkg != nil && strings.TrimSpace(pkg.DirName) != "" {
+			dirName = strings.TrimSpace(pkg.DirName)
+		}
+		moduleDirClosure = append(moduleDirClosure, dirName)
+	}
+
+	moduleDeps, err := moddeps.CollectExternalModuleDependencies(modulesPath, moduleDirClosure, false)
 	if err != nil {
 		return nil, xfmt.Errorf("collect module dependencies: %w", err)
 	}
