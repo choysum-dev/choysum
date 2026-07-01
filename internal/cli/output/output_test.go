@@ -52,11 +52,9 @@ func captureStderr(t *testing.T, fn func()) string {
 		t.Fatalf("pipe: %v", err)
 	}
 	os.Stderr = writer
-	t.Cleanup(func() {
-		os.Stderr = old
-	})
 
 	fn()
+	os.Stderr = old
 	_ = writer.Close()
 
 	var buf bytes.Buffer
