@@ -155,7 +155,7 @@ func NewCatalog(runtimeScope scope.Scope, opts ...CatalogOption) *Catalog {
 	c := &Catalog{
 		runtimeScope: runtimeScope,
 		provider:     NewProvider(runtimeScope),
-		client:       newDefaultHTTPClient(),
+		client:       sharedHTTPClient(),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -456,7 +456,7 @@ func (c *Catalog) fetchJSON(ctx context.Context, requestURL string) ([]byte, err
 	req.Header.Set("Accept", "application/json")
 	client := c.client
 	if client == nil {
-		client = newDefaultHTTPClient()
+		client = sharedHTTPClient()
 	}
 	resp, err := client.Do(req)
 	if err != nil {

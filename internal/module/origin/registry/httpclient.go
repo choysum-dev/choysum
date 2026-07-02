@@ -44,8 +44,8 @@ var defaultHTTPClient = &http.Client{
 	},
 }
 
-// newDefaultHTTPClient returns the shared registry HTTP client so callers
+// sharedHTTPClient returns the shared registry HTTP client so callers
 // don't allocate a new transport on every invocation.
-func newDefaultHTTPClient() *http.Client {
+func sharedHTTPClient() *http.Client {
 	return defaultHTTPClient
 }
