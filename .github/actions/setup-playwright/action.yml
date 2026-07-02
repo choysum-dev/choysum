@@ -1,0 +1,69 @@
+name: Setup Playwright
+description: Setup Node.js, cache and install Playwright browser for e2e tests
+
+inputs:
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '22'
+  browser:
+    description: 'Browser to install'
+    required: false
+    default: 'chromium'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v6
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Resolve Playwright version
+      id: playwright-version
+      shell: bash
+      run: |
+        PLAYWRIGHT_VERSION=$(node -e "
+          let v = '';
+          try {
+            v = require('@playwright/test/package.json').version;
+          } catch {
+            console.warn('::warning::@playwright/test not found in node_modules; falling back to package.json version (may be a semver range, not exact)');
+            try {
+              const pkg = require('./package.json');
+              const d = (pkg.devDependencies && pkg.devDependencies['@playwright/test'])
+                     || (pkg.dependencies && pkg.dependencies['@playwright/test'])
+                     || (pkg.peerDependencies && pkg.peerDependencies['@playwright/test'])
+                     || (pkg.optionalDependencies && pkg.optionalDependencies['@playwright/test']);
+              if (d) v = d.replace(/^[^\d]+/, '');
+            } catch {}
+          }
+          console.log(v);
+        ")
+        if [ -z "$PLAYWRIGHT_VERSION" ]; then
+          echo "Error: could not resolve @playwright/test version from node_modules or package.json" >&2
+          exit 1
+        fi
+        echo "version=$PLAYWRIGHT_VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Playwright browser
+      id: playwright-cache
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+          ~\AppData\Local\ms-playwright
+        key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ steps.playwright-version.outputs.version }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-${{ inputs.browser }}-
+
+    - name: Install Playwright browser
+      if: steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx playwright install --with-deps ${{ inputs.browser }}
+
+    - name: Install Playwright system dependencies
+      if: steps.playwright-cache.outputs.cache-hit == 'true' && runner.os == 'Linux'
+      shell: bash
+      run: npx playwright install-deps ${{ inputs.browser }}
