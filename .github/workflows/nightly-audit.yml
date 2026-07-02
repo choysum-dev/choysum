@@ -117,19 +117,8 @@ jobs:
       - name: Make choysum CLI executable
         run: chmod +x .choysum/tmp/choysum
 
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Cache Playwright browser
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-chromium-v1
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
 
       - name: Run E2E suite
         run: |
