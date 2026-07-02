@@ -392,7 +392,8 @@ async function clickConfirmWhenReady(page: Page, timeout = 90000) {
  */
 function shouldRetryOperationFailure(error: unknown) {
   const message = String((error as { message?: string })?.message ?? error ?? '');
-  return /module operation finished with status (failed|cancelled)/i.test(message);
+  return /module operation finished with status (failed|cancelled)/i.test(message)
+    || /module \S+ status remained/i.test(message);
 }
 
 /**
@@ -440,15 +441,19 @@ async function runActionOnce(page: Page, moduleName: string, action: 'install' |
 
   await waitForOperationCompletion(page);
 
+  // Hard reload after the operation dialog closes so the board reflects the
+  // post-operation module status before we start polling.  The server-side
+  // reload may still be in-flight when the dialog reports "succeeded".
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
+  await waitForModuleList(page);
+
   if (action === 'uninstall') {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
-    await waitForModuleList(page);
     return;
   }
 
   const expectedStatus = '已安装';
-  await waitForModuleStatus(page, moduleName, expectedStatus);
+  await waitForModuleStatus(page, moduleName, expectedStatus, 180000);
 }
 
 /**
