@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	defaultHTTPTimeout         = 30 * time.Second
 	defaultDialTimeout         = 10 * time.Second
 	defaultKeepAlive           = 30 * time.Second
 	defaultTLSHandshakeTimeout = 10 * time.Second
@@ -22,8 +21,13 @@ const (
 // requests (catalog index, npm metadata, and tarball downloads). It uses its
 // own transport rather than http.DefaultTransport so that idle-connection
 // lifecycle is scoped to registry operations.
+//
+// No client-level Timeout is set: tarball downloads may legitimately take
+// longer than a fixed deadline. The transport-level timeouts (DialContext,
+// TLSHandshakeTimeout, ResponseHeaderTimeout) cover connection establishment
+// and response-headers arrival, and callers are expected to provide a
+// context.Context for overall request cancellation.
 var defaultHTTPClient = &http.Client{
-	Timeout: defaultHTTPTimeout,
 	Transport: &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -32,6 +36,7 @@ var defaultHTTPClient = &http.Client{
 		}).DialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          defaultMaxIdleConns,
+		MaxIdleConnsPerHost:   defaultMaxIdleConns,
 		IdleConnTimeout:       defaultIdleConnTimeout,
 		TLSHandshakeTimeout:   defaultTLSHandshakeTimeout,
 		ExpectContinueTimeout: 1 * time.Second,

@@ -77,6 +77,10 @@ func main() {
 	// x/net/http2 unconditionally writes protocol errors to stderr via log.Printf).
 	// Choysum does not use the standard log package; all application logging
 	// goes through internal/logger.
+	//
+	// NOTE: This is process-wide — any dependency that legitimately logs via
+	// the stdlib log package will also be silenced. This is an intentional
+	// tradeoff: there is no way to scope suppression to http2 alone.
 	log.SetOutput(io.Discard)
 
 	command := newCommander(context.Background())
