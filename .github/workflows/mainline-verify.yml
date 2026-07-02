@@ -40,6 +40,17 @@ jobs:
       retention_days: 1
       target_modules_json: ${{ needs.discover-modules.outputs.modules_json }}
 
+  prepare-playwright-cache:
+    name: main / prepare-playwright-cache
+    if: ${{ needs.discover-modules.outputs.e2e_modules_json != '[]' }}
+    needs:
+      - discover-modules
+      - prepare-root-node-modules
+    uses: ./.github/workflows/prepare-playwright-cache.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: main-root-node-modules
+
   discover-modules:
     name: main / discover-modules
     runs-on: ubuntu-latest
@@ -277,6 +288,7 @@ jobs:
     needs:
       - prepare-embedded-assets
       - prepare-root-node-modules
+      - prepare-playwright-cache
       - discover-modules
       - build-choysum-cli
     strategy:

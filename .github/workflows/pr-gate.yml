@@ -78,6 +78,17 @@ jobs:
       docs_only: ${{ needs.discover-impact.outputs.docs_only }}
       target_modules_json: ${{ needs.discover-impact.outputs.impacted_modules_json }}
 
+  prepare-playwright-cache:
+    name: pr / prepare-playwright-cache
+    if: ${{ needs.discover-impact.outputs.docs_only != 'true' && (needs.discover-impact.outputs.run_pr_smoke_e2e == 'true' || needs.discover-impact.outputs.impacted_direct_e2e_no_smoke_modules_json != '[]') }}
+    needs:
+      - discover-impact
+      - prepare-root-node-modules
+    uses: ./.github/workflows/prepare-playwright-cache.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      artifact_name: pr-root-node-modules
+
   build-choysum-cli:
     name: pr / build-choysum-cli
     if: >-
@@ -420,6 +431,7 @@ jobs:
       - prepare-embedded-assets
       - discover-impact
       - prepare-root-node-modules
+      - prepare-playwright-cache
       - build-choysum-cli
     strategy:
       fail-fast: false
@@ -475,6 +487,7 @@ jobs:
       - prepare-embedded-assets
       - discover-impact
       - prepare-root-node-modules
+      - prepare-playwright-cache
       - build-choysum-cli
     strategy:
       fail-fast: false

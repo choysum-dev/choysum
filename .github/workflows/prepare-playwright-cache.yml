@@ -1,0 +1,39 @@
+name: Prepare Playwright Cache
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      artifact_name:
+        description: "Artifact name of the root node_modules tarball (without .tar.gz extension)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-playwright-cache:
+    name: prepare-playwright-cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Download root node_modules
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: .choysum/tmp
+
+      - name: Extract root node_modules
+        run: tar -xzf .choysum/tmp/${{ inputs.artifact_name }}.tar.gz -C .
+
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
