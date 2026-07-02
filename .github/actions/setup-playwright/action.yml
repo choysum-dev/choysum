@@ -28,6 +28,7 @@ runs:
           try {
             v = require('@playwright/test/package.json').version;
           } catch {
+            console.warn('::warning::@playwright/test not found in node_modules; falling back to package.json version (may be a semver range, not exact)');
             try {
               const pkg = require('./package.json');
               const d = (pkg.devDependencies && pkg.devDependencies['@playwright/test'])
