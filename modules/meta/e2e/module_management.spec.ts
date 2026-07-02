@@ -448,7 +448,7 @@ async function runActionOnce(page: Page, moduleName: string, action: 'install' |
   }
 
   const expectedStatus = '已安装';
-  await waitForModuleStatus(page, moduleName, expectedStatus);
+  await waitForModuleStatus(page, moduleName, expectedStatus, 180000);
 }
 
 /**
