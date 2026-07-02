@@ -20,7 +20,10 @@ runs:
       id: playwright-cache
       uses: actions/cache@v6
       with:
-        path: ~/.cache/ms-playwright
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+          ~\AppData\Local\ms-playwright
         key: ${{ runner.os }}-playwright-chromium-${{ steps.playwright-version.outputs.version }}
         restore-keys: |
           ${{ runner.os }}-playwright-chromium-
