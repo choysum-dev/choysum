@@ -18,25 +18,29 @@ const (
 	defaultMaxIdleConns        = 100
 )
 
-// newDefaultHTTPClient returns an *http.Client tuned for resilient registry
-// HTTP requests (catalog index, npm metadata, and tarball downloads).
-// It uses its own transport rather than http.DefaultTransport so that
-// idle-connection lifecycle is scoped to registry operations.
+// defaultHTTPClient is a package-level shared *http.Client for registry HTTP
+// requests (catalog index, npm metadata, and tarball downloads). It uses its
+// own transport rather than http.DefaultTransport so that idle-connection
+// lifecycle is scoped to registry operations.
+var defaultHTTPClient = &http.Client{
+	Timeout: defaultHTTPTimeout,
+	Transport: &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   defaultDialTimeout,
+			KeepAlive: defaultKeepAlive,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          defaultMaxIdleConns,
+		IdleConnTimeout:       defaultIdleConnTimeout,
+		TLSHandshakeTimeout:   defaultTLSHandshakeTimeout,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+	},
+}
+
+// newDefaultHTTPClient returns the shared registry HTTP client so callers
+// don't allocate a new transport on every invocation.
 func newDefaultHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: defaultHTTPTimeout,
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   defaultDialTimeout,
-				KeepAlive: defaultKeepAlive,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          defaultMaxIdleConns,
-			IdleConnTimeout:       defaultIdleConnTimeout,
-			TLSHandshakeTimeout:   defaultTLSHandshakeTimeout,
-			ExpectContinueTimeout: 1 * time.Second,
-			ResponseHeaderTimeout: 15 * time.Second,
-		},
-	}
+	return defaultHTTPClient
 }
