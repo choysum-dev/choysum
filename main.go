@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"runtime/debug"
 
@@ -71,6 +73,12 @@ var newCommander = func(ctx context.Context) interface{ Execute() error } {
 var exitFunc = os.Exit
 
 func main() {
+	// Suppress standard-library log output from third-party packages (e.g.
+	// x/net/http2 unconditionally writes protocol errors to stderr via log.Printf).
+	// Choysum does not use the standard log package; all application logging
+	// goes through internal/logger.
+	log.SetOutput(io.Discard)
+
 	command := newCommander(context.Background())
 	if err := command.Execute(); err != nil {
 		exitFunc(1)
