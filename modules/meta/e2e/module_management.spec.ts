@@ -392,7 +392,7 @@ async function clickConfirmWhenReady(page: Page, timeout = 90000) {
  */
 function shouldRetryOperationFailure(error: unknown) {
   const message = String((error as { message?: string })?.message ?? error ?? '');
-  return /module operation finished with status (failed|cancelled)/i.test(message) || /module \S+ status remained/i.test(message);
+  return /module operation finished with status (failed|cancelled)/i.test(message);
 }
 
 /**
