@@ -4,6 +4,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -70,18 +71,28 @@ var newCommander = func(ctx context.Context) interface{ Execute() error } {
 	return cmd.NewCommander(ctx, getBuildVersion())
 }
 
+// http2LogFilter drops log lines produced by x/net/http2 that unconditionally
+// write protocol errors to stderr (e.g. "received DATA after END_STREAM").
+// All other log output is forwarded to the underlying writer unchanged.
+type http2LogFilter struct {
+	w io.Writer
+}
+
+func (f *http2LogFilter) Write(p []byte) (int, error) {
+	if bytes.Contains(p, []byte("protocol error: received DATA after END_STREAM")) {
+		return len(p), nil
+	}
+	return f.w.Write(p)
+}
+
 var exitFunc = os.Exit
 
 func main() {
-	// Suppress standard-library log output from third-party packages (e.g.
-	// x/net/http2 unconditionally writes protocol errors to stderr via log.Printf).
+	// Filter out x/net/http2 protocol-error noise from the standard library
+	// logger while preserving legitimate log output from other dependencies.
 	// Choysum does not use the standard log package; all application logging
 	// goes through internal/logger.
-	//
-	// NOTE: This is process-wide — any dependency that legitimately logs via
-	// the stdlib log package will also be silenced. This is an intentional
-	// tradeoff: there is no way to scope suppression to http2 alone.
-	log.SetOutput(io.Discard)
+	log.SetOutput(&http2LogFilter{w: os.Stderr})
 
 	command := newCommander(context.Background())
 	if err := command.Execute(); err != nil {
