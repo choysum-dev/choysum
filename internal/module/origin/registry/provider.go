@@ -58,7 +58,7 @@ func WithHTTPClient(client *http.Client) ProviderOption {
 }
 
 func NewProvider(runtimeScope scope.Scope, opts ...ProviderOption) *SourceRegistryProvider {
-	p := &SourceRegistryProvider{runtimeScope: runtimeScope, client: http.DefaultClient}
+	p := &SourceRegistryProvider{runtimeScope: runtimeScope, client: sharedHTTPClient()}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -84,7 +84,7 @@ func (p *SourceRegistryProvider) httpGet(ctx context.Context, requestURL string)
 	}
 	client := p.client
 	if client == nil {
-		client = http.DefaultClient
+		client = sharedHTTPClient()
 	}
 	return client.Do(req)
 }
