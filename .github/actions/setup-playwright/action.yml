@@ -37,6 +37,10 @@ runs:
           }
           console.log(v);
         ")
+        if [ -z "$PLAYWRIGHT_VERSION" ]; then
+          echo "Error: could not resolve @playwright/test version from node_modules or package.json" >&2
+          exit 1
+        fi
         echo "version=$PLAYWRIGHT_VERSION" >> "$GITHUB_OUTPUT"
 
     - name: Cache Playwright browser
@@ -55,3 +59,8 @@ runs:
       if: steps.playwright-cache.outputs.cache-hit != 'true'
       shell: bash
       run: npx playwright install --with-deps ${{ inputs.browser }}
+
+    - name: Install Playwright system dependencies
+      if: steps.playwright-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: npx playwright install-deps ${{ inputs.browser }}
