@@ -31,7 +31,9 @@ runs:
             try {
               const pkg = require('./package.json');
               const d = (pkg.devDependencies && pkg.devDependencies['@playwright/test'])
-                     || (pkg.dependencies && pkg.dependencies['@playwright/test']);
+                     || (pkg.dependencies && pkg.dependencies['@playwright/test'])
+                     || (pkg.peerDependencies && pkg.peerDependencies['@playwright/test'])
+                     || (pkg.optionalDependencies && pkg.optionalDependencies['@playwright/test']);
               if (d) v = d.replace(/^[^\d]+/, '');
             } catch {}
           }
