@@ -82,6 +82,9 @@ func (f *http2LogFilter) Write(p []byte) (int, error) {
 	if bytes.Contains(p, []byte("protocol error: received DATA after END_STREAM")) {
 		return len(p), nil
 	}
+	if f.w == nil {
+		return len(p), nil
+	}
 	return f.w.Write(p)
 }
 
