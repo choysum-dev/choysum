@@ -645,7 +645,8 @@ func TestWithProgressTicker_NilContextUsesBackground(t *testing.T) {
 	if ticker == nil {
 		t.Fatal("expected non-nil ticker")
 	}
-	ctx := WithProgressTicker(nil, ticker)
+	var nilCtx context.Context
+	ctx := WithProgressTicker(nilCtx, ticker)
 	if ctx == nil {
 		t.Fatal("expected non-nil context when input is nil")
 	}
@@ -655,7 +656,8 @@ func TestWithProgressTicker_NilContextUsesBackground(t *testing.T) {
 }
 
 func TestProgressTickerFromContext_MissingKeyReturnsNil(t *testing.T) {
-	if got := ProgressTickerFromContext(nil); got != nil {
+	var nilCtx context.Context
+	if got := ProgressTickerFromContext(nilCtx); got != nil {
 		t.Fatalf("expected nil for nil context, got %#v", got)
 	}
 	if got := ProgressTickerFromContext(context.Background()); got != nil {
@@ -678,7 +680,8 @@ func TestWithProgressLine_NilContextUsesBackground(t *testing.T) {
 	t.Setenv("NO_COLOR", "")
 	stubConsoleTerminalWriter(t, false)
 	line := NewProgressLine(bytes.NewBuffer(nil))
-	ctx := WithProgressLine(nil, line)
+	var nilCtx context.Context
+	ctx := WithProgressLine(nilCtx, line)
 	if ctx == nil {
 		t.Fatal("expected non-nil context when input is nil")
 	}
@@ -688,7 +691,8 @@ func TestWithProgressLine_NilContextUsesBackground(t *testing.T) {
 }
 
 func TestProgressLineFromContext_MissingKeyReturnsNil(t *testing.T) {
-	if got := ProgressLineFromContext(nil); got != nil {
+	var nilCtx context.Context
+	if got := ProgressLineFromContext(nilCtx); got != nil {
 		t.Fatalf("expected nil for nil context, got %#v", got)
 	}
 	if got := ProgressLineFromContext(context.Background()); got != nil {
@@ -730,7 +734,8 @@ func TestProgressLine_DoneWithEmptySymbolUsesPlainFormat(t *testing.T) {
 
 func TestWithStderrProgressLine_NilContext(t *testing.T) {
 	// Must not panic and must return a usable background context.
-	ctx := WithStderrProgressLine(nil)
+	var nilCtx context.Context
+	ctx := WithStderrProgressLine(nilCtx)
 	if ctx == nil {
 		t.Fatal("expected non-nil context for nil input")
 	}
