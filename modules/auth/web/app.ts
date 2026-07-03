@@ -115,9 +115,13 @@ function setupTokenProvider(authStore: ReturnType<typeof useAuthStore>): void {
 
         return !!authStore.tokens?.accessToken;
       } catch (error) {
-        console.error('[Auth] Token refresh failed:', error);
+        // Token refresh failures are expected after key rotation or database
+        // resets. Log at warning level instead of error to avoid noise.
+        console.warn('[Auth] Token refresh failed:', error);
 
-        // Log out automatically when refresh fails with an existing session.
+        // Only attempt server-side logout when we still have a valid access
+        // token. After a refresh failure the store action already calls
+        // clearAuth, so tokens are typically already null here.
         if (authStore.tokens?.accessToken) {
           try {
             await authStore.logout();
@@ -125,7 +129,7 @@ function setupTokenProvider(authStore: ReturnType<typeof useAuthStore>): void {
               console.debug('[Auth] Auto logout succeeded after refresh failure');
             }
           } catch (logoutError) {
-            console.error('[Auth] Auto logout failed:', logoutError);
+            console.warn('[Auth] Auto logout failed:', logoutError);
           }
         }
 

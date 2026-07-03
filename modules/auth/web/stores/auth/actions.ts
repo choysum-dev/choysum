@@ -144,6 +144,12 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
    */
   async function loginImpl(username: string, password: string, ipAddress = '', deviceInfo = '', shouldRemember = false): Promise<any> {
     try {
+      // Clear any stale auth state before login so the auth interceptor does
+      // not attempt to refresh tokens from a previous database lifetime.
+      if (state.tokens.value && !state.isAccessTokenValid.value) {
+        clearAuth();
+      }
+
       // Hash the password client-side when the feature is enabled.
       const hashedPassword = await hashPasswordClient(password, username);
 
