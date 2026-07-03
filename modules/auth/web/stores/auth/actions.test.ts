@@ -186,7 +186,7 @@ describe('loginImpl', () => {
 
     // Deferred promise so we can control when initAuth completes.
     let resolveRefresh: (value: unknown) => void;
-    const refreshDeferred = new Promise((resolve) => {
+    const refreshDeferred = new Promise(resolve => {
       resolveRefresh = resolve;
     });
     mockState.userStore.RefreshTokens.mockReturnValue(refreshDeferred);
@@ -262,16 +262,18 @@ describe('loginImpl', () => {
     const loginPromise = actions.login('admin', 'secret');
     await Promise.resolve();
 
-    // initAuth fails — the catch block in loginImpl should swallow it.
+    // initAuth fails — initAuth handles it silently (no re-throw).
     rejectRefresh!(new Error('token signature is invalid'));
 
-    // initAuth should settle (with error), login should still succeed.
-    await expect(initPromise).rejects.toThrow();
+    // initAuth resolves successfully (failure is handled internally).
+    await initPromise;
     await loginPromise;
 
     // Assert: login still completed — Login RPC was called.
     expect(mockState.userStore.Login).toHaveBeenCalled();
     // clearAuth was called (both from initAuth's catch and loginImpl).
     expect(mockHelpers.resetAuthState).toHaveBeenCalled();
+    // initAuth marked initialization as complete despite the failure.
+    expect(mockState.initialized.value).toBe(true);
   });
 });
