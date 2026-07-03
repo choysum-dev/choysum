@@ -286,11 +286,7 @@ func WithStderrProgressLine(ctx context.Context) context.Context {
 	if ProgressLineFromContext(ctx) != nil {
 		return ctx
 	}
-	line := NewProgressLine(os.Stderr)
-	if line == nil {
-		return ctx
-	}
-	return WithProgressLine(ctx, line)
+	return WithProgressLine(ctx, NewProgressLine(os.Stderr))
 }
 
 // Update overwrites the current line with a spinner frame and message.
