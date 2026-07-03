@@ -186,7 +186,7 @@ describe('loginImpl', () => {
 
     // Deferred promise so we can control when initAuth completes.
     let resolveRefresh: (value: unknown) => void;
-    const refreshDeferred = new Promise((resolve) => {
+    const refreshDeferred = new Promise(resolve => {
       resolveRefresh = resolve;
     });
     mockState.userStore.RefreshTokens.mockReturnValue(refreshDeferred);
