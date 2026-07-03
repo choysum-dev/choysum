@@ -272,6 +272,23 @@ func NewProgressLine(w io.Writer) *ProgressLine {
 	}
 }
 
+// WithStderrProgressLine attaches a stderr-backed ProgressLine to ctx.
+// In non-TTY environments the line is still attached but downstream rendering
+// (Update/Clear) is a no-op; the plain-text Done fallback remains available.
+// It is a convenience wrapper for CLI commands that want to activate
+// downstream braille-spinner rendering without duplicating the
+// NewProgressLine + WithProgressLine wiring.
+func WithStderrProgressLine(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	// Respect an existing ProgressLine already in ctx (e.g. injected by tests).
+	if ProgressLineFromContext(ctx) != nil {
+		return ctx
+	}
+	return WithProgressLine(ctx, NewProgressLine(os.Stderr))
+}
+
 // Update overwrites the current line with a spinner frame and message.
 // frame is typically an incrementing counter; the braille glyph is
 // selected via frame % len(progressSpinnerFrames).
