@@ -55,7 +55,6 @@ export function CreateWebApiService<F extends RpcServiceFn>(
       response = await invokeMethod(request);
     } catch (error) {
       const normalizedError = normalizeTransportError(error);
-      console.debug('API Error:', normalizedError);
       throw normalizedError;
     }
 
