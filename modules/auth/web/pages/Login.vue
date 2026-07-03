@@ -102,8 +102,22 @@ function handleRedirect() {
   router.replace(redirect);
 }
 
-onMounted(() => {
-  if (isAuthenticated.value) {
+onMounted(async () => {
+  // Capture the current route so we don't redirect if the user already
+  // navigated away (e.g. clicked "Register now") while ensureAuthReady runs.
+  const currentPath = route.path;
+
+  // Ensure auth initialization runs so stale tokens (e.g. from a previous
+  // database reset) are cleared before the user submits the login form.
+  // Without this the auth interceptor may try to refresh an invalid token
+  // during the Login RPC and produce noisy console errors.
+  try {
+    await authStore.ensureAuthReady();
+  } catch {
+    // Stale tokens are cleared by initAuth internally; continue to login.
+  }
+
+  if (route.path === currentPath && isAuthenticated.value) {
     handleRedirect();
   }
 });
