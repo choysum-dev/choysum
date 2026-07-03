@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // ============================================
-// 导入样式文件 - 优化导入顺序
+// Style imports
 // ============================================
-@forward './variables.scss'; // 先加载变量定义
-@forward './element.scss'; // 再加载Element Plus样式
-@forward './transitions.scss'; // 加载过渡动画样式
-@forward './a11y.scss'; // 加载可访问性
+@forward './variables.scss'; // CSS custom properties
+@forward './element.scss'; // Element Plus overrides
+@forward './transitions.scss'; // Vue transition classes
+@forward './a11y.scss'; // Accessibility helpers
 
 // ============================================
-// 全局基础样式 - 与Element Plus对齐
+// Global base styles
 // ============================================
 
 html {

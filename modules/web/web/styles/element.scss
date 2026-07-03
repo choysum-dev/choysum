@@ -7,20 +7,20 @@
 // ============================================
 
 // ============================================
-// 最小化按钮样式增强
+// Button icon spacing
 // ============================================
 .el-button {
-  // 按钮文字与图标间距 - 适应RTL
+  // Icon-text gap for RTL compatibility
   [class^='el-icon'] + span {
     margin-inline-start: 5px;
   }
 }
 
 // ============================================
-// RTL支持 - Element Plus调整
+// RTL adjustments
 // ============================================
 [dir='rtl'] {
-  // 基本方向设置
+  // Base direction
   direction: rtl;
   text-align: right;
 
@@ -31,7 +31,7 @@
     transform: scaleX(-1);
   }
 
-  // Element Plus按钮图标位置修正
+  // Button icon margin correction for RTL
   .el-button:not(.is-text):not(.is-link) {
     &.is-icon-right [class*='el-icon'] {
       margin-right: 0;
