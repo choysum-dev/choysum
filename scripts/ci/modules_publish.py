@@ -834,6 +834,21 @@ def sync_modules_per_module_pr():
             }
         )
 
+    catalog_rebuild_triggered = None
+    catalog_rebuild_error = None
+    if not dry_run and any(c.get("status") == "published" for c in candidates) and not errors:
+        try:
+            api_json(
+                "POST",
+                f"{api_base}/actions/workflows/build-catalog.yml/dispatches",
+                {"ref": "main"},
+            )
+            catalog_rebuild_triggered = True
+        except Exception as exc:
+            catalog_rebuild_triggered = False
+            catalog_rebuild_error = str(exc)
+            # Non-fatal: the hourly schedule cron in modules-directory serves as fallback.
+
     write_json(
         summary_path,
         {
@@ -844,6 +859,8 @@ def sync_modules_per_module_pr():
             "sourceRunRef": source_run_ref,
             "sourceSha": source_sha,
             "candidateCount": len(candidates),
+            "catalogRebuildTriggered": catalog_rebuild_triggered,
+            "catalogRebuildError": catalog_rebuild_error,
             "results": results,
         },
     )

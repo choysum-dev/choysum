@@ -5,6 +5,13 @@
 *.so
 *.dylib
 
+
+# Python / Environment
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
 # Test binary, built with `go test -c`
 *.test
 
