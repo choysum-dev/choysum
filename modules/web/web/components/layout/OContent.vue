@@ -132,7 +132,7 @@ const slideDirection = computed(() => (isRtlMode.value ? 'rtl' : 'ltr'));
 <style lang="scss" scoped>
 .o-content {
   width: 100%;
-  transition: padding var(--o-transition-duration-base) var(--el-transition-function);
+  transition: padding var(--el-transition-duration) var(--el-transition-function);
   display: flex;
   flex-direction: column;
   height: auto;

@@ -135,8 +135,8 @@ const showFooter = computed(() => props.show && !(props.hideOnMobile && layoutSt
     }
 
     &:focus-visible {
-      outline: var(--o-aria-focus-outline-width) solid var(--o-aria-focus-outline-color);
-      outline-offset: var(--o-aria-focus-outline-offset);
+      outline: 2px solid var(--el-color-primary);
+      outline-offset: 2px;
     }
 
     &:not(:last-child) {
