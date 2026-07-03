@@ -71,7 +71,6 @@ vi.mock('@/auth/web/permission', () => {
 function buildMockAuthStore(overrides: Record<string, unknown> = {}) {
   return {
     tokens: null,
-    refreshToken: null,
     shouldRefreshToken: false,
     refreshToken: vi.fn(),
     logout: vi.fn(),
