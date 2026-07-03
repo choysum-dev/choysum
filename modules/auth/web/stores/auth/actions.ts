@@ -366,35 +366,22 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
         return;
       }
 
-      // Recover identity from the persisted access token before further checks.
+      // Recover identity and refresh token if needed. Failures here
+      // (malformed tokens, key rotation, DB resets) are expected — clear
+      // stale state and mark init complete without re-throwing.
       try {
         helpers.updateTokenIdentity();
-      } catch (identityErr) {
-        // A malformed or corrupted token in storage can cause identity
-        // extraction to fail. Clear the stale state and mark init complete
-        // just like a refresh failure.
-        const msg = identityErr instanceof Error ? identityErr.message : String(identityErr);
-        console.warn('[auth] Failed to extract identity during init. Clearing stale auth state:', msg);
+
+        // Refresh when the current token is expired or near expiry.
+        if (state.shouldRefreshToken.value) {
+          await refreshToken(false);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[auth] Auth initialization recovery failed. Clearing stale auth state:', msg);
         clearAuth();
         state.initialized.value = true;
         return;
-      }
-
-      // Refresh when the current token is expired or near expiry.
-      if (state.shouldRefreshToken.value) {
-        try {
-          await refreshToken(false);
-        } catch (refreshErr) {
-          // Token refresh failures during initialization are expected after
-          // key rotation or database resets. The store action already called
-          // clearAuth; just mark initialization complete and return.
-          // Log the error message (not the full object) for debugging without
-          // leaking sensitive token data to the browser console.
-          const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr);
-          console.warn('[auth] Token refresh during init failed. Clearing stale auth state:', msg);
-          state.initialized.value = true;
-          return;
-        }
       }
 
       // Re-arm automatic refresh scheduling when enabled.
