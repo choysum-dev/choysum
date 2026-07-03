@@ -248,8 +248,6 @@ func resolveRunConfigPath(cmd *cobra.Command) (string, *runError) {
 	return cfgPath, nil
 }
 
-type runServerRuntimeOptions = cliruntime.RunServerOptions
-
 type runDBRuntimeOptions = cliruntime.RunDBOptions
 
 type runLoadedConfig struct {
