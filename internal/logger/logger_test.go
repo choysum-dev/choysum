@@ -727,3 +727,32 @@ func TestProgressLine_DoneWithEmptySymbolUsesPlainFormat(t *testing.T) {
 		t.Fatalf("expected non-TTY Done with empty symbol to avoid escape sequences, got %q", out)
 	}
 }
+
+func TestWithStderrProgressLine_NilContext(t *testing.T) {
+	// Must not panic and must return a usable background context.
+	ctx := WithStderrProgressLine(nil)
+	if ctx == nil {
+		t.Fatal("expected non-nil context for nil input")
+	}
+	// The returned context should have a ProgressLine from os.Stderr.
+	if line := ProgressLineFromContext(ctx); line == nil {
+		t.Fatal("expected ProgressLine to be injected for nil context")
+	}
+}
+
+func TestWithStderrProgressLine_ExistingProgressLinePreserved(t *testing.T) {
+	existing := NewProgressLine(bytes.NewBuffer(nil))
+	ctx := WithProgressLine(context.Background(), existing)
+	result := WithStderrProgressLine(ctx)
+	if got := ProgressLineFromContext(result); got != existing {
+		t.Fatalf("expected existing ProgressLine to be preserved, got %#v", got)
+	}
+}
+
+func TestWithStderrProgressLine_InjectsProgressLine(t *testing.T) {
+	ctx := WithStderrProgressLine(context.Background())
+	line := ProgressLineFromContext(ctx)
+	if line == nil {
+		t.Fatal("expected a ProgressLine to be injected into context")
+	}
+}

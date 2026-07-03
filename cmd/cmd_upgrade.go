@@ -12,6 +12,7 @@ import (
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -59,6 +60,9 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			}
 			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt)
 			defer stop()
+
+			ctx = logutil.WithStderrProgressLine(ctx)
+
 			runtimeOptionsValidated := false
 
 			type upgradePlan struct {
