@@ -266,15 +266,13 @@ function handleDrawerMenuItemClick(item: MenuItem) {
 </script>
 
 <style lang="scss" scoped>
-@use '@/web/web/styles/tokens.scss' as *;
-
 .o-header {
   height: var(--o-header-height);
   width: 100%;
   background-color: var(--el-bg-color);
   box-shadow: var(--el-box-shadow-lighter);
   padding: 0;
-  z-index: $z-index-fixed;
+  z-index: 1500;
 
   &.el-header {
     height: var(--o-header-height) !important;

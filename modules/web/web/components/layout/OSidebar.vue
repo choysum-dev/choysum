@@ -225,13 +225,11 @@ function handleMenuMouseLeave() {
 </script>
 
 <style lang="scss" scoped>
-@use '../../styles/tokens.scss' as *;
-
 .o-sidebar {
   flex-shrink: 0;
   position: fixed;
   inset-inline-start: 0;
-  z-index: $z-index-fixed;
+  z-index: 1500;
   background-color: var(--el-menu-bg-color, var(--el-bg-color));
   transition: width var(--el-transition-duration) var(--el-transition-function-ease-in-out);
   border-inline-end: 1px solid var(--el-border-color-light);

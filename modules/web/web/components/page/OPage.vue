@@ -91,8 +91,6 @@ const pageClass = computed(() => {
 </script>
 
 <style lang="scss" scoped>
-@use '../../styles/tokens.scss' as *;
-
 .o-page {
   width: 100%;
   background-color: var(--el-bg-color);
@@ -193,7 +191,7 @@ const pageClass = computed(() => {
     align-items: center;
     justify-content: center;
     background-color: var(--el-overlay-color-lighter, rgba(255, 255, 255, 0.5));
-    z-index: $z-index-modal;
+    z-index: 2001;
   }
 
   &__loading-icon {

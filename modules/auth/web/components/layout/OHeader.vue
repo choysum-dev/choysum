@@ -113,8 +113,6 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-@use '@/web/web/styles/utils.scss' as *;
-
 .o-header__action-btn {
   position: relative;
   height: 36px;
@@ -125,7 +123,7 @@ export default defineComponent({
   justify-content: center;
   color: var(--el-text-color-regular);
   border-radius: var(--el-border-radius-base);
-  @extend .o-cursor-pointer;
+  cursor: pointer;
 
   &:hover {
     color: var(--el-color-primary);
