@@ -62,9 +62,7 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
 
-			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine.IsTTY() {
-				ctx = logutil.WithProgressLine(ctx, progressLine)
-			}
+			ctx = logutil.WithStderrProgressLine(ctx)
 
 			coordinator := internalorigin.NewCoordinator(env)
 
