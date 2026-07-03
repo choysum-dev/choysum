@@ -16,10 +16,16 @@ vi.mock('../stores/auth', () => {
 
 // Mock vue-router.
 const mockRouterReplace = vi.fn();
+let mockRoutePath = '/login';
 vi.mock('vue-router', () => {
   return {
     useRouter: () => ({ replace: mockRouterReplace }),
-    useRoute: () => ({ query: {} }),
+    useRoute: () => ({
+      get path() {
+        return mockRoutePath;
+      },
+      query: {},
+    }),
   };
 });
 
@@ -47,9 +53,19 @@ vi.mock('@/web/web/components/page/OPage.vue', () => {
 // Mock element-plus.
 vi.mock('element-plus', () => {
   return {
-    ElForm: { name: 'ElForm', template: '<form @submit.prevent="$emit(\'submit\')"><slot /></form>', props: ['model', 'rules', 'labelPosition'], emits: ['submit'] },
+    ElForm: {
+      name: 'ElForm',
+      template: '<form @submit.prevent="$emit(\'submit\')"><slot /></form>',
+      props: ['model', 'rules', 'labelPosition'],
+      emits: ['submit'],
+    },
     ElFormItem: { name: 'ElFormItem', template: '<div><slot /></div>', props: ['prop', 'label'] },
-    ElInput: { name: 'ElInput', template: '<input />', props: ['modelValue', 'placeholder', 'prefixIcon', 'type', 'autocomplete', 'showPassword'], emits: ['update:modelValue'] },
+    ElInput: {
+      name: 'ElInput',
+      template: '<input />',
+      props: ['modelValue', 'placeholder', 'prefixIcon', 'type', 'autocomplete', 'showPassword'],
+      emits: ['update:modelValue'],
+    },
     ElButton: { name: 'ElButton', template: '<button><slot /></button>', props: ['type', 'loading', 'nativeType'] },
     ElCheckbox: { name: 'ElCheckbox', template: '<input type="checkbox" />', props: ['modelValue'], emits: ['update:modelValue'] },
     ElAlert: { name: 'ElAlert', template: '<div><slot /></div>', props: ['title', 'type', 'closable'], emits: ['close'] },
@@ -76,6 +92,7 @@ describe('Login.vue onMounted', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRouterReplace.mockReset();
+    mockRoutePath = '/login';
     vi.resetModules();
   });
 
@@ -101,6 +118,33 @@ describe('Login.vue onMounted', () => {
     await vi.waitFor(() => {
       expect(mockRouterReplace).toHaveBeenCalledWith('/');
     });
+  });
+
+  it('does not redirect when user navigated away during init', async () => {
+    // Arrange: user is authenticated, but init takes time.
+    let resolveInit: () => void;
+    const initDeferred = new Promise<void>((resolve) => {
+      resolveInit = resolve;
+    });
+    mockAuthStore = buildMockAuthStore({
+      isAuthenticated: { value: true },
+      ensureAuthReady: vi.fn(() => initDeferred),
+    });
+
+    const { default: Login } = await import('../pages/Login.vue');
+    mount(Login);
+
+    // Simulate the user clicking "Register now" — route changes.
+    mockRoutePath = '/register';
+
+    // Now let initAuth complete.
+    resolveInit!();
+    await vi.waitFor(() => {
+      expect(mockAuthStore.ensureAuthReady).toHaveBeenCalledTimes(1);
+    });
+
+    // Assert: no redirect because the user is no longer on /login.
+    expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 
   it('does not redirect when ensureAuthReady throws', async () => {
