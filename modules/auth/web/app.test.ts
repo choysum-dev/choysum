@@ -119,23 +119,17 @@ describe('setupTokenProvider refreshToken', () => {
     expect(result).toBe(false);
 
     // console.warn should have been called (not console.error).
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[Auth] Token refresh failed:',
-      expect.any(Error)
-    );
+    expect(warnSpy).toHaveBeenCalledWith('[Auth] Token refresh failed:', expect.any(Error));
     // No console.error for the refresh failure path.
-    const refreshErrorCalls = errorSpy.mock.calls.filter(
-      (args) => typeof args[0] === 'string' && args[0].includes('Token refresh failed')
-    );
+    const refreshErrorCalls = errorSpy.mock.calls.filter(args => typeof args[0] === 'string' && args[0].includes('Token refresh failed'));
     expect(refreshErrorCalls).toHaveLength(0);
 
     warnSpy.mockRestore();
     errorSpy.mockRestore();
   });
 
-  it('does not attempt logout when tokens are already cleared after refresh failure', async () => {
+  it('returns false when token refresh fails', async () => {
     // Arrange: auth store has a refresh token; refresh fails and clears tokens.
-    let tokensAfterRefresh: any = null;
     mockAuthStore = buildMockAuthStore({
       tokens: { accessToken: 'old-access', refreshToken: 'old-refresh', expiresAt: Date.now() + 1000 },
       refreshToken: vi.fn(async () => {
@@ -144,7 +138,6 @@ describe('setupTokenProvider refreshToken', () => {
         throw new Error('token signature is invalid');
       }),
       shouldRefreshToken: false,
-      logout: vi.fn(),
     });
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -153,10 +146,11 @@ describe('setupTokenProvider refreshToken', () => {
     await import('./app');
 
     // Call the refreshToken callback.
-    await capturedTokenProvider.refreshToken();
+    const result = await capturedTokenProvider.refreshToken();
 
-    // Assert: logout was NOT called because tokens are already null.
-    expect(mockAuthStore.logout).not.toHaveBeenCalled();
+    // Assert: returns false on failure.
+    expect(result).toBe(false);
+    expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();
   });

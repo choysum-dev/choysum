@@ -144,12 +144,16 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
    */
   async function loginImpl(username: string, password: string, ipAddress = '', deviceInfo = '', shouldRemember = false): Promise<any> {
     try {
-      // Ensure any in-flight initialization completes first to avoid races
-      // between initAuth clearing state and this login setting new tokens.
-      try {
-        await ensureAuthReady();
-      } catch {
-        // initAuth clears stale state internally on failure; ignore.
+      // If a previous mount (e.g. Login.vue onMounted) has already started
+      // initialization, wait for it to finish so it does not race with the
+      // clearAuth below. Do not start a new initAuth here — any tokens it
+      // would produce are immediately discarded by the unconditional clear.
+      if (initInFlight) {
+        try {
+          await initInFlight;
+        } catch {
+          // initAuth clears stale state internally on failure; ignore.
+        }
       }
 
       // Unconditionally clear any existing auth state before login so the

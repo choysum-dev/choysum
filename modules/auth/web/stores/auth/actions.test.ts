@@ -146,9 +146,8 @@ describe('loginImpl', () => {
     expect(mockAuthStorage.clearAuthStorage).toHaveBeenCalled();
   });
 
-  it('still attempts login after ensureAuthReady fails', async () => {
-    // Arrange: simulate initAuth failing (e.g. refresh token invalid).
-    // With no refresh token, initAuth returns early after clearAuth.
+  it('still logs in successfully when stale tokens exist', async () => {
+    // Arrange: expired tokens from a previous session.
     mockState.tokens.value = {
       accessToken: 'stale-access',
       refreshToken: 'stale-refresh',
@@ -162,18 +161,16 @@ describe('loginImpl', () => {
       expiresAt: Date.now() + 3600_000,
     };
     mockState.userStore.Login.mockResolvedValue(loginResponse);
-    // Simulate RefreshTokens failing during initAuth.
-    mockState.userStore.RefreshTokens.mockRejectedValue(new Error('token signature is invalid'));
 
     const { defineAuthActions } = await import('./actions');
     const actions = defineAuthActions(mockState as any, mockHelpers as any);
 
-    // Act: call login. Even though initAuth fails, login should proceed.
+    // Act: call login.
     await actions.login('admin', 'secret');
 
-    // Assert: Login RPC was still called.
+    // Assert: Login RPC was called despite stale tokens.
     expect(mockState.userStore.Login).toHaveBeenCalled();
-    // clearAuth was called (at least once from loginImpl).
+    // clearAuth was called unconditionally before login.
     expect(mockHelpers.resetAuthState).toHaveBeenCalled();
   });
 });
