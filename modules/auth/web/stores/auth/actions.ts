@@ -385,6 +385,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       // Token refresh failures during initialization are expected after
       // key rotation or database resets. Clear any stale state and mark
       // initialization as complete — do not re-throw.
+      console.warn('[auth] Initialization failed or token refresh failed. Clearing stale auth state:', error);
       clearAuth();
       state.initialized.value = true;
     }
