@@ -144,11 +144,19 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
    */
   async function loginImpl(username: string, password: string, ipAddress = '', deviceInfo = '', shouldRemember = false): Promise<any> {
     try {
-      // Clear any stale auth state before login so the auth interceptor does
-      // not attempt to refresh tokens from a previous database lifetime.
-      if (state.tokens.value && !state.isAccessTokenValid.value) {
-        clearAuth();
+      // Ensure any in-flight initialization completes first to avoid races
+      // between initAuth clearing state and this login setting new tokens.
+      try {
+        await ensureAuthReady();
+      } catch {
+        // initAuth clears stale state internally on failure; ignore.
       }
+
+      // Unconditionally clear any existing auth state before login so the
+      // auth interceptor does not attempt to use or refresh old tokens
+      // (which may be unexpired but invalid after a key rotation or DB reset)
+      // during the Login RPC.
+      clearAuth();
 
       // Hash the password client-side when the feature is enabled.
       const hashedPassword = await hashPasswordClient(password, username);
