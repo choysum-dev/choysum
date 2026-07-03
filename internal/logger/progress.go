@@ -280,6 +280,10 @@ func WithStderrProgressLine(ctx context.Context) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	// Respect an existing ProgressLine already in ctx (e.g. injected by tests).
+	if ProgressLineFromContext(ctx) != nil {
+		return ctx
+	}
 	line := NewProgressLine(os.Stderr)
 	if line == nil || !line.IsTTY() {
 		return ctx
