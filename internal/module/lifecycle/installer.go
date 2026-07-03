@@ -225,56 +225,6 @@ func installerScheduleDB(runtimeScope scope.Scope) (*gorm.DB, error) {
 	return nil, xfmt.Errorf("missing db session")
 }
 
-func ensureModuleIndexDailySchedule(runtimeScope scope.Scope) error {
-	db, err := installerScheduleDB(runtimeScope)
-	if err != nil {
-		return err
-	}
-	const (
-		scheduleName = "meta.module_index.daily_sync"
-		targetApp    = "meta"
-		fullMethod   = "meta.IrModuleIndex/Sync"
-		cronExpr     = "0 0 * * *"
-		timezone     = "UTC"
-	)
-	payload := datatypes.JSON(mustJSON(map[string]any{"originType": "local", "force": true}))
-	var existing task.Schedule
-	res := db.Where("name = ?", scheduleName).Take(&existing)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			now := time.Now().UTC()
-			return db.Create(&task.Schedule{
-				Id:                xid.New().String(),
-				Active:            true,
-				Name:              scheduleName,
-				TargetApp:         targetApp,
-				FullMethod:        fullMethod,
-				PayloadTemplate:   payload,
-				SchedulerUserId:   "admin",
-				TriggeredByUserId: "admin",
-				CronExpr:          cronExpr,
-				Timezone:          timezone,
-				TimeoutMs:         0,
-				NextRunAt:         nil,
-				CreatedAt:         now,
-				UpdatedAt:         now,
-			}).Error
-		}
-		return res.Error
-	}
-	updates := map[string]any{
-		"active":                true,
-		"target_app":            targetApp,
-		"full_method":           fullMethod,
-		"payload_template_json": payload,
-		"cron_expr":             cronExpr,
-		"timezone":              timezone,
-		"timeout_ms":            int64(0),
-		"updated_at":            time.Now().UTC(),
-	}
-	return db.Model(&task.Schedule{}).Where("id = ?", existing.Id).Updates(updates).Error
-}
-
 func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
 	db, err := installerScheduleDB(runtimeScope)
 	if err != nil {

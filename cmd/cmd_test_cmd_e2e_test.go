@@ -38,7 +38,6 @@ import (
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
-	leasemodel "github.com/choysum-dev/choysum/internal/state/lease/model"
 )
 
 func TestCLIErrorBlockLastOutput_InitInteractive(t *testing.T) {
@@ -284,17 +283,6 @@ func TestCLIErrorBlockRedactsUrlUserinfoSpecialChars_Run(t *testing.T) {
 	}
 }
 
-func writeTempRunConfig(t *testing.T) string {
-	return writeTempConfigWithDSN(t, "sqlite", writeTempSqliteDB(t), "")
-}
-
-func isTerminal(t *testing.T) bool {
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		t.Fatalf("stat stdin: %v", err)
-	}
-	return info.Mode()&os.ModeCharDevice != 0
-}
 func TestCLIErrorBlockIsLastOutput(t *testing.T) {
 	stdout, stderr, code := runCLISeparated(t, "run", "--config", " ")
 	if code != 2 {
@@ -357,40 +345,6 @@ func runCLI(t *testing.T, args ...string) (string, int) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
 	cmd.Args = append(cmd.Args, args...)
 	cmd.Env = cliE2EHelperEnv()
-	output, err := cmd.CombinedOutput()
-	if err == nil {
-		return string(output), 0
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return string(output), exitErr.ExitCode()
-	}
-	return string(output), 1
-}
-
-func runCLIInDir(t *testing.T, dir string, args ...string) (string, int) {
-	t.Helper()
-
-	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
-	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv()
-	cmd.Dir = dir
-	output, err := cmd.CombinedOutput()
-	if err == nil {
-		return string(output), 0
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return string(output), exitErr.ExitCode()
-	}
-	return string(output), 1
-}
-
-func runCLIWithStdin(t *testing.T, stdin string, args ...string) (string, int) {
-	t.Helper()
-
-	cmd := exec.Command(os.Args[0], "-test.run=TestCLIErrorBlockHelper", "--")
-	cmd.Args = append(cmd.Args, args...)
-	cmd.Env = cliE2EHelperEnv()
-	cmd.Stdin = strings.NewReader(stdin)
 	output, err := cmd.CombinedOutput()
 	if err == nil {
 		return string(output), 0
@@ -594,43 +548,6 @@ func writeInitializedSqliteDB(t *testing.T) string {
 	}
 	if err := db.Create(&metadata.IrSetting{Key: "system.init.done", Value: "true"}).Error; err != nil {
 		t.Fatalf("insert init marker: %v", err)
-	}
-	return path
-}
-
-func writeSqliteDBWithInitLease(t *testing.T) string {
-	path := writeTempSqliteDB(t)
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&leasemodel.IrLockLease{}); err != nil {
-		t.Fatalf("migrate lease: %v", err)
-	}
-	leaseRow := &leasemodel.IrLockLease{
-		Resource:  "system:init",
-		OwnerId:   "busy-owner",
-		ExpiresAt: time.Now().Add(30 * time.Second),
-	}
-	if err := db.Create(leaseRow).Error; err != nil {
-		t.Fatalf("insert lease: %v", err)
-	}
-	return path
-}
-
-func writeSqliteDBWithInitSetting(t *testing.T, value *string) string {
-	path := writeTempSqliteDB(t)
-	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	if err := db.AutoMigrate(&metadata.IrSetting{}); err != nil {
-		t.Fatalf("migrate settings: %v", err)
-	}
-	if value != nil {
-		if err := db.Create(&metadata.IrSetting{Key: "system.init.done", Value: *value}).Error; err != nil {
-			t.Fatalf("insert init setting: %v", err)
-		}
 	}
 	return path
 }
