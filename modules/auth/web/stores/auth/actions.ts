@@ -14,6 +14,11 @@ import type { PermissionState } from '@/auth/web/permission';
  * Build the auth store action set.
  */
 export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
+  // Ensure auth initialization only runs once at a time.
+  // Declared at the top of the function scope so it is visible to all
+  // inner functions that reference it (loginImpl, ensureAuthReady, etc.).
+  let initInFlight: Promise<void> | null = null;
+
   /**
    * Resolve the device info payload that should be sent with auth RPCs.
    */
@@ -144,6 +149,24 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
    */
   async function loginImpl(username: string, password: string, ipAddress = '', deviceInfo = '', shouldRemember = false): Promise<any> {
     try {
+      // If a previous mount (e.g. Login.vue onMounted) has already started
+      // initialization, wait for it to finish so it does not race with the
+      // clearAuth below. Do not start a new initAuth here — any tokens it
+      // would produce are immediately discarded by the unconditional clear.
+      if (initInFlight) {
+        try {
+          await initInFlight;
+        } catch {
+          // initAuth clears stale state internally on failure; ignore.
+        }
+      }
+
+      // Unconditionally clear any existing auth state before login so the
+      // auth interceptor does not attempt to use or refresh old tokens
+      // (which may be unexpired but invalid after a key rotation or DB reset)
+      // during the Login RPC.
+      clearAuth();
+
       // Hash the password client-side when the feature is enabled.
       const hashedPassword = await hashPasswordClient(password, username);
 
@@ -375,9 +398,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
   async function getCsrfToken(): Promise<string | null> {
     return getCsrfTokenFromCookie();
   }
-
-  // Ensure auth initialization only runs once at a time.
-  let initInFlight: Promise<void> | null = null;
 
   /**
    * Ensure auth initialization has completed before callers depend on auth state.
