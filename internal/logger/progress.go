@@ -277,6 +277,9 @@ func NewProgressLine(w io.Writer) *ProgressLine {
 // activate downstream braille-spinner rendering without duplicating the
 // NewProgressLine + WithProgressLine wiring.
 func WithStderrProgressLine(ctx context.Context) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	line := NewProgressLine(os.Stderr)
 	if line == nil || !line.IsTTY() {
 		return ctx
