@@ -367,7 +367,18 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       }
 
       // Recover identity from the persisted access token before further checks.
-      helpers.updateTokenIdentity();
+      try {
+        helpers.updateTokenIdentity();
+      } catch (identityErr) {
+        // A malformed or corrupted token in storage can cause identity
+        // extraction to fail. Clear the stale state and mark init complete
+        // just like a refresh failure.
+        const msg = identityErr instanceof Error ? identityErr.message : String(identityErr);
+        console.warn('[auth] Failed to extract identity during init. Clearing stale auth state:', msg);
+        clearAuth();
+        state.initialized.value = true;
+        return;
+      }
 
       // Refresh when the current token is expired or near expiry.
       if (state.shouldRefreshToken.value) {
