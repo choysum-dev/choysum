@@ -61,7 +61,7 @@ func newUpgradeCmd(envGetter func() scope.Scope) *cobra.Command {
 			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt)
 			defer stop()
 
-			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine != nil && progressLine.IsTTY() {
+			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine != nil {
 				ctx = logutil.WithProgressLine(ctx, progressLine)
 			}
 

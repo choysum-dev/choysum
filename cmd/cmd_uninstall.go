@@ -41,7 +41,7 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
 
-			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine != nil && progressLine.IsTTY() {
+			if progressLine := logutil.NewProgressLine(os.Stderr); progressLine != nil {
 				ctx = logutil.WithProgressLine(ctx, progressLine)
 			}
 
