@@ -363,6 +363,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       // Without a refresh token, there is no persisted auth session to recover.
       if (!state.tokens.value?.refreshToken) {
         clearAuth();
+        state.initialized.value = true;
         return;
       }
 
