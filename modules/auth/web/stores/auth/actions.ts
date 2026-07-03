@@ -382,13 +382,11 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       // Mark initialization as complete on success.
       state.initialized.value = true;
     } catch (error) {
+      // Token refresh failures during initialization are expected after
+      // key rotation or database resets. Clear any stale state and mark
+      // initialization as complete — do not re-throw.
       clearAuth();
-      // Initialization is considered finished even when recovery fails.
       state.initialized.value = true;
-      throw wrapAuthError(error, {
-        code: AuthErrCode.INITIALIZATION_FAILED,
-        message: 'Failed to initialize auth',
-      });
     }
   }
 

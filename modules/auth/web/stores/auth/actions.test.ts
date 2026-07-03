@@ -262,11 +262,11 @@ describe('loginImpl', () => {
     const loginPromise = actions.login('admin', 'secret');
     await Promise.resolve();
 
-    // initAuth fails — the catch block in loginImpl should swallow it.
+    // initAuth fails — initAuth handles it silently (no re-throw).
     rejectRefresh!(new Error('token signature is invalid'));
 
-    // initAuth should settle (with error), login should still succeed.
-    await expect(initPromise).rejects.toThrow();
+    // initAuth resolves successfully (failure is handled internally).
+    await initPromise;
     await loginPromise;
 
     // Assert: login still completed — Login RPC was called.
