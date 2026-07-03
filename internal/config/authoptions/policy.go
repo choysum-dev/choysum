@@ -65,6 +65,7 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 				{Model: "auth.User", Ops: []string{"read"}},
 				{Model: "auth.Token", Ops: []string{"create", "read"}},
 				{Model: "base.Company", Ops: []string{"read"}},
+				{Model: "document.AttachmentBinding", Ops: []string{"read"}},
 			},
 			SkipFieldRule: true,
 		},
