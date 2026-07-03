@@ -6,6 +6,12 @@ import fs from 'node:fs';
 
 test.setTimeout(10 * 60 * 1000);
 
+// Set a default action/navigation timeout so that any Playwright operation
+// without an explicit timeout cannot hang indefinitely on slow CI runners.
+test.beforeEach(async ({ page }) => {
+  page.setDefaultTimeout(30000);
+});
+
 /**
  * Runtime metadata injected into the meta module management e2e harness.
  */
@@ -238,6 +244,10 @@ async function moduleStatusText(page: Page, moduleName: string) {
 
 /**
  * Polls the module board until a module reaches the expected status label.
+ *
+ * Uses a hard deadline via setTimeout so that even if Playwright operations
+ * inside the polling loop hang beyond their individual timeouts the function
+ * cannot exceed the requested deadline.
  */
 async function waitForModuleStatus(page: Page, moduleName: string, expectedStatus: string, timeout = 120000) {
   const deadline = Date.now() + timeout;
@@ -246,19 +256,40 @@ async function waitForModuleStatus(page: Page, moduleName: string, expectedStatu
   let lastStatus = '';
 
   while (Date.now() < deadline) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+
     if (Date.now() >= nextReloadAt) {
-      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
-      await page.waitForURL('**/web/meta/modules', { timeout: 30000 }).catch(() => null);
+      const navTimeout = Math.min(remaining, 30000);
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: navTimeout }).catch(() => null);
+      await page.waitForURL('**/web/meta/modules', { timeout: Math.min(deadline - Date.now(), 30000) }).catch(() => null);
       await waitForModuleList(page).catch(() => null);
       nextReloadAt = Date.now() + reloadIntervalMs;
     }
 
-    lastStatus = await moduleStatusText(page, moduleName);
+    // Guard each polling iteration with a hard deadline so that a single
+    // stuck moduleStatusText call cannot consume the remaining budget.
+    const iterRemaining = deadline - Date.now();
+    if (iterRemaining <= 0) break;
+
+    const statusPromise = moduleStatusText(page, moduleName);
+    const deadlinePromise = new Promise<string>(resolve => setTimeout(() => resolve('__deadline__'), Math.min(iterRemaining, 5000)));
+    const result = (await Promise.race([statusPromise, deadlinePromise])) as string;
+    if (result !== '__deadline__') {
+      lastStatus = result;
+    }
+    // If the deadline fired first, keep the previous lastStatus and let
+    // the outer loop's while-condition (or the next reload cycle) decide.
+
     if (lastStatus === expectedStatus) {
       return;
     }
 
-    await page.waitForTimeout(lastStatus ? 1000 : 1500);
+    const waitMs = lastStatus ? 1000 : 1500;
+    await Promise.race([
+      page.waitForTimeout(waitMs),
+      new Promise(resolve => setTimeout(resolve, waitMs + 1000)),
+    ]);
   }
 
   throw new Error(`module ${moduleName} status remained ${lastStatus || '<empty>'}, want ${expectedStatus}`);
@@ -274,7 +305,7 @@ async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000
   const reloadPromise = page
     .waitForNavigation({ waitUntil: 'domcontentloaded', timeout })
     .then(async () => {
-      await page.waitForLoadState('networkidle').catch(() => null);
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => null);
       return 'reloaded' as const;
     })
     .catch(() => 'no' as const);
