@@ -363,15 +363,26 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       // Without a refresh token, there is no persisted auth session to recover.
       if (!state.tokens.value?.refreshToken) {
         clearAuth();
+        state.initialized.value = true;
         return;
       }
 
-      // Recover identity from the persisted access token before further checks.
-      helpers.updateTokenIdentity();
+      // Recover identity and refresh token if needed. Failures here
+      // (malformed tokens, key rotation, DB resets) are expected — clear
+      // stale state and mark init complete without re-throwing.
+      try {
+        helpers.updateTokenIdentity();
 
-      // Refresh when the current token is expired or near expiry.
-      if (state.shouldRefreshToken.value) {
-        await refreshToken(false);
+        // Refresh when the current token is expired or near expiry.
+        if (state.shouldRefreshToken.value) {
+          await refreshToken(false);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[auth] Auth initialization recovery failed. Clearing stale auth state:', msg);
+        clearAuth();
+        state.initialized.value = true;
+        return;
       }
 
       // Re-arm automatic refresh scheduling when enabled.
@@ -383,7 +394,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       state.initialized.value = true;
     } catch (error) {
       clearAuth();
-      // Initialization is considered finished even when recovery fails.
       state.initialized.value = true;
       throw wrapAuthError(error, {
         code: AuthErrCode.INITIALIZATION_FAILED,
