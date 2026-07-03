@@ -14,6 +14,11 @@ import type { PermissionState } from '@/auth/web/permission';
  * Build the auth store action set.
  */
 export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
+  // Ensure auth initialization only runs once at a time.
+  // Declared at the top of the function scope so it is visible to all
+  // inner functions that reference it (loginImpl, ensureAuthReady, etc.).
+  let initInFlight: Promise<void> | null = null;
+
   /**
    * Resolve the device info payload that should be sent with auth RPCs.
    */
@@ -393,9 +398,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
   async function getCsrfToken(): Promise<string | null> {
     return getCsrfTokenFromCookie();
   }
-
-  // Ensure auth initialization only runs once at a time.
-  let initInFlight: Promise<void> | null = null;
 
   /**
    * Ensure auth initialization has completed before callers depend on auth state.
