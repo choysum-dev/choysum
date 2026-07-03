@@ -373,11 +373,14 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       if (state.shouldRefreshToken.value) {
         try {
           await refreshToken(false);
-        } catch {
+        } catch (refreshErr) {
           // Token refresh failures during initialization are expected after
           // key rotation or database resets. The store action already called
           // clearAuth; just mark initialization complete and return.
-          console.warn('[auth] Token refresh during init failed. Clearing stale auth state.');
+          // Log the error message (not the full object) for debugging without
+          // leaking sensitive token data to the browser console.
+          const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr);
+          console.warn('[auth] Token refresh during init failed. Clearing stale auth state:', msg);
           state.initialized.value = true;
           return;
         }
