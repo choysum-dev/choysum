@@ -273,5 +273,7 @@ describe('loginImpl', () => {
     expect(mockState.userStore.Login).toHaveBeenCalled();
     // clearAuth was called (both from initAuth's catch and loginImpl).
     expect(mockHelpers.resetAuthState).toHaveBeenCalled();
+    // initAuth marked initialization as complete despite the failure.
+    expect(mockState.initialized.value).toBe(true);
   });
 });
