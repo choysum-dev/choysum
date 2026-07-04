@@ -239,6 +239,34 @@ func TestRunOneAppFrontendTestsGuards(t *testing.T) {
 			t.Fatalf("expected happy-dom in missing list, got %v", err)
 		}
 	})
+
+	t.Run("requires jsdom when vitest environment marker is used", func(t *testing.T) {
+		repoRoot := t.TempDir()
+		binDir := filepath.Join(t.TempDir(), "bin")
+		globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+
+		writeExecFile(t, filepath.Join(binDir, "npx"), "#!/bin/sh\nexit 0\n")
+		writeExecFile(t, filepath.Join(binDir, "vitest"), "#!/bin/sh\nexit 0\n")
+		t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+		t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+		ensureFrontendRequiredModulesAt(t, globalRoot)
+
+		testFile := filepath.Join(repoRoot, "modules", "meta", "web", "__tests__", "env.spec.ts")
+		if err := os.MkdirAll(filepath.Dir(testFile), 0o755); err != nil {
+			t.Fatalf("mkdir test dir: %v", err)
+		}
+		if err := os.WriteFile(testFile, []byte("// @vitest-environment jsdom\nimport { describe, it } from 'vitest'\ndescribe('env', () => { it('ok', () => {}) })\n"), 0o644); err != nil {
+			t.Fatalf("write test file: %v", err)
+		}
+
+		failed, err := runFrontendTest(context.Background(), repoRoot, "meta", "", false, false, false, false, "coverage", 0, 0, 0, 0, repoRoot, false)
+		if err == nil {
+			t.Fatalf("expected missing modules error, got failed=%v", failed)
+		}
+		if !strings.Contains(err.Error(), "jsdom") {
+			t.Fatalf("expected jsdom in missing list, got %v", err)
+		}
+	})
 }
 
 func TestRunOneAppFrontendTestsUsesTemporaryGlobalNodeModulesLink(t *testing.T) {
@@ -463,8 +491,10 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	checks := []string{
 		"cacheDir: \"",
 		"/frontend/vite-cache/auth\"",
+		"include: ['modules/auth/web/**/*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}']",
 		"reporters: ['default', 'junit']",
 		`junit: "` + filepath.ToSlash(junitPath) + `"`,
+		"'**/*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}'",
 		"'lcovonly'",
 		"'html'",
 	}
@@ -478,7 +508,7 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	}
 }
 
-func TestAppUsesVitestEnvironmentStopsAfterMatch(t *testing.T) {
+func TestCollectVitestEnvironmentDependenciesStopsAfterMatch(t *testing.T) {
 	repoRoot := t.TempDir()
 	webRoot := filepath.Join(repoRoot, "modules", "auth", "web")
 	if err := os.MkdirAll(filepath.Join(webRoot, "__tests__"), 0o755); err != nil {
@@ -496,12 +526,12 @@ func TestAppUsesVitestEnvironmentStopsAfterMatch(t *testing.T) {
 		t.Fatalf("mkdir trailing pseudo test dir: %v", err)
 	}
 
-	found, err := appUsesVitestEnvironment(repoRoot, "auth", "happy-dom")
+	deps, err := collectVitestEnvironmentDependencies(repoRoot, "auth")
 	if err != nil {
-		t.Fatalf("appUsesVitestEnvironment error: %v", err)
+		t.Fatalf("collectVitestEnvironmentDependencies error: %v", err)
 	}
-	if !found {
-		t.Fatal("expected vitest environment marker to be found")
+	if len(deps) != 1 || deps[0] != "happy-dom" {
+		t.Fatalf("expected [happy-dom], got %v", deps)
 	}
 }
 

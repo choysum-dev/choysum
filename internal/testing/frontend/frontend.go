@@ -152,8 +152,8 @@ func RunOneAppFrontendTests(
 	}
 
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
-	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx}"))
-	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,vue}"))
+	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}"))
+	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,js,jsx,mjs,cjs,vue}"))
 	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
 
 	var b strings.Builder
@@ -190,7 +190,7 @@ func RunOneAppFrontendTests(
 		b.WriteString("        '**/dist/**',\n")
 		b.WriteString("        '**/pb/**',\n")
 		b.WriteString("        '**/*.d.ts',\n")
-		b.WriteString("        '**/*.{test,spec}.{ts,tsx}',\n")
+		b.WriteString("        '**/*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}',\n")
 		b.WriteString("      ],\n")
 		b.WriteString("      excludeAfterRemap: true,\n")
 		b.WriteString("      reportsDirectory: '" + reportsDir + "',\n")
@@ -296,42 +296,40 @@ func collectRequiredFrontendModules(repoRoot string, app string, coverage bool) 
 		return nil, xfmt.Errorf("vitest: %w", err)
 	}
 
-	usesHappyDOM, err := appUsesVitestEnvironment(repoRoot, app, "happy-dom")
+	environmentDeps, err := collectVitestEnvironmentDependencies(repoRoot, app)
 	if err != nil {
 		return nil, err
 	}
-	if usesHappyDOM {
-		return moddeps.MergeRequiredModules(baseRequired, moduleDeps, []string{"happy-dom"}), nil
-	}
 
-	return moddeps.MergeRequiredModules(baseRequired, moduleDeps), nil
+	return moddeps.MergeRequiredModules(baseRequired, moduleDeps, environmentDeps), nil
 }
 
-func appUsesVitestEnvironment(repoRoot string, app string, environment string) (bool, error) {
-	environment = strings.TrimSpace(environment)
-	if environment == "" {
-		return false, nil
-	}
+func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string, error) {
+	// Keep environment inference conservative and marker-driven to avoid forcing
+	// DOM runtimes unless tests explicitly request them.
+	environmentCandidates := []string{"happy-dom", "jsdom"}
 
 	webRoot := filepath.Join(repoRoot, "modules", app, "web")
 	st, err := os.Stat(webRoot)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return nil, nil
 		}
-		return false, xfmt.Errorf("vitest: stat web root for %s: %w", app, err)
+		return nil, xfmt.Errorf("vitest: stat web root for %s: %w", app, err)
 	}
 	if !st.IsDir() {
-		return false, nil
+		return nil, nil
 	}
 
-	marker := "@vitest-environment " + environment
-	found := false
+	found := make(map[string]bool, len(environmentCandidates))
 	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
 		if d.IsDir() {
+			if d.Name() == "node_modules" || d.Name() == "dist" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 
@@ -348,21 +346,50 @@ func appUsesVitestEnvironment(repoRoot string, app string, environment string) (
 			return nil
 		}
 
-		raw, readErr := os.ReadFile(path)
+		contentBytes, readErr := os.ReadFile(path)
 		if readErr != nil {
+			if os.IsNotExist(readErr) {
+				return nil
+			}
 			return readErr
 		}
-		if strings.Contains(string(raw), marker) {
-			found = true
-			return errVitestEnvironmentMarkerFound
+		content := string(contentBytes)
+		lines := strings.Split(content, "\n")
+		limit := 100
+		if len(lines) < limit {
+			limit = len(lines)
+		}
+		for i := 0; i < limit; i++ {
+			line := strings.TrimSpace(lines[i])
+			if line == "" {
+				continue
+			}
+			for _, environmentName := range environmentCandidates {
+				if found[environmentName] {
+					continue
+				}
+				if (strings.Contains(line, "@vitest-environment") && strings.Contains(line, environmentName)) ||
+					(strings.Contains(line, "@jest-environment") && strings.Contains(line, environmentName)) {
+					found[environmentName] = true
+				}
+			}
+			if len(found) == len(environmentCandidates) {
+				return errVitestEnvironmentMarkerFound
+			}
 		}
 		return nil
 	})
 	if err != nil && !errors.Is(err, errVitestEnvironmentMarkerFound) {
-		return false, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
+		return nil, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
 	}
 
-	return found, nil
+	required := make([]string, 0, len(environmentCandidates))
+	for _, environmentName := range environmentCandidates {
+		if found[environmentName] {
+			required = append(required, environmentName)
+		}
+	}
+	return required, nil
 }
 
 func localFrontendModuleRoots(repoRoot string) []string {
