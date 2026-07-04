@@ -308,13 +308,64 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 	// Keep environment inference conservative and marker-driven to avoid forcing
 	// DOM runtimes unless tests explicitly request them.
 	environmentCandidates := []string{"happy-dom", "jsdom"}
+
+	webRoot := filepath.Join(repoRoot, "modules", app, "web")
+	st, err := os.Stat(webRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, xfmt.Errorf("vitest: stat web root for %s: %w", app, err)
+	}
+	if !st.IsDir() {
+		return nil, nil
+	}
+
+	found := make(map[string]bool, len(environmentCandidates))
+	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		name := d.Name()
+		if !strings.Contains(name, ".test.") && !strings.Contains(name, ".spec.") {
+			return nil
+		}
+		if !strings.HasSuffix(name, ".ts") &&
+			!strings.HasSuffix(name, ".tsx") &&
+			!strings.HasSuffix(name, ".js") &&
+			!strings.HasSuffix(name, ".jsx") &&
+			!strings.HasSuffix(name, ".mjs") &&
+			!strings.HasSuffix(name, ".cjs") {
+			return nil
+		}
+
+		raw, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		content := string(raw)
+		for _, environmentName := range environmentCandidates {
+			marker := "@vitest-environment " + environmentName
+			if strings.Contains(content, marker) {
+				found[environmentName] = true
+			}
+		}
+		if len(found) == len(environmentCandidates) {
+			return errVitestEnvironmentMarkerFound
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, errVitestEnvironmentMarkerFound) {
+		return nil, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
+	}
+
 	required := make([]string, 0, len(environmentCandidates))
 	for _, environmentName := range environmentCandidates {
-		usesEnvironment, err := appUsesVitestEnvironment(repoRoot, app, environmentName)
-		if err != nil {
-			return nil, err
-		}
-		if usesEnvironment {
+		if found[environmentName] {
 			required = append(required, environmentName)
 		}
 	}
