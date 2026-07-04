@@ -397,10 +397,16 @@ func (h *hotreloadState) primeFingerprintsForRoots(ctx context.Context, roots []
 		if ctx.Err() != nil {
 			return
 		}
-		if _, seen := seenRoots[root]; seen {
+		// Resolve before dedup so symlinked paths to the same
+		// directory are recognized as duplicates.
+		key := root
+		if r, err := resolveWatchPath(root); err == nil {
+			key = r
+		}
+		if _, seen := seenRoots[key]; seen {
 			continue
 		}
-		seenRoots[root] = struct{}{}
+		seenRoots[key] = struct{}{}
 		h.primeFingerprintsForRoot(ctx, root)
 	}
 }

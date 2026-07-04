@@ -37,6 +37,7 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 
 	if !s.hasHotreloadWatcher() {
 		s.hotreload.primeFingerprintsForTargets(primeCtx, targets)
+		primeCancel()
 		return nil
 	}
 	for _, target := range targets {
