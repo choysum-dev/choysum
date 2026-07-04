@@ -1148,3 +1148,208 @@ func TestHandleWatchedFileChangeResolvesPath(t *testing.T) {
 		t.Fatalf("watch handler calls = %d, want 0", tracked.callCount())
 	}
 }
+
+func TestBeginWatchEventWrapper(t *testing.T) {
+	t.Run("wraps beginEvent", func(t *testing.T) {
+		srv := &GRPCWebServer{hotreload: hotreloadState{}}
+		if !srv.beginWatchEvent() {
+			t.Fatal("expected first call to succeed")
+		}
+		if srv.beginWatchEvent() {
+			t.Fatal("expected second call to fail")
+		}
+		srv.finishWatchEvent()
+		if !srv.beginWatchEvent() {
+			t.Fatal("expected call after finishWatchEvent to succeed")
+		}
+	})
+}
+
+func TestShouldRunHotreloadLifecycleNilReceiver(t *testing.T) {
+	var srv *GRPCWebServer
+	if srv.shouldRunHotreloadLifecycle() {
+		t.Fatal("expected false for nil receiver")
+	}
+}
+
+func TestResolvedQueueSizeNilReceiver(t *testing.T) {
+	var srv *GRPCWebServer
+	if srv.resolvedQueueSize() != defaultHotreloadQueueSize {
+		t.Fatal("expected default queue size for nil receiver")
+	}
+}
+
+func TestRemoveWatchRootsErrorPath(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer watcher.Close()
+
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{watcher: watcher}}
+	// Removing a path that was never added should return an error.
+	err = srv.removeWatchRoots([]string{"/nonexistent/path/not/watched"})
+	if err == nil {
+		t.Fatal("expected error removing unwatched path")
+	}
+}
+
+func TestBeginWatchEvent(t *testing.T) {
+	hs := &hotreloadState{}
+	// First call succeeds.
+	if !hs.beginEvent() {
+		t.Fatal("expected first beginEvent to succeed")
+	}
+	// Second call fails because the global gate is busy.
+	if hs.beginEvent() {
+		t.Fatal("expected second beginEvent to fail while busy")
+	}
+	hs.finishEvent()
+	// After finish, begin should succeed again.
+	if !hs.beginEvent() {
+		t.Fatal("expected beginEvent to succeed after finishEvent")
+	}
+	hs.finishEvent()
+}
+
+func TestBeginFinishModuleEvent(t *testing.T) {
+	hs := &hotreloadState{}
+	// Empty module falls back to global gate.
+	if !hs.beginModuleEvent("") {
+		t.Fatal("expected beginModuleEvent(\"\") to succeed")
+	}
+	if hs.beginModuleEvent("") {
+		t.Fatal("expected second beginModuleEvent(\"\") to fail while global gate busy")
+	}
+	hs.finishModuleEvent("")
+	if !hs.beginModuleEvent("") {
+		t.Fatal("expected beginModuleEvent(\"\") after finish")
+	}
+	hs.finishModuleEvent("")
+
+	// Non-empty module uses per-module tracking.
+	if !hs.beginModuleEvent("web") {
+		t.Fatal("expected beginModuleEvent(\"web\") to succeed")
+	}
+	// Same module should be blocked.
+	if hs.beginModuleEvent("web") {
+		t.Fatal("expected beginModuleEvent(\"web\") to fail while module busy")
+	}
+	// Different module should succeed concurrently.
+	if !hs.beginModuleEvent("auth") {
+		t.Fatal("expected beginModuleEvent(\"auth\") to succeed for different module")
+	}
+	hs.finishModuleEvent("web")
+	// After finishing web but auth still busy, web should succeed again.
+	if !hs.beginModuleEvent("web") {
+		t.Fatal("expected beginModuleEvent(\"web\") to succeed — per-module tracking")
+	}
+	hs.finishModuleEvent("web")
+	hs.finishModuleEvent("auth")
+}
+
+func TestSetFingerprintIfAbsent(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "f.ts")
+	if err := os.WriteFile(file, []byte("data\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	hs := &hotreloadState{}
+	hash, ok := fileFingerprint(file)
+	if !ok {
+		t.Fatal("fileFingerprint failed")
+	}
+	hs.setFingerprintIfAbsent(file, hash)
+	if !hs.hasFingerprint(file) {
+		t.Fatal("expected fingerprint after setFingerprintIfAbsent")
+	}
+	// Second write with same hash should be a no-op.
+	hs.setFingerprintIfAbsent(file, hash)
+	if !hs.hasFingerprint(file) {
+		t.Fatal("expected fingerprint to still exist after duplicate set")
+	}
+}
+
+func TestClearFingerprint(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "f.ts")
+	if err := os.WriteFile(file, []byte("data\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	hs := &hotreloadState{}
+	hash, ok := fileFingerprint(file)
+	if !ok {
+		t.Fatal("fileFingerprint failed")
+	}
+	hs.setFingerprintIfAbsentResolved(file, hash)
+	if !hs.hasFingerprintResolved(file) {
+		t.Fatal("expected fingerprint after set")
+	}
+	hs.clearFingerprint(file)
+	if hs.hasFingerprintResolved(file) {
+		t.Fatal("expected fingerprint to be gone after clearFingerprint")
+	}
+	// Clearing a non-existent path should be a no-op.
+	hs.clearFingerprint(filepath.Join(root, "nonexistent.ts"))
+}
+
+func TestRemoveWatchRoots(t *testing.T) {
+	srv := &GRPCWebServer{hotreload: hotreloadState{}}
+	// No watcher: should return nil immediately.
+	if err := srv.removeWatchRoots([]string{"/does/not/exist"}); err != nil {
+		t.Fatalf("removeWatchRoots() without watcher should succeed, got %v", err)
+	}
+}
+
+func TestHandleQueuedWatchEventNoDelimiterFallback(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{}}
+	// eventInfo without '|' should fall back to resolveWatchModule.
+	err := srv.handleQueuedWatchEvent("/nonexistent/file.ts")
+	if err != nil {
+		t.Fatalf("handleQueuedWatchEvent() without delimiter should not error, got %v", err)
+	}
+}
+
+func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
+	srv := &GRPCWebServer{hotreload: hotreloadState{}}
+	// runtimeScope is nil — should return an error.
+	err := srv.handleWatchedModuleUpgrade("web", "/some/file.ts")
+	if err == nil {
+		t.Fatal("expected error from handleWatchedModuleUpgrade with nil runtimeScope")
+	}
+}
+
+func TestDispatchWatchHandlerResolvedNoRuntimeScope(t *testing.T) {
+	srv := &GRPCWebServer{hotreload: hotreloadState{}}
+	_, err := srv.dispatchWatchHandlerResolved("/some/file.ts")
+	if err == nil {
+		t.Fatal("expected error from dispatchWatchHandlerResolved with nil runtimeScope")
+	}
+}
+
+func TestHandleWatchedFileChangeResolvedNoRuntimeScope(t *testing.T) {
+	srv := &GRPCWebServer{hotreload: hotreloadState{}}
+	err := srv.handleWatchedFileChangeResolved("/some/file.ts")
+	if err == nil {
+		t.Fatal("expected error from handleWatchedFileChangeResolved with nil runtimeScope")
+	}
+}
+
+func TestHandleQueuedWatchEventNoRuntimeScope(t *testing.T) {
+	srv := &GRPCWebServer{hotreload: hotreloadState{}}
+	err := srv.handleQueuedWatchEvent("/some/file.ts|web")
+	if err == nil {
+		t.Fatal("expected error from handleQueuedWatchEvent with nil runtimeScope")
+	}
+}
+
+func TestHandleWatchedFileChangeErrorPath(t *testing.T) {
+	srv := &GRPCWebServer{hotreload: hotreloadState{}}
+	err := srv.handleWatchedFileChange("relative/path.ts")
+	// resolveWatchPath should fail on relative paths without cwd context.
+	// Either an error or a path resolution may succeed depending on cwd,
+	// but if it resolves we just verify no panic.
+	_ = err
+}
