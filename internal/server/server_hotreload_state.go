@@ -400,6 +400,10 @@ func (h *hotreloadState) primeFingerprintsForRoot(root string) {
 			return nil
 		}
 		if d.IsDir() {
+			switch d.Name() {
+			case "node_modules", ".git", "dist", "build":
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if h.hasFingerprint(path) {
@@ -425,6 +429,11 @@ func (h *hotreloadState) contentChanged(resolvedPath string) bool {
 func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
 	hash, ok := fileFingerprint(resolvedPath)
 	if !ok {
+		h.fingerprintsMu.Lock()
+		if h.fingerprints != nil {
+			delete(h.fingerprints, resolvedPath)
+		}
+		h.fingerprintsMu.Unlock()
 		return true
 	}
 

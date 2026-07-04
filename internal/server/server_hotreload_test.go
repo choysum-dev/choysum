@@ -886,3 +886,258 @@ func TestHandleWatchedFileChangeSkipsNoOpAtomicSave(t *testing.T) {
 		t.Fatalf("watch handler calls = %d, want 0 (no-op atomic save)", tracked.callCount())
 	}
 }
+
+func TestPrimeFingerprintsForTargetsDedupRoots(t *testing.T) {
+	root := t.TempDir()
+	shared := filepath.Join(root, "shared")
+	if err := os.MkdirAll(shared, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	content := []byte("shared content\n")
+	if err := os.WriteFile(filepath.Join(shared, "a.ts"), content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	// Two targets sharing the same root — second should be dedup'd.
+	hs.primeFingerprintsForTargets([]registeredWatchTarget{
+		{root: shared},
+		{root: shared},
+	})
+
+	// Both files should have been fingerprinted exactly once.
+	if !hs.hasFingerprint(filepath.Join(shared, "a.ts")) {
+		t.Fatal("expected shared-root file to have fingerprint after primeFingerprintsForTargets")
+	}
+}
+
+func TestPrimeFingerprintsForRoots(t *testing.T) {
+	root := t.TempDir()
+	dirA := filepath.Join(root, "a")
+	dirB := filepath.Join(root, "b")
+	if err := os.MkdirAll(dirA, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.MkdirAll(dirB, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dirA, "x.ts"), []byte("a\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dirB, "y.ts"), []byte("b\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	hs.primeFingerprintsForRoots([]string{dirA, dirB})
+
+	if !hs.hasFingerprint(filepath.Join(dirA, "x.ts")) {
+		t.Fatal("expected dirA file to have fingerprint")
+	}
+	if !hs.hasFingerprint(filepath.Join(dirB, "y.ts")) {
+		t.Fatal("expected dirB file to have fingerprint")
+	}
+
+	// Duplicate roots should not cause issues.
+	hs.primeFingerprintsForRoots([]string{dirA, dirA})
+}
+
+func TestPrimeFingerprintsForRootSkipsNoiseDirs(t *testing.T) {
+	root := t.TempDir()
+	for _, noiseDir := range []string{"node_modules", ".git", "dist", "build"} {
+		deep := filepath.Join(root, noiseDir, "deep")
+		if err := os.MkdirAll(deep, 0o755); err != nil {
+			t.Fatalf("MkdirAll(%s) error = %v", noiseDir, err)
+		}
+		if err := os.WriteFile(filepath.Join(deep, "should-skip.ts"), []byte("skip\n"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", noiseDir, err)
+		}
+	}
+	legit := filepath.Join(root, "src", "real.ts")
+	if err := os.MkdirAll(filepath.Dir(legit), 0o755); err != nil {
+		t.Fatalf("MkdirAll(src) error = %v", err)
+	}
+	if err := os.WriteFile(legit, []byte("real\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(real.ts) error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	hs.primeFingerprintsForRoot(root)
+
+	if !hs.hasFingerprint(legit) {
+		t.Fatal("expected non-noise file to have fingerprint")
+	}
+	for _, noiseDir := range []string{"node_modules", ".git", "dist", "build"} {
+		noiseFile := filepath.Join(root, noiseDir, "deep", "should-skip.ts")
+		if hs.hasFingerprint(noiseFile) {
+			t.Fatalf("expected noise-dir file %q to be skipped", noiseFile)
+		}
+	}
+}
+
+func TestHasFingerprintReturnsFalseForNilMap(t *testing.T) {
+	hs := &hotreloadState{}
+	if hs.hasFingerprint("any.ts") {
+		t.Fatal("expected hasFingerprint to return false when fingerprints is nil")
+	}
+}
+
+func TestContentChangedResolvedRemovesDeletedFingerprint(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "temp.ts")
+	if err := os.WriteFile(file, []byte("temp\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	// Prime the cache.
+	if !hs.contentChangedResolved(file) {
+		t.Fatal("expected first write to be treated as changed")
+	}
+	if !hs.hasFingerprint(file) {
+		t.Fatal("expected fingerprint to be cached after first write")
+	}
+
+	// Delete the file — contentChangedResolved should return true and
+	// clean up the stale fingerprint entry.
+	if err := os.Remove(file); err != nil {
+		t.Fatalf("Remove() error = %v", err)
+	}
+	if !hs.contentChangedResolved(file) {
+		t.Fatal("expected deleted file to be treated as changed")
+	}
+	if hs.hasFingerprint(file) {
+		t.Fatal("expected deleted file fingerprint to be removed from cache")
+	}
+}
+
+func TestResolveWatchModuleWithResolvedPath(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	resolvedFile, err := resolveWatchPath(filepath.Join(moduleDir, "a.ts"))
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+
+	if got := srv.resolveWatchModule(resolvedFile); got != "demo" {
+		t.Fatalf("resolveWatchModule() = %q, want %q", got, "demo")
+	}
+
+	// File outside any watch root.
+	outside := filepath.Join(root, "other", "x.ts")
+	if err := os.MkdirAll(filepath.Dir(outside), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	resolvedOutside, err := resolveWatchPath(outside)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(outside) error = %v", err)
+	}
+	if got := srv.resolveWatchModule(resolvedOutside); got != "" {
+		t.Fatalf("resolveWatchModule(outside) = %q, want \"\"", got)
+	}
+
+	// Nil server.
+	if got := (*GRPCWebServer)(nil).resolveWatchModule("any.ts"); got != "" {
+		t.Fatalf("resolveWatchModule(nil server) = %q, want \"\"", got)
+	}
+}
+
+func TestDispatchWatchHandlerResolvedFastPath(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	changedFile := filepath.Join(moduleDir, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	// Use dispatchWatchHandlerResolved with already-resolved path.
+	resolvedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+	if dispatched, err := srv.dispatchWatchHandlerResolved(resolvedFile); err != nil {
+		t.Fatalf("dispatchWatchHandlerResolved() error = %v", err)
+	} else if dispatched != 1 {
+		t.Fatalf("dispatchWatchHandlerResolved() dispatched = %d, want 1", dispatched)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+}
+
+func TestHandleWatchedFileChangeResolvedProgressLineNil(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = false
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+	content := []byte("export const v = 1;\n")
+	if err := os.WriteFile(changedFile, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{root}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+	// Prime fingerprint so identical content does not reload.
+	srv.hotreload.contentChanged(changedFile)
+	if err := os.WriteFile(changedFile, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	resolvedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+
+	// No progressLine set — the nil branches in handleWatchedFileChangeResolved
+	// should be exercised without panicking.
+	if err := srv.handleWatchedFileChangeResolved(resolvedFile); err != nil {
+		t.Fatalf("handleWatchedFileChangeResolved() error = %v", err)
+	}
+	// No-op save: content unchanged => should not dispatch.
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0 (no-op save with nil progressLine)", tracked.callCount())
+	}
+}
+
+func TestHandleWatchedFileChangeResolvesPath(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export const v = 1;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{root}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+	srv.hotreload.contentChanged(changedFile)
+
+	// Unchanged content — handleWatchedFileChange should return nil.
+	if err := os.WriteFile(changedFile, []byte("export const v = 1;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := srv.handleWatchedFileChange(changedFile); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v", err)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0", tracked.callCount())
+	}
+}
