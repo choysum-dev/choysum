@@ -207,6 +207,11 @@ const contentSpacing = computed(() => {
     flex: 1;
     min-height: calc(100vh - var(--o-header-height, 60px));
     min-width: 0;
+    padding-top: var(--o-header-height); /* compensate for fixed header */
+
+    @media only screen and (max-width: 991px) {
+      padding-top: var(--o-header-height-mobile, 50px);
+    }
   }
 
   /* Layout variant without a top navigation bar. */

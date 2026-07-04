@@ -483,11 +483,10 @@ function handleDrawerMenuItemClick(item: MenuItem) {
   }
 
   &--fixed {
-    position: sticky;
+    position: fixed;
     top: 0;
     left: 0;
-    inset-inline-start: 0;
-    inset-inline-end: 0;
+    right: 0;
   }
 
   @media only screen and (max-width: 991px) {
