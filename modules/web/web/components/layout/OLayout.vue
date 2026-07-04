@@ -181,7 +181,7 @@ const contentSpacing = computed(() => {
 
     /* Start at the top when no header is shown. */
     .o-layout--without-header & {
-      height: 100vh;
+      min-height: 100vh;
     }
 
     /* Remove the left inset when no sidebar is shown. */
@@ -235,7 +235,7 @@ const contentSpacing = computed(() => {
     }
 
     .o-layout__main-container {
-      height: 100vh;
+      min-height: 100vh;
     }
 
     .o-layout__content-wrapper {

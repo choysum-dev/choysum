@@ -344,13 +344,6 @@ function handleMenuMouseLeave() {
     overflow: hidden;
   }
 
-  @media only screen and (max-width: 991px) {
-    height: calc(100vh - var(--o-header-height-mobile, 40px));
-    &--expanded {
-      width: var(--o-sidebar-width);
-    }
-  }
-
   &:not(&--collapsed) {
     :deep(.el-menu) {
       > .el-menu-item,
