@@ -33,6 +33,7 @@ describe('OPage component', () => {
 
     const region = wrapper.find('.o-page');
     expect(region.attributes('aria-labelledby')).toBe(titleId);
+    expect(region.attributes('aria-label')).toBeUndefined();
   });
 
   test('does not bind aria-labelledby when header slot is provided', () => {

@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
-import { useCssVar, useTimeoutFn, type UseTimeoutFnReturn } from '@vueuse/core';
+import { useTimeoutFn, type UseTimeoutFnReturn } from '@vueuse/core';
 import { useLayoutStore } from '@/web/web/stores';
 import { useMenu } from '@/web/web/composables';
 import type { MenuItem } from '@/core/web/menu';
@@ -55,14 +55,8 @@ const { renderSidebarMenu } = useMenu();
 // Sidebar DOM reference.
 const sidebarRef = ref<InstanceType<typeof ElAside> | null>(null);
 
-// Set CSS variables when the component mounts.
+// Attach the global mousemove listener on mount.
 onMounted(() => {
-  useCssVar('--el-menu-base-level-padding').value = '12px';
-  useCssVar('--el-menu-level-padding').value = '8px';
-  useCssVar('--el-menu-item-height').value = '48px';
-  useCssVar('--el-menu-icon-width').value = '20px';
-
-  // Attach the global mousemove listener.
   document.addEventListener('mousemove', handleGlobalMouseMove);
 });
 
@@ -202,6 +196,11 @@ function handleMenuMouseLeave() {
 @use '../../styles/tokens.scss' as *;
 
 .o-sidebar {
+  --el-menu-base-level-padding: 12px;
+  --el-menu-level-padding: 8px;
+  --el-menu-item-height: 48px;
+  --el-menu-icon-width: 20px;
+
   position: fixed;
   inset-inline-start: 0;
   z-index: $z-index-fixed;
