@@ -428,23 +428,24 @@ func (h *hotreloadState) contentChanged(resolvedPath string) bool {
 }
 
 func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
-	path := canonicalWatchPath(resolvedPath)
-	hash, ok := fileFingerprint(path)
+	// resolvedPath is already canonical from the caller; avoid redundant
+	// EvalSymlinks on the hot reload path.
+	hash, ok := fileFingerprint(resolvedPath)
 	if !ok {
 		h.fingerprintsMu.Lock()
 		if h.fingerprints != nil {
-			delete(h.fingerprints, path)
+			delete(h.fingerprints, resolvedPath)
 		}
 		h.fingerprintsMu.Unlock()
 		return true
 	}
 
 	h.fingerprintsMu.Lock()
-	prev, ok := h.fingerprints[path]
+	prev, ok := h.fingerprints[resolvedPath]
 	if h.fingerprints == nil {
 		h.fingerprints = make(map[string]string)
 	}
-	h.fingerprints[path] = hash
+	h.fingerprints[resolvedPath] = hash
 	h.fingerprintsMu.Unlock()
 
 	return !ok || hash != prev

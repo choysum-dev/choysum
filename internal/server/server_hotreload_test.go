@@ -996,8 +996,9 @@ func TestContentChangedResolvedRemovesDeletedFingerprint(t *testing.T) {
 	}
 
 	hs := &hotreloadState{}
-	// Prime the cache.
-	if !hs.contentChangedResolved(file) {
+	// Prime the cache. Use contentChanged (which canonicalizes) because
+	// contentChangedResolved expects an already-resolved path.
+	if !hs.contentChanged(file) {
 		t.Fatal("expected first write to be treated as changed")
 	}
 	if !hs.hasFingerprint(file) {
@@ -1009,7 +1010,7 @@ func TestContentChangedResolvedRemovesDeletedFingerprint(t *testing.T) {
 	if err := os.Remove(file); err != nil {
 		t.Fatalf("Remove() error = %v", err)
 	}
-	if !hs.contentChangedResolved(file) {
+	if !hs.contentChanged(file) {
 		t.Fatal("expected deleted file to be treated as changed")
 	}
 	if hs.hasFingerprint(file) {

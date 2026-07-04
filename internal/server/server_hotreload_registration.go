@@ -29,7 +29,7 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 			return xfmt.Errorf("Failed to register watch dir: %w", err)
 		}
 	}
-	s.hotreload.primeFingerprintsForTargets(targets)
+	go s.hotreload.primeFingerprintsForTargets(targets)
 	return nil
 }
 
