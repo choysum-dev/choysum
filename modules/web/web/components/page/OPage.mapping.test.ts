@@ -53,6 +53,7 @@ describe('OPage component', () => {
 
     const region = wrapper.find('.o-page');
     expect(region.attributes('aria-labelledby')).toBeUndefined();
+    expect(region.attributes('aria-label')).toBe('Test Title');
   });
 
   test('sets aria-busy when loading is true', () => {
