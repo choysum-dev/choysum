@@ -14,7 +14,7 @@ describe('OPage component contract', () => {
     const s = source('OPage.vue');
 
     expect(s).toContain("import { computed, getCurrentInstance } from 'vue';");
-    expect(s).toContain('const pageTitleId = `page-title-${getCurrentInstance()?.uid}`;');
+    expect(s).toContain('const pageTitleId = `page-title-${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2, 9)}`;');
     expect(s).not.toContain('pageTitleCounter');
   });
 

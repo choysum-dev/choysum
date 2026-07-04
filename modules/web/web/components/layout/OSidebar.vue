@@ -113,9 +113,7 @@ const sidebarClass = computed(() =>
 
 const sidebarStyle = computed(() => {
   if (layoutStore.sidebarMode === 'hidden') return { width: '0px' };
-  return {
-    width: layoutStore.sidebarMode === 'collapsed' ? `${COLLAPSED_WIDTH}px` : `${props.width}px`,
-  };
+  return {};
 });
 
 function handleMenuSelect(menuItem: MenuItem) {

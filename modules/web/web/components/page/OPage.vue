@@ -76,7 +76,7 @@ const props = defineProps({
   },
 });
 
-const pageTitleId = `page-title-${getCurrentInstance()?.uid}`;
+const pageTitleId = `page-title-${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2, 9)}`;
 
 const pageClass = computed(() => {
   return [

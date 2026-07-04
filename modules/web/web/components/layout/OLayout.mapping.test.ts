@@ -22,11 +22,11 @@ describe('OLayout component contract', () => {
     expect(s).toContain("return { padding: true, paddingSize: props.spacing as 'small' | 'medium' | 'large' };");
   });
 
-  test('without-header variant resets content-wrapper padding-top', () => {
+  test('padding-top compensation is scoped to fixed-header state', () => {
     const s = source('OLayout.vue');
 
-    expect(s).toContain('o-layout__content-wrapper');
-    expect(s).toContain('padding-top: 0;');
+    expect(s).toContain('o-layout--fixed-header');
+    expect(s).toContain('padding-top: var(--o-header-height);');
   });
 
   test('OContent receives spacing via v-bind', () => {
