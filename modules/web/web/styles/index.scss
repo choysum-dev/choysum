@@ -1,29 +1,17 @@
-// Copyright 2025 The Choysum Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
 
 // ============================================
-// 导入样式文件 - 优化导入顺序
+// Import style files - optimized import order
 // ============================================
-@forward './variables.scss'; // 先加载变量定义
-@forward './tokens.scss'; // Sass token变量
-@forward './element.scss'; // 再加载Element Plus样式
-@forward './transitions.scss'; // 加载过渡动画样式
-@forward './utils.scss'; // 加载工具类
-@forward './a11y.scss'; // 加载可访问性
+@forward './variables.scss'; // Load variable definitions first
+@forward './tokens.scss'; // Sass token variables
+@forward './element.scss'; // Load Element Plus styles next
+@forward './transitions.scss'; // Load transition animation styles
+@forward './a11y.scss'; // Load accessibility
 
 // ============================================
-// 全局基础样式 - 与Element Plus对齐
+// Global base styles - aligned with Element Plus
 // ============================================
 
 html {
