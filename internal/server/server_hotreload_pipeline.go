@@ -7,11 +7,15 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 var watchDebounceWindow = 75 * time.Millisecond
 
 func (s *GRPCWebServer) watch() {
+	if s == nil {
+		return
+	}
 	defer s.hotreload.finishWatchLoop()
 	stopSignal := s.hotreload.watchStopSignal()
 	watchEvents := s.hotreload.watchEvents()
@@ -37,6 +41,9 @@ func (s *GRPCWebServer) watch() {
 }
 
 func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
+	if s == nil {
+		return false
+	}
 	resolvedFile, err := resolveWatchPath(file)
 	if err != nil {
 		s.recordDroppedWatchEvent("path_unresolved", file, err)
@@ -88,6 +95,9 @@ func (s *GRPCWebServer) recordCoalescedWatchEvent(file string) {
 }
 
 func (s *GRPCWebServer) waitForWatchDebounce(file string) error {
+	if s == nil {
+		return xfmt.Errorf("waitForWatchDebounce called on nil receiver")
+	}
 	if watchDebounceWindow <= 0 {
 		return nil
 	}

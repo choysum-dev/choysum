@@ -12,10 +12,16 @@ import (
 )
 
 func (s *GRPCWebServer) applyRegistrationWatchPlans(plans []registrationWatchPlan) error {
+	if s == nil {
+		return xfmt.Errorf("applyRegistrationWatchPlans called on nil receiver")
+	}
 	return s.applyRegistrationWatchPlansWithHandler(plans, s.handleWatchedModuleUpgrade)
 }
 
 func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrationWatchPlan, handle watchTargetHandler) error {
+	if s == nil {
+		return xfmt.Errorf("applyRegistrationWatchPlansWithHandler called on nil receiver")
+	}
 	targets := s.buildRegisteredWatchTargets(plans, handle)
 	s.hotreload.storeWatchTargets(targets)
 	if !s.resolvedRuntimeOptions().hotReload {
@@ -54,6 +60,9 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 }
 
 func (s *GRPCWebServer) buildRegisteredWatchTargets(plans []registrationWatchPlan, handle watchTargetHandler) []registeredWatchTarget {
+	if s == nil {
+		return nil
+	}
 	targets := make([]registeredWatchTarget, 0, len(plans))
 	seen := map[string]struct{}{}
 	for _, plan := range plans {
@@ -78,6 +87,9 @@ func (s *GRPCWebServer) buildRegisteredWatchTargets(plans []registrationWatchPla
 }
 
 func (s *GRPCWebServer) registerWatchTarget(target registeredWatchTarget) error {
+	if s == nil {
+		return xfmt.Errorf("registerWatchTarget called on nil receiver")
+	}
 	registeredRoots := s.registeredWatchRoots()
 	if _, exists := registeredRoots[target.root]; exists {
 		s.runtimeScope.Logger().Debug("watch root skipped as duplicate", "app", target.serviceName, "module", target.moduleName, "root", target.root)
@@ -126,6 +138,9 @@ func (s *GRPCWebServer) registerWatchTarget(target registeredWatchTarget) error 
 }
 
 func (s *GRPCWebServer) registeredWatchRoots() map[string]struct{} {
+	if s == nil {
+		return nil
+	}
 	roots := map[string]struct{}{}
 	watchList := s.hotreload.watchList()
 	if len(watchList) == 0 {
@@ -158,6 +173,9 @@ func overlappingWatchRoots(candidateRoot string, registeredRoots map[string]stru
 }
 
 func (s *GRPCWebServer) removeWatchRoots(roots []string) error {
+	if s == nil {
+		return xfmt.Errorf("removeWatchRoots called on nil receiver")
+	}
 	if !s.hasHotreloadWatcher() {
 		return nil
 	}
@@ -170,6 +188,9 @@ func (s *GRPCWebServer) removeWatchRoots(roots []string) error {
 }
 
 func (s *GRPCWebServer) clearWatchRegistrations() error {
+	if s == nil {
+		return xfmt.Errorf("clearWatchRegistrations called on nil receiver")
+	}
 	s.hotreload.clearWatchTargets()
 	if !s.hasHotreloadWatcher() {
 		return nil

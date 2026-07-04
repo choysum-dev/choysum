@@ -16,6 +16,9 @@ import (
 )
 
 func (s *GRPCWebServer) dispatchWatchHandler(file string) (int, error) {
+	if s == nil {
+		return 0, xfmt.Errorf("dispatchWatchHandler called on nil receiver")
+	}
 	resolvedFile, err := resolveWatchPath(file)
 	if err != nil {
 		return 0, xfmt.Errorf("Failed to resolve watched file path: %w", err)
@@ -24,6 +27,9 @@ func (s *GRPCWebServer) dispatchWatchHandler(file string) (int, error) {
 }
 
 func (s *GRPCWebServer) dispatchWatchHandlerResolved(resolvedFile string) (int, error) {
+	if s == nil {
+		return 0, xfmt.Errorf("dispatchWatchHandlerResolved called on nil receiver")
+	}
 	if s.runtimeScope == nil {
 		return 0, xfmt.Errorf("runtime scope is nil")
 	}
@@ -53,6 +59,9 @@ func (s *GRPCWebServer) dispatchWatchHandlerResolved(resolvedFile string) (int, 
 }
 
 func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file string) error {
+	if s == nil {
+		return xfmt.Errorf("dispatchWatchTarget called on nil receiver")
+	}
 	handle := target.handle
 	if handle == nil {
 		handle = s.handleWatchedModuleUpgrade
@@ -64,6 +73,9 @@ func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file s
 }
 
 func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file string) error {
+	if s == nil {
+		return xfmt.Errorf("handleWatchedModuleUpgrade called on nil receiver")
+	}
 	if s.runtimeScope == nil {
 		return xfmt.Errorf("runtime scope is nil")
 	}
@@ -90,6 +102,9 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 }
 
 func (s *GRPCWebServer) handleWatchedFileChange(file string) error {
+	if s == nil {
+		return xfmt.Errorf("handleWatchedFileChange called on nil receiver")
+	}
 	resolvedFile, err := resolveWatchPath(file)
 	if err != nil {
 		return xfmt.Errorf("Failed to resolve watched file path: %w", err)
@@ -98,6 +113,9 @@ func (s *GRPCWebServer) handleWatchedFileChange(file string) error {
 }
 
 func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) error {
+	if s == nil {
+		return xfmt.Errorf("handleWatchedFileChangeResolved called on nil receiver")
+	}
 	if s.runtimeScope == nil {
 		return xfmt.Errorf("runtime scope is nil")
 	}
@@ -175,6 +193,9 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 }
 
 func (s *GRPCWebServer) handleQueuedWatchEvent(eventInfo string) error {
+	if s == nil {
+		return xfmt.Errorf("handleQueuedWatchEvent called on nil receiver")
+	}
 	if s.runtimeScope == nil {
 		return xfmt.Errorf("runtime scope is nil")
 	}
