@@ -53,18 +53,6 @@ SPDX-License-Identifier: Apache-2.0
         </el-dropdown>
       </div>
 
-      <!-- Center section with the app selector and search box. -->
-      <div class="o-header__center">
-        <el-input
-          v-model="searchValue"
-          placeholder="搜索..."
-          class="o-header__search"
-          :prefix-icon="Search"
-          @keyup.enter="handleSearch(searchValue)"
-          clearable
-        />
-      </div>
-
       <!-- Action area split into secondary and primary sections. -->
       <div class="o-header__actions">
         <!-- Secondary actions. -->
@@ -160,8 +148,8 @@ import { useLayoutStore } from '@/web/web/stores';
 import { useI18nStore, SUPPORTED_LOCALES, type SupportedLocale } from '@/web/web/stores/i18nStore';
 import { useMenu } from '@/web/web/composables';
 import type { MenuItem } from '@/core/web/menu';
-import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDropdownItem, ElInput, ElScrollbar } from 'element-plus';
-import { Search, QuestionFilled } from '@element-plus/icons-vue';
+import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDropdownItem, ElScrollbar } from 'element-plus';
+import { QuestionFilled } from '@element-plus/icons-vue';
 import { MenuOutlined, AppsOutlined, TranslateOutlined, ArrowDropDownOutlined } from '@vicons/material';
 import defaultLogo from '@/web/web/assets/logo.svg';
 
@@ -199,7 +187,6 @@ const menu = useMenu();
 
 // Drawer state.
 const appDrawerVisible = ref(false);
-const searchValue = ref('');
 
 // Menu renderer.
 const { renderAppDrawerMenu } = useMenu();
@@ -253,10 +240,6 @@ function handleAppChange(appId: string) {
 
 async function handleLanguageChange(locale: string) {
   await i18nStore.setLocale(locale);
-}
-
-function handleSearch(value: string) {
-  //
 }
 
 function handleDrawerMenuItemClick(item: MenuItem) {
@@ -357,17 +340,6 @@ function handleDrawerMenuItemClick(item: MenuItem) {
     }
   }
 
-  &__center {
-    display: flex;
-    align-items: center;
-    height: 100%;
-    flex: 1 1 auto;
-    padding-inline: var(--el-padding-medium, 16px);
-    justify-content: flex-start;
-    overflow: hidden;
-    gap: 16px;
-  }
-
   &__app-selector {
     flex-shrink: 0;
   }
@@ -410,16 +382,6 @@ function handleDrawerMenuItemClick(item: MenuItem) {
     /* Keep the icon color inherited so inactive items do not always look primary. */
     &-icon {
       color: inherit;
-    }
-  }
-
-  &__search {
-    max-width: 400px;
-    width: 100%;
-
-    &:deep(.el-input__wrapper) {
-      background-color: var(--el-fill-color-light);
-      border-radius: 20px;
     }
   }
 
@@ -483,18 +445,15 @@ function handleDrawerMenuItemClick(item: MenuItem) {
   }
 
   &--fixed {
-    position: sticky;
+    position: fixed;
     top: 0;
-    left: 0;
-    inset-inline-start: 0;
-    inset-inline-end: 0;
+    inset-inline: 0;
   }
 
   @media only screen and (max-width: 991px) {
     height: var(--o-header-height-mobile);
 
     &__nav,
-    &__center,
     &__actions {
       padding-inline: var(--el-padding-small, 8px);
     }
@@ -511,16 +470,7 @@ function handleDrawerMenuItemClick(item: MenuItem) {
     }
   }
 
-  @media only screen and (max-width: 767px) {
-    &__center {
-      max-width: 160px;
-    }
-  }
-
   @media only screen and (max-width: 480px) {
-    &__search {
-      display: none;
-    }
   }
 
   /* App selector dropdown panel targeted through popper-class. */
@@ -546,11 +496,6 @@ function handleDrawerMenuItemClick(item: MenuItem) {
     color: var(--el-color-primary);
     font-weight: 500;
     background-color: var(--el-color-primary-light-9);
-  }
-
-  /* Support dropdown panel. */
-  :global(.o-header__support-dropdown) {
-    /* Custom support menu styles. */
   }
 }
 </style>
