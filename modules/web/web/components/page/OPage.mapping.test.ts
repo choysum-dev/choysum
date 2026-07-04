@@ -10,11 +10,12 @@ function source(name: string): string {
 }
 
 describe('OPage component contract', () => {
-  test('uses getCurrentInstance uid for unique page-title id', () => {
+  test('uses Vue 3.5 useId for unique page-title id', () => {
     const s = source('OPage.vue');
 
-    expect(s).toContain("import { computed, getCurrentInstance } from 'vue';");
-    expect(s).toContain('const pageTitleId = `page-title-${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2, 9)}`;');
+    expect(s).toContain("import { computed, useId } from 'vue';");
+    expect(s).toContain('const pageTitleId = useId();');
+    expect(s).not.toContain('getCurrentInstance');
     expect(s).not.toContain('pageTitleCounter');
   });
 

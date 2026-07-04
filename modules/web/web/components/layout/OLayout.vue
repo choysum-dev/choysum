@@ -217,7 +217,7 @@ const contentSpacing = computed(() => {
       padding-top: var(--o-header-height, 48px); /* compensate for fixed header */
 
       @media only screen and (max-width: 991px) {
-        padding-top: var(--o-header-height-mobile, 50px);
+        padding-top: var(--o-header-height-mobile, 40px);
       }
     }
   }

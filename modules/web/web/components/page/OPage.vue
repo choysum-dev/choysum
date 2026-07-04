@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance } from 'vue';
+import { computed, useId } from 'vue';
 import { Loading } from '@element-plus/icons-vue';
 import OBreadcrumb from '@/web/web/components/view/OBreadcrumb.vue';
 
@@ -76,7 +76,7 @@ const props = defineProps({
   },
 });
 
-const pageTitleId = `page-title-${getCurrentInstance()?.uid ?? Math.random().toString(36).slice(2, 9)}`;
+const pageTitleId = useId();
 
 const pageClass = computed(() => {
   return [
