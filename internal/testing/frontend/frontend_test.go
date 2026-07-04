@@ -508,7 +508,7 @@ func TestRunOneAppFrontendTestsConfigIncludesJUnitAndLcov(t *testing.T) {
 	}
 }
 
-func TestAppUsesVitestEnvironmentStopsAfterMatch(t *testing.T) {
+func TestCollectVitestEnvironmentDependenciesStopsAfterMatch(t *testing.T) {
 	repoRoot := t.TempDir()
 	webRoot := filepath.Join(repoRoot, "modules", "auth", "web")
 	if err := os.MkdirAll(filepath.Join(webRoot, "__tests__"), 0o755); err != nil {
@@ -526,12 +526,12 @@ func TestAppUsesVitestEnvironmentStopsAfterMatch(t *testing.T) {
 		t.Fatalf("mkdir trailing pseudo test dir: %v", err)
 	}
 
-	found, err := appUsesVitestEnvironment(repoRoot, "auth", "happy-dom")
+	deps, err := collectVitestEnvironmentDependencies(repoRoot, "auth")
 	if err != nil {
-		t.Fatalf("appUsesVitestEnvironment error: %v", err)
+		t.Fatalf("collectVitestEnvironmentDependencies error: %v", err)
 	}
-	if !found {
-		t.Fatal("expected vitest environment marker to be found")
+	if len(deps) != 1 || deps[0] != "happy-dom" {
+		t.Fatalf("expected [happy-dom], got %v", deps)
 	}
 }
 

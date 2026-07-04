@@ -346,14 +346,11 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 			return nil
 		}
 
-		f, readErr := os.Open(path)
+		contentBytes, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr
 		}
-		defer f.Close()
-		buf := make([]byte, 4096)
-		n, _ := f.Read(buf)
-		content := string(buf[:n])
+		content := string(contentBytes)
 		for _, environmentName := range environmentCandidates {
 			marker := "@vitest-environment " + environmentName
 			if strings.Contains(content, marker) {
@@ -376,64 +373,6 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 		}
 	}
 	return required, nil
-}
-
-func appUsesVitestEnvironment(repoRoot string, app string, environment string) (bool, error) {
-	environment = strings.TrimSpace(environment)
-	if environment == "" {
-		return false, nil
-	}
-
-	webRoot := filepath.Join(repoRoot, "modules", app, "web")
-	st, err := os.Stat(webRoot)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, xfmt.Errorf("vitest: stat web root for %s: %w", app, err)
-	}
-	if !st.IsDir() {
-		return false, nil
-	}
-
-	marker := "@vitest-environment " + environment
-	found := false
-	err = filepath.WalkDir(webRoot, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if d.IsDir() {
-			return nil
-		}
-
-		name := d.Name()
-		if !strings.Contains(name, ".test.") && !strings.Contains(name, ".spec.") {
-			return nil
-		}
-		if !strings.HasSuffix(name, ".ts") &&
-			!strings.HasSuffix(name, ".tsx") &&
-			!strings.HasSuffix(name, ".js") &&
-			!strings.HasSuffix(name, ".jsx") &&
-			!strings.HasSuffix(name, ".mjs") &&
-			!strings.HasSuffix(name, ".cjs") {
-			return nil
-		}
-
-		raw, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return readErr
-		}
-		if strings.Contains(string(raw), marker) {
-			found = true
-			return errVitestEnvironmentMarkerFound
-		}
-		return nil
-	})
-	if err != nil && !errors.Is(err, errVitestEnvironmentMarkerFound) {
-		return false, xfmt.Errorf("vitest: scan web tests for %s: %w", app, err)
-	}
-
-	return found, nil
 }
 
 func localFrontendModuleRoots(repoRoot string) []string {
