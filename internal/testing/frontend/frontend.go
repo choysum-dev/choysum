@@ -327,6 +327,9 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 			return walkErr
 		}
 		if d.IsDir() {
+			if d.Name() == "node_modules" || d.Name() == "dist" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 
@@ -343,11 +346,14 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 			return nil
 		}
 
-		raw, readErr := os.ReadFile(path)
+		f, readErr := os.Open(path)
 		if readErr != nil {
 			return readErr
 		}
-		content := string(raw)
+		buf := make([]byte, 4096)
+		n, _ := f.Read(buf)
+		f.Close()
+		content := string(buf[:n])
 		for _, environmentName := range environmentCandidates {
 			marker := "@vitest-environment " + environmentName
 			if strings.Contains(content, marker) {
