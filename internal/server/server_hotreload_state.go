@@ -48,6 +48,9 @@ type hotreloadState struct {
 	moduleMu    sync.Mutex
 	busyModules map[string]struct{}
 
+	// progressMu protects progressLine method calls.
+	progressMu   sync.Mutex
+
 	// progressLine writes single-line hotreload status updates to stderr.
 	progressLine *logger.ProgressLine
 
@@ -370,14 +373,11 @@ func (h *hotreloadState) resetEventState() {
 }
 
 func (h *hotreloadState) primeFingerprintsForTargets(targets []registeredWatchTarget) {
-	seenRoots := map[string]struct{}{}
+	roots := make([]string, 0, len(targets))
 	for _, target := range targets {
-		if _, seen := seenRoots[target.root]; seen {
-			continue
-		}
-		seenRoots[target.root] = struct{}{}
-		h.primeFingerprintsForRoot(target.root)
+		roots = append(roots, target.root)
 	}
+	h.primeFingerprintsForRoots(roots)
 }
 
 func (h *hotreloadState) primeFingerprintsForRoots(roots []string) {

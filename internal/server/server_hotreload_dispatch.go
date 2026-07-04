@@ -63,7 +63,9 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 	s.runtimeScope.Logger().Debug("watch module upgrade started", "module", moduleName, "file", file)
 	line := s.hotreload.progressLine
 	if line != nil {
+		s.hotreload.progressMu.Lock()
 		line.Update(0, fmt.Sprintf("Upgrading module: %s", moduleName))
+		s.hotreload.progressMu.Unlock()
 	}
 	ctx := s.runtimeScope.Context()
 	if ctx == nil {
@@ -103,13 +105,13 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 
 	dispatched, err := s.dispatchWatchHandlerResolved(resolvedFile)
 	if err != nil {
-		if line != nil {
-			line.Clear()
-			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
-		}
 		if errors.Is(err, context.Canceled) || errors.Is(s.runtimeScope.Context().Err(), context.Canceled) {
 			s.runtimeScope.Logger().Debug("watch handler canceled", "error", err)
 			return nil
+		}
+		if line != nil {
+			line.Clear()
+			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
 		}
 		return xfmt.Errorf("Failed to dispatch watch handler: %w", err)
 	}
