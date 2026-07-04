@@ -147,7 +147,7 @@ const getTransitionName = computed(() => {
 // in a single place instead of via :deep() overrides.
 const contentSpacing = computed(() => {
   if (props.spacing === 'none') return { padding: false };
-  return { paddingSize: props.spacing as 'small' | 'medium' | 'large' };
+  return { padding: true, paddingSize: props.spacing as 'small' | 'medium' | 'large' };
 });
 </script>
 
@@ -228,6 +228,10 @@ const contentSpacing = computed(() => {
 
     .o-layout__main-container {
       height: 100vh;
+    }
+
+    .o-layout__content-wrapper {
+      padding-top: 0;
     }
   }
 }
