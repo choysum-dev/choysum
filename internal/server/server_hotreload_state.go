@@ -406,14 +406,15 @@ func (h *hotreloadState) primeFingerprintsForRoot(root string) {
 			}
 			return nil
 		}
-		if h.hasFingerprint(path) {
+		canonical := canonicalWatchPath(path)
+		if h.hasFingerprint(canonical) {
 			return nil
 		}
-		hash, ok := fileFingerprint(path)
+		hash, ok := fileFingerprint(canonical)
 		if !ok {
 			return nil
 		}
-		h.setFingerprintIfAbsentResolved(path, hash)
+		h.setFingerprintIfAbsentResolved(canonical, hash)
 		return nil
 	})
 }
@@ -427,22 +428,23 @@ func (h *hotreloadState) contentChanged(resolvedPath string) bool {
 }
 
 func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
-	hash, ok := fileFingerprint(resolvedPath)
+	path := canonicalWatchPath(resolvedPath)
+	hash, ok := fileFingerprint(path)
 	if !ok {
 		h.fingerprintsMu.Lock()
 		if h.fingerprints != nil {
-			delete(h.fingerprints, resolvedPath)
+			delete(h.fingerprints, path)
 		}
 		h.fingerprintsMu.Unlock()
 		return true
 	}
 
 	h.fingerprintsMu.Lock()
-	prev, ok := h.fingerprints[resolvedPath]
+	prev, ok := h.fingerprints[path]
 	if h.fingerprints == nil {
 		h.fingerprints = make(map[string]string)
 	}
-	h.fingerprints[resolvedPath] = hash
+	h.fingerprints[path] = hash
 	h.fingerprintsMu.Unlock()
 
 	return !ok || hash != prev
@@ -473,7 +475,7 @@ func (h *hotreloadState) hasFingerprint(path string) bool {
 	if h.fingerprints == nil {
 		return false
 	}
-	_, exists := h.fingerprints[path]
+	_, exists := h.fingerprints[canonicalWatchPath(path)]
 	return exists
 }
 

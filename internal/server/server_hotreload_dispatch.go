@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
@@ -109,7 +110,9 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 
 	line := s.hotreload.progressLine
 	if line != nil {
+		s.hotreload.progressMu.Lock()
 		line.Update(0, fmt.Sprintf("Detected change: %s", filepath.Base(resolvedFile)))
+		s.hotreload.progressMu.Unlock()
 	}
 
 	dispatched, err := s.dispatchWatchHandlerResolved(resolvedFile)
@@ -121,8 +124,10 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 		// Evict fingerprint so the user can retry by saving again.
 		s.hotreload.clearFingerprint(resolvedFile)
 		if line != nil {
+			s.hotreload.progressMu.Lock()
 			line.Clear()
 			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
+			s.hotreload.progressMu.Unlock()
 		}
 		return xfmt.Errorf("Failed to dispatch watch handler: %w", err)
 	}
@@ -130,27 +135,35 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 	// any registered watch root).
 	if dispatched == 0 {
 		if line != nil {
+			s.hotreload.progressMu.Lock()
 			line.Done("→", fmt.Sprintf("Skipped (no module matched): %s", filepath.Base(resolvedFile)))
+			s.hotreload.progressMu.Unlock()
 		}
 		s.runtimeScope.Logger().Debug("watch file did not match any module, skipping restart", "file", resolvedFile)
 		return nil
 	}
 
 	if line != nil {
+		s.hotreload.progressMu.Lock()
 		line.Update(1, "Restarting runtime...")
+		s.hotreload.progressMu.Unlock()
 	}
 	if err := s.restart(); err != nil {
 		// Evict fingerprint so the user can retry by saving again.
 		s.hotreload.clearFingerprint(resolvedFile)
 		if line != nil {
+			s.hotreload.progressMu.Lock()
 			line.Clear()
 			line.Done("✗", "Restart failed")
+			s.hotreload.progressMu.Unlock()
 		}
 		return xfmt.Errorf("Failed to restart server: %w", err)
 	}
 
 	if line != nil {
+		s.hotreload.progressMu.Lock()
 		line.Done("✓", fmt.Sprintf("Hotreload done (dropped/coalesced: %d/%d)", s.watchDroppedCount(), s.watchCoalescedCount()))
+		s.hotreload.progressMu.Unlock()
 	}
 	s.runtimeScope.Logger().Info(
 		"watch reload completed",
@@ -168,24 +181,12 @@ func (s *GRPCWebServer) handleQueuedWatchEvent(eventInfo string) error {
 	// Parse the packed file path and module name to maintain deduplication consistency.
 	// eventInfo format: "file|module"
 	var file, module string
-	// To safely handle filenames that might contain our separator we only split once
-	// at the end, but since module doesn't contain '|' typically we just split at the
-	// last index to be robust, although `filepath.Separator` vs `|` makes any simple
-	// split safe unless `file` has `|`. Since module name itself won't contain `|`,
-	// we search from right.
-	if i := len(eventInfo) - 1; i >= 0 {
-		for ; i >= 0; i-- {
-			if eventInfo[i] == '|' {
-				break
-			}
-		}
-		if i >= 0 {
-			file = eventInfo[:i]
-			module = eventInfo[i+1:]
-		} else {
-			file = eventInfo
-			module = s.resolveWatchModule(file) // Fallback if no delimiter
-		}
+	if idx := strings.LastIndex(eventInfo, "|"); idx >= 0 {
+		file = eventInfo[:idx]
+		module = eventInfo[idx+1:]
+	} else {
+		file = eventInfo
+		module = s.resolveWatchModule(file)
 	}
 	defer s.hotreload.finishModuleEvent(module)
 
