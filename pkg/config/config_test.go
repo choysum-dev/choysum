@@ -542,7 +542,9 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 	}
 
 	// applyPathInvariants picks up cwd/modules when it exists.
-	cfg.DefaultChoysumPath = workDir
+	// Use a different DefaultChoysumPath so Priority 2 does not
+	// accidentally resolve to the same directory as Priority 1.
+	cfg.DefaultChoysumPath = filepath.Join(workDir, "choysum_home")
 	if err := cfg.applyPathInvariants(); err != nil {
 		t.Fatalf("applyPathInvariants() error = %v", err)
 	}

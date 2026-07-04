@@ -23,6 +23,9 @@ func (s *GRPCWebServer) dispatchWatchHandler(file string) (int, error) {
 }
 
 func (s *GRPCWebServer) dispatchWatchHandlerResolved(resolvedFile string) (int, error) {
+	if s.runtimeScope == nil {
+		return 0, xfmt.Errorf("runtime scope is nil")
+	}
 	s.runtimeScope.Logger().Debug("watch file detected", "file", resolvedFile)
 
 	seenModules := map[string]struct{}{}
@@ -60,6 +63,9 @@ func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file s
 }
 
 func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file string) error {
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	s.runtimeScope.Logger().Debug("watch module upgrade started", "module", moduleName, "file", file)
 	line := s.hotreload.progressLine
 	if line != nil {
@@ -91,6 +97,9 @@ func (s *GRPCWebServer) handleWatchedFileChange(file string) error {
 }
 
 func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) error {
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	// Skip reload when file content hasn't actually changed (e.g. no-op
 	// save or atomic-save that produces an identical file). The check runs
 	// after debounce so temp-file rename sequences have already settled.
@@ -153,6 +162,9 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 }
 
 func (s *GRPCWebServer) handleQueuedWatchEvent(eventInfo string) error {
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	// Parse the packed file path and module name to maintain deduplication consistency.
 	// eventInfo format: "file|module"
 	var file, module string
