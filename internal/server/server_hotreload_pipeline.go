@@ -55,8 +55,10 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}
+	// Pack both the file path and resolved module name together to ensure dequeue parity.
+	eventInfo := file + "|" + module
 	select {
-	case watchQueue <- file:
+	case watchQueue <- eventInfo:
 		return true
 	default:
 		s.hotreload.finishModuleEvent(module)

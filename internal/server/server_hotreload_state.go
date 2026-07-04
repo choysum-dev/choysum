@@ -49,7 +49,7 @@ type hotreloadState struct {
 	busyModules map[string]struct{}
 
 	// progressMu protects progressLine method calls.
-	progressMu   sync.Mutex
+	progressMu sync.Mutex
 
 	// progressLine writes single-line hotreload status updates to stderr.
 	progressLine *logger.ProgressLine
@@ -505,5 +505,15 @@ func canonicalWatchPath(path string) string {
 func (h *hotreloadState) clearFingerprints() {
 	h.fingerprintsMu.Lock()
 	h.fingerprints = nil
+	h.fingerprintsMu.Unlock()
+}
+
+// clearFingerprint removes a single cached fingerprint so that a failed
+// hot reload can be retried by saving the same file again.
+func (h *hotreloadState) clearFingerprint(path string) {
+	h.fingerprintsMu.Lock()
+	if h.fingerprints != nil {
+		delete(h.fingerprints, path)
+	}
 	h.fingerprintsMu.Unlock()
 }

@@ -105,10 +105,12 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 
 	dispatched, err := s.dispatchWatchHandlerResolved(resolvedFile)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(s.runtimeScope.Context().Err(), context.Canceled) {
+		if errors.Is(err, context.Canceled) || (s.runtimeScope.Context() != nil && errors.Is(s.runtimeScope.Context().Err(), context.Canceled)) {
 			s.runtimeScope.Logger().Debug("watch handler canceled", "error", err)
 			return nil
 		}
+		// Evict fingerprint so the user can retry by saving again.
+		s.hotreload.clearFingerprint(resolvedFile)
 		if line != nil {
 			line.Clear()
 			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
@@ -129,6 +131,8 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 		line.Update(1, "Restarting runtime...")
 	}
 	if err := s.restart(); err != nil {
+		// Evict fingerprint so the user can retry by saving again.
+		s.hotreload.clearFingerprint(resolvedFile)
 		if line != nil {
 			line.Clear()
 			line.Done("✗", "Restart failed")
@@ -148,9 +152,31 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 	return nil
 }
 
-func (s *GRPCWebServer) handleQueuedWatchEvent(file string) error {
-	module := s.resolveWatchModule(file)
+func (s *GRPCWebServer) handleQueuedWatchEvent(eventInfo string) error {
+	// Parse the packed file path and module name to maintain deduplication consistency.
+	// eventInfo format: "file|module"
+	var file, module string
+	// To safely handle filenames that might contain our separator we only split once
+	// at the end, but since module doesn't contain '|' typically we just split at the
+	// last index to be robust, although `filepath.Separator` vs `|` makes any simple
+	// split safe unless `file` has `|`. Since module name itself won't contain `|`,
+	// we search from right.
+	if i := len(eventInfo) - 1; i >= 0 {
+		for ; i >= 0; i-- {
+			if eventInfo[i] == '|' {
+				break
+			}
+		}
+		if i >= 0 {
+			file = eventInfo[:i]
+			module = eventInfo[i+1:]
+		} else {
+			file = eventInfo
+			module = s.resolveWatchModule(file) // Fallback if no delimiter
+		}
+	}
 	defer s.hotreload.finishModuleEvent(module)
+
 	if err := s.waitForWatchDebounce(file); err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil

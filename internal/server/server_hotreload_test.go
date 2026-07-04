@@ -278,8 +278,10 @@ func TestServerEnqueueWatchEventCoalescesWhileReloadPending(t *testing.T) {
 		if err != nil {
 			t.Fatalf("resolveWatchPath(first) error = %v", err)
 		}
-		if got != resolvedFirst {
-			t.Fatalf("queued watch event = %q, want %q", got, resolvedFirst)
+		// Queue packs "file|module" to avoid enqueue/dequeue mismatch.
+		want := resolvedFirst + "|"
+		if got != want {
+			t.Fatalf("queued watch event = %q, want %q", got, want)
 		}
 	default:
 		t.Fatal("expected first watch event to remain queued")
@@ -567,8 +569,10 @@ func TestServerWatchForwardsEventsAndStops(t *testing.T) {
 		if err != nil {
 			t.Fatalf("resolveWatchPath() error = %v", err)
 		}
-		if got != resolvedCreated {
-			t.Fatalf("watch forwarded path = %q, want %q", got, resolvedCreated)
+		// Queue packs "file|module" to avoid enqueue/dequeue mismatch.
+		want := resolvedCreated + "|"
+		if got != want {
+			t.Fatalf("watch forwarded path = %q, want %q", got, want)
 		}
 		srv.finishWatchEvent()
 	case <-time.After(3 * time.Second):
@@ -613,9 +617,11 @@ func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
 		deadline := time.After(3 * time.Second)
 		for {
 			select {
-			case name := <-srv.hotreloadQueue():
+			case eventInfo := <-srv.hotreloadQueue():
 				srv.finishWatchEvent()
-				base := filepath.Base(name)
+				// Strip module suffix from packed "file|module" format.
+				file, _, _ := strings.Cut(eventInfo, "|")
+				base := filepath.Base(file)
 				for _, want := range expected {
 					if base == want {
 						return base
