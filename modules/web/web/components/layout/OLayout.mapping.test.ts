@@ -26,7 +26,7 @@ describe('OLayout component contract', () => {
     const s = source('OLayout.vue');
 
     expect(s).toContain('o-layout--fixed-header');
-    expect(s).toContain('padding-top: var(--o-header-height, 48px);');
+    expect(s).toContain('min-height: 100vh;');
   });
 
   test('OContent receives spacing via v-bind', () => {
