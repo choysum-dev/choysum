@@ -221,7 +221,6 @@ function handleMenuMouseLeave() {
 @use '../../styles/tokens.scss' as *;
 
 .o-sidebar {
-  flex-shrink: 0;
   position: fixed;
   inset-inline-start: 0;
   z-index: $z-index-fixed;

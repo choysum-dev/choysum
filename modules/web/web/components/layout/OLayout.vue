@@ -181,7 +181,6 @@ const contentSpacing = computed(() => {
 
     /* Start at the top when no header is shown. */
     .o-layout--without-header & {
-      top: 0;
       height: 100vh;
     }
 
@@ -198,11 +197,6 @@ const contentSpacing = computed(() => {
     /* Apply the inset for the expanded sidebar. */
     .o-layout--with-sidebar--expanded & {
       padding-inline-start: var(--o-sidebar-width) !important;
-    }
-
-    /* Mobile adjustments. */
-    @media only screen and (max-width: 991px) {
-      top: var(--o-header-height-mobile, 50px);
     }
 
     /* Mobile adjustments. */
@@ -234,7 +228,6 @@ const contentSpacing = computed(() => {
 
     .o-layout__main-container {
       height: 100vh;
-      margin-block-start: 0;
     }
   }
 }
