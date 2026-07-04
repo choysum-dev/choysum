@@ -1,37 +1,80 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * @vitest-environment happy-dom
+ */
+
 import { describe, expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mount } from '@vue/test-utils';
+import { createPinia } from 'pinia';
+import OLayout from './OLayout.vue';
+import OContent from './OContent.vue';
 
-function source(name: string): string {
-  return readFileSync(resolve(__dirname, name), 'utf8');
-}
+describe('OLayout component', () => {
+  test('passes padding=false to OContent when spacing is none', () => {
+    const wrapper = mount(OLayout, {
+      props: {
+        spacing: 'none',
+        showHeader: false,
+        showSidebar: false,
+      },
+      global: {
+        plugins: [createPinia()],
+        stubs: {
+          'router-view': true,
+          OHeader: true,
+          OSidebar: true,
+          OFooter: true,
+        },
+      },
+    });
 
-describe('OLayout component contract', () => {
-  test('contentSpacing returns { padding: false } for none spacing', () => {
-    const s = source('OLayout.vue');
-
-    expect(s).toContain("if (props.spacing === 'none') return { padding: false };");
+    const content = wrapper.findComponent(OContent);
+    expect(content.props('padding')).toBe(false);
   });
 
-  test('contentSpacing returns padding: true with paddingSize otherwise', () => {
-    const s = source('OLayout.vue');
+  test('passes padding=true and paddingSize to OContent when spacing is medium', () => {
+    const wrapper = mount(OLayout, {
+      props: {
+        spacing: 'medium',
+        showHeader: false,
+        showSidebar: false,
+      },
+      global: {
+        plugins: [createPinia()],
+        stubs: {
+          'router-view': true,
+          OHeader: true,
+          OSidebar: true,
+          OFooter: true,
+        },
+      },
+    });
 
-    expect(s).toContain("return { padding: true, paddingSize: props.spacing as 'small' | 'medium' | 'large' };");
+    const content = wrapper.findComponent(OContent);
+    expect(content.props('padding')).toBe(true);
+    expect(content.props('paddingSize')).toBe('medium');
   });
 
-  test('padding-top compensation is scoped to fixed-header state', () => {
-    const s = source('OLayout.vue');
+  test('renders with fixed-header class when fixedHeader is true', () => {
+    const wrapper = mount(OLayout, {
+      props: {
+        fixedHeader: true,
+        showHeader: true,
+        showSidebar: false,
+      },
+      global: {
+        plugins: [createPinia()],
+        stubs: {
+          'router-view': true,
+          OHeader: true,
+          OSidebar: true,
+          OFooter: true,
+        },
+      },
+    });
 
-    expect(s).toContain('o-layout--fixed-header');
-    expect(s).toContain('min-height: 100vh;');
-  });
-
-  test('OContent receives spacing via v-bind', () => {
-    const s = source('OLayout.vue');
-
-    expect(s).toContain('<OContent v-bind="contentSpacing">');
+    expect(wrapper.find('.o-layout--fixed-header').exists()).toBe(true);
   });
 });

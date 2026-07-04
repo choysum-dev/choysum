@@ -1,28 +1,75 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * @vitest-environment happy-dom
+ */
+
 import { describe, expect, test } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mount } from '@vue/test-utils';
+import OPage from './OPage.vue';
 
-function source(name: string): string {
-  return readFileSync(resolve(__dirname, name), 'utf8');
-}
+describe('OPage component', () => {
+  test('renders title with useId-based id and binds aria-labelledby', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Test Title',
+        showBreadcrumb: false,
+      },
+      global: {
+        stubs: {
+          OBreadcrumb: true,
+        },
+      },
+    });
 
-describe('OPage component contract', () => {
-  test('uses Vue 3.5 useId for unique page-title id', () => {
-    const s = source('OPage.vue');
+    const titleEl = wrapper.find('h1.o-page__title');
+    expect(titleEl.exists()).toBe(true);
+    expect(titleEl.text()).toBe('Test Title');
 
-    expect(s).toContain("import { computed, useId } from 'vue';");
-    expect(s).toContain('const pageTitleId = useId();');
-    expect(s).not.toContain('getCurrentInstance');
-    expect(s).not.toContain('pageTitleCounter');
+    const titleId = titleEl.attributes('id');
+    expect(titleId).toBeDefined();
+    expect(titleId).not.toBe('');
+
+    const region = wrapper.find('.o-page');
+    expect(region.attributes('aria-labelledby')).toBe(titleId);
   });
 
-  test('pageTitleId is bound to h1 id and aria-labelledby', () => {
-    const s = source('OPage.vue');
+  test('does not bind aria-labelledby when header slot is provided', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Test Title',
+        showBreadcrumb: false,
+      },
+      slots: {
+        header: '<div class="custom-header">Custom</div>',
+      },
+      global: {
+        stubs: {
+          OBreadcrumb: true,
+        },
+      },
+    });
 
-    expect(s).toContain(':id="pageTitleId"');
-    expect(s).toContain(':aria-labelledby="title && !$slots.header ? pageTitleId : undefined"');
+    const region = wrapper.find('.o-page');
+    expect(region.attributes('aria-labelledby')).toBeUndefined();
+  });
+
+  test('sets aria-busy when loading is true', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: 'Loading Page',
+        loading: true,
+        showBreadcrumb: false,
+      },
+      global: {
+        stubs: {
+          OBreadcrumb: true,
+        },
+      },
+    });
+
+    const region = wrapper.find('.o-page');
+    expect(region.attributes('aria-busy')).toBe('true');
   });
 });
