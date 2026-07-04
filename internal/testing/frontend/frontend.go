@@ -348,10 +348,16 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 
 		contentBytes, readErr := os.ReadFile(path)
 		if readErr != nil {
+			if os.IsNotExist(readErr) {
+				return nil
+			}
 			return readErr
 		}
 		content := string(contentBytes)
 		for _, environmentName := range environmentCandidates {
+			if found[environmentName] {
+				continue
+			}
 			if strings.Contains(content, "@vitest-environment "+environmentName) ||
 				strings.Contains(content, "@jest-environment "+environmentName) {
 				found[environmentName] = true
