@@ -350,9 +350,9 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 		if readErr != nil {
 			return readErr
 		}
+		defer f.Close()
 		buf := make([]byte, 4096)
 		n, _ := f.Read(buf)
-		f.Close()
 		content := string(buf[:n])
 		for _, environmentName := range environmentCandidates {
 			marker := "@vitest-environment " + environmentName
