@@ -354,17 +354,28 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 			return readErr
 		}
 		content := string(contentBytes)
-		for _, environmentName := range environmentCandidates {
-			if found[environmentName] {
+		lines := strings.Split(content, "\n")
+		limit := 100
+		if len(lines) < limit {
+			limit = len(lines)
+		}
+		for i := 0; i < limit; i++ {
+			line := strings.TrimSpace(lines[i])
+			if line == "" {
 				continue
 			}
-			if strings.Contains(content, "@vitest-environment "+environmentName) ||
-				strings.Contains(content, "@jest-environment "+environmentName) {
-				found[environmentName] = true
+			for _, environmentName := range environmentCandidates {
+				if found[environmentName] {
+					continue
+				}
+				if (strings.Contains(line, "@vitest-environment") && strings.Contains(line, environmentName)) ||
+					(strings.Contains(line, "@jest-environment") && strings.Contains(line, environmentName)) {
+					found[environmentName] = true
+				}
 			}
-		}
-		if len(found) == len(environmentCandidates) {
-			return errVitestEnvironmentMarkerFound
+			if len(found) == len(environmentCandidates) {
+				return errVitestEnvironmentMarkerFound
+			}
 		}
 		return nil
 	})
