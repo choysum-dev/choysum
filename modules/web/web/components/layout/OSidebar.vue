@@ -277,7 +277,7 @@ function handleMenuMouseLeave() {
     :deep(.el-menu-item),
     :deep(.el-sub-menu__title) {
       .el-icon {
-        margin-inline-end: var(--el-menu-icon-width, 16px);
+        margin-inline-end: var(--el-menu-icon-width, 20px);
         margin-inline-start: 0;
       }
     }
@@ -348,7 +348,7 @@ function handleMenuMouseLeave() {
     :deep(.el-menu) {
       > .el-menu-item,
       > .el-sub-menu > .el-sub-menu__title {
-        padding-inline-start: var(--el-menu-base-level-padding, 20px) !important;
+        padding-inline-start: var(--el-menu-base-level-padding, 12px) !important;
         padding-inline-end: 45px !important;
       }
       .el-sub-menu > .el-sub-menu__title {
@@ -356,36 +356,36 @@ function handleMenuMouseLeave() {
         position: relative;
       }
       .el-menu-item {
-        padding-inline-end: var(--el-menu-base-level-padding, 20px) !important;
+        padding-inline-end: var(--el-menu-base-level-padding, 12px) !important;
       }
       .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 1) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 1) !important;
         }
       }
       .el-menu .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 2) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 2) !important;
         }
       }
       .el-menu .el-menu .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 3) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 3) !important;
         }
       }
       .el-menu .el-menu .el-menu .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 4) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 4) !important;
         }
       }
       .el-menu .el-menu .el-menu .el-menu .el-menu {
         .el-menu-item,
         .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 5) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 5) !important;
         }
       }
     }
@@ -402,7 +402,7 @@ function handleMenuMouseLeave() {
       .el-menu-item {
         padding-inline: 20px !important;
         .el-icon {
-          margin-inline-end: var(--el-menu-icon-width, 16px) !important;
+          margin-inline-end: var(--el-menu-icon-width, 20px) !important;
           margin-inline-start: 0 !important;
         }
       }
