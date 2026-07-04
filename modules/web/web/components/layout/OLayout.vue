@@ -155,6 +155,16 @@ const contentSpacing = computed(() => {
 /* Layout component. */
 .o-layout {
   width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+
+  /* Container passes flex height through to main content. */
+  &__container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
 
   /* Element Plus container overrides. */
   :deep(.el-container) {
@@ -165,6 +175,7 @@ const contentSpacing = computed(() => {
 
   /* Main content container with fixed layout behavior. */
   &__main-container {
+    flex: 1;
     overflow: visible;
     min-width: 0; /* Prevent content overflow. */
 
