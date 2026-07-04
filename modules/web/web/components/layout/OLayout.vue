@@ -210,7 +210,7 @@ const contentSpacing = computed(() => {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: calc(100vh - var(--o-header-height, 60px));
+    min-height: calc(100vh - var(--o-header-height, 48px));
     min-width: 0;
 
     .o-layout--fixed-header & {

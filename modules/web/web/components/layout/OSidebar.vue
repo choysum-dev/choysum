@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-aside :class="sidebarClass" ref="sidebarRef" :style="sidebarStyle" role="navigation" aria-label="主导航">
+  <el-aside :class="sidebarClass" ref="sidebarRef" role="navigation" aria-label="主导航">
     <div class="o-sidebar__inner" @mouseleave="handleMenuMouseLeave">
       <!-- Top section. -->
       <div class="o-sidebar__header"></div>
@@ -98,11 +98,6 @@ const emit = defineEmits<{
 const sidebarClass = computed(() =>
   ['o-sidebar', `o-sidebar--${layoutStore.sidebarMode}`, props.showScrollbar ? '' : 'o-sidebar--no-scrollbar'].filter(Boolean).join(' ')
 );
-
-const sidebarStyle = computed(() => {
-  if (layoutStore.sidebarMode === 'hidden') return { width: '0px' };
-  return {};
-});
 
 function handleMenuSelect(menuItem: MenuItem) {
   menu.navigateTo(menuItem);
@@ -217,12 +212,12 @@ function handleMenuMouseLeave() {
   overflow: hidden;
 
   .o-layout--with-header & {
-    height: calc(100vh - var(--o-header-height, 60px));
-    top: var(--o-header-height, 60px);
+    height: calc(100vh - var(--o-header-height, 48px));
+    top: var(--o-header-height, 48px);
 
     @media only screen and (max-width: 991px) {
-      height: calc(100vh - var(--o-header-height-mobile, 50px));
-      top: var(--o-header-height-mobile, 50px);
+      height: calc(100vh - var(--o-header-height-mobile, 40px));
+      top: var(--o-header-height-mobile, 40px);
     }
   }
 
@@ -351,7 +346,7 @@ function handleMenuMouseLeave() {
   }
 
   @media only screen and (max-width: 991px) {
-    height: calc(100vh - var(--o-header-height-mobile, 50px));
+    height: calc(100vh - var(--o-header-height-mobile, 40px));
     &--expanded {
       width: var(--o-sidebar-width);
     }

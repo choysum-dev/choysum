@@ -23,6 +23,6 @@ describe('OPage component contract', () => {
     const s = source('OPage.vue');
 
     expect(s).toContain(':id="pageTitleId"');
-    expect(s).toContain(':aria-labelledby="title ? pageTitleId : undefined"');
+    expect(s).toContain(':aria-labelledby="title && !$slots.header ? pageTitleId : undefined"');
   });
 });

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div :class="pageClass" role="region" data-print="page" :aria-busy="loading" :aria-labelledby="title ? pageTitleId : undefined">
+  <div :class="pageClass" role="region" data-print="page" :aria-busy="loading" :aria-labelledby="title && !$slots.header ? pageTitleId : undefined">
     <!-- Page header section. -->
     <div v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb" class="o-page__header">
       <slot name="header">
