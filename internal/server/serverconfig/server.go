@@ -20,6 +20,7 @@ type ServerConfig struct {
 	TLSServerName      string            `mapstructure:"tlsServerName"`
 	EnableGrpcWebProxy bool              `mapstructure:"enableGrpcWebProxy"`
 	HotReload          bool              `mapstructure:"hotReload"`
+	HotReloadQueueSize int               `mapstructure:"hotReloadQueueSize"`
 	Register           string            `mapstructure:"register"`
 	Environment        string            `mapstructure:"environment"`
 	RuntimeEngine      string            `mapstructure:"runtimeEngine"`
@@ -51,6 +52,7 @@ func NewDefaultServerConfig() *ServerConfig {
 		TLSServerName:      "",
 		EnableGrpcWebProxy: true,
 		HotReload:          false,
+		HotReloadQueueSize: 8,
 		Register:           "local",
 		Environment:        "default",
 		RuntimeEngine:      "default",
@@ -67,6 +69,7 @@ func ApplyViperDefaults(v *viper.Viper) error {
 	if v == nil {
 		return fmt.Errorf("viper instance is required")
 	}
+	v.SetDefault("server.hotReloadQueueSize", 8)
 	v.SetDefault("server.jsExecutorFactory", "default")
 	return nil
 }

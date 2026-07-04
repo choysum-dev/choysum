@@ -63,10 +63,21 @@ func (b applicationServiceBuilder) build(plan applicationServicePlan) (*internal
 
 func (b applicationServiceBuilder) watchPlans(target string) []registrationWatchPlan {
 	app, ok := b.server.runState.manifestApp(target)
-	if !ok {
+	if ok {
+		return buildApplicationWatchPlans(target, b.opts.modulesPath, app.Dev.Modules)
+	}
+
+	target = strings.ToLower(strings.TrimSpace(target))
+	if target != "web" {
 		return nil
 	}
-	return buildApplicationWatchPlans(target, b.opts.modulesPath, app.Dev.Modules)
+	if b.server.runState.distManifest == nil || !b.server.runState.distManifest.HasWeb {
+		return nil
+	}
+
+	// Keep watch registration within the existing module-based flow while
+	// preserving the current dist manifest shape (apps["web"] may be absent).
+	return buildApplicationWatchPlans(target, b.opts.modulesPath, []string{"web"})
 }
 
 func buildApplicationWatchPlans(serviceName string, modulesPath string, modules []string) []registrationWatchPlan {

@@ -96,7 +96,7 @@ func TestServerWatchHelpers(t *testing.T) {
 	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	if err := srv.dispatchWatchHandler(changedFile); err != nil {
+	if _, err := srv.dispatchWatchHandler(changedFile); err != nil {
 		t.Fatalf("dispatchWatchHandler() error = %v", err)
 	}
 	if tracked.callCount() != 1 {
@@ -122,7 +122,7 @@ func TestServerWatchHelpers(t *testing.T) {
 	if err := os.WriteFile(siblingFile, []byte("export {}"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	if err := srv.dispatchWatchHandler(siblingFile); err != nil {
+	if _, err := srv.dispatchWatchHandler(siblingFile); err != nil {
 		t.Fatalf("dispatchWatchHandler() sibling path error = %v", err)
 	}
 	if tracked.callCount() != 1 {
@@ -130,7 +130,7 @@ func TestServerWatchHelpers(t *testing.T) {
 	}
 
 	tracked.watchErr = errors.New("watch failed")
-	if err := srv.dispatchWatchHandler(changedFile); err == nil {
+	if _, err := srv.dispatchWatchHandler(changedFile); err == nil {
 		t.Fatal("expected dispatchWatchHandler to propagate watch handler error")
 	}
 
@@ -223,7 +223,7 @@ func TestServerRegisterWatchDirAndDispatchWatchHandlerResolvesSymlinks(t *testin
 	if err := os.WriteFile(logicalChangedFile, []byte("export {}"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
-	if err := srv.dispatchWatchHandler(logicalChangedFile); err != nil {
+	if _, err := srv.dispatchWatchHandler(logicalChangedFile); err != nil {
 		t.Fatalf("dispatchWatchHandler() error = %v", err)
 	}
 	firstCall, ok := tracked.firstCall()
@@ -450,7 +450,7 @@ func TestServerDispatchWatchHandlerResolvesSymlinkedRemovedFile(t *testing.T) {
 	if err := os.Remove(logicalRemovedFile); err != nil {
 		t.Fatalf("Remove() error = %v", err)
 	}
-	if err := srv.dispatchWatchHandler(logicalRemovedFile); err != nil {
+	if _, err := srv.dispatchWatchHandler(logicalRemovedFile); err != nil {
 		t.Fatalf("dispatchWatchHandler() error = %v", err)
 	}
 	firstCall, ok := tracked.firstCall()
@@ -495,7 +495,7 @@ func TestServerDispatchWatchHandlerResolvesSymlinkedRenamedOldFile(t *testing.T)
 	if err := os.Rename(logicalOldFile, logicalNewFile); err != nil {
 		t.Fatalf("Rename() error = %v", err)
 	}
-	if err := srv.dispatchWatchHandler(logicalOldFile); err != nil {
+	if _, err := srv.dispatchWatchHandler(logicalOldFile); err != nil {
 		t.Fatalf("dispatchWatchHandler() error = %v", err)
 	}
 	firstCall, ok := tracked.firstCall()

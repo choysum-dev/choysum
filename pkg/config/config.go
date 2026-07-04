@@ -267,6 +267,16 @@ func (c *Config) applyPathInvariants() error {
 
 	c.ModulesPath = normalizePathRelativeToConfig(c.ConfigPath, c.ModulesPath)
 	if strings.TrimSpace(c.ModulesPath) == "" {
+		// Priority 1: ./modules relative to cwd (local development workspace).
+		if cwd, err := os.Getwd(); err == nil {
+			localModules := filepath.Join(cwd, "modules")
+			if info, statErr := os.Lstat(localModules); statErr == nil && info.IsDir() {
+				c.ModulesPath = localModules
+			}
+		}
+	}
+	if strings.TrimSpace(c.ModulesPath) == "" {
+		// Priority 2: <DefaultChoysumPath>/modules (installed modules cache).
 		c.ModulesPath = filepath.Join(c.DefaultChoysumPath, "modules")
 	}
 	if !filepath.IsAbs(c.ModulesPath) {
@@ -307,23 +317,8 @@ func (c *Config) applyDatabaseInvariants() {
 }
 
 func defaultConfig() *Config {
-	modulesPath := ""
-	if cwd, err := os.Getwd(); err == nil {
-		localModules := filepath.Join(cwd, "modules")
-		if info, statErr := os.Lstat(localModules); statErr == nil && info.IsDir() {
-			modulesPath = localModules
-		}
-	}
-	if modulesPath != "" {
-		var err error
-		modulesPath, err = filepath.Abs(modulesPath)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	return &Config{
-		ModulesPath:                          modulesPath,
+		ModulesPath:                          "",
 		DistPath:                             "",
 		NPMRegistryURL:                       DefaultNPMRegistryURL,
 		ModuleCatalogIndexURL:                DefaultModuleCatalogIndexURL,

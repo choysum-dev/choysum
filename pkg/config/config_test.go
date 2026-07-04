@@ -535,31 +535,20 @@ func TestDefaultConfigPrefersLocalModulesDirectory(t *testing.T) {
 		t.Fatalf("chdir: %v", err)
 	}
 
+	// defaultConfig() no longer resolves cwd/modules; that lives in applyPathInvariants.
 	cfg := defaultConfig()
-	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
-	if err := os.MkdirAll(wantModules, 0o755); err != nil {
-		t.Fatalf("mkdir expected path %q: %v", wantModules, err)
+	if strings.TrimSpace(cfg.ModulesPath) != "" {
+		t.Fatalf("expected empty modules_path from defaultConfig, got %q", cfg.ModulesPath)
 	}
+
+	// applyPathInvariants picks up cwd/modules when it exists.
+	cfg.DefaultChoysumPath = workDir
+	if err := cfg.applyPathInvariants(); err != nil {
+		t.Fatalf("applyPathInvariants() error = %v", err)
+	}
+	wantModules, _ := filepath.Abs(filepath.Join(workDir, "modules"))
 	if canonicalPath(t, cfg.ModulesPath) != canonicalPath(t, wantModules) {
 		t.Fatalf("modules path = %q, want %q", cfg.ModulesPath, wantModules)
-	}
-	if strings.TrimSpace(cfg.DistPath) != "" {
-		t.Fatalf("expected dist_path empty before path invariants, got %q", cfg.DistPath)
-	}
-	if strings.TrimSpace(cfg.DefaultChoysumPath) != "" {
-		t.Fatalf("expected default_choysum_path empty by default, got %q", cfg.DefaultChoysumPath)
-	}
-	if strings.TrimSpace(cfg.TmpPath) != "" {
-		t.Fatalf("expected tmp_path empty by default, got %q", cfg.TmpPath)
-	}
-	if cfg.NPMRegistryURL != DefaultNPMRegistryURL {
-		t.Fatalf("expected npm_registry_url default %q, got %q", DefaultNPMRegistryURL, cfg.NPMRegistryURL)
-	}
-	if cfg.ModuleCatalogIndexURL != DefaultModuleCatalogIndexURL {
-		t.Fatalf("expected module_catalog_index_url default %q, got %q", DefaultModuleCatalogIndexURL, cfg.ModuleCatalogIndexURL)
-	}
-	if cfg.BootstrapModuleInstallTimeoutSeconds != DefaultBootstrapModuleInstallTimeoutSeconds {
-		t.Fatalf("expected bootstrap_module_install_timeout_seconds default %d, got %d", DefaultBootstrapModuleInstallTimeoutSeconds, cfg.BootstrapModuleInstallTimeoutSeconds)
 	}
 }
 

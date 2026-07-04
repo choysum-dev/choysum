@@ -48,7 +48,10 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 		s.recordDroppedWatchEvent("queue_unavailable", file, nil)
 		return false
 	}
-	if !s.beginWatchEvent() {
+
+	// Resolve which module this file belongs to for per-module dedup.
+	module := s.resolveWatchModule(file)
+	if !s.hotreload.beginModuleEvent(module) {
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}
@@ -56,7 +59,7 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 	case watchQueue <- file:
 		return true
 	default:
-		s.finishWatchEvent()
+		s.hotreload.finishModuleEvent(module)
 		s.recordDroppedWatchEvent("queue_full", file, nil)
 		return false
 	}

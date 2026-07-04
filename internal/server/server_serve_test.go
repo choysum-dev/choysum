@@ -103,7 +103,7 @@ func TestServerServeReturnsWrappedStartError(t *testing.T) {
 	}
 }
 
-func TestServerServeReturnsRestartErrorAfterWatchedFileChange(t *testing.T) {
+func TestServerServeSkipsRestartWhenNoModuleMatchesWatchedFile(t *testing.T) {
 	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
 	runtimeScope.cfg.Auth.Enabled = false
 	assignEphemeralServerPort(t, runtimeScope.cfg)
@@ -123,6 +123,9 @@ func TestServerServeReturnsRestartErrorAfterWatchedFileChange(t *testing.T) {
 		}
 	})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	runtimeScope.ctx = ctx
+
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.serve()
@@ -140,16 +143,25 @@ func TestServerServeReturnsRestartErrorAfterWatchedFileChange(t *testing.T) {
 		}
 	}
 
-	runtimeScope.cfg.Server.JsEngineFactory = "missing"
-	srv.jsExecutor = nil
-	srv.hotreloadQueue() <- filepath.Join(t.TempDir(), "changed.ts")
+	// Feed a file that matches no registered watch target.
+	// dispatchWatchHandler skips restart when dispatched == 0,
+	// so serve() must keep running instead of returning an error.
+	srv.hotreloadQueue() <- filepath.Join(t.TempDir(), "unmatched.ts")
 
-	err := <-errCh
-	if err == nil {
-		t.Fatal("expected serve() to return restart failure after watched file change")
+	// Give serve() time to process the event.
+	time.Sleep(200 * time.Millisecond)
+
+	select {
+	case err := <-errCh:
+		t.Fatalf("serve() returned unexpectedly after non-matching file: %v", err)
+	default:
 	}
-	if !strings.Contains(err.Error(), "Failed to restart server") {
-		t.Fatalf("serve() error = %v, want wrapped restart failure", err)
+
+	// Cancel the runtime context so serve() returns cleanly.
+	cancel()
+	err := <-errCh
+	if err != nil {
+		t.Fatalf("serve() returned error after context cancel: %v", err)
 	}
 }
 

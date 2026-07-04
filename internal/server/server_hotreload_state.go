@@ -4,14 +4,16 @@
 package server
 
 import (
+	"os"
 	"sync"
 	"sync/atomic"
 
+	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/fsnotify/fsnotify"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-const defaultHotreloadQueueSize = 1
+const defaultHotreloadQueueSize = 8
 
 type watchTargetHandler func(moduleName string, file string) error
 
@@ -26,6 +28,7 @@ type registeredWatchTarget struct {
 type hotreloadState struct {
 	watcher      *fsnotify.Watcher
 	queue        chan string
+	queueSize    int
 	watchMu      sync.RWMutex
 	watchTargets []registeredWatchTarget
 	loopMu       sync.Mutex
@@ -33,10 +36,18 @@ type hotreloadState struct {
 	loopDone     chan struct{}
 	loopRunning  bool
 	loopStopping bool
-	eventMu      sync.Mutex
-	eventBusy    bool
-	dropped      atomic.Uint64
-	coalesced    atomic.Uint64
+
+	// Per-module busy tracking replaces the previous global eventBusy flag.
+	// Only one event per module is kept in-flight; files for different modules
+	// can be queued concurrently up to the channel capacity.
+	moduleMu    sync.Mutex
+	busyModules map[string]struct{}
+
+	// progressLine writes single-line hotreload status updates to stderr.
+	progressLine *logger.ProgressLine
+
+	dropped   atomic.Uint64
+	coalesced atomic.Uint64
 }
 
 func (s *GRPCWebServer) hotreloadWatcher() *fsnotify.Watcher {
@@ -55,6 +66,10 @@ func (s *GRPCWebServer) startHotreloadLifecycle() error {
 	if !s.shouldRunHotreloadLifecycle() {
 		return nil
 	}
+	if s.hotreload.progressLine == nil && s.runtimeScope != nil {
+		s.hotreload.progressLine = logger.ProgressLineFromContext(s.runtimeScope.Context())
+	}
+	s.hotreload.queueSize = s.resolvedQueueSize()
 	if err := s.hotreload.ensureLifecycle(); err != nil {
 		return xfmt.Errorf("Failed to create file watcher: %w", err)
 	}
@@ -97,20 +112,62 @@ func (s *GRPCWebServer) shouldRunHotreloadLifecycle() bool {
 	return s.resolvedRuntimeOptions().hotReload
 }
 
+func (s *GRPCWebServer) resolvedQueueSize() int {
+	if s == nil {
+		return defaultHotreloadQueueSize
+	}
+	size := s.resolvedRuntimeOptions().hotReloadQueueSize
+	if size <= 0 {
+		return defaultHotreloadQueueSize
+	}
+	return size
+}
+
 func (h *hotreloadState) beginEvent() bool {
-	h.eventMu.Lock()
-	defer h.eventMu.Unlock()
-	if h.eventBusy {
+	h.moduleMu.Lock()
+	defer h.moduleMu.Unlock()
+	if h.busyModules == nil {
+		h.busyModules = make(map[string]struct{})
+	}
+	// Backward-compatible global gate: any module string works;
+	// callers should migrate to beginModuleEvent for per-module dedup.
+	if _, busy := h.busyModules[""]; busy {
 		return false
 	}
-	h.eventBusy = true
+	h.busyModules[""] = struct{}{}
 	return true
 }
 
 func (h *hotreloadState) finishEvent() {
-	h.eventMu.Lock()
-	h.eventBusy = false
-	h.eventMu.Unlock()
+	h.moduleMu.Lock()
+	delete(h.busyModules, "")
+	h.moduleMu.Unlock()
+}
+
+func (h *hotreloadState) beginModuleEvent(module string) bool {
+	if module == "" {
+		return h.beginEvent()
+	}
+	h.moduleMu.Lock()
+	defer h.moduleMu.Unlock()
+	if h.busyModules == nil {
+		h.busyModules = make(map[string]struct{})
+	}
+	if _, busy := h.busyModules[module]; busy {
+		return false
+	}
+	h.busyModules[module] = struct{}{}
+	return true
+}
+
+func (h *hotreloadState) finishModuleEvent(module string) {
+	if module == "" {
+		h.finishEvent()
+		return
+	}
+	h.moduleMu.Lock()
+	delete(h.busyModules, module)
+	h.moduleMu.Unlock()
 }
 
 func (h *hotreloadState) recordDropped() uint64 {
@@ -131,6 +188,7 @@ func (h *hotreloadState) coalescedCount() uint64 {
 
 func (h *hotreloadState) ensureLifecycle() error {
 	h.ensureQueue()
+	h.ensureProgressLine()
 	return h.ensureWatcher()
 }
 
@@ -150,7 +208,18 @@ func (h *hotreloadState) ensureQueue() {
 	if h.queue != nil {
 		return
 	}
-	h.queue = make(chan string, defaultHotreloadQueueSize)
+	size := h.queueSize
+	if size <= 0 {
+		size = defaultHotreloadQueueSize
+	}
+	h.queue = make(chan string, size)
+}
+
+func (h *hotreloadState) ensureProgressLine() {
+	if h.progressLine != nil {
+		return
+	}
+	h.progressLine = logger.NewProgressLine(os.Stderr)
 }
 
 func (h *hotreloadState) addWatch(path string) error {
@@ -284,7 +353,7 @@ func (h *hotreloadState) drainQueue() {
 }
 
 func (h *hotreloadState) resetEventState() {
-	h.eventMu.Lock()
-	h.eventBusy = false
-	h.eventMu.Unlock()
+	h.moduleMu.Lock()
+	h.busyModules = nil
+	h.moduleMu.Unlock()
 }
