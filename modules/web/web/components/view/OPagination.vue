@@ -253,8 +253,6 @@ function handleEndMouseLeave(event: MouseEvent) {
 </script>
 
 <style lang="scss" scoped>
-@use '../../styles/utils.scss' as *;
-
 .o-pagination {
   display: flex;
   align-items: center;
@@ -286,7 +284,6 @@ function handleEndMouseLeave(event: MouseEvent) {
   min-width: 20px;
   text-align: center;
   display: inline-block;
-  @extend .o-cursor-pointer;
 }
 
 .o-pagination__editable:hover,
