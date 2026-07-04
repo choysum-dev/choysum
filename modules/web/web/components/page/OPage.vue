@@ -4,7 +4,14 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div :class="pageClass" role="region" data-print="page" :aria-busy="loading" :aria-labelledby="title ? 'page-title' : undefined">
+  <div
+    :class="pageClass"
+    :role="title ? 'region' : undefined"
+    data-print="page"
+    :aria-busy="loading"
+    :aria-labelledby="title && !$slots.header ? pageTitleId : undefined"
+    :aria-label="title && $slots.header ? title : undefined"
+  >
     <!-- Page header section. -->
     <div v-if="$slots.header || title || showBreadcrumb || $slots.breadcrumb" class="o-page__header">
       <slot name="header">
@@ -13,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
             <OBreadcrumb />
           </slot>
         </div>
-        <h1 v-if="title" class="o-page__title" id="page-title">{{ title }}</h1>
+        <h1 v-if="title" class="o-page__title" :id="pageTitleId">{{ title }}</h1>
       </slot>
     </div>
 
@@ -42,9 +49,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { Loading } from '@element-plus/icons-vue';
-import { useI18nStore } from '@/web/web/stores';
 import OBreadcrumb from '@/web/web/components/view/OBreadcrumb.vue';
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
@@ -76,6 +82,8 @@ const props = defineProps({
     default: false,
   },
 });
+
+const pageTitleId = useId();
 
 const pageClass = computed(() => {
   return [
@@ -145,9 +153,6 @@ const pageClass = computed(() => {
 
   &__header {
     margin-block-end: var(--el-margin-medium, 8px);
-  }
-
-  &__breadcrumb {
   }
 
   &__title {

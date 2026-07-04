@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-aside :class="sidebarClass" ref="sidebarRef" :style="sidebarStyle" role="navigation" aria-label="主导航">
+  <el-aside :class="sidebarClass" ref="sidebarRef" role="navigation" aria-label="主导航">
     <div class="o-sidebar__inner" @mouseleave="handleMenuMouseLeave">
       <!-- Top section. -->
       <div class="o-sidebar__header"></div>
@@ -36,19 +36,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
-import { useCssVar, useTextDirection, useTimeoutFn, UseTimeoutFnReturn } from '@vueuse/core';
+import { useTimeoutFn, type UseTimeoutFnReturn } from '@vueuse/core';
 import { useLayoutStore } from '@/web/web/stores';
 import { useMenu } from '@/web/web/composables';
 import type { MenuItem } from '@/core/web/menu';
 import { ElAside, ElScrollbar } from 'element-plus';
 import { BookmarkBorderOutlined } from '@vicons/material';
-
-// Fixed width constants.
-const EXPANDED_WIDTH = 220;
-const COLLAPSED_WIDTH = 55;
-
-// Reactive text direction reference.
-const direction = useTextDirection();
 
 // State store.
 const layoutStore = useLayoutStore();
@@ -62,16 +55,8 @@ const { renderSidebarMenu } = useMenu();
 // Sidebar DOM reference.
 const sidebarRef = ref<InstanceType<typeof ElAside> | null>(null);
 
-// Set CSS variables when the component mounts.
+// Attach the global mousemove listener on mount.
 onMounted(() => {
-  useCssVar('--o-sidebar-width').value = `${EXPANDED_WIDTH}px`;
-  useCssVar('--o-sidebar-collapsed-width').value = `${COLLAPSED_WIDTH}px`;
-  useCssVar('--el-menu-base-level-padding').value = '12px';
-  useCssVar('--el-menu-level-padding').value = '8px';
-  useCssVar('--el-menu-item-height').value = '48px';
-  useCssVar('--el-menu-icon-width').value = '20px';
-
-  // Attach the global mousemove listener.
   document.addEventListener('mousemove', handleGlobalMouseMove);
 });
 
@@ -96,14 +81,6 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
-  useFixedWidth: {
-    type: Boolean,
-    default: true,
-  },
-  width: {
-    type: Number,
-    default: EXPANDED_WIDTH,
-  },
 });
 
 const emit = defineEmits<{
@@ -115,15 +92,6 @@ const emit = defineEmits<{
 const sidebarClass = computed(() =>
   ['o-sidebar', `o-sidebar--${layoutStore.sidebarMode}`, props.showScrollbar ? '' : 'o-sidebar--no-scrollbar'].filter(Boolean).join(' ')
 );
-
-const sidebarStyle = computed(() => {
-  if (layoutStore.sidebarMode === 'hidden') return { width: '0px' };
-  return {
-    width: layoutStore.sidebarMode === 'collapsed' ? `${COLLAPSED_WIDTH}px` : `${props.width}px`,
-  };
-});
-
-const isCollapsed = computed(() => layoutStore.sidebarMode === 'collapsed' || layoutStore.sidebarMode === 'hover');
 
 function handleMenuSelect(menuItem: MenuItem) {
   menu.navigateTo(menuItem);
@@ -228,7 +196,11 @@ function handleMenuMouseLeave() {
 @use '../../styles/tokens.scss' as *;
 
 .o-sidebar {
-  flex-shrink: 0;
+  --el-menu-base-level-padding: 12px;
+  --el-menu-level-padding: 8px;
+  --el-menu-item-height: 48px;
+  --el-menu-icon-width: 20px;
+
   position: fixed;
   inset-inline-start: 0;
   z-index: $z-index-fixed;
@@ -239,12 +211,12 @@ function handleMenuMouseLeave() {
   overflow: hidden;
 
   .o-layout--with-header & {
-    height: calc(100vh - var(--o-header-height, 60px));
-    top: var(--o-header-height, 60px);
+    height: calc(100vh - var(--o-header-height, 48px));
+    top: var(--o-header-height, 48px);
 
     @media only screen and (max-width: 991px) {
-      height: calc(100vh - var(--o-header-height-mobile, 50px));
-      top: var(--o-header-height-mobile, 50px);
+      height: calc(100vh - var(--o-header-height-mobile, 40px));
+      top: var(--o-header-height-mobile, 40px);
     }
   }
 
@@ -305,7 +277,7 @@ function handleMenuMouseLeave() {
     :deep(.el-menu-item),
     :deep(.el-sub-menu__title) {
       .el-icon {
-        margin-inline-end: var(--el-menu-icon-width, 16px);
+        margin-inline-end: var(--el-menu-icon-width, 20px);
         margin-inline-start: 0;
       }
     }
@@ -372,18 +344,11 @@ function handleMenuMouseLeave() {
     overflow: hidden;
   }
 
-  @media only screen and (max-width: 991px) {
-    height: calc(100vh - var(--o-header-height-mobile, 50px));
-    &--expanded {
-      width: var(--o-sidebar-width);
-    }
-  }
-
   &:not(&--collapsed) {
     :deep(.el-menu) {
       > .el-menu-item,
       > .el-sub-menu > .el-sub-menu__title {
-        padding-inline-start: var(--el-menu-base-level-padding, 20px) !important;
+        padding-inline-start: var(--el-menu-base-level-padding, 12px) !important;
         padding-inline-end: 45px !important;
       }
       .el-sub-menu > .el-sub-menu__title {
@@ -391,36 +356,36 @@ function handleMenuMouseLeave() {
         position: relative;
       }
       .el-menu-item {
-        padding-inline-end: var(--el-menu-base-level-padding, 20px) !important;
+        padding-inline-end: var(--el-menu-base-level-padding, 12px) !important;
       }
       .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 1) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 1) !important;
         }
       }
       .el-menu .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 2) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 2) !important;
         }
       }
       .el-menu .el-menu .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 3) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 3) !important;
         }
       }
       .el-menu .el-menu .el-menu .el-menu {
         > .el-menu-item,
         > .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 4) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 4) !important;
         }
       }
       .el-menu .el-menu .el-menu .el-menu .el-menu {
         .el-menu-item,
         .el-sub-menu > .el-sub-menu__title {
-          padding-inline-start: calc(var(--el-menu-base-level-padding, 20px) + var(--el-menu-level-padding, 20px) * 5) !important;
+          padding-inline-start: calc(var(--el-menu-base-level-padding, 12px) + var(--el-menu-level-padding, 8px) * 5) !important;
         }
       }
     }
@@ -437,7 +402,7 @@ function handleMenuMouseLeave() {
       .el-menu-item {
         padding-inline: 20px !important;
         .el-icon {
-          margin-inline-end: var(--el-menu-icon-width, 16px) !important;
+          margin-inline-end: var(--el-menu-icon-width, 20px) !important;
           margin-inline-start: 0 !important;
         }
       }

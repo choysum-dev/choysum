@@ -96,9 +96,7 @@ const showFooter = computed(() => props.show && !(props.hideOnMobile && layoutSt
     flex-wrap: wrap;
     gap: var(--el-gap-base, 16px);
     margin: 0 auto;
-    padding-left: var(--el-padding-base, 16px);
-    padding-right: var(--el-padding-base, 16px);
-    padding-bottom: var(--el-padding-base, 16px);
+    padding: var(--el-padding-base, 16px);
   }
 
   &__left {

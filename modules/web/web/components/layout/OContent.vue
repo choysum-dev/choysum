@@ -10,20 +10,9 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useCssVar } from '@vueuse/core';
-import { useLayoutStore, useI18nStore } from '@/web/web/stores';
+import { computed } from 'vue';
+import { useI18nStore } from '@/web/web/stores';
 import { ElMain } from 'element-plus';
-
-// Content padding constants.
-const CONTENT_PADDING = 16;
-const CONTENT_PADDING_MOBILE = 8;
-
-// Sync JS constants to global CSS variables.
-onMounted(() => {
-  useCssVar('--o-content-padding').value = `${CONTENT_PADDING}px`;
-  useCssVar('--o-content-padding-mobile').value = `${CONTENT_PADDING_MOBILE}px`;
-});
 
 // Define content padding and transition types.
 type ContentPaddingSize = 'none' | 'small' | 'medium' | 'large';
@@ -83,9 +72,6 @@ const props = defineProps({
   },
 });
 
-// Layout store.
-const layoutStore = useLayoutStore();
-
 // Use the i18n store to detect text direction.
 const i18nStore = useI18nStore();
 const isRtlMode = computed(() => i18nStore.currentLocale.textDirection === 'rtl');
@@ -96,24 +82,10 @@ const rtlCssVariables = computed(() => ({
   '--o-slide-leave-translate': isRtlMode.value ? '20px' : '-20px',
 }));
 
-const contentWidthClass = computed(() => {
-  switch (layoutStore.sidebarMode) {
-    case 'expanded':
-      return 'o-content--sidebar-expanded';
-    case 'collapsed':
-      return 'o-content--sidebar-collapsed';
-    case 'hidden':
-      return 'o-content--sidebar-hidden';
-    default:
-      return '';
-  }
-});
-
 // Compute content area classes using the Element Plus naming style.
 const contentClass = computed(() => {
   return [
     'o-content',
-    contentWidthClass,
     props.background ? 'o-content--with-background' : '',
     props.bordered ? 'o-content--bordered' : '',
     props.padding ? `o-content--padding-${props.paddingSize}` : 'o-content--padding-none',
@@ -121,12 +93,6 @@ const contentClass = computed(() => {
     .filter(Boolean)
     .join(' ');
 });
-
-// Keep the transition name available for router-view integration.
-const transitionName = computed(() => (props.transition ? props.transitionType : ''));
-
-// Compute the slide direction with RTL awareness.
-const slideDirection = computed(() => (isRtlMode.value ? 'rtl' : 'ltr'));
 </script>
 
 <style lang="scss" scoped>
