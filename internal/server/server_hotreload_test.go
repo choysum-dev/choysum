@@ -906,7 +906,7 @@ func TestPrimeFingerprintsForTargetsDedupRoots(t *testing.T) {
 
 	hs := &hotreloadState{}
 	// Two targets sharing the same root — second should be dedup'd.
-	hs.primeFingerprintsForTargets([]registeredWatchTarget{
+	hs.primeFingerprintsForTargets(context.Background(), []registeredWatchTarget{
 		{root: shared},
 		{root: shared},
 	})
@@ -935,7 +935,7 @@ func TestPrimeFingerprintsForRoots(t *testing.T) {
 	}
 
 	hs := &hotreloadState{}
-	hs.primeFingerprintsForRoots([]string{dirA, dirB})
+	hs.primeFingerprintsForRoots(context.Background(), []string{dirA, dirB})
 
 	if !hs.hasFingerprint(filepath.Join(dirA, "x.ts")) {
 		t.Fatal("expected dirA file to have fingerprint")
@@ -945,7 +945,7 @@ func TestPrimeFingerprintsForRoots(t *testing.T) {
 	}
 
 	// Duplicate roots should not cause issues.
-	hs.primeFingerprintsForRoots([]string{dirA, dirA})
+	hs.primeFingerprintsForRoots(context.Background(), []string{dirA, dirA})
 }
 
 func TestPrimeFingerprintsForRootSkipsNoiseDirs(t *testing.T) {
@@ -968,7 +968,7 @@ func TestPrimeFingerprintsForRootSkipsNoiseDirs(t *testing.T) {
 	}
 
 	hs := &hotreloadState{}
-	hs.primeFingerprintsForRoot(root)
+	hs.primeFingerprintsForRoot(context.Background(), root)
 
 	if !hs.hasFingerprint(legit) {
 		t.Fatal("expected non-noise file to have fingerprint")

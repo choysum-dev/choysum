@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"io"
@@ -372,30 +373,36 @@ func (h *hotreloadState) resetEventState() {
 	h.moduleMu.Unlock()
 }
 
-func (h *hotreloadState) primeFingerprintsForTargets(targets []registeredWatchTarget) {
+func (h *hotreloadState) primeFingerprintsForTargets(ctx context.Context, targets []registeredWatchTarget) {
 	roots := make([]string, 0, len(targets))
 	for _, target := range targets {
 		roots = append(roots, target.root)
 	}
-	h.primeFingerprintsForRoots(roots)
+	h.primeFingerprintsForRoots(ctx, roots)
 }
 
-func (h *hotreloadState) primeFingerprintsForRoots(roots []string) {
+func (h *hotreloadState) primeFingerprintsForRoots(ctx context.Context, roots []string) {
 	seenRoots := map[string]struct{}{}
 	for _, root := range roots {
+		if ctx.Err() != nil {
+			return
+		}
 		if _, seen := seenRoots[root]; seen {
 			continue
 		}
 		seenRoots[root] = struct{}{}
-		h.primeFingerprintsForRoot(root)
+		h.primeFingerprintsForRoot(ctx, root)
 	}
 }
 
-func (h *hotreloadState) primeFingerprintsForRoot(root string) {
+func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root string) {
 	if root == "" {
 		return
 	}
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if err != nil {
 			return nil
 		}
@@ -407,7 +414,7 @@ func (h *hotreloadState) primeFingerprintsForRoot(root string) {
 			return nil
 		}
 		canonical := canonicalWatchPath(path)
-		if h.hasFingerprint(canonical) {
+		if h.hasFingerprintResolved(canonical) {
 			return nil
 		}
 		hash, ok := fileFingerprint(canonical)
@@ -471,12 +478,18 @@ func fileFingerprint(path string) (string, bool) {
 }
 
 func (h *hotreloadState) hasFingerprint(path string) bool {
+	return h.hasFingerprintResolved(canonicalWatchPath(path))
+}
+
+// hasFingerprintResolved checks fingerprint existence without canonicalizing
+// the path. Use when the caller already holds a resolved path.
+func (h *hotreloadState) hasFingerprintResolved(path string) bool {
 	h.fingerprintsMu.Lock()
 	defer h.fingerprintsMu.Unlock()
 	if h.fingerprints == nil {
 		return false
 	}
-	_, exists := h.fingerprints[canonicalWatchPath(path)]
+	_, exists := h.fingerprints[path]
 	return exists
 }
 

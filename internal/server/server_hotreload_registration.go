@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
@@ -20,8 +21,12 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	if !s.resolvedRuntimeOptions().hotReload {
 		return nil
 	}
+	ctx := context.Background()
+	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
+		ctx = s.runtimeScope.Context()
+	}
 	if !s.hasHotreloadWatcher() {
-		s.hotreload.primeFingerprintsForTargets(targets)
+		s.hotreload.primeFingerprintsForTargets(ctx, targets)
 		return nil
 	}
 	for _, target := range targets {
@@ -29,7 +34,7 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 			return xfmt.Errorf("Failed to register watch dir: %w", err)
 		}
 	}
-	go s.hotreload.primeFingerprintsForTargets(targets)
+	go s.hotreload.primeFingerprintsForTargets(ctx, targets)
 	return nil
 }
 
