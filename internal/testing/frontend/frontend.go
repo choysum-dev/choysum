@@ -153,7 +153,7 @@ func RunOneAppFrontendTests(
 
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
 	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}"))
-	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,vue}"))
+	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,js,jsx,mjs,cjs,vue}"))
 	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
 
 	var b strings.Builder
@@ -352,8 +352,8 @@ func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string
 		}
 		content := string(contentBytes)
 		for _, environmentName := range environmentCandidates {
-			marker := "@vitest-environment " + environmentName
-			if strings.Contains(content, marker) {
+			if strings.Contains(content, "@vitest-environment "+environmentName) ||
+				strings.Contains(content, "@jest-environment "+environmentName) {
 				found[environmentName] = true
 			}
 		}
