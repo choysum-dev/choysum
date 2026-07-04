@@ -60,6 +60,10 @@ type hotreloadState struct {
 	fingerprints   map[string]string
 	fingerprintsMu sync.Mutex
 
+	// primeWg tracks in-flight background fingerprint priming goroutines
+	// so clearFingerprints can wait for them before resetting the map.
+	primeWg sync.WaitGroup
+
 	dropped   atomic.Uint64
 	coalesced atomic.Uint64
 }
@@ -399,6 +403,12 @@ func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root stri
 	if root == "" {
 		return
 	}
+	// Resolve root prefix once; use relative paths underneath to avoid
+	// per-file EvalSymlinks calls while still producing canonical keys.
+	resolvedRoot := root
+	if r, err := resolveWatchPath(root); err == nil {
+		resolvedRoot = r
+	}
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -413,7 +423,11 @@ func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root stri
 			}
 			return nil
 		}
-		canonical := canonicalWatchPath(path)
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil
+		}
+		canonical := filepath.Join(resolvedRoot, rel)
 		if h.hasFingerprintResolved(canonical) {
 			return nil
 		}
@@ -459,15 +473,16 @@ func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
 }
 
 func fileFingerprint(path string) (string, bool) {
-	info, err := os.Stat(path)
-	if err != nil || !info.Mode().IsRegular() {
-		return "", false
-	}
 	file, err := os.Open(path)
 	if err != nil {
 		return "", false
 	}
 	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return "", false
+	}
 
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, file); err != nil {
@@ -518,7 +533,9 @@ func canonicalWatchPath(path string) string {
 
 // clearFingerprints drops the cached file fingerprints so the next write
 // after a hotreload lifecycle reset always triggers.
+// It waits for any in-flight background priming goroutines to exit first.
 func (h *hotreloadState) clearFingerprints() {
+	h.primeWg.Wait()
 	h.fingerprintsMu.Lock()
 	h.fingerprints = nil
 	h.fingerprintsMu.Unlock()
