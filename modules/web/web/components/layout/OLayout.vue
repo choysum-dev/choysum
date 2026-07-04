@@ -213,6 +213,10 @@ const contentSpacing = computed(() => {
     min-height: calc(100vh - var(--o-header-height, 48px));
     min-width: 0;
 
+    @media only screen and (max-width: 991px) {
+      min-height: calc(100vh - var(--o-header-height-mobile, 40px));
+    }
+
     .o-layout--fixed-header & {
       min-height: 100vh;
       padding-top: var(--o-header-height, 48px); /* compensate for fixed header */
@@ -235,6 +239,7 @@ const contentSpacing = computed(() => {
     }
 
     .o-layout__content-wrapper {
+      min-height: 100vh;
       padding-top: 0;
     }
   }

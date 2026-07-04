@@ -34,6 +34,7 @@ describe('OPage component', () => {
     const region = wrapper.find('.o-page');
     expect(region.attributes('aria-labelledby')).toBe(titleId);
     expect(region.attributes('aria-label')).toBeUndefined();
+    expect(region.attributes('role')).toBe('region');
   });
 
   test('does not bind aria-labelledby when header slot is provided', () => {
@@ -55,6 +56,7 @@ describe('OPage component', () => {
     const region = wrapper.find('.o-page');
     expect(region.attributes('aria-labelledby')).toBeUndefined();
     expect(region.attributes('aria-label')).toBe('Test Title');
+    expect(region.attributes('role')).toBe('region');
   });
 
   test('sets aria-busy when loading is true', () => {
@@ -73,5 +75,22 @@ describe('OPage component', () => {
 
     const region = wrapper.find('.o-page');
     expect(region.attributes('aria-busy')).toBe('true');
+  });
+
+  test('omits role=region when title is empty', () => {
+    const wrapper = mount(OPage, {
+      props: {
+        title: '',
+        showBreadcrumb: false,
+      },
+      global: {
+        stubs: {
+          OBreadcrumb: true,
+        },
+      },
+    });
+
+    const region = wrapper.find('.o-page');
+    expect(region.attributes('role')).toBeUndefined();
   });
 });
