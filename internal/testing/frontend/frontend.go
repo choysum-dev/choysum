@@ -152,7 +152,7 @@ func RunOneAppFrontendTests(
 	}
 
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))
-	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx}"))
+	includeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}"))
 	coverageIncludeGlob := filepath.ToSlash(filepath.Join("modules", app, "web", "**", "*.{ts,tsx,vue}"))
 	viteCacheDir := filepath.ToSlash(filepath.Join(workspaceTmpDir, "vite-cache", app))
 
@@ -190,7 +190,7 @@ func RunOneAppFrontendTests(
 		b.WriteString("        '**/dist/**',\n")
 		b.WriteString("        '**/pb/**',\n")
 		b.WriteString("        '**/*.d.ts',\n")
-		b.WriteString("        '**/*.{test,spec}.{ts,tsx}',\n")
+		b.WriteString("        '**/*.{test,spec}.{ts,tsx,js,jsx,mjs,cjs}',\n")
 		b.WriteString("      ],\n")
 		b.WriteString("      excludeAfterRemap: true,\n")
 		b.WriteString("      reportsDirectory: '" + reportsDir + "',\n")
@@ -296,15 +296,29 @@ func collectRequiredFrontendModules(repoRoot string, app string, coverage bool) 
 		return nil, xfmt.Errorf("vitest: %w", err)
 	}
 
-	usesHappyDOM, err := appUsesVitestEnvironment(repoRoot, app, "happy-dom")
+	environmentDeps, err := collectVitestEnvironmentDependencies(repoRoot, app)
 	if err != nil {
 		return nil, err
 	}
-	if usesHappyDOM {
-		return moddeps.MergeRequiredModules(baseRequired, moduleDeps, []string{"happy-dom"}), nil
-	}
 
-	return moddeps.MergeRequiredModules(baseRequired, moduleDeps), nil
+	return moddeps.MergeRequiredModules(baseRequired, moduleDeps, environmentDeps), nil
+}
+
+func collectVitestEnvironmentDependencies(repoRoot string, app string) ([]string, error) {
+	// Keep environment inference conservative and marker-driven to avoid forcing
+	// DOM runtimes unless tests explicitly request them.
+	environmentCandidates := []string{"happy-dom", "jsdom"}
+	required := make([]string, 0, len(environmentCandidates))
+	for _, environmentName := range environmentCandidates {
+		usesEnvironment, err := appUsesVitestEnvironment(repoRoot, app, environmentName)
+		if err != nil {
+			return nil, err
+		}
+		if usesEnvironment {
+			required = append(required, environmentName)
+		}
+	}
+	return required, nil
 }
 
 func appUsesVitestEnvironment(repoRoot string, app string, environment string) (bool, error) {
