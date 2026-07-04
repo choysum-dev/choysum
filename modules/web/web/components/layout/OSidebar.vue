@@ -43,10 +43,6 @@ import type { MenuItem } from '@/core/web/menu';
 import { ElAside, ElScrollbar } from 'element-plus';
 import { BookmarkBorderOutlined } from '@vicons/material';
 
-// Fixed width constants.
-const EXPANDED_WIDTH = 220;
-const COLLAPSED_WIDTH = 55;
-
 // State store.
 const layoutStore = useLayoutStore();
 
@@ -90,14 +86,6 @@ const props = defineProps({
   showScrollbar: {
     type: Boolean,
     default: true,
-  },
-  useFixedWidth: {
-    type: Boolean,
-    default: true,
-  },
-  width: {
-    type: Number,
-    default: EXPANDED_WIDTH,
   },
 });
 
