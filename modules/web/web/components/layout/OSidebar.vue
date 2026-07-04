@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
-import { useCssVar, useTextDirection, useTimeoutFn, UseTimeoutFnReturn } from '@vueuse/core';
+import { useCssVar, useTimeoutFn, type UseTimeoutFnReturn } from '@vueuse/core';
 import { useLayoutStore } from '@/web/web/stores';
 import { useMenu } from '@/web/web/composables';
 import type { MenuItem } from '@/core/web/menu';
@@ -46,9 +46,6 @@ import { BookmarkBorderOutlined } from '@vicons/material';
 // Fixed width constants.
 const EXPANDED_WIDTH = 220;
 const COLLAPSED_WIDTH = 55;
-
-// Reactive text direction reference.
-const direction = useTextDirection();
 
 // State store.
 const layoutStore = useLayoutStore();
@@ -64,8 +61,6 @@ const sidebarRef = ref<InstanceType<typeof ElAside> | null>(null);
 
 // Set CSS variables when the component mounts.
 onMounted(() => {
-  useCssVar('--o-sidebar-width').value = `${EXPANDED_WIDTH}px`;
-  useCssVar('--o-sidebar-collapsed-width').value = `${COLLAPSED_WIDTH}px`;
   useCssVar('--el-menu-base-level-padding').value = '12px';
   useCssVar('--el-menu-level-padding').value = '8px';
   useCssVar('--el-menu-item-height').value = '48px';
@@ -122,8 +117,6 @@ const sidebarStyle = computed(() => {
     width: layoutStore.sidebarMode === 'collapsed' ? `${COLLAPSED_WIDTH}px` : `${props.width}px`,
   };
 });
-
-const isCollapsed = computed(() => layoutStore.sidebarMode === 'collapsed' || layoutStore.sidebarMode === 'hover');
 
 function handleMenuSelect(menuItem: MenuItem) {
   menu.navigateTo(menuItem);

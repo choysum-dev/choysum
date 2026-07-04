@@ -23,7 +23,6 @@ const componentSize = ref<ComponentSize>('default');
 .el-config-provider {
   min-height: 100vh;
   width: 100%;
-  background-color: var(--el-bg-color-page);
   color: var(--el-text-color-primary);
   font-family: var(--el-font-family);
   font-size: var(--el-font-size-base);

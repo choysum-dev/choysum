@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div :class="layoutClass" role="application" aria-busy="false">
+  <div :class="layoutClass">
     <div class="o-layout__container">
       <!-- Header section. -->
       <OHeader v-if="showHeader" :fixed="fixedHeader" />
@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
       <!-- Main content area. -->
       <el-container class="o-layout__main-container">
         <div class="o-layout__content-wrapper">
-          <OContent>
+          <OContent v-bind="contentSpacing">
             <router-view v-slot="{ Component }">
               <transition :name="getTransitionName">
                 <keep-alive v-if="$route.meta.keepAlive">
@@ -48,7 +48,6 @@ SPDX-License-Identifier: Apache-2.0
 
 import { computed } from 'vue';
 import { useLayoutStore } from '@/web/web/stores';
-import { useI18nStore } from '@/web/web/stores';
 import OHeader from './OHeader.vue';
 import OSidebar from './OSidebar.vue';
 import OContent from './OContent.vue';
@@ -112,10 +111,6 @@ const props = defineProps({
 // Layout state.
 const layoutStore = useLayoutStore();
 
-// Use the i18n store to detect text direction.
-const i18nStore = useI18nStore();
-const isRtlMode = computed(() => i18nStore.currentLocale.textDirection === 'rtl');
-
 // Compute layout classes.
 const layoutClass = computed(() => {
   let sidebarClass = '';
@@ -147,13 +142,19 @@ const layoutClass = computed(() => {
 const getTransitionName = computed(() => {
   return props.transition === 'none' ? '' : props.transition;
 });
+
+// Map layout spacing to OContent padding props so spacing is controlled
+// in a single place instead of via :deep() overrides.
+const contentSpacing = computed(() => {
+  if (props.spacing === 'none') return { padding: false };
+  return { paddingSize: props.spacing as 'small' | 'medium' | 'large' };
+});
 </script>
 
 <style lang="scss" scoped>
 /* Layout component. */
 .o-layout {
   width: 100%;
-  background-color: var(--el-bg-color-page);
 
   /* Element Plus container overrides. */
   :deep(.el-container) {
@@ -164,7 +165,6 @@ const getTransitionName = computed(() => {
 
   /* Main content container with fixed layout behavior. */
   &__main-container {
-    background-color: var(--el-bg-color-page);
     overflow: visible;
     min-width: 0; /* Prevent content overflow. */
 
@@ -219,45 +219,6 @@ const getTransitionName = computed(() => {
     .o-layout__main-container {
       height: 100vh;
       margin-block-start: 0;
-    }
-  }
-
-  /* Layout spacing variants. */
-  &--spacing-none {
-    :deep(.o-content) {
-      padding: 0;
-    }
-  }
-
-  &--spacing-small {
-    :deep(.o-content) {
-      &.el-main {
-        padding: 8px;
-      }
-    }
-  }
-
-  &--spacing-medium {
-    :deep(.o-content) {
-      &.el-main {
-        padding: 16px;
-
-        @media only screen and (max-width: 991px) {
-          padding: 8px;
-        }
-      }
-    }
-  }
-
-  &--spacing-large {
-    :deep(.o-content) {
-      &.el-main {
-        padding: 24px;
-
-        @media only screen and (max-width: 991px) {
-          padding: 16px;
-        }
-      }
     }
   }
 }

@@ -219,7 +219,6 @@ function handleKeyDown(event: KeyboardEvent) {
     align-items: center;
     justify-content: center;
     height: 100%;
-    background-color: var(--el-bg-color-page);
     padding: var(--el-padding-large) 0;
   }
 }
