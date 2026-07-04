@@ -210,7 +210,7 @@ function handleMenuMouseLeave() {
   padding: 0 5px;
   overflow: hidden;
 
-  .o-layout--with-header & {
+  .o-layout--fixed-header & {
     height: calc(100vh - var(--o-header-height, 48px));
     top: var(--o-header-height, 48px);
 
