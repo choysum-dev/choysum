@@ -17,7 +17,11 @@ func (s *GRPCWebServer) applyRegistrationWatchPlans(plans []registrationWatchPla
 func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrationWatchPlan, handle watchTargetHandler) error {
 	targets := s.buildRegisteredWatchTargets(plans, handle)
 	s.hotreload.storeWatchTargets(targets)
-	if !s.hasHotreloadWatcher() || !s.resolvedRuntimeOptions().hotReload {
+	if !s.resolvedRuntimeOptions().hotReload {
+		return nil
+	}
+	if !s.hasHotreloadWatcher() {
+		s.hotreload.primeFingerprintsForTargets(targets)
 		return nil
 	}
 	for _, target := range targets {
@@ -25,6 +29,7 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 			return xfmt.Errorf("Failed to register watch dir: %w", err)
 		}
 	}
+	s.hotreload.primeFingerprintsForRoots(s.hotreload.watchList())
 	return nil
 }
 

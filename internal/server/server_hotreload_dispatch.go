@@ -15,20 +15,20 @@ import (
 )
 
 func (s *GRPCWebServer) dispatchWatchHandler(file string) (int, error) {
-	file, err := filepath.Abs(file)
-	if err != nil {
-		return 0, xfmt.Errorf("Failed to get absolute path of file: %w", err)
-	}
-	file, err = resolveWatchPath(file)
+	resolvedFile, err := resolveWatchPath(file)
 	if err != nil {
 		return 0, xfmt.Errorf("Failed to resolve watched file path: %w", err)
 	}
-	s.runtimeScope.Logger().Debug("watch file detected", "file", file)
+	return s.dispatchWatchHandlerResolved(resolvedFile)
+}
+
+func (s *GRPCWebServer) dispatchWatchHandlerResolved(resolvedFile string) (int, error) {
+	s.runtimeScope.Logger().Debug("watch file detected", "file", resolvedFile)
 
 	seenModules := map[string]struct{}{}
 	dispatched := 0
 	for _, target := range s.hotreload.watchTargetsSnapshot() {
-		contained, err := isWatchedPath(target.root, file)
+		contained, err := isWatchedPath(target.root, resolvedFile)
 		if err != nil {
 			return dispatched, xfmt.Errorf("Failed to evaluate watched path containment: %w", err)
 		}
@@ -39,7 +39,7 @@ func (s *GRPCWebServer) dispatchWatchHandler(file string) (int, error) {
 			continue
 		}
 		seenModules[target.moduleName] = struct{}{}
-		if err := s.dispatchWatchTarget(target, file); err != nil {
+		if err := s.dispatchWatchTarget(target, resolvedFile); err != nil {
 			return dispatched, err
 		}
 		dispatched++
@@ -81,16 +81,31 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 }
 
 func (s *GRPCWebServer) handleWatchedFileChange(file string) error {
-	line := s.hotreload.progressLine
-	if line != nil {
-		line.Update(0, fmt.Sprintf("Detected change: %s", filepath.Base(file)))
+	resolvedFile, err := resolveWatchPath(file)
+	if err != nil {
+		return xfmt.Errorf("Failed to resolve watched file path: %w", err)
+	}
+	return s.handleWatchedFileChangeResolved(resolvedFile)
+}
+
+func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) error {
+	// Skip reload when file content hasn't actually changed (e.g. no-op
+	// save or atomic-save that produces an identical file). The check runs
+	// after debounce so temp-file rename sequences have already settled.
+	if !s.hotreload.contentChangedResolved(resolvedFile) {
+		return nil
 	}
 
-	dispatched, err := s.dispatchWatchHandler(file)
+	line := s.hotreload.progressLine
+	if line != nil {
+		line.Update(0, fmt.Sprintf("Detected change: %s", filepath.Base(resolvedFile)))
+	}
+
+	dispatched, err := s.dispatchWatchHandlerResolved(resolvedFile)
 	if err != nil {
 		if line != nil {
 			line.Clear()
-			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(file)))
+			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
 		}
 		if errors.Is(err, context.Canceled) || errors.Is(s.runtimeScope.Context().Err(), context.Canceled) {
 			s.runtimeScope.Logger().Debug("watch handler canceled", "error", err)
@@ -102,9 +117,9 @@ func (s *GRPCWebServer) handleWatchedFileChange(file string) error {
 	// any registered watch root).
 	if dispatched == 0 {
 		if line != nil {
-			line.Done("→", fmt.Sprintf("Skipped (no module matched): %s", filepath.Base(file)))
+			line.Done("→", fmt.Sprintf("Skipped (no module matched): %s", filepath.Base(resolvedFile)))
 		}
-		s.runtimeScope.Logger().Debug("watch file did not match any module, skipping restart", "file", file)
+		s.runtimeScope.Logger().Debug("watch file did not match any module, skipping restart", "file", resolvedFile)
 		return nil
 	}
 
@@ -124,7 +139,7 @@ func (s *GRPCWebServer) handleWatchedFileChange(file string) error {
 	}
 	s.runtimeScope.Logger().Info(
 		"watch reload completed",
-		"file", file,
+		"file", resolvedFile,
 		"watch_dropped_count", s.watchDroppedCount(),
 		"watch_coalesced_count", s.watchCoalescedCount(),
 	)

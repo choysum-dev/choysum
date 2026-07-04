@@ -4,7 +4,12 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 
@@ -45,6 +50,11 @@ type hotreloadState struct {
 
 	// progressLine writes single-line hotreload status updates to stderr.
 	progressLine *logger.ProgressLine
+
+	// fingerprints caches file content hashes to detect no-op saves.
+	// Key: resolved absolute path. Value: hex-encoded SHA-256.
+	fingerprints   map[string]string
+	fingerprintsMu sync.Mutex
 
 	dropped   atomic.Uint64
 	coalesced atomic.Uint64
@@ -318,6 +328,7 @@ func (h *hotreloadState) resetLifecycle() {
 	h.watcher = nil
 	h.drainQueue()
 	h.clearWatchTargets()
+	h.clearFingerprints()
 	h.resetEventState()
 }
 
@@ -356,4 +367,134 @@ func (h *hotreloadState) resetEventState() {
 	h.moduleMu.Lock()
 	h.busyModules = nil
 	h.moduleMu.Unlock()
+}
+
+func (h *hotreloadState) primeFingerprintsForTargets(targets []registeredWatchTarget) {
+	seenRoots := map[string]struct{}{}
+	for _, target := range targets {
+		if _, seen := seenRoots[target.root]; seen {
+			continue
+		}
+		seenRoots[target.root] = struct{}{}
+		h.primeFingerprintsForRoot(target.root)
+	}
+}
+
+func (h *hotreloadState) primeFingerprintsForRoots(roots []string) {
+	seenRoots := map[string]struct{}{}
+	for _, root := range roots {
+		if _, seen := seenRoots[root]; seen {
+			continue
+		}
+		seenRoots[root] = struct{}{}
+		h.primeFingerprintsForRoot(root)
+	}
+}
+
+func (h *hotreloadState) primeFingerprintsForRoot(root string) {
+	if root == "" {
+		return
+	}
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if h.hasFingerprint(path) {
+			return nil
+		}
+		hash, ok := fileFingerprint(path)
+		if !ok {
+			return nil
+		}
+		h.setFingerprintIfAbsentResolved(path, hash)
+		return nil
+	})
+}
+
+// contentChanged returns true when the file content differs from the cached
+// fingerprint. The fingerprint is always updated after the comparison so the
+// next no-op save is ignored. Non-regular files are treated as changed to
+// stay on the safe side.
+func (h *hotreloadState) contentChanged(resolvedPath string) bool {
+	return h.contentChangedResolved(canonicalWatchPath(resolvedPath))
+}
+
+func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
+	hash, ok := fileFingerprint(resolvedPath)
+	if !ok {
+		return true
+	}
+
+	h.fingerprintsMu.Lock()
+	prev, ok := h.fingerprints[resolvedPath]
+	if h.fingerprints == nil {
+		h.fingerprints = make(map[string]string)
+	}
+	h.fingerprints[resolvedPath] = hash
+	h.fingerprintsMu.Unlock()
+
+	return !ok || hash != prev
+}
+
+func fileFingerprint(path string) (string, bool) {
+	info, err := os.Stat(path)
+	if err != nil || !info.Mode().IsRegular() {
+		return "", false
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return "", false
+	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", false
+	}
+	sum := hasher.Sum(nil)
+	return hex.EncodeToString(sum), true
+}
+
+func (h *hotreloadState) hasFingerprint(path string) bool {
+	h.fingerprintsMu.Lock()
+	defer h.fingerprintsMu.Unlock()
+	if h.fingerprints == nil {
+		return false
+	}
+	_, exists := h.fingerprints[path]
+	return exists
+}
+
+func (h *hotreloadState) setFingerprintIfAbsent(path string, hash string) {
+	h.setFingerprintIfAbsentResolved(canonicalWatchPath(path), hash)
+}
+
+func (h *hotreloadState) setFingerprintIfAbsentResolved(path string, hash string) {
+	h.fingerprintsMu.Lock()
+	if h.fingerprints == nil {
+		h.fingerprints = make(map[string]string)
+	}
+	if _, exists := h.fingerprints[path]; !exists {
+		h.fingerprints[path] = hash
+	}
+	h.fingerprintsMu.Unlock()
+}
+
+func canonicalWatchPath(path string) string {
+	resolved, err := resolveWatchPath(path)
+	if err == nil {
+		return resolved
+	}
+	return path
+}
+
+// clearFingerprints drops the cached file fingerprints so the next write
+// after a hotreload lifecycle reset always triggers.
+func (h *hotreloadState) clearFingerprints() {
+	h.fingerprintsMu.Lock()
+	h.fingerprints = nil
+	h.fingerprintsMu.Unlock()
 }

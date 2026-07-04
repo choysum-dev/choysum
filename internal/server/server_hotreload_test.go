@@ -672,3 +672,217 @@ func TestServerWatchForwardsSyntheticEvents(t *testing.T) {
 
 	srv.stopHotreloadLifecycle()
 }
+
+func TestContentChanged_SkipsNoOpWrite(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "unchanged.ts")
+	content := []byte("export const v = 1;\n")
+
+	if err := os.WriteFile(file, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	if !hs.contentChanged(file) {
+		t.Fatal("expected first write to be treated as changed (no cache entry)")
+	}
+	if hs.contentChanged(file) {
+		t.Fatal("expected identical write to be skipped")
+	}
+}
+
+func TestContentChanged_DetectsContentChange(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "changed.ts")
+
+	if err := os.WriteFile(file, []byte("v1"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	if !hs.contentChanged(file) {
+		t.Fatal("expected first write to be treated as changed")
+	}
+	if err := os.WriteFile(file, []byte("v2"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if !hs.contentChanged(file) {
+		t.Fatal("expected second write with different content to be treated as changed")
+	}
+}
+
+func TestContentChanged_LargeFileSkipsNoOpWrite(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "large.bin")
+	content := bytes.Repeat([]byte("a"), 2<<20)
+
+	if err := os.WriteFile(file, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	if !hs.contentChanged(file) {
+		t.Fatal("expected first write to be treated as changed")
+	}
+	if hs.contentChanged(file) {
+		t.Fatal("expected identical large-file write to be skipped")
+	}
+
+	changed := append([]byte(nil), content...)
+	changed[len(changed)/2] = 'b'
+	if err := os.WriteFile(file, changed, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if !hs.contentChanged(file) {
+		t.Fatal("expected changed large-file write to be treated as changed")
+	}
+}
+
+func TestContentChanged_MissingFileTreatedAsChanged(t *testing.T) {
+	hs := &hotreloadState{}
+	if !hs.contentChanged("/nonexistent/path.ts") {
+		t.Fatal("expected missing file to be treated as changed")
+	}
+}
+
+func TestContentChanged_DirectoryTreatedAsChanged(t *testing.T) {
+	root := t.TempDir()
+	hs := &hotreloadState{}
+	if !hs.contentChanged(root) {
+		t.Fatal("expected directory to be treated as changed")
+	}
+}
+
+func TestContentChanged_ClearFingerprintsResetsState(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "reset.ts")
+
+	if err := os.WriteFile(file, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	hs := &hotreloadState{}
+	hs.contentChanged(file) // prime cache
+	if hs.contentChanged(file) {
+		t.Fatal("expected identical write to be skipped after priming")
+	}
+	hs.clearFingerprints()
+	if !hs.contentChanged(file) {
+		t.Fatal("expected write after clearing fingerprints to be treated as changed")
+	}
+}
+
+func TestApplyRegistrationWatchPlansPrimesFingerprintsForFirstNoOpSave(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "OLayout.vue")
+	content := []byte("<template><div /></template>\n")
+	if err := os.WriteFile(changedFile, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{root}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.applyRegistrationWatchPlansWithHandler(tracked.watchPlans(), tracked.watchCallback); err != nil {
+		t.Fatalf("applyRegistrationWatchPlansWithHandler() error = %v", err)
+	}
+
+	// No-op first save should be ignored because watch registration already
+	// primed the initial fingerprint baseline.
+	if err := os.WriteFile(changedFile, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := srv.handleWatchedFileChange(changedFile); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v", err)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0 (first no-op save)", tracked.callCount())
+	}
+
+	if err := os.WriteFile(changedFile, []byte("<template><section /></template>\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if !srv.hotreload.contentChanged(changedFile) {
+		t.Fatal("expected contentChanged() to detect real content change after baseline priming")
+	}
+}
+
+func TestHandleWatchedFileChangeSkipsNoOpWrite(t *testing.T) {
+	// The content fingerprint check in handleWatchedFileChange returns nil
+	// before dispatch when the file content hasn't changed.
+	runtimeScope := newRichServerTestScope(t)
+
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+
+	if err := os.WriteFile(changedFile, []byte("export const v = 1;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{root}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	// Prime fingerprint.
+	srv.hotreload.contentChanged(changedFile)
+
+	// Identical content → handleWatchedFileChange returns nil early.
+	if err := os.WriteFile(changedFile, []byte("export const v = 1;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := srv.handleWatchedFileChange(changedFile); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v", err)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0 (no-op save)", tracked.callCount())
+	}
+
+	// Changed content → dispatchWatchHandler invokes callback.
+	if err := os.WriteFile(changedFile, []byte("export const v = 2;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if !srv.hotreload.contentChanged(changedFile) {
+		t.Fatal("expected contentChanged to return true after content change")
+	}
+	if _, err := srv.dispatchWatchHandler(changedFile); err != nil {
+		t.Fatalf("dispatchWatchHandler() error = %v", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1 (real change)", tracked.callCount())
+	}
+}
+
+func TestHandleWatchedFileChangeSkipsNoOpAtomicSave(t *testing.T) {
+	// VS Code atomic save (temp + rename → target). Content unchanged.
+	runtimeScope := newRichServerTestScope(t)
+
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "OLayout.vue")
+	content := []byte("export default {};\n")
+
+	if err := os.WriteFile(changedFile, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{root}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+	srv.hotreload.contentChanged(changedFile)
+
+	tmpFile := changedFile + ".tmp"
+	if err := os.WriteFile(tmpFile, content, 0o644); err != nil {
+		t.Fatalf("WriteFile(tmp) error = %v", err)
+	}
+	if err := os.Rename(tmpFile, changedFile); err != nil {
+		t.Fatalf("Rename() error = %v", err)
+	}
+
+	if err := srv.handleWatchedFileChange(changedFile); err != nil {
+		t.Fatalf("handleWatchedFileChange() error = %v", err)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("watch handler calls = %d, want 0 (no-op atomic save)", tracked.callCount())
+	}
+}
