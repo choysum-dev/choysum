@@ -25,8 +25,18 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
 		ctx = s.runtimeScope.Context()
 	}
+	// Cancel any still-running priming from a previous lifecycle before
+	// starting a new one (e.g. during hot-reload restart).
+	s.hotreload.fingerprintsMu.Lock()
+	if s.hotreload.primeCancel != nil {
+		s.hotreload.primeCancel()
+	}
+	primeCtx, primeCancel := context.WithCancel(ctx)
+	s.hotreload.primeCancel = primeCancel
+	s.hotreload.fingerprintsMu.Unlock()
+
 	if !s.hasHotreloadWatcher() {
-		s.hotreload.primeFingerprintsForTargets(ctx, targets)
+		s.hotreload.primeFingerprintsForTargets(primeCtx, targets)
 		return nil
 	}
 	for _, target := range targets {
@@ -37,7 +47,7 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	s.hotreload.primeWg.Add(1)
 	go func() {
 		defer s.hotreload.primeWg.Done()
-		s.hotreload.primeFingerprintsForTargets(ctx, targets)
+		s.hotreload.primeFingerprintsForTargets(primeCtx, targets)
 	}()
 	return nil
 }

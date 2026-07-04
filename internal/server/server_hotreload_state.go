@@ -64,6 +64,12 @@ type hotreloadState struct {
 	// so clearFingerprints can wait for them before resetting the map.
 	primeWg sync.WaitGroup
 
+	// primeCancel cancels an in-flight background priming context so a
+	// hot-reload restart does not block on the previous walk completing.
+	// Protected by fingerprintsMu for simplicity (accessed from registration
+	// and clearFingerprints, which are already serialized by lifecycle flow).
+	primeCancel context.CancelFunc
+
 	dropped   atomic.Uint64
 	coalesced atomic.Uint64
 }
@@ -403,13 +409,13 @@ func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root stri
 	if root == "" {
 		return
 	}
-	// Resolve root prefix once; use relative paths underneath to avoid
-	// per-file EvalSymlinks calls while still producing canonical keys.
+	// Resolve the root so WalkDir descends into symlinked directories;
+	// all returned paths are then already canonical.
 	resolvedRoot := root
 	if r, err := resolveWatchPath(root); err == nil {
 		resolvedRoot = r
 	}
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(resolvedRoot, func(path string, d fs.DirEntry, err error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -423,19 +429,14 @@ func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root stri
 			}
 			return nil
 		}
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
+		if h.hasFingerprintResolved(path) {
 			return nil
 		}
-		canonical := filepath.Join(resolvedRoot, rel)
-		if h.hasFingerprintResolved(canonical) {
-			return nil
-		}
-		hash, ok := fileFingerprint(canonical)
+		hash, ok := fileFingerprint(path)
 		if !ok {
 			return nil
 		}
-		h.setFingerprintIfAbsentResolved(canonical, hash)
+		h.setFingerprintIfAbsentResolved(path, hash)
 		return nil
 	})
 }
@@ -533,11 +534,20 @@ func canonicalWatchPath(path string) string {
 
 // clearFingerprints drops the cached file fingerprints so the next write
 // after a hotreload lifecycle reset always triggers.
-// It waits for any in-flight background priming goroutines to exit first.
+// It cancels any in-flight background priming, waits for the goroutine to
+// exit, then clears the map.
 func (h *hotreloadState) clearFingerprints() {
+	h.fingerprintsMu.Lock()
+	if h.primeCancel != nil {
+		h.primeCancel()
+	}
+	h.fingerprintsMu.Unlock()
+
 	h.primeWg.Wait()
+
 	h.fingerprintsMu.Lock()
 	h.fingerprints = nil
+	h.primeCancel = nil
 	h.fingerprintsMu.Unlock()
 }
 
