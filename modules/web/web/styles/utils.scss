@@ -1,34 +1,23 @@
-// Copyright 2025 The Choysum Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
 
 @use './tokens.scss' as *;
 
 // ============================================
-// 工具类 - 仅包含Element Plus未提供的功能
+// Utility classes - only contains features not provided by Element Plus
 // ============================================
 
-//  注意: 本文件仅包含Element Plus未提供的工具类
-//  对于响应式显示/隐藏，请使用Element Plus的类:
-//  - hidden-xs-only, hidden-sm-only, 等
-//  对于间距和布局，请使用Element Plus组件:
-//  - <el-space>, <el-divider>, <el-row>, <el-col>
+// Note: This file only contains utility classes not provided by Element Plus.
+// For responsive show/hide, use Element Plus classes:
+// - hidden-xs-only, hidden-sm-only, etc.
+// For spacing and layout, use Element Plus components:
+// - <el-space>, <el-divider>, <el-row>, <el-col>
 
 // ============================================
-// 位置工具类
+// Position utilities
 // ============================================
 
-// 定位类型
+// Positioning types
 .o-position-relative {
   position: relative;
 }
@@ -43,7 +32,7 @@
   top: 0;
 }
 
-// 层叠顺序
+// Stacking order
 .o-z-dropdown {
   z-index: $z-index-dropdown;
 }
@@ -64,10 +53,10 @@
 }
 
 // ============================================
-// 文本工具类
+// Text utilities
 // ============================================
 
-// 文本转换
+// Text transform
 .o-text-lowercase {
   text-transform: lowercase;
 }
@@ -78,44 +67,44 @@
   text-transform: capitalize;
 }
 
-// 单行文本截断 - 保持兼容性
+// Single-line text truncation
 .o-text-truncate {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-// 多行文本截断 - 优化兼容性
+// Multi-line text truncation - with standard property fallbacks
 .o-text-clamp-2 {
   display: -webkit-box;
-  display: box; // 添加标准属性
+  display: box;
   -webkit-line-clamp: 2;
-  line-clamp: 2; // 添加标准属性
+  line-clamp: 2;
   -webkit-box-orient: vertical;
-  box-orient: vertical; // 添加标准属性
+  box-orient: vertical;
   overflow: hidden;
 }
 
 .o-text-clamp-3 {
   display: -webkit-box;
-  display: box; // 添加标准属性
+  display: box;
   -webkit-line-clamp: 3;
-  line-clamp: 3; // 添加标准属性
+  line-clamp: 3;
   -webkit-box-orient: vertical;
-  box-orient: vertical; // 添加标准属性
+  box-orient: vertical;
   overflow: hidden;
 }
 
 // ============================================
-// 边框工具类 - 使用逻辑属性
+// Border utilities - using logical properties
 // ============================================
 
-// 移除所有边框
+// Remove all borders
 .o-border-none {
   border: none !important;
 }
 
-// 移除特定边框 - 使用逻辑属性
+// Remove specific borders - using logical properties
 .o-border-top-0 {
   border-top: 0 !important;
 }
@@ -130,10 +119,10 @@
 }
 
 // ============================================
-// 尺寸工具类
+// Dimension utilities
 // ============================================
 
-// 宽度控制
+// Width control
 .o-w-auto {
   width: auto !important;
 }
@@ -141,7 +130,7 @@
   width: 100% !important;
 }
 
-// 高度控制
+// Height control
 .o-h-auto {
   height: auto !important;
 }
@@ -150,10 +139,10 @@
 }
 
 // ============================================
-// 辅助工具类
+// Helper utilities
 // ============================================
 
-// 溢出控制
+// Overflow control
 .o-overflow-auto {
   overflow: auto;
 }
@@ -167,13 +156,13 @@
   overflow: scroll;
 }
 
-// 显示控制
+// Display control
 .o-invisible {
   visibility: hidden;
 }
 
 // ============================================
-// 光标工具类
+// Cursor utilities
 // ============================================
 
 .o-cursor-pointer {
@@ -193,17 +182,17 @@
 }
 
 // ============================================
-// 过渡工具类 - 使用Element Plus变量
+// Transition utilities - using Element Plus variables
 // ============================================
 
 .o-transition {
-  transition: all var(--el-transition-duration) var(--el-transition-function-ease-in-out);
+  transition: all var(--el-transition-duration) var(--el-transition-function);
 }
 
 .o-transition-fast {
-  transition: all var(--o-transition-duration-fast) var(--el-transition-function-ease-in-out);
+  transition: all var(--o-transition-duration-fast) var(--el-transition-function);
 }
 
 .o-transition-slow {
-  transition: all var(--o-transition-duration-slow) var(--el-transition-function-ease-in-out);
+  transition: all var(--o-transition-duration-slow) var(--el-transition-function);
 }

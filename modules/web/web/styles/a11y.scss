@@ -1,22 +1,11 @@
-// Copyright 2025 The Choysum Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
 
 // ============================================
-// 可访问性核心支持 - 精简版
+// Accessibility core support - slim version
 // ============================================
 
-// 视觉隐藏但屏幕阅读器可访问
+// Visually hidden but accessible to screen readers
 .o-visually-hidden {
   position: absolute;
   width: 1px;
@@ -29,7 +18,7 @@
   border-width: 0;
 }
 
-// 页面跳转链接 - 无障碍导航辅助
+// Skip link - accessibility navigation aid
 .o-skip-link {
   position: absolute;
   top: -9999px;
@@ -44,7 +33,7 @@
   }
 }
 
-// ARIA状态支持
+// ARIA state support
 [aria-busy='true'] {
   cursor: progress;
 }
@@ -55,7 +44,7 @@
   pointer-events: none;
 }
 
-// 高对比度模式支持
+// High contrast mode support
 @media (prefers-contrast: more) {
   :focus-visible {
     outline: 4px solid #000 !important;
@@ -70,7 +59,7 @@
   }
 }
 
-// RTL支持
+// RTL support
 [dir='rtl'] .o-skip-link {
   left: auto;
   right: 0;

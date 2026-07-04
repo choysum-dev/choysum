@@ -20,8 +20,6 @@ const componentSize = ref<ComponentSize>('default');
 </script>
 
 <style lang="scss" scoped>
-@use './styles/index.scss' as *;
-
 .el-config-provider {
   min-height: 100vh;
   width: 100%;

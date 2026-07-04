@@ -1,38 +1,27 @@
-// Copyright 2025 The Choysum Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
 
 // ============================================
-// 精简变量 - 只保留Element Plus未提供或需扩展的
+// Slim variables - only keep what Element Plus doesn't provide or needs extension
 // ============================================
 :root {
-  // 品牌色变量
-  --o-color-primary: #409eff; // Element Plus 默认主色
-  --o-color-success: #67c23a; // 成功色
-  --o-color-warning: #e6a23c; // 警告色
-  --o-color-danger: #f56c6c; // 危险色
-  --o-color-info: #909399; // 信息色
+  // Brand color variables
+  --o-color-primary: #409eff; // Element Plus default primary color
+  --o-color-success: #67c23a; // Success color
+  --o-color-warning: #e6a23c; // Warning color
+  --o-color-danger: #f56c6c; // Danger color
+  --o-color-info: #909399; // Info color
 
-  // 方向变量 - Element Plus未提供但对RTL支持很重要
+  // Direction variables - not provided by Element Plus but important for RTL support
   --o-direction: ltr;
   --o-transform-direction: -100%;
-  --o-direction-flip: 1; // 用于水平翻转 (1=正常, -1=翻转)
+  --o-direction-flip: 1; // For horizontal flip (1=normal, -1=flipped)
 
-  // RTL相关过渡动画变量
+  // RTL-related transition animation variables
   --o-slide-enter-translate: 20px;
   --o-slide-leave-translate: -20px;
 
-  // 布局变量 - 组件使用
+  // Layout variables - used by components
   --o-header-height: 48px;
   --o-header-height-mobile: 40px;
   --o-sidebar-width: 256px;
@@ -42,12 +31,12 @@
 
   --o-form-field-margin-bottom: 18px;
 
-  // 可访问性变量 - 可根据Element Plus主题更新
+  // Accessibility variables - can be updated based on Element Plus theme
   --o-aria-focus-outline-width: 2px;
   --o-aria-focus-outline-color: var(--el-color-primary);
   --o-aria-focus-outline-offset: 2px;
 
-  // 主题变量 - 以下变量将逐步替换为Element Plus变量
+  // Theme variables - will be gradually replaced with Element Plus variables
   --o-transition-duration-fast: 0.15s;
   --o-transition-duration-base: 0.3s;
   --o-transition-duration-slow: 0.5s;
@@ -56,7 +45,7 @@
   --o-transition-timing-ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
-// RTL方向变量覆盖
+// RTL direction variable overrides
 html[dir='rtl'] {
   --o-direction: rtl;
   --o-transform-direction: 100%;
@@ -66,7 +55,7 @@ html[dir='rtl'] {
 }
 
 // ============================================
-// 断点系统 - 使用Element Plus的值
+// Breakpoint system - using Element Plus values
 // ============================================
 // xs: <768px
 // sm: ≥768px
