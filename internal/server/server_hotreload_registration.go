@@ -22,6 +22,9 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	if s == nil {
 		return xfmt.Errorf("applyRegistrationWatchPlansWithHandler called on nil receiver")
 	}
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	targets := s.buildRegisteredWatchTargets(plans, handle)
 	s.hotreload.storeWatchTargets(targets)
 	if !s.resolvedRuntimeOptions().hotReload {
