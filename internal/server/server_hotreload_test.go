@@ -751,11 +751,12 @@ func TestContentChanged_MissingFileTreatedAsChanged(t *testing.T) {
 	}
 }
 
-func TestContentChanged_DirectoryTreatedAsChanged(t *testing.T) {
+func TestContentChanged_DirectoryIgnored(t *testing.T) {
 	root := t.TempDir()
 	hs := &hotreloadState{}
-	if !hs.contentChanged(root) {
-		t.Fatal("expected directory to be treated as changed")
+	// Directory events should be ignored — they are not content changes.
+	if hs.contentChanged(root) {
+		t.Fatal("expected directory to be ignored (not a content change)")
 	}
 }
 
@@ -795,23 +796,24 @@ func TestApplyRegistrationWatchPlansPrimesFingerprintsForFirstNoOpSave(t *testin
 		t.Fatalf("applyRegistrationWatchPlansWithHandler() error = %v", err)
 	}
 
-	// No-op first save should be ignored because watch registration already
-	// primed the initial fingerprint baseline.
+	// No watcher is active → fingerprint priming is skipped. The first
+	// save is therefore treated as a real change and triggers a reload.
 	if err := os.WriteFile(changedFile, content, 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 	if err := srv.handleWatchedFileChange(changedFile); err != nil {
 		t.Fatalf("handleWatchedFileChange() error = %v", err)
 	}
-	if tracked.callCount() != 0 {
-		t.Fatalf("watch handler calls = %d, want 0 (first no-op save)", tracked.callCount())
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1 (no watcher → no priming → first save triggers reload)", tracked.callCount())
 	}
 
+	// A second real change should be detected.
 	if err := os.WriteFile(changedFile, []byte("<template><section /></template>\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 	if !srv.hotreload.contentChanged(changedFile) {
-		t.Fatal("expected contentChanged() to detect real content change after baseline priming")
+		t.Fatal("expected contentChanged() to detect real content change")
 	}
 }
 

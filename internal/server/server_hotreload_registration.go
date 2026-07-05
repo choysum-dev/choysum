@@ -42,7 +42,9 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	s.hotreload.fingerprintsMu.Unlock()
 
 	if !s.hasHotreloadWatcher() {
-		s.hotreload.primeFingerprintsForTargets(primeCtx, targets)
+		// No watcher means no file events can arrive; skip priming
+		// to save CPU/IO. When a watcher is eventually created,
+		// registration will run again and prime asynchronously.
 		primeCancel()
 		return nil
 	}

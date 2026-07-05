@@ -456,6 +456,12 @@ func (h *hotreloadState) contentChanged(resolvedPath string) bool {
 }
 
 func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
+	// Directory events (e.g. timestamp-only modifications) are not
+	// meaningful content changes — ignore them.
+	if info, err := os.Stat(resolvedPath); err == nil && info.IsDir() {
+		return false
+	}
+
 	// resolvedPath is already canonical from the caller; avoid redundant
 	// EvalSymlinks on the hot reload path.
 	hash, ok := fileFingerprint(resolvedPath)
@@ -469,10 +475,10 @@ func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
 	}
 
 	h.fingerprintsMu.Lock()
-	prev, ok := h.fingerprints[resolvedPath]
 	if h.fingerprints == nil {
 		h.fingerprints = make(map[string]string)
 	}
+	prev, ok := h.fingerprints[resolvedPath]
 	h.fingerprints[resolvedPath] = hash
 	h.fingerprintsMu.Unlock()
 
