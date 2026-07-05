@@ -101,6 +101,9 @@ func (s *GRPCWebServer) registerWatchTarget(target registeredWatchTarget) error 
 	if s == nil {
 		return xfmt.Errorf("registerWatchTarget called on nil receiver")
 	}
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	registeredRoots := s.registeredWatchRoots()
 	if _, exists := registeredRoots[target.root]; exists {
 		s.runtimeScope.Logger().Debug("watch root skipped as duplicate", "app", target.serviceName, "module", target.moduleName, "root", target.root)

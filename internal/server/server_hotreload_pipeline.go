@@ -98,6 +98,9 @@ func (s *GRPCWebServer) waitForWatchDebounce(file string) error {
 	if s == nil {
 		return xfmt.Errorf("waitForWatchDebounce called on nil receiver")
 	}
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	if watchDebounceWindow <= 0 {
 		return nil
 	}
