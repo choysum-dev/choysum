@@ -20,14 +20,14 @@ jobs:
     steps:
       - name: PR Agent action step
         id: pragent
-        uses: Codium-ai/pr-agent@main
+        uses: the-pr-agent/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Specify the Gemini model to replace the default OpenAI configuration
           config.model: "gemini/gemini-2.5-pro"
           config.fallback_models: "gemini/gemini-2.5-flash"
           # Optional: Enable automatic review, describe, and improve on PR events
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
-          github_action_config.auto_improve: "true"
+          github_action_config.auto_improve: "false"
