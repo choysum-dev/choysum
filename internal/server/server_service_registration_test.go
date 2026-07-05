@@ -218,3 +218,112 @@ func TestServerRegisterApplicationServicesReturnsCreateServiceError(t *testing.T
 		t.Fatal("expected registerApplicationServices to fail when application dist path is missing")
 	}
 }
+
+func TestServerRegisterApplicationServicesBuildsWebWatchTargetWhenHasWeb(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+	distDir := t.TempDir()
+	modulesDir := t.TempDir()
+	runtimeScope.cfg.DistPath = distDir
+	runtimeScope.cfg.ModulesPath = modulesDir
+
+	webDistDir := filepath.Join(distDir, "web")
+	if err := os.MkdirAll(webDistDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(webDistDir) error = %v", err)
+	}
+	webModuleDir := filepath.Join(modulesDir, "web")
+	if err := os.MkdirAll(webModuleDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(webModuleDir) error = %v", err)
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer watcher.Close()
+
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		server:       grpc.NewServer(),
+		mux:          http.NewServeMux(),
+		hotreload:    hotreloadState{watcher: watcher},
+		address:      &resolver.Address{Addr: "127.0.0.1:9527"},
+		runState: runState{
+			applicationNames: []string{"web"},
+			distManifest: &distmanifest.DistManifestV2{
+				HasWeb: true,
+				Apps:   map[string]distmanifest.DistManifestApp{},
+			},
+		},
+	}
+
+	registration, err := srv.registerApplicationServices()
+	if err != nil {
+		t.Fatalf("registerApplicationServices() error = %v", err)
+	}
+	assertRegistrationInitScripts(t, registration, []string{}, "registerApplicationServices() web init scripts")
+	requireSingleRegistrationBinding(t, registration, "registerApplicationServices() web result bindings")
+
+	watchTargets := srv.hotreload.watchTargetsSnapshot()
+	if len(watchTargets) != 1 {
+		t.Fatalf("watch target len = %d, want 1 (%#v)", len(watchTargets), watchTargets)
+	}
+	resolvedWebModuleDir, err := resolveWatchPath(webModuleDir)
+	if err != nil {
+		t.Fatalf("resolveWatchPath(webModuleDir) error = %v", err)
+	}
+	if watchTargets[0].moduleName != "web" || watchTargets[0].root != resolvedWebModuleDir {
+		t.Fatalf("unexpected web watch target: %#v", watchTargets)
+	}
+	watchList := watcher.WatchList()
+	if len(watchList) != 1 {
+		t.Fatalf("watcher list len = %d, want 1 (%#v)", len(watchList), watchList)
+	}
+}
+
+func TestServerRegisterApplicationServicesSkipsWebWatchTargetWhenHasWebFalse(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+	distDir := t.TempDir()
+	modulesDir := t.TempDir()
+	runtimeScope.cfg.DistPath = distDir
+	runtimeScope.cfg.ModulesPath = modulesDir
+
+	webDistDir := filepath.Join(distDir, "web")
+	if err := os.MkdirAll(webDistDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(webDistDir) error = %v", err)
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatalf("NewWatcher() error = %v", err)
+	}
+	defer watcher.Close()
+
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		server:       grpc.NewServer(),
+		mux:          http.NewServeMux(),
+		hotreload:    hotreloadState{watcher: watcher},
+		address:      &resolver.Address{Addr: "127.0.0.1:9527"},
+		runState: runState{
+			applicationNames: []string{"web"},
+			distManifest: &distmanifest.DistManifestV2{
+				HasWeb: false,
+				Apps:   map[string]distmanifest.DistManifestApp{},
+			},
+		},
+	}
+
+	if _, err := srv.registerApplicationServices(); err != nil {
+		t.Fatalf("registerApplicationServices() error = %v", err)
+	}
+	watchTargets := srv.hotreload.watchTargetsSnapshot()
+	if len(watchTargets) != 0 {
+		t.Fatalf("watch target len = %d, want 0 (%#v)", len(watchTargets), watchTargets)
+	}
+	watchList := watcher.WatchList()
+	if len(watchList) != 0 {
+		t.Fatalf("watcher list len = %d, want 0 (%#v)", len(watchList), watchList)
+	}
+}

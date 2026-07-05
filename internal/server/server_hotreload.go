@@ -60,3 +60,22 @@ func isWatchedPath(moduleDir string, file string) (bool, error) {
 	}
 	return true, nil
 }
+
+// resolveWatchModule returns the module name that owns the given resolved
+// file path, or "" when no registered watch target contains the file.
+// Callers must pass an already-resolved path (e.g. from enqueueWatchEvent).
+func (s *GRPCWebServer) resolveWatchModule(resolvedFile string) string {
+	if s == nil {
+		return ""
+	}
+	for _, target := range s.hotreload.watchTargetsSnapshot() {
+		contained, err := isWatchedPath(target.root, resolvedFile)
+		if err != nil {
+			continue
+		}
+		if contained {
+			return target.moduleName
+		}
+	}
+	return ""
+}

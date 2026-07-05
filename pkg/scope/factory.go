@@ -169,6 +169,7 @@ type ServerRuntimeOptions struct {
 	TLSKeyFile               string
 	EnableGrpcWebProxy       bool
 	HotReload                bool
+	HotReloadQueueSize       int
 	GrpcClientMaxCachedConns int
 	WebBaseURL               string
 	RootRedirectURL          string
@@ -332,6 +333,7 @@ func ServerRuntimeOptionsFromInput(input FactoryInput) (ServerRuntimeOptions, bo
 			options.TLSKeyFile = serverCfg.TLSKeyFile
 			options.EnableGrpcWebProxy = serverCfg.EnableGrpcWebProxy
 			options.HotReload = serverCfg.HotReload
+			options.HotReloadQueueSize = serverCfg.HotReloadQueueSize
 			options.WebBaseURL = serverCfg.WebBaseURL
 			options.RootRedirectURL = serverCfg.RootRedirectURL
 			options.JsEngineFactory = serverCfg.JsEngineFactory

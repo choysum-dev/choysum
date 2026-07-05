@@ -4,14 +4,22 @@
 package server
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 
+	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/fsnotify/fsnotify"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-const defaultHotreloadQueueSize = 1
+const defaultHotreloadQueueSize = 8
 
 type watchTargetHandler func(moduleName string, file string) error
 
@@ -26,6 +34,7 @@ type registeredWatchTarget struct {
 type hotreloadState struct {
 	watcher      *fsnotify.Watcher
 	queue        chan string
+	queueSize    int
 	watchMu      sync.RWMutex
 	watchTargets []registeredWatchTarget
 	loopMu       sync.Mutex
@@ -33,10 +42,36 @@ type hotreloadState struct {
 	loopDone     chan struct{}
 	loopRunning  bool
 	loopStopping bool
-	eventMu      sync.Mutex
-	eventBusy    bool
-	dropped      atomic.Uint64
-	coalesced    atomic.Uint64
+
+	// Per-module busy tracking replaces the previous global eventBusy flag.
+	// Only one event per module is kept in-flight; files for different modules
+	// can be queued concurrently up to the channel capacity.
+	moduleMu    sync.Mutex
+	busyModules map[string]struct{}
+
+	// progressMu protects progressLine method calls.
+	progressMu sync.Mutex
+
+	// progressLine writes single-line hotreload status updates to stderr.
+	progressLine *logger.ProgressLine
+
+	// fingerprints caches file content hashes to detect no-op saves.
+	// Key: resolved absolute path. Value: hex-encoded SHA-256.
+	fingerprints   map[string]string
+	fingerprintsMu sync.Mutex
+
+	// primeWg tracks in-flight background fingerprint priming goroutines
+	// so clearFingerprints can wait for them before resetting the map.
+	primeWg sync.WaitGroup
+
+	// primeCancel cancels an in-flight background priming context so a
+	// hot-reload restart does not block on the previous walk completing.
+	// Protected by fingerprintsMu for simplicity (accessed from registration
+	// and clearFingerprints, which are already serialized by lifecycle flow).
+	primeCancel context.CancelFunc
+
+	dropped   atomic.Uint64
+	coalesced atomic.Uint64
 }
 
 func (s *GRPCWebServer) hotreloadWatcher() *fsnotify.Watcher {
@@ -55,6 +90,12 @@ func (s *GRPCWebServer) startHotreloadLifecycle() error {
 	if !s.shouldRunHotreloadLifecycle() {
 		return nil
 	}
+	s.hotreload.progressMu.Lock()
+	if s.hotreload.progressLine == nil && s.runtimeScope != nil {
+		s.hotreload.progressLine = logger.ProgressLineFromContext(s.runtimeScope.Context())
+	}
+	s.hotreload.progressMu.Unlock()
+	s.hotreload.queueSize = s.resolvedQueueSize()
 	if err := s.hotreload.ensureLifecycle(); err != nil {
 		return xfmt.Errorf("Failed to create file watcher: %w", err)
 	}
@@ -97,20 +138,62 @@ func (s *GRPCWebServer) shouldRunHotreloadLifecycle() bool {
 	return s.resolvedRuntimeOptions().hotReload
 }
 
+func (s *GRPCWebServer) resolvedQueueSize() int {
+	if s == nil {
+		return defaultHotreloadQueueSize
+	}
+	size := s.resolvedRuntimeOptions().hotReloadQueueSize
+	if size <= 0 {
+		return defaultHotreloadQueueSize
+	}
+	return size
+}
+
 func (h *hotreloadState) beginEvent() bool {
-	h.eventMu.Lock()
-	defer h.eventMu.Unlock()
-	if h.eventBusy {
+	h.moduleMu.Lock()
+	defer h.moduleMu.Unlock()
+	if h.busyModules == nil {
+		h.busyModules = make(map[string]struct{})
+	}
+	// Backward-compatible global gate: any module string works;
+	// callers should migrate to beginModuleEvent for per-module dedup.
+	if _, busy := h.busyModules[""]; busy {
 		return false
 	}
-	h.eventBusy = true
+	h.busyModules[""] = struct{}{}
 	return true
 }
 
 func (h *hotreloadState) finishEvent() {
-	h.eventMu.Lock()
-	h.eventBusy = false
-	h.eventMu.Unlock()
+	h.moduleMu.Lock()
+	delete(h.busyModules, "")
+	h.moduleMu.Unlock()
+}
+
+func (h *hotreloadState) beginModuleEvent(module string) bool {
+	if module == "" {
+		return h.beginEvent()
+	}
+	h.moduleMu.Lock()
+	defer h.moduleMu.Unlock()
+	if h.busyModules == nil {
+		h.busyModules = make(map[string]struct{})
+	}
+	if _, busy := h.busyModules[module]; busy {
+		return false
+	}
+	h.busyModules[module] = struct{}{}
+	return true
+}
+
+func (h *hotreloadState) finishModuleEvent(module string) {
+	if module == "" {
+		h.finishEvent()
+		return
+	}
+	h.moduleMu.Lock()
+	delete(h.busyModules, module)
+	h.moduleMu.Unlock()
 }
 
 func (h *hotreloadState) recordDropped() uint64 {
@@ -131,6 +214,7 @@ func (h *hotreloadState) coalescedCount() uint64 {
 
 func (h *hotreloadState) ensureLifecycle() error {
 	h.ensureQueue()
+	h.ensureProgressLine()
 	return h.ensureWatcher()
 }
 
@@ -150,7 +234,20 @@ func (h *hotreloadState) ensureQueue() {
 	if h.queue != nil {
 		return
 	}
-	h.queue = make(chan string, defaultHotreloadQueueSize)
+	size := h.queueSize
+	if size <= 0 {
+		size = defaultHotreloadQueueSize
+	}
+	h.queue = make(chan string, size)
+}
+
+func (h *hotreloadState) ensureProgressLine() {
+	h.progressMu.Lock()
+	defer h.progressMu.Unlock()
+	if h.progressLine != nil {
+		return
+	}
+	h.progressLine = logger.NewProgressLine(os.Stderr)
 }
 
 func (h *hotreloadState) addWatch(path string) error {
@@ -249,6 +346,7 @@ func (h *hotreloadState) resetLifecycle() {
 	h.watcher = nil
 	h.drainQueue()
 	h.clearWatchTargets()
+	h.clearFingerprints()
 	h.resetEventState()
 }
 
@@ -284,7 +382,201 @@ func (h *hotreloadState) drainQueue() {
 }
 
 func (h *hotreloadState) resetEventState() {
-	h.eventMu.Lock()
-	h.eventBusy = false
-	h.eventMu.Unlock()
+	h.moduleMu.Lock()
+	h.busyModules = nil
+	h.moduleMu.Unlock()
+}
+
+func (h *hotreloadState) primeFingerprintsForTargets(ctx context.Context, targets []registeredWatchTarget) {
+	roots := make([]string, 0, len(targets))
+	for _, target := range targets {
+		roots = append(roots, target.root)
+	}
+	h.primeFingerprintsForRoots(ctx, roots)
+}
+
+func (h *hotreloadState) primeFingerprintsForRoots(ctx context.Context, roots []string) {
+	seenRoots := map[string]struct{}{}
+	for _, root := range roots {
+		if ctx.Err() != nil {
+			return
+		}
+		// Resolve before dedup so symlinked paths to the same
+		// directory are recognized as duplicates.
+		key := root
+		if r, err := resolveWatchPath(root); err == nil {
+			key = r
+		}
+		if _, seen := seenRoots[key]; seen {
+			continue
+		}
+		seenRoots[key] = struct{}{}
+		h.primeFingerprintsForRoot(ctx, root)
+	}
+}
+
+func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root string) {
+	if root == "" {
+		return
+	}
+	// Resolve the root so WalkDir descends into symlinked directories;
+	// all returned paths are then already canonical.
+	resolvedRoot := root
+	if r, err := resolveWatchPath(root); err == nil {
+		resolvedRoot = r
+	}
+	_ = filepath.WalkDir(resolvedRoot, func(path string, d fs.DirEntry, err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			// Don't skip the root itself even if it is named
+			// dist / build / node_modules / .git.
+			if path != resolvedRoot {
+				switch d.Name() {
+				case "node_modules", ".git", "dist", "build":
+					return filepath.SkipDir
+				}
+			}
+			return nil
+		}
+		if h.hasFingerprintResolved(path) {
+			return nil
+		}
+		hash, ok := fileFingerprint(path)
+		if !ok {
+			return nil
+		}
+		h.setFingerprintIfAbsentResolved(path, hash)
+		return nil
+	})
+}
+
+// contentChanged returns true when the file content differs from the cached
+// fingerprint. The fingerprint is always updated after the comparison so the
+// next no-op save is ignored. Non-regular files are treated as changed to
+// stay on the safe side.
+func (h *hotreloadState) contentChanged(resolvedPath string) bool {
+	return h.contentChangedResolved(canonicalWatchPath(resolvedPath))
+}
+
+func (h *hotreloadState) contentChangedResolved(resolvedPath string) bool {
+	// Directory events (e.g. timestamp-only modifications) are not
+	// meaningful content changes — ignore them.
+	if info, err := os.Stat(resolvedPath); err == nil && info.IsDir() {
+		return false
+	}
+
+	// resolvedPath is already canonical from the caller; avoid redundant
+	// EvalSymlinks on the hot reload path.
+	hash, ok := fileFingerprint(resolvedPath)
+	if !ok {
+		h.fingerprintsMu.Lock()
+		if h.fingerprints != nil {
+			delete(h.fingerprints, resolvedPath)
+		}
+		h.fingerprintsMu.Unlock()
+		return true
+	}
+
+	h.fingerprintsMu.Lock()
+	if h.fingerprints == nil {
+		h.fingerprints = make(map[string]string)
+	}
+	prev, ok := h.fingerprints[resolvedPath]
+	h.fingerprints[resolvedPath] = hash
+	h.fingerprintsMu.Unlock()
+
+	return !ok || hash != prev
+}
+
+func fileFingerprint(path string) (string, bool) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", false
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return "", false
+	}
+
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", false
+	}
+	sum := hasher.Sum(nil)
+	return hex.EncodeToString(sum), true
+}
+
+func (h *hotreloadState) hasFingerprint(path string) bool {
+	return h.hasFingerprintResolved(canonicalWatchPath(path))
+}
+
+// hasFingerprintResolved checks fingerprint existence without canonicalizing
+// the path. Use when the caller already holds a resolved path.
+func (h *hotreloadState) hasFingerprintResolved(path string) bool {
+	h.fingerprintsMu.Lock()
+	defer h.fingerprintsMu.Unlock()
+	if h.fingerprints == nil {
+		return false
+	}
+	_, exists := h.fingerprints[path]
+	return exists
+}
+
+func (h *hotreloadState) setFingerprintIfAbsent(path string, hash string) {
+	h.setFingerprintIfAbsentResolved(canonicalWatchPath(path), hash)
+}
+
+func (h *hotreloadState) setFingerprintIfAbsentResolved(path string, hash string) {
+	h.fingerprintsMu.Lock()
+	if h.fingerprints == nil {
+		h.fingerprints = make(map[string]string)
+	}
+	if _, exists := h.fingerprints[path]; !exists {
+		h.fingerprints[path] = hash
+	}
+	h.fingerprintsMu.Unlock()
+}
+
+func canonicalWatchPath(path string) string {
+	resolved, err := resolveWatchPath(path)
+	if err == nil {
+		return resolved
+	}
+	return path
+}
+
+// clearFingerprints drops the cached file fingerprints so the next write
+// after a hotreload lifecycle reset always triggers.
+// It cancels any in-flight background priming, waits for the goroutine to
+// exit, then clears the map.
+func (h *hotreloadState) clearFingerprints() {
+	h.fingerprintsMu.Lock()
+	if h.primeCancel != nil {
+		h.primeCancel()
+	}
+	h.fingerprintsMu.Unlock()
+
+	h.primeWg.Wait()
+
+	h.fingerprintsMu.Lock()
+	h.fingerprints = nil
+	h.primeCancel = nil
+	h.fingerprintsMu.Unlock()
+}
+
+// clearFingerprint removes a single cached fingerprint so that a failed
+// hot reload can be retried by saving the same file again.
+func (h *hotreloadState) clearFingerprint(path string) {
+	h.fingerprintsMu.Lock()
+	if h.fingerprints != nil {
+		delete(h.fingerprints, path)
+	}
+	h.fingerprintsMu.Unlock()
 }
