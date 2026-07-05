@@ -429,9 +429,13 @@ func (h *hotreloadState) primeFingerprintsForRoot(ctx context.Context, root stri
 			return nil
 		}
 		if d.IsDir() {
-			switch d.Name() {
-			case "node_modules", ".git", "dist", "build":
-				return filepath.SkipDir
+			// Don't skip the root itself even if it is named
+			// dist / build / node_modules / .git.
+			if path != resolvedRoot {
+				switch d.Name() {
+				case "node_modules", ".git", "dist", "build":
+					return filepath.SkipDir
+				}
 			}
 			return nil
 		}

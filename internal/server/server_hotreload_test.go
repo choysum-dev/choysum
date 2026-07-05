@@ -779,7 +779,7 @@ func TestContentChanged_ClearFingerprintsResetsState(t *testing.T) {
 	}
 }
 
-func TestApplyRegistrationWatchPlansPrimesFingerprintsForFirstNoOpSave(t *testing.T) {
+func TestApplyRegistrationWatchPlansNoWatcherFirstSaveTriggersReload(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	runtimeScope.cfg.Server.HotReload = true
 

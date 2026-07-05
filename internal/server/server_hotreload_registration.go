@@ -31,12 +31,17 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
 		ctx = s.runtimeScope.Context()
 	}
-	// Cancel any still-running priming from a previous lifecycle before
-	// starting a new one (e.g. during hot-reload restart).
+	// Cancel any still-running priming from a previous lifecycle and
+	// wait for it to exit before starting a new one.
 	s.hotreload.fingerprintsMu.Lock()
 	if s.hotreload.primeCancel != nil {
 		s.hotreload.primeCancel()
 	}
+	s.hotreload.fingerprintsMu.Unlock()
+
+	s.hotreload.primeWg.Wait()
+
+	s.hotreload.fingerprintsMu.Lock()
 	primeCtx, primeCancel := context.WithCancel(ctx)
 	s.hotreload.primeCancel = primeCancel
 	s.hotreload.fingerprintsMu.Unlock()
