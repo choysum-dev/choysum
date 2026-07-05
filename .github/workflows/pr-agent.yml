@@ -27,6 +27,8 @@ jobs:
           # Specify the Gemini model to replace the default OpenAI configuration
           config.model: "gemini/gemini-2.5-pro"
           config.fallback_models: "gemini/gemini-2.5-flash"
+          # Disable mermaid diagrams since Gemini sometimes fails to generate valid syntax
+          pr_description.enable_pr_diagram: "false"
           # Optional: Enable automatic review, describe, and improve on PR events
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
