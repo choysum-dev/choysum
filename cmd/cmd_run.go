@@ -17,6 +17,7 @@ import (
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/config/snapshot"
+	logutil "github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/server/defaultserver"
 	"github.com/spf13/cobra"
@@ -69,6 +70,7 @@ func newRunCmd() *cobra.Command {
 			}
 			ctx, stop := signal.NotifyContext(baseCtx, os.Interrupt, syscall.SIGTERM)
 			defer stop()
+			ctx = logutil.WithStderrProgressLine(ctx)
 
 			// Re-bind scope with the runtime context (for server side gating/options).
 			runtimeScope = runtimeScope.WithContext(ctx)

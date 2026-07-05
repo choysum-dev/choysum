@@ -7,11 +7,15 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	xfmt "golang.org/x/exp/errors/fmt"
 )
 
 var watchDebounceWindow = 75 * time.Millisecond
 
 func (s *GRPCWebServer) watch() {
+	if s == nil {
+		return
+	}
 	defer s.hotreload.finishWatchLoop()
 	stopSignal := s.hotreload.watchStopSignal()
 	watchEvents := s.hotreload.watchEvents()
@@ -37,6 +41,9 @@ func (s *GRPCWebServer) watch() {
 }
 
 func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
+	if s == nil {
+		return false
+	}
 	resolvedFile, err := resolveWatchPath(file)
 	if err != nil {
 		s.recordDroppedWatchEvent("path_unresolved", file, err)
@@ -48,15 +55,23 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 		s.recordDroppedWatchEvent("queue_unavailable", file, nil)
 		return false
 	}
-	if !s.beginWatchEvent() {
+
+	// Resolve which module this file belongs to (retained for dispatch use).
+	module := s.resolveWatchModule(file)
+	// Per-file dedup: only coalesce when the same file is already in-flight.
+	// Different files within the same module are both queued so a no-op save
+	// on file A cannot starve a real change to file B in the same module.
+	if !s.hotreload.beginModuleEvent(file) {
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}
+	// Pack both the file path and resolved module name together to ensure dequeue parity.
+	eventInfo := file + "|" + module
 	select {
-	case watchQueue <- file:
+	case watchQueue <- eventInfo:
 		return true
 	default:
-		s.finishWatchEvent()
+		s.hotreload.finishModuleEvent(file)
 		s.recordDroppedWatchEvent("queue_full", file, nil)
 		return false
 	}
@@ -83,6 +98,12 @@ func (s *GRPCWebServer) recordCoalescedWatchEvent(file string) {
 }
 
 func (s *GRPCWebServer) waitForWatchDebounce(file string) error {
+	if s == nil {
+		return xfmt.Errorf("waitForWatchDebounce called on nil receiver")
+	}
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
 	if watchDebounceWindow <= 0 {
 		return nil
 	}

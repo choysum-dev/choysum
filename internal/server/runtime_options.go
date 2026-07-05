@@ -25,6 +25,7 @@ type runtimeOptions struct {
 	tlsKeyFile              string
 	enableGrpcWebProxy      bool
 	hotReload               bool
+	hotReloadQueueSize      int
 	authEnabled             bool
 	httpAuthEnabled         bool
 	grpcClientMaxCachedConn int
@@ -52,6 +53,7 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 		tlsKeyFile:              serverDefaults.TLSKeyFile,
 		enableGrpcWebProxy:      serverDefaults.EnableGrpcWebProxy,
 		hotReload:               serverDefaults.HotReload,
+		hotReloadQueueSize:      serverDefaults.HotReloadQueueSize,
 		grpcClientMaxCachedConn: serverDefaults.GrpcClient.MaxCachedConns,
 		cspEnabled:              serverDefaults.Security != nil && serverDefaults.Security.CSP != nil && serverDefaults.Security.CSP.Enabled,
 		csrfEnabled:             serverDefaults.Security != nil && serverDefaults.Security.CSRF != nil && serverDefaults.Security.CSRF.Enabled,
@@ -81,6 +83,9 @@ func newRuntimeOptions(pathOpts scope.PathsRuntimeOptions, hasPathOpts bool, com
 		opts.tlsKeyFile = serverOpts.TLSKeyFile
 		opts.enableGrpcWebProxy = serverOpts.EnableGrpcWebProxy
 		opts.hotReload = serverOpts.HotReload
+		if serverOpts.HotReloadQueueSize > 0 {
+			opts.hotReloadQueueSize = serverOpts.HotReloadQueueSize
+		}
 		if serverOpts.GrpcClientMaxCachedConns > 0 {
 			opts.grpcClientMaxCachedConn = serverOpts.GrpcClientMaxCachedConns
 		}
