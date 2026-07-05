@@ -287,15 +287,25 @@ func TestServerEnqueueWatchEventCoalescesWhileReloadPending(t *testing.T) {
 		t.Fatal("expected first watch event to remain queued")
 	}
 
-	if enqueued := srv.enqueueWatchEvent("second.ts"); enqueued {
-		t.Fatal("expected second watch event to be coalesced while reload is pending")
+	// Per-file dedup: the same file saved again is coalesced.
+	if enqueued := srv.enqueueWatchEvent("first.ts"); enqueued {
+		t.Fatal("expected duplicate watch event for first.ts to be coalesced while reload is pending")
 	}
-	assertHotreloadCounters(t, srv, 0, 1, "enqueueWatchEvent() coalesces while reload is pending")
+	assertHotreloadCounters(t, srv, 0, 1, "enqueueWatchEvent() coalesces same file while reload is pending")
+
+	// Per-file dedup: a different file is NOT coalesced (fixes the bug where
+	// a no-op save on file A would starve a real change to file B in the same
+	// module).
+	if enqueued := srv.enqueueWatchEvent("third.ts"); !enqueued {
+		t.Fatal("expected third watch event (different file) to enqueue even while first is pending")
+	}
+	// Drain the third event so the channel doesn't block subsequent tests.
+	select {
+	case <-srv.hotreloadQueue():
+	default:
+	}
 
 	srv.finishWatchEvent()
-	if enqueued := srv.enqueueWatchEvent("third.ts"); !enqueued {
-		t.Fatal("expected third watch event to enqueue after finishing the pending reload")
-	}
 }
 
 func TestWaitForWatchDebounceHonorsContextCancel(t *testing.T) {
@@ -407,12 +417,13 @@ func TestWatchEventLogsIncludeStructuredFields(t *testing.T) {
 		t.Fatal("expected dropped watch event")
 	}
 
+	// Per-file dedup: the same file saved twice is coalesced.
 	coalesceSrv := &GRPCWebServer{runtimeScope: runtimeScope, hotreload: hotreloadState{queue: make(chan string, 1)}}
 	if enqueued := coalesceSrv.enqueueWatchEvent("first.ts"); !enqueued {
 		t.Fatal("expected first watch event to enqueue")
 	}
-	if enqueued := coalesceSrv.enqueueWatchEvent("second.ts"); enqueued {
-		t.Fatal("expected second watch event to be coalesced")
+	if enqueued := coalesceSrv.enqueueWatchEvent("first.ts"); enqueued {
+		t.Fatal("expected duplicate watch event for first.ts to be coalesced")
 	}
 
 	logOutput := buf.String()

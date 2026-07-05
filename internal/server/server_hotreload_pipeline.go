@@ -56,9 +56,12 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 		return false
 	}
 
-	// Resolve which module this file belongs to for per-module dedup.
+	// Resolve which module this file belongs to (retained for dispatch use).
 	module := s.resolveWatchModule(file)
-	if !s.hotreload.beginModuleEvent(module) {
+	// Per-file dedup: only coalesce when the same file is already in-flight.
+	// Different files within the same module are both queued so a no-op save
+	// on file A cannot starve a real change to file B in the same module.
+	if !s.hotreload.beginModuleEvent(file) {
 		s.recordCoalescedWatchEvent(file)
 		return false
 	}
@@ -68,7 +71,7 @@ func (s *GRPCWebServer) enqueueWatchEvent(file string) bool {
 	case watchQueue <- eventInfo:
 		return true
 	default:
-		s.hotreload.finishModuleEvent(module)
+		s.hotreload.finishModuleEvent(file)
 		s.recordDroppedWatchEvent("queue_full", file, nil)
 		return false
 	}

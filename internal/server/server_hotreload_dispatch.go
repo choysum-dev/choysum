@@ -199,17 +199,17 @@ func (s *GRPCWebServer) handleQueuedWatchEvent(eventInfo string) error {
 	if s.runtimeScope == nil {
 		return xfmt.Errorf("runtime scope is nil")
 	}
-	// Parse the packed file path and module name to maintain deduplication consistency.
+	// Parse the packed file path for per-file dedup cleanup.
 	// eventInfo format: "file|module"
-	var file, module string
+	var file string
 	if idx := strings.LastIndex(eventInfo, "|"); idx >= 0 {
 		file = eventInfo[:idx]
-		module = eventInfo[idx+1:]
 	} else {
 		file = eventInfo
-		module = s.resolveWatchModule(file)
 	}
-	defer s.hotreload.finishModuleEvent(module)
+	// Per-file dedup cleanup: the enqueue gate used the file path as the key
+	// so we must release it with the same key.
+	defer s.hotreload.finishModuleEvent(file)
 
 	if err := s.waitForWatchDebounce(file); err != nil {
 		if errors.Is(err, context.Canceled) {
