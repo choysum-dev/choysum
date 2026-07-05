@@ -64,6 +64,7 @@ func (s *GRPCWebServer) applyRegistrationWatchPlansWithHandler(plans []registrat
 	s.hotreload.primeWg.Add(1)
 	go func() {
 		defer s.hotreload.primeWg.Done()
+		defer primeCancel()
 		s.hotreload.primeFingerprintsForTargets(primeCtx, targets)
 	}()
 	return nil
