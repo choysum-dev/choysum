@@ -90,9 +90,11 @@ func (s *GRPCWebServer) startHotreloadLifecycle() error {
 	if !s.shouldRunHotreloadLifecycle() {
 		return nil
 	}
+	s.hotreload.progressMu.Lock()
 	if s.hotreload.progressLine == nil && s.runtimeScope != nil {
 		s.hotreload.progressLine = logger.ProgressLineFromContext(s.runtimeScope.Context())
 	}
+	s.hotreload.progressMu.Unlock()
 	s.hotreload.queueSize = s.resolvedQueueSize()
 	if err := s.hotreload.ensureLifecycle(); err != nil {
 		return xfmt.Errorf("Failed to create file watcher: %w", err)
@@ -240,6 +242,8 @@ func (h *hotreloadState) ensureQueue() {
 }
 
 func (h *hotreloadState) ensureProgressLine() {
+	h.progressMu.Lock()
+	defer h.progressMu.Unlock()
 	if h.progressLine != nil {
 		return
 	}

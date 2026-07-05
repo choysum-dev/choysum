@@ -80,12 +80,12 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 		return xfmt.Errorf("runtime scope is nil")
 	}
 	s.runtimeScope.Logger().Debug("watch module upgrade started", "module", moduleName, "file", file)
+	s.hotreload.progressMu.Lock()
 	line := s.hotreload.progressLine
 	if line != nil {
-		s.hotreload.progressMu.Lock()
 		line.Update(0, fmt.Sprintf("Upgrading module: %s", moduleName))
-		s.hotreload.progressMu.Unlock()
 	}
+	s.hotreload.progressMu.Unlock()
 	ctx := s.runtimeScope.Context()
 	if ctx == nil {
 		ctx = context.Background()
@@ -126,12 +126,12 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 		return nil
 	}
 
+	s.hotreload.progressMu.Lock()
 	line := s.hotreload.progressLine
 	if line != nil {
-		s.hotreload.progressMu.Lock()
 		line.Update(0, fmt.Sprintf("Detected change: %s", filepath.Base(resolvedFile)))
-		s.hotreload.progressMu.Unlock()
 	}
+	s.hotreload.progressMu.Unlock()
 
 	dispatched, err := s.dispatchWatchHandlerResolved(resolvedFile)
 	if err != nil {
