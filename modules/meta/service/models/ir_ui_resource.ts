@@ -6,6 +6,8 @@ import { sql } from 'kysely';
 import IrApplication from './ir_application';
 import IrModule from './ir_module';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
+import { normalizeOptionalString, normalizeStringArray, readRefId } from './_normalizers';
+import { normalizePagination, paginateAndWrap } from './_diagnostics_response';
 
 export type UiResourceType = 'ROUTE' | 'MENU' | 'ACTION';
 
@@ -275,11 +277,6 @@ export default class IrUiResource extends BaseModel {
   })
   readonly Childs?: IrUiResource[];
 
-  private static normalizeStringArray(value: unknown): string[] {
-    const arr = Array.isArray(value) ? value : [];
-    return Array.from(new Set(arr.map(item => String(item || '').trim()).filter(Boolean)));
-  }
-
   private static normalizeRequireToken(token: string): EffectiveUiResourceRequire | null {
     const raw = String(token || '').trim();
     if (!raw.startsWith('rpc:/')) return null;
@@ -300,7 +297,7 @@ export default class IrUiResource extends BaseModel {
   private static normalizeRequires(value: unknown): EffectiveUiResourceRequire[] {
     const seen = new Set<string>();
     const out: EffectiveUiResourceRequire[] = [];
-    for (const token of this.normalizeStringArray(value)) {
+    for (const token of normalizeStringArray(value)) {
       const normalized = this.normalizeRequireToken(token);
       if (!normalized) continue;
       const key = `${normalized.kind}:${normalized.model}:${normalized.method ?? ''}`;
@@ -343,22 +340,10 @@ export default class IrUiResource extends BaseModel {
     }
   }
 
-  private static normalizeOptionalString(value: unknown): string | undefined {
-    const normalized = String(value || '').trim();
-    return normalized || undefined;
-  }
-
   private static normalizeSequence(value: unknown): number | undefined {
     const normalized = Number(value);
     if (!Number.isFinite(normalized)) return undefined;
     return normalized === 0 ? undefined : normalized;
-  }
-
-  private static readRefId(value: unknown): string | undefined {
-    if (!value) return undefined;
-    if (typeof value === 'string') return this.normalizeOptionalString(value);
-    if (typeof value === 'object') return this.normalizeOptionalString((value as any).Id);
-    return undefined;
   }
 
   static async GetEffectiveDeclarations(options?: EffectiveUiResourceDeclarationOptions): Promise<{
@@ -369,12 +354,11 @@ export default class IrUiResource extends BaseModel {
     limit?: number;
     returned: number;
   }> {
-    const moduleFilter = this.normalizeOptionalString(options?.module);
-    const applicationFilter = this.normalizeOptionalString(options?.application);
+    const moduleFilter = normalizeOptionalString(options?.module);
+    const applicationFilter = normalizeOptionalString(options?.application);
     const kindFilter = this.normalizeKindFilter(options?.kind);
-    const idsFilter = this.normalizeStringArray(options?.ids);
-    const normalizedLimit = typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0 ? Math.floor(options.limit) : undefined;
-    const normalizedOffset = typeof options?.offset === 'number' && Number.isFinite(options.offset) && options.offset > 0 ? Math.floor(options.offset) : 0;
+    const idsFilter = normalizeStringArray(options?.ids);
+    const pagination = normalizePagination(options);
 
     const conditionParts: any[] = [];
     if (moduleFilter) conditionParts.push(['Module', '=', moduleFilter]);
@@ -401,12 +385,12 @@ export default class IrUiResource extends BaseModel {
     const parentIdToName = new Map<string, string>();
     const missingParentIds = new Set<string>();
     for (const row of sortedRows) {
-      const id = this.normalizeOptionalString((row as any)?.Id);
-      const name = this.normalizeOptionalString((row as any)?.Name);
+      const id = normalizeOptionalString((row as any)?.Id);
+      const name = normalizeOptionalString((row as any)?.Name);
       if (id && name) parentIdToName.set(id, name);
     }
     for (const row of sortedRows) {
-      const parentId = this.readRefId((row as any)?.ParentId);
+      const parentId = readRefId((row as any)?.ParentId);
       if (parentId && !parentIdToName.has(parentId)) {
         missingParentIds.add(parentId);
       }
@@ -414,14 +398,14 @@ export default class IrUiResource extends BaseModel {
     if (missingParentIds.size > 0) {
       const parentRows = await this.Search(['Id', 'in', Array.from(missingParentIds)] as any, { fields: ['Id', 'Name'] as any, limit: 5000 } as any);
       for (const row of parentRows || []) {
-        const id = this.normalizeOptionalString((row as any)?.Id);
-        const name = this.normalizeOptionalString((row as any)?.Name);
+        const id = normalizeOptionalString((row as any)?.Id);
+        const name = normalizeOptionalString((row as any)?.Name);
         if (id && name) parentIdToName.set(id, name);
       }
     }
 
     const routeRows = sortedRows.filter((row: any) => String((row as any)?.Type || '').trim() === 'ROUTE');
-    const routeIds = routeRows.map((row: any) => this.normalizeOptionalString((row as any)?.Id)).filter((value): value is string => Boolean(value));
+    const routeIds = routeRows.map((row: any) => normalizeOptionalString((row as any)?.Id)).filter((value): value is string => Boolean(value));
     const routeActionsByRouteId = new Map<string, string[]>();
     if (routeIds.length > 0) {
       const relationRows = await IrUiResourceRouteAction.Search(
@@ -429,20 +413,20 @@ export default class IrUiResource extends BaseModel {
         { fields: ['RouteUiResourceId', 'ActionUiResourceId'] as any, limit: 50000 } as any
       );
       const actionIds = Array.from(
-        new Set((relationRows || []).map((row: any) => this.readRefId((row as any)?.ActionUiResourceId)).filter((value): value is string => Boolean(value)))
+        new Set((relationRows || []).map((row: any) => readRefId((row as any)?.ActionUiResourceId)).filter((value): value is string => Boolean(value)))
       );
       const actionNameById = new Map<string, string>();
       if (actionIds.length > 0) {
         const actionRows = await this.Search(['Id', 'in', actionIds] as any, { fields: ['Id', 'Name'] as any, limit: 50000 } as any);
         for (const row of actionRows || []) {
-          const id = this.normalizeOptionalString((row as any)?.Id);
-          const name = this.normalizeOptionalString((row as any)?.Name);
+          const id = normalizeOptionalString((row as any)?.Id);
+          const name = normalizeOptionalString((row as any)?.Name);
           if (id && name) actionNameById.set(id, name);
         }
       }
       for (const row of relationRows || []) {
-        const routeId = this.readRefId((row as any)?.RouteUiResourceId);
-        const actionId = this.readRefId((row as any)?.ActionUiResourceId);
+        const routeId = readRefId((row as any)?.RouteUiResourceId);
+        const actionId = readRefId((row as any)?.ActionUiResourceId);
         const actionName = actionId ? actionNameById.get(actionId) : undefined;
         if (!routeId || !actionName) continue;
         const existing = routeActionsByRouteId.get(routeId) ?? [];
@@ -455,23 +439,23 @@ export default class IrUiResource extends BaseModel {
     }
 
     const declarations = sortedRows.map((row: any) => {
-      const id = this.normalizeOptionalString((row as any)?.Id);
-      const name = this.normalizeOptionalString((row as any)?.Name) || '';
+      const id = normalizeOptionalString((row as any)?.Id);
+      const name = normalizeOptionalString((row as any)?.Name) || '';
       const kind = this.normalizeKind((row as any)?.Type) || 'action';
       const declaration: EffectiveUiResourceDeclaration = {
         id: name,
         kind,
-        title: this.normalizeOptionalString((row as any)?.Title),
+        title: normalizeOptionalString((row as any)?.Title),
         sequence: this.normalizeSequence((row as any)?.Sequence),
-        path: this.normalizeOptionalString((row as any)?.UiPath),
+        path: normalizeOptionalString((row as any)?.UiPath),
         requires: this.normalizeRequires((row as any)?.Requires),
-        defaultRoles: this.normalizeStringArray((row as any)?.DefaultRoles),
+        defaultRoles: normalizeStringArray((row as any)?.DefaultRoles),
         override: false,
-        module: this.normalizeOptionalString((row as any)?.Module),
-        application: this.normalizeOptionalString(this.readRefId((row as any)?.IrApplicationId)),
+        module: normalizeOptionalString((row as any)?.Module),
+        application: readRefId((row as any)?.IrApplicationId),
       };
       if (kind === 'menu') {
-        const parentId = this.readRefId((row as any)?.ParentId);
+        const parentId = readRefId((row as any)?.ParentId);
         declaration.parentMenu = parentId ? parentIdToName.get(parentId) : undefined;
       }
       if (kind === 'route' && id) {
@@ -480,14 +464,6 @@ export default class IrUiResource extends BaseModel {
       return declaration;
     });
 
-    const paged = normalizedLimit ? declarations.slice(normalizedOffset, normalizedOffset + normalizedLimit) : declarations.slice(normalizedOffset);
-    return {
-      declarations: paged,
-      total: declarations.length,
-      filtered: declarations.length,
-      offset: normalizedOffset,
-      limit: normalizedLimit,
-      returned: paged.length,
-    };
+    return paginateAndWrap(declarations, 'declarations', pagination);
   }
 }

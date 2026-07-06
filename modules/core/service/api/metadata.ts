@@ -58,6 +58,7 @@ export type {
   PathDep,
   CollectionPathDep,
   OnchangeHandlerMeta,
+  EffectiveOnchangeMeta,
   ParsedDep,
   ParentComputeTrigger,
   ModelComputeGraph,
@@ -66,4 +67,4 @@ export type {
   ParamMetadata,
   ServiceMetadata,
 } from '../orm/metadata';
-export { ValidationPipelineError, MetadataStorage, getEffectiveConstraints } from '../orm/metadata';
+export { ValidationPipelineError, MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from '../orm/metadata';

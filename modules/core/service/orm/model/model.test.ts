@@ -303,3 +303,34 @@ test('model read APIs apply default arguments when omitted', async () => {
     ReadOperations.ReadGroupCount = originalReadGroupCount;
   }
 });
+
+test('baseModel resolveModelConstructor returns undefined for empty or unknown keys', () => {
+  expect(BaseModel.resolveModelConstructor('')).toBe(undefined);
+  expect(BaseModel.resolveModelConstructor('   ')).toBe(undefined);
+  expect(BaseModel.resolveModelConstructor('__completely_unknown_model__')).toBe(undefined);
+});
+
+test('baseModel resolveModelConstructor resolves by fullModelName, modelName, name, and className', () => {
+  const storage = MetadataStorage.instance as any;
+  const savedModels = storage.models;
+
+  class ResolveTestModel extends BaseModel {}
+  const testCtor = ResolveTestModel as any;
+
+  try {
+    const models = new Map();
+    models.set(testCtor, {
+      fullModelName: 'test.ResolveModel',
+      modelName: 'ResolveModel',
+      name: 'TestResolveModelShort',
+    });
+    storage.models = models;
+
+    expect(BaseModel.resolveModelConstructor('test.ResolveModel')).toBe(testCtor);
+    expect(BaseModel.resolveModelConstructor('ResolveModel')).toBe(testCtor);
+    expect(BaseModel.resolveModelConstructor('TestResolveModelShort')).toBe(testCtor);
+    expect(BaseModel.resolveModelConstructor('ResolveTestModel')).toBe(testCtor); // className
+  } finally {
+    storage.models = savedModels;
+  }
+});

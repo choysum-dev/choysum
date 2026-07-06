@@ -28,7 +28,7 @@ test('core/service/api stable sub-entry runtime export surfaces are frozen', () 
     'isTopLevelGrpcRequest',
   ]);
 
-  expect(Object.keys(metadataApi).sort()).toEqual(['MetadataStorage', 'ValidationPipelineError', 'getEffectiveConstraints']);
+  expect(Object.keys(metadataApi).sort()).toEqual(['MetadataStorage', 'ValidationPipelineError', 'getEffectiveConstraints', 'getEffectiveOnchange']);
   expect(Object.keys(onchangeApi).sort()).toEqual(['Onchange']);
   expect(Object.keys(validationApi).sort()).toEqual(['ValidationEngine', 'resolveValidationSummary']);
 
@@ -49,6 +49,7 @@ test('core/service/api stable sub-entry exports are live runtime bindings', () =
 
   expect(typeof metadataApi.MetadataStorage).toBe('function');
   expect(typeof metadataApi.getEffectiveConstraints).toBe('function');
+  expect(typeof metadataApi.getEffectiveOnchange).toBe('function');
   expect(typeof metadataApi.ValidationPipelineError).toBe('function');
 
   expect(typeof onchangeApi.Onchange).toBe('function');
