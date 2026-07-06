@@ -210,6 +210,26 @@ test('runtime context source resolves root fallbacks and returns frozen empty sn
   });
 });
 
+test('runtime context source prefers request-context accessor when available', () => {
+  const requestCtx = {
+    identity: { userId: 'U-ACCESSOR' },
+    req: { kind: 'accessor-only' },
+  };
+
+  withTempChoysum(
+    {
+      getRequestContext: () => requestCtx,
+      // Legacy fallback path intentionally points elsewhere to verify accessor precedence.
+      request: { context: { identity: { userId: 'U-LEGACY' }, req: { kind: 'legacy' } } },
+    },
+    () => {
+      expect(getUserId()).toBe('U-ACCESSOR');
+      expect(getIdentity()).toEqual({ userId: 'U-ACCESSOR' });
+      expect(getReqMeta()).toEqual({ kind: 'accessor-only' });
+    }
+  );
+});
+
 test('runtime context source deep-freeze helper handles primitive, frozen and duplicate references', () => {
   const primitive = 1 as any;
   expect(__deepFreezeForTest(primitive)).toBe(1);

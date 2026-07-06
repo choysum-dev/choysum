@@ -42,6 +42,32 @@ function resolveRuntimeRoot(): ObjectRecord | undefined {
   return asObjectRecord(runtimeRoot);
 }
 
+function resolveRequestContextFromRoot(root: ObjectRecord): ObjectRecord | undefined {
+  const getRequestContext = asObjectRecord(root)?.getRequestContext;
+  if (typeof getRequestContext === 'function') {
+    try {
+      const fromAccessor = asObjectRecord((getRequestContext as () => unknown)());
+      if (fromAccessor) return fromAccessor;
+    } catch {
+      // ignore accessor failures and continue to legacy fallbacks
+    }
+  }
+
+  const getActiveRequest = asObjectRecord(root)?.getActiveRequest;
+  if (typeof getActiveRequest === 'function') {
+    try {
+      const req = asObjectRecord((getActiveRequest as () => unknown)());
+      const reqCtx = asObjectRecord(req?.context);
+      if (reqCtx) return reqCtx;
+    } catch {
+      // ignore accessor failures and continue to legacy fallbacks
+    }
+  }
+
+  const request = asObjectRecord(root.request);
+  return asObjectRecord(request?.context) ?? asObjectRecord(root.context) ?? root;
+}
+
 /**
  * Resolves the jsCtx root object from the runtime carrier.
  */
@@ -49,8 +75,7 @@ export function getJsCtxRoot(): JsCtx | undefined {
   try {
     const root = resolveRuntimeRoot();
     if (!root) return undefined;
-    const request = asObjectRecord(root.request);
-    return (asObjectRecord(request?.context) ?? asObjectRecord(root.context) ?? root) as JsCtx;
+    return resolveRequestContextFromRoot(root) as JsCtx;
   } catch {
     return undefined;
   }

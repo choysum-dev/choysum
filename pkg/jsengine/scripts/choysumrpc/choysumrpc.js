@@ -7,6 +7,46 @@
   // Ensure the global namespace exists.
   globalThis.$choysum = globalThis.$choysum || {};
 
+  // Runtime-owned active request pointer. Access through exported accessor
+  // helpers instead of mutating globalThis.$choysum.request directly.
+  let activeRequest = undefined;
+  let requestPropertyBound = false;
+
+  const getActiveRequest = () => activeRequest;
+  const getRequestContext = () => {
+    const req = getActiveRequest();
+    return req && typeof req === 'object' ? req.context : undefined;
+  };
+
+  const installRequestAccessors = () => {
+    if (!globalThis.$choysum) globalThis.$choysum = {};
+    const root = globalThis.$choysum;
+
+    root.getActiveRequest = getActiveRequest;
+    root.getRequestContext = getRequestContext;
+
+    // Backwards-compatibility bridge for legacy callers still reading
+    // $choysum.request. Route reads/writes through the runtime-owned pointer.
+    try {
+      const desc = Object.getOwnPropertyDescriptor(root, 'request');
+      if (!desc || desc.configurable) {
+        Object.defineProperty(root, 'request', {
+          configurable: true,
+          enumerable: false,
+          get: () => activeRequest,
+          set: value => {
+            activeRequest = value;
+          },
+        });
+        requestPropertyBound = true;
+      }
+    } catch {
+      requestPropertyBound = false;
+    }
+  };
+
+  installRequestAccessors();
+
   // ---------------------------------------------------------------------------
   // Request-state lifecycle helpers.
   //
@@ -25,10 +65,14 @@
    * Initialises __choysumServiceState when not already present.
    */
   const attachRequestState = rpcRequest => {
-    if (!globalThis.$choysum) globalThis.$choysum = {};
-    globalThis.$choysum.request = rpcRequest;
-    if (!globalThis.$choysum.request.__choysumServiceState) {
-      globalThis.$choysum.request.__choysumServiceState = { depth: 0 };
+    installRequestAccessors();
+    activeRequest = rpcRequest;
+    if (!requestPropertyBound) {
+      // Fallback for runtimes where defineProperty cannot bind request.
+      globalThis.$choysum.request = rpcRequest;
+    }
+    if (!activeRequest.__choysumServiceState) {
+      activeRequest.__choysumServiceState = { depth: 0 };
     }
   };
 
@@ -38,15 +82,19 @@
    */
   const detachRequestState = () => {
     if (!globalThis.$choysum) return;
+    const req = getActiveRequest();
     try {
-      delete globalThis.$choysum.request?.__choysumServiceState;
+      delete req?.__choysumServiceState;
     } catch {
       /* ignore */
     }
-    try {
-      delete globalThis.$choysum.request;
-    } catch {
-      /* ignore */
+    activeRequest = undefined;
+    if (!requestPropertyBound) {
+      try {
+        delete globalThis.$choysum.request;
+      } catch {
+        /* ignore */
+      }
     }
   };
 

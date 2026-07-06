@@ -3,6 +3,31 @@
 
 import { getUserId } from '@/core/service/api/context';
 
+function resolveJsCtx(root: any): Record<string, unknown> {
+  const getRequestContext = root?.getRequestContext;
+  if (typeof getRequestContext === 'function') {
+    try {
+      const fromAccessor = getRequestContext();
+      if (fromAccessor && typeof fromAccessor === 'object') return fromAccessor as Record<string, unknown>;
+    } catch {
+      // ignore and continue
+    }
+  }
+
+  const getActiveRequest = root?.getActiveRequest;
+  if (typeof getActiveRequest === 'function') {
+    try {
+      const req = getActiveRequest();
+      const reqCtx = (req as any)?.context;
+      if (reqCtx && typeof reqCtx === 'object') return reqCtx as Record<string, unknown>;
+    } catch {
+      // ignore and continue
+    }
+  }
+
+  return (root?.request?.context ?? root?.context ?? root ?? {}) as Record<string, unknown>;
+}
+
 /**
  * Return the current operator user ID.
  *
@@ -37,16 +62,11 @@ export function getModuleManagement(): any {
  * (case‑insensitive), captured once per request in buildJsContext.
  */
 export function getBackendEnv(): Record<string, unknown> {
-  // Read from the request-scoped context injected by Go.
-  // Fall back to import.meta.env / globalThis for backwards compatibility
-  // during the transition period.
+  // Read from the request-scoped context injected by Go/runtime accessors.
   const root: any = (globalThis as any)?.$choysum;
-  const jsCtx: any = root?.request?.context ?? root?.context ?? root;
+  const jsCtx = resolveJsCtx(root);
   const env = (jsCtx?.env as Record<string, unknown>) ?? {};
-  if (Object.keys(env).length > 0) return env;
-
-  // Legacy fallback — remove once all callers receive the injected env snapshot.
-  return ((import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {}) as Record<string, unknown>;
+  return env && typeof env === 'object' ? env : {};
 }
 
 /**

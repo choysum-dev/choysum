@@ -19,7 +19,29 @@ type InvalidateOpts = {
  */
 function resolveRequestState(): { jsCtx: Record<string, unknown>; req: Record<string, unknown> } {
   const root: any = (globalThis as any)?.$choysum;
-  const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
+
+  let jsCtx: any;
+  const getRequestContext = root?.getRequestContext;
+  if (typeof getRequestContext === 'function') {
+    try {
+      jsCtx = getRequestContext();
+    } catch {
+      jsCtx = undefined;
+    }
+  }
+
+  if (!jsCtx) {
+    const getActiveRequest = root?.getActiveRequest;
+    if (typeof getActiveRequest === 'function') {
+      try {
+        jsCtx = getActiveRequest()?.context;
+      } catch {
+        jsCtx = undefined;
+      }
+    }
+  }
+
+  jsCtx = (jsCtx ?? root?.request?.context ?? root?.context ?? root) as any;
   const req: any = (jsCtx?.req ?? {}) as any;
   return { jsCtx, req };
 }
