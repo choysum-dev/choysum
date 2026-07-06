@@ -25,7 +25,7 @@ function resolveJsCtx(root: any): Record<string, unknown> {
     }
   }
 
-  return (root?.request?.context ?? root?.context ?? root ?? {}) as Record<string, unknown>;
+  return (root?.context ?? root ?? {}) as Record<string, unknown>;
 }
 
 /**

@@ -604,9 +604,7 @@ export default class User extends BaseModel {
     let auditEmitted = false;
     const emitAudit = (payload: Record<string, any>): void => {
       try {
-        const root: any = (globalThis as any)?.$choysum;
-        const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-        const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+        const req: any = User._getCurrentReq();
         const traceId = typeof req?.traceId === 'string' ? req.traceId : '';
         const out = {
           event: 'auth.user.switch_company_scope',
@@ -1433,9 +1431,7 @@ export default class User extends BaseModel {
   }
 
   private static async _withPermissionGraphBypass<T>(fn: () => Promise<T>): Promise<T> {
-    const root: any = (globalThis as any)?.$choysum;
-    const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-    const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+    const req: any = this._getCurrentReq();
     if (!req) return await fn();
 
     if (!req.__choysumServiceState) req.__choysumServiceState = {};
@@ -1469,8 +1465,30 @@ export default class User extends BaseModel {
    */
   private static _getCurrentReq(): any {
     const root: any = (globalThis as any)?.$choysum;
-    const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-    return (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+    let jsCtx: any;
+
+    const getRequestContext = root?.getRequestContext;
+    if (typeof getRequestContext === 'function') {
+      try {
+        jsCtx = getRequestContext();
+      } catch {
+        jsCtx = undefined;
+      }
+    }
+
+    if (!jsCtx) {
+      const getActiveRequest = root?.getActiveRequest;
+      if (typeof getActiveRequest === 'function') {
+        try {
+          jsCtx = getActiveRequest()?.context;
+        } catch {
+          jsCtx = undefined;
+        }
+      }
+    }
+
+    jsCtx = (jsCtx ?? root?.context ?? root) as any;
+    return (jsCtx?.req ?? jsCtx?.context?.req) as any;
   }
 
   /**

@@ -8,10 +8,23 @@ import { withContext as withModelContext } from '@/core/service/api/context';
 function ensureRequestContext(): any {
   const root: any = (globalThis as any).$choysum ?? {};
   if (!root.request) root.request = {};
-  if (!root.request.context) root.request.context = {};
+  let jsCtx: any;
+  const getRequestContext = root.getRequestContext;
+  if (typeof getRequestContext === 'function') {
+    try {
+      jsCtx = getRequestContext();
+    } catch {
+      jsCtx = undefined;
+    }
+  }
+  if (!jsCtx || typeof jsCtx !== 'object') {
+    if (!root.context || typeof root.context !== 'object') root.context = {};
+    jsCtx = root.context;
+  }
 
-  // Use $choysum.request.context as the canonical jsCtx root (see runtime/context).
-  const jsCtx = root.request.context;
+  // Use $choysum.context as the canonical jsCtx root (see runtime/context).
+  root.context = jsCtx;
+  root.request.context = jsCtx;
   if (!jsCtx.ctx) jsCtx.ctx = {};
   if (!jsCtx.req) jsCtx.req = {};
   if (!jsCtx.identity) jsCtx.identity = {};

@@ -10,7 +10,6 @@
   // Runtime-owned active request pointer. Access through exported accessor
   // helpers instead of mutating globalThis.$choysum.request directly.
   let activeRequest = undefined;
-  let requestPropertyBound = false;
 
   const getActiveRequest = () => activeRequest;
   const getRequestContext = () => {
@@ -24,25 +23,6 @@
 
     root.getActiveRequest = getActiveRequest;
     root.getRequestContext = getRequestContext;
-
-    // Backwards-compatibility bridge for legacy callers still reading
-    // $choysum.request. Route reads/writes through the runtime-owned pointer.
-    try {
-      const desc = Object.getOwnPropertyDescriptor(root, 'request');
-      if (!desc || desc.configurable) {
-        Object.defineProperty(root, 'request', {
-          configurable: true,
-          enumerable: false,
-          get: () => activeRequest,
-          set: value => {
-            activeRequest = value;
-          },
-        });
-        requestPropertyBound = true;
-      }
-    } catch {
-      requestPropertyBound = false;
-    }
   };
 
   installRequestAccessors();
@@ -51,10 +31,9 @@
   // Request-state lifecycle helpers.
   //
   // These functions are the single control point for attaching per-request
-  // state to the JS runtime.  Currently they store state on a mutable
-  // globalThis.$choysum.request property; the long-term plan is to replace
-  // this with a request-scoped context mechanism (e.g. a JS-side equivalent
-  // of AsyncLocalStorage) once the Go runtime provides the necessary plumbing.
+  // state to the JS runtime through accessors exposed on $choysum.
+  // The runtime no longer relies on mutable globalThis.$choysum.request
+  // compatibility aliases.
   //
   // Business code MUST NOT mutate $choysum.request directly — use the
   // context utilities in @/core/service instead.
@@ -67,10 +46,6 @@
   const attachRequestState = rpcRequest => {
     installRequestAccessors();
     activeRequest = rpcRequest;
-    if (!requestPropertyBound) {
-      // Fallback for runtimes where defineProperty cannot bind request.
-      globalThis.$choysum.request = rpcRequest;
-    }
     if (!activeRequest.__choysumServiceState) {
       activeRequest.__choysumServiceState = { depth: 0 };
     }
@@ -89,13 +64,6 @@
       /* ignore */
     }
     activeRequest = undefined;
-    if (!requestPropertyBound) {
-      try {
-        delete globalThis.$choysum.request;
-      } catch {
-        /* ignore */
-      }
-    }
   };
 
   // Mount the named function consistently as $choysum.__rpc__.

@@ -14,8 +14,8 @@ type InvalidateOpts = {
 
 /**
  * Resolve the current request context from the Go-injected jsCtx map.
- * Prefers the proper `$choysum.request.context` path set by choysumrpc.js
- * at request dispatch time.
+ * Prefers runtime accessors (`$choysum.getRequestContext` / `getActiveRequest`)
+ * populated at request dispatch time.
  */
 function resolveRequestState(): { jsCtx: Record<string, unknown>; req: Record<string, unknown> } {
   const root: any = (globalThis as any)?.$choysum;
@@ -41,7 +41,7 @@ function resolveRequestState(): { jsCtx: Record<string, unknown>; req: Record<st
     }
   }
 
-  jsCtx = (jsCtx ?? root?.request?.context ?? root?.context ?? root) as any;
+  jsCtx = (jsCtx ?? root?.context ?? root) as any;
   const req: any = (jsCtx?.req ?? {}) as any;
   return { jsCtx, req };
 }
