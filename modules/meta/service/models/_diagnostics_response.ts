@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { normalizeLimit, normalizeOffset } from './_normalizers';
+
 export type PaginationParams = {
   limit?: number;
   offset?: number;
@@ -13,10 +15,13 @@ export type NormalizedPagination = {
 
 /**
  * Normalize limit/offset from loose user input into safe numeric values.
+ *
+ * Delegates to {@link normalizeLimit} and {@link normalizeOffset} so that
+ * string-encoded numbers (common in query parameters) are coerced consistently.
  */
 export function normalizePagination(options?: PaginationParams): NormalizedPagination {
-  const limit = typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0 ? Math.floor(options.limit) : undefined;
-  const offset = typeof options?.offset === 'number' && Number.isFinite(options.offset) && options.offset > 0 ? Math.floor(options.offset) : 0;
+  const limit = normalizeLimit(options?.limit) ?? undefined;
+  const offset = normalizeOffset(options?.offset);
   return { limit, offset };
 }
 
