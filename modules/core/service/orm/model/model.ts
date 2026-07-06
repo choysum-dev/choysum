@@ -190,6 +190,7 @@ class BaseModel {
     if (!models || typeof models.entries !== 'function') return undefined;
 
     for (const [ctor, meta] of models.entries()) {
+      if (!ctor) continue;
       const fullModelName = String(meta?.fullModelName || '').trim();
       const modelName = String(meta?.modelName || '').trim();
       const name = String(meta?.name || '').trim();
