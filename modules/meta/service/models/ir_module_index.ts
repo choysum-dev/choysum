@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
-import { ensureCurrentUserId, getBackendEnv, getBackendEnvText, getModuleManagementBridge, isTruthyFlag } from './_module_management_runtime';
+import { ensureCurrentUserId, getBackendEnvText, getModuleManagementBridge, isTruthyFlag } from './_module_management_runtime';
 import { normalizeFields, normalizeLimit, normalizeOffset } from './_normalizers';
 
 type ModuleOriginType = 'local' | 'registry';
