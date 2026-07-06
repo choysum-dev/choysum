@@ -102,12 +102,12 @@ export default class IrModel extends BaseModel {
       throw new Error(`model not found: ${key}`);
     }
 
-    const meta = MetadataStorage.instance.getModelMetadata(ctor as any);
+    const meta = MetadataStorage.instance.getModelMetadata(ctor);
     const model =
       String(meta.fullModelName || '').trim() ||
       String(meta.modelName || '').trim() ||
       String(meta.name || '').trim() ||
-      String((ctor as any)?.name || '').trim() ||
+      String(ctor.name || '').trim() ||
       key;
 
     const normalizedPrefix = String(options?.methodPrefix || '')
@@ -121,7 +121,7 @@ export default class IrModel extends BaseModel {
     const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
     const normalizedMaxPriority = hasMaxPriority ? Number(options?.maxPriority) : undefined;
 
-    const effective = (ctor as any).EffectiveConstraints() as EffectiveConstraintMeta[];
+    const effective = ctor.EffectiveConstraints() as EffectiveConstraintMeta[];
     const filtered = effective.filter(item => {
       if (hasPreviewFilter && item.preview !== Boolean(options?.preview)) return false;
       if (hasAlwaysOnCreateFilter && item.alwaysOnCreate !== Boolean(options?.alwaysOnCreate)) return false;
@@ -163,12 +163,12 @@ export default class IrModel extends BaseModel {
       throw new Error(`model not found: ${key}`);
     }
 
-    const meta = MetadataStorage.instance.getModelMetadata(ctor as any);
+    const meta = MetadataStorage.instance.getModelMetadata(ctor);
     const model =
       String(meta.fullModelName || '').trim() ||
       String(meta.modelName || '').trim() ||
       String(meta.name || '').trim() ||
-      String((ctor as any)?.name || '').trim() ||
+      String(ctor.name || '').trim() ||
       key;
 
     const normalizedPrefix = String(options?.methodPrefix || '')
@@ -183,7 +183,7 @@ export default class IrModel extends BaseModel {
     const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
     const normalizedMaxPriority = hasMaxPriority ? Number(options?.maxPriority) : undefined;
 
-    const effective = (ctor as any).EffectiveOnchange() as EffectiveOnchangeMeta[];
+    const effective = ctor.EffectiveOnchange() as EffectiveOnchangeMeta[];
     const filtered = effective.filter(item => {
       const priority = typeof item.priority === 'number' && Number.isFinite(item.priority) ? item.priority : 0;
       if (normalizedMinPriority !== undefined && priority < normalizedMinPriority) return false;

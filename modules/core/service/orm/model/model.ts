@@ -174,7 +174,7 @@ class BaseModel {
    * a short model name ("IrModule"), the metadata name, or the
    * constructor class name.
    */
-  static resolveModelConstructor(identifier: string): (new (...args: any[]) => BaseModel) | undefined {
+  static resolveModelConstructor(identifier: string): typeof BaseModel | undefined {
     const key = String(identifier || '').trim();
     if (!key) return undefined;
 
@@ -182,18 +182,18 @@ class BaseModel {
     if (pool && typeof pool.get === 'function') {
       const ctor = pool.get(key);
       if (ctor && typeof ctor === 'function') {
-        return ctor as new (...args: any[]) => BaseModel;
+        return ctor as typeof BaseModel;
       }
     }
 
-    const models = (MetadataStorage.instance as any)?.models as Map<new (...args: any[]) => BaseModel, any> | undefined;
+    const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
     if (!models || typeof models.entries !== 'function') return undefined;
 
     for (const [ctor, meta] of models.entries()) {
       const fullModelName = String(meta?.fullModelName || '').trim();
       const modelName = String(meta?.modelName || '').trim();
       const name = String(meta?.name || '').trim();
-      const className = String((ctor as any)?.name || '').trim();
+      const className = String(ctor.name || '').trim();
       if (key === fullModelName || key === modelName || key === name || key === className) {
         return ctor;
       }
