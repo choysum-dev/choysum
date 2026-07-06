@@ -3,6 +3,7 @@
 
 import { BaseModel, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { Onchange } from '@/core/service/api/onchange';
 import { MetadataStorage } from '@/core/service/api/metadata';
 import IrModel from '@/meta/service/models/ir_model';
 
@@ -101,6 +102,106 @@ test('meta.IrModel GetEffectiveConstraints throws on unknown model', async () =>
   let error: unknown;
   try {
     await IrModel.GetEffectiveConstraints('meta.__UnknownModel__');
+  } catch (err) {
+    error = err;
+  }
+
+  expect(error instanceof Error).toBe(true);
+  expect(String((error as Error)?.message || '').includes('model not found')).toBe(true);
+});
+
+// Onchange diagnostics tests
+
+class OnchangeDiagParent extends BaseModel {
+  Name?: string;
+}
+Model('OnchangeDiagParent')(OnchangeDiagParent as any);
+
+Object.defineProperty(OnchangeDiagParent.prototype, 'onNameChange', {
+  value: function onNameChange() {},
+  configurable: true,
+  writable: true,
+});
+Onchange<OnchangeDiagParent>(['Name'], { priority: 30 })(OnchangeDiagParent.prototype, 'onNameChange', undefined as any);
+
+class OnchangeDiagChild extends OnchangeDiagParent {
+  Code?: string;
+}
+Model('OnchangeDiagChild')(OnchangeDiagChild as any);
+
+Object.defineProperty(OnchangeDiagChild.prototype, 'onNameChange', {
+  value: function onNameChange() {},
+  configurable: true,
+  writable: true,
+});
+Object.defineProperty(OnchangeDiagChild.prototype, 'onCodeChange', {
+  value: function onCodeChange() {},
+  configurable: true,
+  writable: true,
+});
+Onchange<OnchangeDiagChild>(['Name'], { priority: 5 })(OnchangeDiagChild.prototype, 'onNameChange', undefined as any);
+Onchange<OnchangeDiagChild>(['Code'], { priority: 20, reads: ['Currency'] })(OnchangeDiagChild.prototype, 'onCodeChange', undefined as any);
+
+test('meta.IrModel GetEffectiveOnchange returns deduplicated effective onchange handlers', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);
+  const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'OnchangeDiagChild';
+
+  const result = await IrModel.GetEffectiveOnchange(modelIdentifier);
+
+  expect(String(result.model || '').length > 0).toBe(true);
+  expect(Array.isArray(result.onchanges)).toBe(true);
+  expect(result.onchanges.length).toBe(2);
+  expect(result.total).toBe(2);
+  expect(result.filtered).toBe(2);
+  expect(result.offset).toBe(0);
+  expect(result.returned).toBe(2);
+  expect(result.onchanges[0]?.method).toBe('onNameChange');
+  expect(result.onchanges[0]?.priority).toBe(5);
+  expect(result.onchanges[1]?.method).toBe('onCodeChange');
+  expect(result.onchanges[1]?.priority).toBe(20);
+  expect(String(result.onchanges[0]?.source || '').length > 0).toBe(true);
+});
+
+test('meta.IrModel GetEffectiveOnchange supports triggerField and methodPrefix filters', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);
+  const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'OnchangeDiagChild';
+
+  const result = await IrModel.GetEffectiveOnchange(modelIdentifier, {
+    methodPrefix: 'onCode',
+    triggerField: 'Code',
+    limit: 1,
+  });
+
+  expect(result.total).toBe(2);
+  expect(result.filtered).toBe(1);
+  expect(result.returned).toBe(1);
+  expect(result.onchanges.length).toBe(1);
+  expect(result.onchanges[0]?.method).toBe('onCodeChange');
+});
+
+test('meta.IrModel GetEffectiveOnchange supports priority-range and offset', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(OnchangeDiagChild as any);
+  const modelIdentifier = String(meta.fullModelName || meta.modelName || meta.name || '').trim() || 'OnchangeDiagChild';
+
+  const result = await IrModel.GetEffectiveOnchange(modelIdentifier, {
+    minPriority: 5,
+    maxPriority: 30,
+    offset: 1,
+  });
+
+  expect(result.total).toBe(2);
+  expect(result.filtered).toBe(2);
+  expect(result.offset).toBe(1);
+  expect(result.returned).toBe(1);
+  expect(result.onchanges.length).toBe(1);
+  expect(result.onchanges[0]?.method).toBe('onCodeChange');
+  expect(result.onchanges[0]?.priority).toBe(20);
+});
+
+test('meta.IrModel GetEffectiveOnchange throws on unknown model', async () => {
+  let error: unknown;
+  try {
+    await IrModel.GetEffectiveOnchange('meta.__UnknownModel__');
   } catch (err) {
     error = err;
   }
