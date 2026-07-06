@@ -31,6 +31,17 @@ export interface OnchangeHandlerMeta {
 }
 
 /**
+ * Onchange handler metadata annotated with the source model that registered it.
+ */
+export interface EffectiveOnchangeMeta {
+  method: string;
+  triggers: string[];
+  priority: number;
+  reads?: string[];
+  source: string;
+}
+
+/**
  * Parsed compute dependency categories kept in sync with compute/parser.ts.
  */
 export type ParsedDep =

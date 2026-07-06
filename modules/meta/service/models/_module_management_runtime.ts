@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getUserId } from '@/core/service/api/context';
+import { BaseModel } from '@/core/service';
 
 /**
  * Resolve backend environment variables from import.meta or global fallback.
@@ -35,8 +35,12 @@ export function isTruthyFlag(value: string): boolean {
  * env override. Throws when no user identity can be resolved.
  */
 export function ensureCurrentUserId(): string {
-  const userId = String(getUserId() || '').trim();
-  if (userId) return userId;
+  // Primary: use BaseModel's context-aware resolution.
+  try {
+    return BaseModel.ensureUserId();
+  } catch {
+    // Fall through to E2E operator fallback.
+  }
   const fallback = getBackendEnvText('CHOYSUM_E2E_OPERATOR_USER_ID', 'choysum_e2e_operator_user_id');
   if (fallback) return fallback;
   throw new Error('current user is required');
