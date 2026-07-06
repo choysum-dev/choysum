@@ -38,8 +38,16 @@
    */
   const detachRequestState = () => {
     if (!globalThis.$choysum) return;
-    try { delete globalThis.$choysum.request?.__choysumServiceState; } catch { /* ignore */ }
-    try { delete globalThis.$choysum.request; } catch { /* ignore */ }
+    try {
+      delete globalThis.$choysum.request?.__choysumServiceState;
+    } catch {
+      /* ignore */
+    }
+    try {
+      delete globalThis.$choysum.request;
+    } catch {
+      /* ignore */
+    }
   };
 
   // Mount the named function consistently as $choysum.__rpc__.

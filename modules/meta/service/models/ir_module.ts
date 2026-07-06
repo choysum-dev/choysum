@@ -3,8 +3,9 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
-import { getOperatorUserId, getModuleManagement, getBackendEnv, getBackendEnvText } from '@/core/service/utils/bridge';
+import { getOperatorUserId, getModuleManagement, getBackendEnvText } from '@/core/service/utils/bridge';
 import Job from '@/task/service/models/job';
+import JobExecution from '@/task/service/models/execution';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
@@ -76,27 +77,23 @@ function normalizeFailureKind(status: string, err?: any): FailureKind {
 }
 
 /**
- * Read execution-level timestamps from task_job_execution.
- *
- * TODO(P2): Replace with a proper TaskJobExecution model or task-service API
- * once one is available.  The raw db.query cross-module access is a known
- * layering violation retained only because no JS model exists for
- * task_job_execution yet.
+ * Read execution-level timestamps from task.JobExecution via model API.
  */
 async function readJobExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
   if (!jobId) return {};
   try {
-    const root: any = (globalThis as any)?.$choysum;
-    if (!root?.db?.query) return {};
-    const raw = await root.db.query(
-      'SELECT started_at, finished_at FROM task_job_execution WHERE job_id = ? ORDER BY created_at DESC LIMIT 1',
-      JSON.stringify([jobId])
+    const rows = await JobExecution.Search(
+      ['JobId', '=', jobId] as any,
+      {
+        limit: 1,
+        fields: ['StartedAt', 'FinishedAt'] as any,
+      } as any
     );
-    const rows = JSON.parse(raw || '[]');
-    const row = rows?.[0] || {};
+    const row = rows?.[0] as any;
+    if (!row) return {};
     return {
-      startedAt: row.started_at ? new Date(row.started_at) : undefined,
-      finishedAt: row.finished_at ? new Date(row.finished_at) : undefined,
+      startedAt: row.StartedAt ? new Date(row.StartedAt) : undefined,
+      finishedAt: row.FinishedAt ? new Date(row.FinishedAt) : undefined,
     };
   } catch {
     return {};
