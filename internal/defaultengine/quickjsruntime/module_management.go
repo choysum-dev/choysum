@@ -343,22 +343,18 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 }
 
 func parseModuleOpParams(args []*quickjs.Value) (moduleOpParams, error) {
-	params := moduleOpParams{}
-	if len(args) == 0 || args[0] == nil || args[0].IsUndefined() || args[0].IsNull() {
-		return params, nil
-	}
-	jsonStr := args[0].JSONStringify()
-	if jsonStr == "" {
-		return params, nil
-	}
-	if err := json.Unmarshal([]byte(jsonStr), &params); err != nil {
-		return params, err
-	}
-	return params, nil
+	return parseJSONArg[moduleOpParams](args)
 }
 
 func parseModuleIndexSyncParams(args []*quickjs.Value) (moduleIndexSyncParams, error) {
-	params := moduleIndexSyncParams{}
+	return parseJSONArg[moduleIndexSyncParams](args)
+}
+
+// parseJSONArg unmarshals the first QuickJS argument as JSON into a Go struct.
+// Returns the zero value of T when args is empty or the argument is
+// null/undefined/empty.
+func parseJSONArg[T any](args []*quickjs.Value) (T, error) {
+	var params T
 	if len(args) == 0 || args[0] == nil || args[0].IsUndefined() || args[0].IsNull() {
 		return params, nil
 	}
@@ -372,21 +368,20 @@ func parseModuleIndexSyncParams(args []*quickjs.Value) (moduleIndexSyncParams, e
 	return params, nil
 }
 
+// normalizeModuleIndexOriginType canonicalises the origin-type string sent
+// from JS.  The empty string maps to "all" for backwards compatibility.
+// Unknown values produce "" so callers can detect unsupported inputs.
 func normalizeModuleIndexOriginType(raw string) string {
-	value := strings.TrimSpace(strings.ToLower(raw))
-	if value == "" {
+	switch strings.TrimSpace(strings.ToLower(raw)) {
+	case "", "all":
 		return "all"
-	}
-	if value == "local" {
+	case "local":
 		return "local"
-	}
-	if value == "registry" {
+	case "registry":
 		return "registry"
+	default:
+		return ""
 	}
-	if value == "all" {
-		return "all"
-	}
-	return ""
 }
 
 func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originType string, runner moduleIndexSyncRunner) (moduleIndexSyncResult, error) {

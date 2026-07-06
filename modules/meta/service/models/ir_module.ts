@@ -90,7 +90,7 @@ async function readJobExecutionTimes(jobId: string): Promise<{ startedAt?: Date;
     if (!root?.db?.query) return {};
     const raw = await root.db.query(
       'SELECT started_at, finished_at FROM task_job_execution WHERE job_id = ? ORDER BY created_at DESC LIMIT 1',
-      JSON.stringify([jobId]),
+      JSON.stringify([jobId])
     );
     const rows = JSON.parse(raw || '[]');
     const row = rows?.[0] || {};
@@ -273,11 +273,7 @@ export default class IrModule extends BaseModel {
    * - E2E lock-conflict injection (env-gated)
    * - job enqueuing with standard retry/audit parameters
    */
-  private static async enqueueModuleOp(
-    action: ModuleAction,
-    moduleName: string,
-    extraPayload?: Record<string, unknown>,
-  ): Promise<string> {
+  private static async enqueueModuleOp(action: ModuleAction, moduleName: string, extraPayload?: Record<string, unknown>): Promise<string> {
     const name = ensureModuleName(moduleName);
     const userId = getOperatorUserId();
     const fullMethod = `meta.IrModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
@@ -291,7 +287,7 @@ export default class IrModule extends BaseModel {
       userId,
       undefined,
       0,
-      0,
+      0
     );
 
     if (forceLockConflict && (job as any)?.Id) {

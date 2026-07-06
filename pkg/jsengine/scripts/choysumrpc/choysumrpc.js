@@ -7,6 +7,41 @@
   // Ensure the global namespace exists.
   globalThis.$choysum = globalThis.$choysum || {};
 
+  // ---------------------------------------------------------------------------
+  // Request-state lifecycle helpers.
+  //
+  // These functions are the single control point for attaching per-request
+  // state to the JS runtime.  Currently they store state on a mutable
+  // globalThis.$choysum.request property; the long-term plan is to replace
+  // this with a request-scoped context mechanism (e.g. a JS-side equivalent
+  // of AsyncLocalStorage) once the Go runtime provides the necessary plumbing.
+  //
+  // Business code MUST NOT mutate $choysum.request directly — use the
+  // context utilities in @/core/service instead.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Bind the incoming JSON-RPC request as the active request context.
+   * Initialises __choysumServiceState when not already present.
+   */
+  const attachRequestState = rpcRequest => {
+    if (!globalThis.$choysum) globalThis.$choysum = {};
+    globalThis.$choysum.request = rpcRequest;
+    if (!globalThis.$choysum.request.__choysumServiceState) {
+      globalThis.$choysum.request.__choysumServiceState = { depth: 0 };
+    }
+  };
+
+  /**
+   * Remove the active request context after the RPC call completes.
+   * Must be called in a finally block so state is always cleaned up.
+   */
+  const detachRequestState = () => {
+    if (!globalThis.$choysum) return;
+    try { delete globalThis.$choysum.request?.__choysumServiceState; } catch { /* ignore */ }
+    try { delete globalThis.$choysum.request; } catch { /* ignore */ }
+  };
+
   // Mount the named function consistently as $choysum.__rpc__.
   $choysum.__rpc__ = async function (req) {
     // Check for $choysum.utils, which only exists at runtime.
@@ -25,8 +60,7 @@
         }
 
         globalThis.$choysum = globalThis.$choysum || {};
-        globalThis.$choysum.request = rpcRequest;
-        globalThis.$choysum.request.__choysumServiceState = globalThis.$choysum.request.__choysumServiceState || { depth: 0 };
+        attachRequestState(rpcRequest);
 
         // Deserialize only in runtime environments.
         if (isChoysumRuntime) {
@@ -114,14 +148,7 @@
     } catch (err) {
       throw err;
     } finally {
-      if (globalThis.$choysum) {
-        try {
-          delete globalThis.$choysum.request?.__choysumServiceState;
-        } catch {}
-        try {
-          delete globalThis.$choysum.request;
-        } catch {}
-      }
+      detachRequestState();
     }
   };
 })();
