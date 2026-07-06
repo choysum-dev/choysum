@@ -121,7 +121,7 @@ export default class IrModel extends BaseModel {
     const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
     const normalizedMaxPriority = hasMaxPriority ? Number(options?.maxPriority) : undefined;
 
-    const effective = (BaseModel.EffectiveConstraints as any).call(ctor) as EffectiveConstraintMeta[];
+    const effective = (ctor as any).EffectiveConstraints() as EffectiveConstraintMeta[];
     const filtered = effective.filter(item => {
       if (hasPreviewFilter && item.preview !== Boolean(options?.preview)) return false;
       if (hasAlwaysOnCreateFilter && item.alwaysOnCreate !== Boolean(options?.alwaysOnCreate)) return false;
@@ -183,7 +183,7 @@ export default class IrModel extends BaseModel {
     const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
     const normalizedMaxPriority = hasMaxPriority ? Number(options?.maxPriority) : undefined;
 
-    const effective = (BaseModel.EffectiveOnchange as any).call(ctor) as EffectiveOnchangeMeta[];
+    const effective = (ctor as any).EffectiveOnchange() as EffectiveOnchangeMeta[];
     const filtered = effective.filter(item => {
       const priority = typeof item.priority === 'number' && Number.isFinite(item.priority) ? item.priority : 0;
       if (normalizedMinPriority !== undefined && priority < normalizedMinPriority) return false;

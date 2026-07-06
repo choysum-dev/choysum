@@ -247,7 +247,7 @@ export default class IrModule extends BaseModel {
   }
 
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
-    return await requestModuleOp('install', moduleName, withDemo ? { withDemo: true } : undefined);
+    return await requestModuleOp('install', moduleName, { withDemo: !!withDemo });
   }
 
   static async RequestUninstall(moduleName: string): Promise<string> {

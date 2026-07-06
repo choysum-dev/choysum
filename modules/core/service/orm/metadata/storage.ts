@@ -525,11 +525,60 @@ export function getEffectiveConstraints<T extends BaseModel>(target: ModelCtor<T
 export function getEffectiveOnchange<T extends BaseModel>(target: ModelCtor<T>): EffectiveOnchangeMeta[] {
   const storage = MetadataStorage.instance as unknown as {
     getEffectiveOnchange?: (target: ModelCtor<T>) => EffectiveOnchangeMeta[];
+    getModelMetadata?: (target: ModelCtor<T>) => ModelMetadata;
+    models?: Map<ModelCtor, ModelMetadata>;
   };
 
   if (typeof storage.getEffectiveOnchange === 'function') {
     return storage.getEffectiveOnchange(target);
   }
 
-  return [];
+  // Runtime compatibility fallback: reconstruct from internal model registry.
+  if (typeof storage.getModelMetadata === 'function') {
+    storage.getModelMetadata(target);
+  }
+
+  const models = storage.models;
+  if (!models) {
+    return [];
+  }
+
+  const methodMap = new Map<string, EffectiveOnchangeMeta>();
+  let current: unknown = target;
+
+  while (current && current !== Object.prototype) {
+    if (typeof current === 'function') {
+      const currentCtor = current as ModelCtor;
+      if (!models.has(currentCtor)) {
+        current = Object.getPrototypeOf(current);
+        continue;
+      }
+
+      const ownMetadata = models.get(currentCtor)!;
+      const source =
+        String(ownMetadata.fullModelName || '').trim() ||
+        String(ownMetadata.modelName || '').trim() ||
+        String(ownMetadata.name || '').trim() ||
+        String(currentCtor.name || '').trim() ||
+        'unknown';
+
+      const ownHandlers = Array.isArray(ownMetadata.onchangeHandlers) ? ownMetadata.onchangeHandlers : [];
+      for (const handler of ownHandlers) {
+        const method = String(handler?.method || '').trim();
+        if (!method || methodMap.has(method)) continue;
+
+        methodMap.set(method, {
+          method,
+          triggers: Array.isArray(handler.triggers) ? [...new Set(handler.triggers.map(v => String(v || '').trim()).filter(Boolean))] : [],
+          priority: typeof handler.priority === 'number' ? handler.priority : 100,
+          reads: Array.isArray(handler.reads) ? [...new Set(handler.reads.map(v => String(v || '').trim()).filter(Boolean))] : undefined,
+          source,
+        });
+      }
+    }
+
+    current = Object.getPrototypeOf(current);
+  }
+
+  return Array.from(methodMap.values()).sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
 }
