@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
 import { normalizeString } from '@/core/service/utils/strings';
+import { getOperatorUserId, getModuleManagement, getBackendEnv, getBackendEnvText } from '@/core/service/utils/bridge';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 
@@ -321,39 +321,11 @@ function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyn
   return running === requested;
 }
 
-function getBackendEnv(): Record<string, unknown> {
-  return (((import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {}) as Record<string, unknown>) || {};
-}
-
-function getBackendEnvText(...keys: string[]): string {
-  const env = getBackendEnv();
-  for (const key of keys) {
-    const value = String((env as any)?.[key] || '').trim();
-    if (value) return value;
-  }
-  return '';
-}
-
 function isTruthyFlag(value: string): boolean {
   const raw = value.trim().toLowerCase();
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
 }
 
-function ensureCurrentUserId(): string {
-  const userId = String(getUserId() || '').trim();
-  if (userId) return userId;
-  const fallback = getBackendEnvText('CHOYSUM_E2E_OPERATOR_USER_ID', 'choysum_e2e_operator_user_id');
-  if (fallback) return fallback;
-  throw new Error('current user is required');
-}
-
-function getModuleManagementBridge(): any {
-  const root: any = (globalThis as any)?.$choysum;
-  if (!root?.moduleManagement) {
-    throw new Error('moduleManagement bridge is not injected');
-  }
-  return root.moduleManagement;
-}
 
 async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncOriginType): Promise<string> {
   const running = await Job.Search(
@@ -637,13 +609,13 @@ export default class IrModuleIndex extends BaseModel {
       }
     }
 
-    const userId = ensureCurrentUserId();
+    const userId = getOperatorUserId();
     const job = await Job.EnqueueJob('meta', fullMethod, { originType, force }, userId, userId, undefined, 0, 0);
     return String((job as any)?.Id || '').trim();
   }
 
   static async Sync(originType?: ModuleSyncOriginType, force?: boolean): Promise<any> {
-    const bridge = getModuleManagementBridge();
+    const bridge = getModuleManagement();
     const syncIndex = (bridge as any)?.syncIndex;
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');

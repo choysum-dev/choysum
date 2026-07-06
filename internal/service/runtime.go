@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -270,6 +271,27 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 		}
 	}
 
+	// Inject operator user ID from env when no authenticated identity is present.
+	// This enables E2E test scenarios without requiring a full auth setup.
+	if identitySnap["userId"] == nil || identitySnap["userId"] == "" {
+		if e2eUserID := strings.TrimSpace(os.Getenv("CHOYSUM_E2E_OPERATOR_USER_ID")); e2eUserID != "" {
+			identitySnap["userId"] = e2eUserID
+			r.runtimeScope.Logger().Debug("e2e operator user id injected from env")
+		}
+	}
+
+	// Snapshot backend env vars used by JS models so they do not need to
+	// read os.Environ or import.meta.env directly at call time.
+	backendEnv := map[string]any{}
+	for _, e2eKey := range []string{
+		"CHOYSUM_E2E_OPERATOR_USER_ID",
+		"choysum_e2e_operator_user_id",
+	} {
+		if val := strings.TrimSpace(os.Getenv(e2eKey)); val != "" {
+			backendEnv[e2eKey] = val
+		}
+	}
+
 	clientKV := map[string]string{}
 	if bag := baggage.FromContext(ctx); bag.Len() > 0 {
 		for _, member := range bag.Members() {
@@ -382,6 +404,7 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 		"ctx":      baseCtx,
 		"identity": identitySnap,
 		"req":      reqMeta,
+		"env":      backendEnv,
 	}
 }
 

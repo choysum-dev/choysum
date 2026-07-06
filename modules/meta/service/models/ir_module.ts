@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
+import { getOperatorUserId, getModuleManagement } from '@/core/service/utils/bridge';
 import Job from '@/task/service/models/job';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
@@ -64,22 +65,6 @@ function ensureModuleName(name?: string): string {
   return trimmed;
 }
 
-function ensureCurrentUserId(): string {
-  const userId = String(getUserId() || '').trim();
-  if (userId) return userId;
-  const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv;
-  const fallback = String((env as any)?.CHOYSUM_E2E_OPERATOR_USER_ID || (env as any)?.choysum_e2e_operator_user_id || '').trim();
-  if (fallback) return fallback;
-  throw new Error('current user is required');
-}
-
-function getModuleManagementBridge(): any {
-  const root: any = (globalThis as any)?.$choysum;
-  if (!root?.moduleManagement) {
-    throw new Error('moduleManagement bridge is not injected');
-  }
-  return root.moduleManagement;
-}
 
 function normalizeFailureKind(status: string, err?: any): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
@@ -269,7 +254,7 @@ export default class IrModule extends BaseModel {
 
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
     const name = ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
+    const userId = getOperatorUserId();
     const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
     const job = await Job.EnqueueJob(
@@ -300,7 +285,7 @@ export default class IrModule extends BaseModel {
 
   static async RequestUninstall(moduleName: string): Promise<string> {
     const name = ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
+    const userId = getOperatorUserId();
     const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
     const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUninstall', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
@@ -322,7 +307,7 @@ export default class IrModule extends BaseModel {
 
   static async RequestUpgrade(moduleName: string): Promise<string> {
     const name = ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
+    const userId = getOperatorUserId();
     const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
     const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUpgrade', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
@@ -423,7 +408,7 @@ export default class IrModule extends BaseModel {
     const name = ensureModuleName(moduleName);
     const operatorUserId = String(opts?.operatorUserId || getUserId() || '').trim();
     const jobId = String(getCtxValue('jobId') || '').trim();
-    const bridge = getModuleManagementBridge();
+    const bridge = getModuleManagement();
 
     const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
     const forceResultStatus = String((env as any).CHOYSUM_E2E_FORCE_RESULT_STATUS || (env as any).choysum_e2e_force_result_status || '').toUpperCase();
