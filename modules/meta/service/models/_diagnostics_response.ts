@@ -53,7 +53,7 @@ export function paginateAndWrap<T, K extends string>(
   extra?: Record<string, unknown>
 ): PagedResponse<T, K> {
   const { limit, offset } = pagination;
-  const paged = limit ? items.slice(offset, offset + limit) : items.slice(offset);
+  const paged = typeof limit === 'number' ? items.slice(offset, offset + limit) : items.slice(offset);
   const effectiveTotal = typeof total === 'number' && Number.isFinite(total) && total >= 0 ? total : items.length;
   return {
     [resultKey]: paged,
