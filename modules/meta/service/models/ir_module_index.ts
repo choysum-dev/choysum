@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { getUserId } from '@/core/service/api/context';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
+import { ensureCurrentUserId, getBackendEnv, getBackendEnvText, getModuleManagementBridge, isTruthyFlag } from './_module_management_runtime';
+import { normalizeFields, normalizeLimit, normalizeOffset } from './_normalizers';
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -101,29 +102,6 @@ function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortS
   if (am > bm) return 1;
   if (am < bm) return -1;
   return 0;
-}
-
-function normalizeOffset(raw: unknown): number {
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value < 0) return 0;
-  return Math.floor(value);
-}
-
-function normalizeLimit(raw: unknown): number | null {
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return Math.floor(value);
-}
-
-function normalizeFields(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  const out: string[] = [];
-  for (const item of raw) {
-    const field = String(item || '').trim();
-    if (!field) continue;
-    out.push(field);
-  }
-  return out;
 }
 
 function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
@@ -335,40 +313,6 @@ function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyn
   if (requested === 'all') return running === 'all';
   if (running === 'all') return true;
   return running === requested;
-}
-
-function getBackendEnv(): Record<string, unknown> {
-  return (((import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {}) as Record<string, unknown>) || {};
-}
-
-function getBackendEnvText(...keys: string[]): string {
-  const env = getBackendEnv();
-  for (const key of keys) {
-    const value = String((env as any)?.[key] || '').trim();
-    if (value) return value;
-  }
-  return '';
-}
-
-function isTruthyFlag(value: string): boolean {
-  const raw = value.trim().toLowerCase();
-  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
-}
-
-function ensureCurrentUserId(): string {
-  const userId = String(getUserId() || '').trim();
-  if (userId) return userId;
-  const fallback = getBackendEnvText('CHOYSUM_E2E_OPERATOR_USER_ID', 'choysum_e2e_operator_user_id');
-  if (fallback) return fallback;
-  throw new Error('current user is required');
-}
-
-function getModuleManagementBridge(): any {
-  const root: any = (globalThis as any)?.$choysum;
-  if (!root?.moduleManagement) {
-    throw new Error('moduleManagement bridge is not injected');
-  }
-  return root.moduleManagement;
 }
 
 async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncOriginType): Promise<string> {

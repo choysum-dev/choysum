@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
+import { ensureCurrentUserId, getModuleManagementBridge } from './_module_management_runtime';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
@@ -62,23 +63,6 @@ function ensureModuleName(name?: string): string {
   const trimmed = String(name || '').trim();
   if (!trimmed) throw new Error('moduleName cannot be empty');
   return trimmed;
-}
-
-function ensureCurrentUserId(): string {
-  const userId = String(getUserId() || '').trim();
-  if (userId) return userId;
-  const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv;
-  const fallback = String((env as any)?.CHOYSUM_E2E_OPERATOR_USER_ID || (env as any)?.choysum_e2e_operator_user_id || '').trim();
-  if (fallback) return fallback;
-  throw new Error('current user is required');
-}
-
-function getModuleManagementBridge(): any {
-  const root: any = (globalThis as any)?.$choysum;
-  if (!root?.moduleManagement) {
-    throw new Error('moduleManagement bridge is not injected');
-  }
-  return root.moduleManagement;
 }
 
 function normalizeFailureKind(status: string, err?: any): FailureKind {
