@@ -109,16 +109,18 @@ async function findModuleLogByJobId(jobId: string): Promise<any> {
 async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<void> {
   if (!values.JobId) return;
   const existing = await findModuleLogByJobId(values.JobId);
-  if (existing?.Id) {
-    await (ModuleManagementLog as any).UpdateById(existing.Id, values as any);
+  const existingId = BaseModel.readRefId(existing);
+  if (existingId) {
+    await (ModuleManagementLog as any).UpdateById(existingId, values as any);
     return;
   }
   try {
     await ModuleManagementLog.Create(values as any);
   } catch (err) {
     const record = await findModuleLogByJobId(values.JobId);
-    if (record?.Id) {
-      await (ModuleManagementLog as any).UpdateById(record.Id, values as any);
+    const recordId = BaseModel.readRefId(record);
+    if (recordId) {
+      await (ModuleManagementLog as any).UpdateById(recordId, values as any);
       return;
     }
     throw err;
@@ -286,10 +288,11 @@ export default class IrModule extends BaseModel {
       0,
       0
     );
+    const enqueuedJobId = BaseModel.readRefId(job as any);
 
-    if (forceLockConflict && (job as any)?.Id) {
+    if (forceLockConflict && enqueuedJobId) {
       const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
+      await (Job as any).UpdateById(enqueuedJobId, {
         Status: 'failed',
         RunAfter: new Date(Date.now() + retryAfterMs),
         LastErrorJson: {
@@ -300,7 +303,7 @@ export default class IrModule extends BaseModel {
         },
       });
     }
-    return String((job as any)?.Id || '').trim();
+    return enqueuedJobId || '';
   }
 
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {

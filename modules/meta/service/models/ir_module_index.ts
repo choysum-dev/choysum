@@ -306,7 +306,7 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
     { limit: 20, orderBy: { field: 'CreatedAt', order: 'desc' } as any, fields: ['Id', 'PayloadJson'] as any } as any
   );
   for (const row of running || []) {
-    const jobId = String((row as any)?.Id || '').trim();
+    const jobId = BaseModel.readRefId(row as any) || '';
     if (!jobId) continue;
 
     let payload = (row as any)?.PayloadJson;

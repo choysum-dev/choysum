@@ -181,17 +181,38 @@ class BaseModel {
 
   /**
    * Project rows to only include the requested fields, filtering out
-   * dangerous prototype-pollution keys (__proto__, constructor, prototype).
+   * dangerous prototype-pollution keys (__proto__, constructor, prototype),
+   * and validating field names against model metadata.
    * When requestedFields is empty or not an array, returns rows unchanged.
    *
-   * This is a protected static helper intended for use by model subclasses.
-   * Subclasses may override to add model-specific _fields validation.
+   * Unknown or blocked field names are dropped. If no valid field remains,
+   * returns an array of empty objects with the same row count.
    */
   protected static _pickFields<T extends Record<string, unknown>>(rows: T[], requestedFields: string[]): T[] {
     if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
+
     const blockedFields = new Set(['__proto__', 'constructor', 'prototype']);
-    const fields = Array.from(new Set(requestedFields.map(field => String(field ?? '').trim()).filter(field => !!field && !blockedFields.has(field))));
-    if (fields.length === 0) return rows;
+    const normalizedFields = Array.from(new Set(requestedFields.map(field => String(field ?? '').trim()).filter(Boolean)));
+
+    let allowedModelFields: Set<string> | undefined;
+    try {
+      const metadataFields = (this.getRepository() as any)?.meta?.fields;
+      if (metadataFields instanceof Map) {
+        allowedModelFields = new Set(Array.from(metadataFields.keys()).map(key => String(key ?? '').trim()).filter(Boolean));
+      }
+    } catch {
+      // Ignore metadata lookup failures and keep compatibility by applying only safety filters.
+    }
+
+    const fields = normalizedFields.filter(field => {
+      if (blockedFields.has(field)) return false;
+      if (!allowedModelFields || allowedModelFields.size === 0) return true;
+      return allowedModelFields.has(field);
+    });
+
+    if (fields.length === 0) {
+      return rows.map(() => ({}) as T);
+    }
 
     return rows.map(row => {
       const projected = {} as Record<string, unknown>;

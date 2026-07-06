@@ -17,6 +17,18 @@ class ModelSurfaceHarness extends BaseModel {
   Name!: string;
 }
 
+class ModelFieldProjectionHarness extends BaseModel {
+  @Field({ type: 'varchar', column: { size: 64 } })
+  Name!: string;
+
+  @Field({ type: 'varchar', column: { size: 32 } })
+  Status!: string;
+
+  static pickRows(rows: Record<string, unknown>[], requestedFields: string[]): Record<string, unknown>[] {
+    return this._pickFields(rows as any, requestedFields as any) as any;
+  }
+}
+
 function makeInstance(entity: Record<string, any>, fields?: any) {
   const token = (BaseModel as any).FACTORY_TOKEN as symbol;
   return new ModelSurfaceHarness(token, entity as any, fields) as any;
@@ -145,6 +157,24 @@ test('model DisplayName select expression covers Name/Username/Id fallback branc
   expect(byName).toBe('F:Name');
   expect(byUsername).toBe('F:Username');
   expect(byId).toBe('F:Id');
+});
+
+test('model _pickFields keeps only allowed metadata fields and blocks prototype-pollution keys', () => {
+  const projected = ModelFieldProjectionHarness.pickRows(
+    [{ Id: 'M-1', Name: 'alpha', Status: 'ready', Extra: 'hidden' }],
+    ['Name', 'Status', 'Extra', '__proto__', 'constructor', 'prototype']
+  );
+
+  expect(projected).toEqual([{ Name: 'alpha', Status: 'ready' }]);
+});
+
+test('model _pickFields returns empty objects when no valid requested fields remain', () => {
+  const projected = ModelFieldProjectionHarness.pickRows(
+    [{ Id: 'M-1', Name: 'alpha', Status: 'ready' }],
+    ['UnknownField', '__proto__']
+  );
+
+  expect(projected).toEqual([{}]);
 });
 
 test('model static service methods delegate to operation layers', async () => {
