@@ -198,7 +198,11 @@ class BaseModel {
     try {
       const metadataFields = (this.getRepository() as any)?.meta?.fields;
       if (metadataFields instanceof Map) {
-        allowedModelFields = new Set(Array.from(metadataFields.keys()).map(key => String(key ?? '').trim()).filter(Boolean));
+        allowedModelFields = new Set(
+          Array.from(metadataFields.keys())
+            .map(key => String(key ?? '').trim())
+            .filter(Boolean)
+        );
       }
     } catch {
       // Ignore metadata lookup failures and keep compatibility by applying only safety filters.

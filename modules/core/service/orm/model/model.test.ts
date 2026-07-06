@@ -169,10 +169,7 @@ test('model _pickFields keeps only allowed metadata fields and blocks prototype-
 });
 
 test('model _pickFields returns empty objects when no valid requested fields remain', () => {
-  const projected = ModelFieldProjectionHarness.pickRows(
-    [{ Id: 'M-1', Name: 'alpha', Status: 'ready' }],
-    ['UnknownField', '__proto__']
-  );
+  const projected = ModelFieldProjectionHarness.pickRows([{ Id: 'M-1', Name: 'alpha', Status: 'ready' }], ['UnknownField', '__proto__']);
 
   expect(projected).toEqual([{}]);
 });
