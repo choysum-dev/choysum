@@ -203,6 +203,28 @@ export class MetadataStorage {
   }
 
   /**
+   * Resolve a model constructor from metadata by any known identifier.
+   *
+   * Supported identifiers: fullModelName, modelName, metadata name, className.
+   */
+  public resolveModelConstructor(identifier: string): (new (...args: any[]) => BaseModel) | undefined {
+    const key = String(identifier || '').trim();
+    if (!key) return undefined;
+
+    for (const [ctor, meta] of this.models.entries()) {
+      const fullModelName = String(meta?.fullModelName || '').trim();
+      const modelName = String(meta?.modelName || '').trim();
+      const name = String(meta?.name || '').trim();
+      const className = String((ctor as any)?.name || '').trim();
+      if (key === fullModelName || key === modelName || key === name || key === className) {
+        return ctor as new (...args: any[]) => BaseModel;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
    * Clear metadata caches for the specified class and its subclasses.
    *
    * Update notes:

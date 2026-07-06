@@ -70,34 +70,6 @@ export default class IrModel extends BaseModel {
   @Field({ type: 'OneToMany', relation: { targetModel: () => IrField, inverseField: 'ModelId' } })
   Fields?: IrField[];
 
-  private static resolveModelCtor(modelIdentifier: string): (new (...args: any[]) => BaseModel) | undefined {
-    const key = String(modelIdentifier || '').trim();
-    if (!key) return undefined;
-
-    const pool = (globalThis as any)?.pool;
-    if (pool && typeof pool.get === 'function') {
-      const ctor = pool.get(key);
-      if (ctor && typeof ctor === 'function') {
-        return ctor as new (...args: any[]) => BaseModel;
-      }
-    }
-
-    const models = (MetadataStorage.instance as any)?.models as Map<new (...args: any[]) => BaseModel, any> | undefined;
-    if (!models || typeof models.entries !== 'function') return undefined;
-
-    for (const [ctor, meta] of models.entries()) {
-      const fullModelName = String(meta?.fullModelName || '').trim();
-      const modelName = String(meta?.modelName || '').trim();
-      const name = String(meta?.name || '').trim();
-      const className = String((ctor as any)?.name || '').trim();
-      if (key === fullModelName || key === modelName || key === name || key === className) {
-        return ctor;
-      }
-    }
-
-    return undefined;
-  }
-
   static async GetEffectiveConstraints(
     modelIdentifier: string,
     options?: EffectiveConstraintsQueryOptions
@@ -115,7 +87,7 @@ export default class IrModel extends BaseModel {
       throw new Error('modelIdentifier cannot be empty');
     }
 
-    const ctor = this.resolveModelCtor(key);
+    const ctor = MetadataStorage.instance.resolveModelConstructor(key);
     if (!ctor) {
       throw new Error(`model not found: ${key}`);
     }

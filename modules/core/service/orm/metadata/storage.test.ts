@@ -512,3 +512,26 @@ test('metadata storage effective constraints source fallback prefers metadata na
   expect(byCtor[0]?.source).toBe('StorageSourceFromCtorName');
   expect(byCtor[0]?.fields).toEqual(['B']);
 });
+
+test('metadata storage resolveModelConstructor matches metadata and constructor identifiers', () => {
+  const storage = MetadataStorage.instance as any;
+
+  class StorageResolveCtorModel extends BaseModel {}
+  resetModelMetadata(StorageResolveCtorModel as any);
+
+  storage.setModelMetadata(
+    StorageResolveCtorModel as any,
+    {
+      fullModelName: 'meta.StorageResolveCtorModel',
+      modelName: 'StorageResolveCtorModelAlias',
+      name: 'Storage Resolve Name',
+    } as any
+  );
+
+  expect(storage.resolveModelConstructor('meta.StorageResolveCtorModel')).toBe(StorageResolveCtorModel);
+  expect(storage.resolveModelConstructor('StorageResolveCtorModelAlias')).toBe(StorageResolveCtorModel);
+  expect(storage.resolveModelConstructor('Storage Resolve Name')).toBe(StorageResolveCtorModel);
+  expect(storage.resolveModelConstructor('StorageResolveCtorModel')).toBe(StorageResolveCtorModel);
+  expect(storage.resolveModelConstructor('')).toBe(undefined);
+  expect(storage.resolveModelConstructor('meta.__UnknownModel__')).toBe(undefined);
+});
