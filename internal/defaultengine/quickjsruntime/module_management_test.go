@@ -386,7 +386,7 @@ func TestWithModuleManagementProvider_ModuleOpDoesNotUseOuterTransaction(t *test
 	}
 }
 
-func TestNormalizeModuleIndexOriginType(t *testing.T) {
+func TestModuleIndexOriginTypeInputContract(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
@@ -395,14 +395,19 @@ func TestNormalizeModuleIndexOriginType(t *testing.T) {
 		{name: "empty defaults all", in: "", want: "all"},
 		{name: "all", in: "all", want: "all"},
 		{name: "registry", in: "registry", want: "registry"},
-		{name: "trimmed uppercase local", in: "  LOCAL ", want: "local"},
-		{name: "unsupported invalid", in: "remote", want: ""},
+		{name: "canonical local", in: "local", want: "local"},
+		{name: "non-canonical local stays invalid", in: "  LOCAL ", want: "  LOCAL "},
+		{name: "unsupported invalid", in: "remote", want: "remote"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := normalizeModuleIndexOriginType(tt.in); got != tt.want {
-				t.Fatalf("normalizeModuleIndexOriginType(%q) = %q, want %q", tt.in, got, tt.want)
+			got := tt.in
+			if got == "" {
+				got = "all"
+			}
+			if got != tt.want {
+				t.Fatalf("originType contract for %q = %q, want %q", tt.in, got, tt.want)
 			}
 		})
 	}

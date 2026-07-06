@@ -291,7 +291,10 @@ func performModuleIndexSync(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngi
 	if err != nil {
 		return ctx.ThrowError(err)
 	}
-	originType := normalizeModuleIndexOriginType(params.OriginType)
+	originType := params.OriginType
+	if originType == "" {
+		originType = "all"
+	}
 	switch originType {
 	case "local":
 	case "registry":
@@ -366,22 +369,6 @@ func parseJSONArg[T any](args []*quickjs.Value) (T, error) {
 		return params, err
 	}
 	return params, nil
-}
-
-// normalizeModuleIndexOriginType canonicalises the origin-type string sent
-// from JS.  The empty string maps to "all" for backwards compatibility.
-// Unknown values produce "" so callers can detect unsupported inputs.
-func normalizeModuleIndexOriginType(raw string) string {
-	switch strings.TrimSpace(strings.ToLower(raw)) {
-	case "", "all":
-		return "all"
-	case "local":
-		return "local"
-	case "registry":
-		return "registry"
-	default:
-		return ""
-	}
 }
 
 func runModuleIndexSync(ctx context.Context, runtimeScope scope.Scope, originType string, runner moduleIndexSyncRunner) (moduleIndexSyncResult, error) {
