@@ -247,15 +247,15 @@ export default class IrModule extends BaseModel {
   }
 
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
-    return await requestModuleOp('install', moduleName, { withDemo: !!withDemo });
+    return requestModuleOp('install', moduleName, { withDemo: !!withDemo });
   }
 
   static async RequestUninstall(moduleName: string): Promise<string> {
-    return await requestModuleOp('uninstall', moduleName);
+    return requestModuleOp('uninstall', moduleName);
   }
 
   static async RequestUpgrade(moduleName: string): Promise<string> {
-    return await requestModuleOp('upgrade', moduleName);
+    return requestModuleOp('upgrade', moduleName);
   }
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {

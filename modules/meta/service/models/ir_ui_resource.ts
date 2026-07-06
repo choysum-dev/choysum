@@ -452,7 +452,7 @@ export default class IrUiResource extends BaseModel {
         defaultRoles: normalizeStringArray((row as any)?.DefaultRoles),
         override: false,
         module: normalizeOptionalString((row as any)?.Module),
-        application: normalizeOptionalString(readRefId((row as any)?.IrApplicationId)),
+        application: readRefId((row as any)?.IrApplicationId),
       };
       if (kind === 'menu') {
         const parentId = readRefId((row as any)?.ParentId);
