@@ -51,11 +51,11 @@ export function normalizeLimit(raw: unknown): number | null {
  */
 export function normalizeFields(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
-  const out: string[] = [];
+  const seen = new Set<string>();
   for (const item of raw) {
     const field = String(item || '').trim();
     if (!field) continue;
-    out.push(field);
+    seen.add(field);
   }
-  return out;
+  return Array.from(seen);
 }
