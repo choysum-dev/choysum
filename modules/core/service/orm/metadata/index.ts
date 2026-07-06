@@ -61,7 +61,16 @@ export type {
   ConstraintMethod,
 } from './constraint';
 export { ValidationPipelineError } from './constraint';
-export type { PathDep, CollectionPathDep, OnchangeHandlerMeta, ParsedDep, ParentComputeTrigger, ModelComputeGraph, ModelMetadata } from './model';
+export type {
+  PathDep,
+  CollectionPathDep,
+  OnchangeHandlerMeta,
+  EffectiveOnchangeMeta,
+  ParsedDep,
+  ParentComputeTrigger,
+  ModelComputeGraph,
+  ModelMetadata,
+} from './model';
 export type { ValueType, ParamMetadata, ServiceMetadata } from './service';
 export type {
   ComputeRunAs,
@@ -74,4 +83,4 @@ export type {
   ComputeSearchHandlerResult,
   ComputeSearchHandler,
 } from './compute';
-export { MetadataStorage, getEffectiveConstraints } from './storage';
+export { MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from './storage';

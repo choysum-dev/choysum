@@ -5,7 +5,7 @@ import type { FieldMetadata, ModelCtor } from './field';
 import { ModelMetadata } from './model';
 import BaseModel from '../model/model';
 import type { ConstraintMeta, EffectiveConstraintMeta } from './constraint';
-import type { OnchangeHandlerMeta } from './model';
+import type { OnchangeHandlerMeta, EffectiveOnchangeMeta } from './model';
 import type { ObjectRecord } from '../../../utils/types';
 
 export class MetadataStorage {
@@ -405,6 +405,51 @@ export class MetadataStorage {
     return Array.from(methodMap.values()).sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
   }
 
+  public getEffectiveOnchange<T extends BaseModel>(target: ModelCtor<T>): EffectiveOnchangeMeta[] {
+    this.getModelMetadata(target);
+
+    const methodMap = new Map<string, EffectiveOnchangeMeta>();
+    let current: unknown = target;
+
+    while (current && current !== Object.prototype) {
+      if (typeof current === 'function') {
+        const currentCtor = current as ModelCtor;
+        if (!this.models.has(currentCtor)) {
+          current = Object.getPrototypeOf(current);
+          continue;
+        }
+
+        const ownMetadata = this.models.get(currentCtor)!;
+        const source =
+          String(ownMetadata.fullModelName || '').trim() ||
+          String(ownMetadata.modelName || '').trim() ||
+          String(ownMetadata.name || '').trim() ||
+          String(currentCtor.name || '').trim() ||
+          'unknown';
+
+        const ownHandlers = Array.isArray(ownMetadata.onchangeHandlers) ? ownMetadata.onchangeHandlers : [];
+        for (const handler of ownHandlers) {
+          const method = String(handler?.method || '').trim();
+          if (!method || methodMap.has(method)) {
+            continue;
+          }
+
+          methodMap.set(method, {
+            method,
+            triggers: Array.isArray(handler.triggers) ? [...new Set(handler.triggers.map(v => String(v || '').trim()).filter(Boolean))] : [],
+            priority: typeof handler.priority === 'number' ? handler.priority : 100,
+            reads: Array.isArray(handler.reads) ? [...new Set(handler.reads.map(v => String(v || '').trim()).filter(Boolean))] : undefined,
+            source,
+          });
+        }
+      }
+
+      current = Object.getPrototypeOf(current);
+    }
+
+    return Array.from(methodMap.values()).sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
+  }
+
   /**
    * Clear all metadata caches.
    * Primarily used for tests and special cases.
@@ -415,64 +460,17 @@ export class MetadataStorage {
 }
 
 export function getEffectiveConstraints<T extends BaseModel>(target: ModelCtor<T>): EffectiveConstraintMeta[] {
-  const storage = MetadataStorage.instance as unknown as {
-    getEffectiveConstraints?: (target: ModelCtor<T>) => EffectiveConstraintMeta[];
-    getModelMetadata?: (target: ModelCtor<T>) => ModelMetadata;
-    models?: Map<ModelCtor, ModelMetadata>;
-  };
-
+  const storage = MetadataStorage.instance;
   if (typeof storage.getEffectiveConstraints === 'function') {
     return storage.getEffectiveConstraints(target);
   }
+  return MetadataStorage.prototype.getEffectiveConstraints.call(storage, target);
+}
 
-  // Runtime compatibility fallback: reconstruct from internal model registry.
-  if (typeof storage.getModelMetadata === 'function') {
-    storage.getModelMetadata(target);
+export function getEffectiveOnchange<T extends BaseModel>(target: ModelCtor<T>): EffectiveOnchangeMeta[] {
+  const storage = MetadataStorage.instance;
+  if (typeof storage.getEffectiveOnchange === 'function') {
+    return storage.getEffectiveOnchange(target);
   }
-
-  const models = storage.models;
-  if (!models) {
-    return [];
-  }
-
-  const methodMap = new Map<string, EffectiveConstraintMeta>();
-  let current: unknown = target;
-
-  while (current && current !== Object.prototype) {
-    if (typeof current === 'function') {
-      const currentCtor = current as ModelCtor;
-      if (!models.has(currentCtor)) {
-        current = Object.getPrototypeOf(current);
-        continue;
-      }
-
-      const ownMetadata = models.get(currentCtor)!;
-      const source =
-        String(ownMetadata.fullModelName || '').trim() ||
-        String(ownMetadata.modelName || '').trim() ||
-        String(ownMetadata.name || '').trim() ||
-        String(currentCtor.name || '').trim() ||
-        'unknown';
-
-      const ownHandlers = Array.isArray(ownMetadata.constraintHandlers) ? ownMetadata.constraintHandlers : [];
-      for (const handler of ownHandlers) {
-        const method = String(handler?.method || '').trim();
-        if (!method || methodMap.has(method)) continue;
-
-        methodMap.set(method, {
-          method,
-          fields: Array.isArray(handler.fields) ? [...new Set(handler.fields.map(v => String(v || '').trim()).filter(Boolean))] : [],
-          preview: !!handler.preview,
-          alwaysOnCreate: !!handler.alwaysOnCreate,
-          priority: typeof handler.priority === 'number' ? handler.priority : 100,
-          isStatic: !!handler.isStatic,
-          source,
-        });
-      }
-    }
-
-    current = Object.getPrototypeOf(current);
-  }
-
-  return Array.from(methodMap.values()).sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
+  return MetadataStorage.prototype.getEffectiveOnchange.call(storage, target);
 }

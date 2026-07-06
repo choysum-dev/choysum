@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../model/model';
-import { MetadataStorage, getEffectiveConstraints } from './storage';
+import { MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from './storage';
 
 class StorageMergeModel extends BaseModel {}
 class StorageParentModel extends BaseModel {}
@@ -511,4 +511,99 @@ test('metadata storage effective constraints source fallback prefers metadata na
   expect(byMeta[0]?.fields).toEqual(['A']);
   expect(byCtor[0]?.source).toBe('StorageSourceFromCtorName');
   expect(byCtor[0]?.fields).toEqual(['B']);
+});
+
+test('getEffectiveOnchange fallback path works when instance method is unavailable', () => {
+  const storage = MetadataStorage.instance as any;
+  const original = storage.getEffectiveOnchange;
+
+  class StorageOnchangeParent extends BaseModel {}
+  class StorageOnchangeChild extends StorageOnchangeParent {}
+
+  resetModelMetadata(StorageOnchangeParent as any);
+  resetModelMetadata(StorageOnchangeChild as any);
+
+  storage.setModelMetadata(
+    StorageOnchangeParent as any,
+    {
+      fullModelName: 'core.onchangeParent',
+      onchangeHandlers: [
+        {
+          method: 'onShared',
+          triggers: ['Name', 'Name', ''],
+          priority: 40,
+        },
+        {
+          method: 'onParentOnly',
+          triggers: ['Code'],
+          priority: 10,
+        },
+      ],
+    } as any
+  );
+
+  storage.setModelMetadata(
+    StorageOnchangeChild as any,
+    {
+      modelName: 'core.onchangeChild',
+      onchangeHandlers: [
+        {
+          method: 'onShared',
+          triggers: ['ChildName'],
+          priority: 5,
+        },
+        {
+          method: 'onChildOnly',
+          triggers: ['Value'],
+          reads: ['Currency'],
+        },
+      ],
+    } as any
+  );
+
+  try {
+    storage.getEffectiveOnchange = undefined;
+
+    const out = getEffectiveOnchange(StorageOnchangeChild as any);
+    expect(out.map((x: any) => x.method)).toEqual(['onShared', 'onParentOnly', 'onChildOnly']);
+
+    const shared = out.find((x: any) => x.method === 'onShared');
+    const childOnly = out.find((x: any) => x.method === 'onChildOnly');
+    const parentOnly = out.find((x: any) => x.method === 'onParentOnly');
+
+    expect(shared?.triggers).toEqual(['ChildName']);
+    expect(shared?.source).toBe('core.onchangeChild');
+    expect(shared?.priority).toBe(5);
+    expect(childOnly?.reads).toEqual(['Currency']);
+    expect(childOnly?.priority).toBe(100);
+    expect(parentOnly?.source).toBe('core.onchangeParent');
+    expect(parentOnly?.priority).toBe(10);
+  } finally {
+    storage.getEffectiveOnchange = original;
+  }
+});
+
+test('getEffectiveOnchange returns empty array when no models are registered', () => {
+  const storage = MetadataStorage.instance as any;
+  const original = storage.getEffectiveOnchange;
+
+  class StorageNoModelsOnchange extends BaseModel {}
+  resetModelMetadata(StorageNoModelsOnchange as any);
+
+  try {
+    storage.getEffectiveOnchange = undefined;
+
+    // Replace models with an empty Map — a truly missing models Map would crash
+    // getModelMetadata before the null guard in getEffectiveOnchange.
+    const savedModels = storage.models;
+    storage.models = new Map();
+    try {
+      const out = getEffectiveOnchange(StorageNoModelsOnchange as any);
+      expect(out).toEqual([]);
+    } finally {
+      storage.models = savedModels;
+    }
+  } finally {
+    storage.getEffectiveOnchange = original;
+  }
 });

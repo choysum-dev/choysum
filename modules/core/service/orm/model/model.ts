@@ -26,6 +26,8 @@ import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
+import { MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from '../metadata/storage';
+import type { EffectiveConstraintMeta, EffectiveOnchangeMeta } from '../metadata';
 import {
   getModelContext,
   getModelCompanyId,
@@ -151,6 +153,68 @@ class BaseModel {
    */
   get userId(): string | undefined {
     return getInstanceModelUserId(this);
+  }
+
+  /**
+   * Returns the current request user Id, throwing when no user identity
+   * can be resolved.
+   */
+  static ensureUserId(): string {
+    const id = String(this.userId || '').trim();
+    if (!id) {
+      throw new Error('current user is required');
+    }
+    return id;
+  }
+
+  /**
+   * Resolve a model constructor by its identifier.
+   *
+   * The identifier can be a full model name (e.g. "meta.IrModule"),
+   * a short model name ("IrModule"), the metadata name, or the
+   * constructor class name.
+   */
+  static resolveModelConstructor(identifier: string): typeof BaseModel | undefined {
+    const key = String(identifier || '').trim();
+    if (!key) return undefined;
+
+    const pool = (globalThis as any)?.pool;
+    if (pool && typeof pool.get === 'function') {
+      const ctor = pool.get(key);
+      if (ctor && typeof ctor === 'function') {
+        return ctor as typeof BaseModel;
+      }
+    }
+
+    const models = (MetadataStorage.instance as any)?.models as Map<typeof BaseModel, any> | undefined;
+    if (!models || typeof models.entries !== 'function') return undefined;
+
+    for (const [ctor, meta] of models.entries()) {
+      if (!ctor) continue;
+      const fullModelName = String(meta?.fullModelName || '').trim();
+      const modelName = String(meta?.modelName || '').trim();
+      const name = String(meta?.name || '').trim();
+      const className = String(ctor.name || '').trim();
+      if (key === fullModelName || key === modelName || key === name || key === className) {
+        return ctor;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Returns the resolved effective constraints for the calling model constructor.
+   */
+  static EffectiveConstraints<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveConstraintMeta[] {
+    return getEffectiveConstraints(this as any);
+  }
+
+  /**
+   * Returns the resolved effective onchange handlers for the calling model constructor.
+   */
+  static EffectiveOnchange<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel): EffectiveOnchangeMeta[] {
+    return getEffectiveOnchange(this as any);
   }
 
   /**
