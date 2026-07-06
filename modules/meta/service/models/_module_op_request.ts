@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Job from '@/task/service/models/job';
-import { ensureCurrentUserId } from './_module_management_runtime';
+import { ensureCurrentUserId, getBackendEnv } from './_module_management_runtime';
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 
@@ -13,10 +13,6 @@ export function ensureModuleName(name?: string): string {
   const trimmed = String(name || '').trim();
   if (!trimmed) throw new Error('moduleName cannot be empty');
   return trimmed;
-}
-
-function getBackendEnv(): Record<string, unknown> {
-  return (((import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {}) as Record<string, unknown>) || {};
 }
 
 /**

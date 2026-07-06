@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
-import { ensureCurrentUserId, getModuleManagementBridge } from './_module_management_runtime';
+import { getBackendEnv, getModuleManagementBridge } from './_module_management_runtime';
 import { ensureModuleName, requestModuleOp } from './_module_op_request';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
@@ -341,7 +341,7 @@ export default class IrModule extends BaseModel {
     const jobId = String(getCtxValue('jobId') || '').trim();
     const bridge = getModuleManagementBridge();
 
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
+    const env = getBackendEnv();
     const forceResultStatus = String((env as any).CHOYSUM_E2E_FORCE_RESULT_STATUS || (env as any).choysum_e2e_force_result_status || '').toUpperCase();
     const forceReloadFailed = Boolean((env as any).CHOYSUM_E2E_FORCE_RELOAD_FAILED || (env as any).choysum_e2e_force_reload_failed);
 
