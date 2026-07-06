@@ -24,21 +24,13 @@ function resolveRequestState(): { jsCtx: Record<string, unknown>; req: Record<st
   return { jsCtx, req };
 }
 
-const AUTHZ_PREFIXES = [
-  'authzContext::',
-  'methodAccess::',
-  'uiGrantExpansion::',
-  'uiRequiresMatch::',
-] as const;
+const AUTHZ_PREFIXES = ['authzContext::', 'methodAccess::', 'uiGrantExpansion::', 'uiRequiresMatch::'] as const;
 
 /**
  * Invalidate all authz-context, method-access, and ui-rule memoization
  * entries stored in the per-request service state.
  */
-function invalidateStateCache(
-  state: Record<string, unknown>,
-  opts: InvalidateOpts,
-): void {
+function invalidateStateCache(state: Record<string, unknown>, opts: InvalidateOpts): void {
   if (!state || typeof state !== 'object') return;
 
   const invalidateAll = Boolean(opts.allUsers) || !Array.isArray(opts.userIds) || opts.userIds.length === 0;

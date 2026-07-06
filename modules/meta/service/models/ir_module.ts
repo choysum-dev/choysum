@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
-import { getOperatorUserId, getModuleManagement } from '@/core/service/utils/bridge';
+import { getOperatorUserId, getModuleManagement, getBackendEnv, getBackendEnvText } from '@/core/service/utils/bridge';
 import Job from '@/task/service/models/job';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
@@ -65,7 +65,6 @@ function ensureModuleName(name?: string): string {
   return trimmed;
 }
 
-
 function normalizeFailureKind(status: string, err?: any): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
   if (status !== 'failed') return 'NONE';
@@ -76,20 +75,32 @@ function normalizeFailureKind(status: string, err?: any): FailureKind {
   return 'NON_RETRYABLE';
 }
 
-async function loadExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
+/**
+ * Read execution-level timestamps from task_job_execution.
+ *
+ * TODO(P2): Replace with a proper TaskJobExecution model or task-service API
+ * once one is available.  The raw db.query cross-module access is a known
+ * layering violation retained only because no JS model exists for
+ * task_job_execution yet.
+ */
+async function readJobExecutionTimes(jobId: string): Promise<{ startedAt?: Date; finishedAt?: Date }> {
   if (!jobId) return {};
-  const root: any = (globalThis as any)?.$choysum;
-  if (!root?.db?.query) return {};
-  const raw = await root.db.query(
-    'SELECT started_at, finished_at FROM task_job_execution WHERE job_id = ? ORDER BY created_at DESC LIMIT 1',
-    JSON.stringify([jobId])
-  );
-  const rows = JSON.parse(raw || '[]');
-  const row = rows?.[0] || {};
-  return {
-    startedAt: row.started_at ? new Date(row.started_at) : undefined,
-    finishedAt: row.finished_at ? new Date(row.finished_at) : undefined,
-  };
+  try {
+    const root: any = (globalThis as any)?.$choysum;
+    if (!root?.db?.query) return {};
+    const raw = await root.db.query(
+      'SELECT started_at, finished_at FROM task_job_execution WHERE job_id = ? ORDER BY created_at DESC LIMIT 1',
+      JSON.stringify([jobId]),
+    );
+    const rows = JSON.parse(raw || '[]');
+    const row = rows?.[0] || {};
+    return {
+      startedAt: row.started_at ? new Date(row.started_at) : undefined,
+      finishedAt: row.finished_at ? new Date(row.finished_at) : undefined,
+    };
+  } catch {
+    return {};
+  }
 }
 
 async function findModuleLogByJobId(jobId: string): Promise<any> {
@@ -252,21 +263,37 @@ export default class IrModule extends BaseModel {
     return { baseRevision, affectedModules, risks, blockers };
   }
 
-  static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
+  /**
+   * Unified entry point for enqueuing a module operation job.
+   *
+   * Centralises the shared template that was previously duplicated across
+   * RequestInstall, RequestUninstall, and RequestUpgrade:
+   * - module-name validation
+   * - operator-user-id resolution (via bridge)
+   * - E2E lock-conflict injection (env-gated)
+   * - job enqueuing with standard retry/audit parameters
+   */
+  private static async enqueueModuleOp(
+    action: ModuleAction,
+    moduleName: string,
+    extraPayload?: Record<string, unknown>,
+  ): Promise<string> {
     const name = ensureModuleName(moduleName);
     const userId = getOperatorUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
+    const fullMethod = `meta.IrModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
+    const forceLockConflict = getBackendEnvText('CHOYSUM_E2E_FORCE_LOCK_CONFLICT', 'choysum_e2e_force_lock_conflict') === 'true';
+
     const job = await Job.EnqueueJob(
       'meta',
-      'meta.IrModule/ExecuteInstall',
-      { moduleName: name, withDemo: !!withDemo, operatorUserId: userId },
+      fullMethod,
+      { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) },
       userId,
       userId,
       undefined,
       0,
-      0
+      0,
     );
+
     if (forceLockConflict && (job as any)?.Id) {
       const retryAfterMs = 2500;
       await (Job as any).UpdateById((job as any).Id, {
@@ -281,50 +308,18 @@ export default class IrModule extends BaseModel {
       });
     }
     return String((job as any)?.Id || '').trim();
+  }
+
+  static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
+    return await this.enqueueModuleOp('install', moduleName, { withDemo: !!withDemo });
   }
 
   static async RequestUninstall(moduleName: string): Promise<string> {
-    const name = ensureModuleName(moduleName);
-    const userId = getOperatorUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
-    const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUninstall', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
-    if (forceLockConflict && (job as any)?.Id) {
-      const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
-        Status: 'failed',
-        RunAfter: new Date(Date.now() + retryAfterMs),
-        LastErrorJson: {
-          domain: 'meta.lock',
-          code: 'LEASE_CONFLICT',
-          message: 'lease conflict',
-          details: { retry_after_ms: retryAfterMs },
-        },
-      });
-    }
-    return String((job as any)?.Id || '').trim();
+    return await this.enqueueModuleOp('uninstall', moduleName);
   }
 
   static async RequestUpgrade(moduleName: string): Promise<string> {
-    const name = ensureModuleName(moduleName);
-    const userId = getOperatorUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
-    const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUpgrade', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
-    if (forceLockConflict && (job as any)?.Id) {
-      const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
-        Status: 'failed',
-        RunAfter: new Date(Date.now() + retryAfterMs),
-        LastErrorJson: {
-          domain: 'meta.lock',
-          code: 'LEASE_CONFLICT',
-          message: 'lease conflict',
-          details: { retry_after_ms: retryAfterMs },
-        },
-      });
-    }
-    return String((job as any)?.Id || '').trim();
+    return await this.enqueueModuleOp('upgrade', moduleName);
   }
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {
@@ -344,7 +339,7 @@ export default class IrModule extends BaseModel {
       'PayloadJson',
       'FullMethod',
     ] as any);
-    const exec = await loadExecutionTimes(id);
+    const exec = await readJobExecutionTimes(id);
     const result = (job as any)?.ResultJson && typeof (job as any).ResultJson === 'object' ? (job as any).ResultJson : {};
     const err = (job as any)?.LastErrorJson && typeof (job as any).LastErrorJson === 'object' ? (job as any).LastErrorJson : undefined;
     const payload = (job as any)?.PayloadJson && typeof (job as any).PayloadJson === 'object' ? (job as any).PayloadJson : {};
@@ -410,9 +405,8 @@ export default class IrModule extends BaseModel {
     const jobId = String(getCtxValue('jobId') || '').trim();
     const bridge = getModuleManagement();
 
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceResultStatus = String((env as any).CHOYSUM_E2E_FORCE_RESULT_STATUS || (env as any).choysum_e2e_force_result_status || '').toUpperCase();
-    const forceReloadFailed = Boolean((env as any).CHOYSUM_E2E_FORCE_RELOAD_FAILED || (env as any).choysum_e2e_force_reload_failed);
+    const forceResultStatus = getBackendEnvText('CHOYSUM_E2E_FORCE_RESULT_STATUS', 'choysum_e2e_force_result_status').toUpperCase();
+    const forceReloadFailed = getBackendEnvText('CHOYSUM_E2E_FORCE_RELOAD_FAILED', 'choysum_e2e_force_reload_failed') === 'true';
 
     let bridgeResult: ModuleOpBridgeResult;
     if (forceResultStatus === 'FAILED') {
@@ -450,7 +444,7 @@ export default class IrModule extends BaseModel {
     let reload_triggered = false;
     let reload_failed = false;
     let reload_web = false;
-    const skipReload = Boolean((env as any)?.CHOYSUM_E2E_SKIP_RELOAD || (env as any)?.choysum_e2e_skip_reload);
+    const skipReload = getBackendEnvText('CHOYSUM_E2E_SKIP_RELOAD', 'choysum_e2e_skip_reload') === 'true';
     if (bridgeResult.ok && !skipReload) {
       try {
         const reloadResult = await bridge.reload();

@@ -326,7 +326,6 @@ function isTruthyFlag(value: string): boolean {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
 }
 
-
 async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncOriginType): Promise<string> {
   const running = await Job.Search(
     {
