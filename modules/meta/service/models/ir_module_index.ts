@@ -102,38 +102,6 @@ function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortS
   return 0;
 }
 
-function normalizeOffset(raw: unknown): number {
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value < 0) return 0;
-  return Math.floor(value);
-}
-
-function normalizeLimit(raw: unknown): number | null {
-  const value = Number(raw);
-  if (!Number.isFinite(value) || value <= 0) return null;
-  return Math.floor(value);
-}
-
-function normalizeFields(raw: unknown): string[] {
-  if (!Array.isArray(raw)) return [];
-  const out: string[] = [];
-  for (const item of raw) {
-    const field = normalizeString(item);
-    if (!field) continue;
-    out.push(field);
-  }
-  return out;
-}
-
-function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
-  if (Object.prototype.hasOwnProperty.call(source, 'withDeleted')) {
-    target.withDeleted = !!(source as any).withDeleted;
-  }
-  if (Object.prototype.hasOwnProperty.call(source, 'onlyDeleted')) {
-    target.onlyDeleted = !!(source as any).onlyDeleted;
-  }
-}
-
 function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
   supported: boolean;
   orderBy: GroupSortSpec[];
@@ -456,15 +424,27 @@ export default class IrModuleIndex extends BaseModel {
   ): Promise<T[]> {
     const normalized = normalizeSearchCondition(condition);
     const rawOptions = { ...(options || {}) };
-    const requestedFields = normalizeFields(rawOptions.fields);
+    const requestedFields = Array.isArray(rawOptions.fields)
+      ? rawOptions.fields.map((item: unknown) => normalizeString(item)).filter((field: string) => !!field)
+      : [];
     const sortSpecs = parseSortSpecs(rawOptions.orderBy);
-    const offset = normalizeOffset(rawOptions.offset);
-    const limit = normalizeLimit(rawOptions.limit);
+    const offsetValue = Number(rawOptions.offset);
+    const offset = Number.isFinite(offsetValue) && offsetValue >= 0 ? Math.floor(offsetValue) : 0;
+    const limitValue = Number(rawOptions.limit);
+    const limit = Number.isFinite(limitValue) && limitValue > 0 ? Math.floor(limitValue) : null;
+    const softDeleteOptions: Record<string, unknown> = {};
+    if (Object.prototype.hasOwnProperty.call(rawOptions, 'withDeleted')) {
+      softDeleteOptions.withDeleted = !!(rawOptions as any).withDeleted;
+    }
+    if (Object.prototype.hasOwnProperty.call(rawOptions, 'onlyDeleted')) {
+      softDeleteOptions.onlyDeleted = !!(rawOptions as any).onlyDeleted;
+    }
     const sortPlan = buildSortPushdownPlan(sortSpecs);
 
     const readGroupOptions: Record<string, unknown> = {
       groupby: 'ModuleName',
       fields: sortPlan.aggregateFields.map(item => `${item.field}:${item.agg}`),
+      ...softDeleteOptions,
     };
     if (sortPlan.supported) {
       readGroupOptions.offset = offset;
@@ -473,7 +453,6 @@ export default class IrModuleIndex extends BaseModel {
       }
       readGroupOptions.orderBy = sortPlan.orderBy;
     }
-    applySoftDeleteOptions(readGroupOptions, rawOptions);
 
     const groupedRows = await this.getRepository().readGroup({
       ...readGroupOptions,
@@ -504,8 +483,8 @@ export default class IrModuleIndex extends BaseModel {
       fields: detailFields,
       limit: groupedModuleNames.length * 2,
       orderBy: [{ field: 'ModuleName', order: 'asc' }],
+      ...softDeleteOptions,
     };
-    applySoftDeleteOptions(detailOptions, rawOptions);
 
     const detailRows = (await (BaseModel as any).Search.call(this, buildModuleNamesCondition(normalized, groupedModuleNames), detailOptions)) as any[];
 
@@ -541,11 +520,17 @@ export default class IrModuleIndex extends BaseModel {
     options?: any
   ): Promise<number> {
     const normalized = normalizeSearchCondition(condition);
+    const rawOptions = { ...(options || {}) };
     const readGroupCountOptions: Record<string, unknown> = {
       groupby: 'ModuleName',
       condition: normalized,
     };
-    applySoftDeleteOptions(readGroupCountOptions, { ...(options || {}) });
+    if (Object.prototype.hasOwnProperty.call(rawOptions, 'withDeleted')) {
+      readGroupCountOptions.withDeleted = !!(rawOptions as any).withDeleted;
+    }
+    if (Object.prototype.hasOwnProperty.call(rawOptions, 'onlyDeleted')) {
+      readGroupCountOptions.onlyDeleted = !!(rawOptions as any).onlyDeleted;
+    }
     return await this.getRepository().readGroupCount(readGroupCountOptions as any);
   }
 
