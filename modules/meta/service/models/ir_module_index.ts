@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { getUserId } from '@/core/service/api/context';
+import { normalizeString } from '@/core/service/utils/strings';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 
@@ -45,9 +46,7 @@ type SortSpec = { field: string; desc: boolean };
 type GroupSortSpec = { field: string; order: 'asc' | 'desc' };
 
 function toText(value: unknown): string {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase();
+  return normalizeString(value).toLowerCase();
 }
 
 function toComparableValue(value: unknown): unknown {
@@ -119,7 +118,7 @@ function normalizeFields(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   const out: string[] = [];
   for (const item of raw) {
-    const field = String(item || '').trim();
+    const field = normalizeString(item);
     if (!field) continue;
     out.push(field);
   }
@@ -207,21 +206,6 @@ function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): a
   return {
     And: [baseCondition as any, inCondition],
   } as any;
-}
-
-function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
-  if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
-  const blockedFields = new Set(['__proto__', 'constructor', 'prototype']);
-  const fields = Array.from(new Set(requestedFields.map(field => String(field || '').trim()).filter(field => !!field && !blockedFields.has(field))));
-  if (fields.length === 0) return rows;
-
-  return rows.map(row => {
-    const projected = {} as ModuleIndexRecord;
-    for (const field of fields) {
-      (projected as any)[field] = (row as any)?.[field];
-    }
-    return projected;
-  });
 }
 
 function toPlainRecord(input: any): ModuleIndexRecord {
@@ -575,7 +559,7 @@ export default class IrModuleIndex extends BaseModel {
       finalRows = ordered.slice(start, end);
     }
 
-    const projected = projectFields(finalRows, requestedFields);
+    const projected = this._pickFields(finalRows, requestedFields);
     const hydrateFields = requestedFields.length > 0 ? (requestedFields as any) : undefined;
     return projected.map(row => this.Hydrate(row as any, hydrateFields)) as unknown as T[];
   }

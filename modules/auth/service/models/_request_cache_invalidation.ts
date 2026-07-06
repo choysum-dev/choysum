@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { normalizeStringArray } from '@/core/service/utils/strings';
+
 type InvalidateOpts = {
   userIds?: string[];
   allUsers?: boolean;
@@ -17,13 +19,6 @@ function getJsCtxAndReq(): { jsCtx: any; req: any } {
 }
 
 /**
- * Normalize a possibly mixed array into unique non-empty string ids.
- */
-function uniqStrings(xs: any[]): string[] {
-  return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
-}
-
-/**
  * Invalidate request-scoped auth caches after permission graph changes.
  *
  * Clears:
@@ -34,7 +29,7 @@ export function invalidateAuthzRequestCaches(opts: InvalidateOpts = {}): void {
   const { jsCtx, req } = getJsCtxAndReq();
   const state: any = req?.__choysumServiceState;
 
-  const ids = uniqStrings(opts.userIds || []);
+  const ids = normalizeStringArray(opts.userIds || []);
   const invalidateAll = Boolean(opts.allUsers) || ids.length === 0;
 
   // 1) Invalidate authz context memoization

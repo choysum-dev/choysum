@@ -21,6 +21,7 @@ import {
   GroupBySpec,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
+import { normalizeOptionalString } from '../../utils/strings';
 import type { ModelCtor as MetadataModelCtor, OnchangeTrigger } from '../metadata/field';
 import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
@@ -165,6 +166,40 @@ class BaseModel {
    */
   withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {
     return withInstanceModelContext(this, ctx, fn, opts);
+  }
+
+  /**
+   * Extract a reference ID from a value that may be a plain string,
+   * an object with an Id property, or null/undefined.
+   */
+  static readRefId(value: unknown): string | undefined {
+    if (!value) return undefined;
+    if (typeof value === 'string') return normalizeOptionalString(value);
+    if (typeof value === 'object') return normalizeOptionalString((value as Record<string, unknown>).Id);
+    return undefined;
+  }
+
+  /**
+   * Project rows to only include the requested fields, filtering out
+   * dangerous prototype-pollution keys (__proto__, constructor, prototype).
+   * When requestedFields is empty or not an array, returns rows unchanged.
+   *
+   * This is a protected static helper intended for use by model subclasses.
+   * Subclasses may override to add model-specific _fields validation.
+   */
+  protected static _pickFields<T extends Record<string, unknown>>(rows: T[], requestedFields: string[]): T[] {
+    if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
+    const blockedFields = new Set(['__proto__', 'constructor', 'prototype']);
+    const fields = Array.from(new Set(requestedFields.map(field => String(field ?? '').trim()).filter(field => !!field && !blockedFields.has(field))));
+    if (fields.length === 0) return rows;
+
+    return rows.map(row => {
+      const projected = {} as Record<string, unknown>;
+      for (const field of fields) {
+        projected[field] = (row as Record<string, unknown>)[field];
+      }
+      return projected as T;
+    });
   }
 
   /**
