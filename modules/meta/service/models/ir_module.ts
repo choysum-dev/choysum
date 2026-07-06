@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
 import { ensureCurrentUserId, getModuleManagementBridge } from './_module_management_runtime';
+import { ensureModuleName, requestModuleOp } from './_module_op_request';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
@@ -58,12 +59,6 @@ type ModuleOpBridgeResult = {
   errorCode?: string;
   errorMessage?: string;
 };
-
-function ensureModuleName(name?: string): string {
-  const trimmed = String(name || '').trim();
-  if (!trimmed) throw new Error('moduleName cannot be empty');
-  return trimmed;
-}
 
 function normalizeFailureKind(status: string, err?: any): FailureKind {
   if (status === 'cancelled') return 'NON_RETRYABLE';
@@ -252,78 +247,15 @@ export default class IrModule extends BaseModel {
   }
 
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
-    const name = ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
-    const job = await Job.EnqueueJob(
-      'meta',
-      'meta.IrModule/ExecuteInstall',
-      { moduleName: name, withDemo: !!withDemo, operatorUserId: userId },
-      userId,
-      userId,
-      undefined,
-      0,
-      0
-    );
-    if (forceLockConflict && (job as any)?.Id) {
-      const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
-        Status: 'failed',
-        RunAfter: new Date(Date.now() + retryAfterMs),
-        LastErrorJson: {
-          domain: 'meta.lock',
-          code: 'LEASE_CONFLICT',
-          message: 'lease conflict',
-          details: { retry_after_ms: retryAfterMs },
-        },
-      });
-    }
-    return String((job as any)?.Id || '').trim();
+    return await requestModuleOp('install', moduleName, withDemo ? { withDemo: true } : undefined);
   }
 
   static async RequestUninstall(moduleName: string): Promise<string> {
-    const name = ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
-    const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUninstall', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
-    if (forceLockConflict && (job as any)?.Id) {
-      const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
-        Status: 'failed',
-        RunAfter: new Date(Date.now() + retryAfterMs),
-        LastErrorJson: {
-          domain: 'meta.lock',
-          code: 'LEASE_CONFLICT',
-          message: 'lease conflict',
-          details: { retry_after_ms: retryAfterMs },
-        },
-      });
-    }
-    return String((job as any)?.Id || '').trim();
+    return await requestModuleOp('uninstall', moduleName);
   }
 
   static async RequestUpgrade(moduleName: string): Promise<string> {
-    const name = ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
-    const env = (import.meta as any)?.env || (globalThis as any)?.__choysumBackendEnv || {};
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
-    const job = await Job.EnqueueJob('meta', 'meta.IrModule/ExecuteUpgrade', { moduleName: name, operatorUserId: userId }, userId, userId, undefined, 0, 0);
-    if (forceLockConflict && (job as any)?.Id) {
-      const retryAfterMs = 2500;
-      await (Job as any).UpdateById((job as any).Id, {
-        Status: 'failed',
-        RunAfter: new Date(Date.now() + retryAfterMs),
-        LastErrorJson: {
-          domain: 'meta.lock',
-          code: 'LEASE_CONFLICT',
-          message: 'lease conflict',
-          details: { retry_after_ms: retryAfterMs },
-        },
-      });
-    }
-    return String((job as any)?.Id || '').trim();
+    return await requestModuleOp('upgrade', moduleName);
   }
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {

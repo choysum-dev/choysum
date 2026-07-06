@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import type { EffectiveConstraintMeta } from '@/core/service/api/constraint';
 import { MetadataStorage, type EffectiveOnchangeMeta } from '@/core/service/api/metadata';
+import { normalizePagination, paginateAndWrap } from './_diagnostics_response';
 import IrDecorator from './ir_decorator';
 import IrField from './ir_field';
 import IrModule from './ir_module';
@@ -114,8 +115,7 @@ export default class IrModel extends BaseModel {
       .toLowerCase();
     const hasPreviewFilter = typeof options?.preview === 'boolean';
     const hasAlwaysOnCreateFilter = typeof options?.alwaysOnCreate === 'boolean';
-    const normalizedLimit = typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0 ? Math.floor(options.limit) : undefined;
-    const normalizedOffset = typeof options?.offset === 'number' && Number.isFinite(options.offset) && options.offset > 0 ? Math.floor(options.offset) : 0;
+    const pagination = normalizePagination(options);
     const hasMinPriority = typeof options?.minPriority === 'number' && Number.isFinite(options.minPriority);
     const hasMaxPriority = typeof options?.maxPriority === 'number' && Number.isFinite(options.maxPriority);
     const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
@@ -138,17 +138,7 @@ export default class IrModel extends BaseModel {
       return true;
     });
 
-    const paged = normalizedLimit ? filtered.slice(normalizedOffset, normalizedOffset + normalizedLimit) : filtered.slice(normalizedOffset);
-
-    return {
-      model,
-      constraints: paged,
-      total: effective.length,
-      filtered: filtered.length,
-      offset: normalizedOffset,
-      limit: normalizedLimit,
-      returned: paged.length,
-    };
+    return paginateAndWrap(filtered, 'constraints', pagination, effective.length, { model }) as any;
   }
 
   static async GetEffectiveOnchange(
@@ -187,8 +177,7 @@ export default class IrModel extends BaseModel {
     const normalizedTrigger = String(options?.triggerField || '')
       .trim()
       .toLowerCase();
-    const normalizedLimit = typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0 ? Math.floor(options.limit) : undefined;
-    const normalizedOffset = typeof options?.offset === 'number' && Number.isFinite(options.offset) && options.offset > 0 ? Math.floor(options.offset) : 0;
+    const pagination = normalizePagination(options);
     const hasMinPriority = typeof options?.minPriority === 'number' && Number.isFinite(options.minPriority);
     const hasMaxPriority = typeof options?.maxPriority === 'number' && Number.isFinite(options.maxPriority);
     const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
@@ -210,16 +199,6 @@ export default class IrModel extends BaseModel {
       return true;
     });
 
-    const paged = normalizedLimit ? filtered.slice(normalizedOffset, normalizedOffset + normalizedLimit) : filtered.slice(normalizedOffset);
-
-    return {
-      model,
-      onchanges: paged,
-      total: effective.length,
-      filtered: filtered.length,
-      offset: normalizedOffset,
-      limit: normalizedLimit,
-      returned: paged.length,
-    };
+    return paginateAndWrap(filtered, 'onchanges', pagination, effective.length, { model }) as any;
   }
 }

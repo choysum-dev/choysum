@@ -7,6 +7,7 @@ import IrApplication from './ir_application';
 import IrModule from './ir_module';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from './_normalizers';
+import { normalizePagination, paginateAndWrap } from './_diagnostics_response';
 
 export type UiResourceType = 'ROUTE' | 'MENU' | 'ACTION';
 
@@ -357,8 +358,7 @@ export default class IrUiResource extends BaseModel {
     const applicationFilter = normalizeOptionalString(options?.application);
     const kindFilter = this.normalizeKindFilter(options?.kind);
     const idsFilter = normalizeStringArray(options?.ids);
-    const normalizedLimit = typeof options?.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0 ? Math.floor(options.limit) : undefined;
-    const normalizedOffset = typeof options?.offset === 'number' && Number.isFinite(options.offset) && options.offset > 0 ? Math.floor(options.offset) : 0;
+    const pagination = normalizePagination(options);
 
     const conditionParts: any[] = [];
     if (moduleFilter) conditionParts.push(['Module', '=', moduleFilter]);
@@ -464,14 +464,6 @@ export default class IrUiResource extends BaseModel {
       return declaration;
     });
 
-    const paged = normalizedLimit ? declarations.slice(normalizedOffset, normalizedOffset + normalizedLimit) : declarations.slice(normalizedOffset);
-    return {
-      declarations: paged,
-      total: declarations.length,
-      filtered: declarations.length,
-      offset: normalizedOffset,
-      limit: normalizedLimit,
-      returned: paged.length,
-    };
+    return paginateAndWrap(declarations, 'declarations', pagination);
   }
 }
