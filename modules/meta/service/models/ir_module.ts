@@ -4,9 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
-import { getModuleManagementBridge } from './_module_management_runtime';
+import { ensureCurrentUserId, getModuleManagementBridge } from './_module_management_runtime';
 import { getBackendEnv } from '@/core/service/runtime/env/backend_env';
-import { ensureModuleName, requestModuleOp } from './_module_op_request';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
@@ -210,7 +209,7 @@ export default class IrModule extends BaseModel {
 
   static async PlanOperation(req: PlanOperationReq): Promise<PlanOperationResp> {
     const action = (req?.action || 'install') as ModuleAction;
-    const moduleName = ensureModuleName(req?.moduleName);
+    const moduleName = this.ensureModuleName(req?.moduleName);
     const risks: PlanOperationResp['risks'] = [];
     const blockers: PlanOperationResp['blockers'] = [];
     const affectedModules: PlanOperationResp['affectedModules'] = [];
@@ -248,15 +247,48 @@ export default class IrModule extends BaseModel {
   }
 
   static async RequestInstall(moduleName: string, withDemo?: boolean): Promise<string> {
-    return requestModuleOp('install', moduleName, { withDemo: !!withDemo });
+    return this.enqueueModuleOp('install', moduleName, { withDemo: !!withDemo });
   }
 
   static async RequestUninstall(moduleName: string): Promise<string> {
-    return requestModuleOp('uninstall', moduleName);
+    return this.enqueueModuleOp('uninstall', moduleName);
   }
 
   static async RequestUpgrade(moduleName: string): Promise<string> {
-    return requestModuleOp('upgrade', moduleName);
+    return this.enqueueModuleOp('upgrade', moduleName);
+  }
+
+  private static ensureModuleName(name?: string): string {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) throw new Error('moduleName cannot be empty');
+    return trimmed;
+  }
+
+  private static async enqueueModuleOp(action: ModuleAction, moduleName: string, extraPayload?: Record<string, unknown>): Promise<string> {
+    const name = this.ensureModuleName(moduleName);
+    const userId = ensureCurrentUserId();
+    const method = `meta.IrModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
+    const env = getBackendEnv();
+    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
+
+    const payload: Record<string, unknown> = { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) };
+    const job = await Job.EnqueueJob('meta', method, payload, userId, userId, undefined, 0, 0);
+
+    if (forceLockConflict && (job as any)?.Id) {
+      const retryAfterMs = 2500;
+      await (Job as any).UpdateById((job as any).Id, {
+        Status: 'failed',
+        RunAfter: new Date(Date.now() + retryAfterMs),
+        LastErrorJson: {
+          domain: 'meta.lock',
+          code: 'LEASE_CONFLICT',
+          message: 'lease conflict',
+          details: { retry_after_ms: retryAfterMs },
+        },
+      });
+    }
+
+    return String((job as any)?.Id || '').trim();
   }
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {
@@ -337,7 +369,7 @@ export default class IrModule extends BaseModel {
   }
 
   private static async executeModuleOp(action: ModuleAction, moduleName: string, opts: { withDemo?: boolean; operatorUserId?: string }): Promise<any> {
-    const name = ensureModuleName(moduleName);
+    const name = this.ensureModuleName(moduleName);
     const operatorUserId = String(opts?.operatorUserId || getUserId() || '').trim();
     const jobId = String(getCtxValue('jobId') || '').trim();
     const bridge = getModuleManagementBridge();
