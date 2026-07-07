@@ -4,6 +4,9 @@
 import { getJsCtxAndReq } from '@/core/service/api/context';
 import { normalizeScopeId, uniqScopeIds, normalizePreferences as normalizeScopePreferences, buildScopePreferences } from '@/core/service/utils/normalization';
 
+// Re-export core utilities for backward compat — other auth helpers import these from this module.
+export { normalizeScopeId, uniqScopeIds, normalizeScopePreferences, buildScopePreferences };
+
 export type TokenCompanyScope = {
   allowedCompanyIds: string[];
   activeCompanyId?: string;

@@ -160,7 +160,7 @@ export function normalizeUiResourceId(raw: unknown): string {
  * numeric-indexed objects, and singleton string inputs.
  */
 export function parseJsonStringArray(raw: unknown): string[] {
-  const normalize = (xs: unknown[]): string[] => uniqStrings(xs);
+  const normalize = (xs: unknown): string[] => uniqStrings(xs);
 
   const tryObjectSnapshot = (value: unknown): string[] | null => {
     if (!value || typeof value !== 'object') return null;
