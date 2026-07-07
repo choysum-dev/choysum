@@ -10,12 +10,6 @@ export type SwitchScopeValidationResult =
   | { ok: true; active: string; enabled: string[]; allowed: string[]; prefs: Record<string, any> }
   | { ok: false; code: SwitchScopeValidationErrorCode; active: string; enabled: string[] | null; allowed: string[]; prefs: Record<string, any>; companyId?: string };
 
-function normalizeScopeId(value: unknown): string {
-  if (value == null) return '';
-  if (typeof value === 'object') return String((value as any)?.Id ?? (value as any)?.id ?? '').trim();
-  return String(value ?? '').trim();
-}
-
 function createSwitchCompanyScopeAuditEmitter(eventName: string) {
   let emitted = false;
 
