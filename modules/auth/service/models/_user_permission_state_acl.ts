@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc';
-import { uniqStrings } from '@/core/service/utils/normalization';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';

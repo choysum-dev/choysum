@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
+import { memoizeInReqState } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { buildAuthzContextCacheKey } from './_request_cache_invalidation';
 import { sortStrings, getCompanyScopeFromRequestContext, maybeId, withPermissionGraphBypass } from './_user_authz_shared';
