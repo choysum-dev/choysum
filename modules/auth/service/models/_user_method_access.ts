@@ -241,8 +241,15 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
 
     if (resourceIDList.length > 0) {
       promises.push(
-        IrUiResource.Search({ And: [['Id', 'in', resourceIDList]] } as any, { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any),
-        IrUiResource.Search({ And: [['Name', 'in', resourceIDList]] } as any, { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any)
+        IrUiResource.Search(
+          {
+            Or: [
+              ['Id', 'in', resourceIDList],
+              ['Name', 'in', resourceIDList],
+            ],
+          } as any,
+          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+        )
       );
     }
 

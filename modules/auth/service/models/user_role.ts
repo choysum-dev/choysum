@@ -55,7 +55,7 @@ export default class UserRole extends BaseModel {
     // Role assignments can change effective permissions within the same request;
     // invalidate request-scoped authz/field/record caches for correctness.
     const rows: any[] = Array.isArray(value as any) ? (value as any) : [value];
-    const userIds = rows.map((v: any) => (this as any)._maybeId(v?.UserId)).filter(Boolean);
+    const userIds = rows.map((v: any) => UserRole._maybeId(v?.UserId)).filter(Boolean);
     invalidateAuthzCachesForUsers(userIds);
 
     return created as unknown as T;
