@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
-import { getBackendEnv } from '@/core/service/runtime/env/backend_env';
+import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
@@ -267,8 +267,7 @@ export default class IrModule extends BaseModel {
     const name = this.ensureModuleName(moduleName);
     const userId = BaseModel.ensureUserId();
     const method = `meta.IrModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
-    const env = getBackendEnv();
-    const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
+    const forceLockConflict = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_FORCE_LOCK_CONFLICT', 'choysum_e2e_force_lock_conflict'));
 
     const payload: Record<string, unknown> = { moduleName: name, operatorUserId: userId, ...(extraPayload || {}) };
     const job = await Job.EnqueueJob('meta', method, payload, userId, userId, undefined, 0, 0);
@@ -381,9 +380,8 @@ export default class IrModule extends BaseModel {
     const jobId = String(getCtxValue('jobId') || '').trim();
     const bridge = this.getModuleManagementBridge();
 
-    const env = getBackendEnv();
-    const forceResultStatus = String((env as any).CHOYSUM_E2E_FORCE_RESULT_STATUS || (env as any).choysum_e2e_force_result_status || '').toUpperCase();
-    const forceReloadFailed = Boolean((env as any).CHOYSUM_E2E_FORCE_RELOAD_FAILED || (env as any).choysum_e2e_force_reload_failed);
+    const forceResultStatus = getBackendEnvText('CHOYSUM_E2E_FORCE_RESULT_STATUS', 'choysum_e2e_force_result_status').toUpperCase();
+    const forceReloadFailed = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_FORCE_RELOAD_FAILED', 'choysum_e2e_force_reload_failed'));
 
     let bridgeResult: ModuleOpBridgeResult;
     if (forceResultStatus === 'FAILED') {
@@ -421,7 +419,7 @@ export default class IrModule extends BaseModel {
     let reload_triggered = false;
     let reload_failed = false;
     let reload_web = false;
-    const skipReload = Boolean((env as any)?.CHOYSUM_E2E_SKIP_RELOAD || (env as any)?.choysum_e2e_skip_reload);
+    const skipReload = isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_RELOAD', 'choysum_e2e_skip_reload'));
     if (bridgeResult.ok && !skipReload) {
       try {
         const reloadResult = await bridge.reload();
