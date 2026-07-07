@@ -87,10 +87,7 @@ export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
   return userId;
 }
 
-let baseUserRpcAllowedEnsured = false;
-
 async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
-  if (baseUserRpcAllowedEnsured) return;
   const rid = String(roleId || '').trim();
   if (!rid) return;
 
@@ -180,7 +177,6 @@ async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
       }
     }
   }
-  baseUserRpcAllowedEnsured = true;
 }
 
 /**

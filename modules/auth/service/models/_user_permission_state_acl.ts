@@ -114,17 +114,22 @@ export async function buildAclAggregation(
   }
 
   const modelsByApp = new Map<string, Array<{ app: string; name: string }>>();
-  const getModelsForApp = async (appName: string): Promise<Array<{ app: string; name: string }>> => {
+  const appNames = Array.from(new Set(appNameById.values()));
+  if (appNames.length > 0) {
+    const rows = await IrModel.Search(['Application', 'in', appNames] as any, { fields: ['Application', 'Name'], limit: 50000 } as any);
+    for (const r of rows || []) {
+      const app = String((r as any).Application || '').trim();
+      const name = String((r as any).Name || '').trim();
+      if (app && name) {
+        if (!modelsByApp.has(app)) modelsByApp.set(app, []);
+        modelsByApp.get(app)!.push({ app, name });
+      }
+    }
+  }
+
+  const getModelsForApp = (appName: string): Array<{ app: string; name: string }> => {
     const k = String(appName || '').trim();
-    if (!k) return [];
-    const cached = modelsByApp.get(k);
-    if (cached) return cached;
-    const rows = await IrModel.Search(['Application', '=', k] as any, { fields: ['Application', 'Name'], limit: 50000 } as any);
-    const out = (rows || [])
-      .map((r: any) => ({ app: String((r as any).Application || '').trim(), name: String((r as any).Name || '').trim() }))
-      .filter((r: { app: string; name: string }) => r.app && r.name);
-    modelsByApp.set(k, out);
-    return out;
+    return modelsByApp.get(k) || [];
   };
 
   let allModels: Array<{ app: string; name: string }> | undefined;
@@ -171,7 +176,7 @@ export async function buildAclAggregation(
     if (!sid && !mid && aid) {
       const appName = appNameById.get(aid);
       if (!appName) continue;
-      const models = await getModelsForApp(appName);
+      const models = getModelsForApp(appName);
       scope(roleId)(companyKey => {
         for (const m of models) {
           const serviceFullName = `${m.app}.${m.name}`;

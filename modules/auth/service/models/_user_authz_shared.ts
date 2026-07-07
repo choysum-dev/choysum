@@ -75,7 +75,7 @@ export function hasRpcPermission(req: string, allowSet: Set<string>, denySet: Se
  * Check whether all UI resource requires are satisfied by RPC permissions.
  */
 export function isUiResourceAllowed(requires: string[], allowSet: Set<string>, denySet: Set<string>): boolean {
-  const reqs = uniqStrings((requires || []).map(v => String(v || '').trim()).filter(Boolean));
+  const reqs = uniqStrings(requires);
   if (reqs.length === 0) return true;
 
   for (const req of reqs) {
