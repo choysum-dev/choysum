@@ -31,7 +31,11 @@ export function resolveEffectiveModel(identifier: string): ResolvedEffectiveMode
 
   const meta = MetadataStorage.instance.getModelMetadata(ctor);
   const model =
-    String(meta?.fullModelName || '').trim() || String(meta?.modelName || '').trim() || String(meta?.name || '').trim() || String(ctor.name || '').trim() || key;
+    String(meta?.fullModelName || '').trim() ||
+    String(meta?.modelName || '').trim() ||
+    String(meta?.name || '').trim() ||
+    String(ctor.name || '').trim() ||
+    key;
 
   return { ctor, model };
 }
@@ -57,8 +61,8 @@ export function normalizePriorityRange(options?: { minPriority?: number; maxPrio
  * Return whether an item's priority falls within the given range.
  * Items without a numeric priority default to 0.
  */
-export function priorityInRange(item: { priority?: number }, range: NormalizedPriorityRange): boolean {
-  const priority = typeof item.priority === 'number' && Number.isFinite(item.priority) ? item.priority : 0;
+export function priorityInRange(item: { priority?: number } | null | undefined, range: NormalizedPriorityRange): boolean {
+  const priority = typeof item?.priority === 'number' && Number.isFinite(item.priority) ? item.priority : 0;
   if (range.min !== undefined && priority < range.min) return false;
   if (range.max !== undefined && priority > range.max) return false;
   return true;
@@ -68,8 +72,8 @@ export function priorityInRange(item: { priority?: number }, range: NormalizedPr
  * Return whether an item's method name starts with the given prefix (case-insensitive).
  * An empty prefix matches everything.
  */
-export function matchesMethodPrefix(item: { method?: string }, prefix: string): boolean {
-  const normalizedPrefix = prefix.trim().toLowerCase();
+export function matchesMethodPrefix(item: { method?: string }, prefix: string | undefined | null): boolean {
+  const normalizedPrefix = String(prefix || '').trim().toLowerCase();
   if (!normalizedPrefix) return true;
   return String(item.method || '')
     .toLowerCase()

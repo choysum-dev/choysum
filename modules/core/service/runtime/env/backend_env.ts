@@ -14,7 +14,7 @@ export function getBackendEnv(): Record<string, unknown> {
 export function getBackendEnvText(...keys: string[]): string {
   const env = getBackendEnv();
   for (const key of keys) {
-    const value = String((env as any)?.[key] || '').trim();
+    const value = String((env as any)?.[key] ?? '').trim();
     if (value) return value;
   }
   return '';
@@ -23,7 +23,7 @@ export function getBackendEnvText(...keys: string[]): string {
 /**
  * Return whether a string environment-flag value evaluates to truthy.
  */
-export function isTruthyFlag(value: string): boolean {
-  const raw = value.trim().toLowerCase();
+export function isTruthyFlag(value: unknown): boolean {
+  const raw = String(value || '').trim().toLowerCase();
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
 }
