@@ -164,28 +164,28 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
               And: [
                 ['IrModelId', 'in', modelIds],
                 ['IrFieldId', 'in', Array.from(fieldIdSet)],
-                ['IrApplicationId', '=', null],
+                ['IrApplicationId', 'is', null],
               ],
             },
             {
               And: [
                 ['IrModelId', 'in', modelIds],
-                ['IrFieldId', '=', null],
-                ['IrApplicationId', '=', null],
+                ['IrFieldId', 'is', null],
+                ['IrApplicationId', 'is', null],
               ],
             },
             {
               And: [
                 ['IrApplicationId', 'in', applicationIds],
-                ['IrModelId', '=', null],
-                ['IrFieldId', '=', null],
+                ['IrModelId', 'is', null],
+                ['IrFieldId', 'is', null],
               ],
             },
             {
               And: [
-                ['IrApplicationId', '=', null],
-                ['IrModelId', '=', null],
-                ['IrFieldId', '=', null],
+                ['IrApplicationId', 'is', null],
+                ['IrModelId', 'is', null],
+                ['IrFieldId', 'is', null],
               ],
             },
           ],

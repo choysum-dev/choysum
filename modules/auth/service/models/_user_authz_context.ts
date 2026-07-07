@@ -201,7 +201,7 @@ export async function buildAuthzContext(args: { userId: string; activeCompanyId:
             ['UserId', '=', args.userId],
             {
               Or: [
-                ['CompanyId', '=', null],
+                ['CompanyId', 'is', null],
                 ['CompanyId', 'in', enabledCompanyIds],
               ],
             },

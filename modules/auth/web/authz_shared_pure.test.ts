@@ -52,9 +52,17 @@ function requireMatchesMethod(req: string, modelKey: string, methodLower: string
   const parts = body.split('/');
   if (parts.length !== 2) return false;
   const mk = String(parts[0] || '').trim();
-  const mm = String(parts[1] || '').trim().toLowerCase();
+  const mm = String(parts[1] || '')
+    .trim()
+    .toLowerCase();
   if (!mk || !mm) return false;
-  if (mk.toLowerCase() !== String(modelKey || '').trim().toLowerCase()) return false;
+  if (
+    mk.toLowerCase() !==
+    String(modelKey || '')
+      .trim()
+      .toLowerCase()
+  )
+    return false;
   return mm === '*' || mm === methodLower;
 }
 
