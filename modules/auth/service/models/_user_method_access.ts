@@ -241,14 +241,8 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
 
     if (resourceIDList.length > 0) {
       promises.push(
-        IrUiResource.Search(
-          { And: [['Id', 'in', resourceIDList]] } as any,
-          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
-        ),
-        IrUiResource.Search(
-          { And: [['Name', 'in', resourceIDList]] } as any,
-          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
-        )
+        IrUiResource.Search({ And: [['Id', 'in', resourceIDList]] } as any, { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any),
+        IrUiResource.Search({ And: [['Name', 'in', resourceIDList]] } as any, { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any)
       );
     }
 
@@ -330,8 +324,7 @@ export async function evaluateUiDerivedMethodDecision(
     }
 
     if (matchedModes.has('deny')) {
-      denied = true;
-      break;
+      continue;
     }
     if (matchedModes.has('allow')) allowed = true;
   }

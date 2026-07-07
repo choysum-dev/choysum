@@ -105,10 +105,7 @@ async function resolveModelIds(modelName: string): Promise<string[]> {
  * Core FieldRule evaluation: resolve meta, load rules, partition by scope, and decide per-field.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
-  const [applicationIds, modelIds] = await Promise.all([
-    resolveApplicationIds(input.appName),
-    resolveModelIds(input.modelName),
-  ]);
+  const [applicationIds, modelIds] = await Promise.all([resolveApplicationIds(input.appName), resolveModelIds(input.modelName)]);
   if (modelIds.length === 0) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
@@ -167,13 +164,17 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
                 ['IrApplicationId', 'is', null],
               ],
             },
-            {
-              And: [
-                ['IrApplicationId', 'in', applicationIds],
-                ['IrModelId', 'is', null],
-                ['IrFieldId', 'is', null],
-              ],
-            },
+            ...(applicationIds.length > 0
+              ? [
+                  {
+                    And: [
+                      ['IrApplicationId', 'in', applicationIds],
+                      ['IrModelId', 'is', null],
+                      ['IrFieldId', 'is', null],
+                    ],
+                  },
+                ]
+              : []),
             {
               And: [
                 ['IrApplicationId', 'is', null],

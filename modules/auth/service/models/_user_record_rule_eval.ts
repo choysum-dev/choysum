@@ -65,9 +65,7 @@ async function computeCompanyGateMode(modelId: string, companyScoped: boolean, h
       companyGateCache.set(modelId, result);
       return result;
     } catch {
-      const result = { enabled: false, reason: 'meta_company_gate_error' } as const;
-      companyGateCache.set(modelId, result);
-      return result;
+      return { enabled: false, reason: 'meta_company_gate_error' };
     }
   });
 }
