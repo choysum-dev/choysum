@@ -314,7 +314,7 @@ export async function issueLoginTokensAndSession(
     ipAddress?: string;
     deviceInfo?: string;
     rememberMe?: boolean;
-  }
+  } = {}
 ): Promise<any> {
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);

@@ -7,6 +7,7 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
+import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
 import IrUiResource from '@/meta/service/models/ir_ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
@@ -507,6 +508,35 @@ test('P3-2: CheckMethodAccess ui deny overrides ui allow on same runtime method'
   );
 
   expect(out.ok).toBe(false);
+});
+
+test('P3-2: evaluateUiDerivedMethodDecision marks denied when allow and deny both match', async () => {
+  resetRequestContext();
+  const originalRoleUiSearch = (RoleUiResource as any).Search;
+  const originalIrUiSearch = (IrUiResource as any).Search;
+
+  (RoleUiResource as any).Search = async () => [
+    { IrApplicationId: 'APP-1', IrUiResourceId: null, Mode: 'allow' },
+    { IrApplicationId: null, IrUiResourceId: 'RES-DENY', Mode: 'deny' },
+  ];
+
+  (IrUiResource as any).Search = async () => [
+    {
+      Id: 'RES-DENY',
+      Name: 'res-deny',
+      IrApplicationId: 'APP-1',
+      Requires: ['rpc:/auth.User/browse'],
+    },
+  ];
+
+  try {
+    const out = await evaluateUiDerivedMethodDecision(['ROLE-1'], 'auth.User', 'browse');
+    expect(out.allowed).toBe(false);
+    expect(out.denied).toBe(true);
+  } finally {
+    (RoleUiResource as any).Search = originalRoleUiSearch;
+    (IrUiResource as any).Search = originalIrUiSearch;
+  }
 });
 
 test('P3-2: CheckMethodAccess manual allow remains authoritative over ui deny', async () => {

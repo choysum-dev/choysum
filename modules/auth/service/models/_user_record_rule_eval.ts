@@ -16,8 +16,6 @@ const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
 
 type RoleScope = { global: boolean; companies: string[] };
 
-const companyGateCache = new Map<string, { enabled: boolean; reason?: string }>();
-
 const PERM_FIELD_BY_OP: Record<RecordRuleOp, keyof RoleRecordRule> = {
   read: 'PermRead',
   write: 'PermWrite',
@@ -71,9 +69,6 @@ async function computeCompanyGateMode(modelId: string, companyScoped: boolean, h
   if (!hasCompany) return { enabled: false, reason: 'no_company_context' };
   if (!companyScoped) return { enabled: false, reason: 'model_not_company_scoped' };
 
-  const cached = companyGateCache.get(modelId);
-  if (cached) return cached;
-
   const req = getCurrentReq();
   const state = req ? getOrInitReqServiceState(req) : undefined;
   const key = `companyGateMode::${modelId}`;
@@ -89,14 +84,10 @@ async function computeCompanyGateMode(modelId: string, companyScoped: boolean, h
           } as any)
         ) > 0;
       if (!hasCompanyIdField) {
-        const result = { enabled: false, reason: 'company_scoped_missing_company_id_field' } as const;
-        companyGateCache.set(modelId, result);
-        return result;
+        return { enabled: false, reason: 'company_scoped_missing_company_id_field' } as const;
       }
 
-      const result = { enabled: true } as const;
-      companyGateCache.set(modelId, result);
-      return result;
+      return { enabled: true } as const;
     } catch {
       return { enabled: false, reason: 'meta_company_gate_error' };
     }

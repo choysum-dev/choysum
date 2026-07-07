@@ -445,3 +445,57 @@ test('P3-1: same request RoleInheritance write invalidates authz context', async
   expect(out.a1).toBe(false);
   expect(out.a2).toBe(true);
 });
+
+test('P3-1: same request UserRole.CreateMany invalidates authz context', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+  const c2 = { Id: uid('C2') };
+
+  setupAllowlistForFixtures();
+
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id, c2.Id] } as any,
+    async () => {
+      const userId = await createUser(c1.Id);
+      setIdentity(userId);
+
+      const r = await createRole('ROLE_CREATE_MANY_INV');
+
+      const userModelId = await resolveModelId('auth', 'User');
+      const browse = await resolveService(userModelId, 'browse');
+
+      await RoleMethodAccess.Create(
+        {
+          RoleId: { Id: r.id } as any,
+          IrServiceId: browse.id,
+          IrModelId: null,
+          IrApplicationId: null,
+          Mode: 'allow',
+        } as any,
+        ['Id'] as any
+      );
+
+      disableAllowlist();
+
+      const before = await User.CheckMethodAccess(c2.Id, `/auth.User/${browse.name}`);
+
+      await UserRole.CreateMany(
+        [
+          {
+            UserId: { Id: userId } as any,
+            RoleId: { Id: r.id } as any,
+            CompanyId: c2.Id,
+          },
+        ] as any,
+        ['Id'] as any
+      );
+
+      const after = await User.CheckMethodAccess(c2.Id, `/auth.User/${browse.name}`);
+      return { before, after };
+    },
+    { merge: false }
+  );
+
+  expect(out.before).toBe(false);
+  expect(out.after).toBe(true);
+});

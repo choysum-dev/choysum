@@ -346,6 +346,7 @@ export async function evaluateUiDerivedMethodDecision(
     }
 
     if (matchedModes.has('deny')) {
+      denied = true;
       continue;
     }
     if (matchedModes.has('allow')) allowed = true;

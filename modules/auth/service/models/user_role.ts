@@ -60,6 +60,25 @@ export default class UserRole extends BaseModel {
   }
 
   /**
+   * Create multiple UserRole rows and invalidate request-scoped caches for the affected users.
+   */
+  static override async CreateMany<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    values: Partial<Insertable<T & BaseModel>>[],
+    returnFields?: FieldSelection<T>
+  ): Promise<T[]> {
+    const created = await super.CreateMany(values as any, returnFields as any);
+
+    // Role assignments can change effective permissions within the same request;
+    // invalidate request-scoped authz/field/record caches for correctness.
+    const rows: any[] = Array.isArray(values as any) ? (values as any) : [];
+    const userIds = rows.map((v: any) => normalizeRefId(v?.UserId)).filter(Boolean) as string[];
+    invalidateAuthzCachesForUsers(userIds);
+
+    return created as unknown as T[];
+  }
+
+  /**
    * Update UserRole rows and invalidate request-scoped auth caches conservatively.
    */
   static override async Update<T extends BaseModel>(
