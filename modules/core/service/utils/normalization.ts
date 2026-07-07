@@ -148,7 +148,7 @@ export function maybeRefId(value: unknown): string | undefined {
 
 function normalizeRefLikeIdString(raw: unknown): string {
   if (raw == null) return '';
-  if (typeof raw === 'object' && raw !== null) {
+  if (typeof raw === 'object') {
     return String((raw as Record<string, unknown>).Id ?? (raw as Record<string, unknown>).id ?? '').trim();
   }
   return String(raw || '').trim();
