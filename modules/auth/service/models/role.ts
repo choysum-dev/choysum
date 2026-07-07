@@ -242,8 +242,11 @@ export default class Role extends BaseModel {
         (rows[i] as any).AccessUiResourceIds = [...accessIds];
       }
     }
-    if (wantsAccessField(returnFields) && accessList.every(ids => ids == null)) {
-      await hydrateAccessUiResourceIds(rows);
+    if (wantsAccessField(returnFields)) {
+      const rowsToHydrate = rows.filter((_, i) => accessList[i] == null);
+      if (rowsToHydrate.length > 0) {
+        await hydrateAccessUiResourceIds(rowsToHydrate);
+      }
     }
     return rows as T[];
   }

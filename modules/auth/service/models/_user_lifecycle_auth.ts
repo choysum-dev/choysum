@@ -321,9 +321,13 @@ export async function issueLoginTokensAndSession(
       throw new Error('Choysum auth subsystem is not initialized');
     }
     const accessIdentity = auth.validateToken(tokens.accessToken, 'access', false);
+    const tokenId = String(accessIdentity?.tokenId || '').trim();
+    if (!tokenId) {
+      throw new Error('Failed to validate issued access token');
+    }
     await Session.Create({
       UserId: { Id: user.Id },
-      AccessTokenId: String(accessIdentity?.tokenId || '').trim(),
+      AccessTokenId: tokenId,
       DeviceInfo: opts.deviceInfo || '',
       IpAddress: opts.ipAddress || '',
       ExpiresAt: new Date(tokens.expiresAt),
