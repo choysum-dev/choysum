@@ -29,6 +29,19 @@ export function readRefId(value: unknown): string | undefined {
 }
 
 /**
+ * Normalize a relation reference into a trimmed Id string.
+ *
+ * Accepts a plain string id, an object with an Id (or id) property, or null/undefined.
+ * Returns null when the input cannot be resolved to a non-empty string.
+ */
+export function normalizeRefId(value: unknown): string | null {
+  if (value == null) return null;
+  const raw = typeof value === 'object' && value !== null ? ((value as any).Id ?? (value as any).id ?? null) : value;
+  const s = String(raw ?? '').trim();
+  return s ? s : null;
+}
+
+/**
  * Normalize an offset (non-negative finite integer, floor).
  */
 export function normalizeOffset(raw: unknown): number {

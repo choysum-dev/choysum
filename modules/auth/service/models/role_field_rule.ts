@@ -8,7 +8,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import Role from './role';
-import { normalizeRefId } from './_rule_scope_helpers';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
 
 /**

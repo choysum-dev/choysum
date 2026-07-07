@@ -1,7 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, normalizeStringArray, readRefId, normalizeOffset, normalizeLimit, normalizeFields } from '@/core/service/utils/normalization';
+import {
+  normalizeOptionalString,
+  normalizeStringArray,
+  readRefId,
+  normalizeRefId,
+  normalizeOffset,
+  normalizeLimit,
+  normalizeFields,
+} from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
   expect(normalizeOptionalString('  hello  ')).toBe('hello');
@@ -34,6 +42,19 @@ test('readRefId extracts id from string or object', () => {
   expect(readRefId({ Id: null })).toBe(undefined);
   expect(readRefId({ id: 'lowercase' })).toBe(undefined);
   expect(readRefId(true)).toBe(undefined);
+});
+
+test('normalizeRefId returns trimmed string or null', () => {
+  expect(normalizeRefId(null)).toBe(null);
+  expect(normalizeRefId(undefined)).toBe(null);
+  expect(normalizeRefId('')).toBe(null);
+  expect(normalizeRefId(0)).toBe('0');
+  expect(normalizeRefId('  id123  ')).toBe('id123');
+  expect(normalizeRefId({ Id: '  obj456  ' })).toBe('obj456');
+  expect(normalizeRefId({ id: 'lowercase' })).toBe('lowercase');
+  expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe('fallback');
+  expect(normalizeRefId({ Id: '' })).toBe(null);
+  expect(normalizeRefId(true)).toBe(null);
 });
 
 test('normalizeOffset returns non-negative floored integer', () => {

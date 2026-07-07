@@ -12,7 +12,7 @@ import RoleRecordRule from './role_record_rule';
 import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
-import { normalizeRefId } from './_rule_scope_helpers';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 
 /**
  * Role defines one reusable permission bundle and its derived UI/resource mappings.
