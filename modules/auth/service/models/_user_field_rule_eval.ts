@@ -7,25 +7,11 @@ import RoleFieldRule from './role_field_rule';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrFieldModel from '@/meta/service/models/ir_field';
 import type IrModelModel from '@/meta/service/models/ir_model';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
 const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
-
-function normalizeIdRef(v: any): string | null {
-  if (v == null) return null;
-  if (typeof v === 'string') {
-    const s = v.trim();
-    return s ? s : null;
-  }
-  if (typeof v === 'object') {
-    const raw = (v as any)?.Id ?? (v as any)?.id ?? (v as any)?.value ?? (v as any)?.Value;
-    const s = String(raw ?? '').trim();
-    return s ? s : null;
-  }
-  const s = String(v ?? '').trim();
-  return s ? s : null;
-}
 
 function normalizeFieldPerm(v: any): 'allow' | 'deny' | null {
   if (v == null) return null;
@@ -242,9 +228,9 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
 
   for (const r of rules || []) {
     const rid = String((r as any)?.Id ?? '').trim();
-    const irApp = normalizeIdRef(pickField(r, ['IrApplicationId', 'ir_application_id', 'irApplicationId']));
-    const irModel = normalizeIdRef(pickField(r, ['IrModelId', 'ir_model_id', 'irModelId']));
-    const irField = normalizeIdRef(pickField(r, ['IrFieldId', 'ir_field_id', 'irFieldId']));
+    const irApp = normalizeRefId(pickField(r, ['IrApplicationId', 'ir_application_id', 'irApplicationId']));
+    const irModel = normalizeRefId(pickField(r, ['IrModelId', 'ir_model_id', 'irModelId']));
+    const irField = normalizeRefId(pickField(r, ['IrFieldId', 'ir_field_id', 'irFieldId']));
     const permRead = normalizeFieldPerm(pickField(r, ['PermRead', 'perm_read', 'permRead']));
     const permWrite = normalizeFieldPerm(pickField(r, ['PermWrite', 'perm_write', 'permWrite']));
 

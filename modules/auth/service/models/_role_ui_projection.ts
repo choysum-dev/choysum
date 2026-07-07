@@ -17,10 +17,6 @@ function normalizeIdList(v: any): string[] {
   return Array.from(set);
 }
 
-function readRoleId(row: any): string | null {
-  return normalizeRefId(row?.RoleId);
-}
-
 function isAllowResourceScope(row: any): boolean {
   const mode = String((row as any)?.Mode ?? 'allow')
     .trim()
@@ -154,7 +150,7 @@ async function buildAccessMap(roleIds: string[]): Promise<Map<string, string[]>>
 
   const map = new Map<string, Set<string>>();
   for (const row of rows || []) {
-    const roleId = readRoleId(row as any);
+    const roleId = normalizeRefId((row as any)?.RoleId);
     if (!roleId) continue;
     if (!isAllowResourceScope(row)) continue;
     const resourceId = normalizeRefId((row as any)?.IrUiResourceId);
