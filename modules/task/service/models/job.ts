@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { SearchOptions, QueryCondition, OrderBy } from '@/core/service/api/query';
+import { normalizeOffset } from '@/core/service/utils/normalization';
 
 /**
  * Supported lifecycle states for queued jobs.
@@ -177,11 +178,6 @@ function clampLimit(limit?: number, fallback: number = 50, max: number = 500): n
   return Math.min(val, max);
 }
 
-/** Normalizes a requested page offset. */
-function normalizeOffset(offset?: number): number {
-  if (typeof offset !== 'number' || offset < 0) return 0;
-  return Math.floor(offset);
-}
 
 /** Resolves the configured default max-attempt count for enqueued jobs. */
 function resolveDefaultMaxAttempts(): number {
