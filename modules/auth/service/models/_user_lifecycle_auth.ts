@@ -353,8 +353,8 @@ export async function refreshTokensWithLatestMetadata(
     extractUserMetadata: (user: any) => Promise<any>;
   }
 ): Promise<any> {
-  const id = await Token.ValidateToken(refreshToken, 'refresh');
-  const userId = String((id as any)?.userId || '').trim();
+  const identity = await Token.ValidateToken(refreshToken, 'refresh');
+  const userId = String((identity as any)?.userId || '').trim();
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,

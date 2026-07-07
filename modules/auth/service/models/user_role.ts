@@ -8,6 +8,7 @@ import type { QueryCondition } from '@/core/service/api/query';
 import User from './user';
 import Role from './role';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
@@ -35,11 +36,8 @@ export default class UserRole extends BaseModel {
   /**
    * Read a trimmed Id from a relation reference or scalar value.
    */
-  private static _maybeId(v: any): string {
-    if (!v) return '';
-    if (typeof v === 'string') return v.trim();
-    const id = (v as any).Id;
-    return typeof id === 'string' ? id.trim() : '';
+  static _maybeId(v: any): string {
+    return normalizeRefId(v) ?? '';
   }
 
   /**
@@ -55,7 +53,7 @@ export default class UserRole extends BaseModel {
     // Role assignments can change effective permissions within the same request;
     // invalidate request-scoped authz/field/record caches for correctness.
     const rows: any[] = Array.isArray(value as any) ? (value as any) : [value];
-    const userIds = rows.map((v: any) => UserRole._maybeId(v?.UserId)).filter(Boolean);
+    const userIds = rows.map((v: any) => normalizeRefId(v?.UserId)).filter(Boolean) as string[];
     invalidateAuthzCachesForUsers(userIds);
 
     return created as unknown as T;
