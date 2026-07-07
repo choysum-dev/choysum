@@ -1,0 +1,252 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { createServiceByModel } from '@/core/service/rpc';
+import { uniqStrings } from '@/core/service/utils/normalization';
+import type IrApplicationModel from '@/meta/service/models/ir_application';
+import type IrModelModel from '@/meta/service/models/ir_model';
+import type IrServiceModel from '@/meta/service/models/ir_service';
+import RoleMethodAccess from './role_method_access';
+import { maybeId } from './_user_authz_shared';
+
+const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
+const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
+const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
+
+export type ServiceAgg = {
+  allow: Set<string>;
+  deny: Set<string>;
+  allowAll: boolean;
+  denyAll: boolean;
+};
+
+export type AclAggregationResult = {
+  requiresAllowKeysByCompany: Map<string, Set<string>>;
+  requiresDenyKeysByCompany: Map<string, Set<string>>;
+  companyGlobalAllow: Set<string>;
+  companyGlobalDeny: Set<string>;
+};
+
+/**
+ * Map a role id to its scope keys ('*' or per-company).
+ */
+export function applyToScope(roleId: string, roleScopesById: Record<string, { global: boolean; companies: string[] }>, fn: (companyKey: string) => void): void {
+  const scope = roleScopesById?.[roleId];
+  if (!scope) return;
+  if (scope.global) fn('*');
+  else for (const cid of scope.companies || []) fn(cid);
+}
+
+/**
+ * Aggregate RoleMethodAccess entries into per-company RPC allow/deny sets and
+ * synthesize requires keys for downstream UI whitelist evaluation.
+ */
+export async function buildAclAggregation(
+  roleIds: string[],
+  roleScopesById: Record<string, { global: boolean; companies: string[] }>
+): Promise<AclAggregationResult> {
+  const accesses = await RoleMethodAccess.Search(['RoleId', 'in', roleIds] as any, {
+    fields: ['RoleId', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'],
+    limit: 50000,
+  });
+
+  const aggByCompany = new Map<string, Map<string, ServiceAgg>>();
+  const companyGlobalAllow = new Set<string>();
+  const companyGlobalDeny = new Set<string>();
+
+  const ensureAgg = (companyKey: string, serviceFullName: string): ServiceAgg => {
+    let m = aggByCompany.get(companyKey);
+    if (!m) {
+      m = new Map();
+      aggByCompany.set(companyKey, m);
+    }
+    let a = m.get(serviceFullName);
+    if (!a) {
+      a = { allow: new Set(), deny: new Set(), allowAll: false, denyAll: false };
+      m.set(serviceFullName, a);
+    }
+    return a;
+  };
+
+  const irServiceIds = Array.from(new Set((accesses || []).map(a => String((a as any).IrServiceId || '').trim()).filter(Boolean)));
+  const irModelIds = Array.from(new Set((accesses || []).map(a => String((a as any).IrModelId || '').trim()).filter(Boolean)));
+  const irApplicationIds = Array.from(new Set((accesses || []).map(a => String((a as any).IrApplicationId || '').trim()).filter(Boolean)));
+
+  const serviceById = new Map<string, { modelId: string; name: string }>();
+  const modelById = new Map<string, { app: string; name: string }>();
+
+  // 4.1) Resolve service -> model + method
+  const modelIdsFromServices = new Set<string>();
+  if (irServiceIds.length > 0) {
+    const services = await IrService.Search(['Id', 'in', irServiceIds] as any, { fields: ['Id', 'ModelId', 'Name'], limit: 50000 });
+    for (const s of services || []) {
+      const sid = String((s as any).Id || '').trim();
+      const mid = maybeId((s as any).ModelId);
+      const name = String((s as any).Name || '').trim();
+      if (!sid || !mid || !name) continue;
+      serviceById.set(sid, { modelId: mid, name });
+      modelIdsFromServices.add(mid);
+    }
+  }
+
+  // 4.2) Resolve model -> app + name
+  const needModelIds = Array.from(new Set([...irModelIds, ...Array.from(modelIdsFromServices)]));
+  if (needModelIds.length > 0) {
+    const models = await IrModel.Search(['Id', 'in', needModelIds] as any, { fields: ['Id', 'Name', 'Application'], limit: 50000 });
+    for (const m of models || []) {
+      const mid = String((m as any).Id || '').trim();
+      const app = String((m as any).Application || '').trim();
+      const name = String((m as any).Name || '').trim();
+      if (!mid || !app || !name) continue;
+      modelById.set(mid, { app, name });
+    }
+  }
+
+  // 4.3) Resolve applicationId -> applicationName, and applicationName -> models
+  const appNameById = new Map<string, string>();
+  if (irApplicationIds.length > 0) {
+    const apps = await IrApplication.Search(['Id', 'in', irApplicationIds] as any, { fields: ['Id', 'Name'], limit: 50000 } as any);
+    for (const a of apps || []) {
+      const id = String((a as any).Id || '').trim();
+      const name = String((a as any).Name || '').trim();
+      if (!id || !name) continue;
+      appNameById.set(id, name);
+    }
+  }
+
+  const modelsByApp = new Map<string, Array<{ app: string; name: string }>>();
+  const getModelsForApp = async (appName: string): Promise<Array<{ app: string; name: string }>> => {
+    const k = String(appName || '').trim();
+    if (!k) return [];
+    const cached = modelsByApp.get(k);
+    if (cached) return cached;
+    const rows = await IrModel.Search(['Application', '=', k] as any, { fields: ['Application', 'Name'], limit: 50000 } as any);
+    const out = (rows || [])
+      .map((r: any) => ({ app: String((r as any).Application || '').trim(), name: String((r as any).Name || '').trim() }))
+      .filter((r: { app: string; name: string }) => r.app && r.name);
+    modelsByApp.set(k, out);
+    return out;
+  };
+
+  let allModels: Array<{ app: string; name: string }> | undefined;
+  const getAllModels = async (): Promise<Array<{ app: string; name: string }>> => {
+    if (allModels) return allModels;
+    const rows = await IrModel.Search([] as any, { fields: ['Application', 'Name'], limit: 50000 } as any);
+    const out = (rows || [])
+      .map((r: any) => ({ app: String((r as any).Application || '').trim(), name: String((r as any).Name || '').trim() }))
+      .filter((r: { app: string; name: string }) => r.app && r.name);
+    allModels = out;
+    return out;
+  };
+
+  const scope = (rid: string) => applyToScope.bind(null, rid, roleScopesById);
+
+  // 4.4) Apply rules into per-company aggregates
+  for (const a of accesses || []) {
+    const roleId = maybeId((a as any).RoleId);
+    const sid = String((a as any).IrServiceId || '').trim();
+    const mid = String((a as any).IrModelId || '').trim();
+    const aid = String((a as any).IrApplicationId || '').trim();
+    const mode = String((a as any).Mode || '').toLowerCase();
+    if (!roleId || (mode !== 'allow' && mode !== 'deny')) continue;
+
+    // global scope
+    if (!sid && !mid && !aid) {
+      scope(roleId)(companyKey => {
+        if (mode === 'allow') companyGlobalAllow.add(companyKey);
+        else companyGlobalDeny.add(companyKey);
+      });
+      const models = await getAllModels();
+      scope(roleId)(companyKey => {
+        for (const m of models) {
+          const serviceFullName = `${m.app}.${m.name}`;
+          const agg = ensureAgg(companyKey, serviceFullName);
+          if (mode === 'allow') agg.allowAll = true;
+          else agg.denyAll = true;
+        }
+      });
+      continue;
+    }
+
+    // application scope
+    if (!sid && !mid && aid) {
+      const appName = appNameById.get(aid);
+      if (!appName) continue;
+      const models = await getModelsForApp(appName);
+      scope(roleId)(companyKey => {
+        for (const m of models) {
+          const serviceFullName = `${m.app}.${m.name}`;
+          const agg = ensureAgg(companyKey, serviceFullName);
+          if (mode === 'allow') agg.allowAll = true;
+          else agg.denyAll = true;
+        }
+      });
+      continue;
+    }
+
+    // model scope
+    if (!sid && mid && !aid) {
+      const mdl = modelById.get(mid);
+      if (!mdl) continue;
+      const serviceFullName = `${mdl.app}.${mdl.name}`;
+      scope(roleId)(companyKey => {
+        const agg = ensureAgg(companyKey, serviceFullName);
+        if (mode === 'allow') agg.allowAll = true;
+        else agg.denyAll = true;
+      });
+      continue;
+    }
+
+    // service(method) scope
+    if (sid && !mid && !aid) {
+      const svc = serviceById.get(sid);
+      if (!svc) continue;
+      const mdl = modelById.get(svc.modelId);
+      if (!mdl) continue;
+      const serviceFullName = `${mdl.app}.${mdl.name}`;
+      const methodName = svc.name;
+      scope(roleId)(companyKey => {
+        const agg = ensureAgg(companyKey, serviceFullName);
+        if (mode === 'allow') agg.allow.add(methodName);
+        else agg.deny.add(methodName);
+      });
+      continue;
+    }
+  }
+
+  // 2.5) Synthesize requires keys per company for internal evaluation only.
+  const requiresAllowKeysByCompany = new Map<string, Set<string>>();
+  const requiresDenyKeysByCompany = new Map<string, Set<string>>();
+  for (const [companyKey, svcMap] of aggByCompany.entries()) {
+    if (!requiresAllowKeysByCompany.has(companyKey)) requiresAllowKeysByCompany.set(companyKey, new Set<string>());
+    if (!requiresDenyKeysByCompany.has(companyKey)) requiresDenyKeysByCompany.set(companyKey, new Set<string>());
+    const requiresAllowSet = requiresAllowKeysByCompany.get(companyKey)!;
+    const requiresDenySet = requiresDenyKeysByCompany.get(companyKey)!;
+
+    for (const [serviceFullName, agg] of svcMap.entries()) {
+      const serviceWildcard = `rpc:/${serviceFullName}/*`;
+
+      if (agg.denyAll) {
+        requiresDenySet.add(serviceWildcard);
+        continue;
+      }
+
+      const hasAnyAllow = agg.allowAll || agg.allow.size > 0;
+      if (!hasAnyAllow) continue;
+
+      requiresAllowSet.add(serviceWildcard);
+
+      if (agg.deny.size > 0) {
+        for (const m of agg.allow) requiresAllowSet.add(`rpc:/${serviceFullName}/${m}`);
+        for (const m of agg.deny) requiresDenySet.add(`rpc:/${serviceFullName}/${m}`);
+      }
+    }
+  }
+
+  return {
+    requiresAllowKeysByCompany,
+    requiresDenyKeysByCompany,
+    companyGlobalAllow,
+    companyGlobalDeny,
+  };
+}
