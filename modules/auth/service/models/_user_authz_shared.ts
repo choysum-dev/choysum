@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getIdentity, getReadonlyCtx, getJsCtxAndReq } from '@/core/service/api/context';
+import { getIdentity, getReadonlyCtx, getJsCtxAndReq, getOrInitReqServiceState } from '@/core/service/api/context';
 import {
   uniqStrings,
   normalizeRpcRequireKey,
@@ -23,8 +23,8 @@ export async function withPermissionGraphBypass<T>(fn: () => Promise<T>): Promis
   const { req } = getJsCtxAndReq();
   if (!req) return await fn();
 
-  if (!req.__choysumServiceState) req.__choysumServiceState = {};
-  const state: any = req.__choysumServiceState;
+  const state = getOrInitReqServiceState(req);
+  if (!state) return await fn();
 
   const prevRR = typeof state.recordRuleBypassDepth === 'number' ? state.recordRuleBypassDepth : 0;
   const prevFR = typeof state.fieldRuleBypassDepth === 'number' ? state.fieldRuleBypassDepth : 0;
