@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
+import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
@@ -38,67 +38,26 @@ async function computeCompanyGateMode(modelId: string, companyScoped: boolean, h
   const req = getCurrentReq();
   const state = req ? getOrInitReqServiceState(req) : undefined;
   const key = `companyGateMode::${modelId}`;
-  const existing = state ? state[key] : undefined;
-  if (existing) {
-    if (typeof existing?.then === 'function') {
-      const v = await existing;
-      try {
-        state[key] = v;
-      } catch {
-        /* ignore */
-      }
-      return v;
-    }
-    return existing;
-  }
-
-  const p = (async (): Promise<{ enabled: boolean; reason?: string }> => {
+  return await memoizeInReqState(state, key, async (): Promise<{ enabled: boolean; reason?: string }> => {
     if (!companyScoped) return { enabled: false, reason: 'model_not_company_scoped' };
 
-    const hasCompanyIdField =
-      Number(
-        await IrField.Count({
-          And: [
-            ['ModelId', '=', modelId],
-            ['Name', '=', 'CompanyId'],
-          ],
-        } as any)
-      ) > 0;
-    if (!hasCompanyIdField) return { enabled: false, reason: 'company_scoped_missing_company_id_field' };
-
-    return { enabled: true };
-  })()
-    .then((v: any) => {
-      if (state) {
-        try {
-          state[key] = v;
-        } catch {
-          /* ignore */
-        }
-      }
-      return v;
-    })
-    .catch(() => {
-      if (state) {
-        try {
-          delete state[key];
-        } catch {
-          /* ignore */
-        }
-      }
-      return { enabled: false, reason: 'meta_company_gate_error' };
-    });
-
-  if (state) state[key] = p;
-  const v = await p;
-  if (state) {
     try {
-      state[key] = v;
+      const hasCompanyIdField =
+        Number(
+          await IrField.Count({
+            And: [
+              ['ModelId', '=', modelId],
+              ['Name', '=', 'CompanyId'],
+            ],
+          } as any)
+        ) > 0;
+      if (!hasCompanyIdField) return { enabled: false, reason: 'company_scoped_missing_company_id_field' };
+
+      return { enabled: true };
     } catch {
-      /* ignore */
+      return { enabled: false, reason: 'meta_company_gate_error' };
     }
-  }
-  return v;
+  });
 }
 
 function buildCompanyGateExpr(scope: RoleScope, companyGateEnabled: boolean): any {

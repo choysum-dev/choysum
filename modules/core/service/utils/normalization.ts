@@ -182,6 +182,25 @@ export function parseJsonStringArray(raw: unknown): string[] {
 
   const tryObjectSnapshot = (value: unknown): string[] | null => {
     if (!value || typeof value !== 'object') return null;
+
+    for (const key of ['value', 'values', 'items']) {
+      try {
+        const direct = (value as Record<string, unknown>)[key];
+        if (Array.isArray(direct)) return normalize(direct);
+      } catch {
+        // fallthrough
+      }
+    }
+
+    try {
+      const numericKeys = Object.keys(value as Record<string, unknown>)
+        .filter(key => /^\d+$/.test(key))
+        .sort((a, b) => Number(a) - Number(b));
+      if (numericKeys.length > 0) return normalize(numericKeys.map(key => (value as Record<string, unknown>)[key]));
+    } catch {
+      // fallthrough
+    }
+
     try {
       const snap = JSON.parse(JSON.stringify(value));
       if (Array.isArray(snap)) return normalize(snap);

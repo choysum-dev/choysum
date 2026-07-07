@@ -283,7 +283,9 @@ export async function buildUiPermissionProjection(
     for (const menuId of Array.from(menuSet)) {
       let parentId = menuParentById.get(menuId);
       let deniedByAncestor = false;
-      while (parentId) {
+      const visited = new Set<string>();
+      while (parentId && !visited.has(parentId)) {
+        visited.add(parentId);
         const parent = resourceMetaById.get(parentId);
         if (parent && isExplicitUiDenied(parent)) {
           deniedByAncestor = true;

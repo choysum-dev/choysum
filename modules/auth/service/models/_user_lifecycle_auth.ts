@@ -307,7 +307,7 @@ export async function issueLoginTokensAndSession(
   await deps.updateLastLogin(user.Id, new Date());
 
   if (opts.ipAddress || opts.deviceInfo) {
-    const accessIdentity = $choysum.auth.validateToken(tokens.accessToken, 'access', false);
+    const accessIdentity = (globalThis as any).$choysum.auth.validateToken(tokens.accessToken, 'access', false);
     await Session.Create({
       UserId: { Id: user.Id },
       AccessTokenId: String(accessIdentity?.tokenId || '').trim(),
