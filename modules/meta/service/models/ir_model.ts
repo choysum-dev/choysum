@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import type { EffectiveConstraintMeta } from '@/core/service/api/constraint';
 import { MetadataStorage, type EffectiveOnchangeMeta } from '@/core/service/api/metadata';
-import { normalizePagination, paginateAndWrap } from './_diagnostics_response';
+import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
 import IrDecorator from './ir_decorator';
 import IrField from './ir_field';
 import IrModule from './ir_module';
