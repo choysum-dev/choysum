@@ -4,31 +4,7 @@
 import { getReadonlyCtx, getIdentity } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
 
-/**
- * Resolve the current request context and backing request object.
- */
-export function getJsCtxAndReq(): { jsCtx: any; req: any } {
-  const root: any = (globalThis as any)?.$choysum;
-  const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-  const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
-  return { jsCtx, req };
-}
-
-/**
- * Resolve the current request object from the active Choysum runtime context.
- */
-export function getCurrentReq(): any {
-  return getJsCtxAndReq().req;
-}
-
-/**
- * Return the request-scoped service cache, creating it when needed.
- */
-export function getOrInitReqServiceState(req: any): any {
-  if (!req) return undefined;
-  if (!req.__choysumServiceState) req.__choysumServiceState = {};
-  return req.__choysumServiceState;
-}
+export { getJsCtxAndReq, getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
 
 /**
  * Read active and enabled company scope from request overrides or identity metadata.
