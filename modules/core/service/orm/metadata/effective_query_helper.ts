@@ -70,11 +70,14 @@ export function priorityInRange(item: { priority?: number } | null | undefined, 
 
 /**
  * Return whether an item's method name starts with the given prefix (case-insensitive).
- * An empty prefix matches everything.
+ * An empty prefix matches everything.  A null/undefined item never matches a non-empty prefix.
  */
-export function matchesMethodPrefix(item: { method?: string }, prefix: string | undefined | null): boolean {
-  const normalizedPrefix = String(prefix || '').trim().toLowerCase();
+export function matchesMethodPrefix(item: { method?: string } | null | undefined, prefix: string | undefined | null): boolean {
+  const normalizedPrefix = String(prefix || '')
+    .trim()
+    .toLowerCase();
   if (!normalizedPrefix) return true;
+  if (!item) return false;
   return String(item.method || '')
     .toLowerCase()
     .startsWith(normalizedPrefix);

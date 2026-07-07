@@ -95,9 +95,6 @@ export default class IrModel extends BaseModel {
   }> {
     const { ctor, model } = resolveEffectiveModel(modelIdentifier);
 
-    const normalizedPrefix = String(options?.methodPrefix || '')
-      .trim()
-      .toLowerCase();
     const hasPreviewFilter = typeof options?.preview === 'boolean';
     const hasAlwaysOnCreateFilter = typeof options?.alwaysOnCreate === 'boolean';
     const pagination = normalizePagination(options);
@@ -108,7 +105,7 @@ export default class IrModel extends BaseModel {
       if (hasPreviewFilter && item.preview !== Boolean(options?.preview)) return false;
       if (hasAlwaysOnCreateFilter && item.alwaysOnCreate !== Boolean(options?.alwaysOnCreate)) return false;
       if (!priorityInRange(item, priorityRange)) return false;
-      if (!matchesMethodPrefix(item, normalizedPrefix)) return false;
+      if (!matchesMethodPrefix(item, options?.methodPrefix)) return false;
       return true;
     });
 
@@ -129,9 +126,6 @@ export default class IrModel extends BaseModel {
   }> {
     const { ctor, model } = resolveEffectiveModel(modelIdentifier);
 
-    const normalizedPrefix = String(options?.methodPrefix || '')
-      .trim()
-      .toLowerCase();
     const normalizedTrigger = String(options?.triggerField || '')
       .trim()
       .toLowerCase();
@@ -141,7 +135,7 @@ export default class IrModel extends BaseModel {
     const effective = ctor.EffectiveOnchange() as EffectiveOnchangeMeta[];
     const filtered = effective.filter(item => {
       if (!priorityInRange(item, priorityRange)) return false;
-      if (!matchesMethodPrefix(item, normalizedPrefix)) return false;
+      if (!matchesMethodPrefix(item, options?.methodPrefix)) return false;
       if (normalizedTrigger && !item.triggers.some(trigger => trigger.toLowerCase() === normalizedTrigger)) return false;
       return true;
     });
