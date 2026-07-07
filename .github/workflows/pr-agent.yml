@@ -25,8 +25,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Specify the Gemini model to replace the default OpenAI configuration
-          config.model: "gemini/gemini-2.5-pro"
-          config.fallback_models: '["gemini/gemini-2.5-flash"]'
+          config.model: "gemini/gemini-3.5-flash"
+          config.fallback_models: '["gemini/gemini-2.5-pro", "gemini/gemini-2.5-flash"]'
           # Increase token limit to properly process large diffs
           config.max_model_tokens: "1000000"
           # Disable mermaid diagrams since Gemini sometimes fails to generate valid syntax
