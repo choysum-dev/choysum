@@ -29,10 +29,7 @@ export function parseServiceFullName(v: string): { appName: string; modelName: s
   const methodName = parts[1].trim();
   if (!service || !methodName) return null;
 
-  const lastDot = service.lastIndexOf('.');
-  if (lastDot <= 0 || lastDot >= service.length - 1) return null;
-  const appName = service.slice(0, lastDot).trim();
-  const modelName = service.slice(lastDot + 1).trim();
-  if (!appName || !modelName) return null;
-  return { appName, modelName, methodName };
+  const parsed = parseModelFullName(service);
+  if (!parsed) return null;
+  return { ...parsed, methodName };
 }

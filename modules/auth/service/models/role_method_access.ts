@@ -7,7 +7,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import Role from './role';
 import { normalizeRefId } from './_rule_scope_helpers';
-import { invalidateAllAuthzCaches } from './_authz_mutation_helpers';
+import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
 
 /**
  * RoleMethodAccess stores role-level RPC allow and deny overrides at global,

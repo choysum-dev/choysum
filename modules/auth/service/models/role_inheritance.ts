@@ -6,7 +6,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import Role from './role';
-import { invalidateAllAuthzCaches } from './_authz_mutation_helpers';
+import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
 
 /**
  * RoleInheritance links a parent role to a child role so effective permissions

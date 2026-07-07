@@ -30,6 +30,7 @@ import { parseModelFullName, parseServiceFullName } from './_user_model_parsing'
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { rpcServiceWildcard, normalizeRequireKey, hasRpcPermission, isUiResourceAllowed, requireMatchesMethod } from './_user_permission_requires';
 import { getCurrentReq, getOrInitReqServiceState, getCompanyScopeFromRequestContext, getJsCtxAndReq } from './_user_runtime_context';
+import { AUTHZ_CTX_PREFIX, METHOD_ACCESS_PREFIX, UI_GRANT_PREFIX } from './_request_cache_invalidation';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
@@ -1641,7 +1642,7 @@ export default class User extends BaseModel {
       return await build({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey });
     }
 
-    const KEY = `authzContext::${userId}::${companyScopeKey}`;
+    const KEY = `${AUTHZ_CTX_PREFIX}${userId}::${companyScopeKey}`;
     const existing = state[KEY];
     if (existing) {
       // Avoid leaking a Promise into req.__choysumServiceState: Go-side unmarshalling
@@ -1861,7 +1862,7 @@ export default class User extends BaseModel {
 
         const req = getCurrentReq();
         const state = getOrInitReqServiceState(req);
-        const cacheKey = `methodAccess::${String(authz.userId || '').trim()}::${normalizedCompanyId}::${normalizedFullMethod}`;
+        const cacheKey = `${METHOD_ACCESS_PREFIX}${String(authz.userId || '').trim()}::${normalizedCompanyId}::${normalizedFullMethod}`;
         const cached = state?.[cacheKey];
         if (typeof cached === 'boolean') return cached;
 
@@ -2024,7 +2025,7 @@ export default class User extends BaseModel {
     const req = getCurrentReq();
     const state = getOrInitReqServiceState(req);
     const roleSig = ids.join(',');
-    const cacheKey = `uiGrantExpansion::${roleSig}`;
+    const cacheKey = `${UI_GRANT_PREFIX}${roleSig}`;
     const cached = state?.[cacheKey];
     if (cached && Array.isArray((cached as any).resources)) {
       return cached as any;

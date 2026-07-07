@@ -7,7 +7,7 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import User from './user';
 import Role from './role';
-import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from './_authz_mutation_helpers';
+import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
 
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
