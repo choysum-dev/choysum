@@ -100,7 +100,12 @@ async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
     { app: 'base', model: 'Company', method: 'Search' },
   ];
 
+  const modelCache = new Map<string, string>();
+  const serviceCache = new Map<string, Array<{ Id: string; Name: string }>>();
+
   const resolveModelId = async (app: string, name: string): Promise<string> => {
+    const key = app + '.' + name;
+    if (modelCache.has(key)) return modelCache.get(key)!;
     const hit = (
       await IrModel.Search(
         {
@@ -112,23 +117,20 @@ async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
         { fields: ['Id'], limit: 1 } as any
       )
     )?.[0] as any;
-    return String(hit?.Id || '').trim();
+    const id = String(hit?.Id || '').trim();
+    modelCache.set(key, id);
+    return id;
   };
 
   const resolveService = async (modelId: string, method: string): Promise<{ id: string; name: string }> => {
-    const rows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
-    const target = String(method || '')
-      .trim()
-      .toLowerCase();
-    const hit = (rows || []).find(
-      (r: any) =>
-        String((r as any).Name || '')
-          .trim()
-          .toLowerCase() === target
-    ) as any;
-    const id = String(hit?.Id || '').trim();
-    const name = String(hit?.Name || '').trim();
-    return { id, name };
+    if (!serviceCache.has(modelId)) {
+      const rows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+      serviceCache.set(modelId, (rows || []).map((r: any) => ({ Id: String(r?.Id || '').trim(), Name: String(r?.Name || '').trim() })));
+    }
+    const cached = serviceCache.get(modelId)!;
+    const target = String(method || '').trim().toLowerCase();
+    const hit = cached.find(r => r.Name.toLowerCase() === target);
+    return { id: hit?.Id || '', name: hit?.Name || '' };
   };
 
   for (const t of targets) {

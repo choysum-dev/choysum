@@ -84,9 +84,14 @@ async function resolveApplicationIds(appName: string): Promise<string[]> {
 /**
  * Resolve meta model ids by logical name (application-agnostic to handle re-materializations).
  */
-async function resolveModelIds(modelName: string): Promise<string[]> {
+async function resolveModelIds(appName: string, modelName: string): Promise<string[]> {
   const models = await IrModel.Search(
-    ['Name', '=', modelName] as any,
+    {
+      And: [
+        ['Name', '=', modelName],
+        ['Application', '=', appName],
+      ],
+    } as any,
     { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
   );
   const idSet = new Set<string>();
@@ -105,7 +110,7 @@ async function resolveModelIds(modelName: string): Promise<string[]> {
  * Core FieldRule evaluation: resolve meta, load rules, partition by scope, and decide per-field.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
-  const [applicationIds, modelIds] = await Promise.all([resolveApplicationIds(input.appName), resolveModelIds(input.modelName)]);
+  const [applicationIds, modelIds] = await Promise.all([resolveApplicationIds(input.appName), resolveModelIds(input.appName, input.modelName)]);
   if (modelIds.length === 0) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
