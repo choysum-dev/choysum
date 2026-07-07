@@ -3,7 +3,7 @@
 
 import { BaseModel, Decimal, Model, Field } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
-import { getIdentity, getReadonlyCtx, withContext } from '@/core/service/api/context';
+import { getIdentity, getReadonlyCtx, withContext, getCurrentReq, getOrInitReqServiceState, getJsCtxAndReq } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
@@ -26,10 +26,9 @@ import type IrFieldModel from '@/meta/service/models/ir_field';
 import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';
 import type Company from '@/base/service/models/company';
-import { parseModelFullName, parseServiceFullName } from './_user_model_parsing';
+import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { rpcServiceWildcard, normalizeRequireKey, hasRpcPermission, isUiResourceAllowed, requireMatchesMethod } from './_user_permission_requires';
-import { getCurrentReq, getOrInitReqServiceState, getCompanyScopeFromRequestContext, getJsCtxAndReq } from './_user_runtime_context';
 import { AUTHZ_CTX_PREFIX, METHOD_ACCESS_PREFIX, UI_GRANT_PREFIX } from './_request_cache_invalidation';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
@@ -1473,6 +1472,26 @@ export default class User extends BaseModel {
   }
 
   /**
+   * Read active and enabled company scope from request overrides or identity metadata.
+   */
+  private static _getCompanyScopeFromRequestContext(): { activeCompanyId: string; enabledCompanyIds: string[] } {
+    // IMPORTANT: Use core runtime/context helpers to respect request-level overrides set by withContext().
+    // Some tests (and potentially other flows) rely on Symbol.for('choysum.ctx.override') rather than
+    // mutating jsCtx.ctx directly.
+    const ctx: any = (getReadonlyCtx() ?? {}) as any;
+    const identity: any = (getIdentity() ?? {}) as any;
+    const meta: any = (identity?.metadata ?? identity?.Metadata ?? {}) as any;
+
+    const activeCompanyId = String(ctx?.activeCompanyId ?? meta?.activeCompanyId ?? '').trim();
+    const enabledCompanyIds = uniqStrings(ctx?.enabledCompanyIds ?? meta?.enabledCompanyIds ?? []);
+
+    if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) {
+      return { activeCompanyId, enabledCompanyIds: [activeCompanyId, ...enabledCompanyIds] };
+    }
+    return { activeCompanyId, enabledCompanyIds };
+  }
+
+  /**
    * Parse a string or structured value into a normalized string array.
    */
   private static _parseJsonStringArray(raw: any): string[] {
@@ -1545,7 +1564,7 @@ export default class User extends BaseModel {
     const state = getOrInitReqServiceState(req);
 
     const userId = String((this.userId as any) || '').trim();
-    const companyScope = getCompanyScopeFromRequestContext();
+    const companyScope = this._getCompanyScopeFromRequestContext();
     const enabledCompanyIdsKey = this._sortStrings(uniqStrings(companyScope.enabledCompanyIds));
     const companyScopeKey = `${companyScope.activeCompanyId}::${enabledCompanyIdsKey.join(',')}`;
 
@@ -1849,7 +1868,7 @@ export default class User extends BaseModel {
       if (!hasCompany) return false;
 
       // Company view must be within enabledCompanyIds (fail-closed).
-      const { enabledCompanyIds } = getCompanyScopeFromRequestContext();
+      const { enabledCompanyIds } = this._getCompanyScopeFromRequestContext();
       if (enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(normalizedCompanyId)) return false;
 
       // Permission graph reads must bypass RecordRule/FieldRule.
@@ -2234,7 +2253,7 @@ export default class User extends BaseModel {
       const parsedModel = parseModelFullName(rawModel);
       if (!parsedModel) return { kind: 'false', reason: 'invalid_model_full_name' };
 
-      const { activeCompanyId, enabledCompanyIds } = getCompanyScopeFromRequestContext();
+      const { activeCompanyId, enabledCompanyIds } = this._getCompanyScopeFromRequestContext();
       const hasCompany = enabledCompanyIds.length > 0;
 
       // 1) Resolve meta application/model ids

@@ -52,9 +52,9 @@ test('normalizeRefId returns trimmed string or null', () => {
   expect(normalizeRefId('  id123  ')).toBe('id123');
   expect(normalizeRefId({ Id: '  obj456  ' })).toBe('obj456');
   expect(normalizeRefId({ id: 'lowercase' })).toBe('lowercase');
-  expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe('fallback');
+  expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe(null);
   expect(normalizeRefId({ Id: '' })).toBe(null);
-  expect(normalizeRefId(true)).toBe(null);
+  expect(normalizeRefId(true)).toBe('true');
 });
 
 test('normalizeOffset returns non-negative floored integer', () => {

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { uniqStrings } from '@/core/service/utils/normalization';
-import { getJsCtxAndReq } from './_user_runtime_context';
+import { getJsCtxAndReq } from '@/core/service/api/context';
 
 export const AUTHZ_CTX_PREFIX = 'authzContext::';
 export const METHOD_ACCESS_PREFIX = 'methodAccess::';
