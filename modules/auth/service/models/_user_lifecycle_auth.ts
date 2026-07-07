@@ -50,7 +50,14 @@ export async function ensureRegistrationIdentityUnique(
     searchByEmail: (email: string) => Promise<any[]>;
   }
 ): Promise<void> {
-  const existing = await deps.searchByUsername(String(userData?.Username || '').trim());
+  const username = String(userData?.Username || '').trim();
+  if (!username) {
+    throw newAuthError({
+      code: AuthErrCode.VALIDATION_FAILED,
+      message: 'Username is required',
+    }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
+  const existing = await deps.searchByUsername(username);
   if (existing.length > 0) {
     throw newAuthError({
       code: AuthErrCode.USERNAME_TAKEN,
@@ -312,6 +319,9 @@ export async function issueLoginTokensAndSession(
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
   const tokens = await Token.CreateTokenPair(user.Id, metadata);
+  if (!tokens || !tokens.accessToken) {
+    throw new Error('Token creation failed: missing access token');
+  }
 
   await deps.updateLastLogin(user.Id, new Date());
 

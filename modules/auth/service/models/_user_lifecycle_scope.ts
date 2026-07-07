@@ -117,6 +117,17 @@ export function validateSwitchCompanyScopeInput(user: any, activeCompanyId: stri
 
   enabled = uniqScopeIds(enabled);
 
+  if (!allowed.includes(active)) {
+    return {
+      ok: false,
+      code: 'active_outside_allowed',
+      active,
+      enabled,
+      allowed,
+      prefs,
+    };
+  }
+
   for (const cid of enabled) {
     if (!allowed.includes(cid)) {
       return {
@@ -129,17 +140,6 @@ export function validateSwitchCompanyScopeInput(user: any, activeCompanyId: stri
         companyId: cid,
       };
     }
-  }
-
-  if (!allowed.includes(active)) {
-    return {
-      ok: false,
-      code: 'active_outside_allowed',
-      active,
-      enabled,
-      allowed,
-      prefs,
-    };
   }
 
   if (!enabled.includes(active)) {
