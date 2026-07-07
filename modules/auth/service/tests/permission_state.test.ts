@@ -3,6 +3,7 @@
 
 import { withContext as withModelContext } from '@/core/service/api/context';
 import User from '@/auth/service/models/user';
+import { parseJsonStringArray } from '@/auth/service/models/_user_authz_shared';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleInheritance from '@/auth/service/models/role_inheritance';
@@ -875,7 +876,7 @@ test('PermissionState: explicit RoleUiResource grant materializes UI whitelist w
         } as any,
         { fields: ['Id', 'Name', 'Type', 'ParentId', 'IrApplicationId', 'Requires'], limit: 1 } as any
       );
-      expect((User as any)._parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires ?? ((actionRows as any)?.[0] as any)?.requires)).toEqual([
+      expect(parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires ?? ((actionRows as any)?.[0] as any)?.requires)).toEqual([
         'rpc:/auth.User/DefinitelyMissingMethod',
       ]);
       const ps = await User.GetPermissionState();
