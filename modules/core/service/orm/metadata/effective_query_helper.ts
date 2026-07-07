@@ -31,7 +31,7 @@ export function resolveEffectiveModel(identifier: string): ResolvedEffectiveMode
 
   const meta = MetadataStorage.instance.getModelMetadata(ctor);
   const model =
-    String(meta.fullModelName || '').trim() || String(meta.modelName || '').trim() || String(meta.name || '').trim() || String(ctor.name || '').trim() || key;
+    String(meta?.fullModelName || '').trim() || String(meta?.modelName || '').trim() || String(meta?.name || '').trim() || String(ctor.name || '').trim() || key;
 
   return { ctor, model };
 }
@@ -68,7 +68,8 @@ export function priorityInRange(item: { priority?: number }, range: NormalizedPr
  * Return whether an item's method name starts with the given prefix (case-insensitive).
  * An empty prefix matches everything.
  */
-export function matchesMethodPrefix(item: { method?: string }, normalizedPrefix: string): boolean {
+export function matchesMethodPrefix(item: { method?: string }, prefix: string): boolean {
+  const normalizedPrefix = prefix.trim().toLowerCase();
   if (!normalizedPrefix) return true;
   return String(item.method || '')
     .toLowerCase()

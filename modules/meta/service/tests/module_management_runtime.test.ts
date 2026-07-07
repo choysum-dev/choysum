@@ -3,6 +3,7 @@
 
 import { getBackendEnv, getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import IrModule from '@/meta/service/models/ir_module';
+import IrModuleIndex from '@/meta/service/models/ir_module_index';
 
 declare var globalThis: any;
 
@@ -51,6 +52,29 @@ test('IrModule.getModuleManagementBridge throws when bridge is missing', () => {
   delete root.moduleManagement;
   try {
     expect(() => (IrModule as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
+  } finally {
+    root.moduleManagement = saved;
+  }
+});
+
+test('IrModuleIndex.getModuleManagementBridge returns bridge when available', () => {
+  const root: any = globalThis.$choysum;
+  const saved = root?.moduleManagement;
+  root.moduleManagement = { syncIndex: () => ({ ok: true }) };
+  try {
+    const bridge = (IrModuleIndex as any).getModuleManagementBridge();
+    expect(typeof bridge.syncIndex).toBe('function');
+  } finally {
+    root.moduleManagement = saved;
+  }
+});
+
+test('IrModuleIndex.getModuleManagementBridge throws when bridge is missing', () => {
+  const root: any = globalThis.$choysum;
+  const saved = root?.moduleManagement;
+  delete root.moduleManagement;
+  try {
+    expect(() => (IrModuleIndex as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
   } finally {
     root.moduleManagement = saved;
   }
