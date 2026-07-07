@@ -4,7 +4,6 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
-import { ensureCurrentUserId, getModuleManagementBridge } from './_module_management_runtime';
 import { getBackendEnv } from '@/core/service/runtime/env/backend_env';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
@@ -266,7 +265,7 @@ export default class IrModule extends BaseModel {
 
   private static async enqueueModuleOp(action: ModuleAction, moduleName: string, extraPayload?: Record<string, unknown>): Promise<string> {
     const name = this.ensureModuleName(moduleName);
-    const userId = ensureCurrentUserId();
+    const userId = BaseModel.ensureUserId();
     const method = `meta.IrModule/Execute${action.charAt(0).toUpperCase() + action.slice(1)}`;
     const env = getBackendEnv();
     const forceLockConflict = Boolean((env as any).CHOYSUM_E2E_FORCE_LOCK_CONFLICT || (env as any).choysum_e2e_force_lock_conflict);
@@ -368,11 +367,19 @@ export default class IrModule extends BaseModel {
     return await this.executeModuleOp('upgrade', moduleName, { operatorUserId });
   }
 
+  private static getModuleManagementBridge(): any {
+    const root: any = (globalThis as any)?.$choysum;
+    if (!root?.moduleManagement) {
+      throw new Error('moduleManagement bridge is not injected');
+    }
+    return root.moduleManagement;
+  }
+
   private static async executeModuleOp(action: ModuleAction, moduleName: string, opts: { withDemo?: boolean; operatorUserId?: string }): Promise<any> {
     const name = this.ensureModuleName(moduleName);
     const operatorUserId = String(opts?.operatorUserId || getUserId() || '').trim();
     const jobId = String(getCtxValue('jobId') || '').trim();
-    const bridge = getModuleManagementBridge();
+    const bridge = this.getModuleManagementBridge();
 
     const env = getBackendEnv();
     const forceResultStatus = String((env as any).CHOYSUM_E2E_FORCE_RESULT_STATUS || (env as any).choysum_e2e_force_result_status || '').toUpperCase();

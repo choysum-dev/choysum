@@ -2,35 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getBackendEnv, getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
-import { ensureCurrentUserId, getModuleManagementBridge } from '@/meta/service/models/_module_management_runtime';
+import IrModule from '@/meta/service/models/ir_module';
 
 declare var globalThis: any;
-
-function ensureRequestContext(): any {
-  const root: any = globalThis.$choysum;
-  if (!root) {
-    throw new Error('missing global $choysum; module runtime tests must run under the QuickJS-first harness');
-  }
-  if (!root.request) root.request = {};
-  if (!root.request.context) root.request.context = {};
-  const jsCtx = root.request.context;
-  if (!jsCtx.ctx) jsCtx.ctx = {};
-  if (!jsCtx.req) jsCtx.req = {};
-  if (!jsCtx.identity) jsCtx.identity = {};
-  return jsCtx;
-}
-
-function resetRequestContext(): void {
-  const jsCtx = ensureRequestContext();
-  jsCtx.ctx = {};
-  jsCtx.req = {
-    depth: 0,
-    companyMode: 'skip',
-    recordRuleMode: 'skip',
-    fieldRuleMode: 'skip',
-  };
-  jsCtx.identity = { userId: 'admin' };
-}
 
 test('getBackendEnv returns a non-null object', () => {
   const env = getBackendEnv();
@@ -59,40 +33,24 @@ test('isTruthyFlag recognizes truthy and falsy values', () => {
   expect(isTruthyFlag('  random  ')).toBe(false);
 });
 
-test('ensureCurrentUserId returns user from request context', () => {
-  resetRequestContext();
-  expect(ensureCurrentUserId()).toBe('admin');
-});
-
-test('ensureCurrentUserId falls back to E2E env when no request user', () => {
-  const jsCtx = ensureRequestContext();
-  delete jsCtx.identity.userId;
-
-  // In QuickJS, import.meta.env takes precedence over globalThis.__choysumBackendEnv.
-  // The E2E fallback path reads from the backend env, which is import.meta.env
-  // in the bundled runtime. When no E2E operator key is set in either source,
-  // ensureCurrentUserId should throw.
-  expect(() => ensureCurrentUserId()).toThrow('current user is required');
-});
-
-test('getModuleManagementBridge returns bridge when available', () => {
+test('IrModule.getModuleManagementBridge returns bridge when available', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
   root.moduleManagement = { install: () => ({ ok: true }) };
   try {
-    const bridge = getModuleManagementBridge();
+    const bridge = (IrModule as any).getModuleManagementBridge();
     expect(typeof bridge.install).toBe('function');
   } finally {
     root.moduleManagement = saved;
   }
 });
 
-test('getModuleManagementBridge throws when bridge is missing', () => {
+test('IrModule.getModuleManagementBridge throws when bridge is missing', () => {
   const root: any = globalThis.$choysum;
   const saved = root?.moduleManagement;
   delete root.moduleManagement;
   try {
-    expect(() => getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
+    expect(() => (IrModule as any).getModuleManagementBridge()).toThrow('moduleManagement bridge is not injected');
   } finally {
     root.moduleManagement = saved;
   }
