@@ -20,10 +20,6 @@ function uniqScopeIds(ids: string[]): string[] {
   return Array.from(new Set((ids || []).map(v => normalizeScopeId(v)).filter(Boolean)));
 }
 
-function buildAllowedCompanyIds(user: any): string[] {
-  return uniqScopeIds([normalizeScopeId((user as any)?.CompanyId), ...(Array.isArray((user as any)?.CompanyIds) ? (user as any).CompanyIds : [])]);
-}
-
 function createSwitchCompanyScopeAuditEmitter(eventName: string) {
   let emitted = false;
 
