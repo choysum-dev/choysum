@@ -28,7 +28,7 @@ import type IrServiceModel from '@/meta/service/models/ir_service';
 import type Company from '@/base/service/models/company';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
 import { uniqStrings, normalizeRpcRequireKey, rpcServiceWildcard } from '@/core/service/utils/normalization';
-import { AUTHZ_CTX_PREFIX, METHOD_ACCESS_PREFIX, UI_GRANT_PREFIX } from './_request_cache_invalidation';
+import { buildAuthzContextCacheKey, buildMethodAccessCacheKey, buildUiGrantCacheKey } from './_request_cache_invalidation';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
@@ -1713,7 +1713,7 @@ export default class User extends BaseModel {
       return await build({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey });
     }
 
-    const KEY = `${AUTHZ_CTX_PREFIX}${userId}::${companyScopeKey}`;
+    const KEY = buildAuthzContextCacheKey(userId, companyScopeKey);
     const existing = state[KEY];
     if (existing) {
       // Avoid leaking a Promise into req.__choysumServiceState: Go-side unmarshalling
@@ -1933,7 +1933,7 @@ export default class User extends BaseModel {
 
         const req = getCurrentReq();
         const state = getOrInitReqServiceState(req);
-        const cacheKey = `${METHOD_ACCESS_PREFIX}${String(authz.userId || '').trim()}::${normalizedCompanyId}::${normalizedFullMethod}`;
+        const cacheKey = buildMethodAccessCacheKey(String(authz.userId || '').trim(), normalizedCompanyId, normalizedFullMethod);
         const cached = state?.[cacheKey];
         if (typeof cached === 'boolean') return cached;
 
@@ -2096,7 +2096,7 @@ export default class User extends BaseModel {
     const req = getCurrentReq();
     const state = getOrInitReqServiceState(req);
     const roleSig = ids.join(',');
-    const cacheKey = `${UI_GRANT_PREFIX}${roleSig}`;
+    const cacheKey = buildUiGrantCacheKey(roleSig);
     const cached = state?.[cacheKey];
     if (cached && Array.isArray((cached as any).resources)) {
       return cached as any;
