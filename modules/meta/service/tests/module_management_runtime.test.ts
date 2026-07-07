@@ -1,15 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-  getBackendEnv,
-  getBackendEnvText,
-  isTruthyFlag,
-} from '@/core/service/runtime/env/backend_env';
-import {
-  ensureCurrentUserId,
-  getModuleManagementBridge,
-} from '@/meta/service/models/_module_management_runtime';
+import { getBackendEnv, getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
+import { ensureCurrentUserId, getModuleManagementBridge } from '@/meta/service/models/_module_management_runtime';
 
 declare var globalThis: any;
 

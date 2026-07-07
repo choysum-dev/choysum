@@ -178,7 +178,6 @@ function clampLimit(limit?: number, fallback: number = 50, max: number = 500): n
   return Math.min(val, max);
 }
 
-
 /** Resolves the configured default max-attempt count for enqueued jobs. */
 function resolveDefaultMaxAttempts(): number {
   const globalEnv = (globalThis as any)?.__choysumBackendEnv as Record<string, any> | undefined;

@@ -50,7 +50,6 @@ function groupToExpr(node: ConditionGroup): QueryCondition<any> | null {
   return logic === 'Or' ? ({ Or: parts } as any) : ({ And: parts } as any);
 }
 
-
 /**
  * Derives keyword-searchable fields from metadata when callers do not provide them.
  */

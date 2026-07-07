@@ -31,11 +31,7 @@ export function resolveEffectiveModel(identifier: string): ResolvedEffectiveMode
 
   const meta = MetadataStorage.instance.getModelMetadata(ctor);
   const model =
-    String(meta.fullModelName || '').trim() ||
-    String(meta.modelName || '').trim() ||
-    String(meta.name || '').trim() ||
-    String(ctor.name || '').trim() ||
-    key;
+    String(meta.fullModelName || '').trim() || String(meta.modelName || '').trim() || String(meta.name || '').trim() || String(ctor.name || '').trim() || key;
 
   return { ctor, model };
 }

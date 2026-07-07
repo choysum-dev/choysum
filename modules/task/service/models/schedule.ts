@@ -79,7 +79,6 @@ function clampLimit(limit?: number, fallback: number = 50, max: number = 500): n
   return Math.min(val, max);
 }
 
-
 /**
  * Parses a fixed UTC offset string into minutes.
  */

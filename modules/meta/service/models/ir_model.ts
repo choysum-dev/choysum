@@ -95,7 +95,9 @@ export default class IrModel extends BaseModel {
   }> {
     const { ctor, model } = resolveEffectiveModel(modelIdentifier);
 
-    const normalizedPrefix = String(options?.methodPrefix || '').trim().toLowerCase();
+    const normalizedPrefix = String(options?.methodPrefix || '')
+      .trim()
+      .toLowerCase();
     const hasPreviewFilter = typeof options?.preview === 'boolean';
     const hasAlwaysOnCreateFilter = typeof options?.alwaysOnCreate === 'boolean';
     const pagination = normalizePagination(options);
@@ -127,8 +129,12 @@ export default class IrModel extends BaseModel {
   }> {
     const { ctor, model } = resolveEffectiveModel(modelIdentifier);
 
-    const normalizedPrefix = String(options?.methodPrefix || '').trim().toLowerCase();
-    const normalizedTrigger = String(options?.triggerField || '').trim().toLowerCase();
+    const normalizedPrefix = String(options?.methodPrefix || '')
+      .trim()
+      .toLowerCase();
+    const normalizedTrigger = String(options?.triggerField || '')
+      .trim()
+      .toLowerCase();
     const pagination = normalizePagination(options);
     const priorityRange = normalizePriorityRange(options);
 
