@@ -157,19 +157,23 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
     return { kind: 'true', reason: `no_rules_${input.opValue}_allow` };
   }
 
-  const exprs = (rules || [])
-    .map(r => {
-      const roleId = maybeId((r as any).RoleId) || '';
-      const scope = input.roleScopesById?.[roleId] || { global: true, companies: [] };
-      const gate = buildCompanyGateExpr(scope, companyGate.enabled);
-      const cond = (r as any).Condition;
+  const exprs: any[] = [];
+  for (const r of rules || []) {
+    const roleId = maybeId((r as any).RoleId) || '';
+    const scope = input.roleScopesById?.[roleId] || { global: true, companies: [] };
+    const gate = buildCompanyGateExpr(scope, companyGate.enabled);
+    const cond = (r as any).Condition;
 
-      const isTrueCond = cond === undefined || cond === null || (Array.isArray(cond) && cond.length === 0);
-      if (isTrueCond) return gate;
-      if (!gate) return cond;
-      return { And: [gate, cond] } as any;
-    })
-    .filter(v => v !== undefined && v !== null);
+    const isTrueCond = cond === undefined || cond === null || (Array.isArray(cond) && cond.length === 0);
+    if (isTrueCond && !gate) {
+      return { kind: 'true', reason: 'global_allow_rule' };
+    }
+
+    const expr = isTrueCond ? gate : !gate ? cond : { And: [gate, cond] } as any;
+    if (expr !== undefined && expr !== null) {
+      exprs.push(expr);
+    }
+  }
 
   if (exprs.length === 0) {
     return { kind: 'true', reason: companyGate.enabled ? 'rules_with_empty_condition_or_company_gate' : 'rules_with_empty_condition' };

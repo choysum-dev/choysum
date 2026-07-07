@@ -44,23 +44,23 @@ export function validateAndHashRegistrationInput(userData: { Username?: string }
  * Enforce registration uniqueness for Username and optional Email.
  */
 export async function ensureRegistrationIdentityUnique(
-  userData: { Username?: string; Email?: string },
+  userData: { Username?: string; Email?: string } | null | undefined,
   deps: {
     searchByUsername: (username: string) => Promise<any[]>;
     searchByEmail: (email: string) => Promise<any[]>;
   }
 ): Promise<void> {
-  const existing = await deps.searchByUsername(String(userData.Username || '').trim());
+  const existing = await deps.searchByUsername(String(userData?.Username || '').trim());
   if (existing.length > 0) {
     throw newAuthError({
       code: AuthErrCode.USERNAME_TAKEN,
       message: 'Username is already in use',
     })
       .withGrpcCode(GrpcCode.AlreadyExists)
-      .withMetadata({ username: String(userData.Username || '') });
+      .withMetadata({ username: String(userData?.Username || '') });
   }
 
-  if (userData.Email) {
+  if (userData?.Email) {
     const emailExists = await deps.searchByEmail(String(userData.Email || '').trim());
     if (emailExists.length > 0) {
       throw newAuthError({

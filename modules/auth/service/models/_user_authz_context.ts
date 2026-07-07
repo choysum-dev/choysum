@@ -35,17 +35,22 @@ export async function expandRoleClosure(directRoleIds: string[]): Promise<string
 
   const all = new Set<string>(seed);
   const pending = seed.slice();
-  const totalRoleCount = Number(await Role.Count([] as any)) || 0;
-  const maxSteps = Math.max(50, totalRoleCount * 5);
-  let steps = 0;
 
-  while (pending.length > 0 && steps < maxSteps) {
-    steps++;
-    const batch = pending.splice(0, 200);
-    const edges = await RoleInheritance.Search(['ParentRoleId', 'in', batch] as any, { fields: ['ParentRoleId', 'ChildRoleId'], limit: 5000 });
-    for (const e of edges || []) {
-      const childId = maybeId((e as any).ChildRoleId);
-      if (!childId) continue;
+  const edges = await RoleInheritance.Search([] as any, { fields: ['ParentRoleId', 'ChildRoleId'], limit: 10000 });
+  const adj = new Map<string, string[]>();
+  for (const e of edges || []) {
+    const parentId = maybeId((e as any).ParentRoleId);
+    const childId = maybeId((e as any).ChildRoleId);
+    if (parentId && childId) {
+      if (!adj.has(parentId)) adj.set(parentId, []);
+      adj.get(parentId)!.push(childId);
+    }
+  }
+
+  while (pending.length > 0) {
+    const current = pending.shift()!;
+    const children = adj.get(current) || [];
+    for (const childId of children) {
       if (!all.has(childId)) {
         all.add(childId);
         pending.push(childId);
@@ -94,27 +99,28 @@ export async function computeEffectiveRoleScopes(userRoles: any[]): Promise<Map<
   const directRoleIds = Array.from(new Set((userRoles || []).map(ur => maybeId((ur as any).RoleId)).filter(Boolean) as string[]));
   if (directRoleIds.length === 0) return roleScopes;
 
-  const totalRoleCount = Number(await Role.Count([] as any)) || 0;
-  const maxSteps = Math.max(50, totalRoleCount * 5);
-  let steps = 0;
+  const edges = await RoleInheritance.Search([] as any, { fields: ['ParentRoleId', 'ChildRoleId'], limit: 10000 });
+  const adj = new Map<string, string[]>();
+  for (const e of edges || []) {
+    const parentId = maybeId((e as any).ParentRoleId);
+    const childId = maybeId((e as any).ChildRoleId);
+    if (parentId && childId) {
+      if (!adj.has(parentId)) adj.set(parentId, []);
+      adj.get(parentId)!.push(childId);
+    }
+  }
+
   const pending: string[] = directRoleIds.slice();
   for (const rid of pending) ensureScope(rid);
 
-  while (pending.length > 0 && steps < maxSteps) {
-    steps++;
-    const batch = pending.splice(0, 200);
-    const edges = await RoleInheritance.Search(['ParentRoleId', 'in', batch] as any, { fields: ['ParentRoleId', 'ChildRoleId'], limit: 5000 });
-    for (const e of edges || []) {
-      const parentId = maybeId((e as any).ParentRoleId);
-      const childId = maybeId((e as any).ChildRoleId);
-      if (!parentId || !childId) continue;
+  while (pending.length > 0) {
+    const parentId = pending.shift()!;
+    const parentScope = roleScopes.get(parentId);
+    if (!parentScope) continue;
 
-      const parentScope = roleScopes.get(parentId);
-      if (!parentScope) {
-        ensureScope(childId);
-        continue;
-      }
-
+    const children = adj.get(parentId) || [];
+    for (const childId of children) {
+      ensureScope(childId);
       let changed = false;
       if (parentScope.global) {
         changed = mergeScope(childId, null) || changed;
