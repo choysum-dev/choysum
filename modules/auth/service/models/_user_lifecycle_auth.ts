@@ -311,7 +311,11 @@ export async function issueLoginTokensAndSession(
   await deps.updateLastLogin(user.Id, new Date());
 
   if (opts.ipAddress || opts.deviceInfo) {
-    const accessIdentity = (globalThis as any).$choysum.auth.validateToken(tokens.accessToken, 'access', false);
+    const auth = (globalThis as any)?.$choysum?.auth;
+    if (!auth) {
+      throw new Error('Choysum auth subsystem is not initialized');
+    }
+    const accessIdentity = auth.validateToken(tokens.accessToken, 'access', false);
     await Session.Create({
       UserId: { Id: user.Id },
       AccessTokenId: String(accessIdentity?.tokenId || '').trim(),
