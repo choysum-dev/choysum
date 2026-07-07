@@ -36,7 +36,7 @@ export function readRefId(value: unknown): string | undefined {
  */
 export function normalizeRefId(value: unknown): string | null {
   if (value == null) return null;
-  const raw = typeof value === 'object' && value !== null ? ((value as any).Id ?? (value as any).id ?? null) : value;
+  const raw = typeof value === 'object' ? ((value as any).Id ?? (value as any).id ?? null) : value;
   const s = String(raw ?? '').trim();
   return s ? s : null;
 }
