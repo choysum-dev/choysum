@@ -9,6 +9,8 @@ import {
   normalizeOffset,
   normalizeLimit,
   normalizeFields,
+  normalizeRpcRequireKey,
+  rpcServiceWildcard,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -87,4 +89,20 @@ test('normalizeFields trims deduplicates and filters empty strings', () => {
   expect(normalizeFields('not-array')).toEqual([]);
   expect(normalizeFields([' Name ', '', ' Code ', ' name ', ''])).toEqual(['Name', 'Code', 'name']);
   expect(normalizeFields([])).toEqual([]);
+});
+
+test('normalizeRpcRequireKey keeps rpc and converts service prefix', () => {
+  expect(normalizeRpcRequireKey('')).toBe('');
+  expect(normalizeRpcRequireKey('   ')).toBe('');
+  expect(normalizeRpcRequireKey('rpc:/auth.User/Browse')).toBe('rpc:/auth.User/Browse');
+  expect(normalizeRpcRequireKey('service:/auth.User/Browse')).toBe('rpc:/auth.User/Browse');
+  expect(normalizeRpcRequireKey('http:/auth.User/Browse')).toBe('');
+});
+
+test('rpcServiceWildcard returns service wildcard for rpc keys', () => {
+  expect(rpcServiceWildcard('')).toBe('');
+  expect(rpcServiceWildcard('service:/auth.User/Browse')).toBe('');
+  expect(rpcServiceWildcard('rpc:/auth.User/Browse')).toBe('rpc:/auth.User/*');
+  expect(rpcServiceWildcard('rpc:/auth.User/*')).toBe('rpc:/auth.User/*');
+  expect(rpcServiceWildcard('rpc:/auth.User')).toBe('');
 });

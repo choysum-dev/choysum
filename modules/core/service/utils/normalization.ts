@@ -83,3 +83,26 @@ export function normalizeFields(raw: unknown): string[] {
 export function uniqStrings(xs: unknown): string[] {
   return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
 }
+
+/**
+ * Normalize supported require keys into canonical rpc:/ form.
+ */
+export function normalizeRpcRequireKey(key: string): string {
+  const k = String(key || '').trim();
+  if (!k) return '';
+  if (k.startsWith('rpc:/')) return k;
+  if (k.startsWith('service:/')) return `rpc:/${k.slice('service:/'.length)}`;
+  return '';
+}
+
+/**
+ * Convert an rpc:/model/method key into rpc:/model/* wildcard.
+ */
+export function rpcServiceWildcard(key: string): string {
+  const k = String(key || '').trim();
+  if (!k.startsWith('rpc:/')) return '';
+  if (k.endsWith('/*')) return k;
+  const i = k.lastIndexOf('/');
+  if (i <= 'rpc:/'.length) return '';
+  return `${k.slice(0, i)}/*`;
+}

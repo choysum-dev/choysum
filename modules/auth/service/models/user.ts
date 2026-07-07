@@ -27,8 +27,7 @@ import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';
 import type Company from '@/base/service/models/company';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
-import { uniqStrings } from '@/core/service/utils/normalization';
-import { rpcServiceWildcard, normalizeRequireKey, hasRpcPermission, isUiResourceAllowed, requireMatchesMethod } from './_user_permission_requires';
+import { uniqStrings, normalizeRpcRequireKey, rpcServiceWildcard } from '@/core/service/utils/normalization';
 import { AUTHZ_CTX_PREFIX, METHOD_ACCESS_PREFIX, UI_GRANT_PREFIX } from './_request_cache_invalidation';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
@@ -1361,7 +1360,7 @@ export default class User extends BaseModel {
             const explicitlyDenied = isExplicitUiDenied(r);
             if (explicitlyDenied) continue;
             const allowedByExplicit = isExplicitUiAllowed(r);
-            const allowedByRequires = isUiResourceAllowed(r.requires, requiresAllowSet, requiresDenySet);
+            const allowedByRequires = this._isUiResourceAllowed(r.requires, requiresAllowSet, requiresDenySet);
             if (!allowedByExplicit && !allowedByRequires) continue;
             if (r.type === 'ROUTE') {
               routeSet.add(r.resourceId);
@@ -1546,6 +1545,59 @@ export default class User extends BaseModel {
       // fallthrough
     }
     return [];
+  }
+
+  /**
+   * Evaluate a single RPC require key against allow and deny sets.
+   */
+  private static _hasRpcPermission(req: string, allowSet: Set<string>, denySet: Set<string>): boolean {
+    const k = normalizeRpcRequireKey(req);
+    if (!k) return false;
+    const wildcard = rpcServiceWildcard(k);
+
+    if (denySet.has(k)) return false;
+    if (wildcard && denySet.has(wildcard)) return false;
+
+    if (allowSet.has(k)) return true;
+    if (wildcard && allowSet.has(wildcard)) return true;
+    return false;
+  }
+
+  /**
+   * Check whether all UI resource requires are satisfied by RPC permissions.
+   */
+  private static _isUiResourceAllowed(requires: string[], allowSet: Set<string>, denySet: Set<string>): boolean {
+    const reqs = uniqStrings((requires || []).map(v => String(v || '').trim()).filter(Boolean));
+    if (reqs.length === 0) return true;
+
+    for (const req of reqs) {
+      if (!this._hasRpcPermission(req, allowSet, denySet)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Check whether a require key targets the specified model and method.
+   */
+  private static _requireMatchesMethod(req: string, modelKey: string, methodLower: string): boolean {
+    const k = normalizeRpcRequireKey(req);
+    if (!k || !k.startsWith('rpc:/')) return false;
+    const body = k.slice('rpc:/'.length);
+    const parts = body.split('/');
+    if (parts.length !== 2) return false;
+    const mk = String(parts[0] || '').trim();
+    const mm = String(parts[1] || '')
+      .trim()
+      .toLowerCase();
+    if (!mk || !mm) return false;
+    if (
+      mk.toLowerCase() !==
+      String(modelKey || '')
+        .trim()
+        .toLowerCase()
+    )
+      return false;
+    return mm === '*' || mm === methodLower;
   }
 
   /**
@@ -2191,7 +2243,7 @@ export default class User extends BaseModel {
 
       let matchesMethod = false;
       for (const req of requires) {
-        if (requireMatchesMethod(req, mkey, m)) {
+        if (this._requireMatchesMethod(req, mkey, m)) {
           matchesMethod = true;
           break;
         }
