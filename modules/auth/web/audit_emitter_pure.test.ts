@@ -16,10 +16,6 @@ function normalizeScopeId(value: unknown): string {
   return String(value ?? '').trim();
 }
 
-function uniqScopeIds(ids: string[]): string[] {
-  return Array.from(new Set((ids || []).map(v => normalizeScopeId(v)).filter(Boolean)));
-}
-
 function createSwitchCompanyScopeAuditEmitter(eventName: string) {
   let emitted = false;
 
