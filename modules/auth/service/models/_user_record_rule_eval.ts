@@ -34,6 +34,39 @@ export type RecordRuleEvalInput = {
   roleScopesById: Record<string, RoleScope>;
 };
 
+function getRecordRuleReqState(): Record<string, unknown> | undefined {
+  const req = getCurrentReq();
+  return req ? getOrInitReqServiceState(req) : undefined;
+}
+
+function buildRecordRuleMetaCacheKey(appName: string, modelName: string): string {
+  return `recordRuleMeta::${String(appName || '').trim()}::${String(modelName || '').trim()}`;
+}
+
+async function resolveRecordRuleMetaCached(appName: string, modelName: string): Promise<{ irApplicationId: string; modelHit: any; modelId: string }> {
+  const state = getRecordRuleReqState();
+  const key = buildRecordRuleMetaCacheKey(appName, modelName);
+  return await memoizeInReqState(state, key, async () => {
+    const [apps, models] = await Promise.all([
+      IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any),
+      IrModel.Search(
+        {
+          And: [
+            ['Name', '=', modelName],
+            ['Application', '=', appName],
+          ],
+        } as any,
+        { fields: ['Id', 'CompanyScoped'], limit: 1 }
+      ),
+    ]);
+
+    const irApplicationId = String((apps as any)?.[0]?.Id || '').trim();
+    const modelHit: any = (models as any)?.[0] as any;
+    const modelId = String(modelHit?.Id || '').trim();
+    return { irApplicationId, modelHit, modelId };
+  });
+}
+
 async function computeCompanyGateMode(modelId: string, companyScoped: boolean, hasCompany: boolean): Promise<{ enabled: boolean; reason?: string }> {
   if (!hasCompany) return { enabled: false, reason: 'no_company_context' };
   if (!companyScoped) return { enabled: false, reason: 'model_not_company_scoped' };
@@ -83,22 +116,7 @@ function buildCompanyGateExpr(scope: RoleScope, companyGateEnabled: boolean): an
  * Core RecordRule evaluation: resolve meta, pick-one scope, load rules, and merge conditions.
  */
 export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): Promise<ConditionEnvelope> {
-  // Resolve meta ids
-  const [apps, models] = await Promise.all([
-    IrApplication.Search({ And: [['Name', '=', input.appName]] } as any, { fields: ['Id'], limit: 1 } as any),
-    IrModel.Search(
-      {
-        And: [
-          ['Name', '=', input.modelName],
-          ['Application', '=', input.appName],
-        ],
-      } as any,
-      { fields: ['Id', 'CompanyScoped'], limit: 1 }
-    ),
-  ]);
-  const irApplicationId = String((apps as any)?.[0]?.Id || '').trim();
-  const modelHit: any = (models as any)?.[0] as any;
-  const modelId = String(modelHit?.Id || '').trim();
+  const { irApplicationId, modelHit, modelId } = await resolveRecordRuleMetaCached(input.appName, input.modelName);
   if (!modelId) return { kind: 'false', reason: 'model_not_found' };
 
   const companyGate = await computeCompanyGateMode(modelId, Boolean(modelHit?.CompanyScoped), input.hasCompany);

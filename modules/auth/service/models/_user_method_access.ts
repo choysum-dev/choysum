@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
+import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrModelModel from '@/meta/service/models/ir_model';
@@ -25,6 +25,17 @@ export type UiGrantExpansion = {
   resourceModesByKey: Record<string, Array<'allow' | 'deny'>>;
 };
 
+function getMethodAccessReqState(): Record<string, unknown> | undefined {
+  const req = getCurrentReq();
+  return req ? getOrInitReqServiceState(req) : undefined;
+}
+
+function buildMethodAccessMetaCacheKey(appName: string, modelName: string, methodName: string): string {
+  return `methodAccessMeta::${String(appName || '').trim()}::${String(modelName || '').trim()}::${String(methodName || '')
+    .trim()
+    .toLowerCase()}`;
+}
+
 /**
  * Resolve model/service/application metadata needed for method-access checks.
  */
@@ -43,76 +54,80 @@ export async function resolveMethodAccessMeta(
     }
   | undefined
 > {
-  const models = await IrModel.Search(
-    {
-      And: [
-        ['Name', '=', modelName],
-        ['Application', '=', appName],
-      ],
-    } as any,
-    { fields: ['Id'], limit: 1 }
-  );
-  const modelId = String(models?.[0]?.Id || '').trim();
-  if (!modelId) return undefined;
+  const state = getMethodAccessReqState();
+  const key = buildMethodAccessMetaCacheKey(appName, modelName, methodName);
+  return await memoizeInReqState(state, key, async () => {
+    const models = await IrModel.Search(
+      {
+        And: [
+          ['Name', '=', modelName],
+          ['Application', '=', appName],
+        ],
+      } as any,
+      { fields: ['Id'], limit: 1 }
+    );
+    const modelId = String(models?.[0]?.Id || '').trim();
+    if (!modelId) return undefined;
 
-  const serviceRows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
-  const methodLower = String(methodName || '')
-    .trim()
-    .toLowerCase();
-  const matched = (serviceRows || []).find(
-    (r: any) =>
-      String((r as any).Name || '')
-        .trim()
-        .toLowerCase() === methodLower
-  ) as any;
-  const irServiceId = String(matched?.Id || '').trim();
-  if (!irServiceId) return undefined;
+    const serviceRows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
+    const methodLower = String(methodName || '')
+      .trim()
+      .toLowerCase();
+    const matched = (serviceRows || []).find(
+      (r: any) =>
+        String((r as any).Name || '')
+          .trim()
+          .toLowerCase() === methodLower
+    ) as any;
+    const irServiceId = String(matched?.Id || '').trim();
+    if (!irServiceId) return undefined;
 
-  const apps = await IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any);
-  const irApplicationId = String((apps?.[0] as any)?.Id || '').trim();
+    const apps = await IrApplication.Search({ And: [['Name', '=', appName]] } as any, { fields: ['Id'], limit: 1 } as any);
+    const irApplicationId = String((apps?.[0] as any)?.Id || '').trim();
 
-  const scopeOr: any[] = [
-    {
-      And: [
-        ['IrServiceId', '=', irServiceId],
-        ['IrModelId', 'is', null],
-        ['IrApplicationId', 'is', null],
-      ],
-    },
-    {
-      And: [
-        ['IrServiceId', 'is', null],
-        ['IrModelId', '=', modelId],
-        ['IrApplicationId', 'is', null],
-      ],
-    },
-    {
-      And: [
-        ['IrServiceId', 'is', null],
-        ['IrModelId', 'is', null],
-        ['IrApplicationId', 'is', null],
-      ],
-    },
-  ];
+    const scopeOr: any[] = [
+      {
+        And: [
+          ['IrServiceId', '=', irServiceId],
+          ['IrModelId', 'is', null],
+          ['IrApplicationId', 'is', null],
+        ],
+      },
+      {
+        And: [
+          ['IrServiceId', 'is', null],
+          ['IrModelId', '=', modelId],
+          ['IrApplicationId', 'is', null],
+        ],
+      },
+      {
+        And: [
+          ['IrServiceId', 'is', null],
+          ['IrModelId', 'is', null],
+          ['IrApplicationId', 'is', null],
+        ],
+      },
+    ];
 
-  if (irApplicationId) {
-    scopeOr.splice(2, 0, {
-      And: [
-        ['IrServiceId', 'is', null],
-        ['IrModelId', 'is', null],
-        ['IrApplicationId', '=', irApplicationId],
-      ],
-    });
-  }
+    if (irApplicationId) {
+      scopeOr.splice(2, 0, {
+        And: [
+          ['IrServiceId', 'is', null],
+          ['IrModelId', 'is', null],
+          ['IrApplicationId', '=', irApplicationId],
+        ],
+      });
+    }
 
-  return {
-    modelId,
-    irServiceId,
-    irApplicationId,
-    scopeOr,
-    modelKey: `${appName}.${modelName}`,
-    methodLower,
-  };
+    return {
+      modelId,
+      irServiceId,
+      irApplicationId,
+      scopeOr,
+      modelKey: `${appName}.${modelName}`,
+      methodLower,
+    };
+  });
 }
 
 /**

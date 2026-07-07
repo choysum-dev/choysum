@@ -7,9 +7,14 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleInheritance from '@/auth/service/models/role_inheritance';
+import { evaluateRecordRuleCondition } from '@/auth/service/models/_user_record_rule_eval';
+import { evaluateFieldRules } from '@/auth/service/models/_user_field_rule_eval';
+import { resolveMethodAccessMeta } from '@/auth/service/models/_user_method_access';
 import { createServiceByModel } from '@/core/service/rpc';
+import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';
+const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
 const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
 
@@ -293,6 +298,83 @@ test('P3-1: authz context is request-scoped memoized', async () => {
   // Smoke: field rule returns arrays
   expect(Array.isArray((out.fr as any)?.denyReadFields)).toBe(true);
   expect(Array.isArray((out.fr as any)?.denyWriteFields)).toBe(true);
+});
+
+test('P3-2: meta lookups are request-scoped memoized for record/field/method evaluators', async () => {
+  resetRequestContext();
+
+  let appSearchCalls = 0;
+  let modelSearchCalls = 0;
+  let serviceSearchCalls = 0;
+
+  const origIrApplicationSearch = (IrApplication as any).Search;
+  const origIrModelSearch = (IrModel as any).Search;
+  const origIrServiceSearch = (IrService as any).Search;
+
+  (IrApplication as any).Search = async (...args: any[]) => {
+    appSearchCalls++;
+    return await origIrApplicationSearch.apply(IrApplication, args);
+  };
+
+  (IrModel as any).Search = async (...args: any[]) => {
+    modelSearchCalls++;
+    return await origIrModelSearch.apply(IrModel, args);
+  };
+
+  (IrService as any).Search = async (...args: any[]) => {
+    serviceSearchCalls++;
+    return await origIrServiceSearch.apply(IrService, args);
+  };
+
+  try {
+    const out = await withModelContext(
+      { activeCompanyId: uid('C_ACTIVE'), enabledCompanyIds: [] } as any,
+      async () => {
+        const recordInput = {
+          appName: 'auth',
+          modelName: 'User',
+          hasCompany: false,
+          opValue: 'read' as const,
+          roleIds: [],
+          roleScopesById: {},
+        };
+
+        const fieldInput = {
+          appName: 'auth',
+          modelName: 'User',
+          rawModel: 'auth.User',
+          roleIds: [],
+        };
+
+        const rr1 = await evaluateRecordRuleCondition(recordInput);
+        const rr2 = await evaluateRecordRuleCondition(recordInput);
+
+        const fr1 = await evaluateFieldRules(fieldInput);
+        const fr2 = await evaluateFieldRules(fieldInput);
+
+        const meta1 = await resolveMethodAccessMeta('auth', 'User', 'browse');
+        const meta2 = await resolveMethodAccessMeta('auth', 'User', 'browse');
+
+        return { rr1, rr2, fr1, fr2, meta1, meta2 };
+      },
+      { merge: false }
+    );
+
+    expect(out.rr1.kind).toBe('true');
+    expect(out.rr2.kind).toBe('true');
+    expect(out.fr1.reason).toBe('no_roles_allow_by_default');
+    expect(out.fr2.reason).toBe('no_roles_allow_by_default');
+    expect(out.meta1).toBeTruthy();
+    expect(out.meta2).toBeTruthy();
+
+    expect(appSearchCalls).toBe(3);
+    expect(modelSearchCalls).toBe(3);
+    expect(serviceSearchCalls).toBe(1);
+  } finally {
+    (IrApplication as any).Search = origIrApplicationSearch;
+    (IrModel as any).Search = origIrModelSearch;
+    (IrService as any).Search = origIrServiceSearch;
+  }
 });
 
 test('P3-1: same request RoleInheritance write invalidates authz context', async () => {

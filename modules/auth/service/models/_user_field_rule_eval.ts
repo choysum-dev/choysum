@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc';
+import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
 import RoleFieldRule from './role_field_rule';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
@@ -61,49 +62,66 @@ export type FieldRuleEvalResult = {
   reason: string;
 };
 
+function getFieldRuleReqState(): Record<string, unknown> | undefined {
+  const req = getCurrentReq();
+  return req ? getOrInitReqServiceState(req) : undefined;
+}
+
+function buildFieldRuleMetaCacheKey(type: 'app' | 'model', appName: string, modelName?: string): string {
+  return `fieldRuleMeta::${type}::${String(appName || '').trim()}::${String(modelName || '').trim()}`;
+}
+
 /**
  * Resolve meta application ids by name.
  */
 async function resolveApplicationIds(appName: string): Promise<string[]> {
-  const apps = await IrApplication.Search(
-    ['Name', '=', appName] as any,
-    { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
-  );
-  const idSet = new Set<string>();
-  const ids: string[] = [];
-  for (const a of apps || []) {
-    const id = String((a as any)?.Id || '').trim();
-    if (!id) continue;
-    if (idSet.has(id)) continue;
-    idSet.add(id);
-    ids.push(id);
-  }
-  return ids;
+  const state = getFieldRuleReqState();
+  const key = buildFieldRuleMetaCacheKey('app', appName);
+  return await memoizeInReqState(state, key, async () => {
+    const apps = await IrApplication.Search(
+      ['Name', '=', appName] as any,
+      { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
+    );
+    const idSet = new Set<string>();
+    const ids: string[] = [];
+    for (const a of apps || []) {
+      const id = String((a as any)?.Id || '').trim();
+      if (!id) continue;
+      if (idSet.has(id)) continue;
+      idSet.add(id);
+      ids.push(id);
+    }
+    return ids;
+  });
 }
 
 /**
  * Resolve meta model ids by logical name (application-agnostic to handle re-materializations).
  */
 async function resolveModelIds(appName: string, modelName: string): Promise<string[]> {
-  const models = await IrModel.Search(
-    {
-      And: [
-        ['Name', '=', modelName],
-        ['Application', '=', appName],
-      ],
-    } as any,
-    { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
-  );
-  const idSet = new Set<string>();
-  const ids: string[] = [];
-  for (const m of models || []) {
-    const id = String((m as any)?.Id || '').trim();
-    if (!id) continue;
-    if (idSet.has(id)) continue;
-    idSet.add(id);
-    ids.push(id);
-  }
-  return ids;
+  const state = getFieldRuleReqState();
+  const key = buildFieldRuleMetaCacheKey('model', appName, modelName);
+  return await memoizeInReqState(state, key, async () => {
+    const models = await IrModel.Search(
+      {
+        And: [
+          ['Name', '=', modelName],
+          ['Application', '=', appName],
+        ],
+      } as any,
+      { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 5000 } as any
+    );
+    const idSet = new Set<string>();
+    const ids: string[] = [];
+    for (const m of models || []) {
+      const id = String((m as any)?.Id || '').trim();
+      if (!id) continue;
+      if (idSet.has(id)) continue;
+      idSet.add(id);
+      ids.push(id);
+    }
+    return ids;
+  });
 }
 
 /**
