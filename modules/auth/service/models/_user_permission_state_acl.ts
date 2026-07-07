@@ -12,7 +12,7 @@ const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
 const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 
-export type ServiceAgg = {
+type ServiceAgg = {
   allow: Set<string>;
   deny: Set<string>;
   allowAll: boolean;

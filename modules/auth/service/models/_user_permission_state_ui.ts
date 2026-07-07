@@ -8,7 +8,7 @@ import RoleUiResource from './role_ui_resource';
 import { isUiResourceAllowed, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, sortStrings } from './_user_authz_shared';
 import { applyToScope, type AclAggregationResult } from './_user_permission_state_acl';
 
-export type UiResourceMeta = {
+type UiResourceMeta = {
   dbId: string;
   resourceId: string;
   type: string;

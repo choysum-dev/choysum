@@ -3,8 +3,7 @@
 
 import { memoizeInReqState } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
-import { buildAuthzContextCacheKey } from './_request_cache_invalidation';
-import { sortStrings, getCompanyScopeFromRequestContext, maybeId, withPermissionGraphBypass } from './_user_authz_shared';
+import { sortStrings, maybeId, withPermissionGraphBypass } from './_user_authz_shared';
 import Role from './role';
 import RoleInheritance from './role_inheritance';
 import RoleMethodAccess from './role_method_access';
