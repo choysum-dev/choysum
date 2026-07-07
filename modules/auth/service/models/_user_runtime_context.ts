@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getReadonlyCtx, getIdentity } from '@/core/service/api/context';
-import { uniqStrings } from './_user_permission_requires';
+import { uniqStrings } from '@/core/service/utils/normalization';
 
 /**
  * Resolve the current request object from the active Choysum runtime context.
