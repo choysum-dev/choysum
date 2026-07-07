@@ -5,12 +5,20 @@ import { getReadonlyCtx, getIdentity } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
 
 /**
+ * Resolve the current request context and backing request object.
+ */
+export function getJsCtxAndReq(): { jsCtx: any; req: any } {
+  const root: any = (globalThis as any)?.$choysum;
+  const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
+  const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+  return { jsCtx, req };
+}
+
+/**
  * Resolve the current request object from the active Choysum runtime context.
  */
 export function getCurrentReq(): any {
-  const root: any = (globalThis as any)?.$choysum;
-  const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-  return (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+  return getJsCtxAndReq().req;
 }
 
 /**

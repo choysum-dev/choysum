@@ -3,8 +3,6 @@
 
 import { uniqStrings } from '@/core/service/utils/normalization';
 
-export { uniqStrings };
-
 /**
  * Normalize an RPC require key into its service-level wildcard form.
  */

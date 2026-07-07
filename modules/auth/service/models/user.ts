@@ -27,8 +27,9 @@ import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';
 import type Company from '@/base/service/models/company';
 import { parseModelFullName, parseServiceFullName } from './_user_model_parsing';
-import { uniqStrings, rpcServiceWildcard, normalizeRequireKey, hasRpcPermission, isUiResourceAllowed, requireMatchesMethod } from './_user_permission_requires';
-import { getCurrentReq, getOrInitReqServiceState, getCompanyScopeFromRequestContext } from './_user_runtime_context';
+import { uniqStrings } from '@/core/service/utils/normalization';
+import { rpcServiceWildcard, normalizeRequireKey, hasRpcPermission, isUiResourceAllowed, requireMatchesMethod } from './_user_permission_requires';
+import { getCurrentReq, getOrInitReqServiceState, getCompanyScopeFromRequestContext, getJsCtxAndReq } from './_user_runtime_context';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
@@ -607,9 +608,7 @@ export default class User extends BaseModel {
     let auditEmitted = false;
     const emitAudit = (payload: Record<string, any>): void => {
       try {
-        const root: any = (globalThis as any)?.$choysum;
-        const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-        const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+        const { req } = getJsCtxAndReq();
         const traceId = typeof req?.traceId === 'string' ? req.traceId : '';
         const out = {
           event: 'auth.user.switch_company_scope',
@@ -1436,9 +1435,7 @@ export default class User extends BaseModel {
   }
 
   private static async _withPermissionGraphBypass<T>(fn: () => Promise<T>): Promise<T> {
-    const root: any = (globalThis as any)?.$choysum;
-    const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-    const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
+    const { req } = getJsCtxAndReq();
     if (!req) return await fn();
 
     if (!req.__choysumServiceState) req.__choysumServiceState = {};
