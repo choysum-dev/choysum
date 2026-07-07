@@ -4,7 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import type { EffectiveConstraintMeta } from '@/core/service/api/constraint';
 import { MetadataStorage, type EffectiveOnchangeMeta } from '@/core/service/api/metadata';
-import { normalizePagination, paginateAndWrap } from './_diagnostics_response';
+import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
+import { resolveEffectiveModel, normalizePriorityRange, priorityInRange, matchesMethodPrefix } from '@/core/service/orm/metadata/effective_query_helper';
 import IrDecorator from './ir_decorator';
 import IrField from './ir_field';
 import IrModule from './ir_module';
@@ -92,49 +93,19 @@ export default class IrModel extends BaseModel {
     limit?: number;
     returned: number;
   }> {
-    const key = String(modelIdentifier || '').trim();
-    if (!key) {
-      throw new Error('modelIdentifier cannot be empty');
-    }
+    const { ctor, model } = resolveEffectiveModel(modelIdentifier);
 
-    const ctor = BaseModel.resolveModelConstructor(key);
-    if (!ctor) {
-      throw new Error(`model not found: ${key}`);
-    }
-
-    const meta = MetadataStorage.instance.getModelMetadata(ctor);
-    const model =
-      String(meta.fullModelName || '').trim() ||
-      String(meta.modelName || '').trim() ||
-      String(meta.name || '').trim() ||
-      String(ctor.name || '').trim() ||
-      key;
-
-    const normalizedPrefix = String(options?.methodPrefix || '')
-      .trim()
-      .toLowerCase();
     const hasPreviewFilter = typeof options?.preview === 'boolean';
     const hasAlwaysOnCreateFilter = typeof options?.alwaysOnCreate === 'boolean';
     const pagination = normalizePagination(options);
-    const hasMinPriority = typeof options?.minPriority === 'number' && Number.isFinite(options.minPriority);
-    const hasMaxPriority = typeof options?.maxPriority === 'number' && Number.isFinite(options.maxPriority);
-    const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
-    const normalizedMaxPriority = hasMaxPriority ? Number(options?.maxPriority) : undefined;
+    const priorityRange = normalizePriorityRange(options);
 
     const effective = ctor.EffectiveConstraints() as EffectiveConstraintMeta[];
     const filtered = effective.filter(item => {
       if (hasPreviewFilter && item.preview !== Boolean(options?.preview)) return false;
       if (hasAlwaysOnCreateFilter && item.alwaysOnCreate !== Boolean(options?.alwaysOnCreate)) return false;
-      const priority = typeof item.priority === 'number' && Number.isFinite(item.priority) ? item.priority : 0;
-      if (normalizedMinPriority !== undefined && priority < normalizedMinPriority) return false;
-      if (normalizedMaxPriority !== undefined && priority > normalizedMaxPriority) return false;
-      if (
-        normalizedPrefix &&
-        !String(item.method || '')
-          .toLowerCase()
-          .startsWith(normalizedPrefix)
-      )
-        return false;
+      if (!priorityInRange(item, priorityRange)) return false;
+      if (!matchesMethodPrefix(item, options?.methodPrefix)) return false;
       return true;
     });
 
@@ -153,48 +124,18 @@ export default class IrModel extends BaseModel {
     limit?: number;
     returned: number;
   }> {
-    const key = String(modelIdentifier || '').trim();
-    if (!key) {
-      throw new Error('modelIdentifier cannot be empty');
-    }
+    const { ctor, model } = resolveEffectiveModel(modelIdentifier);
 
-    const ctor = BaseModel.resolveModelConstructor(key);
-    if (!ctor) {
-      throw new Error(`model not found: ${key}`);
-    }
-
-    const meta = MetadataStorage.instance.getModelMetadata(ctor);
-    const model =
-      String(meta.fullModelName || '').trim() ||
-      String(meta.modelName || '').trim() ||
-      String(meta.name || '').trim() ||
-      String(ctor.name || '').trim() ||
-      key;
-
-    const normalizedPrefix = String(options?.methodPrefix || '')
-      .trim()
-      .toLowerCase();
     const normalizedTrigger = String(options?.triggerField || '')
       .trim()
       .toLowerCase();
     const pagination = normalizePagination(options);
-    const hasMinPriority = typeof options?.minPriority === 'number' && Number.isFinite(options.minPriority);
-    const hasMaxPriority = typeof options?.maxPriority === 'number' && Number.isFinite(options.maxPriority);
-    const normalizedMinPriority = hasMinPriority ? Number(options?.minPriority) : undefined;
-    const normalizedMaxPriority = hasMaxPriority ? Number(options?.maxPriority) : undefined;
+    const priorityRange = normalizePriorityRange(options);
 
     const effective = ctor.EffectiveOnchange() as EffectiveOnchangeMeta[];
     const filtered = effective.filter(item => {
-      const priority = typeof item.priority === 'number' && Number.isFinite(item.priority) ? item.priority : 0;
-      if (normalizedMinPriority !== undefined && priority < normalizedMinPriority) return false;
-      if (normalizedMaxPriority !== undefined && priority > normalizedMaxPriority) return false;
-      if (
-        normalizedPrefix &&
-        !String(item.method || '')
-          .toLowerCase()
-          .startsWith(normalizedPrefix)
-      )
-        return false;
+      if (!priorityInRange(item, priorityRange)) return false;
+      if (!matchesMethodPrefix(item, options?.methodPrefix)) return false;
       if (normalizedTrigger && !item.triggers.some(trigger => trigger.toLowerCase() === normalizedTrigger)) return false;
       return true;
     });

@@ -6,8 +6,8 @@ import { sql } from 'kysely';
 import IrApplication from './ir_application';
 import IrModule from './ir_module';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
-import { normalizeOptionalString, normalizeStringArray, readRefId } from './_normalizers';
-import { normalizePagination, paginateAndWrap } from './_diagnostics_response';
+import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
+import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
 
 export type UiResourceType = 'ROUTE' | 'MENU' | 'ACTION';
 

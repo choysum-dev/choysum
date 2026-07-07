@@ -4,8 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
-import { ensureCurrentUserId, getBackendEnvText, getModuleManagementBridge, isTruthyFlag } from './_module_management_runtime';
-import { normalizeFields, normalizeLimit, normalizeOffset } from './_normalizers';
+import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
+import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -597,13 +597,21 @@ export default class IrModuleIndex extends BaseModel {
       }
     }
 
-    const userId = ensureCurrentUserId();
+    const userId = BaseModel.ensureUserId();
     const job = await Job.EnqueueJob('meta', fullMethod, { originType, force }, userId, userId, undefined, 0, 0);
     return String((job as any)?.Id || '').trim();
   }
 
+  private static getModuleManagementBridge(): any {
+    const root: any = (globalThis as any)?.$choysum;
+    if (!root?.moduleManagement) {
+      throw new Error('moduleManagement bridge is not injected');
+    }
+    return root.moduleManagement;
+  }
+
   static async Sync(originType?: ModuleSyncOriginType, force?: boolean): Promise<any> {
-    const bridge = getModuleManagementBridge();
+    const bridge = this.getModuleManagementBridge();
     const syncIndex = (bridge as any)?.syncIndex;
     if (typeof syncIndex !== 'function') {
       throw new Error('moduleManagement.syncIndex is not implemented');

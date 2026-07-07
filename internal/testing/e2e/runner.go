@@ -480,7 +480,6 @@ db:
 
 %s
 backendEnv:
-	CHOYSUM_E2E_OPERATOR_USER_ID: "e2e-admin"
 	CHOYSUM_E2E_SKIP_RELOAD: "true"
 %s
 %s

@@ -4,6 +4,7 @@
 import type { QueryCondition } from '@/core/service/api/query';
 import type { ConditionGroup } from '../../types';
 import { isLikeOperator, normalizeLikeValue } from './like';
+import { normalizeFields } from '@/core/service/utils/normalization';
 
 /**
  * Options used when deriving keyword fields from metadata.
@@ -47,10 +48,6 @@ function groupToExpr(node: ConditionGroup): QueryCondition<any> | null {
   if (parts.length === 0) return null;
   if (parts.length === 1) return parts[0];
   return logic === 'Or' ? ({ Or: parts } as any) : ({ And: parts } as any);
-}
-
-function normalizeFields(fields: string[] | undefined): string[] {
-  return Array.from(new Set((fields || []).map(f => String(f || '').trim()).filter(Boolean)));
 }
 
 /**
