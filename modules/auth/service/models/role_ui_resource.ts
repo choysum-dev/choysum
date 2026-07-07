@@ -6,7 +6,8 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import Role from './role';
-import { invalidateAuthzRequestCaches } from './_request_cache_invalidation';
+import { normalizeRefId } from './_rule_scope_helpers';
+import { invalidateAllAuthzCaches } from './_authz_mutation_helpers';
 
 /**
  * Permission mode for a role-to-UI-resource grant.
@@ -65,16 +66,6 @@ export default class RoleUiResource extends BaseModel {
   IrUiResourceId: string | null;
 
   /**
-   * Normalize a relation reference into a trimmed Id string.
-   */
-  private static _normalizeRefId(v: any): string | null {
-    if (v == null) return null;
-    const raw = typeof v === 'object' && v !== null ? (v as any).Id : v;
-    const s = String(raw ?? '').trim();
-    return s ? s : null;
-  }
-
-  /**
    * Normalize the permission mode and reject unsupported values.
    */
   private static _normalizeMode(v: any): RoleUiResourceMode {
@@ -99,8 +90,8 @@ export default class RoleUiResource extends BaseModel {
       }
     }
 
-    const irUiResourceId = this._normalizeRefId((values as any).IrUiResourceId);
-    const irApplicationId = this._normalizeRefId((values as any).IrApplicationId);
+    const irUiResourceId = normalizeRefId((values as any).IrUiResourceId);
+    const irApplicationId = normalizeRefId((values as any).IrApplicationId);
 
     const isResource = irUiResourceId != null && irApplicationId == null;
     const isApplication = irUiResourceId == null && irApplicationId != null;
@@ -134,7 +125,7 @@ export default class RoleUiResource extends BaseModel {
     RoleUiResource._validateScopeShape(value as any, 'create');
     RoleUiResource._validateMode(value as any, 'create');
     const out = await super.Create(value as any, returnFields as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as T;
   }
 
@@ -151,7 +142,7 @@ export default class RoleUiResource extends BaseModel {
       RoleUiResource._validateMode(v as any, 'create');
     }
     const out = await super.CreateMany(values as any, returnFields as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as T[];
   }
 
@@ -168,7 +159,7 @@ export default class RoleUiResource extends BaseModel {
     RoleUiResource._validateScopeShape(values as any, 'update');
     RoleUiResource._validateMode(values as any, 'update');
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
   }
 
@@ -185,7 +176,7 @@ export default class RoleUiResource extends BaseModel {
     RoleUiResource._validateScopeShape(values as any, 'update');
     RoleUiResource._validateMode(values as any, 'update');
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;
   }
 
@@ -198,7 +189,7 @@ export default class RoleUiResource extends BaseModel {
     options?: any
   ): Promise<number> {
     const out = await super.Delete(condition as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 
@@ -207,7 +198,7 @@ export default class RoleUiResource extends BaseModel {
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
     const out = await super.DeleteById(id as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 }

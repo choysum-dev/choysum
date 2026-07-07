@@ -12,6 +12,7 @@ import RoleRecordRule from './role_record_rule';
 import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
+import { normalizeRefId } from './_rule_scope_helpers';
 
 /**
  * Role defines one reusable permission bundle and its derived UI/resource mappings.
@@ -152,16 +153,6 @@ export default class Role extends BaseModel {
   }
 
   /**
-   * Normalize a relation reference into a trimmed Id string.
-   */
-  private static _normalizeRefId(v: any): string | null {
-    if (v == null) return null;
-    const raw = typeof v === 'object' && v !== null ? ((v as any).Id ?? (v as any).id ?? null) : v;
-    const s = String(raw ?? '').trim();
-    return s ? s : null;
-  }
-
-  /**
    * Normalize a scalar or relation payload into a unique Id list.
    */
   private static _normalizeIdList(v: any): string[] {
@@ -169,7 +160,7 @@ export default class Role extends BaseModel {
     const arr = Array.isArray(v) ? v : [v];
     const set = new Set<string>();
     for (const it of arr) {
-      const id = this._normalizeRefId(it);
+      const id = normalizeRefId(it);
       if (id) set.add(id);
     }
     return Array.from(set);
@@ -179,7 +170,7 @@ export default class Role extends BaseModel {
    * Read the normalized role Id from a role-related row.
    */
   private static _readRoleId(row: any): string | null {
-    return this._normalizeRefId(row?.RoleId);
+    return normalizeRefId(row?.RoleId);
   }
 
   /**
@@ -189,8 +180,8 @@ export default class Role extends BaseModel {
     const mode = String((row as any)?.Mode ?? 'allow')
       .trim()
       .toLowerCase();
-    const uiResourceId = this._normalizeRefId((row as any)?.IrUiResourceId);
-    const appId = this._normalizeRefId((row as any)?.IrApplicationId);
+    const uiResourceId = normalizeRefId((row as any)?.IrUiResourceId);
+    const appId = normalizeRefId((row as any)?.IrApplicationId);
     return mode === 'allow' && !!uiResourceId && appId == null;
   }
 
@@ -227,12 +218,12 @@ export default class Role extends BaseModel {
 
     return (rows || []).map((row: any) => ({
       ...(row || {}),
-      Id: this._normalizeRefId(row?.Id) ?? undefined,
+      Id: normalizeRefId(row?.Id) ?? undefined,
       Mode: String((row as any)?.Mode ?? 'allow')
         .trim()
         .toLowerCase(),
-      IrApplicationId: this._normalizeRefId((row as any)?.IrApplicationId),
-      IrUiResourceId: this._normalizeRefId((row as any)?.IrUiResourceId),
+      IrApplicationId: normalizeRefId((row as any)?.IrApplicationId),
+      IrUiResourceId: normalizeRefId((row as any)?.IrUiResourceId),
     }));
   }
 
@@ -287,8 +278,8 @@ export default class Role extends BaseModel {
 
     const existingByResource = new Map<string, string>();
     for (const row of allowRows) {
-      const id = this._normalizeRefId((row as any).Id);
-      const resourceId = this._normalizeRefId((row as any).IrUiResourceId);
+      const id = normalizeRefId((row as any).Id);
+      const resourceId = normalizeRefId((row as any).IrUiResourceId);
       if (!id || !resourceId) continue;
       existingByResource.set(resourceId, id);
     }
@@ -336,7 +327,7 @@ export default class Role extends BaseModel {
       const roleId = this._readRoleId(row as any);
       if (!roleId) continue;
       if (!this._isAllowResourceScope(row)) continue;
-      const resourceId = this._normalizeRefId((row as any)?.IrUiResourceId);
+      const resourceId = normalizeRefId((row as any)?.IrUiResourceId);
       if (!resourceId) continue;
       if (!map.has(roleId)) map.set(roleId, new Set<string>());
       map.get(roleId)!.add(resourceId);
@@ -356,7 +347,7 @@ export default class Role extends BaseModel {
     const roleIds = Array.from(
       new Set(
         records
-          .map(row => this._normalizeRefId((row as any)?.Id))
+          .map(row => normalizeRefId((row as any)?.Id))
           .filter(Boolean)
           .map(String)
       )
@@ -365,7 +356,7 @@ export default class Role extends BaseModel {
 
     const accessMap = await this._buildAccessMap(roleIds);
     for (const row of records) {
-      const roleId = this._normalizeRefId((row as any)?.Id);
+      const roleId = normalizeRefId((row as any)?.Id);
       if (!roleId) continue;
       (row as any).AccessUiResourceIds = accessMap.get(roleId) || [];
     }
@@ -442,7 +433,7 @@ export default class Role extends BaseModel {
     const payload = { ...(value as any) } as Record<string, any>;
     const accessIds = await Role._applyAccessWriteTransformOnCreate(payload);
     const row = (await super.Create(payload as any, returnFields as any)) as any;
-    const roleId = Role._normalizeRefId((row as any)?.Id);
+    const roleId = normalizeRefId((row as any)?.Id);
     if (roleId && accessIds) {
       await Role._syncAllowResourceGrants(roleId, accessIds);
       (row as any).AccessUiResourceIds = [...accessIds];
@@ -467,7 +458,7 @@ export default class Role extends BaseModel {
     }
     const rows = (await super.CreateMany(payloads as any, returnFields as any)) as any[];
     for (let i = 0; i < rows.length; i++) {
-      const roleId = Role._normalizeRefId((rows[i] as any)?.Id);
+      const roleId = normalizeRefId((rows[i] as any)?.Id);
       const accessIds = accessList[i];
       if (roleId && accessIds) {
         await Role._syncAllowResourceGrants(roleId, accessIds);
@@ -496,7 +487,7 @@ export default class Role extends BaseModel {
     let accessIdsForSync: string[] | null = null;
     if (Role._hasOwn(payload, 'AccessUiResourceIds')) {
       const targetRows = (await super.Search(condition as any, { fields: ['Id'] as any } as any)) as any[];
-      const roleIds = targetRows.map(row => Role._normalizeRefId((row as any)?.Id)).filter(Boolean) as string[];
+      const roleIds = targetRows.map(row => normalizeRefId((row as any)?.Id)).filter(Boolean) as string[];
       if (roleIds.length > 1) {
         throw new Error('Role.Update with AccessUiResourceIds only supports single record update');
       }
