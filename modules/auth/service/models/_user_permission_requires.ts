@@ -1,12 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * Normalize a mixed list into unique non-empty strings.
- */
-export function uniqStrings(xs: any[]): string[] {
-  return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
-}
+import { uniqStrings } from '@/core/service/utils/normalization';
+
+export { uniqStrings };
 
 /**
  * Normalize an RPC require key into its service-level wildcard form.

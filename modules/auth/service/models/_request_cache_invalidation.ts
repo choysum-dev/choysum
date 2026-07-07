@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { uniqStrings } from '@/core/service/utils/normalization';
+
 type InvalidateOpts = {
   userIds?: string[];
   allUsers?: boolean;
@@ -14,13 +16,6 @@ function getJsCtxAndReq(): { jsCtx: any; req: any } {
   const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
   const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
   return { jsCtx, req };
-}
-
-/**
- * Normalize a possibly mixed array into unique non-empty string ids.
- */
-function uniqStrings(xs: any[]): string[] {
-  return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
 }
 
 /**

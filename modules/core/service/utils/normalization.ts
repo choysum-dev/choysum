@@ -59,3 +59,14 @@ export function normalizeFields(raw: unknown): string[] {
   }
   return Array.from(seen);
 }
+
+/**
+ * Normalize a mixed list into unique non-empty trimmed strings.
+ *
+ * Accepts an array of values (strings, numbers, etc.) and returns a
+ * deduplicated array of non-empty strings. Non-array input is treated
+ * as an empty list.
+ */
+export function uniqStrings(xs: unknown): string[] {
+  return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
+}
