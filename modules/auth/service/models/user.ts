@@ -26,6 +26,9 @@ import type IrFieldModel from '@/meta/service/models/ir_field';
 import type IrModelModel from '@/meta/service/models/ir_model';
 import type IrServiceModel from '@/meta/service/models/ir_service';
 import type Company from '@/base/service/models/company';
+import { parseModelFullName, parseServiceFullName } from './_user_model_parsing';
+import { uniqStrings, rpcServiceWildcard, normalizeRequireKey, hasRpcPermission, isUiResourceAllowed, requireMatchesMethod } from './_user_permission_requires';
+import { getCurrentReq, getOrInitReqServiceState, getCompanyScopeFromRequestContext } from './_user_runtime_context';
 
 const IrApplication = createServiceByModel<typeof IrApplicationModel>('meta.IrApplication');
 const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
@@ -1359,7 +1362,7 @@ export default class User extends BaseModel {
             const explicitlyDenied = isExplicitUiDenied(r);
             if (explicitlyDenied) continue;
             const allowedByExplicit = isExplicitUiAllowed(r);
-            const allowedByRequires = this._isUiResourceAllowed(r.requires, requiresAllowSet, requiresDenySet);
+            const allowedByRequires = isUiResourceAllowed(r.requires, requiresAllowSet, requiresDenySet);
             if (!allowedByExplicit && !allowedByRequires) continue;
             if (r.type === 'ROUTE') {
               routeSet.add(r.resourceId);
@@ -1465,51 +1468,6 @@ export default class User extends BaseModel {
   }
 
   /**
-   * Resolve the current request object from the active Choysum runtime context.
-   */
-  private static _getCurrentReq(): any {
-    const root: any = (globalThis as any)?.$choysum;
-    const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-    return (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
-  }
-
-  /**
-   * Return the request-scoped service cache, creating it when needed.
-   */
-  private static _getOrInitReqServiceState(req: any): any {
-    if (!req) return undefined;
-    if (!req.__choysumServiceState) req.__choysumServiceState = {};
-    return req.__choysumServiceState;
-  }
-
-  /**
-   * Read active and enabled company scope from request overrides or identity metadata.
-   */
-  private static _getCompanyScopeFromRequestContext(): { activeCompanyId: string; enabledCompanyIds: string[] } {
-    // IMPORTANT: Use core runtime/context helpers to respect request-level overrides set by withContext().
-    // Some tests (and potentially other flows) rely on Symbol.for('choysum.ctx.override') rather than
-    // mutating jsCtx.ctx directly.
-    const ctx: any = (getReadonlyCtx() ?? {}) as any;
-    const identity: any = (getIdentity() ?? {}) as any;
-    const meta: any = (identity?.metadata ?? identity?.Metadata ?? {}) as any;
-
-    const activeCompanyId = String(ctx?.activeCompanyId ?? meta?.activeCompanyId ?? '').trim();
-    const enabledCompanyIds = this._uniqStrings(ctx?.enabledCompanyIds ?? meta?.enabledCompanyIds ?? []);
-
-    if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) {
-      return { activeCompanyId, enabledCompanyIds: [activeCompanyId, ...enabledCompanyIds] };
-    }
-    return { activeCompanyId, enabledCompanyIds };
-  }
-
-  /**
-   * Normalize a mixed list into unique non-empty strings.
-   */
-  private static _uniqStrings(xs: any[]): string[] {
-    return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
-  }
-
-  /**
    * Return a stable sorted copy of a string list.
    */
   private static _sortStrings(xs: string[]): string[] {
@@ -1520,7 +1478,7 @@ export default class User extends BaseModel {
    * Parse a string or structured value into a normalized string array.
    */
   private static _parseJsonStringArray(raw: any): string[] {
-    const normalize = (xs: any[]): string[] => this._uniqStrings((xs || []).map(v => String(v ?? '').trim()).filter(Boolean));
+    const normalize = (xs: any[]): string[] => uniqStrings((xs || []).map(v => String(v ?? '').trim()).filter(Boolean));
     const tryObjectSnapshot = (value: any): string[] | null => {
       if (!value || typeof value !== 'object') return null;
       try {
@@ -1574,58 +1532,6 @@ export default class User extends BaseModel {
   }
 
   /**
-   * Normalize an RPC require key into its service-level wildcard form.
-   */
-  private static _rpcServiceWildcard(key: string): string {
-    const k = String(key || '').trim();
-    if (!k.startsWith('rpc:/')) return '';
-    if (k.endsWith('/*')) return k;
-    const i = k.lastIndexOf('/');
-    if (i <= 'rpc:/'.length) return '';
-    return `${k.slice(0, i)}/*`;
-  }
-
-  /**
-   * Normalize supported require keys into the canonical rpc:/ form.
-   */
-  private static _normalizeRequireKey(key: string): string {
-    const k = String(key || '').trim();
-    if (!k) return '';
-    if (k.startsWith('rpc:/')) return k;
-    if (k.startsWith('service:/')) return `rpc:/${k.slice('service:/'.length)}`;
-    return '';
-  }
-
-  /**
-   * Evaluate a single RPC require key against allow and deny sets.
-   */
-  private static _hasRpcPermission(req: string, allowSet: Set<string>, denySet: Set<string>): boolean {
-    const k = this._normalizeRequireKey(req);
-    if (!k) return false;
-    const wildcard = this._rpcServiceWildcard(k);
-
-    if (denySet.has(k)) return false;
-    if (wildcard && denySet.has(wildcard)) return false;
-
-    if (allowSet.has(k)) return true;
-    if (wildcard && allowSet.has(wildcard)) return true;
-    return false;
-  }
-
-  /**
-   * Check whether all UI resource requires are satisfied by RPC permissions.
-   */
-  private static _isUiResourceAllowed(requires: string[], allowSet: Set<string>, denySet: Set<string>): boolean {
-    const reqs = this._uniqStrings((requires || []).map(v => String(v || '').trim()).filter(Boolean));
-    if (reqs.length === 0) return true;
-
-    for (const req of reqs) {
-      if (!this._hasRpcPermission(req, allowSet, denySet)) return false;
-    }
-    return true;
-  }
-
-  /**
    * Build or reuse the request-scoped authorization context for the current user.
    */
   private static async _getAuthzContext(): Promise<{
@@ -1637,12 +1543,12 @@ export default class User extends BaseModel {
     rolesByCompany: Record<string, string[]>;
     roles: string[];
   }> {
-    const req = this._getCurrentReq();
-    const state = this._getOrInitReqServiceState(req);
+    const req = getCurrentReq();
+    const state = getOrInitReqServiceState(req);
 
     const userId = String((this.userId as any) || '').trim();
-    const companyScope = this._getCompanyScopeFromRequestContext();
-    const enabledCompanyIdsKey = this._sortStrings(this._uniqStrings(companyScope.enabledCompanyIds));
+    const companyScope = getCompanyScopeFromRequestContext();
+    const enabledCompanyIdsKey = this._sortStrings(uniqStrings(companyScope.enabledCompanyIds));
     const companyScopeKey = `${companyScope.activeCompanyId}::${enabledCompanyIdsKey.join(',')}`;
 
     const build = async (args: { userId: string; activeCompanyId: string; enabledCompanyIds: string[] }) => {
@@ -1935,7 +1841,7 @@ export default class User extends BaseModel {
       const userId = this.userId;
       if (!userId || !serviceFullName) return false;
 
-      const parsed = this._parseServiceFullName(serviceFullName);
+      const parsed = parseServiceFullName(serviceFullName);
       if (!parsed) return false;
       const { appName, modelName, methodName } = parsed;
       const normalizedFullMethod = `/${appName}.${modelName}/${methodName}`;
@@ -1945,7 +1851,7 @@ export default class User extends BaseModel {
       if (!hasCompany) return false;
 
       // Company view must be within enabledCompanyIds (fail-closed).
-      const { enabledCompanyIds } = this._getCompanyScopeFromRequestContext();
+      const { enabledCompanyIds } = getCompanyScopeFromRequestContext();
       if (enabledCompanyIds.length > 0 && !enabledCompanyIds.includes(normalizedCompanyId)) return false;
 
       // Permission graph reads must bypass RecordRule/FieldRule.
@@ -1956,8 +1862,8 @@ export default class User extends BaseModel {
         const roleIds = authz.rolesByCompany?.[normalizedCompanyId] || [];
         if (roleIds.length === 0) return false;
 
-        const req = this._getCurrentReq();
-        const state = this._getOrInitReqServiceState(req);
+        const req = getCurrentReq();
+        const state = getOrInitReqServiceState(req);
         const cacheKey = `methodAccess::${String(authz.userId || '').trim()}::${normalizedCompanyId}::${normalizedFullMethod}`;
         const cached = state?.[cacheKey];
         if (typeof cached === 'boolean') return cached;
@@ -2082,28 +1988,6 @@ export default class User extends BaseModel {
   }
 
   /**
-   * Parse /app.Model/Method into application, model, and method parts.
-   */
-  private static _parseServiceFullName(v: string): { appName: string; modelName: string; methodName: string } | null {
-    const s = String(v || '').trim();
-    if (!s) return null;
-
-    const noLead = s.startsWith('/') ? s.slice(1) : s;
-    const parts = noLead.split('/').filter(Boolean);
-    if (parts.length !== 2) return null;
-    const service = parts[0].trim();
-    const methodName = parts[1].trim();
-    if (!service || !methodName) return null;
-
-    const lastDot = service.lastIndexOf('.');
-    if (lastDot <= 0 || lastDot >= service.length - 1) return null;
-    const appName = service.slice(0, lastDot).trim();
-    const modelName = service.slice(lastDot + 1).trim();
-    if (!appName || !modelName) return null;
-    return { appName, modelName, methodName };
-  }
-
-  /**
    * Normalize a UI resource reference into its string id.
    */
   private static _normalizeUiResourceId(raw: any): string {
@@ -2126,30 +2010,6 @@ export default class User extends BaseModel {
   }
 
   /**
-   * Check whether a require key targets the specified model and method.
-   */
-  private static _requireMatchesMethod(req: string, modelKey: string, methodLower: string): boolean {
-    const k = this._normalizeRequireKey(req);
-    if (!k || !k.startsWith('rpc:/')) return false;
-    const body = k.slice('rpc:/'.length);
-    const parts = body.split('/');
-    if (parts.length !== 2) return false;
-    const mk = String(parts[0] || '').trim();
-    const mm = String(parts[1] || '')
-      .trim()
-      .toLowerCase();
-    if (!mk || !mm) return false;
-    if (
-      mk.toLowerCase() !==
-      String(modelKey || '')
-        .trim()
-        .toLowerCase()
-    )
-      return false;
-    return mm === '*' || mm === methodLower;
-  }
-
-  /**
    * Expand role UI grants into materialized resource rows and lookup tables.
    */
   private static async _loadUiGrantExpansionForRoles(roleIds: string[]): Promise<{
@@ -2159,13 +2019,13 @@ export default class User extends BaseModel {
     appModesById: Record<string, ('allow' | 'deny')[]>;
     resourceModesByKey: Record<string, ('allow' | 'deny')[]>;
   }> {
-    const ids = this._sortStrings(this._uniqStrings(roleIds || []));
+    const ids = this._sortStrings(uniqStrings(roleIds || []));
     if (ids.length === 0) {
       return { resources: [], hasGlobalAllow: false, hasGlobalDeny: false, appModesById: {}, resourceModesByKey: {} };
     }
 
-    const req = this._getCurrentReq();
-    const state = this._getOrInitReqServiceState(req);
+    const req = getCurrentReq();
+    const state = getOrInitReqServiceState(req);
     const roleSig = ids.join(',');
     const cacheKey = `uiGrantExpansion::${roleSig}`;
     const cached = state?.[cacheKey];
@@ -2234,7 +2094,7 @@ export default class User extends BaseModel {
       const allRows = await IrUiResource.Search([] as any, { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any);
       mergeRows(allRows as any[]);
     } else {
-      const appIDList = this._uniqStrings(Array.from(appIDs));
+      const appIDList = uniqStrings(Array.from(appIDs));
       if (appIDList.length > 0) {
         const rows = await IrUiResource.Search(
           {
@@ -2245,7 +2105,7 @@ export default class User extends BaseModel {
         mergeRows(rows as any[]);
       }
 
-      const resourceIDList = this._uniqStrings(Array.from(resourceIDs));
+      const resourceIDList = uniqStrings(Array.from(resourceIDs));
       if (resourceIDList.length > 0) {
         const byIdRows = await IrUiResource.Search(
           {
@@ -2314,7 +2174,7 @@ export default class User extends BaseModel {
 
       let matchesMethod = false;
       for (const req of requires) {
-        if (this._requireMatchesMethod(req, mkey, m)) {
+        if (requireMatchesMethod(req, mkey, m)) {
           matchesMethod = true;
           break;
         }
@@ -2328,7 +2188,7 @@ export default class User extends BaseModel {
       const appId = this._normalizeScopeRefId((row as any)?.IrApplicationId);
       for (const mode of expansion.appModesById?.[appId || ''] || []) matchedModes.add(mode);
 
-      const resourceKeys = this._uniqStrings([
+      const resourceKeys = uniqStrings([
         this._normalizeUiResourceId((row as any)?.Id ?? (row as any)?.id),
         String((row as any)?.Name ?? (row as any)?.name ?? '').trim(),
       ]);
@@ -2373,24 +2233,10 @@ export default class User extends BaseModel {
         return { kind: 'false', reason: 'invalid_op' };
       }
 
-      /**
-       * Parse an application-qualified model name.
-       */
-      const parseModelFullName = (v: string): { appName: string; modelName: string } | null => {
-        const s = String(v || '').trim();
-        if (!s) return null;
-        const lastDot = s.lastIndexOf('.');
-        if (lastDot <= 0 || lastDot >= s.length - 1) return null;
-        const appName = s.slice(0, lastDot).trim();
-        const modelName = s.slice(lastDot + 1).trim();
-        if (!appName || !modelName) return null;
-        return { appName, modelName };
-      };
-
       const parsedModel = parseModelFullName(rawModel);
       if (!parsedModel) return { kind: 'false', reason: 'invalid_model_full_name' };
 
-      const { activeCompanyId, enabledCompanyIds } = this._getCompanyScopeFromRequestContext();
+      const { activeCompanyId, enabledCompanyIds } = getCompanyScopeFromRequestContext();
       const hasCompany = enabledCompanyIds.length > 0;
 
       // 1) Resolve meta application/model ids
@@ -2419,8 +2265,8 @@ export default class User extends BaseModel {
         if (!hasCompany) return { enabled: false, reason: 'no_company_context' };
 
         // request-scope memoization
-        const req = this._getCurrentReq();
-        const state = req ? this._getOrInitReqServiceState(req) : undefined;
+        const req = getCurrentReq();
+        const state = req ? getOrInitReqServiceState(req) : undefined;
         const key = `companyGateMode::${modelId}`;
         const existing = state ? state[key] : undefined;
         if (existing) {
@@ -2646,20 +2492,6 @@ export default class User extends BaseModel {
           message: 'Missing model name (model)',
         }).withGrpcCode(GrpcCode.InvalidArgument);
       }
-
-      /**
-       * Parse an application-qualified model name.
-       */
-      const parseModelFullName = (v: string): { appName: string; modelName: string } | null => {
-        const s = String(v || '').trim();
-        if (!s) return null;
-        const lastDot = s.lastIndexOf('.');
-        if (lastDot <= 0 || lastDot >= s.length - 1) return null;
-        const appName = s.slice(0, lastDot).trim();
-        const modelName = s.slice(lastDot + 1).trim();
-        if (!appName || !modelName) return null;
-        return { appName, modelName };
-      };
 
       const parsedModel = parseModelFullName(rawModel);
       if (!parsedModel) {
