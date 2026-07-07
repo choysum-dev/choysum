@@ -6,6 +6,7 @@ import {
   normalizeStringArray,
   readRefId,
   normalizeRefId,
+  normalizeRefIdList,
   normalizeOffset,
   normalizeLimit,
   normalizeFields,
@@ -66,6 +67,18 @@ test('normalizeRefId returns trimmed string or null', () => {
   expect(normalizeRefId({ Id: '', id: 'fallback' })).toBe(null);
   expect(normalizeRefId({ Id: '' })).toBe(null);
   expect(normalizeRefId(true)).toBe('true');
+});
+
+test('normalizeRefIdList wraps singleton, extracts Ids, filters null, and deduplicates', () => {
+  expect(normalizeRefIdList(null)).toEqual([]);
+  expect(normalizeRefIdList(undefined)).toEqual([]);
+  expect(normalizeRefIdList([])).toEqual([]);
+  expect(normalizeRefIdList('  id1  ')).toEqual(['id1']);
+  expect(normalizeRefIdList({ Id: 'obj1' })).toEqual(['obj1']);
+  expect(normalizeRefIdList(['a', 'b', 'a'])).toEqual(['a', 'b']);
+  expect(normalizeRefIdList(['', '  ', 'valid'])).toEqual(['valid']);
+  expect(normalizeRefIdList([{ Id: 'x' }, { Id: 'y' }, { Id: 'x' }])).toEqual(['x', 'y']);
+  expect(normalizeRefIdList([null, undefined, { Id: 'z' }])).toEqual(['z']);
 });
 
 test('normalizeOffset returns non-negative floored integer', () => {

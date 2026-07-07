@@ -71,11 +71,7 @@ export function invalidateJsCtxSymbolCache(jsCtx: unknown, symbol: symbol): void
  *
  * Safe to call with undefined state (fn runs without depth tracking).
  */
-export async function withBypassDepths<T>(
-  state: Record<string, unknown> | undefined,
-  depthKeys: string[],
-  fn: () => Promise<T>
-): Promise<T> {
+export async function withBypassDepths<T>(state: Record<string, unknown> | undefined, depthKeys: string[], fn: () => Promise<T>): Promise<T> {
   if (!state) return await fn();
 
   const prevs = new Map<string, number>();
@@ -105,11 +101,7 @@ export async function withBypassDepths<T>(
  *
  * When state is undefined the factory runs without caching.
  */
-export async function memoizeInReqState<T>(
-  state: Record<string, unknown> | undefined,
-  key: string,
-  factory: () => Promise<T>
-): Promise<T> {
+export async function memoizeInReqState<T>(state: Record<string, unknown> | undefined, key: string, factory: () => Promise<T>): Promise<T> {
   if (!state) return await factory();
 
   const existing = state[key];

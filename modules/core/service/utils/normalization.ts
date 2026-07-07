@@ -42,6 +42,24 @@ export function normalizeRefId(value: unknown): string | null {
 }
 
 /**
+ * Normalize a mixed value or array into a deduplicated list of non-null Id strings.
+ *
+ * - Wraps a non-array, non-null input as a single-element array (singleton coercion).
+ * - Extracts the Id from each element via {@link normalizeRefId}.
+ * - Filters null results and deduplicates.
+ */
+export function normalizeRefIdList(value: unknown): string[] {
+  if (value == null) return [];
+  const arr = Array.isArray(value) ? value : [value];
+  const set = new Set<string>();
+  for (const it of arr) {
+    const id = normalizeRefId(it);
+    if (id) set.add(id);
+  }
+  return Array.from(set);
+}
+
+/**
  * Normalize an offset (non-negative finite integer, floor).
  */
 export function normalizeOffset(raw: unknown): number {

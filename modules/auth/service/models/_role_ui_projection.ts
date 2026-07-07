@@ -1,21 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeRefId } from '@/core/service/utils/normalization';
+import { normalizeRefId, normalizeRefIdList } from '@/core/service/utils/normalization';
 import RoleUiResource from './role_ui_resource';
 
 const hasOwn = (obj: Record<string, any>, key: string): boolean => Object.prototype.hasOwnProperty.call(obj, key);
-
-function normalizeIdList(v: any): string[] {
-  if (v == null) return [];
-  const arr = Array.isArray(v) ? v : [v];
-  const set = new Set<string>();
-  for (const it of arr) {
-    const id = normalizeRefId(it);
-    if (id) set.add(id);
-  }
-  return Array.from(set);
-}
 
 function isAllowResourceScope(row: any): boolean {
   const mode = String((row as any)?.Mode ?? 'allow')
@@ -71,7 +60,7 @@ function mergeAccessIntoUiResources(baseRows: Array<Record<string, any>>, access
 export async function applyAccessWriteTransformOnCreate(values: Record<string, any>): Promise<string[] | null> {
   if (!hasOwn(values, 'AccessUiResourceIds')) return null;
 
-  const accessIds = normalizeIdList(values.AccessUiResourceIds);
+  const accessIds = normalizeRefIdList(values.AccessUiResourceIds);
   const incomingUiRows = extractUiResourcesArray(values.UiResources);
   const baseRows = Array.isArray(incomingUiRows) ? incomingUiRows : [];
 
@@ -86,7 +75,7 @@ export async function applyAccessWriteTransformOnCreate(values: Record<string, a
 export async function applyAccessWriteTransformOnUpdate(values: Record<string, any>, roleId: string): Promise<string[] | null> {
   if (!hasOwn(values, 'AccessUiResourceIds')) return null;
 
-  const accessIds = normalizeIdList(values.AccessUiResourceIds);
+  const accessIds = normalizeRefIdList(values.AccessUiResourceIds);
   const incomingUiRows = extractUiResourcesArray(values.UiResources);
   const baseRows = Array.isArray(incomingUiRows) ? incomingUiRows : await loadUiResourcesForRole(roleId);
 
@@ -99,7 +88,7 @@ export async function applyAccessWriteTransformOnUpdate(values: Record<string, a
  * Persist allow/resource UI grants so they stay aligned with AccessUiResourceIds.
  */
 export async function syncAllowResourceGrants(roleId: string, accessIds: string[]): Promise<void> {
-  const targetIds = normalizeIdList(accessIds);
+  const targetIds = normalizeRefIdList(accessIds);
   const targetSet = new Set<string>(targetIds);
 
   const rows = await loadUiResourcesForRole(roleId);
