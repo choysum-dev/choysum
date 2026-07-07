@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Model, Field } from '@/core/service';
-import { getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
+import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
@@ -548,42 +548,11 @@ export default class User extends BaseModel {
     const enabledCompanyIdsKey = sortStrings(uniqStrings(companyScope.enabledCompanyIds));
     const companyScopeKey = `${companyScope.activeCompanyId}::${enabledCompanyIdsKey.join(',')}`;
 
-    const build = async (args: { userId: string; activeCompanyId: string; enabledCompanyIds: string[] }) => buildAuthzContext(args);
-
-    if (!state) {
-      return await build({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey });
-    }
-
     const KEY = buildAuthzContextCacheKey(userId, companyScopeKey);
-    const existing = state[KEY];
-    if (existing) {
-      if (typeof existing?.then === 'function') {
-        const v = await existing;
-        state[KEY] = v;
-        return v;
-      }
-      return existing;
-    }
 
-    const p = build({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey })
-      .then((v: any) => {
-        try {
-          state[KEY] = v;
-        } catch {
-          // ignore
-        }
-        return v;
-      })
-      .catch((e: any) => {
-        try {
-          delete state[KEY];
-        } catch {
-          // ignore
-        }
-        throw e;
-      });
-    state[KEY] = p;
-    return await p;
+    return await memoizeInReqState(state, KEY, async () =>
+      buildAuthzContext({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey })
+    );
   }
 
   /**
