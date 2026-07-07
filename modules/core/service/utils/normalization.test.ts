@@ -11,6 +11,15 @@ import {
   normalizeFields,
   normalizeRpcRequireKey,
   rpcServiceWildcard,
+  sortStrings,
+  maybeRefId,
+  normalizeScopeRefId,
+  normalizeUiResourceId,
+  parseJsonStringArray,
+  normalizeScopeId,
+  uniqScopeIds,
+  normalizePreferences,
+  buildScopePreferences,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -105,4 +114,99 @@ test('rpcServiceWildcard returns service wildcard for rpc keys', () => {
   expect(rpcServiceWildcard('rpc:/auth.User/Browse')).toBe('rpc:/auth.User/*');
   expect(rpcServiceWildcard('rpc:/auth.User/*')).toBe('rpc:/auth.User/*');
   expect(rpcServiceWildcard('rpc:/auth.User')).toBe('');
+});
+
+test('sortStrings returns stable sorted copy', () => {
+  expect(sortStrings([])).toEqual([]);
+  expect(sortStrings(['c', 'a', 'b'])).toEqual(['a', 'b', 'c']);
+  expect(sortStrings(['a', 'a', 'b'])).toEqual(['a', 'a', 'b']);
+});
+
+test('maybeRefId extracts id from string or object with Id/id', () => {
+  expect(maybeRefId(null)).toBe(undefined);
+  expect(maybeRefId(undefined)).toBe(undefined);
+  expect(maybeRefId('')).toBe(undefined);
+  expect(maybeRefId(0)).toBe(undefined);
+  expect(maybeRefId('  id123  ')).toBe('id123');
+  expect(maybeRefId({ Id: '  obj456  ' })).toBe('obj456');
+  expect(maybeRefId({ id: 'lowercase' })).toBe('lowercase');
+  expect(maybeRefId({ Id: '', id: 'fallback' })).toBe('fallback');
+  expect(maybeRefId(true)).toBe(undefined);
+});
+
+test('normalizeScopeRefId returns trimmed string or empty', () => {
+  expect(normalizeScopeRefId(null)).toBe('');
+  expect(normalizeScopeRefId(undefined)).toBe('');
+  expect(normalizeScopeRefId('')).toBe('');
+  expect(normalizeScopeRefId('  app123  ')).toBe('app123');
+  expect(normalizeScopeRefId({ Id: '  obj456  ' })).toBe('obj456');
+  expect(normalizeScopeRefId({ id: 'lowercase' })).toBe('lowercase');
+  expect(normalizeScopeRefId(0)).toBe('0');
+});
+
+test('normalizeUiResourceId returns trimmed string or empty', () => {
+  expect(normalizeUiResourceId(null)).toBe('');
+  expect(normalizeUiResourceId(undefined)).toBe('');
+  expect(normalizeUiResourceId('')).toBe('');
+  expect(normalizeUiResourceId('  res123  ')).toBe('res123');
+  expect(normalizeUiResourceId({ Id: '  res456  ' })).toBe('res456');
+  expect(normalizeUiResourceId({ id: 'res789' })).toBe('res789');
+});
+
+test('parseJsonStringArray handles various input shapes', () => {
+  expect(parseJsonStringArray(null)).toEqual([]);
+  expect(parseJsonStringArray(undefined)).toEqual([]);
+  expect(parseJsonStringArray([])).toEqual([]);
+  expect(parseJsonStringArray(['a', 'b', 'a'])).toEqual(['a', 'b']);
+  expect(parseJsonStringArray('["x","y"]')).toEqual(['x', 'y']);
+  expect(parseJsonStringArray('single')).toEqual(['single']);
+  expect(parseJsonStringArray({ value: ['v1', 'v2'] })).toEqual(['v1', 'v2']);
+  expect(parseJsonStringArray({ values: ['w1'] })).toEqual(['w1']);
+  expect(parseJsonStringArray({ items: ['i1', 'i2'] })).toEqual(['i1', 'i2']);
+  expect(parseJsonStringArray({ '0': 'a', '1': 'b' })).toEqual(['a', 'b']);
+  expect(parseJsonStringArray('')).toEqual([]);
+  expect(parseJsonStringArray('   ')).toEqual([]);
+});
+
+test('normalizeScopeId normalizes company id-like values', () => {
+  expect(normalizeScopeId(null)).toBe('');
+  expect(normalizeScopeId(undefined)).toBe('');
+  expect(normalizeScopeId('  C1  ')).toBe('C1');
+  expect(normalizeScopeId({ Id: 'C2' })).toBe('C2');
+  expect(normalizeScopeId({ id: 'C3' })).toBe('C3');
+  expect(normalizeScopeId(123)).toBe('123');
+});
+
+test('uniqScopeIds preserves first-seen order', () => {
+  expect(uniqScopeIds([])).toEqual([]);
+  expect(uniqScopeIds(['C1', 'C2', 'C1', '', '  C3  '])).toEqual(['C1', 'C2', 'C3']);
+  expect(uniqScopeIds(['  ', null as any, undefined as any, 'valid'])).toEqual(['valid']);
+});
+
+test('normalizePreferences normalizes various shapes to plain object', () => {
+  expect(normalizePreferences(null)).toEqual({});
+  expect(normalizePreferences(undefined)).toEqual({});
+  expect(normalizePreferences('')).toEqual({});
+  expect(normalizePreferences('{"key":"val"}')).toEqual({ key: 'val' });
+  expect(normalizePreferences({ a: 1 })).toEqual({ a: 1 });
+  expect(normalizePreferences([1, 2])).toEqual([1, 2] as any); // arrays pass through
+  expect(normalizePreferences('   ')).toEqual({});
+  // non-JSON string returns empty
+  expect(normalizePreferences('not-json')).toEqual({});
+});
+
+test('buildScopePreferences merges active/enabled into base', () => {
+  expect(buildScopePreferences({}, 'C1', ['C1', 'C2'])).toEqual({
+    activeCompanyId: 'C1',
+    enabledCompanyIds: ['C1', 'C2'],
+  });
+  expect(buildScopePreferences({ theme: 'dark' }, 'C1', ['C1'])).toEqual({
+    theme: 'dark',
+    activeCompanyId: 'C1',
+    enabledCompanyIds: ['C1'],
+  });
+  expect(buildScopePreferences(null as any, 'X', [])).toEqual({
+    activeCompanyId: 'X',
+    enabledCompanyIds: [],
+  });
 });

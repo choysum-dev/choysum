@@ -16,4 +16,6 @@ export {
   getReqMeta,
   getUserId,
   withContext,
+  deleteReqStateKeysByPrefix,
+  invalidateJsCtxSymbolCache,
 } from '../runtime/context';

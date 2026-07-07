@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { uniqStrings } from '@/core/service/utils/normalization';
-import { getJsCtxAndReq } from '@/core/service/api/context';
+import { getJsCtxAndReq, deleteReqStateKeysByPrefix, invalidateJsCtxSymbolCache } from '@/core/service/api/context';
 
 const AUTHZ_CTX_PREFIX = 'authzContext::';
 const METHOD_ACCESS_PREFIX = 'methodAccess::';
@@ -45,12 +45,6 @@ export function buildUiGrantCacheKey(roleSignature: string): string {
   return `${UI_GRANT_PREFIX}${String(roleSignature || '').trim()}`;
 }
 
-function deleteCacheByPrefix(state: Record<string, unknown>, prefix: string): void {
-  for (const key of Object.keys(state)) {
-    if (key.startsWith(prefix)) delete state[key];
-  }
-}
-
 /**
  * Invalidate request-scoped auth caches after permission graph changes.
  *
@@ -69,31 +63,27 @@ export function invalidateAuthzRequestCaches(opts: InvalidateOpts = {}): void {
   if (state && typeof state === 'object') {
     if (invalidateAll) {
       for (const group of AUTHZ_CACHE_GROUPS) {
-        deleteCacheByPrefix(state as Record<string, unknown>, group.prefix);
+        deleteReqStateKeysByPrefix(state as Record<string, unknown>, group.prefix);
       }
     } else {
       for (const uid of ids) {
         for (const group of AUTHZ_CACHE_GROUPS) {
           if (!group.userScoped) continue;
-          deleteCacheByPrefix(state as Record<string, unknown>, `${group.prefix}${uid}::`);
+          deleteReqStateKeysByPrefix(state as Record<string, unknown>, `${group.prefix}${uid}::`);
         }
       }
       // uiGrantExpansion keys are role-set scoped and do not embed userId.
       // For safety, clear them when any targeted invalidation happens.
       for (const group of AUTHZ_CACHE_GROUPS) {
         if (group.userScoped) continue;
-        deleteCacheByPrefix(state as Record<string, unknown>, group.prefix);
+        deleteReqStateKeysByPrefix(state as Record<string, unknown>, group.prefix);
       }
     }
   }
 
   // 2) Invalidate request-level record/field rule caches
-  try {
-    delete (jsCtx as any)[Symbol.for('choysum.recordrule.cache')];
-    delete (jsCtx as any)[Symbol.for('choysum.fieldrule.cache')];
-  } catch {
-    // ignore
-  }
+  invalidateJsCtxSymbolCache(jsCtx, Symbol.for('choysum.recordrule.cache'));
+  invalidateJsCtxSymbolCache(jsCtx, Symbol.for('choysum.fieldrule.cache'));
 }
 
 /**

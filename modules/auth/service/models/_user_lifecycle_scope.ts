@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getJsCtxAndReq } from '@/core/service/api/context';
-import { maybeId } from './_user_authz_shared';
+import { normalizeScopeId, uniqScopeIds, normalizePreferences as normalizeScopePreferences, buildScopePreferences } from '@/core/service/utils/normalization';
 
 export type TokenCompanyScope = {
   allowedCompanyIds: string[];
@@ -29,52 +29,6 @@ export type SwitchScopeValidationResult =
       prefs: Record<string, any>;
       companyId?: string;
     };
-
-/**
- * Normalize a company id-like value to a trimmed string.
- */
-export function normalizeScopeId(value: any): string {
-  const id = maybeId(value);
-  if (id) return String(id).trim();
-  return String(value ?? '').trim();
-}
-
-/**
- * Return a stable unique copy of ids while preserving the first-seen order.
- */
-export function uniqScopeIds(ids: string[]): string[] {
-  return Array.from(new Set((ids || []).map(v => normalizeScopeId(v)).filter(Boolean)));
-}
-
-/**
- * Normalize a dynamic preferences value into a plain JSON object.
- */
-export function normalizeScopePreferences(value: any): Record<string, any> {
-  if (!value) return {};
-
-  if (typeof value === 'string') {
-    const s = value.trim();
-    if (!s) return {};
-    try {
-      const parsed = JSON.parse(s);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-
-  if (typeof value === 'object') {
-    try {
-      const snapshot = JSON.parse(JSON.stringify(value));
-      if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) return snapshot;
-    } catch {
-      // fallthrough
-    }
-    return value;
-  }
-
-  return {};
-}
 
 /**
  * Compute allowed company ids from User.CompanyId and User.CompanyIds.
@@ -202,18 +156,6 @@ export function validateSwitchCompanyScopeInput(user: any, activeCompanyId: stri
     enabled,
     allowed,
     prefs,
-  };
-}
-
-/**
- * Merge company scope preferences while preserving unrelated preference fields.
- */
-export function buildScopePreferences(basePrefs: Record<string, any>, active: string, enabled: string[]): Record<string, any> {
-  const base = basePrefs && typeof basePrefs === 'object' && !Array.isArray(basePrefs) ? basePrefs : {};
-  return {
-    ...base,
-    activeCompanyId: active,
-    enabledCompanyIds: enabled,
   };
 }
 

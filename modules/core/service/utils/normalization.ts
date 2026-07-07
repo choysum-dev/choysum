@@ -106,3 +106,168 @@ export function rpcServiceWildcard(key: string): string {
   if (i <= 'rpc:/'.length) return '';
   return `${k.slice(0, i)}/*`;
 }
+
+/**
+ * Return a stable sorted copy of a string array.
+ */
+export function sortStrings(xs: string[]): string[] {
+  return (xs || []).slice().sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * Extract the identifier from either a plain string value or an object with
+ * an `Id` (or `id`) property. Returns undefined for empty input.
+ *
+ * This is a relaxed variant of {@link readRefId} that also checks lowercase `id`.
+ */
+export function maybeRefId(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return normalizeOptionalString(value);
+  if (typeof value === 'object')
+    return normalizeOptionalString((value as Record<string, unknown>).Id) ?? normalizeOptionalString((value as Record<string, unknown>).id);
+  return undefined;
+}
+
+/**
+ * Normalize an application or scope reference into its string id.
+ *
+ * Returns '' when the input cannot be resolved to a non-empty string (unlike
+ * {@link normalizeRefId} which returns null for the same case).
+ */
+export function normalizeScopeRefId(raw: unknown): string {
+  if (raw == null) return '';
+  if (typeof raw === 'object' && raw !== null) {
+    return String((raw as Record<string, unknown>).Id ?? (raw as Record<string, unknown>).id ?? '').trim();
+  }
+  return String(raw || '').trim();
+}
+
+/**
+ * Normalize a UI resource reference into its string id.
+ */
+export function normalizeUiResourceId(raw: unknown): string {
+  if (raw == null) return '';
+  if (typeof raw === 'object' && raw !== null) {
+    return String((raw as Record<string, unknown>).Id ?? (raw as Record<string, unknown>).id ?? '').trim();
+  }
+  return String(raw || '').trim();
+}
+
+/**
+ * Parse a string or structured value into a normalized string array.
+ *
+ * Handles plain JSON arrays, objects with `value`/`values`/`items` keys,
+ * numeric-indexed objects, and singleton string inputs.
+ */
+export function parseJsonStringArray(raw: unknown): string[] {
+  const normalize = (xs: unknown[]): string[] => uniqStrings(xs);
+
+  const tryObjectSnapshot = (value: unknown): string[] | null => {
+    if (!value || typeof value !== 'object') return null;
+    try {
+      const snap = JSON.parse(JSON.stringify(value));
+      if (Array.isArray(snap)) return normalize(snap);
+      if (!snap || typeof snap !== 'object') return null;
+
+      for (const key of ['value', 'values', 'items']) {
+        if (Array.isArray((snap as Record<string, unknown>)[key])) return normalize((snap as Record<string, unknown>)[key]);
+      }
+
+      const numericKeys = Object.keys(snap)
+        .filter(key => /^\d+$/.test(key))
+        .sort((a, b) => Number(a) - Number(b));
+      if (numericKeys.length > 0) return normalize(numericKeys.map(key => (snap as Record<string, unknown>)[key]));
+    } catch {
+      // fallthrough
+    }
+    return null;
+  };
+
+  if (Array.isArray(raw)) return normalize(raw);
+  if (raw == null) return [];
+
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (!s) return [];
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return normalize(parsed);
+    } catch {
+      // fallthrough
+    }
+    return normalize([s]);
+  }
+
+  const snapResult = tryObjectSnapshot(raw);
+  if (snapResult) return snapResult;
+
+  try {
+    if (typeof (raw as Record<string, unknown>)?.toString === 'function') {
+      const s = String((raw as Record<string, unknown>).toString() || '').trim();
+      if (!s) return [];
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return normalize(parsed);
+    }
+  } catch {
+    // fallthrough
+  }
+  return [];
+}
+
+/**
+ * Normalize a company id-like value to a trimmed string.
+ */
+export function normalizeScopeId(value: unknown): string {
+  const id = maybeRefId(value);
+  if (id) return String(id).trim();
+  return String(value ?? '').trim();
+}
+
+/**
+ * Return a stable unique copy of scope ids while preserving first-seen order.
+ */
+export function uniqScopeIds(ids: string[]): string[] {
+  return Array.from(new Set((ids || []).map(v => normalizeScopeId(v)).filter(Boolean)));
+}
+
+/**
+ * Normalize a dynamic preferences value into a plain JSON object.
+ */
+export function normalizePreferences(value: unknown): Record<string, unknown> {
+  if (!value) return {};
+
+  if (typeof value === 'string') {
+    const s = value.trim();
+    if (!s) return {};
+    try {
+      const parsed = JSON.parse(s);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof value === 'object') {
+    try {
+      const snapshot = JSON.parse(JSON.stringify(value));
+      if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) return snapshot as Record<string, unknown>;
+    } catch {
+      // fallthrough
+    }
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+/**
+ * Merge company scope preferences while preserving unrelated preference fields.
+ */
+export function buildScopePreferences(basePrefs: Record<string, unknown>, active: string, enabled: string[]): Record<string, unknown> {
+  const base = basePrefs && typeof basePrefs === 'object' && !Array.isArray(basePrefs) ? basePrefs : {};
+  return {
+    ...base,
+    activeCompanyId: active,
+    enabledCompanyIds: enabled,
+  };
+}

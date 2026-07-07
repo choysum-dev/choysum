@@ -2,7 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getIdentity, getReadonlyCtx, getJsCtxAndReq } from '@/core/service/api/context';
-import { uniqStrings, normalizeRpcRequireKey, rpcServiceWildcard } from '@/core/service/utils/normalization';
+import {
+  uniqStrings,
+  normalizeRpcRequireKey,
+  rpcServiceWildcard,
+  sortStrings,
+  maybeRefId as maybeId,
+  normalizeScopeRefId,
+  normalizeUiResourceId,
+  parseJsonStringArray,
+} from '@/core/service/utils/normalization';
+
+// Re-export core utilities for backward compat — other auth helpers import these from this module.
+export { sortStrings, maybeId, normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray };
 
 /**
  * Execute fn with RecordRule and FieldRule bypass.
@@ -38,13 +50,6 @@ export async function withPermissionGraphBypass<T>(fn: () => Promise<T>): Promis
 }
 
 /**
- * Return a stable sorted copy of a string list.
- */
-export function sortStrings(xs: string[]): string[] {
-  return (xs || []).slice().sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-}
-
-/**
  * Read active and enabled company scope from request overrides or identity metadata.
  */
 export function getCompanyScopeFromRequestContext(): { activeCompanyId: string; enabledCompanyIds: string[] } {
@@ -59,63 +64,6 @@ export function getCompanyScopeFromRequestContext(): { activeCompanyId: string; 
     return { activeCompanyId, enabledCompanyIds: [activeCompanyId, ...enabledCompanyIds] };
   }
   return { activeCompanyId, enabledCompanyIds };
-}
-
-/**
- * Parse a string or structured value into a normalized string array.
- */
-export function parseJsonStringArray(raw: any): string[] {
-  const normalize = (xs: any[]): string[] => uniqStrings((xs || []).map(v => String(v ?? '').trim()).filter(Boolean));
-  const tryObjectSnapshot = (value: any): string[] | null => {
-    if (!value || typeof value !== 'object') return null;
-    try {
-      const snap = JSON.parse(JSON.stringify(value));
-      if (Array.isArray(snap)) return normalize(snap);
-      if (!snap || typeof snap !== 'object') return null;
-
-      for (const key of ['value', 'values', 'items']) {
-        if (Array.isArray((snap as any)[key])) return normalize((snap as any)[key]);
-      }
-
-      const numericKeys = Object.keys(snap)
-        .filter(key => /^\d+$/.test(key))
-        .sort((a, b) => Number(a) - Number(b));
-      if (numericKeys.length > 0) return normalize(numericKeys.map(key => (snap as any)[key]));
-    } catch {
-      // fallthrough
-    }
-    return null;
-  };
-
-  if (Array.isArray(raw)) return normalize(raw);
-  if (raw == null) return [];
-
-  if (typeof raw === 'string') {
-    const s = raw.trim();
-    if (!s) return [];
-    try {
-      const parsed = JSON.parse(s);
-      if (Array.isArray(parsed)) return normalize(parsed);
-    } catch {
-      // fallthrough
-    }
-    return normalize([s]);
-  }
-
-  const snapResult = tryObjectSnapshot(raw);
-  if (snapResult) return snapResult;
-
-  try {
-    if (typeof (raw as any)?.toString === 'function') {
-      const s = String((raw as any).toString() || '').trim();
-      if (!s) return [];
-      const parsed = JSON.parse(s);
-      if (Array.isArray(parsed)) return normalize(parsed);
-    }
-  } catch {
-    // fallthrough
-  }
-  return [];
 }
 
 /**
@@ -169,38 +117,6 @@ export function requireMatchesMethod(req: string, modelKey: string, methodLower:
   )
     return false;
   return mm === '*' || mm === methodLower;
-}
-
-/**
- * Normalize a UI resource reference into its string id.
- */
-export function normalizeUiResourceId(raw: any): string {
-  if (raw == null) return '';
-  if (typeof raw === 'object' && raw !== null) {
-    return String((raw as any).Id ?? (raw as any).id ?? '').trim();
-  }
-  return String(raw || '').trim();
-}
-
-/**
- * Normalize an application or scope reference into its string id.
- */
-export function normalizeScopeRefId(raw: any): string {
-  if (raw == null) return '';
-  if (typeof raw === 'object' && raw !== null) {
-    return String((raw as any).Id ?? (raw as any).id ?? '').trim();
-  }
-  return String(raw || '').trim();
-}
-
-/**
- * Normalize a model reference or scalar value into a string id.
- */
-export function maybeId(value: any): string | undefined {
-  if (!value) return undefined;
-  if (typeof value === 'string') return value;
-  if (typeof value === 'object') return String((value as any).Id ?? (value as any).id ?? '').trim() || undefined;
-  return undefined;
 }
 
 /**

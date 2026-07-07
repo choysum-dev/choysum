@@ -35,3 +35,28 @@ export function getOrInitReqServiceState(req: any): any {
   if (!reqRecord.__choysumServiceState) reqRecord.__choysumServiceState = {};
   return reqRecord.__choysumServiceState;
 }
+
+/**
+ * Delete all keys with a given prefix from a request-scoped state record.
+ *
+ * Safe to call with undefined/null state (no-op).
+ */
+export function deleteReqStateKeysByPrefix(state: Record<string, unknown> | undefined, prefix: string): void {
+  if (!state) return;
+  for (const key of Object.keys(state)) {
+    if (key.startsWith(prefix)) delete state[key];
+  }
+}
+
+/**
+ * Invalidate a symbol-keyed cache entry on a jsCtx carrier object.
+ *
+ * Safe to call when jsCtx is undefined or missing the symbol (no-op).
+ */
+export function invalidateJsCtxSymbolCache(jsCtx: unknown, symbol: symbol): void {
+  try {
+    delete (jsCtx as Record<PropertyKey, unknown>)[symbol];
+  } catch {
+    // ignore
+  }
+}
