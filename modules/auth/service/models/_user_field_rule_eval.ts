@@ -37,7 +37,7 @@ function pickField(obj: any, keys: string[]): any {
   const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const normalizedWants = keys.map(norm);
 
-  for (const k in obj) {
+  for (const k of Object.keys(obj)) {
     if (normalizedWants.includes(norm(k))) {
       return obj[k];
     }

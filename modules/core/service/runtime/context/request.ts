@@ -111,7 +111,9 @@ export async function memoizeInReqState<T>(state: Record<string, unknown> | unde
     if (typeof (existing as { then?: unknown })?.then === 'function') {
       const v = await (existing as Promise<T>);
       try {
-        state[key] = v;
+        if (state[key] === existing) {
+          state[key] = v;
+        }
       } catch {
         // ignore
       }
@@ -123,7 +125,9 @@ export async function memoizeInReqState<T>(state: Record<string, unknown> | unde
   const p = factory()
     .then((v: T) => {
       try {
-        state[key] = v;
+        if (state[key] === p) {
+          state[key] = v;
+        }
       } catch {
         // ignore
       }
@@ -131,7 +135,9 @@ export async function memoizeInReqState<T>(state: Record<string, unknown> | unde
     })
     .catch((e: unknown) => {
       try {
-        delete state[key];
+        if (state[key] === p) {
+          delete state[key];
+        }
       } catch {
         // ignore
       }

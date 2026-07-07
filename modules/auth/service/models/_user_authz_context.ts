@@ -105,9 +105,9 @@ export async function computeEffectiveRoleScopes(userRoles: any[]): Promise<Map<
     const batch = pending.splice(0, 200);
     const edges = await RoleInheritance.Search(['ParentRoleId', 'in', batch] as any, { fields: ['ParentRoleId', 'ChildRoleId'], limit: 5000 });
     for (const e of edges || []) {
-      const parentId = maybeId((e as any).ParentRoleId) || '';
+      const parentId = maybeId((e as any).ParentRoleId);
       const childId = maybeId((e as any).ChildRoleId);
-      if (!childId) continue;
+      if (!parentId || !childId) continue;
 
       const parentScope = roleScopes.get(parentId);
       if (!parentScope) {
