@@ -74,19 +74,21 @@ export function invalidateJsCtxSymbolCache(jsCtx: unknown, symbol: symbol): void
 export async function withBypassDepths<T>(state: Record<string, unknown> | undefined, depthKeys: string[], fn: () => Promise<T>): Promise<T> {
   if (!state) return await fn();
 
-  const prevs = new Map<string, number>();
   for (const key of depthKeys) {
-    prevs.set(key, typeof state[key] === 'number' ? (state[key] as number) : 0);
-    state[key] = (prevs.get(key) ?? 0) + 1;
+    const current = typeof state[key] === 'number' ? (state[key] as number) : 0;
+    state[key] = current + 1;
   }
 
   try {
     return await fn();
   } finally {
     for (const key of depthKeys) {
-      const prev = prevs.get(key) ?? 0;
-      if (prev > 0) state[key] = prev;
-      else delete state[key];
+      const current = typeof state[key] === 'number' ? (state[key] as number) : 0;
+      if (current > 1) {
+        state[key] = current - 1;
+      } else {
+        delete state[key];
+      }
     }
   }
 }

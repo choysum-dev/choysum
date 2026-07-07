@@ -31,33 +31,15 @@ function pickField(obj: any, keys: string[]): any {
   if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) return undefined;
 
   for (const k of keys) {
-    if (k in obj) return (obj as any)[k];
+    if (k in obj) return obj[k];
   }
 
-  const norm = (s: string): string =>
-    String(s ?? '')
-      .replace(/[^a-zA-Z0-9]/g, '')
-      .toLowerCase();
+  const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalizedWants = keys.map(norm);
 
-  const normalizedToActual = new Map<string, string>();
-  let cur: any = obj;
-  while (cur && cur !== Object.prototype) {
-    for (const k of Reflect.ownKeys(cur)) {
-      if (typeof k !== 'string') continue;
-      const nk = norm(k);
-      if (!nk) continue;
-      if (!normalizedToActual.has(nk)) normalizedToActual.set(nk, k);
-    }
-    cur = Object.getPrototypeOf(cur);
-  }
-
-  for (const want of keys) {
-    const actual = normalizedToActual.get(norm(want));
-    if (!actual) continue;
-    try {
-      return (obj as any)[actual];
-    } catch {
-      // ignore
+  for (const k in obj) {
+    if (normalizedWants.includes(norm(k))) {
+      return obj[k];
     }
   }
 

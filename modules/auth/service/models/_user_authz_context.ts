@@ -5,8 +5,11 @@ import { memoizeInReqState } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { sortStrings, maybeId, withPermissionGraphBypass } from './_user_authz_shared';
 import Role from './role';
+import RoleFieldRule from './role_field_rule';
 import RoleInheritance from './role_inheritance';
 import RoleMethodAccess from './role_method_access';
+import RoleRecordRule from './role_record_rule';
+import RoleUiResource from './role_ui_resource';
 import UserRole from './user_role';
 
 /**
@@ -151,8 +154,11 @@ export async function computePermStateVersion(userId: string): Promise<number> {
         ],
       } as any);
       const maMax = await maxUpdatedAt(RoleMethodAccess, ['RoleId', 'in', effectiveRoleIds] as any);
+      const rrMax = await maxUpdatedAt(RoleRecordRule, ['RoleId', 'in', effectiveRoleIds] as any);
+      const rfMax = await maxUpdatedAt(RoleFieldRule, ['RoleId', 'in', effectiveRoleIds] as any);
+      const ruMax = await maxUpdatedAt(RoleUiResource, ['RoleId', 'in', effectiveRoleIds] as any);
 
-      return Math.max(urMax, roleMax, inhMax, maMax);
+      return Math.max(urMax, roleMax, inhMax, maMax, rrMax, rfMax, ruMax);
     });
   } catch {
     return 0;

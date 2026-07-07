@@ -98,53 +98,60 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
 
   const permField = PERM_FIELD_BY_OP[input.opValue];
 
-  const baseAnd: any[] = [
-    ['RoleId', 'in', input.roleIds],
-    [permField as any, '=', true],
+  const scopeOr: any[] = [
+    {
+      And: [
+        ['IrModelId', '=', modelId],
+        ['IrApplicationId', 'is', null],
+      ],
+    },
+    ...(irApplicationId
+      ? [
+          {
+            And: [
+              ['IrModelId', 'is', null],
+              ['IrApplicationId', '=', irApplicationId],
+            ],
+          } as any,
+        ]
+      : []),
+    {
+      And: [
+        ['IrModelId', 'is', null],
+        ['IrApplicationId', 'is', null],
+      ],
+    },
   ];
 
-  const hasAnyRule = async (scopeAnd: any[]): Promise<boolean> => {
-    const n = Number(
-      await RoleRecordRule.Count({
-        And: [...scopeAnd, ...baseAnd],
-      } as any)
-    );
-    if (!Number.isFinite(n)) throw new Error('invalid_role_record_rule_count');
-    return n > 0;
-  };
+  const allRules = await RoleRecordRule.Search(
+    {
+      And: [
+        ['RoleId', 'in', input.roleIds],
+        [permField as any, '=', true],
+        { Or: scopeOr },
+      ],
+    } as any,
+    { fields: ['RoleId', 'Condition', 'IrModelId', 'IrApplicationId'], limit: 5000 }
+  );
 
-  const modelScopeAnd: any[] = [
-    ['IrModelId', '=', modelId],
-    ['IrApplicationId', 'is', null],
-  ];
-  const applicationScopeAnd: any[] = [
-    ['IrModelId', 'is', null],
-    ['IrApplicationId', '=', irApplicationId],
-  ];
-  const globalScopeAnd: any[] = [
-    ['IrModelId', 'is', null],
-    ['IrApplicationId', 'is', null],
-  ];
+  const modelRules: any[] = [];
+  const appRules: any[] = [];
+  const globalRules: any[] = [];
 
-  let pickedScopeAnd: any[] = [];
+  for (const r of allRules || []) {
+    const rModelId = maybeId((r as any).IrModelId);
+    const rAppId = maybeId((r as any).IrApplicationId);
 
-  if (await hasAnyRule(modelScopeAnd)) {
-    pickedScopeAnd = modelScopeAnd;
-  } else if (irApplicationId && (await hasAnyRule(applicationScopeAnd))) {
-    pickedScopeAnd = applicationScopeAnd;
-  } else if (await hasAnyRule(globalScopeAnd)) {
-    pickedScopeAnd = globalScopeAnd;
+    if (rModelId === modelId && !rAppId) {
+      modelRules.push(r);
+    } else if (!rModelId && rAppId === irApplicationId) {
+      appRules.push(r);
+    } else if (!rModelId && !rAppId) {
+      globalRules.push(r);
+    }
   }
 
-  const rules =
-    pickedScopeAnd.length === 0
-      ? []
-      : await RoleRecordRule.Search(
-          {
-            And: [...pickedScopeAnd, ...baseAnd],
-          } as any,
-          { fields: ['RoleId', 'Condition'], limit: 5000 }
-        );
+  const rules = modelRules.length > 0 ? modelRules : appRules.length > 0 ? appRules : globalRules;
 
   if (!rules || rules.length === 0) {
     return { kind: 'true', reason: `no_rules_${input.opValue}_allow` };
