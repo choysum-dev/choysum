@@ -159,9 +159,10 @@ export async function buildUiPermissionProjection(
     }))
     .filter(r => !!r.resourceId && (r.type === 'ROUTE' || r.type === 'MENU' || r.type === 'ACTION'));
 
-  const menuRouteRows = await IrUiResourceMenuRoute.Search([] as any, { fields: ['MenuUiResourceId', 'RouteUiResourceId'], limit: 100000 } as any);
-
-  const routeActionRows = await IrUiResourceRouteAction.Search([] as any, { fields: ['RouteUiResourceId', 'ActionUiResourceId'], limit: 100000 } as any);
+  const [menuRouteRows, routeActionRows] = await Promise.all([
+    IrUiResourceMenuRoute.Search([] as any, { fields: ['MenuUiResourceId', 'RouteUiResourceId'], limit: 100000 } as any),
+    IrUiResourceRouteAction.Search([] as any, { fields: ['RouteUiResourceId', 'ActionUiResourceId'], limit: 100000 } as any),
+  ]);
 
   const resourceMetaById = new Map<string, UiResourceMeta>();
   for (const resource of allResources) {

@@ -86,18 +86,19 @@ function buildCompanyGateExpr(scope: RoleScope, companyGateEnabled: boolean): an
  */
 export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): Promise<ConditionEnvelope> {
   // Resolve meta ids
-  const apps = await IrApplication.Search({ And: [['Name', '=', input.appName]] } as any, { fields: ['Id'], limit: 1 } as any);
+  const [apps, models] = await Promise.all([
+    IrApplication.Search({ And: [['Name', '=', input.appName]] } as any, { fields: ['Id'], limit: 1 } as any),
+    IrModel.Search(
+      {
+        And: [
+          ['Name', '=', input.modelName],
+          ['Application', '=', input.appName],
+        ],
+      } as any,
+      { fields: ['Id', 'CompanyScoped'], limit: 1 }
+    ),
+  ]);
   const irApplicationId = String((apps as any)?.[0]?.Id || '').trim();
-
-  const models = await IrModel.Search(
-    {
-      And: [
-        ['Name', '=', input.modelName],
-        ['Application', '=', input.appName],
-      ],
-    } as any,
-    { fields: ['Id', 'CompanyScoped'], limit: 1 }
-  );
   const modelHit: any = (models as any)?.[0] as any;
   const modelId = String(modelHit?.Id || '').trim();
   if (!modelId) return { kind: 'false', reason: 'model_not_found' };

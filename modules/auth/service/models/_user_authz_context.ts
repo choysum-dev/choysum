@@ -152,17 +152,19 @@ export async function computePermStateVersion(userId: string): Promise<number> {
       const effectiveRoleIds = await expandRoleClosure(directRoleIds);
       if (effectiveRoleIds.length === 0) return urMax;
 
-      const roleMax = await maxUpdatedAt(Role, ['Id', 'in', effectiveRoleIds] as any);
-      const inhMax = await maxUpdatedAt(RoleInheritance, {
-        Or: [
-          ['ParentRoleId', 'in', effectiveRoleIds],
-          ['ChildRoleId', 'in', effectiveRoleIds],
-        ],
-      } as any);
-      const maMax = await maxUpdatedAt(RoleMethodAccess, ['RoleId', 'in', effectiveRoleIds] as any);
-      const rrMax = await maxUpdatedAt(RoleRecordRule, ['RoleId', 'in', effectiveRoleIds] as any);
-      const rfMax = await maxUpdatedAt(RoleFieldRule, ['RoleId', 'in', effectiveRoleIds] as any);
-      const ruMax = await maxUpdatedAt(RoleUiResource, ['RoleId', 'in', effectiveRoleIds] as any);
+      const [roleMax, inhMax, maMax, rrMax, rfMax, ruMax] = await Promise.all([
+        maxUpdatedAt(Role, ['Id', 'in', effectiveRoleIds] as any),
+        maxUpdatedAt(RoleInheritance, {
+          Or: [
+            ['ParentRoleId', 'in', effectiveRoleIds],
+            ['ChildRoleId', 'in', effectiveRoleIds],
+          ],
+        } as any),
+        maxUpdatedAt(RoleMethodAccess, ['RoleId', 'in', effectiveRoleIds] as any),
+        maxUpdatedAt(RoleRecordRule, ['RoleId', 'in', effectiveRoleIds] as any),
+        maxUpdatedAt(RoleFieldRule, ['RoleId', 'in', effectiveRoleIds] as any),
+        maxUpdatedAt(RoleUiResource, ['RoleId', 'in', effectiveRoleIds] as any),
+      ]);
 
       return Math.max(urMax, roleMax, inhMax, maMax, rrMax, rfMax, ruMax);
     });

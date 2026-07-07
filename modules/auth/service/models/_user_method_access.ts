@@ -227,33 +227,34 @@ export async function loadUiGrantExpansionForRoles(roleIds: string[]): Promise<U
     mergeRows(allRows as any[]);
   } else {
     const appIDList = uniqStrings(Array.from(appIDs));
+    const resourceIDList = uniqStrings(Array.from(resourceIDs));
+    const promises: Array<Promise<any[]>> = [];
+
     if (appIDList.length > 0) {
-      const rows = await IrUiResource.Search(
-        {
-          And: [['IrApplicationId', 'in', appIDList]],
-        } as any,
-        { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+      promises.push(
+        IrUiResource.Search(
+          { And: [['IrApplicationId', 'in', appIDList]] } as any,
+          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+        )
       );
-      mergeRows(rows as any[]);
     }
 
-    const resourceIDList = uniqStrings(Array.from(resourceIDs));
     if (resourceIDList.length > 0) {
-      const byIdRows = await IrUiResource.Search(
-        {
-          And: [['Id', 'in', resourceIDList]],
-        } as any,
-        { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+      promises.push(
+        IrUiResource.Search(
+          { And: [['Id', 'in', resourceIDList]] } as any,
+          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+        ),
+        IrUiResource.Search(
+          { And: [['Name', 'in', resourceIDList]] } as any,
+          { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
+        )
       );
-      mergeRows(byIdRows as any[]);
+    }
 
-      const byResourceIdRows = await IrUiResource.Search(
-        {
-          And: [['Name', 'in', resourceIDList]],
-        } as any,
-        { fields: ['Id', 'Name', 'IrApplicationId', 'Requires'], limit: 100000 } as any
-      );
-      mergeRows(byResourceIdRows as any[]);
+    const results = await Promise.all(promises);
+    for (const rows of results) {
+      mergeRows(rows as any[]);
     }
   }
 

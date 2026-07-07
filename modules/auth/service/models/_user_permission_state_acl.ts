@@ -74,18 +74,32 @@ export async function buildAclAggregation(
   const serviceById = new Map<string, { modelId: string; name: string }>();
   const modelById = new Map<string, { app: string; name: string }>();
 
-  // 4.1) Resolve service -> model + method
+  // 4.1) Resolve service -> model + method & 4.3) Resolve applicationId -> applicationName
+  const [services, apps] = await Promise.all([
+    irServiceIds.length > 0
+      ? IrService.Search(['Id', 'in', irServiceIds] as any, { fields: ['Id', 'ModelId', 'Name'], limit: 50000 })
+      : Promise.resolve([]),
+    irApplicationIds.length > 0
+      ? IrApplication.Search(['Id', 'in', irApplicationIds] as any, { fields: ['Id', 'Name'], limit: 50000 } as any)
+      : Promise.resolve([]),
+  ]);
+
   const modelIdsFromServices = new Set<string>();
-  if (irServiceIds.length > 0) {
-    const services = await IrService.Search(['Id', 'in', irServiceIds] as any, { fields: ['Id', 'ModelId', 'Name'], limit: 50000 });
-    for (const s of services || []) {
-      const sid = String((s as any).Id || '').trim();
-      const mid = maybeId((s as any).ModelId);
-      const name = String((s as any).Name || '').trim();
-      if (!sid || !mid || !name) continue;
-      serviceById.set(sid, { modelId: mid, name });
-      modelIdsFromServices.add(mid);
-    }
+  for (const s of services || []) {
+    const sid = String((s as any).Id || '').trim();
+    const mid = maybeId((s as any).ModelId);
+    const name = String((s as any).Name || '').trim();
+    if (!sid || !mid || !name) continue;
+    serviceById.set(sid, { modelId: mid, name });
+    modelIdsFromServices.add(mid);
+  }
+
+  const appNameById = new Map<string, string>();
+  for (const a of apps || []) {
+    const id = String((a as any).Id || '').trim();
+    const name = String((a as any).Name || '').trim();
+    if (!id || !name) continue;
+    appNameById.set(id, name);
   }
 
   // 4.2) Resolve model -> app + name
@@ -98,18 +112,6 @@ export async function buildAclAggregation(
       const name = String((m as any).Name || '').trim();
       if (!mid || !app || !name) continue;
       modelById.set(mid, { app, name });
-    }
-  }
-
-  // 4.3) Resolve applicationId -> applicationName, and applicationName -> models
-  const appNameById = new Map<string, string>();
-  if (irApplicationIds.length > 0) {
-    const apps = await IrApplication.Search(['Id', 'in', irApplicationIds] as any, { fields: ['Id', 'Name'], limit: 50000 } as any);
-    for (const a of apps || []) {
-      const id = String((a as any).Id || '').trim();
-      const name = String((a as any).Name || '').trim();
-      if (!id || !name) continue;
-      appNameById.set(id, name);
     }
   }
 

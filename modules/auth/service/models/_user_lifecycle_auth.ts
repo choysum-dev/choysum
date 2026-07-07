@@ -87,6 +87,8 @@ export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
   return userId;
 }
 
+// TODO: Move base.user permission seeding to system bootstrap/migration to avoid
+// redundant DB queries and race conditions on registration.
 async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
   const rid = String(roleId || '').trim();
   if (!rid) return;
