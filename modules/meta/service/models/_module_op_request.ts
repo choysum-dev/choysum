@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Job from '@/task/service/models/job';
-import { ensureCurrentUserId, getBackendEnv } from './_module_management_runtime';
+import { ensureCurrentUserId } from './_module_management_runtime';
+import { getBackendEnv } from '@/core/service/runtime/env/backend_env';
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 

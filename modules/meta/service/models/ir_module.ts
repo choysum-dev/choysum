@@ -4,7 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
-import { getBackendEnv, getModuleManagementBridge } from './_module_management_runtime';
+import { getModuleManagementBridge } from './_module_management_runtime';
+import { getBackendEnv } from '@/core/service/runtime/env/backend_env';
 import { ensureModuleName, requestModuleOp } from './_module_op_request';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
