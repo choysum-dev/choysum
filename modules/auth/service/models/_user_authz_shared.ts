@@ -113,11 +113,15 @@ export function requireMatchesMethod(req: string, modelKey: string, methodLower:
  */
 export function hashPassword(password: string): string {
   const prefixMarker = '$CH$';
+  const crypto = (globalThis as any)?.$choysum?.crypto;
+  if (!crypto) {
+    throw new Error('Choysum crypto subsystem is not initialized');
+  }
   if (password.startsWith(prefixMarker)) {
     const clientHashed = password.substring(prefixMarker.length);
-    return (globalThis as any).$choysum.crypto.hashPassword(clientHashed);
+    return crypto.hashPassword(clientHashed);
   }
-  return (globalThis as any).$choysum.crypto.hashPassword(password);
+  return crypto.hashPassword(password);
 }
 
 /**
@@ -125,8 +129,12 @@ export function hashPassword(password: string): string {
  */
 export function verifyPassword(password: string, hashedPassword: string): boolean {
   const prefixMarker = '$CH$';
+  const crypto = (globalThis as any)?.$choysum?.crypto;
+  if (!crypto) {
+    throw new Error('Choysum crypto subsystem is not initialized');
+  }
   if (password.startsWith(prefixMarker)) {
     password = password.substring(prefixMarker.length);
   }
-  return (globalThis as any).$choysum.crypto.verifyPassword(password, hashedPassword);
+  return crypto.verifyPassword(password, hashedPassword);
 }

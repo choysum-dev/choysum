@@ -16,6 +16,8 @@ const IrField = createServiceByModel<typeof IrFieldModel>('meta.IrField');
 
 type RoleScope = { global: boolean; companies: string[] };
 
+const companyGateCache = new Map<string, { enabled: boolean; reason?: string }>();
+
 const PERM_FIELD_BY_OP: Record<RecordRuleOp, keyof RoleRecordRule> = {
   read: 'PermRead',
   write: 'PermWrite',
@@ -34,13 +36,15 @@ export type RecordRuleEvalInput = {
 
 async function computeCompanyGateMode(modelId: string, companyScoped: boolean, hasCompany: boolean): Promise<{ enabled: boolean; reason?: string }> {
   if (!hasCompany) return { enabled: false, reason: 'no_company_context' };
+  if (!companyScoped) return { enabled: false, reason: 'model_not_company_scoped' };
+
+  const cached = companyGateCache.get(modelId);
+  if (cached) return cached;
 
   const req = getCurrentReq();
   const state = req ? getOrInitReqServiceState(req) : undefined;
   const key = `companyGateMode::${modelId}`;
   return await memoizeInReqState(state, key, async (): Promise<{ enabled: boolean; reason?: string }> => {
-    if (!companyScoped) return { enabled: false, reason: 'model_not_company_scoped' };
-
     try {
       const hasCompanyIdField =
         Number(
@@ -51,11 +55,19 @@ async function computeCompanyGateMode(modelId: string, companyScoped: boolean, h
             ],
           } as any)
         ) > 0;
-      if (!hasCompanyIdField) return { enabled: false, reason: 'company_scoped_missing_company_id_field' };
+      if (!hasCompanyIdField) {
+        const result = { enabled: false, reason: 'company_scoped_missing_company_id_field' } as const;
+        companyGateCache.set(modelId, result);
+        return result;
+      }
 
-      return { enabled: true };
+      const result = { enabled: true } as const;
+      companyGateCache.set(modelId, result);
+      return result;
     } catch {
-      return { enabled: false, reason: 'meta_company_gate_error' };
+      const result = { enabled: false, reason: 'meta_company_gate_error' } as const;
+      companyGateCache.set(modelId, result);
+      return result;
     }
   });
 }
@@ -125,11 +137,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
 
   const allRules = await RoleRecordRule.Search(
     {
-      And: [
-        ['RoleId', 'in', input.roleIds],
-        [permField as any, '=', true],
-        { Or: scopeOr },
-      ],
+      And: [['RoleId', 'in', input.roleIds], [permField as any, '=', true], { Or: scopeOr }],
     } as any,
     { fields: ['RoleId', 'Condition', 'IrModelId', 'IrApplicationId'], limit: 5000 }
   );
@@ -169,7 +177,7 @@ export async function evaluateRecordRuleCondition(input: RecordRuleEvalInput): P
       return { kind: 'true', reason: 'global_allow_rule' };
     }
 
-    const expr = isTrueCond ? gate : !gate ? cond : { And: [gate, cond] } as any;
+    const expr = isTrueCond ? gate : !gate ? cond : ({ And: [gate, cond] } as any);
     if (expr !== undefined && expr !== null) {
       exprs.push(expr);
     }

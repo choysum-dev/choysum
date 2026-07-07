@@ -87,7 +87,10 @@ export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
   return userId;
 }
 
+let baseUserRpcAllowedEnsured = false;
+
 async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
+  if (baseUserRpcAllowedEnsured) return;
   const rid = String(roleId || '').trim();
   if (!rid) return;
 
@@ -177,6 +180,7 @@ async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
       }
     }
   }
+  baseUserRpcAllowedEnsured = true;
 }
 
 /**
@@ -338,6 +342,12 @@ export async function refreshTokensWithLatestMetadata(
 ): Promise<any> {
   const id = await Token.ValidateToken(refreshToken, 'refresh');
   const userId = String((id as any)?.userId || '').trim();
+  if (!userId) {
+    throw newAuthError({
+      code: AuthErrCode.VALIDATION_FAILED,
+      message: 'Invalid token payload: missing user id',
+    }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
 
   const user = await deps.browseUser(userId);
   await user.load(['CompanyIds']);
@@ -352,6 +362,12 @@ export async function refreshTokensWithLatestMetadata(
 export async function revokeLogoutArtifacts(token: string, allDevices: boolean): Promise<void> {
   const identity = await Token.ValidateToken(token, 'access');
   const userId = String((identity as any)?.userId || '').trim();
+  if (!userId) {
+    throw newAuthError({
+      code: AuthErrCode.VALIDATION_FAILED,
+      message: 'Invalid token payload: missing user id',
+    }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
 
   if (allDevices) {
     await Token.RevokeAllUserTokens(userId, undefined, 'User initiated logout on all devices');

@@ -200,23 +200,6 @@ export function parseJsonStringArray(raw: unknown): string[] {
     } catch {
       // fallthrough
     }
-
-    try {
-      const snap = JSON.parse(JSON.stringify(value));
-      if (Array.isArray(snap)) return normalize(snap);
-      if (!snap || typeof snap !== 'object') return null;
-
-      for (const key of ['value', 'values', 'items']) {
-        if (Array.isArray((snap as Record<string, unknown>)[key])) return normalize((snap as Record<string, unknown>)[key]);
-      }
-
-      const numericKeys = Object.keys(snap)
-        .filter(key => /^\d+$/.test(key))
-        .sort((a, b) => Number(a) - Number(b));
-      if (numericKeys.length > 0) return normalize(numericKeys.map(key => (snap as Record<string, unknown>)[key]));
-    } catch {
-      // fallthrough
-    }
     return null;
   };
 

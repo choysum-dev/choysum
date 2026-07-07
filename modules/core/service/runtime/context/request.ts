@@ -54,6 +54,7 @@ export function deleteReqStateKeysByPrefix(state: Record<string, unknown> | unde
  * Safe to call when jsCtx is undefined or missing the symbol (no-op).
  */
 export function invalidateJsCtxSymbolCache(jsCtx: unknown, symbol: symbol): void {
+  if (!jsCtx) return;
   try {
     delete (jsCtx as Record<PropertyKey, unknown>)[symbol];
   } catch {
