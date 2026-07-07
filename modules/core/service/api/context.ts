@@ -18,4 +18,6 @@ export {
   withContext,
   deleteReqStateKeysByPrefix,
   invalidateJsCtxSymbolCache,
+  withBypassDepths,
+  memoizeInReqState,
 } from '../runtime/context';

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
+import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { uniqStrings } from '@/core/service/utils/normalization';
 import { buildAuthzContextCacheKey } from './_request_cache_invalidation';
 import { sortStrings, getCompanyScopeFromRequestContext, maybeId, withPermissionGraphBypass } from './_user_authz_shared';
@@ -291,34 +291,7 @@ export async function getAuthzContext(
   }
 
   const KEY = deps.buildAuthzContextCacheKey(userId, companyScopeKey);
-  const existing = state[KEY];
-  if (existing) {
-    if (typeof existing?.then === 'function') {
-      const v = await existing;
-      state[KEY] = v;
-      return v;
-    }
-    return existing;
-  }
-
-  const p = deps
-    .buildAuthzContext({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey })
-    .then((v: any) => {
-      try {
-        state[KEY] = v;
-      } catch {
-        // ignore
-      }
-      return v;
-    })
-    .catch((e: any) => {
-      try {
-        delete state[KEY];
-      } catch {
-        // ignore
-      }
-      throw e;
-    });
-  state[KEY] = p;
-  return await p;
+  return await memoizeInReqState(state, KEY, () =>
+    deps.buildAuthzContext({ userId, activeCompanyId: companyScope.activeCompanyId, enabledCompanyIds: enabledCompanyIdsKey })
+  );
 }

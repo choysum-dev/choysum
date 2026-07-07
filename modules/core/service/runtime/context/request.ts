@@ -60,3 +60,94 @@ export function invalidateJsCtxSymbolCache(jsCtx: unknown, symbol: symbol): void
     // ignore
   }
 }
+
+/**
+ * Run fn with incremented bypass depth counters on the given request-scoped state.
+ *
+ * Each key in `depthKeys` is incremented before fn runs and restored afterwards.
+ * When a key's previous depth was 0, the key is deleted on restore rather than
+ * being set to 0, so downstream `getBypassDepth` checks can use a simple truthy
+ * test.
+ *
+ * Safe to call with undefined state (fn runs without depth tracking).
+ */
+export async function withBypassDepths<T>(
+  state: Record<string, unknown> | undefined,
+  depthKeys: string[],
+  fn: () => Promise<T>
+): Promise<T> {
+  if (!state) return await fn();
+
+  const prevs = new Map<string, number>();
+  for (const key of depthKeys) {
+    prevs.set(key, typeof state[key] === 'number' ? (state[key] as number) : 0);
+    state[key] = (prevs.get(key) ?? 0) + 1;
+  }
+
+  try {
+    return await fn();
+  } finally {
+    for (const key of depthKeys) {
+      const prev = prevs.get(key) ?? 0;
+      if (prev > 0) state[key] = prev;
+      else delete state[key];
+    }
+  }
+}
+
+/**
+ * Get-or-create a memoized value in request-scoped state with Promise leak guard.
+ *
+ * - If the key holds a resolved value, return it directly.
+ * - If the key holds a pending Promise, await it, cache the result, and return.
+ * - Otherwise call `factory`, store the Promise, and on resolve replace it with
+ *   the value.  On rejection the key is deleted so the next caller retries.
+ *
+ * When state is undefined the factory runs without caching.
+ */
+export async function memoizeInReqState<T>(
+  state: Record<string, unknown> | undefined,
+  key: string,
+  factory: () => Promise<T>
+): Promise<T> {
+  if (!state) return await factory();
+
+  const existing = state[key];
+  if (existing !== undefined) {
+    if (typeof (existing as { then?: unknown })?.then === 'function') {
+      const v = await (existing as Promise<T>);
+      try {
+        state[key] = v;
+      } catch {
+        // ignore
+      }
+      return v;
+    }
+    return existing as T;
+  }
+
+  const p = factory()
+    .then((v: T) => {
+      try {
+        state[key] = v;
+      } catch {
+        // ignore
+      }
+      return v;
+    })
+    .catch((e: unknown) => {
+      try {
+        delete state[key];
+      } catch {
+        // ignore
+      }
+      throw e;
+    });
+
+  try {
+    state[key] = p;
+  } catch {
+    // ignore
+  }
+  return await p;
+}

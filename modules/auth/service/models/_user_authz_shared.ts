@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getIdentity, getReadonlyCtx, getJsCtxAndReq, getOrInitReqServiceState } from '@/core/service/api/context';
+import { getIdentity, getReadonlyCtx, getJsCtxAndReq, getOrInitReqServiceState, withBypassDepths } from '@/core/service/api/context';
 import {
   uniqStrings,
   normalizeRpcRequireKey,
@@ -26,24 +26,13 @@ export async function withPermissionGraphBypass<T>(fn: () => Promise<T>): Promis
   const state = getOrInitReqServiceState(req);
   if (!state) return await fn();
 
-  const prevRR = typeof state.recordRuleBypassDepth === 'number' ? state.recordRuleBypassDepth : 0;
-  const prevFR = typeof state.fieldRuleBypassDepth === 'number' ? state.fieldRuleBypassDepth : 0;
   const hadCompanyMode = Object.prototype.hasOwnProperty.call(req, 'companyMode');
   const prevCompanyMode = req.companyMode;
-
-  state.recordRuleBypassDepth = prevRR + 1;
-  state.fieldRuleBypassDepth = prevFR + 1;
   req.companyMode = 'skip';
-  try {
-    return await fn();
-  } finally {
-    const nextRR = prevRR;
-    const nextFR = prevFR;
-    if (nextRR > 0) state.recordRuleBypassDepth = nextRR;
-    else delete state.recordRuleBypassDepth;
-    if (nextFR > 0) state.fieldRuleBypassDepth = nextFR;
-    else delete state.fieldRuleBypassDepth;
 
+  try {
+    return await withBypassDepths(state, ['recordRuleBypassDepth', 'fieldRuleBypassDepth'], fn);
+  } finally {
     if (hadCompanyMode) req.companyMode = prevCompanyMode;
     else delete req.companyMode;
   }
