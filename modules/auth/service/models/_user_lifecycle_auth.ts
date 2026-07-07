@@ -125,10 +125,15 @@ async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
   const resolveService = async (modelId: string, method: string): Promise<{ id: string; name: string }> => {
     if (!serviceCache.has(modelId)) {
       const rows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
-      serviceCache.set(modelId, (rows || []).map((r: any) => ({ Id: String(r?.Id || '').trim(), Name: String(r?.Name || '').trim() })));
+      serviceCache.set(
+        modelId,
+        (rows || []).map((r: any) => ({ Id: String(r?.Id || '').trim(), Name: String(r?.Name || '').trim() }))
+      );
     }
     const cached = serviceCache.get(modelId)!;
-    const target = String(method || '').trim().toLowerCase();
+    const target = String(method || '')
+      .trim()
+      .toLowerCase();
     const hit = cached.find(r => r.Name.toLowerCase() === target);
     return { id: hit?.Id || '', name: hit?.Name || '' };
   };
@@ -354,6 +359,12 @@ export async function refreshTokensWithLatestMetadata(
   }
 
   const user = await deps.browseUser(userId);
+  if (!user) {
+    throw newAuthError({
+      code: AuthErrCode.USER_NOT_FOUND,
+      message: 'User not found',
+    }).withGrpcCode(GrpcCode.NotFound);
+  }
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
 

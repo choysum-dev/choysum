@@ -107,20 +107,22 @@ export async function withBypassDepths<T>(state: Record<string, unknown> | undef
 export async function memoizeInReqState<T>(state: Record<string, unknown> | undefined, key: string, factory: () => Promise<T>): Promise<T> {
   if (!state) return await factory();
 
-  const existing = state[key];
-  if (existing !== undefined) {
-    if (typeof (existing as { then?: unknown })?.then === 'function') {
-      const v = await (existing as Promise<T>);
-      try {
-        if (state[key] === existing) {
-          state[key] = v;
+  if (key in state) {
+    const existing = state[key];
+    if (existing !== undefined) {
+      if (typeof (existing as { then?: unknown })?.then === 'function') {
+        const v = await (existing as Promise<T>);
+        try {
+          if (state[key] === existing) {
+            state[key] = v;
+          }
+        } catch {
+          // ignore
         }
-      } catch {
-        // ignore
+        return v;
       }
-      return v;
+      return existing as T;
     }
-    return existing as T;
   }
 
   const p = factory()

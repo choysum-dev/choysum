@@ -128,6 +128,9 @@ export function hashPassword(password: string): string {
  * Verify a plaintext or client-hashed password against the stored hash.
  */
 export function verifyPassword(password: string, hashedPassword: string): boolean {
+  if (typeof password !== 'string' || typeof hashedPassword !== 'string') {
+    return false;
+  }
   const prefixMarker = '$CH$';
   const crypto = (globalThis as any)?.$choysum?.crypto;
   if (!crypto) {
