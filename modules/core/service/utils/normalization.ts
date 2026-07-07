@@ -146,13 +146,7 @@ export function maybeRefId(value: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Normalize an application or scope reference into its string id.
- *
- * Returns '' when the input cannot be resolved to a non-empty string (unlike
- * {@link normalizeRefId} which returns null for the same case).
- */
-export function normalizeScopeRefId(raw: unknown): string {
+function normalizeRefLikeIdString(raw: unknown): string {
   if (raw == null) return '';
   if (typeof raw === 'object' && raw !== null) {
     return String((raw as Record<string, unknown>).Id ?? (raw as Record<string, unknown>).id ?? '').trim();
@@ -161,14 +155,20 @@ export function normalizeScopeRefId(raw: unknown): string {
 }
 
 /**
+ * Normalize an application or scope reference into its string id.
+ *
+ * Returns '' when the input cannot be resolved to a non-empty string (unlike
+ * {@link normalizeRefId} which returns null for the same case).
+ */
+export function normalizeScopeRefId(raw: unknown): string {
+  return normalizeRefLikeIdString(raw);
+}
+
+/**
  * Normalize a UI resource reference into its string id.
  */
 export function normalizeUiResourceId(raw: unknown): string {
-  if (raw == null) return '';
-  if (typeof raw === 'object' && raw !== null) {
-    return String((raw as Record<string, unknown>).Id ?? (raw as Record<string, unknown>).id ?? '').trim();
-  }
-  return String(raw || '').trim();
+  return normalizeRefLikeIdString(raw);
 }
 
 /**
