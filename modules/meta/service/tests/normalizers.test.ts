@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, normalizeStringArray, readRefId, normalizeOffset, normalizeLimit, normalizeFields } from '@/meta/service/models/_normalizers';
+import { normalizeOptionalString, normalizeStringArray, readRefId, normalizeOffset, normalizeLimit, normalizeFields } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
   expect(normalizeOptionalString('  hello  ')).toBe('hello');

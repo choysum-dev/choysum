@@ -104,11 +104,7 @@ export default class IrModel extends BaseModel {
 
     const meta = MetadataStorage.instance.getModelMetadata(ctor);
     const model =
-      String(meta.fullModelName || '').trim() ||
-      String(meta.modelName || '').trim() ||
-      String(meta.name || '').trim() ||
-      String(ctor.name || '').trim() ||
-      key;
+      String(meta.fullModelName || '').trim() || String(meta.modelName || '').trim() || String(meta.name || '').trim() || String(ctor.name || '').trim() || key;
 
     const normalizedPrefix = String(options?.methodPrefix || '')
       .trim()
@@ -165,11 +161,7 @@ export default class IrModel extends BaseModel {
 
     const meta = MetadataStorage.instance.getModelMetadata(ctor);
     const model =
-      String(meta.fullModelName || '').trim() ||
-      String(meta.modelName || '').trim() ||
-      String(meta.name || '').trim() ||
-      String(ctor.name || '').trim() ||
-      key;
+      String(meta.fullModelName || '').trim() || String(meta.modelName || '').trim() || String(meta.name || '').trim() || String(ctor.name || '').trim() || key;
 
     const normalizedPrefix = String(options?.methodPrefix || '')
       .trim()

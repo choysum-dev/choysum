@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizePagination, paginateAndWrap } from '@/meta/service/models/_diagnostics_response';
+import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
 
 test('normalizePagination returns safe defaults for missing or invalid input', () => {
   expect(normalizePagination()).toEqual({ limit: undefined, offset: 0 });
