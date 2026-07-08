@@ -405,6 +405,14 @@ export async function refreshTokensWithLatestMetadata(
       message: 'User not found',
     }).withGrpcCode(GrpcCode.NotFound);
   }
+  if (!user.IsActive) {
+    throw newAuthError({
+      code: AuthErrCode.ACCOUNT_DISABLED,
+      message: 'Account is disabled',
+    })
+      .withGrpcCode(GrpcCode.PermissionDenied)
+      .withMetadata({ userId: user.Id, username: user.Username });
+  }
   await user.load(['CompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
 
