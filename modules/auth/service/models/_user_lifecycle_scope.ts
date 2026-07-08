@@ -66,7 +66,7 @@ export function computeTokenCompanyScope(user: any): TokenCompanyScope {
   return {
     allowedCompanyIds,
     activeCompanyId: activeCompanyId || undefined,
-    enabledCompanyIds,
+    enabledCompanyIds: uniqScopeIds(enabledCompanyIds),
   };
 }
 
