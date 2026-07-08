@@ -1695,6 +1695,42 @@ func TestParseRefQuerySpec_SearchShapeValidation(t *testing.T) {
 	}
 }
 
+func TestParseSearchSpec_OrderByValidation(t *testing.T) {
+	t.Parallel()
+
+	valid := []string{
+		"id ASC",
+		"id DESC",
+		"created_at ASC",
+		"id ASC, name DESC",
+		"auth_user.id ASC",
+		"updated_at",
+	}
+	for _, v := range valid {
+		_, ok, err := parseRefQuerySpec(map[string]any{
+			"search": map[string]any{"model": "auth.User", "orderBy": v},
+		})
+		if err != nil || !ok {
+			t.Fatalf("expected valid orderBy %q to parse, got err=%v ok=%v", v, err, ok)
+		}
+	}
+
+	invalid := []string{
+		"id; DROP TABLE users--",
+		"1=1",
+		"id ASC; SELECT 1",
+		"id ASC/**/",
+	}
+	for _, v := range invalid {
+		_, ok, err := parseRefQuerySpec(map[string]any{
+			"search": map[string]any{"model": "auth.User", "orderBy": v},
+		})
+		if !ok || err == nil {
+			t.Fatalf("expected invalid orderBy %q to fail, got ok=%v err=%v", v, ok, err)
+		}
+	}
+}
+
 func TestParseRefQuerySpec_ModelRefAndServiceRefShapeValidation(t *testing.T) {
 	t.Parallel()
 

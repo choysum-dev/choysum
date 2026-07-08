@@ -1612,7 +1612,11 @@ func parseSearchSpec(raw map[string]any) (searchSpec, error) {
 		if !ok {
 			return searchSpec{}, xfmt.Errorf("search orderBy must be a string")
 		}
-		spec.OrderBy = strings.TrimSpace(orderBy)
+		orderBy = strings.TrimSpace(orderBy)
+		if orderBy != "" && !orderByRegexp.MatchString(orderBy) {
+			return searchSpec{}, xfmt.Errorf("invalid search orderBy: %q", orderBy)
+		}
+		spec.OrderBy = orderBy
 	}
 	if limitRaw, ok := raw["limit"]; ok {
 		// JSON numbers decode as float64.
@@ -1872,6 +1876,10 @@ func validateSearchOperator(op string) bool {
 
 // searchFieldRegexp validates that a normalized search field contains only safe characters.
 var searchFieldRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+// orderByRegexp validates an ORDER BY clause to prevent SQL injection through GORM's Order().
+// Allowed: column [ASC|DESC], optionally prefixed with table., comma-separated.
+var orderByRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?(\s+(?i:ASC|DESC))?(\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?(\s+(?i:ASC|DESC))?)*$`)
 
 // normalizeSearchField trims, snake_case-converts, and validates a domain field name.
 func normalizeSearchField(field string) (string, error) {
