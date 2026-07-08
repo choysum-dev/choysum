@@ -156,12 +156,10 @@ export async function buildAclAggregation(
 
     // global scope
     if (!sid && !mid && !aid) {
+      const models = await getAllModels();
       scope(roleId)(companyKey => {
         if (mode === 'allow') companyGlobalAllow.add(companyKey);
         else companyGlobalDeny.add(companyKey);
-      });
-      const models = await getAllModels();
-      scope(roleId)(companyKey => {
         for (const m of models) {
           const serviceFullName = `${m.app}.${m.name}`;
           const agg = ensureAgg(companyKey, serviceFullName);
