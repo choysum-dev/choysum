@@ -3,34 +3,10 @@
 
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { normalizeDateString, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
-import { toDateOnlyString } from '@/core/service/utils/normalization';
+import { normalizeDateString, parseDecimalInput, toDateOnlyString } from '@/core/service/utils/normalization';
+import { mapNormalizationToBase, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
-
-function parseDecimalInput(value: any): Decimal {
-  try {
-    if (value == null) throw new Error('amount is required');
-
-    if (value instanceof Decimal) return value;
-
-    if (typeof value === 'number') {
-      throw new Error('Amount must not be a number');
-    }
-
-    if (typeof value === 'object' && value && typeof value.$bigdecimal === 'string') {
-      return new Decimal(String(value.$bigdecimal));
-    }
-
-    if (typeof value === 'string') {
-      return new Decimal(value);
-    }
-
-    throw new Error('Invalid Amount');
-  } catch {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Invalid Amount' }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-}
 
 async function getRateRecord(opts: {
   companyId: string;
@@ -116,8 +92,18 @@ export async function convertCurrency(
     );
   }
 
-  const date = normalizeDateString(params?.Date, 'Date');
-  const amount = parseDecimalInput(params?.Amount);
+  const date = mapNormalizationToBase(
+    () => normalizeDateString(params?.Date),
+    err => {
+      if (err.code === 'required') return 'Date is required';
+      if (err.code === 'invalid_date_value') return 'Date is invalid';
+      return 'Date must be YYYY-MM-DD';
+    }
+  );
+  const amount = mapNormalizationToBase(
+    () => parseDecimalInput(params?.Amount, { allowNumber: false }),
+    () => 'Invalid Amount'
+  );
 
   if (fromCurrencyId === toCurrencyId) {
     return { Amount: amount };

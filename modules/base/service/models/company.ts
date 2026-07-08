@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition } from '@/core/service/api/query';
+import { normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import moment from 'moment-timezone';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Address from './address';
@@ -12,7 +13,7 @@ import Currency from './currency';
 import Language from './language';
 import Locale from './locale';
 import { asRefId } from './_refs';
-import { fail, normalizeRequiredText } from './_normalizers';
+import { fail, mapNormalizationToBase } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
@@ -47,14 +48,15 @@ export default class Company extends BaseModel {
   AddressId?: Address;
 
   private static normalizeRequiredText(value: unknown, fieldName: string): string {
-    const v = String(value ?? '').trim();
-    if (!v) fail(`${fieldName} is required`);
-    return v;
+    return mapNormalizationToBase(
+      () => normalizeRequiredTextCore(value),
+      () => `${fieldName} is required`
+    );
   }
 
   private static async ensureUnique(values: Record<string, any>, currentId?: string): Promise<void> {
-    const name = normalizeRequiredText(values.Name, 'Name');
-    const code = normalizeRequiredText(values.Code, 'Code');
+    const name = this.normalizeRequiredText(values.Name, 'Name');
+    const code = this.normalizeRequiredText(values.Code, 'Code');
 
     const byName = await this.Search(
       {

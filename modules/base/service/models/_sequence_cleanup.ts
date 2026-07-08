@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeDateString } from './_normalizers';
+import { normalizeDateString } from '@/core/service/utils/normalization';
+import { mapNormalizationToBase } from './_normalizers';
 import type { SequenceCleanupIdempotencyParams, SequenceCleanupIdempotencyResult } from './sequence';
 
 export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempotencyParams): Promise<SequenceCleanupIdempotencyResult> {
@@ -11,7 +12,14 @@ export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempot
   if (!olderThan) {
     cutoff = new Date();
   } else {
-    normalizeDateString(olderThan, 'OlderThan');
+    mapNormalizationToBase(
+      () => normalizeDateString(olderThan),
+      err => {
+        if (err.code === 'required') return 'OlderThan is required';
+        if (err.code === 'invalid_date_value') return 'OlderThan is invalid';
+        return 'OlderThan must be YYYY-MM-DD';
+      }
+    );
     cutoff = new Date(`${olderThan}T00:00:00.000Z`);
   }
   const deleted = await SequenceIdempotency.Delete(['ExpiresAt', '<', cutoff] as any);

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import Decimal from '../../utils/decimal';
+
 /**
  * Return a trimmed string, or undefined when input is empty/null.
  */
@@ -331,4 +333,162 @@ export function formatPaddedNumber(prefix: string | undefined, suffix: string | 
   const core = n.toString();
   const padded = pad > 0 ? core.padStart(pad, '0') : core;
   return `${p}${padded}${s}`;
+}
+
+export type NormalizationErrorCode =
+  | 'required'
+  | 'invalid_decimal'
+  | 'non_positive_decimal'
+  | 'number_not_allowed'
+  | 'invalid_integer'
+  | 'integer_too_small'
+  | 'invalid_bigint'
+  | 'invalid_date_format'
+  | 'invalid_date_value';
+
+/**
+ * Domain-agnostic error used by normalization utilities.
+ */
+export class NormalizationError extends Error {
+  readonly code: NormalizationErrorCode;
+
+  constructor(code: NormalizationErrorCode, message?: string) {
+    super(message || code);
+    this.name = 'NormalizationError';
+    this.code = code;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+function raiseNormalizationError(code: NormalizationErrorCode): never {
+  throw new NormalizationError(code);
+}
+
+/**
+ * Parse arbitrary input into Decimal.
+ */
+export function parseDecimalInput(value: unknown, opts?: { allowNumber?: boolean }): Decimal {
+  const allowNumber = opts?.allowNumber !== false;
+  if (value === undefined || value === null || value === '') {
+    raiseNormalizationError('required');
+  }
+
+  try {
+    if (value instanceof Decimal) return value;
+
+    if (typeof value === 'number') {
+      if (!allowNumber) raiseNormalizationError('number_not_allowed');
+      return new Decimal(value);
+    }
+
+    if (typeof value === 'object' && value && typeof (value as any).$bigdecimal === 'string') {
+      return new Decimal(String((value as any).$bigdecimal));
+    }
+
+    if (typeof value === 'string') {
+      return new Decimal(value);
+    }
+  } catch (err) {
+    if (err instanceof NormalizationError) throw err;
+    raiseNormalizationError('invalid_decimal');
+  }
+
+  raiseNormalizationError('invalid_decimal');
+}
+
+/**
+ * Parse and validate a positive decimal (> 0).
+ */
+export function toPositiveDecimal(value: unknown): Decimal {
+  const decimal = parseDecimalInput(value);
+  if (!decimal.gt(0)) {
+    raiseNormalizationError('non_positive_decimal');
+  }
+  return decimal;
+}
+
+/**
+ * Normalize positive decimal as canonical string.
+ */
+export function normalizePositiveDecimalString(value: unknown): string {
+  return toPositiveDecimal(value).toString();
+}
+
+/**
+ * Normalize required text by trimming and rejecting empty values.
+ */
+export function normalizeRequiredText(value: unknown): string {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) {
+    raiseNormalizationError('required');
+  }
+  return normalized;
+}
+
+/**
+ * Parse positive integer (>= 1).
+ */
+export function parsePositiveInt(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.floor(n) !== n) {
+    raiseNormalizationError('invalid_integer');
+  }
+  if (n < 1) {
+    raiseNormalizationError('integer_too_small');
+  }
+  return n;
+}
+
+/**
+ * Parse bigint-like input into bigint.
+ */
+export function parseBigInt(value: unknown): bigint {
+  try {
+    if (typeof value === 'bigint') return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
+    if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
+    const text = String(value ?? '').trim();
+    if (!text) {
+      raiseNormalizationError('required');
+    }
+    return BigInt(text);
+  } catch (err) {
+    if (err instanceof NormalizationError) throw err;
+    raiseNormalizationError('invalid_bigint');
+  }
+}
+
+/**
+ * Parse non-negative integer decimal digits.
+ */
+export function normalizeDecimalDigits(value: unknown): number {
+  if (value === undefined || value === null || value === '') {
+    raiseNormalizationError('required');
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {
+    raiseNormalizationError('invalid_integer');
+  }
+  return n;
+}
+
+/**
+ * Parse and validate YYYY-MM-DD date-only string.
+ */
+export function normalizeDateString(value: unknown): string {
+  if (value === undefined || value === null || value === '') {
+    raiseNormalizationError('required');
+  }
+  if (value instanceof Date) {
+    raiseNormalizationError('invalid_date_format');
+  }
+  const raw = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    raiseNormalizationError('invalid_date_format');
+  }
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
+    raiseNormalizationError('invalid_date_value');
+  }
+  return raw;
 }

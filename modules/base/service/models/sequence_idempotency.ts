@@ -4,10 +4,11 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
 import Company from './company';
 import Sequence from './sequence';
 import { asRefId } from './_refs';
-import { parsePositiveInt, parseBigInt } from './_normalizers';
+import { mapNormalizationToBase } from './_normalizers';
 
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
@@ -62,9 +63,18 @@ export default class SequenceIdempotency extends BaseModel {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'SequenceId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
 
-    const count = parsePositiveInt(candidate.Count, 'Count');
-    const rangeStart = parseBigInt(candidate.RangeStart, 'RangeStart');
-    const rangeEnd = parseBigInt(candidate.RangeEnd, 'RangeEnd');
+    const count = mapNormalizationToBase(
+      () => parsePositiveInt(candidate.Count),
+      () => 'Count must be an integer >= 1'
+    );
+    const rangeStart = mapNormalizationToBase(
+      () => parseBigInt(candidate.RangeStart),
+      () => 'RangeStart must be a valid integer'
+    );
+    const rangeEnd = mapNormalizationToBase(
+      () => parseBigInt(candidate.RangeEnd),
+      () => 'RangeEnd must be a valid integer'
+    );
     const expectedRangeEnd = rangeStart + BigInt(count) - 1n;
     if (rangeEnd !== expectedRangeEnd) {
       throw new ChoysumError({

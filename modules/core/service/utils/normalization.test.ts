@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { Decimal } from '@/core/service';
 import {
   normalizeOptionalString,
   normalizeStringArray,
@@ -24,6 +25,15 @@ import {
   asBigInt,
   toDateOnlyString,
   formatPaddedNumber,
+  NormalizationError,
+  parseDecimalInput,
+  toPositiveDecimal,
+  normalizePositiveDecimalString,
+  normalizeRequiredText,
+  parsePositiveInt,
+  parseBigInt,
+  normalizeDecimalDigits,
+  normalizeDateString,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -300,4 +310,148 @@ test('formatPaddedNumber with suffix', () => {
 
 test('formatPaddedNumber undefined prefix/suffix treated as empty', () => {
   expect(formatPaddedNumber(undefined, undefined, 3, 5n)).toBe('005');
+});
+
+// ---------------------------------------------------------------------------
+// lifted parsers and normalizers
+// ---------------------------------------------------------------------------
+
+test('parseDecimalInput parses string/object/decimal and can reject number input', () => {
+  expect(parseDecimalInput('3.14').eq(new Decimal('3.14'))).toBe(true);
+  expect(parseDecimalInput({ $bigdecimal: '2.50' }).eq(new Decimal('2.5'))).toBe(true);
+  expect(parseDecimalInput(new Decimal('9')).eq(new Decimal('9'))).toBe(true);
+  expect(() => parseDecimalInput(1, { allowNumber: false })).toThrow(NormalizationError);
+});
+
+test('parseDecimalInput reports required and invalid decimal codes', () => {
+  try {
+    parseDecimalInput('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    parseDecimalInput('not-a-number');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_decimal');
+  }
+});
+
+test('toPositiveDecimal and normalizePositiveDecimalString work for positive decimals', () => {
+  expect(toPositiveDecimal('1.25').eq(new Decimal('1.25'))).toBe(true);
+  expect(normalizePositiveDecimalString('2.50')).toBe('2.5');
+});
+
+test('toPositiveDecimal reports non_positive_decimal', () => {
+  try {
+    toPositiveDecimal('0');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('non_positive_decimal');
+  }
+});
+
+test('normalizeRequiredText trims and rejects empty', () => {
+  expect(normalizeRequiredText('  hello  ')).toBe('hello');
+  try {
+    normalizeRequiredText('   ');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('parsePositiveInt parses and validates integer >= 1', () => {
+  expect(parsePositiveInt('3')).toBe(3);
+  try {
+    parsePositiveInt('3.5');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_integer');
+  }
+  try {
+    parsePositiveInt('0');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('integer_too_small');
+  }
+});
+
+test('parseBigInt parses bigint-like values and reports invalid inputs', () => {
+  expect(parseBigInt(7n)).toBe(7n);
+  expect(parseBigInt(7.9)).toBe(7n);
+  expect(parseBigInt({ $bigint: '8' })).toBe(8n);
+  expect(parseBigInt('9')).toBe(9n);
+
+  try {
+    parseBigInt('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    parseBigInt('x');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_bigint');
+  }
+});
+
+test('normalizeDecimalDigits validates required and non-negative integer', () => {
+  expect(normalizeDecimalDigits('2')).toBe(2);
+
+  try {
+    normalizeDecimalDigits('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    normalizeDecimalDigits(-1);
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_integer');
+  }
+});
+
+test('normalizeDateString validates date-only format and calendar value', () => {
+  expect(normalizeDateString('2024-07-08')).toBe('2024-07-08');
+
+  try {
+    normalizeDateString('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    normalizeDateString('2024/07/08');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_date_format');
+  }
+
+  try {
+    normalizeDateString('2024-02-30');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_date_value');
+  }
 });

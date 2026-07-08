@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { NormalizationError } from '@/core/service/utils/normalization';
 
 /**
  * Throw a base-domain InvalidArgument error.
@@ -47,115 +47,26 @@ export function normalizeName(value: any): string {
 }
 
 /**
- * Validate and coerce a value to a positive Decimal.
- * Throws via fail() on missing, zero, negative, or unparseable input.
+ * Map a domain-agnostic normalization failure into base-domain InvalidArgument.
  */
-export function toPositiveDecimal(value: any, fieldName: string): Decimal {
+export function mapNormalizationToBase<T>(fn: () => T, mapMessage: (err: NormalizationError) => string): T {
   try {
-    if (value === undefined || value === null || value === '') throw new Error('required');
-    const decimal = value instanceof Decimal ? value : new Decimal((value as any)?.$bigdecimal ?? value);
-    if (!decimal.gt(0)) fail(`${fieldName} must be greater than 0`);
-    return decimal;
+    return fn();
   } catch (err) {
-    if (err instanceof ChoysumError) throw err;
-    fail(`${fieldName} must be a valid decimal`);
-  }
-}
-
-/**
- * Validate and normalize a positive decimal value, returning its string representation.
- * Same semantics as toPositiveDecimal but returns a string.
- */
-export function normalizePositiveDecimalString(value: any, fieldName: string): string {
-  try {
-    if (value == null || value === '') throw new Error('required');
-    const decimal = value instanceof Decimal ? value : new Decimal((value as any)?.$bigdecimal ?? value);
-    if (!decimal.gt(0)) {
-      fail(`${fieldName} must be greater than 0`);
+    if (err instanceof NormalizationError) {
+      fail(mapMessage(err));
     }
-    return decimal.toString();
-  } catch (err: any) {
-    if (err instanceof ChoysumError) throw err;
-    fail(`${fieldName} must be a valid decimal`);
+    throw err;
   }
 }
 
 /**
- * Normalize a required text field with a custom field name in the error message.
- * Trims and fails if empty.
- */
-export function normalizeRequiredText(value: unknown, fieldName: string): string {
-  const v = String(value ?? '').trim();
-  if (!v) fail(`${fieldName} is required`);
-  return v;
-}
-
-/**
- * Parse a value as a positive integer (>= 1). Throws InvalidArgument on failure.
- */
-export function parsePositiveInt(value: unknown, fieldName: string): number {
-  const n = Number(value);
-  if (!Number.isFinite(n) || Math.floor(n) !== n || n < 1) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be an integer >= 1` }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-  return n;
-}
-
-/**
- * Parse a value as a BigInt. Throws InvalidArgument on failure.
- */
-export function parseBigInt(value: unknown, fieldName: string): bigint {
-  try {
-    if (typeof value === 'bigint') return value;
-    if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
-    if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
-    const text = String(value ?? '').trim();
-    if (!text) throw new Error('empty');
-    return BigInt(text);
-  } catch {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid integer` }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-}
-
-/**
-
  * Normalize an optional string field: trim, null/undefined → null, empty → null.
  */
 export function normalizeOptionalString(value: any): string | null {
   if (value === undefined || value === null) return null;
   const s = String(value).trim();
   return s || null;
-}
-
-/**
- * Normalize a DecimalDigits value: must be a non-negative integer.
- */
-export function normalizeDecimalDigits(value: any): number {
-  if (value === undefined || value === null || value === '') {
-    fail('DecimalDigits is required');
-  }
-  const n = Number(value);
-  if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {
-    fail('DecimalDigits must be a non-negative integer');
-  }
-  return n;
-}
-
-/**
- * Validate a YYYY-MM-DD date string with format and calendar-validity checks.
- */
-export function normalizeDateString(value: unknown, fieldName: string): string {
-  if (value === undefined || value === null || value === '') fail(`${fieldName} is required`);
-  if (value instanceof Date) fail(`${fieldName} must be YYYY-MM-DD`);
-  const raw = String(value).trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    fail(`${fieldName} must be YYYY-MM-DD`);
-  }
-  const date = new Date(`${raw}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
-    fail(`${fieldName} is invalid`);
-  }
-  return raw;
 }
 
 /**

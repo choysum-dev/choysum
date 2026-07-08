@@ -3,10 +3,11 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import Company from './company';
 import Currency from './currency';
 import { asRefId, normalizeCompanyScopeKey } from './_refs';
-import { fail, normalizeDateString, toPositiveDecimal } from './_normalizers';
+import { fail, mapNormalizationToBase } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('ExchangeRate', { companyScoped: true })
@@ -35,7 +36,14 @@ export default class ExchangeRate extends BaseModel {
 
   private static coerceDateKey(value: any): string {
     if (value instanceof Date) return value.toISOString().slice(0, 10);
-    return normalizeDateString(value, 'Date');
+    return mapNormalizationToBase(
+      () => normalizeDateString(value),
+      err => {
+        if (err.code === 'required') return 'Date is required';
+        if (err.code === 'invalid_date_value') return 'Date is invalid';
+        return 'Date must be YYYY-MM-DD';
+      }
+    );
   }
 
   private static dateKey(value: any): string {
@@ -67,7 +75,10 @@ export default class ExchangeRate extends BaseModel {
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    toPositiveDecimal(values.Rate, 'Rate');
+    mapNormalizationToBase(
+      () => toPositiveDecimal(values.Rate),
+      err => (err.code === 'non_positive_decimal' ? 'Rate must be greater than 0' : 'Rate must be a valid decimal')
+    );
     values.CompanyScopeKey = normalizeCompanyScopeKey(values.CompanyId);
     values.Date = this.dateKey(values.Date);
     await this.ensureUniqueTuple(values, currentId);

@@ -1,16 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Decimal } from '@/core/service';
+import { NormalizationError } from '@/core/service/utils/normalization';
 import { ChoysumError } from '@/core/service/error';
-import {
-  fail,
-  normalizeCodeRequired,
-  normalizeCodeOptional,
-  normalizeName,
-  toPositiveDecimal,
-  normalizePositiveDecimalString,
-} from '@/base/service/models/_normalizers';
+import { fail, mapNormalizationToBase, normalizeCodeRequired, normalizeCodeOptional, normalizeName } from '@/base/service/models/_normalizers';
 
 // ---------------------------------------------------------------------------
 // fail
@@ -28,6 +21,45 @@ test('base._normalizers: fail throws ChoysumError with domain=base code=InvalidA
   expect(ce.domain).toBe('base');
   expect(ce.code).toBe('InvalidArgument');
   expect(ce.message).toBe('something wrong');
+});
+
+// ---------------------------------------------------------------------------
+// mapNormalizationToBase
+// ---------------------------------------------------------------------------
+
+test('base._normalizers: mapNormalizationToBase maps normalization errors to base InvalidArgument', () => {
+  let err: unknown;
+  try {
+    mapNormalizationToBase(
+      () => {
+        throw new NormalizationError('required');
+      },
+      () => 'Mapped required message'
+    );
+  } catch (e) {
+    err = e;
+  }
+  expect(err instanceof ChoysumError).toBe(true);
+  const ce = err as ChoysumError;
+  expect(ce.domain).toBe('base');
+  expect(ce.code).toBe('InvalidArgument');
+  expect(ce.message).toBe('Mapped required message');
+});
+
+test('base._normalizers: mapNormalizationToBase passes through non-normalization errors', () => {
+  const boom = new Error('boom');
+  let err: unknown;
+  try {
+    mapNormalizationToBase(
+      () => {
+        throw boom;
+      },
+      () => 'ignored'
+    );
+  } catch (e) {
+    err = e;
+  }
+  expect(err).toBe(boom);
 });
 
 // ---------------------------------------------------------------------------
@@ -92,65 +124,4 @@ test('base._normalizers: normalizeName empty throws', () => {
 test('base._normalizers: normalizeName null/undefined throws', () => {
   expect(() => normalizeName(null)).toThrow();
   expect(() => normalizeName(undefined)).toThrow();
-});
-
-// ---------------------------------------------------------------------------
-// toPositiveDecimal
-// ---------------------------------------------------------------------------
-
-test('base._normalizers: toPositiveDecimal from string', () => {
-  const d = toPositiveDecimal('3.14', 'Rate');
-  expect(d instanceof Decimal).toBe(true);
-  expect(d.eq(new Decimal('3.14'))).toBe(true);
-});
-
-test('base._normalizers: toPositiveDecimal from Decimal', () => {
-  const input = new Decimal('5');
-  const d = toPositiveDecimal(input, 'Factor');
-  expect(d.eq(new Decimal('5'))).toBe(true);
-});
-
-test('base._normalizers: toPositiveDecimal zero throws', () => {
-  expect(() => toPositiveDecimal('0', 'Rate')).toThrow();
-});
-
-test('base._normalizers: toPositiveDecimal negative throws', () => {
-  expect(() => toPositiveDecimal('-1', 'Rate')).toThrow();
-});
-
-test('base._normalizers: toPositiveDecimal empty throws', () => {
-  expect(() => toPositiveDecimal('', 'Rate')).toThrow();
-});
-
-test('base._normalizers: toPositiveDecimal null/undefined throws', () => {
-  expect(() => toPositiveDecimal(null, 'Rate')).toThrow();
-  expect(() => toPositiveDecimal(undefined, 'Rate')).toThrow();
-});
-
-test('base._normalizers: toPositiveDecimal unparseable throws', () => {
-  expect(() => toPositiveDecimal('not-a-number', 'Rate')).toThrow();
-});
-
-// ---------------------------------------------------------------------------
-// normalizePositiveDecimalString
-// ---------------------------------------------------------------------------
-
-test('base._normalizers: normalizePositiveDecimalString from string', () => {
-  expect(normalizePositiveDecimalString('3.14', 'Rounding')).toBe('3.14');
-});
-
-test('base._normalizers: normalizePositiveDecimalString zero throws', () => {
-  expect(() => normalizePositiveDecimalString('0', 'Rounding')).toThrow();
-});
-
-test('base._normalizers: normalizePositiveDecimalString empty throws', () => {
-  expect(() => normalizePositiveDecimalString('', 'Rounding')).toThrow();
-});
-
-test('base._normalizers: normalizePositiveDecimalString null throws', () => {
-  expect(() => normalizePositiveDecimalString(null, 'Rounding')).toThrow();
-});
-
-test('base._normalizers: normalizePositiveDecimalString from Decimal', () => {
-  expect(normalizePositiveDecimalString(new Decimal('0.01'), 'Rounding')).toBe('0.01');
 });

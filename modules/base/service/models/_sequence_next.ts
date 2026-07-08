@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { asBigInt, formatPaddedNumber } from '@/core/service/utils/normalization';
-import { normalizeCodeRequired, parsePositiveInt } from './_normalizers';
+import { asBigInt, formatPaddedNumber, parsePositiveInt } from '@/core/service/utils/normalization';
+import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 
@@ -12,7 +12,10 @@ const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
 
 function normalizeCount(count: unknown): number {
   if (count == null) return 1;
-  const n = parsePositiveInt(count, 'Count');
+  const n = mapNormalizationToBase(
+    () => parsePositiveInt(count),
+    () => 'Count must be an integer >= 1'
+  );
   if (n > 1000) {
     throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Count must be within 1..1000' }).withGrpcCode(GrpcCode.InvalidArgument);
   }

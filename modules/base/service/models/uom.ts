@@ -3,9 +3,10 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import UoMCategory from './uom_category';
 import { asRefId } from './_refs';
-import { fail, normalizeName, toPositiveDecimal } from './_normalizers';
+import { fail, mapNormalizationToBase, normalizeName } from './_normalizers';
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -78,13 +79,19 @@ export default class UoM extends BaseModel {
     if (!categoryId) fail('CategoryId is required');
 
     const isRef = values.IsReference === true;
-    const factor = toPositiveDecimal(values.Factor, 'Factor');
+    const factor = mapNormalizationToBase(
+      () => toPositiveDecimal(values.Factor),
+      err => (err.code === 'non_positive_decimal' ? 'Factor must be greater than 0' : 'Factor must be a valid decimal')
+    );
     if (isRef && !factor.eq(1)) {
       fail('Reference UoM must have Factor = 1');
     }
 
     if (values.Rounding !== undefined && values.Rounding !== null && values.Rounding !== '') {
-      const rounding = toPositiveDecimal(values.Rounding, 'Rounding');
+      const rounding = mapNormalizationToBase(
+        () => toPositiveDecimal(values.Rounding),
+        err => (err.code === 'non_positive_decimal' ? 'Rounding must be greater than 0' : 'Rounding must be a valid decimal')
+      );
       values.Rounding = rounding.toString();
     } else {
       values.Rounding = null;
