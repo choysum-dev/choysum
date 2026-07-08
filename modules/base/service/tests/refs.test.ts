@@ -7,8 +7,8 @@ import { asRefId, normalizeCompanyScopeKey } from '@/base/service/models/_refs';
 // asRefId
 // ---------------------------------------------------------------------------
 
-test('base._refs: asRefId undefined → undefined', () => {
-  expect(asRefId(undefined)).toBeUndefined();
+test('base._refs: asRefId undefined → null (via core normalizeRefId)', () => {
+  expect(asRefId(undefined)).toBeNull();
 });
 
 test('base._refs: asRefId null → null', () => {
