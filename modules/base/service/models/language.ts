@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Locale from './locale';
-import { fail } from './_normalizers';
+import { fail, normalizeDirection } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('Language')
@@ -31,16 +31,9 @@ export default class Language extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, column: { index: true } })
   DefaultLocaleId?: Locale;
 
-  private static normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null || value === '') return null;
-    if (value === 'ltr' || value === 'rtl') return value;
-    fail('Direction must be ltr or rtl');
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'Direction')) {
-      values.Direction = this.normalizeDirection(values.Direction);
+      values.Direction = normalizeDirection(values.Direction);
     }
   }
 

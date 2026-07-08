@@ -3,8 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
-import { normalizeCodeRequired, normalizePositiveDecimalString } from './_normalizers';
+import { normalizeCodeRequired, normalizeDecimalDigits, normalizePositiveDecimalString } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 import { convertCurrency } from './_currency_convert';
 
@@ -50,22 +49,9 @@ export default class Currency extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static normalizeDecimalDigits(value: any): number {
-    if (value === undefined || value === null || value === '') {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'DecimalDigits is required' }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
-    const n = Number(value);
-    if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'DecimalDigits must be a non-negative integer' }).withGrpcCode(
-        GrpcCode.InvalidArgument
-      );
-    }
-    return n;
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     values.Code = normalizeCodeRequired(values.Code);
-    values.DecimalDigits = this.normalizeDecimalDigits(values.DecimalDigits);
+    values.DecimalDigits = normalizeDecimalDigits(values.DecimalDigits);
     values.Rounding = normalizePositiveDecimalString(values.Rounding, 'Rounding');
   }
 

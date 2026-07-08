@@ -3,32 +3,9 @@
 
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { normalizeDateString, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
-
-function parseDateString(value: unknown): string {
-  const v = String(value ?? '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Date must be YYYY-MM-DD' }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-  return v;
-}
-
-function normalizeRatePolicyMode(value: unknown): 'exact' | 'latest_before' {
-  if (value === undefined || value === null || value === '') return 'latest_before';
-  if (value === 'exact' || value === 'latest_before') return value;
-  throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'RatePolicy.Mode must be exact or latest_before' }).withGrpcCode(
-    GrpcCode.InvalidArgument
-  );
-}
-
-function normalizeRoundingMode(value: unknown): 'currency' | 'none' {
-  if (value === undefined || value === null || value === '') return 'currency';
-  if (value === 'currency' || value === 'none') return value;
-  throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Rounding.Mode must be currency or none' }).withGrpcCode(
-    GrpcCode.InvalidArgument
-  );
-}
 
 function parseDecimalInput(value: any): Decimal {
   try {
@@ -145,7 +122,7 @@ export async function convertCurrency(
     );
   }
 
-  const date = parseDateString(params?.Date);
+  const date = normalizeDateString(params?.Date, 'Date');
   const amount = parseDecimalInput(params?.Amount);
 
   if (fromCurrencyId === toCurrencyId) {
@@ -161,9 +138,7 @@ export async function convertCurrency(
   }
   const companyCurrencyId = String(company?.CurrencyId?.Id ?? company?.CurrencyId ?? '').trim();
   if (!companyCurrencyId) {
-    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(
-      GrpcCode.FailedPrecondition
-    );
+    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(GrpcCode.FailedPrecondition);
   }
 
   const mode = normalizeRatePolicyMode(params?.RatePolicy?.Mode);

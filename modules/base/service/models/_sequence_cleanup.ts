@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { normalizeDateString } from './_normalizers';
 import type { SequenceCleanupIdempotencyParams, SequenceCleanupIdempotencyResult } from './sequence';
 
 export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempotencyParams): Promise<SequenceCleanupIdempotencyResult> {
@@ -11,9 +11,7 @@ export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempot
   if (!olderThan) {
     cutoff = new Date();
   } else {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(olderThan)) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'OlderThan must be YYYY-MM-DD' }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
+    normalizeDateString(olderThan, 'OlderThan');
     cutoff = new Date(`${olderThan}T00:00:00.000Z`);
   }
   const deleted = await SequenceIdempotency.Delete(['ExpiresAt', '<', cutoff] as any);

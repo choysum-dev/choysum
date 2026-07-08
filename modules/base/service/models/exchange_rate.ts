@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import Company from './company';
 import Currency from './currency';
 import { asRefId, normalizeCompanyScopeKey } from './_refs';
-import { fail, toPositiveDecimal } from './_normalizers';
+import { fail, normalizeDateString, toPositiveDecimal } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('ExchangeRate', { companyScoped: true })
@@ -33,24 +33,9 @@ export default class ExchangeRate extends BaseModel {
   @Field({ type: 'decimal', column: { notNull: true, precision: 38, scale: 18 } })
   Rate: any;
 
-  private static normalizeDateStringInput(value: any): string {
-    if (value === undefined || value === null || value === '') fail('Date is required');
-    if (value instanceof Date) fail('Date must be YYYY-MM-DD');
-    const raw = String(value).trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      fail('Date must be YYYY-MM-DD');
-    }
-    const date = new Date(`${raw}T00:00:00.000Z`);
-    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
-      fail('Date is invalid');
-    }
-    return raw;
-  }
-
   private static coerceDateKey(value: any): string {
-    if (value === undefined || value === null || value === '') fail('Date is required');
     if (value instanceof Date) return value.toISOString().slice(0, 10);
-    return this.normalizeDateStringInput(value);
+    return normalizeDateString(value, 'Date');
   }
 
   private static dateKey(value: any): string {

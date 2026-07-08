@@ -7,7 +7,7 @@ import City from './city';
 import Country from './country';
 import State from './state';
 import { asRefId } from './_refs';
-import { fail } from './_normalizers';
+import { fail, normalizeOptionalString } from './_normalizers';
 
 @Model('Address')
 export default class Address extends BaseModel {
@@ -32,12 +32,6 @@ export default class Address extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => City }, column: { index: true } })
   CityId?: City;
 
-  private static normalizeZip(value: any): string | null {
-    if (value === undefined || value === null) return null;
-    const zip = String(value).trim();
-    return zip || null;
-  }
-
   private static async getCountry(countryId: string): Promise<any> {
     const { default: CountryModel } = await import('./country');
     return await CountryModel.Browse(countryId, ['Id', 'ZipRequired', 'StateRequired'] as any);
@@ -57,7 +51,7 @@ export default class Address extends BaseModel {
     const countryId = asRefId(values.CountryId);
     const stateId = asRefId(values.StateId);
     const cityId = asRefId(values.CityId);
-    const zip = this.normalizeZip(values.Zip);
+    const zip = normalizeOptionalString(values.Zip);
 
     if (!countryId) fail('CountryId is required');
     const country = await this.getCountry(countryId);

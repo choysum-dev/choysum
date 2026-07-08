@@ -131,8 +131,91 @@ export function asBigInt(v: any): bigint {
 }
 
 /**
- * Test whether a value represents the "reference" flag (strict true).
+ * Normalize an optional string field: trim, null/undefined → null, empty → null.
  */
-export function isReferenceValue(value: any): boolean {
-  return value === true;
+export function normalizeOptionalString(value: any): string | null {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  return s || null;
+}
+
+/**
+ * Normalize a DecimalDigits value: must be a non-negative integer.
+ */
+export function normalizeDecimalDigits(value: any): number {
+  if (value === undefined || value === null || value === '') {
+    fail('DecimalDigits is required');
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {
+    fail('DecimalDigits must be a non-negative integer');
+  }
+  return n;
+}
+
+/**
+ * Validate a YYYY-MM-DD date string with format and calendar-validity checks.
+ */
+export function normalizeDateString(value: unknown, fieldName: string): string {
+  if (value === undefined || value === null || value === '') fail(`${fieldName} is required`);
+  if (value instanceof Date) fail(`${fieldName} must be YYYY-MM-DD`);
+  const raw = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    fail(`${fieldName} must be YYYY-MM-DD`);
+  }
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
+    fail(`${fieldName} is invalid`);
+  }
+  return raw;
+}
+
+/**
+ * Normalize a Direction (ltr/rtl) selection value.
+ * Returns undefined for undefined, null for null/empty, or the validated value.
+ */
+export function normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (value === 'ltr' || value === 'rtl') return value;
+  fail('Direction must be ltr or rtl');
+}
+
+/**
+ * Normalize a CurrencySymbolPosition (before/after) selection value.
+ * Defaults to 'before' for empty/falsy input.
+ */
+export function normalizeCurrencySymbolPosition(value: unknown): 'before' | 'after' {
+  if (value === undefined || value === null || value === '') return 'before';
+  if (value === 'before' || value === 'after') return value;
+  fail('CurrencySymbolPosition must be before or after');
+}
+
+/**
+ * Normalize a CurrencySymbolSpacing boolean value.
+ * Defaults to false for empty/falsy input.
+ */
+export function normalizeCurrencySymbolSpacing(value: unknown): boolean {
+  if (value === undefined || value === null || value === '') return false;
+  return Boolean(value);
+}
+
+/**
+ * Normalize a RatePolicy.Mode value (exact/latest_before).
+ * Defaults to 'latest_before'.
+ */
+export function normalizeRatePolicyMode(value: unknown): 'exact' | 'latest_before' {
+  if (value === undefined || value === null || value === '') return 'latest_before';
+  if (value === 'exact' || value === 'latest_before') return value;
+  fail('RatePolicy.Mode must be exact or latest_before');
+}
+
+/**
+ * Normalize a Rounding.Mode value (currency/none).
+ * Defaults to 'currency'.
+ */
+export function normalizeRoundingMode(value: unknown): 'currency' | 'none' {
+  if (value === undefined || value === null || value === '') return 'currency';
+  if (value === 'currency' || value === 'none') return value;
+  fail('Rounding.Mode must be currency or none');
 }
