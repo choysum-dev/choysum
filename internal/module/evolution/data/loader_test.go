@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"io"
 	"log/slog"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -977,6 +978,32 @@ func TestValueResolutionHelpers(t *testing.T) {
 			t.Fatalf("resolveValue(nil) = %#v, %v", got, err)
 		}
 	})
+
+	t.Run("parse ref query skeleton", func(t *testing.T) {
+		// ref compat
+		spec, ok, err := parseRefQuerySpec(map[string]any{"ref": " auth.group_admin "})
+		if err != nil || !ok || spec.Kind != refQuerySpecKindRef || spec.Ref != "auth.group_admin" {
+			t.Fatalf("parseRefQuerySpec(ref) = %#v, %v, %v", spec, ok, err)
+		}
+		// refBy compat
+		spec, ok, err = parseRefQuerySpec(map[string]any{"refBy": map[string]any{"model": "meta.IrApplication", "field": "Name", "value": "auth"}})
+		if err != nil || !ok || spec.Kind != refQuerySpecKindRefBy || spec.RefBy.Model != "meta.IrApplication" {
+			t.Fatalf("parseRefQuerySpec(refBy) = %#v, %v, %v", spec, ok, err)
+		}
+		// ref_by alias
+		spec, ok, err = parseRefQuerySpec(map[string]any{"ref_by": map[string]any{"model": "auth.User", "field": "id", "value": 1}})
+		if err != nil || !ok || spec.Kind != refQuerySpecKindRefBy {
+			t.Fatalf("parseRefQuerySpec(ref_by) = %#v, %v, %v", spec, ok, err)
+		}
+		// non-map returns false
+		if _, ok, _ := parseRefQuerySpec("plain"); ok {
+			t.Fatalf("expected non-map to return false")
+		}
+		// empty map returns false
+		if _, ok, _ := parseRefQuerySpec(map[string]any{}); ok {
+			t.Fatalf("expected empty map to return false")
+		}
+	})
 }
 
 func TestResolveAndMapValues_SkipsSystemFieldsAndNormalizes(t *testing.T) {
@@ -1519,5 +1546,530 @@ func TestApplyModule_RefCanResolveExistingDBMappingOutsideBatch(t *testing.T) {
 	}
 	if row.GroupID != "pre_group" {
 		t.Fatalf("expected group_id=pre_group, got %q", row.GroupID)
+	}
+}
+
+func TestParseRefQuerySpec_CompatRefAndRefBy(t *testing.T) {
+	t.Parallel()
+
+	// ref
+	spec, ok, err := parseRefQuerySpec(map[string]any{"ref": " auth.group_admin "})
+	if err != nil || !ok {
+		t.Fatalf("expected ok ref parse, got %v, %v", ok, err)
+	}
+	if spec.Kind != refQuerySpecKindRef || spec.Ref != "auth.group_admin" {
+		t.Fatalf("unexpected spec: %#v", spec)
+	}
+
+	// refBy
+	spec, ok, err = parseRefQuerySpec(map[string]any{
+		"refBy": map[string]any{"model": " auth.User ", "field": " GroupId ", "value": "gid-1"},
+	})
+	if err != nil || !ok {
+		t.Fatalf("expected ok refBy parse, got %v, %v", ok, err)
+	}
+	if spec.Kind != refQuerySpecKindRefBy || spec.RefBy.Model != "auth.User" || spec.RefBy.Field != "GroupId" || spec.RefBy.Value != "gid-1" {
+		t.Fatalf("unexpected refBy spec: %#v", spec)
+	}
+
+	// ref_by alias
+	spec, ok, err = parseRefQuerySpec(map[string]any{
+		"ref_by": map[string]any{"model": "base.Company", "field": "Name", "value": "test"},
+	})
+	if err != nil || !ok || spec.Kind != refQuerySpecKindRefBy {
+		t.Fatalf("expected ref_by alias parse, got %#v, %v, %v", spec, ok, err)
+	}
+
+	// ref with leading/trailing whitespace trimmed
+	spec, ok, err = parseRefQuerySpec(map[string]any{"ref": "\t base.company_search \n"})
+	if err != nil || !ok || spec.Ref != "base.company_search" {
+		t.Fatalf("expected trimmed ref, got %q", spec.Ref)
+	}
+
+	// non-map input
+	if _, ok, _ := parseRefQuerySpec(42); ok {
+		t.Fatalf("expected non-map to return false")
+	}
+	if _, ok, _ := parseRefQuerySpec("plain"); ok {
+		t.Fatalf("expected string to return false")
+	}
+	if _, ok, _ := parseRefQuerySpec(nil); ok {
+		t.Fatalf("expected nil to return false")
+	}
+	if _, ok, _ := parseRefQuerySpec([]any{1, 2}); ok {
+		t.Fatalf("expected slice to return false")
+	}
+
+	// empty map
+	if _, ok, _ := parseRefQuerySpec(map[string]any{}); ok {
+		t.Fatalf("expected empty map to return false")
+	}
+
+	// unknown key
+	if _, ok, _ := parseRefQuerySpec(map[string]any{"other": "val"}); ok {
+		t.Fatalf("expected unknown key map to return false")
+	}
+}
+
+func TestParseRefQuerySpec_SearchShapeValidation(t *testing.T) {
+	t.Parallel()
+
+	// Valid minimal search
+	spec, ok, err := parseRefQuerySpec(map[string]any{
+		"search": map[string]any{"model": "auth.User"},
+	})
+	if err != nil || !ok {
+		t.Fatalf("expected ok search parse, got %v, %v", ok, err)
+	}
+	if spec.Kind != refQuerySpecKindSearch || spec.Search.Model != "auth.User" {
+		t.Fatalf("unexpected search spec: %#v", spec)
+	}
+
+	// Valid search with domain, orderBy, limit
+	spec, ok, err = parseRefQuerySpec(map[string]any{
+		"search": map[string]any{
+			"model":   "auth.User",
+			"domain":  []any{[]any{"name", "=", "admin"}},
+			"orderBy": "id ASC",
+			"limit":   float64(1),
+		},
+	})
+	if err != nil || !ok {
+		t.Fatalf("expected ok search with domain/orderBy/limit, got %v, %v", ok, err)
+	}
+	if spec.Search.OrderBy != "id ASC" || spec.Search.Limit != 1 {
+		t.Fatalf("unexpected search fields: %#v", spec.Search)
+	}
+
+	// Search missing model
+	_, ok, err = parseRefQuerySpec(map[string]any{
+		"search": map[string]any{},
+	})
+	if !ok || err == nil {
+		t.Fatalf("expected error for search missing model, got %v, %v", ok, err)
+	}
+
+	// Search model not a string
+	_, ok, err = parseRefQuerySpec(map[string]any{
+		"search": map[string]any{"model": 123},
+	})
+	if !ok || err == nil {
+		t.Fatalf("expected error for non-string model, got %v, %v", ok, err)
+	}
+
+	// Search empty model
+	_, ok, err = parseRefQuerySpec(map[string]any{
+		"search": map[string]any{"model": "  "},
+	})
+	if !ok || err == nil {
+		t.Fatalf("expected error for empty model, got %v, %v", ok, err)
+	}
+
+	// Search with negative limit
+	_, ok, err = parseRefQuerySpec(map[string]any{
+		"search": map[string]any{"model": "auth.User", "limit": float64(-1)},
+	})
+	if !ok || err == nil {
+		t.Fatalf("expected error for negative limit, got %v, %v", ok, err)
+	}
+}
+
+func TestParseRefQuerySpec_ModelRefAndServiceRefShapeValidation(t *testing.T) {
+	t.Parallel()
+
+	// modelRef valid
+	spec, ok, err := parseRefQuerySpec(map[string]any{"modelRef": " auth.User "})
+	if err != nil || !ok {
+		t.Fatalf("expected ok modelRef, got %v, %v", ok, err)
+	}
+	if spec.Kind != refQuerySpecKindModelRef || spec.ModelRef != "auth.User" {
+		t.Fatalf("unexpected modelRef spec: %#v", spec)
+	}
+
+	// modelRef non-string
+	_, ok, err = parseRefQuerySpec(map[string]any{"modelRef": 123})
+	if !ok || err == nil {
+		t.Fatalf("expected error for non-string modelRef, got %v, %v", ok, err)
+	}
+
+	// modelRef empty
+	_, ok, err = parseRefQuerySpec(map[string]any{"modelRef": "  "})
+	if !ok || err == nil {
+		t.Fatalf("expected error for empty modelRef, got %v, %v", ok, err)
+	}
+
+	// serviceRef valid
+	spec, ok, err = parseRefQuerySpec(map[string]any{"serviceRef": " auth.User/Browse "})
+	if err != nil || !ok {
+		t.Fatalf("expected ok serviceRef, got %v, %v", ok, err)
+	}
+	if spec.Kind != refQuerySpecKindServiceRef || spec.ServiceRef != "auth.User/Browse" {
+		t.Fatalf("unexpected serviceRef spec: %#v", spec)
+	}
+
+	// serviceRef non-string
+	_, ok, err = parseRefQuerySpec(map[string]any{"serviceRef": true})
+	if !ok || err == nil {
+		t.Fatalf("expected error for non-string serviceRef, got %v, %v", ok, err)
+	}
+
+	// serviceRef empty
+	_, ok, err = parseRefQuerySpec(map[string]any{"serviceRef": ""})
+	if !ok || err == nil {
+		t.Fatalf("expected error for empty serviceRef, got %v, %v", ok, err)
+	}
+
+	// Multiple keys: ref takes priority over other keys
+	spec, ok, err = parseRefQuerySpec(map[string]any{"ref": "auth.x", "search": map[string]any{"model": "auth.User"}})
+	if err != nil || !ok || spec.Kind != refQuerySpecKindRef {
+		t.Fatalf("expected ref priority, got %#v, %v, %v", spec, ok, err)
+	}
+}
+
+func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// search with a valid model now resolves successfully (empty result is OK).
+	got, err := l.resolveValue(db, "/tmp/data.json", 3, rec, "values.role_id", map[string]any{
+		"search": map[string]any{"model": "auth.User"},
+	})
+	if err != nil {
+		t.Fatalf("search on empty table should succeed, got %v", err)
+	}
+	ids, ok := got.([]any)
+	if !ok {
+		t.Fatalf("expected []any from search, got %T", got)
+	}
+	if len(ids) != 0 {
+		t.Fatalf("expected empty results, got %#v", ids)
+	}
+
+	// modelRef still returns "not yet implemented"
+	_, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.service_id", map[string]any{
+		"modelRef": "auth.User",
+	})
+	if err == nil {
+		t.Fatalf("expected error for modelRef")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) {
+		t.Fatalf("expected LoadError, got %T: %v", err, err)
+	}
+	if le.Code != LoadErrorCodeRefSearchUnsupportedOp || le.FieldPath != "values.service_id" {
+		t.Fatalf("unexpected modelRef error: %#v", le)
+	}
+
+	// serviceRef still returns "not yet implemented"
+	_, err = l.resolveValue(db, "/tmp/data.json", 1, rec, "values.method_id", map[string]any{
+		"serviceRef": "auth.User/Browse",
+	})
+	if err == nil {
+		t.Fatalf("expected error for serviceRef")
+	}
+	if !errors.As(err, &le) {
+		t.Fatalf("expected LoadError, got %T: %v", err, err)
+	}
+	if le.Code != LoadErrorCodeRefSearchUnsupportedOp {
+		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeRefSearchUnsupportedOp, le.Code)
+	}
+
+	// ref and refBy still work (backward compat)
+	if err := db.Create(&metadata.IrModelData{Module: "auth", ExternalID: "group_admin", Model: "auth.group", ResID: "gid-1"}).Error; err != nil {
+		t.Fatalf("seed ir_model_data: %v", err)
+	}
+	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.group_id", map[string]any{"ref": "auth.group_admin"})
+	if err != nil || got != "gid-1" {
+		t.Fatalf("resolveValue(ref) after skeleton = %#v, %v", got, err)
+	}
+}
+
+func TestResolveRefBySearch_DomainAndOrNot(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed users for domain tests.
+	ids := []string{"u-active", "u-inactive", "u-admin"}
+	for i, id := range ids {
+		if err := db.Table("auth_user").Create(map[string]any{
+			"id":         id,
+			"created_at": time.Now(),
+			"updated_at": time.Now(),
+			"group_id":   "g-" + string(rune('a'+i)),
+		}).Error; err != nil {
+			t.Fatalf("seed user %s: %v", id, err)
+		}
+	}
+
+	// Implicit AND: two conditions
+	spec := searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "=", "u-active"},
+		},
+	}
+	idsOut, err := l.resolveRefBySearch(db, spec)
+	if err != nil || len(idsOut) != 1 || idsOut[0] != "u-active" {
+		t.Fatalf("resolveRefBySearch(=) = %#v, %v", idsOut, err)
+	}
+
+	// Explicit OR
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			"|",
+			[]any{"id", "=", "u-active"},
+			[]any{"id", "=", "u-admin"},
+		},
+	}
+	idsOut, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(idsOut) != 2 {
+		t.Fatalf("resolveRefBySearch(|) = %#v, %v", idsOut, err)
+	}
+
+	// Explicit AND with &
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			"&",
+			[]any{"id", "=", "u-admin"},
+			[]any{"group_id", "=", "g-c"},
+		},
+	}
+	idsOut, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(idsOut) != 1 || idsOut[0] != "u-admin" {
+		t.Fatalf("resolveRefBySearch(&) = %#v, %v", idsOut, err)
+	}
+
+	// NOT
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			"!",
+			[]any{"id", "=", "u-active"},
+		},
+	}
+	idsOut, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(idsOut) != 2 {
+		t.Fatalf("resolveRefBySearch(!) = %#v, %v", idsOut, err)
+	}
+
+	// OrderBy + Limit
+	spec = searchSpec{
+		Model:   "auth.User",
+		Domain:  []any{[]any{"id", "!=", "missing"}},
+		OrderBy: "id DESC",
+		Limit:   2,
+	}
+	idsOut, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(idsOut) != 2 || idsOut[0] != "u-inactive" {
+		t.Fatalf("resolveRefBySearch(order+limit) = %#v, %v", idsOut, err)
+	}
+}
+
+func TestResolveRefBySearch_UnsupportedOperator(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	_ = db
+
+	spec := searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "regexp", ".*"},
+		},
+	}
+	_, err := l.resolveRefBySearch(db, spec)
+	if err == nil {
+		t.Fatalf("expected error for unsupported operator")
+	}
+	if !strings.Contains(err.Error(), "unsupported search operator") {
+		t.Fatalf("expected unsupported operator message, got %v", err)
+	}
+
+	// Also test via resolveValue path
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+	_, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.x", map[string]any{
+		"search": map[string]any{
+			"model":  "auth.User",
+			"domain": []any{[]any{"id", "regexp", ".*"}},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected error via resolveValue")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeResolveRefFailed {
+		t.Fatalf("expected LoadError with ResolveRefFailed, got %#v", err)
+	}
+}
+
+func TestResolveRefBySearch_InvalidFieldName(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	_ = db
+
+	spec := searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id; DROP TABLE", "=", "x"},
+		},
+	}
+	_, err := l.resolveRefBySearch(db, spec)
+	if err == nil {
+		t.Fatalf("expected error for invalid field name")
+	}
+	if !strings.Contains(err.Error(), "invalid search field") {
+		t.Fatalf("expected invalid field message, got %v", err)
+	}
+}
+
+func TestResolveRefBySearch_ComparisonOperators(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed users with known group_id values: a < b < d (lexicographically).
+	for _, row := range []map[string]any{
+		{"id": "c1", "created_at": time.Now(), "updated_at": time.Now(), "group_id": "b"},
+		{"id": "c2", "created_at": time.Now(), "updated_at": time.Now(), "group_id": "d"},
+		{"id": "c3", "created_at": time.Now(), "updated_at": time.Now(), "group_id": "a"},
+		{"id": "c4", "created_at": time.Now(), "updated_at": time.Now(), "group_id": nil},
+	} {
+		if err := db.Table("auth_user").Create(row).Error; err != nil {
+			t.Fatalf("seed comparison user: %v", err)
+		}
+	}
+
+	// >= b matches b, d (2 rows).
+	spec := searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"group_id", ">=", "b"},
+		},
+	}
+	ids, err := l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 2 {
+		t.Fatalf(">= search = %#v, %v", ids, err)
+	}
+
+	// < b matches a only.
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"group_id", "<", "b"},
+		},
+	}
+	ids, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 1 || ids[0] != "c3" {
+		t.Fatalf("< search = %#v, %v", ids, err)
+	}
+
+	// is_null matches c4.
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"group_id", "is_null"},
+		},
+	}
+	ids, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 1 || ids[0] != "c4" {
+		t.Fatalf("is_null search = %#v, %v", ids, err)
+	}
+
+	// is_not_null matches c1, c2, c3 (3 rows).
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"group_id", "is_not_null"},
+		},
+	}
+	ids, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 3 {
+		t.Fatalf("is_not_null search = %#v, %v", ids, err)
+	}
+
+	// in
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "in", []string{"c1", "c3"}},
+		},
+	}
+	ids, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 2 {
+		t.Fatalf("in search = %#v, %v", ids, err)
+	}
+
+	// like
+	spec = searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "like", "c%"},
+		},
+	}
+	ids, err = l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 4 {
+		t.Fatalf("like search = %#v, %v", ids, err)
+	}
+}
+
+func TestResolveValue_SearchDomainResolution(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed a group and users.
+	if err := db.Table("auth_group").Create(map[string]any{
+		"id":         "group-admin",
+		"created_at": time.Now(),
+		"updated_at": time.Now(),
+	}).Error; err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+	if err := db.Table("auth_user").Create(map[string]any{
+		"id":         "user-1",
+		"created_at": time.Now(),
+		"updated_at": time.Now(),
+		"group_id":   "group-admin",
+	}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// search via resolveValue returns []any of IDs.
+	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.user_ids", map[string]any{
+		"search": map[string]any{
+			"model":  "auth.User",
+			"domain": []any{[]any{"group_id", "=", "group-admin"}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveValue(search) error = %v", err)
+	}
+	arr, ok := got.([]any)
+	if !ok || len(arr) != 1 || arr[0] != "user-1" {
+		t.Fatalf("resolveValue(search) = %#v", got)
+	}
+
+	// search with limit returns at most that many.
+	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.first", map[string]any{
+		"search": map[string]any{
+			"model":   "auth.User",
+			"limit":   float64(1),
+			"orderBy": "id ASC",
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveValue(search limit) error = %v", err)
+	}
+	arr, ok = got.([]any)
+	if !ok || len(arr) != 1 {
+		t.Fatalf("resolveValue(search limit) = %#v", got)
 	}
 }
