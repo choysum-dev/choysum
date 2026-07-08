@@ -4,19 +4,14 @@
 import { withContext } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
-import type IrModelModel from '@/meta/service/models/ir_model';
-import type IrServiceModel from '@/meta/service/models/ir_service';
 import type Company from '@/base/service/models/company';
 import Role from './role';
-import RoleMethodAccess from './role_method_access';
 import Session from './session';
 import Token from './token';
 import UserRole from './user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_user_authz_shared';
 import { buildScopePreferences } from './_user_lifecycle_scope';
 
-const IrModel = createServiceByModel<typeof IrModelModel>('meta.IrModel');
-const IrService = createServiceByModel<typeof IrServiceModel>('meta.IrService');
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
 
 export type LoginUserLike = {
@@ -95,132 +90,6 @@ export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
   return userId;
 }
 
-// TODO: Move base.user permission seeding to system bootstrap/migration to avoid
-// redundant DB queries and race conditions on registration.
-async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
-  const rid = String(roleId || '').trim();
-  if (!rid) return;
-
-  const targets: Array<{ app: string; model: string; method: string }> = [
-    { app: 'auth', model: 'User', method: 'Browse' },
-    { app: 'auth', model: 'User', method: 'GetPermissionState' },
-    { app: 'auth', model: 'User', method: 'SwitchCompanyScope' },
-    { app: 'base', model: 'Company', method: 'Search' },
-  ];
-
-  const modelCache = new Map<string, string>();
-  const serviceCache = new Map<string, Array<{ Id: string; Name: string }>>();
-
-  const resolveModelId = async (app: string, name: string): Promise<string> => {
-    const key = app + '.' + name;
-    if (modelCache.has(key)) return modelCache.get(key)!;
-    const hit = (
-      await IrModel.Search(
-        {
-          And: [
-            ['Application', '=', app],
-            ['Name', '=', name],
-          ],
-        } as any,
-        { fields: ['Id'], limit: 1 } as any
-      )
-    )?.[0] as any;
-    const id = String(hit?.Id || '').trim();
-    modelCache.set(key, id);
-    return id;
-  };
-
-  const resolveService = async (modelId: string, method: string): Promise<{ id: string; name: string }> => {
-    if (!serviceCache.has(modelId)) {
-      const rows = await IrService.Search({ And: [['ModelId', '=', modelId]] } as any, { fields: ['Id', 'Name'], limit: 5000 } as any);
-      serviceCache.set(
-        modelId,
-        (rows || []).map((r: any) => ({ Id: String(r?.Id || '').trim(), Name: String(r?.Name || '').trim() }))
-      );
-    }
-    const cached = serviceCache.get(modelId)!;
-    const target = String(method || '')
-      .trim()
-      .toLowerCase();
-    const hit = cached.find(r => r.Name.toLowerCase() === target);
-    return { id: hit?.Id || '', name: hit?.Name || '' };
-  };
-
-  const resolvedServiceIds: string[] = [];
-  for (const t of targets) {
-    const modelId = await resolveModelId(t.app, t.model);
-    if (!modelId) continue;
-
-    const svc = await resolveService(modelId, t.method);
-    if (!svc.id) continue;
-    resolvedServiceIds.push(svc.id);
-  }
-
-  const serviceIds = Array.from(new Set(resolvedServiceIds));
-  if (serviceIds.length === 0) return;
-
-  const existingRows = await RoleMethodAccess.Search(
-    {
-      And: [
-        ['RoleId', '=', rid],
-        ['IrServiceId', 'in', serviceIds],
-        ['IrModelId', 'is', null],
-        ['IrApplicationId', 'is', null],
-      ],
-    } as any,
-    { fields: ['Id', 'IrServiceId', 'Mode'], limit: Math.max(16, serviceIds.length * 2) } as any
-  );
-
-  const existingByServiceId = new Map<string, any>();
-  for (const row of existingRows || []) {
-    const serviceId = String((row as any)?.IrServiceId || '').trim();
-    if (!serviceId) continue;
-    if (!existingByServiceId.has(serviceId)) {
-      existingByServiceId.set(serviceId, row as any);
-    }
-  }
-
-  const createPayloads: any[] = [];
-  const updatePayloads: Array<{ id: string; serviceId: string }> = [];
-
-  for (const serviceId of serviceIds) {
-    const existing = existingByServiceId.get(serviceId);
-    if (!existing) {
-      createPayloads.push({
-        RoleId: { Id: rid } as any,
-        IrServiceId: serviceId,
-        IrModelId: null,
-        IrApplicationId: null,
-        Mode: 'allow',
-      });
-      continue;
-    }
-
-    const id = String((existing as any)?.Id || '').trim();
-    const mode = String((existing as any)?.Mode || '').toLowerCase();
-    if (id && mode !== 'allow') {
-      updatePayloads.push({ id, serviceId });
-    }
-  }
-
-  if (createPayloads.length > 0) {
-    await RoleMethodAccess.CreateMany(createPayloads as any, ['Id'] as any);
-  }
-
-  for (const item of updatePayloads) {
-    await RoleMethodAccess.UpdateById(
-      item.id,
-      {
-        IrServiceId: item.serviceId,
-        IrModelId: null,
-        IrApplicationId: null,
-        Mode: 'allow',
-      } as any,
-      ['Id'] as any
-    );
-  }
-}
-
 /**
  * Provision the baseline company/role graph for a newly registered user.
  */
@@ -289,8 +158,6 @@ export async function provisionRegisteredUserBaseline(
           ['Id'] as any
         );
       }
-
-      await ensureBaseUserRpcAllow(baseUserRoleId);
     });
   });
 }

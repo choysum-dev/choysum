@@ -7,13 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -28,11 +31,18 @@ type ApplyOptions struct {
 }
 
 type Loader struct {
-	runtimeScope scope.Scope
+	runtimeScope          scope.Scope
+	mu                    sync.RWMutex
+	modelCache            map[string]string
+	fieldCardinalityCache map[string]refCardinality
 }
 
 func New(runtimeScope scope.Scope) *Loader {
-	return &Loader{runtimeScope: runtimeScope}
+	return &Loader{
+		runtimeScope:          runtimeScope,
+		modelCache:            make(map[string]string),
+		fieldCardinalityCache: make(map[string]refCardinality),
+	}
 }
 
 type moduleInfo struct {
@@ -236,6 +246,51 @@ type record struct {
 	Values     map[string]any `json:"values"`
 }
 
+// refQuerySpecKind identifies the type of reference query in data file values.
+type refQuerySpecKind string
+
+const (
+	refQuerySpecKindRef        refQuerySpecKind = "ref"
+	refQuerySpecKindRefBy      refQuerySpecKind = "refBy"
+	refQuerySpecKindSearch     refQuerySpecKind = "search"
+	refQuerySpecKindModelRef   refQuerySpecKind = "modelRef"
+	refQuerySpecKindServiceRef refQuerySpecKind = "serviceRef"
+)
+
+// refQuerySpec is the unified representation of a reference query.
+type refQuerySpec struct {
+	Kind       refQuerySpecKind
+	Ref        string     // for ref kind: "module.external_id"
+	RefBy      refBySpec  // for refBy kind
+	Search     searchSpec // for search kind
+	ModelRef   string     // for modelRef kind: "app.Model"
+	ServiceRef string     // for serviceRef kind: "app.Model/Method"
+}
+
+// refBySpec captures a single-field lookup reference.
+type refBySpec struct {
+	Model string
+	Field string
+	Value any
+}
+
+// searchSpec captures a domain-based search reference.
+type searchSpec struct {
+	Model   string // app.Model
+	Domain  any    // domain expression
+	OrderBy string
+	Limit   int
+}
+
+// refCardinality describes how many results a reference field expects.
+type refCardinality int
+
+const (
+	refCardinalityManyToOne  refCardinality = iota // default: exactly one result required
+	refCardinalityManyToMany                       // multiple results allowed, returned as a collection
+	refCardinalityFirst                            // explicit limit=1 + orderBy: take first, error on zero
+)
+
 type LoadErrorKind string
 
 const (
@@ -268,6 +323,10 @@ const (
 	LoadErrorCodeDBUpdateRecord             = "db_update_record"
 	LoadErrorCodeDBUpdateModelDataNoUpdate  = "db_update_model_data_noupdate"
 	LoadErrorCodeDBModelTableEmpty          = "db_model_table_empty"
+	LoadErrorCodeRefSearchInvalidShape      = "ref_search_invalid_shape"
+	LoadErrorCodeRefSearchUnsupportedOp     = "ref_search_unsupported_op"
+	LoadErrorCodeRefSearchNotFound          = "ref_search_not_found"
+	LoadErrorCodeRefSearchNotUnique         = "ref_search_not_unique"
 )
 
 // LoadError is a structured, retry-friendly error produced by the data loader.
@@ -371,6 +430,23 @@ func wrapLoadErrorWithCode(err error, filePath string, recordIndex int, rec reco
 		Model:       strings.TrimSpace(rec.Model),
 		Message:     message,
 		Cause:       err,
+	}
+}
+
+// newRefLoadError constructs a LoadError with all location fields pre-filled.
+func newRefLoadError(kind LoadErrorKind, code string, filePath string, recordIndex int, rec record, fieldPath string, ref string, message string, cause error) error {
+	return &LoadError{
+		Kind:        kind,
+		Code:        code,
+		FilePath:    filePath,
+		RecordIndex: recordIndex,
+		Module:      strings.TrimSpace(rec.Module),
+		ExternalID:  strings.TrimSpace(rec.ExternalID),
+		Model:       strings.TrimSpace(rec.Model),
+		FieldPath:   fieldPath,
+		Ref:         ref,
+		Message:     message,
+		Cause:       cause,
 	}
 }
 
@@ -1173,6 +1249,15 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 			return nil, err
 		}
 
+		// Enforce reference cardinality on search results.
+		if ids, ok := resolved.([]string); ok {
+			cardinality := l.detectSearchCardinality(tx, rec.Model, fieldName, raw)
+			resolved, err = enforceReferenceCardinality(ids, cardinality, filePath, recordIndex, rec, "values."+fieldName, "search")
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// NOTE: We insert via tx.Table(tableName).Create(map[string]any), which bypasses
 		// model-level serializers. For JSON-ish values (arrays/objects), marshal them
 		// to a JSON string explicitly so drivers like sqlite don't treat slices as
@@ -1208,6 +1293,12 @@ func normalizeSeedDBValue(v any) (any, error) {
 			return nil, err
 		}
 		return string(b), nil
+	case []string:
+		b, err := json.Marshal(t)
+		if err != nil {
+			return nil, err
+		}
+		return string(b), nil
 	default:
 		return t, nil
 	}
@@ -1217,19 +1308,45 @@ func (l *Loader) resolveValue(tx *gorm.DB, filePath string, recordIndex int, rec
 	if v == nil {
 		return nil, nil
 	}
-	if modelFull, field, value, ok := extractRefBy(v); ok {
-		resID, err := l.resolveRefBy(tx, modelFull, field, value)
+
+	// Unified ref query dispatch — handles ref, refBy, search, modelRef, serviceRef.
+	if spec, ok, err := parseRefQuerySpec(v); ok {
 		if err != nil {
-			return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeResolveRefFailed, FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: fieldPath, Ref: "refBy", Message: "resolve refBy failed", Cause: err}
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchInvalidShape, filePath, recordIndex, rec, fieldPath, "", "invalid ref query shape", err)
 		}
-		return resID, nil
-	}
-	if ref, ok := extractRef(v); ok {
-		resID, err := l.resolveRef(tx, ref)
-		if err != nil {
-			return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeResolveRefFailed, FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: fieldPath, Ref: ref, Message: "resolve ref failed", Cause: err}
+		switch spec.Kind {
+		case refQuerySpecKindRef:
+			resID, err := l.resolveRef(tx, spec.Ref)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, spec.Ref, "resolve ref failed", err)
+			}
+			return resID, nil
+		case refQuerySpecKindRefBy:
+			resID, err := l.resolveRefBy(tx, spec.RefBy.Model, spec.RefBy.Field, spec.RefBy.Value)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "refBy", "resolve refBy failed", err)
+			}
+			return resID, nil
+		case refQuerySpecKindSearch:
+			ids, err := l.resolveRefBySearch(tx, spec.Search)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "search", "resolve search failed", err)
+			}
+			// Return raw []string; cardinality enforcement happens in resolveAndMapValues.
+			return ids, nil
+		case refQuerySpecKindModelRef:
+			resID, err := l.resolveModelRef(tx, spec.ModelRef)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "modelRef", "resolve modelRef failed", err)
+			}
+			return resID, nil
+		case refQuerySpecKindServiceRef:
+			resID, err := l.resolveServiceRef(tx, spec.ServiceRef)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "serviceRef", "resolve serviceRef failed", err)
+			}
+			return resID, nil
 		}
-		return resID, nil
 	}
 
 	switch t := v.(type) {
@@ -1249,76 +1366,19 @@ func (l *Loader) resolveValue(tx *gorm.DB, filePath string, recordIndex int, rec
 }
 
 func extractRef(v any) (string, bool) {
-	m, ok := v.(map[string]any)
-	if !ok {
+	spec, ok, _ := parseRefQuerySpec(v)
+	if !ok || spec.Kind != refQuerySpecKindRef {
 		return "", false
 	}
-	raw, ok := m["ref"]
-	if !ok {
-		return "", false
-	}
-	s, ok := raw.(string)
-	if !ok {
-		return "", false
-	}
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return "", false
-	}
-	return s, true
+	return spec.Ref, true
 }
 
 func extractRefBy(v any) (modelFull string, field string, value any, ok bool) {
-	m, ok := v.(map[string]any)
-	if !ok {
+	spec, ok, _ := parseRefQuerySpec(v)
+	if !ok || spec.Kind != refQuerySpecKindRefBy {
 		return "", "", nil, false
 	}
-
-	raw, ok := m["refBy"]
-	if !ok {
-		raw, ok = m["ref_by"]
-		if !ok {
-			return "", "", nil, false
-		}
-	}
-
-	mm, ok := raw.(map[string]any)
-	if !ok {
-		return "", "", nil, false
-	}
-
-	modelRaw, ok := mm["model"]
-	if !ok {
-		return "", "", nil, false
-	}
-	model, ok := modelRaw.(string)
-	if !ok {
-		return "", "", nil, false
-	}
-	model = strings.TrimSpace(model)
-	if model == "" {
-		return "", "", nil, false
-	}
-
-	fieldRaw, ok := mm["field"]
-	if !ok {
-		return "", "", nil, false
-	}
-	f, ok := fieldRaw.(string)
-	if !ok {
-		return "", "", nil, false
-	}
-	f = strings.TrimSpace(f)
-	if f == "" {
-		return "", "", nil, false
-	}
-
-	val, ok := mm["value"]
-	if !ok {
-		return "", "", nil, false
-	}
-
-	return model, f, val, true
+	return spec.RefBy.Model, spec.RefBy.Field, spec.RefBy.Value, true
 }
 
 func (l *Loader) resolveRefBy(tx *gorm.DB, modelFull string, field string, value any) (string, error) {
@@ -1328,31 +1388,20 @@ func (l *Loader) resolveRefBy(tx *gorm.DB, modelFull string, field string, value
 		return "", xfmt.Errorf("empty refBy model/field")
 	}
 
-	app, modelName, err := splitModel(modelFull)
+	spec := searchSpec{
+		Model:   modelFull,
+		Domain:  []any{[]any{field, "=", value}},
+		Limit:   1,
+		OrderBy: "id ASC",
+	}
+	ids, err := l.resolveRefBySearch(tx, spec)
 	if err != nil {
 		return "", err
 	}
-	model := &meta.IrModel{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
-		return "", xfmt.Errorf("resolve refBy model %s: %w", modelFull, err)
-	}
-	tableName := strings.TrimSpace(model.ModelTable)
-	if tableName == "" {
-		return "", xfmt.Errorf("refBy model %s has empty model_table", modelFull)
-	}
-
-	col := strcase.ToSnake(field)
-	type row struct {
-		ID string `gorm:"column:id"`
-	}
-	var r row
-	if err := tx.Table(tableName).Select("id").Where(col+" = ?", value).Limit(1).Scan(&r).Error; err != nil {
-		return "", err
-	}
-	if strings.TrimSpace(r.ID) == "" {
+	if len(ids) == 0 {
 		return "", xfmt.Errorf("refBy not found: %s where %s=%v", modelFull, field, value)
 	}
-	return strings.TrimSpace(r.ID), nil
+	return ids[0], nil
 }
 
 func (l *Loader) resolveRef(tx *gorm.DB, ref string) (string, error) {
@@ -1407,4 +1456,625 @@ func splitModel(s string) (string, string, error) {
 		return "", "", xfmt.Errorf("invalid model %q (empty app or name)", s)
 	}
 	return app, name, nil
+}
+
+// parseRefQuerySpec detects and parses a reference query from a data file value.
+// It returns (spec, true, nil) when the value is a recognized ref query shape.
+// It returns (spec, true, err) when the shape is recognized but invalid.
+// It returns (zero, false, nil) when the value is not a ref query at all.
+func parseRefQuerySpec(v any) (refQuerySpec, bool, error) {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return refQuerySpec{}, false, nil
+	}
+
+	// ref: "module.external_id"
+	if raw, ok := m["ref"]; ok {
+		s, ok := raw.(string)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("ref value must be a string")
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return refQuerySpec{}, true, xfmt.Errorf("ref value must not be empty")
+		}
+		return refQuerySpec{Kind: refQuerySpecKindRef, Ref: s}, true, nil
+	}
+
+	// refBy / ref_by
+	raw, hasRefBy := m["refBy"]
+	if !hasRefBy {
+		raw, hasRefBy = m["ref_by"]
+	}
+	if hasRefBy {
+		mm, ok := raw.(map[string]any)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy value must be an object")
+		}
+		modelRaw, ok := mm["model"]
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy missing model")
+		}
+		model, ok := modelRaw.(string)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy model must be a string")
+		}
+		model = strings.TrimSpace(model)
+		if model == "" {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy model must not be empty")
+		}
+		fieldRaw, ok := mm["field"]
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy missing field")
+		}
+		field, ok := fieldRaw.(string)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy field must be a string")
+		}
+		field = strings.TrimSpace(field)
+		if field == "" {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy field must not be empty")
+		}
+		val, ok := mm["value"]
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("refBy missing value")
+		}
+		return refQuerySpec{
+			Kind: refQuerySpecKindRefBy,
+			RefBy: refBySpec{
+				Model: model,
+				Field: field,
+				Value: val,
+			},
+		}, true, nil
+	}
+
+	// search
+	if raw, ok := m["search"]; ok {
+		mm, ok := raw.(map[string]any)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("search value must be an object")
+		}
+		spec, err := parseSearchSpec(mm)
+		if err != nil {
+			return refQuerySpec{}, true, err
+		}
+		return refQuerySpec{Kind: refQuerySpecKindSearch, Search: spec}, true, nil
+	}
+
+	// modelRef: "app.Model"
+	if raw, ok := m["modelRef"]; ok {
+		s, ok := raw.(string)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("modelRef value must be a string")
+		}
+		s, err := parseModelRefSpec(s)
+		if err != nil {
+			return refQuerySpec{}, true, err
+		}
+		return refQuerySpec{Kind: refQuerySpecKindModelRef, ModelRef: s}, true, nil
+	}
+
+	// serviceRef: "app.Model/Method"
+	if raw, ok := m["serviceRef"]; ok {
+		s, ok := raw.(string)
+		if !ok {
+			return refQuerySpec{}, true, xfmt.Errorf("serviceRef value must be a string")
+		}
+		s, err := parseServiceRefSpec(s)
+		if err != nil {
+			return refQuerySpec{}, true, err
+		}
+		return refQuerySpec{Kind: refQuerySpecKindServiceRef, ServiceRef: s}, true, nil
+	}
+
+	return refQuerySpec{}, false, nil
+}
+
+// parseModelRefSpec validates a modelRef shortcut string ("app.Model").
+func parseModelRefSpec(raw string) (string, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return "", xfmt.Errorf("modelRef value must not be empty")
+	}
+	return s, nil
+}
+
+// parseServiceRefSpec validates a serviceRef shortcut string ("app.Model/Method").
+func parseServiceRefSpec(raw string) (string, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return "", xfmt.Errorf("serviceRef value must not be empty")
+	}
+	return s, nil
+}
+
+// parseSearchSpec validates and normalizes a search spec object.
+func parseSearchSpec(raw map[string]any) (searchSpec, error) {
+	modelRaw, ok := raw["model"]
+	if !ok {
+		return searchSpec{}, xfmt.Errorf("search missing model")
+	}
+	model, ok := modelRaw.(string)
+	if !ok {
+		return searchSpec{}, xfmt.Errorf("search model must be a string")
+	}
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return searchSpec{}, xfmt.Errorf("search model must not be empty")
+	}
+
+	spec := searchSpec{Model: model}
+
+	if domainRaw, ok := raw["domain"]; ok {
+		spec.Domain = domainRaw
+	}
+	if orderByRaw, ok := raw["orderBy"]; ok {
+		orderBy, ok := orderByRaw.(string)
+		if !ok {
+			return searchSpec{}, xfmt.Errorf("search orderBy must be a string")
+		}
+		orderBy = strings.TrimSpace(orderBy)
+		if orderBy != "" && !orderByRegexp.MatchString(orderBy) {
+			return searchSpec{}, xfmt.Errorf("invalid search orderBy: %q", orderBy)
+		}
+		spec.OrderBy = orderBy
+	}
+	if limitRaw, ok := raw["limit"]; ok {
+		// JSON numbers decode as float64.
+		switch v := limitRaw.(type) {
+		case float64:
+			spec.Limit = int(v)
+		case int:
+			spec.Limit = v
+		case int64:
+			spec.Limit = int(v)
+		default:
+			return searchSpec{}, xfmt.Errorf("search limit must be a number")
+		}
+		if spec.Limit < 0 {
+			return searchSpec{}, xfmt.Errorf("search limit must be >= 0")
+		}
+	}
+
+	return spec, nil
+}
+
+// --- Search query executor ---------------------------------------------------------
+
+// resolveRefBySearch resolves a searchSpec against the database and returns matching record IDs.
+func (l *Loader) resolveRefBySearch(tx *gorm.DB, spec searchSpec) ([]string, error) {
+	_, tableName, err := resolveSearchModel(tx, spec.Model)
+	if err != nil {
+		return nil, err
+	}
+
+	q := tx.Table(tableName).Select("id")
+
+	if spec.Domain != nil {
+		q, err = applyDomainToQuery(q, spec.Domain)
+		if err != nil {
+			return nil, xfmt.Errorf("build search domain for %s: %w", spec.Model, err)
+		}
+	}
+
+	if spec.OrderBy != "" {
+		q = q.Order(spec.OrderBy)
+	}
+	if spec.Limit > 0 {
+		q = q.Limit(spec.Limit)
+	}
+
+	type row struct {
+		ID string `gorm:"column:id"`
+	}
+	var rows []row
+	if err := q.Scan(&rows).Error; err != nil {
+		return nil, xfmt.Errorf("search %s: %w", spec.Model, err)
+	}
+
+	ids := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if id := strings.TrimSpace(r.ID); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids, nil
+}
+
+// resolveSearchModel looks up a model by app.Model name and returns the model and its table name.
+func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.IrModel, string, error) {
+	app, modelName, err := splitModel(modelFull)
+	if err != nil {
+		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
+	}
+	model := &meta.IrModel{}
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+		return nil, "", xfmt.Errorf("resolve search model %s: %w", modelFull, err)
+	}
+	tableName := strings.TrimSpace(model.ModelTable)
+	if tableName == "" {
+		return nil, "", xfmt.Errorf("search model %s has empty model_table", modelFull)
+	}
+	return model, tableName, nil
+}
+
+// applyDomainToQuery translates an Odoo-style domain expression into GORM where conditions.
+//
+// Supported forms:
+//   - Leaf: ["field", "operator", value]
+//   - Explicit AND: ["&", node1, node2, ...]
+//   - Explicit OR:  ["|", node1, node2, ...]
+//   - Explicit NOT: ["!", node]
+//   - Implicit AND: [node1, node2, ...] (array of arrays)
+func applyDomainToQuery(q *gorm.DB, domain any) (*gorm.DB, error) {
+	arr, ok := domain.([]any)
+	if !ok {
+		return nil, xfmt.Errorf("domain node must be an array, got %T", domain)
+	}
+	if len(arr) == 0 {
+		return q, nil
+	}
+
+	firstStr, firstIsStr := arr[0].(string)
+
+	// Check for explicit combinators.
+	if firstIsStr {
+		switch firstStr {
+		case "&":
+			if len(arr) < 3 {
+				return nil, xfmt.Errorf("AND combinator requires at least 2 operands, got %d", len(arr)-1)
+			}
+			for _, child := range arr[1:] {
+				sub := q.Session(&gorm.Session{NewDB: true})
+				sub, err := applyDomainToQuery(sub, child)
+				if err != nil {
+					return nil, err
+				}
+				q = q.Where(sub)
+			}
+			return q, nil
+		case "|":
+			if len(arr) < 3 {
+				return nil, xfmt.Errorf("OR combinator requires at least 2 operands, got %d", len(arr)-1)
+			}
+			group := q.Session(&gorm.Session{NewDB: true})
+			for i, child := range arr[1:] {
+				sub := q.Session(&gorm.Session{NewDB: true})
+				sub, err := applyDomainToQuery(sub, child)
+				if err != nil {
+					return nil, err
+				}
+				if i == 0 {
+					group = group.Where(sub)
+				} else {
+					group = group.Or(sub)
+				}
+			}
+			return q.Where(group), nil
+		case "!":
+			if len(arr) != 2 {
+				return nil, xfmt.Errorf("NOT combinator requires exactly 1 operand, got %d", len(arr)-1)
+			}
+			sub := q.Session(&gorm.Session{NewDB: true})
+			sub, err := applyDomainToQuery(sub, arr[1])
+			if err != nil {
+				return nil, err
+			}
+			return q.Not(sub), nil
+		}
+	}
+
+	// Check if it is a leaf: first element is a string field name, second is a recognized operator.
+	if firstIsStr && len(arr) >= 2 {
+		if op, ok := arr[1].(string); ok {
+			if validateSearchOperator(op) {
+				return applyLeafNode(q, arr)
+			}
+			return nil, xfmt.Errorf("unsupported search operator: %q", op)
+		}
+	}
+
+	// Default: implicit AND of sub-nodes (each element is a leaf or nested domain).
+	for _, child := range arr {
+		sub := q.Session(&gorm.Session{NewDB: true})
+		sub, err := applyDomainToQuery(sub, child)
+		if err != nil {
+			return nil, err
+		}
+		q = q.Where(sub)
+	}
+	return q, nil
+}
+
+// applyLeafNode translates a domain leaf [field, operator, value] into a GORM condition.
+func applyLeafNode(q *gorm.DB, leaf []any) (*gorm.DB, error) {
+	switch len(leaf) {
+	case 2, 3:
+		// Valid arities.
+	default:
+		return nil, xfmt.Errorf("invalid domain leaf: expected [field, operator, value], got len=%d", len(leaf))
+	}
+	field, ok := leaf[0].(string)
+	if !ok {
+		return nil, xfmt.Errorf("domain leaf field must be a string, got %T", leaf[0])
+	}
+	field, err := normalizeSearchField(field)
+	if err != nil {
+		return nil, err
+	}
+	op, ok := leaf[1].(string)
+	if !ok {
+		return nil, xfmt.Errorf("domain leaf operator must be a string, got %T", leaf[1])
+	}
+	if !validateSearchOperator(op) {
+		return nil, xfmt.Errorf("unsupported search operator: %q", op)
+	}
+
+	hasValue := len(leaf) == 3
+	val := any(nil)
+	if hasValue {
+		val = leaf[2]
+	}
+
+	switch op {
+	case "=":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator = requires a value")
+		}
+		return q.Where(field+" = ?", val), nil
+	case "!=":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator != requires a value")
+		}
+		return q.Where(field+" != ?", val), nil
+	case ">", ">=", "<", "<=":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator %s requires a value", op)
+		}
+		return q.Where(field+" "+op+" ?", val), nil
+	case "like":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator like requires a value")
+		}
+		return q.Where(field+" LIKE ?", val), nil
+	case "ilike":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator ilike requires a value")
+		}
+		return q.Where("LOWER("+field+") LIKE LOWER(?)", val), nil
+	case "in":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator in requires a value")
+		}
+		return q.Where(field+" IN ?", val), nil
+	case "not_in":
+		if !hasValue {
+			return nil, xfmt.Errorf("operator not_in requires a value")
+		}
+		return q.Where(field+" NOT IN ?", val), nil
+	case "is_null":
+		return q.Where(field + " IS NULL"), nil
+	case "is_not_null":
+		return q.Where(field + " IS NOT NULL"), nil
+	default:
+		return nil, xfmt.Errorf("unsupported search operator: %q", op)
+	}
+}
+
+// validOperators is the whitelist of supported search domain operators.
+var validOperators = map[string]bool{
+	"=": true, "!=": true,
+	">": true, ">=": true, "<": true, "<=": true,
+	"in": true, "not_in": true,
+	"is_null": true, "is_not_null": true,
+	"like": true, "ilike": true,
+}
+
+// validateSearchOperator reports whether op is a supported domain operator.
+func validateSearchOperator(op string) bool {
+	return validOperators[op]
+}
+
+// searchFieldRegexp validates that a normalized search field contains only safe characters.
+var searchFieldRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+
+// orderByRegexp validates an ORDER BY clause to prevent SQL injection through GORM's Order().
+// Allowed: column [ASC|DESC], optionally prefixed with table., comma-separated.
+var orderByRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?(\s+(?i:ASC|DESC))?(\s*,\s*[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?(\s+(?i:ASC|DESC))?)*$`)
+
+// normalizeSearchField trims, snake_case-converts, and validates a domain field name.
+func normalizeSearchField(field string) (string, error) {
+	field = strings.TrimSpace(field)
+	if field == "" {
+		return "", xfmt.Errorf("search field must not be empty")
+	}
+	snake := strcase.ToSnake(field)
+	if !searchFieldRegexp.MatchString(snake) {
+		return "", xfmt.Errorf("invalid search field: %q", field)
+	}
+	return snake, nil
+}
+
+// --- Reference cardinality ---------------------------------------------------------
+
+// detectSearchCardinality determines the expected cardinality for a search result.
+// Explicit hints from the search spec (limit=1 + orderBy → First) take precedence;
+// otherwise the field type in meta_ir_field is consulted (ManyToMany → ManyToMany,
+// default → ManyToOne).
+func (l *Loader) detectSearchCardinality(tx *gorm.DB, modelFull string, fieldName string, raw any) refCardinality {
+	spec, ok, _ := parseRefQuerySpec(raw)
+	if ok && spec.Kind == refQuerySpecKindSearch {
+		if spec.Search.Limit == 1 && spec.Search.OrderBy != "" {
+			return refCardinalityFirst
+		}
+	}
+	return l.detectFieldCardinality(tx, modelFull, fieldName)
+}
+
+// detectFieldCardinality looks up the field type from meta_ir_field and returns the
+// corresponding cardinality. It defaults to ManyToOne when the field or model cannot
+// be resolved. Results are cached per loader instance since model/field metadata is
+// static during a bootstrap apply run.
+func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName string) refCardinality {
+	snake := strcase.ToSnake(fieldName)
+	cacheKey := modelFull + "." + snake
+
+	l.mu.RLock()
+	if c, ok := l.fieldCardinalityCache[cacheKey]; ok {
+		l.mu.RUnlock()
+		return c
+	}
+	l.mu.RUnlock()
+
+	app, modelName, err := splitModel(modelFull)
+	if err != nil {
+		l.mu.Lock()
+		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+		l.mu.Unlock()
+		return refCardinalityManyToOne
+	}
+
+	// Reuse modelCache to avoid a duplicate meta_ir_model query.
+	modelCacheKey := strcase.ToSnake(modelFull)
+
+	l.mu.RLock()
+	modelID, ok := l.modelCache[modelCacheKey]
+	l.mu.RUnlock()
+
+	if !ok {
+		model := &meta.IrModel{}
+		if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+			l.mu.Lock()
+			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+			l.mu.Unlock()
+			return refCardinalityManyToOne
+		}
+		modelID = strings.TrimSpace(model.Id.String)
+		l.mu.Lock()
+		l.modelCache[modelCacheKey] = modelID
+		l.mu.Unlock()
+	}
+
+	field := &meta.IrField{}
+	if err := tx.Where("model_id = ? AND name = ?", modelID, snake).First(field).Error; err != nil {
+		l.mu.Lock()
+		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+		l.mu.Unlock()
+		return refCardinalityManyToOne
+	}
+	var c refCardinality
+	switch field.FieldType {
+	case "ManyToMany", "OneToMany":
+		c = refCardinalityManyToMany
+	default:
+		c = refCardinalityManyToOne
+	}
+	l.mu.Lock()
+	l.fieldCardinalityCache[cacheKey] = c
+	l.mu.Unlock()
+	return c
+}
+
+// enforceReferenceCardinality validates and coerces search results according to the
+// expected cardinality.
+//
+//   - ManyToOne: exactly one result required; 0 → not_found, >1 → not_unique.
+//   - First: at least one result required (limit=1 + orderBy); returns the first.
+//   - ManyToMany: any number of results allowed; returned as []string (raw slice).
+func enforceReferenceCardinality(ids []string, cardinality refCardinality, filePath string, recordIndex int, rec record, fieldPath string, ref string) (any, error) {
+	switch cardinality {
+	case refCardinalityManyToOne:
+		if len(ids) == 0 {
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchNotFound, filePath, recordIndex, rec, fieldPath, ref, "search returned no results (expected exactly one)", nil)
+		}
+		if len(ids) > 1 {
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchNotUnique, filePath, recordIndex, rec, fieldPath, ref, "search returned multiple results (expected exactly one)", nil)
+		}
+		return ids[0], nil
+	case refCardinalityFirst:
+		if len(ids) == 0 {
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchNotFound, filePath, recordIndex, rec, fieldPath, ref, "search returned no results (expected at least one with limit=1)", nil)
+		}
+		return ids[0], nil
+	case refCardinalityManyToMany:
+		return ids, nil
+	default:
+		return ids, nil
+	}
+}
+
+// --- Shortcut reference resolvers -------------------------------------------------
+
+// resolveModelRef resolves a modelRef shortcut ("app.Model") to the IrModel ID.
+func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
+	key := strcase.ToSnake(modelRef)
+	l.mu.RLock()
+	if id, ok := l.modelCache[key]; ok {
+		l.mu.RUnlock()
+		return id, nil
+	}
+	l.mu.RUnlock()
+
+	app, modelName, err := splitModel(modelRef)
+	if err != nil {
+		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
+	}
+	model := &meta.IrModel{}
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
+	}
+	id := strings.TrimSpace(model.Id.String)
+	l.mu.Lock()
+	l.modelCache[key] = id
+	l.mu.Unlock()
+	return id, nil
+}
+
+// resolveServiceRef resolves a serviceRef shortcut ("app.Model/Method") to the IrService ID.
+// It first resolves the model via resolveModelRef, then searches meta_ir_service by model_id + name.
+func (l *Loader) resolveServiceRef(tx *gorm.DB, serviceRef string) (string, error) {
+	modelFull, method, err := splitServiceRef(serviceRef)
+	if err != nil {
+		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
+	}
+	modelID, err := l.resolveModelRef(tx, modelFull)
+	if err != nil {
+		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
+	}
+	spec := serviceRefToSearchSpec(modelID, method)
+	ids, err := l.resolveRefBySearch(tx, spec)
+	if err != nil {
+		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
+	}
+	if len(ids) == 0 {
+		return "", xfmt.Errorf("serviceRef not found: %s", serviceRef)
+	}
+	return ids[0], nil
+}
+
+// splitServiceRef splits "app.Model/Method" into ("app.Model", "Method").
+func splitServiceRef(s string) (modelFull string, method string, err error) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) != 2 {
+		return "", "", xfmt.Errorf("invalid serviceRef %q (expected app.Model/Method)", s)
+	}
+	modelFull = strings.TrimSpace(parts[0])
+	method = strings.TrimSpace(parts[1])
+	if modelFull == "" || method == "" {
+		return "", "", xfmt.Errorf("invalid serviceRef %q (empty model or method)", s)
+	}
+	return modelFull, method, nil
+}
+
+// serviceRefToSearchSpec builds a searchSpec for looking up meta_ir_service by model ID + method name.
+func serviceRefToSearchSpec(modelID string, method string) searchSpec {
+	return searchSpec{
+		Model: "meta.IrService",
+		Domain: []any{
+			"&",
+			[]any{"model_id", "=", modelID},
+			[]any{"name", "=", method},
+		},
+	}
 }

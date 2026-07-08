@@ -60,6 +60,54 @@
     },
     {
       "module": "auth",
+      "external_id": "rma_base_user_browse",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": { "serviceRef": "auth.User/Browse" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rma_base_user_get_permission_state",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": { "serviceRef": "auth.User/GetPermissionState" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rma_base_user_switch_company_scope",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": { "serviceRef": "auth.User/SwitchCompanyScope" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rma_base_user_company_search",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_base_user" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": { "serviceRef": "base.Company/Search" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
       "external_id": "rui_sys_admin_global_allow",
       "model": "auth.RoleUiResource",
       "values": {
