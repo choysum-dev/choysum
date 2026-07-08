@@ -30,11 +30,17 @@ type ApplyOptions struct {
 }
 
 type Loader struct {
-	runtimeScope scope.Scope
+	runtimeScope          scope.Scope
+	modelCache            map[string]string
+	fieldCardinalityCache map[string]refCardinality
 }
 
 func New(runtimeScope scope.Scope) *Loader {
-	return &Loader{runtimeScope: runtimeScope}
+	return &Loader{
+		runtimeScope:          runtimeScope,
+		modelCache:            make(map[string]string),
+		fieldCardinalityCache: make(map[string]refCardinality),
+	}
 }
 
 type moduleInfo struct {
@@ -1243,7 +1249,7 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 
 		// Enforce reference cardinality on search results.
 		if ids, ok := resolved.([]string); ok {
-			cardinality := detectSearchCardinality(tx, rec.Model, fieldName, raw)
+			cardinality := l.detectSearchCardinality(tx, rec.Model, fieldName, raw)
 			resolved, err = enforceReferenceCardinality(ids, cardinality, filePath, recordIndex, rec, "values."+fieldName, "search")
 			if err != nil {
 				return nil, err
@@ -1886,39 +1892,60 @@ func normalizeSearchField(field string) (string, error) {
 // Explicit hints from the search spec (limit=1 + orderBy → First) take precedence;
 // otherwise the field type in meta_ir_field is consulted (ManyToMany → ManyToMany,
 // default → ManyToOne).
-func detectSearchCardinality(tx *gorm.DB, modelFull string, fieldName string, raw any) refCardinality {
+func (l *Loader) detectSearchCardinality(tx *gorm.DB, modelFull string, fieldName string, raw any) refCardinality {
 	spec, ok, _ := parseRefQuerySpec(raw)
 	if ok && spec.Kind == refQuerySpecKindSearch {
 		if spec.Search.Limit == 1 && spec.Search.OrderBy != "" {
 			return refCardinalityFirst
 		}
 	}
-	return detectFieldCardinality(tx, modelFull, fieldName)
+	return l.detectFieldCardinality(tx, modelFull, fieldName)
 }
 
 // detectFieldCardinality looks up the field type from meta_ir_field and returns the
 // corresponding cardinality. It defaults to ManyToOne when the field or model cannot
-// be resolved.
-func detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName string) refCardinality {
+// be resolved. Results are cached per loader instance since model/field metadata is
+// static during a bootstrap apply run.
+func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName string) refCardinality {
+	snake := strcase.ToSnake(fieldName)
+	cacheKey := modelFull + "." + snake
+	if c, ok := l.fieldCardinalityCache[cacheKey]; ok {
+		return c
+	}
+
 	app, modelName, err := splitModel(modelFull)
 	if err != nil {
+		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
 		return refCardinalityManyToOne
 	}
-	model := &meta.IrModel{}
-	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
-		return refCardinalityManyToOne
+
+	// Reuse modelCache to avoid a duplicate meta_ir_model query.
+	modelCacheKey := strcase.ToSnake(modelFull)
+	modelID, ok := l.modelCache[modelCacheKey]
+	if !ok {
+		model := &meta.IrModel{}
+		if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+			return refCardinalityManyToOne
+		}
+		modelID = strings.TrimSpace(model.Id.String)
+		l.modelCache[modelCacheKey] = modelID
 	}
-	snake := strcase.ToSnake(fieldName)
+
 	field := &meta.IrField{}
-	if err := tx.Where("model_id = ? AND name = ?", model.Id.String, snake).First(field).Error; err != nil {
+	if err := tx.Where("model_id = ? AND name = ?", modelID, snake).First(field).Error; err != nil {
+		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
 		return refCardinalityManyToOne
 	}
+	var c refCardinality
 	switch field.FieldType {
 	case "ManyToMany", "OneToMany":
-		return refCardinalityManyToMany
+		c = refCardinalityManyToMany
 	default:
-		return refCardinalityManyToOne
+		c = refCardinalityManyToOne
 	}
+	l.fieldCardinalityCache[cacheKey] = c
+	return c
 }
 
 // enforceReferenceCardinality validates and coerces search results according to the
@@ -1953,6 +1980,10 @@ func enforceReferenceCardinality(ids []string, cardinality refCardinality, fileP
 
 // resolveModelRef resolves a modelRef shortcut ("app.Model") to the IrModel ID.
 func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
+	key := strcase.ToSnake(modelRef)
+	if id, ok := l.modelCache[key]; ok {
+		return id, nil
+	}
 	app, modelName, err := splitModel(modelRef)
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
@@ -1961,7 +1992,9 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
-	return strings.TrimSpace(model.Id.String), nil
+	id := strings.TrimSpace(model.Id.String)
+	l.modelCache[key] = id
+	return id, nil
 }
 
 // resolveServiceRef resolves a serviceRef shortcut ("app.Model/Method") to the IrService ID.

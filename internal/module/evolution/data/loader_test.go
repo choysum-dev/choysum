@@ -2511,3 +2511,50 @@ func TestResolveValue_ServiceRefSharesSearchExecutor(t *testing.T) {
 		t.Fatalf("direct search = %#v, %v; shortcut gave %q", ids, err, idFromShortcut)
 	}
 }
+
+func TestMetadataCache_ModelRefAndFieldCardinality(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed meta_ir_field so detectFieldCardinality has something to look up.
+	if err := db.AutoMigrate(&meta.IrField{}); err != nil {
+		t.Fatalf("migrate meta_ir_field: %v", err)
+	}
+
+	// First modelRef call should populate the model cache.
+	id1, err := l.resolveModelRef(db, "auth.User")
+	if err != nil {
+		t.Fatalf("resolveModelRef first call: %v", err)
+	}
+	if id1 == "" {
+		t.Fatal("expected non-empty model ID from first resolveModelRef")
+	}
+
+	// Second call to the same modelRef must return the cached ID without querying.
+	id2, err := l.resolveModelRef(db, "auth.User")
+	if err != nil {
+		t.Fatalf("resolveModelRef second call: %v", err)
+	}
+	if id1 != id2 {
+		t.Fatalf("cache mismatch: first=%q second=%q", id1, id2)
+	}
+
+	// First cardinality lookup populates the field cache.
+	c1 := l.detectFieldCardinality(db, "auth.User", "group_id")
+	// Second call must hit cache.
+	c2 := l.detectFieldCardinality(db, "auth.User", "group_id")
+	if c1 != c2 {
+		t.Fatalf("cardinality cache mismatch: first=%d second=%d", c1, c2)
+	}
+
+	// Different field should resolve independently.
+	_ = l.detectFieldCardinality(db, "auth.User", "name")
+	// Both model and field caches should now have entries.
+	if len(l.modelCache) == 0 {
+		t.Fatal("expected model cache to be populated after lookups")
+	}
+	if len(l.fieldCardinalityCache) == 0 {
+		t.Fatal("expected field cardinality cache to be populated after lookups")
+	}
+}
