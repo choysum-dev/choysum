@@ -1732,16 +1732,16 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 	l, db := newTestLoader(t)
 	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
 
-	// search with a valid model now resolves successfully (empty result is OK).
+	// search with a valid model now resolves successfully; resolveValue returns raw []string.
 	got, err := l.resolveValue(db, "/tmp/data.json", 3, rec, "values.role_id", map[string]any{
 		"search": map[string]any{"model": "auth.User"},
 	})
 	if err != nil {
 		t.Fatalf("search on empty table should succeed, got %v", err)
 	}
-	ids, ok := got.([]any)
+	ids, ok := got.([]string)
 	if !ok {
-		t.Fatalf("expected []any from search, got %T", got)
+		t.Fatalf("expected []string from search, got %T", got)
 	}
 	if len(ids) != 0 {
 		t.Fatalf("expected empty results, got %#v", ids)
@@ -2042,7 +2042,7 @@ func TestResolveValue_SearchDomainResolution(t *testing.T) {
 
 	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
 
-	// search via resolveValue returns []any of IDs.
+	// search via resolveValue returns raw []string; cardinality enforced by resolveAndMapValues.
 	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.user_ids", map[string]any{
 		"search": map[string]any{
 			"model":  "auth.User",
@@ -2052,12 +2052,12 @@ func TestResolveValue_SearchDomainResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveValue(search) error = %v", err)
 	}
-	arr, ok := got.([]any)
-	if !ok || len(arr) != 1 || arr[0] != "user-1" {
+	ids, ok := got.([]string)
+	if !ok || len(ids) != 1 || ids[0] != "user-1" {
 		t.Fatalf("resolveValue(search) = %#v", got)
 	}
 
-	// search with limit returns at most that many.
+	// search with limit + orderBy returns raw []string (cardinality not enforced at this level).
 	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.first", map[string]any{
 		"search": map[string]any{
 			"model":   "auth.User",
@@ -2068,8 +2068,209 @@ func TestResolveValue_SearchDomainResolution(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveValue(search limit) error = %v", err)
 	}
-	arr, ok = got.([]any)
-	if !ok || len(arr) != 1 {
+	ids, ok = got.([]string)
+	if !ok || len(ids) != 1 {
 		t.Fatalf("resolveValue(search limit) = %#v", got)
+	}
+}
+
+func TestResolveValue_ManyToOneSearchRequiresUnique(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed two users with the same group to trigger not_unique.
+	if err := db.Table("auth_group").Create(map[string]any{
+		"id": "g-dup", "created_at": time.Now(), "updated_at": time.Now(),
+	}).Error; err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+	for _, id := range []string{"u-1", "u-2"} {
+		if err := db.Table("auth_user").Create(map[string]any{
+			"id": id, "created_at": time.Now(), "updated_at": time.Now(), "group_id": "g-dup",
+		}).Error; err != nil {
+			t.Fatalf("seed user %s: %v", id, err)
+		}
+	}
+
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// ManyToOne (default) with >1 results → error.
+	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+		"GroupID": map[string]any{
+			"search": map[string]any{
+				"model":  "auth.User",
+				"domain": []any{[]any{"group_id", "=", "g-dup"}},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected not_unique error for many-to-one with multiple results")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeRefSearchNotUnique {
+		t.Fatalf("expected LoadError with RefSearchNotUnique, got %#v", err)
+	}
+	if le.FieldPath != "values.GroupID" {
+		t.Fatalf("expected FieldPath=values.GroupID, got %q", le.FieldPath)
+	}
+
+	// ManyToOne with exactly 1 result → returns the single string.
+	cols, err := l.resolveAndMapValues(db, "/tmp/data.json", 1, rec, map[string]any{
+		"GroupID": map[string]any{
+			"search": map[string]any{
+				"model":  "auth.User",
+				"domain": []any{[]any{"id", "=", "u-1"}},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveAndMapValues(unique) error = %v", err)
+	}
+	if cols["group_id"] != "u-1" {
+		t.Fatalf("expected group_id=u-1, got %#v", cols)
+	}
+}
+
+func TestResolveValue_ManyToOneSearchNotFound(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// ManyToOne (default) with 0 results → error.
+	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 5, rec, map[string]any{
+		"GroupID": map[string]any{
+			"search": map[string]any{
+				"model":  "auth.User",
+				"domain": []any{[]any{"id", "=", "nonexistent"}},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected not_found error")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeRefSearchNotFound {
+		t.Fatalf("expected LoadError with RefSearchNotFound, got %#v", err)
+	}
+	if le.FieldPath != "values.GroupID" || le.RecordIndex != 5 {
+		t.Fatalf("expected FieldPath=values.GroupID and RecordIndex=5, got %#v", le)
+	}
+}
+
+func TestResolveValue_ManyToManySearchReturnsSlice(t *testing.T) {
+	t.Parallel()
+
+	// enforceReferenceCardinality in ManyToMany mode returns the raw []string slice.
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+	ids := []string{"a", "b", "c"}
+	got, err := enforceReferenceCardinality(ids, refCardinalityManyToMany, "/tmp/data.json", 0, rec, "values.tags", "search")
+	if err != nil {
+		t.Fatalf("enforceReferenceCardinality(ManyToMany) error = %v", err)
+	}
+	slc, ok := got.([]string)
+	if !ok || len(slc) != 3 {
+		t.Fatalf("expected []string with 3 elements, got %#v", got)
+	}
+}
+
+func TestResolveValue_SearchLimitOneRequiresStableOrder(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// Seed users with ascending ids.
+	for _, id := range []string{"u-a", "u-b"} {
+		if err := db.Table("auth_user").Create(map[string]any{
+			"id": id, "created_at": time.Now(), "updated_at": time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed user %s: %v", id, err)
+		}
+	}
+
+	// First cardinality (limit=1 + orderBy) returns the first result.
+	cols, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+		"UserID": map[string]any{
+			"search": map[string]any{
+				"model":   "auth.User",
+				"limit":   float64(1),
+				"orderBy": "id ASC",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolveAndMapValues(first) error = %v", err)
+	}
+	if cols["user_id"] != "u-a" {
+		t.Fatalf("expected first user u-a, got %#v", cols)
+	}
+
+	// First cardinality with 0 results → error.
+	_, err = l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+		"UserID": map[string]any{
+			"search": map[string]any{
+				"model":   "auth.User",
+				"domain":  []any{[]any{"id", "=", "nonexistent"}},
+				"limit":   float64(1),
+				"orderBy": "id ASC",
+			},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected not_found for first cardinality with no results")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) || le.Code != LoadErrorCodeRefSearchNotFound {
+		t.Fatalf("expected RefSearchNotFound, got %#v", err)
+	}
+}
+
+func TestResolveValue_SearchCardinalityErrorIncludesLocation(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// Seed users to trigger not_unique.
+	for _, id := range []string{"ux-1", "ux-2"} {
+		if err := db.Table("auth_user").Create(map[string]any{
+			"id": id, "created_at": time.Now(), "updated_at": time.Now(),
+		}).Error; err != nil {
+			t.Fatalf("seed user %s: %v", id, err)
+		}
+	}
+
+	// ManyToOne search that hits 2 rows → error with full location info.
+	_, err := l.resolveAndMapValues(db, "/tmp/mods/auth/data.json", 7, rec, map[string]any{
+		"RoleID": map[string]any{
+			"search": map[string]any{
+				"model":  "auth.User",
+				"domain": []any{[]any{"id", "like", "ux-%"}},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected not_unique error")
+	}
+	var le *LoadError
+	if !errors.As(err, &le) {
+		t.Fatalf("expected LoadError, got %T: %v", err, err)
+	}
+	if le.Code != LoadErrorCodeRefSearchNotUnique {
+		t.Fatalf("expected Code=RefSearchNotUnique, got %q", le.Code)
+	}
+	if le.FilePath != "/tmp/mods/auth/data.json" {
+		t.Fatalf("expected FilePath preserved, got %q", le.FilePath)
+	}
+	if le.RecordIndex != 7 {
+		t.Fatalf("expected RecordIndex=7, got %d", le.RecordIndex)
+	}
+	if le.FieldPath != "values.RoleID" {
+		t.Fatalf("expected FieldPath=values.RoleID, got %q", le.FieldPath)
+	}
+	if !strings.Contains(le.Message, "multiple results") {
+		t.Fatalf("expected 'multiple results' in message, got %q", le.Message)
 	}
 }

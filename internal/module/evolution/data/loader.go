@@ -274,6 +274,15 @@ type searchSpec struct {
 	Limit   int
 }
 
+// refCardinality describes how many results a reference field expects.
+type refCardinality int
+
+const (
+	refCardinalityManyToOne  refCardinality = iota // default: exactly one result required
+	refCardinalityManyToMany                       // multiple results allowed, returned as a collection
+	refCardinalityFirst                            // explicit limit=1 + orderBy: take first, error on zero
+)
+
 type LoadErrorKind string
 
 const (
@@ -1232,6 +1241,15 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 			return nil, err
 		}
 
+		// Enforce reference cardinality on search results.
+		if ids, ok := resolved.([]string); ok {
+			cardinality := detectSearchCardinalityFromRaw(raw)
+			resolved, err = enforceReferenceCardinality(ids, cardinality, filePath, recordIndex, rec, "values."+fieldName, "search")
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		// NOTE: We insert via tx.Table(tableName).Create(map[string]any), which bypasses
 		// model-level serializers. For JSON-ish values (arrays/objects), marshal them
 		// to a JSON string explicitly so drivers like sqlite don't treat slices as
@@ -1263,6 +1281,17 @@ func normalizeSeedDBValue(v any) (any, error) {
 	switch t := v.(type) {
 	case []any, map[string]any:
 		b, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		return string(b), nil
+	case []string:
+		// Convert to []any so json.Marshal produces a JSON array.
+		arr := make([]any, len(t))
+		for i, s := range t {
+			arr[i] = s
+		}
+		b, err := json.Marshal(arr)
 		if err != nil {
 			return nil, err
 		}
@@ -1300,11 +1329,8 @@ func (l *Loader) resolveValue(tx *gorm.DB, filePath string, recordIndex int, rec
 			if err != nil {
 				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "search", "resolve search failed", err)
 			}
-			out := make([]any, len(ids))
-			for i, id := range ids {
-				out[i] = id
-			}
-			return out, nil
+			// Return raw []string; cardinality enforcement happens in resolveAndMapValues.
+			return ids, nil
 		case refQuerySpecKindModelRef:
 			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchUnsupportedOp, filePath, recordIndex, rec, fieldPath, "modelRef", "modelRef resolution not yet implemented", nil)
 		case refQuerySpecKindServiceRef:
@@ -1816,4 +1842,47 @@ func normalizeSearchField(field string) (string, error) {
 		return "", xfmt.Errorf("invalid search field: %q", field)
 	}
 	return snake, nil
+}
+
+// --- Reference cardinality ---------------------------------------------------------
+
+// detectSearchCardinalityFromRaw determines the expected cardinality from a raw data
+// file value. It re-parses the value to inspect the search spec for limit/orderBy hints.
+func detectSearchCardinalityFromRaw(raw any) refCardinality {
+	spec, ok, _ := parseRefQuerySpec(raw)
+	if !ok || spec.Kind != refQuerySpecKindSearch {
+		return refCardinalityManyToOne
+	}
+	if spec.Search.Limit == 1 && spec.Search.OrderBy != "" {
+		return refCardinalityFirst
+	}
+	return refCardinalityManyToOne
+}
+
+// enforceReferenceCardinality validates and coerces search results according to the
+// expected cardinality.
+//
+//   - ManyToOne: exactly one result required; 0 → not_found, >1 → not_unique.
+//   - First: at least one result required (limit=1 + orderBy); returns the first.
+//   - ManyToMany: any number of results allowed; returned as []string (raw slice).
+func enforceReferenceCardinality(ids []string, cardinality refCardinality, filePath string, recordIndex int, rec record, fieldPath string, ref string) (any, error) {
+	switch cardinality {
+	case refCardinalityManyToOne:
+		if len(ids) == 0 {
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchNotFound, filePath, recordIndex, rec, fieldPath, ref, "search returned no results (expected exactly one)", nil)
+		}
+		if len(ids) > 1 {
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchNotUnique, filePath, recordIndex, rec, fieldPath, ref, "search returned multiple results (expected exactly one)", nil)
+		}
+		return ids[0], nil
+	case refCardinalityFirst:
+		if len(ids) == 0 {
+			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchNotFound, filePath, recordIndex, rec, fieldPath, ref, "search returned no results (expected at least one with limit=1)", nil)
+		}
+		return ids[0], nil
+	case refCardinalityManyToMany:
+		return ids, nil
+	default:
+		return ids, nil
+	}
 }
