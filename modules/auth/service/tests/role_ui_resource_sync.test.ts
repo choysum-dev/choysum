@@ -404,3 +404,50 @@ test('RoleUiResource db check: deleted rows bypass scope xor', async () => {
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
   });
 });
+
+test('RoleUiResource: permission-only update must not rewrite scoped fields to global', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const role = await createRole(`ROLE_UI_SCOPE_SAFE_${uid('R')}`);
+    const resourceId = await createUiResource({
+      resourceId: `auth.route.scope_safe_${uid('X')}`,
+      type: 'ROUTE',
+      requires: [],
+    });
+
+    const created = await RoleUiResource.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        IrApplicationId: null,
+        IrUiResourceId: resourceId,
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+
+    const id = String((created as any)?.Id || '').trim();
+    expect(id.length > 0).toBe(true);
+
+    await RoleUiResource.UpdateById(
+      id,
+      {
+        Mode: 'deny',
+      } as any,
+      ['Id'] as any
+    );
+
+    const rows = await RoleUiResource.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'IrApplicationId', 'IrUiResourceId', 'Mode'], limit: 1 } as any
+    );
+
+    expect(rows.length).toBe(1);
+    // Scope must stay scoped to the UI resource, not become global.
+    expect(String((rows[0] as any)?.IrUiResourceId || '').trim()).toBe(resourceId);
+    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    // Mode must reflect the update.
+    expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
+  });
+});

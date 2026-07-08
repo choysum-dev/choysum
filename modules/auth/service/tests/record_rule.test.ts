@@ -804,3 +804,52 @@ test('RoleRecordRule db check: deleted rows bypass scope xor', async () => {
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
   });
 });
+
+test('RoleRecordRule: permission-only update must not rewrite scoped fields to global', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const roleId = await createRole();
+    const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+
+    const created = await RoleRecordRule.Create(
+      {
+        RoleId: { Id: roleId } as any,
+        IrModelId: modelId,
+        IrApplicationId: null,
+        Condition: { And: [['CompanyId', '=', uid('C')]] } as any,
+        PermRead: true,
+        PermWrite: false,
+        PermCreate: false,
+        PermDelete: false,
+      } as any,
+      ['Id'] as any
+    );
+
+    const id = String((created as any)?.Id || '').trim();
+    expect(id.length > 0).toBe(true);
+
+    await RoleRecordRule.UpdateById(
+      id,
+      {
+        PermRead: false,
+        PermWrite: true,
+      } as any,
+      ['Id'] as any
+    );
+
+    const rows = await RoleRecordRule.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'], limit: 1 } as any
+    );
+
+    expect(rows.length).toBe(1);
+    // Scope must stay scoped to the model, not become global.
+    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
+    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    // Permissions must reflect the update.
+    expect((rows[0] as any)?.PermRead).toBe(false);
+    expect((rows[0] as any)?.PermWrite).toBe(true);
+  });
+});

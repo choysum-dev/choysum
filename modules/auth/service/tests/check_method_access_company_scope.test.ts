@@ -631,3 +631,49 @@ test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
   });
 });
+
+test('RoleMethodAccess: permission-only update must not rewrite scoped fields to global', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const role = await createRole('ROLE_METHOD_SCOPE_SAFE');
+    const userModelId = await resolveModelId('auth', 'User');
+    const browse = await resolveService(userModelId, 'browse');
+
+    const created = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        IrServiceId: browse.id,
+        IrModelId: null,
+        IrApplicationId: null,
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+
+    const id = String((created as any)?.Id || '').trim();
+    expect(id.length > 0).toBe(true);
+
+    await RoleMethodAccess.UpdateById(
+      id,
+      {
+        Mode: 'deny',
+      } as any,
+      ['Id'] as any
+    );
+
+    const rows = await RoleMethodAccess.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'], limit: 1 } as any
+    );
+
+    expect(rows.length).toBe(1);
+    // Scope must stay scoped to the service, not become global.
+    expect(String((rows[0] as any)?.IrServiceId || '').trim()).toBe(browse.id);
+    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    // Mode must reflect the update.
+    expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
+  });
+});
