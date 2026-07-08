@@ -3,4 +3,13 @@
 
 export type { Context } from './source';
 export { getIdentity, getReqMeta, getUserId } from './source';
+export {
+  getJsCtxAndReq,
+  getCurrentReq,
+  getOrInitReqServiceState,
+  deleteReqStateKeysByPrefix,
+  invalidateJsCtxSymbolCache,
+  withBypassDepths,
+  memoizeInReqState,
+} from './request';
 export { getReadonlyCtx, getCtxValue, getActiveCompanyId, getEnabledCompanyIds, getContextLang, getContextTimezone, withContext } from './scope';

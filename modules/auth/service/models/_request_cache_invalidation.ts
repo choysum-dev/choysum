@@ -1,26 +1,48 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { uniqStrings } from '@/core/service/utils/normalization';
+import { getJsCtxAndReq, deleteReqStateKeysByPrefix, invalidateJsCtxSymbolCache } from '@/core/service/api/context';
+
+const AUTHZ_CTX_PREFIX = 'authzContext::';
+const METHOD_ACCESS_PREFIX = 'methodAccess::';
+const UI_GRANT_PREFIX = 'uiGrantExpansion::';
+
+type CacheGroup = {
+  prefix: string;
+  userScoped: boolean;
+};
+
+const AUTHZ_CACHE_GROUPS: CacheGroup[] = [
+  { prefix: AUTHZ_CTX_PREFIX, userScoped: true },
+  { prefix: METHOD_ACCESS_PREFIX, userScoped: true },
+  { prefix: UI_GRANT_PREFIX, userScoped: false },
+];
+
 type InvalidateOpts = {
   userIds?: string[];
   allUsers?: boolean;
 };
 
 /**
- * Resolve the current request context and backing request object.
+ * Build request-scoped authz context cache key.
  */
-function getJsCtxAndReq(): { jsCtx: any; req: any } {
-  const root: any = (globalThis as any)?.$choysum;
-  const jsCtx: any = (root?.request?.context ?? root?.context ?? root) as any;
-  const req: any = (jsCtx?.req ?? jsCtx?.request?.context?.req ?? jsCtx?.context?.req) as any;
-  return { jsCtx, req };
+export function buildAuthzContextCacheKey(userId: string, companyScopeKey: string): string {
+  return `${AUTHZ_CTX_PREFIX}${String(userId || '').trim()}::${String(companyScopeKey || '').trim()}`;
 }
 
 /**
- * Normalize a possibly mixed array into unique non-empty string ids.
+ * Build request-scoped method-access cache key.
  */
-function uniqStrings(xs: any[]): string[] {
-  return Array.from(new Set((Array.isArray(xs) ? xs : []).map(v => String(v ?? '').trim()).filter(Boolean)));
+export function buildMethodAccessCacheKey(userId: string, companyId: string, fullMethod: string): string {
+  return `${METHOD_ACCESS_PREFIX}${String(userId || '').trim()}::${String(companyId || '').trim()}::${String(fullMethod || '').trim()}`;
+}
+
+/**
+ * Build request-scoped UI-grant expansion cache key.
+ */
+export function buildUiGrantCacheKey(roleSignature: string): string {
+  return `${UI_GRANT_PREFIX}${String(roleSignature || '').trim()}`;
 }
 
 /**
@@ -40,34 +62,47 @@ export function invalidateAuthzRequestCaches(opts: InvalidateOpts = {}): void {
   // 1) Invalidate authz context memoization
   if (state && typeof state === 'object') {
     if (invalidateAll) {
-      for (const k of Object.keys(state)) {
-        if (k.startsWith('authzContext::')) delete state[k];
-        if (k.startsWith('methodAccess::')) delete state[k];
-        if (k.startsWith('uiGrantExpansion::')) delete state[k];
-        if (k.startsWith('uiRequiresMatch::')) delete state[k];
+      for (const group of AUTHZ_CACHE_GROUPS) {
+        deleteReqStateKeysByPrefix(state as Record<string, unknown>, group.prefix);
       }
     } else {
       for (const uid of ids) {
-        const prefix = `authzContext::${uid}::`;
-        for (const k of Object.keys(state)) {
-          if (k.startsWith(prefix)) delete state[k];
-          if (k.startsWith(`methodAccess::${uid}::`)) delete state[k];
+        for (const group of AUTHZ_CACHE_GROUPS) {
+          if (!group.userScoped) continue;
+          deleteReqStateKeysByPrefix(state as Record<string, unknown>, `${group.prefix}${uid}::`);
         }
       }
-      // uiGrantExpansion/uiRequiresMatch are role-set scoped and do not embed userId.
+      // uiGrantExpansion keys are role-set scoped and do not embed userId.
       // For safety, clear them when any targeted invalidation happens.
-      for (const k of Object.keys(state)) {
-        if (k.startsWith('uiGrantExpansion::')) delete state[k];
-        if (k.startsWith('uiRequiresMatch::')) delete state[k];
+      for (const group of AUTHZ_CACHE_GROUPS) {
+        if (group.userScoped) continue;
+        deleteReqStateKeysByPrefix(state as Record<string, unknown>, group.prefix);
       }
     }
   }
 
   // 2) Invalidate request-level record/field rule caches
-  try {
-    delete (jsCtx as any)[Symbol.for('choysum.recordrule.cache')];
-    delete (jsCtx as any)[Symbol.for('choysum.fieldrule.cache')];
-  } catch {
-    // ignore
-  }
+  invalidateJsCtxSymbolCache(jsCtx, Symbol.for('choysum.recordrule.cache'));
+  invalidateJsCtxSymbolCache(jsCtx, Symbol.for('choysum.fieldrule.cache'));
+}
+
+/**
+ * Invalidate every request-scoped authz cache entry for all users.
+ *
+ * Call this after any permission-graph mutation whose affected user set
+ * cannot be precisely determined (e.g. role definition changes, inheritance
+ * edge changes, rule-scope updates).
+ */
+export function invalidateAllAuthzCaches(): void {
+  invalidateAuthzRequestCaches({ allUsers: true });
+}
+
+/**
+ * Invalidate request-scoped authz cache entries for specific users.
+ *
+ * Prefer this over {@link invalidateAllAuthzCaches} when the mutation target
+ * is a known, narrow set of users (e.g. a role assignment).
+ */
+export function invalidateAuthzCachesForUsers(userIds: string[]): void {
+  invalidateAuthzRequestCaches({ userIds });
 }
