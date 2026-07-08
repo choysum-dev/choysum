@@ -21,6 +21,9 @@ import {
   uniqScopeIds,
   normalizePreferences,
   buildScopePreferences,
+  asBigInt,
+  toDateOnlyString,
+  formatPaddedNumber,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -222,4 +225,79 @@ test('buildScopePreferences merges active/enabled into base', () => {
     activeCompanyId: 'X',
     enabledCompanyIds: [],
   });
+});
+
+// ---------------------------------------------------------------------------
+// asBigInt
+// ---------------------------------------------------------------------------
+
+test('asBigInt returns bigint for bigint input', () => {
+  expect(asBigInt(42n)).toBe(42n);
+});
+
+test('asBigInt converts number to bigint', () => {
+  expect(asBigInt(7)).toBe(7n);
+  expect(asBigInt(3.9)).toBe(3n);
+});
+
+test('asBigInt handles $bigint wrapper', () => {
+  expect(asBigInt({ $bigint: '99' })).toBe(99n);
+});
+
+test('asBigInt handles string', () => {
+  expect(asBigInt(' 123 ')).toBe(123n);
+});
+
+test('asBigInt returns 0n for empty/falsy', () => {
+  expect(asBigInt('')).toBe(0n);
+  expect(asBigInt(null)).toBe(0n);
+  expect(asBigInt(undefined)).toBe(0n);
+  expect(asBigInt('   ')).toBe(0n);
+});
+
+// ---------------------------------------------------------------------------
+// toDateOnlyString
+// ---------------------------------------------------------------------------
+
+test('toDateOnlyString from Date', () => {
+  expect(toDateOnlyString(new Date('2024-06-15T12:00:00Z'))).toBe('2024-06-15');
+});
+
+test('toDateOnlyString from ISO string', () => {
+  expect(toDateOnlyString('2024-06-15')).toBe('2024-06-15');
+  expect(toDateOnlyString('2024-06-15T12:00:00Z')).toBe('2024-06-15');
+});
+
+test('toDateOnlyString returns empty for falsy', () => {
+  expect(toDateOnlyString('')).toBe('');
+  expect(toDateOnlyString(null)).toBe('');
+  expect(toDateOnlyString(undefined)).toBe('');
+});
+
+test('toDateOnlyString returns empty for short input', () => {
+  expect(toDateOnlyString('abc')).toBe('');
+});
+
+// ---------------------------------------------------------------------------
+// formatPaddedNumber
+// ---------------------------------------------------------------------------
+
+test('formatPaddedNumber with prefix and suffix', () => {
+  expect(formatPaddedNumber('SEQ-', '', 5, 42n)).toBe('SEQ-00042');
+});
+
+test('formatPaddedNumber without padding', () => {
+  expect(formatPaddedNumber('#', '', 0, 7n)).toBe('#7');
+});
+
+test('formatPaddedNumber with negative padding treated as zero', () => {
+  expect(formatPaddedNumber('', '', -1, 99n)).toBe('99');
+});
+
+test('formatPaddedNumber with suffix', () => {
+  expect(formatPaddedNumber('', '-END', 3, 1n)).toBe('001-END');
+});
+
+test('formatPaddedNumber undefined prefix/suffix treated as empty', () => {
+  expect(formatPaddedNumber(undefined, undefined, 3, 5n)).toBe('005');
 });

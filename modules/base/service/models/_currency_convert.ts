@@ -4,6 +4,7 @@
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
 import { normalizeDateString, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
+import { toDateOnlyString } from '@/core/service/utils/normalization';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
 
@@ -29,13 +30,6 @@ function parseDecimalInput(value: any): Decimal {
   } catch {
     throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Invalid Amount' }).withGrpcCode(GrpcCode.InvalidArgument);
   }
-}
-
-function toDateOnlyString(input: any): string {
-  if (input instanceof Date) return input.toISOString().slice(0, 10);
-  const s = String(input ?? '').trim();
-  if (!s) return '';
-  return s.length >= 10 ? s.slice(0, 10) : s;
 }
 
 async function getRateRecord(opts: {

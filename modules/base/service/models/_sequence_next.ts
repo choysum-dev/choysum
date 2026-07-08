@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { asBigInt, normalizeCodeRequired, parsePositiveInt } from './_normalizers';
+import { asBigInt, formatPaddedNumber } from '@/core/service/utils/normalization';
+import { normalizeCodeRequired, parsePositiveInt } from './_normalizers';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 
@@ -38,13 +39,8 @@ function resolveIdempotencyTtlDays(): number {
   return Math.floor(parsed);
 }
 
-function formatValue(prefix: string | undefined, suffix: string | undefined, padding: number, number: bigint): string {
-  const p = prefix ?? '';
-  const s = suffix ?? '';
-  const pad = Number.isFinite(padding) && padding > 0 ? Math.floor(padding) : 0;
-  const core = number.toString();
-  const padded = pad > 0 ? core.padStart(pad, '0') : core;
-  return `${p}${padded}${s}`;
+function formatValue(prefix: string | undefined, suffix: string | undefined, padding: number, n: bigint): string {
+  return formatPaddedNumber(prefix, suffix, padding, n);
 }
 
 async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): Promise<any | undefined> {

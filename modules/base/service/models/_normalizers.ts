@@ -118,19 +118,7 @@ export function parseBigInt(value: unknown, fieldName: string): bigint {
 }
 
 /**
- * Coerce a value to a BigInt with lenient defaults.
- * Returns 0n for empty/falsy values (suitable for reading existing DB values).
- */
-export function asBigInt(v: any): bigint {
-  if (typeof v === 'bigint') return v;
-  if (v && typeof v === 'object' && typeof v.$bigint === 'string') return BigInt(v.$bigint);
-  if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
-  const s = String(v ?? '').trim();
-  if (!s) return 0n;
-  return BigInt(s);
-}
 
-/**
  * Normalize an optional string field: trim, null/undefined → null, empty → null.
  */
 export function normalizeOptionalString(value: any): string | null {

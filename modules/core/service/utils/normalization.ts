@@ -291,3 +291,44 @@ export function buildScopePreferences(basePrefs: Record<string, unknown>, active
     enabledCompanyIds: enabled,
   };
 }
+
+/**
+ * Coerce a value to a BigInt with lenient defaults.
+ * Returns 0n for empty/falsy values (suitable for reading existing DB values).
+ */
+export function asBigInt(v: unknown): bigint {
+  if (typeof v === 'bigint') return v;
+  if (v && typeof v === 'object' && typeof (v as any).$bigint === 'string') return BigInt((v as any).$bigint);
+  if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
+  const s = String((v as any) ?? '').trim();
+  if (!s) return 0n;
+  return BigInt(s);
+}
+
+/**
+ * Extract a YYYY-MM-DD date-only string from a Date or string input.
+ * Returns empty string for falsy/empty input.
+ */
+export function toDateOnlyString(input: unknown): string {
+  if (input instanceof Date) return input.toISOString().slice(0, 10);
+  const s = String((input as any) ?? '').trim();
+  if (!s) return '';
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
+/**
+ * Format a number with optional prefix, suffix, and zero-padding.
+ *
+ * @param prefix  - string prepended before the padded number
+ * @param suffix  - string appended after the padded number
+ * @param padding - minimum digit count for zero-padding (0 = no padding)
+ * @param n       - the number to format
+ */
+export function formatPaddedNumber(prefix: string | undefined, suffix: string | undefined, padding: number, n: bigint): string {
+  const p = prefix ?? '';
+  const s = suffix ?? '';
+  const pad = Number.isFinite(padding) && padding > 0 ? Math.floor(padding) : 0;
+  const core = n.toString();
+  const padded = pad > 0 ? core.padStart(pad, '0') : core;
+  return `${p}${padded}${s}`;
+}
