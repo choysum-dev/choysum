@@ -2017,6 +2017,185 @@ func TestResolveRefBySearch_InvalidDomainNode(t *testing.T) {
 	}
 }
 
+func TestApplyLeafNode_RemainingOperatorsAndEdgeCases(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed a user for operational tests.
+	if err := db.Table("auth_user").Create(map[string]any{
+		"id": "edge-1", "created_at": time.Now(), "updated_at": time.Now(), "group_id": "x",
+	}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	// != operator
+	ids, err := l.resolveRefBySearch(db, searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "!=", "nothing"},
+		},
+	})
+	if err != nil || len(ids) != 1 || ids[0] != "edge-1" {
+		t.Fatalf("!= search = %#v, %v", ids, err)
+	}
+
+	// > operator
+	ids, err = l.resolveRefBySearch(db, searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"group_id", ">", "w"},
+		},
+	})
+	if err != nil || len(ids) != 1 || ids[0] != "edge-1" {
+		t.Fatalf("> search = %#v, %v", ids, err)
+	}
+
+	// <= operator
+	ids, err = l.resolveRefBySearch(db, searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"group_id", "<=", "x"},
+		},
+	})
+	if err != nil || len(ids) != 1 || ids[0] != "edge-1" {
+		t.Fatalf("<= search = %#v, %v", ids, err)
+	}
+
+	// ilike operator
+	ids, err = l.resolveRefBySearch(db, searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "ilike", "EDGE%"},
+		},
+	})
+	if err != nil || len(ids) != 1 || ids[0] != "edge-1" {
+		t.Fatalf("ilike search = %#v, %v", ids, err)
+	}
+
+	// not_in operator
+	ids, err = l.resolveRefBySearch(db, searchSpec{
+		Model: "auth.User",
+		Domain: []any{
+			[]any{"id", "not_in", []string{"other", "nope"}},
+		},
+	})
+	if err != nil || len(ids) != 1 || ids[0] != "edge-1" {
+		t.Fatalf("not_in search = %#v, %v", ids, err)
+	}
+
+	// --- Error branches in applyLeafNode ---
+
+	// Invalid leaf arity: too many elements.
+	_, err = l.resolveRefBySearch(db, searchSpec{
+		Model:  "auth.User",
+		Domain: []any{[]any{"id", "=", "x", "extra"}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "invalid domain leaf") {
+		t.Fatalf("expected too-many-elements leaf error, got %v", err)
+	}
+
+	// Missing value for operator that requires it.
+	_, err = l.resolveRefBySearch(db, searchSpec{
+		Model:  "auth.User",
+		Domain: []any{[]any{"id", "!="}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "requires a value") {
+		t.Fatalf("expected missing-value error for !=, got %v", err)
+	}
+}
+
+func TestNormalizeSearchField_EdgeCases(t *testing.T) {
+	// Empty field
+	_, err := normalizeSearchField("")
+	if err == nil || !strings.Contains(err.Error(), "must not be empty") {
+		t.Fatalf("expected empty field error, got %v", err)
+	}
+
+	// Invalid characters
+	_, err = normalizeSearchField("id; DROP")
+	if err == nil || !strings.Contains(err.Error(), "invalid search field") {
+		t.Fatalf("expected invalid field error, got %v", err)
+	}
+
+	// Valid snake_case conversion
+	f, err := normalizeSearchField("GroupId")
+	if err != nil || f != "group_id" {
+		t.Fatalf("normalizeSearchField(GroupId) = %q, %v", f, err)
+	}
+}
+
+func TestResolveServiceRef_ErrorPaths(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Invalid format (no slash)
+	_, err := l.resolveServiceRef(db, "invalid")
+	if err == nil || !strings.Contains(err.Error(), "invalid serviceRef") {
+		t.Fatalf("expected invalid format error, got %v", err)
+	}
+
+	// Valid format but model does not exist.
+	_, err = l.resolveServiceRef(db, "missing.Model/Method")
+	if err == nil || !strings.Contains(err.Error(), "resolve serviceRef") {
+		t.Fatalf("expected model-not-found error, got %v", err)
+	}
+}
+
+func TestDetectFieldCardinality_FallbackPaths(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Non-existent model returns ManyToOne default.
+	c := l.detectFieldCardinality(db, "nonexistent.Model", "any_field")
+	if c != refCardinalityManyToOne {
+		t.Fatalf("expected ManyToOne fallback for missing model, got %d", c)
+	}
+
+	// Model exists but field not in meta_ir_field returns ManyToOne default.
+	c = l.detectFieldCardinality(db, "auth.User", "nonexistent_field")
+	if c != refCardinalityManyToOne {
+		t.Fatalf("expected ManyToOne fallback for missing field, got %d", c)
+	}
+}
+
+func TestEnforceReferenceCardinality_EdgeCases(t *testing.T) {
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// 0 results on ManyToOne
+	_, err := enforceReferenceCardinality([]string{}, refCardinalityManyToOne, "/tmp/d.json", 0, rec, "values.x", "search")
+	if err == nil || !strings.Contains(err.Error(), "no results") {
+		t.Fatalf("expected not_found error, got %v", err)
+	}
+
+	// >1 results on ManyToOne
+	_, err = enforceReferenceCardinality([]string{"a", "b"}, refCardinalityManyToOne, "/tmp/d.json", 0, rec, "values.x", "search")
+	if err == nil || !strings.Contains(err.Error(), "multiple") {
+		t.Fatalf("expected not_unique error, got %v", err)
+	}
+
+	// 0 results on First
+	_, err = enforceReferenceCardinality([]string{}, refCardinalityFirst, "/tmp/d.json", 0, rec, "values.x", "search")
+	if err == nil || !strings.Contains(err.Error(), "no results") {
+		t.Fatalf("expected not_found error for First, got %v", err)
+	}
+
+	// First returns first element
+	res, err := enforceReferenceCardinality([]string{"first", "second"}, refCardinalityFirst, "/tmp/d.json", 0, rec, "values.x", "search")
+	if err != nil || res != "first" {
+		t.Fatalf("expected first element, got %#v, %v", res, err)
+	}
+
+	// ManyToMany returns slice as-is
+	res, err = enforceReferenceCardinality([]string{"a", "b"}, refCardinalityManyToMany, "/tmp/d.json", 0, rec, "values.x", "search")
+	ids, ok := res.([]string)
+	if err != nil || !ok || len(ids) != 2 {
+		t.Fatalf("expected full slice for ManyToMany, got %#v, %v", res, err)
+	}
+}
+
 func TestResolveRefBySearch_ComparisonOperators(t *testing.T) {
 	t.Parallel()
 
