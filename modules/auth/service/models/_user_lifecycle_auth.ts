@@ -145,53 +145,78 @@ async function ensureBaseUserRpcAllow(roleId: string): Promise<void> {
     return { id: hit?.Id || '', name: hit?.Name || '' };
   };
 
+  const resolvedServiceIds: string[] = [];
   for (const t of targets) {
     const modelId = await resolveModelId(t.app, t.model);
     if (!modelId) continue;
 
     const svc = await resolveService(modelId, t.method);
     if (!svc.id) continue;
+    resolvedServiceIds.push(svc.id);
+  }
 
-    const existing = await RoleMethodAccess.Search(
-      {
-        And: [
-          ['RoleId', '=', rid],
-          ['IrServiceId', '=', svc.id],
-          ['IrModelId', 'is', null],
-          ['IrApplicationId', 'is', null],
-        ],
-      } as any,
-      { fields: ['Id', 'Mode'], limit: 1 } as any
-    );
+  const serviceIds = Array.from(new Set(resolvedServiceIds));
+  if (serviceIds.length === 0) return;
 
-    if (!existing || existing.length === 0) {
-      await RoleMethodAccess.Create(
-        {
-          RoleId: { Id: rid } as any,
-          IrServiceId: svc.id,
-          IrModelId: null,
-          IrApplicationId: null,
-          Mode: 'allow',
-        } as any,
-        ['Id'] as any
-      );
-    } else {
-      const row: any = existing[0];
-      const id = String(row?.Id || '').trim();
-      const mode = String(row?.Mode || '').toLowerCase();
-      if (id && mode !== 'allow') {
-        await RoleMethodAccess.UpdateById(
-          id,
-          {
-            IrServiceId: svc.id,
-            IrModelId: null,
-            IrApplicationId: null,
-            Mode: 'allow',
-          } as any,
-          ['Id'] as any
-        );
-      }
+  const existingRows = await RoleMethodAccess.Search(
+    {
+      And: [
+        ['RoleId', '=', rid],
+        ['IrServiceId', 'in', serviceIds],
+        ['IrModelId', 'is', null],
+        ['IrApplicationId', 'is', null],
+      ],
+    } as any,
+    { fields: ['Id', 'IrServiceId', 'Mode'], limit: Math.max(16, serviceIds.length * 2) } as any
+  );
+
+  const existingByServiceId = new Map<string, any>();
+  for (const row of existingRows || []) {
+    const serviceId = String((row as any)?.IrServiceId || '').trim();
+    if (!serviceId) continue;
+    if (!existingByServiceId.has(serviceId)) {
+      existingByServiceId.set(serviceId, row as any);
     }
+  }
+
+  const createPayloads: any[] = [];
+  const updatePayloads: Array<{ id: string; serviceId: string }> = [];
+
+  for (const serviceId of serviceIds) {
+    const existing = existingByServiceId.get(serviceId);
+    if (!existing) {
+      createPayloads.push({
+        RoleId: { Id: rid } as any,
+        IrServiceId: serviceId,
+        IrModelId: null,
+        IrApplicationId: null,
+        Mode: 'allow',
+      });
+      continue;
+    }
+
+    const id = String((existing as any)?.Id || '').trim();
+    const mode = String((existing as any)?.Mode || '').toLowerCase();
+    if (id && mode !== 'allow') {
+      updatePayloads.push({ id, serviceId });
+    }
+  }
+
+  if (createPayloads.length > 0) {
+    await RoleMethodAccess.CreateMany(createPayloads as any, ['Id'] as any);
+  }
+
+  for (const item of updatePayloads) {
+    await RoleMethodAccess.UpdateById(
+      item.id,
+      {
+        IrServiceId: item.serviceId,
+        IrModelId: null,
+        IrApplicationId: null,
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
   }
 }
 

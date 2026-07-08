@@ -76,9 +76,7 @@ export async function buildAclAggregation(
 
   // 4.1) Resolve service -> model + method & 4.3) Resolve applicationId -> applicationName
   const [services, apps] = await Promise.all([
-    irServiceIds.length > 0
-      ? IrService.Search(['Id', 'in', irServiceIds] as any, { fields: ['Id', 'ModelId', 'Name'], limit: 50000 })
-      : Promise.resolve([]),
+    irServiceIds.length > 0 ? IrService.Search(['Id', 'in', irServiceIds] as any, { fields: ['Id', 'ModelId', 'Name'], limit: 50000 }) : Promise.resolve([]),
     irApplicationIds.length > 0
       ? IrApplication.Search(['Id', 'in', irApplicationIds] as any, { fields: ['Id', 'Name'], limit: 50000 } as any)
       : Promise.resolve([]),
