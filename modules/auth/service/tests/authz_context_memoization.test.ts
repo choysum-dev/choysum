@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { withContext as withModelContext } from '@/core/service/api/context';
+import { getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import User from '@/auth/service/models/user';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
@@ -498,4 +499,23 @@ test('P3-1: same request UserRole.CreateMany invalidates authz context', async (
 
   expect(out.before).toBe(false);
   expect(out.after).toBe(true);
+});
+
+test('P3-2: memoizeInReqState caches undefined values to avoid repeated factory calls', async () => {
+  let callCount = 0;
+  const state: Record<string, unknown> = {};
+
+  const factory = async (): Promise<string | undefined> => {
+    callCount++;
+    return undefined;
+  };
+
+  const v1 = await memoizeInReqState(state, 'testUndefinedKey', factory);
+  expect(v1).toBeUndefined();
+  expect(callCount).toBe(1);
+
+  const v2 = await memoizeInReqState(state, 'testUndefinedKey', factory);
+  expect(v2).toBeUndefined();
+  // factory must not be called again because undefined is a cacheable resolved value.
+  expect(callCount).toBe(1);
 });

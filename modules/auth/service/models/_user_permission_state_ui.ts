@@ -209,14 +209,26 @@ export async function buildUiPermissionProjection(
     const bucket = ensureBucket(byCompany, companyKey);
     const ui = bucket.ui!;
 
-    const hasGlobalAllow = acl.companyGlobalAllow.has(companyKey);
-    const hasGlobalDeny = acl.companyGlobalDeny.has(companyKey);
-    const hasExplicitGlobalUiAllow = explicitGlobalUiAllowByCompany.has(companyKey);
-    const hasExplicitGlobalUiDeny = explicitGlobalUiDenyByCompany.has(companyKey);
-    const explicitAppAllow = explicitAppUiAllowByCompany.get(companyKey) ?? new Set<string>();
-    const explicitAppDeny = explicitAppUiDenyByCompany.get(companyKey) ?? new Set<string>();
-    const explicitResourceAllow = explicitResourceUiAllowByCompany.get(companyKey) ?? new Set<string>();
-    const explicitResourceDeny = explicitResourceUiDenyByCompany.get(companyKey) ?? new Set<string>();
+    const hasGlobalAllow = acl.companyGlobalAllow.has(companyKey) || (companyKey !== '*' && acl.companyGlobalAllow.has('*'));
+    const hasGlobalDeny = acl.companyGlobalDeny.has(companyKey) || (companyKey !== '*' && acl.companyGlobalDeny.has('*'));
+    const hasExplicitGlobalUiAllow = explicitGlobalUiAllowByCompany.has(companyKey) || (companyKey !== '*' && explicitGlobalUiAllowByCompany.has('*'));
+    const hasExplicitGlobalUiDeny = explicitGlobalUiDenyByCompany.has(companyKey) || (companyKey !== '*' && explicitGlobalUiDenyByCompany.has('*'));
+    const explicitAppAllow = new Set<string>([
+      ...(explicitAppUiAllowByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (explicitAppUiAllowByCompany.get('*') ?? []) : []),
+    ]);
+    const explicitAppDeny = new Set<string>([
+      ...(explicitAppUiDenyByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (explicitAppUiDenyByCompany.get('*') ?? []) : []),
+    ]);
+    const explicitResourceAllow = new Set<string>([
+      ...(explicitResourceUiAllowByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (explicitResourceUiAllowByCompany.get('*') ?? []) : []),
+    ]);
+    const explicitResourceDeny = new Set<string>([
+      ...(explicitResourceUiDenyByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (explicitResourceUiDenyByCompany.get('*') ?? []) : []),
+    ]);
     const hasAnyExplicitUiDeny = hasExplicitGlobalUiDeny || explicitAppDeny.size > 0 || explicitResourceDeny.size > 0;
 
     const isExplicitUiDenied = (resource: { dbId: string; resourceId: string; appId: string | null }): boolean =>
@@ -239,8 +251,14 @@ export async function buildUiPermissionProjection(
       continue;
     }
 
-    const requiresAllowSet = acl.requiresAllowKeysByCompany.get(companyKey) ?? new Set<string>();
-    const requiresDenySet = acl.requiresDenyKeysByCompany.get(companyKey) ?? new Set<string>();
+    const requiresAllowSet = new Set<string>([
+      ...(acl.requiresAllowKeysByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (acl.requiresAllowKeysByCompany.get('*') ?? []) : []),
+    ]);
+    const requiresDenySet = new Set<string>([
+      ...(acl.requiresDenyKeysByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (acl.requiresDenyKeysByCompany.get('*') ?? []) : []),
+    ]);
 
     const routeSet = new Set<string>();
     const menuSet = new Set<string>();

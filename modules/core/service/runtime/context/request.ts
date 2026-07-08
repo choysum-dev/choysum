@@ -109,20 +109,18 @@ export async function memoizeInReqState<T>(state: Record<string, unknown> | unde
 
   if (key in state) {
     const existing = state[key];
-    if (existing !== undefined) {
-      if (typeof (existing as { then?: unknown })?.then === 'function') {
-        const v = await (existing as Promise<T>);
-        try {
-          if (state[key] === existing) {
-            state[key] = v;
-          }
-        } catch {
-          // ignore
+    if (typeof (existing as { then?: unknown })?.then === 'function') {
+      const v = await (existing as Promise<T>);
+      try {
+        if (state[key] === existing) {
+          state[key] = v;
         }
-        return v;
+      } catch {
+        // ignore
       }
-      return existing as T;
+      return v;
     }
+    return existing as T;
   }
 
   const p = factory()

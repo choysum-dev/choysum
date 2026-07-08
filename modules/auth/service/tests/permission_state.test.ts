@@ -1308,3 +1308,49 @@ test('PermissionState: bootstrap base.user gets home baseline menu', async () =>
   expect((companyUi.menus ?? []).includes('web.menu.home')).toBe(true);
   expect((companyUi.routes ?? []).includes('web.route.home')).toBe(true);
 });
+
+test('PermissionState: global role ui grants appear under specific company scope (fallback from *)', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+
+  setupAllowlistForFixtures();
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const userId = await createUser(c1.Id);
+      setIdentity(userId);
+
+      const r = await createRole('ROLE_STAR_FALLBACK');
+      // global role assignment (CompanyId: null)
+      await UserRole.Create(
+        {
+          UserId: { Id: userId } as any,
+          RoleId: { Id: r.id } as any,
+          CompanyId: null as any,
+        } as any,
+        ['Id'] as any
+      );
+
+      await createUiResource({
+        resourceId: 'auth.route.star_fallback_route',
+        type: 'ROUTE',
+        requires: ['rpc:/auth.User/DefinitelyMissingMethod'],
+      });
+
+      await createRoleUiResourceGrant({ roleId: r.id, resourceId: 'auth.route.star_fallback_route' });
+
+      disableAllowlist();
+      const ps = await User.GetPermissionState();
+      return { ps };
+    },
+    { merge: false }
+  );
+
+  // Global scope should list the route.
+  const globalUi = out.ps.byCompany['*']?.ui ?? {};
+  expect((globalUi.routes ?? []).includes('auth.route.star_fallback_route')).toBe(true);
+
+  // Specific company scope must also inherit the global grant via '*' fallback.
+  const companyUi = out.ps.byCompany[c1.Id]?.ui ?? {};
+  expect((companyUi.routes ?? []).includes('auth.route.star_fallback_route')).toBe(true);
+});
