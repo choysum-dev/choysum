@@ -1286,12 +1286,7 @@ func normalizeSeedDBValue(v any) (any, error) {
 		}
 		return string(b), nil
 	case []string:
-		// Convert to []any so json.Marshal produces a JSON array.
-		arr := make([]any, len(t))
-		for i, s := range t {
-			arr[i] = s
-		}
-		b, err := json.Marshal(arr)
+		b, err := json.Marshal(t)
 		if err != nil {
 			return nil, err
 		}
@@ -1620,6 +1615,8 @@ func parseSearchSpec(raw map[string]any) (searchSpec, error) {
 			spec.Limit = int(v)
 		case int:
 			spec.Limit = v
+		case int64:
+			spec.Limit = int(v)
 		default:
 			return searchSpec{}, xfmt.Errorf("search limit must be a number")
 		}
@@ -1700,7 +1697,10 @@ func resolveSearchModel(tx *gorm.DB, modelFull string) (*meta.IrModel, string, e
 //   - Implicit AND: [node1, node2, ...] (array of arrays)
 func applyDomainToQuery(q *gorm.DB, domain any) (*gorm.DB, error) {
 	arr, ok := domain.([]any)
-	if !ok || len(arr) == 0 {
+	if !ok {
+		return nil, xfmt.Errorf("domain node must be an array, got %T", domain)
+	}
+	if len(arr) == 0 {
 		return q, nil
 	}
 
@@ -1710,6 +1710,9 @@ func applyDomainToQuery(q *gorm.DB, domain any) (*gorm.DB, error) {
 	if firstIsStr {
 		switch firstStr {
 		case "&":
+			if len(arr) < 3 {
+				return nil, xfmt.Errorf("AND combinator requires at least 2 operands, got %d", len(arr)-1)
+			}
 			for _, child := range arr[1:] {
 				sub := q.Session(&gorm.Session{NewDB: true})
 				sub, err := applyDomainToQuery(sub, child)
@@ -1720,6 +1723,10 @@ func applyDomainToQuery(q *gorm.DB, domain any) (*gorm.DB, error) {
 			}
 			return q, nil
 		case "|":
+			if len(arr) < 3 {
+				return nil, xfmt.Errorf("OR combinator requires at least 2 operands, got %d", len(arr)-1)
+			}
+			group := q.Session(&gorm.Session{NewDB: true})
 			for i, child := range arr[1:] {
 				sub := q.Session(&gorm.Session{NewDB: true})
 				sub, err := applyDomainToQuery(sub, child)
@@ -1727,12 +1734,12 @@ func applyDomainToQuery(q *gorm.DB, domain any) (*gorm.DB, error) {
 					return nil, err
 				}
 				if i == 0 {
-					q = q.Where(sub)
+					group = group.Where(sub)
 				} else {
-					q = q.Or(sub)
+					group = group.Or(sub)
 				}
 			}
-			return q, nil
+			return q.Where(group), nil
 		case "!":
 			if len(arr) != 2 {
 				return nil, xfmt.Errorf("NOT combinator requires exactly 1 operand, got %d", len(arr)-1)
@@ -1770,7 +1777,10 @@ func applyDomainToQuery(q *gorm.DB, domain any) (*gorm.DB, error) {
 
 // applyLeafNode translates a domain leaf [field, operator, value] into a GORM condition.
 func applyLeafNode(q *gorm.DB, leaf []any) (*gorm.DB, error) {
-	if len(leaf) < 2 || len(leaf) > 3 {
+	switch len(leaf) {
+	case 2, 3:
+		// Valid arities.
+	default:
 		return nil, xfmt.Errorf("invalid domain leaf: expected [field, operator, value], got len=%d", len(leaf))
 	}
 	field, ok := leaf[0].(string)

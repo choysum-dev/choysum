@@ -893,6 +893,7 @@ func TestValueResolutionHelpers(t *testing.T) {
 			{name: "nil", in: nil, want: nil},
 			{name: "scalar", in: 12, want: 12},
 			{name: "slice", in: []any{"a", true}, want: `["a",true]`},
+			{name: "string slice", in: []string{"a", "b"}, want: `["a","b"]`},
 			{name: "map", in: map[string]any{"enabled": true}, want: `{"enabled":true}`},
 		}
 		for _, tc := range cases {
@@ -1681,6 +1682,17 @@ func TestParseRefQuerySpec_SearchShapeValidation(t *testing.T) {
 	if !ok || err == nil {
 		t.Fatalf("expected error for negative limit, got %v, %v", ok, err)
 	}
+
+	// Search with int64 limit
+	spec, ok, err = parseRefQuerySpec(map[string]any{
+		"search": map[string]any{"model": "auth.User", "limit": int64(2)},
+	})
+	if err != nil || !ok {
+		t.Fatalf("expected int64 limit to parse, got %v, %v", ok, err)
+	}
+	if spec.Search.Limit != 2 {
+		t.Fatalf("expected int64 limit=2, got %#v", spec.Search)
+	}
 }
 
 func TestParseRefQuerySpec_ModelRefAndServiceRefShapeValidation(t *testing.T) {
@@ -1928,6 +1940,44 @@ func TestResolveRefBySearch_InvalidFieldName(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "invalid search field") {
 		t.Fatalf("expected invalid field message, got %v", err)
+	}
+}
+
+func TestResolveRefBySearch_InvalidDomainNode(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Non-array root node should fail fast instead of being silently ignored.
+	_, err := l.resolveRefBySearch(db, searchSpec{Model: "auth.User", Domain: "bad-domain"})
+	if err == nil || !strings.Contains(err.Error(), "domain node must be an array") {
+		t.Fatalf("expected invalid root domain node error, got %v", err)
+	}
+
+	// Non-array child node inside implicit AND should also fail.
+	_, err = l.resolveRefBySearch(db, searchSpec{
+		Model:  "auth.User",
+		Domain: []any{[]any{"id", "=", "x"}, "bad-child"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "domain node must be an array") {
+		t.Fatalf("expected invalid child domain node error, got %v", err)
+	}
+
+	// OR/AND must have at least two operands.
+	_, err = l.resolveRefBySearch(db, searchSpec{
+		Model:  "auth.User",
+		Domain: []any{"|", []any{"id", "=", "x"}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "OR combinator requires at least 2 operands") {
+		t.Fatalf("expected OR operand arity error, got %v", err)
+	}
+
+	_, err = l.resolveRefBySearch(db, searchSpec{
+		Model:  "auth.User",
+		Domain: []any{"&", []any{"id", "=", "x"}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "AND combinator requires at least 2 operands") {
+		t.Fatalf("expected AND operand arity error, got %v", err)
 	}
 }
 
