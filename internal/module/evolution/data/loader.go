@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	metadata "github.com/choysum-dev/choysum/internal/module/metadata"
@@ -31,6 +32,7 @@ type ApplyOptions struct {
 
 type Loader struct {
 	runtimeScope          scope.Scope
+	mu                    sync.RWMutex
 	modelCache            map[string]string
 	fieldCardinalityCache map[string]refCardinality
 }
@@ -1917,32 +1919,48 @@ func (l *Loader) detectSearchCardinality(tx *gorm.DB, modelFull string, fieldNam
 func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName string) refCardinality {
 	snake := strcase.ToSnake(fieldName)
 	cacheKey := modelFull + "." + snake
+
+	l.mu.RLock()
 	if c, ok := l.fieldCardinalityCache[cacheKey]; ok {
+		l.mu.RUnlock()
 		return c
 	}
+	l.mu.RUnlock()
 
 	app, modelName, err := splitModel(modelFull)
 	if err != nil {
+		l.mu.Lock()
 		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+		l.mu.Unlock()
 		return refCardinalityManyToOne
 	}
 
 	// Reuse modelCache to avoid a duplicate meta_ir_model query.
 	modelCacheKey := strcase.ToSnake(modelFull)
+
+	l.mu.RLock()
 	modelID, ok := l.modelCache[modelCacheKey]
+	l.mu.RUnlock()
+
 	if !ok {
 		model := &meta.IrModel{}
 		if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+			l.mu.Lock()
 			l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+			l.mu.Unlock()
 			return refCardinalityManyToOne
 		}
 		modelID = strings.TrimSpace(model.Id.String)
+		l.mu.Lock()
 		l.modelCache[modelCacheKey] = modelID
+		l.mu.Unlock()
 	}
 
 	field := &meta.IrField{}
 	if err := tx.Where("model_id = ? AND name = ?", modelID, snake).First(field).Error; err != nil {
+		l.mu.Lock()
 		l.fieldCardinalityCache[cacheKey] = refCardinalityManyToOne
+		l.mu.Unlock()
 		return refCardinalityManyToOne
 	}
 	var c refCardinality
@@ -1952,7 +1970,9 @@ func (l *Loader) detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName
 	default:
 		c = refCardinalityManyToOne
 	}
+	l.mu.Lock()
 	l.fieldCardinalityCache[cacheKey] = c
+	l.mu.Unlock()
 	return c
 }
 
@@ -1989,9 +2009,13 @@ func enforceReferenceCardinality(ids []string, cardinality refCardinality, fileP
 // resolveModelRef resolves a modelRef shortcut ("app.Model") to the IrModel ID.
 func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 	key := strcase.ToSnake(modelRef)
+	l.mu.RLock()
 	if id, ok := l.modelCache[key]; ok {
+		l.mu.RUnlock()
 		return id, nil
 	}
+	l.mu.RUnlock()
+
 	app, modelName, err := splitModel(modelRef)
 	if err != nil {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
@@ -2001,7 +2025,9 @@ func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
 		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
 	}
 	id := strings.TrimSpace(model.Id.String)
+	l.mu.Lock()
 	l.modelCache[key] = id
+	l.mu.Unlock()
 	return id, nil
 }
 
