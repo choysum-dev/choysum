@@ -400,15 +400,24 @@ func newDefaultLoaderScope(t *testing.T) scope.Scope {
 
 func seedLoaderTestSchema(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	if err := db.AutoMigrate(&meta.IrModule{}, &meta.IrModel{}, &metadata.IrModelData{}, &testAuthGroup{}, &testAuthUser{}, &testModuleDependency{}); err != nil {
+	if err := db.AutoMigrate(&meta.IrModule{}, &meta.IrModel{}, &meta.IrField{}, &metadata.IrModelData{}, &testAuthGroup{}, &testAuthUser{}, &testModuleDependency{}); err != nil {
 		t.Fatalf("migrate test schema: %v", err)
 	}
 	// Seed models so ApplyModule can resolve model -> table.
-	if err := db.Create(&meta.IrModel{Name: "group", Application: "auth", Path: "/tmp", ModelTable: "auth_group"}).Error; err != nil {
+	authGroupModel := &meta.IrModel{Name: "group", Application: "auth", Path: "/tmp", ModelTable: "auth_group"}
+	if err := db.Create(authGroupModel).Error; err != nil {
 		t.Fatalf("seed meta_ir_model auth.group: %v", err)
 	}
-	if err := db.Create(&meta.IrModel{Name: "User", Application: "auth", Path: "/tmp", ModelTable: "auth_user"}).Error; err != nil {
+	authUserModel := &meta.IrModel{Name: "User", Application: "auth", Path: "/tmp", ModelTable: "auth_user"}
+	if err := db.Create(authUserModel).Error; err != nil {
 		t.Fatalf("seed meta_ir_model auth.User: %v", err)
+	}
+
+	// Seed field definitions so detectFieldCardinality can resolve ManyToOne/ManyToMany.
+	if err := db.Create(&meta.IrField{
+		Name: "group_id", FieldType: "ManyToOne", ModelId: authUserModel.Id,
+	}).Error; err != nil {
+		t.Fatalf("seed meta_ir_field auth.User.group_id: %v", err)
 	}
 
 	auth := &meta.IrModule{Name: "auth", ApplicationStr: "auth", Path: "/tmp"}

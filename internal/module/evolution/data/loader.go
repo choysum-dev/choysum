@@ -1243,7 +1243,7 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 
 		// Enforce reference cardinality on search results.
 		if ids, ok := resolved.([]string); ok {
-			cardinality := detectSearchCardinalityFromRaw(raw)
+			cardinality := detectSearchCardinality(tx, rec.Model, fieldName, raw)
 			resolved, err = enforceReferenceCardinality(ids, cardinality, filePath, recordIndex, rec, "values."+fieldName, "search")
 			if err != nil {
 				return nil, err
@@ -1545,9 +1545,9 @@ func parseRefQuerySpec(v any) (refQuerySpec, bool, error) {
 		if !ok {
 			return refQuerySpec{}, true, xfmt.Errorf("modelRef value must be a string")
 		}
-		s = strings.TrimSpace(s)
-		if s == "" {
-			return refQuerySpec{}, true, xfmt.Errorf("modelRef value must not be empty")
+		s, err := parseModelRefSpec(s)
+		if err != nil {
+			return refQuerySpec{}, true, err
 		}
 		return refQuerySpec{Kind: refQuerySpecKindModelRef, ModelRef: s}, true, nil
 	}
@@ -1558,14 +1558,32 @@ func parseRefQuerySpec(v any) (refQuerySpec, bool, error) {
 		if !ok {
 			return refQuerySpec{}, true, xfmt.Errorf("serviceRef value must be a string")
 		}
-		s = strings.TrimSpace(s)
-		if s == "" {
-			return refQuerySpec{}, true, xfmt.Errorf("serviceRef value must not be empty")
+		s, err := parseServiceRefSpec(s)
+		if err != nil {
+			return refQuerySpec{}, true, err
 		}
 		return refQuerySpec{Kind: refQuerySpecKindServiceRef, ServiceRef: s}, true, nil
 	}
 
 	return refQuerySpec{}, false, nil
+}
+
+// parseModelRefSpec validates a modelRef shortcut string ("app.Model").
+func parseModelRefSpec(raw string) (string, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return "", xfmt.Errorf("modelRef value must not be empty")
+	}
+	return s, nil
+}
+
+// parseServiceRefSpec validates a serviceRef shortcut string ("app.Model/Method").
+func parseServiceRefSpec(raw string) (string, error) {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return "", xfmt.Errorf("serviceRef value must not be empty")
+	}
+	return s, nil
 }
 
 // parseSearchSpec validates and normalizes a search spec object.
@@ -1854,17 +1872,43 @@ func normalizeSearchField(field string) (string, error) {
 
 // --- Reference cardinality ---------------------------------------------------------
 
-// detectSearchCardinalityFromRaw determines the expected cardinality from a raw data
-// file value. It re-parses the value to inspect the search spec for limit/orderBy hints.
-func detectSearchCardinalityFromRaw(raw any) refCardinality {
+// detectSearchCardinality determines the expected cardinality for a search result.
+// Explicit hints from the search spec (limit=1 + orderBy → First) take precedence;
+// otherwise the field type in meta_ir_field is consulted (ManyToMany → ManyToMany,
+// default → ManyToOne).
+func detectSearchCardinality(tx *gorm.DB, modelFull string, fieldName string, raw any) refCardinality {
 	spec, ok, _ := parseRefQuerySpec(raw)
-	if !ok || spec.Kind != refQuerySpecKindSearch {
+	if ok && spec.Kind == refQuerySpecKindSearch {
+		if spec.Search.Limit == 1 && spec.Search.OrderBy != "" {
+			return refCardinalityFirst
+		}
+	}
+	return detectFieldCardinality(tx, modelFull, fieldName)
+}
+
+// detectFieldCardinality looks up the field type from meta_ir_field and returns the
+// corresponding cardinality. It defaults to ManyToOne when the field or model cannot
+// be resolved.
+func detectFieldCardinality(tx *gorm.DB, modelFull string, fieldName string) refCardinality {
+	app, modelName, err := splitModel(modelFull)
+	if err != nil {
 		return refCardinalityManyToOne
 	}
-	if spec.Search.Limit == 1 && spec.Search.OrderBy != "" {
-		return refCardinalityFirst
+	model := &meta.IrModel{}
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+		return refCardinalityManyToOne
 	}
-	return refCardinalityManyToOne
+	snake := strcase.ToSnake(fieldName)
+	field := &meta.IrField{}
+	if err := tx.Where("model_id = ? AND name = ?", model.Id.String, snake).First(field).Error; err != nil {
+		return refCardinalityManyToOne
+	}
+	switch field.FieldType {
+	case "ManyToMany", "OneToMany":
+		return refCardinalityManyToMany
+	default:
+		return refCardinalityManyToOne
+	}
 }
 
 // enforceReferenceCardinality validates and coerces search results according to the
@@ -1921,14 +1965,7 @@ func (l *Loader) resolveServiceRef(tx *gorm.DB, serviceRef string) (string, erro
 	if err != nil {
 		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
 	}
-	spec := searchSpec{
-		Model: "meta.IrService",
-		Domain: []any{
-			"&",
-			[]any{"model_id", "=", modelID},
-			[]any{"name", "=", method},
-		},
-	}
+	spec := serviceRefToSearchSpec(modelID, method)
 	ids, err := l.resolveRefBySearch(tx, spec)
 	if err != nil {
 		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
@@ -1951,4 +1988,16 @@ func splitServiceRef(s string) (modelFull string, method string, err error) {
 		return "", "", xfmt.Errorf("invalid serviceRef %q (empty model or method)", s)
 	}
 	return modelFull, method, nil
+}
+
+// serviceRefToSearchSpec builds a searchSpec for looking up meta_ir_service by model ID + method name.
+func serviceRefToSearchSpec(modelID string, method string) searchSpec {
+	return searchSpec{
+		Model: "meta.IrService",
+		Domain: []any{
+			"&",
+			[]any{"model_id", "=", modelID},
+			[]any{"name", "=", method},
+		},
+	}
 }
