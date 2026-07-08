@@ -3,9 +3,10 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Company from './company';
 import Currency from './currency';
+import { asRefId, normalizeCompanyScopeKey } from './_refs';
+import { fail, toPositiveDecimal } from './_normalizers';
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {
@@ -31,51 +32,22 @@ export default class ExchangeRate extends BaseModel {
   @Field({ type: 'decimal', column: { notNull: true, precision: 38, scale: 18 } })
   Rate: any;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static toPositiveDecimal(value: any, fieldName: string): Decimal {
-    try {
-      if (value === undefined || value === null || value === '') throw new Error('required');
-      const decimal = value instanceof Decimal ? value : new Decimal((value as any)?.$bigdecimal ?? value);
-      if (!decimal.gt(0)) this.fail(`${fieldName} must be greater than 0`);
-      return decimal;
-    } catch (err) {
-      if (err instanceof ChoysumError) throw err;
-      this.fail(`${fieldName} must be a valid decimal`);
-    }
-  }
-
-  private static normalizeCompanyScopeKey(companyId: any): string {
-    const id = this.asRefId(companyId);
-    return id || '__GLOBAL__';
-  }
-
   private static normalizeDateStringInput(value: any): string {
-    if (value === undefined || value === null || value === '') this.fail('Date is required');
-    if (value instanceof Date) this.fail('Date must be YYYY-MM-DD');
+    if (value === undefined || value === null || value === '') fail('Date is required');
+    if (value instanceof Date) fail('Date must be YYYY-MM-DD');
     const raw = String(value).trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      this.fail('Date must be YYYY-MM-DD');
+      fail('Date must be YYYY-MM-DD');
     }
     const date = new Date(`${raw}T00:00:00.000Z`);
     if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
-      this.fail('Date is invalid');
+      fail('Date is invalid');
     }
     return raw;
   }
 
   private static coerceDateKey(value: any): string {
-    if (value === undefined || value === null || value === '') this.fail('Date is required');
+    if (value === undefined || value === null || value === '') fail('Date is required');
     if (value instanceof Date) return value.toISOString().slice(0, 10);
     return this.normalizeDateStringInput(value);
   }
@@ -85,11 +57,11 @@ export default class ExchangeRate extends BaseModel {
   }
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
-    const scopeKey = String(values.CompanyScopeKey ?? this.normalizeCompanyScopeKey(values.CompanyId));
-    const currencyId = this.asRefId(values.CurrencyId);
+    const scopeKey = String(values.CompanyScopeKey ?? normalizeCompanyScopeKey(values.CompanyId));
+    const currencyId = asRefId(values.CurrencyId);
     const dateKey = this.dateKey(values.Date);
 
-    if (!currencyId) this.fail('CurrencyId is required');
+    if (!currencyId) fail('CurrencyId is required');
 
     const conflicts = await this.Search(
       {
@@ -104,13 +76,13 @@ export default class ExchangeRate extends BaseModel {
 
     const hasConflict = (conflicts || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
     if (hasConflict) {
-      this.fail('ExchangeRate must be unique for CompanyId + CurrencyId + Date');
+      fail('ExchangeRate must be unique for CompanyId + CurrencyId + Date');
     }
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    this.toPositiveDecimal(values.Rate, 'Rate');
-    values.CompanyScopeKey = this.normalizeCompanyScopeKey(values.CompanyId);
+    toPositiveDecimal(values.Rate, 'Rate');
+    values.CompanyScopeKey = normalizeCompanyScopeKey(values.CompanyId);
     values.Date = this.dateKey(values.Date);
     await this.ensureUniqueTuple(values, currentId);
   }

@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { fail } from './_normalizers';
 
 @Model('Locale')
 export default class Locale extends BaseModel {
@@ -44,14 +44,10 @@ export default class Locale extends BaseModel {
   @Field({ type: 'boolean', column: { default: () => false } })
   CurrencySymbolSpacing?: boolean;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
   private static normalizeCurrencySymbolPosition(value: unknown): 'before' | 'after' {
     if (value === undefined || value === null || value === '') return 'before';
     if (value === 'before' || value === 'after') return value;
-    this.fail('CurrencySymbolPosition must be before or after');
+    fail('CurrencySymbolPosition must be before or after');
   }
 
   private static normalizeCurrencySymbolSpacing(value: unknown): boolean {

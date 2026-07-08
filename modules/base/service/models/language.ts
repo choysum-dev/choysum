@@ -3,8 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Locale from './locale';
+import { fail } from './_normalizers';
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -30,15 +30,11 @@ export default class Language extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, column: { index: true } })
   DefaultLocaleId?: Locale;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
   private static normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undefined {
     if (value === undefined) return undefined;
     if (value === null || value === '') return null;
     if (value === 'ltr' || value === 'rtl') return value;
-    this.fail('Direction must be ltr or rtl');
+    fail('Direction must be ltr or rtl');
   }
 
   private static validateEntity(values: Record<string, any>): void {

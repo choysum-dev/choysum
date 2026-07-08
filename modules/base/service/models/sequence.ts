@@ -5,6 +5,8 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Company from './company';
+import { asRefId, normalizeCompanyScopeKey } from './_refs';
+import { normalizeCodeRequired } from './_normalizers';
 
 export type SequenceNextParams = {
   CompanyId?: string;
@@ -58,30 +60,9 @@ export default class Sequence extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static normalizeCode(code: unknown): string {
-    const v = String(code ?? '').trim();
-    if (!v) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Code is required' }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
-    return v;
-  }
-
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static normalizeCompanyScopeKey(companyId: any): string {
-    const id = this.asRefId(companyId);
-    return id || '__GLOBAL__';
-  }
-
   private static validateWriteEntity(values: Record<string, any>): void {
-    values.Code = this.normalizeCode(values.Code);
-    values.CompanyScopeKey = this.normalizeCompanyScopeKey(values.CompanyId);
+    values.Code = normalizeCodeRequired(values.Code, { uppercase: false });
+    values.CompanyScopeKey = normalizeCompanyScopeKey(values.CompanyId);
   }
 
   @Constraint<Sequence>(['Code', 'CompanyId'])
@@ -269,7 +250,7 @@ export default class Sequence extends BaseModel {
   }
 
   static async Next(params: SequenceNextParams): Promise<SequenceNextResult> {
-    const code = this.normalizeCode(params?.Code);
+    const code = normalizeCodeRequired(params?.Code, { uppercase: false });
     const count = this.normalizeCount(params?.Count);
     const idemKey = this.normalizeIdempotencyKey(params?.IdempotencyKey);
     const dryRun = params?.DryRun === true;

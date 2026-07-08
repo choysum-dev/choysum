@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Address from './address';
 import Country from './country';
+import { normalizeCodeOptional } from './_normalizers';
 
 @Model('Bank')
 export default class Bank extends BaseModel {
@@ -26,18 +27,9 @@ export default class Bank extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Address }, column: { index: true } })
   AddressId?: Address;
 
-  private static normalizeCode(value: unknown): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const code = String(value ?? '')
-      .trim()
-      .toUpperCase();
-    return code ? code : null;
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = this.normalizeCode(values.Code);
+      values.Code = normalizeCodeOptional(values.Code);
     }
   }
 

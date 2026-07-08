@@ -4,6 +4,7 @@
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeCodeRequired, normalizePositiveDecimalString } from './_normalizers';
 
 export type CurrencyConvertRatePolicy = {
   Mode?: 'exact' | 'latest_before';
@@ -60,36 +61,10 @@ export default class Currency extends BaseModel {
     return n;
   }
 
-  private static normalizeCode(value: any): string {
-    const code = String(value ?? '')
-      .trim()
-      .toUpperCase();
-    if (!code) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Code is required' }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
-    return code;
-  }
-
-  private static normalizePositiveDecimal(value: any, fieldName: string): string {
-    try {
-      if (value == null || value === '') throw new Error('required');
-      const decimal = value instanceof Decimal ? value : new Decimal((value as any)?.$bigdecimal ?? value);
-      if (!decimal.gt(0)) {
-        throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be greater than 0` }).withGrpcCode(
-          GrpcCode.InvalidArgument
-        );
-      }
-      return decimal.toString();
-    } catch (err: any) {
-      if (err instanceof ChoysumError) throw err;
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid decimal` }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
-  }
-
   private static validateEntity(values: Record<string, any>): void {
-    values.Code = this.normalizeCode(values.Code);
+    values.Code = normalizeCodeRequired(values.Code);
     values.DecimalDigits = this.normalizeDecimalDigits(values.DecimalDigits);
-    values.Rounding = this.normalizePositiveDecimal(values.Rounding, 'Rounding');
+    values.Rounding = normalizePositiveDecimalString(values.Rounding, 'Rounding');
   }
 
   @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])
@@ -127,7 +102,9 @@ export default class Currency extends BaseModel {
   private static normalizeRoundingMode(value: unknown): 'currency' | 'none' {
     if (value === undefined || value === null || value === '') return 'currency';
     if (value === 'currency' || value === 'none') return value;
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Rounding.Mode must be currency or none' }).withGrpcCode(GrpcCode.InvalidArgument);
+    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Rounding.Mode must be currency or none' }).withGrpcCode(
+      GrpcCode.InvalidArgument
+    );
   }
 
   private static parseDecimalInput(value: any): Decimal {
@@ -258,7 +235,9 @@ export default class Currency extends BaseModel {
     }
     const companyCurrencyId = String(company?.CurrencyId?.Id ?? company?.CurrencyId ?? '').trim();
     if (!companyCurrencyId) {
-      throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(GrpcCode.FailedPrecondition);
+      throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(
+        GrpcCode.FailedPrecondition
+      );
     }
 
     const mode = this.normalizeRatePolicyMode(params?.RatePolicy?.Mode);

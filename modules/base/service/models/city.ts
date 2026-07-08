@@ -3,9 +3,10 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Country from './country';
 import State from './state';
+import { asRefId } from './_refs';
+import { fail, normalizeCodeOptional, normalizeName } from './_normalizers';
 
 @Model('City')
 export default class City extends BaseModel {
@@ -28,47 +29,23 @@ export default class City extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static normalizeCode(value: any): string | null {
-    if (value === undefined || value === null) return null;
-    const code = String(value).trim().toUpperCase();
-    return code || null;
-  }
-
-  private static normalizeName(value: any): string {
-    const name = String(value ?? '').trim();
-    if (!name) this.fail('Name is required');
-    return name;
-  }
-
   private static async ensureStateCountryConsistency(countryId: string, stateId: string | null): Promise<void> {
     if (!stateId) return;
     const { default: StateModel } = await import('./state');
     const state = await StateModel.Browse(stateId, ['Id', 'CountryId'] as any);
-    const stateCountryId = this.asRefId((state as any)?.CountryId);
-    if (!state?.Id || !stateCountryId) this.fail('State not found');
-    if (stateCountryId !== countryId) this.fail('State.CountryId must equal City.CountryId');
+    const stateCountryId = asRefId((state as any)?.CountryId);
+    if (!state?.Id || !stateCountryId) fail('State not found');
+    if (stateCountryId !== countryId) fail('State.CountryId must equal City.CountryId');
   }
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
-    const countryId = this.asRefId(values.CountryId);
-    const stateId = this.asRefId(values.StateId) ?? null;
-    const name = this.normalizeName(values.Name);
-    const code = this.normalizeCode(values.Code);
+    const countryId = asRefId(values.CountryId);
+    const stateId = asRefId(values.StateId) ?? null;
+    const name = normalizeName(values.Name);
+    const code = normalizeCodeOptional(values.Code);
 
-    if (!countryId) this.fail('CountryId is required');
-    await this.ensureStateCountryConsistency(countryId, stateId);
+    if (!countryId) fail('CountryId is required');
+    await City.ensureStateCountryConsistency(countryId, stateId);
 
     const stateCond = stateId ? (['StateId', '=', stateId] as any) : (['StateId', 'is', null] as any);
     const byName = await this.Search(
@@ -78,7 +55,7 @@ export default class City extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) this.fail('City Name must be unique within Country + State');
+    if (nameConflict) fail('City Name must be unique within Country + State');
 
     values.Name = name;
     values.Code = code;

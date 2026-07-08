@@ -11,6 +11,8 @@ import Country from './country';
 import Currency from './currency';
 import Language from './language';
 import Locale from './locale';
+import { asRefId } from './_refs';
+import { fail } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
@@ -44,21 +46,9 @@ export default class Company extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Address }, column: { index: true } })
   AddressId?: Address;
 
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
   private static normalizeRequiredText(value: unknown, fieldName: string): string {
     const v = String(value ?? '').trim();
-    if (!v) this.fail(`${fieldName} is required`);
+    if (!v) fail(`${fieldName} is required`);
     return v;
   }
 
@@ -73,7 +63,7 @@ export default class Company extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) this.fail('Company Name must be unique');
+    if (nameConflict) fail('Company Name must be unique');
 
     const byCode = await this.Search(
       {
@@ -82,14 +72,14 @@ export default class Company extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (codeConflict) this.fail('Company Code must be unique');
+    if (codeConflict) fail('Company Code must be unique');
 
     values.Name = name;
     values.Code = code;
   }
 
   private static normalizeCurrencyId(value: unknown): string {
-    const id = this.asRefId(value);
+    const id = asRefId(value);
     if (!id) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'CurrencyId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
@@ -138,7 +128,7 @@ export default class Company extends BaseModel {
   }
 
   private static async validateParentUpdate(targetId: string, parentIdRaw: any): Promise<void> {
-    const parentId = this.asRefId(parentIdRaw);
+    const parentId = asRefId(parentIdRaw);
     if (!parentId) return;
 
     if (parentId === targetId) {

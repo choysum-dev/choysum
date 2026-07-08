@@ -3,8 +3,9 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Country from './country';
+import { asRefId } from './_refs';
+import { fail, normalizeCodeOptional, normalizeName } from './_normalizers';
 
 @Model('State')
 export default class State extends BaseModel {
@@ -24,36 +25,12 @@ export default class State extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static normalizeCode(value: any): string | null {
-    if (value === undefined || value === null) return null;
-    const code = String(value).trim().toUpperCase();
-    return code || null;
-  }
-
-  private static normalizeName(value: any): string {
-    const name = String(value ?? '').trim();
-    if (!name) this.fail('Name is required');
-    return name;
-  }
-
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
-    const countryId = this.asRefId(values.CountryId);
-    const name = this.normalizeName(values.Name);
-    const code = this.normalizeCode(values.Code);
+    const countryId = asRefId(values.CountryId);
+    const name = normalizeName(values.Name);
+    const code = normalizeCodeOptional(values.Code);
 
-    if (!countryId) this.fail('CountryId is required');
+    if (!countryId) fail('CountryId is required');
 
     const byName = await this.Search(
       {
@@ -65,7 +42,7 @@ export default class State extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) this.fail('State Name must be unique within Country');
+    if (nameConflict) fail('State Name must be unique within Country');
 
     if (code) {
       const byCode = await this.Search(
@@ -78,7 +55,7 @@ export default class State extends BaseModel {
         { fields: ['Id'] as any, limit: 2 } as any
       );
       const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-      if (codeConflict) this.fail('State Code must be unique within Country');
+      if (codeConflict) fail('State Code must be unique within Country');
     }
 
     values.Name = name;

@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { normalizeCodeOptional } from './_normalizers';
 
 @Model('UoMCategory')
 export default class UoMCategory extends BaseModel {
@@ -15,18 +16,9 @@ export default class UoMCategory extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static normalizeCode(value: unknown): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const code = String(value ?? '')
-      .trim()
-      .toUpperCase();
-    return code ? code : null;
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = this.normalizeCode(values.Code);
+      values.Code = normalizeCodeOptional(values.Code);
     }
   }
 

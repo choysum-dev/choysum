@@ -6,6 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Company from './company';
 import Sequence from './sequence';
+import { asRefId } from './_refs';
 
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
@@ -46,18 +47,12 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({ type: 'datetime', column: { notNull: true, index: true } })
   ExpiresAt: Date;
 
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
   private static parsePositiveInt(value: unknown, fieldName: string): number {
     const n = Number(value);
     if (!Number.isFinite(n) || Math.floor(n) !== n || n < 1) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be an integer >= 1` }).withGrpcCode(GrpcCode.InvalidArgument);
+      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be an integer >= 1` }).withGrpcCode(
+        GrpcCode.InvalidArgument
+      );
     }
     return n;
   }
@@ -71,7 +66,9 @@ export default class SequenceIdempotency extends BaseModel {
       if (!text) throw new Error('empty');
       return BigInt(text);
     } catch {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid integer` }).withGrpcCode(GrpcCode.InvalidArgument);
+      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid integer` }).withGrpcCode(
+        GrpcCode.InvalidArgument
+      );
     }
   }
 
@@ -84,7 +81,7 @@ export default class SequenceIdempotency extends BaseModel {
       RangeEnd: Object.prototype.hasOwnProperty.call(values, 'RangeEnd') ? values.RangeEnd : existing?.RangeEnd,
     };
 
-    const sequenceId = this.asRefId(candidate.SequenceId);
+    const sequenceId = asRefId(candidate.SequenceId);
     if (!sequenceId) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'SequenceId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
@@ -102,8 +99,8 @@ export default class SequenceIdempotency extends BaseModel {
     }
 
     const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
-    const sequenceCompanyId = this.asRefId((sequence as any)?.CompanyId);
-    const companyId = this.asRefId(candidate.CompanyId) ?? null;
+    const sequenceCompanyId = asRefId((sequence as any)?.CompanyId);
+    const companyId = asRefId(candidate.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
       throw new ChoysumError({
         domain: 'base',
