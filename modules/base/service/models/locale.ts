@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { fail } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('Locale')
 export default class Locale extends BaseModel {
@@ -66,14 +67,7 @@ export default class Locale extends BaseModel {
 
   @Constraint<Locale>(['CurrencySymbolPosition', 'CurrencySymbolSpacing'])
   static validateLocaleConstraint(self: Locale, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Locale.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolPosition')) {
-      values.CurrencySymbolPosition = self.CurrencySymbolPosition;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolSpacing')) {
-      values.CurrencySymbolSpacing = self.CurrencySymbolSpacing;
-    }
+    writeConstraintFields(self as any, ctx, ['CurrencySymbolPosition', 'CurrencySymbolSpacing']);
   }
 }

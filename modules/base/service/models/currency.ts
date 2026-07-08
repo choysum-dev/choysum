@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { normalizeCodeRequired, normalizePositiveDecimalString } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 import { convertCurrency } from './_currency_convert';
 
 export type CurrencyConvertRatePolicy = {
@@ -70,18 +71,8 @@ export default class Currency extends BaseModel {
 
   @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])
   static validateCurrencyConstraint(self: Currency, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Currency.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code') || String(ctx?.mode || '') === 'create') {
-      values.Code = self.Code;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'DecimalDigits') || String(ctx?.mode || '') === 'create') {
-      values.DecimalDigits = self.DecimalDigits;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'Rounding') || String(ctx?.mode || '') === 'create') {
-      values.Rounding = self.Rounding;
-    }
+    writeConstraintFields(self as any, ctx, ['Code', 'DecimalDigits', 'Rounding'], { forceOnCreate: true });
   }
 
   static async Convert(params: CurrencyConvertParams): Promise<CurrencyConvertResult> {

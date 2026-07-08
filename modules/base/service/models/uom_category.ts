@@ -4,6 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeCodeOptional } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('UoMCategory')
 export default class UoMCategory extends BaseModel {
@@ -24,11 +25,7 @@ export default class UoMCategory extends BaseModel {
 
   @Constraint<UoMCategory>(['Code'])
   static validateUoMCategoryConstraint(self: UoMCategory, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     UoMCategory.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
+    writeConstraintFields(self as any, ctx, ['Code']);
   }
 }

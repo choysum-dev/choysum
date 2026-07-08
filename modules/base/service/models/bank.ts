@@ -6,6 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import Address from './address';
 import Country from './country';
 import { normalizeCodeOptional } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('Bank')
 export default class Bank extends BaseModel {
@@ -35,11 +36,7 @@ export default class Bank extends BaseModel {
 
   @Constraint<Bank>(['Code'])
   static validateBankConstraint(self: Bank, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Bank.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
+    writeConstraintFields(self as any, ctx, ['Code']);
   }
 }

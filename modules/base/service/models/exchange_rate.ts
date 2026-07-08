@@ -7,6 +7,7 @@ import Company from './company';
 import Currency from './currency';
 import { asRefId, normalizeCompanyScopeKey } from './_refs';
 import { fail, toPositiveDecimal } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {
@@ -94,12 +95,10 @@ export default class ExchangeRate extends BaseModel {
     const currentId = String(current?.Id || '').trim() || undefined;
 
     await ExchangeRate.validateEntity(self as any, currentId);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Date')) {
-      values.Date = self.Date;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'CompanyId') || Object.prototype.hasOwnProperty.call(values, 'CompanyScopeKey')) {
-      values.CompanyScopeKey = (self as any).CompanyScopeKey;
-    }
+    writeConstraintFields(self as any, ctx, ['Date']);
+    writeConstraintFields(self as any, ctx, [], {
+      triggerFields: ['CompanyId', 'CompanyScopeKey'],
+      targetField: 'CompanyScopeKey',
+    });
   }
 }

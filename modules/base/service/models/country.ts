@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Currency from './currency';
 import { fail, normalizeCodeRequired } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('Country')
 export default class Country extends BaseModel {
@@ -58,14 +59,7 @@ export default class Country extends BaseModel {
 
   @Constraint<Country>(['Code', 'AddressFormat'])
   static validateCountryConstraint(self: Country, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Country.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'AddressFormat')) {
-      values.AddressFormat = self.AddressFormat;
-    }
+    writeConstraintFields(self as any, ctx, ['Code', 'AddressFormat']);
   }
 }

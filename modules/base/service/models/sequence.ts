@@ -6,6 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import Company from './company';
 import { normalizeCompanyScopeKey } from './_refs';
 import { normalizeCodeRequired } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 import { nextSequence } from './_sequence_next';
 import { cleanupSequenceIdempotency } from './_sequence_cleanup';
 
@@ -65,16 +66,13 @@ export default class Sequence extends BaseModel {
 
   @Constraint<Sequence>(['Code', 'CompanyId'])
   static validateSequenceConstraint(self: Sequence, ctx: any): void {
-    const mode = String(ctx?.mode || '');
-    const values = (ctx?.values || {}) as Record<string, any>;
     Sequence.validateWriteEntity(self as any);
-
-    if (mode === 'create' || Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
-    if (mode === 'create' || Object.prototype.hasOwnProperty.call(values, 'CompanyId') || Object.prototype.hasOwnProperty.call(values, 'CompanyScopeKey')) {
-      values.CompanyScopeKey = (self as any).CompanyScopeKey;
-    }
+    writeConstraintFields(self as any, ctx, ['Code'], { forceOnCreate: true });
+    writeConstraintFields(self as any, ctx, [], {
+      forceOnCreate: true,
+      triggerFields: ['CompanyId', 'CompanyScopeKey'],
+      targetField: 'CompanyScopeKey',
+    });
   }
 
   static async Next(params: SequenceNextParams): Promise<SequenceNextResult> {

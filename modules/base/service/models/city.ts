@@ -7,6 +7,7 @@ import Country from './country';
 import State from './state';
 import { asRefId } from './_refs';
 import { fail, normalizeCodeOptional, normalizeName } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('City')
 export default class City extends BaseModel {
@@ -68,12 +69,6 @@ export default class City extends BaseModel {
     const currentId = String(current?.Id || '').trim() || undefined;
 
     await City.ensureUniqueness(self as any, currentId);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Name')) {
-      values.Name = self.Name;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
+    writeConstraintFields(self as any, ctx, ['Name', 'Code']);
   }
 }

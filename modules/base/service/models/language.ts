@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Locale from './locale';
 import { fail } from './_normalizers';
+import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -45,11 +46,7 @@ export default class Language extends BaseModel {
 
   @Constraint<Language>(['Direction'])
   static validateLanguageConstraint(self: Language, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Language.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Direction')) {
-      values.Direction = self.Direction;
-    }
+    writeConstraintFields(self as any, ctx, ['Direction']);
   }
 }
