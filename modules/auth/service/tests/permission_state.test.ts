@@ -725,29 +725,31 @@ test('PermissionState: maps UI resources from requires and backfills menu parent
         type: 'MENU',
         requires: ['rpc:/auth.User/DefinitelyMissingMethod'],
       });
+
+      const userModelId = await resolveModelId('auth', 'User');
+      const browse = await resolveService(userModelId, 'browse');
+
       await createUiResource({
         resourceId: 'auth.menu.user_list_interp',
         type: 'MENU',
         parentId: 'auth.menu.parent_interp',
-        requires: ['rpc:/auth.User/*'],
+        requires: [`rpc:/auth.User/${browse.name}`],
       });
       await createUiResource({
         resourceId: 'auth.route.user_list_interp',
         type: 'ROUTE',
-        requires: ['rpc:/auth.User/*'],
+        requires: [`rpc:/auth.User/${browse.name}`],
       });
       await createUiResource({
         resourceId: 'auth.action.user_export_interp',
         type: 'ACTION',
-        requires: ['rpc:/auth.User/*'],
+        requires: [`rpc:/auth.User/${browse.name}`],
       });
 
-      const userModelId = await resolveModelId('auth', 'User');
-      const browseServiceId = await resolveServiceId(userModelId, 'browse');
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browseServiceId,
+          IrServiceId: browse.id,
           IrModelId: null,
           IrApplicationId: null,
           Mode: 'allow',
