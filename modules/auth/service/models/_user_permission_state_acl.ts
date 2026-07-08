@@ -237,13 +237,15 @@ export async function buildAclAggregation(
         continue;
       }
 
-      const hasAnyAllow = agg.allowAll || agg.allow.size > 0;
-      if (!hasAnyAllow) continue;
-
-      requiresAllowSet.add(serviceWildcard);
+      if (agg.allowAll) {
+        requiresAllowSet.add(serviceWildcard);
+      } else {
+        for (const m of agg.allow) {
+          requiresAllowSet.add(`rpc:/${serviceFullName}/${m}`);
+        }
+      }
 
       if (agg.deny.size > 0) {
-        for (const m of agg.allow) requiresAllowSet.add(`rpc:/${serviceFullName}/${m}`);
         for (const m of agg.deny) requiresDenySet.add(`rpc:/${serviceFullName}/${m}`);
       }
     }
