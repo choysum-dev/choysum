@@ -67,15 +67,16 @@ export async function ensureRegistrationIdentityUnique(
       .withMetadata({ username: String(userData?.Username || '') });
   }
 
-  if (userData?.Email) {
-    const emailExists = await deps.searchByEmail(String(userData.Email || '').trim());
+  const email = String(userData?.Email ?? '').trim();
+  if (email) {
+    const emailExists = await deps.searchByEmail(email);
     if (emailExists.length > 0) {
       throw newAuthError({
         code: AuthErrCode.EMAIL_TAKEN,
         message: 'Email is already registered',
       })
         .withGrpcCode(GrpcCode.AlreadyExists)
-        .withMetadata({ email: userData.Email });
+        .withMetadata({ email });
     }
   }
 }

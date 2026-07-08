@@ -224,7 +224,7 @@ export function parseJsonStringArray(raw: unknown): string[] {
   try {
     if (typeof (raw as Record<string, unknown>)?.toString === 'function') {
       const s = String((raw as Record<string, unknown>).toString() || '').trim();
-      if (!s) return [];
+      if (!s || s === '[object Object]') return [];
       const parsed = JSON.parse(s);
       if (Array.isArray(parsed)) return normalize(parsed);
     }
