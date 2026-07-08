@@ -1318,13 +1318,13 @@ func (l *Loader) resolveValue(tx *gorm.DB, filePath string, recordIndex int, rec
 		case refQuerySpecKindRef:
 			resID, err := l.resolveRef(tx, spec.Ref)
 			if err != nil {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeResolveRefFailed, FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: fieldPath, Ref: spec.Ref, Message: "resolve ref failed", Cause: err}
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, spec.Ref, "resolve ref failed", err)
 			}
 			return resID, nil
 		case refQuerySpecKindRefBy:
 			resID, err := l.resolveRefBy(tx, spec.RefBy.Model, spec.RefBy.Field, spec.RefBy.Value)
 			if err != nil {
-				return nil, &LoadError{Kind: LoadErrorKindRef, Code: LoadErrorCodeResolveRefFailed, FilePath: filePath, RecordIndex: recordIndex, Module: strings.TrimSpace(rec.Module), ExternalID: strings.TrimSpace(rec.ExternalID), Model: strings.TrimSpace(rec.Model), FieldPath: fieldPath, Ref: "refBy", Message: "resolve refBy failed", Cause: err}
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "refBy", "resolve refBy failed", err)
 			}
 			return resID, nil
 		case refQuerySpecKindSearch:
