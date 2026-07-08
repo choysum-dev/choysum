@@ -1747,33 +1747,27 @@ func TestResolveValue_SearchShapeErrorIncludesFieldPath(t *testing.T) {
 		t.Fatalf("expected empty results, got %#v", ids)
 	}
 
-	// modelRef still returns "not yet implemented"
-	_, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.service_id", map[string]any{
+	// modelRef resolves the meta.IrModel ID (auth.User is seeded in test schema).
+	got2, modelRefErr := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.service_id", map[string]any{
 		"modelRef": "auth.User",
 	})
-	if err == nil {
-		t.Fatalf("expected error for modelRef")
+	if modelRefErr != nil {
+		t.Fatalf("modelRef should resolve, got %v", modelRefErr)
 	}
-	var le *LoadError
-	if !errors.As(err, &le) {
-		t.Fatalf("expected LoadError, got %T: %v", err, err)
-	}
-	if le.Code != LoadErrorCodeRefSearchUnsupportedOp || le.FieldPath != "values.service_id" {
-		t.Fatalf("unexpected modelRef error: %#v", le)
+	if modelID, ok := got2.(string); !ok || modelID == "" {
+		t.Fatalf("expected non-empty model ID from modelRef, got %#v", got2)
 	}
 
-	// serviceRef still returns "not yet implemented"
-	_, err = l.resolveValue(db, "/tmp/data.json", 1, rec, "values.method_id", map[string]any{
+	// serviceRef attempts model + meta_ir_service lookup; may error if table not seeded,
+	// but must NOT return the old "unsupported_op" skeleton error.
+	_, serviceRefErr := l.resolveValue(db, "/tmp/data.json", 1, rec, "values.method_id", map[string]any{
 		"serviceRef": "auth.User/Browse",
 	})
-	if err == nil {
-		t.Fatalf("expected error for serviceRef")
-	}
-	if !errors.As(err, &le) {
-		t.Fatalf("expected LoadError, got %T: %v", err, err)
-	}
-	if le.Code != LoadErrorCodeRefSearchUnsupportedOp {
-		t.Fatalf("expected Code=%q, got %q", LoadErrorCodeRefSearchUnsupportedOp, le.Code)
+	if serviceRefErr != nil {
+		var le *LoadError
+		if errors.As(serviceRefErr, &le) && le.Code == LoadErrorCodeRefSearchUnsupportedOp {
+			t.Fatalf("serviceRef should no longer return unsupported_op, got %#v", le)
+		}
 	}
 
 	// ref and refBy still work (backward compat)
@@ -2272,5 +2266,189 @@ func TestResolveValue_SearchCardinalityErrorIncludesLocation(t *testing.T) {
 	}
 	if !strings.Contains(le.Message, "multiple results") {
 		t.Fatalf("expected 'multiple results' in message, got %q", le.Message)
+	}
+}
+
+func TestResolveModelRef_SuccessAndNotFound(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// auth.User is seeded in the test schema — modelRef should resolve.
+	id, err := l.resolveModelRef(db, "auth.User")
+	if err != nil || id == "" {
+		t.Fatalf("resolveModelRef(auth.User) = %q, %v", id, err)
+	}
+
+	// Unknown model returns error.
+	_, err = l.resolveModelRef(db, "unknown.Model")
+	if err == nil {
+		t.Fatalf("expected error for unknown model")
+	}
+}
+
+func TestResolveServiceRef_SuccessAndNotFound(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed meta_ir_service so we can resolve a serviceRef.
+	if err := db.AutoMigrate(&meta.IrService{}); err != nil {
+		t.Fatalf("migrate meta_ir_service: %v", err)
+	}
+	// Register meta.IrService model entry so resolveSearchModel can find its table.
+	if err := db.Create(&meta.IrModel{
+		Name: "IrService", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_service",
+	}).Error; err != nil {
+		t.Fatalf("seed meta.IrService model: %v", err)
+	}
+	// Fetch the IrModel ID for auth.User.
+	model := &meta.IrModel{}
+	if err := db.Where("application = ? AND name = ?", "auth", "User").First(model).Error; err != nil {
+		t.Fatalf("lookup auth.User model: %v", err)
+	}
+	svc := &meta.IrService{
+		Name:    "Browse",
+		ModelId: model.Id,
+	}
+	if err := db.Create(svc).Error; err != nil {
+		t.Fatalf("seed meta_ir_service: %v", err)
+	}
+
+	// Valid serviceRef resolves.
+	id, err := l.resolveServiceRef(db, "auth.User/Browse")
+	if err != nil || id == "" {
+		t.Fatalf("resolveServiceRef(auth.User/Browse) = %q, %v", id, err)
+	}
+	if id != svc.Id.String {
+		t.Fatalf("expected service ID %q, got %q", svc.Id.String, id)
+	}
+
+	// Unknown method returns error.
+	_, err = l.resolveServiceRef(db, "auth.User/Unknown")
+	if err == nil {
+		t.Fatalf("expected error for unknown method")
+	}
+}
+
+func TestResolveServiceRef_InvalidFormat(t *testing.T) {
+	t.Parallel()
+
+	// splitServiceRef rejects invalid formats.
+	for _, tc := range []struct {
+		in   string
+		want string
+	}{
+		{in: "auth.User", want: "invalid serviceRef"},
+		{in: "", want: "invalid serviceRef"},
+		{in: "/", want: "empty model or method"},
+		{in: " / ", want: "empty model or method"},
+		{in: "x/", want: "empty model or method"},
+		{in: "/x", want: "empty model or method"},
+	} {
+		_, _, err := splitServiceRef(tc.in)
+		if err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("splitServiceRef(%q) = %v, want substring %q", tc.in, err, tc.want)
+		}
+	}
+}
+
+func TestResolveValue_ModelRefAndServiceRefShortcuts(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// Seed meta_ir_service for the serviceRef test.
+	if err := db.AutoMigrate(&meta.IrService{}); err != nil {
+		t.Fatalf("migrate meta_ir_service: %v", err)
+	}
+	if err := db.Create(&meta.IrModel{
+		Name: "IrService", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_service",
+	}).Error; err != nil {
+		t.Fatalf("seed meta.IrService model: %v", err)
+	}
+	model := &meta.IrModel{}
+	if err := db.Where("application = ? AND name = ?", "auth", "User").First(model).Error; err != nil {
+		t.Fatalf("lookup auth.User model: %v", err)
+	}
+	svc := &meta.IrService{
+		Name:    "Browse",
+		ModelId: model.Id,
+	}
+	if err := db.Create(svc).Error; err != nil {
+		t.Fatalf("seed meta_ir_service: %v", err)
+	}
+
+	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
+
+	// modelRef via resolveValue returns the model ID as string.
+	got, err := l.resolveValue(db, "/tmp/data.json", 0, rec, "values.model_id", map[string]any{
+		"modelRef": "auth.User",
+	})
+	if err != nil {
+		t.Fatalf("resolveValue(modelRef) error = %v", err)
+	}
+	if s, ok := got.(string); !ok || s == "" {
+		t.Fatalf("expected non-empty string from modelRef, got %#v", got)
+	}
+
+	// serviceRef via resolveValue returns the service ID as string.
+	got, err = l.resolveValue(db, "/tmp/data.json", 0, rec, "values.service_id", map[string]any{
+		"serviceRef": "auth.User/Browse",
+	})
+	if err != nil {
+		t.Fatalf("resolveValue(serviceRef) error = %v", err)
+	}
+	if s, ok := got.(string); !ok || s != svc.Id.String {
+		t.Fatalf("expected service ID %q from serviceRef, got %#v", svc.Id.String, got)
+	}
+}
+
+func TestResolveValue_ServiceRefSharesSearchExecutor(t *testing.T) {
+	t.Parallel()
+
+	l, db := newTestLoader(t)
+
+	// resolveServiceRef internally uses resolveRefBySearch to query meta_ir_service.
+	// Verify that a serviceRef resolves correctly and that the underlying search
+	// executor was exercised (by checking the result matches a direct search).
+	if err := db.AutoMigrate(&meta.IrService{}); err != nil {
+		t.Fatalf("migrate meta_ir_service: %v", err)
+	}
+	if err := db.Create(&meta.IrModel{
+		Name: "IrService", Application: "meta", Path: "/tmp", ModelTable: "meta_ir_service",
+	}).Error; err != nil {
+		t.Fatalf("seed meta.IrService model: %v", err)
+	}
+	model := &meta.IrModel{}
+	if err := db.Where("application = ? AND name = ?", "auth", "User").First(model).Error; err != nil {
+		t.Fatalf("lookup auth.User model: %v", err)
+	}
+	svc := &meta.IrService{
+		Name:    "GetPermissionState",
+		ModelId: model.Id,
+	}
+	if err := db.Create(svc).Error; err != nil {
+		t.Fatalf("seed meta_ir_service: %v", err)
+	}
+
+	// Resolve via shortcut.
+	idFromShortcut, err := l.resolveServiceRef(db, "auth.User/GetPermissionState")
+	if err != nil {
+		t.Fatalf("resolveServiceRef error = %v", err)
+	}
+
+	// Resolve via equivalent direct search.
+	spec := searchSpec{
+		Model: "meta.IrService",
+		Domain: []any{
+			"&",
+			[]any{"model_id", "=", model.Id.String},
+			[]any{"name", "=", "GetPermissionState"},
+		},
+	}
+	ids, err := l.resolveRefBySearch(db, spec)
+	if err != nil || len(ids) != 1 || ids[0] != idFromShortcut {
+		t.Fatalf("direct search = %#v, %v; shortcut gave %q", ids, err, idFromShortcut)
 	}
 }

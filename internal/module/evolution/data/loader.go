@@ -1332,9 +1332,17 @@ func (l *Loader) resolveValue(tx *gorm.DB, filePath string, recordIndex int, rec
 			// Return raw []string; cardinality enforcement happens in resolveAndMapValues.
 			return ids, nil
 		case refQuerySpecKindModelRef:
-			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchUnsupportedOp, filePath, recordIndex, rec, fieldPath, "modelRef", "modelRef resolution not yet implemented", nil)
+			resID, err := l.resolveModelRef(tx, spec.ModelRef)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "modelRef", "resolve modelRef failed", err)
+			}
+			return resID, nil
 		case refQuerySpecKindServiceRef:
-			return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeRefSearchUnsupportedOp, filePath, recordIndex, rec, fieldPath, "serviceRef", "serviceRef resolution not yet implemented", nil)
+			resID, err := l.resolveServiceRef(tx, spec.ServiceRef)
+			if err != nil {
+				return nil, newRefLoadError(LoadErrorKindRef, LoadErrorCodeResolveRefFailed, filePath, recordIndex, rec, fieldPath, "serviceRef", "resolve serviceRef failed", err)
+			}
+			return resID, nil
 		}
 	}
 
@@ -1885,4 +1893,62 @@ func enforceReferenceCardinality(ids []string, cardinality refCardinality, fileP
 	default:
 		return ids, nil
 	}
+}
+
+// --- Shortcut reference resolvers -------------------------------------------------
+
+// resolveModelRef resolves a modelRef shortcut ("app.Model") to the IrModel ID.
+func (l *Loader) resolveModelRef(tx *gorm.DB, modelRef string) (string, error) {
+	app, modelName, err := splitModel(modelRef)
+	if err != nil {
+		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
+	}
+	model := &meta.IrModel{}
+	if err := tx.Where("application = ? AND name = ?", app, modelName).First(model).Error; err != nil {
+		return "", xfmt.Errorf("resolve modelRef %s: %w", modelRef, err)
+	}
+	return strings.TrimSpace(model.Id.String), nil
+}
+
+// resolveServiceRef resolves a serviceRef shortcut ("app.Model/Method") to the IrService ID.
+// It first resolves the model via resolveModelRef, then searches meta_ir_service by model_id + name.
+func (l *Loader) resolveServiceRef(tx *gorm.DB, serviceRef string) (string, error) {
+	modelFull, method, err := splitServiceRef(serviceRef)
+	if err != nil {
+		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
+	}
+	modelID, err := l.resolveModelRef(tx, modelFull)
+	if err != nil {
+		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
+	}
+	spec := searchSpec{
+		Model: "meta.IrService",
+		Domain: []any{
+			"&",
+			[]any{"model_id", "=", modelID},
+			[]any{"name", "=", method},
+		},
+	}
+	ids, err := l.resolveRefBySearch(tx, spec)
+	if err != nil {
+		return "", xfmt.Errorf("resolve serviceRef %s: %w", serviceRef, err)
+	}
+	if len(ids) == 0 {
+		return "", xfmt.Errorf("serviceRef not found: %s", serviceRef)
+	}
+	return ids[0], nil
+}
+
+// splitServiceRef splits "app.Model/Method" into ("app.Model", "Method").
+func splitServiceRef(s string) (modelFull string, method string, err error) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) != 2 {
+		return "", "", xfmt.Errorf("invalid serviceRef %q (expected app.Model/Method)", s)
+	}
+	modelFull = strings.TrimSpace(parts[0])
+	method = strings.TrimSpace(parts[1])
+	if modelFull == "" || method == "" {
+		return "", "", xfmt.Errorf("invalid serviceRef %q (empty model or method)", s)
+	}
+	return modelFull, method, nil
 }
