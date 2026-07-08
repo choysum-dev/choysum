@@ -12,7 +12,7 @@ import Currency from './currency';
 import Language from './language';
 import Locale from './locale';
 import { asRefId } from './_refs';
-import { fail } from './_normalizers';
+import { fail, normalizeRequiredText } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
@@ -53,8 +53,8 @@ export default class Company extends BaseModel {
   }
 
   private static async ensureUnique(values: Record<string, any>, currentId?: string): Promise<void> {
-    const name = this.normalizeRequiredText(values.Name, 'Name');
-    const code = this.normalizeRequiredText(values.Code, 'Code');
+    const name = normalizeRequiredText(values.Name, 'Name');
+    const code = normalizeRequiredText(values.Code, 'Code');
 
     const byName = await this.Search(
       {

@@ -7,6 +7,7 @@ import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Company from './company';
 import Sequence from './sequence';
 import { asRefId } from './_refs';
+import { parsePositiveInt, parseBigInt } from './_normalizers';
 
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
@@ -47,31 +48,6 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({ type: 'datetime', column: { notNull: true, index: true } })
   ExpiresAt: Date;
 
-  private static parsePositiveInt(value: unknown, fieldName: string): number {
-    const n = Number(value);
-    if (!Number.isFinite(n) || Math.floor(n) !== n || n < 1) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be an integer >= 1` }).withGrpcCode(
-        GrpcCode.InvalidArgument
-      );
-    }
-    return n;
-  }
-
-  private static parseBigInt(value: unknown, fieldName: string): bigint {
-    try {
-      if (typeof value === 'bigint') return value;
-      if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
-      if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
-      const text = String(value ?? '').trim();
-      if (!text) throw new Error('empty');
-      return BigInt(text);
-    } catch {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid integer` }).withGrpcCode(
-        GrpcCode.InvalidArgument
-      );
-    }
-  }
-
   private static async validateWriteEntity(values: Record<string, any>, existing?: any): Promise<void> {
     const candidate = {
       SequenceId: Object.prototype.hasOwnProperty.call(values, 'SequenceId') ? values.SequenceId : existing?.SequenceId,
@@ -86,9 +62,9 @@ export default class SequenceIdempotency extends BaseModel {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'SequenceId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
 
-    const count = this.parsePositiveInt(candidate.Count, 'Count');
-    const rangeStart = this.parseBigInt(candidate.RangeStart, 'RangeStart');
-    const rangeEnd = this.parseBigInt(candidate.RangeEnd, 'RangeEnd');
+    const count = parsePositiveInt(candidate.Count, 'Count');
+    const rangeStart = parseBigInt(candidate.RangeStart, 'RangeStart');
+    const rangeEnd = parseBigInt(candidate.RangeEnd, 'RangeEnd');
     const expectedRangeEnd = rangeStart + BigInt(count) - 1n;
     if (rangeEnd !== expectedRangeEnd) {
       throw new ChoysumError({

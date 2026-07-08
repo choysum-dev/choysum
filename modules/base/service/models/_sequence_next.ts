@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { normalizeCodeRequired } from './_normalizers';
+import { asBigInt, normalizeCodeRequired, parsePositiveInt } from './_normalizers';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 
@@ -11,11 +11,8 @@ const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
 
 function normalizeCount(count: unknown): number {
   if (count == null) return 1;
-  const n = Number(count);
-  if (!Number.isFinite(n) || n <= 0 || Math.floor(n) !== n) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Count must be a positive integer' }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-  if (n < 1 || n > 1000) {
+  const n = parsePositiveInt(count, 'Count');
+  if (n > 1000) {
     throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Count must be within 1..1000' }).withGrpcCode(GrpcCode.InvalidArgument);
   }
   return n;
@@ -39,15 +36,6 @@ function resolveIdempotencyTtlDays(): number {
   const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_IDEMPOTENCY_TTL_DAYS;
   return Math.floor(parsed);
-}
-
-function asBigInt(v: any): bigint {
-  if (typeof v === 'bigint') return v;
-  if (v && typeof v === 'object' && typeof v.$bigint === 'string') return BigInt(v.$bigint);
-  if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
-  const s = String(v ?? '').trim();
-  if (!s) return 0n;
-  return BigInt(s);
 }
 
 function formatValue(prefix: string | undefined, suffix: string | undefined, padding: number, number: bigint): string {

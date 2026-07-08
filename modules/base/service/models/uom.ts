@@ -5,7 +5,7 @@ import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import UoMCategory from './uom_category';
 import { asRefId } from './_refs';
-import { fail, normalizeName, toPositiveDecimal } from './_normalizers';
+import { fail, isReferenceValue, normalizeName, toPositiveDecimal } from './_normalizers';
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -33,10 +33,6 @@ export default class UoM extends BaseModel {
 
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
-
-  private static isReferenceValue(value: any): boolean {
-    return value === true;
-  }
 
   private static async ensureNameUnique(categoryId: string, name: string, currentId?: string): Promise<void> {
     const hits = await this.Search(
@@ -81,9 +77,9 @@ export default class UoM extends BaseModel {
     const categoryId = asRefId(values.CategoryId);
     if (!categoryId) fail('CategoryId is required');
 
-    const isReference = this.isReferenceValue(values.IsReference);
+    const isRef = isReferenceValue(values.IsReference);
     const factor = toPositiveDecimal(values.Factor, 'Factor');
-    if (isReference && !factor.eq(1)) {
+    if (isRef && !factor.eq(1)) {
       fail('Reference UoM must have Factor = 1');
     }
 
@@ -96,11 +92,11 @@ export default class UoM extends BaseModel {
 
     values.CategoryId = categoryId;
     values.Name = name;
-    values.IsReference = isReference;
+    values.IsReference = isRef;
     values.Factor = factor.toString();
 
     await this.ensureNameUnique(categoryId, name, currentId);
-    await this.ensureCategoryReferenceInvariant(categoryId, isReference, currentId);
+    await this.ensureCategoryReferenceInvariant(categoryId, isRef, currentId);
   }
 
   @Constraint<UoM>(['Name', 'CategoryId', 'IsReference', 'Factor', 'Rounding'])

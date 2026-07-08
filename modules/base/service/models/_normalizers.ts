@@ -79,3 +79,60 @@ export function normalizePositiveDecimalString(value: any, fieldName: string): s
     fail(`${fieldName} must be a valid decimal`);
   }
 }
+
+/**
+ * Normalize a required text field with a custom field name in the error message.
+ * Trims and fails if empty.
+ */
+export function normalizeRequiredText(value: unknown, fieldName: string): string {
+  const v = String(value ?? '').trim();
+  if (!v) fail(`${fieldName} is required`);
+  return v;
+}
+
+/**
+ * Parse a value as a positive integer (>= 1). Throws InvalidArgument on failure.
+ */
+export function parsePositiveInt(value: unknown, fieldName: string): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.floor(n) !== n || n < 1) {
+    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be an integer >= 1` }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
+  return n;
+}
+
+/**
+ * Parse a value as a BigInt. Throws InvalidArgument on failure.
+ */
+export function parseBigInt(value: unknown, fieldName: string): bigint {
+  try {
+    if (typeof value === 'bigint') return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
+    if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
+    const text = String(value ?? '').trim();
+    if (!text) throw new Error('empty');
+    return BigInt(text);
+  } catch {
+    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid integer` }).withGrpcCode(GrpcCode.InvalidArgument);
+  }
+}
+
+/**
+ * Coerce a value to a BigInt with lenient defaults.
+ * Returns 0n for empty/falsy values (suitable for reading existing DB values).
+ */
+export function asBigInt(v: any): bigint {
+  if (typeof v === 'bigint') return v;
+  if (v && typeof v === 'object' && typeof v.$bigint === 'string') return BigInt(v.$bigint);
+  if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
+  const s = String(v ?? '').trim();
+  if (!s) return 0n;
+  return BigInt(s);
+}
+
+/**
+ * Test whether a value represents the "reference" flag (strict true).
+ */
+export function isReferenceValue(value: any): boolean {
+  return value === true;
+}
