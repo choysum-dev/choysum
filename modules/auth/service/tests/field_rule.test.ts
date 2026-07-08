@@ -1131,3 +1131,59 @@ test('RoleFieldRule db check: deleted rows bypass scope xor', async () => {
     { merge: false }
   );
 });
+
+test('RoleFieldRule: permission-only update must not rewrite scoped fields to global', async () => {
+  resetRequestContext();
+
+  const c1 = { Id: uid('C1') };
+
+  await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const uid1 = await createUser(c1.Id);
+      setIdentity(uid1);
+
+      const roleId = await createRole();
+      await grantRoleGlobal(uid1, roleId, c1.Id);
+
+      const modelId = await resolveModelId('auth', 'CompanyScopedResource');
+      const fieldId = await resolveFieldId(modelId, 'Name');
+
+      const created = await RoleFieldRule.Create(
+        {
+          RoleId: { Id: roleId } as any,
+          IrModelId: modelId,
+          IrFieldId: fieldId,
+          IrApplicationId: null,
+          PermRead: 'allow',
+          PermWrite: 'deny',
+        } as any,
+        ['Id', 'IrFieldId', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'] as any
+      );
+
+      const id = String((created as any)?.Id || '').trim();
+      expect(id.length > 0).toBe(true);
+
+      await RoleFieldRule.UpdateById(
+        id,
+        {
+          PermRead: 'deny',
+        } as any,
+        ['Id'] as any
+      );
+
+      const rows = await RoleFieldRule.Search(
+        ['Id', '=', id] as any,
+        { fields: ['Id', 'IrFieldId', 'IrModelId', 'IrApplicationId', 'PermRead', 'PermWrite'], limit: 1 } as any
+      );
+
+      expect(rows.length).toBe(1);
+      expect(String((rows[0] as any)?.IrFieldId || '').trim()).toBe(fieldId);
+      expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(modelId);
+      expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+      expect(String((rows[0] as any)?.PermRead || '').trim()).toBe('deny');
+      expect(String((rows[0] as any)?.PermWrite || '').trim()).toBe('');
+    },
+    { merge: false }
+  );
+});

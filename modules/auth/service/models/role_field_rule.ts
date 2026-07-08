@@ -121,21 +121,23 @@ export default class RoleFieldRule extends BaseModel {
       }
     }
 
-    const irFieldId = normalizeRefId((values as any).IrFieldId);
-    const irModelId = normalizeRefId((values as any).IrModelId);
-    const irApplicationId = normalizeRefId((values as any).IrApplicationId);
+    if (touchesScope || mode === 'create') {
+      const irFieldId = normalizeRefId((values as any).IrFieldId);
+      const irModelId = normalizeRefId((values as any).IrModelId);
+      const irApplicationId = normalizeRefId((values as any).IrApplicationId);
 
-    const isField = irFieldId != null && irModelId != null && irApplicationId == null;
-    const isModel = irFieldId == null && irModelId != null && irApplicationId == null;
-    const isApplication = irFieldId == null && irModelId == null && irApplicationId != null;
-    const isGlobal = irFieldId == null && irModelId == null && irApplicationId == null;
-    if (!isField && !isModel && !isApplication && !isGlobal) {
-      throw new Error('invalid RoleFieldRule scope: must be exactly one of field/model/application/global');
+      const isField = irFieldId != null && irModelId != null && irApplicationId == null;
+      const isModel = irFieldId == null && irModelId != null && irApplicationId == null;
+      const isApplication = irFieldId == null && irModelId == null && irApplicationId != null;
+      const isGlobal = irFieldId == null && irModelId == null && irApplicationId == null;
+      if (!isField && !isModel && !isApplication && !isGlobal) {
+        throw new Error('invalid RoleFieldRule scope: must be exactly one of field/model/application/global');
+      }
+
+      (values as any).IrFieldId = irFieldId;
+      (values as any).IrModelId = irModelId;
+      (values as any).IrApplicationId = irApplicationId;
     }
-
-    (values as any).IrFieldId = irFieldId;
-    (values as any).IrModelId = irModelId;
-    (values as any).IrApplicationId = irApplicationId;
 
     if (touchesPerm || mode === 'create') {
       const permRead = this._normalizePerm((values as any).PermRead);
