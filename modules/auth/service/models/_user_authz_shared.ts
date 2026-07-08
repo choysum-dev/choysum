@@ -112,6 +112,9 @@ export function requireMatchesMethod(req: string, modelKey: string, methodLower:
  * Hash a password using the Choysum crypto subsystem.
  */
 export function hashPassword(password: string): string {
+  if (typeof password !== 'string') {
+    throw new TypeError('Password must be a string');
+  }
   const prefixMarker = '$CH$';
   const crypto = (globalThis as any)?.$choysum?.crypto;
   if (!crypto) {
