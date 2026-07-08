@@ -7,7 +7,8 @@ import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import User from './user';
 import Role from './role';
-import { invalidateAuthzRequestCaches } from './_request_cache_invalidation';
+import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 
 /**
  * UserRole assigns a role to a user, optionally within one company scope.
@@ -35,11 +36,8 @@ export default class UserRole extends BaseModel {
   /**
    * Read a trimmed Id from a relation reference or scalar value.
    */
-  private static _maybeId(v: any): string {
-    if (!v) return '';
-    if (typeof v === 'string') return v.trim();
-    const id = (v as any).Id;
-    return typeof id === 'string' ? id.trim() : '';
+  static _maybeId(v: any): string {
+    return normalizeRefId(v) ?? '';
   }
 
   /**
@@ -55,10 +53,29 @@ export default class UserRole extends BaseModel {
     // Role assignments can change effective permissions within the same request;
     // invalidate request-scoped authz/field/record caches for correctness.
     const rows: any[] = Array.isArray(value as any) ? (value as any) : [value];
-    const userIds = rows.map((v: any) => (this as any)._maybeId(v?.UserId)).filter(Boolean);
-    invalidateAuthzRequestCaches({ userIds });
+    const userIds = rows.map((v: any) => normalizeRefId(v?.UserId)).filter(Boolean) as string[];
+    invalidateAuthzCachesForUsers(userIds);
 
     return created as unknown as T;
+  }
+
+  /**
+   * Create multiple UserRole rows and invalidate request-scoped caches for the affected users.
+   */
+  static override async CreateMany<T extends BaseModel>(
+    this: { new (...args: any[]): T } & typeof BaseModel,
+    values: Partial<Insertable<T & BaseModel>>[],
+    returnFields?: FieldSelection<T>
+  ): Promise<T[]> {
+    const created = await super.CreateMany(values as any, returnFields as any);
+
+    // Role assignments can change effective permissions within the same request;
+    // invalidate request-scoped authz/field/record caches for correctness.
+    const rows: any[] = Array.isArray(values as any) ? (values as any) : [];
+    const userIds = rows.map((v: any) => normalizeRefId(v?.UserId)).filter(Boolean) as string[];
+    invalidateAuthzCachesForUsers(userIds);
+
+    return created as unknown as T[];
   }
 
   /**
@@ -73,7 +90,7 @@ export default class UserRole extends BaseModel {
   ): Promise<Partial<T>[]> {
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
     // Conservative: any mutation to the permission graph can make request-scoped authz decisions stale.
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
   }
 
@@ -88,7 +105,7 @@ export default class UserRole extends BaseModel {
     options?: any
   ): Promise<Partial<T>> {
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;
   }
 
@@ -101,7 +118,7 @@ export default class UserRole extends BaseModel {
     options?: any
   ): Promise<number> {
     const out = await super.Delete(condition as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 
@@ -110,7 +127,7 @@ export default class UserRole extends BaseModel {
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
     const out = await super.DeleteById(id as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 }

@@ -7,6 +7,7 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
+import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/_user_method_access';
 import IrUiResource from '@/meta/service/models/ir_ui_resource';
 import { createServiceByModel } from '@/core/service/rpc';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
@@ -509,6 +510,35 @@ test('P3-2: CheckMethodAccess ui deny overrides ui allow on same runtime method'
   expect(out.ok).toBe(false);
 });
 
+test('P3-2: evaluateUiDerivedMethodDecision marks denied when allow and deny both match', async () => {
+  resetRequestContext();
+  const originalRoleUiSearch = (RoleUiResource as any).Search;
+  const originalIrUiSearch = (IrUiResource as any).Search;
+
+  (RoleUiResource as any).Search = async () => [
+    { IrApplicationId: 'APP-1', IrUiResourceId: null, Mode: 'allow' },
+    { IrApplicationId: null, IrUiResourceId: 'RES-DENY', Mode: 'deny' },
+  ];
+
+  (IrUiResource as any).Search = async () => [
+    {
+      Id: 'RES-DENY',
+      Name: 'res-deny',
+      IrApplicationId: 'APP-1',
+      Requires: ['rpc:/auth.User/browse'],
+    },
+  ];
+
+  try {
+    const out = await evaluateUiDerivedMethodDecision(['ROLE-1'], 'auth.User', 'browse');
+    expect(out.allowed).toBe(false);
+    expect(out.denied).toBe(true);
+  } finally {
+    (RoleUiResource as any).Search = originalRoleUiSearch;
+    (IrUiResource as any).Search = originalIrUiSearch;
+  }
+});
+
 test('P3-2: CheckMethodAccess manual allow remains authoritative over ui deny', async () => {
   resetRequestContext();
   const c1 = { Id: uid('C1') };
@@ -599,5 +629,51 @@ test('RoleMethodAccess db check: deleted rows bypass scope xor', async () => {
     expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe(userModelId);
     expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
     expect((rows[0] as any)?.DeletedAt != null).toBe(true);
+  });
+});
+
+test('RoleMethodAccess: permission-only update must not rewrite scoped fields to global', async () => {
+  resetRequestContext();
+  setupAllowlistForFixtures();
+
+  await withModelContext({ activeCompanyId: uid('C'), enabledCompanyIds: [uid('C')] } as any, async () => {
+    const role = await createRole('ROLE_METHOD_SCOPE_SAFE');
+    const userModelId = await resolveModelId('auth', 'User');
+    const browse = await resolveService(userModelId, 'browse');
+
+    const created = await RoleMethodAccess.Create(
+      {
+        RoleId: { Id: role.id } as any,
+        IrServiceId: browse.id,
+        IrModelId: null,
+        IrApplicationId: null,
+        Mode: 'allow',
+      } as any,
+      ['Id'] as any
+    );
+
+    const id = String((created as any)?.Id || '').trim();
+    expect(id.length > 0).toBe(true);
+
+    await RoleMethodAccess.UpdateById(
+      id,
+      {
+        Mode: 'deny',
+      } as any,
+      ['Id'] as any
+    );
+
+    const rows = await RoleMethodAccess.Search(
+      ['Id', '=', id] as any,
+      { fields: ['Id', 'IrServiceId', 'IrModelId', 'IrApplicationId', 'Mode'], limit: 1 } as any
+    );
+
+    expect(rows.length).toBe(1);
+    // Scope must stay scoped to the service, not become global.
+    expect(String((rows[0] as any)?.IrServiceId || '').trim()).toBe(browse.id);
+    expect(String((rows[0] as any)?.IrModelId || '').trim()).toBe('');
+    expect(String((rows[0] as any)?.IrApplicationId || '').trim()).toBe('');
+    // Mode must reflect the update.
+    expect(String((rows[0] as any)?.Mode || '').trim()).toBe('deny');
   });
 });

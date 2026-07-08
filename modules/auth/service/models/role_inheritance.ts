@@ -6,7 +6,7 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import Role from './role';
-import { invalidateAuthzRequestCaches } from './_request_cache_invalidation';
+import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
 
 /**
  * RoleInheritance links a parent role to a child role so effective permissions
@@ -35,7 +35,7 @@ export default class RoleInheritance extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     const out = await super.Create(value as any, returnFields as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as T;
   }
 
@@ -48,7 +48,7 @@ export default class RoleInheritance extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T[]> {
     const out = await super.CreateMany(values as any, returnFields as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as T[];
   }
 
@@ -63,7 +63,7 @@ export default class RoleInheritance extends BaseModel {
     options?: any
   ): Promise<Partial<T>[]> {
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
   }
 
@@ -78,7 +78,7 @@ export default class RoleInheritance extends BaseModel {
     options?: any
   ): Promise<Partial<T>> {
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;
   }
 
@@ -91,7 +91,7 @@ export default class RoleInheritance extends BaseModel {
     options?: any
   ): Promise<number> {
     const out = await super.Delete(condition as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 
@@ -100,7 +100,7 @@ export default class RoleInheritance extends BaseModel {
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
     const out = await super.DeleteById(id as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 }

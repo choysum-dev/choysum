@@ -3,6 +3,7 @@
 
 import { withContext as withModelContext } from '@/core/service/api/context';
 import User from '@/auth/service/models/user';
+import { parseJsonStringArray } from '@/auth/service/models/_user_authz_shared';
 import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleInheritance from '@/auth/service/models/role_inheritance';
@@ -724,29 +725,31 @@ test('PermissionState: maps UI resources from requires and backfills menu parent
         type: 'MENU',
         requires: ['rpc:/auth.User/DefinitelyMissingMethod'],
       });
+
+      const userModelId = await resolveModelId('auth', 'User');
+      const browse = await resolveService(userModelId, 'browse');
+
       await createUiResource({
         resourceId: 'auth.menu.user_list_interp',
         type: 'MENU',
         parentId: 'auth.menu.parent_interp',
-        requires: ['rpc:/auth.User/*'],
+        requires: [`rpc:/auth.User/${browse.name}`],
       });
       await createUiResource({
         resourceId: 'auth.route.user_list_interp',
         type: 'ROUTE',
-        requires: ['rpc:/auth.User/*'],
+        requires: [`rpc:/auth.User/${browse.name}`],
       });
       await createUiResource({
         resourceId: 'auth.action.user_export_interp',
         type: 'ACTION',
-        requires: ['rpc:/auth.User/*'],
+        requires: [`rpc:/auth.User/${browse.name}`],
       });
 
-      const userModelId = await resolveModelId('auth', 'User');
-      const browseServiceId = await resolveServiceId(userModelId, 'browse');
       await RoleMethodAccess.Create(
         {
           RoleId: { Id: r.id } as any,
-          IrServiceId: browseServiceId,
+          IrServiceId: browse.id,
           IrModelId: null,
           IrApplicationId: null,
           Mode: 'allow',
@@ -875,7 +878,7 @@ test('PermissionState: explicit RoleUiResource grant materializes UI whitelist w
         } as any,
         { fields: ['Id', 'Name', 'Type', 'ParentId', 'IrApplicationId', 'Requires'], limit: 1 } as any
       );
-      expect((User as any)._parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires ?? ((actionRows as any)?.[0] as any)?.requires)).toEqual([
+      expect(parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires ?? ((actionRows as any)?.[0] as any)?.requires)).toEqual([
         'rpc:/auth.User/DefinitelyMissingMethod',
       ]);
       const ps = await User.GetPermissionState();
@@ -1306,4 +1309,50 @@ test('PermissionState: bootstrap base.user gets home baseline menu', async () =>
   const companyUi = out.ps.byCompany[c1.Id]?.ui ?? {};
   expect((companyUi.menus ?? []).includes('web.menu.home')).toBe(true);
   expect((companyUi.routes ?? []).includes('web.route.home')).toBe(true);
+});
+
+test('PermissionState: global role ui grants appear under specific company scope (fallback from *)', async () => {
+  resetRequestContext();
+  const c1 = { Id: uid('C1') };
+
+  setupAllowlistForFixtures();
+  const out = await withModelContext(
+    { activeCompanyId: c1.Id, enabledCompanyIds: [c1.Id] } as any,
+    async () => {
+      const userId = await createUser(c1.Id);
+      setIdentity(userId);
+
+      const r = await createRole('ROLE_STAR_FALLBACK');
+      // global role assignment (CompanyId: null)
+      await UserRole.Create(
+        {
+          UserId: { Id: userId } as any,
+          RoleId: { Id: r.id } as any,
+          CompanyId: null as any,
+        } as any,
+        ['Id'] as any
+      );
+
+      await createUiResource({
+        resourceId: 'auth.route.star_fallback_route',
+        type: 'ROUTE',
+        requires: ['rpc:/auth.User/DefinitelyMissingMethod'],
+      });
+
+      await createRoleUiResourceGrant({ roleId: r.id, resourceId: 'auth.route.star_fallback_route' });
+
+      disableAllowlist();
+      const ps = await User.GetPermissionState();
+      return { ps };
+    },
+    { merge: false }
+  );
+
+  // Global scope should list the route.
+  const globalUi = out.ps.byCompany['*']?.ui ?? {};
+  expect((globalUi.routes ?? []).includes('auth.route.star_fallback_route')).toBe(true);
+
+  // Specific company scope must also inherit the global grant via '*' fallback.
+  const companyUi = out.ps.byCompany[c1.Id]?.ui ?? {};
+  expect((companyUi.routes ?? []).includes('auth.route.star_fallback_route')).toBe(true);
 });

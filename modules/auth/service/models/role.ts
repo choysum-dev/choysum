@@ -12,6 +12,14 @@ import RoleRecordRule from './role_record_rule';
 import RoleMethodAccess from './role_method_access';
 import RoleFieldRule from './role_field_rule';
 import RoleUiResource from './role_ui_resource';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import {
+  applyAccessWriteTransformOnCreate,
+  applyAccessWriteTransformOnUpdate,
+  syncAllowResourceGrants,
+  hydrateAccessUiResourceIds,
+  wantsAccessField,
+} from './_role_ui_projection';
 
 /**
  * Role defines one reusable permission bundle and its derived UI/resource mappings.
@@ -145,246 +153,6 @@ export default class Role extends BaseModel {
   UiResources: RoleUiResource[];
 
   /**
-   * Check whether a payload explicitly contains a field.
-   */
-  private static _hasOwn(obj: Record<string, any>, key: string): boolean {
-    return Object.prototype.hasOwnProperty.call(obj, key);
-  }
-
-  /**
-   * Normalize a relation reference into a trimmed Id string.
-   */
-  private static _normalizeRefId(v: any): string | null {
-    if (v == null) return null;
-    const raw = typeof v === 'object' && v !== null ? ((v as any).Id ?? (v as any).id ?? null) : v;
-    const s = String(raw ?? '').trim();
-    return s ? s : null;
-  }
-
-  /**
-   * Normalize a scalar or relation payload into a unique Id list.
-   */
-  private static _normalizeIdList(v: any): string[] {
-    if (v == null) return [];
-    const arr = Array.isArray(v) ? v : [v];
-    const set = new Set<string>();
-    for (const it of arr) {
-      const id = this._normalizeRefId(it);
-      if (id) set.add(id);
-    }
-    return Array.from(set);
-  }
-
-  /**
-   * Read the normalized role Id from a role-related row.
-   */
-  private static _readRoleId(row: any): string | null {
-    return this._normalizeRefId(row?.RoleId);
-  }
-
-  /**
-   * Check whether a UI grant row represents an allow/resource-level grant.
-   */
-  private static _isAllowResourceScope(row: any): boolean {
-    const mode = String((row as any)?.Mode ?? 'allow')
-      .trim()
-      .toLowerCase();
-    const uiResourceId = this._normalizeRefId((row as any)?.IrUiResourceId);
-    const appId = this._normalizeRefId((row as any)?.IrApplicationId);
-    return mode === 'allow' && !!uiResourceId && appId == null;
-  }
-
-  /**
-   * Materialize allow/resource grant payloads from a list of UI resource Ids.
-   */
-  private static _makeAllowResourceEntries(ids: string[]): Array<Record<string, any>> {
-    return ids.map(id => ({
-      Mode: 'allow',
-      IrApplicationId: null,
-      IrUiResourceId: id,
-    }));
-  }
-
-  /**
-   * Extract the replace-array form used by relation write payloads.
-   */
-  private static _extractUiResourcesArray(v: any): any[] | null {
-    if (Array.isArray(v)) return v;
-    if (v && typeof v === 'object' && Array.isArray((v as any).replace)) return (v as any).replace;
-    return null;
-  }
-
-  /**
-   * Load persisted UI resource grant rows for one role.
-   */
-  private static async _loadUiResourcesForRole(roleId: string): Promise<Array<Record<string, any>>> {
-    const rows = await RoleUiResource.Search(
-      {
-        And: [['RoleId', '=', roleId]],
-      } as any,
-      { fields: ['Id', 'Mode', 'IrApplicationId', 'IrUiResourceId'] as any } as any
-    );
-
-    return (rows || []).map((row: any) => ({
-      ...(row || {}),
-      Id: this._normalizeRefId(row?.Id) ?? undefined,
-      Mode: String((row as any)?.Mode ?? 'allow')
-        .trim()
-        .toLowerCase(),
-      IrApplicationId: this._normalizeRefId((row as any)?.IrApplicationId),
-      IrUiResourceId: this._normalizeRefId((row as any)?.IrUiResourceId),
-    }));
-  }
-
-  /**
-   * Merge editor access Ids into the persisted UI resource grant shape.
-   */
-  private static _mergeAccessIntoUiResources(baseRows: Array<Record<string, any>>, accessIds: string[]): Array<Record<string, any>> {
-    const preserved = (baseRows || []).filter(row => !this._isAllowResourceScope(row));
-    const allowRows = this._makeAllowResourceEntries(accessIds);
-    return [...preserved, ...allowRows];
-  }
-
-  /**
-   * Rewrite AccessUiResourceIds into UiResources for create payloads.
-   */
-  private static async _applyAccessWriteTransformOnCreate(values: Record<string, any>): Promise<string[] | null> {
-    if (!this._hasOwn(values, 'AccessUiResourceIds')) return null;
-
-    const accessIds = this._normalizeIdList(values.AccessUiResourceIds);
-    const incomingUiRows = this._extractUiResourcesArray(values.UiResources);
-    const baseRows = Array.isArray(incomingUiRows) ? incomingUiRows : [];
-
-    values.UiResources = this._mergeAccessIntoUiResources(baseRows, accessIds);
-    delete values.AccessUiResourceIds;
-    return accessIds;
-  }
-
-  /**
-   * Rewrite AccessUiResourceIds into UiResources for update payloads.
-   */
-  private static async _applyAccessWriteTransformOnUpdate(values: Record<string, any>, roleId: string): Promise<string[] | null> {
-    if (!this._hasOwn(values, 'AccessUiResourceIds')) return null;
-
-    const accessIds = this._normalizeIdList(values.AccessUiResourceIds);
-    const incomingUiRows = this._extractUiResourcesArray(values.UiResources);
-    const baseRows = Array.isArray(incomingUiRows) ? incomingUiRows : await this._loadUiResourcesForRole(roleId);
-
-    values.UiResources = this._mergeAccessIntoUiResources(baseRows, accessIds);
-    delete values.AccessUiResourceIds;
-    return accessIds;
-  }
-
-  /**
-   * Persist allow/resource UI grants so they stay aligned with AccessUiResourceIds.
-   */
-  private static async _syncAllowResourceGrants(roleId: string, accessIds: string[]): Promise<void> {
-    const targetIds = this._normalizeIdList(accessIds);
-    const targetSet = new Set<string>(targetIds);
-
-    const rows = await this._loadUiResourcesForRole(roleId);
-    const allowRows = rows.filter(row => this._isAllowResourceScope(row));
-
-    const existingByResource = new Map<string, string>();
-    for (const row of allowRows) {
-      const id = this._normalizeRefId((row as any).Id);
-      const resourceId = this._normalizeRefId((row as any).IrUiResourceId);
-      if (!id || !resourceId) continue;
-      existingByResource.set(resourceId, id);
-    }
-
-    const deleteIds = Array.from(existingByResource.entries())
-      .filter(([resourceId]) => !targetSet.has(resourceId))
-      .map(([, rowId]) => rowId);
-
-    if (deleteIds.length === 1) {
-      await RoleUiResource.DeleteById(deleteIds[0]);
-    } else if (deleteIds.length > 1) {
-      await RoleUiResource.Delete(['Id', 'in', deleteIds] as any);
-    }
-
-    const createRows = targetIds
-      .filter(resourceId => !existingByResource.has(resourceId))
-      .map(resourceId => ({
-        RoleId: { Id: roleId } as any,
-        Mode: 'allow',
-        IrApplicationId: null,
-        IrUiResourceId: resourceId,
-      }));
-
-    if (createRows.length) {
-      await RoleUiResource.CreateMany(createRows as any);
-    }
-  }
-
-  /**
-   * Build a roleId -> access resource Id map from persisted UI grants.
-   */
-  private static async _buildAccessMap(roleIds: string[]): Promise<Map<string, string[]>> {
-    const out = new Map<string, string[]>();
-    if (!roleIds.length) return out;
-
-    const rows = await RoleUiResource.Search(
-      {
-        And: [['RoleId', 'in', roleIds]],
-      } as any,
-      { fields: ['RoleId', 'Mode', 'IrApplicationId', 'IrUiResourceId'] as any, limit: Math.max(1000, roleIds.length * 200) } as any
-    );
-
-    const map = new Map<string, Set<string>>();
-    for (const row of rows || []) {
-      const roleId = this._readRoleId(row as any);
-      if (!roleId) continue;
-      if (!this._isAllowResourceScope(row)) continue;
-      const resourceId = this._normalizeRefId((row as any)?.IrUiResourceId);
-      if (!resourceId) continue;
-      if (!map.has(roleId)) map.set(roleId, new Set<string>());
-      map.get(roleId)!.add(resourceId);
-    }
-
-    for (const roleId of roleIds) {
-      out.set(roleId, Array.from(map.get(roleId) || []));
-    }
-    return out;
-  }
-
-  /**
-   * Hydrate AccessUiResourceIds onto result rows when callers request the field.
-   */
-  private static async _hydrateAccessUiResourceIds(records: any[]): Promise<void> {
-    if (!Array.isArray(records) || records.length === 0) return;
-    const roleIds = Array.from(
-      new Set(
-        records
-          .map(row => this._normalizeRefId((row as any)?.Id))
-          .filter(Boolean)
-          .map(String)
-      )
-    );
-    if (!roleIds.length) return;
-
-    const accessMap = await this._buildAccessMap(roleIds);
-    for (const row of records) {
-      const roleId = this._normalizeRefId((row as any)?.Id);
-      if (!roleId) continue;
-      (row as any).AccessUiResourceIds = accessMap.get(roleId) || [];
-    }
-  }
-
-  /**
-   * Check whether a field selection asks for AccessUiResourceIds.
-   */
-  private static _wantsAccessField(selection: any): boolean {
-    if (selection == null) return false;
-    if (typeof selection === 'string') return selection === 'AccessUiResourceIds';
-    if (Array.isArray(selection)) return selection.some(it => this._wantsAccessField(it));
-    if (typeof selection === 'object' && Array.isArray((selection as any).fields)) {
-      return this._wantsAccessField((selection as any).fields);
-    }
-    return false;
-  }
-
-  /**
    * Browse one role and hydrate AccessUiResourceIds when requested.
    */
   static override async Browse<T extends BaseModel>(
@@ -394,8 +162,8 @@ export default class Role extends BaseModel {
     options?: any
   ): Promise<T> {
     const row = (await super.Browse(id, fields as any, options as any)) as any;
-    if (Role._wantsAccessField(fields)) {
-      await Role._hydrateAccessUiResourceIds([row]);
+    if (wantsAccessField(fields)) {
+      await hydrateAccessUiResourceIds([row]);
     }
     return row as T;
   }
@@ -410,8 +178,8 @@ export default class Role extends BaseModel {
     options?: any
   ): Promise<T[]> {
     const rows = (await super.BrowseMany(ids as any, fields as any, options as any)) as any[];
-    if (Role._wantsAccessField(fields)) {
-      await Role._hydrateAccessUiResourceIds(rows);
+    if (wantsAccessField(fields)) {
+      await hydrateAccessUiResourceIds(rows);
     }
     return rows as T[];
   }
@@ -425,8 +193,8 @@ export default class Role extends BaseModel {
     options?: SearchOptions<T>
   ): Promise<T[]> {
     const rows = (await super.Search(condition as any, options as any)) as any[];
-    if (Role._wantsAccessField((options as any)?.fields)) {
-      await Role._hydrateAccessUiResourceIds(rows);
+    if (wantsAccessField((options as any)?.fields)) {
+      await hydrateAccessUiResourceIds(rows);
     }
     return rows as T[];
   }
@@ -440,14 +208,14 @@ export default class Role extends BaseModel {
     returnFields?: FieldSelection<T>
   ): Promise<T> {
     const payload = { ...(value as any) } as Record<string, any>;
-    const accessIds = await Role._applyAccessWriteTransformOnCreate(payload);
+    const accessIds = await applyAccessWriteTransformOnCreate(payload);
     const row = (await super.Create(payload as any, returnFields as any)) as any;
-    const roleId = Role._normalizeRefId((row as any)?.Id);
+    const roleId = normalizeRefId((row as any)?.Id);
     if (roleId && accessIds) {
-      await Role._syncAllowResourceGrants(roleId, accessIds);
+      await syncAllowResourceGrants(roleId, accessIds);
       (row as any).AccessUiResourceIds = [...accessIds];
-    } else if (Role._wantsAccessField(returnFields)) {
-      await Role._hydrateAccessUiResourceIds([row]);
+    } else if (wantsAccessField(returnFields)) {
+      await hydrateAccessUiResourceIds([row]);
     }
     return row as T;
   }
@@ -463,19 +231,22 @@ export default class Role extends BaseModel {
     const payloads = [...(values || [])].map(v => ({ ...(v as any) }));
     const accessList: Array<string[] | null> = [];
     for (const payload of payloads) {
-      accessList.push(await Role._applyAccessWriteTransformOnCreate(payload));
+      accessList.push(await applyAccessWriteTransformOnCreate(payload));
     }
     const rows = (await super.CreateMany(payloads as any, returnFields as any)) as any[];
     for (let i = 0; i < rows.length; i++) {
-      const roleId = Role._normalizeRefId((rows[i] as any)?.Id);
+      const roleId = normalizeRefId((rows[i] as any)?.Id);
       const accessIds = accessList[i];
       if (roleId && accessIds) {
-        await Role._syncAllowResourceGrants(roleId, accessIds);
+        await syncAllowResourceGrants(roleId, accessIds);
         (rows[i] as any).AccessUiResourceIds = [...accessIds];
       }
     }
-    if (Role._wantsAccessField(returnFields) && accessList.every(ids => ids == null)) {
-      await Role._hydrateAccessUiResourceIds(rows);
+    if (wantsAccessField(returnFields)) {
+      const rowsToHydrate = rows.filter((_, i) => accessList[i] == null);
+      if (rowsToHydrate.length > 0) {
+        await hydrateAccessUiResourceIds(rowsToHydrate);
+      }
     }
     return rows as T[];
   }
@@ -491,24 +262,24 @@ export default class Role extends BaseModel {
     options?: any
   ): Promise<Partial<T>[]> {
     const payload = { ...(values as any) } as Record<string, any>;
-    const shouldHydrateAccess = Role._wantsAccessField(returnFields);
+    const shouldHydrateAccess = wantsAccessField(returnFields);
     let roleIdForSync: string | null = null;
     let accessIdsForSync: string[] | null = null;
-    if (Role._hasOwn(payload, 'AccessUiResourceIds')) {
+    if (Object.prototype.hasOwnProperty.call(payload, 'AccessUiResourceIds')) {
       const targetRows = (await super.Search(condition as any, { fields: ['Id'] as any } as any)) as any[];
-      const roleIds = targetRows.map(row => Role._normalizeRefId((row as any)?.Id)).filter(Boolean) as string[];
+      const roleIds = targetRows.map(row => normalizeRefId((row as any)?.Id)).filter(Boolean) as string[];
       if (roleIds.length > 1) {
         throw new Error('Role.Update with AccessUiResourceIds only supports single record update');
       }
       if (roleIds.length === 1) {
         roleIdForSync = roleIds[0];
-        accessIdsForSync = await Role._applyAccessWriteTransformOnUpdate(payload, roleIds[0]);
+        accessIdsForSync = await applyAccessWriteTransformOnUpdate(payload, roleIds[0]);
       }
     }
 
     const rows = (await super.Update(condition as any, payload as any, returnFields as any, options as any)) as any[];
     if (roleIdForSync && accessIdsForSync) {
-      await Role._syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
+      await syncAllowResourceGrants(roleIdForSync, accessIdsForSync);
       if (rows.length && returnFields != null) {
         rows[0] = (await this.Browse(roleIdForSync as any, returnFields as any, options as any)) as any;
       }
@@ -516,7 +287,7 @@ export default class Role extends BaseModel {
         (rows[0] as any).AccessUiResourceIds = [...accessIdsForSync];
       }
     } else if (shouldHydrateAccess) {
-      await Role._hydrateAccessUiResourceIds(rows);
+      await hydrateAccessUiResourceIds(rows);
     }
     return rows as Partial<T>[];
   }
@@ -532,18 +303,18 @@ export default class Role extends BaseModel {
     options?: any
   ): Promise<Partial<T>> {
     const payload = { ...(values as any) } as Record<string, any>;
-    const accessIds = await Role._applyAccessWriteTransformOnUpdate(payload, id);
+    const accessIds = await applyAccessWriteTransformOnUpdate(payload, id);
     let row = (await super.UpdateById(id as any, payload as any, returnFields as any, options as any)) as any;
     if (accessIds) {
-      await Role._syncAllowResourceGrants(id, accessIds);
+      await syncAllowResourceGrants(id, accessIds);
       if (returnFields != null) {
         row = (await this.Browse(id as any, returnFields as any, options as any)) as any;
       }
-      if (Role._wantsAccessField(returnFields)) {
+      if (wantsAccessField(returnFields)) {
         (row as any).AccessUiResourceIds = [...accessIds];
       }
-    } else if (Role._wantsAccessField(returnFields)) {
-      await Role._hydrateAccessUiResourceIds([row]);
+    } else if (wantsAccessField(returnFields)) {
+      await hydrateAccessUiResourceIds([row]);
     }
     return row as Partial<T>;
   }

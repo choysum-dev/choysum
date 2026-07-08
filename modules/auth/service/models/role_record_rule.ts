@@ -6,7 +6,8 @@ import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
 import Role from './role';
-import { invalidateAuthzRequestCaches } from './_request_cache_invalidation';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
 
 /**
  * RoleRecordRule stores record-level condition filters and CRUD permission
@@ -77,16 +78,6 @@ export default class RoleRecordRule extends BaseModel {
   PermDelete: boolean;
 
   /**
-   * Normalize a relation reference into a trimmed Id string.
-   */
-  private static _normalizeRefId(v: any): string | null {
-    if (v == null) return null;
-    const raw = typeof v === 'object' && v !== null ? (v as any).Id : v;
-    const s = String(raw ?? '').trim();
-    return s ? s : null;
-  }
-
-  /**
    * Validate that the requested scope resolves to model, application, or global.
    */
   private static _validateScopeShape(values: Record<string, any>, mode: 'create' | 'update'): void {
@@ -100,8 +91,8 @@ export default class RoleRecordRule extends BaseModel {
       }
     }
 
-    const irModelId = this._normalizeRefId((values as any).IrModelId);
-    const irApplicationId = this._normalizeRefId((values as any).IrApplicationId);
+    const irModelId = normalizeRefId((values as any).IrModelId);
+    const irApplicationId = normalizeRefId((values as any).IrApplicationId);
 
     const isModel = irModelId != null && irApplicationId == null;
     const isApplication = irModelId == null && irApplicationId != null;
@@ -124,7 +115,7 @@ export default class RoleRecordRule extends BaseModel {
   ): Promise<T> {
     RoleRecordRule._validateScopeShape(value as any, 'create');
     const out = await super.Create(value as any, returnFields as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as T;
   }
 
@@ -138,7 +129,7 @@ export default class RoleRecordRule extends BaseModel {
   ): Promise<T[]> {
     for (const v of values || []) RoleRecordRule._validateScopeShape(v as any, 'create');
     const out = await super.CreateMany(values as any, returnFields as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as T[];
   }
 
@@ -154,7 +145,7 @@ export default class RoleRecordRule extends BaseModel {
   ): Promise<Partial<T>[]> {
     RoleRecordRule._validateScopeShape(values as any, 'update');
     const out = await super.Update(condition as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>[];
   }
 
@@ -170,7 +161,7 @@ export default class RoleRecordRule extends BaseModel {
   ): Promise<Partial<T>> {
     RoleRecordRule._validateScopeShape(values as any, 'update');
     const out = await super.UpdateById(id as any, values as any, returnFields as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out as unknown as Partial<T>;
   }
 
@@ -183,7 +174,7 @@ export default class RoleRecordRule extends BaseModel {
     options?: any
   ): Promise<number> {
     const out = await super.Delete(condition as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 
@@ -192,7 +183,7 @@ export default class RoleRecordRule extends BaseModel {
    */
   static override async DeleteById<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, id: string, options?: any): Promise<number> {
     const out = await super.DeleteById(id as any, options as any);
-    invalidateAuthzRequestCaches({ allUsers: true });
+    invalidateAllAuthzCaches();
     return out;
   }
 }
