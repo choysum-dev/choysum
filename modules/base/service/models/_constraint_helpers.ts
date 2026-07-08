@@ -30,8 +30,7 @@ export function writeConstraintFields(
   }
 
   if (opts?.triggerFields && opts?.targetField) {
-    const triggered =
-      isCreate || opts.triggerFields.some(f => Object.prototype.hasOwnProperty.call(values, f));
+    const triggered = isCreate || opts.triggerFields.some(f => Object.prototype.hasOwnProperty.call(values, f));
     if (triggered) {
       values[opts.targetField] = (self as any)[opts.targetField];
     }

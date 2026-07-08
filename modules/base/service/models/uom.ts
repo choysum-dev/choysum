@@ -5,7 +5,7 @@ import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import UoMCategory from './uom_category';
 import { asRefId } from './_refs';
-import { fail, isReferenceValue, normalizeName, toPositiveDecimal } from './_normalizers';
+import { fail, normalizeName, toPositiveDecimal } from './_normalizers';
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -77,7 +77,7 @@ export default class UoM extends BaseModel {
     const categoryId = asRefId(values.CategoryId);
     if (!categoryId) fail('CategoryId is required');
 
-    const isRef = isReferenceValue(values.IsReference);
+    const isRef = values.IsReference === true;
     const factor = toPositiveDecimal(values.Factor, 'Factor');
     if (isRef && !factor.eq(1)) {
       fail('Reference UoM must have Factor = 1');
