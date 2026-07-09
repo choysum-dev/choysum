@@ -3,9 +3,11 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import Company from './company';
 import Currency from './currency';
+import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {
@@ -31,53 +33,21 @@ export default class ExchangeRate extends BaseModel {
   @Field({ type: 'decimal', column: { notNull: true, precision: 38, scale: 18 } })
   Rate: any;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static toPositiveDecimal(value: any, fieldName: string): Decimal {
-    try {
-      if (value === undefined || value === null || value === '') throw new Error('required');
-      const decimal = value instanceof Decimal ? value : new Decimal((value as any)?.$bigdecimal ?? value);
-      if (!decimal.gt(0)) this.fail(`${fieldName} must be greater than 0`);
-      return decimal;
-    } catch (err) {
-      if (err instanceof ChoysumError) throw err;
-      this.fail(`${fieldName} must be a valid decimal`);
-    }
-  }
-
-  private static normalizeCompanyScopeKey(companyId: any): string {
-    const id = this.asRefId(companyId);
-    return id || '__GLOBAL__';
-  }
-
-  private static normalizeDateStringInput(value: any): string {
-    if (value === undefined || value === null || value === '') this.fail('Date is required');
-    if (value instanceof Date) this.fail('Date must be YYYY-MM-DD');
-    const raw = String(value).trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-      this.fail('Date must be YYYY-MM-DD');
-    }
-    const date = new Date(`${raw}T00:00:00.000Z`);
-    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
-      this.fail('Date is invalid');
-    }
-    return raw;
-  }
-
   private static coerceDateKey(value: any): string {
-    if (value === undefined || value === null || value === '') this.fail('Date is required');
-    if (value instanceof Date) return value.toISOString().slice(0, 10);
-    return this.normalizeDateStringInput(value);
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) {
+        fail('Date is invalid');
+      }
+      return value.toISOString().slice(0, 10);
+    }
+    return mapNormalizationToBase(
+      () => normalizeDateString(value),
+      err => {
+        if (err.code === 'required') return 'Date is required';
+        if (err.code === 'invalid_date_value') return 'Date is invalid';
+        return 'Date must be YYYY-MM-DD';
+      }
+    );
   }
 
   private static dateKey(value: any): string {
@@ -85,11 +55,9 @@ export default class ExchangeRate extends BaseModel {
   }
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
-    const scopeKey = String(values.CompanyScopeKey ?? this.normalizeCompanyScopeKey(values.CompanyId));
-    const currencyId = this.asRefId(values.CurrencyId);
+    const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
+    const currencyId = requireRefId(values.CurrencyId, 'CurrencyId');
     const dateKey = this.dateKey(values.Date);
-
-    if (!currencyId) this.fail('CurrencyId is required');
 
     const conflicts = await this.Search(
       {
@@ -104,13 +72,16 @@ export default class ExchangeRate extends BaseModel {
 
     const hasConflict = (conflicts || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
     if (hasConflict) {
-      this.fail('ExchangeRate must be unique for CompanyId + CurrencyId + Date');
+      fail('ExchangeRate must be unique for CompanyId + CurrencyId + Date');
     }
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    this.toPositiveDecimal(values.Rate, 'Rate');
-    values.CompanyScopeKey = this.normalizeCompanyScopeKey(values.CompanyId);
+    values.Rate = mapNormalizationToBase(
+      () => toPositiveDecimal(values.Rate).toString(),
+      err => (err.code === 'non_positive_decimal' ? 'Rate must be greater than 0' : 'Rate must be a valid decimal')
+    );
+    values.CompanyScopeKey = normalizeRefId(values.CompanyId) || '__GLOBAL__';
     values.Date = this.dateKey(values.Date);
     await this.ensureUniqueTuple(values, currentId);
   }
@@ -122,12 +93,11 @@ export default class ExchangeRate extends BaseModel {
     const currentId = String(current?.Id || '').trim() || undefined;
 
     await ExchangeRate.validateEntity(self as any, currentId);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Date')) {
-      values.Date = self.Date;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'CompanyId') || Object.prototype.hasOwnProperty.call(values, 'CompanyScopeKey')) {
-      values.CompanyScopeKey = (self as any).CompanyScopeKey;
-    }
+    writeConstraintFields(self as any, ctx, ['Date', 'Rate']);
+    writeConstraintFields(self as any, ctx, [], {
+      forceOnCreate: true,
+      triggerFields: ['CompanyId', 'CompanyScopeKey'],
+      targetField: 'CompanyScopeKey',
+    });
   }
 }

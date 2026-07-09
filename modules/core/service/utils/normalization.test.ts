@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { Decimal } from '@/core/service';
 import {
   normalizeOptionalString,
   normalizeStringArray,
@@ -21,6 +22,27 @@ import {
   uniqScopeIds,
   normalizePreferences,
   buildScopePreferences,
+  asBigInt,
+  toDateOnlyString,
+  NormalizationError,
+  parseDecimalInput,
+  toPositiveDecimal,
+  normalizePositiveDecimalString,
+  normalizeCodeRequired,
+  normalizeCodeOptional,
+  normalizeName,
+  requireRefId,
+  normalizeNullableString,
+  normalizeOptionalNonEmptyString,
+  isExpiredAt,
+  roundToCurrencyAmount,
+  normalizeRequiredText,
+  parsePositiveInt,
+  parseBigInt,
+  normalizeDecimalDigits,
+  normalizeDateString,
+  normalizeEnumValue,
+  resolveModelRefId,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -222,4 +244,349 @@ test('buildScopePreferences merges active/enabled into base', () => {
     activeCompanyId: 'X',
     enabledCompanyIds: [],
   });
+});
+
+// ---------------------------------------------------------------------------
+// asBigInt
+// ---------------------------------------------------------------------------
+
+test('asBigInt returns bigint for bigint input', () => {
+  expect(asBigInt(42n)).toBe(42n);
+});
+
+test('asBigInt converts number to bigint', () => {
+  expect(asBigInt(7)).toBe(7n);
+  expect(asBigInt(3.9)).toBe(3n);
+});
+
+test('asBigInt handles $bigint wrapper', () => {
+  expect(asBigInt({ $bigint: '99' })).toBe(99n);
+});
+
+test('asBigInt handles string', () => {
+  expect(asBigInt(' 123 ')).toBe(123n);
+});
+
+test('asBigInt returns 0n for empty/falsy', () => {
+  expect(asBigInt('')).toBe(0n);
+  expect(asBigInt(null)).toBe(0n);
+  expect(asBigInt(undefined)).toBe(0n);
+  expect(asBigInt('   ')).toBe(0n);
+});
+
+// ---------------------------------------------------------------------------
+// toDateOnlyString
+// ---------------------------------------------------------------------------
+
+test('toDateOnlyString from Date', () => {
+  expect(toDateOnlyString(new Date('2024-06-15T12:00:00Z'))).toBe('2024-06-15');
+});
+
+test('toDateOnlyString from ISO string', () => {
+  expect(toDateOnlyString('2024-06-15')).toBe('2024-06-15');
+  expect(toDateOnlyString('2024-06-15T12:00:00Z')).toBe('2024-06-15');
+});
+
+test('toDateOnlyString returns empty for falsy', () => {
+  expect(toDateOnlyString('')).toBe('');
+  expect(toDateOnlyString(null)).toBe('');
+  expect(toDateOnlyString(undefined)).toBe('');
+});
+
+test('toDateOnlyString returns empty for short input', () => {
+  expect(toDateOnlyString('abc')).toBe('');
+});
+
+// ---------------------------------------------------------------------------
+// lifted parsers and normalizers
+// ---------------------------------------------------------------------------
+
+test('parseDecimalInput parses string/object/decimal and can reject number input', () => {
+  expect(parseDecimalInput('3.14').eq(new Decimal('3.14'))).toBe(true);
+  expect(parseDecimalInput({ $bigdecimal: '2.50' }).eq(new Decimal('2.5'))).toBe(true);
+  expect(parseDecimalInput(new Decimal('9')).eq(new Decimal('9'))).toBe(true);
+  expect(() => parseDecimalInput(1, { allowNumber: false })).toThrow('number_not_allowed');
+});
+
+test('parseDecimalInput reports required and invalid decimal codes', () => {
+  try {
+    parseDecimalInput('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    parseDecimalInput('not-a-number');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_decimal');
+  }
+});
+
+test('toPositiveDecimal and normalizePositiveDecimalString work for positive decimals', () => {
+  expect(toPositiveDecimal('1.25').eq(new Decimal('1.25'))).toBe(true);
+  expect(normalizePositiveDecimalString('2.50')).toBe('2.5');
+});
+
+test('toPositiveDecimal reports non_positive_decimal', () => {
+  try {
+    toPositiveDecimal('0');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('non_positive_decimal');
+  }
+});
+
+test('normalizeRequiredText trims and rejects empty', () => {
+  expect(normalizeRequiredText('  hello  ')).toBe('hello');
+  try {
+    normalizeRequiredText('   ');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('normalizeCodeRequired trims and uppercases by default', () => {
+  expect(normalizeCodeRequired('  abc  ')).toBe('ABC');
+  expect(normalizeCodeRequired('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
+});
+
+test('normalizeCodeRequired reports required for empty values', () => {
+  try {
+    normalizeCodeRequired('  ');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('normalizeCodeOptional preserves undefined/null and normalizes strings', () => {
+  expect(normalizeCodeOptional(undefined)).toBeUndefined();
+  expect(normalizeCodeOptional(null)).toBeNull();
+  expect(normalizeCodeOptional('  ')).toBeNull();
+  expect(normalizeCodeOptional('  abc  ')).toBe('ABC');
+  expect(normalizeCodeOptional('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
+});
+
+test('normalizeName and requireRefId report required', () => {
+  expect(normalizeName('  Name  ')).toBe('Name');
+  expect(requireRefId({ Id: 'id_1' })).toBe('id_1');
+
+  try {
+    normalizeName('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    requireRefId(null);
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('normalizeNullableString converts nullish/empty to null', () => {
+  expect(normalizeNullableString(undefined)).toBeNull();
+  expect(normalizeNullableString(null)).toBeNull();
+  expect(normalizeNullableString('  ')).toBeNull();
+  expect(normalizeNullableString('  x  ')).toBe('x');
+});
+
+test('normalizeOptionalNonEmptyString handles optional/required/max-length semantics', () => {
+  expect(normalizeOptionalNonEmptyString(undefined)).toBeUndefined();
+  expect(normalizeOptionalNonEmptyString(null)).toBeUndefined();
+  expect(normalizeOptionalNonEmptyString('  ok  ', { maxLength: 10 })).toBe('ok');
+
+  try {
+    normalizeOptionalNonEmptyString('   ');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    normalizeOptionalNonEmptyString('toolong', { maxLength: 3 });
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('string_too_long');
+  }
+});
+
+test('isExpiredAt treats missing/invalid as expired and compares timestamps', () => {
+  const now = new Date('2026-01-01T00:00:00.000Z').getTime();
+  expect(isExpiredAt(undefined, now)).toBe(true);
+  expect(isExpiredAt('not-a-date', now)).toBe(true);
+  expect(isExpiredAt('2025-12-31T23:59:59.000Z', now)).toBe(true);
+  expect(isExpiredAt('2026-01-01T00:00:01.000Z', now)).toBe(false);
+});
+
+test('roundToCurrencyAmount supports step rounding and digits fallback', () => {
+  expect(roundToCurrencyAmount(new Decimal('1.23'), { DecimalDigits: 2, Rounding: '0.05' }).toString()).toBe('1.25');
+  expect(roundToCurrencyAmount(new Decimal('1.2349'), { DecimalDigits: 3, Rounding: null }).toString()).toBe('1.235');
+  expect(roundToCurrencyAmount(new Decimal('1.2'), { DecimalDigits: 2, Rounding: 'bad' }, 4).toString()).toBe('1.2');
+});
+
+test('parsePositiveInt parses and validates integer >= 1', () => {
+  expect(parsePositiveInt('3')).toBe(3);
+  try {
+    parsePositiveInt('3.5');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_integer');
+  }
+  try {
+    parsePositiveInt('0');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('integer_too_small');
+  }
+});
+
+test('parseBigInt parses bigint-like values and reports invalid inputs', () => {
+  expect(parseBigInt(7n)).toBe(7n);
+  expect(parseBigInt(7.9)).toBe(7n);
+  expect(parseBigInt({ $bigint: '8' })).toBe(8n);
+  expect(parseBigInt('9')).toBe(9n);
+
+  try {
+    parseBigInt('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    parseBigInt('x');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_bigint');
+  }
+});
+
+test('normalizeDecimalDigits validates required and non-negative integer', () => {
+  expect(normalizeDecimalDigits('2')).toBe(2);
+
+  try {
+    normalizeDecimalDigits('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    normalizeDecimalDigits(-1);
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_integer');
+  }
+});
+
+test('normalizeDateString validates date-only format and calendar value', () => {
+  expect(normalizeDateString('2024-07-08')).toBe('2024-07-08');
+
+  try {
+    normalizeDateString('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    normalizeDateString('2024/07/08');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_date_format');
+  }
+
+  try {
+    normalizeDateString('2024-02-30');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_date_value');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// normalizeEnumValue
+// ---------------------------------------------------------------------------
+
+test('normalizeEnumValue returns default for nullish/empty', () => {
+  expect(normalizeEnumValue(undefined, ['a', 'b'] as const, 'a')).toBe('a');
+  expect(normalizeEnumValue(null, ['a', 'b'] as const, 'b')).toBe('b');
+  expect(normalizeEnumValue('', ['a', 'b'] as const, 'a')).toBe('a');
+});
+
+test('normalizeEnumValue returns matching value', () => {
+  expect(normalizeEnumValue('a', ['a', 'b'] as const, 'b')).toBe('a');
+  expect(normalizeEnumValue('  b  ', ['a', 'b'] as const, 'a')).toBe('b');
+});
+
+test('normalizeEnumValue throws invalid_enum_value for unknown values', () => {
+  try {
+    normalizeEnumValue('c', ['a', 'b'] as const, 'a');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_enum_value');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// resolveModelRefId
+// ---------------------------------------------------------------------------
+
+test('resolveModelRefId returns Id from relation object', () => {
+  expect(resolveModelRefId({ CompanyId: { Id: 'c1' } }, 'CompanyId')).toBe('c1');
+});
+
+test('resolveModelRefId returns raw field when not an object', () => {
+  expect(resolveModelRefId({ CompanyId: 'c2' }, 'CompanyId')).toBe('c2');
+  expect(resolveModelRefId({ CompanyId: 42 }, 'CompanyId')).toBe(42);
+});
+
+test('resolveModelRefId returns undefined for falsy/missing input', () => {
+  expect(resolveModelRefId(null, 'Field')).toBeUndefined();
+  expect(resolveModelRefId(undefined, 'Field')).toBeUndefined();
+  expect(resolveModelRefId({}, 'Field')).toBeUndefined();
+});
+
+test('resolveModelRefId falls back to raw field when Id property is missing', () => {
+  expect(resolveModelRefId({ CompanyId: { Name: 'x' } }, 'CompanyId')).toEqual({ Name: 'x' });
+});
+
+// ---------------------------------------------------------------------------
+// roundToCurrencyAmount nullable
+// ---------------------------------------------------------------------------
+
+test('roundToCurrencyAmount handles null or undefined currency by defaulting digits to 0', () => {
+  const amount = new Decimal('3.14159');
+  expect(roundToCurrencyAmount(amount, null).eq(new Decimal('3'))).toBe(true);
+  expect(roundToCurrencyAmount(amount, undefined).eq(new Decimal('3'))).toBe(true);
+});
+
+test('roundToCurrencyAmount nullable currency ignores rounding step when null', () => {
+  const amount = new Decimal('2.5');
+  expect(roundToCurrencyAmount(amount, null, 2).eq(new Decimal('2.5'))).toBe(true);
 });

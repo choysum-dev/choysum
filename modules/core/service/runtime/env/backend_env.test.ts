@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { getBackendEnv, getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
+import { getBackendEnv, getBackendEnvPositiveInt, getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 
 test('getBackendEnv returns a non-null object', () => {
   const env = getBackendEnv();
@@ -28,4 +28,32 @@ test('isTruthyFlag recognizes truthy and falsy values', () => {
   expect(isTruthyFlag('off')).toBe(false);
   expect(isTruthyFlag('')).toBe(false);
   expect(isTruthyFlag('  random  ')).toBe(false);
+});
+
+test('getBackendEnvPositiveInt parses positive values and falls back for invalid values', () => {
+  const envKey = 'CHOYSUM_TEST_POSITIVE_INT';
+  const globalAny = globalThis as any;
+  const bucketKey = '__choysumBackendEnv';
+  if (!globalAny[bucketKey]) globalAny[bucketKey] = {};
+
+  const prev = globalAny[bucketKey][envKey];
+  try {
+    globalAny[bucketKey][envKey] = '12';
+    expect(getBackendEnvPositiveInt(envKey, 7)).toBe(12);
+
+    globalAny[bucketKey][envKey] = 9.9;
+    expect(getBackendEnvPositiveInt(envKey, 7)).toBe(9);
+
+    globalAny[bucketKey][envKey] = 'bad';
+    expect(getBackendEnvPositiveInt(envKey, 7)).toBe(7);
+
+    globalAny[bucketKey][envKey] = 0;
+    expect(getBackendEnvPositiveInt(envKey, 7)).toBe(7);
+  } finally {
+    if (prev === undefined) {
+      delete globalAny[bucketKey][envKey];
+    } else {
+      globalAny[bucketKey][envKey] = prev;
+    }
+  }
 });

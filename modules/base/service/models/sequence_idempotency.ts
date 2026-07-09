@@ -4,8 +4,10 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeRefId, parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
 import Company from './company';
 import Sequence from './sequence';
+import { mapNormalizationToBase } from './_normalizers';
 
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
@@ -46,35 +48,6 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({ type: 'datetime', column: { notNull: true, index: true } })
   ExpiresAt: Date;
 
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  private static parsePositiveInt(value: unknown, fieldName: string): number {
-    const n = Number(value);
-    if (!Number.isFinite(n) || Math.floor(n) !== n || n < 1) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be an integer >= 1` }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
-    return n;
-  }
-
-  private static parseBigInt(value: unknown, fieldName: string): bigint {
-    try {
-      if (typeof value === 'bigint') return value;
-      if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
-      if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
-      const text = String(value ?? '').trim();
-      if (!text) throw new Error('empty');
-      return BigInt(text);
-    } catch {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `${fieldName} must be a valid integer` }).withGrpcCode(GrpcCode.InvalidArgument);
-    }
-  }
-
   private static async validateWriteEntity(values: Record<string, any>, existing?: any): Promise<void> {
     const candidate = {
       SequenceId: Object.prototype.hasOwnProperty.call(values, 'SequenceId') ? values.SequenceId : existing?.SequenceId,
@@ -84,14 +57,23 @@ export default class SequenceIdempotency extends BaseModel {
       RangeEnd: Object.prototype.hasOwnProperty.call(values, 'RangeEnd') ? values.RangeEnd : existing?.RangeEnd,
     };
 
-    const sequenceId = this.asRefId(candidate.SequenceId);
+    const sequenceId = normalizeRefId(candidate.SequenceId);
     if (!sequenceId) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'SequenceId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
 
-    const count = this.parsePositiveInt(candidate.Count, 'Count');
-    const rangeStart = this.parseBigInt(candidate.RangeStart, 'RangeStart');
-    const rangeEnd = this.parseBigInt(candidate.RangeEnd, 'RangeEnd');
+    const count = mapNormalizationToBase(
+      () => parsePositiveInt(candidate.Count),
+      () => 'Count must be an integer >= 1'
+    );
+    const rangeStart = mapNormalizationToBase(
+      () => parseBigInt(candidate.RangeStart),
+      () => 'RangeStart must be a valid integer'
+    );
+    const rangeEnd = mapNormalizationToBase(
+      () => parseBigInt(candidate.RangeEnd),
+      () => 'RangeEnd must be a valid integer'
+    );
     const expectedRangeEnd = rangeStart + BigInt(count) - 1n;
     if (rangeEnd !== expectedRangeEnd) {
       throw new ChoysumError({
@@ -102,8 +84,8 @@ export default class SequenceIdempotency extends BaseModel {
     }
 
     const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
-    const sequenceCompanyId = this.asRefId((sequence as any)?.CompanyId);
-    const companyId = this.asRefId(candidate.CompanyId) ?? null;
+    const sequenceCompanyId = normalizeRefId((sequence as any)?.CompanyId);
+    const companyId = normalizeRefId(candidate.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
       throw new ChoysumError({
         domain: 'base',

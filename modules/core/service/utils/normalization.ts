@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import Decimal from '../../utils/decimal';
+
 /**
  * Return a trimmed string, or undefined when input is empty/null.
  */
@@ -290,4 +292,348 @@ export function buildScopePreferences(basePrefs: Record<string, unknown>, active
     activeCompanyId: active,
     enabledCompanyIds: enabled,
   };
+}
+
+/**
+ * Coerce a value to a BigInt with lenient defaults.
+ * Returns 0n for empty/falsy values (suitable for reading existing DB values).
+ */
+export function asBigInt(v: unknown): bigint {
+  if (typeof v === 'bigint') return v;
+  if (v && typeof v === 'object' && typeof (v as any).$bigint === 'string') return BigInt((v as any).$bigint);
+  if (typeof v === 'number' && Number.isFinite(v)) return BigInt(Math.trunc(v));
+  const s = String((v as any) ?? '').trim();
+  if (!s) return 0n;
+  return BigInt(s);
+}
+
+/**
+ * Extract a YYYY-MM-DD date-only string from a Date or string input.
+ * Returns empty string for falsy/empty input.
+ */
+export function toDateOnlyString(input: unknown): string {
+  if (input instanceof Date) return input.toISOString().slice(0, 10);
+  if (typeof input !== 'string') return '';
+  const s = input.trim();
+  return s.length >= 10 ? s.slice(0, 10) : '';
+}
+
+export { buildPaddedNumberItems, formatPaddedNumber, resolvePaddedNumberFormat } from './format';
+
+export type NormalizationErrorCode =
+  | 'required'
+  | 'string_too_long'
+  | 'invalid_decimal'
+  | 'non_positive_decimal'
+  | 'number_not_allowed'
+  | 'invalid_integer'
+  | 'integer_too_small'
+  | 'invalid_bigint'
+  | 'invalid_date_format'
+  | 'invalid_date_value'
+  | 'invalid_enum_value';
+
+/**
+ * Resolve a model relation field to its canonical id.
+ *
+ * When the field value is an object with an `Id` property (e.g. a FK relation
+ * record), returns that Id; otherwise returns the raw field value.  Returns
+ * undefined when the input object is falsy or not an object.
+ */
+export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const field = (obj as Record<string, unknown>)[fieldName];
+  if (!field || typeof field !== 'object') return field;
+  return (field as Record<string, unknown>).Id ?? (field as Record<string, unknown>).id ?? field;
+}
+
+/**
+ * Normalize a value against a fixed set of allowed string literals.
+ *
+ * - Returns {@link defaultValue} when value is undefined, null, or empty.
+ * - Returns the matching allowed value when present.
+ * - Throws {@link NormalizationError} with code `invalid_enum_value` otherwise.
+ */
+export function normalizeEnumValue<T extends string>(value: unknown, allowed: readonly T[], defaultValue: T): T {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  const s = String(value).trim();
+  if ((allowed as readonly string[]).includes(s)) return s as T;
+  raiseNormalizationError('invalid_enum_value');
+}
+
+/**
+ * Domain-agnostic error used by normalization utilities.
+ */
+export class NormalizationError extends Error {
+  readonly code: NormalizationErrorCode;
+
+  constructor(code: NormalizationErrorCode, message?: string) {
+    super(message || code);
+    this.name = 'NormalizationError';
+    this.code = code;
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
+function raiseNormalizationError(code: NormalizationErrorCode): never {
+  throw new NormalizationError(code);
+}
+
+/**
+ * Parse arbitrary input into Decimal.
+ */
+export function parseDecimalInput(value: unknown, opts?: { allowNumber?: boolean }): Decimal {
+  const allowNumber = opts?.allowNumber !== false;
+  if (value === undefined || value === null || value === '') {
+    raiseNormalizationError('required');
+  }
+
+  try {
+    if (value instanceof Decimal) return value;
+
+    if (typeof value === 'number') {
+      if (!allowNumber) raiseNormalizationError('number_not_allowed');
+      return new Decimal(value);
+    }
+
+    if (typeof value === 'object' && value && typeof (value as any).$bigdecimal === 'string') {
+      return new Decimal(String((value as any).$bigdecimal));
+    }
+
+    if (typeof value === 'string') {
+      return new Decimal(value);
+    }
+  } catch (err) {
+    if (err instanceof NormalizationError) throw err;
+    raiseNormalizationError('invalid_decimal');
+  }
+
+  raiseNormalizationError('invalid_decimal');
+}
+
+/**
+ * Parse and validate a positive decimal (> 0).
+ */
+export function toPositiveDecimal(value: unknown): Decimal {
+  const decimal = parseDecimalInput(value);
+  if (!decimal.gt(0)) {
+    raiseNormalizationError('non_positive_decimal');
+  }
+  return decimal;
+}
+
+/**
+ * Normalize positive decimal as canonical string.
+ */
+export function normalizePositiveDecimalString(value: unknown): string {
+  return toPositiveDecimal(value).toString();
+}
+
+/**
+ * Normalize a required code string: trim, optional uppercase, and reject empty.
+ */
+export function normalizeCodeRequired(value: unknown, opts?: { uppercase?: boolean }): string {
+  let code = String(value ?? '').trim();
+  if (opts?.uppercase !== false) {
+    code = code.toUpperCase();
+  }
+  if (!code) {
+    raiseNormalizationError('required');
+  }
+  return code;
+}
+
+/**
+ * Normalize an optional code string with null/undefined preservation.
+ */
+export function normalizeCodeOptional(value: unknown, opts?: { uppercase?: boolean }): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  let code = String(value ?? '').trim();
+  if (opts?.uppercase !== false) {
+    code = code.toUpperCase();
+  }
+  return code || null;
+}
+
+/**
+ * Normalize a required name string.
+ */
+export function normalizeName(value: unknown): string {
+  const name = String(value ?? '').trim();
+  if (!name) {
+    raiseNormalizationError('required');
+  }
+  return name;
+}
+
+/**
+ * Resolve and require a non-empty reference id.
+ */
+export function requireRefId(value: unknown): string {
+  const id = normalizeRefId(value);
+  if (!id) {
+    raiseNormalizationError('required');
+  }
+  return id;
+}
+
+/**
+ * Normalize nullable string input: null/undefined/empty -> null.
+ */
+export function normalizeNullableString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
+/**
+ * Normalize an optional user-provided text value.
+ *
+ * - undefined/null => undefined
+ * - empty/whitespace => required error
+ * - length > maxLength => string_too_long error
+ */
+export function normalizeOptionalNonEmptyString(value: unknown, opts?: { maxLength?: number }): string | undefined {
+  if (value === undefined || value === null) return undefined;
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    raiseNormalizationError('required');
+  }
+
+  const maxLength = Number(opts?.maxLength);
+  if (Number.isFinite(maxLength) && maxLength > 0 && normalized.length > maxLength) {
+    raiseNormalizationError('string_too_long');
+  }
+
+  return normalized;
+}
+
+/**
+ * Return whether a timestamp-like value is expired at nowMs.
+ * Missing/invalid values are treated as expired.
+ */
+export function isExpiredAt(value: unknown, nowMs: number = Date.now()): boolean {
+  if (!value) return true;
+  const ms = new Date(value as any).getTime();
+  if (!Number.isFinite(ms)) return true;
+  return ms <= nowMs;
+}
+
+export type CurrencyRoundingSpec = {
+  DecimalDigits?: unknown;
+  Rounding?: unknown;
+};
+
+/**
+ * Round an amount according to currency digits and optional rounding step.
+ */
+export function roundToCurrencyAmount(amount: Decimal, currency?: CurrencyRoundingSpec | null, overrideDigits?: number): Decimal {
+  const digits = Number.isFinite(overrideDigits as any)
+    ? Math.max(0, Math.floor(overrideDigits as any))
+    : Math.max(0, Math.floor(Number(currency?.DecimalDigits) || 0));
+
+  try {
+    const step = currency?.Rounding;
+    if (step != null) {
+      const decimalStep = step instanceof Decimal ? step : new Decimal((step as any).$bigdecimal ?? step);
+      if (decimalStep.gt(0)) {
+        const q = amount.div(decimalStep);
+        const qRounded = q.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
+        const stepped = qRounded.times(decimalStep);
+        return stepped.toDecimalPlaces(digits, Decimal.ROUND_HALF_UP);
+      }
+    }
+  } catch {
+    // Fall back to digits-only rounding when step parsing fails.
+  }
+
+  return amount.toDecimalPlaces(digits, Decimal.ROUND_HALF_UP);
+}
+
+/**
+ * Normalize required text by trimming and rejecting empty values.
+ */
+export function normalizeRequiredText(value: unknown): string {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) {
+    raiseNormalizationError('required');
+  }
+  return normalized;
+}
+
+/**
+ * Parse positive integer (>= 1).
+ */
+export function parsePositiveInt(value: unknown): number {
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    raiseNormalizationError('invalid_integer');
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || Math.floor(n) !== n) {
+    raiseNormalizationError('invalid_integer');
+  }
+  if (n < 1) {
+    raiseNormalizationError('integer_too_small');
+  }
+  return n;
+}
+
+/**
+ * Parse bigint-like input into bigint.
+ */
+export function parseBigInt(value: unknown): bigint {
+  try {
+    if (typeof value === 'bigint') return value;
+    if (typeof value === 'number' && Number.isFinite(value)) return BigInt(Math.trunc(value));
+    if (value && typeof value === 'object' && typeof (value as any).$bigint === 'string') return BigInt((value as any).$bigint);
+    const text = String(value ?? '').trim();
+    if (!text) {
+      raiseNormalizationError('required');
+    }
+    return BigInt(text);
+  } catch (err) {
+    if (err instanceof NormalizationError) throw err;
+    raiseNormalizationError('invalid_bigint');
+  }
+}
+
+/**
+ * Parse non-negative integer decimal digits.
+ */
+export function normalizeDecimalDigits(value: unknown): number {
+  const val = typeof value === 'string' ? value.trim() : value;
+  if (val === undefined || val === null || val === '') {
+    raiseNormalizationError('required');
+  }
+  if (typeof val !== 'number' && typeof val !== 'string') {
+    raiseNormalizationError('invalid_integer');
+  }
+  const n = Number(val);
+  if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {
+    raiseNormalizationError('invalid_integer');
+  }
+  return n;
+}
+
+/**
+ * Parse and validate YYYY-MM-DD date-only string.
+ */
+export function normalizeDateString(value: unknown): string {
+  if (value === undefined || value === null || value === '') {
+    raiseNormalizationError('required');
+  }
+  if (value instanceof Date) {
+    raiseNormalizationError('invalid_date_format');
+  }
+  const raw = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    raiseNormalizationError('invalid_date_format');
+  }
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== raw) {
+    raiseNormalizationError('invalid_date_value');
+  }
+  return raw;
 }
