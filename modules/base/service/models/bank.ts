@@ -5,6 +5,8 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Address from './address';
 import Country from './country';
+import { normalizeCodeOptional } from './_normalizers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Bank')
 export default class Bank extends BaseModel {
@@ -26,28 +28,15 @@ export default class Bank extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Address }, column: { index: true } })
   AddressId?: Address;
 
-  private static normalizeCode(value: unknown): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const code = String(value ?? '')
-      .trim()
-      .toUpperCase();
-    return code ? code : null;
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = this.normalizeCode(values.Code);
+      values.Code = normalizeCodeOptional(values.Code);
     }
   }
 
   @Constraint<Bank>(['Code'])
   static validateBankConstraint(self: Bank, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Bank.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
+    writeConstraintFields(self as any, ctx, ['Code']);
   }
 }

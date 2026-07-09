@@ -3,6 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Bank from '@/base/service/models/bank';
 
@@ -250,36 +251,36 @@ export default class BankAccount extends BaseModel {
   ])
   static async validateBankAccountConstraint(self: BankAccount, ctx: any): Promise<void> {
     const current = (ctx?.current || {}) as Record<string, any>;
-    const values = (ctx?.values || {}) as Record<string, any>;
     const currentId = String(current?.Id || '').trim() || undefined;
 
     await BankAccount.validateEntity(self as any, currentId);
 
-    const syncedFields = [
-      'PartnerId',
-      'CompanyId',
-      'BankId',
-      'AccountName',
-      'AccountNo',
-      'AccountType',
-      'IBAN',
-      'RoutingCode',
-      'BranchName',
-      'CurrencyId',
-      'CountryId',
-      'AllowInbound',
-      'AllowOutbound',
-      'IsDefaultInbound',
-      'IsDefaultOutbound',
-      'BankNameSnapshot',
-      'AccountNoMasked',
-      'AccountNoLast4',
-    ] as const;
-
-    for (const fieldName of syncedFields) {
-      if (ctx?.mode === 'create' || Object.prototype.hasOwnProperty.call(values, fieldName)) {
-        values[fieldName] = (self as any)[fieldName];
+    writeConstraintFields(
+      self as any,
+      ctx,
+      [
+        'PartnerId',
+        'CompanyId',
+        'BankId',
+        'AccountName',
+        'AccountNo',
+        'AccountType',
+        'IBAN',
+        'RoutingCode',
+        'BranchName',
+        'CurrencyId',
+        'CountryId',
+        'AllowInbound',
+        'AllowOutbound',
+        'IsDefaultInbound',
+        'IsDefaultOutbound',
+        'BankNameSnapshot',
+        'AccountNoMasked',
+        'AccountNoLast4',
+      ],
+      {
+        forceOnCreate: true,
       }
-    }
+    );
   }
 }

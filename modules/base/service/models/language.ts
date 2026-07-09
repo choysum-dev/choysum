@@ -3,8 +3,9 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Locale from './locale';
+import { normalizeDirection } from './_normalizers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -30,30 +31,15 @@ export default class Language extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, column: { index: true } })
   DefaultLocaleId?: Locale;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null || value === '') return null;
-    if (value === 'ltr' || value === 'rtl') return value;
-    this.fail('Direction must be ltr or rtl');
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'Direction')) {
-      values.Direction = this.normalizeDirection(values.Direction);
+      values.Direction = normalizeDirection(values.Direction);
     }
   }
 
   @Constraint<Language>(['Direction'])
   static validateLanguageConstraint(self: Language, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Language.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Direction')) {
-      values.Direction = self.Direction;
-    }
+    writeConstraintFields(self as any, ctx, ['Direction']);
   }
 }

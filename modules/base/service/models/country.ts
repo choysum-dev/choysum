@@ -3,8 +3,9 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Currency from './currency';
+import { fail, normalizeCodeRequired } from './_normalizers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Country')
 export default class Country extends BaseModel {
@@ -32,18 +33,6 @@ export default class Country extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static normalizeCode(value: any): string {
-    const code = String(value ?? '')
-      .trim()
-      .toUpperCase();
-    if (!code) this.fail('Code is required');
-    return code;
-  }
-
   private static validateAddressFormat(value: any): string | null {
     if (value === undefined || value === null) return null;
     const format = String(value).trim();
@@ -55,14 +44,14 @@ export default class Country extends BaseModel {
     while ((m = tokenPattern.exec(format)) !== null) {
       const token = (m[1] || m[2] || '').toLowerCase();
       if (!allowed.has(token)) {
-        this.fail(`AddressFormat contains unsupported token: ${m[1] || m[2]}`);
+        fail(`AddressFormat contains unsupported token: ${m[1] || m[2]}`);
       }
     }
     return format;
   }
 
   private static validateEntity(values: Record<string, any>): void {
-    values.Code = this.normalizeCode(values.Code);
+    values.Code = normalizeCodeRequired(values.Code);
     if (Object.prototype.hasOwnProperty.call(values, 'AddressFormat')) {
       values.AddressFormat = this.validateAddressFormat(values.AddressFormat);
     }
@@ -70,14 +59,7 @@ export default class Country extends BaseModel {
 
   @Constraint<Country>(['Code', 'AddressFormat'])
   static validateCountryConstraint(self: Country, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Country.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'AddressFormat')) {
-      values.AddressFormat = self.AddressFormat;
-    }
+    writeConstraintFields(self as any, ctx, ['Code', 'AddressFormat']);
   }
 }

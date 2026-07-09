@@ -3,7 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing } from './_normalizers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Locale')
 export default class Locale extends BaseModel {
@@ -44,40 +45,18 @@ export default class Locale extends BaseModel {
   @Field({ type: 'boolean', column: { default: () => false } })
   CurrencySymbolSpacing?: boolean;
 
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  private static normalizeCurrencySymbolPosition(value: unknown): 'before' | 'after' {
-    if (value === undefined || value === null || value === '') return 'before';
-    if (value === 'before' || value === 'after') return value;
-    this.fail('CurrencySymbolPosition must be before or after');
-  }
-
-  private static normalizeCurrencySymbolSpacing(value: unknown): boolean {
-    if (value === undefined || value === null || value === '') return false;
-    return Boolean(value);
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolPosition')) {
-      values.CurrencySymbolPosition = this.normalizeCurrencySymbolPosition(values.CurrencySymbolPosition);
+      values.CurrencySymbolPosition = normalizeCurrencySymbolPosition(values.CurrencySymbolPosition);
     }
     if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolSpacing')) {
-      values.CurrencySymbolSpacing = this.normalizeCurrencySymbolSpacing(values.CurrencySymbolSpacing);
+      values.CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(values.CurrencySymbolSpacing);
     }
   }
 
   @Constraint<Locale>(['CurrencySymbolPosition', 'CurrencySymbolSpacing'])
   static validateLocaleConstraint(self: Locale, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     Locale.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolPosition')) {
-      values.CurrencySymbolPosition = self.CurrencySymbolPosition;
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolSpacing')) {
-      values.CurrencySymbolSpacing = self.CurrencySymbolSpacing;
-    }
+    writeConstraintFields(self as any, ctx, ['CurrencySymbolPosition', 'CurrencySymbolSpacing']);
   }
 }

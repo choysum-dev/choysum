@@ -3,6 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { normalizeCodeOptional } from './_normalizers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('UoMCategory')
 export default class UoMCategory extends BaseModel {
@@ -15,28 +17,15 @@ export default class UoMCategory extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static normalizeCode(value: unknown): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const code = String(value ?? '')
-      .trim()
-      .toUpperCase();
-    return code ? code : null;
-  }
-
   private static validateEntity(values: Record<string, any>): void {
     if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = this.normalizeCode(values.Code);
+      values.Code = normalizeCodeOptional(values.Code);
     }
   }
 
   @Constraint<UoMCategory>(['Code'])
   static validateUoMCategoryConstraint(self: UoMCategory, ctx: any): void {
-    const values = (ctx?.values || {}) as Record<string, any>;
     UoMCategory.validateEntity(self as any);
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Code')) {
-      values.Code = self.Code;
-    }
+    writeConstraintFields(self as any, ctx, ['Code']);
   }
 }
