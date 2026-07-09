@@ -94,6 +94,9 @@ export async function convertCurrency(
   } catch {
     throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Company not found' }).withGrpcCode(GrpcCode.NotFound);
   }
+  if (!company) {
+    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Company not found' }).withGrpcCode(GrpcCode.NotFound);
+  }
   const companyCurrencyId = String(resolveModelRefId(company, 'CurrencyId') ?? '').trim();
   if (!companyCurrencyId) {
     throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(GrpcCode.FailedPrecondition);
