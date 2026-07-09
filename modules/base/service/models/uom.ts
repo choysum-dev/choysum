@@ -3,9 +3,9 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import UoMCategory from './uom_category';
-import { asRefId } from './_refs';
 import { fail, mapNormalizationToBase, normalizeName } from './_normalizers';
 
 @Model('UoM')
@@ -75,7 +75,7 @@ export default class UoM extends BaseModel {
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
     const name = normalizeName(values.Name);
-    const categoryId = asRefId(values.CategoryId);
+    const categoryId = normalizeRefId(values.CategoryId);
     if (!categoryId) fail('CategoryId is required');
 
     const isRef = values.IsReference === true;

@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition } from '@/core/service/api/query';
-import { normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
+import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import moment from 'moment-timezone';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Address from './address';
@@ -12,7 +12,6 @@ import Country from './country';
 import Currency from './currency';
 import Language from './language';
 import Locale from './locale';
-import { asRefId } from './_refs';
 import { fail, mapNormalizationToBase } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
@@ -81,7 +80,7 @@ export default class Company extends BaseModel {
   }
 
   private static normalizeCurrencyId(value: unknown): string {
-    const id = asRefId(value);
+    const id = normalizeRefId(value);
     if (!id) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'CurrencyId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
@@ -130,7 +129,7 @@ export default class Company extends BaseModel {
   }
 
   private static async validateParentUpdate(targetId: string, parentIdRaw: any): Promise<void> {
-    const parentId = asRefId(parentIdRaw);
+    const parentId = normalizeRefId(parentIdRaw);
     if (!parentId) return;
 
     if (parentId === targetId) {

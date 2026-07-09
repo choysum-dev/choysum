@@ -1,46 +1,47 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { asRefId, normalizeCompanyScopeKey } from '@/base/service/models/_refs';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import { normalizeCompanyScopeKey } from '@/base/service/models/_refs';
 
 // ---------------------------------------------------------------------------
-// asRefId
+// normalizeRefId
 // ---------------------------------------------------------------------------
 
-test('base._refs: asRefId undefined → null (via core normalizeRefId)', () => {
-  expect(asRefId(undefined)).toBeNull();
+test('base._refs: normalizeRefId undefined → null', () => {
+  expect(normalizeRefId(undefined)).toBeNull();
 });
 
-test('base._refs: asRefId null → null', () => {
-  expect(asRefId(null)).toBeNull();
+test('base._refs: normalizeRefId null → null', () => {
+  expect(normalizeRefId(null)).toBeNull();
 });
 
-test('base._refs: asRefId object with Id', () => {
-  expect(asRefId({ Id: '  ABC  ' })).toBe('ABC');
+test('base._refs: normalizeRefId object with Id', () => {
+  expect(normalizeRefId({ Id: '  ABC  ' })).toBe('ABC');
 });
 
-test('base._refs: asRefId object with id', () => {
-  expect(asRefId({ id: 'xyz' })).toBe('xyz');
+test('base._refs: normalizeRefId object with id', () => {
+  expect(normalizeRefId({ id: 'xyz' })).toBe('xyz');
 });
 
-test('base._refs: asRefId object without Id/id → null', () => {
-  expect(asRefId({ Name: 'X' })).toBeNull();
+test('base._refs: normalizeRefId object without Id/id → null', () => {
+  expect(normalizeRefId({ Name: 'X' })).toBeNull();
 });
 
-test('base._refs: asRefId plain string', () => {
-  expect(asRefId('  hello  ')).toBe('hello');
+test('base._refs: normalizeRefId plain string', () => {
+  expect(normalizeRefId('  hello  ')).toBe('hello');
 });
 
-test('base._refs: asRefId empty string → null', () => {
-  expect(asRefId('   ')).toBeNull();
+test('base._refs: normalizeRefId empty string → null', () => {
+  expect(normalizeRefId('   ')).toBeNull();
 });
 
-test('base._refs: asRefId number → string', () => {
-  expect(asRefId(42)).toBe('42');
+test('base._refs: normalizeRefId number → string', () => {
+  expect(normalizeRefId(42)).toBe('42');
 });
 
-test('base._refs: asRefId zero → "0"', () => {
-  expect(asRefId(0)).toBe('0');
+test('base._refs: normalizeRefId zero → "0"', () => {
+  expect(normalizeRefId(0)).toBe('0');
 });
 
 // ---------------------------------------------------------------------------

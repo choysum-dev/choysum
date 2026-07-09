@@ -4,10 +4,9 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
-import { parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
+import { normalizeRefId, parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
 import Company from './company';
 import Sequence from './sequence';
-import { asRefId } from './_refs';
 import { mapNormalizationToBase } from './_normalizers';
 
 @Model('SequenceIdempotency', { companyScoped: true })
@@ -58,7 +57,7 @@ export default class SequenceIdempotency extends BaseModel {
       RangeEnd: Object.prototype.hasOwnProperty.call(values, 'RangeEnd') ? values.RangeEnd : existing?.RangeEnd,
     };
 
-    const sequenceId = asRefId(candidate.SequenceId);
+    const sequenceId = normalizeRefId(candidate.SequenceId);
     if (!sequenceId) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'SequenceId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
@@ -85,8 +84,8 @@ export default class SequenceIdempotency extends BaseModel {
     }
 
     const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
-    const sequenceCompanyId = asRefId((sequence as any)?.CompanyId);
-    const companyId = asRefId(candidate.CompanyId) ?? null;
+    const sequenceCompanyId = normalizeRefId((sequence as any)?.CompanyId);
+    const companyId = normalizeRefId(candidate.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
       throw new ChoysumError({
         domain: 'base',

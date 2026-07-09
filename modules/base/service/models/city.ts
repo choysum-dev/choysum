@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Country from './country';
 import State from './state';
-import { asRefId } from './_refs';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeCodeOptional, normalizeName } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
@@ -34,14 +34,14 @@ export default class City extends BaseModel {
     if (!stateId) return;
     const { default: StateModel } = await import('./state');
     const state = await StateModel.Browse(stateId, ['Id', 'CountryId'] as any);
-    const stateCountryId = asRefId((state as any)?.CountryId);
+    const stateCountryId = normalizeRefId((state as any)?.CountryId);
     if (!state?.Id || !stateCountryId) fail('State not found');
     if (stateCountryId !== countryId) fail('State.CountryId must equal City.CountryId');
   }
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
-    const countryId = asRefId(values.CountryId);
-    const stateId = asRefId(values.StateId) ?? null;
+    const countryId = normalizeRefId(values.CountryId);
+    const stateId = normalizeRefId(values.StateId) ?? null;
     const name = normalizeName(values.Name);
     const code = normalizeCodeOptional(values.Code);
 

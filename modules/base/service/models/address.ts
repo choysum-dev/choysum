@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import City from './city';
 import Country from './country';
 import State from './state';
-import { asRefId } from './_refs';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeOptionalString } from './_normalizers';
 
 @Model('Address')
@@ -48,9 +48,9 @@ export default class Address extends BaseModel {
   }
 
   private static async validateEntity(values: Record<string, any>, existing?: any): Promise<void> {
-    const countryId = asRefId(values.CountryId);
-    const stateId = asRefId(values.StateId);
-    const cityId = asRefId(values.CityId);
+    const countryId = normalizeRefId(values.CountryId);
+    const stateId = normalizeRefId(values.StateId);
+    const cityId = normalizeRefId(values.CityId);
     const zip = normalizeOptionalString(values.Zip);
 
     if (!countryId) fail('CountryId is required');
@@ -67,7 +67,7 @@ export default class Address extends BaseModel {
 
     if (stateId) {
       const state = await this.getState(stateId);
-      const stateCountryId = asRefId(state?.CountryId);
+      const stateCountryId = normalizeRefId(state?.CountryId);
       if (!state?.Id || !stateCountryId) fail('State not found');
       if (stateCountryId !== countryId) {
         fail('State.CountryId must equal Address.CountryId');
@@ -76,8 +76,8 @@ export default class Address extends BaseModel {
 
     if (cityId) {
       const city = await this.getCity(cityId);
-      const cityCountryId = asRefId(city?.CountryId);
-      const cityStateId = asRefId(city?.StateId);
+      const cityCountryId = normalizeRefId(city?.CountryId);
+      const cityStateId = normalizeRefId(city?.StateId);
       if (!city?.Id || !cityCountryId) fail('City not found');
       if (cityCountryId !== countryId) {
         fail('City.CountryId must equal Address.CountryId');
