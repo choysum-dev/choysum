@@ -344,7 +344,7 @@ export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
   if (!obj || typeof obj !== 'object') return undefined;
   const field = (obj as Record<string, unknown>)[fieldName];
   if (!field || typeof field !== 'object') return field;
-  return (field as Record<string, unknown>).Id ?? field;
+  return (field as Record<string, unknown>).Id ?? (field as Record<string, unknown>).id ?? field;
 }
 
 /**

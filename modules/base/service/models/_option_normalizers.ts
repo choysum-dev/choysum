@@ -34,6 +34,10 @@ export function normalizeCurrencySymbolPosition(value: unknown): 'before' | 'aft
  */
 export function normalizeCurrencySymbolSpacing(value: unknown): boolean {
   if (value === undefined || value === null || value === '') return false;
+  if (typeof value === 'string') {
+    const s = value.trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'yes' || s === 'on';
+  }
   return Boolean(value);
 }
 
