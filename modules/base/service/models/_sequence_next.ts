@@ -2,14 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import {
-  asBigInt,
-  buildPaddedNumberItems,
-  isExpiredAt,
-  normalizeOptionalNonEmptyString,
-  parsePositiveInt,
-  resolvePaddedNumberFormat,
-} from '@/core/service/utils/normalization';
+import { asBigInt, isExpiredAt, normalizeOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
+import { buildPaddedNumberItems, resolvePaddedNumberFormat } from '@/core/service/utils/format';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
 import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_next_payload';
