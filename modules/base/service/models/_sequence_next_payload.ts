@@ -3,6 +3,7 @@
 
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextResult } from './sequence';
+import { resolveModelRefId } from '@/core/service/utils/normalization';
 
 export type SequenceFormatSnapshot = {
   Prefix: string;
@@ -24,7 +25,7 @@ export type SequenceIdempotencyPayload = {
 };
 
 function readSequenceCompanyId(seq: Sequence): unknown {
-  return (seq as any).CompanyId?.Id ?? (seq as any).CompanyId;
+  return resolveModelRefId(seq, 'CompanyId');
 }
 
 export function buildSequencePublicSnapshot(seq: Sequence): SequenceNextResult['Sequence'] {

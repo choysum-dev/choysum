@@ -41,6 +41,8 @@ import {
   parseBigInt,
   normalizeDecimalDigits,
   normalizeDateString,
+  normalizeEnumValue,
+  resolveModelRefId,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -524,4 +526,48 @@ test('normalizeDateString validates date-only format and calendar value', () => 
     expect(err instanceof NormalizationError).toBe(true);
     expect((err as NormalizationError).code).toBe('invalid_date_value');
   }
+});
+
+// ---------------------------------------------------------------------------
+// normalizeEnumValue
+// ---------------------------------------------------------------------------
+
+test('normalizeEnumValue returns default for nullish/empty', () => {
+  expect(normalizeEnumValue(undefined, ['a', 'b'] as const, 'a')).toBe('a');
+  expect(normalizeEnumValue(null, ['a', 'b'] as const, 'b')).toBe('b');
+  expect(normalizeEnumValue('', ['a', 'b'] as const, 'a')).toBe('a');
+});
+
+test('normalizeEnumValue returns matching value', () => {
+  expect(normalizeEnumValue('a', ['a', 'b'] as const, 'b')).toBe('a');
+  expect(normalizeEnumValue('  b  ', ['a', 'b'] as const, 'a')).toBe('b');
+});
+
+test('normalizeEnumValue throws invalid_enum_value for unknown values', () => {
+  try {
+    normalizeEnumValue('c', ['a', 'b'] as const, 'a');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_enum_value');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// resolveModelRefId
+// ---------------------------------------------------------------------------
+
+test('resolveModelRefId returns Id from relation object', () => {
+  expect(resolveModelRefId({ CompanyId: { Id: 'c1' } }, 'CompanyId')).toBe('c1');
+});
+
+test('resolveModelRefId returns raw field when not an object', () => {
+  expect(resolveModelRefId({ CompanyId: 'c2' }, 'CompanyId')).toBe('c2');
+  expect(resolveModelRefId({ CompanyId: 42 }, 'CompanyId')).toBe(42);
+});
+
+test('resolveModelRefId returns undefined for falsy/missing input', () => {
+  expect(resolveModelRefId(null, 'Field')).toBeUndefined();
+  expect(resolveModelRefId(undefined, 'Field')).toBeUndefined();
+  expect(resolveModelRefId({}, 'Field')).toBeUndefined();
 });

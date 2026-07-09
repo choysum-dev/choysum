@@ -330,7 +330,36 @@ export type NormalizationErrorCode =
   | 'integer_too_small'
   | 'invalid_bigint'
   | 'invalid_date_format'
-  | 'invalid_date_value';
+  | 'invalid_date_value'
+  | 'invalid_enum_value';
+
+/**
+ * Resolve a model relation field to its canonical id.
+ *
+ * When the field value is an object with an `Id` property (e.g. a FK relation
+ * record), returns that Id; otherwise returns the raw field value.  Returns
+ * undefined when the input object is falsy or not an object.
+ */
+export function resolveModelRefId(obj: unknown, fieldName: string): unknown {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const field = (obj as Record<string, unknown>)[fieldName];
+  if (!field || typeof field !== 'object') return field;
+  return (field as Record<string, unknown>).Id ?? field;
+}
+
+/**
+ * Normalize a value against a fixed set of allowed string literals.
+ *
+ * - Returns {@link defaultValue} when value is undefined, null, or empty.
+ * - Returns the matching allowed value when present.
+ * - Throws {@link NormalizationError} with code `invalid_enum_value` otherwise.
+ */
+export function normalizeEnumValue<T extends string>(value: unknown, allowed: readonly T[], defaultValue: T): T {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  const s = String(value).trim();
+  if ((allowed as readonly string[]).includes(s)) return s as T;
+  raiseNormalizationError('invalid_enum_value');
+}
 
 /**
  * Domain-agnostic error used by normalization utilities.

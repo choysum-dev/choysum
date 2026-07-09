@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { fail } from './_normalization_bridge';
+import { NormalizationError, normalizeEnumValue } from '@/core/service/utils/normalization';
+import { mapNormalizationToBase } from './_normalization_bridge';
 
 /**
  * Normalize a Direction (ltr/rtl) selection value.
@@ -10,8 +11,10 @@ import { fail } from './_normalization_bridge';
 export function normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
-  if (value === 'ltr' || value === 'rtl') return value;
-  fail('Direction must be ltr or rtl');
+  return mapNormalizationToBase(
+    () => normalizeEnumValue(value, ['ltr', 'rtl'] as const, 'ltr'),
+    () => 'Direction must be ltr or rtl'
+  );
 }
 
 /**
@@ -19,9 +22,10 @@ export function normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undef
  * Defaults to 'before' for empty/falsy input.
  */
 export function normalizeCurrencySymbolPosition(value: unknown): 'before' | 'after' {
-  if (value === undefined || value === null || value === '') return 'before';
-  if (value === 'before' || value === 'after') return value;
-  fail('CurrencySymbolPosition must be before or after');
+  return mapNormalizationToBase(
+    () => normalizeEnumValue(value, ['before', 'after'] as const, 'before'),
+    () => 'CurrencySymbolPosition must be before or after'
+  );
 }
 
 /**
@@ -38,9 +42,10 @@ export function normalizeCurrencySymbolSpacing(value: unknown): boolean {
  * Defaults to 'latest_before'.
  */
 export function normalizeRatePolicyMode(value: unknown): 'exact' | 'latest_before' {
-  if (value === undefined || value === null || value === '') return 'latest_before';
-  if (value === 'exact' || value === 'latest_before') return value;
-  fail('RatePolicy.Mode must be exact or latest_before');
+  return mapNormalizationToBase(
+    () => normalizeEnumValue(value, ['exact', 'latest_before'] as const, 'latest_before'),
+    () => 'RatePolicy.Mode must be exact or latest_before'
+  );
 }
 
 /**
@@ -48,7 +53,8 @@ export function normalizeRatePolicyMode(value: unknown): 'exact' | 'latest_befor
  * Defaults to 'currency'.
  */
 export function normalizeRoundingMode(value: unknown): 'currency' | 'none' {
-  if (value === undefined || value === null || value === '') return 'currency';
-  if (value === 'currency' || value === 'none') return value;
-  fail('Rounding.Mode must be currency or none');
+  return mapNormalizationToBase(
+    () => normalizeEnumValue(value, ['currency', 'none'] as const, 'currency'),
+    () => 'Rounding.Mode must be currency or none'
+  );
 }

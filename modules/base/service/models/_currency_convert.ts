@@ -3,7 +3,7 @@
 
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { normalizeDateString, parseDecimalInput, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
+import { normalizeDateString, parseDecimalInput, resolveModelRefId, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
@@ -94,7 +94,7 @@ export async function convertCurrency(
   } catch {
     throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Company not found' }).withGrpcCode(GrpcCode.NotFound);
   }
-  const companyCurrencyId = String(company?.CurrencyId?.Id ?? company?.CurrencyId ?? '').trim();
+  const companyCurrencyId = String(resolveModelRefId(company, 'CurrencyId') ?? '').trim();
   if (!companyCurrencyId) {
     throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(GrpcCode.FailedPrecondition);
   }
