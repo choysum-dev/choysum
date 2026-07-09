@@ -335,8 +335,44 @@ export function formatPaddedNumber(prefix: string | undefined, suffix: string | 
   return `${p}${padded}${s}`;
 }
 
+/**
+ * Resolve prefix/suffix/padding from an optional snapshot with fallback values.
+ */
+export function resolvePaddedNumberFormat(
+  snapshot: unknown,
+  fallback: { prefix: string | undefined; suffix: string | undefined; padding: number }
+): { prefix: string | undefined; suffix: string | undefined; padding: number } {
+  const snap = (snapshot && typeof snapshot === 'object' ? snapshot : {}) as Record<string, unknown>;
+  const paddingFromSnapshot = Number(snap.Padding);
+  return {
+    prefix: typeof snap.Prefix === 'string' ? snap.Prefix : fallback.prefix,
+    suffix: typeof snap.Suffix === 'string' ? snap.Suffix : fallback.suffix,
+    padding: Number.isFinite(paddingFromSnapshot) ? paddingFromSnapshot : fallback.padding,
+  };
+}
+
+/**
+ * Build a contiguous formatted number list from start/count.
+ */
+export function buildPaddedNumberItems(
+  start: bigint,
+  count: number,
+  prefix: string | undefined,
+  suffix: string | undefined,
+  padding: number
+): Array<{ Value: string; Number: number }> {
+  const total = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+  const items: Array<{ Value: string; Number: number }> = [];
+  for (let i = 0; i < total; i++) {
+    const n = start + BigInt(i);
+    items.push({ Value: formatPaddedNumber(prefix, suffix, padding, n), Number: Number(n) });
+  }
+  return items;
+}
+
 export type NormalizationErrorCode =
   | 'required'
+  | 'string_too_long'
   | 'invalid_decimal'
   | 'non_positive_decimal'
   | 'number_not_allowed'
@@ -412,6 +448,129 @@ export function toPositiveDecimal(value: unknown): Decimal {
  */
 export function normalizePositiveDecimalString(value: unknown): string {
   return toPositiveDecimal(value).toString();
+}
+
+/**
+ * Normalize a required code string: trim, optional uppercase, and reject empty.
+ */
+export function normalizeCodeRequired(value: unknown, opts?: { uppercase?: boolean }): string {
+  let code = String(value ?? '').trim();
+  if (opts?.uppercase !== false) {
+    code = code.toUpperCase();
+  }
+  if (!code) {
+    raiseNormalizationError('required');
+  }
+  return code;
+}
+
+/**
+ * Normalize an optional code string with null/undefined preservation.
+ */
+export function normalizeCodeOptional(value: unknown, opts?: { uppercase?: boolean }): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  let code = String(value ?? '').trim();
+  if (opts?.uppercase !== false) {
+    code = code.toUpperCase();
+  }
+  return code || null;
+}
+
+/**
+ * Normalize a required name string.
+ */
+export function normalizeName(value: unknown): string {
+  const name = String(value ?? '').trim();
+  if (!name) {
+    raiseNormalizationError('required');
+  }
+  return name;
+}
+
+/**
+ * Resolve and require a non-empty reference id.
+ */
+export function requireRefId(value: unknown): string {
+  const id = normalizeRefId(value);
+  if (!id) {
+    raiseNormalizationError('required');
+  }
+  return id;
+}
+
+/**
+ * Normalize nullable string input: null/undefined/empty -> null.
+ */
+export function normalizeNullableString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
+}
+
+/**
+ * Normalize an optional user-provided text value.
+ *
+ * - undefined/null => undefined
+ * - empty/whitespace => required error
+ * - length > maxLength => string_too_long error
+ */
+export function normalizeOptionalNonEmptyString(value: unknown, opts?: { maxLength?: number }): string | undefined {
+  if (value === undefined || value === null) return undefined;
+
+  const normalized = String(value).trim();
+  if (!normalized) {
+    raiseNormalizationError('required');
+  }
+
+  const maxLength = Number(opts?.maxLength);
+  if (Number.isFinite(maxLength) && maxLength > 0 && normalized.length > maxLength) {
+    raiseNormalizationError('string_too_long');
+  }
+
+  return normalized;
+}
+
+/**
+ * Return whether a timestamp-like value is expired at nowMs.
+ * Missing/invalid values are treated as expired.
+ */
+export function isExpiredAt(value: unknown, nowMs: number = Date.now()): boolean {
+  if (!value) return true;
+  const ms = new Date(value as any).getTime();
+  if (!Number.isFinite(ms)) return true;
+  return ms <= nowMs;
+}
+
+export type CurrencyRoundingSpec = {
+  DecimalDigits?: unknown;
+  Rounding?: unknown;
+};
+
+/**
+ * Round an amount according to currency digits and optional rounding step.
+ */
+export function roundToCurrencyAmount(amount: Decimal, currency: CurrencyRoundingSpec, overrideDigits?: number): Decimal {
+  const digits = Number.isFinite(overrideDigits as any)
+    ? Math.max(0, Math.floor(overrideDigits as any))
+    : Math.max(0, Math.floor(Number(currency.DecimalDigits) || 0));
+
+  try {
+    const step = currency.Rounding;
+    if (step != null) {
+      const decimalStep = step instanceof Decimal ? step : new Decimal((step as any).$bigdecimal ?? step);
+      if (decimalStep.gt(0)) {
+        const q = amount.div(decimalStep);
+        const qRounded = q.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
+        const stepped = qRounded.times(decimalStep);
+        return stepped.toDecimalPlaces(digits, Decimal.ROUND_HALF_UP);
+      }
+    }
+  } catch {
+    // Fall back to digits-only rounding when step parsing fails.
+  }
+
+  return amount.toDecimalPlaces(digits, Decimal.ROUND_HALF_UP);
 }
 
 /**

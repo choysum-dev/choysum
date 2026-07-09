@@ -2,13 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { asBigInt, formatPaddedNumber, parsePositiveInt } from '@/core/service/utils/normalization';
+import {
+  asBigInt,
+  buildPaddedNumberItems,
+  isExpiredAt,
+  normalizeOptionalNonEmptyString,
+  parsePositiveInt,
+  resolvePaddedNumberFormat,
+} from '@/core/service/utils/normalization';
+import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
+import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_payload';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 
 const IDEMPOTENCY_TTL_ENV_KEY = 'CHOYSUM_BASE_SEQUENCE_IDEMPOTENCY_TTL_DAYS';
 const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
+const IDEMPOTENCY_KEY_MAX_LENGTH = 200;
 
 function normalizeCount(count: unknown): number {
   if (count == null) return 1;
@@ -23,27 +33,14 @@ function normalizeCount(count: unknown): number {
 }
 
 function normalizeIdempotencyKey(key: unknown): string | undefined {
-  if (key === undefined || key === null) return undefined;
-  const v = String(key).trim();
-  if (!v) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'IdempotencyKey must be non-empty' }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-  if (v.length > 200) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'IdempotencyKey is too long' }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-  return v;
-}
-
-function resolveIdempotencyTtlDays(): number {
-  const globalEnv = (globalThis as any)?.__choysumBackendEnv as Record<string, any> | undefined;
-  const raw = globalEnv?.[IDEMPOTENCY_TTL_ENV_KEY] ?? (import.meta as any)?.env?.[IDEMPOTENCY_TTL_ENV_KEY];
-  const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
-  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_IDEMPOTENCY_TTL_DAYS;
-  return Math.floor(parsed);
-}
-
-function formatValue(prefix: string | undefined, suffix: string | undefined, padding: number, n: bigint): string {
-  return formatPaddedNumber(prefix, suffix, padding, n);
+  return mapNormalizationToBase(
+    () => normalizeOptionalNonEmptyString(key, { maxLength: IDEMPOTENCY_KEY_MAX_LENGTH }),
+    err => {
+      if (err.code === 'required') return 'IdempotencyKey must be non-empty';
+      if (err.code === 'string_too_long') return 'IdempotencyKey is too long';
+      return 'IdempotencyKey is invalid';
+    }
+  );
 }
 
 async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): Promise<any | undefined> {
@@ -64,46 +61,19 @@ async function findIdempotencyHit(sequenceId: string, idempotencyKey: string): P
 }
 
 function buildItemsFromIdempotencyHit(seq: Sequence, hit: any, count: number): SequenceNextItem[] {
-  const snap = (hit?.FormatSnapshot || {}) as any;
-  const prefix = typeof snap.Prefix === 'string' ? snap.Prefix : seq.Prefix;
-  const suffix = typeof snap.Suffix === 'string' ? snap.Suffix : seq.Suffix;
-  const padding = Number.isFinite(Number(snap.Padding)) ? Number(snap.Padding) : seq.Padding;
+  const { prefix, suffix, padding } = resolvePaddedNumberFormat(hit?.FormatSnapshot, {
+    prefix: seq.Prefix,
+    suffix: seq.Suffix,
+    padding: seq.Padding,
+  });
   const start = asBigInt(hit?.RangeStart);
-  const items: SequenceNextItem[] = [];
-  for (let i = 0; i < count; i++) {
-    const n = start + BigInt(i);
-    items.push({ Value: formatValue(prefix, suffix, padding, n), Number: Number(n) });
-  }
-  return items;
+  return buildPaddedNumberItems(start, count, prefix, suffix, padding);
 }
 
 function assertIdempotencyRequestMatch(hit: any, count: number, dryRun: boolean): void {
   if (Number(hit?.Count) !== count || Boolean(hit?.DryRun) !== dryRun) {
     throw new ChoysumError({ domain: 'base', code: 'Conflict', message: 'IdempotencyKey conflict with different request' }).withGrpcCode(GrpcCode.Aborted);
   }
-}
-
-function isIdempotencyExpired(hit: any, nowMs: number = Date.now()): boolean {
-  const raw = hit?.ExpiresAt;
-  if (!raw) return true;
-  const t = new Date(raw).getTime();
-  if (!Number.isFinite(t)) return true;
-  return t <= nowMs;
-}
-
-function buildNextResult(seq: Sequence, items: SequenceNextItem[], generatedAt: string): SequenceNextResult {
-  return {
-    Items: items,
-    Sequence: {
-      Id: seq.Id,
-      CompanyId: (seq as any).CompanyId?.Id ?? (seq as any).CompanyId,
-      Code: seq.Code,
-      Prefix: seq.Prefix,
-      Suffix: seq.Suffix,
-      Padding: seq.Padding,
-    },
-    GeneratedAt: generatedAt,
-  };
 }
 
 async function resolveSequence(
@@ -198,10 +168,10 @@ export async function nextSequence(
   if (idemKey) {
     const hit = await findIdempotencyHit(seq.Id, idemKey);
     if (hit?.Id) {
-      if (!isIdempotencyExpired(hit)) {
+      if (!isExpiredAt((hit as any)?.ExpiresAt)) {
         assertIdempotencyRequestMatch(hit, count, dryRun);
         const items = buildItemsFromIdempotencyHit(seq, hit, count);
-        return buildNextResult(seq, items, generatedAt);
+        return buildSequenceNextResult(seq, items, generatedAt);
       }
       expiredIdempotencyHitId = String((hit as any).Id || '');
     }
@@ -211,45 +181,32 @@ export async function nextSequence(
   if (dryRun) {
     const cur = (await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any;
     const start = asBigInt(cur.NextNumber);
-    const items: SequenceNextItem[] = [];
-    for (let i = 0; i < count; i++) {
-      const n = start + BigInt(i);
-      items.push({ Value: formatValue(seq.Prefix, seq.Suffix, seq.Padding, n), Number: Number(n) });
-    }
-    return buildNextResult(seq, items, generatedAt);
+    const items = buildPaddedNumberItems(start, count, seq.Prefix, seq.Suffix, seq.Padding);
+    return buildSequenceNextResult(seq, items, generatedAt);
   }
 
   // Allocate range
   const { rangeStart, rangeEnd } = await allocateRangeAtomic(model, seq, count);
-  const items: SequenceNextItem[] = [];
-  for (let i = 0; i < count; i++) {
-    const n = rangeStart + BigInt(i);
-    items.push({ Value: formatValue(seq.Prefix, seq.Suffix, seq.Padding, n), Number: Number(n) });
-  }
+  const items = buildPaddedNumberItems(rangeStart, count, seq.Prefix, seq.Suffix, seq.Padding);
 
   // Persist idempotency record (strong consistency)
   if (idemKey) {
     const { default: SequenceIdempotency } = await import('./sequence_idempotency');
-    const ttlDays = resolveIdempotencyTtlDays();
+    const ttlDays = getBackendEnvPositiveInt(IDEMPOTENCY_TTL_ENV_KEY, DEFAULT_IDEMPOTENCY_TTL_DAYS);
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
-    const formatSnapshot = { Prefix: seq.Prefix ?? '', Suffix: seq.Suffix ?? '', Padding: seq.Padding };
-    const payload = {
-      CompanyId: (seq as any).CompanyId?.Id ?? (seq as any).CompanyId ?? null,
-      SequenceId: seq.Id,
-      CodeSnapshot: seq.Code,
-      FormatSnapshot: formatSnapshot,
-      IdempotencyKey: idemKey,
-      Count: count,
-      DryRun: dryRun,
-      RangeStart: rangeStart.toString(),
-      RangeEnd: rangeEnd.toString(),
-      ExpiresAt: expiresAt,
-    };
+    const payload = buildSequenceIdempotencyPayload(seq, {
+      idempotencyKey: idemKey,
+      count,
+      dryRun,
+      rangeStart,
+      rangeEnd,
+      expiresAt,
+    });
 
     if (expiredIdempotencyHitId) {
       try {
         await SequenceIdempotency.UpdateById(expiredIdempotencyHitId, payload as any, ['Id'] as any);
-        return buildNextResult(seq, items, generatedAt);
+        return buildSequenceNextResult(seq, items, generatedAt);
       } catch {
         expiredIdempotencyHitId = undefined;
       }
@@ -260,28 +217,28 @@ export async function nextSequence(
     } catch (err) {
       const hit = await findIdempotencyHit(seq.Id, idemKey);
       if (hit?.Id) {
-        if (!isIdempotencyExpired(hit)) {
+        if (!isExpiredAt((hit as any)?.ExpiresAt)) {
           assertIdempotencyRequestMatch(hit, count, dryRun);
           const replayItems = buildItemsFromIdempotencyHit(seq, hit, count);
-          return buildNextResult(seq, replayItems, generatedAt);
+          return buildSequenceNextResult(seq, replayItems, generatedAt);
         }
 
         try {
           await SequenceIdempotency.UpdateById(String((hit as any).Id || ''), payload as any, ['Id'] as any);
         } catch (replaceErr) {
           const replayHit = await findIdempotencyHit(seq.Id, idemKey);
-          if (replayHit?.Id && !isIdempotencyExpired(replayHit)) {
+          if (replayHit?.Id && !isExpiredAt((replayHit as any)?.ExpiresAt)) {
             assertIdempotencyRequestMatch(replayHit, count, dryRun);
             const replayItems = buildItemsFromIdempotencyHit(seq, replayHit, count);
-            return buildNextResult(seq, replayItems, generatedAt);
+            return buildSequenceNextResult(seq, replayItems, generatedAt);
           }
           throw replaceErr;
         }
-        return buildNextResult(seq, items, generatedAt);
+        return buildSequenceNextResult(seq, items, generatedAt);
       }
       throw err;
     }
   }
 
-  return buildNextResult(seq, items, generatedAt);
+  return buildSequenceNextResult(seq, items, generatedAt);
 }

@@ -3,7 +3,7 @@
 
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { normalizeDateString, parseDecimalInput, toDateOnlyString } from '@/core/service/utils/normalization';
+import { normalizeDateString, parseDecimalInput, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
@@ -55,28 +55,6 @@ async function getRateRecord(opts: {
   }
 
   return { rec: undefined, usedGlobal: false, usedFallbackDate: false };
-}
-
-function roundToCurrency(amount: Decimal, toCurrency: Currency, overrideDigits?: number): Decimal {
-  const digits = Number.isFinite(overrideDigits as any)
-    ? Math.max(0, Math.floor(overrideDigits as any))
-    : Math.max(0, Math.floor(Number(toCurrency.DecimalDigits) || 0));
-  const step = (toCurrency as any).Rounding;
-  try {
-    if (step != null) {
-      const dStep = step instanceof Decimal ? step : new Decimal((step as any).$bigdecimal ?? step);
-      if (dStep.gt(0)) {
-        // Round to nearest multiple of step.
-        const q = amount.div(dStep);
-        const qRounded = q.toDecimalPlaces(0, Decimal.ROUND_HALF_UP);
-        const stepped = qRounded.times(dStep);
-        return stepped.toDecimalPlaces(digits, Decimal.ROUND_HALF_UP);
-      }
-    }
-  } catch {
-    // fall back to digits rounding
-  }
-  return amount.toDecimalPlaces(digits, Decimal.ROUND_HALF_UP);
 }
 
 export async function convertCurrency(
@@ -184,7 +162,7 @@ export async function convertCurrency(
 
   if (roundingMode === 'currency') {
     const toCurrency = (await model.Browse(toCurrencyId, ['Id', 'DecimalDigits', 'Rounding'] as any)) as any;
-    out = roundToCurrency(out, toCurrency as any, overrideDigits);
+    out = roundToCurrencyAmount(out, toCurrency as any, overrideDigits);
   }
 
   const result: any = { Amount: out };

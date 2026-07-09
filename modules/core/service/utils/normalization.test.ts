@@ -25,10 +25,20 @@ import {
   asBigInt,
   toDateOnlyString,
   formatPaddedNumber,
+  resolvePaddedNumberFormat,
+  buildPaddedNumberItems,
   NormalizationError,
   parseDecimalInput,
   toPositiveDecimal,
   normalizePositiveDecimalString,
+  normalizeCodeRequired,
+  normalizeCodeOptional,
+  normalizeName,
+  requireRefId,
+  normalizeNullableString,
+  normalizeOptionalNonEmptyString,
+  isExpiredAt,
+  roundToCurrencyAmount,
   normalizeRequiredText,
   parsePositiveInt,
   parseBigInt,
@@ -312,6 +322,38 @@ test('formatPaddedNumber undefined prefix/suffix treated as empty', () => {
   expect(formatPaddedNumber(undefined, undefined, 3, 5n)).toBe('005');
 });
 
+test('resolvePaddedNumberFormat prefers snapshot values and falls back to defaults', () => {
+  expect(resolvePaddedNumberFormat({ Prefix: 'S/', Suffix: '-X', Padding: '6' }, { prefix: 'D/', suffix: '-D', padding: 4 })).toEqual({
+    prefix: 'S/',
+    suffix: '-X',
+    padding: 6,
+  });
+
+  expect(resolvePaddedNumberFormat({ Prefix: 123, Padding: 'bad' }, { prefix: 'D/', suffix: '-D', padding: 4 })).toEqual({
+    prefix: 'D/',
+    suffix: '-D',
+    padding: 4,
+  });
+
+  expect(resolvePaddedNumberFormat(null, { prefix: 'D/', suffix: '-D', padding: 4 })).toEqual({
+    prefix: 'D/',
+    suffix: '-D',
+    padding: 4,
+  });
+});
+
+test('buildPaddedNumberItems builds contiguous formatted items', () => {
+  expect(buildPaddedNumberItems(7n, 3, 'SO/', '', 4)).toEqual([
+    { Value: 'SO/0007', Number: 7 },
+    { Value: 'SO/0008', Number: 8 },
+    { Value: 'SO/0009', Number: 9 },
+  ]);
+
+  expect(buildPaddedNumberItems(1n, 0, 'SO/', '', 4)).toEqual([]);
+  expect(buildPaddedNumberItems(1n, -1, 'SO/', '', 4)).toEqual([]);
+  expect(buildPaddedNumberItems(1n, Number.NaN, 'SO/', '', 4)).toEqual([]);
+});
+
 // ---------------------------------------------------------------------------
 // lifted parsers and normalizers
 // ---------------------------------------------------------------------------
@@ -365,6 +407,93 @@ test('normalizeRequiredText trims and rejects empty', () => {
     expect(err instanceof NormalizationError).toBe(true);
     expect((err as NormalizationError).code).toBe('required');
   }
+});
+
+test('normalizeCodeRequired trims and uppercases by default', () => {
+  expect(normalizeCodeRequired('  abc  ')).toBe('ABC');
+  expect(normalizeCodeRequired('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
+});
+
+test('normalizeCodeRequired reports required for empty values', () => {
+  try {
+    normalizeCodeRequired('  ');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('normalizeCodeOptional preserves undefined/null and normalizes strings', () => {
+  expect(normalizeCodeOptional(undefined)).toBeUndefined();
+  expect(normalizeCodeOptional(null)).toBeNull();
+  expect(normalizeCodeOptional('  ')).toBeNull();
+  expect(normalizeCodeOptional('  abc  ')).toBe('ABC');
+  expect(normalizeCodeOptional('  MiXeD  ', { uppercase: false })).toBe('MiXeD');
+});
+
+test('normalizeName and requireRefId report required', () => {
+  expect(normalizeName('  Name  ')).toBe('Name');
+  expect(requireRefId({ Id: 'id_1' })).toBe('id_1');
+
+  try {
+    normalizeName('');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    requireRefId(null);
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('normalizeNullableString converts nullish/empty to null', () => {
+  expect(normalizeNullableString(undefined)).toBeNull();
+  expect(normalizeNullableString(null)).toBeNull();
+  expect(normalizeNullableString('  ')).toBeNull();
+  expect(normalizeNullableString('  x  ')).toBe('x');
+});
+
+test('normalizeOptionalNonEmptyString handles optional/required/max-length semantics', () => {
+  expect(normalizeOptionalNonEmptyString(undefined)).toBeUndefined();
+  expect(normalizeOptionalNonEmptyString(null)).toBeUndefined();
+  expect(normalizeOptionalNonEmptyString('  ok  ', { maxLength: 10 })).toBe('ok');
+
+  try {
+    normalizeOptionalNonEmptyString('   ');
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+
+  try {
+    normalizeOptionalNonEmptyString('toolong', { maxLength: 3 });
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('string_too_long');
+  }
+});
+
+test('isExpiredAt treats missing/invalid as expired and compares timestamps', () => {
+  const now = new Date('2026-01-01T00:00:00.000Z').getTime();
+  expect(isExpiredAt(undefined, now)).toBe(true);
+  expect(isExpiredAt('not-a-date', now)).toBe(true);
+  expect(isExpiredAt('2025-12-31T23:59:59.000Z', now)).toBe(true);
+  expect(isExpiredAt('2026-01-01T00:00:01.000Z', now)).toBe(false);
+});
+
+test('roundToCurrencyAmount supports step rounding and digits fallback', () => {
+  expect(roundToCurrencyAmount(new Decimal('1.23'), { DecimalDigits: 2, Rounding: '0.05' }).toString()).toBe('1.25');
+  expect(roundToCurrencyAmount(new Decimal('1.2349'), { DecimalDigits: 3, Rounding: null }).toString()).toBe('1.235');
+  expect(roundToCurrencyAmount(new Decimal('1.2'), { DecimalDigits: 2, Rounding: 'bad' }, 4).toString()).toBe('1.2');
 });
 
 test('parsePositiveInt parses and validates integer >= 1', () => {

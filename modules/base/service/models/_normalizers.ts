@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { NormalizationError, normalizeRefId } from '@/core/service/utils/normalization';
+import {
+  NormalizationError,
+  normalizeCodeOptional as normalizeCodeOptionalCore,
+  normalizeCodeRequired as normalizeCodeRequiredCore,
+  normalizeName as normalizeNameCore,
+  normalizeNullableString as normalizeNullableStringCore,
+  requireRefId as requireRefIdCore,
+} from '@/core/service/utils/normalization';
 
 /**
  * Throw a base-domain InvalidArgument error.
@@ -15,12 +22,10 @@ export function fail(message: string): never {
  * Normalize a required code field: trim, optionally uppercase, fail if empty.
  */
 export function normalizeCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
-  let code = String(value ?? '').trim();
-  if (opts?.uppercase !== false) {
-    code = code.toUpperCase();
-  }
-  if (!code) fail('Code is required');
-  return code;
+  return mapNormalizationToBase(
+    () => normalizeCodeRequiredCore(value, opts),
+    () => 'Code is required'
+  );
 }
 
 /**
@@ -28,31 +33,27 @@ export function normalizeCodeRequired(value: any, opts?: { uppercase?: boolean }
  * Returns undefined for undefined input, null for null/empty input.
  */
 export function normalizeCodeOptional(value: any, opts?: { uppercase?: boolean }): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  let code = String(value ?? '').trim();
-  if (opts?.uppercase !== false) {
-    code = code.toUpperCase();
-  }
-  return code || null;
+  return normalizeCodeOptionalCore(value, opts);
 }
 
 /**
  * Normalize a required name field: trim, fail if empty.
  */
 export function normalizeName(value: any): string {
-  const name = String(value ?? '').trim();
-  if (!name) fail('Name is required');
-  return name;
+  return mapNormalizationToBase(
+    () => normalizeNameCore(value),
+    () => 'Name is required'
+  );
 }
 
 /**
  * Resolve and require a reference ID, failing with InvalidArgument if empty.
  */
 export function requireRefId(value: unknown, fieldName: string): string {
-  const id = normalizeRefId(value);
-  if (!id) fail(`${fieldName} is required`);
-  return id;
+  return mapNormalizationToBase(
+    () => requireRefIdCore(value),
+    () => `${fieldName} is required`
+  );
 }
 
 /**
@@ -73,9 +74,7 @@ export function mapNormalizationToBase<T>(fn: () => T, mapMessage: (err: Normali
  * Normalize an optional string field: trim, null/undefined → null, empty → null.
  */
 export function normalizeOptionalString(value: any): string | null {
-  if (value === undefined || value === null) return null;
-  const s = String(value).trim();
-  return s || null;
+  return normalizeNullableStringCore(value);
 }
 
 /**
