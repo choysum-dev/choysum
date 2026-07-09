@@ -162,6 +162,9 @@ export async function convertCurrency(
 
   if (roundingMode === 'currency') {
     const toCurrency = (await model.Browse(toCurrencyId, ['Id', 'DecimalDigits', 'Rounding'] as any)) as any;
+    if (!toCurrency) {
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: `Target currency ${toCurrencyId} not found` }).withGrpcCode(GrpcCode.NotFound);
+    }
     out = roundToCurrencyAmount(out, toCurrency as any, overrideDigits);
   }
 

@@ -116,6 +116,9 @@ async function allocateRangeAtomic(
 ): Promise<{ rangeStart: bigint; rangeEnd: bigint }> {
   for (let attempt = 0; attempt < 20; attempt++) {
     const current = attempt === 0 ? seq : ((await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any);
+    if (!current) {
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Sequence not found' }).withGrpcCode(GrpcCode.NotFound);
+    }
     const currentNext = asBigInt((current as any).NextNumber);
     const rangeStart = currentNext;
     const rangeEnd = currentNext + BigInt(count) - 1n;

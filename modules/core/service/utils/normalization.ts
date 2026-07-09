@@ -567,6 +567,9 @@ export function normalizeRequiredText(value: unknown): string {
  * Parse positive integer (>= 1).
  */
 export function parsePositiveInt(value: unknown): number {
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    raiseNormalizationError('invalid_integer');
+  }
   const n = Number(value);
   if (!Number.isFinite(n) || Math.floor(n) !== n) {
     raiseNormalizationError('invalid_integer');
