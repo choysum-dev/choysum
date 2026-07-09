@@ -88,7 +88,7 @@ export default class ExchangeRate extends BaseModel {
     const currentId = String(current?.Id || '').trim() || undefined;
 
     await ExchangeRate.validateEntity(self as any, currentId);
-    writeConstraintFields(self as any, ctx, ['Date']);
+    writeConstraintFields(self as any, ctx, ['Date', 'Rate']);
     writeConstraintFields(self as any, ctx, [], {
       triggerFields: ['CompanyId', 'CompanyScopeKey'],
       targetField: 'CompanyScopeKey',
