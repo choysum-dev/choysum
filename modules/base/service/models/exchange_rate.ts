@@ -6,7 +6,6 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import Company from './company';
 import Currency from './currency';
-import { normalizeCompanyScopeKey } from './_refs';
 import { fail, mapNormalizationToBase } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
@@ -51,7 +50,7 @@ export default class ExchangeRate extends BaseModel {
   }
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
-    const scopeKey = String(values.CompanyScopeKey ?? normalizeCompanyScopeKey(values.CompanyId));
+    const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
     const currencyId = normalizeRefId(values.CurrencyId);
     const dateKey = this.dateKey(values.Date);
 
@@ -79,7 +78,7 @@ export default class ExchangeRate extends BaseModel {
       () => toPositiveDecimal(values.Rate),
       err => (err.code === 'non_positive_decimal' ? 'Rate must be greater than 0' : 'Rate must be a valid decimal')
     );
-    values.CompanyScopeKey = normalizeCompanyScopeKey(values.CompanyId);
+    values.CompanyScopeKey = normalizeRefId(values.CompanyId) || '__GLOBAL__';
     values.Date = this.dateKey(values.Date);
     await this.ensureUniqueTuple(values, currentId);
   }

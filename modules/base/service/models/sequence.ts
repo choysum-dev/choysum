@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Company from './company';
-import { normalizeCompanyScopeKey } from './_refs';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { normalizeCodeRequired } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 import { nextSequence } from './_sequence_next';
@@ -61,7 +61,7 @@ export default class Sequence extends BaseModel {
 
   private static validateWriteEntity(values: Record<string, any>): void {
     values.Code = normalizeCodeRequired(values.Code, { uppercase: false });
-    values.CompanyScopeKey = normalizeCompanyScopeKey(values.CompanyId);
+    values.CompanyScopeKey = normalizeRefId(values.CompanyId) || '__GLOBAL__';
   }
 
   @Constraint<Sequence>(['Code', 'CompanyId'])
