@@ -176,6 +176,9 @@ export async function nextSequence(
   // Dry-run path: preview only
   if (dryRun) {
     const cur = (await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any;
+    if (!cur) {
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Sequence not found' }).withGrpcCode(GrpcCode.NotFound);
+    }
     const start = asBigInt(cur.NextNumber);
     const items = buildPaddedNumberItems(start, count, seq.Prefix, seq.Suffix, seq.Padding);
     return buildSequenceNextResult(seq, items, generatedAt);
