@@ -688,7 +688,7 @@ function handleDelete() {
         }
       }
     })
-    .catch(e => {
+    .catch((e: unknown) => {
       if (e !== 'cancel') {
         ElMessage.error('删除失败');
         const err = e instanceof Error ? e : new Error(String(e));
