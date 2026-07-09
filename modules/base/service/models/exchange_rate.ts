@@ -7,7 +7,7 @@ import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/s
 import Company from './company';
 import Currency from './currency';
 import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
-import { writeConstraintFields } from './_constraint_helpers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {

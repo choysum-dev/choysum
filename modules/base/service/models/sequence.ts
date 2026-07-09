@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import Company from './company';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { normalizeCodeRequired } from './_normalizers';
-import { writeConstraintFields } from './_constraint_helpers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { nextSequence } from './_sequence_next';
 import { cleanupSequenceIdempotency } from './_sequence_cleanup';
 

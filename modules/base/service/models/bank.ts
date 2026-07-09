@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import Address from './address';
 import Country from './country';
 import { normalizeCodeOptional } from './_normalizers';
-import { writeConstraintFields } from './_constraint_helpers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Bank')
 export default class Bank extends BaseModel {

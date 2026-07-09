@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Currency from './currency';
 import { fail, normalizeCodeRequired } from './_normalizers';
-import { writeConstraintFields } from './_constraint_helpers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Country')
 export default class Country extends BaseModel {

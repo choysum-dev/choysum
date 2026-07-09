@@ -7,7 +7,7 @@ import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
-import { writeConstraintFields } from './_constraint_helpers';
+import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('City')
 export default class City extends BaseModel {
