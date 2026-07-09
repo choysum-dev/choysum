@@ -603,13 +603,14 @@ export function parseBigInt(value: unknown): bigint {
  * Parse non-negative integer decimal digits.
  */
 export function normalizeDecimalDigits(value: unknown): number {
-  if (value === undefined || value === null || value === '') {
+  const val = typeof value === 'string' ? value.trim() : value;
+  if (val === undefined || val === null || val === '') {
     raiseNormalizationError('required');
   }
-  if (typeof value !== 'number' && typeof value !== 'string') {
+  if (typeof val !== 'number' && typeof val !== 'string') {
     raiseNormalizationError('invalid_integer');
   }
-  const n = Number(value);
+  const n = Number(val);
   if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {
     raiseNormalizationError('invalid_integer');
   }

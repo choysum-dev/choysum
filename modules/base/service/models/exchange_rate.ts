@@ -34,7 +34,12 @@ export default class ExchangeRate extends BaseModel {
   Rate: any;
 
   private static coerceDateKey(value: any): string {
-    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) {
+        fail('Date is invalid');
+      }
+      return value.toISOString().slice(0, 10);
+    }
     return mapNormalizationToBase(
       () => normalizeDateString(value),
       err => {
@@ -90,6 +95,7 @@ export default class ExchangeRate extends BaseModel {
     await ExchangeRate.validateEntity(self as any, currentId);
     writeConstraintFields(self as any, ctx, ['Date', 'Rate']);
     writeConstraintFields(self as any, ctx, [], {
+      forceOnCreate: true,
       triggerFields: ['CompanyId', 'CompanyScopeKey'],
       targetField: 'CompanyScopeKey',
     });
