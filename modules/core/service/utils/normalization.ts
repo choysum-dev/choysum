@@ -529,13 +529,13 @@ export type CurrencyRoundingSpec = {
 /**
  * Round an amount according to currency digits and optional rounding step.
  */
-export function roundToCurrencyAmount(amount: Decimal, currency: CurrencyRoundingSpec, overrideDigits?: number): Decimal {
+export function roundToCurrencyAmount(amount: Decimal, currency?: CurrencyRoundingSpec | null, overrideDigits?: number): Decimal {
   const digits = Number.isFinite(overrideDigits as any)
     ? Math.max(0, Math.floor(overrideDigits as any))
-    : Math.max(0, Math.floor(Number(currency.DecimalDigits) || 0));
+    : Math.max(0, Math.floor(Number(currency?.DecimalDigits) || 0));
 
   try {
-    const step = currency.Rounding;
+    const step = currency?.Rounding;
     if (step != null) {
       const decimalStep = step instanceof Decimal ? step : new Decimal((step as any).$bigdecimal ?? step);
       if (decimalStep.gt(0)) {

@@ -3,7 +3,7 @@
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { normalizeRefId, toPositiveDecimal } from '@/core/service/utils/normalization';
+import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import UoMCategory from './uom_category';
 import { fail, mapNormalizationToBase, normalizeName, requireRefId } from './_normalizers';
 

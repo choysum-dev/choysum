@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Locale from './locale';
-import { fail, normalizeDirection } from './_normalizers';
+import { normalizeDirection } from './_normalizers';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Language')

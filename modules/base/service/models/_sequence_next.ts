@@ -113,7 +113,7 @@ async function allocateRangeAtomic(
   model: { Browse: (id: string, fields: any) => Promise<any>; Update: (condition: any, values: any, fields: any) => Promise<any> },
   seq: Sequence,
   count: number
-): Promise<{ rangeStart: bigint; rangeEnd: bigint; updated: Sequence }> {
+): Promise<{ rangeStart: bigint; rangeEnd: bigint }> {
   for (let attempt = 0; attempt < 20; attempt++) {
     const current = attempt === 0 ? seq : ((await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any);
     const currentNext = asBigInt((current as any).NextNumber);
@@ -129,8 +129,7 @@ async function allocateRangeAtomic(
 
     const res = await model.Update(cond, { NextNumber: nextNumber.toString() } as any, ['Id', 'UpdatedAt', 'NextNumber'] as any);
     if (Array.isArray(res) && res.length > 0) {
-      const updated = (await model.Browse(seq.Id, ['Id', 'CompanyId', 'Code', 'Prefix', 'Suffix', 'Padding', 'IsActive'] as any)) as any;
-      return { rangeStart, rangeEnd, updated };
+      return { rangeStart, rangeEnd };
     }
   }
 

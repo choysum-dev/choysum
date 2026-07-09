@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { NormalizationError, normalizeEnumValue } from '@/core/service/utils/normalization';
+import { normalizeEnumValue } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase } from './_normalization_bridge';
 
 /**
