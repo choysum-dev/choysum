@@ -571,3 +571,22 @@ test('resolveModelRefId returns undefined for falsy/missing input', () => {
   expect(resolveModelRefId(undefined, 'Field')).toBeUndefined();
   expect(resolveModelRefId({}, 'Field')).toBeUndefined();
 });
+
+test('resolveModelRefId falls back to raw field when Id property is missing', () => {
+  expect(resolveModelRefId({ CompanyId: { Name: 'x' } }, 'CompanyId')).toEqual({ Name: 'x' });
+});
+
+// ---------------------------------------------------------------------------
+// roundToCurrencyAmount nullable
+// ---------------------------------------------------------------------------
+
+test('roundToCurrencyAmount handles null or undefined currency by defaulting digits to 0', () => {
+  const amount = new Decimal('3.14159');
+  expect(roundToCurrencyAmount(amount, null).eq(new Decimal('3'))).toBe(true);
+  expect(roundToCurrencyAmount(amount, undefined).eq(new Decimal('3'))).toBe(true);
+});
+
+test('roundToCurrencyAmount nullable currency ignores rounding step when null', () => {
+  const amount = new Decimal('2.5');
+  expect(roundToCurrencyAmount(amount, null, 2).eq(new Decimal('2.5'))).toBe(true);
+});

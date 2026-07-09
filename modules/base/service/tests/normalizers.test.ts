@@ -3,7 +3,17 @@
 
 import { NormalizationError } from '@/core/service/utils/normalization';
 import { ChoysumError } from '@/core/service/error';
-import { fail, mapNormalizationToBase, normalizeCodeRequired, normalizeCodeOptional, normalizeName } from '@/base/service/models/_normalizers';
+import {
+  fail,
+  mapNormalizationToBase,
+  normalizeCodeOptional,
+  normalizeCodeRequired,
+  normalizeCurrencySymbolPosition,
+  normalizeDirection,
+  normalizeName,
+  normalizeRatePolicyMode,
+  normalizeRoundingMode,
+} from '@/base/service/models/_normalizers';
 
 // ---------------------------------------------------------------------------
 // fail
@@ -124,4 +134,24 @@ test('base._normalizers: normalizeName empty throws', () => {
 test('base._normalizers: normalizeName null/undefined throws', () => {
   expect(() => normalizeName(null)).toThrow();
   expect(() => normalizeName(undefined)).toThrow();
+});
+
+// ---------------------------------------------------------------------------
+// option normalizers (from _option_normalizers via _normalizers barrel)
+// ---------------------------------------------------------------------------
+
+test('base._normalizers: normalizeDirection invalid throws InvalidArgument', () => {
+  expect(() => normalizeDirection('bogus')).toThrow('Direction must be ltr or rtl');
+});
+
+test('base._normalizers: normalizeCurrencySymbolPosition invalid throws', () => {
+  expect(() => normalizeCurrencySymbolPosition('bogus')).toThrow('CurrencySymbolPosition must be before or after');
+});
+
+test('base._normalizers: normalizeRatePolicyMode invalid throws', () => {
+  expect(() => normalizeRatePolicyMode('bogus')).toThrow('RatePolicy.Mode must be exact or latest_before');
+});
+
+test('base._normalizers: normalizeRoundingMode invalid throws', () => {
+  expect(() => normalizeRoundingMode('bogus')).toThrow('Rounding.Mode must be currency or none');
 });
