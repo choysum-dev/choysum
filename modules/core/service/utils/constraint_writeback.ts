@@ -25,6 +25,9 @@ export function writeConstraintFields(
   fields: string[],
   opts?: ConstraintWritebackOptions
 ): void {
+  if (ctx && !ctx.values) {
+    ctx.values = {};
+  }
   const values = (ctx?.values || {}) as ObjectRecord;
   const isCreate = opts?.forceOnCreate && String(ctx?.mode || '') === 'create';
 
