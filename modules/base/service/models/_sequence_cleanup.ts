@@ -12,7 +12,7 @@ export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempot
   if (!olderThan) {
     cutoff = new Date();
   } else {
-    mapNormalizationToBase(
+    const normalizedOlderThan = mapNormalizationToBase(
       () => normalizeDateString(olderThan),
       err => {
         if (err.code === 'required') return 'OlderThan is required';
@@ -20,7 +20,7 @@ export async function cleanupSequenceIdempotency(params?: SequenceCleanupIdempot
         return 'OlderThan must be YYYY-MM-DD';
       }
     );
-    cutoff = new Date(`${olderThan}T00:00:00.000Z`);
+    cutoff = new Date(`${normalizedOlderThan}T00:00:00.000Z`);
   }
   const deleted = await SequenceIdempotency.Delete(['ExpiresAt', '<', cutoff] as any);
   return { Deleted: Number(deleted) || 0 };

@@ -72,7 +72,7 @@ export default class ExchangeRate extends BaseModel {
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    mapNormalizationToBase(
+    values.Rate = mapNormalizationToBase(
       () => toPositiveDecimal(values.Rate),
       err => (err.code === 'non_positive_decimal' ? 'Rate must be greater than 0' : 'Rate must be a valid decimal')
     );
