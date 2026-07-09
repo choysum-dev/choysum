@@ -7,7 +7,7 @@ import City from './city';
 import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { fail, normalizeOptionalString, requireRefId } from './_normalizers';
+import { fail, normalizeNullableString, requireRefId } from './_normalizers';
 
 @Model('Address')
 export default class Address extends BaseModel {
@@ -51,7 +51,7 @@ export default class Address extends BaseModel {
     const countryId = requireRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId);
     const cityId = normalizeRefId(values.CityId);
-    const zip = normalizeOptionalString(values.Zip);
+    const zip = normalizeNullableString(values.Zip);
     const country = await this.getCountry(countryId);
     if (!country?.Id) fail('Country not found');
 

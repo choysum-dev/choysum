@@ -313,8 +313,8 @@ export function asBigInt(v: unknown): bigint {
  */
 export function toDateOnlyString(input: unknown): string {
   if (input instanceof Date) return input.toISOString().slice(0, 10);
-  const s = String((input as any) ?? '').trim();
-  if (!s) return '';
+  if (typeof input !== 'string') return '';
+  const s = input.trim();
   return s.length >= 10 ? s.slice(0, 10) : '';
 }
 
@@ -605,6 +605,9 @@ export function parseBigInt(value: unknown): bigint {
 export function normalizeDecimalDigits(value: unknown): number {
   if (value === undefined || value === null || value === '') {
     raiseNormalizationError('required');
+  }
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    raiseNormalizationError('invalid_integer');
   }
   const n = Number(value);
   if (!Number.isFinite(n) || Math.floor(n) !== n || n < 0) {

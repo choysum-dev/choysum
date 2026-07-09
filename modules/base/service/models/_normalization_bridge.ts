@@ -73,6 +73,6 @@ export function mapNormalizationToBase<T>(fn: () => T, mapMessage: (err: Normali
 /**
  * Normalize an optional string field: trim, null/undefined → null, empty → null.
  */
-export function normalizeOptionalString(value: any): string | null {
+export function normalizeNullableString(value: any): string | null {
   return normalizeNullableStringCore(value);
 }

@@ -14,7 +14,7 @@ export {
   normalizeCodeRequired,
   normalizeCodeOptional,
   normalizeName,
-  normalizeOptionalString,
+  normalizeNullableString,
   requireRefId,
 } from './_normalization_bridge';
 
