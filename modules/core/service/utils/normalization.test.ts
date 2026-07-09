@@ -305,7 +305,7 @@ test('parseDecimalInput parses string/object/decimal and can reject number input
   expect(parseDecimalInput('3.14').eq(new Decimal('3.14'))).toBe(true);
   expect(parseDecimalInput({ $bigdecimal: '2.50' }).eq(new Decimal('2.5'))).toBe(true);
   expect(parseDecimalInput(new Decimal('9')).eq(new Decimal('9'))).toBe(true);
-  expect(() => parseDecimalInput(1, { allowNumber: false })).toThrow(NormalizationError);
+  expect(() => parseDecimalInput(1, { allowNumber: false })).toThrow('number_not_allowed');
 });
 
 test('parseDecimalInput reports required and invalid decimal codes', () => {

@@ -315,7 +315,7 @@ export function toDateOnlyString(input: unknown): string {
   if (input instanceof Date) return input.toISOString().slice(0, 10);
   const s = String((input as any) ?? '').trim();
   if (!s) return '';
-  return s.length >= 10 ? s.slice(0, 10) : s;
+  return s.length >= 10 ? s.slice(0, 10) : '';
 }
 
 export { buildPaddedNumberItems, formatPaddedNumber, resolvePaddedNumberFormat } from './format';
