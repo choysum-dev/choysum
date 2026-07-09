@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { fail, normalizeCodeOptional, normalizeName } from './_normalizers';
+import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('City')
@@ -40,12 +40,10 @@ export default class City extends BaseModel {
   }
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
-    const countryId = normalizeRefId(values.CountryId);
+    const countryId = requireRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId) ?? null;
     const name = normalizeName(values.Name);
     const code = normalizeCodeOptional(values.Code);
-
-    if (!countryId) fail('CountryId is required');
     await City.ensureStateCountryConsistency(countryId, stateId);
 
     const stateCond = stateId ? (['StateId', '=', stateId] as any) : (['StateId', 'is', null] as any);

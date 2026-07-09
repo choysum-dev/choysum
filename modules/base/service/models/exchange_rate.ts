@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import Company from './company';
 import Currency from './currency';
-import { fail, mapNormalizationToBase } from './_normalizers';
+import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('ExchangeRate', { companyScoped: true })
@@ -51,10 +51,8 @@ export default class ExchangeRate extends BaseModel {
 
   private static async ensureUniqueTuple(values: Record<string, any>, currentId?: string): Promise<void> {
     const scopeKey = String(values.CompanyScopeKey ?? (normalizeRefId(values.CompanyId) || '__GLOBAL__'));
-    const currencyId = normalizeRefId(values.CurrencyId);
+    const currencyId = requireRefId(values.CurrencyId, 'CurrencyId');
     const dateKey = this.dateKey(values.Date);
-
-    if (!currencyId) fail('CurrencyId is required');
 
     const conflicts = await this.Search(
       {

@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Country from './country';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { fail, normalizeCodeOptional, normalizeName } from './_normalizers';
+import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
 import { writeConstraintFields } from './_constraint_helpers';
 
 @Model('State')
@@ -27,11 +27,9 @@ export default class State extends BaseModel {
   IsActive: boolean;
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
-    const countryId = normalizeRefId(values.CountryId);
+    const countryId = requireRefId(values.CountryId, 'CountryId');
     const name = normalizeName(values.Name);
     const code = normalizeCodeOptional(values.Code);
-
-    if (!countryId) fail('CountryId is required');
 
     const byName = await this.Search(
       {

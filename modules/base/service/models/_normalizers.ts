@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode } from '@/core/service/error';
-import { NormalizationError } from '@/core/service/utils/normalization';
+import { NormalizationError, normalizeRefId } from '@/core/service/utils/normalization';
 
 /**
  * Throw a base-domain InvalidArgument error.
@@ -44,6 +44,15 @@ export function normalizeName(value: any): string {
   const name = String(value ?? '').trim();
   if (!name) fail('Name is required');
   return name;
+}
+
+/**
+ * Resolve and require a reference ID, failing with InvalidArgument if empty.
+ */
+export function requireRefId(value: unknown, fieldName: string): string {
+  const id = normalizeRefId(value);
+  if (!id) fail(`${fieldName} is required`);
+  return id;
 }
 
 /**
