@@ -12,7 +12,7 @@ import {
 } from '@/core/service/utils/normalization';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
-import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_payload';
+import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_next_payload';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
 

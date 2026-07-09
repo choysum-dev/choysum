@@ -6,7 +6,7 @@ import {
   buildSequenceIdempotencyPayload,
   buildSequenceNextResult,
   buildSequencePublicSnapshot,
-} from '@/base/service/models/_sequence_payload';
+} from '@/base/service/models/_sequence_next_payload';
 
 test('base.sequence_payload: buildSequenceFormatSnapshot normalizes nullable prefix/suffix', () => {
   const seq = {
