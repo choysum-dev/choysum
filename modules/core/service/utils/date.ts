@@ -21,6 +21,14 @@ export function parseISODate(iso?: string): Date {
  */
 export function toDate(value: unknown): Date | undefined {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
+  if (typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    const parsed = new Date(Number(value));
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
   const parsed = new Date(String(value ?? ''));
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 }

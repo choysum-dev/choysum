@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, normalizeStringArray } from '../utils/normalization';
-import { asObjectRecord } from '../../utils/object';
 import type { ConditionExpr, ConditionEnvelope } from './authz';
 
 function asPlainRecord(value: unknown): Record<string, unknown> | null {
-  const record = asObjectRecord(value);
-  if (!record || Array.isArray(record)) return null;
-  return record as Record<string, unknown>;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return null;
+  return value as Record<string, unknown>;
 }
 
 /**

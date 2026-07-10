@@ -94,6 +94,7 @@ export async function paginateBatch<T>(
   processor: (item: T) => Promise<void>,
   opts?: {
     batch?: number;
+    maxPages?: number;
     offsetMode?: boolean;
     orderBy?: { field: string; order: 'asc' | 'desc' };
     fields?: string[];
@@ -101,10 +102,14 @@ export async function paginateBatch<T>(
 ): Promise<number> {
   const batch = opts?.batch ?? DEFAULT_BATCH_SIZE;
   const offsetMode = opts?.offsetMode ?? false;
+  const maxPages = opts?.maxPages ?? Number.MAX_SAFE_INTEGER;
   let processed = 0;
   let offset = 0;
+  let pages = 0;
 
   for (;;) {
+    if (pages >= maxPages) break;
+    pages += 1;
     const pageOpts: {
       limit: number;
       offset?: number;
