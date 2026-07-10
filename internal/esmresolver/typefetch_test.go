@@ -1935,3 +1935,75 @@ func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
 		t.Fatal("expected error when cache write fails in read-only dir")
 	}
 }
+
+// ---- normalizeCompilerTypeRootName tests ----
+
+func TestNormalizeCompilerTypeRootName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty", input: "", expected: ""},
+		{name: "whitespace only", input: "  ", expected: ""},
+		{name: "bare package", input: "node", expected: "node"},
+		{name: "bare package with whitespace", input: "  node  ", expected: "node"},
+		{name: "@types/ prefix", input: "@types/node", expected: "node"},
+		{name: "@types/ prefix with whitespace", input: " @types/ node ", expected: "node"},
+		{name: "non-scoped subpath", input: "vitest/globals", expected: "vitest"},
+		{name: "scoped package", input: "@scope/pkg", expected: "scope__pkg"},
+		{name: "scoped package with @types/", input: "@types/@scope/pkg", expected: "scope__pkg"},
+		{name: "scoped no subpath", input: "@scope", expected: "scope"},
+		{name: "scoped package whitespace", input: " @scope / pkg ", expected: "scope__pkg"},
+		{name: "dot segment rejected", input: ".", expected: ""},
+		{name: "double-dot segment rejected", input: "..", expected: ""},
+		{name: "path traversal rejected", input: "../../etc/passwd", expected: ""},
+		{name: "backslash rejected", input: "foo\\bar", expected: ""},
+		{name: "scoped unsafe scope", input: "@../pkg", expected: ""},
+		{name: "scoped unsafe pkg", input: "@scope/..", expected: ""},
+		{name: "scoped backslash in scope", input: "@scope\\x/pkg", expected: ""},
+		{name: "forward slash in bare segment", input: "a/b", expected: "a"},
+		{name: "bare @ symbol", input: "@", expected: ""},
+		{name: "scoped with nested slash in pkg", input: "@scope/pkg/sub", expected: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeCompilerTypeRootName(tt.input)
+			if got != tt.expected {
+				t.Fatalf("normalizeCompilerTypeRootName(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// ---- EnsureTsconfigCompilerTypeRoots missing tsconfig test ----
+
+func TestEnsureTsconfigCompilerTypeRoots_MissingTsconfig(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, ".choysum", "pkg", "types")
+	tsconfigPath := filepath.Join(dir, "nonexistent", "tsconfig.json")
+
+	cachedPath := filepath.Join(typesDir, "@types", "node@26.1.1.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cachedPath), 0o755); err != nil {
+		t.Fatalf("mkdir cached path dir: %v", err)
+	}
+	if err := os.WriteFile(cachedPath, []byte("declare var process: any;"), 0o644); err != nil {
+		t.Fatalf("write cached type file: %v", err)
+	}
+
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: cachedPath}}
+	// Should succeed even though tsconfig does not exist — the IsNotExist
+	// path allows the function to create a fresh tsconfig with typeRoots.
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, links); err != nil {
+		t.Fatalf("EnsureTsconfigCompilerTypeRoots should tolerate missing tsconfig: %v", err)
+	}
+
+	// Verify the generated tsconfig contains typeRoots.
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("read generated tsconfig: %v", err)
+	}
+	if !strings.Contains(string(data), `"typeRoots"`) {
+		t.Fatalf("generated tsconfig missing typeRoots: %s", string(data))
+	}
+}

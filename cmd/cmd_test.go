@@ -564,6 +564,20 @@ func TestNewTypeFetchCmd_Run_InvalidMissingDepPolicy(t *testing.T) {
 	}
 }
 
+func TestResolveTypeFetchCompilerTypeTargets_MissingTsconfig(t *testing.T) {
+	modulesPath := t.TempDir()
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	// tsconfig does not exist — resolveTypeFetchCompilerTypeTargets must
+	// return nil,nil instead of an error so the command can initialise.
+	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
+	if err != nil {
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets should return nil on missing tsconfig: %v", err)
+	}
+	if targets != nil {
+		t.Fatalf("expected nil targets for missing tsconfig, got %+v", targets)
+	}
+}
+
 func TestResolveTypeFetchCompilerTypeTargets_FromTsconfigTypes(t *testing.T) {
 	modulesPath := t.TempDir()
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
