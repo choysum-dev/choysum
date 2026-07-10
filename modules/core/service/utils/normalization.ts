@@ -637,3 +637,29 @@ export function normalizeDateString(value: unknown): string {
   }
   return raw;
 }
+
+/**
+ * Type-narrow an unknown input to a plain Record, or null for invalid types.
+ *
+ * Returns null for null, undefined, arrays, functions, and primitives.
+ */
+export function asRecord(input: unknown): Record<string, unknown> | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return null;
+  }
+  return input as Record<string, unknown>;
+}
+
+/**
+ * Normalize a non-negative finite integer from loose input.
+ *
+ * Returns undefined for undefined, null, empty string, NaN, Infinity, and
+ * negative values. Truncates fractional components via Math.trunc.
+ */
+export function normalizeOptionalNonNegativeInt(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return undefined;
+  if (num < 0) return undefined;
+  return Math.trunc(num);
+}
