@@ -4,7 +4,6 @@
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } from '@/core/service/utils/normalization';
 import { parseISODate, toDate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
-import { throwDocumentError, DocumentErrCode } from '../error';
 import { resolveGcBatchSize } from './_helpers';
 
 const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;

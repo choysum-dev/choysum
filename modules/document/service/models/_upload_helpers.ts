@@ -77,7 +77,7 @@ export function normalizeContentType(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
-export function normalizePrincipal(raw: unknown): PrincipalContext {
+function normalizePrincipal(raw: unknown): PrincipalContext {
   const principal = asRecord(raw);
   return {
     userId: requireText(principal?.userId, 'principal.userId'),

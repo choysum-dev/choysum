@@ -3,7 +3,6 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { AttachmentBackend } from '../contracts';
-import { DocumentErrCode, GrpcCode, newDocumentError, throwDocumentError } from '../error';
 import { mustLoadOne } from './_helpers';
 
 /**

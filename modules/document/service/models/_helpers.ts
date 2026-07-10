@@ -4,7 +4,7 @@
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { GrpcCode } from '../error';
-import { newDocumentError, DocumentErrCode, throwDocumentError } from '../error';
+import { DocumentErrCode, throwDocumentError } from '../error';
 
 const DEFAULT_GC_BATCH_SIZE = 200;
 

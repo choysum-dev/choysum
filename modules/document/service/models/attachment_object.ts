@@ -19,12 +19,12 @@ import {
   CommitUploadPutResp,
   PrincipalContext,
 } from '../contracts';
-import { newDocumentError, DocumentErrCode, throwDocumentError } from '../error';
+import { DocumentErrCode, throwDocumentError } from '../error';
 import AttachmentUploadSession from './upload_session';
 import AttachmentMutationLedger from './attachment_mutation_ledger';
 import StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId, resolveGcBatchSize, mustLoadOne } from './_helpers';
+import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_helpers';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import {
   DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
@@ -44,20 +44,6 @@ import {
   assertFinalizeIdentity,
   assertPrepareReplayConsistency,
 } from './_upload_helpers';
-
-const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;
-const DEFAULT_CLEANUP_MAX_ATTEMPTS = 8;
-const DEFAULT_CLEANUP_RETRY_BASE_SECONDS = 30;
-
-type CleanupStateValue = 'retrying' | 'failed' | 'deleted';
-
-type CleanupState = {
-  state?: CleanupStateValue;
-  attempts?: number;
-  nextRetryAt?: string;
-  lastError?: string;
-  at?: string;
-};
 
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
@@ -350,157 +336,6 @@ export default class AttachmentContent extends BaseModel {
     };
   }
 
-  /**
-   * Deletes active content that no longer has bindings after the grace period elapses.
-   */
-  public static async garbageCollectUnboundObjects(
-    nowISO?: string
-  ): Promise<{ scannedCount: number; deletedCount: number; retriedCount: number; failedCount: number; skippedCount: number }> {
-    const now = parseISODate(nowISO);
-    const nowAt = now.toISOString();
-    const batch = resolveGcBatchSize();
-    const unboundGraceSeconds = getBackendEnvPositiveInt(
-      ['CHOYSUM_DOCUMENT_ATTACHMENT_UNBOUND_OBJECT_GRACE_SECONDS', 'CHOYSUM_DOCUMENT_UNBOUND_OBJECT_GRACE_SECONDS'],
-      DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS
-    );
-    const maxAttempts = getBackendEnvPositiveInt(['CHOYSUM_DOCUMENT_CLEANUP_MAX_ATTEMPTS'], DEFAULT_CLEANUP_MAX_ATTEMPTS);
-    const retryBaseSeconds = getBackendEnvPositiveInt(['CHOYSUM_DOCUMENT_CLEANUP_RETRY_BASE_SECONDS'], DEFAULT_CLEANUP_RETRY_BASE_SECONDS);
-    const graceCutoff = new Date(now.getTime() - unboundGraceSeconds * 1000);
-
-    const AttachmentBinding = (await import('./attachment_binding')).default;
-
-    let scannedCount = 0;
-    let deletedCount = 0;
-    let retriedCount = 0;
-    let failedCount = 0;
-    let skippedCount = 0;
-    let offset = 0;
-
-    for (;;) {
-      const candidates = await this.Search(
-        {
-          And: [
-            ['Status', '=', 'active'],
-            ['UpdatedAt', '<', graceCutoff],
-          ],
-        } as any,
-        {
-          limit: batch,
-          offset,
-          orderBy: { field: 'UpdatedAt', order: 'asc' } as any,
-        } as any
-      );
-      if (!candidates.length) break;
-
-      for (const candidate of candidates) {
-        scannedCount += 1;
-        const contentId = normalizeOptionalString((candidate as any)?.Id);
-        if (!contentId) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const activeBindings = await AttachmentBinding.Search(
-          {
-            And: [
-              ['AttachmentContentId', '=', contentId],
-              ['Status', '=', 'active'],
-            ],
-          } as any,
-          { limit: 1, fields: ['Id'] as any } as any
-        );
-        if (activeBindings.length > 0) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const metadata = asRecord((candidate as any)?.MetadataJson) ?? undefined;
-        const cleanup = this.readCleanupState(metadata);
-        const attempts = Math.max(0, Math.trunc(Number(cleanup.attempts || 0)));
-        const state = normalizeOptionalString(cleanup.state)?.toLowerCase();
-        if (state === 'failed' && attempts >= maxAttempts) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const nextRetryAt = toDate(cleanup.nextRetryAt);
-        if (nextRetryAt && nextRetryAt.getTime() > now.getTime()) {
-          skippedCount += 1;
-          continue;
-        }
-
-        const nextAttempt = attempts + 1;
-        try {
-          const storedContentId = normalizeOptionalString((candidate as any)?.StoredContentId);
-          if (!storedContentId) {
-            throw new Error('attachment content missing storedContentId');
-          }
-
-          const documentBridge = (globalThis as any)?.$choysum?.document;
-          const deleteStoredContent =
-            typeof documentBridge?.deleteStoredContent === 'function' ? documentBridge.deleteStoredContent.bind(documentBridge) : undefined;
-          if (!deleteStoredContent) {
-            throw new Error('document.deleteStoredContent bridge is unavailable');
-          }
-          await deleteStoredContent({ storedContentId });
-
-          await this.UpdateById(
-            contentId,
-            {
-              Status: 'deleted',
-              MetadataJson: this.writeCleanupState(metadata, {
-                state: 'deleted',
-                attempts: nextAttempt,
-                at: nowAt,
-              }),
-            } as any,
-            ['Id'] as any
-          );
-
-          deletedCount += 1;
-        } catch (error) {
-          const message = String((error as any)?.message || error || 'attachment cleanup failed');
-          const terminal = nextAttempt >= maxAttempts;
-          const nextRetryAtISO = terminal
-            ? undefined
-            : new Date(now.getTime() + this.computeRetryBackoffSeconds(nextAttempt, retryBaseSeconds) * 1000).toISOString();
-
-          await this.UpdateById(
-            contentId,
-            {
-              MetadataJson: this.writeCleanupState(metadata, {
-                state: terminal ? 'failed' : 'retrying',
-                attempts: nextAttempt,
-                nextRetryAt: nextRetryAtISO,
-                lastError: message.slice(0, 1024),
-                at: nowAt,
-              }),
-            } as any,
-            ['Id'] as any
-          );
-
-          if (terminal) {
-            failedCount += 1;
-          } else {
-            retriedCount += 1;
-          }
-        }
-      }
-
-      offset += candidates.length;
-
-      if (candidates.length < batch) break;
-    }
-
-    return {
-      scannedCount,
-      deletedCount,
-      retriedCount,
-      failedCount,
-      skippedCount,
-    };
-  }
-
   protected static async createUploadSessionInternal(req: PrepareUploadReq): Promise<string> {
     const normalized = normalizePrepareUploadReq(req);
     const companyId = requireCompanyId(this.companyId, 'prepare');
@@ -587,47 +422,6 @@ export default class AttachmentContent extends BaseModel {
     );
 
     return this.buildFinalizeResp(created as AttachmentContent);
-  }
-
-  private static computeRetryBackoffSeconds(attempts: number, baseSeconds: number): number {
-    const exponent = Math.max(0, Math.min(10, attempts - 1));
-    const backoff = baseSeconds * 2 ** exponent;
-    return Math.min(backoff, 6 * 60 * 60);
-  }
-
-  private static readCleanupState(metadata: Record<string, unknown> | undefined): CleanupState {
-    const cleanup = asRecord(metadata?.cleanup);
-    if (!cleanup) {
-      return {};
-    }
-
-    const state = normalizeOptionalString(cleanup.state) as CleanupStateValue | undefined;
-    const attempts = normalizeOptionalNonNegativeInt(cleanup.attempts);
-    const nextRetryAt = normalizeOptionalString(cleanup.nextRetryAt);
-    const lastError = normalizeOptionalString(cleanup.lastError);
-    const at = normalizeOptionalString(cleanup.at);
-
-    return {
-      state,
-      attempts,
-      nextRetryAt,
-      lastError,
-      at,
-    };
-  }
-
-  private static writeCleanupState(metadata: Record<string, unknown> | undefined, state: CleanupState): Record<string, unknown> {
-    const nextMetadata: Record<string, unknown> = {
-      ...(metadata || {}),
-      cleanup: {
-        state: state.state,
-        attempts: state.attempts,
-        nextRetryAt: state.nextRetryAt,
-        lastError: state.lastError,
-        at: state.at,
-      },
-    };
-    return nextMetadata;
   }
 
   private static async findUploadSessionByBusinessRequestId(
@@ -906,12 +700,4 @@ export default class AttachmentContent extends BaseModel {
     };
   }
 
-  private static newSkeletonNotImplementedError(method: string) {
-    return newDocumentError({
-      code: DocumentErrCode.SKELETON_NOT_IMPLEMENTED,
-      message: 'Document control-plane skeleton is mounted but not implemented yet',
-    })
-      .withGrpcCode(GrpcCode.Unimplemented)
-      .withMetadata({ method });
-  }
 }
