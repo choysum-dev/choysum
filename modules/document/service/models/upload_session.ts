@@ -5,9 +5,9 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { parseISODate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
-import { resolveGcBatchSize } from './_foundation';
+import { resolveGcBatchSize } from './_pagination';
 import { paginateBatch } from './_pagination';
-import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload_helpers';
+import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload';
 
 /**
  * AttachmentUploadSession tracks staged uploads before payloads become active content.

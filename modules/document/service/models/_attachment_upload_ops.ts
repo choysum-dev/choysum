@@ -23,7 +23,7 @@ import type AttachmentUploadSession from './upload_session';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_foundation';
+import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_guards';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import {
   DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
@@ -38,7 +38,7 @@ import {
   assertUploadSessionPrincipal,
   assertFinalizeIdentity,
   assertPrepareReplayConsistency,
-} from './_upload_helpers';
+} from './_upload';
 
 // ---------------------------------------------------------------------------
 // Model ops contract

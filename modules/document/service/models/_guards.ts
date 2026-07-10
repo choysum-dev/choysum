@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
-import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
-
-const DEFAULT_GC_BATCH_SIZE = 200;
 
 /**
  * Require a non-empty trimmed string value; throws INVALID_ARGUMENT otherwise.
@@ -39,13 +36,6 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
     throw throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'activeCompanyId is required for document operations', GrpcCode.PermissionDenied, { stage });
   }
   return companyId;
-}
-
-/**
- * Resolve the GC batch size from backend environment or fall back to 200.
- */
-export function resolveGcBatchSize(): number {
-  return getBackendEnvPositiveInt(['CHOYSUM_DOCUMENT_GC_BATCH_SIZE'], DEFAULT_GC_BATCH_SIZE);
 }
 
 /**
