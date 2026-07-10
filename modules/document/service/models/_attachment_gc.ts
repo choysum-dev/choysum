@@ -89,9 +89,7 @@ export async function garbageCollectUnboundObjects(
     const candidates = await modelOps.Search({ And: baseConditions } as any, { limit: batch, orderBy: { field: 'Id', order: 'asc' } as any } as any);
     if (!candidates.length) break;
 
-    const candidateIds = candidates
-      .map(c => normalizeOptionalString((c as any)?.Id))
-      .filter((id): id is string => Boolean(id));
+    const candidateIds = candidates.map(c => normalizeOptionalString((c as any)?.Id)).filter((id): id is string => Boolean(id));
     const activeBindings =
       candidateIds.length > 0
         ? await AttachmentBinding.Search(
@@ -104,9 +102,7 @@ export async function garbageCollectUnboundObjects(
             { fields: ['AttachmentContentId'] as any } as any
           )
         : [];
-    const activeContentIds = new Set(
-      activeBindings.map(b => normalizeOptionalString((b as any)?.AttachmentContentId)).filter(Boolean)
-    );
+    const activeContentIds = new Set(activeBindings.map(b => normalizeOptionalString((b as any)?.AttachmentContentId)).filter(Boolean));
 
     for (const candidate of candidates) {
       scannedCount += 1;
@@ -170,8 +166,9 @@ export async function garbageCollectUnboundObjects(
               lastError: message.slice(0, 1024),
               at: nowAt,
             }),
+            UpdatedAt: now,
           } as any,
-          ['Id', 'MetadataJson'] as any
+          ['Id', 'MetadataJson', 'UpdatedAt'] as any
         );
         if (terminal) failedCount += 1;
         else retriedCount += 1;
