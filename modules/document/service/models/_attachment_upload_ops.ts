@@ -1,7 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt } from '@/core/service/utils/normalization';
+import {
+  normalizeOptionalString,
+  asRecord,
+  normalizeOptionalNonNegativeInt,
+  normalizeChecksumSha256,
+  normalizeContentType,
+} from '@/core/service/utils/normalization';
 import { parseISODate, toDate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { GrpcCode } from '../error';
@@ -25,12 +31,11 @@ import type StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
 import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_normalizers';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
+import { isMimeTypeAllowed } from '@/core/service/utils/mime';
 import {
   DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
   DEFAULT_MAX_UPLOAD_BYTES,
   EMPTY_SHA256,
-  normalizeChecksum,
-  normalizeContentType,
   isDisallowedInlinePayloadID,
   normalizePrepareUploadReq,
   normalizeAuthorizeUploadPutReq,
@@ -114,16 +119,6 @@ function normalizeAllowedMimeTypes(raw: unknown): string[] {
 
   const normalized = normalizeContentType(text);
   return normalized ? [normalized] : [];
-}
-
-function isMimeTypeAllowed(contentType: string | undefined, allowedMimeTypes: string[]): boolean {
-  if (allowedMimeTypes.length === 0) {
-    return true;
-  }
-  if (!contentType) {
-    return false;
-  }
-  return allowedMimeTypes.includes(contentType);
 }
 
 function buildPayloadWriteTicket(session: AttachmentUploadSession, principal: PrincipalContext): string {
@@ -244,7 +239,7 @@ function buildFinalizeResp(obj: AttachmentContent): FinalizeUploadResp {
     status: 'active',
     mimeType: normalizeOptionalString(obj.MimeType) ?? 'application/octet-stream',
     sizeBytes: normalizeOptionalNonNegativeInt(obj.SizeBytes) ?? 0,
-    checksumSha256: normalizeChecksum(obj.ChecksumSha256) ?? EMPTY_SHA256,
+    checksumSha256: normalizeChecksumSha256(obj.ChecksumSha256) ?? EMPTY_SHA256,
     imageMetadata:
       imageWidth !== undefined && imageHeight !== undefined && imageFormat
         ? {
@@ -448,7 +443,7 @@ export async function authorizeUploadPut(ops: UploadModelOps, req: AuthorizeUplo
     });
   }
 
-  const expectedChecksumSha256 = normalizeChecksum(session.ChecksumSha256);
+  const expectedChecksumSha256 = normalizeChecksumSha256(session.ChecksumSha256);
   if (expectedChecksumSha256 && normalized.requestMeta.checksumSha256 && normalized.requestMeta.checksumSha256 !== expectedChecksumSha256) {
     throwDocumentError(DocumentErrCode.CHECKSUM_MISMATCH, 'checksum mismatch', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId });
   }
@@ -510,7 +505,7 @@ export async function commitUploadPut(ops: UploadModelOps, req: CommitUploadPutR
     });
   }
 
-  const expectedChecksumSha256 = normalizeChecksum(session.ChecksumSha256);
+  const expectedChecksumSha256 = normalizeChecksumSha256(session.ChecksumSha256);
   if (expectedChecksumSha256 && normalized.payloadReceipt.checksumSha256 !== expectedChecksumSha256) {
     throwDocumentError(DocumentErrCode.CHECKSUM_MISMATCH, 'checksum mismatch', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId });
   }
@@ -609,7 +604,7 @@ export async function finalizeUploadInternal(ops: UploadModelOps, uploadId: stri
   }
 
   const sizeBytes = normalizeOptionalNonNegativeInt(session.UploadedSizeBytes) ?? 0;
-  const checksumSha256 = normalizeChecksum(session.UploadedChecksumSha256) ?? normalizeChecksum(session.ChecksumSha256) ?? EMPTY_SHA256;
+  const checksumSha256 = normalizeChecksumSha256(session.UploadedChecksumSha256) ?? normalizeChecksumSha256(session.ChecksumSha256) ?? EMPTY_SHA256;
   const mimeType = normalizeOptionalString(session.UploadedContentType) ?? normalizeOptionalString(session.ProposedContentType) ?? 'application/octet-stream';
 
   const uploadedPayloadRef = normalizeUploadedPayloadRef(session.UploadedPayloadRef);

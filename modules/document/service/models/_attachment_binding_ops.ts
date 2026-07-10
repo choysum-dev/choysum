@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt } from '@/core/service/utils/normalization';
+import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt, normalizeChecksumSha256 } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/date';
 import {
   DownloadDisposition,
@@ -23,6 +23,7 @@ import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
 import { requireText, requireUserId, requireCompanyId } from './_normalizers';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
+import { inlineMimeAllowed, mimeSuffix } from '@/core/service/utils/mime';
 
 // ---------------------------------------------------------------------------
 // Model ops contract — passed by the AttachmentBinding class when delegating.
@@ -183,7 +184,7 @@ function normalizeDownloadDisposition(value: unknown): DownloadDisposition {
 function resolveDownloadSemantics(binding: AttachmentBinding, attachmentContent: AttachmentContent): ResolvedDownloadSemantics {
   const mimeType = normalizeOptionalString(attachmentContent.MimeType) ?? 'application/octet-stream';
   const sizeBytes = normalizeOptionalNonNegativeInt(attachmentContent.SizeBytes) ?? 0;
-  const checksumSha256 = normalizeChecksum(attachmentContent.ChecksumSha256);
+  const checksumSha256 = normalizeChecksumSha256(attachmentContent.ChecksumSha256);
 
   return {
     fileName: buildFileName(binding, attachmentContent),
@@ -203,13 +204,6 @@ function resolveDownloadDispositionForResponse(value: unknown, mimeType: string)
   return 'attachment';
 }
 
-function inlineMimeAllowed(mimeType: string): boolean {
-  const normalized = mimeType.toLowerCase();
-  return (
-    normalized === 'image/png' || normalized === 'image/jpeg' || normalized === 'image/webp' || normalized === 'application/pdf' || normalized === 'text/plain'
-  );
-}
-
 function buildEtag(checksumSha256: string | undefined): string | undefined {
   if (!checksumSha256) return undefined;
   return `"sha256:${checksumSha256}"`;
@@ -225,24 +219,6 @@ function buildFileName(binding: AttachmentBinding, attachmentContent: Attachment
   const suffix = mimeSuffix(mime);
   const bindingId = requireText(binding.Id, 'attachmentBindingId');
   return `attachment-${bindingId}${suffix}`;
-}
-
-function mimeSuffix(mimeType: string): string {
-  const normalized = mimeType.toLowerCase();
-  switch (normalized) {
-    case 'image/png':
-      return '.png';
-    case 'image/jpeg':
-      return '.jpg';
-    case 'image/webp':
-      return '.webp';
-    case 'application/pdf':
-      return '.pdf';
-    case 'text/plain':
-      return '.txt';
-    default:
-      return '';
-  }
 }
 
 function assertCompanyMatch(
@@ -326,14 +302,6 @@ function parseUnbindResp(value: unknown): UnbindResp | null {
     status: 'unbound',
     gcEligibleAfter,
   };
-}
-
-function normalizeChecksum(value: unknown): string | undefined {
-  const text = normalizeOptionalString(value);
-  if (!text) return undefined;
-  const normalized = text.toLowerCase();
-  if (!/^[a-f0-9]{64}$/.test(normalized)) return undefined;
-  return normalized;
 }
 
 // ---------------------------------------------------------------------------

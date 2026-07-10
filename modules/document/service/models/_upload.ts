@@ -1,7 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt } from '@/core/service/utils/normalization';
+import {
+  normalizeOptionalString,
+  asRecord,
+  normalizeOptionalNonNegativeInt,
+  normalizeChecksumSha256,
+  normalizeContentType,
+} from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/date';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
@@ -57,25 +63,6 @@ export type NormalizedCommitUploadPutReq = {
 // ---------------------------------------------------------------------------
 // Pure normalizers
 // ---------------------------------------------------------------------------
-
-export function normalizeChecksum(value: unknown): string | undefined {
-  const text = normalizeOptionalString(value);
-  if (!text) return undefined;
-  const normalized = text.toLowerCase();
-  if (!/^[a-f0-9]{64}$/.test(normalized)) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'checksumSha256 must be a 64-character hex string', GrpcCode.InvalidArgument);
-  }
-  return normalized;
-}
-
-export function normalizeContentType(value: unknown): string | undefined {
-  const text = normalizeOptionalString(value);
-  if (!text) return undefined;
-  const semicolon = text.indexOf(';');
-  const token = semicolon >= 0 ? text.slice(0, semicolon) : text;
-  const normalized = token.trim().toLowerCase();
-  return normalized || undefined;
-}
 
 function normalizePrincipal(raw: unknown): PrincipalContext {
   const principal = asRecord(raw);
@@ -147,7 +134,7 @@ export function normalizePrepareUploadReq(req: PrepareUploadReq | undefined | nu
     proposedFileName: normalizeOptionalString(req?.proposedFileName ?? req?.originalFileName),
     proposedContentType: normalizeOptionalString(req?.proposedContentType ?? req?.clientContentType),
     proposedSizeBytes: normalizeOptionalNonNegativeInt(req?.proposedSizeBytes),
-    checksumSha256: normalizeChecksum(req?.checksumSha256),
+    checksumSha256: normalizeChecksumSha256(req?.checksumSha256),
   };
 }
 
@@ -165,7 +152,7 @@ export function normalizeAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | unde
         requestMeta && Object.prototype.hasOwnProperty.call(requestMeta, 'contentLength')
           ? parseRequiredNonNegativeInt(requestMeta.contentLength, 'requestMeta.contentLength')
           : undefined,
-      checksumSha256: normalizeChecksum(requestMeta?.checksumSha256),
+      checksumSha256: normalizeChecksumSha256(requestMeta?.checksumSha256),
     },
   };
 }
@@ -181,7 +168,7 @@ export function normalizeCommitUploadPutReq(req: CommitUploadPutReq | undefined 
     payloadReceipt: {
       payloadId: normalizePayloadReceiptID(payloadReceipt?.payloadId),
       sizeBytes: parseRequiredNonNegativeInt(payloadReceipt?.sizeBytes, 'payloadReceipt.sizeBytes'),
-      checksumSha256: requireText(normalizeChecksum(payloadReceipt?.checksumSha256), 'payloadReceipt.checksumSha256'),
+      checksumSha256: requireText(normalizeChecksumSha256(payloadReceipt?.checksumSha256), 'payloadReceipt.checksumSha256'),
       contentType: normalizeContentType(payloadReceipt?.contentType),
     },
   };

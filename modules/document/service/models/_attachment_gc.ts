@@ -4,6 +4,7 @@
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } from '@/core/service/utils/normalization';
 import { parseISODate, toDate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
+import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
 import { resolveGcBatchSize } from './_pagination';
 
 const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;
@@ -24,12 +25,6 @@ export type GcModelOps = {
   Search(condition: unknown, options?: unknown): Promise<unknown[]>;
   UpdateById(id: string, values: unknown, fields?: unknown): Promise<unknown>;
 };
-
-function computeRetryBackoffSeconds(attempts: number, baseSeconds: number): number {
-  const exponent = Math.max(0, Math.min(10, attempts - 1));
-  const backoff = baseSeconds * 2 ** exponent;
-  return Math.min(backoff, 6 * 60 * 60);
-}
 
 function readCleanupState(metadata: Record<string, unknown> | undefined): CleanupState {
   const cleanup = asRecord(metadata?.cleanup);

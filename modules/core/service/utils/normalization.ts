@@ -663,3 +663,31 @@ export function normalizeOptionalNonNegativeInt(value: unknown): number | undefi
   if (num < 0) return undefined;
   return Math.trunc(num);
 }
+
+/**
+ * Normalize a hex-encoded SHA-256 checksum to lowercase 64-char string.
+ *
+ * Returns undefined for non-string, empty, or non-hex input.
+ */
+export function normalizeChecksumSha256(value: unknown): string | undefined {
+  const text = normalizeOptionalString(value);
+  if (!text) return undefined;
+  const normalized = text.toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(normalized)) return undefined;
+  return normalized;
+}
+
+/**
+ * Normalize a MIME content-type string to lowercase token (without parameters).
+ *
+ * Strips the semicolon-delimited parameter portion (e.g. charset) and
+ * returns the trimmed lowercase media type. Returns undefined for empty input.
+ */
+export function normalizeContentType(value: unknown): string | undefined {
+  const text = normalizeOptionalString(value);
+  if (!text) return undefined;
+  const semicolon = text.indexOf(';');
+  const token = semicolon >= 0 ? text.slice(0, semicolon) : text;
+  const normalized = token.trim().toLowerCase();
+  return normalized || undefined;
+}
