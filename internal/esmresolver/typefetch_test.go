@@ -548,6 +548,10 @@ func TestFetchTypeDefinition_CircularSiblingImports_NoDeadlock(t *testing.T) {
 
 func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/index.d.ts") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -558,6 +562,38 @@ func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	_, _, err := FetchTypeDefinition(nil, server.URL, typesDir, "noplace", "1.0.0")
 	if err == nil {
 		t.Fatal("expected error for missing x-typescript-types header")
+	}
+}
+
+func TestFetchTypeDefinition_NoTypesHeaderFallsBackToIndexDTS(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/index.d.ts") {
+			_, _ = w.Write([]byte("export declare const process: any;"))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	result, transitive, err := FetchTypeDefinition(nil, server.URL, typesDir, "@types/node", "25.9.4")
+	if err != nil {
+		t.Fatalf("expected fallback success, got error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if len(transitive) != 0 {
+		t.Fatalf("expected no transitive fetch results, got %d", len(transitive))
+	}
+	if _, statErr := os.Stat(result.CachedPath); statErr != nil {
+		t.Fatalf("expected cached file to be written: %v", statErr)
 	}
 }
 
@@ -875,8 +911,59 @@ func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
 	if !strings.Contains(content, `"@/*"`) {
 		t.Fatalf("created tsconfig should include default @/* path: %s", content)
 	}
-	if !strings.Contains(content, `"exclude"`) {
-		t.Fatalf("created tsconfig should include exclude section: %s", content)
+	if !strings.Contains(content, `"compilerOptions"`) {
+		t.Fatalf("created tsconfig should include compilerOptions: %s", content)
+	}
+}
+
+func TestEnsureTsconfigCompilerTypeRoots(t *testing.T) {
+	dir := t.TempDir()
+	modulesDir := filepath.Join(dir, "modules")
+	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")
+	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir modules dir: %v", err)
+	}
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["node"]}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	typesDir := filepath.Join(dir, ".choysum", "pkg", "types")
+	cachedPath := filepath.Join(typesDir, "@types", "node@26.1.1.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cachedPath), 0o755); err != nil {
+		t.Fatalf("mkdir cached path dir: %v", err)
+	}
+	if err := os.WriteFile(cachedPath, []byte("declare var process: any;"), 0o644); err != nil {
+		t.Fatalf("write cached type file: %v", err)
+	}
+
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: cachedPath}}
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, links); err != nil {
+		t.Fatalf("EnsureTsconfigCompilerTypeRoots failed: %v", err)
+	}
+
+	tsconfigData, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("read tsconfig: %v", err)
+	}
+	tsconfigContent := string(tsconfigData)
+	if !strings.Contains(tsconfigContent, `"typeRoots"`) {
+		t.Fatalf("tsconfig missing typeRoots after bridge generation: %s", tsconfigContent)
+	}
+	if !strings.Contains(tsconfigContent, `"../.choysum/pkg/types/typeRoots"`) {
+		t.Fatalf("tsconfig missing expected relative typeRoots path: %s", tsconfigContent)
+	}
+
+	bridgePath := filepath.Join(typesDir, "typeRoots", "node", "index.d.ts")
+	bridgeData, err := os.ReadFile(bridgePath)
+	if err != nil {
+		t.Fatalf("read bridge file: %v", err)
+	}
+	bridgeContent := string(bridgeData)
+	if !strings.Contains(bridgeContent, `compilerOptions.types="node"`) {
+		t.Fatalf("bridge file missing type annotation context: %s", bridgeContent)
+	}
+	if !strings.Contains(bridgeContent, `node@26.1.1.d.ts`) {
+		t.Fatalf("bridge file missing cached declaration reference: %s", bridgeContent)
 	}
 }
 
@@ -1098,7 +1185,7 @@ func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.
 		t.Fatalf("write child: %v", err)
 	}
 
-	if err := normalizeBridgeCachedTypeChildren(root, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"}); err != nil {
+	if err := normalizeBridgeCachedTypeChildren(dir, root, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"}); err != nil {
 		t.Fatalf("normalizeBridgeCachedTypeChildren: %v", err)
 	}
 
@@ -1129,10 +1216,10 @@ func TestNormalizeBridgeCachedTypeChildren_ConcurrentSharedChild(t *testing.T) {
 
 	errCh := make(chan error, 2)
 	go func() {
-		errCh <- normalizeBridgeCachedTypeChildren(rootA, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+		errCh <- normalizeBridgeCachedTypeChildren(dir, rootA, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
 	}()
 	go func() {
-		errCh <- normalizeBridgeCachedTypeChildren(rootB, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+		errCh <- normalizeBridgeCachedTypeChildren(dir, rootB, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
 	}()
 
 	for i := 0; i < 2; i++ {
@@ -1205,7 +1292,7 @@ func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
 	}
 
 	imports := []string{"./MissingIcon.d.ts"}
-	if !hasMissingLocalCachedImports(cacheFile, imports) {
+	if !hasMissingLocalCachedImports(dir, cacheFile, imports) {
 		t.Fatal("expected missing relative import to be detected")
 	}
 
@@ -1213,7 +1300,7 @@ func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
 	if err := os.WriteFile(missingFile, []byte("export {};"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if hasMissingLocalCachedImports(cacheFile, imports) {
+	if hasMissingLocalCachedImports(dir, cacheFile, imports) {
 		t.Fatal("expected existing relative import to pass cache integrity check")
 	}
 }
@@ -1425,7 +1512,7 @@ func TestWriteTypeCacheFile(t *testing.T) {
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "nested", "deep", "types.d.ts")
 
-	if err := writeTypeCacheFile(cacheFile, []byte("export {};")); err != nil {
+	if err := writeTypeCacheFile(dir, cacheFile, []byte("export {};")); err != nil {
 		t.Fatalf("writeTypeCacheFile failed: %v", err)
 	}
 
@@ -1657,7 +1744,7 @@ func TestWriteTypeCacheFile_RenameFails_CleansUpTmp(t *testing.T) {
 	if err := os.MkdirAll(cacheFile, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeTypeCacheFile(cacheFile, []byte("export {};")); err == nil {
+	if err := writeTypeCacheFile(dir, cacheFile, []byte("export {};")); err == nil {
 		t.Fatal("expected rename error when target is a directory")
 	}
 	// Tmp file should be cleaned up.
@@ -1672,10 +1759,10 @@ func TestHasMissingLocalCachedImports_EmptyImports(t *testing.T) {
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "empty.d.ts")
 	os.WriteFile(cacheFile, []byte("export {};"), 0644)
-	if hasMissingLocalCachedImports(cacheFile, nil) {
+	if hasMissingLocalCachedImports(dir, cacheFile, nil) {
 		t.Fatal("expected no missing imports for nil/empty import list")
 	}
-	if hasMissingLocalCachedImports(cacheFile, []string{}) {
+	if hasMissingLocalCachedImports(dir, cacheFile, []string{}) {
 		t.Fatal("expected no missing imports for empty import list")
 	}
 }
@@ -1685,7 +1772,7 @@ func TestHasMissingLocalCachedImports_BareImportSkipped(t *testing.T) {
 	cacheFile := filepath.Join(dir, "bare.d.ts")
 	os.WriteFile(cacheFile, []byte(`import "vue";`), 0644)
 	// Bare imports are not local-cached type specifiers; should be skipped.
-	if hasMissingLocalCachedImports(cacheFile, []string{"vue"}) {
+	if hasMissingLocalCachedImports(dir, cacheFile, []string{"vue"}) {
 		t.Fatal("expected bare import to be skipped in integrity check")
 	}
 }
@@ -1696,8 +1783,34 @@ func TestHasMissingLocalCachedImports_PathTraversalBlocked(t *testing.T) {
 	os.MkdirAll(filepath.Dir(cacheFile), 0755)
 	os.WriteFile(cacheFile, []byte(`import "../escape.d.ts";`), 0644)
 	// The candidate would resolve outside baseDir, so should be skipped.
-	if hasMissingLocalCachedImports(cacheFile, []string{"../escape.d.ts"}) {
+	if hasMissingLocalCachedImports(dir, cacheFile, []string{"../escape.d.ts"}) {
 		t.Fatal("expected path traversal to be blocked in integrity check")
+	}
+}
+
+func TestResolveAndValidateTypeCachePath_RejectsEscape(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := resolveAndValidateTypeCachePath(typesDir, filepath.Join(typesDir, "..", "escape.d.ts"))
+	if err == nil {
+		t.Fatal("expected escape path to be rejected")
+	}
+}
+
+func TestWriteTypeCacheFile_RejectsPathOutsideTypesDir(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	outside := filepath.Join(dir, "outside.d.ts")
+	if err := writeTypeCacheFile(typesDir, outside, []byte("export {};")); err == nil {
+		t.Fatal("expected writeTypeCacheFile to reject paths outside typesDir")
 	}
 }
 
@@ -1820,5 +1933,77 @@ func TestFetchTypeRecursive_WriteCacheFails(t *testing.T) {
 	_, _, err := fetchTypeRecursive(context.Background(), client, typesDir, server.URL+"/test.d.ts", "testpkg", "1.0.0", state, nil)
 	if err == nil {
 		t.Fatal("expected error when cache write fails in read-only dir")
+	}
+}
+
+// ---- normalizeCompilerTypeRootName tests ----
+
+func TestNormalizeCompilerTypeRootName(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty", input: "", expected: ""},
+		{name: "whitespace only", input: "  ", expected: ""},
+		{name: "bare package", input: "node", expected: "node"},
+		{name: "bare package with whitespace", input: "  node  ", expected: "node"},
+		{name: "@types/ prefix", input: "@types/node", expected: "node"},
+		{name: "@types/ prefix with whitespace", input: " @types/ node ", expected: "node"},
+		{name: "non-scoped subpath", input: "vitest/globals", expected: "vitest"},
+		{name: "scoped package", input: "@scope/pkg", expected: "scope__pkg"},
+		{name: "scoped package with @types/", input: "@types/@scope/pkg", expected: "scope__pkg"},
+		{name: "scoped no subpath", input: "@scope", expected: "scope"},
+		{name: "scoped package whitespace", input: " @scope / pkg ", expected: "scope__pkg"},
+		{name: "dot segment rejected", input: ".", expected: ""},
+		{name: "double-dot segment rejected", input: "..", expected: ""},
+		{name: "path traversal rejected", input: "../../etc/passwd", expected: ""},
+		{name: "backslash rejected", input: "foo\\bar", expected: ""},
+		{name: "scoped unsafe scope", input: "@../pkg", expected: ""},
+		{name: "scoped unsafe pkg", input: "@scope/..", expected: ""},
+		{name: "scoped backslash in scope", input: "@scope\\x/pkg", expected: ""},
+		{name: "forward slash in bare segment", input: "a/b", expected: "a"},
+		{name: "bare @ symbol", input: "@", expected: ""},
+		{name: "scoped with nested slash in pkg", input: "@scope/pkg/sub", expected: "scope__pkg"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeCompilerTypeRootName(tt.input)
+			if got != tt.expected {
+				t.Fatalf("normalizeCompilerTypeRootName(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// ---- EnsureTsconfigCompilerTypeRoots missing tsconfig test ----
+
+func TestEnsureTsconfigCompilerTypeRoots_MissingTsconfig(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, ".choysum", "pkg", "types")
+	tsconfigPath := filepath.Join(dir, "nonexistent", "tsconfig.json")
+
+	cachedPath := filepath.Join(typesDir, "@types", "node@26.1.1.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cachedPath), 0o755); err != nil {
+		t.Fatalf("mkdir cached path dir: %v", err)
+	}
+	if err := os.WriteFile(cachedPath, []byte("declare var process: any;"), 0o644); err != nil {
+		t.Fatalf("write cached type file: %v", err)
+	}
+
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: cachedPath}}
+	// Should succeed even though tsconfig does not exist — the IsNotExist
+	// path allows the function to create a fresh tsconfig with typeRoots.
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, links); err != nil {
+		t.Fatalf("EnsureTsconfigCompilerTypeRoots should tolerate missing tsconfig: %v", err)
+	}
+
+	// Verify the generated tsconfig contains typeRoots.
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("read generated tsconfig: %v", err)
+	}
+	if !strings.Contains(string(data), `"typeRoots"`) {
+		t.Fatalf("generated tsconfig missing typeRoots: %s", string(data))
 	}
 }

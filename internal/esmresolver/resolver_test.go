@@ -4,7 +4,6 @@
 package esmresolver
 
 import (
-	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
@@ -23,11 +22,6 @@ import (
 )
 
 // ---- helpers ----
-
-func sha256HexBytes(b []byte) string {
-	h := sha256.Sum256(b)
-	return hex.EncodeToString(h[:])
-}
 
 func computeSha512(b []byte) string {
 	h := sha512.Sum512(b)

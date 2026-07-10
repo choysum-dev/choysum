@@ -159,6 +159,11 @@ When <app> is specified, fetches types for that module only.`,
 				return nil
 			}
 
+			compilerTypeTargets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
+			if err != nil {
+				return err
+			}
+
 			ctx := cmd.Context()
 			if ctx == nil {
 				ctx = context.Background()
@@ -193,7 +198,46 @@ When <app> is specified, fetches types for that module only.`,
 			totalDirectFailed := 0
 			totalTransitiveCached := 0
 			totalTransitiveFetched := 0
+			totalCompilerTypeTargets := 0
+			totalCompilerTypeCached := 0
+			totalCompilerTypeFetched := 0
+			totalCompilerTypeFailed := 0
+			totalCompilerTypeTransitiveCached := 0
+			totalCompilerTypeTransitiveFetched := 0
 			var allResults []esmresolver.TypeFetchResult
+			compilerTypeRootLinks := make([]esmresolver.CompilerTypeRootLink, 0, len(compilerTypeTargets))
+
+			for i, target := range compilerTypeTargets {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				totalCompilerTypeTargets++
+				setCommandProgress(fmt.Sprintf("[tsconfig] fetching compiler type (%d/%d): %s -> %s@%s", i+1, len(compilerTypeTargets), target.TypeName, target.PackageName, target.Version))
+				result, transitive, err := esmresolver.FetchTypeDefinition(client, upstream, typesDir, target.PackageName, target.Version)
+				clearCommandProgress()
+				if err != nil {
+					totalCompilerTypeFailed++
+					cmd.Printf("[tsconfig] warning: failed to fetch compiler type %q via %s@%s: %v\n", target.TypeName, target.PackageName, target.Version, err)
+					continue
+				}
+				if result != nil {
+					if result.FromCache {
+						totalCompilerTypeCached++
+					} else {
+						totalCompilerTypeFetched++
+					}
+					compilerTypeRootLinks = append(compilerTypeRootLinks, esmresolver.CompilerTypeRootLink{TypeName: target.TypeName, CachedPath: result.CachedPath})
+					allResults = append(allResults, *result)
+				}
+				for _, item := range transitive {
+					if item.FromCache {
+						totalCompilerTypeTransitiveCached++
+					} else {
+						totalCompilerTypeTransitiveFetched++
+					}
+				}
+				allResults = append(allResults, transitive...)
+			}
 
 			for i, appName := range appNames {
 				if err := ctx.Err(); err != nil {
@@ -247,6 +291,16 @@ When <app> is specified, fetches types for that module only.`,
 				totalTransitiveCached,
 				totalTransitiveFetched,
 			)
+			if totalCompilerTypeTargets > 0 {
+				cmd.Printf("Compiler types complete: targets=%d (cached=%d, fetched=%d, failed=%d), transitive (cached=%d, fetched=%d).\n",
+					totalCompilerTypeTargets,
+					totalCompilerTypeCached,
+					totalCompilerTypeFetched,
+					totalCompilerTypeFailed,
+					totalCompilerTypeTransitiveCached,
+					totalCompilerTypeTransitiveFetched,
+				)
+			}
 			cmd.Printf("Types directory: %s\n", typesDir)
 
 			// Update tsconfig paths for IDE support.
@@ -256,6 +310,9 @@ When <app> is specified, fetches types for that module only.`,
 				cmd.Println("Updated tsconfig paths.")
 			} else {
 				cmd.Printf("Ensured tsconfig exists: %s\n", tsconfigPath)
+			}
+			if err := esmresolver.EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, compilerTypeRootLinks); err != nil {
+				cmd.Printf("Warning: failed to update tsconfig typeRoots bridges: %v\n", err)
 			}
 
 			if offline {
@@ -280,10 +337,178 @@ type typeFetchModulePackage struct {
 	} `json:"choysum"`
 }
 
+type typeFetchCompilerTypeTargetsConfig struct {
+	CompilerOptions struct {
+		Types []string `json:"types"`
+	} `json:"compilerOptions"`
+}
+
+type typeFetchCompilerTypeTarget struct {
+	TypeName    string
+	PackageName string
+	Version     string
+}
+
 const (
 	typeFetchMissingDepPolicyError = "error"
 	typeFetchMissingDepPolicyWarn  = "warn"
 )
+
+func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string) ([]typeFetchCompilerTypeTarget, error) {
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, xfmt.Errorf("type-fetch: read modules tsconfig: %w", err)
+	}
+	if strings.TrimSpace(string(data)) == "" {
+		return nil, nil
+	}
+
+	var cfg typeFetchCompilerTypeTargetsConfig
+	if err := json.Unmarshal(esmresolver.StripJSONComments(data), &cfg); err != nil {
+		return nil, xfmt.Errorf("type-fetch: parse modules tsconfig: %w", err)
+	}
+
+	seen := make(map[string]struct{})
+	targets := make([]typeFetchCompilerTypeTarget, 0, len(cfg.CompilerOptions.Types))
+	for _, rawType := range cfg.CompilerOptions.Types {
+		packageName, explicitVersion, ok := resolveTypeFetchCompilerTypePackage(rawType)
+		if !ok {
+			continue
+		}
+		version := resolveTypeFetchCompilerTypeVersion(modulesPath, packageName, explicitVersion)
+		key := packageName + "@" + version
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		targets = append(targets, typeFetchCompilerTypeTarget{
+			TypeName:    strings.TrimSpace(rawType),
+			PackageName: packageName,
+			Version:     version,
+		})
+	}
+
+	return targets, nil
+}
+
+func resolveTypeFetchCompilerTypePackage(rawType string) (string, string, bool) {
+	typeName := strings.TrimSpace(rawType)
+	if typeName == "" {
+		return "", "", false
+	}
+
+	name, version := splitTypeFetchNameAndVersion(typeName)
+	if name == "" {
+		return "", "", false
+	}
+
+	// Reject path traversal segments in package names and versions extracted
+	// from user-controlled tsconfig before they reach filesystem operations.
+	if containsPathTraversal(name) || containsPathTraversal(version) {
+		return "", "", false
+	}
+
+	if strings.HasPrefix(name, "@types/") {
+		return name, version, true
+	}
+
+	if strings.HasPrefix(name, "@") {
+		parts := strings.Split(strings.TrimPrefix(name, "@"), "/")
+		if len(parts) < 2 {
+			return "", "", false
+		}
+		return "@types/" + parts[0] + "__" + parts[1], version, true
+	}
+
+	base := name
+	if idx := strings.Index(base, "/"); idx >= 0 {
+		base = base[:idx]
+	}
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return "", "", false
+	}
+	return "@types/" + base, version, true
+}
+
+func containsPathTraversal(s string) bool {
+	// Split on both / and \ so backslash-based traversal (relevant on
+	// Windows) is caught alongside forward-slash variants.
+	for _, part := range strings.FieldsFunc(s, func(r rune) bool { return r == '/' || r == '\\' }) {
+		part = strings.TrimSpace(part)
+		if part == ".." || part == "." {
+			return true
+		}
+	}
+	return false
+}
+
+func splitTypeFetchNameAndVersion(typeName string) (string, string) {
+	typeName = strings.TrimSpace(typeName)
+	if typeName == "" {
+		return "", ""
+	}
+
+	if strings.HasPrefix(typeName, "@") {
+		slash := strings.Index(typeName, "/")
+		if slash > 0 {
+			if at := strings.LastIndex(typeName, "@"); at > slash {
+				return strings.TrimSpace(typeName[:at]), strings.TrimSpace(typeName[at+1:])
+			}
+		}
+		return typeName, ""
+	}
+
+	if at := strings.LastIndex(typeName, "@"); at > 0 {
+		return strings.TrimSpace(typeName[:at]), strings.TrimSpace(typeName[at+1:])
+	}
+
+	return typeName, ""
+}
+
+func resolveTypeFetchCompilerTypeVersion(modulesPath string, packageName string, explicitVersion string) string {
+	version := strings.TrimSpace(explicitVersion)
+	if version != "" {
+		return version
+	}
+
+	modulesPath = strings.TrimSpace(modulesPath)
+	searchRoots := []string{
+		filepath.Join(modulesPath, "node_modules"),
+		filepath.Join(filepath.Dir(modulesPath), "node_modules"),
+	}
+	for _, root := range searchRoots {
+		pkgVersion, ok := readTypeFetchPackageVersion(root, packageName)
+		if ok {
+			return pkgVersion
+		}
+	}
+
+	return "latest"
+}
+
+func readTypeFetchPackageVersion(nodeModulesRoot string, packageName string) (string, bool) {
+	packageJSONPath := filepath.Join(strings.TrimSpace(nodeModulesRoot), filepath.FromSlash(packageName), "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		return "", false
+	}
+
+	var pkg struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return "", false
+	}
+	version := strings.TrimSpace(pkg.Version)
+	if version == "" {
+		return "", false
+	}
+	return version, true
+}
 
 func resolveTypeFetchMissingDepPolicy(raw string, singleModuleMode bool) (string, error) {
 	policy := strings.ToLower(strings.TrimSpace(raw))
