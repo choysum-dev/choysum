@@ -489,7 +489,9 @@ export default class AttachmentBinding extends BaseModel {
       return { attachmentBindingIds: [] };
     }
     if (!Array.isArray(rawIds)) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'attachmentBindingIds must be an array', GrpcCode.InvalidArgument, { field: 'attachmentBindingIds' });
+      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'attachmentBindingIds must be an array', GrpcCode.InvalidArgument, {
+        field: 'attachmentBindingIds',
+      });
     }
 
     const deduped: string[] = [];
@@ -538,12 +540,18 @@ export default class AttachmentBinding extends BaseModel {
   private static assertPrincipalParityWithRuntimeContext(principal: PrincipalContext, stage: 'resolve_download_content'): void {
     const runtimeUserId = normalizeOptionalString(this.userId);
     if (runtimeUserId && runtimeUserId !== principal.userId) {
-      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal userId does not match runtime identity', GrpcCode.PermissionDenied, { stage, reason: 'issuer_mismatch' });
+      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal userId does not match runtime identity', GrpcCode.PermissionDenied, {
+        stage,
+        reason: 'issuer_mismatch',
+      });
     }
 
     const runtimeCompanyId = normalizeOptionalString(this.companyId);
     if (runtimeCompanyId && runtimeCompanyId !== principal.activeCompanyId) {
-      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal activeCompanyId does not match runtime context', GrpcCode.PermissionDenied, { stage, reason: 'company_mismatch' });
+      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal activeCompanyId does not match runtime context', GrpcCode.PermissionDenied, {
+        stage,
+        reason: 'company_mismatch',
+      });
     }
   }
 
@@ -551,7 +559,9 @@ export default class AttachmentBinding extends BaseModel {
     const disposition = normalizeOptionalString(value);
     if (disposition === undefined) return 'attachment';
     if (disposition === 'inline' || disposition === 'attachment') return disposition;
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'downloadDisposition must be inline or attachment', GrpcCode.InvalidArgument, { downloadDisposition: disposition });
+    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'downloadDisposition must be inline or attachment', GrpcCode.InvalidArgument, {
+      downloadDisposition: disposition,
+    });
   }
 
   private static resolveDownloadSemantics(binding: AttachmentBinding, attachmentContent: AttachmentContent): ResolvedDownloadSemantics {
@@ -607,7 +617,10 @@ export default class AttachmentBinding extends BaseModel {
 
     const record = rows[0] as AttachmentContent | undefined;
     if (!record) {
-      throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active attachment content not found in company scope', GrpcCode.NotFound, { attachmentContentId, companyId });
+      throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active attachment content not found in company scope', GrpcCode.NotFound, {
+        attachmentContentId,
+        companyId,
+      });
     }
 
     return record;
@@ -698,7 +711,9 @@ export default class AttachmentBinding extends BaseModel {
     const db = (globalThis as any)?.$choysum?.db;
     const execute = typeof db?.execute === 'function' ? db.execute.bind(db) : undefined;
     if (!execute) {
-      throwDocumentError(DocumentErrCode.SKELETON_NOT_IMPLEMENTED, 'database execute bridge is unavailable', GrpcCode.Unimplemented, { stage: 'binding_cleanup' });
+      throwDocumentError(DocumentErrCode.SKELETON_NOT_IMPLEMENTED, 'database execute bridge is unavailable', GrpcCode.Unimplemented, {
+        stage: 'binding_cleanup',
+      });
     }
 
     await execute('delete from document_attachment_binding where id = ? and company_id = ?', JSON.stringify([bindingId, companyId]));
@@ -768,7 +783,12 @@ export default class AttachmentBinding extends BaseModel {
     metadata: Record<string, unknown>
   ): void {
     if (actualCompanyId === expectedCompanyId) return;
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'Attachment resource company scope mismatch', GrpcCode.PermissionDenied, { stage, ...metadata, expectedCompanyId, actualCompanyId, });
+    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'Attachment resource company scope mismatch', GrpcCode.PermissionDenied, {
+      stage,
+      ...metadata,
+      expectedCompanyId,
+      actualCompanyId,
+    });
   }
 
   private static buildPayloadReadTicket(attachmentBindingId: string, attachmentContentId: string, storedContentId: string): string {
@@ -852,7 +872,11 @@ export default class AttachmentBinding extends BaseModel {
     if (!row) return null;
 
     if (row.Status !== 'succeeded') {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'bind mutationId exists but previous attempt did not succeed', GrpcCode.FailedPrecondition, { mutationId, action: 'bind', status: String(row.Status || '') });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'bind mutationId exists but previous attempt did not succeed', GrpcCode.FailedPrecondition, {
+        mutationId,
+        action: 'bind',
+        status: String(row.Status || ''),
+      });
     }
 
     const snapshot = this.parseBindResp(row.ResponseJson);
@@ -867,12 +891,19 @@ export default class AttachmentBinding extends BaseModel {
     if (!row) return null;
 
     if (row.Status !== 'succeeded') {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'unbind mutationId exists but previous attempt did not succeed', GrpcCode.FailedPrecondition, { mutationId, action: 'unbind', status: String(row.Status || '') });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'unbind mutationId exists but previous attempt did not succeed', GrpcCode.FailedPrecondition, {
+        mutationId,
+        action: 'unbind',
+        status: String(row.Status || ''),
+      });
     }
 
     const snapshot = this.parseUnbindResp(row.ResponseJson);
     if (!snapshot) {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'unbind replay snapshot is invalid', GrpcCode.FailedPrecondition, { mutationId, action: 'unbind' });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'unbind replay snapshot is invalid', GrpcCode.FailedPrecondition, {
+        mutationId,
+        action: 'unbind',
+      });
     }
     return snapshot;
   }

@@ -109,7 +109,12 @@ export function isDisallowedInlinePayloadID(payloadId: string): boolean {
 export function normalizePayloadReceiptID(payloadId: unknown): string {
   const id = requireText(payloadId, 'payloadReceipt.payloadId');
   if (isDisallowedInlinePayloadID(id)) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden', GrpcCode.InvalidArgument, { field: 'payloadReceipt.payloadId' });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden',
+      GrpcCode.InvalidArgument,
+      { field: 'payloadReceipt.payloadId' }
+    );
   }
   return id;
 }
@@ -186,21 +191,23 @@ export function normalizeCommitUploadPutReq(req: CommitUploadPutReq | undefined 
 // Assert helpers
 // ---------------------------------------------------------------------------
 
-export function assertUploadSessionPrincipal(
-  session: AttachmentUploadSession,
-  principal: PrincipalContext,
-  stage: string,
-): void {
+export function assertUploadSessionPrincipal(session: AttachmentUploadSession, principal: PrincipalContext, stage: string): void {
   const sessionCompanyId = requireText((session as any).CompanyId, 'companyId');
   const sessionUserId = requireText((session as any).IssuerUserId, 'issuerUserId');
   const sessionId = requireText((session as any).Id, 'uploadId');
 
   if (principal.activeCompanyId !== sessionCompanyId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'activeCompanyId does not match upload session owner', GrpcCode.PermissionDenied, { stage, uploadId: sessionId });
+    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'activeCompanyId does not match upload session owner', GrpcCode.PermissionDenied, {
+      stage,
+      uploadId: sessionId,
+    });
   }
 
   if (principal.userId !== sessionUserId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'userId does not match upload session issuer', GrpcCode.PermissionDenied, { stage, uploadId: sessionId });
+    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'userId does not match upload session issuer', GrpcCode.PermissionDenied, {
+      stage,
+      uploadId: sessionId,
+    });
   }
 }
 
@@ -208,7 +215,7 @@ export function assertFinalizeIdentity(
   session: AttachmentUploadSession,
   runtimeUserId: unknown,
   runtimeCompanyId: unknown,
-  runtimeCompanyIds: string[],
+  runtimeCompanyIds: string[]
 ): PrincipalContext {
   const principal: PrincipalContext = {
     userId: requireUserId(runtimeUserId),
@@ -223,7 +230,7 @@ export function assertPrepareReplayConsistency(
   existing: AttachmentUploadSession,
   req: NormalizedPrepareUploadReq,
   companyId: string,
-  issuerUserId: string,
+  issuerUserId: string
 ): void {
   const mismatches: string[] = [];
 

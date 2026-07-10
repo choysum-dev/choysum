@@ -59,9 +59,6 @@ type CleanupState = {
   at?: string;
 };
 
-
-
-
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
  */
@@ -188,7 +185,12 @@ export default class AttachmentContent extends BaseModel {
     assertFinalizeIdentity(session, this.userId, this.companyId, this.companyIds);
 
     if (session.BusinessRequestId !== businessRequestId) {
-      throwDocumentError(DocumentErrCode.IDEMPOTENCY_KEY_REUSED, 'FinalizeUpload businessRequestId does not match the existing upload session', GrpcCode.FailedPrecondition, { uploadId, businessRequestId, expectedBusinessRequestId: String(session.BusinessRequestId || '') });
+      throwDocumentError(
+        DocumentErrCode.IDEMPOTENCY_KEY_REUSED,
+        'FinalizeUpload businessRequestId does not match the existing upload session',
+        GrpcCode.FailedPrecondition,
+        { uploadId, businessRequestId, expectedBusinessRequestId: String(session.BusinessRequestId || '') }
+      );
     }
 
     await assertOwnerWriteAuthorization({
@@ -226,13 +228,19 @@ export default class AttachmentContent extends BaseModel {
 
     const maxUploadBytes = normalizeOptionalNonNegativeInt(session.MaxUploadBytes) ?? DEFAULT_MAX_UPLOAD_BYTES;
     if ((normalized.requestMeta.contentLength ?? 0) > maxUploadBytes) {
-      throwDocumentError(DocumentErrCode.UPLOAD_TOO_LARGE, 'upload body exceeds maxUploadBytes', GrpcCode.InvalidArgument, { uploadId: normalized.uploadId, maxUploadBytes: String(maxUploadBytes) });
+      throwDocumentError(DocumentErrCode.UPLOAD_TOO_LARGE, 'upload body exceeds maxUploadBytes', GrpcCode.InvalidArgument, {
+        uploadId: normalized.uploadId,
+        maxUploadBytes: String(maxUploadBytes),
+      });
     }
 
     const allowedMimeTypes = this.normalizeAllowedMimeTypes(session.AllowedMimeTypes);
     const contentType = normalized.requestMeta.contentType ?? normalizeContentType(session.ProposedContentType);
     if (!this.isMimeTypeAllowed(contentType, allowedMimeTypes)) {
-      throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, { uploadId: normalized.uploadId, contentType: String(contentType || '') });
+      throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, {
+        uploadId: normalized.uploadId,
+        contentType: String(contentType || ''),
+      });
     }
 
     const expectedChecksumSha256 = normalizeChecksum(session.ChecksumSha256);
@@ -277,18 +285,27 @@ export default class AttachmentContent extends BaseModel {
     }
 
     if (session.Status !== 'prepared') {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session must be prepared before commit', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId, status: String(session.Status || '') });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session must be prepared before commit', GrpcCode.FailedPrecondition, {
+        uploadId: normalized.uploadId,
+        status: String(session.Status || ''),
+      });
     }
 
     const maxUploadBytes = normalizeOptionalNonNegativeInt(session.MaxUploadBytes) ?? DEFAULT_MAX_UPLOAD_BYTES;
     if (normalized.payloadReceipt.sizeBytes > maxUploadBytes) {
-      throwDocumentError(DocumentErrCode.UPLOAD_TOO_LARGE, 'upload body exceeds maxUploadBytes', GrpcCode.InvalidArgument, { uploadId: normalized.uploadId, maxUploadBytes: String(maxUploadBytes) });
+      throwDocumentError(DocumentErrCode.UPLOAD_TOO_LARGE, 'upload body exceeds maxUploadBytes', GrpcCode.InvalidArgument, {
+        uploadId: normalized.uploadId,
+        maxUploadBytes: String(maxUploadBytes),
+      });
     }
 
     const allowedMimeTypes = this.normalizeAllowedMimeTypes(session.AllowedMimeTypes);
     const contentType = normalized.payloadReceipt.contentType ?? normalizeContentType(session.ProposedContentType);
     if (!this.isMimeTypeAllowed(contentType, allowedMimeTypes)) {
-      throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, { uploadId: normalized.uploadId, contentType: String(contentType || '') });
+      throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, {
+        uploadId: normalized.uploadId,
+        contentType: String(contentType || ''),
+      });
     }
 
     const expectedChecksumSha256 = normalizeChecksum(session.ChecksumSha256);
@@ -533,7 +550,10 @@ export default class AttachmentContent extends BaseModel {
     }
 
     if (session.Status !== 'uploaded') {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session must be uploaded before finalize', GrpcCode.FailedPrecondition, { uploadId: normalizedUploadId, status: String(session.Status || '') });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session must be uploaded before finalize', GrpcCode.FailedPrecondition, {
+        uploadId: normalizedUploadId,
+        status: String(session.Status || ''),
+      });
     }
 
     const sizeBytes = normalizeOptionalNonNegativeInt(session.UploadedSizeBytes) ?? 0;
@@ -610,7 +630,6 @@ export default class AttachmentContent extends BaseModel {
     return nextMetadata;
   }
 
-
   private static async findUploadSessionByBusinessRequestId(
     businessRequestId: string,
     companyId: string,
@@ -637,9 +656,6 @@ export default class AttachmentContent extends BaseModel {
     }
     return session;
   }
-
-
-
 
   private static async assertUploadSessionOwnerWriteAuthorization(
     session: AttachmentUploadSession,
@@ -670,12 +686,6 @@ export default class AttachmentContent extends BaseModel {
   private static throwUploadSessionFinalized(uploadId: string): never {
     throwDocumentError(DocumentErrCode.UPLOAD_SESSION_FINALIZED, 'Upload session has already been finalized', GrpcCode.FailedPrecondition, { uploadId });
   }
-
-
-
-
-
-
 
   private static normalizeAllowedMimeTypes(raw: unknown): string[] {
     if (Array.isArray(raw)) {
@@ -711,7 +721,6 @@ export default class AttachmentContent extends BaseModel {
     return normalized ? [normalized] : [];
   }
 
-
   private static isMimeTypeAllowed(contentType: string | undefined, allowedMimeTypes: string[]): boolean {
     if (allowedMimeTypes.length === 0) {
       return true;
@@ -740,19 +749,31 @@ export default class AttachmentContent extends BaseModel {
     companyId: string
   ): Promise<string> {
     if (!uploadedPayloadRef) {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session is missing uploaded payload reference', GrpcCode.FailedPrecondition, { stage: 'finalize', uploadId });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session is missing uploaded payload reference', GrpcCode.FailedPrecondition, {
+        stage: 'finalize',
+        uploadId,
+      });
     }
 
     const storedContentId = requireText(uploadedPayloadRef.storedContentId, 'storedContentId');
     const stored = await StoredContent.mustLoadByID(storedContentId);
     const normalizedCompanyID = requireText((stored as any)?.CompanyId, 'storedContent.companyId');
     if (normalizedCompanyID !== companyId) {
-      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'Stored content company does not match upload session company', GrpcCode.PermissionDenied, { stage: 'finalize', uploadId, storedContentId });
+      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'Stored content company does not match upload session company', GrpcCode.PermissionDenied, {
+        stage: 'finalize',
+        uploadId,
+        storedContentId,
+      });
     }
 
     const storedStatus = normalizeOptionalString((stored as any)?.Status);
     if (storedStatus !== 'active') {
-      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Stored content must be active before finalize', GrpcCode.FailedPrecondition, { stage: 'finalize', uploadId, storedContentId, status: String(storedStatus || '') });
+      throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Stored content must be active before finalize', GrpcCode.FailedPrecondition, {
+        stage: 'finalize',
+        uploadId,
+        storedContentId,
+        status: String(storedStatus || ''),
+      });
     }
 
     return storedContentId;
@@ -761,7 +782,12 @@ export default class AttachmentContent extends BaseModel {
   private static buildUploadedPayloadRefFromPayloadId(payloadId: string): UploadedPayloadRef {
     const text = requireText(payloadId, 'payloadReceipt.payloadId');
     if (isDisallowedInlinePayloadID(text)) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden', GrpcCode.InvalidArgument, { field: 'payloadReceipt.payloadId' });
+      throwDocumentError(
+        DocumentErrCode.INVALID_ARGUMENT,
+        'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden',
+        GrpcCode.InvalidArgument,
+        { field: 'payloadReceipt.payloadId' }
+      );
     }
 
     const parsedStoredContentID = this.parseStoredContentPayloadRef(text);
@@ -772,7 +798,9 @@ export default class AttachmentContent extends BaseModel {
       };
     }
 
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId format is unsupported', GrpcCode.InvalidArgument, { field: 'payloadReceipt.payloadId' });
+    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId format is unsupported', GrpcCode.InvalidArgument, {
+      field: 'payloadReceipt.payloadId',
+    });
   }
 
   private static normalizeUploadedPayloadRef(raw: unknown): UploadedPayloadRef | undefined {
@@ -877,7 +905,6 @@ export default class AttachmentContent extends BaseModel {
           : undefined,
     };
   }
-
 
   private static newSkeletonNotImplementedError(method: string) {
     return newDocumentError({

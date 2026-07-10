@@ -85,7 +85,12 @@ export async function garbageCollectUnboundObjects(
 
   for (;;) {
     const candidates = await modelOps.Search(
-      { And: [['Status', '=', 'active'], ['UpdatedAt', '<', graceCutoff]] } as any,
+      {
+        And: [
+          ['Status', '=', 'active'],
+          ['UpdatedAt', '<', graceCutoff],
+        ],
+      } as any,
       { limit: batch, offset, orderBy: { field: 'UpdatedAt', order: 'asc' } as any } as any
     );
     if (!candidates.length) break;
@@ -93,22 +98,39 @@ export async function garbageCollectUnboundObjects(
     for (const candidate of candidates) {
       scannedCount += 1;
       const contentId = normalizeOptionalString((candidate as any)?.Id);
-      if (!contentId) { skippedCount += 1; continue; }
+      if (!contentId) {
+        skippedCount += 1;
+        continue;
+      }
 
       const activeBindings = await AttachmentBinding.Search(
-        { And: [['AttachmentContentId', '=', contentId], ['Status', '=', 'active']] } as any,
+        {
+          And: [
+            ['AttachmentContentId', '=', contentId],
+            ['Status', '=', 'active'],
+          ],
+        } as any,
         { limit: 1, fields: ['Id'] as any } as any
       );
-      if (activeBindings.length > 0) { skippedCount += 1; continue; }
+      if (activeBindings.length > 0) {
+        skippedCount += 1;
+        continue;
+      }
 
       const metadata = asRecord((candidate as any)?.MetadataJson) ?? undefined;
       const cleanup = readCleanupState(metadata);
       const attempts = Math.max(0, Math.trunc(Number(cleanup.attempts || 0)));
       const state = normalizeOptionalString(cleanup.state)?.toLowerCase();
-      if (state === 'failed' && attempts >= maxAttempts) { skippedCount += 1; continue; }
+      if (state === 'failed' && attempts >= maxAttempts) {
+        skippedCount += 1;
+        continue;
+      }
 
       const nextRetryAt = toDate(cleanup.nextRetryAt);
-      if (nextRetryAt && nextRetryAt.getTime() > now.getTime()) { skippedCount += 1; continue; }
+      if (nextRetryAt && nextRetryAt.getTime() > now.getTime()) {
+        skippedCount += 1;
+        continue;
+      }
 
       const nextAttempt = attempts + 1;
       try {
@@ -116,28 +138,39 @@ export async function garbageCollectUnboundObjects(
         if (!storedContentId) throw new Error('attachment content missing storedContentId');
 
         const documentBridge = (globalThis as any)?.$choysum?.document;
-        const deleteStoredContent = typeof documentBridge?.deleteStoredContent === 'function'
-          ? documentBridge.deleteStoredContent.bind(documentBridge) : undefined;
+        const deleteStoredContent =
+          typeof documentBridge?.deleteStoredContent === 'function' ? documentBridge.deleteStoredContent.bind(documentBridge) : undefined;
         if (!deleteStoredContent) throw new Error('document.deleteStoredContent bridge is unavailable');
         await deleteStoredContent({ storedContentId });
 
-        await modelOps.UpdateById(contentId, {
-          Status: 'deleted',
-          MetadataJson: writeCleanupState(metadata, { state: 'deleted', attempts: nextAttempt, at: nowAt }),
-        } as any, ['Id'] as any);
+        await modelOps.UpdateById(
+          contentId,
+          {
+            Status: 'deleted',
+            MetadataJson: writeCleanupState(metadata, { state: 'deleted', attempts: nextAttempt, at: nowAt }),
+          } as any,
+          ['Id'] as any
+        );
         deletedCount += 1;
       } catch (error) {
         const message = String((error as any)?.message || error || 'attachment cleanup failed');
         const terminal = nextAttempt >= maxAttempts;
-        const nextRetryAtISO = terminal ? undefined
-          : new Date(now.getTime() + computeRetryBackoffSeconds(nextAttempt, retryBaseSeconds) * 1000).toISOString();
-        await modelOps.UpdateById(contentId, {
-          MetadataJson: writeCleanupState(metadata, {
-            state: terminal ? 'failed' : 'retrying', attempts: nextAttempt,
-            nextRetryAt: nextRetryAtISO, lastError: message.slice(0, 1024), at: nowAt,
-          }),
-        } as any, ['Id'] as any);
-        if (terminal) failedCount += 1; else retriedCount += 1;
+        const nextRetryAtISO = terminal ? undefined : new Date(now.getTime() + computeRetryBackoffSeconds(nextAttempt, retryBaseSeconds) * 1000).toISOString();
+        await modelOps.UpdateById(
+          contentId,
+          {
+            MetadataJson: writeCleanupState(metadata, {
+              state: terminal ? 'failed' : 'retrying',
+              attempts: nextAttempt,
+              nextRetryAt: nextRetryAtISO,
+              lastError: message.slice(0, 1024),
+              at: nowAt,
+            }),
+          } as any,
+          ['Id'] as any
+        );
+        if (terminal) failedCount += 1;
+        else retriedCount += 1;
       }
     }
     offset += candidates.length;

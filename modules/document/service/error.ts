@@ -85,12 +85,7 @@ export { newError as newDocumentError, wrapError as wrapDocumentError, isError a
  * This is a convenience wrapper around the `newDocumentError(...).withGrpcCode(...).withMetadata(...)` chain.
  * Returns `never` — the function always throws.
  */
-export function throwDocumentError(
-  code: DocumentErrCodeType,
-  message: string,
-  grpcCode?: number,
-  metadata?: Record<string, unknown>,
-): never {
+export function throwDocumentError(code: DocumentErrCodeType, message: string, grpcCode?: number, metadata?: Record<string, unknown>): never {
   const err = newError({ code, message }).withGrpcCode(grpcCode ?? 2 /* UNKNOWN */);
   throw metadata ? err.withMetadata(metadata as Record<string, string>) : err;
 }
