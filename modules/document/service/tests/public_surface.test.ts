@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import AttachmentContent from './attachment_object';
-import AttachmentBinding from './attachment_binding';
-import AttachmentUploadSession from './upload_session';
-import AttachmentMutationLedger from './attachment_mutation_ledger';
+import AttachmentContent from '../models/attachment_object';
+import AttachmentBinding from '../models/attachment_binding';
+import AttachmentUploadSession from '../models/upload_session';
+import AttachmentMutationLedger from '../models/attachment_mutation_ledger';
 
 function listDeclaredConventionalServices(modelCtor: any): string[] {
   const source = Function.prototype.toString.call(modelCtor);

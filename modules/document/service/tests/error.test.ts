@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { DOCUMENT_ERROR_HTTP_STATUS, DocumentErrCode, documentErrorHttpStatus } from './error';
+import { DOCUMENT_ERROR_HTTP_STATUS, DocumentErrCode, documentErrorHttpStatus } from '../error';
 
 test('document error contract: http status mapping is frozen for key codes', () => {
   expect(DOCUMENT_ERROR_HTTP_STATUS[DocumentErrCode.UNAUTHENTICATED]).toBe(401);
