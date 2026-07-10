@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tailscale/hujson"
+
 	tsast "github.com/buke/typescript-go-internal/pkg/ast"
 	tscore "github.com/buke/typescript-go-internal/pkg/core"
 	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
@@ -399,66 +401,19 @@ func inferTypeDiscoveryFallbackURL(resp *http.Response, discoverURL string, upst
 	return fmt.Sprintf("%s/%s/index.d.ts", strings.TrimRight(upstreamRoot, "/"), strings.TrimSpace(spec))
 }
 
-// StripJSONComments removes // and /* */ style comments from JSON content so
-// that Go's encoding/json can parse tsconfig files that contain comments
-// (which TypeScript officially supports).
+// StripJSONComments is a thin wrapper that delegates to hujson (the project's
+// chosen JSONC library) so that tsconfig files with comments are standardised
+// before encoding/json unmarshaling.
 func StripJSONComments(b []byte) []byte {
-	var out []byte
-	inString := false
-	inLineComment := false
-	inBlockComment := false
-
-	for i := 0; i < len(b); i++ {
-		c := b[i]
-
-		if inLineComment {
-			if c == '\n' {
-				inLineComment = false
-				out = append(out, c)
-			}
-			continue
-		}
-
-		if inBlockComment {
-			if c == '*' && i+1 < len(b) && b[i+1] == '/' {
-				inBlockComment = false
-				i++
-			}
-			continue
-		}
-
-		if inString {
-			out = append(out, c)
-			if c == '\\' && i+1 < len(b) {
-				i++
-				out = append(out, b[i])
-			} else if c == '"' {
-				inString = false
-			}
-			continue
-		}
-
-		if c == '/' && i+1 < len(b) {
-			if b[i+1] == '/' {
-				inLineComment = true
-				i++
-				continue
-			}
-			if b[i+1] == '*' {
-				inBlockComment = true
-				i++
-				continue
-			}
-		}
-
-		if c == '"' {
-			inString = true
-		}
-
-		out = append(out, c)
+	v, err := hujson.Parse(b)
+	if err != nil {
+		// If hujson can't parse it (unlikely for tsconfig),
+		// return the original bytes and let the caller's
+		// json.Unmarshal fail with a descriptive error.
+		return b
 	}
-
-	return out
+	v.Standardize()
+	return v.Pack()
 }
 
 func hasTypeScriptSuffix(path string) bool {
