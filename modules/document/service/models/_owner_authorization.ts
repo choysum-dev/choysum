@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc/service_factory';
-import { normalizeConditionEnvelope, replaceConditionExprTokens } from '@/core/service/api/authz';
-import type { ConditionEnvelope, ConditionExpr, RecordRuleOp } from '@/core/service/api/authz';
+import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from '@/core/service/api/authz';
+import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
-import { asObjectRecord } from '@/core/utils/object';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
 import { observePermissionDenied } from './_owner_authorization_observability';
@@ -50,11 +49,6 @@ type AuthUserServiceLike = {
 
 type OwnerModelServiceLike = {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
-};
-
-type FieldRuleSpec = {
-  denyReadFields: string[];
-  denyWriteFields: string[];
 };
 
 const AUTH_USER_MODEL = 'auth.User';
@@ -229,18 +223,6 @@ async function probeOwnerRecord(ownerModel: string, ownerRecordId: string, recor
   }
 }
 
-function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
-  const record = asPlainRecord(value);
-  if (!record) {
-    return { denyReadFields: [], denyWriteFields: [] };
-  }
-
-  return {
-    denyReadFields: normalizeTextArray(record.denyReadFields),
-    denyWriteFields: normalizeTextArray(record.denyWriteFields),
-  };
-}
-
 function replaceTokensForOwnerRecordRule(
   expr: ConditionExpr,
   stage: OwnerPermissionStage,
@@ -280,16 +262,6 @@ function isFieldDenied(deniedFields: string[], fieldName: string): boolean {
   return deniedFields.some(field => field.trim().toLowerCase() === target);
 }
 
-function normalizeTextArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const out: string[] = [];
-  for (const item of value) {
-    const text = normalizeOptionalText(item);
-    if (text) out.push(text);
-  }
-  return Array.from(new Set(out));
-}
-
 function permissionDenied(stage: OwnerPermissionStage, message: string, metadata: Record<string, unknown>): Error {
   observePermissionDenied(stage, message, metadata);
   return newDocumentError({
@@ -322,12 +294,6 @@ function normalizeOptionalText(value: unknown): string | undefined {
     return String(value);
   }
   return normalizeOptionalString(value);
-}
-
-function asPlainRecord(value: unknown): Record<string, unknown> | null {
-  const record = asObjectRecord(value);
-  if (!record || Array.isArray(record)) return null;
-  return record as Record<string, unknown>;
 }
 
 function errorMessage(err: unknown): string {

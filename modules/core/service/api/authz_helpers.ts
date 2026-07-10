@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString } from '../utils/normalization';
+import { normalizeOptionalString, normalizeStringArray } from '../utils/normalization';
 import { asObjectRecord } from '../../utils/object';
 import type { ConditionExpr, ConditionEnvelope } from './authz';
 
@@ -30,6 +30,28 @@ export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
   }
 
   return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+}
+
+export type FieldRuleSpec = {
+  denyReadFields: string[];
+  denyWriteFields: string[];
+  reason?: string;
+};
+
+/**
+ * Normalize a loose value into a field-rule spec shape.
+ */
+export function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
+  const record = asPlainRecord(value);
+  if (!record) {
+    return { denyReadFields: [], denyWriteFields: [] };
+  }
+
+  return {
+    denyReadFields: normalizeStringArray(record.denyReadFields),
+    denyWriteFields: normalizeStringArray(record.denyWriteFields),
+    reason: normalizeOptionalString(record.reason),
+  };
 }
 
 export type ConditionTokenValues = {

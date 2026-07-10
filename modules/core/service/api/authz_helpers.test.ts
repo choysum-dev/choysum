@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeConditionEnvelope, replaceConditionExprTokens } from './authz_helpers';
+import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from './authz_helpers';
 
 test('authz helpers normalize condition envelope for true/false/expr and invalid inputs', () => {
   expect(normalizeConditionEnvelope(undefined as any)).toEqual({
@@ -131,4 +131,35 @@ test('authz helpers non-strict mode keeps unknown tokens unchanged', () => {
   });
 
   expect(out).toEqual(['OwnerId', '=', '$tenantId']);
+});
+
+test('authz helpers normalize field rule spec and reason from loose payloads', () => {
+  expect(normalizeFieldRuleSpec(undefined as any)).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+  });
+
+  expect(
+    normalizeFieldRuleSpec({
+      denyReadFields: [' Name ', '', 'Name', null, 'Id'],
+      denyWriteFields: [' Amount ', '', 'Amount', 'Locked'],
+      reason: '  from_auth  ',
+    })
+  ).toEqual({
+    denyReadFields: ['Name', 'Id'],
+    denyWriteFields: ['Amount', 'Locked'],
+    reason: 'from_auth',
+  });
+
+  expect(
+    normalizeFieldRuleSpec({
+      denyReadFields: 'not-array',
+      denyWriteFields: 1,
+      reason: '   ',
+    })
+  ).toEqual({
+    denyReadFields: [],
+    denyWriteFields: [],
+    reason: undefined,
+  });
 });
