@@ -223,9 +223,9 @@ export function parseBindResp(value: unknown): BindResp | null {
   const descriptorId = normalizeOptionalString(descriptorRaw.id);
   const fileName = normalizeOptionalString(descriptorRaw.fileName);
   const mimeType = normalizeOptionalString(descriptorRaw.mimeType);
-  const checksumSha256 = normalizeOptionalString(descriptorRaw.checksumSha256);
+  const checksumSha256 = normalizeOptionalString(descriptorRaw.checksumSha256) ?? '';
   const sizeBytes = normalizeOptionalNonNegativeInt(descriptorRaw.sizeBytes);
-  if (!descriptorId || !fileName || !mimeType || !checksumSha256 || sizeBytes === undefined) return null;
+  if (!descriptorId || !fileName || !mimeType || sizeBytes === undefined) return null;
 
   return {
     attachmentBindingId,

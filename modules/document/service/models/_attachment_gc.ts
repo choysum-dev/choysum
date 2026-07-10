@@ -89,6 +89,25 @@ export async function garbageCollectUnboundObjects(
     const candidates = await modelOps.Search({ And: baseConditions } as any, { limit: batch, orderBy: { field: 'Id', order: 'asc' } as any } as any);
     if (!candidates.length) break;
 
+    const candidateIds = candidates
+      .map(c => normalizeOptionalString((c as any)?.Id))
+      .filter((id): id is string => Boolean(id));
+    const activeBindings =
+      candidateIds.length > 0
+        ? await AttachmentBinding.Search(
+            {
+              And: [
+                ['AttachmentContentId', 'in', candidateIds],
+                ['Status', '=', 'active'],
+              ],
+            } as any,
+            { fields: ['AttachmentContentId'] as any } as any
+          )
+        : [];
+    const activeContentIds = new Set(
+      activeBindings.map(b => normalizeOptionalString((b as any)?.AttachmentContentId)).filter(Boolean)
+    );
+
     for (const candidate of candidates) {
       scannedCount += 1;
       const contentId = normalizeOptionalString((candidate as any)?.Id);
@@ -97,16 +116,7 @@ export async function garbageCollectUnboundObjects(
         continue;
       }
 
-      const activeBindings = await AttachmentBinding.Search(
-        {
-          And: [
-            ['AttachmentContentId', '=', contentId],
-            ['Status', '=', 'active'],
-          ],
-        } as any,
-        { limit: 1, fields: ['Id'] as any } as any
-      );
-      if (activeBindings.length > 0) {
+      if (activeContentIds.has(contentId)) {
         skippedCount += 1;
         continue;
       }
