@@ -1502,28 +1502,24 @@ func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error
 }
 
 func resolveAndValidateTypeCachePath(typesDir string, targetPath string) (string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("get working directory: %w", err)
-	}
-
 	absTypesDir := strings.TrimSpace(typesDir)
 	if absTypesDir == "" {
 		return "", fmt.Errorf("types dir is empty")
 	}
-	if !filepath.IsAbs(absTypesDir) {
-		absTypesDir = filepath.Join(wd, absTypesDir)
+	var err error
+	absTypesDir, err = filepath.Abs(absTypesDir)
+	if err != nil {
+		return "", fmt.Errorf("absolute types dir: %w", err)
 	}
-	absTypesDir = filepath.Clean(absTypesDir)
 
 	absTarget := strings.TrimSpace(targetPath)
 	if absTarget == "" {
 		return "", fmt.Errorf("target path is empty")
 	}
-	if !filepath.IsAbs(absTarget) {
-		absTarget = filepath.Join(wd, absTarget)
+	absTarget, err = filepath.Abs(absTarget)
+	if err != nil {
+		return "", fmt.Errorf("absolute target path: %w", err)
 	}
-	absTarget = filepath.Clean(absTarget)
 
 	rel, err := filepath.Rel(absTypesDir, absTarget)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
@@ -1768,19 +1764,14 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 		return fmt.Errorf("absolute tsconfig dir: %w", err)
 	}
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("get working directory: %w", err)
-	}
-
 	absTypesDir := strings.TrimSpace(typesDir)
 	if absTypesDir == "" {
 		return fmt.Errorf("types dir is empty")
 	}
-	if !filepath.IsAbs(absTypesDir) {
-		absTypesDir = filepath.Join(wd, absTypesDir)
+	absTypesDir, err = filepath.Abs(absTypesDir)
+	if err != nil {
+		return fmt.Errorf("absolute types dir: %w", err)
 	}
-	absTypesDir = filepath.Clean(absTypesDir)
 	typeRootsDir := filepath.Join(absTypesDir, "typeRoots")
 	if err := os.MkdirAll(typeRootsDir, 0o755); err != nil {
 		return fmt.Errorf("ensure typeRoots dir: %w", err)
@@ -1793,9 +1784,12 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 			continue
 		}
 		if !filepath.IsAbs(cachedPath) {
-			cachedPath = filepath.Join(wd, cachedPath)
+			var absErr error
+			cachedPath, absErr = filepath.Abs(cachedPath)
+			if absErr != nil {
+				continue
+			}
 		}
-		cachedPath = filepath.Clean(cachedPath)
 		// Guard against path traversal: cachedPath must reside under
 		// the types directory (or be an absolute path outside of it).
 		relToTypesDir, err := filepath.Rel(absTypesDir, cachedPath)
@@ -1875,9 +1869,11 @@ func normalizeCompilerTypeRootName(typeName string) string {
 
 	// Scoped packages (e.g. @scope/pkg) need double-underscore encoding in
 	// typeRoots so that "@scope/pkg1" and "@scope/pkg2" do not collide.
+	// Subpaths (e.g. @scope/pkg/sub) are dropped — only scope and package
+	// name matter for typeRoots directory layout.
 	if strings.HasPrefix(typeName, "@") {
-		parts := strings.SplitN(strings.TrimPrefix(typeName, "@"), "/", 2)
-		if len(parts) == 2 {
+		parts := strings.Split(strings.TrimPrefix(typeName, "@"), "/")
+		if len(parts) >= 2 {
 			scope := strings.TrimSpace(parts[0])
 			pkg := strings.TrimSpace(parts[1])
 			if !isSafeCompilerTypeRootSegment(scope) || !isSafeCompilerTypeRootSegment(pkg) {

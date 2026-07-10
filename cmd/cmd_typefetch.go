@@ -404,6 +404,13 @@ func resolveTypeFetchCompilerTypePackage(rawType string) (string, string, bool) 
 	if name == "" {
 		return "", "", false
 	}
+
+	// Reject path traversal segments in package names extracted from
+	// user-controlled tsconfig before they reach filesystem operations.
+	if containsPathTraversal(name) {
+		return "", "", false
+	}
+
 	if strings.HasPrefix(name, "@types/") {
 		return name, version, true
 	}
@@ -425,6 +432,18 @@ func resolveTypeFetchCompilerTypePackage(rawType string) (string, string, bool) 
 		return "", "", false
 	}
 	return "@types/" + base, version, true
+}
+
+func containsPathTraversal(s string) bool {
+	// Split on "/" to check each segment, matching how we later split
+	// on slashes to extract scope/package components.
+	for _, part := range strings.Split(s, "/") {
+		part = strings.TrimSpace(part)
+		if part == ".." || part == "." {
+			return true
+		}
+	}
+	return false
 }
 
 func splitTypeFetchNameAndVersion(typeName string) (string, string) {

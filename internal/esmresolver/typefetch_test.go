@@ -1964,7 +1964,7 @@ func TestNormalizeCompilerTypeRootName(t *testing.T) {
 		{name: "scoped backslash in scope", input: "@scope\\x/pkg", expected: ""},
 		{name: "forward slash in bare segment", input: "a/b", expected: "a"},
 		{name: "bare @ symbol", input: "@", expected: ""},
-		{name: "scoped with nested slash in pkg", input: "@scope/pkg/sub", expected: ""},
+		{name: "scoped with nested slash in pkg", input: "@scope/pkg/sub", expected: "scope__pkg"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

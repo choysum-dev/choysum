@@ -620,6 +620,24 @@ func TestResolveTypeFetchCompilerTypeTargets_FromTsconfigTypes(t *testing.T) {
 	}
 }
 
+func TestResolveTypeFetchCompilerTypeTargets_RejectsPathTraversal(t *testing.T) {
+	modulesPath := t.TempDir()
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	// Package names containing path traversal segments should be silently
+	// dropped, not used to construct filesystem paths.
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["../../etc","@scope/../pkg","./local"]}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
+	if err != nil {
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets failed: %v", err)
+	}
+	if len(targets) != 0 {
+		t.Fatalf("expected 0 targets for traversal-tainted types, got %d: %+v", len(targets), targets)
+	}
+}
+
 func TestNewTypeFetchCmd_Run_OfflineFetchesCompilerTypesFromTsconfig(t *testing.T) {
 	modulesPath := t.TempDir()
 	cfg := newCommandTestConfig(modulesPath)
