@@ -187,7 +187,7 @@ export default class AttachmentUploadSession extends BaseModel {
       async session => {
         const sessionId = String((session as any)?.Id || '').trim();
         if (!sessionId) return;
-        await self.UpdateById(sessionId, { Status: 'expired' } as any, ['Id'] as any);
+        await self.UpdateById(sessionId, { Status: 'expired' } as any, ['Id', 'Status'] as any);
       },
       { batch, fields: ['Id'] }
     );

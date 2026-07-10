@@ -1,12 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-  normalizeOptionalString,
-  normalizeOptionalNonNegativeInt,
-  normalizeChecksumSha256,
-  normalizeContentType,
-} from '@/core/service/utils/normalization';
+import { normalizeOptionalString, normalizeOptionalNonNegativeInt, normalizeChecksumSha256, normalizeContentType } from '@/core/service/utils/normalization';
 import { parseISODate } from '@/core/service/utils/date';
 import { GrpcCode } from '../error';
 import {
@@ -355,7 +350,7 @@ export async function commitUploadPut(ops: UploadModelOps, req: CommitUploadPutR
       UploadedContentType: contentType,
       UploadedPayloadRef: buildUploadedPayloadRefFromPayloadId(normalized.payloadReceipt.payloadId),
     } as any,
-    ['Id'] as any
+    ['Id', 'Status', 'UploadedSizeBytes', 'UploadedChecksumSha256', 'UploadedContentType', 'UploadedPayloadRef'] as any
   );
 
   return {
@@ -466,7 +461,7 @@ export async function finalizeUploadInternal(ops: UploadModelOps, uploadId: stri
       Status: 'finalized',
       AttachmentContentId: attachmentContentId,
     } as any,
-    ['Id'] as any
+    ['Id', 'Status', 'AttachmentContentId'] as any
   );
 
   return buildFinalizeResp(created as AttachmentContent);

@@ -143,7 +143,7 @@ export async function garbageCollectUnboundObjects(
             Status: 'deleted',
             MetadataJson: writeCleanupState(metadata, { state: 'deleted', attempts: nextAttempt, at: nowAt }),
           } as any,
-          ['Id'] as any
+          ['Id', 'Status', 'MetadataJson'] as any
         );
         deletedCount += 1;
       } catch (error) {
@@ -161,7 +161,7 @@ export async function garbageCollectUnboundObjects(
               at: nowAt,
             }),
           } as any,
-          ['Id'] as any
+          ['Id', 'MetadataJson'] as any
         );
         if (terminal) failedCount += 1;
         else retriedCount += 1;

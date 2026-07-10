@@ -415,7 +415,7 @@ export async function bindAttachment(ops: BindingModelOps, req: BindReq): Promis
           Status: 'unbound',
           UnboundAt: new Date(),
         } as any,
-        ['Id'] as any
+        ['Id', 'Status', 'UnboundAt'] as any
       );
     }
 
@@ -569,7 +569,7 @@ export async function batchDescribeAttachments(ops: BindingModelOps, req: BatchD
     attachmentContentById.set(attachmentContentId, attachmentContent as AttachmentContent);
   }
 
-  const itemPromises = normalized.attachmentBindingIds.map(async (bindingId) => {
+  const itemPromises = normalized.attachmentBindingIds.map(async bindingId => {
     const binding = bindingById.get(bindingId);
     if (!binding) return null;
 
