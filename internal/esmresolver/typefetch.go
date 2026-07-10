@@ -1742,6 +1742,12 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 			cachedPath = filepath.Join(wd, cachedPath)
 		}
 		cachedPath = filepath.Clean(cachedPath)
+		// Guard against path traversal: cachedPath must reside under
+		// the types directory (or be an absolute path outside of it).
+		relToTypesDir, err := filepath.Rel(absTypesDir, cachedPath)
+		if err != nil || strings.HasPrefix(relToTypesDir, ".."+string(filepath.Separator)) || relToTypesDir == ".." || filepath.IsAbs(relToTypesDir) {
+			continue
+		}
 		if _, err := os.Stat(cachedPath); err != nil {
 			continue
 		}
