@@ -90,6 +90,13 @@ export function normalizeBatchDescribeReq(req: BatchDescribeReq | undefined | nu
     });
   }
 
+  const MAX_BATCH_SIZE = 200;
+  if (rawIds.length > MAX_BATCH_SIZE) {
+    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'attachmentBindingIds exceeds maximum batch size of ' + MAX_BATCH_SIZE, GrpcCode.InvalidArgument, {
+      field: 'attachmentBindingIds',
+    });
+  }
+
   const deduped: string[] = [];
   const seen = new Set<string>();
   for (const rawId of rawIds) {

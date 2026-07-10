@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString, asRecord } from '@/core/service/utils/normalization';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/date';
 import {
   DownloadDisposition,
@@ -24,10 +24,6 @@ import type StoredContent from './stored_content';
 import { requireText, requireUserId, requireCompanyId } from './_normalizers';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
 import {
-  NormalizedBindReq,
-  NormalizedUnbindReq,
-  NormalizedBatchDescribeReq,
-  NormalizedResolveDownloadContentReq,
   normalizeBindReq,
   normalizeUnbindReq,
   normalizeBatchDescribeReq,
@@ -79,16 +75,16 @@ function getStoredContentModel(): typeof StoredContent {
 // ---------------------------------------------------------------------------
 
 function assertPrincipalParityWithRuntimeContext(ops: BindingModelOps, principal: PrincipalContext, stage: 'resolve_download_content'): void {
-  const runtimeUserId = normalizeOptionalString(ops.userId);
-  if (runtimeUserId && runtimeUserId !== principal.userId) {
+  const runtimeUserId = requireUserId(ops.userId);
+  if (runtimeUserId !== principal.userId) {
     throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal userId does not match runtime identity', GrpcCode.PermissionDenied, {
       stage,
       reason: 'issuer_mismatch',
     });
   }
 
-  const runtimeCompanyId = normalizeOptionalString(ops.companyId);
-  if (runtimeCompanyId && runtimeCompanyId !== principal.activeCompanyId) {
+  const runtimeCompanyId = requireCompanyId(ops.companyId, stage);
+  if (runtimeCompanyId !== principal.activeCompanyId) {
     throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal activeCompanyId does not match runtime context', GrpcCode.PermissionDenied, {
       stage,
       reason: 'company_mismatch',
@@ -236,26 +232,6 @@ async function mustLoadBinding(ops: BindingModelOps, bindingId: string, companyI
   const record = rows[0];
   if (!record) {
     throwDocumentError(DocumentErrCode.NOT_FOUND, 'Attachment binding not found', GrpcCode.NotFound, { attachmentBindingId: bindingId, companyId });
-  }
-
-  return record as AttachmentBinding;
-}
-
-async function mustLoadActiveBinding(ops: BindingModelOps, bindingId: string, companyId: string): Promise<AttachmentBinding> {
-  const rows = await ops.Search(
-    {
-      And: [
-        ['Id', '=', bindingId],
-        ['CompanyId', '=', companyId],
-        ['Status', '=', 'active'],
-      ],
-    } as any,
-    { limit: 1 } as any
-  );
-
-  const record = rows[0];
-  if (!record) {
-    throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active attachment binding not found', GrpcCode.NotFound, { attachmentBindingId: bindingId, companyId });
   }
 
   return record as AttachmentBinding;

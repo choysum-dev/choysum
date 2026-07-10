@@ -3,7 +3,6 @@
 
 import {
   normalizeOptionalString,
-  asRecord,
   normalizeOptionalNonNegativeInt,
   normalizeChecksumSha256,
   normalizeContentType,

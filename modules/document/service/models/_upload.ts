@@ -8,7 +8,6 @@ import {
   normalizeChecksumSha256,
   normalizeContentType,
 } from '@/core/service/utils/normalization';
-import { toDate } from '@/core/service/utils/date';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';

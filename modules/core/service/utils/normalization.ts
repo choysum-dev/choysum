@@ -658,6 +658,7 @@ export function asRecord(input: unknown): Record<string, unknown> | null {
  */
 export function normalizeOptionalNonNegativeInt(value: unknown): number | undefined {
   if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'number' && typeof value !== 'string') return undefined;
   const num = Number(value);
   if (!Number.isFinite(num)) return undefined;
   if (num < 0) return undefined;
