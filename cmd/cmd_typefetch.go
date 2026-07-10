@@ -367,7 +367,7 @@ func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string
 	}
 
 	var cfg typeFetchCompilerTypeTargetsConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
+	if err := json.Unmarshal(esmresolver.StripJSONComments(data), &cfg); err != nil {
 		return nil, xfmt.Errorf("type-fetch: parse modules tsconfig: %w", err)
 	}
 
@@ -405,9 +405,9 @@ func resolveTypeFetchCompilerTypePackage(rawType string) (string, string, bool) 
 		return "", "", false
 	}
 
-	// Reject path traversal segments in package names extracted from
-	// user-controlled tsconfig before they reach filesystem operations.
-	if containsPathTraversal(name) {
+	// Reject path traversal segments in package names and versions extracted
+	// from user-controlled tsconfig before they reach filesystem operations.
+	if containsPathTraversal(name) || containsPathTraversal(version) {
 		return "", "", false
 	}
 

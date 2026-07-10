@@ -399,6 +399,68 @@ func inferTypeDiscoveryFallbackURL(resp *http.Response, discoverURL string, upst
 	return fmt.Sprintf("%s/%s/index.d.ts", strings.TrimRight(upstreamRoot, "/"), strings.TrimSpace(spec))
 }
 
+// StripJSONComments removes // and /* */ style comments from JSON content so
+// that Go's encoding/json can parse tsconfig files that contain comments
+// (which TypeScript officially supports).
+func StripJSONComments(b []byte) []byte {
+	var out []byte
+	inString := false
+	inLineComment := false
+	inBlockComment := false
+
+	for i := 0; i < len(b); i++ {
+		c := b[i]
+
+		if inLineComment {
+			if c == '\n' {
+				inLineComment = false
+				out = append(out, c)
+			}
+			continue
+		}
+
+		if inBlockComment {
+			if c == '*' && i+1 < len(b) && b[i+1] == '/' {
+				inBlockComment = false
+				i++
+			}
+			continue
+		}
+
+		if inString {
+			out = append(out, c)
+			if c == '\\' && i+1 < len(b) {
+				i++
+				out = append(out, b[i])
+			} else if c == '"' {
+				inString = false
+			}
+			continue
+		}
+
+		if c == '/' && i+1 < len(b) {
+			if b[i+1] == '/' {
+				inLineComment = true
+				i++
+				continue
+			}
+			if b[i+1] == '*' {
+				inBlockComment = true
+				i++
+				continue
+			}
+		}
+
+		if c == '"' {
+			inString = true
+		}
+
+		out = append(out, c)
+	}
+
+	return out
+}
+
 func hasTypeScriptSuffix(path string) bool {
 	path = strings.ToLower(path)
 	return strings.HasSuffix(path, ".d.ts") || strings.HasSuffix(path, ".d.mts") || strings.HasSuffix(path, ".d.cts")
@@ -1668,7 +1730,7 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	var tsconfig map[string]interface{}
 	if len(data) == 0 || strings.TrimSpace(string(data)) == "" {
 		tsconfig = make(map[string]interface{})
-	} else if err := json.Unmarshal(data, &tsconfig); err != nil {
+	} else if err := json.Unmarshal(StripJSONComments(data), &tsconfig); err != nil {
 		return fmt.Errorf("parse tsconfig: %w", err)
 	}
 	if tsconfig == nil {
@@ -1750,7 +1812,7 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 	var tsconfig map[string]interface{}
 	if len(data) == 0 || strings.TrimSpace(string(data)) == "" {
 		tsconfig = make(map[string]interface{})
-	} else if err := json.Unmarshal(data, &tsconfig); err != nil {
+	} else if err := json.Unmarshal(StripJSONComments(data), &tsconfig); err != nil {
 		return fmt.Errorf("parse tsconfig: %w", err)
 	}
 	if tsconfig == nil {
