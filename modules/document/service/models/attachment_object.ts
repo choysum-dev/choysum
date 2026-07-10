@@ -25,6 +25,7 @@ import AttachmentMutationLedger from './attachment_mutation_ledger';
 import StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
 import { requireText, requireUserId, requireCompanyId, resolveGcBatchSize } from './_helpers';
+import { garbageCollectUnboundObjects } from './_attachment_gc';
 import {
   DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
   DEFAULT_MAX_UPLOAD_BYTES,
@@ -322,7 +323,7 @@ export default class AttachmentContent extends BaseModel {
 
     const uploadSession = await AttachmentUploadSession.garbageCollectExpired(nowAt);
     const mutationLedger = await AttachmentMutationLedger.garbageCollectRetention(nowAt);
-    const objects = await this.garbageCollectUnboundObjects(nowAt);
+    const objects = await garbageCollectUnboundObjects(this, nowAt);
 
     return {
       now: nowAt,
