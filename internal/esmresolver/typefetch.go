@@ -1666,14 +1666,12 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"strict":                       true,
 			"strictPropertyInitialization": false,
 			"target":                       "ES2020",
+			"types":                        []string{"node"},
 		},
-		// Test files are included (not excluded) so that IDEs can resolve
-		// @/* path aliases and ambient test globals (test, expect) for all
-		// modules from a single shared tsconfig project.  E2E tests remain
-		// excluded because they may need a separate configuration.
-		"exclude": []string{
-			"**/e2e/**",
-		},
+		// Test and e2e files are intentionally included (not excluded) so
+		// that IDEs can resolve @/* path aliases, ambient test globals
+		// (test, expect), and Node.js built-in types (@types/node) from a
+		// single shared tsconfig project for all modules.
 		"display": "Recommended",
 	}
 
