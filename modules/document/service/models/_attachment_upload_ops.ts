@@ -23,7 +23,7 @@ import type AttachmentUploadSession from './upload_session';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_helpers';
+import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_foundation';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import {
   DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
@@ -312,11 +312,7 @@ async function markUploadSessionExpired(uploadId: string, session: AttachmentUpl
   await AttachmentUploadSessionModel.UpdateById(uploadId, { Status: 'expired' } as any, ['Id'] as any);
 }
 
-async function resolveStoredContentIdForFinalize(
-  uploadedPayloadRef: UploadedPayloadRef | undefined,
-  uploadId: string,
-  companyId: string
-): Promise<string> {
+async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPayloadRef | undefined, uploadId: string, companyId: string): Promise<string> {
   if (!uploadedPayloadRef) {
     throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session is missing uploaded payload reference', GrpcCode.FailedPrecondition, {
       stage: 'finalize',

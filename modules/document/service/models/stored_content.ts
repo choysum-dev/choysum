@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { AttachmentBackend } from '../contracts';
-import { mustLoadOne } from './_helpers';
+import { mustLoadOne } from './_foundation';
 
 /**
  * Lifecycle states for stored payload content.

@@ -21,7 +21,7 @@ import type AttachmentBinding from './attachment_binding';
 import type AttachmentContent from './attachment_object';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
-import { requireText, requireUserId, requireCompanyId } from './_helpers';
+import { requireText, requireUserId, requireCompanyId } from './_foundation';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
 
 // ---------------------------------------------------------------------------

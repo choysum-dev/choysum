@@ -6,7 +6,7 @@ import { toDate } from '@/core/service/utils/date';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
-import { requireText, requireUserId, requireCompanyId } from './_helpers';
+import { requireText, requireUserId, requireCompanyId } from './_foundation';
 import type AttachmentUploadSession from './upload_session';
 
 // ---------------------------------------------------------------------------

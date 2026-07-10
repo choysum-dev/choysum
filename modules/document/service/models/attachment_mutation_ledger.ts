@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { parseISODate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { MutationAction, MutationLedgerStatus } from '../contracts';
-import { resolveGcBatchSize } from './_helpers';
+import { resolveGcBatchSize } from './_foundation';
 import { paginateBatch } from './_pagination';
 
 const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;

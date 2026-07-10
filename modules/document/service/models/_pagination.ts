@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { resolveGcBatchSize } from './_helpers';
+import { resolveGcBatchSize } from './_foundation';
 
 /**
  * Generic batch processor for paginated Search loops.
