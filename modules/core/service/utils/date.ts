@@ -25,7 +25,7 @@ export function toDate(value: unknown): Date | undefined {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
-  if (typeof value === 'string' && /^\d+$/.test(value)) {
+  if (typeof value === 'string' && /^\d+$/.test(value) && value.length > 4) {
     const parsed = new Date(Number(value));
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
