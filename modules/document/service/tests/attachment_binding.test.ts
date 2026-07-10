@@ -9,10 +9,10 @@ import User from '@/auth/service/models/user';
 import UserRole from '@/auth/service/models/user_role';
 import IrField from '@/meta/service/models/ir_field';
 import IrModel from '@/meta/service/models/ir_model';
-import AttachmentBinding from './attachment_binding';
-import AttachmentObject from './attachment_object';
-import UploadSession from './upload_session';
-import StoredContent from './stored_content';
+import AttachmentBinding from '../models/attachment_binding';
+import AttachmentObject from '../models/attachment_object';
+import UploadSession from '../models/upload_session';
+import StoredContent from '../models/stored_content';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');

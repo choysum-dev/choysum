@@ -11,7 +11,7 @@ import {
   type AuthorizeUploadPutReq,
   type CommitUploadPutReq,
   type ResolveDownloadContentReq,
-} from './contracts';
+} from '../contracts';
 
 test('document contracts: upload session status transition contract is frozen', () => {
   expect(ATTACHMENT_UPLOAD_SESSION_STATUS_VALUES).toEqual(['prepared', 'uploaded', 'finalized', 'expired']);
