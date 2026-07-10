@@ -7,8 +7,7 @@ import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
 import { resolveGcBatchSize } from './_helpers';
 import { paginateBatch } from './_pagination';
-
-const DEFAULT_UPLOAD_SESSION_TTL_SECONDS = 900;
+import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload_helpers';
 
 /**
  * AttachmentUploadSession tracks staged uploads before payloads become active content.
