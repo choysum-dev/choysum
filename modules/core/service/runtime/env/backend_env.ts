@@ -38,10 +38,9 @@ export function isTruthyFlag(value: unknown): boolean {
  */
 export function getBackendEnvPositiveInt(keyOrKeys: string | readonly string[], defaultValue: number): number {
   const keys = typeof keyOrKeys === 'string' ? [keyOrKeys] : keyOrKeys;
-  const globalEnv = ((globalThis as any)?.__choysumBackendEnv || {}) as Record<string, unknown>;
-  const metaEnv = (((import.meta as any)?.env || {}) as Record<string, unknown>) || {};
+  const env = getBackendEnv();
   for (const k of keys) {
-    const raw = (globalEnv as any)?.[k] ?? (metaEnv as any)?.[k];
+    const raw = (env as any)?.[k];
     const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
     if (Number.isFinite(parsed) && parsed > 0) {
       return Math.floor(parsed);
