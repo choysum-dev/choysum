@@ -141,7 +141,14 @@ export async function garbageCollectUnboundObjects(
         const deleteStoredContent =
           typeof documentBridge?.deleteStoredContent === 'function' ? documentBridge.deleteStoredContent.bind(documentBridge) : undefined;
         if (!deleteStoredContent) throw new Error('document.deleteStoredContent bridge is unavailable');
-        await deleteStoredContent({ storedContentId });
+        try {
+          await deleteStoredContent({ storedContentId });
+        } catch (err: any) {
+          const errMsg = String(err?.message || err).toLowerCase();
+          const isNotFound =
+            errMsg.includes('not found') || errMsg.includes('nosuchkey') || err?.code === 'NoSuchKey' || err?.status === 404;
+          if (!isNotFound) throw err;
+        }
 
         await modelOps.UpdateById(
           contentId,
@@ -171,11 +178,7 @@ export async function garbageCollectUnboundObjects(
             errorStateValues.UpdatedAt = now;
             errorStateFields.push('UpdatedAt');
           }
-          await modelOps.UpdateById(
-            contentId,
-            errorStateValues as any,
-            errorStateFields as any
-          );
+          await modelOps.UpdateById(contentId, errorStateValues as any, errorStateFields as any);
         } catch {
           // Metadata update is best-effort; don't abort the entire GC run.
         }
