@@ -157,19 +157,24 @@ export async function garbageCollectUnboundObjects(
         const terminal = nextAttempt >= maxAttempts;
         const nextRetryAtISO = terminal ? undefined : new Date(now.getTime() + computeRetryBackoffSeconds(nextAttempt, retryBaseSeconds) * 1000).toISOString();
         try {
+          const errorStateValues: Record<string, unknown> = {
+            MetadataJson: writeCleanupState(metadata, {
+              state: terminal ? 'failed' : 'retrying',
+              attempts: nextAttempt,
+              nextRetryAt: nextRetryAtISO,
+              lastError: message.slice(0, 1024),
+              at: nowAt,
+            }),
+          };
+          const errorStateFields: string[] = ['Id', 'MetadataJson'];
+          if (terminal) {
+            errorStateValues.UpdatedAt = now;
+            errorStateFields.push('UpdatedAt');
+          }
           await modelOps.UpdateById(
             contentId,
-            {
-              MetadataJson: writeCleanupState(metadata, {
-                state: terminal ? 'failed' : 'retrying',
-                attempts: nextAttempt,
-                nextRetryAt: nextRetryAtISO,
-                lastError: message.slice(0, 1024),
-                at: nowAt,
-              }),
-              UpdatedAt: now,
-            } as any,
-            ['Id', 'MetadataJson', 'UpdatedAt'] as any
+            errorStateValues as any,
+            errorStateFields as any
           );
         } catch {
           // Metadata update is best-effort; don't abort the entire GC run.
