@@ -583,7 +583,7 @@ Phase A 强制拆分为两个独立 PR（不可合并提交）：
 | **Phase A1** | ✅ 已完成 | core: +asRecord/normalizeOptionalNonNegativeInt/parseISODate/toDate; env 统一优先级 + 多 key |
 | **Phase A2a** | ✅ 已完成 | document 去重: _helpers.ts + 替换 env/date/normalization 调用 |
 | **Phase A2b** | ✅ 已完成 | error.ts: +throwDocumentError; 模型层错误链收敛 |
-| **Phase B1** | ⬜ 待开始 | 上传流水线集中到 _upload_helpers.ts |
+| **Phase B1** | ✅ 已完成 | 上传流水线纯函数集中到 _upload_helpers.ts (889+240) |
 | **Phase C1** | ⬜ 待开始 | 拆分 attachment_object.ts |
 | **Phase C2** | ⬜ 待开始 | 拆分 attachment_binding.ts |
 | **Phase D** | ⬜ 待开始 | 样板缩减 |
