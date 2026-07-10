@@ -2,35 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { parseISODate } from '@/core/service/utils/date';
+import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { MutationAction, MutationLedgerStatus } from '../contracts';
+import { resolveGcBatchSize } from './_helpers';
 
 const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;
-const DEFAULT_GC_BATCH_SIZE = 200;
-
-function backendEnv(): Record<string, unknown> {
-  const env = (globalThis as any)?.__choysumBackendEnv ?? (import.meta as any)?.env;
-  if (!env || typeof env !== 'object') return {};
-  return env as Record<string, unknown>;
-}
-
-function resolvePositiveIntEnv(keys: string[], fallback: number): number {
-  const env = backendEnv();
-  for (const key of keys) {
-    const raw = env[key];
-    const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number.parseInt(raw, 10) : Number.NaN;
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return Math.floor(parsed);
-    }
-  }
-  return fallback;
-}
-
-function parseNowInput(nowISO?: string): Date {
-  if (!nowISO) return new Date();
-  const parsed = new Date(nowISO);
-  if (Number.isNaN(parsed.getTime())) return new Date();
-  return parsed;
-}
 
 /**
  * AttachmentMutationLedger records idempotent bind and unbind mutations per company.
@@ -97,12 +74,12 @@ export default class AttachmentMutationLedger extends BaseModel {
    * Purges mutation ledger rows that have passed the configured retention window.
    */
   public static async garbageCollectRetention(nowISO?: string): Promise<{ purgedCount: number }> {
-    const now = parseNowInput(nowISO);
-    const retentionDays = resolvePositiveIntEnv(
+    const now = parseISODate(nowISO);
+    const retentionDays = getBackendEnvPositiveInt(
       ['CHOYSUM_DOCUMENT_ATTACHMENT_MUTATION_LEDGER_RETENTION_DAYS', 'CHOYSUM_DOCUMENT_MUTATION_LEDGER_RETENTION_DAYS'],
       DEFAULT_MUTATION_LEDGER_RETENTION_DAYS
     );
-    const batch = resolvePositiveIntEnv(['CHOYSUM_DOCUMENT_GC_BATCH_SIZE'], DEFAULT_GC_BATCH_SIZE);
+    const batch = resolveGcBatchSize();
     const cutoff = new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);
 
     let purgedCount = 0;

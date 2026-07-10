@@ -2,35 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { parseISODate } from '@/core/service/utils/date';
+import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
+import { resolveGcBatchSize } from './_helpers';
 
 const DEFAULT_UPLOAD_SESSION_TTL_SECONDS = 900;
-const DEFAULT_GC_BATCH_SIZE = 200;
-
-function backendEnv(): Record<string, unknown> {
-  const env = (globalThis as any)?.__choysumBackendEnv ?? (import.meta as any)?.env;
-  if (!env || typeof env !== 'object') return {};
-  return env as Record<string, unknown>;
-}
-
-function resolvePositiveIntEnv(keys: string[], fallback: number): number {
-  const env = backendEnv();
-  for (const key of keys) {
-    const raw = env[key];
-    const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number.parseInt(raw, 10) : Number.NaN;
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return Math.floor(parsed);
-    }
-  }
-  return fallback;
-}
-
-function parseNowInput(nowISO?: string): Date {
-  if (!nowISO) return new Date();
-  const parsed = new Date(nowISO);
-  if (Number.isNaN(parsed.getTime())) return new Date();
-  return parsed;
-}
 
 /**
  * AttachmentUploadSession tracks staged uploads before payloads become active content.
@@ -191,9 +168,9 @@ export default class AttachmentUploadSession extends BaseModel {
    * Expires pending sessions and purges finalized or expired rows past retention.
    */
   public static async garbageCollectExpired(nowISO?: string): Promise<{ expiredCount: number; purgedCount: number }> {
-    const now = parseNowInput(nowISO);
-    const batch = resolvePositiveIntEnv(['CHOYSUM_DOCUMENT_GC_BATCH_SIZE'], DEFAULT_GC_BATCH_SIZE);
-    const uploadSessionTTLSeconds = resolvePositiveIntEnv(
+    const now = parseISODate(nowISO);
+    const batch = resolveGcBatchSize();
+    const uploadSessionTTLSeconds = getBackendEnvPositiveInt(
       ['CHOYSUM_DOCUMENT_ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS', 'CHOYSUM_DOCUMENT_UPLOAD_SESSION_TTL_SECONDS'],
       DEFAULT_UPLOAD_SESSION_TTL_SECONDS
     );

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt } from '@/core/service/utils/normalization';
+import { toDate } from '@/core/service/utils/date';
 import { GrpcCode } from '../error';
 import {
   AttachmentBindingStatus,
@@ -22,6 +24,7 @@ import AttachmentContent from './attachment_object';
 import AttachmentMutationLedger from './attachment_mutation_ledger';
 import StoredContent from './stored_content';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
+import { requireText, requireUserId, requireCompanyId } from './_helpers';
 
 type NormalizedBindReq = {
   attachmentContentId: string;
@@ -140,8 +143,8 @@ export default class AttachmentBinding extends BaseModel {
    */
   public static async Bind(req: BindReq): Promise<BindResp> {
     const normalized = this.normalizeBindReq(req);
-    const companyId = this.requireCompanyId('bind');
-    const userId = this.requireUserId();
+    const companyId = requireCompanyId(this.companyId, 'bind');
+    const userId = requireUserId(this.userId);
 
     await assertOwnerWriteAuthorization({
       stage: 'bind',
@@ -163,7 +166,7 @@ export default class AttachmentBinding extends BaseModel {
     const existing = await this.findActiveBinding(normalized.ownerModel, normalized.ownerRecordId, normalized.fieldName, companyId);
 
     let bindingRecord: AttachmentBinding;
-    if (existing && this.requireText(existing.AttachmentContentId, 'attachmentContentId') === normalized.attachmentContentId) {
+    if (existing && requireText(existing.AttachmentContentId, 'attachmentContentId') === normalized.attachmentContentId) {
       bindingRecord = await this.patchBindingPresentation(existing, normalized.displayFileName, normalized.downloadDisposition);
     } else {
       if (existing) {
@@ -172,10 +175,10 @@ export default class AttachmentBinding extends BaseModel {
           normalized.ownerRecordId,
           normalized.fieldName,
           companyId,
-          this.requireText(existing.Id, 'attachmentBindingId')
+          requireText(existing.Id, 'attachmentBindingId')
         );
         await this.UpdateById(
-          this.requireText(existing.Id, 'attachmentBindingId'),
+          requireText(existing.Id, 'attachmentBindingId'),
           {
             Status: 'unbound',
             UnboundAt: new Date(),
@@ -201,7 +204,7 @@ export default class AttachmentBinding extends BaseModel {
 
     const descriptor = this.buildDescriptor(bindingRecord, attachmentContent);
     const response: BindResp = {
-      attachmentBindingId: this.requireText(bindingRecord.Id, 'attachmentBindingId'),
+      attachmentBindingId: requireText(bindingRecord.Id, 'attachmentBindingId'),
       status: 'active',
       descriptor,
     };
@@ -221,15 +224,15 @@ export default class AttachmentBinding extends BaseModel {
    */
   public static async Unbind(req: UnbindReq): Promise<UnbindResp> {
     const normalized = this.normalizeUnbindReq(req);
-    const companyId = this.requireCompanyId('unbind');
-    const userId = this.requireUserId();
+    const companyId = requireCompanyId(this.companyId, 'unbind');
+    const userId = requireUserId(this.userId);
 
     const binding = await this.mustLoadBinding(normalized.attachmentBindingId, companyId);
     await assertOwnerWriteAuthorization({
       stage: 'unbind',
-      ownerModel: this.requireText(binding.OwnerModel, 'ownerModel'),
-      ownerRecordId: this.requireText(binding.OwnerRecordId, 'ownerRecordId'),
-      fieldName: this.requireText(binding.FieldName, 'fieldName'),
+      ownerModel: requireText(binding.OwnerModel, 'ownerModel'),
+      ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
+      fieldName: requireText(binding.FieldName, 'fieldName'),
       operation: 'update',
       companyId,
       companyIds: this.companyIds,
@@ -241,13 +244,13 @@ export default class AttachmentBinding extends BaseModel {
       return replay;
     }
 
-    const unboundAt = binding.Status === 'unbound' ? (this.toDate(binding.UnboundAt) ?? new Date()) : new Date();
+    const unboundAt = binding.Status === 'unbound' ? (toDate(binding.UnboundAt) ?? new Date()) : new Date();
 
     if (binding.Status !== 'unbound') {
       await this.purgeConflictingUnboundBindings(
-        this.requireText(binding.OwnerModel, 'ownerModel'),
-        this.requireText(binding.OwnerRecordId, 'ownerRecordId'),
-        this.requireText(binding.FieldName, 'fieldName'),
+        requireText(binding.OwnerModel, 'ownerModel'),
+        requireText(binding.OwnerRecordId, 'ownerRecordId'),
+        requireText(binding.FieldName, 'fieldName'),
         companyId,
         normalized.attachmentBindingId
       );
@@ -286,8 +289,8 @@ export default class AttachmentBinding extends BaseModel {
       return { items: [] };
     }
 
-    const userId = this.requireUserId();
-    const companyId = this.requireCompanyId('descriptor');
+    const userId = requireUserId(this.userId);
+    const companyId = requireCompanyId(this.companyId, 'descriptor');
 
     const bindings = await this.Search(
       {
@@ -303,8 +306,8 @@ export default class AttachmentBinding extends BaseModel {
     const bindingById = new Map<string, AttachmentBinding>();
     const attachmentContentIds: string[] = [];
     for (const binding of bindings) {
-      const bindingId = this.normalizeOptionalText(binding.Id);
-      const attachmentContentId = this.normalizeOptionalText(binding.AttachmentContentId);
+      const bindingId = normalizeOptionalString(binding.Id);
+      const attachmentContentId = normalizeOptionalString(binding.AttachmentContentId);
       if (!bindingId || !attachmentContentId) {
         continue;
       }
@@ -330,7 +333,7 @@ export default class AttachmentBinding extends BaseModel {
 
     const attachmentContentById = new Map<string, AttachmentContent>();
     for (const attachmentContent of attachmentContents) {
-      const attachmentContentId = this.normalizeOptionalText(attachmentContent.Id);
+      const attachmentContentId = normalizeOptionalString(attachmentContent.Id);
       if (!attachmentContentId) {
         continue;
       }
@@ -344,7 +347,7 @@ export default class AttachmentBinding extends BaseModel {
         continue;
       }
 
-      const attachmentContentId = this.requireText(binding.AttachmentContentId, 'attachmentContentId');
+      const attachmentContentId = requireText(binding.AttachmentContentId, 'attachmentContentId');
       const attachmentContent = attachmentContentById.get(attachmentContentId);
       if (!attachmentContent) {
         continue;
@@ -352,16 +355,16 @@ export default class AttachmentBinding extends BaseModel {
 
       await assertOwnerReadAuthorization({
         stage: 'descriptor',
-        ownerModel: this.requireText(binding.OwnerModel, 'ownerModel'),
-        ownerRecordId: this.requireText(binding.OwnerRecordId, 'ownerRecordId'),
-        fieldName: this.requireText(binding.FieldName, 'fieldName'),
+        ownerModel: requireText(binding.OwnerModel, 'ownerModel'),
+        ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
+        fieldName: requireText(binding.FieldName, 'fieldName'),
         companyId,
         companyIds: this.companyIds,
         userId,
       });
 
       const descriptor = this.buildDescriptor(binding, attachmentContent);
-      const displayName = this.normalizeOptionalText(binding.DisplayFileName) ?? descriptor.fileName;
+      const displayName = normalizeOptionalString(binding.DisplayFileName) ?? descriptor.fileName;
       const isImage = descriptor.mimeType.toLowerCase().startsWith('image/');
 
       items.push({
@@ -369,9 +372,9 @@ export default class AttachmentBinding extends BaseModel {
         descriptor,
         displayName,
         previewUrl: isImage ? descriptor.downloadUrl : undefined,
-        ownerModel: this.requireText(binding.OwnerModel, 'ownerModel'),
-        ownerRecordId: this.requireText(binding.OwnerRecordId, 'ownerRecordId'),
-        fieldName: this.requireText(binding.FieldName, 'fieldName'),
+        ownerModel: requireText(binding.OwnerModel, 'ownerModel'),
+        ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
+        fieldName: requireText(binding.FieldName, 'fieldName'),
       });
     }
 
@@ -386,40 +389,35 @@ export default class AttachmentBinding extends BaseModel {
     this.assertPrincipalParityWithRuntimeContext(normalized.principal, 'resolve_download_content');
 
     const binding = await this.mustLoadActiveBindingById(normalized.attachmentBindingId);
-    const bindingCompanyId = this.requireText(binding.CompanyId, 'companyId');
+    const bindingCompanyId = requireText(binding.CompanyId, 'companyId');
     this.assertCompanyMatch(bindingCompanyId, normalized.principal.activeCompanyId, 'resolve_download_content', {
       resource: 'attachmentBinding',
       attachmentBindingId: normalized.attachmentBindingId,
     });
 
-    const attachmentContentId = this.requireText(binding.AttachmentContentId, 'attachmentContentId');
+    const attachmentContentId = requireText(binding.AttachmentContentId, 'attachmentContentId');
     const attachmentContent = await this.mustLoadActiveAttachmentContentById(attachmentContentId);
-    this.assertCompanyMatch(this.requireText(attachmentContent.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
+    this.assertCompanyMatch(requireText(attachmentContent.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
       resource: 'attachmentContent',
       attachmentContentId,
     });
 
     await assertOwnerReadAuthorization({
       stage: 'resolve_download_content',
-      ownerModel: this.requireText(binding.OwnerModel, 'ownerModel'),
-      ownerRecordId: this.requireText(binding.OwnerRecordId, 'ownerRecordId'),
-      fieldName: this.requireText(binding.FieldName, 'fieldName'),
+      ownerModel: requireText(binding.OwnerModel, 'ownerModel'),
+      ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
+      fieldName: requireText(binding.FieldName, 'fieldName'),
       companyId: bindingCompanyId,
       companyIds: this.normalizePrincipalCompanyIds(normalized.principal, bindingCompanyId),
       userId: normalized.principal.userId,
     });
 
-    const storedContentId = this.requireText((attachmentContent as any)?.StoredContentId, 'storedContentId');
+    const storedContentId = requireText((attachmentContent as any)?.StoredContentId, 'storedContentId');
     const storedContent = await this.mustLoadActiveStoredContentById(storedContentId);
-    this.assertCompanyMatch(
-      this.requireText((storedContent as any)?.CompanyId, 'companyId'),
-      normalized.principal.activeCompanyId,
-      'resolve_download_content',
-      {
-        resource: 'storedContent',
-        storedContentId,
-      }
-    );
+    this.assertCompanyMatch(requireText((storedContent as any)?.CompanyId, 'companyId'), normalized.principal.activeCompanyId, 'resolve_download_content', {
+      resource: 'storedContent',
+      storedContentId,
+    });
 
     const semantics = this.resolveDownloadSemantics(binding, attachmentContent);
 
@@ -436,28 +434,28 @@ export default class AttachmentBinding extends BaseModel {
   }
 
   protected static async buildDescriptorInternal(bindingId: string): Promise<AttachmentDescriptor> {
-    const userId = this.requireUserId();
-    const companyId = this.requireCompanyId('descriptor');
+    const userId = requireUserId(this.userId);
+    const companyId = requireCompanyId(this.companyId, 'descriptor');
 
-    const normalizedBindingId = this.requireText(bindingId, 'attachmentBindingId');
+    const normalizedBindingId = requireText(bindingId, 'attachmentBindingId');
     const binding = await this.mustLoadActiveBindingById(normalizedBindingId);
-    this.assertCompanyMatch(this.requireText(binding.CompanyId, 'companyId'), companyId, 'descriptor', {
+    this.assertCompanyMatch(requireText(binding.CompanyId, 'companyId'), companyId, 'descriptor', {
       resource: 'attachmentBinding',
       attachmentBindingId: normalizedBindingId,
     });
 
-    const attachmentContentId = this.requireText(binding.AttachmentContentId, 'attachmentContentId');
+    const attachmentContentId = requireText(binding.AttachmentContentId, 'attachmentContentId');
     const attachmentContent = await this.mustLoadActiveAttachmentContentById(attachmentContentId);
-    this.assertCompanyMatch(this.requireText(attachmentContent.CompanyId, 'companyId'), companyId, 'descriptor', {
+    this.assertCompanyMatch(requireText(attachmentContent.CompanyId, 'companyId'), companyId, 'descriptor', {
       resource: 'attachmentContent',
       attachmentContentId,
     });
 
     await assertOwnerReadAuthorization({
       stage: 'descriptor',
-      ownerModel: this.requireText(binding.OwnerModel, 'ownerModel'),
-      ownerRecordId: this.requireText(binding.OwnerRecordId, 'ownerRecordId'),
-      fieldName: this.requireText(binding.FieldName, 'fieldName'),
+      ownerModel: requireText(binding.OwnerModel, 'ownerModel'),
+      ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
+      fieldName: requireText(binding.FieldName, 'fieldName'),
       companyId,
       companyIds: this.companyIds,
       userId,
@@ -468,20 +466,20 @@ export default class AttachmentBinding extends BaseModel {
 
   private static normalizeBindReq(req: BindReq | undefined | null): NormalizedBindReq {
     return {
-      attachmentContentId: this.requireText(req?.attachmentObjectId, 'attachmentObjectId'),
-      ownerModel: this.requireText(req?.ownerModel, 'ownerModel'),
-      ownerRecordId: this.requireText(req?.ownerRecordId, 'ownerRecordId'),
-      fieldName: this.requireText(req?.fieldName, 'fieldName'),
-      displayFileName: this.normalizeOptionalText(req?.displayFileName),
+      attachmentContentId: requireText(req?.attachmentObjectId, 'attachmentObjectId'),
+      ownerModel: requireText(req?.ownerModel, 'ownerModel'),
+      ownerRecordId: requireText(req?.ownerRecordId, 'ownerRecordId'),
+      fieldName: requireText(req?.fieldName, 'fieldName'),
+      displayFileName: normalizeOptionalString(req?.displayFileName),
       downloadDisposition: this.normalizeDownloadDisposition(req?.downloadDisposition),
-      mutationId: this.requireText(req?.mutationId, 'mutationId'),
+      mutationId: requireText(req?.mutationId, 'mutationId'),
     };
   }
 
   private static normalizeUnbindReq(req: UnbindReq | undefined | null): NormalizedUnbindReq {
     return {
-      attachmentBindingId: this.requireText(req?.attachmentBindingId, 'attachmentBindingId'),
-      mutationId: this.requireText(req?.mutationId, 'mutationId'),
+      attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
+      mutationId: requireText(req?.mutationId, 'mutationId'),
     };
   }
 
@@ -502,7 +500,7 @@ export default class AttachmentBinding extends BaseModel {
     const deduped: string[] = [];
     const seen = new Set<string>();
     for (const rawId of rawIds) {
-      const bindingId = this.requireText(rawId, 'attachmentBindingId');
+      const bindingId = requireText(rawId, 'attachmentBindingId');
       if (seen.has(bindingId)) {
         continue;
       }
@@ -514,28 +512,28 @@ export default class AttachmentBinding extends BaseModel {
 
   private static normalizeResolveDownloadContentReq(req: ResolveDownloadContentReq | undefined | null): NormalizedResolveDownloadContentReq {
     return {
-      attachmentBindingId: this.requireText(req?.attachmentBindingId, 'attachmentBindingId'),
+      attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
       principal: this.normalizePrincipal(req?.principal),
     };
   }
 
   private static normalizePrincipal(raw: unknown): PrincipalContext {
-    const principal = this.asRecord(raw);
+    const principal = asRecord(raw);
     return {
-      userId: this.requireText(principal?.userId, 'principal.userId'),
-      activeCompanyId: this.requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
+      userId: requireText(principal?.userId, 'principal.userId'),
+      activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
       enabledCompanyIds: Array.isArray(principal?.enabledCompanyIds)
-        ? (principal?.enabledCompanyIds as unknown[]).map(item => this.normalizeOptionalText(item)).filter((item): item is string => Boolean(item))
+        ? (principal?.enabledCompanyIds as unknown[]).map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
         : undefined,
     };
   }
 
   private static normalizePrincipalCompanyIds(principal: PrincipalContext, activeCompanyId: string): string[] {
     const values = Array.isArray(principal.enabledCompanyIds)
-      ? principal.enabledCompanyIds.map(item => this.normalizeOptionalText(item)).filter((item): item is string => Boolean(item))
+      ? principal.enabledCompanyIds.map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
       : [];
 
-    const normalizedActiveCompanyId = this.normalizeOptionalText(activeCompanyId);
+    const normalizedActiveCompanyId = normalizeOptionalString(activeCompanyId);
     if (normalizedActiveCompanyId && !values.includes(normalizedActiveCompanyId)) {
       values.unshift(normalizedActiveCompanyId);
     }
@@ -543,7 +541,7 @@ export default class AttachmentBinding extends BaseModel {
   }
 
   private static assertPrincipalParityWithRuntimeContext(principal: PrincipalContext, stage: 'resolve_download_content'): void {
-    const runtimeUserId = this.normalizeOptionalText(this.userId);
+    const runtimeUserId = normalizeOptionalString(this.userId);
     if (runtimeUserId && runtimeUserId !== principal.userId) {
       throw newDocumentError({
         code: DocumentErrCode.PERMISSION_DENIED,
@@ -553,7 +551,7 @@ export default class AttachmentBinding extends BaseModel {
         .withMetadata({ stage, reason: 'issuer_mismatch' });
     }
 
-    const runtimeCompanyId = this.normalizeOptionalText(this.companyId);
+    const runtimeCompanyId = normalizeOptionalString(this.companyId);
     if (runtimeCompanyId && runtimeCompanyId !== principal.activeCompanyId) {
       throw newDocumentError({
         code: DocumentErrCode.PERMISSION_DENIED,
@@ -565,7 +563,7 @@ export default class AttachmentBinding extends BaseModel {
   }
 
   private static normalizeDownloadDisposition(value: unknown): DownloadDisposition {
-    const disposition = this.normalizeOptionalText(value);
+    const disposition = normalizeOptionalString(value);
     if (disposition === undefined) return 'attachment';
     if (disposition === 'inline' || disposition === 'attachment') return disposition;
     throw newDocumentError({
@@ -577,8 +575,8 @@ export default class AttachmentBinding extends BaseModel {
   }
 
   private static resolveDownloadSemantics(binding: AttachmentBinding, attachmentContent: AttachmentContent): ResolvedDownloadSemantics {
-    const mimeType = this.normalizeOptionalText(attachmentContent.MimeType) ?? 'application/octet-stream';
-    const sizeBytes = this.normalizeOptionalNonNegativeInt(attachmentContent.SizeBytes) ?? 0;
+    const mimeType = normalizeOptionalString(attachmentContent.MimeType) ?? 'application/octet-stream';
+    const sizeBytes = normalizeOptionalNonNegativeInt(attachmentContent.SizeBytes) ?? 0;
     const checksumSha256 = this.normalizeChecksum(attachmentContent.ChecksumSha256);
 
     return {
@@ -723,7 +721,7 @@ export default class AttachmentBinding extends BaseModel {
     );
 
     for (const row of rows) {
-      const staleBindingId = this.normalizeOptionalText((row as any)?.Id);
+      const staleBindingId = normalizeOptionalString((row as any)?.Id);
       if (!staleBindingId || staleBindingId === keepBindingId) {
         continue;
       }
@@ -851,8 +849,8 @@ export default class AttachmentBinding extends BaseModel {
     displayFileName: string | undefined,
     downloadDisposition: DownloadDisposition
   ): Promise<AttachmentBinding> {
-    const bindingId = this.requireText(binding.Id, 'attachmentBindingId');
-    const currentDisplayFileName = this.normalizeOptionalText(binding.DisplayFileName);
+    const bindingId = requireText(binding.Id, 'attachmentBindingId');
+    const currentDisplayFileName = normalizeOptionalString(binding.DisplayFileName);
     const currentDisposition = this.normalizeDownloadDisposition(binding.DownloadDisposition);
 
     if (currentDisplayFileName === displayFileName && currentDisposition === downloadDisposition) {
@@ -868,11 +866,11 @@ export default class AttachmentBinding extends BaseModel {
       ['Id', 'DisplayFileName', 'DownloadDisposition'] as any
     );
 
-    return this.mustLoadBinding(bindingId, this.requireText(binding.CompanyId, 'companyId'));
+    return this.mustLoadBinding(bindingId, requireText(binding.CompanyId, 'companyId'));
   }
 
   private static buildDescriptor(binding: AttachmentBinding, attachmentContent: AttachmentContent): AttachmentDescriptor {
-    const bindingId = this.requireText(binding.Id, 'attachmentBindingId');
+    const bindingId = requireText(binding.Id, 'attachmentBindingId');
     const semantics = this.resolveDownloadSemantics(binding, attachmentContent);
     return {
       id: bindingId,
@@ -885,14 +883,14 @@ export default class AttachmentBinding extends BaseModel {
   }
 
   private static buildFileName(binding: AttachmentBinding, attachmentContent: AttachmentContent): string {
-    const displayFileName = this.normalizeOptionalText(binding.DisplayFileName);
+    const displayFileName = normalizeOptionalString(binding.DisplayFileName);
     if (displayFileName) {
       return displayFileName;
     }
 
-    const mime = this.normalizeOptionalText(attachmentContent.MimeType) ?? '';
+    const mime = normalizeOptionalString(attachmentContent.MimeType) ?? '';
     const suffix = this.mimeSuffix(mime);
-    const bindingId = this.requireText(binding.Id, 'attachmentBindingId');
+    const bindingId = requireText(binding.Id, 'attachmentBindingId');
     return `attachment-${bindingId}${suffix}`;
   }
 
@@ -1005,19 +1003,19 @@ export default class AttachmentBinding extends BaseModel {
   }
 
   private static parseBindResp(value: unknown): BindResp | null {
-    const record = this.asRecord(value);
+    const record = asRecord(value);
     if (!record) return null;
 
-    const attachmentBindingId = this.normalizeOptionalText(record.attachmentBindingId);
-    const status = this.normalizeOptionalText(record.status);
-    const descriptorRaw = this.asRecord(record.descriptor);
+    const attachmentBindingId = normalizeOptionalString(record.attachmentBindingId);
+    const status = normalizeOptionalString(record.status);
+    const descriptorRaw = asRecord(record.descriptor);
     if (!attachmentBindingId || status !== 'active' || !descriptorRaw) return null;
 
-    const descriptorId = this.normalizeOptionalText(descriptorRaw.id);
-    const fileName = this.normalizeOptionalText(descriptorRaw.fileName);
-    const mimeType = this.normalizeOptionalText(descriptorRaw.mimeType);
-    const checksumSha256 = this.normalizeOptionalText(descriptorRaw.checksumSha256);
-    const sizeBytes = this.normalizeOptionalNonNegativeInt(descriptorRaw.sizeBytes);
+    const descriptorId = normalizeOptionalString(descriptorRaw.id);
+    const fileName = normalizeOptionalString(descriptorRaw.fileName);
+    const mimeType = normalizeOptionalString(descriptorRaw.mimeType);
+    const checksumSha256 = normalizeOptionalString(descriptorRaw.checksumSha256);
+    const sizeBytes = normalizeOptionalNonNegativeInt(descriptorRaw.sizeBytes);
     if (!descriptorId || !fileName || !mimeType || !checksumSha256 || sizeBytes === undefined) return null;
 
     return {
@@ -1029,19 +1027,19 @@ export default class AttachmentBinding extends BaseModel {
         mimeType,
         sizeBytes,
         checksumSha256,
-        downloadUrl: this.normalizeOptionalText(descriptorRaw.downloadUrl),
-        downloadUrlExpiresAt: this.normalizeOptionalText(descriptorRaw.downloadUrlExpiresAt),
+        downloadUrl: normalizeOptionalString(descriptorRaw.downloadUrl),
+        downloadUrlExpiresAt: normalizeOptionalString(descriptorRaw.downloadUrlExpiresAt),
       },
     };
   }
 
   private static parseUnbindResp(value: unknown): UnbindResp | null {
-    const record = this.asRecord(value);
+    const record = asRecord(value);
     if (!record) return null;
 
-    const attachmentBindingId = this.normalizeOptionalText(record.attachmentBindingId);
-    const status = this.normalizeOptionalText(record.status);
-    const gcEligibleAfter = this.normalizeOptionalText(record.gcEligibleAfter);
+    const attachmentBindingId = normalizeOptionalString(record.attachmentBindingId);
+    const status = normalizeOptionalString(record.status);
+    const gcEligibleAfter = normalizeOptionalString(record.gcEligibleAfter);
     if (!attachmentBindingId || status !== 'unbound') return null;
 
     return {
@@ -1051,73 +1049,12 @@ export default class AttachmentBinding extends BaseModel {
     };
   }
 
-  private static asRecord(value: unknown): Record<string, unknown> | null {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-    return value as Record<string, unknown>;
-  }
-
-  private static requireUserId(): string {
-    const userId = this.normalizeOptionalText(this.userId);
-    if (!userId) {
-      throw newDocumentError({
-        code: DocumentErrCode.UNAUTHENTICATED,
-        message: 'Authentication is required',
-      }).withGrpcCode(GrpcCode.Unauthenticated);
-    }
-    return userId;
-  }
-
-  private static requireCompanyId(stage: 'bind' | 'unbind' | 'descriptor'): string {
-    const companyId = this.normalizeOptionalText(this.companyId);
-    if (!companyId) {
-      throw newDocumentError({
-        code: DocumentErrCode.PERMISSION_DENIED,
-        message: 'activeCompanyId is required for document operations',
-      })
-        .withGrpcCode(GrpcCode.PermissionDenied)
-        .withMetadata({ stage });
-    }
-    return companyId;
-  }
-
-  private static requireText(value: unknown, fieldName: string): string {
-    const text = this.normalizeOptionalText(value);
-    if (!text) {
-      throw newDocumentError({
-        code: DocumentErrCode.INVALID_ARGUMENT,
-        message: `${fieldName} is required`,
-      })
-        .withGrpcCode(GrpcCode.InvalidArgument)
-        .withMetadata({ field: fieldName });
-    }
-    return text;
-  }
-
-  private static normalizeOptionalText(value: unknown): string | undefined {
-    const text = String(value ?? '').trim();
-    return text === '' ? undefined : text;
-  }
-
-  private static normalizeOptionalNonNegativeInt(value: unknown): number | undefined {
-    if (value === undefined || value === null || value === '') return undefined;
-    const num = Number(value);
-    if (!Number.isFinite(num)) return undefined;
-    if (num < 0) return undefined;
-    return Math.trunc(num);
-  }
-
   private static normalizeChecksum(value: unknown): string | undefined {
-    const text = this.normalizeOptionalText(value);
+    const text = normalizeOptionalString(value);
     if (!text) return undefined;
     const normalized = text.toLowerCase();
     if (!/^[a-f0-9]{64}$/.test(normalized)) return undefined;
     return normalized;
-  }
-
-  private static toDate(value: unknown): Date | undefined {
-    if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
-    const parsed = new Date(String(value ?? ''));
-    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
   }
 
   private static newSkeletonNotImplementedError(method: string) {
