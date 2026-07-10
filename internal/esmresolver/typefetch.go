@@ -431,6 +431,11 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 
 	// Derive a cache key from the URL.
 	cacheFile := typeCachePathForURL(typesDir, normalized)
+	validatedCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	cacheFile = validatedCacheFile
 
 	// Check cache.
 	var content []byte
@@ -441,7 +446,7 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		fromCache = true
 
 		imports = parseDTSImports(string(content))
-		if hasMissingLocalCachedImports(cacheFile, imports) {
+		if hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
 			body, err := downloadTypeContent(ctx, client, normalized, state)
 			if err != nil {
 				return nil, nil, fmt.Errorf("refresh corrupted cached types from %s: %w", normalized, err)
@@ -449,7 +454,7 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 			content = body
 			fromCache = false
 
-			if err := writeTypeCacheFile(cacheFile, content); err != nil {
+			if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
 				return nil, nil, err
 			}
 			imports = parseDTSImports(string(content))
@@ -461,7 +466,7 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		}
 		content = body
 
-		if err := writeTypeCacheFile(cacheFile, content); err != nil {
+		if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
 			return nil, nil, err
 		}
 		imports = parseDTSImports(string(content))
@@ -487,11 +492,11 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
 	if rewritten != string(content) {
 		content = []byte(rewritten)
-		if err := writeTypeCacheFile(cacheFile, content); err != nil {
+		if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
 			return nil, nil, err
 		}
 	}
-	if err := normalizeBridgeCachedTypeChildren(cacheFile, imports); err != nil {
+	if err := normalizeBridgeCachedTypeChildren(typesDir, cacheFile, imports); err != nil {
 		return nil, nil, err
 	}
 
@@ -875,8 +880,11 @@ func lockBridgeNormalizeFile(path string) func() {
 	return mu.Unlock
 }
 
-func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error {
-	cleanPath := filepath.Clean(filePath)
+func normalizeBridgeCachedTypeFile(typesDir string, filePath string, seen map[string]bool) error {
+	cleanPath, err := resolveAndValidateTypeCachePath(typesDir, filePath)
+	if err != nil {
+		return nil
+	}
 	if cleanPath == "" {
 		return nil
 	}
@@ -903,7 +911,7 @@ func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error 
 		rewritten = rewriteLocalCachedBridgeSpecifiers(content)
 		rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
 		if rewritten != content {
-			if err := writeTypeCacheFile(cleanPath, []byte(rewritten)); err != nil {
+			if err := writeTypeCacheFile(typesDir, cleanPath, []byte(rewritten)); err != nil {
 				return err
 			}
 		}
@@ -922,7 +930,7 @@ func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error 
 			continue
 		}
 		childPath := filepath.Clean(filepath.Join(filepath.Dir(cleanPath), filepath.FromSlash(importPath)))
-		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+		if err := normalizeBridgeCachedTypeFile(typesDir, childPath, seen); err != nil {
 			return err
 		}
 	}
@@ -930,14 +938,18 @@ func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error 
 	return nil
 }
 
-func normalizeBridgeCachedTypeChildren(cacheFile string, imports []string) error {
-	seen := map[string]bool{filepath.Clean(cacheFile): true}
+func normalizeBridgeCachedTypeChildren(typesDir string, cacheFile string, imports []string) error {
+	cleanCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
+	if err != nil {
+		return nil
+	}
+	seen := map[string]bool{filepath.Clean(cleanCacheFile): true}
 	for _, importPath := range imports {
 		if !isLocalCachedTypeSpecifier(importPath) || !shouldNormalizeBridgeChildCacheFile(importPath) {
 			continue
 		}
-		childPath := filepath.Clean(filepath.Join(filepath.Dir(cacheFile), filepath.FromSlash(importPath)))
-		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+		childPath := filepath.Clean(filepath.Join(filepath.Dir(cleanCacheFile), filepath.FromSlash(importPath)))
+		if err := normalizeBridgeCachedTypeFile(typesDir, childPath, seen); err != nil {
 			return err
 		}
 	}
@@ -1466,7 +1478,13 @@ func typesCachePath(typesDir, pkg, version string) string {
 	return filepath.Join(typesDir, fmt.Sprintf("%s@%s.d.ts", pkg, version))
 }
 
-func writeTypeCacheFile(cacheFile string, content []byte) error {
+func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {
+	validatedCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
+	if err != nil {
+		return err
+	}
+	cacheFile = validatedCacheFile
+
 	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
 		return fmt.Errorf("create types cache dir: %w", err)
 	}
@@ -1481,6 +1499,38 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 		return fmt.Errorf("rename types tmp: %w", err)
 	}
 	return nil
+}
+
+func resolveAndValidateTypeCachePath(typesDir string, targetPath string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("get working directory: %w", err)
+	}
+
+	absTypesDir := strings.TrimSpace(typesDir)
+	if absTypesDir == "" {
+		return "", fmt.Errorf("types dir is empty")
+	}
+	if !filepath.IsAbs(absTypesDir) {
+		absTypesDir = filepath.Join(wd, absTypesDir)
+	}
+	absTypesDir = filepath.Clean(absTypesDir)
+
+	absTarget := strings.TrimSpace(targetPath)
+	if absTarget == "" {
+		return "", fmt.Errorf("target path is empty")
+	}
+	if !filepath.IsAbs(absTarget) {
+		absTarget = filepath.Join(wd, absTarget)
+	}
+	absTarget = filepath.Clean(absTarget)
+
+	rel, err := filepath.Rel(absTypesDir, absTarget)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("type cache path escapes types dir: %s", absTarget)
+	}
+
+	return absTarget, nil
 }
 
 func writeAtomicFile(filePath string, content []byte, perm os.FileMode) error {
@@ -1564,7 +1614,7 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 	return body, nil
 }
 
-func hasMissingLocalCachedImports(cacheFile string, imports []string) bool {
+func hasMissingLocalCachedImports(typesDir string, cacheFile string, imports []string) bool {
 	baseDir := filepath.Clean(filepath.Dir(cacheFile))
 	for _, importPath := range imports {
 		trimmed := strings.TrimSpace(importPath)
@@ -1583,7 +1633,11 @@ func hasMissingLocalCachedImports(cacheFile string, imports []string) bool {
 		if candidate != baseDir && !strings.HasPrefix(candidate, baseDir+string(os.PathSeparator)) {
 			continue
 		}
-		if _, err := os.Stat(candidate); err != nil {
+		validatedCandidate, err := resolveAndValidateTypeCachePath(typesDir, candidate)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(validatedCandidate); err != nil {
 			return true
 		}
 	}

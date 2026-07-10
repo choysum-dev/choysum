@@ -1185,7 +1185,7 @@ func TestNormalizeBridgeCachedTypeChildren_RewritesChildAugmentation(t *testing.
 		t.Fatalf("write child: %v", err)
 	}
 
-	if err := normalizeBridgeCachedTypeChildren(root, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"}); err != nil {
+	if err := normalizeBridgeCachedTypeChildren(dir, root, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"}); err != nil {
 		t.Fatalf("normalizeBridgeCachedTypeChildren: %v", err)
 	}
 
@@ -1216,10 +1216,10 @@ func TestNormalizeBridgeCachedTypeChildren_ConcurrentSharedChild(t *testing.T) {
 
 	errCh := make(chan error, 2)
 	go func() {
-		errCh <- normalizeBridgeCachedTypeChildren(rootA, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+		errCh <- normalizeBridgeCachedTypeChildren(dir, rootA, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
 	}()
 	go func() {
-		errCh <- normalizeBridgeCachedTypeChildren(rootB, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
+		errCh <- normalizeBridgeCachedTypeChildren(dir, rootB, []string{"./esm.sh_vue-router@5.1.0_dist_index-BQLwgiyK.d.ts.d.ts"})
 	}()
 
 	for i := 0; i < 2; i++ {
@@ -1292,7 +1292,7 @@ func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
 	}
 
 	imports := []string{"./MissingIcon.d.ts"}
-	if !hasMissingLocalCachedImports(cacheFile, imports) {
+	if !hasMissingLocalCachedImports(dir, cacheFile, imports) {
 		t.Fatal("expected missing relative import to be detected")
 	}
 
@@ -1300,7 +1300,7 @@ func TestHasMissingLocalCachedImports_MissingRelativeImport(t *testing.T) {
 	if err := os.WriteFile(missingFile, []byte("export {};"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if hasMissingLocalCachedImports(cacheFile, imports) {
+	if hasMissingLocalCachedImports(dir, cacheFile, imports) {
 		t.Fatal("expected existing relative import to pass cache integrity check")
 	}
 }
@@ -1512,7 +1512,7 @@ func TestWriteTypeCacheFile(t *testing.T) {
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "nested", "deep", "types.d.ts")
 
-	if err := writeTypeCacheFile(cacheFile, []byte("export {};")); err != nil {
+	if err := writeTypeCacheFile(dir, cacheFile, []byte("export {};")); err != nil {
 		t.Fatalf("writeTypeCacheFile failed: %v", err)
 	}
 
@@ -1744,7 +1744,7 @@ func TestWriteTypeCacheFile_RenameFails_CleansUpTmp(t *testing.T) {
 	if err := os.MkdirAll(cacheFile, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeTypeCacheFile(cacheFile, []byte("export {};")); err == nil {
+	if err := writeTypeCacheFile(dir, cacheFile, []byte("export {};")); err == nil {
 		t.Fatal("expected rename error when target is a directory")
 	}
 	// Tmp file should be cleaned up.
@@ -1759,10 +1759,10 @@ func TestHasMissingLocalCachedImports_EmptyImports(t *testing.T) {
 	dir := t.TempDir()
 	cacheFile := filepath.Join(dir, "empty.d.ts")
 	os.WriteFile(cacheFile, []byte("export {};"), 0644)
-	if hasMissingLocalCachedImports(cacheFile, nil) {
+	if hasMissingLocalCachedImports(dir, cacheFile, nil) {
 		t.Fatal("expected no missing imports for nil/empty import list")
 	}
-	if hasMissingLocalCachedImports(cacheFile, []string{}) {
+	if hasMissingLocalCachedImports(dir, cacheFile, []string{}) {
 		t.Fatal("expected no missing imports for empty import list")
 	}
 }
@@ -1772,7 +1772,7 @@ func TestHasMissingLocalCachedImports_BareImportSkipped(t *testing.T) {
 	cacheFile := filepath.Join(dir, "bare.d.ts")
 	os.WriteFile(cacheFile, []byte(`import "vue";`), 0644)
 	// Bare imports are not local-cached type specifiers; should be skipped.
-	if hasMissingLocalCachedImports(cacheFile, []string{"vue"}) {
+	if hasMissingLocalCachedImports(dir, cacheFile, []string{"vue"}) {
 		t.Fatal("expected bare import to be skipped in integrity check")
 	}
 }
@@ -1783,8 +1783,34 @@ func TestHasMissingLocalCachedImports_PathTraversalBlocked(t *testing.T) {
 	os.MkdirAll(filepath.Dir(cacheFile), 0755)
 	os.WriteFile(cacheFile, []byte(`import "../escape.d.ts";`), 0644)
 	// The candidate would resolve outside baseDir, so should be skipped.
-	if hasMissingLocalCachedImports(cacheFile, []string{"../escape.d.ts"}) {
+	if hasMissingLocalCachedImports(dir, cacheFile, []string{"../escape.d.ts"}) {
 		t.Fatal("expected path traversal to be blocked in integrity check")
+	}
+}
+
+func TestResolveAndValidateTypeCachePath_RejectsEscape(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := resolveAndValidateTypeCachePath(typesDir, filepath.Join(typesDir, "..", "escape.d.ts"))
+	if err == nil {
+		t.Fatal("expected escape path to be rejected")
+	}
+}
+
+func TestWriteTypeCacheFile_RejectsPathOutsideTypesDir(t *testing.T) {
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+	if err := os.MkdirAll(typesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	outside := filepath.Join(dir, "outside.d.ts")
+	if err := writeTypeCacheFile(typesDir, outside, []byte("export {};")); err == nil {
+		t.Fatal("expected writeTypeCacheFile to reject paths outside typesDir")
 	}
 }
 
