@@ -1667,6 +1667,10 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"strictPropertyInitialization": false,
 			"target":                       "ES2020",
 		},
+		// Test files are included (not excluded) so that IDEs can resolve
+		// @/* path aliases and ambient test globals (test, expect) for all
+		// modules from a single shared tsconfig project.  E2E tests remain
+		// excluded because they may need a separate configuration.
 		"exclude": []string{
 			"**/e2e/**",
 		},
