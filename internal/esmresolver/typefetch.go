@@ -367,7 +367,7 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 func inferTypeDiscoveryFallbackURL(resp *http.Response, discoverURL string, upstreamRoot string, spec string) string {
 	if resp != nil && resp.Request != nil && resp.Request.URL != nil {
 		requestURL := strings.TrimSpace(resp.Request.URL.String())
-		if requestURL != "" && strings.HasSuffix(strings.ToLower(resp.Request.URL.Path), ".d.ts") {
+		if requestURL != "" && hasTypeScriptSuffix(resp.Request.URL.Path) {
 			return requestURL
 		}
 	}
@@ -377,14 +377,14 @@ func inferTypeDiscoveryFallbackURL(resp *http.Response, discoverURL string, upst
 		if location != "" {
 			if parsed, err := url.Parse(location); err == nil {
 				if parsed.IsAbs() {
-					if strings.HasSuffix(strings.ToLower(parsed.Path), ".d.ts") {
+					if hasTypeScriptSuffix(parsed.Path) {
 						return parsed.String()
 					}
 				} else {
 					baseURL, baseErr := url.Parse(discoverURL)
 					if baseErr == nil {
 						resolved := baseURL.ResolveReference(parsed)
-						if strings.HasSuffix(strings.ToLower(resolved.Path), ".d.ts") {
+						if hasTypeScriptSuffix(resolved.Path) {
 							return resolved.String()
 						}
 					}
@@ -397,6 +397,11 @@ func inferTypeDiscoveryFallbackURL(resp *http.Response, discoverURL string, upst
 		return ""
 	}
 	return fmt.Sprintf("%s/%s/index.d.ts", strings.TrimRight(upstreamRoot, "/"), strings.TrimSpace(spec))
+}
+
+func hasTypeScriptSuffix(path string) bool {
+	path = strings.ToLower(path)
+	return strings.HasSuffix(path, ".d.ts") || strings.HasSuffix(path, ".d.mts") || strings.HasSuffix(path, ".d.cts")
 }
 
 // fetchTypeRecursive downloads a .d.ts file, parses its imports/references,

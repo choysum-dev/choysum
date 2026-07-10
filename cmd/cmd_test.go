@@ -624,8 +624,9 @@ func TestResolveTypeFetchCompilerTypeTargets_RejectsPathTraversal(t *testing.T) 
 	modulesPath := t.TempDir()
 	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
 	// Package names containing path traversal segments should be silently
-	// dropped, not used to construct filesystem paths.
-	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["../../etc","@scope/../pkg","./local"]}}`), 0o644); err != nil {
+	// dropped, not used to construct filesystem paths. Both forward-slash
+	// and backslash variants are tested.
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["../../etc","@scope/../pkg","./local","..\\..\\etc","@scope\\..\\pkg"]}}`), 0o644); err != nil {
 		t.Fatalf("write tsconfig: %v", err)
 	}
 

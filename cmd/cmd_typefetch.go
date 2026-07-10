@@ -435,9 +435,9 @@ func resolveTypeFetchCompilerTypePackage(rawType string) (string, string, bool) 
 }
 
 func containsPathTraversal(s string) bool {
-	// Split on "/" to check each segment, matching how we later split
-	// on slashes to extract scope/package components.
-	for _, part := range strings.Split(s, "/") {
+	// Split on both / and \ so backslash-based traversal (relevant on
+	// Windows) is caught alongside forward-slash variants.
+	for _, part := range strings.FieldsFunc(s, func(r rune) bool { return r == '/' || r == '\\' }) {
 		part = strings.TrimSpace(part)
 		if part == ".." || part == "." {
 			return true
