@@ -548,6 +548,10 @@ func TestFetchTypeDefinition_CircularSiblingImports_NoDeadlock(t *testing.T) {
 
 func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/index.d.ts") {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -558,6 +562,38 @@ func TestFetchTypeDefinition_NoTypesHeader(t *testing.T) {
 	_, _, err := FetchTypeDefinition(nil, server.URL, typesDir, "noplace", "1.0.0")
 	if err == nil {
 		t.Fatal("expected error for missing x-typescript-types header")
+	}
+}
+
+func TestFetchTypeDefinition_NoTypesHeaderFallsBackToIndexDTS(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/index.d.ts") {
+			_, _ = w.Write([]byte("export declare const process: any;"))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	dir := t.TempDir()
+	typesDir := filepath.Join(dir, "types")
+
+	result, transitive, err := FetchTypeDefinition(nil, server.URL, typesDir, "@types/node", "25.9.4")
+	if err != nil {
+		t.Fatalf("expected fallback success, got error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if len(transitive) != 0 {
+		t.Fatalf("expected no transitive fetch results, got %d", len(transitive))
+	}
+	if _, statErr := os.Stat(result.CachedPath); statErr != nil {
+		t.Fatalf("expected cached file to be written: %v", statErr)
 	}
 }
 
@@ -877,6 +913,57 @@ func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
 	}
 	if !strings.Contains(content, `"types"`) {
 		t.Fatalf("created tsconfig should include types section: %s", content)
+	}
+}
+
+func TestEnsureTsconfigCompilerTypeRoots(t *testing.T) {
+	dir := t.TempDir()
+	modulesDir := filepath.Join(dir, "modules")
+	tsconfigPath := filepath.Join(modulesDir, "tsconfig.json")
+	if err := os.MkdirAll(modulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir modules dir: %v", err)
+	}
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["node"]}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	typesDir := filepath.Join(dir, ".choysum", "pkg", "types")
+	cachedPath := filepath.Join(typesDir, "@types", "node@26.1.1.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cachedPath), 0o755); err != nil {
+		t.Fatalf("mkdir cached path dir: %v", err)
+	}
+	if err := os.WriteFile(cachedPath, []byte("declare var process: any;"), 0o644); err != nil {
+		t.Fatalf("write cached type file: %v", err)
+	}
+
+	links := []CompilerTypeRootLink{{TypeName: "node", CachedPath: cachedPath}}
+	if err := EnsureTsconfigCompilerTypeRoots(tsconfigPath, typesDir, links); err != nil {
+		t.Fatalf("EnsureTsconfigCompilerTypeRoots failed: %v", err)
+	}
+
+	tsconfigData, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("read tsconfig: %v", err)
+	}
+	tsconfigContent := string(tsconfigData)
+	if !strings.Contains(tsconfigContent, `"typeRoots"`) {
+		t.Fatalf("tsconfig missing typeRoots after bridge generation: %s", tsconfigContent)
+	}
+	if !strings.Contains(tsconfigContent, `"../.choysum/pkg/types/typeRoots"`) {
+		t.Fatalf("tsconfig missing expected relative typeRoots path: %s", tsconfigContent)
+	}
+
+	bridgePath := filepath.Join(typesDir, "typeRoots", "node", "index.d.ts")
+	bridgeData, err := os.ReadFile(bridgePath)
+	if err != nil {
+		t.Fatalf("read bridge file: %v", err)
+	}
+	bridgeContent := string(bridgeData)
+	if !strings.Contains(bridgeContent, `compilerOptions.types="node"`) {
+		t.Fatalf("bridge file missing type annotation context: %s", bridgeContent)
+	}
+	if !strings.Contains(bridgeContent, `node@26.1.1.d.ts`) {
+		t.Fatalf("bridge file missing cached declaration reference: %s", bridgeContent)
 	}
 }
 

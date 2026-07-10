@@ -564,6 +564,111 @@ func TestNewTypeFetchCmd_Run_InvalidMissingDepPolicy(t *testing.T) {
 	}
 }
 
+func TestResolveTypeFetchCompilerTypeTargets_FromTsconfigTypes(t *testing.T) {
+	modulesPath := t.TempDir()
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["node","vitest/globals","@types/mocha","@scope/pkg","node"]}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	nodePkgPath := filepath.Join(modulesPath, "node_modules", "@types", "node", "package.json")
+	if err := os.MkdirAll(filepath.Dir(nodePkgPath), 0o755); err != nil {
+		t.Fatalf("mkdir node package dir: %v", err)
+	}
+	if err := os.WriteFile(nodePkgPath, []byte(`{"name":"@types/node","version":"26.1.1"}`), 0o644); err != nil {
+		t.Fatalf("write @types/node package.json: %v", err)
+	}
+
+	targets, err := resolveTypeFetchCompilerTypeTargets(tsconfigPath, modulesPath)
+	if err != nil {
+		t.Fatalf("resolveTypeFetchCompilerTypeTargets failed: %v", err)
+	}
+	if len(targets) != 4 {
+		t.Fatalf("expected 4 unique compiler type targets, got %d: %+v", len(targets), targets)
+	}
+
+	index := make(map[string]typeFetchCompilerTypeTarget, len(targets))
+	for _, target := range targets {
+		index[target.TypeName] = target
+	}
+
+	if got := index["node"]; got.PackageName != "@types/node" || got.Version != "26.1.1" {
+		t.Fatalf("unexpected node target: %+v", got)
+	}
+	if got := index["vitest/globals"]; got.PackageName != "@types/vitest" || got.Version != "latest" {
+		t.Fatalf("unexpected vitest/globals target: %+v", got)
+	}
+	if got := index["@types/mocha"]; got.PackageName != "@types/mocha" || got.Version != "latest" {
+		t.Fatalf("unexpected @types/mocha target: %+v", got)
+	}
+	if got := index["@scope/pkg"]; got.PackageName != "@types/scope__pkg" || got.Version != "latest" {
+		t.Fatalf("unexpected @scope/pkg target: %+v", got)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_OfflineFetchesCompilerTypesFromTsconfig(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{}`)
+
+	nodePkgPath := filepath.Join(modulesPath, "node_modules", "@types", "node", "package.json")
+	if err := os.MkdirAll(filepath.Dir(nodePkgPath), 0o755); err != nil {
+		t.Fatalf("mkdir node package dir: %v", err)
+	}
+	if err := os.WriteFile(nodePkgPath, []byte(`{"name":"@types/node","version":"26.1.1"}`), 0o644); err != nil {
+		t.Fatalf("write @types/node package.json: %v", err)
+	}
+
+	cacheFile := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types", "@types", "node@26.1.1.d.ts")
+	if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
+		t.Fatalf("mkdir compiler type cache dir: %v", err)
+	}
+	if err := os.WriteFile(cacheFile, []byte("export = process;"), 0o644); err != nil {
+		t.Fatalf("write compiler type cache file: %v", err)
+	}
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"app", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if !strings.Contains(output, "Compiler types complete: targets=1 (cached=1, fetched=0, failed=0), transitive (cached=0, fetched=0).") {
+		t.Fatalf("expected compiler types summary line, got %q", output)
+	}
+
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	tsconfigData, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("read modules tsconfig: %v", err)
+	}
+	tsconfigContent := string(tsconfigData)
+	if !strings.Contains(tsconfigContent, `"typeRoots"`) {
+		t.Fatalf("expected modules tsconfig to include typeRoots, got %q", tsconfigContent)
+	}
+	if !strings.Contains(tsconfigContent, `".choysum/pkg/types/typeRoots"`) {
+		t.Fatalf("expected modules tsconfig to include typeRoots bridge path, got %q", tsconfigContent)
+	}
+
+	bridgePath := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types", "typeRoots", "node", "index.d.ts")
+	bridgeData, err := os.ReadFile(bridgePath)
+	if err != nil {
+		t.Fatalf("read typeRoots bridge file: %v", err)
+	}
+	bridgeContent := string(bridgeData)
+	if !strings.Contains(bridgeContent, `compilerOptions.types="node"`) {
+		t.Fatalf("expected bridge file to record node type name, got %q", bridgeContent)
+	}
+	if !strings.Contains(bridgeContent, `node@26.1.1.d.ts`) {
+		t.Fatalf("expected bridge file to reference cached @types/node file, got %q", bridgeContent)
+	}
+}
+
 func TestResolveTypeFetchDependsClosure_RejectsTraversalDependsPath(t *testing.T) {
 	modulesPath := t.TempDir()
 	writeCommandPackage(t, modulesPath, "auth", `{"choysum":{"depends":["../escape"]}}`)
