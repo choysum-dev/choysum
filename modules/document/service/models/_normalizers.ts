@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeOptionalString } from '@/core/service/utils/normalization';
+import { normalizeOptionalString, asRecord } from '@/core/service/utils/normalization';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
+import type { PrincipalContext } from '../contracts';
 
 /**
  * Require a non-empty trimmed string value; throws INVALID_ARGUMENT otherwise.
@@ -44,6 +45,20 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
  * Replaces the repeated `Search + check rows[0] + throwDocumentError(NOT_FOUND)`
  * pattern found in mustLoad* helpers across binding, object, and stored_content.
  */
+/**
+ * Normalize a loose principal input into a typed PrincipalContext.
+ */
+export function normalizePrincipal(raw: unknown): PrincipalContext {
+  const principal = asRecord(raw);
+  return {
+    userId: requireText(principal?.userId, 'principal.userId'),
+    activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
+    enabledCompanyIds: Array.isArray(principal?.enabledCompanyIds)
+      ? (principal?.enabledCompanyIds as unknown[]).map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
+      : undefined,
+  };
+}
+
 export async function mustLoadOne<T>(
   searchFn: (condition: unknown, options?: unknown) => Promise<T[]>,
   condition: unknown,

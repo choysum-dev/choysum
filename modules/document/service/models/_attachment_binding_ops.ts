@@ -21,7 +21,7 @@ import type AttachmentBinding from './attachment_binding';
 import type AttachmentContent from './attachment_object';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
-import { requireText, requireUserId, requireCompanyId } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId, normalizePrincipal } from './_normalizers';
 import { assertOwnerReadAuthorization, assertOwnerWriteAuthorization } from './_owner_authorization';
 import { inlineMimeAllowed, mimeSuffix } from '@/core/service/utils/mime';
 
@@ -146,17 +146,6 @@ function normalizeResolveDownloadContentReq(req: ResolveDownloadContentReq | und
   return {
     attachmentBindingId: requireText(req?.attachmentBindingId, 'attachmentBindingId'),
     principal: normalizePrincipal(req?.principal),
-  };
-}
-
-function normalizePrincipal(raw: unknown): PrincipalContext {
-  const principal = asRecord(raw);
-  return {
-    userId: requireText(principal?.userId, 'principal.userId'),
-    activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
-    enabledCompanyIds: Array.isArray(principal?.enabledCompanyIds)
-      ? (principal?.enabledCompanyIds as unknown[]).map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
-      : undefined,
   };
 }
 

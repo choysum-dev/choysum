@@ -12,7 +12,7 @@ import { toDate } from '@/core/service/utils/date';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
-import { requireText, requireUserId, requireCompanyId } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId, normalizePrincipal } from './_normalizers';
 import type AttachmentUploadSession from './upload_session';
 
 // ---------------------------------------------------------------------------
@@ -63,17 +63,6 @@ export type NormalizedCommitUploadPutReq = {
 // ---------------------------------------------------------------------------
 // Pure normalizers
 // ---------------------------------------------------------------------------
-
-function normalizePrincipal(raw: unknown): PrincipalContext {
-  const principal = asRecord(raw);
-  return {
-    userId: requireText(principal?.userId, 'principal.userId'),
-    activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
-    enabledCompanyIds: Array.isArray(principal?.enabledCompanyIds)
-      ? (principal?.enabledCompanyIds as unknown[]).map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
-      : undefined,
-  };
-}
 
 function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number {
   const raw = normalizeOptionalString(value);
