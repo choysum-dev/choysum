@@ -911,8 +911,8 @@ func TestUpdateTsconfigPaths_CreatesTsconfigWhenMissing(t *testing.T) {
 	if !strings.Contains(content, `"@/*"`) {
 		t.Fatalf("created tsconfig should include default @/* path: %s", content)
 	}
-	if !strings.Contains(content, `"types"`) {
-		t.Fatalf("created tsconfig should include types section: %s", content)
+	if !strings.Contains(content, `"compilerOptions"`) {
+		t.Fatalf("created tsconfig should include compilerOptions: %s", content)
 	}
 }
 

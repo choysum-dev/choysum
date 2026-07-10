@@ -611,6 +611,16 @@ func TestNewTypeFetchCmd_Run_OfflineFetchesCompilerTypesFromTsconfig(t *testing.
 	cfg := newCommandTestConfig(modulesPath)
 	writeCommandPackage(t, modulesPath, "app", `{}`)
 
+	// Pre-create tsconfig with types so the command derives compiler-type
+	// targets; ensureModulesTsconfig is a no-op when the file exists.
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := os.MkdirAll(filepath.Dir(tsconfigPath), 0o755); err != nil {
+		t.Fatalf("mkdir tsconfig dir: %v", err)
+	}
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"types":["node"]}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
 	nodePkgPath := filepath.Join(modulesPath, "node_modules", "@types", "node", "package.json")
 	if err := os.MkdirAll(filepath.Dir(nodePkgPath), 0o755); err != nil {
 		t.Fatalf("mkdir node package dir: %v", err)
@@ -642,7 +652,6 @@ func TestNewTypeFetchCmd_Run_OfflineFetchesCompilerTypesFromTsconfig(t *testing.
 		t.Fatalf("expected compiler types summary line, got %q", output)
 	}
 
-	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
 	tsconfigData, err := os.ReadFile(tsconfigPath)
 	if err != nil {
 		t.Fatalf("read modules tsconfig: %v", err)
