@@ -64,12 +64,15 @@ export type NormalizedCommitUploadPutReq = {
 // ---------------------------------------------------------------------------
 
 function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number {
-  const raw = normalizeOptionalString(value);
-  if (raw === undefined) {
+  if (value === undefined || value === null) {
+    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
+  }
+  const trimmed = typeof value === 'string' ? value.trim() : value;
+  if (trimmed === '') {
     throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
   }
 
-  const num = Number(raw);
+  const num = Number(trimmed);
   if (!Number.isFinite(num) || num < 0) {
     throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} must be a non-negative integer`, GrpcCode.InvalidArgument, { field: fieldName });
   }

@@ -11,7 +11,6 @@ import { getRepositoryCurrentReq, getRepositoryFieldRuleBypassDepth } from './au
 import type { SelectionNode } from '../projection';
 import type { RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
-import { normalizeFieldRuleSpec as normalizeApiFieldRuleSpec } from '@/core/service/api/authz_helpers';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
 
@@ -89,22 +88,20 @@ function buildRepositoryFieldRuleCacheKey(params: Pick<RepositoryFieldRuleDeps, 
 
 function normalizeRepositoryFieldRuleSpec(input: unknown): RepositoryFieldRuleSpec {
   const value = asObjectRecord(input) ?? {};
-  const normalized = normalizeApiFieldRuleSpec(value);
 
-  const toRepositoryStringArray = (raw: unknown, base: string[]): string[] => {
-    const output = base.slice();
-    if (Array.isArray(raw)) {
-      for (const item of raw) {
-        const legacyNormalized = String(item ?? '').trim();
-        if (legacyNormalized) output.push(legacyNormalized);
-      }
+  const toStringArray = (raw: unknown): string[] => {
+    if (!Array.isArray(raw)) return [];
+    const output: string[] = [];
+    for (const item of raw) {
+      const legacyNormalized = String(item ?? '').trim();
+      if (legacyNormalized) output.push(legacyNormalized);
     }
     return Array.from(new Set(output)).sort();
   };
 
   return {
-    denyReadFields: toRepositoryStringArray(value.denyReadFields, normalized.denyReadFields),
-    denyWriteFields: toRepositoryStringArray(value.denyWriteFields, normalized.denyWriteFields),
+    denyReadFields: toStringArray(value.denyReadFields),
+    denyWriteFields: toStringArray(value.denyWriteFields),
     reason: typeof value.reason === 'string' ? value.reason : undefined,
   };
 }
