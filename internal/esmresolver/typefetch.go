@@ -1668,12 +1668,6 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"target":                       "ES2020",
 		},
 		"exclude": []string{
-			"**/*.test.ts",
-			"**/*.test.tsx",
-			"**/*.spec.ts",
-			"**/*.spec.tsx",
-			"**/__tests__/**",
-			"**/tests/**",
 			"**/e2e/**",
 		},
 		"display": "Recommended",
