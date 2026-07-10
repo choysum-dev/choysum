@@ -87,12 +87,12 @@ export default class AttachmentMutationLedger extends BaseModel {
     const purgedCount = await paginateBatch(
       (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
       { And: [['UpdatedAt', '<', cutoff]] },
-      async (ledger) => {
+      async ledger => {
         const ledgerId = String((ledger as any)?.Id || '').trim();
         if (!ledgerId) return;
         await self.DeleteById(ledgerId as any);
       },
-      { batch, fields: ['Id'] },
+      { batch, fields: ['Id'] }
     );
 
     return {

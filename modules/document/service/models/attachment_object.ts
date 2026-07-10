@@ -653,7 +653,7 @@ export default class AttachmentContent extends BaseModel {
       (condition, opts) => AttachmentUploadSession.Search(condition, opts as any),
       ['Id', '=', uploadId],
       'Upload session not found',
-      { uploadId },
+      { uploadId }
     );
   }
 
@@ -865,7 +865,7 @@ export default class AttachmentContent extends BaseModel {
       (condition, opts) => this.Search(condition, opts as any),
       ['Id', '=', attachmentContentId],
       'Attachment content not found',
-      { attachmentContentId },
+      { attachmentContentId }
     );
   }
 

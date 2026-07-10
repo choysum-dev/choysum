@@ -64,11 +64,8 @@ export default class StoredContent extends BaseModel {
    * Loads a stored payload row or raises a document-domain not-found error.
    */
   public static async mustLoadByID(storedContentId: string): Promise<StoredContent> {
-    return mustLoadOne<StoredContent>(
-      (condition, opts) => this.Search(condition, opts as any),
-      ['Id', '=', storedContentId],
-      'Stored content not found',
-      { storedContentId },
-    );
+    return mustLoadOne<StoredContent>((condition, opts) => this.Search(condition, opts as any), ['Id', '=', storedContentId], 'Stored content not found', {
+      storedContentId,
+    });
   }
 }

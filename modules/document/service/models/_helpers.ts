@@ -58,7 +58,7 @@ export async function mustLoadOne<T>(
   searchFn: (condition: unknown, options?: unknown) => Promise<T[]>,
   condition: unknown,
   notFoundMessage: string,
-  metadata?: Record<string, unknown>,
+  metadata?: Record<string, unknown>
 ): Promise<T> {
   const rows = await searchFn(condition, { limit: 1 });
   const record = rows[0] as T | undefined;

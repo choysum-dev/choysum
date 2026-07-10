@@ -185,12 +185,12 @@ export default class AttachmentUploadSession extends BaseModel {
           ['ExpiresAt', '<', now],
         ],
       },
-      async (session) => {
+      async session => {
         const sessionId = String((session as any)?.Id || '').trim();
         if (!sessionId) return;
         await self.UpdateById(sessionId, { Status: 'expired' } as any, ['Id'] as any);
       },
-      { batch, fields: ['Id'] },
+      { batch, fields: ['Id'] }
     );
 
     const cutoff = new Date(now.getTime() - uploadSessionTTLSeconds * 1000);
@@ -202,12 +202,12 @@ export default class AttachmentUploadSession extends BaseModel {
           ['UpdatedAt', '<', cutoff],
         ],
       },
-      async (row) => {
+      async row => {
         const sessionId = String((row as any)?.Id || '').trim();
         if (!sessionId) return;
         await self.DeleteById(sessionId as any);
       },
-      { batch, fields: ['Id'] },
+      { batch, fields: ['Id'] }
     );
 
     return {

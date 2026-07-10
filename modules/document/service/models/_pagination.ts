@@ -17,12 +17,15 @@ import { resolveGcBatchSize } from './_helpers';
  * @returns Total number of rows processed across all pages.
  */
 export async function paginateBatch<T>(
-  searchFn: (condition: unknown, opts: {
-    limit: number;
-    offset?: number;
-    orderBy?: { field: string; order: 'asc' | 'desc' };
-    fields?: string[];
-  }) => Promise<T[]>,
+  searchFn: (
+    condition: unknown,
+    opts: {
+      limit: number;
+      offset?: number;
+      orderBy?: { field: string; order: 'asc' | 'desc' };
+      fields?: string[];
+    }
+  ) => Promise<T[]>,
   condition: unknown,
   processor: (item: T) => Promise<void>,
   opts?: {
@@ -30,7 +33,7 @@ export async function paginateBatch<T>(
     offsetMode?: boolean;
     orderBy?: { field: string; order: 'asc' | 'desc' };
     fields?: string[];
-  },
+  }
 ): Promise<number> {
   const batch = opts?.batch ?? resolveGcBatchSize();
   const offsetMode = opts?.offsetMode ?? false;
