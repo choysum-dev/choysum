@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tailscale/hujson"
+
 	tsast "github.com/buke/typescript-go-internal/pkg/ast"
 	tscore "github.com/buke/typescript-go-internal/pkg/core"
 	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
@@ -31,6 +33,14 @@ type TypeFetchResult struct {
 	Version    string
 	CachedPath string
 	FromCache  bool
+}
+
+// CompilerTypeRootLink binds a tsconfig compilerOptions.types entry to the
+// fetched cached declaration file so typeRoots can expose it without
+// depending on node_modules/@types lookup.
+type CompilerTypeRootLink struct {
+	TypeName   string
+	CachedPath string
 }
 
 // TypeFetchModuleStats summarizes one module fetch run.
@@ -336,11 +346,14 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 	}
 	resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		return nil, nil, fmt.Errorf("discover types URL: http %d", resp.StatusCode)
 	}
 
-	typesURL := resp.Header.Get("x-typescript-types")
+	typesURL := strings.TrimSpace(resp.Header.Get("x-typescript-types"))
+	if typesURL == "" {
+		typesURL = inferTypeDiscoveryFallbackURL(resp, discoverURL, strings.TrimRight(upstream, "/"), spec)
+	}
 	if typesURL == "" {
 		return nil, nil, fmt.Errorf("no x-typescript-types header for %s", spec)
 	}
@@ -351,6 +364,61 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 		return nil, nil, err
 	}
 	return mainResult, transitive, nil
+}
+
+func inferTypeDiscoveryFallbackURL(resp *http.Response, discoverURL string, upstreamRoot string, spec string) string {
+	if resp != nil && resp.Request != nil && resp.Request.URL != nil {
+		requestURL := strings.TrimSpace(resp.Request.URL.String())
+		if requestURL != "" && hasTypeScriptSuffix(resp.Request.URL.Path) {
+			return requestURL
+		}
+	}
+
+	if resp != nil {
+		location := strings.TrimSpace(resp.Header.Get("location"))
+		if location != "" {
+			if parsed, err := url.Parse(location); err == nil {
+				if parsed.IsAbs() {
+					if hasTypeScriptSuffix(parsed.Path) {
+						return parsed.String()
+					}
+				} else {
+					baseURL, baseErr := url.Parse(discoverURL)
+					if baseErr == nil {
+						resolved := baseURL.ResolveReference(parsed)
+						if hasTypeScriptSuffix(resolved.Path) {
+							return resolved.String()
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if strings.TrimSpace(upstreamRoot) == "" || strings.TrimSpace(spec) == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s/%s/index.d.ts", strings.TrimRight(upstreamRoot, "/"), strings.TrimSpace(spec))
+}
+
+// StripJSONComments is a thin wrapper that delegates to hujson (the project's
+// chosen JSONC library) so that tsconfig files with comments are standardised
+// before encoding/json unmarshaling.
+func StripJSONComments(b []byte) []byte {
+	v, err := hujson.Parse(b)
+	if err != nil {
+		// If hujson can't parse it (unlikely for tsconfig),
+		// return the original bytes and let the caller's
+		// json.Unmarshal fail with a descriptive error.
+		return b
+	}
+	v.Standardize()
+	return v.Pack()
+}
+
+func hasTypeScriptSuffix(path string) bool {
+	path = strings.ToLower(path)
+	return strings.HasSuffix(path, ".d.ts") || strings.HasSuffix(path, ".d.mts") || strings.HasSuffix(path, ".d.cts")
 }
 
 // fetchTypeRecursive downloads a .d.ts file, parses its imports/references,
@@ -385,6 +453,11 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 
 	// Derive a cache key from the URL.
 	cacheFile := typeCachePathForURL(typesDir, normalized)
+	validatedCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	cacheFile = validatedCacheFile
 
 	// Check cache.
 	var content []byte
@@ -395,7 +468,7 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		fromCache = true
 
 		imports = parseDTSImports(string(content))
-		if hasMissingLocalCachedImports(cacheFile, imports) {
+		if hasMissingLocalCachedImports(typesDir, cacheFile, imports) {
 			body, err := downloadTypeContent(ctx, client, normalized, state)
 			if err != nil {
 				return nil, nil, fmt.Errorf("refresh corrupted cached types from %s: %w", normalized, err)
@@ -403,7 +476,7 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 			content = body
 			fromCache = false
 
-			if err := writeTypeCacheFile(cacheFile, content); err != nil {
+			if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
 				return nil, nil, err
 			}
 			imports = parseDTSImports(string(content))
@@ -415,7 +488,7 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 		}
 		content = body
 
-		if err := writeTypeCacheFile(cacheFile, content); err != nil {
+		if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
 			return nil, nil, err
 		}
 		imports = parseDTSImports(string(content))
@@ -441,11 +514,11 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
 	if rewritten != string(content) {
 		content = []byte(rewritten)
-		if err := writeTypeCacheFile(cacheFile, content); err != nil {
+		if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
 			return nil, nil, err
 		}
 	}
-	if err := normalizeBridgeCachedTypeChildren(cacheFile, imports); err != nil {
+	if err := normalizeBridgeCachedTypeChildren(typesDir, cacheFile, imports); err != nil {
 		return nil, nil, err
 	}
 
@@ -829,8 +902,11 @@ func lockBridgeNormalizeFile(path string) func() {
 	return mu.Unlock
 }
 
-func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error {
-	cleanPath := filepath.Clean(filePath)
+func normalizeBridgeCachedTypeFile(typesDir string, filePath string, seen map[string]bool) error {
+	cleanPath, err := resolveAndValidateTypeCachePath(typesDir, filePath)
+	if err != nil {
+		return nil
+	}
 	if cleanPath == "" {
 		return nil
 	}
@@ -857,7 +933,7 @@ func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error 
 		rewritten = rewriteLocalCachedBridgeSpecifiers(content)
 		rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
 		if rewritten != content {
-			if err := writeTypeCacheFile(cleanPath, []byte(rewritten)); err != nil {
+			if err := writeTypeCacheFile(typesDir, cleanPath, []byte(rewritten)); err != nil {
 				return err
 			}
 		}
@@ -876,7 +952,7 @@ func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error 
 			continue
 		}
 		childPath := filepath.Clean(filepath.Join(filepath.Dir(cleanPath), filepath.FromSlash(importPath)))
-		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+		if err := normalizeBridgeCachedTypeFile(typesDir, childPath, seen); err != nil {
 			return err
 		}
 	}
@@ -884,14 +960,18 @@ func normalizeBridgeCachedTypeFile(filePath string, seen map[string]bool) error 
 	return nil
 }
 
-func normalizeBridgeCachedTypeChildren(cacheFile string, imports []string) error {
-	seen := map[string]bool{filepath.Clean(cacheFile): true}
+func normalizeBridgeCachedTypeChildren(typesDir string, cacheFile string, imports []string) error {
+	cleanCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
+	if err != nil {
+		return nil
+	}
+	seen := map[string]bool{filepath.Clean(cleanCacheFile): true}
 	for _, importPath := range imports {
 		if !isLocalCachedTypeSpecifier(importPath) || !shouldNormalizeBridgeChildCacheFile(importPath) {
 			continue
 		}
-		childPath := filepath.Clean(filepath.Join(filepath.Dir(cacheFile), filepath.FromSlash(importPath)))
-		if err := normalizeBridgeCachedTypeFile(childPath, seen); err != nil {
+		childPath := filepath.Clean(filepath.Join(filepath.Dir(cleanCacheFile), filepath.FromSlash(importPath)))
+		if err := normalizeBridgeCachedTypeFile(typesDir, childPath, seen); err != nil {
 			return err
 		}
 	}
@@ -1420,7 +1500,13 @@ func typesCachePath(typesDir, pkg, version string) string {
 	return filepath.Join(typesDir, fmt.Sprintf("%s@%s.d.ts", pkg, version))
 }
 
-func writeTypeCacheFile(cacheFile string, content []byte) error {
+func writeTypeCacheFile(typesDir string, cacheFile string, content []byte) error {
+	validatedCacheFile, err := resolveAndValidateTypeCachePath(typesDir, cacheFile)
+	if err != nil {
+		return err
+	}
+	cacheFile = validatedCacheFile
+
 	if err := os.MkdirAll(filepath.Dir(cacheFile), 0755); err != nil {
 		return fmt.Errorf("create types cache dir: %w", err)
 	}
@@ -1435,6 +1521,34 @@ func writeTypeCacheFile(cacheFile string, content []byte) error {
 		return fmt.Errorf("rename types tmp: %w", err)
 	}
 	return nil
+}
+
+func resolveAndValidateTypeCachePath(typesDir string, targetPath string) (string, error) {
+	absTypesDir := strings.TrimSpace(typesDir)
+	if absTypesDir == "" {
+		return "", fmt.Errorf("types dir is empty")
+	}
+	var err error
+	absTypesDir, err = filepath.Abs(absTypesDir)
+	if err != nil {
+		return "", fmt.Errorf("absolute types dir: %w", err)
+	}
+
+	absTarget := strings.TrimSpace(targetPath)
+	if absTarget == "" {
+		return "", fmt.Errorf("target path is empty")
+	}
+	absTarget, err = filepath.Abs(absTarget)
+	if err != nil {
+		return "", fmt.Errorf("absolute target path: %w", err)
+	}
+
+	rel, err := filepath.Rel(absTypesDir, absTarget)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("type cache path escapes types dir: %s", absTarget)
+	}
+
+	return absTarget, nil
 }
 
 func writeAtomicFile(filePath string, content []byte, perm os.FileMode) error {
@@ -1518,7 +1632,7 @@ func downloadTypeContent(ctx context.Context, client *http.Client, rawURL string
 	return body, nil
 }
 
-func hasMissingLocalCachedImports(cacheFile string, imports []string) bool {
+func hasMissingLocalCachedImports(typesDir string, cacheFile string, imports []string) bool {
 	baseDir := filepath.Clean(filepath.Dir(cacheFile))
 	for _, importPath := range imports {
 		trimmed := strings.TrimSpace(importPath)
@@ -1537,7 +1651,11 @@ func hasMissingLocalCachedImports(cacheFile string, imports []string) bool {
 		if candidate != baseDir && !strings.HasPrefix(candidate, baseDir+string(os.PathSeparator)) {
 			continue
 		}
-		if _, err := os.Stat(candidate); err != nil {
+		validatedCandidate, err := resolveAndValidateTypeCachePath(typesDir, candidate)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(validatedCandidate); err != nil {
 			return true
 		}
 	}
@@ -1567,7 +1685,7 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	var tsconfig map[string]interface{}
 	if len(data) == 0 || strings.TrimSpace(string(data)) == "" {
 		tsconfig = make(map[string]interface{})
-	} else if err := json.Unmarshal(data, &tsconfig); err != nil {
+	} else if err := json.Unmarshal(StripJSONComments(data), &tsconfig); err != nil {
 		return fmt.Errorf("parse tsconfig: %w", err)
 	}
 	if tsconfig == nil {
@@ -1634,6 +1752,191 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 	return nil
 }
 
+// EnsureTsconfigCompilerTypeRoots writes typeRoots bridges for compilerOptions.types
+// entries so IDEs can discover fetched type packages without node_modules.
+func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links []CompilerTypeRootLink) error {
+	if len(links) == 0 {
+		return nil
+	}
+
+	data, err := os.ReadFile(tsconfigPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("read tsconfig: %w", err)
+	}
+
+	var tsconfig map[string]interface{}
+	if len(data) == 0 || strings.TrimSpace(string(data)) == "" {
+		tsconfig = make(map[string]interface{})
+	} else if err := json.Unmarshal(StripJSONComments(data), &tsconfig); err != nil {
+		return fmt.Errorf("parse tsconfig: %w", err)
+	}
+	if tsconfig == nil {
+		tsconfig = make(map[string]interface{})
+	}
+
+	compilerOptions, ok := tsconfig["compilerOptions"].(map[string]interface{})
+	if !ok {
+		compilerOptions = make(map[string]interface{})
+		tsconfig["compilerOptions"] = compilerOptions
+	}
+
+	tsconfigDir := filepath.Dir(tsconfigPath)
+	absTsconfigDir, err := filepath.Abs(tsconfigDir)
+	if err != nil {
+		return fmt.Errorf("absolute tsconfig dir: %w", err)
+	}
+
+	absTypesDir := strings.TrimSpace(typesDir)
+	if absTypesDir == "" {
+		return fmt.Errorf("types dir is empty")
+	}
+	absTypesDir, err = filepath.Abs(absTypesDir)
+	if err != nil {
+		return fmt.Errorf("absolute types dir: %w", err)
+	}
+	typeRootsDir := filepath.Join(absTypesDir, "typeRoots")
+	if err := os.MkdirAll(typeRootsDir, 0o755); err != nil {
+		return fmt.Errorf("ensure typeRoots dir: %w", err)
+	}
+
+	for _, link := range links {
+		typeName := normalizeCompilerTypeRootName(link.TypeName)
+		cachedPath := strings.TrimSpace(link.CachedPath)
+		if typeName == "" || cachedPath == "" {
+			continue
+		}
+		if !filepath.IsAbs(cachedPath) {
+			var absErr error
+			cachedPath, absErr = filepath.Abs(cachedPath)
+			if absErr != nil {
+				continue
+			}
+		}
+		// Guard against path traversal: cachedPath must reside under
+		// the types directory (or be an absolute path outside of it).
+		relToTypesDir, err := filepath.Rel(absTypesDir, cachedPath)
+		if err != nil || strings.HasPrefix(relToTypesDir, ".."+string(filepath.Separator)) || relToTypesDir == ".." || filepath.IsAbs(relToTypesDir) {
+			continue
+		}
+		if _, err := os.Stat(cachedPath); err != nil {
+			continue
+		}
+
+		typePkgDir := filepath.Join(typeRootsDir, filepath.FromSlash(typeName))
+		if err := os.MkdirAll(typePkgDir, 0o755); err != nil {
+			return fmt.Errorf("ensure typeRoots package dir for %q: %w", typeName, err)
+		}
+
+		relCachedPath, err := filepath.Rel(typePkgDir, cachedPath)
+		if err != nil {
+			return fmt.Errorf("relative cached path for %q: %w", typeName, err)
+		}
+		relCachedPath = filepath.ToSlash(relCachedPath)
+		if !strings.HasPrefix(relCachedPath, ".") {
+			relCachedPath = "./" + relCachedPath
+		}
+
+		bridgeContent := fmt.Sprintf("// Generated by type-fetch for compilerOptions.types=%q.\n/// <reference path=%q />\n", strings.TrimSpace(link.TypeName), relCachedPath)
+		if err := writeAtomicFile(filepath.Join(typePkgDir, "index.d.ts"), []byte(bridgeContent), 0o644); err != nil {
+			return fmt.Errorf("write typeRoots bridge for %q: %w", typeName, err)
+		}
+	}
+
+	typeRoots, _ := compilerOptions["typeRoots"].([]interface{})
+	relTypeRootsDir, err := filepath.Rel(absTsconfigDir, typeRootsDir)
+	if err != nil {
+		return fmt.Errorf("relative typeRoots dir: %w", err)
+	}
+	relTypeRootsDir = filepath.ToSlash(relTypeRootsDir)
+
+	hasTypeRoots := false
+	for _, item := range typeRoots {
+		current, ok := item.(string)
+		if !ok {
+			continue
+		}
+		if filepath.ToSlash(filepath.Clean(current)) == filepath.ToSlash(filepath.Clean(relTypeRootsDir)) {
+			hasTypeRoots = true
+			break
+		}
+	}
+	if !hasTypeRoots {
+		typeRoots = append(typeRoots, relTypeRootsDir)
+		compilerOptions["typeRoots"] = typeRoots
+	}
+
+	out, err := json.MarshalIndent(tsconfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal tsconfig: %w", err)
+	}
+	out = append(out, '\n')
+
+	if err := writeAtomicFile(tsconfigPath, out, 0o644); err != nil {
+		return fmt.Errorf("write tsconfig: %w", err)
+	}
+	return nil
+}
+
+func normalizeCompilerTypeRootName(typeName string) string {
+	typeName = strings.TrimSpace(typeName)
+	if typeName == "" {
+		return ""
+	}
+
+	// Strip @types/ prefix so that both "@types/node" and "node" produce
+	// the same typeRoots directory name.
+	if after, ok := strings.CutPrefix(typeName, "@types/"); ok {
+		typeName = after
+	}
+
+	// Scoped packages (e.g. @scope/pkg) need double-underscore encoding in
+	// typeRoots so that "@scope/pkg1" and "@scope/pkg2" do not collide.
+	// Subpaths (e.g. @scope/pkg/sub) are dropped — only scope and package
+	// name matter for typeRoots directory layout.
+	if strings.HasPrefix(typeName, "@") {
+		parts := strings.Split(strings.TrimPrefix(typeName, "@"), "/")
+		if len(parts) >= 2 {
+			scope := strings.TrimSpace(parts[0])
+			pkg := strings.TrimSpace(parts[1])
+			if !isSafeCompilerTypeRootSegment(scope) || !isSafeCompilerTypeRootSegment(pkg) {
+				return ""
+			}
+			return scope + "__" + pkg
+		}
+		if len(parts) == 1 {
+			root := strings.TrimSpace(parts[0])
+			if !isSafeCompilerTypeRootSegment(root) {
+				return ""
+			}
+			return root
+		}
+		return ""
+	}
+
+	// Non-scoped packages may carry a subpath (e.g. vitest/globals); keep
+	// only the first segment.
+	segments := strings.Split(typeName, "/")
+	if len(segments) == 0 {
+		return ""
+	}
+	root := strings.TrimSpace(segments[0])
+	if !isSafeCompilerTypeRootSegment(root) {
+		return ""
+	}
+	return root
+}
+
+func isSafeCompilerTypeRootSegment(seg string) bool {
+	seg = strings.TrimSpace(seg)
+	if seg == "" || seg == "." || seg == ".." {
+		return false
+	}
+	if strings.ContainsAny(seg, "\\/") {
+		return false
+	}
+	return true
+}
+
 func ensureModulesTsconfig(tsconfigPath string) error {
 	st, err := os.Stat(tsconfigPath)
 	if err == nil {
@@ -1667,15 +1970,10 @@ func ensureModulesTsconfig(tsconfigPath string) error {
 			"strictPropertyInitialization": false,
 			"target":                       "ES2020",
 		},
-		"exclude": []string{
-			"**/*.test.ts",
-			"**/*.test.tsx",
-			"**/*.spec.ts",
-			"**/*.spec.tsx",
-			"**/__tests__/**",
-			"**/tests/**",
-			"**/e2e/**",
-		},
+		// Test and e2e files are intentionally included (not excluded) so
+		// that IDEs can resolve @/* path aliases, ambient test globals
+		// (test, expect), and Node.js built-in types (@types/node) from a
+		// single shared tsconfig project for all modules.
 		"display": "Recommended",
 	}
 
