@@ -3,9 +3,9 @@
 
 import { withContext } from '@/core/service/api/context';
 import { ChoysumError } from '@/core/service/error';
-import AttachmentObject from './attachment_object';
-import UploadSession from './upload_session';
-import StoredContent from './stored_content';
+import AttachmentObject from '../models/attachment_object';
+import UploadSession from '../models/upload_session';
+import StoredContent from '../models/stored_content';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
