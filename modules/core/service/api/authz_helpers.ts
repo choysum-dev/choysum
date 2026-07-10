@@ -1,0 +1,83 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { normalizeOptionalString } from '../utils/normalization';
+import { asObjectRecord } from '../../utils/object';
+import type { ConditionExpr, ConditionEnvelope } from './authz';
+
+function asPlainRecord(value: unknown): Record<string, unknown> | null {
+  const record = asObjectRecord(value);
+  if (!record || Array.isArray(record)) return null;
+  return record as Record<string, unknown>;
+}
+
+/**
+ * Normalize a loose value into a condition-envelope shape.
+ */
+export function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
+  const record = asPlainRecord(value);
+  if (!record) return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+
+  const kind = normalizeOptionalString(record.kind);
+  if (kind === 'true') return { kind: 'true', reason: normalizeOptionalString(record.reason) };
+  if (kind === 'false') return { kind: 'false', reason: normalizeOptionalString(record.reason) };
+  if (kind === 'expr' && (Array.isArray(record.expr) || asPlainRecord(record.expr))) {
+    return {
+      kind: 'expr',
+      expr: record.expr as ConditionExpr,
+      reason: normalizeOptionalString(record.reason),
+    };
+  }
+
+  return { kind: 'false', reason: 'invalid_record_rule_envelope' };
+}
+
+export type ConditionTokenValues = {
+  userId?: string;
+  companyId?: string;
+  companyIds?: string[];
+  strictUnknownToken?: boolean;
+};
+
+/**
+ * Replace well-known condition tokens recursively in a condition expression.
+ */
+export function replaceConditionExprTokens(expr: ConditionExpr, values: ConditionTokenValues): ConditionExpr {
+  const replace = (value: unknown): unknown => {
+    if (value === null || value === undefined) return value;
+
+    if (typeof value === 'string') {
+      const token = value.trim();
+      if (token === '$userId') {
+        if (!values.userId) throw new Error('missing token value: $userId');
+        return values.userId;
+      }
+      if (token === '$companyId') {
+        if (!values.companyId) throw new Error('missing token value: $companyId');
+        return values.companyId;
+      }
+      if (token === '$companyIds') {
+        if (!values.companyIds || values.companyIds.length === 0) throw new Error('missing token value: $companyIds');
+        return values.companyIds;
+      }
+
+      if (values.strictUnknownToken && /^\$[A-Za-z_][A-Za-z0-9_]*$/.test(token)) {
+        throw new Error(`unknown condition token: ${token}`);
+      }
+      return value;
+    }
+
+    if (Array.isArray(value)) return value.map(item => replace(item));
+
+    const record = asPlainRecord(value);
+    if (!record) return value;
+
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(record)) {
+      out[k] = replace(v);
+    }
+    return out;
+  };
+
+  return replace(expr) as ConditionExpr;
+}

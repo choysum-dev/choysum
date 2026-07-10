@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc/service_factory';
+import { normalizeConditionEnvelope, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, RecordRuleOp } from '@/core/service/api/authz';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
+import { asObjectRecord } from '@/core/utils/object';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
 import { observePermissionDenied } from './_owner_authorization_observability';
@@ -102,7 +105,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
   }
 
   if (ownerRecordId && envelope.kind === 'expr') {
-    const recordRuleExpr = replaceConditionTokens(envelope.expr, userId, companyId, companyIds);
+    const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
     const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
       throw permissionDenied(stage, 'owner write target is not allowed by record rule scope', {
@@ -152,7 +155,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
   }
 
   if (envelope.kind === 'expr') {
-    const recordRuleExpr = replaceConditionTokens(envelope.expr, userId, companyId, companyIds);
+    const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
     const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
       throw permissionDenied(stage, 'owner read target is not allowed by record rule scope', {
@@ -226,25 +229,8 @@ async function probeOwnerRecord(ownerModel: string, ownerRecordId: string, recor
   }
 }
 
-function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
-  const record = asRecord(value);
-  if (!record) return { kind: 'false', reason: 'invalid_record_rule_envelope' };
-
-  const kind = normalizeOptionalText(record.kind);
-  if (kind === 'true') return { kind: 'true', reason: normalizeOptionalText(record.reason) };
-  if (kind === 'false') return { kind: 'false', reason: normalizeOptionalText(record.reason) };
-  if (kind === 'expr' && (Array.isArray(record.expr) || asRecord(record.expr))) {
-    return {
-      kind: 'expr',
-      expr: record.expr as ConditionExpr,
-      reason: normalizeOptionalText(record.reason),
-    };
-  }
-  return { kind: 'false', reason: 'invalid_record_rule_envelope' };
-}
-
 function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
-  const record = asRecord(value);
+  const record = asPlainRecord(value);
   if (!record) {
     return { denyReadFields: [], denyWriteFields: [] };
   }
@@ -255,28 +241,25 @@ function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
   };
 }
 
-function replaceConditionTokens(expr: ConditionExpr, userId: string, companyId: string, companyIds: string[]): ConditionExpr {
-  const replace = (value: unknown): unknown => {
-    if (value === null || value === undefined) return value;
-    if (typeof value === 'string') {
-      const token = value.trim();
-      if (token === '$userId') return userId;
-      if (token === '$companyId') return companyId;
-      if (token === '$companyIds') return companyIds;
-      return value;
-    }
-    if (Array.isArray(value)) return value.map(item => replace(item));
-    const record = asRecord(value);
-    if (!record) return value;
-
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(record)) {
-      out[k] = replace(v);
-    }
-    return out;
-  };
-
-  return replace(expr) as ConditionExpr;
+function replaceTokensForOwnerRecordRule(
+  expr: ConditionExpr,
+  stage: OwnerPermissionStage,
+  userId: string,
+  companyId: string,
+  companyIds: string[]
+): ConditionExpr {
+  try {
+    return replaceConditionExprTokens(expr, {
+      userId,
+      companyId,
+      companyIds,
+      strictUnknownToken: true,
+    });
+  } catch (err) {
+    throw permissionDenied(stage, 'owner record rule contains invalid token mapping', {
+      detail: errorMessage(err),
+    });
+  }
 }
 
 function normalizeCompanyIds(value: unknown, activeCompanyId: string): string[] {
@@ -335,13 +318,16 @@ function requireText(value: unknown, fieldName: string, stage: OwnerPermissionSt
 }
 
 function normalizeOptionalText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text === '' ? undefined : text;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return normalizeOptionalString(value);
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
+function asPlainRecord(value: unknown): Record<string, unknown> | null {
+  const record = asObjectRecord(value);
+  if (!record || Array.isArray(record)) return null;
+  return record as Record<string, unknown>;
 }
 
 function errorMessage(err: unknown): string {

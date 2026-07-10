@@ -28,7 +28,8 @@ import type AttachmentUploadSession from './upload_session';
 import type AttachmentMutationLedger from './attachment_mutation_ledger';
 import type StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId, mustLoadOne } from './_normalizers';
+import { requireText, requireUserId, requireCompanyId } from './_normalizers';
+import { mustLoadOne } from './_query_loaders';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import { isMimeTypeAllowed } from '@/core/service/utils/mime';
 import {
@@ -52,7 +53,7 @@ import {
   isSessionExpired,
   buildPrepareUploadResp,
   buildFinalizeResp,
-} from './_attachment_upload_helpers';
+} from './_attachment_upload_codec';
 
 // ---------------------------------------------------------------------------
 // Model ops contract

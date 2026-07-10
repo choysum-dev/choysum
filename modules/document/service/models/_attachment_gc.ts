@@ -5,7 +5,7 @@ import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } fr
 import { parseISODate, toDate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
-import { resolveGcBatchSize } from './_pagination';
+import { resolveGcBatchSize } from './_gc_config';
 
 const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;
 const DEFAULT_CLEANUP_MAX_ATTEMPTS = 8;

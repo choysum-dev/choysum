@@ -40,7 +40,7 @@ import {
   parseBindResp,
   parseUnbindResp,
   assertCompanyMatch,
-} from './_attachment_binding_helpers';
+} from './_attachment_binding_codec';
 
 // ---------------------------------------------------------------------------
 // Model ops contract — passed by the AttachmentBinding class when delegating.
