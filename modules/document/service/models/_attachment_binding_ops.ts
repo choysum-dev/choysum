@@ -569,18 +569,13 @@ export async function batchDescribeAttachments(ops: BindingModelOps, req: BatchD
     attachmentContentById.set(attachmentContentId, attachmentContent as AttachmentContent);
   }
 
-  const items: BatchDescribeResp['items'] = [];
-  for (const bindingId of normalized.attachmentBindingIds) {
+  const itemPromises = normalized.attachmentBindingIds.map(async (bindingId) => {
     const binding = bindingById.get(bindingId);
-    if (!binding) {
-      continue;
-    }
+    if (!binding) return null;
 
     const attachmentContentId = requireText(binding.AttachmentContentId, 'attachmentContentId');
     const attachmentContent = attachmentContentById.get(attachmentContentId);
-    if (!attachmentContent) {
-      continue;
-    }
+    if (!attachmentContent) return null;
 
     await assertOwnerReadAuthorization({
       stage: 'descriptor',
@@ -596,7 +591,7 @@ export async function batchDescribeAttachments(ops: BindingModelOps, req: BatchD
     const displayName = normalizeOptionalString(binding.DisplayFileName) ?? descriptor.fileName;
     const isImage = descriptor.mimeType.toLowerCase().startsWith('image/');
 
-    items.push({
+    return {
       attachmentBindingId: bindingId,
       descriptor,
       displayName,
@@ -604,8 +599,11 @@ export async function batchDescribeAttachments(ops: BindingModelOps, req: BatchD
       ownerModel: requireText(binding.OwnerModel, 'ownerModel'),
       ownerRecordId: requireText(binding.OwnerRecordId, 'ownerRecordId'),
       fieldName: requireText(binding.FieldName, 'fieldName'),
-    });
-  }
+    };
+  });
+
+  const resolvedItems = await Promise.all(itemPromises);
+  const items: BatchDescribeResp['items'] = resolvedItems.filter((item): item is NonNullable<typeof item> => item !== null);
 
   return { items };
 }
