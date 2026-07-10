@@ -628,7 +628,6 @@ async function tryReplayUnbindMutation(mutationId: string, companyId: string): P
 }
 
 async function recordMutationSuccess(
-
   action: 'bind' | 'unbind',
   mutationId: string,
   companyId: string,
