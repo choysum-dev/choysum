@@ -156,20 +156,24 @@ export async function garbageCollectUnboundObjects(
         const message = String((error as any)?.message || error || 'attachment cleanup failed');
         const terminal = nextAttempt >= maxAttempts;
         const nextRetryAtISO = terminal ? undefined : new Date(now.getTime() + computeRetryBackoffSeconds(nextAttempt, retryBaseSeconds) * 1000).toISOString();
-        await modelOps.UpdateById(
-          contentId,
-          {
-            MetadataJson: writeCleanupState(metadata, {
-              state: terminal ? 'failed' : 'retrying',
-              attempts: nextAttempt,
-              nextRetryAt: nextRetryAtISO,
-              lastError: message.slice(0, 1024),
-              at: nowAt,
-            }),
-            UpdatedAt: now,
-          } as any,
-          ['Id', 'MetadataJson', 'UpdatedAt'] as any
-        );
+        try {
+          await modelOps.UpdateById(
+            contentId,
+            {
+              MetadataJson: writeCleanupState(metadata, {
+                state: terminal ? 'failed' : 'retrying',
+                attempts: nextAttempt,
+                nextRetryAt: nextRetryAtISO,
+                lastError: message.slice(0, 1024),
+                at: nowAt,
+              }),
+              UpdatedAt: now,
+            } as any,
+            ['Id', 'MetadataJson', 'UpdatedAt'] as any
+          );
+        } catch {
+          // Metadata update is best-effort; don't abort the entire GC run.
+        }
         if (terminal) failedCount += 1;
         else retriedCount += 1;
       }
