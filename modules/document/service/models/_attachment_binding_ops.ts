@@ -2,9 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type {
-  BindReq, BindResp, UnbindReq, UnbindResp,
-  BatchDescribeReq, BatchDescribeResp,
-  ResolveDownloadContentReq, ResolveDownloadContentResp,
+  BindReq,
+  BindResp,
+  UnbindReq,
+  UnbindResp,
+  BatchDescribeReq,
+  BatchDescribeResp,
+  ResolveDownloadContentReq,
+  ResolveDownloadContentResp,
 } from '../contracts';
 
 export type BindingModelOps = {
