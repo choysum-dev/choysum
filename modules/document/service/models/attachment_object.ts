@@ -25,13 +25,28 @@ import AttachmentMutationLedger from './attachment_mutation_ledger';
 import StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
 import { requireText, requireUserId, requireCompanyId, resolveGcBatchSize } from './_helpers';
+import {
+  DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
+  DEFAULT_MAX_UPLOAD_BYTES,
+  EMPTY_SHA256,
+  type NormalizedPrepareUploadReq,
+  type NormalizedAuthorizeUploadPutReq,
+  type NormalizedCommitUploadPutReq,
+  normalizeChecksum,
+  normalizeContentType,
+  normalizePayloadReceiptID,
+  isDisallowedInlinePayloadID,
+  normalizePrepareUploadReq,
+  normalizeAuthorizeUploadPutReq,
+  normalizeCommitUploadPutReq,
+  assertUploadSessionPrincipal,
+  assertFinalizeIdentity,
+  assertPrepareReplayConsistency,
+} from './_upload_helpers';
 
-const DEFAULT_UPLOAD_SESSION_TTL_SECONDS = 900;
-const DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const DEFAULT_UNBOUND_OBJECT_GRACE_SECONDS = 24 * 60 * 60;
 const DEFAULT_CLEANUP_MAX_ATTEMPTS = 8;
 const DEFAULT_CLEANUP_RETRY_BASE_SECONDS = 30;
-const EMPTY_SHA256 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 type CleanupStateValue = 'retrying' | 'failed' | 'deleted';
 
@@ -43,38 +58,8 @@ type CleanupState = {
   at?: string;
 };
 
-type NormalizedPrepareUploadReq = {
-  ownerModel: string;
-  fieldName: string;
-  operation: 'create' | 'update';
-  ownerRecordId?: string;
-  businessRequestId: string;
-  proposedFileName?: string;
-  proposedContentType?: string;
-  proposedSizeBytes?: number;
-  checksumSha256?: string;
-};
 
-type NormalizedAuthorizeUploadPutReq = {
-  uploadId: string;
-  principal: PrincipalContext;
-  requestMeta: {
-    contentType?: string;
-    contentLength?: number;
-    checksumSha256?: string;
-  };
-};
 
-type NormalizedCommitUploadPutReq = {
-  uploadId: string;
-  principal: PrincipalContext;
-  payloadReceipt: {
-    payloadId: string;
-    sizeBytes: number;
-    checksumSha256: string;
-    contentType?: string;
-  };
-};
 
 /**
  * AttachmentContent stores finalized payload metadata and drives the upload workflow.
@@ -165,7 +150,7 @@ export default class AttachmentContent extends BaseModel {
    * Prepares an upload session and returns a client upload target.
    */
   public static async PrepareUpload(req: PrepareUploadReq): Promise<PrepareUploadResp> {
-    const normalized = this.normalizePrepareUploadReq(req);
+    const normalized = normalizePrepareUploadReq(req);
     const companyId = requireCompanyId(this.companyId, 'prepare');
     const issuerUserId = requireUserId(this.userId);
 
@@ -182,7 +167,7 @@ export default class AttachmentContent extends BaseModel {
 
     const existing = await this.findUploadSessionByBusinessRequestId(normalized.businessRequestId, companyId, issuerUserId);
     if (existing) {
-      this.assertPrepareReplayConsistency(existing, normalized, companyId, issuerUserId);
+      assertPrepareReplayConsistency(existing, normalized, companyId, issuerUserId);
       return this.buildPrepareUploadResp(existing.Id, existing);
     }
 
@@ -199,7 +184,7 @@ export default class AttachmentContent extends BaseModel {
     const businessRequestId = requireText(req?.businessRequestId, 'businessRequestId');
 
     const session = await this.mustLoadUploadSession(uploadId);
-    this.assertFinalizeIdentity(session);
+    assertFinalizeIdentity(session, this.userId, this.companyId, this.companyIds);
 
     if (session.BusinessRequestId !== businessRequestId) {
       throwDocumentError(DocumentErrCode.IDEMPOTENCY_KEY_REUSED, 'FinalizeUpload businessRequestId does not match the existing upload session', GrpcCode.FailedPrecondition, { uploadId, businessRequestId, expectedBusinessRequestId: String(session.BusinessRequestId || '') });
@@ -223,10 +208,10 @@ export default class AttachmentContent extends BaseModel {
    * Issues a direct upload ticket after validating the upload session and principal.
    */
   public static async AuthorizeUploadPut(req: AuthorizeUploadPutReq): Promise<AuthorizeUploadPutResp> {
-    const normalized = this.normalizeAuthorizeUploadPutReq(req);
+    const normalized = normalizeAuthorizeUploadPutReq(req);
     const session = await this.mustLoadUploadSession(normalized.uploadId);
 
-    this.assertUploadSessionPrincipal(session, normalized.principal, 'authorize_upload_put');
+    assertUploadSessionPrincipal(session, normalized.principal, 'authorize_upload_put');
     await this.assertUploadSessionOwnerWriteAuthorization(session, normalized.principal, 'authorize_upload_put');
 
     if (session.Status === 'finalized') {
@@ -244,12 +229,12 @@ export default class AttachmentContent extends BaseModel {
     }
 
     const allowedMimeTypes = this.normalizeAllowedMimeTypes(session.AllowedMimeTypes);
-    const contentType = normalized.requestMeta.contentType ?? this.normalizeContentType(session.ProposedContentType);
+    const contentType = normalized.requestMeta.contentType ?? normalizeContentType(session.ProposedContentType);
     if (!this.isMimeTypeAllowed(contentType, allowedMimeTypes)) {
       throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, { uploadId: normalized.uploadId, contentType: String(contentType || '') });
     }
 
-    const expectedChecksumSha256 = this.normalizeChecksum(session.ChecksumSha256);
+    const expectedChecksumSha256 = normalizeChecksum(session.ChecksumSha256);
     if (expectedChecksumSha256 && normalized.requestMeta.checksumSha256 && normalized.requestMeta.checksumSha256 !== expectedChecksumSha256) {
       throwDocumentError(DocumentErrCode.CHECKSUM_MISMATCH, 'checksum mismatch', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId });
     }
@@ -268,10 +253,10 @@ export default class AttachmentContent extends BaseModel {
    * Commits uploaded payload metadata back into the upload session lifecycle.
    */
   public static async CommitUploadPut(req: CommitUploadPutReq): Promise<CommitUploadPutResp> {
-    const normalized = this.normalizeCommitUploadPutReq(req);
+    const normalized = normalizeCommitUploadPutReq(req);
     const session = await this.mustLoadUploadSession(normalized.uploadId);
 
-    this.assertUploadSessionPrincipal(session, normalized.principal, 'commit_upload_put');
+    assertUploadSessionPrincipal(session, normalized.principal, 'commit_upload_put');
     await this.assertUploadSessionOwnerWriteAuthorization(session, normalized.principal, 'commit_upload_put');
 
     if (session.Status === 'finalized') {
@@ -300,12 +285,12 @@ export default class AttachmentContent extends BaseModel {
     }
 
     const allowedMimeTypes = this.normalizeAllowedMimeTypes(session.AllowedMimeTypes);
-    const contentType = normalized.payloadReceipt.contentType ?? this.normalizeContentType(session.ProposedContentType);
+    const contentType = normalized.payloadReceipt.contentType ?? normalizeContentType(session.ProposedContentType);
     if (!this.isMimeTypeAllowed(contentType, allowedMimeTypes)) {
       throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, { uploadId: normalized.uploadId, contentType: String(contentType || '') });
     }
 
-    const expectedChecksumSha256 = this.normalizeChecksum(session.ChecksumSha256);
+    const expectedChecksumSha256 = normalizeChecksum(session.ChecksumSha256);
     if (expectedChecksumSha256 && normalized.payloadReceipt.checksumSha256 !== expectedChecksumSha256) {
       throwDocumentError(DocumentErrCode.CHECKSUM_MISMATCH, 'checksum mismatch', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId });
     }
@@ -499,7 +484,7 @@ export default class AttachmentContent extends BaseModel {
   }
 
   protected static async createUploadSessionInternal(req: PrepareUploadReq): Promise<string> {
-    const normalized = this.normalizePrepareUploadReq(req);
+    const normalized = normalizePrepareUploadReq(req);
     const companyId = requireCompanyId(this.companyId, 'prepare');
     const issuerUserId = requireUserId(this.userId);
 
@@ -533,7 +518,7 @@ export default class AttachmentContent extends BaseModel {
   protected static async finalizeUploadInternal(uploadId: string): Promise<FinalizeUploadResp> {
     const normalizedUploadId = requireText(uploadId, 'uploadId');
     const session = await this.mustLoadUploadSession(normalizedUploadId);
-    this.assertFinalizeIdentity(session);
+    assertFinalizeIdentity(session, this.userId, this.companyId, this.companyIds);
 
     if (session.Status === 'finalized') {
       const finalizedContentId = requireText(session.AttachmentContentId, 'attachmentContentId');
@@ -551,7 +536,7 @@ export default class AttachmentContent extends BaseModel {
     }
 
     const sizeBytes = normalizeOptionalNonNegativeInt(session.UploadedSizeBytes) ?? 0;
-    const checksumSha256 = this.normalizeChecksum(session.UploadedChecksumSha256) ?? this.normalizeChecksum(session.ChecksumSha256) ?? EMPTY_SHA256;
+    const checksumSha256 = normalizeChecksum(session.UploadedChecksumSha256) ?? normalizeChecksum(session.ChecksumSha256) ?? EMPTY_SHA256;
     const mimeType = normalizeOptionalString(session.UploadedContentType) ?? normalizeOptionalString(session.ProposedContentType) ?? 'application/octet-stream';
 
     const uploadedPayloadRef = this.normalizeUploadedPayloadRef(session.UploadedPayloadRef);
@@ -624,33 +609,6 @@ export default class AttachmentContent extends BaseModel {
     return nextMetadata;
   }
 
-  private static normalizePrepareUploadReq(req: PrepareUploadReq | undefined | null): NormalizedPrepareUploadReq {
-    const ownerModel = requireText(req?.ownerModel, 'ownerModel');
-    const fieldName = requireText(req?.fieldName, 'fieldName');
-    const operation = requireText(req?.operation, 'operation');
-    const businessRequestId = requireText(req?.businessRequestId, 'businessRequestId');
-
-    if (operation !== 'create' && operation !== 'update') {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'operation must be create or update', GrpcCode.InvalidArgument, { operation });
-    }
-
-    const ownerRecordId = normalizeOptionalString(req?.ownerRecordId);
-    if (operation === 'update' && !ownerRecordId) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'ownerRecordId is required when operation=update', GrpcCode.InvalidArgument);
-    }
-
-    return {
-      ownerModel,
-      fieldName,
-      operation,
-      ownerRecordId,
-      businessRequestId,
-      proposedFileName: normalizeOptionalString(req?.proposedFileName ?? req?.originalFileName),
-      proposedContentType: normalizeOptionalString(req?.proposedContentType ?? req?.clientContentType),
-      proposedSizeBytes: normalizeOptionalNonNegativeInt(req?.proposedSizeBytes),
-      checksumSha256: this.normalizeChecksum(req?.checksumSha256),
-    };
-  }
 
   private static async findUploadSessionByBusinessRequestId(
     businessRequestId: string,
@@ -679,47 +637,8 @@ export default class AttachmentContent extends BaseModel {
     return session;
   }
 
-  private static assertPrepareReplayConsistency(
-    existing: AttachmentUploadSession,
-    req: NormalizedPrepareUploadReq,
-    companyId: string,
-    issuerUserId: string
-  ): void {
-    const mismatches: string[] = [];
 
-    if (requireText(existing.CompanyId, 'companyId') !== companyId) mismatches.push('companyId');
-    if (requireText(existing.IssuerUserId, 'issuerUserId') !== issuerUserId) mismatches.push('issuerUserId');
-    if (requireText(existing.OwnerModel, 'ownerModel') !== req.ownerModel) mismatches.push('ownerModel');
-    if ((normalizeOptionalString(existing.OwnerRecordId) ?? '') !== (req.ownerRecordId ?? '')) mismatches.push('ownerRecordId');
-    if (requireText(existing.FieldName, 'fieldName') !== req.fieldName) mismatches.push('fieldName');
-    if (requireText(existing.Operation, 'operation') !== req.operation) mismatches.push('operation');
 
-    if (mismatches.length > 0) {
-      throwDocumentError(DocumentErrCode.IDEMPOTENCY_KEY_REUSED, 'businessRequestId was already used with a different upload context', GrpcCode.FailedPrecondition, { businessRequestId: req.businessRequestId, mismatches: mismatches.join(',') });
-    }
-  }
-
-  private static assertFinalizeIdentity(session: AttachmentUploadSession): void {
-    const principal = {
-      userId: requireUserId(this.userId),
-      activeCompanyId: requireCompanyId(this.companyId, 'finalize'),
-      enabledCompanyIds: this.companyIds,
-    };
-    this.assertUploadSessionPrincipal(session, principal, 'finalize');
-  }
-
-  private static assertUploadSessionPrincipal(
-    session: AttachmentUploadSession,
-    principal: PrincipalContext,
-    stage: 'finalize' | 'authorize_upload_put' | 'commit_upload_put'
-  ): void {
-    const sessionCompanyId = requireText(session.CompanyId, 'companyId');
-    const sessionUserId = requireText(session.IssuerUserId, 'issuerUserId');
-
-    if (sessionCompanyId !== principal.activeCompanyId || sessionUserId !== principal.userId) {
-      throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'upload session caller does not match upload session identity', GrpcCode.PermissionDenied, { stage, uploadId: requireText(session.Id, 'uploadId') });
-    }
-  }
 
   private static async assertUploadSessionOwnerWriteAuthorization(
     session: AttachmentUploadSession,
@@ -751,85 +670,15 @@ export default class AttachmentContent extends BaseModel {
     throwDocumentError(DocumentErrCode.UPLOAD_SESSION_FINALIZED, 'Upload session has already been finalized', GrpcCode.FailedPrecondition, { uploadId });
   }
 
-  private static normalizeAuthorizeUploadPutReq(req: AuthorizeUploadPutReq | undefined | null): NormalizedAuthorizeUploadPutReq {
-    const uploadId = requireText(req?.uploadId, 'uploadId');
-    const principal = this.normalizePrincipal(req?.principal);
-    const requestMeta = asRecord(req?.requestMeta);
 
-    return {
-      uploadId,
-      principal,
-      requestMeta: {
-        contentType: this.normalizeContentType(requestMeta?.contentType),
-        contentLength:
-          requestMeta && Object.prototype.hasOwnProperty.call(requestMeta, 'contentLength')
-            ? this.parseRequiredNonNegativeInt(requestMeta.contentLength, 'requestMeta.contentLength')
-            : undefined,
-        checksumSha256: this.normalizeChecksum(requestMeta?.checksumSha256),
-      },
-    };
-  }
 
-  private static normalizeCommitUploadPutReq(req: CommitUploadPutReq | undefined | null): NormalizedCommitUploadPutReq {
-    const uploadId = requireText(req?.uploadId, 'uploadId');
-    const principal = this.normalizePrincipal(req?.principal);
-    const payloadReceipt = asRecord(req?.payloadReceipt);
 
-    return {
-      uploadId,
-      principal,
-      payloadReceipt: {
-        payloadId: this.normalizePayloadReceiptID(payloadReceipt?.payloadId),
-        sizeBytes: this.parseRequiredNonNegativeInt(payloadReceipt?.sizeBytes, 'payloadReceipt.sizeBytes'),
-        checksumSha256: requireText(this.normalizeChecksum(payloadReceipt?.checksumSha256), 'payloadReceipt.checksumSha256'),
-        contentType: this.normalizeContentType(payloadReceipt?.contentType),
-      },
-    };
-  }
 
-  private static normalizePayloadReceiptID(value: unknown): string {
-    const payloadId = requireText(value, 'payloadReceipt.payloadId');
-    if (this.isDisallowedInlinePayloadID(payloadId)) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden', GrpcCode.InvalidArgument, { field: 'payloadReceipt.payloadId' });
-    }
-    return payloadId;
-  }
 
-  private static isDisallowedInlinePayloadID(payloadId: string): boolean {
-    const text = normalizeOptionalString(payloadId);
-    if (!text) return false;
-    const normalized = text.toLowerCase();
-    return normalized.startsWith('inline_base64:') || normalized.startsWith('data:');
-  }
-
-  private static normalizePrincipal(raw: unknown): PrincipalContext {
-    const principal = asRecord(raw);
-    return {
-      userId: requireText(principal?.userId, 'principal.userId'),
-      activeCompanyId: requireText(principal?.activeCompanyId, 'principal.activeCompanyId'),
-      enabledCompanyIds: Array.isArray(principal?.enabledCompanyIds)
-        ? (principal?.enabledCompanyIds as unknown[]).map(item => normalizeOptionalString(item)).filter((item): item is string => Boolean(item))
-        : undefined,
-    };
-  }
-
-  private static parseRequiredNonNegativeInt(value: unknown, fieldName: string): number {
-    const raw = normalizeOptionalString(value);
-    if (raw === undefined) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
-    }
-
-    const num = Number(raw);
-    if (!Number.isFinite(num) || num < 0) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} must be a non-negative integer`, GrpcCode.InvalidArgument, { field: fieldName });
-    }
-
-    return Math.trunc(num);
-  }
 
   private static normalizeAllowedMimeTypes(raw: unknown): string[] {
     if (Array.isArray(raw)) {
-      return raw.map(item => this.normalizeContentType(item)).filter((item): item is string => Boolean(item));
+      return raw.map(item => normalizeContentType(item)).filter((item): item is string => Boolean(item));
     }
 
     if (raw && typeof raw === 'object') {
@@ -846,10 +695,10 @@ export default class AttachmentContent extends BaseModel {
     try {
       const parsed = JSON.parse(text);
       if (Array.isArray(parsed)) {
-        return parsed.map(item => this.normalizeContentType(item)).filter((item): item is string => Boolean(item));
+        return parsed.map(item => normalizeContentType(item)).filter((item): item is string => Boolean(item));
       }
       if (typeof parsed === 'string') {
-        const normalized = this.normalizeContentType(parsed);
+        const normalized = normalizeContentType(parsed);
         return normalized ? [normalized] : [];
       }
       return [];
@@ -857,18 +706,10 @@ export default class AttachmentContent extends BaseModel {
       // Fallback to single content type token.
     }
 
-    const normalized = this.normalizeContentType(text);
+    const normalized = normalizeContentType(text);
     return normalized ? [normalized] : [];
   }
 
-  private static normalizeContentType(value: unknown): string | undefined {
-    const text = normalizeOptionalString(value);
-    if (!text) return undefined;
-    const semicolon = text.indexOf(';');
-    const token = semicolon >= 0 ? text.slice(0, semicolon) : text;
-    const normalized = token.trim().toLowerCase();
-    return normalized || undefined;
-  }
 
   private static isMimeTypeAllowed(contentType: string | undefined, allowedMimeTypes: string[]): boolean {
     if (allowedMimeTypes.length === 0) {
@@ -918,7 +759,7 @@ export default class AttachmentContent extends BaseModel {
 
   private static buildUploadedPayloadRefFromPayloadId(payloadId: string): UploadedPayloadRef {
     const text = requireText(payloadId, 'payloadReceipt.payloadId');
-    if (this.isDisallowedInlinePayloadID(text)) {
+    if (isDisallowedInlinePayloadID(text)) {
       throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden', GrpcCode.InvalidArgument, { field: 'payloadReceipt.payloadId' });
     }
 
@@ -1024,7 +865,7 @@ export default class AttachmentContent extends BaseModel {
       status: 'active',
       mimeType: normalizeOptionalString(obj.MimeType) ?? 'application/octet-stream',
       sizeBytes: normalizeOptionalNonNegativeInt(obj.SizeBytes) ?? 0,
-      checksumSha256: this.normalizeChecksum(obj.ChecksumSha256) ?? EMPTY_SHA256,
+      checksumSha256: normalizeChecksum(obj.ChecksumSha256) ?? EMPTY_SHA256,
       imageMetadata:
         imageWidth !== undefined && imageHeight !== undefined && imageFormat
           ? {
@@ -1036,15 +877,6 @@ export default class AttachmentContent extends BaseModel {
     };
   }
 
-  private static normalizeChecksum(value: unknown): string | undefined {
-    const text = normalizeOptionalString(value);
-    if (!text) return undefined;
-    const normalized = text.toLowerCase();
-    if (!/^[a-f0-9]{64}$/.test(normalized)) {
-      throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'checksumSha256 must be a 64-character hex string', GrpcCode.InvalidArgument);
-    }
-    return normalized;
-  }
 
   private static newSkeletonNotImplementedError(method: string) {
     return newDocumentError({
