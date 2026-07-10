@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { AttachmentBackend } from '../contracts';
-import { DocumentErrCode, GrpcCode, newDocumentError } from '../error';
+import { DocumentErrCode, GrpcCode, newDocumentError, throwDocumentError } from '../error';
 
 /**
  * Lifecycle states for stored payload content.
@@ -66,12 +66,7 @@ export default class StoredContent extends BaseModel {
     const rows = await this.Search(['Id', '=', storedContentId] as any, { limit: 1 } as any);
     const storedContent = rows[0] as StoredContent | undefined;
     if (!storedContent) {
-      throw newDocumentError({
-        code: DocumentErrCode.NOT_FOUND,
-        message: 'Stored content not found',
-      })
-        .withGrpcCode(GrpcCode.NotFound)
-        .withMetadata({ storedContentId });
+      throwDocumentError(DocumentErrCode.NOT_FOUND, 'Stored content not found', GrpcCode.NotFound, { storedContentId });
     }
     return storedContent;
   }

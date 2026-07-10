@@ -4,7 +4,7 @@
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { GrpcCode } from '../error';
-import { newDocumentError, DocumentErrCode } from '../error';
+import { newDocumentError, DocumentErrCode, throwDocumentError } from '../error';
 
 const DEFAULT_GC_BATCH_SIZE = 200;
 
@@ -14,12 +14,7 @@ const DEFAULT_GC_BATCH_SIZE = 200;
 export function requireText(value: unknown, fieldName: string): string {
   const text = normalizeOptionalString(value);
   if (!text) {
-    throw newDocumentError({
-      code: DocumentErrCode.INVALID_ARGUMENT,
-      message: `${fieldName} is required`,
-    })
-      .withGrpcCode(GrpcCode.InvalidArgument)
-      .withMetadata({ field: fieldName });
+    throw throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
   }
   return text;
 }
@@ -30,10 +25,7 @@ export function requireText(value: unknown, fieldName: string): string {
 export function requireUserId(rawUserId: unknown): string {
   const userId = normalizeOptionalString(rawUserId);
   if (!userId) {
-    throw newDocumentError({
-      code: DocumentErrCode.UNAUTHENTICATED,
-      message: 'Authentication is required',
-    }).withGrpcCode(GrpcCode.Unauthenticated);
+    throw throwDocumentError(DocumentErrCode.UNAUTHENTICATED, 'Authentication is required', GrpcCode.Unauthenticated);
   }
   return userId;
 }
@@ -44,12 +36,7 @@ export function requireUserId(rawUserId: unknown): string {
 export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
   const companyId = normalizeOptionalString(rawCompanyId);
   if (!companyId) {
-    throw newDocumentError({
-      code: DocumentErrCode.PERMISSION_DENIED,
-      message: 'activeCompanyId is required for document operations',
-    })
-      .withGrpcCode(GrpcCode.PermissionDenied)
-      .withMetadata({ stage });
+    throw throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'activeCompanyId is required for document operations', GrpcCode.PermissionDenied, { stage });
   }
   return companyId;
 }
