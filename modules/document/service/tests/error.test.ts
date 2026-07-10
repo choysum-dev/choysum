@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { DOCUMENT_ERROR_HTTP_STATUS, DocumentErrCode, documentErrorHttpStatus } from '../error';
+import { ChoysumError } from '@/core/service/error';
+import { DocumentErrCode, documentErrorHttpStatus, throwDocumentError, DOCUMENT_ERROR_HTTP_STATUS } from '../error';
 
 test('document error contract: http status mapping is frozen for key codes', () => {
   expect(DOCUMENT_ERROR_HTTP_STATUS[DocumentErrCode.UNAUTHENTICATED]).toBe(401);
@@ -19,4 +20,44 @@ test('document error contract: lookup helper falls back to internal error for un
   expect(documentErrorHttpStatus(DocumentErrCode.UPLOAD_SESSION_FINALIZED)).toBe(409);
   expect(documentErrorHttpStatus('UNKNOWN_CUSTOM_CODE')).toBe(500);
   expect(documentErrorHttpStatus('')).toBe(500);
+});
+
+test('document error contract: throwDocumentError stringifies metadata values so withMetadata receives only strings', () => {
+  let caught: ChoysumError | undefined;
+  try {
+    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'test message', 3, {
+      field: 'attachmentBindingIds',
+      count: 42,
+      flag: true,
+      nil: null,
+      undef: undefined,
+    });
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught).toBeDefined();
+  expect(caught!.domain).toBe('document');
+  expect(caught!.code).toBe('INVALID_ARGUMENT');
+  expect(caught!.message).toBe('test message');
+  expect(caught!.grpcCode).toBe(3);
+  expect(caught!.metadata).toEqual({
+    field: 'attachmentBindingIds',
+    count: '42',
+    flag: 'true',
+    nil: '',
+    undef: '',
+  });
+});
+
+test('document error contract: throwDocumentError passes through when metadata is omitted', () => {
+  let caught: ChoysumError | undefined;
+  try {
+    throwDocumentError(DocumentErrCode.NOT_FOUND, 'missing', 5);
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught).toBeDefined();
+  expect(caught!.code).toBe('NOT_FOUND');
+  expect(caught!.grpcCode).toBe(5);
+  expect(caught!.metadata == null || Object.keys(caught!.metadata!).length === 0).toBe(true);
 });

@@ -87,5 +87,10 @@ export { newError as newDocumentError, wrapError as wrapDocumentError, isError a
  */
 export function throwDocumentError(code: DocumentErrCodeType, message: string, grpcCode?: number, metadata?: Record<string, unknown>): never {
   const err = newError({ code, message }).withGrpcCode(grpcCode ?? 2 /* UNKNOWN */);
-  throw metadata ? err.withMetadata(metadata as Record<string, string>) : err;
+  if (!metadata) throw err;
+  const stringified: Record<string, string> = {};
+  for (const [k, v] of Object.entries(metadata)) {
+    stringified[k] = String(v ?? '');
+  }
+  throw err.withMetadata(stringified);
 }
