@@ -357,6 +357,9 @@ const (
 func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string) ([]typeFetchCompilerTypeTarget, error) {
 	data, err := os.ReadFile(tsconfigPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, xfmt.Errorf("type-fetch: read modules tsconfig: %w", err)
 	}
 	if strings.TrimSpace(string(data)) == "" {

@@ -1742,7 +1742,7 @@ func EnsureTsconfigCompilerTypeRoots(tsconfigPath string, typesDir string, links
 	}
 
 	data, err := os.ReadFile(tsconfigPath)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("read tsconfig: %w", err)
 	}
 
@@ -1867,22 +1867,56 @@ func normalizeCompilerTypeRootName(typeName string) string {
 		return ""
 	}
 
+	// Strip @types/ prefix so that both "@types/node" and "node" produce
+	// the same typeRoots directory name.
 	if after, ok := strings.CutPrefix(typeName, "@types/"); ok {
 		typeName = after
 	}
-	if after, ok := strings.CutPrefix(typeName, "@"); ok {
-		typeName = after
+
+	// Scoped packages (e.g. @scope/pkg) need double-underscore encoding in
+	// typeRoots so that "@scope/pkg1" and "@scope/pkg2" do not collide.
+	if strings.HasPrefix(typeName, "@") {
+		parts := strings.SplitN(strings.TrimPrefix(typeName, "@"), "/", 2)
+		if len(parts) == 2 {
+			scope := strings.TrimSpace(parts[0])
+			pkg := strings.TrimSpace(parts[1])
+			if !isSafeCompilerTypeRootSegment(scope) || !isSafeCompilerTypeRootSegment(pkg) {
+				return ""
+			}
+			return scope + "__" + pkg
+		}
+		if len(parts) == 1 {
+			root := strings.TrimSpace(parts[0])
+			if !isSafeCompilerTypeRootSegment(root) {
+				return ""
+			}
+			return root
+		}
+		return ""
 	}
 
+	// Non-scoped packages may carry a subpath (e.g. vitest/globals); keep
+	// only the first segment.
 	segments := strings.Split(typeName, "/")
 	if len(segments) == 0 {
 		return ""
 	}
 	root := strings.TrimSpace(segments[0])
-	if root == "" {
+	if !isSafeCompilerTypeRootSegment(root) {
 		return ""
 	}
 	return root
+}
+
+func isSafeCompilerTypeRootSegment(seg string) bool {
+	seg = strings.TrimSpace(seg)
+	if seg == "" || seg == "." || seg == ".." {
+		return false
+	}
+	if strings.ContainsAny(seg, "\\/") {
+		return false
+	}
+	return true
 }
 
 func ensureModulesTsconfig(tsconfigPath string) error {
