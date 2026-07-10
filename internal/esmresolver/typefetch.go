@@ -1867,11 +1867,11 @@ func normalizeCompilerTypeRootName(typeName string) string {
 		return ""
 	}
 
-	if strings.HasPrefix(typeName, "@types/") {
-		typeName = strings.TrimPrefix(typeName, "@types/")
+	if after, ok := strings.CutPrefix(typeName, "@types/"); ok {
+		typeName = after
 	}
-	if strings.HasPrefix(typeName, "@") {
-		typeName = strings.TrimPrefix(typeName, "@")
+	if after, ok := strings.CutPrefix(typeName, "@"); ok {
+		typeName = after
 	}
 
 	segments := strings.Split(typeName, "/")
