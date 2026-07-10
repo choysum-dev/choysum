@@ -6,6 +6,7 @@ import { parseISODate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
 import { resolveGcBatchSize } from './_helpers';
+import { paginateBatch } from './_pagination';
 
 const DEFAULT_UPLOAD_SESSION_TTL_SECONDS = 900;
 
@@ -175,48 +176,39 @@ export default class AttachmentUploadSession extends BaseModel {
       DEFAULT_UPLOAD_SESSION_TTL_SECONDS
     );
 
-    let expiredCount = 0;
-    for (;;) {
-      const sessions = await this.Search(
-        {
-          And: [
-            ['Status', 'in', ['prepared', 'uploaded'] as any],
-            ['ExpiresAt', '<', now],
-          ],
-        } as any,
-        { limit: batch, fields: ['Id'] as any } as any
-      );
-      if (!sessions.length) break;
-      for (const session of sessions) {
+    const self = this;
+    const expiredCount = await paginateBatch(
+      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      {
+        And: [
+          ['Status', 'in', ['prepared', 'uploaded'] as any],
+          ['ExpiresAt', '<', now],
+        ],
+      },
+      async (session) => {
         const sessionId = String((session as any)?.Id || '').trim();
-        if (!sessionId) continue;
-        await this.UpdateById(sessionId, { Status: 'expired' } as any, ['Id'] as any);
-        expiredCount += 1;
-      }
-      if (sessions.length < batch) break;
-    }
+        if (!sessionId) return;
+        await self.UpdateById(sessionId, { Status: 'expired' } as any, ['Id'] as any);
+      },
+      { batch, fields: ['Id'] },
+    );
 
     const cutoff = new Date(now.getTime() - uploadSessionTTLSeconds * 1000);
-    let purgedCount = 0;
-    for (;;) {
-      const rows = await this.Search(
-        {
-          And: [
-            ['Status', 'in', ['finalized', 'expired'] as any],
-            ['UpdatedAt', '<', cutoff],
-          ],
-        } as any,
-        { limit: batch, fields: ['Id'] as any } as any
-      );
-      if (!rows.length) break;
-      for (const row of rows) {
+    const purgedCount = await paginateBatch(
+      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      {
+        And: [
+          ['Status', 'in', ['finalized', 'expired'] as any],
+          ['UpdatedAt', '<', cutoff],
+        ],
+      },
+      async (row) => {
         const sessionId = String((row as any)?.Id || '').trim();
-        if (!sessionId) continue;
-        await this.DeleteById(sessionId as any);
-        purgedCount += 1;
-      }
-      if (rows.length < batch) break;
-    }
+        if (!sessionId) return;
+        await self.DeleteById(sessionId as any);
+      },
+      { batch, fields: ['Id'] },
+    );
 
     return {
       expiredCount,

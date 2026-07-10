@@ -24,7 +24,7 @@ import AttachmentUploadSession from './upload_session';
 import AttachmentMutationLedger from './attachment_mutation_ledger';
 import StoredContent from './stored_content';
 import { assertOwnerWriteAuthorization } from './_owner_authorization';
-import { requireText, requireUserId, requireCompanyId, resolveGcBatchSize } from './_helpers';
+import { requireText, requireUserId, requireCompanyId, resolveGcBatchSize, mustLoadOne } from './_helpers';
 import { garbageCollectUnboundObjects } from './_attachment_gc';
 import {
   DEFAULT_UPLOAD_SESSION_TTL_SECONDS,
@@ -649,12 +649,12 @@ export default class AttachmentContent extends BaseModel {
   }
 
   private static async mustLoadUploadSession(uploadId: string): Promise<AttachmentUploadSession> {
-    const rows = await AttachmentUploadSession.Search(['Id', '=', uploadId] as any, { limit: 1 } as any);
-    const session = rows[0];
-    if (!session) {
-      throwDocumentError(DocumentErrCode.NOT_FOUND, 'Upload session not found', GrpcCode.NotFound, { uploadId });
-    }
-    return session;
+    return mustLoadOne<AttachmentUploadSession>(
+      (condition, opts) => AttachmentUploadSession.Search(condition, opts as any),
+      ['Id', '=', uploadId],
+      'Upload session not found',
+      { uploadId },
+    );
   }
 
   private static async assertUploadSessionOwnerWriteAuthorization(
@@ -861,12 +861,12 @@ export default class AttachmentContent extends BaseModel {
   }
 
   private static async mustLoadAttachmentContent(attachmentContentId: string): Promise<AttachmentContent> {
-    const rows = await this.Search(['Id', '=', attachmentContentId] as any, { limit: 1 } as any);
-    const attachmentContent = rows[0] as AttachmentContent | undefined;
-    if (!attachmentContent) {
-      throwDocumentError(DocumentErrCode.NOT_FOUND, 'Attachment content not found', GrpcCode.NotFound, { attachmentContentId });
-    }
-    return attachmentContent;
+    return mustLoadOne<AttachmentContent>(
+      (condition, opts) => this.Search(condition, opts as any),
+      ['Id', '=', attachmentContentId],
+      'Attachment content not found',
+      { attachmentContentId },
+    );
   }
 
   private static buildPrepareUploadResp(uploadId: string, session: AttachmentUploadSession): PrepareUploadResp {

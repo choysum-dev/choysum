@@ -47,3 +47,23 @@ export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
 export function resolveGcBatchSize(): number {
   return getBackendEnvPositiveInt(['CHOYSUM_DOCUMENT_GC_BATCH_SIZE'], DEFAULT_GC_BATCH_SIZE);
 }
+
+/**
+ * Generic single-row loader: Search with limit=1, throw NOT_FOUND if absent.
+ *
+ * Replaces the repeated `Search + check rows[0] + throwDocumentError(NOT_FOUND)`
+ * pattern found in mustLoad* helpers across binding, object, and stored_content.
+ */
+export async function mustLoadOne<T>(
+  searchFn: (condition: unknown, options?: unknown) => Promise<T[]>,
+  condition: unknown,
+  notFoundMessage: string,
+  metadata?: Record<string, unknown>,
+): Promise<T> {
+  const rows = await searchFn(condition, { limit: 1 });
+  const record = rows[0] as T | undefined;
+  if (!record) {
+    throw throwDocumentError(DocumentErrCode.NOT_FOUND, notFoundMessage, GrpcCode.NotFound, metadata ?? {});
+  }
+  return record;
+}

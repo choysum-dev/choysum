@@ -6,6 +6,7 @@ import { parseISODate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { MutationAction, MutationLedgerStatus } from '../contracts';
 import { resolveGcBatchSize } from './_helpers';
+import { paginateBatch } from './_pagination';
 
 const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;
 
@@ -82,23 +83,17 @@ export default class AttachmentMutationLedger extends BaseModel {
     const batch = resolveGcBatchSize();
     const cutoff = new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);
 
-    let purgedCount = 0;
-    for (;;) {
-      const ledgers = await this.Search(
-        {
-          And: [['UpdatedAt', '<', cutoff]],
-        } as any,
-        { limit: batch, fields: ['Id'] as any } as any
-      );
-      if (!ledgers.length) break;
-      for (const ledger of ledgers) {
+    const self = this;
+    const purgedCount = await paginateBatch(
+      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      { And: [['UpdatedAt', '<', cutoff]] },
+      async (ledger) => {
         const ledgerId = String((ledger as any)?.Id || '').trim();
-        if (!ledgerId) continue;
-        await this.DeleteById(ledgerId as any);
-        purgedCount += 1;
-      }
-      if (ledgers.length < batch) break;
-    }
+        if (!ledgerId) return;
+        await self.DeleteById(ledgerId as any);
+      },
+      { batch, fields: ['Id'] },
+    );
 
     return {
       purgedCount,
