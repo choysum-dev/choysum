@@ -75,18 +75,18 @@ export async function garbageCollectUnboundObjects(
   let retriedCount = 0;
   let failedCount = 0;
   let skippedCount = 0;
-  let offset = 0;
+  let lastId: string | null = null;
 
   for (;;) {
-    const candidates = await modelOps.Search(
-      {
-        And: [
-          ['Status', '=', 'active'],
-          ['UpdatedAt', '<', graceCutoff],
-        ],
-      } as any,
-      { limit: batch, offset, orderBy: { field: 'UpdatedAt', order: 'asc' } as any } as any
-    );
+    const baseConditions: any[] = [
+      ['Status', '=', 'active'],
+      ['UpdatedAt', '<', graceCutoff],
+    ];
+    if (lastId) {
+      baseConditions.push(['Id', '>', lastId]);
+    }
+
+    const candidates = await modelOps.Search({ And: baseConditions } as any, { limit: batch, orderBy: { field: 'Id', order: 'asc' } as any } as any);
     if (!candidates.length) break;
 
     for (const candidate of candidates) {
@@ -167,7 +167,8 @@ export async function garbageCollectUnboundObjects(
         else retriedCount += 1;
       }
     }
-    offset += candidates.length;
+    const lastCandidate = candidates[candidates.length - 1];
+    lastId = normalizeOptionalString((lastCandidate as any)?.Id) ?? lastId;
     if (candidates.length < batch) break;
   }
 

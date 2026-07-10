@@ -6,7 +6,7 @@ import { parseISODate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { MutationAction, MutationLedgerStatus } from '../contracts';
 import { resolveGcBatchSize } from './_pagination';
-import { paginateBatch } from './_pagination';
+import { paginateBatch } from '@/core/service/utils/pagination';
 
 const DEFAULT_MUTATION_LEDGER_RETENTION_DAYS = 30;
 

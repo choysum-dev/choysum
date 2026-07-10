@@ -5,6 +5,7 @@ import { createServiceByModel } from '@/core/service/rpc/service_factory';
 import type { ConditionEnvelope, ConditionExpr, RecordRuleOp } from '@/core/service/api/authz';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
+import { observePermissionDenied } from './_owner_authorization_observability';
 
 type OwnerWriteOperation = 'create' | 'update';
 type OwnerPermissionStage =
@@ -54,7 +55,6 @@ type FieldRuleSpec = {
 };
 
 const AUTH_USER_MODEL = 'auth.User';
-const STORAGE_PERMISSION_DENIED_COUNTER_KEY = Symbol.for('choysum.document.permission_denied_total');
 
 /**
  * Verifies write access to the owner model and field used by a document mutation.
@@ -324,55 +324,6 @@ function stringifyMetadata(metadata: Record<string, unknown>): Record<string, st
     if (text) out[k] = text;
   }
   return out;
-}
-
-function observePermissionDenied(stage: OwnerPermissionStage, message: string, metadata: Record<string, unknown>): void {
-  const ownerModel = normalizeOptionalText(metadata.ownerModel) ?? 'unknown';
-  const fieldName = normalizeOptionalText(metadata.fieldName) ?? 'unknown';
-  const reason = normalizeReason(normalizeOptionalText(metadata.reason) ?? message);
-
-  try {
-    console.warn(
-      `[DOCUMENT][permission_denied] ${JSON.stringify({
-        stage,
-        ownerModel,
-        fieldName,
-        reason,
-      })}`
-    );
-  } catch {
-    // Observability should never block business errors.
-  }
-
-  try {
-    const root = globalThis as any;
-    const store: Record<string, number> = root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] ?? {};
-    root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] = store;
-
-    const key = `${stage}|${reason}`;
-    store[key] = (store[key] ?? 0) + 1;
-
-    console.info(
-      `[METRIC] ${JSON.stringify({
-        name: 'document.permission_denied_total',
-        stage,
-        reason,
-        value: store[key],
-        delta: 1,
-      })}`
-    );
-  } catch {
-    // Metrics emission is best-effort.
-  }
-}
-
-function normalizeReason(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return normalized || 'unknown';
 }
 
 function requireText(value: unknown, fieldName: string, stage: OwnerPermissionStage): string {

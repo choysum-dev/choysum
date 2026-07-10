@@ -6,7 +6,7 @@ import { parseISODate } from '@/core/service/utils/date';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
 import { resolveGcBatchSize } from './_pagination';
-import { paginateBatch } from './_pagination';
+import { paginateBatch } from '@/core/service/utils/pagination';
 import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload';
 
 /**
