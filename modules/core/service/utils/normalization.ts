@@ -657,9 +657,11 @@ export function asRecord(input: unknown): Record<string, unknown> | null {
  * negative values. Truncates fractional components via Math.trunc.
  */
 export function normalizeOptionalNonNegativeInt(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'number' && typeof value !== 'string') return undefined;
-  const num = Number(value);
+  if (value === undefined || value === null) return undefined;
+  const normalized = typeof value === 'string' ? value.trim() : value;
+  if (normalized === '') return undefined;
+  if (typeof normalized !== 'number' && typeof normalized !== 'string') return undefined;
+  const num = Number(normalized);
   if (!Number.isFinite(num)) return undefined;
   if (num < 0) return undefined;
   return Math.trunc(num);

@@ -168,7 +168,11 @@ export async function garbageCollectUnboundObjects(
       }
     }
     const lastCandidate = candidates[candidates.length - 1];
-    lastId = normalizeOptionalString((lastCandidate as any)?.Id) ?? lastId;
+    const nextLastId = normalizeOptionalString((lastCandidate as any)?.Id);
+    if (!nextLastId) {
+      throw new Error('Garbage collection aborted: candidate is missing a valid Id');
+    }
+    lastId = nextLastId;
     if (candidates.length < batch) break;
   }
 

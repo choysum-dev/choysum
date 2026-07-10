@@ -78,7 +78,7 @@ function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number 
 }
 
 export function isDisallowedInlinePayloadID(payloadId: string): boolean {
-  return payloadId.startsWith('inline:') || payloadId.startsWith('data:') || payloadId.startsWith('s3:');
+  return payloadId.startsWith('inline:') || payloadId.startsWith('inline_base64:') || payloadId.startsWith('data:') || payloadId.startsWith('s3:');
 }
 
 export function normalizePayloadReceiptID(payloadId: unknown): string {
