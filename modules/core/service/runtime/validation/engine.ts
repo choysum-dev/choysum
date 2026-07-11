@@ -398,7 +398,6 @@ export class ValidationEngine {
 
     const self = this.buildConstraintSelf(ctx);
     const issues: ValidationIssue[] = [];
-    const originalChangedFields = new Set(ctx.changedFields);
     const instanceTouched = new Set<string>();
     const instanceChanges: ObjectRecord = {};
 
