@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { normalizeOffset } from '@/core/service/utils/normalization';
-import { toDate } from '@/core/service/utils/date';
+import { toDate } from '@/core/service/utils/datetime';
 import Job from './job';
 import { clampLimit } from './_helpers';
 import { computeNextRunAt, normalizeTimezone, applyNextRunPreview } from './_cron';

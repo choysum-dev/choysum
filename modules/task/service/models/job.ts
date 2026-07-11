@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { SearchOptions, QueryCondition, OrderBy } from '@/core/service/api/query';
 import { normalizeOffset } from '@/core/service/utils/normalization';
-import { toDate } from '@/core/service/utils/date';
+import { toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { clampLimit } from './_helpers';
 import { sanitizePayload } from './_payload';

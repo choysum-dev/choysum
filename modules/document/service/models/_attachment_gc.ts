@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } from '@/core/service/utils/normalization';
-import { parseISODate, toDate } from '@/core/service/utils/date';
+import { parseISODate, toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
 import { resolveGcBatchSize } from './_gc_config';

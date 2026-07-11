@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/timezone';
+import { isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
 import { parseCronField, parseCronExpr, nextCronTime, computeNextRunAt, normalizeTimezone, applyNextRunPreview } from '@/task/service/models/_cron';
 
 test('task._cron parseTimezoneOffsetMinutes parses UTC', () => {

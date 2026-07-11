@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, normalizeChecksumSha256, normalizeContentType } from '@/core/service/utils/normalization';
-import { parseISODate } from '@/core/service/utils/date';
+import { parseISODate } from '@/core/service/utils/datetime';
 import { GrpcCode } from '../error';
 import {
   PrepareUploadReq,

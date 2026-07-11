@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import moment from 'moment-timezone';
-import { isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/timezone';
+import { isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
 
 /**
  * Parsed cron fields used while computing preview run times.

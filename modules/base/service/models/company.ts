@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition } from '@/core/service/api/query';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
-import { isIanaTimezone } from '@/core/service/utils/timezone';
+import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Address from './address';
 import Country from './country';
