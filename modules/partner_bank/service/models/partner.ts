@@ -3,6 +3,7 @@
 
 import { Field, Model } from '@/core/service';
 import PartnerBase from '@/partner/service/models/partner';
+import { pickDefaultBankAccountId } from './_helpers';
 import BankAccount from './bank_account';
 
 /**
@@ -24,7 +25,7 @@ export default class Partner extends PartnerBase {
     column: {
       index: true,
       compute: {
-        expr: (self: Partner) => Partner.pickDefaultBankAccountId((self as any).BankAccounts, 'inbound'),
+        expr: (self: Partner) => pickDefaultBankAccountId((self as any).BankAccounts, 'inbound'),
         deps: ['BankAccounts.Id' as any, 'BankAccounts.IsDefaultInbound' as any, 'BankAccounts.IsActive' as any],
       },
     },
@@ -38,26 +39,10 @@ export default class Partner extends PartnerBase {
     column: {
       index: true,
       compute: {
-        expr: (self: Partner) => Partner.pickDefaultBankAccountId((self as any).BankAccounts, 'outbound'),
+        expr: (self: Partner) => pickDefaultBankAccountId((self as any).BankAccounts, 'outbound'),
         deps: ['BankAccounts.Id' as any, 'BankAccounts.IsDefaultOutbound' as any, 'BankAccounts.IsActive' as any],
       },
     },
   })
   readonly DefaultOutboundBankAccountId?: BankAccount;
-
-  /** Picks the derived default bank account for the requested direction. */
-  private static pickDefaultBankAccountId(
-    accounts: Array<{ Id?: string; IsDefaultInbound?: boolean; IsDefaultOutbound?: boolean; IsActive?: boolean }> | undefined,
-    direction: 'inbound' | 'outbound'
-  ): string | null {
-    const rows = [...(accounts || [])]
-      .filter(item => !!item?.Id)
-      .filter(item => item?.IsActive !== false)
-      .sort((left, right) => String(left?.Id || '').localeCompare(String(right?.Id || '')));
-
-    if (direction === 'inbound') {
-      return rows.find(item => item?.IsDefaultInbound === true)?.Id || null;
-    }
-    return rows.find(item => item?.IsDefaultOutbound === true)?.Id || null;
-  }
 }

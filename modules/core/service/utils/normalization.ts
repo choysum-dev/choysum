@@ -5,10 +5,16 @@ import Decimal from '../../utils/decimal';
 
 /**
  * Return a trimmed string, or undefined when input is empty/null.
+ *
+ * When `opts.upper` is true the result is uppercased; when `opts.lower`
+ * is true it is lowercased.  upper takes precedence over lower.
  */
-export function normalizeOptionalString(value: unknown): string | undefined {
-  const normalized = String(value || '').trim();
-  return normalized || undefined;
+export function normalizeOptionalString(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | undefined {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) return undefined;
+  if (opts?.upper) return normalized.toUpperCase();
+  if (opts?.lower) return normalized.toLowerCase();
+  return normalized;
 }
 
 /**

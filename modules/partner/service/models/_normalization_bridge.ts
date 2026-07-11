@@ -28,7 +28,9 @@ export function mapNormalizationToPartner<T>(fn: () => T, mapMessage: (err: Norm
 /**
  * Normalize an optional text field with case-coercion support.
  *
- * Preserves the undefined/null distinction:
+ * Delegates trimming and case coercion to core normalizeOptionalString;
+ * this wrapper only adds the partner-domain null / undefined contract:
+ *
  * - undefined → undefined
  * - null      → null
  * - empty     → null
@@ -36,11 +38,8 @@ export function mapNormalizationToPartner<T>(fn: () => T, mapMessage: (err: Norm
 export function normalizeOptionalText(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  const base = normalizeOptionalString(value);
-  if (base === undefined) return null;
-  if (opts?.upper) return base.toUpperCase();
-  if (opts?.lower) return base.toLowerCase();
-  return base;
+  const base = normalizeOptionalString(value, opts);
+  return base === undefined ? null : base;
 }
 
 /**
