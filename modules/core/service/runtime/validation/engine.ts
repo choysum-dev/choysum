@@ -398,7 +398,6 @@ export class ValidationEngine {
 
     const issues: ValidationIssue[] = [];
     const instanceTouched = new Set<string>();
-    const instanceChanges: ObjectRecord = {};
 
     for (const handler of handlers) {
       // Rebuild `self` on every iteration so that earlier instance-constraint
@@ -452,13 +451,13 @@ export class ValidationEngine {
         continue;
       }
 
-      // Pass accumulated instanceChanges so subsequent handlers can see
-      // mutations from earlier handlers through the draft proxy.
-      const { draft, changes } = this.createConstraintDraft(self, ctx.values, ctx.metadata.fields, instanceChanges);
+      // Create draft proxy for the current handler.  Previous mutations
+      // are already flushed to `ctx.values`, which is passed as the payload
+      // source, so the draft naturally sees them through the resolve chain.
+      const { draft, changes } = this.createConstraintDraft(self, ctx.values, ctx.metadata.fields);
       try {
         await instanceMethod.call(draft);
         for (const field of Object.keys(changes)) {
-          instanceChanges[field] = changes[field];
           instanceTouched.add(field);
           // Flush to ctx.values immediately so the next handler's draft
           // (which reads ctx.values as a fallback) can observe the update.
@@ -479,12 +478,6 @@ export class ValidationEngine {
           severity: 'error',
         });
       }
-    }
-
-    // Write back instance constraint mutations to ctx.values.
-    // (Already flushed per-handler in the loop above; kept as a no-op safety net.)
-    if (instanceTouched.size > 0) {
-      this.applyConstraintWriteback(ctx, instanceTouched, instanceChanges);
     }
 
     // Run post-constraint re-validation for fields mutated by instance constraints.
@@ -570,30 +563,17 @@ export class ValidationEngine {
     return method as InstanceConstraintMethod<TModel>;
   }
 
-  /**
-   * Creates a draft proxy that wraps a constraint `self` object.
-   *
-   * The proxy intercepts property writes and records them in `changes`,
-   * while reads follow the priority chain
-   * `changes → accumulatedChanges → ctx.values → original self`.
-   *
-   * @param accumulatedChanges  Mutations from previously-executed instance
-   *                            constraints in the same validation run, so
-   *                            that later handlers can observe earlier writes.
-   * @returns The draft proxy and the per-handler change record.
-   */
   private static createConstraintDraft<TModel extends BaseModel>(
     self: TModel,
     payloadValues: ObjectRecord,
-    fieldMetadata: Map<string, unknown>,
-    accumulatedChanges: ObjectRecord = {}
+    fieldMetadata: Map<string, unknown>
   ): { draft: TModel; changes: ObjectRecord } {
     // Use a null-prototype object so that standard prototype properties
     // (e.g. `constructor`, `toString`) never collide with model fields.
     const changes = Object.create(null) as ObjectRecord;
 
     const resolve = (key: string, receiver?: unknown): unknown => {
-      // Only consult changes / accumulatedChanges / payloadValues when the
+      // Only consult changes / payloadValues when the
       // key is a known model field.  Otherwise fall straight through to
       // `self` so that prototype methods and non-metadata properties are
       // read from the real object — the `in` operator would traverse the
@@ -601,7 +581,6 @@ export class ValidationEngine {
       // `this.constructor`).
       if (fieldMetadata.has(key)) {
         if (key in changes) return changes[key];
-        if (key in accumulatedChanges) return accumulatedChanges[key];
         if (payloadValues && key in payloadValues) return payloadValues[key];
       }
       // Use Reflect.get with the receiver so that prototype getters
@@ -642,18 +621,6 @@ export class ValidationEngine {
     }) as unknown as TModel;
 
     return { draft, changes };
-  }
-
-  /**
-   * Writes back the changes collected by instance constraint draft proxies
-   * into the constraint context's `values` payload.
-   */
-  private static applyConstraintWriteback<TModel extends BaseModel>(ctx: ConstraintContext<TModel>, touched: Set<string>, changes: ObjectRecord): void {
-    for (const field of touched) {
-      if (ctx.metadata.fields.has(field) || changes[field] !== undefined) {
-        ctx.values[field] = changes[field];
-      }
-    }
   }
 
   /**
