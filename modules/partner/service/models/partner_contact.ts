@@ -131,13 +131,11 @@ export default class PartnerContact extends BaseModel {
   }
 
   /** Normalizes and validates partner-contact values before persistence. */
-  private static async validateEntity(values: Record<string, any>, currentId?: string, current?: Record<string, any>): Promise<void> {
-    // Capture whether ref fields were explicitly provided before normalization
-    // so we know whether to fall back to current / persisted values.
-    const partnerIdProvided = values.PartnerId !== undefined;
-    const companyIdProvided = values.CompanyId !== undefined;
-    const addressIdProvided = values.AddressId !== undefined;
+  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+    // Capture whether fields were explicitly provided before normalization
+    // so we know whether to fall back to persisted values.
     const addressTypeProvided = values.AddressType !== undefined;
+    const addressIdProvided = values.AddressId !== undefined;
 
     values.PartnerId = normalizeRefId(values.PartnerId);
     values.CompanyId = normalizeRefId(values.CompanyId);
@@ -152,18 +150,8 @@ export default class PartnerContact extends BaseModel {
     values.AddressType = this.normalizeAddressType(values.AddressType);
     values.AttentionTo = normalizeOptionalText(values.AttentionTo);
 
-    if (!partnerIdProvided) {
-      try {
-        values.PartnerId = normalizeRefId(current?.PartnerId);
-      } catch {
-        values.PartnerId = null;
-      }
-    }
-    if (!companyIdProvided) values.CompanyId = normalizeRefId(current?.CompanyId);
-    if (!addressIdProvided) values.AddressId = normalizeRefId(current?.AddressId);
-    if (!addressTypeProvided) values.AddressType = this.normalizeAddressType(current?.AddressType);
-
-    // During updates ctx.current may omit full field values, so load the persisted row once as a fallback.
+    // During updates the draft proxy may return raw IDs for unsubmitted ref
+    // fields, so load the persisted row once as a definitive fallback.
     if (
       (values.PartnerId == null ||
         values.CompanyId == null ||

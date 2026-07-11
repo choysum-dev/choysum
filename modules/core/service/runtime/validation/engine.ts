@@ -455,13 +455,11 @@ export class ValidationEngine {
       try {
         await instanceMethod.call(draft);
         for (const field of Object.keys(changes)) {
-          if (changes[field] !== undefined) {
-            instanceChanges[field] = changes[field];
-            instanceTouched.add(field);
-            // Flush to ctx.values immediately so the next handler's draft
-            // (which reads ctx.values as a fallback) can observe the update.
-            ctx.values[field] = changes[field];
-          }
+          instanceChanges[field] = changes[field];
+          instanceTouched.add(field);
+          // Flush to ctx.values immediately so the next handler's draft
+          // (which reads ctx.values as a fallback) can observe the update.
+          ctx.values[field] = changes[field];
         }
       } catch (error) {
         if (error instanceof ValidationPipelineError) {
@@ -587,13 +585,17 @@ export class ValidationEngine {
   ): { draft: TModel; changes: ObjectRecord } {
     const changes: ObjectRecord = {};
 
+    const resolve = (key: string): unknown => {
+      if (key in changes) return changes[key];
+      if (key in accumulatedChanges) return accumulatedChanges[key];
+      if (payloadValues && key in payloadValues) return payloadValues[key];
+      return (self as unknown as ObjectRecord)[key];
+    };
+
     const draft = new Proxy(self as unknown as ObjectRecord, {
       get(_target, prop, receiver) {
         const key = String(prop);
-        if (key in changes) return changes[key];
-        if (key in accumulatedChanges) return accumulatedChanges[key];
-        if (payloadValues && key in payloadValues) return payloadValues[key];
-        return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
+        return resolve(key);
       },
       set(_target, prop, value, _receiver) {
         const key = String(prop);
@@ -601,7 +603,11 @@ export class ValidationEngine {
         if (!fieldMetadata.has(key)) {
           return true;
         }
-        changes[key] = value;
+        // Skip recording when the value is already identical to the resolved
+        // current value (avoid unnecessary writebacks and re-validation).
+        if (resolve(key) !== value) {
+          changes[key] = value;
+        }
         return true;
       },
     }) as unknown as TModel;
