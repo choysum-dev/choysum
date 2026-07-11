@@ -75,10 +75,10 @@ export function normalizeNonNegativeInt(value: unknown, fieldName: string): numb
  * null/empty input defaults to 10. Allows negative integers.
  * Throws a partner-domain error for non-integer values.
  */
-export function normalizeSequenceInt(value: unknown): number | undefined {
+export function normalizeSequenceInt(value: unknown, defaultValue: number = 10): number | undefined {
   if (value === undefined) return undefined;
   if (value === null || (typeof value === 'string' && value.trim() === '')) {
-    return 10;
+    return defaultValue;
   }
   const num = Number(value);
   if (!Number.isFinite(num) || Math.floor(num) !== num) {

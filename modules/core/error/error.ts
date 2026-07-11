@@ -215,7 +215,7 @@ export class ChoysumError extends Error implements Omit<ErrorInfo, '$typeName'> 
  * This is a convenience shortcut for the common pattern:
  *   throw new ChoysumError({ domain, code, message }).withGrpcCode(GrpcCode.InvalidArgument);
  */
-export function raiseDomainError(domain: string, code: string, message: string): never {
+export function raiseDomainError(domain: string, code: ErrorCodePattern, message: string): never {
   throw new ChoysumError({ domain, code, message }).withGrpcCode(Code.InvalidArgument);
 }
 
