@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { ChoysumError, GrpcCode, raiseDomainError } from '@/core/service/error';
 import { asBigInt, isExpiredAt, normalizeOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
 import { buildPaddedNumberItems, resolvePaddedNumberFormat } from '@/core/service/utils/format';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
@@ -21,7 +21,7 @@ function normalizeCount(count: unknown): number {
     () => 'Count must be an integer >= 1'
   );
   if (n > 1000) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Count must be within 1..1000' }).withGrpcCode(GrpcCode.InvalidArgument);
+    raiseDomainError('base', 'InvalidArgument', 'Count must be within 1..1000');
   }
   return n;
 }

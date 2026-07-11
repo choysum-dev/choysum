@@ -4,7 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import { fail, normalizeOptionalText, normalizeSequenceInt } from './_normalization_bridge';
 import Partner from './partner';
 
 /**
@@ -81,59 +82,24 @@ export default class PartnerContact extends BaseModel {
   @Field({ type: 'text' })
   Notes?: string;
 
-  /** Raises a partner-domain invalid-argument error. */
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'partner', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  /** Normalizes relation payloads into string ids. */
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  /** Normalizes an optional text field with optional case coercion. */
-  private static normalizeOptionalText(value: unknown, options?: { lower?: boolean; upper?: boolean }): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    let normalized = String(value ?? '').trim();
-    if (!normalized) return null;
-    if (options?.lower) normalized = normalized.toLowerCase();
-    if (options?.upper) normalized = normalized.toUpperCase();
-    return normalized;
-  }
-
-  /** Normalizes the display sequence to an integer. */
-  private static normalizeSequence(value: unknown): number | undefined {
-    if (value === undefined) return undefined;
-    const normalized = Number(value ?? 10);
-    if (!Number.isFinite(normalized) || Math.floor(normalized) !== normalized) {
-      this.fail('Sequence must be an integer');
-    }
-    return normalized;
-  }
-
   /** Normalizes and validates the contact address category. */
   private static normalizeAddressType(value: unknown): string | null | undefined {
-    const normalized = this.normalizeOptionalText(value, { lower: true });
+    const normalized = normalizeOptionalText(value, { lower: true });
     if (normalized == null) return normalized;
     if (!ADDRESS_TYPES.has(normalized)) {
-      this.fail('AddressType must be one of billing, shipping, office, registered, other');
+      fail('AddressType must be one of billing, shipping, office, registered, other');
     }
     return normalized;
   }
 
   /** Ensures each partner has only one default contact per address category. */
   private static async ensureDefaultAddressUnique(values: Record<string, any>, currentId?: string): Promise<void> {
-    const partnerId = this.asRefId(values.PartnerId);
+    const partnerId = normalizeRefId(values.PartnerId);
     const addressType = this.normalizeAddressType(values.AddressType);
     const isDefault = values.IsDefault === true;
-    const addressId = this.asRefId(values.AddressId);
+    const addressId = normalizeRefId(values.AddressId);
 
-    if (!partnerId) this.fail('PartnerId is required');
+    if (!partnerId) fail('PartnerId is required');
     if (!isDefault || !addressType) return;
     if (!addressId) return;
 
@@ -149,64 +115,71 @@ export default class PartnerContact extends BaseModel {
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) {
-      this.fail(`Only one default ${addressType} contact is allowed for the same partner`);
+      fail(`Only one default ${addressType} contact is allowed for the same partner`);
     }
   }
 
   /** Ensures a contact row carries at least one identifying or reachable value. */
   private static ensureRowHasValue(values: Record<string, any>): void {
     const hasName = !!String(values.Name || '').trim();
-    const hasAddress = !!this.asRefId(values.AddressId);
+    const hasAddress = !!normalizeRefId(values.AddressId);
     const hasEmail = !!String(values.Email || '').trim();
     const hasPhone = !!String(values.Phone || '').trim();
     const hasMobile = !!String(values.Mobile || '').trim();
     if (!hasName && !hasAddress && !hasEmail && !hasPhone && !hasMobile) {
-      this.fail('PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile');
+      fail('PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile');
     }
   }
 
   /** Normalizes and validates partner-contact values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string, current?: Record<string, any>): Promise<void> {
-    values.PartnerId = this.asRefId(values.PartnerId);
-    values.CompanyId = this.asRefId(values.CompanyId);
-    values.Name = this.normalizeOptionalText(values.Name);
-    values.Email = this.normalizeOptionalText(values.Email, { lower: true });
-    values.Phone = this.normalizeOptionalText(values.Phone);
-    values.Mobile = this.normalizeOptionalText(values.Mobile);
-    values.Title = this.normalizeOptionalText(values.Title);
-    values.Department = this.normalizeOptionalText(values.Department);
-    values.ContactRole = this.normalizeOptionalText(values.ContactRole, { lower: true });
-    values.AddressId = this.asRefId(values.AddressId);
-    values.AddressType = this.normalizeAddressType(values.AddressType);
-    values.AttentionTo = this.normalizeOptionalText(values.AttentionTo);
+    // Capture whether ref fields were explicitly provided before normalization
+    // so we know whether to fall back to current / persisted values.
+    const partnerIdProvided = values.PartnerId !== undefined;
+    const companyIdProvided = values.CompanyId !== undefined;
+    const addressIdProvided = values.AddressId !== undefined;
+    const addressTypeProvided = values.AddressType !== undefined;
 
-    if (values.PartnerId === undefined) {
+    values.PartnerId = normalizeRefId(values.PartnerId);
+    values.CompanyId = normalizeRefId(values.CompanyId);
+    values.Name = normalizeOptionalText(values.Name);
+    values.Email = normalizeOptionalText(values.Email, { lower: true });
+    values.Phone = normalizeOptionalText(values.Phone);
+    values.Mobile = normalizeOptionalText(values.Mobile);
+    values.Title = normalizeOptionalText(values.Title);
+    values.Department = normalizeOptionalText(values.Department);
+    values.ContactRole = normalizeOptionalText(values.ContactRole, { lower: true });
+    values.AddressId = normalizeRefId(values.AddressId);
+    values.AddressType = this.normalizeAddressType(values.AddressType);
+    values.AttentionTo = normalizeOptionalText(values.AttentionTo);
+
+    if (!partnerIdProvided) {
       try {
-        values.PartnerId = this.asRefId(current?.PartnerId);
+        values.PartnerId = normalizeRefId(current?.PartnerId);
       } catch {
-        values.PartnerId = undefined;
+        values.PartnerId = null;
       }
     }
-    if (values.CompanyId === undefined) values.CompanyId = this.asRefId(current?.CompanyId);
-    if (values.AddressId === undefined) values.AddressId = this.asRefId(current?.AddressId);
-    if (values.AddressType === undefined) values.AddressType = this.normalizeAddressType(current?.AddressType);
+    if (!companyIdProvided) values.CompanyId = normalizeRefId(current?.CompanyId);
+    if (!addressIdProvided) values.AddressId = normalizeRefId(current?.AddressId);
+    if (!addressTypeProvided) values.AddressType = this.normalizeAddressType(current?.AddressType);
 
     // During updates ctx.current may omit full field values, so load the persisted row once as a fallback.
-    if ((values.PartnerId == null || values.CompanyId == null || values.AddressType === undefined || values.AddressId === undefined) && currentId) {
+    if ((values.PartnerId == null || values.CompanyId == null || (values.AddressType == null && !addressTypeProvided) || (values.AddressId == null && !addressIdProvided)) && currentId) {
       const persisted = await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }] as any);
       if (values.PartnerId == null) {
-        values.PartnerId = this.asRefId((persisted as any)?.PartnerId);
+        values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
       }
-      if (values.CompanyId == null) values.CompanyId = this.asRefId((persisted as any)?.CompanyId);
-      if (values.AddressId === undefined) values.AddressId = this.asRefId((persisted as any)?.AddressId);
-      if (values.AddressType === undefined) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
+      if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
+      if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
+      if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
     }
 
-    const sequence = this.normalizeSequence(values.Sequence);
+    const sequence = normalizeSequenceInt(values.Sequence);
     if (sequence !== undefined) values.Sequence = sequence;
 
-    if (!values.PartnerId) this.fail('PartnerId is required');
-    if (!values.CompanyId) this.fail('CompanyId is required');
+    if (!values.PartnerId) fail('PartnerId is required');
+    if (!values.CompanyId) fail('CompanyId is required');
 
     this.ensureRowHasValue(values);
     await this.ensureDefaultAddressUnique(values, currentId);

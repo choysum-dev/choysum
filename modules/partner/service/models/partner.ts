@@ -4,7 +4,8 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
 import PartnerContact from './partner_contact';
 
 /**
@@ -159,48 +160,6 @@ export default class Partner extends BaseModel {
   @Field({ type: 'text' })
   Notes?: string;
 
-  /** Raises a partner-domain invalid-argument error. */
-  private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'partner', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
-  }
-
-  /** Normalizes relation payloads into string ids. */
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  /** Normalizes a required text field and rejects blank values. */
-  private static normalizeRequiredText(value: unknown, fieldName: string): string {
-    const normalized = String(value ?? '').trim();
-    if (!normalized) this.fail(`${fieldName} is required`);
-    return normalized;
-  }
-
-  /** Normalizes an optional text field with optional case coercion. */
-  private static normalizeOptionalText(value: unknown, options?: { upper?: boolean; lower?: boolean }): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    let normalized = String(value ?? '').trim();
-    if (!normalized) return null;
-    if (options?.upper) normalized = normalized.toUpperCase();
-    if (options?.lower) normalized = normalized.toLowerCase();
-    return normalized;
-  }
-
-  /** Normalizes a non-negative integer rank field. */
-  private static normalizeRank(value: unknown, fieldName: string): number | undefined {
-    if (value === undefined) return undefined;
-    const normalized = Number(value ?? 0);
-    if (!Number.isFinite(normalized) || normalized < 0 || Math.floor(normalized) !== normalized) {
-      this.fail(`${fieldName} must be a non-negative integer`);
-    }
-    return normalized;
-  }
-
   /** Sorts active contacts by default flag, sequence, and identifier. */
   private static sortContacts(contacts: PartnerContactLike[] | undefined | null): PartnerContactLike[] {
     return [...(contacts || [])]
@@ -219,7 +178,7 @@ export default class Partner extends BaseModel {
 
   /** Reports whether a contact points at an address record. */
   private static hasAddress(contact?: PartnerContactLike): boolean {
-    return !!this.asRefId(contact?.AddressId);
+    return !!normalizeRefId(contact?.AddressId);
   }
 
   /** Picks the derived default contact id from related contacts. */
@@ -243,9 +202,9 @@ export default class Partner extends BaseModel {
 
   /** Ensures the company-scoped partner code remains unique. */
   private static async ensureUniqueCode(values: Record<string, any>, currentId?: string): Promise<void> {
-    const companyId = this.asRefId(values.CompanyId);
-    const code = this.normalizeRequiredText(values.Code, 'Code').toUpperCase();
-    if (!companyId) this.fail('CompanyId is required');
+    const companyId = normalizeRefId(values.CompanyId);
+    const code = normalizeRequiredText(values.Code, 'Code').toUpperCase();
+    if (!companyId) fail('CompanyId is required');
 
     const rows = await this.Search(
       {
@@ -257,7 +216,7 @@ export default class Partner extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (conflict) this.fail('Partner Code must be unique within the company');
+    if (conflict) fail('Partner Code must be unique within the company');
 
     values.CompanyId = companyId;
     values.Code = code;
@@ -265,18 +224,18 @@ export default class Partner extends BaseModel {
 
   /** Normalizes and validates partner values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    values.Name = this.normalizeRequiredText(values.Name, 'Name');
-    values.Code = this.normalizeRequiredText(values.Code, 'Code').toUpperCase();
-    values.CompanyId = this.asRefId(values.CompanyId);
-    values.Reference = this.normalizeOptionalText(values.Reference, { upper: true });
-    values.Email = this.normalizeOptionalText(values.Email, { lower: true });
-    values.Phone = this.normalizeOptionalText(values.Phone);
-    values.Mobile = this.normalizeOptionalText(values.Mobile);
+    values.Name = normalizeRequiredText(values.Name, 'Name');
+    values.Code = normalizeRequiredText(values.Code, 'Code').toUpperCase();
+    values.CompanyId = normalizeRefId(values.CompanyId);
+    values.Reference = normalizeOptionalText(values.Reference, { upper: true });
+    values.Email = normalizeOptionalText(values.Email, { lower: true });
+    values.Phone = normalizeOptionalText(values.Phone);
+    values.Mobile = normalizeOptionalText(values.Mobile);
 
-    const customerRank = this.normalizeRank(values.CustomerRank, 'CustomerRank');
+    const customerRank = normalizeNonNegativeInt(values.CustomerRank, 'CustomerRank');
     if (customerRank !== undefined) values.CustomerRank = customerRank;
 
-    const supplierRank = this.normalizeRank(values.SupplierRank, 'SupplierRank');
+    const supplierRank = normalizeNonNegativeInt(values.SupplierRank, 'SupplierRank');
     if (supplierRank !== undefined) values.SupplierRank = supplierRank;
 
     await this.ensureUniqueCode(values, currentId);
