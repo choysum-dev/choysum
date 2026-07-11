@@ -104,6 +104,11 @@ export default class PartnerIdentifier extends BaseModel {
 
   /** Normalizes and validates identifier values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+    // Capture whether fields were explicitly provided before normalization
+    // so we know whether to fall back to persisted values.
+    const identifierTypeProvided = values.IdentifierType !== undefined;
+    const valueProvided = values.Value !== undefined;
+
     values.PartnerId = normalizeOptionalRefId(values.PartnerId);
     values.CompanyId = normalizeOptionalRefId(values.CompanyId);
     values.IdentifierType = normalizeOptionalText(values.IdentifierType, { lower: true });
@@ -117,19 +122,23 @@ export default class PartnerIdentifier extends BaseModel {
 
     // The draft proxy already provides current-record values through its
     // get chain.  Fall back to a persisted Browse only when a required
-    // field is still missing (e.g. partial current record in some modes).
+    // field is still missing and was not explicitly provided.
     if (
       (values.PartnerId == null ||
         values.CompanyId == null ||
-        values.IdentifierType == null ||
-        values.Value == null) &&
+        (values.IdentifierType == null && !identifierTypeProvided) ||
+        (values.Value == null && !valueProvided)) &&
       currentId
     ) {
       const persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
       if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
       if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
-      if (values.IdentifierType == null) values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
-      if (values.Value == null) values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+      if (values.IdentifierType == null && !identifierTypeProvided) {
+        values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
+      }
+      if (values.Value == null && !valueProvided) {
+        values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+      }
     }
 
     if (!values.PartnerId) fail('PartnerId is required');
