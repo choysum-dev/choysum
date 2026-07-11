@@ -483,13 +483,14 @@ export class ValidationEngine {
       this.applyConstraintWriteback(ctx, instanceTouched, instanceChanges);
     }
 
-    // Run post-constraint re-validation for fields newly mutated by instance constraints.
+    // Run post-constraint re-validation for fields mutated by instance constraints.
+    // Re-validate ALL touched fields — not just the newly introduced ones —
+    // because a constraint may have changed a user-submitted value (e.g.
+    // normalizing a string) and the mutated value must pass kernel/platform
+    // rules before it is persisted.
     if (instanceTouched.size > 0) {
-      const mutatedFields = new Set([...instanceTouched].filter(f => !originalChangedFields.has(f)));
-      if (mutatedFields.size > 0) {
-        const postIssues = await this.validatePostConstraintMutations(ctx, mutatedFields);
-        issues.push(...postIssues);
-      }
+      const postIssues = await this.validatePostConstraintMutations(ctx, instanceTouched);
+      issues.push(...postIssues);
     }
 
     return issues;
@@ -599,8 +600,11 @@ export class ValidationEngine {
       },
       set(_target, prop, value, _receiver) {
         const key = String(prop);
-        // Reject writes to fields not present in model metadata (prevents typo pollution).
+        // For non-metadata fields (transient / private properties used during
+        // validation), write directly to the target object so they can be read
+        // back, but do NOT record them in `changes` (avoid polluting the payload).
         if (!fieldMetadata.has(key)) {
+          Reflect.set(self as unknown as ObjectRecord, prop, value);
           return true;
         }
         // Skip recording when the value is already identical to the resolved
