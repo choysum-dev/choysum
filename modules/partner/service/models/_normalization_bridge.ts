@@ -77,7 +77,10 @@ export function normalizeNonNegativeInt(value: unknown, fieldName: string): numb
  */
 export function normalizeSequenceInt(value: unknown): number | undefined {
   if (value === undefined) return undefined;
-  const num = Number(value ?? 10);
+  if (value === null || (typeof value === 'string' && value.trim() === '')) {
+    return 10;
+  }
+  const num = Number(value);
   if (!Number.isFinite(num) || Math.floor(num) !== num) {
     fail('Sequence must be an integer');
   }

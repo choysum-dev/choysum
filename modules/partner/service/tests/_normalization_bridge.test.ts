@@ -241,8 +241,12 @@ test('partner._normalization_bridge: normalizeSequenceInt returns 10 for null (d
   expect(normalizeSequenceInt(null)).toBe(10);
 });
 
-test('partner._normalization_bridge: normalizeSequenceInt returns 0 for empty string (Number conversion)', () => {
-  expect(normalizeSequenceInt('')).toBe(0);
+test('partner._normalization_bridge: normalizeSequenceInt returns 10 for empty string (default)', () => {
+  expect(normalizeSequenceInt('')).toBe(10);
+});
+
+test('partner._normalization_bridge: normalizeSequenceInt returns 10 for whitespace string (default)', () => {
+  expect(normalizeSequenceInt('   ')).toBe(10);
 });
 
 test('partner._normalization_bridge: normalizeSequenceInt returns positive integer', () => {

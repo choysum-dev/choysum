@@ -165,14 +165,14 @@ export default class PartnerContact extends BaseModel {
     if (!addressTypeProvided) values.AddressType = this.normalizeAddressType(current?.AddressType);
 
     // During updates ctx.current may omit full field values, so load the persisted row once as a fallback.
-    if ((values.PartnerId == null || values.CompanyId == null || values.AddressType == null || values.AddressId == null) && currentId) {
+    if ((values.PartnerId == null || values.CompanyId == null || (values.AddressType == null && !addressTypeProvided) || (values.AddressId == null && !addressIdProvided)) && currentId) {
       const persisted = await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }] as any);
       if (values.PartnerId == null) {
         values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
       }
       if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
-      if (values.AddressId == null) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
-      if (values.AddressType == null) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
+      if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
+      if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
     }
 
     const sequence = normalizeSequenceInt(values.Sequence);
