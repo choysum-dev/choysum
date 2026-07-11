@@ -75,9 +75,35 @@ export interface ConstraintContext<TModel extends BaseModel = BaseModel> {
 }
 
 /**
- * Constraint handler signature.
+ * Legacy constraint handler signature (static methods).
+ *
+ * Static handlers receive the merged `self` record and the full
+ * {@link ConstraintContext}, and are responsible for manually
+ * writing back any normalization results via `writeConstraintFields`.
+ *
+ * @deprecated Prefer {@link InstanceConstraintMethod} for new code.
  */
-export type ConstraintMethod<TModel extends BaseModel = BaseModel> = (self: TModel, ctx: ConstraintContext<TModel>) => void | Promise<void>;
+export type LegacyConstraintMethod<TModel extends BaseModel = BaseModel> = (self: TModel, ctx: ConstraintContext<TModel>) => void | Promise<void>;
+
+/**
+ * Instance constraint handler signature (non-static methods).
+ *
+ * Instance handlers do NOT receive parameters.  The runtime engine
+ * binds `this` to a draft proxy so that field reads resolve through
+ * `changes → ctx.values → original self` and field writes are
+ * automatically collected and written back to `ctx.values`.
+ *
+ * This is the **preferred signature** for all new constraint methods.
+ */
+export type InstanceConstraintMethod<TModel extends BaseModel = BaseModel> = (this: TModel) => void | Promise<void>;
+
+/**
+ * Constraint handler signature (compatibility union).
+ *
+ * Accepts both {@link LegacyConstraintMethod} and {@link InstanceConstraintMethod}.
+ * The runtime engine dispatches by {@link ConstraintMeta.isStatic}.
+ */
+export type ConstraintMethod<TModel extends BaseModel = BaseModel> = LegacyConstraintMethod<TModel> | InstanceConstraintMethod<TModel>;
 
 /**
  * Aggregates validation issues that should be surfaced as a single pipeline failure.

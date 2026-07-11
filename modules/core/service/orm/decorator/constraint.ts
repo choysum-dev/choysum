@@ -52,6 +52,13 @@ function normalizeConstraintArgs<TModel extends BaseModel>(args: Array<Constrain
 /**
  * Registers a model constraint handler and its execution metadata.
  *
+ * When applied to a **static** method the handler follows the legacy
+ * `(self, ctx)` contract ({@link LegacyConstraintMethod}).
+ * When applied to an **instance** (prototype) method the handler
+ * follows the new `this`-based contract ({@link InstanceConstraintMethod})
+ * and the runtime engine automatically collects field writes via a
+ * draft proxy and writes them back to `ctx.values`.
+ *
  * @param args Constraint fields and optional execution options.
  * @returns A method decorator that records the constraint handler on model metadata.
  */

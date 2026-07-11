@@ -4,7 +4,7 @@
 import type BaseModel from '../../orm/model/model';
 import { KernelValidationError, validateFields as validateKernelFields } from '../../orm/repository/validation';
 import type { KernelValidationRule } from '../../orm/repository/validation';
-import type { ConstraintContext, ConstraintMeta, ConstraintMethod, ValidationIssue } from '../../orm/metadata/constraint';
+import type { ConstraintContext, ConstraintMeta, InstanceConstraintMethod, LegacyConstraintMethod, ValidationIssue } from '../../orm/metadata/constraint';
 import { ValidationPipelineError } from '../../orm/metadata/constraint';
 import { MetadataStorage } from '../../orm/metadata';
 import type { FieldMetadata, ModelCtor } from '../../orm/metadata/field';
@@ -524,13 +524,13 @@ export class ValidationEngine {
   private static resolveConstraintMethod<TModel extends BaseModel>(
     model: ModelCtor<TModel> & typeof BaseModel,
     handler: ConstraintMeta
-  ): ConstraintMethod<TModel> | undefined {
+  ): LegacyConstraintMethod<TModel> | undefined {
     const owner = (handler.isStatic ? model : model.prototype) as unknown as ObjectRecord;
     const method = owner[handler.method];
     if (typeof method !== 'function') {
       return undefined;
     }
-    return method.bind(owner) as ConstraintMethod<TModel>;
+    return method.bind(owner) as LegacyConstraintMethod<TModel>;
   }
 
   /**
@@ -543,13 +543,13 @@ export class ValidationEngine {
   private static resolveInstanceConstraintMethod<TModel extends BaseModel>(
     model: ModelCtor<TModel> & typeof BaseModel,
     handler: ConstraintMeta
-  ): ((this: TModel) => void | Promise<void>) | undefined {
+  ): InstanceConstraintMethod<TModel> | undefined {
     const owner = model.prototype as unknown as ObjectRecord;
     const method = owner[handler.method];
     if (typeof method !== 'function') {
       return undefined;
     }
-    return method as (this: TModel) => void | Promise<void>;
+    return method as InstanceConstraintMethod<TModel>;
   }
 
   /**
