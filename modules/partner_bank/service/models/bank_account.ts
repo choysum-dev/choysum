@@ -4,13 +4,10 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
-import { raiseDomainError } from '@/core/service/error';
+import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import { maskAccountNo, normalizeAccountType } from './_helpers';
 import Bank from '@/base/service/models/bank';
-
-/**
- * Supported partner bank account categories.
- */
-const ACCOUNT_TYPES = new Set(['checking', 'savings', 'corporate', 'other']);
 
 /**
  * Company-scoped partner bank account record.
@@ -102,52 +99,9 @@ export default class BankAccount extends BaseModel {
   @Field({ type: 'varchar', column: { size: 4, index: true } })
   AccountNoLast4?: string;
 
-  /** Raises a partner-bank invalid-argument error. */
-  private static fail(message: string): never {
-    raiseDomainError('partner_bank', 'InvalidArgument', message);
-  }
-
-  /** Normalizes relation payloads into string ids. */
-  private static asRefId(value: any): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    const raw = typeof value === 'object' && value !== null ? (value.Id ?? value.id) : value;
-    const id = String(raw ?? '').trim();
-    return id ? id : null;
-  }
-
-  /** Normalizes a required text field and rejects blank values. */
-  private static normalizeRequiredText(value: unknown, fieldName: string, options?: { upper?: boolean }): string {
-    let normalized = String(value ?? '').trim();
-    if (options?.upper) normalized = normalized.toUpperCase();
-    if (!normalized) this.fail(`${fieldName} is required`);
-    return normalized;
-  }
-
-  /** Normalizes an optional text field with optional case coercion. */
-  private static normalizeOptionalText(value: unknown, options?: { upper?: boolean }): string | null | undefined {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    let normalized = String(value ?? '').trim();
-    if (!normalized) return null;
-    if (options?.upper) normalized = normalized.toUpperCase();
-    return normalized;
-  }
-
-  /** Derives masked and last-four account number display values. */
-  private static maskAccountNo(accountNo: string): { last4: string | null; masked: string | null } {
-    const compact = accountNo.replace(/\s+/g, '');
-    if (!compact) return { last4: null, masked: null };
-    const last4 = compact.slice(-4);
-    const visibleTail = last4 || compact;
-    const hiddenLength = Math.max(compact.length - visibleTail.length, 0);
-    const masked = `${'*'.repeat(Math.min(hiddenLength, 8))}${visibleTail}`;
-    return { last4: last4 || null, masked };
-  }
-
   /** Loads the linked bank name into the cached snapshot field. */
   private static async fillBankSnapshot(values: Record<string, any>): Promise<void> {
-    const bankId = this.asRefId(values.BankId);
+    const bankId = normalizeRefId(values.BankId);
     values.BankId = bankId;
     if (!bankId) {
       values.BankNameSnapshot = null;
@@ -164,8 +118,8 @@ export default class BankAccount extends BaseModel {
     fieldName: 'IsDefaultInbound' | 'IsDefaultOutbound'
   ): Promise<void> {
     if (values[fieldName] !== true) return;
-    const partnerId = this.asRefId(values.PartnerId);
-    if (!partnerId) this.fail('PartnerId is required');
+    const partnerId = normalizeRefId(values.PartnerId);
+    if (!partnerId) fail('PartnerId is required');
 
     const rows = await this.Search(
       {
@@ -178,7 +132,7 @@ export default class BankAccount extends BaseModel {
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) {
-      this.fail(
+      fail(
         fieldName === 'IsDefaultInbound'
           ? 'Only one default inbound bank account is allowed for the same partner'
           : 'Only one default outbound bank account is allowed for the same partner'
@@ -186,44 +140,34 @@ export default class BankAccount extends BaseModel {
     }
   }
 
-  /** Normalizes and validates the account category. */
-  private static normalizeAccountType(value: unknown): string | null | undefined {
-    const normalized = this.normalizeOptionalText(value);
-    if (normalized == null) return normalized;
-    if (!ACCOUNT_TYPES.has(normalized)) {
-      this.fail('AccountType must be one of checking, savings, corporate, other');
-    }
-    return normalized;
-  }
-
   /** Normalizes and validates bank account values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    values.PartnerId = this.asRefId(values.PartnerId);
-    values.CompanyId = this.asRefId(values.CompanyId);
-    values.BankId = this.asRefId(values.BankId);
-    values.AccountName = this.normalizeRequiredText(values.AccountName, 'AccountName');
-    values.AccountNo = this.normalizeRequiredText(values.AccountNo, 'AccountNo');
-    values.AccountType = this.normalizeAccountType(values.AccountType);
-    values.IBAN = this.normalizeOptionalText(values.IBAN, { upper: true });
-    values.RoutingCode = this.normalizeOptionalText(values.RoutingCode, { upper: true });
-    values.BranchName = this.normalizeOptionalText(values.BranchName);
-    values.CurrencyId = this.asRefId(values.CurrencyId);
-    values.CountryId = this.asRefId(values.CountryId);
+    values.PartnerId = normalizeRefId(values.PartnerId);
+    values.CompanyId = normalizeRefId(values.CompanyId);
+    values.BankId = normalizeRefId(values.BankId);
+    values.AccountName = normalizeRequiredText(values.AccountName, 'AccountName');
+    values.AccountNo = normalizeRequiredText(values.AccountNo, 'AccountNo');
+    values.AccountType = normalizeAccountType(values.AccountType);
+    values.IBAN = normalizeOptionalText(values.IBAN, { upper: true });
+    values.RoutingCode = normalizeOptionalText(values.RoutingCode, { upper: true });
+    values.BranchName = normalizeOptionalText(values.BranchName);
+    values.CurrencyId = normalizeRefId(values.CurrencyId);
+    values.CountryId = normalizeRefId(values.CountryId);
 
-    if (!values.PartnerId) this.fail('PartnerId is required');
-    if (!values.CompanyId) this.fail('CompanyId is required');
-    if (!values.BankId) this.fail('BankId is required');
+    if (!values.PartnerId) fail('PartnerId is required');
+    if (!values.CompanyId) fail('CompanyId is required');
+    if (!values.BankId) fail('BankId is required');
     if (values.AllowInbound !== true && values.AllowOutbound !== true) {
-      this.fail('AllowInbound and AllowOutbound cannot both be false');
+      fail('AllowInbound and AllowOutbound cannot both be false');
     }
     if (values.IsDefaultInbound === true && values.AllowInbound !== true) {
-      this.fail('Default inbound account must allow inbound usage');
+      fail('Default inbound account must allow inbound usage');
     }
     if (values.IsDefaultOutbound === true && values.AllowOutbound !== true) {
-      this.fail('Default outbound account must allow outbound usage');
+      fail('Default outbound account must allow outbound usage');
     }
 
-    const { last4, masked } = this.maskAccountNo(values.AccountNo);
+    const { last4, masked } = maskAccountNo(values.AccountNo);
     values.AccountNoLast4 = last4;
     values.AccountNoMasked = masked;
     await this.fillBankSnapshot(values);
