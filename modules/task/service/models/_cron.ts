@@ -11,8 +11,10 @@ export type CronFields = {
   minutes: Record<number, true>;
   hours: Record<number, true>;
   dom: Record<number, true>;
+  domAny: boolean;
   month: Record<number, true>;
   dow: Record<number, true>;
+  dowAny: boolean;
 };
 
 /**
@@ -56,13 +58,22 @@ export function parseCronField(input: string, min: number, max: number): Record<
 export function parseCronExpr(expr: string): CronFields | null {
   const parts = expr.trim().split(/\s+/g);
   if (parts.length !== 5) return null;
+  const domRaw = parts[2];
+  const dowRaw = parts[4];
   const minutes = parseCronField(parts[0], 0, 59);
   const hours = parseCronField(parts[1], 0, 23);
-  const dom = parseCronField(parts[2], 1, 31);
+  const dom = parseCronField(domRaw, 1, 31);
   const month = parseCronField(parts[3], 1, 12);
-  const dow = parseCronField(parts[4], 0, 6);
+  const dow = parseCronField(dowRaw, 0, 6);
   if (!minutes || !hours || !dom || !month || !dow) return null;
-  return { minutes, hours, dom, month, dow };
+  return { minutes, hours, dom, domAny: domRaw === '*', month, dow, dowAny: dowRaw === '*' };
+}
+
+function cronDayMatches(fields: CronFields, dom: number, dow: number): boolean {
+  if (fields.domAny && fields.dowAny) return true;
+  if (fields.domAny) return Boolean(fields.dow[dow]);
+  if (fields.dowAny) return Boolean(fields.dom[dom]);
+  return Boolean(fields.dom[dom] || fields.dow[dow]);
 }
 
 /**
@@ -72,16 +83,33 @@ export function nextCronTime(from: Date, fields: CronFields): Date | undefined {
   const cur = new Date(from.getTime());
   cur.setSeconds(0, 0);
   cur.setMinutes(cur.getMinutes() + 1);
-  for (let i = 0; i < 525600; i += 1) {
+  const limit = new Date(from.getTime());
+  limit.setFullYear(limit.getFullYear() + 1);
+  while (cur.getTime() <= limit.getTime()) {
     const month = cur.getMonth() + 1;
+    if (!fields.month[month]) {
+      cur.setMonth(cur.getMonth() + 1, 1);
+      cur.setHours(0, 0, 0, 0);
+      continue;
+    }
     const dom = cur.getDate();
     const dow = cur.getDay();
-    const hours = cur.getHours();
-    const minutes = cur.getMinutes();
-    if (fields.month[month] && fields.dom[dom] && fields.dow[dow] && fields.hours[hours] && fields.minutes[minutes]) {
-      return new Date(cur.getTime());
+    if (!cronDayMatches(fields, dom, dow)) {
+      cur.setDate(cur.getDate() + 1);
+      cur.setHours(0, 0, 0, 0);
+      continue;
     }
-    cur.setMinutes(cur.getMinutes() + 1);
+    const hours = cur.getHours();
+    if (!fields.hours[hours]) {
+      cur.setHours(cur.getHours() + 1, 0, 0, 0);
+      continue;
+    }
+    const minutes = cur.getMinutes();
+    if (!fields.minutes[minutes]) {
+      cur.setMinutes(cur.getMinutes() + 1, 0, 0);
+      continue;
+    }
+    return new Date(cur.getTime());
   }
   return undefined;
 }
@@ -91,16 +119,30 @@ export function nextCronTime(from: Date, fields: CronFields): Date | undefined {
  */
 export function nextCronMoment(from: moment.Moment, fields: CronFields): moment.Moment | undefined {
   const cur = from.clone().second(0).millisecond(0).add(1, 'minute');
-  for (let i = 0; i < 525600; i += 1) {
+  const limit = from.clone().add(1, 'year');
+  while (cur.isSameOrBefore(limit)) {
     const month = cur.month() + 1;
+    if (!fields.month[month]) {
+      cur.add(1, 'month').date(1).hour(0).minute(0).second(0).millisecond(0);
+      continue;
+    }
     const dom = cur.date();
     const dow = cur.day();
-    const hours = cur.hour();
-    const minutes = cur.minute();
-    if (fields.month[month] && fields.dom[dom] && fields.dow[dow] && fields.hours[hours] && fields.minutes[minutes]) {
-      return cur.clone();
+    if (!cronDayMatches(fields, dom, dow)) {
+      cur.add(1, 'day').hour(0).minute(0).second(0).millisecond(0);
+      continue;
     }
-    cur.add(1, 'minute');
+    const hours = cur.hour();
+    if (!fields.hours[hours]) {
+      cur.add(1, 'hour').minute(0).second(0).millisecond(0);
+      continue;
+    }
+    const minutes = cur.minute();
+    if (!fields.minutes[minutes]) {
+      cur.add(1, 'minute');
+      continue;
+    }
+    return cur.clone();
   }
   return undefined;
 }
@@ -148,7 +190,11 @@ export function normalizeTimezone(value?: string): string {
 /**
  * Fills the computed next-run preview when the stored value is absent.
  */
-export function applyNextRunPreview<T extends { CronExpr?: string; Timezone?: string; NextRunAt?: Date }>(schedule: T, baseTime?: Date): T {
+export function applyNextRunPreview<T extends { Active?: boolean; CronExpr?: string; Timezone?: string; NextRunAt?: Date | null }>(schedule: T, baseTime?: Date): T {
+  if (schedule.Active === false) {
+    schedule.NextRunAt = null;
+    return schedule;
+  }
   if (!schedule.NextRunAt) {
     const computed = computeNextRunAt(schedule, baseTime);
     if (computed) schedule.NextRunAt = computed;

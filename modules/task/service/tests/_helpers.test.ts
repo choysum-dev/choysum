@@ -35,7 +35,16 @@ test('task._helpers clampLimit returns fallback for non-number', () => {
   expect(clampLimit('abc' as any, 50, 500)).toBe(50);
 });
 
+test('task._helpers clampLimit returns fallback for NaN', () => {
+  expect(clampLimit(NaN, 50, 500)).toBe(50);
+});
+
 test('task._helpers clampLimit respects custom fallback and max', () => {
   expect(clampLimit(200, 20, 100)).toBe(100);
   expect(clampLimit(undefined, 20, 100)).toBe(20);
+});
+
+test('task._helpers clampLimit normalizes invalid fallback and max', () => {
+  expect(clampLimit(undefined, NaN, 100)).toBe(50);
+  expect(clampLimit(200, 20, NaN)).toBe(20);
 });

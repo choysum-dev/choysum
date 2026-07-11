@@ -12,7 +12,9 @@
  * Otherwise returns the input capped at `max`.
  */
 export function clampLimit(limit?: number, fallback: number = 50, max: number = 500): number {
-  const val = typeof limit === 'number' ? limit : fallback;
-  if (val <= 0) return fallback;
-  return Math.min(val, max);
+  const fallbackValue = Number.isFinite(fallback) && fallback > 0 ? fallback : 50;
+  const maxValue = Number.isFinite(max) && max > 0 ? max : fallbackValue;
+  const val = typeof limit === 'number' && Number.isFinite(limit) ? limit : fallbackValue;
+  if (val <= 0) return fallbackValue;
+  return Math.min(val, maxValue);
 }

@@ -99,6 +99,12 @@ test('task._cron parseCronExpr rejects invalid fields', () => {
   expect(parseCronExpr('60 0 * * *')).toBe(null);
 });
 
+test('task._cron parseCronExpr rejects decimal values', () => {
+  expect(parseCronExpr('*/2.5 0 * * *')).toBe(null);
+  expect(parseCronExpr('1.5 0 * * *')).toBe(null);
+  expect(parseCronExpr('0 0 1.5 * *')).toBe(null);
+});
+
 test('task._cron nextCronTime finds next match', () => {
   const fields = parseCronExpr('0 0 * * *');
   expect(fields).toBeTruthy();
@@ -113,6 +119,27 @@ test('task._cron nextCronTime finds next match', () => {
       expect(next.getUTCMinutes()).toBe(0);
     }
   }
+});
+
+test('task._cron nextCronTime uses OR semantics when dom and dow are both restricted', () => {
+  const fields = parseCronExpr('0 0 1 * 1');
+  expect(fields).toBeTruthy();
+  if (fields) {
+    const base = new Date(2026, 0, 2, 0, 0, 0, 0);
+    const next = nextCronTime(base, fields);
+    expect(next).toBeTruthy();
+    if (next) {
+      expect(next.getFullYear()).toBe(2026);
+      expect(next.getMonth()).toBe(0);
+      expect(next.getDate()).toBe(5);
+      expect(next.getDay()).toBe(1);
+    }
+  }
+});
+
+test('task._cron computeNextRunAt returns undefined for impossible date within one year', () => {
+  const result = computeNextRunAt({ CronExpr: '0 0 30 2 *', Timezone: 'UTC' }, new Date('2026-01-01T00:00:00Z'));
+  expect(result).toBe(undefined);
 });
 
 test('task._cron computeNextRunAt returns undefined for empty expr', () => {
@@ -151,4 +178,11 @@ test('task._cron applyNextRunPreview keeps existing NextRunAt', () => {
   const schedule = { CronExpr: '0 0 * * *', Timezone: 'UTC', NextRunAt: existing };
   const result = applyNextRunPreview(schedule);
   expect(result.NextRunAt).toBe(existing);
+});
+
+test('task._cron applyNextRunPreview clears inactive schedule preview', () => {
+  const existing = new Date('2026-06-01T00:00:00Z');
+  const schedule = { Active: false, CronExpr: '0 0 * * *', Timezone: 'UTC', NextRunAt: existing as Date | null };
+  const result = applyNextRunPreview(schedule);
+  expect(result.NextRunAt).toBe(null);
 });
