@@ -615,7 +615,9 @@ export class ValidationEngine {
       },
       set(_target, prop, value, _receiver) {
         if (typeof prop === 'symbol') {
-          return Reflect.set(self as unknown as ObjectRecord, prop, value, _receiver);
+          // Do NOT pass the receiver (the proxy itself) to Reflect.set —
+          // that would re-trigger this trap and cause infinite recursion.
+          return Reflect.set(self as unknown as ObjectRecord, prop, value);
         }
         const key = String(prop);
         // For non-metadata fields (transient / private properties used during
