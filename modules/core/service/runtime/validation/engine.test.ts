@@ -898,6 +898,263 @@ test('validation engine kernel: decimal precision/format validation', async () =
   expect(String(overflowPrecisionIssues[0]?.message || '').includes('Amount')).toBe(true);
 });
 
+// ---------------------------------------------------------------------------
+// Instance constraint (non-static, this-based) tests
+// ---------------------------------------------------------------------------
+
+const instanceCallLog: Array<Record<string, unknown>> = [];
+
+class InstanceConstraintModel extends BaseModel {
+  @Field({ type: 'varchar', column: { size: 64 } })
+  Name?: string;
+
+  @Field({ type: 'varchar', column: { size: 32 } })
+  Status?: string;
+
+  @Field({ type: 'int', column: { notNull: true, default: () => 0 } })
+  Rank?: number;
+
+  static resetLog() {
+    instanceCallLog.length = 0;
+  }
+
+  // Instance constraint (NOT static): reads and writes via `this`.
+  validateName(): void {
+    instanceCallLog.push({
+      method: 'validateName',
+      thisName: this.Name,
+      thisStatus: this.Status,
+    });
+    if (this.Name) {
+      this.Name = (this.Name as string).trim().toUpperCase();
+    }
+  }
+
+  // Instance constraint: throws on blocked status.
+  validateStatus(): void {
+    instanceCallLog.push({
+      method: 'validateStatus',
+      thisStatus: this.Status,
+    });
+    if (this.Status === 'blocked') {
+      throw new Error('status blocked via instance');
+    }
+  }
+
+  // Instance constraint: async, mutates multiple fields.
+  async validateRank(): Promise<void> {
+    instanceCallLog.push({
+      method: 'validateRank',
+      thisRank: this.Rank,
+    });
+    if (this.Rank != null && this.Rank < 0) {
+      this.Rank = 0;
+    }
+  }
+}
+
+// Manually register instance constraints via the decorator — isStatic is detected
+// automatically from the property descriptor.
+Constraint<InstanceConstraintModel>('Name', { priority: 1, alwaysOnCreate: true })(InstanceConstraintModel.prototype, 'validateName', undefined as any);
+Constraint<InstanceConstraintModel>('Status', { priority: 2 })(InstanceConstraintModel.prototype, 'validateStatus', undefined as any);
+Constraint<InstanceConstraintModel>('Rank', { priority: 3, alwaysOnCreate: true })(InstanceConstraintModel.prototype, 'validateRank', undefined as any);
+
+test('instance constraint method executes with this readable', async () => {
+  InstanceConstraintModel.resetLog();
+  const metadata = MetadataStorage.instance.getModelMetadata(InstanceConstraintModel as any);
+
+  await ValidationEngine.validateOrThrow({
+    mode: 'update',
+    model: InstanceConstraintModel as any,
+    metadata,
+    current: { Id: '1', Name: 'old', Status: 'draft' },
+    values: { Name: '  new name  ' },
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  expect(instanceCallLog.length).toBeGreaterThanOrEqual(1);
+  const nameEntry = instanceCallLog.find(e => e.method === 'validateName');
+  expect(nameEntry).toBeDefined();
+  expect(nameEntry?.thisName).toBe('  new name  ');
+});
+
+test('instance constraint writeback updates ctx.values', async () => {
+  InstanceConstraintModel.resetLog();
+  const metadata = MetadataStorage.instance.getModelMetadata(InstanceConstraintModel as any);
+
+  const values: ObjectRecord = { Name: '  trimmed up  ' };
+  await ValidationEngine.validateOrThrow({
+    mode: 'update',
+    model: InstanceConstraintModel as any,
+    metadata,
+    current: { Id: '1', Name: 'old' },
+    values,
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  // The instance constraint should have normalized Name to uppercase trimmed form.
+  expect(values.Name).toBe('TRIMMED UP');
+});
+
+test('instance constraint error is reported as constraint_execution_failed', async () => {
+  InstanceConstraintModel.resetLog();
+  const metadata = MetadataStorage.instance.getModelMetadata(InstanceConstraintModel as any);
+
+  let error: unknown;
+  try {
+    await ValidationEngine.validateOrThrow({
+      mode: 'update',
+      model: InstanceConstraintModel as any,
+      metadata,
+      current: { Id: '1', Name: 'old', Status: 'draft' },
+      values: { Status: 'blocked' },
+      changedFields: new Set(['Status']),
+      repository: {} as any,
+      requestContext: {},
+    });
+  } catch (err) {
+    error = err;
+  }
+
+  expect(error instanceof ValidationPipelineError).toBe(true);
+  const pipelineError = error as ValidationPipelineError;
+  expect(pipelineError.issues.some(i => i.code === 'constraint_execution_failed')).toBe(true);
+});
+
+test('instance constraint async method executes and mutates', async () => {
+  InstanceConstraintModel.resetLog();
+  const metadata = MetadataStorage.instance.getModelMetadata(InstanceConstraintModel as any);
+
+  const values: ObjectRecord = { Rank: -5 };
+  await ValidationEngine.validateOrThrow({
+    mode: 'create',
+    model: InstanceConstraintModel as any,
+    metadata,
+    values,
+    changedFields: new Set(['Rank']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  // validateRank should have clamped negative rank to 0.
+  expect(values.Rank).toBe(0);
+  const rankEntry = instanceCallLog.find(e => e.method === 'validateRank');
+  expect(rankEntry).toBeDefined();
+});
+
+test('static and instance constraints run together in priority order', async () => {
+  // Mixed model: one static + one instance constraint.
+  const mixedCallOrder: string[] = [];
+
+  class MixedConstraintModel extends BaseModel {
+    @Field({ type: 'varchar', column: { size: 64 } })
+    Name?: string;
+
+    static staticCheck(_self: MixedConstraintModel) {
+      mixedCallOrder.push('static');
+    }
+
+    instanceCheck(): void {
+      mixedCallOrder.push('instance');
+    }
+  }
+
+  Constraint<MixedConstraintModel>('Name', { priority: 1 })(MixedConstraintModel, 'staticCheck', undefined as any);
+  Constraint<MixedConstraintModel>('Name', { priority: 2 })(MixedConstraintModel.prototype, 'instanceCheck', undefined as any);
+
+  const metadata = MetadataStorage.instance.getModelMetadata(MixedConstraintModel as any);
+
+  await ValidationEngine.validate({
+    mode: 'update',
+    model: MixedConstraintModel as any,
+    metadata,
+    current: { Id: '1', Name: 'old' },
+    values: { Name: 'next' },
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  expect(mixedCallOrder).toEqual(['static', 'instance']);
+});
+
+test('instance constraint write to unknown field is silently skipped', async () => {
+  class UnknownFieldModel extends BaseModel {
+    @Field({ type: 'varchar', column: { size: 64 } })
+    Name?: string;
+
+    writeUnknown(): void {
+      // Attempt to write a field not declared on the model metadata.
+      (this as any).NonExistentField = 'should-not-leak';
+      this.Name = 'valid';
+    }
+  }
+
+  Constraint<UnknownFieldModel>('Name', { priority: 1 })(UnknownFieldModel.prototype, 'writeUnknown', undefined as any);
+
+  const metadata = MetadataStorage.instance.getModelMetadata(UnknownFieldModel as any);
+  const values: ObjectRecord = { Name: 'original' };
+
+  await ValidationEngine.validate({
+    mode: 'update',
+    model: UnknownFieldModel as any,
+    metadata,
+    current: { Id: '1', Name: 'orig' },
+    values,
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  expect(values.Name).toBe('valid');
+  expect('NonExistentField' in values).toBe(false);
+});
+
+test('post-constraint mutation triggers kernel re-validation for new fields', async () => {
+  class MutatingConstraintModel extends BaseModel {
+    @Field({ type: 'varchar', column: { size: 64, notNull: true } })
+    RequiredField?: string;
+
+    @Field({ type: 'varchar', column: { size: 64 } })
+    OtherField?: string;
+
+    normalizeRequired(): void {
+      // This constraint mutates a field that was NOT in the original changedFields.
+      this.RequiredField = (this.RequiredField || '').trim();
+    }
+  }
+
+  Constraint<MutatingConstraintModel>('OtherField', { priority: 1, alwaysOnCreate: true })(
+    MutatingConstraintModel.prototype,
+    'normalizeRequired',
+    undefined as any
+  );
+
+  const metadata = MetadataStorage.instance.getModelMetadata(MutatingConstraintModel as any);
+
+  // Create with only OtherField; RequiredField is notNull but missing.
+  // The instance constraint reads RequiredField (gets undefined initially)
+  // and writes back an empty string — which kernel should reject as null.
+  const issues = await ValidationEngine.validate({
+    mode: 'create',
+    model: MutatingConstraintModel as any,
+    metadata,
+    values: { OtherField: 'trigger' },
+    changedFields: new Set(['OtherField']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  // The post-constraint kernel re-validation should catch the empty RequiredField.
+  const kernelIssues = issues.filter(i => i.scope === 'kernel');
+  expect(kernelIssues.length).toBeGreaterThanOrEqual(1);
+  expect(kernelIssues.some(i => i.code === 'kernel_required_missing' || i.code === 'kernel_required_null')).toBe(true);
+});
+
 test('validation engine kernel: relation shape validation for many2one/many2one-ref', async () => {
   const metadata = MetadataStorage.instance.getModelMetadata(KernelValidationModel as any);
 

@@ -381,6 +381,11 @@ export class ValidationEngine {
 
   /**
    * Runs registered model constraint methods in priority order.
+   *
+   * Dispatches by {@link ConstraintMeta.isStatic}:
+   * - Static handlers keep the legacy `(self, ctx)` contract.
+   * - Instance handlers are invoked with `this` bound to a draft proxy
+   *   and mutations are automatically written back to `ctx.values`.
    */
   static async validateConstraintMethods<TModel extends BaseModel>(ctx: ConstraintContext<TModel>): Promise<ValidationIssue[]> {
     const handlers = (ctx.metadata.constraintHandlers || [])
@@ -393,10 +398,47 @@ export class ValidationEngine {
 
     const self = this.buildConstraintSelf(ctx);
     const issues: ValidationIssue[] = [];
+    const originalChangedFields = new Set(ctx.changedFields);
+    const instanceTouched = new Set<string>();
+    const instanceChanges: ObjectRecord = {};
 
     for (const handler of handlers) {
-      const executor = this.resolveConstraintMethod(ctx.model, handler);
-      if (!executor) {
+      if (handler.isStatic) {
+        const executor = this.resolveConstraintMethod(ctx.model, handler);
+        if (!executor) {
+          issues.push({
+            scope: 'constraint',
+            method: handler.method,
+            code: 'constraint_method_missing',
+            message: `constraint method not found: ${handler.method}`,
+            severity: 'error',
+          });
+          continue;
+        }
+
+        try {
+          await executor(self, ctx);
+        } catch (error) {
+          if (error instanceof ValidationPipelineError) {
+            issues.push(...error.issues);
+            continue;
+          }
+
+          const message = error instanceof Error ? error.message : String(error);
+          issues.push({
+            scope: 'constraint',
+            method: handler.method,
+            code: 'constraint_execution_failed',
+            message,
+            severity: 'error',
+          });
+        }
+        continue;
+      }
+
+      // Instance constraint: execute with `this` bound to a draft proxy.
+      const instanceMethod = this.resolveInstanceConstraintMethod(ctx.model, handler);
+      if (!instanceMethod) {
         issues.push({
           scope: 'constraint',
           method: handler.method,
@@ -407,8 +449,15 @@ export class ValidationEngine {
         continue;
       }
 
+      const { draft, changes } = this.createConstraintDraft(self, ctx.values, ctx.metadata.fields);
       try {
-        await executor(self, ctx);
+        await instanceMethod.call(draft);
+        for (const field of Object.keys(changes)) {
+          if (changes[field] !== undefined) {
+            instanceChanges[field] = changes[field];
+            instanceTouched.add(field);
+          }
+        }
       } catch (error) {
         if (error instanceof ValidationPipelineError) {
           issues.push(...error.issues);
@@ -423,6 +472,20 @@ export class ValidationEngine {
           message,
           severity: 'error',
         });
+      }
+    }
+
+    // Write back instance constraint mutations to ctx.values.
+    if (instanceTouched.size > 0) {
+      this.applyConstraintWriteback(ctx, instanceTouched, instanceChanges);
+    }
+
+    // Run post-constraint re-validation for fields newly mutated by instance constraints.
+    if (instanceTouched.size > 0) {
+      const mutatedFields = new Set([...instanceTouched].filter(f => !originalChangedFields.has(f)));
+      if (mutatedFields.size > 0) {
+        const postIssues = await this.validatePostConstraintMutations(ctx, mutatedFields);
+        issues.push(...postIssues);
       }
     }
 
@@ -468,5 +531,96 @@ export class ValidationEngine {
       return undefined;
     }
     return method.bind(owner) as ConstraintMethod<TModel>;
+  }
+
+  /**
+   * Resolves an instance constraint method for `this`-based invocation.
+   *
+   * Unlike {@link resolveConstraintMethod}, the returned function is NOT pre-bound;
+   * it is intended to be called via `fn.call(draftSelf)` so that `this` inside
+   * the constraint refers to the draft proxy.
+   */
+  private static resolveInstanceConstraintMethod<TModel extends BaseModel>(
+    model: ModelCtor<TModel> & typeof BaseModel,
+    handler: ConstraintMeta
+  ): ((this: TModel) => void | Promise<void>) | undefined {
+    const owner = model.prototype as unknown as ObjectRecord;
+    const method = owner[handler.method];
+    if (typeof method !== 'function') {
+      return undefined;
+    }
+    return method as (this: TModel) => void | Promise<void>;
+  }
+
+  /**
+   * Creates a draft proxy that wraps a constraint `self` object.
+   *
+   * The proxy intercepts property writes and records them in `changes` / `touched`,
+   * while reads follow the priority chain `changes → ctx.values → original self`.
+   *
+   * @returns The draft proxy and the mutable tracking state.
+   */
+  private static createConstraintDraft<TModel extends BaseModel>(
+    self: TModel,
+    payloadValues: ObjectRecord,
+    fieldMetadata: Map<string, unknown>
+  ): { draft: TModel; changes: ObjectRecord; touched: Set<string> } {
+    const changes: ObjectRecord = {};
+    const touched = new Set<string>();
+
+    const draft = new Proxy(self as unknown as ObjectRecord, {
+      get(_target, prop, receiver) {
+        const key = String(prop);
+        if (key in changes) return changes[key];
+        if (payloadValues && key in payloadValues) return payloadValues[key];
+        return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
+      },
+      set(_target, prop, value, _receiver) {
+        const key = String(prop);
+        // Reject writes to fields not present in model metadata (prevents typo pollution).
+        if (!fieldMetadata.has(key)) {
+          return true;
+        }
+        changes[key] = value;
+        touched.add(key);
+        return true;
+      },
+    }) as unknown as TModel;
+
+    return { draft, changes, touched };
+  }
+
+  /**
+   * Writes back the changes collected by instance constraint draft proxies
+   * into the constraint context's `values` payload.
+   */
+  private static applyConstraintWriteback<TModel extends BaseModel>(ctx: ConstraintContext<TModel>, touched: Set<string>, changes: ObjectRecord): void {
+    for (const field of touched) {
+      if (ctx.metadata.fields.has(field) || changes[field] !== undefined) {
+        ctx.values[field] = changes[field];
+      }
+    }
+  }
+
+  /**
+   * Re-runs kernel and platform validation for fields that were newly
+   * introduced (mutated) by instance constraint methods, preventing
+   * constraint writeback from silently bypassing earlier validation layers.
+   */
+  private static async validatePostConstraintMutations<TModel extends BaseModel>(
+    ctx: ConstraintContext<TModel>,
+    mutatedFields: Set<string>
+  ): Promise<ValidationIssue[]> {
+    if (mutatedFields.size === 0) return [];
+
+    const postCtx: ConstraintContext<TModel> = {
+      ...ctx,
+      changedFields: mutatedFields,
+    };
+
+    const issues: ValidationIssue[] = [];
+    issues.push(...(await this.validateKernelRules(postCtx)));
+    issues.push(...(await this.validatePlatformRules(postCtx)));
+    return issues;
   }
 }
