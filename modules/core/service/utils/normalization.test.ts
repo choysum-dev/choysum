@@ -56,6 +56,25 @@ test('normalizeOptionalString returns trimmed string or undefined', () => {
   expect(normalizeOptionalString(123)).toBe('123');
 });
 
+test('normalizeOptionalString uppercases with upper option', () => {
+  expect(normalizeOptionalString('  abc  ', { upper: true })).toBe('ABC');
+  expect(normalizeOptionalString('Mixed', { upper: true })).toBe('MIXED');
+});
+
+test('normalizeOptionalString lowercases with lower option', () => {
+  expect(normalizeOptionalString('  ABC  ', { lower: true })).toBe('abc');
+  expect(normalizeOptionalString('Mixed', { lower: true })).toBe('mixed');
+});
+
+test('normalizeOptionalString upper takes precedence over lower', () => {
+  expect(normalizeOptionalString('  abc  ', { upper: true, lower: true })).toBe('ABC');
+});
+
+test('normalizeOptionalString with options returns undefined for empty', () => {
+  expect(normalizeOptionalString('', { upper: true })).toBe(undefined);
+  expect(normalizeOptionalString(null, { upper: true })).toBe(undefined);
+});
+
 test('normalizeStringArray deduplicates and filters empty strings', () => {
   expect(normalizeStringArray(null)).toEqual([]);
   expect(normalizeStringArray(undefined)).toEqual([]);

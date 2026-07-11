@@ -26,7 +26,10 @@ export function mapNormalizationToPartnerBank<T>(fn: () => T, mapMessage: (err: 
 }
 
 /**
- * Normalize an optional text field with optional upper-case coercion.
+ * Normalize an optional text field with optional case coercion.
+ *
+ * Delegates trimming and case coercion to core normalizeOptionalString;
+ * this wrapper only adds the partner_bank-domain null / undefined contract:
  *
  * - undefined → undefined
  * - null      → null
@@ -36,10 +39,8 @@ export function mapNormalizationToPartnerBank<T>(fn: () => T, mapMessage: (err: 
 export function normalizeOptionalText(value: unknown, opts?: { upper?: boolean }): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  const base = normalizeOptionalString(value);
-  if (base === undefined) return null;
-  if (opts?.upper) return base.toUpperCase();
-  return base;
+  const base = normalizeOptionalString(value, opts);
+  return base === undefined ? null : base;
 }
 
 /**
