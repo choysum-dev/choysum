@@ -62,7 +62,11 @@ export function normalizeRequiredText(value: unknown, fieldName: string): string
  */
 export function normalizeNonNegativeInt(value: unknown, fieldName: string): number | undefined {
   if (value === undefined) return undefined;
-  const num = Number(value ?? 0);
+  if (value === null) return 0;
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    fail(`${fieldName} must be a non-negative integer`);
+  }
+  const num = Number(value);
   if (!Number.isFinite(num) || num < 0 || Math.floor(num) !== num) {
     fail(`${fieldName} must be a non-negative integer`);
   }
@@ -79,6 +83,9 @@ export function normalizeSequenceInt(value: unknown, defaultValue: number = 10):
   if (value === undefined) return undefined;
   if (value === null || (typeof value === 'string' && value.trim() === '')) {
     return defaultValue;
+  }
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    fail('Sequence must be an integer');
   }
   const num = Number(value);
   if (!Number.isFinite(num) || Math.floor(num) !== num) {
