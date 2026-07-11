@@ -396,12 +396,16 @@ export class ValidationEngine {
       return [];
     }
 
-    const self = this.buildConstraintSelf(ctx);
     const issues: ValidationIssue[] = [];
     const instanceTouched = new Set<string>();
     const instanceChanges: ObjectRecord = {};
 
     for (const handler of handlers) {
+      // Rebuild `self` on every iteration so that earlier instance-constraint
+      // mutations (already flushed to `ctx.values`) are visible to subsequent
+      // static handlers.
+      const self = this.buildConstraintSelf(ctx);
+
       if (handler.isStatic) {
         const executor = this.resolveConstraintMethod(ctx.model, handler);
         if (!executor) {
@@ -588,7 +592,7 @@ export class ValidationEngine {
     // (e.g. `constructor`, `toString`) never collide with model fields.
     const changes = Object.create(null) as ObjectRecord;
 
-    const resolve = (key: string): unknown => {
+    const resolve = (key: string, receiver?: unknown): unknown => {
       // Only consult changes / accumulatedChanges / payloadValues when the
       // key is a known model field.  Otherwise fall straight through to
       // `self` so that prototype methods and non-metadata properties are
@@ -600,7 +604,10 @@ export class ValidationEngine {
         if (key in accumulatedChanges) return accumulatedChanges[key];
         if (payloadValues && key in payloadValues) return payloadValues[key];
       }
-      return (self as unknown as ObjectRecord)[key];
+      // Use Reflect.get with the receiver so that prototype getters
+      // (e.g. computed fields) run with `this` bound to the draft proxy
+      // instead of the raw `self` object.
+      return Reflect.get(self as unknown as ObjectRecord, key, receiver ?? self);
     };
 
     const draft = new Proxy(self as unknown as ObjectRecord, {
@@ -611,7 +618,7 @@ export class ValidationEngine {
           return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
         }
         const key = String(prop);
-        return resolve(key);
+        return resolve(key, receiver);
       },
       set(_target, prop, value, _receiver) {
         if (typeof prop === 'symbol') {
@@ -627,7 +634,7 @@ export class ValidationEngine {
         }
         // Skip recording when the value is already identical to the resolved
         // current value (avoid unnecessary writebacks and re-validation).
-        if (resolve(key) !== value) {
+        if (resolve(key, _receiver) !== value) {
           changes[key] = value;
         }
         return true;
