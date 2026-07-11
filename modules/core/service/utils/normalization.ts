@@ -637,3 +637,60 @@ export function normalizeDateString(value: unknown): string {
   }
   return raw;
 }
+
+/**
+ * Type-narrow an unknown input to a plain Record, or null for invalid types.
+ *
+ * Returns null for null, undefined, arrays, functions, and primitives.
+ */
+export function asRecord(input: unknown): Record<string, unknown> | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return null;
+  }
+  return input as Record<string, unknown>;
+}
+
+/**
+ * Normalize a non-negative finite integer from loose input.
+ *
+ * Returns undefined for undefined, null, empty string, NaN, Infinity, and
+ * negative values. Truncates fractional components via Math.trunc.
+ */
+export function normalizeOptionalNonNegativeInt(value: unknown): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const normalized = typeof value === 'string' ? value.trim() : value;
+  if (normalized === '') return undefined;
+  if (typeof normalized !== 'number' && typeof normalized !== 'string') return undefined;
+  const num = Number(normalized);
+  if (!Number.isFinite(num)) return undefined;
+  if (num < 0) return undefined;
+  return Math.trunc(num);
+}
+
+/**
+ * Normalize a hex-encoded SHA-256 checksum to lowercase 64-char string.
+ *
+ * Returns undefined for non-string, empty, or non-hex input.
+ */
+export function normalizeChecksumSha256(value: unknown): string | undefined {
+  const text = normalizeOptionalString(value);
+  if (!text) return undefined;
+  const normalized = text.toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(normalized)) return undefined;
+  return normalized;
+}
+
+/**
+ * Normalize a MIME content-type string to lowercase token (without parameters).
+ *
+ * Strips the semicolon-delimited parameter portion (e.g. charset) and
+ * returns the trimmed lowercase media type. Returns undefined for empty input.
+ */
+export function normalizeContentType(value: unknown): string | undefined {
+  const text = normalizeOptionalString(value);
+  if (!text) return undefined;
+  const semicolon = text.indexOf(';');
+  const token = semicolon >= 0 ? text.slice(0, semicolon) : text;
+  const normalized = token.trim().toLowerCase();
+  return normalized || undefined;
+}

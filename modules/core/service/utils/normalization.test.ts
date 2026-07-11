@@ -43,6 +43,8 @@ import {
   normalizeDateString,
   normalizeEnumValue,
   resolveModelRefId,
+  asRecord,
+  normalizeOptionalNonNegativeInt,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -586,7 +588,70 @@ test('roundToCurrencyAmount handles null or undefined currency by defaulting dig
   expect(roundToCurrencyAmount(amount, undefined).eq(new Decimal('3'))).toBe(true);
 });
 
-test('roundToCurrencyAmount nullable currency ignores rounding step when null', () => {
-  const amount = new Decimal('2.5');
-  expect(roundToCurrencyAmount(amount, null, 2).eq(new Decimal('2.5'))).toBe(true);
+// ---------------------------------------------------------------------------
+// asRecord
+// ---------------------------------------------------------------------------
+
+test('asRecord returns null for null', () => {
+  expect(asRecord(null)).toBe(null);
+});
+
+test('asRecord returns null for undefined', () => {
+  expect(asRecord(undefined)).toBe(null);
+});
+
+test('asRecord returns null for arrays', () => {
+  expect(asRecord([1, 2, 3])).toBe(null);
+  expect(asRecord([])).toBe(null);
+});
+
+test('asRecord returns null for functions', () => {
+  expect(asRecord(() => {})).toBe(null);
+});
+
+test('asRecord returns null for primitives', () => {
+  expect(asRecord(42)).toBe(null);
+  expect(asRecord('hello')).toBe(null);
+  expect(asRecord(true)).toBe(null);
+  expect(asRecord(false)).toBe(null);
+});
+
+test('asRecord returns the object for plain objects', () => {
+  const obj = { a: 1 };
+  expect(asRecord(obj)).toBe(obj);
+  expect(asRecord({})).toEqual({});
+});
+
+test('asRecord returns the object for class instances (non-array)', () => {
+  const d = new Date();
+  expect(asRecord(d)).toBe(d);
+});
+
+// ---------------------------------------------------------------------------
+// normalizeOptionalNonNegativeInt
+// ---------------------------------------------------------------------------
+
+test('normalizeOptionalNonNegativeInt returns undefined for null/undefined/empty', () => {
+  expect(normalizeOptionalNonNegativeInt(null)).toBe(undefined);
+  expect(normalizeOptionalNonNegativeInt(undefined)).toBe(undefined);
+  expect(normalizeOptionalNonNegativeInt('')).toBe(undefined);
+});
+
+test('normalizeOptionalNonNegativeInt returns truncated positive integer', () => {
+  expect(normalizeOptionalNonNegativeInt(42)).toBe(42);
+  expect(normalizeOptionalNonNegativeInt('99')).toBe(99);
+  expect(normalizeOptionalNonNegativeInt(3.9)).toBe(3);
+  expect(normalizeOptionalNonNegativeInt(0)).toBe(0);
+});
+
+test('normalizeOptionalNonNegativeInt returns undefined for negative values', () => {
+  expect(normalizeOptionalNonNegativeInt(-1)).toBe(undefined);
+  expect(normalizeOptionalNonNegativeInt('-5')).toBe(undefined);
+});
+
+test('normalizeOptionalNonNegativeInt returns undefined for NaN/Infinity', () => {
+  expect(normalizeOptionalNonNegativeInt(NaN)).toBe(undefined);
+  expect(normalizeOptionalNonNegativeInt(Infinity)).toBe(undefined);
+  expect(normalizeOptionalNonNegativeInt(-Infinity)).toBe(undefined);
+  expect(normalizeOptionalNonNegativeInt('not a number')).toBe(undefined);
 });

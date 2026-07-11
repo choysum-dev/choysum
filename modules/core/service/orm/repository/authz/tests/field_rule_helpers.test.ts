@@ -472,6 +472,41 @@ test('field rule helper normalizes fetched spec and reuses cached value', async 
   );
 });
 
+test('field rule helper keeps repository legacy normalization semantics after core-helper reuse', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {
+            depth: 0,
+            method: 'Search',
+            fieldRuleMode: 'default',
+          },
+        },
+      },
+    },
+    async () => {
+      const original = AuthUserService.GetFieldRuleSpec;
+      (AuthUserService as any).GetFieldRuleSpec = async () => ({
+        denyReadFields: [false, 0, ' Name ', '', 'Id', 'Name'],
+        denyWriteFields: [0, false, ' Amount ', '', 'Amount'],
+        reason: '  keep_raw_reason  ',
+      });
+
+      try {
+        const { deps } = createDeps();
+        expect(await getRepositoryFieldRuleSpec(deps)).toEqual({
+          denyReadFields: ['0', 'Id', 'Name', 'false'],
+          denyWriteFields: ['0', 'Amount', 'false'],
+          reason: '  keep_raw_reason  ',
+        });
+      } finally {
+        (AuthUserService as any).GetFieldRuleSpec = original;
+      }
+    }
+  );
+});
+
 test('field rule helper write assertion returns early for non-plain payload and for allowed payload', async () => {
   await withPatchedChoysum(
     {

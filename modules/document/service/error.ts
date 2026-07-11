@@ -78,3 +78,19 @@ const { newError, wrapError, isError } = ErrorFactory.createDomainHandlers<Docum
  * Domain-scoped document error helpers.
  */
 export { newError as newDocumentError, wrapError as wrapDocumentError, isError as isDocumentError };
+
+/**
+ * Construct and throw a document-domain error with optional gRPC code and metadata.
+ *
+ * This is a convenience wrapper around the `newDocumentError(...).withGrpcCode(...).withMetadata(...)` chain.
+ * Returns `never` — the function always throws.
+ */
+export function throwDocumentError(code: DocumentErrCodeType, message: string, grpcCode?: number, metadata?: Record<string, unknown>): never {
+  const err = newError({ code, message }).withGrpcCode(grpcCode ?? 2 /* UNKNOWN */);
+  if (!metadata) throw err;
+  const stringified: Record<string, string> = {};
+  for (const [k, v] of Object.entries(metadata)) {
+    stringified[k] = String(v ?? '');
+  }
+  throw err.withMetadata(stringified);
+}

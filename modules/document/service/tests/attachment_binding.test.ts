@@ -13,6 +13,7 @@ import AttachmentBinding from '../models/attachment_binding';
 import AttachmentObject from '../models/attachment_object';
 import UploadSession from '../models/upload_session';
 import StoredContent from '../models/stored_content';
+import { normalizeBatchDescribeReq } from '../models/_attachment_binding_codec';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -1145,4 +1146,18 @@ test('document.attachment_binding: BatchDescribe denies owner record-rule false'
       expect(oe.metadata?.stage).toBe('descriptor');
     }
   });
+});
+
+test('document.attachment_binding: BatchDescribe rejects when attachmentBindingIds exceeds max batch size', () => {
+  const oversizedIds = Array.from({ length: 201 }, (_, i) => `bid_${i}`);
+  let caught: ChoysumError | undefined;
+  try {
+    normalizeBatchDescribeReq({ attachmentBindingIds: oversizedIds } as any);
+  } catch (err) {
+    caught = err as ChoysumError;
+  }
+  expect(caught).toBeDefined();
+  expect(caught!.domain).toBe('document');
+  expect(caught!.code).toBe('INVALID_ARGUMENT');
+  expect(caught!.metadata?.field).toBe('attachmentBindingIds');
 });
