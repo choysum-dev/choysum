@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition } from '@/core/service/api/query';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
-import moment from 'moment-timezone';
+import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 import Address from './address';
 import Country from './country';
@@ -92,7 +92,7 @@ export default class Company extends BaseModel {
     if (!timezone) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Timezone is required' }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    if (!moment.tz.zone(timezone)) {
+    if (!isIanaTimezone(timezone)) {
       throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `Invalid IANA timezone: ${timezone}` }).withGrpcCode(GrpcCode.InvalidArgument);
     }
     return timezone;

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { parseISODate } from '@/core/service/utils/date';
+import { parseISODate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
 import { resolveGcBatchSize } from './_gc_config';
