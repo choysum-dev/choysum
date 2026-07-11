@@ -2,35 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { parseISODate } from '@/core/service/utils/date';
+import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { UploadOperation, UploadSessionStatus, UploadedPayloadRef } from '../contracts';
-
-const DEFAULT_UPLOAD_SESSION_TTL_SECONDS = 900;
-const DEFAULT_GC_BATCH_SIZE = 200;
-
-function backendEnv(): Record<string, unknown> {
-  const env = (globalThis as any)?.__choysumBackendEnv ?? (import.meta as any)?.env;
-  if (!env || typeof env !== 'object') return {};
-  return env as Record<string, unknown>;
-}
-
-function resolvePositiveIntEnv(keys: string[], fallback: number): number {
-  const env = backendEnv();
-  for (const key of keys) {
-    const raw = env[key];
-    const parsed = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number.parseInt(raw, 10) : Number.NaN;
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return Math.floor(parsed);
-    }
-  }
-  return fallback;
-}
-
-function parseNowInput(nowISO?: string): Date {
-  if (!nowISO) return new Date();
-  const parsed = new Date(nowISO);
-  if (Number.isNaN(parsed.getTime())) return new Date();
-  return parsed;
-}
+import { resolveGcBatchSize } from './_gc_config';
+import { paginateBatch } from '@/core/service/utils/pagination';
+import { DEFAULT_UPLOAD_SESSION_TTL_SECONDS } from './_upload';
 
 /**
  * AttachmentUploadSession tracks staged uploads before payloads become active content.
@@ -191,55 +168,46 @@ export default class AttachmentUploadSession extends BaseModel {
    * Expires pending sessions and purges finalized or expired rows past retention.
    */
   public static async garbageCollectExpired(nowISO?: string): Promise<{ expiredCount: number; purgedCount: number }> {
-    const now = parseNowInput(nowISO);
-    const batch = resolvePositiveIntEnv(['CHOYSUM_DOCUMENT_GC_BATCH_SIZE'], DEFAULT_GC_BATCH_SIZE);
-    const uploadSessionTTLSeconds = resolvePositiveIntEnv(
+    const now = parseISODate(nowISO);
+    const batch = resolveGcBatchSize();
+    const uploadSessionTTLSeconds = getBackendEnvPositiveInt(
       ['CHOYSUM_DOCUMENT_ATTACHMENT_UPLOAD_SESSION_TTL_SECONDS', 'CHOYSUM_DOCUMENT_UPLOAD_SESSION_TTL_SECONDS'],
       DEFAULT_UPLOAD_SESSION_TTL_SECONDS
     );
 
-    let expiredCount = 0;
-    for (;;) {
-      const sessions = await this.Search(
-        {
-          And: [
-            ['Status', 'in', ['prepared', 'uploaded'] as any],
-            ['ExpiresAt', '<', now],
-          ],
-        } as any,
-        { limit: batch, fields: ['Id'] as any } as any
-      );
-      if (!sessions.length) break;
-      for (const session of sessions) {
+    const self = this;
+    const expiredCount = await paginateBatch(
+      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      {
+        And: [
+          ['Status', 'in', ['prepared', 'uploaded'] as any],
+          ['ExpiresAt', '<', now],
+        ],
+      },
+      async session => {
         const sessionId = String((session as any)?.Id || '').trim();
-        if (!sessionId) continue;
-        await this.UpdateById(sessionId, { Status: 'expired' } as any, ['Id'] as any);
-        expiredCount += 1;
-      }
-      if (sessions.length < batch) break;
-    }
+        if (!sessionId) return;
+        await self.UpdateById(sessionId, { Status: 'expired' } as any, ['Id', 'Status'] as any);
+      },
+      { batch, fields: ['Id'] }
+    );
 
     const cutoff = new Date(now.getTime() - uploadSessionTTLSeconds * 1000);
-    let purgedCount = 0;
-    for (;;) {
-      const rows = await this.Search(
-        {
-          And: [
-            ['Status', 'in', ['finalized', 'expired'] as any],
-            ['UpdatedAt', '<', cutoff],
-          ],
-        } as any,
-        { limit: batch, fields: ['Id'] as any } as any
-      );
-      if (!rows.length) break;
-      for (const row of rows) {
+    const purgedCount = await paginateBatch(
+      (condition, opts) => self.Search(condition, opts as any) as Promise<unknown[]>,
+      {
+        And: [
+          ['Status', 'in', ['finalized', 'expired'] as any],
+          ['UpdatedAt', '<', cutoff],
+        ],
+      },
+      async row => {
         const sessionId = String((row as any)?.Id || '').trim();
-        if (!sessionId) continue;
-        await this.DeleteById(sessionId as any);
-        purgedCount += 1;
-      }
-      if (rows.length < batch) break;
-    }
+        if (!sessionId) return;
+        await self.DeleteById(sessionId as any);
+      },
+      { batch, fields: ['Id'] }
+    );
 
     return {
       expiredCount,

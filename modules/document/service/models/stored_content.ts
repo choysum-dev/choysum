@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { AttachmentBackend } from '../contracts';
-import { DocumentErrCode, GrpcCode, newDocumentError } from '../error';
+import { mustLoadOne } from './_query_loaders';
 
 /**
  * Lifecycle states for stored payload content.
@@ -63,16 +63,8 @@ export default class StoredContent extends BaseModel {
    * Loads a stored payload row or raises a document-domain not-found error.
    */
   public static async mustLoadByID(storedContentId: string): Promise<StoredContent> {
-    const rows = await this.Search(['Id', '=', storedContentId] as any, { limit: 1 } as any);
-    const storedContent = rows[0] as StoredContent | undefined;
-    if (!storedContent) {
-      throw newDocumentError({
-        code: DocumentErrCode.NOT_FOUND,
-        message: 'Stored content not found',
-      })
-        .withGrpcCode(GrpcCode.NotFound)
-        .withMetadata({ storedContentId });
-    }
-    return storedContent;
+    return mustLoadOne<StoredContent>((condition, opts) => this.Search(condition, opts as any), ['Id', '=', storedContentId], 'Stored content not found', {
+      storedContentId,
+    });
   }
 }

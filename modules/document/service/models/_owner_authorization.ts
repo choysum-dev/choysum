@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createServiceByModel } from '@/core/service/rpc/service_factory';
-import type { ConditionEnvelope, ConditionExpr, RecordRuleOp } from '@/core/service/api/authz';
+import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from '@/core/service/api/authz';
+import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
+import { normalizeOptionalString } from '@/core/service/utils/normalization';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
+import { observePermissionDenied } from './_owner_authorization_observability';
 
 type OwnerWriteOperation = 'create' | 'update';
 type OwnerPermissionStage =
@@ -48,13 +51,7 @@ type OwnerModelServiceLike = {
   Search(condition: unknown, options?: unknown): Promise<unknown>;
 };
 
-type FieldRuleSpec = {
-  denyReadFields: string[];
-  denyWriteFields: string[];
-};
-
 const AUTH_USER_MODEL = 'auth.User';
-const STORAGE_PERMISSION_DENIED_COUNTER_KEY = Symbol.for('choysum.document.permission_denied_total');
 
 /**
  * Verifies write access to the owner model and field used by a document mutation.
@@ -102,7 +99,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
   }
 
   if (ownerRecordId && envelope.kind === 'expr') {
-    const recordRuleExpr = replaceConditionTokens(envelope.expr, userId, companyId, companyIds);
+    const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
     const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
       throw permissionDenied(stage, 'owner write target is not allowed by record rule scope', {
@@ -152,7 +149,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
   }
 
   if (envelope.kind === 'expr') {
-    const recordRuleExpr = replaceConditionTokens(envelope.expr, userId, companyId, companyIds);
+    const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
     const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
       throw permissionDenied(stage, 'owner read target is not allowed by record rule scope', {
@@ -226,57 +223,25 @@ async function probeOwnerRecord(ownerModel: string, ownerRecordId: string, recor
   }
 }
 
-function normalizeConditionEnvelope(value: unknown): ConditionEnvelope {
-  const record = asRecord(value);
-  if (!record) return { kind: 'false', reason: 'invalid_record_rule_envelope' };
-
-  const kind = normalizeOptionalText(record.kind);
-  if (kind === 'true') return { kind: 'true', reason: normalizeOptionalText(record.reason) };
-  if (kind === 'false') return { kind: 'false', reason: normalizeOptionalText(record.reason) };
-  if (kind === 'expr' && (Array.isArray(record.expr) || asRecord(record.expr))) {
-    return {
-      kind: 'expr',
-      expr: record.expr as ConditionExpr,
-      reason: normalizeOptionalText(record.reason),
-    };
+function replaceTokensForOwnerRecordRule(
+  expr: ConditionExpr,
+  stage: OwnerPermissionStage,
+  userId: string,
+  companyId: string,
+  companyIds: string[]
+): ConditionExpr {
+  try {
+    return replaceConditionExprTokens(expr, {
+      userId,
+      companyId,
+      companyIds,
+      strictUnknownToken: true,
+    });
+  } catch (err) {
+    throw permissionDenied(stage, 'owner record rule contains invalid token mapping', {
+      detail: errorMessage(err),
+    });
   }
-  return { kind: 'false', reason: 'invalid_record_rule_envelope' };
-}
-
-function normalizeFieldRuleSpec(value: unknown): FieldRuleSpec {
-  const record = asRecord(value);
-  if (!record) {
-    return { denyReadFields: [], denyWriteFields: [] };
-  }
-
-  return {
-    denyReadFields: normalizeTextArray(record.denyReadFields),
-    denyWriteFields: normalizeTextArray(record.denyWriteFields),
-  };
-}
-
-function replaceConditionTokens(expr: ConditionExpr, userId: string, companyId: string, companyIds: string[]): ConditionExpr {
-  const replace = (value: unknown): unknown => {
-    if (value === null || value === undefined) return value;
-    if (typeof value === 'string') {
-      const token = value.trim();
-      if (token === '$userId') return userId;
-      if (token === '$companyId') return companyId;
-      if (token === '$companyIds') return companyIds;
-      return value;
-    }
-    if (Array.isArray(value)) return value.map(item => replace(item));
-    const record = asRecord(value);
-    if (!record) return value;
-
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(record)) {
-      out[k] = replace(v);
-    }
-    return out;
-  };
-
-  return replace(expr) as ConditionExpr;
 }
 
 function normalizeCompanyIds(value: unknown, activeCompanyId: string): string[] {
@@ -295,16 +260,6 @@ function normalizeCompanyIds(value: unknown, activeCompanyId: string): string[] 
 function isFieldDenied(deniedFields: string[], fieldName: string): boolean {
   const target = fieldName.trim().toLowerCase();
   return deniedFields.some(field => field.trim().toLowerCase() === target);
-}
-
-function normalizeTextArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  const out: string[] = [];
-  for (const item of value) {
-    const text = normalizeOptionalText(item);
-    if (text) out.push(text);
-  }
-  return Array.from(new Set(out));
 }
 
 function permissionDenied(stage: OwnerPermissionStage, message: string, metadata: Record<string, unknown>): Error {
@@ -326,55 +281,6 @@ function stringifyMetadata(metadata: Record<string, unknown>): Record<string, st
   return out;
 }
 
-function observePermissionDenied(stage: OwnerPermissionStage, message: string, metadata: Record<string, unknown>): void {
-  const ownerModel = normalizeOptionalText(metadata.ownerModel) ?? 'unknown';
-  const fieldName = normalizeOptionalText(metadata.fieldName) ?? 'unknown';
-  const reason = normalizeReason(normalizeOptionalText(metadata.reason) ?? message);
-
-  try {
-    console.warn(
-      `[DOCUMENT][permission_denied] ${JSON.stringify({
-        stage,
-        ownerModel,
-        fieldName,
-        reason,
-      })}`
-    );
-  } catch {
-    // Observability should never block business errors.
-  }
-
-  try {
-    const root = globalThis as any;
-    const store: Record<string, number> = root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] ?? {};
-    root[STORAGE_PERMISSION_DENIED_COUNTER_KEY] = store;
-
-    const key = `${stage}|${reason}`;
-    store[key] = (store[key] ?? 0) + 1;
-
-    console.info(
-      `[METRIC] ${JSON.stringify({
-        name: 'document.permission_denied_total',
-        stage,
-        reason,
-        value: store[key],
-        delta: 1,
-      })}`
-    );
-  } catch {
-    // Metrics emission is best-effort.
-  }
-}
-
-function normalizeReason(value: string): string {
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  return normalized || 'unknown';
-}
-
 function requireText(value: unknown, fieldName: string, stage: OwnerPermissionStage): string {
   const text = normalizeOptionalText(value);
   if (!text) {
@@ -384,13 +290,10 @@ function requireText(value: unknown, fieldName: string, stage: OwnerPermissionSt
 }
 
 function normalizeOptionalText(value: unknown): string | undefined {
-  const text = String(value ?? '').trim();
-  return text === '' ? undefined : text;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return normalizeOptionalString(value);
 }
 
 function errorMessage(err: unknown): string {

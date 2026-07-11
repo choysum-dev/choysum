@@ -93,8 +93,8 @@ function normalizeRepositoryFieldRuleSpec(input: unknown): RepositoryFieldRuleSp
     if (!Array.isArray(raw)) return [];
     const output: string[] = [];
     for (const item of raw) {
-      const normalized = String(item ?? '').trim();
-      if (normalized) output.push(normalized);
+      const legacyNormalized = String(item ?? '').trim();
+      if (legacyNormalized) output.push(legacyNormalized);
     }
     return Array.from(new Set(output)).sort();
   };

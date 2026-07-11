@@ -57,3 +57,59 @@ test('getBackendEnvPositiveInt parses positive values and falls back for invalid
     }
   }
 });
+
+test('getBackendEnv prefers __choysumBackendEnv over import.meta.env when both exist', () => {
+  const globalAny = globalThis as any;
+  const bucketKey = '__choysumBackendEnv';
+  const prev = globalAny[bucketKey];
+  const prevMeta = (import.meta as any).env;
+  try {
+    globalAny[bucketKey] = { CHOYSUM_CONFLICT_KEY: 'runtime-wins' };
+    (import.meta as any).env = { CHOYSUM_CONFLICT_KEY: 'meta-wins' };
+    const env = getBackendEnv();
+    expect((env as any).CHOYSUM_CONFLICT_KEY).toBe('runtime-wins');
+  } finally {
+    globalAny[bucketKey] = prev;
+    (import.meta as any).env = prevMeta;
+  }
+});
+
+test('getBackendEnvPositiveInt supports array of keys tried in order', () => {
+  const globalAny = globalThis as any;
+  const bucketKey = '__choysumBackendEnv';
+  const prev = globalAny[bucketKey];
+  try {
+    globalAny[bucketKey] = { SECOND_KEY: '99' };
+    expect(getBackendEnvPositiveInt(['FIRST_KEY', 'SECOND_KEY'], 7)).toBe(99);
+  } finally {
+    globalAny[bucketKey] = prev;
+  }
+});
+
+test('getBackendEnvPositiveInt handles array first-key hit', () => {
+  const globalAny = globalThis as any;
+  const bucketKey = '__choysumBackendEnv';
+  const prev = globalAny[bucketKey];
+  try {
+    globalAny[bucketKey] = { FIRST_KEY: '42' };
+    expect(getBackendEnvPositiveInt(['FIRST_KEY', 'SECOND_KEY'], 7)).toBe(42);
+  } finally {
+    globalAny[bucketKey] = prev;
+  }
+});
+
+test('getBackendEnvPositiveInt single-key signature still works', () => {
+  const globalAny = globalThis as any;
+  const bucketKey = '__choysumBackendEnv';
+  const prev = globalAny[bucketKey];
+  try {
+    globalAny[bucketKey] = { STILL_SINGLE: '55' };
+    expect(getBackendEnvPositiveInt('STILL_SINGLE', 3)).toBe(55);
+  } finally {
+    globalAny[bucketKey] = prev;
+  }
+});
+
+test('getBackendEnvPositiveInt returns defaultValue when no array key matches', () => {
+  expect(getBackendEnvPositiveInt(['NO_MATCH_1', 'NO_MATCH_2'], 11)).toBe(11);
+});
