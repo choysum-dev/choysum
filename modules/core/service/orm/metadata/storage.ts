@@ -356,6 +356,17 @@ export class MetadataStorage {
     return result;
   }
 
+  /**
+   * Resolves the effective constraint handlers for a model by walking the
+   * prototype chain from child to root:
+   *
+   * - Child classes take precedence for the **same method name** (override).
+   * - New method names introduced by a child are added alongside inherited ones (extend).
+   * - If a child does **not** re-decorate a parent constraint, the parent's
+   *   handler is inherited as-is (reuse).
+   *
+   * Handlers are returned sorted by priority then by method name.
+   */
   public getEffectiveConstraints<T extends BaseModel>(target: ModelCtor<T>): EffectiveConstraintMeta[] {
     // Ensure metadata is initialized for the target class.
     this.getModelMetadata(target);

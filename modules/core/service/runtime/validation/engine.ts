@@ -521,6 +521,16 @@ export class ValidationEngine {
     return Object.assign(Object.create(ctx.model.prototype), ctx.current || {}, ctx.values) as TModel;
   }
 
+  /**
+   * Resolves a legacy constraint method for `(self, ctx)` invocation.
+   *
+   * When {@link ConstraintMeta.isStatic} is true the method is resolved from the
+   * model constructor; otherwise from the prototype.  In both cases the function
+   * is pre-bound to its owner so it can be called directly.
+   *
+   * For inherited constraints the prototype chain naturally resolves the
+   * closest override (child prototype before parent prototype).
+   */
   private static resolveConstraintMethod<TModel extends BaseModel>(
     model: ModelCtor<TModel> & typeof BaseModel,
     handler: ConstraintMeta

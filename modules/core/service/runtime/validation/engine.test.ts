@@ -1606,3 +1606,69 @@ test('validation engine constraint execution sorts same-priority handlers by met
 
   expect(ConstraintTieModel.order).toEqual(['alpha', 'zeta']);
 });
+
+// ---------------------------------------------------------------------------
+// Inheritance override: engine-level execution source verification
+// ---------------------------------------------------------------------------
+
+const inheritLog: string[] = [];
+
+class InheritEngineParent extends BaseModel {
+  @Field({ type: 'varchar', column: { size: 64 } })
+  Name?: string;
+
+  // Parent instance constraint.
+  validateName(): void {
+    inheritLog.push('parent-validateName');
+  }
+}
+Constraint<InheritEngineParent>('Name', { priority: 10 })(InheritEngineParent.prototype, 'validateName', undefined as any);
+
+class InheritEngineChild extends InheritEngineParent {
+  // Child re-decorates same method name with different priority.
+  validateName(): void {
+    inheritLog.push('child-validateName');
+  }
+}
+Constraint<InheritEngineChild>('Name', { priority: 5 })(InheritEngineChild.prototype, 'validateName', undefined as any);
+
+class InheritEngineGrandchild extends InheritEngineChild {
+  // Grandchild inherits without re-decoration → child's handler runs.
+}
+
+test('constraint override: child implementation is actually executed (not parent)', async () => {
+  inheritLog.length = 0;
+  const metadata = MetadataStorage.instance.getModelMetadata(InheritEngineChild as any);
+
+  await ValidationEngine.validate({
+    mode: 'update',
+    model: InheritEngineChild as any,
+    metadata,
+    current: { Id: '1', Name: 'old' },
+    values: { Name: 'next' },
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  expect(inheritLog).toEqual(['child-validateName']);
+});
+
+test('constraint reuse: grandchild without re-decoration inherits child handler', async () => {
+  inheritLog.length = 0;
+  const metadata = MetadataStorage.instance.getModelMetadata(InheritEngineGrandchild as any);
+
+  await ValidationEngine.validate({
+    mode: 'update',
+    model: InheritEngineGrandchild as any,
+    metadata,
+    current: { Id: '1', Name: 'old' },
+    values: { Name: 'next' },
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  // Grandchild reuses child's handler (closest ancestor with same method name).
+  expect(inheritLog).toEqual(['child-validateName']);
+});
