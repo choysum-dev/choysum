@@ -449,13 +449,18 @@ export class ValidationEngine {
         continue;
       }
 
-      const { draft, changes } = this.createConstraintDraft(self, ctx.values, ctx.metadata.fields);
+      // Pass accumulated instanceChanges so subsequent handlers can see
+      // mutations from earlier handlers through the draft proxy.
+      const { draft, changes } = this.createConstraintDraft(self, ctx.values, ctx.metadata.fields, instanceChanges);
       try {
         await instanceMethod.call(draft);
         for (const field of Object.keys(changes)) {
           if (changes[field] !== undefined) {
             instanceChanges[field] = changes[field];
             instanceTouched.add(field);
+            // Flush to ctx.values immediately so the next handler's draft
+            // (which reads ctx.values as a fallback) can observe the update.
+            ctx.values[field] = changes[field];
           }
         }
       } catch (error) {
@@ -565,23 +570,28 @@ export class ValidationEngine {
   /**
    * Creates a draft proxy that wraps a constraint `self` object.
    *
-   * The proxy intercepts property writes and records them in `changes` / `touched`,
-   * while reads follow the priority chain `changes → ctx.values → original self`.
+   * The proxy intercepts property writes and records them in `changes`,
+   * while reads follow the priority chain
+   * `changes → accumulatedChanges → ctx.values → original self`.
    *
-   * @returns The draft proxy and the mutable tracking state.
+   * @param accumulatedChanges  Mutations from previously-executed instance
+   *                            constraints in the same validation run, so
+   *                            that later handlers can observe earlier writes.
+   * @returns The draft proxy and the per-handler change record.
    */
   private static createConstraintDraft<TModel extends BaseModel>(
     self: TModel,
     payloadValues: ObjectRecord,
-    fieldMetadata: Map<string, unknown>
-  ): { draft: TModel; changes: ObjectRecord; touched: Set<string> } {
+    fieldMetadata: Map<string, unknown>,
+    accumulatedChanges: ObjectRecord = {}
+  ): { draft: TModel; changes: ObjectRecord } {
     const changes: ObjectRecord = {};
-    const touched = new Set<string>();
 
     const draft = new Proxy(self as unknown as ObjectRecord, {
       get(_target, prop, receiver) {
         const key = String(prop);
         if (key in changes) return changes[key];
+        if (key in accumulatedChanges) return accumulatedChanges[key];
         if (payloadValues && key in payloadValues) return payloadValues[key];
         return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
       },
@@ -592,12 +602,11 @@ export class ValidationEngine {
           return true;
         }
         changes[key] = value;
-        touched.add(key);
         return true;
       },
     }) as unknown as TModel;
 
-    return { draft, changes, touched };
+    return { draft, changes };
   }
 
   /**

@@ -88,15 +88,6 @@ export default class ExchangeRate extends BaseModel {
   @Constraint<ExchangeRate>(['CompanyId', 'CurrencyId', 'Date', 'Rate'])
   async validateExchangeRateConstraint(): Promise<void> {
     const currentId = String((this as any).Id || '').trim() || undefined;
-
-    // Normalize fields on this; CompanyScopeKey is always derived from CompanyId.
-    (this as any).CompanyScopeKey = normalizeRefId(this.CompanyId) || '__GLOBAL__';
-    (this as any).Date = ExchangeRate.dateKey(this.Date);
-    (this as any).Rate = mapNormalizationToBase(
-      () => toPositiveDecimal(this.Rate).toString(),
-      err => (err.code === 'non_positive_decimal' ? 'Rate must be greater than 0' : 'Rate must be a valid decimal')
-    );
-
-    await ExchangeRate.ensureUniqueTuple(this as any, currentId);
+    await ExchangeRate.validateEntity(this as any, currentId);
   }
 }

@@ -46,7 +46,11 @@ export default class Locale extends BaseModel {
 
   @Constraint<Locale>(['CurrencySymbolPosition', 'CurrencySymbolSpacing'])
   validateLocaleConstraint(): void {
-    (this as any).CurrencySymbolPosition = normalizeCurrencySymbolPosition(this.CurrencySymbolPosition);
-    (this as any).CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+    if (this.CurrencySymbolPosition !== undefined) {
+      (this as any).CurrencySymbolPosition = normalizeCurrencySymbolPosition(this.CurrencySymbolPosition);
+    }
+    if (this.CurrencySymbolSpacing !== undefined) {
+      (this as any).CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+    }
   }
 }

@@ -64,7 +64,5 @@ export default class State extends BaseModel {
     const currentId = String((this as any).Id || '').trim() || undefined;
 
     await State.ensureUniqueness(this as any, currentId);
-    this.Name = normalizeName(this.Name as string);
-    (this as any).Code = normalizeCodeOptional(this.Code as string);
   }
 }
