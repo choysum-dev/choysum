@@ -57,7 +57,7 @@ export class ValidationEngine {
       );
     }
     if (includeConstraints) {
-      issues.push(...(await this.validateConstraintMethods(ctx)));
+      issues.push(...(await this.validateConstraintMethods(ctx, options)));
     }
 
     return issues;
@@ -387,7 +387,15 @@ export class ValidationEngine {
    * - Instance handlers are invoked with `this` bound to a draft proxy
    *   and mutations are automatically written back to `ctx.values`.
    */
-  static async validateConstraintMethods<TModel extends BaseModel>(ctx: ConstraintContext<TModel>): Promise<ValidationIssue[]> {
+  static async validateConstraintMethods<TModel extends BaseModel>(
+    ctx: ConstraintContext<TModel>,
+    options?: {
+      kernelRules?: KernelValidationRule[];
+      platformCreateWriteWhitelist?: string[];
+      platformRejectUnknownFields?: boolean;
+      onPlatformCreateWhitelistHit?: (fields: string[]) => void;
+    }
+  ): Promise<ValidationIssue[]> {
     const handlers = (ctx.metadata.constraintHandlers || [])
       .filter(handler => this.shouldRunConstraint(handler, ctx))
       .sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
@@ -462,6 +470,12 @@ export class ValidationEngine {
           // Flush to ctx.values immediately so the next handler's draft
           // (which reads ctx.values as a fallback) can observe the update.
           ctx.values[field] = changes[field];
+          // When ctx.self is explicitly provided (e.g. preview mode),
+          // buildConstraintSelf returns it directly.  Write back so that
+          // subsequent static handlers see the mutation through `self`.
+          if (ctx.self) {
+            (ctx.self as unknown as ObjectRecord)[field] = changes[field];
+          }
         }
       } catch (error) {
         if (error instanceof ValidationPipelineError) {
@@ -486,7 +500,7 @@ export class ValidationEngine {
     // normalizing a string) and the mutated value must pass kernel/platform
     // rules before it is persisted.
     if (instanceTouched.size > 0) {
-      const postIssues = await this.validatePostConstraintMutations(ctx, instanceTouched);
+      const postIssues = await this.validatePostConstraintMutations(ctx, instanceTouched, options);
       issues.push(...postIssues);
     }
 
@@ -624,13 +638,21 @@ export class ValidationEngine {
   }
 
   /**
-   * Re-runs kernel and platform validation for fields that were newly
-   * introduced (mutated) by instance constraint methods, preventing
-   * constraint writeback from silently bypassing earlier validation layers.
+   * Re-runs kernel and platform validation for fields that were
+   * mutated by instance constraint methods, preventing constraint writeback
+   * from silently bypassing earlier validation layers.  The optional
+   * validation options (kernelRules, whitelists, etc.) are forwarded so
+   * the re-validation pass uses the same settings as the primary pass.
    */
   private static async validatePostConstraintMutations<TModel extends BaseModel>(
     ctx: ConstraintContext<TModel>,
-    mutatedFields: Set<string>
+    mutatedFields: Set<string>,
+    options?: {
+      kernelRules?: KernelValidationRule[];
+      platformCreateWriteWhitelist?: string[];
+      platformRejectUnknownFields?: boolean;
+      onPlatformCreateWhitelistHit?: (fields: string[]) => void;
+    }
   ): Promise<ValidationIssue[]> {
     if (mutatedFields.size === 0) return [];
 
@@ -640,8 +662,14 @@ export class ValidationEngine {
     };
 
     const issues: ValidationIssue[] = [];
-    issues.push(...(await this.validateKernelRules(postCtx)));
-    issues.push(...(await this.validatePlatformRules(postCtx)));
+    issues.push(...(await this.validateKernelRules(postCtx, options?.kernelRules)));
+    issues.push(
+      ...(await this.validatePlatformRules(postCtx, {
+        createWriteWhitelist: options?.platformCreateWriteWhitelist,
+        rejectUnknownFields: options?.platformRejectUnknownFields,
+        onCreateWhitelistHit: options?.onPlatformCreateWhitelistHit,
+      }))
+    );
     return issues;
   }
 }
