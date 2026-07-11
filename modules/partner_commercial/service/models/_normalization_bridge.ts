@@ -5,7 +5,6 @@ import { raiseDomainError } from '@/core/service/error';
 import {
   NormalizationError,
   normalizeOptionalString,
-  normalizeRefId as normalizeRefIdCore,
   normalizeRequiredText as normalizeRequiredTextCore,
 } from '@/core/service/utils/normalization';
 import { toDate as toDateCore } from '@/core/service/utils/datetime';
@@ -20,10 +19,7 @@ export function fail(message: string): never {
 /**
  * Map a domain-agnostic normalization failure into partner-commercial-domain InvalidArgument.
  */
-export function mapNormalizationToPartnerCommercial<T>(
-  fn: () => T,
-  mapMessage: (err: NormalizationError) => string,
-): T {
+export function mapNormalizationToPartnerCommercial<T>(fn: () => T, mapMessage: (err: NormalizationError) => string): T {
   try {
     return fn();
   } catch (err) {
@@ -32,19 +28,6 @@ export function mapNormalizationToPartnerCommercial<T>(
     }
     throw err;
   }
-}
-
-/**
- * Normalize a relation reference into a trimmed Id string.
- *
- * Preserves the undefined / null distinction so that callers can
- * differentiate "field not provided" (undefined) from "explicitly
- * cleared" (null).  Internally delegates to core normalizeRefId.
- */
-export function asRefId(value: unknown): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  return normalizeRefIdCore(value);
 }
 
 /**
@@ -57,10 +40,7 @@ export function asRefId(value: unknown): string | null | undefined {
  * - null      → null
  * - empty     → null
  */
-export function normalizeOptionalText(
-  value: unknown,
-  opts?: { lower?: boolean; upper?: boolean },
-): string | null | undefined {
+export function normalizeOptionalText(value: unknown, opts?: { lower?: boolean; upper?: boolean }): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   const base = normalizeOptionalString(value, opts);
@@ -73,11 +53,7 @@ export function normalizeOptionalText(
  *
  * Supports optional case coercion applied after the required-text check.
  */
-export function normalizeRequiredText(
-  value: unknown,
-  fieldName: string,
-  opts?: { lower?: boolean; upper?: boolean },
-): string {
+export function normalizeRequiredText(value: unknown, fieldName: string, opts?: { lower?: boolean; upper?: boolean }): string {
   return mapNormalizationToPartnerCommercial(
     () => {
       const normalized = normalizeRequiredTextCore(value);
@@ -85,7 +61,7 @@ export function normalizeRequiredText(
       if (opts?.upper) return normalized.toUpperCase();
       return normalized;
     },
-    () => `${fieldName} is required`,
+    () => `${fieldName} is required`
   );
 }
 

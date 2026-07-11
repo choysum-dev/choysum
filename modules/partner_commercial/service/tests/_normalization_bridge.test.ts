@@ -6,7 +6,6 @@ import { ChoysumError } from '@/core/service/error';
 import {
   fail,
   mapNormalizationToPartnerCommercial,
-  asRefId,
   normalizeOptionalText,
   normalizeRequiredText,
   toDateOrUndefined,
@@ -38,8 +37,10 @@ test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommerc
   let err: unknown;
   try {
     mapNormalizationToPartnerCommercial(
-      () => { throw new NormalizationError('required'); },
-      () => 'Mapped required message',
+      () => {
+        throw new NormalizationError('required');
+      },
+      () => 'Mapped required message'
     );
   } catch (e) {
     err = e;
@@ -55,7 +56,12 @@ test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommerc
   const boom = new Error('boom');
   let err: unknown;
   try {
-    mapNormalizationToPartnerCommercial(() => { throw boom; }, () => 'ignored');
+    mapNormalizationToPartnerCommercial(
+      () => {
+        throw boom;
+      },
+      () => 'ignored'
+    );
   } catch (e) {
     err = e;
   }
@@ -63,36 +69,12 @@ test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommerc
 });
 
 test('partner_commercial._normalization_bridge: mapNormalizationToPartnerCommercial returns result on success', () => {
-  expect(mapNormalizationToPartnerCommercial(() => 'ok', () => 'ignored')).toBe('ok');
-});
-
-// ---------------------------------------------------------------------------
-// asRefId
-// ---------------------------------------------------------------------------
-
-test('partner_commercial._normalization_bridge: asRefId returns undefined for undefined', () => {
-  expect(asRefId(undefined)).toBe(undefined);
-});
-
-test('partner_commercial._normalization_bridge: asRefId returns null for null', () => {
-  expect(asRefId(null)).toBe(null);
-});
-
-test('partner_commercial._normalization_bridge: asRefId trims string', () => {
-  expect(asRefId('  abc  ')).toBe('abc');
-});
-
-test('partner_commercial._normalization_bridge: asRefId returns null for empty string', () => {
-  expect(asRefId('')).toBe(null);
-  expect(asRefId('   ')).toBe(null);
-});
-
-test('partner_commercial._normalization_bridge: asRefId extracts Id from object', () => {
-  expect(asRefId({ Id: 'XYZ' })).toBe('XYZ');
-});
-
-test('partner_commercial._normalization_bridge: asRefId coerces number to string', () => {
-  expect(asRefId(123)).toBe('123');
+  expect(
+    mapNormalizationToPartnerCommercial(
+      () => 'ok',
+      () => 'ignored'
+    )
+  ).toBe('ok');
 });
 
 // ---------------------------------------------------------------------------
@@ -141,7 +123,11 @@ test('partner_commercial._normalization_bridge: normalizeRequiredText throws for
 
 test('partner_commercial._normalization_bridge: normalizeRequiredText error message includes fieldName', () => {
   let err: unknown;
-  try { normalizeRequiredText('', 'IdentifierType'); } catch (e) { err = e; }
+  try {
+    normalizeRequiredText('', 'IdentifierType');
+  } catch (e) {
+    err = e;
+  }
   expect(err instanceof ChoysumError).toBe(true);
   expect((err as ChoysumError).message).toBe('IdentifierType is required');
 });
@@ -177,14 +163,22 @@ test('partner_commercial._normalization_bridge: toDateOrUndefined parses ISO str
 
 test('partner_commercial._normalization_bridge: toDateOrUndefined throws for invalid string', () => {
   let err: unknown;
-  try { toDateOrUndefined('invalid', 'ValidFrom'); } catch (e) { err = e; }
+  try {
+    toDateOrUndefined('invalid', 'ValidFrom');
+  } catch (e) {
+    err = e;
+  }
   expect(err instanceof ChoysumError).toBe(true);
   expect((err as ChoysumError).message).toBe('ValidFrom must be a valid datetime');
 });
 
 test('partner_commercial._normalization_bridge: toDateOrUndefined throws for NaN Date instance', () => {
   let err: unknown;
-  try { toDateOrUndefined(new Date('invalid'), 'ValidTo'); } catch (e) { err = e; }
+  try {
+    toDateOrUndefined(new Date('invalid'), 'ValidTo');
+  } catch (e) {
+    err = e;
+  }
   expect(err instanceof ChoysumError).toBe(true);
   expect((err as ChoysumError).message).toBe('ValidTo must be a valid datetime');
 });
