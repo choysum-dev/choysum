@@ -210,6 +210,16 @@ export class ChoysumError extends Error implements Omit<ErrorInfo, '$typeName'> 
 }
 
 /**
+ * Construct and throw a domain-specific error in a single call.
+ *
+ * This is a convenience shortcut for the common pattern:
+ *   throw new ChoysumError({ domain, code, message }).withGrpcCode(GrpcCode.InvalidArgument);
+ */
+export function raiseDomainError(domain: string, code: string, message: string): never {
+  throw new ChoysumError({ domain, code, message }).withGrpcCode(Code.InvalidArgument);
+}
+
+/**
  * Global error type matcher.
  * Similar to Go's errors.As.
  *

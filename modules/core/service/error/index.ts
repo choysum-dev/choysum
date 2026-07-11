@@ -11,6 +11,7 @@ export {
   GrpcCode,
   errorAs,
   isErrorOf,
+  raiseDomainError,
   createDomainErrorHandlers,
   ErrorFactory,
   generateErrorId,
