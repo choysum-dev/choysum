@@ -10,7 +10,7 @@ import Decimal from '../../utils/decimal';
  * is true it is lowercased.  upper takes precedence over lower.
  */
 export function normalizeOptionalString(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | undefined {
-  const normalized = String(value || '').trim();
+  const normalized = String(value ?? '').trim();
   if (!normalized) return undefined;
   if (opts?.upper) return normalized.toUpperCase();
   if (opts?.lower) return normalized.toLowerCase();

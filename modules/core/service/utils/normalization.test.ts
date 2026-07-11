@@ -54,6 +54,8 @@ test('normalizeOptionalString returns trimmed string or undefined', () => {
   expect(normalizeOptionalString('')).toBe(undefined);
   expect(normalizeOptionalString('   ')).toBe(undefined);
   expect(normalizeOptionalString(123)).toBe('123');
+  expect(normalizeOptionalString(0)).toBe('0');
+  expect(normalizeOptionalString(false)).toBe('false');
 });
 
 test('normalizeOptionalString uppercases with upper option', () => {
