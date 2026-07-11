@@ -8,7 +8,7 @@ export function sortForEncoding(value: any): any {
   if (Array.isArray(value)) {
     return value.map(item => sortForEncoding(item));
   }
-  if (value && typeof value === 'object') {
+  if (value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Object]') {
     const out: Record<string, any> = {};
     for (const key of Object.keys(value).sort()) {
       out[key] = sortForEncoding((value as Record<string, any>)[key]);

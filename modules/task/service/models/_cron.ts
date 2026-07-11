@@ -30,7 +30,7 @@ export function parseCronField(input: string, min: number, max: number): Record<
     if (!part) continue;
     if (part.startsWith('*/')) {
       const step = Number(part.slice(2));
-      if (!Number.isFinite(step) || step <= 0) return null;
+      if (!Number.isInteger(step) || step <= 0) return null;
       for (let i = min; i <= max; i += step) set[i] = true;
       continue;
     }
@@ -38,13 +38,13 @@ export function parseCronField(input: string, min: number, max: number): Record<
       const [a, b] = part.split('-', 2);
       const start = Number(a);
       const end = Number(b);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+      if (!Number.isInteger(start) || !Number.isInteger(end)) return null;
       if (start < min || end > max || start > end) return null;
       for (let i = start; i <= end; i += 1) set[i] = true;
       continue;
     }
     const val = Number(part);
-    if (!Number.isFinite(val) || val < min || val > max) return null;
+    if (!Number.isInteger(val) || val < min || val > max) return null;
     set[val] = true;
   }
   return set;
