@@ -1,6 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { sortForEncoding, encodeStableJson } from '@/core/service/utils/serialization';
+
+export { sortForEncoding, encodeStableJson };
+
 /** Maximum serialized payload size stored on a job. */
 export const PAYLOAD_MAX_BYTES = 16 * 1024;
 
@@ -45,26 +49,6 @@ export function maskSensitive(value: any): any {
     return out;
   }
   return value;
-}
-
-/** Recursively sorts object keys before deterministic JSON encoding. */
-export function sortForEncoding(value: any): any {
-  if (Array.isArray(value)) {
-    return value.map(item => sortForEncoding(item));
-  }
-  if (value && typeof value === 'object') {
-    const out: Record<string, any> = {};
-    for (const key of Object.keys(value).sort()) {
-      out[key] = sortForEncoding((value as Record<string, any>)[key]);
-    }
-    return out;
-  }
-  return value;
-}
-
-/** Serializes a value to deterministic JSON. */
-export function encodeStableJson(value: any): string {
-  return JSON.stringify(sortForEncoding(value));
 }
 
 /** Computes the byte length of a string payload. */
