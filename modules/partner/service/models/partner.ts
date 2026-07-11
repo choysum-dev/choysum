@@ -3,7 +3,6 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
 import PartnerContact from './partner_contact';
@@ -243,14 +242,9 @@ export default class Partner extends BaseModel {
 
   /** Applies partner normalization and validation during model constraints. */
   @Constraint<Partner>(['Name', 'Code', 'CompanyId', 'CustomerRank', 'SupplierRank', 'Reference', 'Email', 'Phone', 'Mobile'])
-  static async validatePartnerConstraint(self: Partner, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validatePartnerConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
 
-    await Partner.validateEntity(self as any, currentId);
-
-    writeConstraintFields(self as any, ctx, ['Name', 'Code', 'CompanyId', 'Reference', 'Email', 'Phone', 'Mobile', 'CustomerRank', 'SupplierRank'], {
-      forceOnCreate: true,
-    });
+    await Partner.validateEntity(this as any, currentId);
   }
 }

@@ -3,7 +3,6 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeOptionalText, normalizeSequenceInt } from './_normalization_bridge';
 import Partner from './partner';
@@ -165,7 +164,13 @@ export default class PartnerContact extends BaseModel {
     if (!addressTypeProvided) values.AddressType = this.normalizeAddressType(current?.AddressType);
 
     // During updates ctx.current may omit full field values, so load the persisted row once as a fallback.
-    if ((values.PartnerId == null || values.CompanyId == null || (values.AddressType == null && !addressTypeProvided) || (values.AddressId == null && !addressIdProvided)) && currentId) {
+    if (
+      (values.PartnerId == null ||
+        values.CompanyId == null ||
+        (values.AddressType == null && !addressTypeProvided) ||
+        (values.AddressId == null && !addressIdProvided)) &&
+      currentId
+    ) {
       const persisted = await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }] as any);
       if (values.PartnerId == null) {
         values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
@@ -201,33 +206,9 @@ export default class PartnerContact extends BaseModel {
     'IsDefault',
     'Sequence',
   ])
-  static async validatePartnerContactConstraint(self: PartnerContact, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validatePartnerContactConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
 
-    await PartnerContact.validateEntity(self as any, currentId, current);
-
-    writeConstraintFields(
-      self as any,
-      ctx,
-      [
-        'PartnerId',
-        'CompanyId',
-        'Name',
-        'Email',
-        'Phone',
-        'Mobile',
-        'Title',
-        'Department',
-        'ContactRole',
-        'AddressId',
-        'AddressType',
-        'AttentionTo',
-        'Sequence',
-      ],
-      {
-        forceOnCreate: true,
-      }
-    );
+    await PartnerContact.validateEntity(this as any, currentId);
   }
 }

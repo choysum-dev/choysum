@@ -78,8 +78,9 @@ export interface ConstraintContext<TModel extends BaseModel = BaseModel> {
  * Legacy constraint handler signature (static methods).
  *
  * Static handlers receive the merged `self` record and the full
- * {@link ConstraintContext}, and are responsible for manually
- * writing back any normalization results via `writeConstraintFields`.
+ * {@link ConstraintContext}.  New code should prefer
+ * {@link InstanceConstraintMethod} which does not require manual
+ * mutation management.
  *
  * @deprecated Prefer {@link InstanceConstraintMethod} for new code.
  */

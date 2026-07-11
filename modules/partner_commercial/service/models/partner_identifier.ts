@@ -3,7 +3,6 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
 
 /**
@@ -154,19 +153,9 @@ export default class PartnerIdentifier extends BaseModel {
     'ValidTo',
     'Notes',
   ])
-  static async validatePartnerIdentifierConstraint(self: PartnerIdentifier, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validatePartnerIdentifierConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
 
-    await PartnerIdentifier.validateEntity(self as any, currentId, current);
-
-    writeConstraintFields(
-      self as any,
-      ctx,
-      ['PartnerId', 'CompanyId', 'IdentifierType', 'Value', 'CountryId', 'IsPrimary', 'IsActive', 'IssuedBy', 'ValidFrom', 'ValidTo', 'Notes'],
-      {
-        forceOnCreate: true,
-      }
-    );
+    await PartnerIdentifier.validateEntity(this as any, currentId);
   }
 }

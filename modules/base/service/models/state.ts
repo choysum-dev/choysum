@@ -5,7 +5,6 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Country from './country';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('State')
 export default class State extends BaseModel {
@@ -61,12 +60,11 @@ export default class State extends BaseModel {
   }
 
   @Constraint<State>(['Name', 'Code', 'CountryId'])
-  static async validateStateConstraint(self: State, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const values = (ctx?.values || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validateStateConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
 
-    await State.ensureUniqueness(self as any, currentId);
-    writeConstraintFields(self as any, ctx, ['Name', 'Code']);
+    await State.ensureUniqueness(this as any, currentId);
+    this.Name = normalizeName(this.Name as string);
+    (this as any).Code = normalizeCodeOptional(this.Code as string);
   }
 }
