@@ -595,7 +595,7 @@ export class ValidationEngine {
       // `this.constructor`).
       if (fieldMetadata.has(key)) {
         if (key in changes) return changes[key];
-        if (payloadValues && key in payloadValues) return payloadValues[key];
+        if (payloadValues && Object.prototype.hasOwnProperty.call(payloadValues, key)) return payloadValues[key];
       }
       // Use Reflect.get with the receiver so that prototype getters
       // (e.g. computed fields) run with `this` bound to the draft proxy
