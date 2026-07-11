@@ -5,7 +5,6 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Currency from './currency';
 import { fail, normalizeCodeRequired } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Country')
 export default class Country extends BaseModel {
@@ -33,7 +32,7 @@ export default class Country extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static validateAddressFormat(value: any): string | null {
+  private validateAddressFormat(value: any): string | null {
     if (value === undefined || value === null) return null;
     const format = String(value).trim();
     if (!format) return null;
@@ -50,16 +49,11 @@ export default class Country extends BaseModel {
     return format;
   }
 
-  private static validateEntity(values: Record<string, any>): void {
-    values.Code = normalizeCodeRequired(values.Code);
-    if (Object.prototype.hasOwnProperty.call(values, 'AddressFormat')) {
-      values.AddressFormat = this.validateAddressFormat(values.AddressFormat);
-    }
-  }
-
   @Constraint<Country>(['Code', 'AddressFormat'])
-  static validateCountryConstraint(self: Country, ctx: any): void {
-    Country.validateEntity(self as any);
-    writeConstraintFields(self as any, ctx, ['Code', 'AddressFormat']);
+  validateCountryConstraint(): void {
+    this.Code = normalizeCodeRequired(this.Code as string);
+    if (this.AddressFormat != null) {
+      this.AddressFormat = this.validateAddressFormat(this.AddressFormat) as any;
+    }
   }
 }
