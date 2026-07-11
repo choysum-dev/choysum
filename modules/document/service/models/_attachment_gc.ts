@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, asRecord } from '@/core/service/utils/normalization';
-import { parseISODate, toDate } from '@/core/service/utils/date';
+import { parseISODate, toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
 import { computeRetryBackoffSeconds } from '@/core/service/utils/backoff';
 import { resolveGcBatchSize } from './_gc_config';
@@ -145,8 +145,7 @@ export async function garbageCollectUnboundObjects(
           await deleteStoredContent({ storedContentId });
         } catch (err: any) {
           const errMsg = String(err?.message || err).toLowerCase();
-          const isNotFound =
-            errMsg.includes('not found') || errMsg.includes('nosuchkey') || err?.code === 'NoSuchKey' || err?.status === 404;
+          const isNotFound = errMsg.includes('not found') || errMsg.includes('nosuchkey') || err?.code === 'NoSuchKey' || err?.status === 404;
           if (!isNotFound) throw err;
         }
 

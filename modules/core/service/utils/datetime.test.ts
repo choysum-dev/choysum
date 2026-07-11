@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { parseISODate, toDate } from '@/core/service/utils/date';
+import { parseISODate, toDate, isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
 
 // ---------------------------------------------------------------------------
 // parseISODate
@@ -32,7 +32,6 @@ test('parseISODate returns current date for invalid string', () => {
   const before = Date.now();
   const result = parseISODate('not-a-date');
   const after = Date.now();
-  // Should fall back to now, so the result is close to current time
   expect(result.getTime()).toBeGreaterThanOrEqual(before - 1000);
   expect(result.getTime()).toBeLessThanOrEqual(after + 1000);
 });
@@ -67,4 +66,46 @@ test('toDate returns undefined for null', () => {
 
 test('toDate returns undefined for undefined', () => {
   expect(toDate(undefined)).toBe(undefined);
+});
+
+// ---------------------------------------------------------------------------
+// isIanaTimezone
+// ---------------------------------------------------------------------------
+
+test('isIanaTimezone validates known zones', () => {
+  expect(isIanaTimezone('Asia/Shanghai')).toBe(true);
+  expect(isIanaTimezone('UTC')).toBe(true);
+  expect(isIanaTimezone('America/New_York')).toBe(true);
+  expect(isIanaTimezone('')).toBe(false);
+  expect(isIanaTimezone()).toBe(false);
+  expect(isIanaTimezone('Not/A_Zone')).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// parseTimezoneOffsetMinutes
+// ---------------------------------------------------------------------------
+
+test('parseTimezoneOffsetMinutes parses UTC variants', () => {
+  expect(parseTimezoneOffsetMinutes('UTC')).toBe(0);
+  expect(parseTimezoneOffsetMinutes('GMT')).toBe(0);
+  expect(parseTimezoneOffsetMinutes('Z')).toBe(0);
+});
+
+test('parseTimezoneOffsetMinutes parses positive offset', () => {
+  expect(parseTimezoneOffsetMinutes('+08:00')).toBe(480);
+  expect(parseTimezoneOffsetMinutes('+8')).toBe(480);
+  expect(parseTimezoneOffsetMinutes('+05:30')).toBe(330);
+});
+
+test('parseTimezoneOffsetMinutes parses negative offset', () => {
+  expect(parseTimezoneOffsetMinutes('-05:00')).toBe(-300);
+  expect(parseTimezoneOffsetMinutes('-12')).toBe(-720);
+});
+
+test('parseTimezoneOffsetMinutes returns undefined for invalid', () => {
+  expect(parseTimezoneOffsetMinutes('')).toBe(undefined);
+  expect(parseTimezoneOffsetMinutes()).toBe(undefined);
+  expect(parseTimezoneOffsetMinutes('invalid')).toBe(undefined);
+  expect(parseTimezoneOffsetMinutes('+15:00')).toBe(undefined);
+  expect(parseTimezoneOffsetMinutes('+08:60')).toBe(undefined);
 });
