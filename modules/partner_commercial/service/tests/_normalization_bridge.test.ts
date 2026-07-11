@@ -6,6 +6,7 @@ import { ChoysumError } from '@/core/service/error';
 import {
   fail,
   mapNormalizationToPartnerCommercial,
+  normalizeOptionalRefId,
   normalizeOptionalText,
   normalizeRequiredText,
   toDateOrUndefined,
@@ -104,6 +105,32 @@ test('partner_commercial._normalization_bridge: normalizeOptionalText lowercases
 
 test('partner_commercial._normalization_bridge: normalizeOptionalText uppercases with upper option', () => {
   expect(normalizeOptionalText('  abc  ', { upper: true })).toBe('ABC');
+});
+
+// ---------------------------------------------------------------------------
+// normalizeOptionalRefId
+// ---------------------------------------------------------------------------
+
+test('partner_commercial._normalization_bridge: normalizeOptionalRefId returns undefined for undefined', () => {
+  expect(normalizeOptionalRefId(undefined)).toBe(undefined);
+});
+
+test('partner_commercial._normalization_bridge: normalizeOptionalRefId returns null for null', () => {
+  expect(normalizeOptionalRefId(null)).toBe(null);
+});
+
+test('partner_commercial._normalization_bridge: normalizeOptionalRefId returns null for empty', () => {
+  expect(normalizeOptionalRefId('')).toBe(null);
+  expect(normalizeOptionalRefId('   ')).toBe(null);
+});
+
+test('partner_commercial._normalization_bridge: normalizeOptionalRefId resolves object Id', () => {
+  expect(normalizeOptionalRefId({ Id: '123' })).toBe('123');
+  expect(normalizeOptionalRefId({ id: '456' })).toBe('456');
+});
+
+test('partner_commercial._normalization_bridge: normalizeOptionalRefId trims string', () => {
+  expect(normalizeOptionalRefId('  abc  ')).toBe('abc');
 });
 
 // ---------------------------------------------------------------------------

@@ -4,8 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
-import { fail, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
-import { normalizeRefId } from '@/core/service/utils/normalization';
+import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
 
 /**
  * Company-scoped commercial identifier row attached to a partner.
@@ -58,7 +57,7 @@ export default class PartnerIdentifier extends BaseModel {
 
   /** Ensures the partner does not duplicate an identifier type and value pair. */
   private static async ensureUniqueIdentifier(values: Record<string, any>, currentId?: string): Promise<void> {
-    const partnerId = normalizeRefId(values.PartnerId);
+    const partnerId = normalizeOptionalRefId(values.PartnerId);
     const identifierType = normalizeRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
     const identifierValue = normalizeRequiredText(values.Value, 'Value', { upper: true });
 
@@ -86,7 +85,7 @@ export default class PartnerIdentifier extends BaseModel {
   private static async ensureSinglePrimary(values: Record<string, any>, currentId?: string): Promise<void> {
     if (values.IsPrimary !== true) return;
 
-    const partnerId = normalizeRefId(values.PartnerId);
+    const partnerId = normalizeOptionalRefId(values.PartnerId);
     const identifierType = normalizeRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
     if (!partnerId) fail('PartnerId is required');
 
@@ -106,26 +105,26 @@ export default class PartnerIdentifier extends BaseModel {
 
   /** Normalizes and validates identifier values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string, current?: Record<string, any>): Promise<void> {
-    values.PartnerId = normalizeRefId(values.PartnerId);
-    values.CompanyId = normalizeRefId(values.CompanyId);
+    values.PartnerId = normalizeOptionalRefId(values.PartnerId);
+    values.CompanyId = normalizeOptionalRefId(values.CompanyId);
     values.IdentifierType = normalizeOptionalText(values.IdentifierType, { lower: true });
     values.Value = normalizeOptionalText(values.Value, { upper: true });
-    values.CountryId = normalizeRefId(values.CountryId);
+    values.CountryId = normalizeOptionalRefId(values.CountryId);
     values.IssuedBy = normalizeOptionalText(values.IssuedBy);
     values.Notes = normalizeOptionalText(values.Notes);
 
     values.ValidFrom = toDateOrUndefined(values.ValidFrom, 'ValidFrom');
     values.ValidTo = toDateOrUndefined(values.ValidTo, 'ValidTo');
 
-    if (values.PartnerId === undefined) values.PartnerId = normalizeRefId(current?.PartnerId);
-    if (values.CompanyId === undefined) values.CompanyId = normalizeRefId(current?.CompanyId);
+    if (values.PartnerId === undefined) values.PartnerId = normalizeOptionalRefId(current?.PartnerId);
+    if (values.CompanyId === undefined) values.CompanyId = normalizeOptionalRefId(current?.CompanyId);
     if (values.IdentifierType === undefined) values.IdentifierType = normalizeOptionalText(current?.IdentifierType, { lower: true });
     if (values.Value === undefined) values.Value = normalizeOptionalText(current?.Value, { upper: true });
 
     if ((values.PartnerId == null || values.CompanyId == null || !values.IdentifierType || !values.Value) && currentId) {
       const persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
-      if (values.PartnerId == null) values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
-      if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
+      if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
+      if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
       if (!values.IdentifierType) values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
       if (!values.Value) values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
     }

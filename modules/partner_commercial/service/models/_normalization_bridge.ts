@@ -2,11 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { raiseDomainError } from '@/core/service/error';
-import {
-  NormalizationError,
-  normalizeOptionalString,
-  normalizeRequiredText as normalizeRequiredTextCore,
-} from '@/core/service/utils/normalization';
+import { NormalizationError, normalizeOptionalString, normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import { toDate as toDateCore } from '@/core/service/utils/datetime';
 
 /**
@@ -28,6 +24,22 @@ export function mapNormalizationToPartnerCommercial<T>(fn: () => T, mapMessage: 
     }
     throw err;
   }
+}
+
+/**
+ * Normalize an optional relation reference, preserving undefined and null.
+ *
+ * Delegates to core normalizeRefId for the actual normalization; this wrapper
+ * only preserves the partner_commercial-domain contract:
+ *
+ * - undefined → undefined  (field not provided — skip in partial updates)
+ * - null      → null       (explicitly cleared)
+ * - otherwise → trimmed Id string or null
+ */
+export function normalizeOptionalRefId(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return normalizeRefId(value);
 }
 
 /**
@@ -56,9 +68,9 @@ export function normalizeOptionalText(value: unknown, opts?: { lower?: boolean; 
 export function normalizeRequiredText(value: unknown, fieldName: string, opts?: { lower?: boolean; upper?: boolean }): string {
   return mapNormalizationToPartnerCommercial(
     () => {
-      const normalized = normalizeRequiredTextCore(value);
-      if (opts?.lower) return normalized.toLowerCase();
-      if (opts?.upper) return normalized.toUpperCase();
+      let normalized = normalizeRequiredTextCore(value);
+      if (opts?.lower) normalized = normalized.toLowerCase();
+      if (opts?.upper) normalized = normalized.toUpperCase();
       return normalized;
     },
     () => `${fieldName} is required`
