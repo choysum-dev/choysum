@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { raiseDomainError } from '@/core/service/error';
 import { normalizeRefId, parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
 import Company from './company';
 import Sequence from './sequence';
@@ -59,7 +59,7 @@ export default class SequenceIdempotency extends BaseModel {
 
     const sequenceId = normalizeRefId(candidate.SequenceId);
     if (!sequenceId) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'SequenceId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', 'SequenceId is required');
     }
 
     const count = mapNormalizationToBase(
@@ -76,22 +76,14 @@ export default class SequenceIdempotency extends BaseModel {
     );
     const expectedRangeEnd = rangeStart + BigInt(count) - 1n;
     if (rangeEnd !== expectedRangeEnd) {
-      throw new ChoysumError({
-        domain: 'base',
-        code: 'InvalidArgument',
-        message: 'RangeEnd must equal RangeStart + Count - 1',
-      }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', 'RangeEnd must equal RangeStart + Count - 1');
     }
 
     const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
     const sequenceCompanyId = normalizeRefId((sequence as any)?.CompanyId);
     const companyId = normalizeRefId(candidate.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
-      throw new ChoysumError({
-        domain: 'base',
-        code: 'InvalidArgument',
-        message: 'CompanyId must match Sequence.CompanyId',
-      }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', 'CompanyId must match Sequence.CompanyId');
     }
   }
 

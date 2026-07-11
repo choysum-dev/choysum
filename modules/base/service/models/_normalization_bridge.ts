@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { raiseDomainError } from '@/core/service/error';
 import {
   NormalizationError,
   normalizeCodeOptional as normalizeCodeOptionalCore,
@@ -15,7 +15,7 @@ import {
  * Throw a base-domain InvalidArgument error.
  */
 export function fail(message: string): never {
-  throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
+  raiseDomainError('base', 'InvalidArgument', message);
 }
 
 /**

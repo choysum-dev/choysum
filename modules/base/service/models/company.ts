@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition } from '@/core/service/api/query';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { raiseDomainError } from '@/core/service/error';
 import Address from './address';
 import Country from './country';
 import Currency from './currency';
@@ -82,7 +82,7 @@ export default class Company extends BaseModel {
   private static normalizeCurrencyId(value: unknown): string {
     const id = normalizeRefId(value);
     if (!id) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'CurrencyId is required' }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', 'CurrencyId is required');
     }
     return id;
   }
@@ -90,10 +90,10 @@ export default class Company extends BaseModel {
   private static normalizeTimezone(value: unknown): string {
     const timezone = String(value ?? '').trim();
     if (!timezone) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'Timezone is required' }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', 'Timezone is required');
     }
     if (!isIanaTimezone(timezone)) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: `Invalid IANA timezone: ${timezone}` }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', `Invalid IANA timezone: ${timezone}`);
     }
     return timezone;
   }
@@ -133,7 +133,7 @@ export default class Company extends BaseModel {
     if (!parentId) return;
 
     if (parentId === targetId) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'ParentId cannot be self' }).withGrpcCode(GrpcCode.InvalidArgument);
+      raiseDomainError('base', 'InvalidArgument', 'ParentId cannot be self');
     }
 
     const found = await this.Search(
@@ -146,9 +146,7 @@ export default class Company extends BaseModel {
       { limit: 1, fields: ['Id'] as any } as any
     );
     if (found?.[0]) {
-      throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'ParentId cannot be a descendant of the company' }).withGrpcCode(
-        GrpcCode.InvalidArgument
-      );
+      raiseDomainError('base', 'InvalidArgument', 'ParentId cannot be a descendant of the company');
     }
   }
 

@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
-import { GrpcCode, ChoysumError } from '@/core/service/error';
+import { raiseDomainError } from '@/core/service/error';
 import Bank from '@/base/service/models/bank';
 
 /**
@@ -104,7 +104,7 @@ export default class BankAccount extends BaseModel {
 
   /** Raises a partner-bank invalid-argument error. */
   private static fail(message: string): never {
-    throw new ChoysumError({ domain: 'partner_bank', code: 'InvalidArgument', message }).withGrpcCode(GrpcCode.InvalidArgument);
+    raiseDomainError('partner_bank', 'InvalidArgument', message);
   }
 
   /** Normalizes relation payloads into string ids. */
