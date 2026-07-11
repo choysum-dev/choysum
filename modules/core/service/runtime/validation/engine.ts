@@ -478,6 +478,7 @@ export class ValidationEngine {
     }
 
     // Write back instance constraint mutations to ctx.values.
+    // (Already flushed per-handler in the loop above; kept as a no-op safety net.)
     if (instanceTouched.size > 0) {
       this.applyConstraintWriteback(ctx, instanceTouched, instanceChanges);
     }
@@ -583,21 +584,39 @@ export class ValidationEngine {
     fieldMetadata: Map<string, unknown>,
     accumulatedChanges: ObjectRecord = {}
   ): { draft: TModel; changes: ObjectRecord } {
-    const changes: ObjectRecord = {};
+    // Use a null-prototype object so that standard prototype properties
+    // (e.g. `constructor`, `toString`) never collide with model fields.
+    const changes = Object.create(null) as ObjectRecord;
 
     const resolve = (key: string): unknown => {
-      if (key in changes) return changes[key];
-      if (key in accumulatedChanges) return accumulatedChanges[key];
-      if (payloadValues && key in payloadValues) return payloadValues[key];
+      // Only consult changes / accumulatedChanges / payloadValues when the
+      // key is a known model field.  Otherwise fall straight through to
+      // `self` so that prototype methods and non-metadata properties are
+      // read from the real object — the `in` operator would traverse the
+      // prototype chain and return incorrect values (e.g. `Object` for
+      // `this.constructor`).
+      if (fieldMetadata.has(key)) {
+        if (key in changes) return changes[key];
+        if (key in accumulatedChanges) return accumulatedChanges[key];
+        if (payloadValues && key in payloadValues) return payloadValues[key];
+      }
       return (self as unknown as ObjectRecord)[key];
     };
 
     const draft = new Proxy(self as unknown as ObjectRecord, {
       get(_target, prop, receiver) {
+        // Symbol properties (e.g. Symbol.iterator) are never model fields;
+        // delegate them directly to the target.
+        if (typeof prop === 'symbol') {
+          return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
+        }
         const key = String(prop);
         return resolve(key);
       },
       set(_target, prop, value, _receiver) {
+        if (typeof prop === 'symbol') {
+          return Reflect.set(self as unknown as ObjectRecord, prop, value, _receiver);
+        }
         const key = String(prop);
         // For non-metadata fields (transient / private properties used during
         // validation), write directly to the target object so they can be read
