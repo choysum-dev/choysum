@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { raiseDomainError } from '@/core/service/error';
-import { NormalizationError, normalizeOptionalString, normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
+import {
+  NormalizationError,
+  normalizeOptionalString,
+  normalizeRefId,
+  normalizeRequiredText as normalizeRequiredTextCore,
+} from '@/core/service/utils/normalization';
 import { toDate as toDateCore } from '@/core/service/utils/datetime';
 
 /**

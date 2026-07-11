@@ -121,12 +121,12 @@ export default class PartnerIdentifier extends BaseModel {
     if (values.IdentifierType === undefined) values.IdentifierType = normalizeOptionalText(current?.IdentifierType, { lower: true });
     if (values.Value === undefined) values.Value = normalizeOptionalText(current?.Value, { upper: true });
 
-    if ((values.PartnerId == null || values.CompanyId == null || !values.IdentifierType || !values.Value) && currentId) {
+    if ((values.PartnerId === undefined || values.CompanyId === undefined || values.IdentifierType === undefined || values.Value === undefined) && currentId) {
       const persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
-      if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
-      if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
-      if (!values.IdentifierType) values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
-      if (!values.Value) values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+      if (values.PartnerId === undefined) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
+      if (values.CompanyId === undefined) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
+      if (values.IdentifierType === undefined) values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
+      if (values.Value === undefined) values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
     }
 
     if (!values.PartnerId) fail('PartnerId is required');
