@@ -24,7 +24,7 @@ export function maskAccountNo(accountNo: string): { last4: string | null; masked
 /**
  * Normalize and validate the account category.
  *
- * Returns undefined / null / the trimmed lowercase value when valid,
+ * Returns undefined / null / the trimmed value when valid,
  * and throws a partner_bank InvalidArgument error on unknown values.
  */
 export function normalizeAccountType(value: unknown): string | null | undefined {
@@ -46,9 +46,8 @@ export function pickDefaultBankAccountId(
   accounts: Array<{ Id?: string; IsDefaultInbound?: boolean; IsDefaultOutbound?: boolean; IsActive?: boolean }> | undefined,
   direction: 'inbound' | 'outbound'
 ): string | null {
-  const rows = [...(accounts || [])]
-    .filter(item => !!item?.Id)
-    .filter(item => item?.IsActive !== false)
+  const rows = (accounts || [])
+    .filter(item => !!item?.Id && item?.IsActive !== false)
     .sort((left, right) => String(left?.Id || '').localeCompare(String(right?.Id || '')));
 
   if (direction === 'inbound') {

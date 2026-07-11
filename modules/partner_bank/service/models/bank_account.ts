@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { ACCOUNT_TYPES, maskAccountNo, normalizeAccountType } from './_helpers';
+import { maskAccountNo, normalizeAccountType } from './_helpers';
 import Bank from '@/base/service/models/bank';
 
 /**

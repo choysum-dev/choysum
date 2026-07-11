@@ -99,6 +99,10 @@ test('partner_bank._normalization_bridge: normalizeOptionalText uppercases with 
   expect(normalizeOptionalText('  abc  ', { upper: true })).toBe('ABC');
 });
 
+test('partner_bank._normalization_bridge: normalizeOptionalText lowercases with lower option', () => {
+  expect(normalizeOptionalText('  ABC  ', { lower: true })).toBe('abc');
+});
+
 // ---------------------------------------------------------------------------
 // normalizeRequiredText
 // ---------------------------------------------------------------------------

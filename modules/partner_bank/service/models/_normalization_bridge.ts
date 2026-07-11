@@ -36,7 +36,7 @@ export function mapNormalizationToPartnerBank<T>(fn: () => T, mapMessage: (err: 
  * - empty     → null
  * - otherwise → trimmed, optionally uppercased
  */
-export function normalizeOptionalText(value: unknown, opts?: { upper?: boolean }): string | null | undefined {
+export function normalizeOptionalText(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
   const base = normalizeOptionalString(value, opts);
