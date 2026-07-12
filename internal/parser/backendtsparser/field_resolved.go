@@ -6,6 +6,7 @@ package backendtsparser
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -17,6 +18,124 @@ type resolvedFieldBehaviorBinding struct {
 	sqlCompute *meta.IrFieldBehaviorSqlComputeSpec
 	search     *meta.IrFieldBehaviorMethodRef
 	inverse    *meta.IrFieldBehaviorMethodRef
+}
+
+type legacyFieldSyntaxMode string
+
+const (
+	legacyFieldSyntaxFatal legacyFieldSyntaxMode = "fatal"
+	legacyFieldSyntaxWarn  legacyFieldSyntaxMode = "warn"
+	legacyFieldSyntaxAllow legacyFieldSyntaxMode = "allow"
+)
+
+func resolveLegacyFieldSyntaxMode() legacyFieldSyntaxMode {
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("CHOYSUM_FIELD_LEGACY_SYNTAX")))
+	switch raw {
+	case "warn":
+		return legacyFieldSyntaxWarn
+	case "allow":
+		return legacyFieldSyntaxAllow
+	default:
+		return legacyFieldSyntaxFatal
+	}
+}
+
+func asObject(value any) map[string]any {
+	record, ok := value.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return record
+}
+
+func mergeStorageHintBool(target **bool, candidate any) {
+	if *target != nil {
+		return
+	}
+	if v, ok := candidate.(bool); ok {
+		*target = toBoolPtr(v)
+	}
+}
+
+func mergeStorageHintInt(target **int, candidate any) {
+	if *target != nil {
+		return
+	}
+	if v, ok := asInt(candidate); ok {
+		*target = toIntPtr(v)
+	}
+}
+
+func applyLegacyBranchStorageHints(hints *meta.IrFieldStructuralStorageHints, branch map[string]any) {
+	if hints == nil || len(branch) == 0 {
+		return
+	}
+
+	mergeStorageHintBool(&hints.Required, branch["required"])
+	mergeStorageHintBool(&hints.Required, branch["notNull"])
+	mergeStorageHintBool(&hints.Indexed, branch["indexed"])
+	mergeStorageHintBool(&hints.Indexed, branch["index"])
+	mergeStorageHintInt(&hints.Size, branch["size"])
+	mergeStorageHintInt(&hints.Precision, branch["precision"])
+	mergeStorageHintInt(&hints.Scale, branch["scale"])
+}
+
+func applyLegacyColumnComputeBehavior(spec *meta.IrFieldResolvedSpec, column map[string]any) bool {
+	if spec == nil || len(column) == 0 {
+		return false
+	}
+	compute := asObject(column["compute"])
+	if len(compute) == 0 {
+		return false
+	}
+
+	legacyComputeBound := false
+	if spec.Behavior.Compute == nil {
+		deps := parseStringSlice(compute["deps"])
+		if len(deps) > 0 {
+			store := true
+			if v, ok := compute["store"].(bool); ok {
+				store = v
+			}
+			var searchable *bool
+			if v, ok := compute["searchable"].(bool); ok {
+				searchable = toBoolPtr(v)
+			}
+			runAs := ""
+			if v, ok := compute["runAs"].(string); ok {
+				runAs = strings.TrimSpace(v)
+			}
+
+			spec.Behavior.Compute = &meta.IrFieldBehaviorComputeSpec{
+				Method:     "legacyColumnCompute",
+				Deps:       deps,
+				Store:      store,
+				Searchable: searchable,
+				RunAs:      runAs,
+			}
+			legacyComputeBound = true
+		}
+	}
+
+	if spec.Behavior.Search == nil {
+		if method, ok := compute["search"].(string); ok {
+			method = strings.TrimSpace(method)
+			if method != "" {
+				spec.Behavior.Search = &meta.IrFieldBehaviorMethodRef{Method: method}
+			}
+		}
+	}
+
+	if spec.Behavior.Inverse == nil {
+		if method, ok := compute["inverse"].(string); ok {
+			method = strings.TrimSpace(method)
+			if method != "" {
+				spec.Behavior.Inverse = &meta.IrFieldBehaviorMethodRef{Method: method}
+			}
+		}
+	}
+
+	return legacyComputeBound
 }
 
 func parseDecoratorObjectArg(args []*parser.Argument, index int) (map[string]any, error) {
@@ -228,12 +347,20 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if len(options) == 0 {
 		return nil, nil
 	}
-	if _, hasColumn := options["column"]; hasColumn {
-		return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option column", field.Name)
+	legacyMode := resolveLegacyFieldSyntaxMode()
+	_, hasLegacyColumnOption := options["column"]
+	_, hasLegacySelectOption := options["select"]
+	if legacyMode == legacyFieldSyntaxFatal {
+		if hasLegacyColumnOption {
+			return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option column", field.Name)
+		}
+		if hasLegacySelectOption {
+			return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option select", field.Name)
+		}
 	}
-	if _, hasSelect := options["select"]; hasSelect {
-		return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option select", field.Name)
-	}
+
+	legacyColumn := asObject(options["column"])
+	legacySelect := asObject(options["select"])
 
 	fieldType, _ := options["type"].(string)
 	fieldType = strings.TrimSpace(fieldType)
@@ -248,6 +375,23 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			FieldType: fieldType,
 		},
 		Diagnostics: append([]meta.IrFieldDiagnostic{}, inherited...),
+	}
+
+	if legacyMode == legacyFieldSyntaxWarn {
+		if hasLegacyColumnOption {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "FIELD_LEGACY_SYNTAX_DEPRECATED",
+				Severity: "warning",
+				Message:  fmt.Sprintf("@Field(%s) legacy option column is deprecated and should be flattened", field.Name),
+			})
+		}
+		if hasLegacySelectOption {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "FIELD_LEGACY_SYNTAX_DEPRECATED",
+				Severity: "warning",
+				Message:  fmt.Sprintf("@Field(%s) legacy option select is deprecated and should be flattened", field.Name),
+			})
+		}
 	}
 
 	if relation, ok := options["relation"].(map[string]any); ok {
@@ -298,6 +442,8 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if v, ok := asInt(options["scale"]); ok {
 		hints.Scale = toIntPtr(v)
 	}
+	applyLegacyBranchStorageHints(hints, legacyColumn)
+	applyLegacyBranchStorageHints(hints, legacySelect)
 	if hints.Required != nil || hints.Indexed != nil || hints.Size != nil || hints.Precision != nil || hints.Scale != nil {
 		spec.Structural.StorageHints = hints
 	}
@@ -309,6 +455,13 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		spec.Behavior.Inverse = binding.inverse
 	}
 
+	legacyComputeBound := applyLegacyColumnComputeBehavior(spec, legacyColumn)
+	if spec.Structural.CheckConstraint == "" {
+		if legacyCheck, ok := legacyColumn["checkConstraint"].(string); ok {
+			spec.Structural.CheckConstraint = strings.TrimSpace(legacyCheck)
+		}
+	}
+
 	storeValue := true
 	storeSource := "default"
 	if spec.Behavior.SqlCompute != nil {
@@ -317,7 +470,11 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	if spec.Behavior.Compute != nil {
 		storeValue = spec.Behavior.Compute.Store
-		storeSource = "@Compute"
+		if legacyComputeBound {
+			storeSource = "@Field.column.compute.store"
+		} else {
+			storeSource = "@Compute"
+		}
 	} else if spec.Structural.Related != nil {
 		storeValue = spec.Structural.Related.Store
 		storeSource = "@Field.related.store"

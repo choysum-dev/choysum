@@ -309,6 +309,62 @@ export default class Legacy extends BaseModel {
 	}
 }
 
+func TestTsParser_ParseModelAllowsLegacyFieldSyntaxInWarnMode(t *testing.T) {
+	t.Setenv("CHOYSUM_FIELD_LEGACY_SYNTAX", "warn")
+
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/legacy_warn.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('LegacyWarn')
+export default class LegacyWarn extends BaseModel {
+  @Field({ type: 'varchar', column: { size: 64, index: true, notNull: true } })
+  public Name: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r == nil || r.Model == nil || len(r.Model.Fields) == 0 {
+		t.Fatalf("expected parsed model with fields, got %+v", r)
+	}
+
+	nameField := r.Model.Fields[0]
+	spec, err := nameField.GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse Name resolved spec failed: %v", err)
+	}
+	if spec == nil {
+		t.Fatal("expected resolved spec for Name")
+	}
+	if spec.Structural.StorageHints == nil || spec.Structural.StorageHints.Size == nil || *spec.Structural.StorageHints.Size != 64 {
+		t.Fatalf("expected legacy size to be lifted into storageHints, got %+v", spec.Structural.StorageHints)
+	}
+	if spec.Structural.StorageHints.Indexed == nil || !*spec.Structural.StorageHints.Indexed {
+		t.Fatalf("expected legacy index to be lifted into storageHints, got %+v", spec.Structural.StorageHints)
+	}
+	if spec.Structural.StorageHints.Required == nil || !*spec.Structural.StorageHints.Required {
+		t.Fatalf("expected legacy notNull to be lifted into storageHints, got %+v", spec.Structural.StorageHints)
+	}
+
+	seenWarning := false
+	for _, d := range spec.Diagnostics {
+		if d.Code == "FIELD_LEGACY_SYNTAX_DEPRECATED" && d.Severity == "warning" {
+			seenWarning = true
+			break
+		}
+	}
+	if !seenWarning {
+		t.Fatalf("expected FIELD_LEGACY_SYNTAX_DEPRECATED warning, got %+v", spec.Diagnostics)
+	}
+}
+
 func TestTsParser_ParseModelEmitsConflictDiagnosticsInResolvedSpec(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
