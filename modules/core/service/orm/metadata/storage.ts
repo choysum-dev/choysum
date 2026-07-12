@@ -65,14 +65,12 @@ export class MetadataStorage {
     const rawTriggers = Array.isArray(record.triggers) ? record.triggers : existing?.triggers || [];
     const rawReads = Array.isArray(record.reads) ? record.reads : existing?.reads;
 
-    const handler: OnchangeHandlerMeta = {
+    return {
       method,
       triggers: [...new Set(this.ensureStringArray(rawTriggers))],
       reads: rawReads ? [...new Set(this.ensureStringArray(rawReads))] : undefined,
       priority: typeof record.priority === 'number' ? record.priority : (existing?.priority ?? 100),
     };
-
-    return handler;
   }
 
   private clearStaticMetadataCache(value: unknown): void {
