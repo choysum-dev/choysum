@@ -365,7 +365,9 @@ export class OnchangeEngine {
     if (typeof fn !== 'function') return undefined;
 
     const sig = handler.signature;
-    if (sig === 'instanceNoArgs') {
+    // When the feature flag is off, always use instanceNoArgs — this is the
+    // end-state after all handlers have been migrated.
+    if (sig === 'instanceNoArgs' || !ENABLE_ONCHANGE_LEGACY_CTX) {
       return fn.call(onchangeDraft);
     }
     // legacyCtx or unset — pass ctx for backward compatibility.

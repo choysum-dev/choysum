@@ -35,10 +35,10 @@ test('onchange engine normalizes relation ref payloads and accepts returned sele
     TargetRef: { Id: 'partner-1', Name: 'P1' },
     TagRefs: [{ Id: 'tag-1' }, { id: 'tag-2' }, 'tag-3', null],
     Status: 'draft',
-    onTargetRef(ctx: any) {
+    onTargetRef() {
       expect(this.TargetRef).toBe('partner-1');
       expect(this.TagRefs).toEqual(['tag-1', 'tag-2', 'tag-3']);
-      ctx.emit(ctx.val('Status', 'active'));
+      this.Status = 'active';
       return {
         selection: [
           {
@@ -233,8 +233,8 @@ test('onchange engine drops emitted value patch when stopOnError=true and error 
   const draft: any = {
     Name: 'A',
     Code: '',
-    onName(ctx: any) {
-      ctx.emit(ctx.val('Code', 'X'));
+    onName() {
+      this.Code = 'X';
       throw new Error('fail-after-emit');
     },
   };
@@ -609,9 +609,9 @@ test('onchange engine collects error from ctx.emit message via pushMessages call
   const draft: any = {
     Name: 'A',
     Code: '',
-    onName(ctx: any) {
-      ctx.emit(ctx.msg('error', 'ctx-error'));
+    onName() {
       this.Code = 'AFTER-ERROR';
+      return { messages: [{ level: 'error', message: 'ctx-error' }] };
     },
   };
 
@@ -661,9 +661,9 @@ test('onchange engine normalizes ctx.emit decimal value patch and keeps fallback
   const draft: any = {
     Trigger: 'P',
     Price: '0',
-    onTrigger(ctx: any) {
-      ctx.emit(ctx.val('Price', '2.236'));
-      ctx.emit(ctx.val('Price', { bad: true }));
+    onTrigger() {
+      this.Price = '2.236';
+      this.Price = { bad: true };
     },
   };
 
@@ -736,8 +736,8 @@ test('onchange engine stops next handler when ctx.pushMessages contains error un
   const draft: any = {
     A: 'x',
     B: '',
-    onA(ctx: any) {
-      ctx.emit(ctx.msg('error', 'ctx-stop-error'));
+    onA() {
+      return { messages: [{ level: 'error', message: 'ctx-stop-error' }] };
     },
     onB() {
       this.B = 'should-not-run';
@@ -803,8 +803,8 @@ test('onchange engine keeps empty-path emitted patch key and skips compute root 
 
   const draft: any = {
     Name: 'A',
-    onName(ctx: any) {
-      ctx.emit(ctx.val('', 'empty-key'));
+    onName() {
+      this[''] = 'empty-key';
     },
   };
 
@@ -826,8 +826,8 @@ test('onchange engine compute seed ignores empty emitted patch root key', async 
   const draft: any = {
     Name: 'A',
     Total: 1,
-    onName(ctx: any) {
-      ctx.emit(ctx.val('', 'empty-key'));
+    onName() {
+      this[''] = 'empty-key';
     },
   };
 
@@ -841,7 +841,8 @@ test('onchange engine compute seed ignores empty emitted patch root key', async 
 
   expect((result.value as any)['']).toBe('empty-key');
   expect(capturedSeed?.has('Name')).toBe(true);
-  expect(capturedSeed?.has('')).toBe(false);
+  // In the end-state (no ctx), this[''] is a real field write and appears in seed.
+  expect(capturedSeed?.has('')).toBe(true);
 });
 
 test('onchange engine catches non-Error throws and keeps stringified fallback message', async () => {
@@ -878,8 +879,8 @@ test('onchange engine tolerates undefined payload in ctx.emit value patch', asyn
   const draft: any = {
     Name: 'A',
     Code: 'X',
-    onName(ctx: any) {
-      ctx.emit(undefined as any);
+    onName() {
+      // no-op — no ctx.emit to call
     },
   };
 
@@ -928,8 +929,8 @@ test('onchange engine compute seed includes non-empty emitted patch root', async
   const draft: any = {
     Name: 'A',
     Code: '',
-    onName(ctx: any) {
-      ctx.emit(ctx.val('Code', 'X'));
+    onName() {
+      this.Code = 'X';
     },
   };
 
@@ -971,8 +972,12 @@ test('onchange engine routes ctx condition and selection emit payloads through c
   const draft: any = {
     Name: 'A',
     Code: 'A',
-    onName(ctx: any) {
-      ctx.emit([ctx.cond('Code', ['Code', '=', 'A']), ctx.sel('Code', ['A', 'B'], ['B']), ctx.msg('info', 'ctx-info')]);
+    onName() {
+      return {
+        messages: [{ level: 'info', message: 'ctx-info' }],
+        condition: [{ field: 'Code', condition: ['Code', '=', 'A'] }],
+        selection: [{ field: 'Code', selection: ['A', 'B'], disabled: ['B'] }],
+      };
     },
   };
 
@@ -1033,54 +1038,53 @@ test('onchange engine invokes instanceNoArgs async handler and awaits its result
   expect(result.value).toEqual({ Total: 30 });
 });
 
-test('onchange engine still passes ctx to legacyCtx handlers (regression guard)', async () => {
+test('onchange engine calls legacyCtx-signature handler without ctx when flag is off (end-state)', async () => {
   const meta = createMeta({
     fields: [
       ['Name', { type: 'varchar' }],
       ['Code', { type: 'varchar' }],
     ],
+    // Even with legacyCtx signature, the engine calls without ctx when flag is off.
     onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'legacyCtx' }],
   });
 
   const draft: any = {
     Name: 'A',
     Code: '',
-    onName(ctx: any) {
-      expect(ctx).toBeDefined();
-      expect(typeof ctx.emit).toBe('function');
-      expect(typeof ctx.val).toBe('function');
-      ctx.emit(ctx.val('Code', 'via-ctx'));
+    onName() {
+      // No ctx argument — works via this assignment only.
+      this.Code = 'via-this';
     },
   };
 
   const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
 
   expect(result.touchedHandlers).toEqual(['onName']);
-  expect(result.value).toEqual({ Code: 'via-ctx' });
+  expect(result.value).toEqual({ Code: 'via-this' });
 });
 
-test('onchange engine routes unset signature handler the same as legacyCtx', async () => {
+test('onchange engine calls unset-signature handler without ctx when flag is off (end-state)', async () => {
   const meta = createMeta({
     fields: [
       ['Name', { type: 'varchar' }],
       ['Code', { type: 'varchar' }],
     ],
-    // Omit signature entirely — engine should default to legacyCtx.
+    // Omit signature entirely — default is legacyCtx, but flag is off so no ctx.
     onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
   });
 
   const draft: any = {
     Name: 'A',
     Code: '',
-    onName(ctx: any) {
-      ctx.emit(ctx.val('Code', 'default-legacy'));
+    onName() {
+      this.Code = 'default-this';
     },
   };
 
   const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
 
   expect(result.touchedHandlers).toEqual(['onName']);
-  expect(result.value).toEqual({ Code: 'default-legacy' });
+  expect(result.value).toEqual({ Code: 'default-this' });
 });
 
 test('onchange engine runs mixed signature handlers in priority order', async () => {
@@ -1102,9 +1106,9 @@ test('onchange engine runs mixed signature handlers in priority order', async ()
     A: 'start',
     B: '',
     C: '',
-    onLegacy(ctx: any) {
+    onLegacy() {
       order.push('legacy');
-      ctx.emit(ctx.val('B', 'legacy-ok'));
+      this.B = 'legacy-ok';
     },
     onInstance() {
       order.push('instance');

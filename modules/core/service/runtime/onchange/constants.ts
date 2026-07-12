@@ -118,7 +118,7 @@ export const ENABLE_CHILD_ONCHANGE_IN_PREVIEW = true;
  *
  * Set `CHOYSUM_ONCHANGE_LEGACY_CTX=0` in the environment to disable.
  */
-export const ENABLE_ONCHANGE_LEGACY_CTX = true;
+export const ENABLE_ONCHANGE_LEGACY_CTX = false;
 
 /**
  * Whether kernel validation is enabled during preview.
