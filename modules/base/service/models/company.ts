@@ -3,7 +3,6 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import type { QueryCondition } from '@/core/service/api/query';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { raiseDomainError } from '@/core/service/error';
@@ -98,36 +97,6 @@ export default class Company extends BaseModel {
     return timezone;
   }
 
-  private static applyRequiredForCreate(values: Record<string, any>): void {
-    values.Timezone = this.normalizeTimezone(values.Timezone);
-    values.CurrencyId = this.normalizeCurrencyId(values.CurrencyId);
-  }
-
-  private static async applyRequiredForUpdate(values: Record<string, any>, conditionOrId: QueryCondition<Company> | string): Promise<void> {
-    if (Object.prototype.hasOwnProperty.call(values, 'Timezone')) {
-      values.Timezone = this.normalizeTimezone(values.Timezone);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencyId')) {
-      values.CurrencyId = this.normalizeCurrencyId(values.CurrencyId);
-    }
-
-    if (Object.prototype.hasOwnProperty.call(values, 'Timezone') || Object.prototype.hasOwnProperty.call(values, 'CurrencyId')) {
-      return;
-    }
-
-    if (typeof conditionOrId === 'string') {
-      const existing = (await this.Browse(conditionOrId, ['Id', 'Timezone'] as any)) as any;
-      this.normalizeTimezone(existing?.Timezone);
-      return;
-    }
-
-    const rows = await this.Search(conditionOrId as any, { limit: 1, fields: ['Id', 'Timezone'] as any } as any);
-    if (rows?.[0]) {
-      this.normalizeTimezone((rows[0] as any).Timezone);
-    }
-  }
-
   private static async validateParentUpdate(targetId: string, parentIdRaw: any): Promise<void> {
     const parentId = normalizeRefId(parentIdRaw);
     if (!parentId) return;
@@ -151,30 +120,19 @@ export default class Company extends BaseModel {
   }
 
   @Constraint<Company>(['Name', 'Code', 'Timezone', 'CurrencyId', 'ParentId'])
-  static async validateCompanyConstraint(self: Company, ctx: any): Promise<void> {
-    const mode = String(ctx?.mode || '');
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const values = (ctx?.values || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validateCompanyConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
+    const isCreate = !currentId;
 
-    if (mode === 'create') {
-      Company.applyRequiredForCreate(self as any);
-    } else if (mode === 'update') {
-      if (Object.prototype.hasOwnProperty.call(values, 'Timezone')) {
-        (self as any).Timezone = Company.normalizeTimezone((self as any).Timezone);
-      } else {
-        Company.normalizeTimezone(current?.Timezone);
-      }
+    // Timezone and CurrencyId are always required; normalize on `this`
+    // so the draft proxy auto-collects the writeback.
+    (this as any).Timezone = Company.normalizeTimezone(this.Timezone);
+    (this as any).CurrencyId = Company.normalizeCurrencyId(this.CurrencyId);
 
-      if (Object.prototype.hasOwnProperty.call(values, 'CurrencyId')) {
-        (self as any).CurrencyId = Company.normalizeCurrencyId((self as any).CurrencyId);
-      }
-    }
+    await Company.ensureUnique(this as any, currentId);
 
-    await Company.ensureUnique(self as any, currentId);
-
-    if (mode === 'update' && currentId && Object.prototype.hasOwnProperty.call(values, 'ParentId')) {
-      await Company.validateParentUpdate(currentId, (self as any).ParentId);
+    if (!isCreate && currentId) {
+      await Company.validateParentUpdate(currentId, (this as any).ParentId);
     }
   }
 }

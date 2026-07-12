@@ -47,7 +47,7 @@ export default class Address extends BaseModel {
     return await CityModel.Browse(cityId, ['Id', 'CountryId', 'StateId'] as any);
   }
 
-  private static async validateEntity(values: Record<string, any>, existing?: any): Promise<void> {
+  private static async validateEntity(values: Record<string, any>): Promise<void> {
     const countryId = requireRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId);
     const cityId = normalizeRefId(values.CityId);
@@ -87,8 +87,7 @@ export default class Address extends BaseModel {
   }
 
   @Constraint<Address>(['CountryId', 'StateId', 'CityId', 'Zip'])
-  static async validateAddressConstraint(self: Address, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    await Address.validateEntity(self as any, current);
+  async validateAddressConstraint(): Promise<void> {
+    await Address.validateEntity(this as any);
   }
 }

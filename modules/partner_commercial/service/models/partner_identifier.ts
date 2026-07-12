@@ -3,7 +3,6 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
 
 /**
@@ -104,7 +103,12 @@ export default class PartnerIdentifier extends BaseModel {
   }
 
   /** Normalizes and validates identifier values before persistence. */
-  private static async validateEntity(values: Record<string, any>, currentId?: string, current?: Record<string, any>): Promise<void> {
+  private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
+    // Capture whether fields were explicitly provided before normalization
+    // so we know whether to fall back to persisted values.
+    const identifierTypeProvided = values.IdentifierType !== undefined;
+    const valueProvided = values.Value !== undefined;
+
     values.PartnerId = normalizeOptionalRefId(values.PartnerId);
     values.CompanyId = normalizeOptionalRefId(values.CompanyId);
     values.IdentifierType = normalizeOptionalText(values.IdentifierType, { lower: true });
@@ -116,17 +120,25 @@ export default class PartnerIdentifier extends BaseModel {
     values.ValidFrom = toDateOrUndefined(values.ValidFrom, 'ValidFrom');
     values.ValidTo = toDateOrUndefined(values.ValidTo, 'ValidTo');
 
-    if (values.PartnerId === undefined) values.PartnerId = normalizeOptionalRefId(current?.PartnerId);
-    if (values.CompanyId === undefined) values.CompanyId = normalizeOptionalRefId(current?.CompanyId);
-    if (values.IdentifierType === undefined) values.IdentifierType = normalizeOptionalText(current?.IdentifierType, { lower: true });
-    if (values.Value === undefined) values.Value = normalizeOptionalText(current?.Value, { upper: true });
-
-    if ((values.PartnerId === undefined || values.CompanyId === undefined || values.IdentifierType === undefined || values.Value === undefined) && currentId) {
+    // The draft proxy already provides current-record values through its
+    // get chain.  Fall back to a persisted Browse only when a required
+    // field is still missing and was not explicitly provided.
+    if (
+      (values.PartnerId == null ||
+        values.CompanyId == null ||
+        (values.IdentifierType == null && !identifierTypeProvided) ||
+        (values.Value == null && !valueProvided)) &&
+      currentId
+    ) {
       const persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
-      if (values.PartnerId === undefined) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
-      if (values.CompanyId === undefined) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
-      if (values.IdentifierType === undefined) values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
-      if (values.Value === undefined) values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+      if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
+      if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
+      if (values.IdentifierType == null && !identifierTypeProvided) {
+        values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
+      }
+      if (values.Value == null && !valueProvided) {
+        values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+      }
     }
 
     if (!values.PartnerId) fail('PartnerId is required');
@@ -154,19 +166,9 @@ export default class PartnerIdentifier extends BaseModel {
     'ValidTo',
     'Notes',
   ])
-  static async validatePartnerIdentifierConstraint(self: PartnerIdentifier, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validatePartnerIdentifierConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
 
-    await PartnerIdentifier.validateEntity(self as any, currentId, current);
-
-    writeConstraintFields(
-      self as any,
-      ctx,
-      ['PartnerId', 'CompanyId', 'IdentifierType', 'Value', 'CountryId', 'IsPrimary', 'IsActive', 'IssuedBy', 'ValidFrom', 'ValidTo', 'Notes'],
-      {
-        forceOnCreate: true,
-      }
-    );
+    await PartnerIdentifier.validateEntity(this as any, currentId);
   }
 }

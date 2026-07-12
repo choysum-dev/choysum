@@ -5,7 +5,6 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import Locale from './locale';
 import { normalizeDirection } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -31,15 +30,10 @@ export default class Language extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, column: { index: true } })
   DefaultLocaleId?: Locale;
 
-  private static validateEntity(values: Record<string, any>): void {
-    if (Object.prototype.hasOwnProperty.call(values, 'Direction')) {
-      values.Direction = normalizeDirection(values.Direction);
-    }
-  }
-
   @Constraint<Language>(['Direction'])
-  static validateLanguageConstraint(self: Language, ctx: any): void {
-    Language.validateEntity(self as any);
-    writeConstraintFields(self as any, ctx, ['Direction']);
+  validateLanguageConstraint(): void {
+    if (this.Direction != null) {
+      this.Direction = normalizeDirection(this.Direction) as any;
+    }
   }
 }

@@ -5,7 +5,6 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeDecimalDigits, normalizePositiveDecimalString } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { convertCurrency } from './_currency_convert';
 
 export type CurrencyConvertRatePolicy = {
@@ -50,22 +49,17 @@ export default class Currency extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static validateEntity(values: Record<string, any>): void {
-    values.Code = normalizeCodeRequired(values.Code);
-    values.DecimalDigits = mapNormalizationToBase(
-      () => normalizeDecimalDigits(values.DecimalDigits),
+  @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])
+  validateCurrencyConstraint(): void {
+    this.Code = normalizeCodeRequired(this.Code as string);
+    (this as any).DecimalDigits = mapNormalizationToBase(
+      () => normalizeDecimalDigits(this.DecimalDigits),
       err => (err.code === 'required' ? 'DecimalDigits is required' : 'DecimalDigits must be a non-negative integer')
     );
-    values.Rounding = mapNormalizationToBase(
-      () => normalizePositiveDecimalString(values.Rounding),
+    (this as any).Rounding = mapNormalizationToBase(
+      () => normalizePositiveDecimalString(this.Rounding),
       err => (err.code === 'non_positive_decimal' ? 'Rounding must be greater than 0' : 'Rounding must be a valid decimal')
     );
-  }
-
-  @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])
-  static validateCurrencyConstraint(self: Currency, ctx: any): void {
-    Currency.validateEntity(self as any);
-    writeConstraintFields(self as any, ctx, ['Code', 'DecimalDigits', 'Rounding'], { forceOnCreate: true });
   }
 
   static async Convert(params: CurrencyConvertParams): Promise<CurrencyConvertResult> {

@@ -7,7 +7,6 @@ import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('City')
 export default class City extends BaseModel {
@@ -61,12 +60,9 @@ export default class City extends BaseModel {
   }
 
   @Constraint<City>(['Name', 'Code', 'CountryId', 'StateId'])
-  static async validateCityConstraint(self: City, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const values = (ctx?.values || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
+  async validateCityConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
 
-    await City.ensureUniqueness(self as any, currentId);
-    writeConstraintFields(self as any, ctx, ['Name', 'Code']);
+    await City.ensureUniqueness(this as any, currentId);
   }
 }
