@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, Compute } from '@/core/service';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
 
 import User from './user';
@@ -16,12 +16,17 @@ export default class Token extends BaseModel {
    */
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ field }) => field(Token, 'TokenId'),
-      size: 36,
-    },
+    size: 36,
   })
   public readonly DisplayName!: string;
+
+  @Compute<Token>('DisplayName', {
+    deps: ['TokenId'],
+    store: false,
+  })
+  computeDisplayName() {
+    return this.TokenId;
+  }
 
   /**
    * User that owns the token row.

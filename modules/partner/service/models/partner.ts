@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
@@ -19,6 +19,21 @@ type PartnerContactLike = {
   Sequence?: number | null;
   AddressId?: string | { Id?: string } | null;
 };
+
+type PartnerComputeModel = BaseModel &
+  Record<
+    | 'DefaultContactId'
+    | 'DefaultBillingAddressId'
+    | 'DefaultShippingAddressId'
+    | 'Contacts.Id'
+    | 'Contacts.Name'
+    | 'Contacts.AddressType'
+    | 'Contacts.IsDefault'
+    | 'Contacts.IsActive'
+    | 'Contacts.Sequence'
+    | 'Contacts.AddressId',
+    unknown
+  >;
 
 /**
  * Company-scoped business partner master record with derived default contacts and addresses.
@@ -92,64 +107,46 @@ export default class Partner extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => Partner.pickDefaultContactId((self as any).Contacts),
-        deps: [
-          'Contacts.Id' as any,
-          'Contacts.Name' as any,
-          'Contacts.AddressType' as any,
-          'Contacts.IsDefault' as any,
-          'Contacts.IsActive' as any,
-          'Contacts.Sequence' as any,
-        ],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultContactId?: PartnerContact;
+
+  @Compute<PartnerComputeModel>('DefaultContactId', {
+    deps: ['Contacts.Id', 'Contacts.Name', 'Contacts.AddressType', 'Contacts.IsDefault', 'Contacts.IsActive', 'Contacts.Sequence'],
+  })
+  computeDefaultContactId() {
+    return Partner.pickDefaultContactId(this.Contacts);
+  }
 
   /** Derived default billing address contact. */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => Partner.pickDefaultAddressId((self as any).Contacts, 'billing'),
-        deps: [
-          'Contacts.Id' as any,
-          'Contacts.AddressId' as any,
-          'Contacts.AddressType' as any,
-          'Contacts.IsDefault' as any,
-          'Contacts.IsActive' as any,
-          'Contacts.Sequence' as any,
-        ],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultBillingAddressId?: PartnerContact;
+
+  @Compute<PartnerComputeModel>('DefaultBillingAddressId', {
+    deps: ['Contacts.Id', 'Contacts.AddressId', 'Contacts.AddressType', 'Contacts.IsDefault', 'Contacts.IsActive', 'Contacts.Sequence'],
+  })
+  computeDefaultBillingAddressId() {
+    return Partner.pickDefaultAddressId(this.Contacts, 'billing');
+  }
 
   /** Derived default shipping address contact. */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => Partner.pickDefaultAddressId((self as any).Contacts, 'shipping'),
-        deps: [
-          'Contacts.Id' as any,
-          'Contacts.AddressId' as any,
-          'Contacts.AddressType' as any,
-          'Contacts.IsDefault' as any,
-          'Contacts.IsActive' as any,
-          'Contacts.Sequence' as any,
-        ],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultShippingAddressId?: PartnerContact;
+
+  @Compute<PartnerComputeModel>('DefaultShippingAddressId', {
+    deps: ['Contacts.Id', 'Contacts.AddressId', 'Contacts.AddressType', 'Contacts.IsDefault', 'Contacts.IsActive', 'Contacts.Sequence'],
+  })
+  computeDefaultShippingAddressId() {
+    return Partner.pickDefaultAddressId(this.Contacts, 'shipping');
+  }
 
   /** Display ordering hint. */
   @Field({ type: 'int', column: { notNull: true, default: () => 10, index: true } })

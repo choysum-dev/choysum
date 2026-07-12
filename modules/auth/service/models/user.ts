@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, Compute } from '@/core/service';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
@@ -87,15 +87,16 @@ export default class User extends BaseModel {
    */
   @Field({
     type: 'varchar',
-    column: {
-      size: 200,
-      compute: {
-        expr: (self: User) => self.FirstName + ' ' + self.LastName,
-        deps: ['FirstName', 'LastName'],
-      },
-    },
+    size: 200,
   })
   FullName: string;
+
+  @Compute<User>('FullName', {
+    deps: ['FirstName', 'LastName'],
+  })
+  computeFullName() {
+    return this.FirstName + ' ' + this.LastName;
+  }
 
   /**
    * Optional avatar image for the user profile.

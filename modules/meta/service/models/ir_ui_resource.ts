@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
-import { sql } from 'kysely';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
+import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
+import type { FieldSelection } from '@/core/service/api/selection';
 import IrApplication from './ir_application';
 import IrModule from './ir_module';
+import IrUiResourceMenuRoute from './ir_ui_resource_menu_route';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
@@ -43,6 +45,68 @@ type EffectiveUiResourceDeclarationOptions = {
   offset?: number;
 };
 
+type UiResourceChildProjection = {
+  Id: string;
+  Name?: string;
+  Type?: string;
+  Title?: string;
+  Sequence?: number;
+  Requires?: string[] | null;
+  Module?: string;
+  Path?: string;
+  ParentPath?: string | null;
+  UiPath?: string;
+  DefaultRoles?: string[] | null;
+};
+
+type MutableChildCarrier = {
+  Childs?: UiResourceChildProjection[];
+};
+
+const uiResourceChildProjectionFields = [
+  'Id',
+  'Name',
+  'Type',
+  'Title',
+  'Sequence',
+  'Requires',
+  'Module',
+  'Path',
+  'ParentPath',
+  'UiPath',
+  'DefaultRoles',
+] as const;
+
+function wantsChildsField(selection: unknown): boolean {
+  if (selection == null) return false;
+  if (typeof selection === 'string') return selection === 'Childs';
+  if (Array.isArray(selection)) return selection.some(item => wantsChildsField(item));
+  if (typeof selection === 'object' && Array.isArray((selection as { fields?: unknown[] }).fields)) {
+    return wantsChildsField((selection as { fields?: unknown[] }).fields);
+  }
+  return false;
+}
+
+function stripChildsFromSelection<T>(selection: T): T {
+  const strip = (value: unknown): unknown => {
+    if (value == null) return value;
+    if (typeof value === 'string') return value === 'Childs' ? undefined : value;
+    if (Array.isArray(value)) {
+      return value.map(item => strip(item)).filter(item => item !== undefined);
+    }
+    if (typeof value === 'object' && Array.isArray((value as { fields?: unknown[] }).fields)) {
+      const record = value as Record<string, unknown>;
+      return {
+        ...record,
+        fields: strip((value as { fields?: unknown[] }).fields),
+      };
+    }
+    return value;
+  };
+
+  return strip(selection) as T;
+}
+
 @Model('IrUiResource', {
   tableName: 'meta_ir_ui_resource',
   parentField: 'ParentId',
@@ -75,28 +139,27 @@ export default class IrUiResource extends BaseModel {
 
   @Field({
     type: 'varchar',
-    column: {
-      size: 1000,
-      index: true,
-      compute: {
-        expr: (self: IrUiResource) => {
-          const id = String((self as any)?.Id || '').trim();
-          if (!id) return null;
-          if (String((self as any)?.Type || '').trim() !== 'MENU') return null;
-
-          const parentRef = (self as any)?.ParentId;
-          const parentPath = parentRef && typeof parentRef === 'object' ? String((parentRef as any).ParentPath || '') : '';
-          if (parentPath && parentPath.includes(`${id}/`)) {
-            throw new Error(`Cycle detected: ${id} cannot be assigned under one of its descendants`);
-          }
-
-          return `${parentPath}${id}/`;
-        },
-        deps: ['Id', 'Type', 'ParentId', 'ParentId.ParentPath'],
-      },
-    },
+    size: 1000,
+    indexed: true,
   })
   readonly ParentPath?: string | null;
+
+  @Compute('ParentPath', {
+    deps: ['Id', 'Type', 'ParentId', 'ParentId.ParentPath'],
+  })
+  computeParentPath() {
+    const id = String(this.Id || '').trim();
+    if (!id) return null;
+    if (String(this.Type || '').trim() !== 'MENU') return null;
+
+    const parentRef = this.ParentId;
+    const parentPath = parentRef ? String(parentRef.ParentPath || '') : '';
+    if (parentPath && parentPath.includes(`${id}/`)) {
+      throw new Error(`Cycle detected: ${id} cannot be assigned under one of its descendants`);
+    }
+
+    return `${parentPath}${id}/`;
+  }
 
   @Field({ type: 'varchar', column: { size: 512 } })
   UiPath?: string;
@@ -113,169 +176,200 @@ export default class IrUiResource extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => IrUiResource },
-    select: {
-      expr: ({ col }) => {
-        const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
-
-        if (dialect === 'sqlite') {
-          return sql<any>`
-            (
-              select coalesce(
-                json_group_array(json(child_row.payload)),
-                json('[]')
-              )
-              from (
-                select
-                  coalesce(c.sequence, 0) as seq,
-                  c.name as name,
-                  json_object(
-                    'Id', c.id,
-                    'Name', c.name,
-                    'Type', c.type,
-                    'Title', c.title,
-                    'Sequence', c.sequence,
-                    'Requires', json(c.requires),
-                    'Module', c.module,
-                    'Path', c.path,
-                    'ParentPath', c.parent_path,
-                    'UiPath', c.ui_path,
-                    'DefaultRoles', json(c.default_roles)
-                  ) as payload
-                from meta_ir_ui_resource c
-                where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                  and c.parent_id = ${col('meta_ir_ui_resource', 'Id')}
-
-                union all
-
-                select
-                  coalesce(r.sequence, 0) as seq,
-                  r.name as name,
-                  json_object(
-                    'Id', r.id,
-                    'Name', r.name,
-                    'Type', r.type,
-                    'Title', r.title,
-                    'Sequence', r.sequence,
-                    'Requires', json(r.requires),
-                    'Module', r.module,
-                    'Path', r.path,
-                    'ParentPath', r.parent_path,
-                    'UiPath', r.ui_path,
-                    'DefaultRoles', json(r.default_roles)
-                  ) as payload
-                from meta_ir_ui_resource_menu_route mr
-                join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
-                where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                  and mr.menu_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-
-                union all
-
-                select
-                  coalesce(a.sequence, 0) as seq,
-                  a.name as name,
-                  json_object(
-                    'Id', a.id,
-                    'Name', a.name,
-                    'Type', a.type,
-                    'Title', a.title,
-                    'Sequence', a.sequence,
-                    'Requires', json(a.requires),
-                    'Module', a.module,
-                    'Path', a.path,
-                    'ParentPath', a.parent_path,
-                    'UiPath', a.ui_path,
-                    'DefaultRoles', json(a.default_roles)
-                  ) as payload
-                from meta_ir_ui_resource_route_action ra
-                join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
-                where ${col('meta_ir_ui_resource', 'Type')} = 'ROUTE'
-                  and ra.route_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-
-                order by seq asc, name asc
-              ) as child_row
-            )
-          `;
-        }
-
-        return sql<any>`
-          (
-            select coalesce(
-              json_agg(child_row.payload order by child_row.seq asc, child_row.name asc),
-              '[]'::json
-            )
-            from (
-              select
-                coalesce(c.sequence, 0) as seq,
-                c.name as name,
-                json_build_object(
-                  'Id', c.id,
-                  'Name', c.name,
-                  'Type', c.type,
-                  'Title', c.title,
-                  'Sequence', c.sequence,
-                  'Requires', c.requires,
-                  'Module', c.module,
-                  'Path', c.path,
-                  'ParentPath', c.parent_path,
-                  'UiPath', c.ui_path,
-                  'DefaultRoles', c.default_roles
-                ) as payload
-              from meta_ir_ui_resource c
-              where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                and c.parent_id = ${col('meta_ir_ui_resource', 'Id')}
-
-              union all
-
-              select
-                coalesce(r.sequence, 0) as seq,
-                r.name as name,
-                json_build_object(
-                  'Id', r.id,
-                  'Name', r.name,
-                  'Type', r.type,
-                  'Title', r.title,
-                  'Sequence', r.sequence,
-                  'Requires', r.requires,
-                  'Module', r.module,
-                  'Path', r.path,
-                  'ParentPath', r.parent_path,
-                  'UiPath', r.ui_path,
-                  'DefaultRoles', r.default_roles
-                ) as payload
-              from meta_ir_ui_resource_menu_route mr
-              join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
-              where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                and mr.menu_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-
-              union all
-
-              select
-                coalesce(a.sequence, 0) as seq,
-                a.name as name,
-                json_build_object(
-                  'Id', a.id,
-                  'Name', a.name,
-                  'Type', a.type,
-                  'Title', a.title,
-                  'Sequence', a.sequence,
-                  'Requires', a.requires,
-                  'Module', a.module,
-                  'Path', a.path,
-                  'ParentPath', a.parent_path,
-                  'UiPath', a.ui_path,
-                  'DefaultRoles', a.default_roles
-                ) as payload
-              from meta_ir_ui_resource_route_action ra
-              join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
-              where ${col('meta_ir_ui_resource', 'Type')} = 'ROUTE'
-                and ra.route_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-            ) as child_row
-          )
-        `;
-      },
-    },
   })
   readonly Childs?: IrUiResource[];
+
+  private static normalizeChildProjection(row: IrUiResource): UiResourceChildProjection | null {
+    const id = String(row.Id || '').trim();
+    if (!id) return null;
+
+    return {
+      Id: id,
+      Name: normalizeOptionalString(row.Name),
+      Type: normalizeOptionalString(row.Type),
+      Title: normalizeOptionalString(row.Title),
+      Sequence: Number(row.Sequence || 0),
+      Requires: normalizeStringArray(row.Requires),
+      Module: normalizeOptionalString(row.Module),
+      Path: normalizeOptionalString(row.Path),
+      ParentPath: normalizeOptionalString(row.ParentPath),
+      UiPath: normalizeOptionalString(row.UiPath),
+      DefaultRoles: normalizeStringArray(row.DefaultRoles),
+    };
+  }
+
+  private static sortChildRows(rows: UiResourceChildProjection[]): UiResourceChildProjection[] {
+    return [...rows].sort((a, b) => {
+      const seqA = Number(a.Sequence ?? 0);
+      const seqB = Number(b.Sequence ?? 0);
+      if (seqA !== seqB) return seqA - seqB;
+      return String(a.Name || '').localeCompare(String(b.Name || ''));
+    });
+  }
+
+  private static async loadChildProjectionMap(ids: string[]): Promise<Map<string, UiResourceChildProjection>> {
+    if (!ids.length) return new Map();
+
+    const rows = (await super.Search(
+      ['Id', 'in', ids] as unknown as QueryCondition<IrUiResource>,
+      {
+        fields: [...uiResourceChildProjectionFields],
+        limit: Math.max(1000, ids.length * 4),
+      } as unknown as SearchOptions<IrUiResource>
+    )) as IrUiResource[];
+
+    const map = new Map<string, UiResourceChildProjection>();
+    for (const row of rows || []) {
+      const normalized = this.normalizeChildProjection(row);
+      if (!normalized) continue;
+      map.set(normalized.Id, normalized);
+    }
+    return map;
+  }
+
+  private static async hydrateChildsField(records: IrUiResource[]): Promise<void> {
+    if (!Array.isArray(records) || records.length === 0) return;
+
+    const menuIds: string[] = [];
+    const routeIds: string[] = [];
+    const childMap = new Map<string, UiResourceChildProjection[]>();
+
+    for (const row of records) {
+      const id = String(row.Id || '').trim();
+      if (!id) continue;
+
+      const type = String(row.Type || '')
+        .trim()
+        .toUpperCase();
+
+      childMap.set(id, []);
+      if (type === 'MENU') menuIds.push(id);
+      if (type === 'ROUTE') routeIds.push(id);
+    }
+
+    if (menuIds.length > 0) {
+      const directRows = (await super.Search(
+        ['ParentId', 'in', menuIds] as unknown as QueryCondition<IrUiResource>,
+        {
+          fields: [...uiResourceChildProjectionFields, 'ParentId'],
+          limit: Math.max(1000, menuIds.length * 200),
+        } as unknown as SearchOptions<IrUiResource>
+      )) as IrUiResource[];
+
+      for (const row of directRows || []) {
+        const parentId = readRefId(row.ParentId);
+        if (!parentId || !childMap.has(parentId)) continue;
+        const normalized = this.normalizeChildProjection(row);
+        if (normalized) childMap.get(parentId)!.push(normalized);
+      }
+
+      const menuRouteRows = (await IrUiResourceMenuRoute.Search(
+        ['MenuUiResourceId', 'in', menuIds] as unknown as QueryCondition<IrUiResourceMenuRoute>,
+        {
+          fields: ['MenuUiResourceId', 'RouteUiResourceId'],
+          limit: Math.max(1000, menuIds.length * 200),
+        } as unknown as SearchOptions<IrUiResourceMenuRoute>
+      )) as IrUiResourceMenuRoute[];
+
+      const routeIdsFromMenu = Array.from(
+        new Set((menuRouteRows || []).map(row => readRefId(row.RouteUiResourceId)).filter((value): value is string => !!value))
+      );
+
+      const routeMap = await this.loadChildProjectionMap(routeIdsFromMenu);
+      for (const row of menuRouteRows || []) {
+        const menuId = readRefId(row.MenuUiResourceId);
+        const routeId = readRefId(row.RouteUiResourceId);
+        if (!menuId || !routeId || !childMap.has(menuId)) continue;
+        const routeProjection = routeMap.get(routeId);
+        if (routeProjection) childMap.get(menuId)!.push(routeProjection);
+      }
+    }
+
+    if (routeIds.length > 0) {
+      const routeActionRows = (await IrUiResourceRouteAction.Search(
+        ['RouteUiResourceId', 'in', routeIds] as unknown as QueryCondition<IrUiResourceRouteAction>,
+        {
+          fields: ['RouteUiResourceId', 'ActionUiResourceId'],
+          limit: Math.max(1000, routeIds.length * 200),
+        } as unknown as SearchOptions<IrUiResourceRouteAction>
+      )) as IrUiResourceRouteAction[];
+
+      const actionIds = Array.from(new Set((routeActionRows || []).map(row => readRefId(row.ActionUiResourceId)).filter((value): value is string => !!value)));
+
+      const actionMap = await this.loadChildProjectionMap(actionIds);
+      for (const row of routeActionRows || []) {
+        const routeId = readRefId(row.RouteUiResourceId);
+        const actionId = readRefId(row.ActionUiResourceId);
+        if (!routeId || !actionId || !childMap.has(routeId)) continue;
+        const actionProjection = actionMap.get(actionId);
+        if (actionProjection) childMap.get(routeId)!.push(actionProjection);
+      }
+    }
+
+    for (const row of records) {
+      const id = String(row.Id || '').trim();
+      if (!id) continue;
+
+      const dedup = new Map<string, UiResourceChildProjection>();
+      for (const child of childMap.get(id) || []) {
+        if (!child.Id) continue;
+        dedup.set(child.Id, child);
+      }
+
+      const sortedChildren = this.sortChildRows(Array.from(dedup.values()));
+      (row as MutableChildCarrier).Childs = sortedChildren;
+    }
+  }
+
+  static override async Browse<T extends BaseModel>(
+    this: { new (...args: unknown[]): T } & typeof BaseModel,
+    id: string,
+    fields?: FieldSelection<T>,
+    options?: unknown
+  ): Promise<T> {
+    const shouldHydrateChilds = wantsChildsField(fields);
+    const effectiveFields = shouldHydrateChilds ? stripChildsFromSelection(fields) : fields;
+    const row = (await super.Browse(id, effectiveFields as FieldSelection<T>, options)) as T;
+    if (shouldHydrateChilds) {
+      await this.hydrateChildsField([row as unknown as IrUiResource]);
+    }
+    return row;
+  }
+
+  static override async BrowseMany<T extends BaseModel>(
+    this: { new (...args: unknown[]): T } & typeof BaseModel,
+    ids: string[],
+    fields?: (keyof any)[],
+    options?: unknown
+  ): Promise<T[]> {
+    const shouldHydrateChilds = wantsChildsField(fields);
+    const effectiveFields = shouldHydrateChilds ? stripChildsFromSelection(fields) : fields;
+    const rows = (await super.BrowseMany(ids, effectiveFields, options)) as T[];
+    if (shouldHydrateChilds) {
+      await this.hydrateChildsField(rows as unknown as IrUiResource[]);
+    }
+    return rows;
+  }
+
+  static override async Search<T extends BaseModel>(
+    this: { new (...args: unknown[]): T } & typeof BaseModel,
+    condition: QueryCondition<T> | [] = [],
+    options?: SearchOptions<T>
+  ): Promise<T[]> {
+    const shouldHydrateChilds = wantsChildsField(options?.fields);
+    const effectiveOptions = shouldHydrateChilds
+      ? ({
+          ...(options || {}),
+          fields: stripChildsFromSelection(options?.fields),
+        } as SearchOptions<T>)
+      : options;
+
+    const rows = (await super.Search(condition, effectiveOptions)) as T[];
+    if (shouldHydrateChilds) {
+      await this.hydrateChildsField(rows as unknown as IrUiResource[]);
+    }
+    return rows;
+  }
 
   private static normalizeRequireToken(token: string): EffectiveUiResourceRequire | null {
     const raw = String(token || '').trim();

@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
+import IrModule from './ir_module';
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -390,51 +391,55 @@ export default class IrModuleIndex extends BaseModel {
 
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ col }) => col('meta_ir_module_index', 'origin_type'),
-      size: 64,
-    },
+    size: 64,
   })
   OriginTypes?: string;
 
+  @Compute<IrModuleIndex>('OriginTypes', {
+    deps: ['OriginType'],
+    store: false,
+  })
+  computeOriginTypes() {
+    return this.OriginType;
+  }
+
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ col }) => col('meta_ir_module_index', 'version'),
-      size: 255,
-    },
+    size: 255,
   })
   LocalVersion?: string;
 
-  @Field({
-    type: 'varchar',
-    select: {
-      expr: ({ col }) => col('meta_ir_module_index', 'version'),
-      size: 255,
-    },
+  @Compute<IrModuleIndex>('LocalVersion', {
+    deps: ['Version'],
+    store: false,
   })
-  RegistryVersion?: string;
+  computeLocalVersion() {
+    return this.Version;
+  }
 
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ selectFrom, col }) =>
-        sql<string>`coalesce((${selectFrom('meta_ir_module as m')
-          .select('m.status')
-          .whereRef('m.name', '=', col('meta_ir_module_index', 'module_name'))
-          .limit(1)}), 'uninstalled')`,
-      size: 64,
-    },
+    size: 255,
+  })
+  RegistryVersion?: string;
+
+  @Compute<IrModuleIndex>('RegistryVersion', {
+    deps: ['Version'],
+    store: false,
+  })
+  computeRegistryVersion() {
+    return this.Version;
+  }
+
+  @Field({
+    type: 'varchar',
+    size: 64,
   })
   InstalledStatus?: string;
 
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ selectFrom, col }) =>
-        selectFrom('meta_ir_module as m').select('m.version').whereRef('m.name', '=', col('meta_ir_module_index', 'module_name')).limit(1),
-      size: 255,
-    },
+    size: 255,
   })
   InstalledVersion?: string;
 
@@ -486,8 +491,6 @@ export default class IrModuleIndex extends BaseModel {
       'LastBatchSyncAt',
       'SyncRevision',
       'LastErrorMessage',
-      'InstalledStatus',
-      'InstalledVersion',
     ];
     const detailOptions: Record<string, unknown> = {
       fields: detailFields,
@@ -498,10 +501,33 @@ export default class IrModuleIndex extends BaseModel {
 
     const detailRows = (await (BaseModel as any).Search.call(this, buildModuleNamesCondition(normalized, groupedModuleNames), detailOptions)) as any[];
 
+    const installedRows = await IrModule.Search(
+      ['Name', 'in', groupedModuleNames] as any,
+      {
+        fields: ['Name', 'Status', 'Version'] as any,
+        limit: groupedModuleNames.length * 2,
+      } as any
+    );
+    const installedByName = new Map<string, { status?: string; version?: string }>();
+    for (const module of installedRows || []) {
+      const moduleName = String((module as any)?.Name || '').trim();
+      if (!moduleName) continue;
+      installedByName.set(moduleName, {
+        status: String((module as any)?.Status || '').trim() || undefined,
+        version: String((module as any)?.Version || '').trim() || undefined,
+      });
+    }
+
     const mergedByModule = new Map<string, ModuleIndexRecord>();
-    for (const row of aggregateRows((detailRows || []).map(toPlainRecord))) {
+    for (const rawRow of aggregateRows((detailRows || []).map(toPlainRecord))) {
+      const row = { ...rawRow };
       const moduleName = String(row?.ModuleName || '').trim();
       if (!moduleName) continue;
+
+      const installed = installedByName.get(moduleName);
+      row.InstalledStatus = row.InstalledStatus || installed?.status || 'uninstalled';
+      row.InstalledVersion = row.InstalledVersion || installed?.version;
+
       mergedByModule.set(moduleName, row);
     }
 
