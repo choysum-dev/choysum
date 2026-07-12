@@ -278,9 +278,7 @@ test('model onchange prepare __collectModelOnchangeReadsRootForTest is signature
 test('model onchange prepare compute subset is signature-neutral', () => {
   const meta = prepareModelMetadata();
 
-  const handlers = [
-    { method: 'handleNamePreview', triggers: ['Name'], priority: 100, signature: 'instanceNoArgs' as const },
-  ];
+  const handlers = [{ method: 'handleNamePreview', triggers: ['Name'], priority: 100, signature: 'instanceNoArgs' as const }];
 
   // Should not throw — signature field is ignored by compute-subset logic.
   const subset = __collectModelOnchangeComputeSubsetForTest(meta, ['Name'], handlers);

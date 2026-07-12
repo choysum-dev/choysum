@@ -177,30 +177,48 @@ test('model onchange execute produces consistent transport shape regardless of h
   const callsB: string[] = [];
 
   const deps = {
-    runPreviewEngine: (async () => { callsA.push('run'); return previewResult; }) as any,
-    applyPreviewCascade: (async () => { callsA.push('cascade'); }) as any,
-    attachDiagnostics: (() => { callsA.push('diagnostics'); }) as any,
-    validatePreview: (async () => { callsA.push('validate'); }) as any,
-    finalizeTransport: (() => { callsA.push('finalize'); return finalTransport; }) as any,
+    runPreviewEngine: (async () => {
+      callsA.push('run');
+      return previewResult;
+    }) as any,
+    applyPreviewCascade: (async () => {
+      callsA.push('cascade');
+    }) as any,
+    attachDiagnostics: (() => {
+      callsA.push('diagnostics');
+    }) as any,
+    validatePreview: (async () => {
+      callsA.push('validate');
+    }) as any,
+    finalizeTransport: (() => {
+      callsA.push('finalize');
+      return finalTransport;
+    }) as any,
   };
 
-  const t1 = await executePreparedModelOnchangePreview(
-    { ModelCtor: {} as any, draft: {}, prepared, prefetchTimeMs: 0 },
-    deps
-  );
+  const t1 = await executePreparedModelOnchangePreview({ ModelCtor: {} as any, draft: {}, prepared, prefetchTimeMs: 0 }, deps);
 
   const depsB = {
-    runPreviewEngine: (async () => { callsB.push('run'); return previewResult; }) as any,
-    applyPreviewCascade: (async () => { callsB.push('cascade'); }) as any,
-    attachDiagnostics: (() => { callsB.push('diagnostics'); }) as any,
-    validatePreview: (async () => { callsB.push('validate'); }) as any,
-    finalizeTransport: (() => { callsB.push('finalize'); return finalTransport; }) as any,
+    runPreviewEngine: (async () => {
+      callsB.push('run');
+      return previewResult;
+    }) as any,
+    applyPreviewCascade: (async () => {
+      callsB.push('cascade');
+    }) as any,
+    attachDiagnostics: (() => {
+      callsB.push('diagnostics');
+    }) as any,
+    validatePreview: (async () => {
+      callsB.push('validate');
+    }) as any,
+    finalizeTransport: (() => {
+      callsB.push('finalize');
+      return finalTransport;
+    }) as any,
   };
 
-  const t2 = await executePreparedModelOnchangePreview(
-    { ModelCtor: {} as any, draft: {}, prepared, prefetchTimeMs: 0 },
-    depsB
-  );
+  const t2 = await executePreparedModelOnchangePreview({ ModelCtor: {} as any, draft: {}, prepared, prefetchTimeMs: 0 }, depsB);
 
   expect(t1).toEqual(t2);
   expect(callsA).toEqual(['run', 'cascade', 'diagnostics', 'validate', 'finalize']);
