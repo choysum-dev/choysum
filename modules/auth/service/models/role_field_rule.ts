@@ -237,7 +237,7 @@ export default class RoleFieldRule extends BaseModel {
    * Reset the field scope when the model scope changes and narrow the field picker.
    */
   @Onchange<RoleFieldRule>('IrModelId')
-  async OnchangeIrModelId() {
+  OnchangeIrModelId() {
     this.IrFieldId = null as any;
 
     const modelId = this.IrModelId;
