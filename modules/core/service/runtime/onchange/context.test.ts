@@ -131,3 +131,36 @@ test('onchange context emit dispatches value/messages/conditions/selections atom
   expect(ctx.draft).toBe(draft);
   expect(ctx.changed).toBe(changed);
 });
+
+test('onchange context ctx.val retains backward-compatible behavior', async () => {
+  // Deprecated but still functional — verify no regression.
+  const val = makeVal<TestOnchangeModel>();
+
+  const patch1 = val('Name', 'value-1');
+  expect(patch1).toEqual({ Name: 'value-1' });
+
+  const patch2 = val('Code', 'C-99');
+  expect(patch2).toEqual({ Code: 'C-99' });
+});
+
+test('onchange context createOnchangeContext still wires ctx.val into emit dispatch', async () => {
+  const draft = { Name: 'draft' } as unknown as TestOnchangeModel;
+  const changed = new Set<string>(['Name']);
+  const appliedValues: OnchangeValue<TestOnchangeModel>[] = [];
+
+  const ctx = createOnchangeContext<TestOnchangeModel>({
+    draft,
+    changed,
+    pushMessages: () => {},
+    pushCondition: () => {},
+    pushSelection: () => {},
+    applyValue: v => appliedValues.push(v),
+  });
+
+  // ctx.val alone produces a patch object.
+  expect(ctx.val('Name', 'via-ctx')).toEqual({ Name: 'via-ctx' });
+
+  // ctx.emit(ctx.val(...)) still routes through applyValue.
+  ctx.emit(ctx.val('Code', 'X'));
+  expect(appliedValues).toEqual([{ Code: 'X' }]);
+});

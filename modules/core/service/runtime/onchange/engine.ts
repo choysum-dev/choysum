@@ -4,7 +4,7 @@
 import type { ModelMetadata, OnchangeHandlerMeta } from '../../orm/metadata/model';
 import type BaseModel from '../../orm/model/model';
 import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS } from './constants';
-import { createOnchangeContext, normalizeMessages, normalizeCondition, normalizeSelection, applyValuePatch } from './context';
+import { normalizeMessages, normalizeCondition, normalizeSelection, applyValuePatch } from './context';
 import type { OnchangeDraft, OnchangeMessage, OnchangeCondition, SelectionCondition, OnchangeRunOptions, OnchangeEngineResult } from './types';
 import { createOnchangeDraft } from '../proxy';
 import Decimal, { normalizeDecimalByMeta, isDecimal } from '@/core/utils/decimal';
@@ -121,24 +121,8 @@ export class OnchangeEngine {
       messages.push(...normalized);
     };
 
-    // Create the OnchangeContext with selection support.
-    const ctx = createOnchangeContext({
-      draft: onchangeDraft,
-      changed: new Set<string>(changed),
-      pushMessages: (m: OnchangeMessage[]) => {
-        if (m?.some(x => x?.level === 'error')) hasError = true;
-        messages.push(...m);
-      },
-      pushCondition: (q: OnchangeCondition[]) => condition.push(...q),
-      // Collect selection conditions.
-      pushSelection: (s: SelectionCondition[]) => selection.push(...s),
-      applyValue: (v: OnchangePatch) => {
-        // Apply the same top-level decimal quantization used by the sink.
-        const normalized = quantizeDecimalPatch(meta, v);
-        Object.assign(emittedPatch, normalized);
-        applyValuePatch(draft, normalized);
-      },
-    });
+    // Push helpers are wired directly; the legacy OnchangeContext object is no
+    // longer created since all handlers now use the instance-noargs contract.
 
     while (pending.size && iter < max && !(stopOnError && hasError)) {
       iter++;
@@ -157,9 +141,13 @@ export class OnchangeEngine {
         }
 
         try {
-          const fn = draft[handler.method];
-          const result = typeof fn === 'function' ? (fn as (this: unknown, context: unknown) => unknown).call(onchangeDraft, ctx) : undefined;
-          const ret = ((result instanceof Promise ? await result : result) ?? {}) as OnchangeHandlerReturn;
+          const rawResult = OnchangeEngine.invokeOnchangeHandler(handler, draft, onchangeDraft);
+          // Avoid microtask overhead for sync handlers in QuickJS runtimes
+          // where await on a non-Promise always yields to the event loop.
+          // Use a thenable check instead of instanceof Promise to also handle
+          // cross-realm promises and custom thenables.
+          const result = typeof (rawResult as any)?.then === 'function' ? await rawResult : rawResult;
+          const ret = (result ?? {}) as OnchangeHandlerReturn;
 
           // Process returned payloads while keeping compatibility with legacy object returns.
           const valuePatch = asOnchangePatch(ret.value);
@@ -349,6 +337,21 @@ export class OnchangeEngine {
       if (hs) hs.forEach(h => result.add(h));
     }
     return [...result];
+  }
+
+  /**
+   * Invoke a single onchange handler in the end-state runtime contract.
+   *
+   * All handlers are called without arguments and should use `this` for value
+   * mutation plus return payloads for side-effects.
+   *
+   * The return value may be a Promise; the caller is responsible for awaiting.
+   */
+  private static invokeOnchangeHandler(handler: OnchangeHandlerMeta, draft: OnchangeDraft, onchangeDraft: BaseModel): unknown {
+    const fn = draft[handler.method] as ((...args: unknown[]) => unknown) | undefined;
+    if (typeof fn !== 'function') return undefined;
+    // All handlers run without arguments — the end-state of the onchange migration.
+    return fn.call(onchangeDraft);
   }
 
   /**

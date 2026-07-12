@@ -179,6 +179,13 @@ export type ConditionBuilder<T extends BaseModel = BaseModel> = <K extends Selec
  */
 export type SelectionBuilder = (field: string, selection: string[], disabled?: string[]) => SelectionCondition;
 
+/**
+ * Value builder for ctx.emit(ctx.val(...)).
+ *
+ * @deprecated Prefer direct `this.Field = value` assignment inside onchange
+ * handlers. Since the legacy `ctx` path has been fully retired, `ctx.val` is
+ * no longer supported in active runtimes.
+ */
 export type ValBuilder<T extends BaseModel = BaseModel> = <K extends keyof Insertable<T>>(key: K, value: Insertable<T>[K]) => Pick<OnchangeValue<T>, K>;
 
 // ============================================================================
@@ -196,6 +203,11 @@ export interface OnchangeContext<T extends BaseModel = BaseModel> {
   msg: MsgBuilder<T>;
   cond: ConditionBuilder<T>;
   sel: SelectionBuilder;
+  /**
+   * @deprecated Prefer direct `this.Field = value` assignment.
+   * Since the legacy `ctx` path has been fully retired, `ctx.val` is
+   * no longer supported in active runtimes.
+   */
   val: ValBuilder<T>;
   draft: T;
   changed: ReadonlySet<string>;

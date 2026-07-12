@@ -124,7 +124,11 @@ export function makeSelection(): SelectionBuilder {
 
 /**
  * Create a value builder.
+ *
  * Signature: val(key, value)
+ *
+ * @deprecated `ctx.val` is a legacy helper and is no longer used in the end-state
+ * runtime. All handlers use direct `this.Field = value` assignment.
  */
 export function makeVal<T extends BaseModel>(): ValBuilder<T> {
   return ((key: PropertyKey, value: unknown) => ({ [key]: value })) as ValBuilder<T>;
@@ -298,13 +302,13 @@ export function applyValuePatch(target: ObjectRecord, patch: ObjectRecord) {
 /**
  * Create a type-safe Onchange context.
  *
+ * @deprecated `createOnchangeContext` and the resulting `ctx` object are no longer
+ * used in the end-state runtime. Handlers are invoked without arguments and should
+ * use `this` for value mutation and `return` for side-effects.
+ *
+ * The function is retained for potential future tooling or debugging use.
+ *
  * @param params - Context parameters.
- * @param params.draft - Mutable draft record.
- * @param params.changed - Read-only set of changed fields.
- * @param params.pushMessages - Message dispatch callback.
- * @param params.pushCondition - Condition dispatch callback.
- * @param params.pushSelection - Selection-condition dispatch callback.
- * @param params.applyValue - Value-application callback.
  * @returns The Onchange context object.
  */
 export function createOnchangeContext<T extends BaseModel>(params: {

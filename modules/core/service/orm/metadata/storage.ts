@@ -416,6 +416,20 @@ export class MetadataStorage {
     return Array.from(methodMap.values()).sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
   }
 
+  /**
+   * Resolves the effective onchange handlers for a model by walking the
+   * prototype chain from child to root:
+   *
+   * - **Child classes take precedence** for the same method name (override),
+   *   which includes all handler properties such as triggers, priority, and
+   *   reads.
+   * - **New method names** introduced by a child are added alongside inherited
+   *   ones (extend).
+   * - **If a child does not re-decorate** a parent onchange handler, the
+   *   parent's handler is inherited as-is (reuse).
+   *
+   * Handlers are returned sorted by priority then by method name.
+   */
   public getEffectiveOnchange<T extends BaseModel>(target: ModelCtor<T>): EffectiveOnchangeMeta[] {
     this.getModelMetadata(target);
 

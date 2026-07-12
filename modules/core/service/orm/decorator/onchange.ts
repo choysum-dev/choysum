@@ -15,8 +15,22 @@ interface OnchangeOptions {
 
 /**
  * Usage:
- *  @Onchange<SaleOrder>('CustomerId','OrderLines')
- *  _onchange_customer_or_lines() { ... }
+ *
+ * ```ts
+ * @Onchange<SaleOrder>('CustomerId')
+ * onchangeCustomer() {
+ *   this.PaymentTermId = null;
+ *   return {
+ *     condition: [{ field: 'PaymentTermId', condition: ['Id', '=', '0'] }],
+ *   };
+ * }
+ *
+ * @Onchange<SaleOrder>('OrderLines', { reads: ['PartnerId.Name'] })
+ * async onchangeLines() {
+ *   await Promise.resolve();
+ *   this.Total = computeTotal(this.OrderLines);
+ * }
+ * ```
  */
 export function Onchange<T extends BaseModel = BaseModel>(...args: (OnchangeTrigger<T> | OnchangeOptions)[]): MethodDecorator {
   return (target, key) => {
