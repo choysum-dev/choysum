@@ -36,6 +36,12 @@ type FieldDecoratorOptionBag = {
   selection?: Array<{ value?: unknown; label?: unknown }>;
   targetModel?: unknown;
   relation?: unknown;
+  related?: unknown;
+  required?: unknown;
+  indexed?: unknown;
+  maxLength?: unknown;
+  precision?: unknown;
+  scale?: unknown;
 };
 
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
@@ -65,6 +71,111 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     let hasColumn = optionBag.column !== undefined;
     const columnCompute = asObjectRecord(optionBag.column)?.compute;
     const hasColumnCompute = !!columnCompute;
+
+    const hasFlatStorageHints =
+      optionBag.required !== undefined ||
+      optionBag.indexed !== undefined ||
+      optionBag.maxLength !== undefined ||
+      optionBag.precision !== undefined ||
+      optionBag.scale !== undefined;
+    const hasRelated = optionBag.related !== undefined;
+    const hasFlatContract = hasFlatStorageHints || hasRelated;
+
+    if ((hasSelect || hasColumn) && hasFlatContract) {
+      throw new Error(`@Field(${name}) flat options cannot be mixed with legacy column/select branches`);
+    }
+
+    let normalizedStorageHints: FieldMetadata['storageHints'] | undefined;
+    if (hasFlatStorageHints) {
+      const hints: NonNullable<FieldMetadata['storageHints']> = {};
+      const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x);
+
+      if (optionBag.required !== undefined) {
+        if (typeof optionBag.required !== 'boolean') {
+          throw new Error(`@Field(${name}) required must be a boolean`);
+        }
+        hints.required = optionBag.required;
+      }
+
+      if (optionBag.indexed !== undefined) {
+        if (typeof optionBag.indexed !== 'boolean') {
+          throw new Error(`@Field(${name}) indexed must be a boolean`);
+        }
+        hints.indexed = optionBag.indexed;
+      }
+
+      if (optionBag.maxLength !== undefined) {
+        if (!isInt(optionBag.maxLength) || optionBag.maxLength < 1) {
+          throw new Error(`@Field(${name}) maxLength must be a positive integer`);
+        }
+        if (type !== 'char' && type !== 'varchar') {
+          throw new Error(`@Field(${name}) maxLength is only supported on char/varchar fields`);
+        }
+        hints.maxLength = optionBag.maxLength;
+      }
+
+      if (optionBag.precision !== undefined) {
+        if (!isInt(optionBag.precision) || optionBag.precision < 1 || optionBag.precision > 38) {
+          throw new Error(`@Field(${name}) precision must be in 1..38`);
+        }
+        if (type !== 'decimal') {
+          throw new Error(`@Field(${name}) precision is only supported on decimal fields`);
+        }
+        hints.precision = optionBag.precision;
+      }
+
+      if (optionBag.scale !== undefined) {
+        if (!isInt(optionBag.scale) || optionBag.scale < 0 || optionBag.scale > 18) {
+          throw new Error(`@Field(${name}) scale must be in 0..18`);
+        }
+        if (type !== 'decimal') {
+          throw new Error(`@Field(${name}) scale is only supported on decimal fields`);
+        }
+        hints.scale = optionBag.scale;
+      }
+
+      if (hints.precision != null && hints.scale != null && hints.scale > hints.precision) {
+        throw new Error(`@Field(${name}) scale must not be greater than precision (${hints.scale} > ${hints.precision})`);
+      }
+
+      normalizedStorageHints = hints;
+    }
+
+    let normalizedRelated: FieldMetadata['related'] | undefined;
+    if (hasRelated) {
+      const related = asObjectRecord(optionBag.related);
+      const path = String(related?.path || '').trim();
+      if (!path) {
+        throw new Error(`@Field(${name}) related.path must be a non-empty string`);
+      }
+
+      if (related?.store != null && typeof related.store !== 'boolean') {
+        throw new Error(`@Field(${name}) related.store must be a boolean when provided`);
+      }
+
+      if (related?.deps != null && !Array.isArray(related.deps)) {
+        throw new Error(`@Field(${name}) related.deps must be a string array when provided`);
+      }
+
+      const deps = Array.isArray(related?.deps) ? [...new Set(related.deps.map(dep => String(dep || '').trim()).filter(Boolean))] : undefined;
+
+      normalizedRelated = {
+        path,
+        store: related?.store === true,
+        ...(deps && deps.length ? { deps } : {}),
+      };
+    }
+
+    if (!hasSelect && !hasColumn && normalizedStorageHints) {
+      const normalizedColumn: ObjectRecord = {};
+      if (normalizedStorageHints.required === true) normalizedColumn.notNull = true;
+      if (normalizedStorageHints.indexed === true) normalizedColumn.index = true;
+      if (normalizedStorageHints.maxLength != null) normalizedColumn.size = normalizedStorageHints.maxLength;
+      if (normalizedStorageHints.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
+      if (normalizedStorageHints.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
+      optionBag.column = normalizedColumn;
+      hasColumn = true;
+    }
 
     // Selection-specific validation
     if (type === 'selection') {
@@ -129,6 +240,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         size: 20,
         index: true,
       };
+      hasColumn = true;
     }
 
     // ManyToManyRef default physical column: jsonobject (actual physical mapping is decided by migrator)
@@ -137,6 +249,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       optionBag.column = {
         ...(optionBag.column || {}),
       };
+      hasColumn = true;
     }
 
     // Validate targetModel for ref types
@@ -264,6 +377,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];
     if (hasColumn) meta.column = optionBag.column as FieldMetadata['column'];
     else if (autoColumnScalar || autoColumnManyToOne) meta.column = {};
+
+    if (normalizedRelated) meta.related = normalizedRelated;
+    if (normalizedStorageHints) meta.storageHints = normalizedStorageHints;
 
     if (hasSelect) meta.select = optionBag.select as FieldMetadata['select'];
 

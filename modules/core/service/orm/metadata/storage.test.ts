@@ -327,6 +327,101 @@ test('metadata storage builder merge normalizes malformed handlers and keeps und
   expect(oc?.priority).toBe(8);
 });
 
+test('metadata storage merges behavior handler maps and applies subclass override by field', () => {
+  const storage = MetadataStorage.instance as any;
+
+  resetModelMetadata(StorageParentModel as any);
+  resetModelMetadata(StorageChildModel as any);
+
+  storage.setModelMetadata(
+    StorageParentModel as any,
+    {
+      computeHandlers: new Map([
+        [
+          'Total',
+          {
+            field: 'Total',
+            method: 'computeTotalParent',
+            deps: ['Amount'],
+            store: true,
+          },
+        ],
+      ]),
+      sqlComputeHandlers: new Map([
+        [
+          'DisplayName',
+          {
+            field: 'DisplayName',
+            method: 'sqlDisplayNameParent',
+            deps: ['Name'],
+          },
+        ],
+      ]),
+      searchHandlers: new Map([
+        [
+          'VirtualName',
+          {
+            field: 'VirtualName',
+            method: 'searchVirtualNameParent',
+          },
+        ],
+      ]),
+      inverseHandlers: new Map([
+        [
+          'RelatedName',
+          {
+            field: 'RelatedName',
+            method: 'inverseRelatedNameParent',
+          },
+        ],
+      ]),
+    } as any
+  );
+
+  storage.setModelMetadata(
+    StorageChildModel as any,
+    {
+      computeHandlers: new Map([
+        [
+          'Total',
+          {
+            field: 'Total',
+            method: 'computeTotalChild',
+            deps: ['Amount', 'Tax'],
+            store: false,
+            searchable: true,
+            runAs: 'sudo',
+          },
+        ],
+      ]),
+      searchHandlers: new Map([
+        [
+          'LocalName',
+          {
+            field: 'LocalName',
+            method: 'searchLocalNameChild',
+          },
+        ],
+      ]),
+    } as any
+  );
+
+  const merged = storage.getModelMetadata(StorageChildModel as any) as any;
+
+  expect(merged.computeHandlers?.get('Total')).toEqual({
+    field: 'Total',
+    method: 'computeTotalChild',
+    deps: ['Amount', 'Tax'],
+    store: false,
+    searchable: true,
+    runAs: 'sudo',
+  });
+  expect(merged.sqlComputeHandlers?.get('DisplayName')?.method).toBe('sqlDisplayNameParent');
+  expect(merged.searchHandlers?.get('VirtualName')?.method).toBe('searchVirtualNameParent');
+  expect(merged.searchHandlers?.get('LocalName')?.method).toBe('searchLocalNameChild');
+  expect(merged.inverseHandlers?.get('RelatedName')?.method).toBe('inverseRelatedNameParent');
+});
+
 test('metadata storage getEffectiveConstraints resolves source fallback to class name and unknown', () => {
   const storage = MetadataStorage.instance as any;
 

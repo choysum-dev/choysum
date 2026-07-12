@@ -156,6 +156,27 @@ class BaseModel {
   }
 
   /**
+   * Bridge slot for @SqlCompute runtime context (wired in runtime phase).
+   */
+  get $sql(): never {
+    throw new Error('BRIDGE_CONTEXT_UNAVAILABLE: $sql is only available during @SqlCompute execution');
+  }
+
+  /**
+   * Bridge slot for @Search runtime context (wired in runtime phase).
+   */
+  get $search(): never {
+    throw new Error('BRIDGE_CONTEXT_UNAVAILABLE: $search is only available during @Search execution');
+  }
+
+  /**
+   * Bridge slot for @Inverse runtime context (wired in runtime phase).
+   */
+  get $inverse(): never {
+    throw new Error('BRIDGE_CONTEXT_UNAVAILABLE: $inverse is only available during @Inverse execution');
+  }
+
+  /**
    * Returns the current request user Id, throwing when no user identity
    * can be resolved.
    */

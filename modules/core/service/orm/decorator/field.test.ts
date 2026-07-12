@@ -117,7 +117,7 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
   expect(imageMeta?.column).toEqual({});
 
   expect(m2oRefMeta?.targetModel).toBeDefined();
-  expect(m2oRefMeta?.column).toEqual({});
+  expect(m2oRefMeta?.column).toEqual({ size: 20, index: true });
 
   expect(m2mRefMeta?.targetModel).toBeDefined();
   expect(m2mRefMeta?.column).toEqual({});
@@ -219,4 +219,66 @@ test('Field decorator validates ref/relation/compute/decimal constraints', () =>
     }
     return ComputeSearchBlankModel;
   }).toThrow('compute.search must not be blank');
+});
+
+test('Field decorator registers flat storage hints and related metadata', () => {
+  class FlatFieldModel extends BaseModel {
+    @Field({ type: 'varchar', maxLength: 64, required: true, indexed: true } as any)
+    Name!: string;
+
+    @Field({ type: 'decimal', precision: 12, scale: 4 } as any)
+    Amount!: string;
+
+    @Field({
+      type: 'varchar',
+      related: {
+        path: 'PartnerId.Name',
+        store: true,
+        deps: ['PartnerId', 'PartnerId.Name', 'PartnerId.Name'],
+      },
+      maxLength: 128,
+    } as any)
+    PartnerName!: string;
+  }
+
+  const metadata = MetadataStorage.instance.getModelMetadata(FlatFieldModel as any);
+  const nameMeta = metadata.fields.get('Name') as any;
+  const amountMeta = metadata.fields.get('Amount') as any;
+  const partnerNameMeta = metadata.fields.get('PartnerName') as any;
+
+  expect(nameMeta?.storageHints).toEqual({
+    required: true,
+    indexed: true,
+    maxLength: 64,
+  });
+  expect(nameMeta?.column).toEqual({ notNull: true, index: true, size: 64 });
+
+  expect(amountMeta?.storageHints).toEqual({ precision: 12, scale: 4 });
+  expect(amountMeta?.column?.precision).toBe(12);
+  expect(amountMeta?.column?.scale).toBe(4);
+
+  expect(partnerNameMeta?.storageHints).toEqual({ maxLength: 128 });
+  expect(partnerNameMeta?.related).toEqual({
+    path: 'PartnerId.Name',
+    store: true,
+    deps: ['PartnerId', 'PartnerId.Name'],
+  });
+});
+
+test('Field decorator rejects mixing flat options with legacy column/select branches', () => {
+  expect(() => {
+    class FlatLegacyMixColumnModel extends BaseModel {
+      @Field({ type: 'varchar', maxLength: 64, column: { size: 64 } } as any)
+      Name!: string;
+    }
+    return FlatLegacyMixColumnModel;
+  }).toThrow('flat options cannot be mixed with legacy column/select branches');
+
+  expect(() => {
+    class FlatLegacyMixSelectModel extends BaseModel {
+      @Field({ type: 'varchar', indexed: true, select: { expr: () => 'X' } } as any)
+      Name!: string;
+    }
+    return FlatLegacyMixSelectModel;
+  }).toThrow('flat options cannot be mixed with legacy column/select branches');
 });

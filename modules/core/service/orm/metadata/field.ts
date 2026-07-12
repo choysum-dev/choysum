@@ -45,6 +45,57 @@ export type ManyToManyMetadata<TJoin extends BaseModel, TTarget extends BaseMode
 export type BaseFieldOptions = { type: FieldType };
 
 /**
+ * Flat storage hints declared on @Field.
+ */
+export interface FieldStorageHints {
+  required?: boolean;
+  indexed?: boolean;
+  maxLength?: number;
+  precision?: number;
+  scale?: number;
+}
+
+/**
+ * Related-field contract declared on @Field.
+ */
+export interface FieldRelatedOption {
+  path: string;
+  store?: boolean;
+  deps?: string[];
+}
+
+/**
+ * Relation contract used by flat @Field options.
+ */
+export type FieldRelationOption<TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = {
+  targetModel?: () => ModelCtor<TTarget> & typeof BaseModel;
+  onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+  onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+  inverseField?: string;
+  joinModel?: () => ModelCtor<TJoin> & typeof BaseModel;
+  joinField?: string;
+  inverseJoinField?: string;
+};
+
+/**
+ * Flat @Field authoring contract (PR-1).
+ */
+export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = BaseFieldOptions & {
+  relation?: FieldRelationOption<TJoin, TTarget>;
+  selection?: SelectionItem[];
+  related?: FieldRelatedOption;
+  required?: boolean;
+  indexed?: boolean;
+  maxLength?: number;
+  precision?: number;
+  scale?: number;
+  targetModel?: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  // Keep optional legacy branches for gradual migration in runtime decorators.
+  column?: ColumnOptions<T, unknown> & ObjectRecord;
+  select?: SelectOptions<T, unknown> & ObjectRecord;
+};
+
+/**
  * One selectable option for a selection field.
  */
 export interface SelectionItem {
@@ -466,6 +517,8 @@ export interface FieldMetadata {
   select?: SelectOptions<BaseModel, unknown>;
   selection?: readonly SelectionItem[]; // Selection options list
   targetModel?: (() => ModelCtor<BaseModel> & typeof BaseModel) | string;
+  related?: FieldRelatedOption;
+  storageHints?: FieldStorageHints;
 }
 
 // Decrement tuple (limits max recursion depth to avoid excessive type expansion)
@@ -585,4 +638,5 @@ export type FieldOptions<
   | SelectionFieldOptions<T, R>
   | ManyToOneFieldOptions<T, R, TTarget>
   | OneToManyFieldOptions<T, R, TTarget>
-  | ManyToManyFieldOptions<T, R, TJoin, TTarget>;
+  | ManyToManyFieldOptions<T, R, TJoin, TTarget>
+  | FlatFieldOptions<T, TJoin, TTarget>;
