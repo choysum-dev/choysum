@@ -74,3 +74,38 @@ test('onchange runs configured preview kernel subset and reports decimal issues'
   expect(result.messages?.[0]?.message.includes('valid decimal')).toBe(true);
   expect(result.value).toBe(undefined as any);
 });
+
+test('onchange constraint preview runs alongside instanceNoArgs handler returning condition', async () => {
+  class ConstraintPreviewNoArgsModel extends BaseModel {
+    @Field({ type: 'varchar', column: { size: 64 } })
+    Name?: string;
+
+    @Field({ type: 'varchar', column: { size: 64 } })
+    Code?: string;
+
+    static validateNoArgsPreview(self: ConstraintPreviewNoArgsModel) {
+      if (self.Name === 'BAD') {
+        throw new Error('preview-blocked');
+      }
+    }
+  }
+
+  Constraint<ConstraintPreviewNoArgsModel>('Name', { preview: true, priority: 1 })(ConstraintPreviewNoArgsModel, 'validateNoArgsPreview', undefined as any);
+
+  // Simulate an instanceNoArgs handler that emits a condition — the engine should
+  // process both the constraint preview and the handler's return side-effects.
+  const result = await ConstraintPreviewNoArgsModel.Onchange(
+    {
+      Id: 'pilot_1',
+      Name: 'BAD',
+      Code: '',
+    },
+    ['Name']
+  );
+
+  // Constraint should block with an error message.
+  expect(Boolean(result.messages)).toBe(true);
+  expect(result.messages?.some(m => String(m.message || '').includes('preview-blocked'))).toBe(true);
+  // Value should be dropped due to error.
+  expect(result.value).toBe(undefined as any);
+});

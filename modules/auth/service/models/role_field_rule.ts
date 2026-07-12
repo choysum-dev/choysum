@@ -3,7 +3,6 @@
 
 import { BaseModel, Model, Field } from '@/core/service';
 import { Onchange } from '@/core/service/api/onchange';
-import type { OnchangeContext } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
@@ -237,20 +236,24 @@ export default class RoleFieldRule extends BaseModel {
   /**
    * Reset the field scope when the model scope changes and narrow the field picker.
    */
-  @Onchange<RoleFieldRule>('IrModelId')
-  async OnchangeIrModelId(ctx: OnchangeContext<RoleFieldRule>) {
-    ctx.emit(ctx.val('IrFieldId', null as any));
+  @Onchange<RoleFieldRule>('IrModelId', { signature: 'instanceNoArgs' })
+  async OnchangeIrModelId() {
+    this.IrFieldId = undefined;
 
     const modelId = this.IrModelId;
 
     if (modelId) {
       // Narrow the field picker to the selected model
-      ctx.emit(ctx.val('IrModelId', modelId));
-      ctx.emit(ctx.cond('IrFieldId', ['ModelId', '=', modelId] as any));
+      this.IrModelId = modelId;
+      return {
+        condition: [{ field: 'IrFieldId', condition: ['ModelId', '=', modelId] }],
+      };
     } else {
       // Fallback to an always-false condition to block selection
-      ctx.emit(ctx.val('IrModelId', null as any));
-      ctx.emit(ctx.cond('IrFieldId', ['Id', '=', '0'] as any));
+      this.IrModelId = undefined;
+      return {
+        condition: [{ field: 'IrFieldId', condition: ['Id', '=', '0'] }],
+      };
     }
   }
 }
