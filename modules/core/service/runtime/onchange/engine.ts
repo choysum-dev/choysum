@@ -4,7 +4,7 @@
 import type { ModelMetadata, OnchangeHandlerMeta } from '../../orm/metadata/model';
 import type BaseModel from '../../orm/model/model';
 import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS } from './constants';
-import { createOnchangeContext, normalizeMessages, normalizeCondition, normalizeSelection, applyValuePatch } from './context';
+import { normalizeMessages, normalizeCondition, normalizeSelection, applyValuePatch } from './context';
 import type { OnchangeDraft, OnchangeMessage, OnchangeCondition, SelectionCondition, OnchangeRunOptions, OnchangeEngineResult } from './types';
 import { createOnchangeDraft } from '../proxy';
 import Decimal, { normalizeDecimalByMeta, isDecimal } from '@/core/utils/decimal';
@@ -121,24 +121,8 @@ export class OnchangeEngine {
       messages.push(...normalized);
     };
 
-    // Create the OnchangeContext with selection support.
-    const ctx = createOnchangeContext({
-      draft: onchangeDraft,
-      changed: new Set<string>(changed),
-      pushMessages: (m: OnchangeMessage[]) => {
-        if (m?.some(x => x?.level === 'error')) hasError = true;
-        messages.push(...m);
-      },
-      pushCondition: (q: OnchangeCondition[]) => condition.push(...q),
-      // Collect selection conditions.
-      pushSelection: (s: SelectionCondition[]) => selection.push(...s),
-      applyValue: (v: OnchangePatch) => {
-        // Apply the same top-level decimal quantization used by the sink.
-        const normalized = quantizeDecimalPatch(meta, v);
-        Object.assign(emittedPatch, normalized);
-        applyValuePatch(draft, normalized);
-      },
-    });
+    // Push helpers are wired directly; the legacy OnchangeContext object is no
+    // longer created since all handlers now use the instance-noargs contract.
 
     while (pending.size && iter < max && !(stopOnError && hasError)) {
       iter++;

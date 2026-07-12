@@ -117,6 +117,7 @@ test('onchange decorator writes explicit signature to metadata', () => {
   decorate(
     OnchangeDecoratorModelWithExplicitSignature.prototype,
     'handle' as any,
+    Object.getOwnPropertyDescriptor(OnchangeDecoratorModelWithExplicitSignature.prototype, 'handle')!
   );
 
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDecoratorModelWithExplicitSignature as any);
@@ -133,6 +134,7 @@ test('onchange decorator omits signature when not specified (raw metadata)', () 
   decorate(
     OnchangeDecoratorModelWithDefaultSignature.prototype,
     'handle' as any,
+    Object.getOwnPropertyDescriptor(OnchangeDecoratorModelWithDefaultSignature.prototype, 'handle')!
   );
 
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDecoratorModelWithDefaultSignature as any);
