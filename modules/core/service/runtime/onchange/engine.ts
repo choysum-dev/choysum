@@ -3,7 +3,7 @@
 
 import type { ModelMetadata, OnchangeHandlerMeta } from '../../orm/metadata/model';
 import type BaseModel from '../../orm/model/model';
-import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS, ENABLE_ONCHANGE_LEGACY_CTX } from './constants';
+import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS } from './constants';
 import { createOnchangeContext, normalizeMessages, normalizeCondition, normalizeSelection, applyValuePatch } from './context';
 import type { OnchangeDraft, OnchangeMessage, OnchangeCondition, SelectionCondition, OnchangeRunOptions, OnchangeEngineResult } from './types';
 import { createOnchangeDraft } from '../proxy';
@@ -157,7 +157,7 @@ export class OnchangeEngine {
         }
 
         try {
-          const rawResult = this.invokeOnchangeHandler(handler, draft, onchangeDraft, ctx);
+          const rawResult = this.invokeOnchangeHandler(handler, draft, onchangeDraft);
           const result = rawResult instanceof Promise ? await rawResult : rawResult;
           const ret = (result ?? {}) as OnchangeHandlerReturn;
 
@@ -360,18 +360,11 @@ export class OnchangeEngine {
    *
    * The return value may be a Promise; the caller is responsible for awaiting.
    */
-  private static invokeOnchangeHandler(handler: OnchangeHandlerMeta, draft: OnchangeDraft, onchangeDraft: BaseModel, ctx: unknown): unknown {
+  private static invokeOnchangeHandler(handler: OnchangeHandlerMeta, draft: OnchangeDraft, onchangeDraft: BaseModel): unknown {
     const fn = draft[handler.method] as ((...args: unknown[]) => unknown) | undefined;
     if (typeof fn !== 'function') return undefined;
-
-    const sig = handler.signature;
-    // When the feature flag is off, always use instanceNoArgs — this is the
-    // end-state after all handlers have been migrated.
-    if (sig === 'instanceNoArgs' || !ENABLE_ONCHANGE_LEGACY_CTX) {
-      return fn.call(onchangeDraft);
-    }
-    // legacyCtx or unset — pass ctx for backward compatibility.
-    return fn.call(onchangeDraft, ctx);
+    // All handlers run without arguments — the end-state of the onchange migration.
+    return fn.call(onchangeDraft);
   }
 
   /**
