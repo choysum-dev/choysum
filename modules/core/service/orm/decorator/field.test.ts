@@ -223,7 +223,7 @@ test('Field decorator validates ref/relation/compute/decimal constraints', () =>
 
 test('Field decorator registers flat storage hints and related metadata', () => {
   class FlatFieldModel extends BaseModel {
-    @Field({ type: 'varchar', maxLength: 64, required: true, indexed: true } as any)
+    @Field({ type: 'varchar', size: 64, required: true, indexed: true } as any)
     Name!: string;
 
     @Field({ type: 'decimal', precision: 12, scale: 4 } as any)
@@ -236,7 +236,7 @@ test('Field decorator registers flat storage hints and related metadata', () => 
         store: true,
         deps: ['PartnerId', 'PartnerId.Name', 'PartnerId.Name'],
       },
-      maxLength: 128,
+      size: 128,
     } as any)
     PartnerName!: string;
   }
@@ -249,7 +249,7 @@ test('Field decorator registers flat storage hints and related metadata', () => 
   expect(nameMeta?.storageHints).toEqual({
     required: true,
     indexed: true,
-    maxLength: 64,
+    size: 64,
   });
   expect(nameMeta?.column).toEqual({ notNull: true, index: true, size: 64 });
 
@@ -257,7 +257,7 @@ test('Field decorator registers flat storage hints and related metadata', () => 
   expect(amountMeta?.column?.precision).toBe(12);
   expect(amountMeta?.column?.scale).toBe(4);
 
-  expect(partnerNameMeta?.storageHints).toEqual({ maxLength: 128 });
+  expect(partnerNameMeta?.storageHints).toEqual({ size: 128 });
   expect(partnerNameMeta?.related).toEqual({
     path: 'PartnerId.Name',
     store: true,
@@ -268,7 +268,7 @@ test('Field decorator registers flat storage hints and related metadata', () => 
 test('Field decorator rejects mixing flat options with legacy column/select branches', () => {
   expect(() => {
     class FlatLegacyMixColumnModel extends BaseModel {
-      @Field({ type: 'varchar', maxLength: 64, column: { size: 64 } } as any)
+      @Field({ type: 'varchar', size: 64, column: { size: 64 } } as any)
       Name!: string;
     }
     return FlatLegacyMixColumnModel;

@@ -78,10 +78,10 @@ func TestModelMigratorErrorPaths(t *testing.T) {
 		}
 
 		migrator := newModelMigrator(runtimeScope, nil, []*meta.IrModel{broken})
-		if err := migrator.migrateTableSchema([]*meta.IrModel{broken}); err == nil || !strings.Contains(err.Error(), "error unmarshal @Field options") {
+		if err := migrator.migrateTableSchema([]*meta.IrModel{broken}); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("migrateTableSchema() error = %v", err)
 		}
-		if err := migrator.applyTableCheckConstraints("sales_broken", broken); err == nil || !strings.Contains(err.Error(), "error unmarshal @Field options") {
+		if err := migrator.applyTableCheckConstraints("sales_broken", broken); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("applyTableCheckConstraints() error = %v", err)
 		}
 	})
@@ -287,7 +287,7 @@ func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
 		}
 
 		invalidJSON := newFieldWithOptions(t, "Broken", `{invalid}`)
-		if _, err := migrator.getFieldColumnMeta(invalidJSON); err == nil || !strings.Contains(err.Error(), "error unmarshal @Field options") {
+		if _, err := migrator.getFieldColumnMeta(invalidJSON); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("expected invalid JSON error, got %v", err)
 		}
 	})
@@ -319,4 +319,116 @@ func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	migrator := newModelMigrator(runtimeScope, nil, nil)
+
+	t.Run("sql compute fields do not create columns", func(t *testing.T) {
+		field := &meta.IrField{Name: "DisplayName"}
+		spec := &meta.IrFieldResolvedSpec{
+			FieldName: "DisplayName",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "DisplayName",
+				FieldType: "varchar",
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "virtualSql",
+				ShouldCreateColumn: false,
+				ReasonCode:         "SQL_COMPUTE",
+			},
+		}
+		if err := field.SetResolvedSpec(spec); err != nil {
+			t.Fatalf("SetResolvedSpec error = %v", err)
+		}
+
+		metaMap, err := migrator.getFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getFieldColumnMeta(sql compute) error = %v", err)
+		}
+		if metaMap != nil {
+			t.Fatalf("expected sql compute field to skip column, got %#v", metaMap)
+		}
+	})
+
+	t.Run("compute store false does not create columns while store true does", func(t *testing.T) {
+		virtualField := &meta.IrField{Name: "VirtualTotal"}
+		virtualSpec := &meta.IrFieldResolvedSpec{
+			FieldName: "VirtualTotal",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "VirtualTotal",
+				FieldType: "decimal",
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Precision: intPtr(16),
+					Scale:     intPtr(2),
+				},
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "virtualRuntime",
+				ShouldCreateColumn: false,
+				ReasonCode:         "COMPUTE_STORE_FALSE",
+			},
+		}
+		if err := virtualField.SetResolvedSpec(virtualSpec); err != nil {
+			t.Fatalf("SetResolvedSpec(virtual) error = %v", err)
+		}
+
+		persistedField := &meta.IrField{Name: "PersistedTotal"}
+		persistedSpec := &meta.IrFieldResolvedSpec{
+			FieldName: "PersistedTotal",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "PersistedTotal",
+				FieldType: "decimal",
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Precision: intPtr(18),
+					Scale:     intPtr(4),
+				},
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "decimal",
+				ReasonCode:         "COMPUTE_STORE_TRUE",
+			},
+		}
+		if err := persistedField.SetResolvedSpec(persistedSpec); err != nil {
+			t.Fatalf("SetResolvedSpec(persisted) error = %v", err)
+		}
+
+		virtualMeta, err := migrator.getFieldColumnMeta(virtualField)
+		if err != nil {
+			t.Fatalf("getFieldColumnMeta(virtual) error = %v", err)
+		}
+		if virtualMeta != nil {
+			t.Fatalf("expected virtual compute field to skip column, got %#v", virtualMeta)
+		}
+
+		persistedMeta, err := migrator.getFieldColumnMeta(persistedField)
+		if err != nil {
+			t.Fatalf("getFieldColumnMeta(persisted) error = %v", err)
+		}
+		if persistedMeta == nil || persistedMeta["type"] != "decimal" || persistedMeta["precision"] != 18 || persistedMeta["scale"] != 4 {
+			t.Fatalf("unexpected persisted compute meta: %#v", persistedMeta)
+		}
+	})
+
+	t.Run("related store true and flat hints map to physical column params", func(t *testing.T) {
+		field := newFieldWithOptions(t, "PartnerName", `{"type":"varchar","related":{"path":"PartnerId.Name","store":true},"required":true,"indexed":true,"size":120}`)
+		metaMap, err := migrator.getFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getFieldColumnMeta(related store=true) error = %v", err)
+		}
+		if metaMap == nil {
+			t.Fatal("expected related store=true field to create a column")
+		}
+		if metaMap["type"] != "varchar" || metaMap["size"] != 120 || metaMap["notNull"] != true || metaMap["index"] != true {
+			t.Fatalf("unexpected related+storage-hints column meta: %#v", metaMap)
+		}
+	})
+}
+
+func intPtr(v int) *int {
+	value := v
+	return &value
 }

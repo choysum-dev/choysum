@@ -39,7 +39,7 @@ type FieldDecoratorOptionBag = {
   related?: unknown;
   required?: unknown;
   indexed?: unknown;
-  maxLength?: unknown;
+  size?: unknown;
   precision?: unknown;
   scale?: unknown;
 };
@@ -75,7 +75,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     const hasFlatStorageHints =
       optionBag.required !== undefined ||
       optionBag.indexed !== undefined ||
-      optionBag.maxLength !== undefined ||
+      optionBag.size !== undefined ||
       optionBag.precision !== undefined ||
       optionBag.scale !== undefined;
     const hasRelated = optionBag.related !== undefined;
@@ -104,14 +104,14 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         hints.indexed = optionBag.indexed;
       }
 
-      if (optionBag.maxLength !== undefined) {
-        if (!isInt(optionBag.maxLength) || optionBag.maxLength < 1) {
-          throw new Error(`@Field(${name}) maxLength must be a positive integer`);
+      if (optionBag.size !== undefined) {
+        if (!isInt(optionBag.size) || optionBag.size < 1) {
+          throw new Error(`@Field(${name}) size must be a positive integer`);
         }
         if (type !== 'char' && type !== 'varchar') {
-          throw new Error(`@Field(${name}) maxLength is only supported on char/varchar fields`);
+          throw new Error(`@Field(${name}) size is only supported on char/varchar fields`);
         }
-        hints.maxLength = optionBag.maxLength;
+        hints.size = optionBag.size;
       }
 
       if (optionBag.precision !== undefined) {
@@ -170,7 +170,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       const normalizedColumn: ObjectRecord = {};
       if (normalizedStorageHints.required === true) normalizedColumn.notNull = true;
       if (normalizedStorageHints.indexed === true) normalizedColumn.index = true;
-      if (normalizedStorageHints.maxLength != null) normalizedColumn.size = normalizedStorageHints.maxLength;
+      if (normalizedStorageHints.size != null) normalizedColumn.size = normalizedStorageHints.size;
       if (normalizedStorageHints.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
       if (normalizedStorageHints.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
       optionBag.column = normalizedColumn;

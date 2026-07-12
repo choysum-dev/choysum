@@ -50,7 +50,7 @@ export type BaseFieldOptions = { type: FieldType };
 export interface FieldStorageHints {
   required?: boolean;
   indexed?: boolean;
-  maxLength?: number;
+  size?: number;
   precision?: number;
   scale?: number;
 }
@@ -86,7 +86,7 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   related?: FieldRelatedOption;
   required?: boolean;
   indexed?: boolean;
-  maxLength?: number;
+  size?: number;
   precision?: number;
   scale?: number;
   targetModel?: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
