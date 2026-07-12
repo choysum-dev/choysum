@@ -32,6 +32,15 @@ type FieldMetadata struct {
 	Name                     string  `json:"name"`
 	FieldType                string  `json:"fieldType"`
 	TypeAnnotation           string  `json:"typeAnnotation"`
+	StorageKind              *string `json:"storageKind,omitempty"`
+	ShouldCreateColumn       *bool   `json:"shouldCreateColumn,omitempty"`
+	ResolvedColumnType       *string `json:"resolvedColumnType,omitempty"`
+	ReasonCode               *string `json:"reasonCode,omitempty"`
+	ComputedKind             *string `json:"computedKind,omitempty"`
+	RelatedPath              *string `json:"relatedPath,omitempty"`
+	RelatedStore             *bool   `json:"relatedStore,omitempty"`
+	Searchable               *bool   `json:"searchable,omitempty"`
+	RunAs                    *string `json:"runAs,omitempty"`
 	Relation                 *string `json:"relation,omitempty"`
 	RelationModel            *string `json:"relationModel,omitempty"`
 	RelationFilter           *string `json:"relationFilter,omitempty"`
@@ -56,6 +65,63 @@ type FieldMetadata struct {
 	ScaleField *string `json:"scaleField,omitempty"`
 }
 
+func toStringPtr(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	v := value
+	return &v
+}
+
+func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
+	if metadata == nil || field == nil {
+		return
+	}
+
+	resolved, err := field.GetResolvedSpec()
+	if err != nil || resolved == nil {
+		return
+	}
+
+	metadata.StorageKind = toStringPtr(resolved.Migration.StorageKind)
+	shouldCreateColumn := resolved.Migration.ShouldCreateColumn
+	metadata.ShouldCreateColumn = &shouldCreateColumn
+	metadata.ResolvedColumnType = toStringPtr(resolved.Migration.ResolvedColumnType)
+	metadata.ReasonCode = toStringPtr(resolved.Migration.ReasonCode)
+
+	computedKind := ""
+	switch {
+	case resolved.Behavior.SqlCompute != nil:
+		computedKind = "sql"
+	case resolved.Behavior.Compute != nil:
+		computedKind = "runtime"
+	case resolved.Structural.Related != nil:
+		computedKind = "related"
+	}
+	metadata.ComputedKind = toStringPtr(computedKind)
+
+	if related := resolved.Structural.Related; related != nil {
+		metadata.RelatedPath = toStringPtr(related.Path)
+		relatedStore := related.Store
+		metadata.RelatedStore = &relatedStore
+	}
+
+	if resolved.Resolved.Searchable.Value != nil {
+		searchable := *resolved.Resolved.Searchable.Value
+		metadata.Searchable = &searchable
+	} else if resolved.Behavior.Search != nil {
+		searchable := true
+		metadata.Searchable = &searchable
+	}
+
+	if resolved.Resolved.RunAs.Value != nil {
+		metadata.RunAs = toStringPtr(*resolved.Resolved.RunAs.Value)
+	} else if resolved.Behavior.Compute != nil {
+		metadata.RunAs = toStringPtr(resolved.Behavior.Compute.RunAs)
+	}
+}
+
 type webApiStoreGenerator struct {
 	runtimeScope scope.Scope
 	module       *meta.IrModule
@@ -71,6 +137,8 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 		FieldType:      field.FieldType,
 		TypeAnnotation: field.TsTypeAnnotation,
 	}
+
+	applyResolvedFieldContract(&metadata, field)
 
 	// Pass through the ID when it is valid.
 	if field.Id.Valid && field.Id.String != "" {

@@ -16,6 +16,15 @@ export type FieldMetadata = {
   id: string;
   type: string;
   typeAnnotation: string;
+  storageKind?: string;
+  shouldCreateColumn?: boolean;
+  resolvedColumnType?: string;
+  reasonCode?: string;
+  computedKind?: string;
+  relatedPath?: string;
+  relatedStore?: boolean;
+  searchable?: boolean;
+  runAs?: string;
   notNull?: boolean;
   size?: number;
   precision?: number;
@@ -34,6 +43,38 @@ export type FieldMetadata = {
   relationJoinField?: string;
   relationInverseJoinField?: string;
 };
+
+export function getFieldMetadataCompatibility(meta: FieldMetadata | undefined) {
+  const lowerType = typeof meta?.type === 'string' ? meta.type.toLowerCase() : '';
+  const isRelationByType = lowerType.includes('manytoone') || lowerType.includes('onetomany') || lowerType.includes('manytomany');
+
+  const relationModel = meta?.relationModel;
+  const relation = meta?.relation;
+  const relatedPath = meta?.relatedPath;
+  const computedKind = meta?.computedKind;
+  const storageKind = meta?.storageKind;
+  const searchable = typeof meta?.searchable === 'boolean' ? meta.searchable : undefined;
+  const shouldCreateColumn = typeof meta?.shouldCreateColumn === 'boolean' ? meta.shouldCreateColumn : undefined;
+  const resolvedColumnType = meta?.resolvedColumnType;
+  const reasonCode = meta?.reasonCode;
+  const relatedStore = typeof meta?.relatedStore === 'boolean' ? meta.relatedStore : undefined;
+  const runAs = meta?.runAs;
+
+  return {
+    relationModel,
+    relation,
+    relatedPath,
+    relatedStore,
+    computedKind,
+    storageKind,
+    shouldCreateColumn,
+    resolvedColumnType,
+    reasonCode,
+    searchable,
+    runAs,
+    isRelation: !!relationModel || !!relation || isRelationByType,
+  } as const;
+}
 
 export type PlanCacheEntry = {
   signature: string;

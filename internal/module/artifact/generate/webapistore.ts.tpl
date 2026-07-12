@@ -27,6 +27,15 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.Id}}id: '{{$field.Id}}',{{- end}}
     type: '{{$field.FieldType}}',
     typeAnnotation: '{{$field.TypeAnnotation}}',
+    {{- if $field.StorageKind}}storageKind: '{{$field.StorageKind}}',{{- end}}
+    {{- if ne $field.ShouldCreateColumn nil}}shouldCreateColumn: {{$field.ShouldCreateColumn}},{{- end}}
+    {{- if $field.ResolvedColumnType}}resolvedColumnType: '{{$field.ResolvedColumnType}}',{{- end}}
+    {{- if $field.ReasonCode}}reasonCode: '{{$field.ReasonCode}}',{{- end}}
+    {{- if $field.ComputedKind}}computedKind: '{{$field.ComputedKind}}',{{- end}}
+    {{- if $field.RelatedPath}}relatedPath: '{{$field.RelatedPath}}',{{- end}}
+    {{- if ne $field.RelatedStore nil}}relatedStore: {{$field.RelatedStore}},{{- end}}
+    {{- if ne $field.Searchable nil}}searchable: {{$field.Searchable}},{{- end}}
+    {{- if $field.RunAs}}runAs: '{{$field.RunAs}}',{{- end}}
     {{- if $field.Relation}}relation: '{{$field.Relation}}',{{- end}}
     {{- if and $field.RelationModel (or (eq $field.FieldType "ManyToOne") (eq $field.FieldType "OneToMany") (eq $field.FieldType "ManyToMany") (eq $field.FieldType "ManyToOneRef") (eq $field.FieldType "ManyToManyRef"))}}relationModel: '{{$field.RelationModel}}',{{- end}}
     {{- if $field.RelationFilter}}relationFilter: "{{$field.RelationFilter}}",{{- end}}
