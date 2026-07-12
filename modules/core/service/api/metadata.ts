@@ -55,6 +55,8 @@ export type {
   ValidationIssue,
   ConstraintContext,
   ConstraintMethod,
+  LegacyConstraintMethod,
+  InstanceConstraintMethod,
   PathDep,
   CollectionPathDep,
   OnchangeHandlerMeta,

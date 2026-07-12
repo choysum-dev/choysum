@@ -48,30 +48,22 @@ export default class SequenceIdempotency extends BaseModel {
   @Field({ type: 'datetime', column: { notNull: true, index: true } })
   ExpiresAt: Date;
 
-  private static async validateWriteEntity(values: Record<string, any>, existing?: any): Promise<void> {
-    const candidate = {
-      SequenceId: Object.prototype.hasOwnProperty.call(values, 'SequenceId') ? values.SequenceId : existing?.SequenceId,
-      CompanyId: Object.prototype.hasOwnProperty.call(values, 'CompanyId') ? values.CompanyId : existing?.CompanyId,
-      Count: Object.prototype.hasOwnProperty.call(values, 'Count') ? values.Count : existing?.Count,
-      RangeStart: Object.prototype.hasOwnProperty.call(values, 'RangeStart') ? values.RangeStart : existing?.RangeStart,
-      RangeEnd: Object.prototype.hasOwnProperty.call(values, 'RangeEnd') ? values.RangeEnd : existing?.RangeEnd,
-    };
-
-    const sequenceId = normalizeRefId(candidate.SequenceId);
+  private static async validateWriteEntity(values: Record<string, any>): Promise<void> {
+    const sequenceId = normalizeRefId(values.SequenceId);
     if (!sequenceId) {
       raiseDomainError('base', 'InvalidArgument', 'SequenceId is required');
     }
 
     const count = mapNormalizationToBase(
-      () => parsePositiveInt(candidate.Count),
+      () => parsePositiveInt(values.Count),
       () => 'Count must be an integer >= 1'
     );
     const rangeStart = mapNormalizationToBase(
-      () => parseBigInt(candidate.RangeStart),
+      () => parseBigInt(values.RangeStart),
       () => 'RangeStart must be a valid integer'
     );
     const rangeEnd = mapNormalizationToBase(
-      () => parseBigInt(candidate.RangeEnd),
+      () => parseBigInt(values.RangeEnd),
       () => 'RangeEnd must be a valid integer'
     );
     const expectedRangeEnd = rangeStart + BigInt(count) - 1n;
@@ -81,15 +73,14 @@ export default class SequenceIdempotency extends BaseModel {
 
     const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
     const sequenceCompanyId = normalizeRefId((sequence as any)?.CompanyId);
-    const companyId = normalizeRefId(candidate.CompanyId) ?? null;
+    const companyId = normalizeRefId(values.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
       raiseDomainError('base', 'InvalidArgument', 'CompanyId must match Sequence.CompanyId');
     }
   }
 
   @Constraint<SequenceIdempotency>(['SequenceId', 'CompanyId', 'Count', 'RangeStart', 'RangeEnd'])
-  static async validateSequenceIdempotencyConstraint(self: SequenceIdempotency, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    await SequenceIdempotency.validateWriteEntity(self as any, current);
+  async validateSequenceIdempotencyConstraint(): Promise<void> {
+    await SequenceIdempotency.validateWriteEntity(this as any);
   }
 }

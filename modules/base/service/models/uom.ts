@@ -105,8 +105,8 @@ export default class UoM extends BaseModel {
   }
 
   @Constraint<UoM>(['Name', 'CategoryId', 'IsReference', 'Factor', 'Rounding'])
-  static async validateUoMConstraint(self: UoM, ctx: any): Promise<void> {
-    const currentId = String((ctx?.current as any)?.Id || '').trim() || undefined;
-    await UoM.validateEntity(self as any, currentId);
+  async validateUoMConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
+    await UoM.validateEntity(this as any, currentId);
   }
 }

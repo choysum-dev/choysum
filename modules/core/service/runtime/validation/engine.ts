@@ -4,7 +4,7 @@
 import type BaseModel from '../../orm/model/model';
 import { KernelValidationError, validateFields as validateKernelFields } from '../../orm/repository/validation';
 import type { KernelValidationRule } from '../../orm/repository/validation';
-import type { ConstraintContext, ConstraintMeta, ConstraintMethod, ValidationIssue } from '../../orm/metadata/constraint';
+import type { ConstraintContext, ConstraintMeta, InstanceConstraintMethod, LegacyConstraintMethod, ValidationIssue } from '../../orm/metadata/constraint';
 import { ValidationPipelineError } from '../../orm/metadata/constraint';
 import { MetadataStorage } from '../../orm/metadata';
 import type { FieldMetadata, ModelCtor } from '../../orm/metadata/field';
@@ -57,7 +57,7 @@ export class ValidationEngine {
       );
     }
     if (includeConstraints) {
-      issues.push(...(await this.validateConstraintMethods(ctx)));
+      issues.push(...(await this.validateConstraintMethods(ctx, options)));
     }
 
     return issues;
@@ -381,8 +381,21 @@ export class ValidationEngine {
 
   /**
    * Runs registered model constraint methods in priority order.
+   *
+   * Dispatches by {@link ConstraintMeta.isStatic}:
+   * - Static handlers keep the legacy `(self, ctx)` contract.
+   * - Instance handlers are invoked with `this` bound to a draft proxy
+   *   and mutations are automatically written back to `ctx.values`.
    */
-  static async validateConstraintMethods<TModel extends BaseModel>(ctx: ConstraintContext<TModel>): Promise<ValidationIssue[]> {
+  static async validateConstraintMethods<TModel extends BaseModel>(
+    ctx: ConstraintContext<TModel>,
+    options?: {
+      kernelRules?: KernelValidationRule[];
+      platformCreateWriteWhitelist?: string[];
+      platformRejectUnknownFields?: boolean;
+      onPlatformCreateWhitelistHit?: (fields: string[]) => void;
+    }
+  ): Promise<ValidationIssue[]> {
     const handlers = (ctx.metadata.constraintHandlers || [])
       .filter(handler => this.shouldRunConstraint(handler, ctx))
       .sort((left, right) => left.priority - right.priority || left.method.localeCompare(right.method));
@@ -391,12 +404,51 @@ export class ValidationEngine {
       return [];
     }
 
-    const self = this.buildConstraintSelf(ctx);
     const issues: ValidationIssue[] = [];
+    const instanceTouched = new Set<string>();
 
     for (const handler of handlers) {
-      const executor = this.resolveConstraintMethod(ctx.model, handler);
-      if (!executor) {
+      // Rebuild `self` on every iteration so that earlier instance-constraint
+      // mutations (already flushed to `ctx.values`) are visible to subsequent
+      // static handlers.
+      const self = this.buildConstraintSelf(ctx);
+
+      if (handler.isStatic) {
+        const executor = this.resolveConstraintMethod(ctx.model, handler);
+        if (!executor) {
+          issues.push({
+            scope: 'constraint',
+            method: handler.method,
+            code: 'constraint_method_missing',
+            message: `constraint method not found: ${handler.method}`,
+            severity: 'error',
+          });
+          continue;
+        }
+
+        try {
+          await executor(self, ctx);
+        } catch (error) {
+          if (error instanceof ValidationPipelineError) {
+            issues.push(...error.issues);
+            continue;
+          }
+
+          const message = error instanceof Error ? error.message : String(error);
+          issues.push({
+            scope: 'constraint',
+            method: handler.method,
+            code: 'constraint_execution_failed',
+            message,
+            severity: 'error',
+          });
+        }
+        continue;
+      }
+
+      // Instance constraint: execute with `this` bound to a draft proxy.
+      const instanceMethod = this.resolveInstanceConstraintMethod(ctx.model, handler);
+      if (!instanceMethod) {
         issues.push({
           scope: 'constraint',
           method: handler.method,
@@ -407,8 +459,24 @@ export class ValidationEngine {
         continue;
       }
 
+      // Create draft proxy for the current handler.  Previous mutations
+      // are already flushed to `ctx.values`, which is passed as the payload
+      // source, so the draft naturally sees them through the resolve chain.
+      const { draft, changes } = this.createConstraintDraft(self, ctx.values, ctx.metadata.fields);
       try {
-        await executor(self, ctx);
+        await instanceMethod.call(draft);
+        for (const field of Object.keys(changes)) {
+          instanceTouched.add(field);
+          // Flush to ctx.values immediately so the next handler's draft
+          // (which reads ctx.values as a fallback) can observe the update.
+          ctx.values[field] = changes[field];
+          // When ctx.self is explicitly provided (e.g. preview mode),
+          // buildConstraintSelf returns it directly.  Write back so that
+          // subsequent static handlers see the mutation through `self`.
+          if (ctx.self) {
+            (ctx.self as unknown as ObjectRecord)[field] = changes[field];
+          }
+        }
       } catch (error) {
         if (error instanceof ValidationPipelineError) {
           issues.push(...error.issues);
@@ -424,6 +492,16 @@ export class ValidationEngine {
           severity: 'error',
         });
       }
+    }
+
+    // Run post-constraint re-validation for fields mutated by instance constraints.
+    // Re-validate ALL touched fields — not just the newly introduced ones —
+    // because a constraint may have changed a user-submitted value (e.g.
+    // normalizing a string) and the mutated value must pass kernel/platform
+    // rules before it is persisted.
+    if (instanceTouched.size > 0) {
+      const postIssues = await this.validatePostConstraintMutations(ctx, instanceTouched, options);
+      issues.push(...postIssues);
     }
 
     return issues;
@@ -458,15 +536,142 @@ export class ValidationEngine {
     return Object.assign(Object.create(ctx.model.prototype), ctx.current || {}, ctx.values) as TModel;
   }
 
+  /**
+   * Resolves a legacy constraint method for `(self, ctx)` invocation.
+   *
+   * When {@link ConstraintMeta.isStatic} is true the method is resolved from the
+   * model constructor; otherwise from the prototype.  In both cases the function
+   * is pre-bound to its owner so it can be called directly.
+   *
+   * For inherited constraints the prototype chain naturally resolves the
+   * closest override (child prototype before parent prototype).
+   */
   private static resolveConstraintMethod<TModel extends BaseModel>(
     model: ModelCtor<TModel> & typeof BaseModel,
     handler: ConstraintMeta
-  ): ConstraintMethod<TModel> | undefined {
+  ): LegacyConstraintMethod<TModel> | undefined {
     const owner = (handler.isStatic ? model : model.prototype) as unknown as ObjectRecord;
     const method = owner[handler.method];
     if (typeof method !== 'function') {
       return undefined;
     }
-    return method.bind(owner) as ConstraintMethod<TModel>;
+    return method.bind(owner) as LegacyConstraintMethod<TModel>;
+  }
+
+  /**
+   * Resolves an instance constraint method for `this`-based invocation.
+   *
+   * Unlike {@link resolveConstraintMethod}, the returned function is NOT pre-bound;
+   * it is intended to be called via `fn.call(draftSelf)` so that `this` inside
+   * the constraint refers to the draft proxy.
+   */
+  private static resolveInstanceConstraintMethod<TModel extends BaseModel>(
+    model: ModelCtor<TModel> & typeof BaseModel,
+    handler: ConstraintMeta
+  ): InstanceConstraintMethod<TModel> | undefined {
+    const owner = model.prototype as unknown as ObjectRecord;
+    const method = owner[handler.method];
+    if (typeof method !== 'function') {
+      return undefined;
+    }
+    return method as InstanceConstraintMethod<TModel>;
+  }
+
+  private static createConstraintDraft<TModel extends BaseModel>(
+    self: TModel,
+    payloadValues: ObjectRecord,
+    fieldMetadata: Map<string, unknown>
+  ): { draft: TModel; changes: ObjectRecord } {
+    // Use a null-prototype object so that standard prototype properties
+    // (e.g. `constructor`, `toString`) never collide with model fields.
+    const changes = Object.create(null) as ObjectRecord;
+
+    const resolve = (key: string, receiver?: unknown): unknown => {
+      // Only consult changes / payloadValues when the
+      // key is a known model field.  Otherwise fall straight through to
+      // `self` so that prototype methods and non-metadata properties are
+      // read from the real object — the `in` operator would traverse the
+      // prototype chain and return incorrect values (e.g. `Object` for
+      // `this.constructor`).
+      if (fieldMetadata.has(key)) {
+        if (key in changes) return changes[key];
+        if (payloadValues && Object.prototype.hasOwnProperty.call(payloadValues, key)) return payloadValues[key];
+      }
+      // Use Reflect.get with the receiver so that prototype getters
+      // (e.g. computed fields) run with `this` bound to the draft proxy
+      // instead of the raw `self` object.
+      return Reflect.get(self as unknown as ObjectRecord, key, receiver ?? self);
+    };
+
+    const draft = new Proxy(self as unknown as ObjectRecord, {
+      get(_target, prop, receiver) {
+        // Symbol properties (e.g. Symbol.iterator) are never model fields;
+        // delegate them directly to the target.
+        if (typeof prop === 'symbol') {
+          return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
+        }
+        const key = String(prop);
+        return resolve(key, receiver);
+      },
+      set(_target, prop, value, _receiver) {
+        if (typeof prop === 'symbol') {
+          // Do NOT pass the receiver (the proxy itself) to Reflect.set —
+          // that would re-trigger this trap and cause infinite recursion.
+          return Reflect.set(self as unknown as ObjectRecord, prop, value);
+        }
+        const key = String(prop);
+        // For non-metadata fields (transient / private properties used during
+        // validation), write directly to the target object so they can be read
+        // back, but do NOT record them in `changes` (avoid polluting the payload).
+        if (!fieldMetadata.has(key)) {
+          Reflect.set(self as unknown as ObjectRecord, prop, value);
+          return true;
+        }
+        // Skip recording when the value is already identical to the resolved
+        // current value (avoid unnecessary writebacks and re-validation).
+        if (resolve(key, _receiver) !== value) {
+          changes[key] = value;
+        }
+        return true;
+      },
+    }) as unknown as TModel;
+
+    return { draft, changes };
+  }
+
+  /**
+   * Re-runs kernel and platform validation for fields that were
+   * mutated by instance constraint methods, preventing constraint writeback
+   * from silently bypassing earlier validation layers.  The optional
+   * validation options (kernelRules, whitelists, etc.) are forwarded so
+   * the re-validation pass uses the same settings as the primary pass.
+   */
+  private static async validatePostConstraintMutations<TModel extends BaseModel>(
+    ctx: ConstraintContext<TModel>,
+    mutatedFields: Set<string>,
+    options?: {
+      kernelRules?: KernelValidationRule[];
+      platformCreateWriteWhitelist?: string[];
+      platformRejectUnknownFields?: boolean;
+      onPlatformCreateWhitelistHit?: (fields: string[]) => void;
+    }
+  ): Promise<ValidationIssue[]> {
+    if (mutatedFields.size === 0) return [];
+
+    const postCtx: ConstraintContext<TModel> = {
+      ...ctx,
+      changedFields: mutatedFields,
+    };
+
+    const issues: ValidationIssue[] = [];
+    issues.push(...(await this.validateKernelRules(postCtx, options?.kernelRules)));
+    issues.push(
+      ...(await this.validatePlatformRules(postCtx, {
+        createWriteWhitelist: options?.platformCreateWriteWhitelist,
+        rejectUnknownFields: options?.platformRejectUnknownFields,
+        onCreateWhitelistHit: options?.onPlatformCreateWhitelistHit,
+      }))
+    );
+    return issues;
   }
 }

@@ -7,7 +7,6 @@ import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/s
 import Company from './company';
 import Currency from './currency';
 import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {
@@ -87,17 +86,8 @@ export default class ExchangeRate extends BaseModel {
   }
 
   @Constraint<ExchangeRate>(['CompanyId', 'CurrencyId', 'Date', 'Rate'])
-  static async validateExchangeRateConstraint(self: ExchangeRate, ctx: any): Promise<void> {
-    const current = (ctx?.current || {}) as Record<string, any>;
-    const values = (ctx?.values || {}) as Record<string, any>;
-    const currentId = String(current?.Id || '').trim() || undefined;
-
-    await ExchangeRate.validateEntity(self as any, currentId);
-    writeConstraintFields(self as any, ctx, ['Date', 'Rate']);
-    writeConstraintFields(self as any, ctx, [], {
-      forceOnCreate: true,
-      triggerFields: ['CompanyId', 'CompanyScopeKey'],
-      targetField: 'CompanyScopeKey',
-    });
+  async validateExchangeRateConstraint(): Promise<void> {
+    const currentId = String((this as any).Id || '').trim() || undefined;
+    await ExchangeRate.validateEntity(this as any, currentId);
   }
 }

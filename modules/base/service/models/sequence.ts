@@ -6,7 +6,6 @@ import { Constraint } from '@/core/service/api/constraint';
 import Company from './company';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { normalizeCodeRequired } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 import { nextSequence } from './_sequence_next';
 import { cleanupSequenceIdempotency } from './_sequence_cleanup';
 
@@ -59,20 +58,11 @@ export default class Sequence extends BaseModel {
   @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
   IsActive: boolean;
 
-  private static validateWriteEntity(values: Record<string, any>): void {
-    values.Code = normalizeCodeRequired(values.Code, { uppercase: false });
-    values.CompanyScopeKey = normalizeRefId(values.CompanyId) || '__GLOBAL__';
-  }
-
   @Constraint<Sequence>(['Code', 'CompanyId'])
-  static validateSequenceConstraint(self: Sequence, ctx: any): void {
-    Sequence.validateWriteEntity(self as any);
-    writeConstraintFields(self as any, ctx, ['Code'], { forceOnCreate: true });
-    writeConstraintFields(self as any, ctx, [], {
-      forceOnCreate: true,
-      triggerFields: ['CompanyId', 'CompanyScopeKey'],
-      targetField: 'CompanyScopeKey',
-    });
+  validateSequenceConstraint(): void {
+    (this as any).Code = normalizeCodeRequired(this.Code, { uppercase: false });
+    // CompanyScopeKey is always derived from CompanyId.
+    (this as any).CompanyScopeKey = normalizeRefId(this.CompanyId) || '__GLOBAL__';
   }
 
   static async Next(params: SequenceNextParams): Promise<SequenceNextResult> {

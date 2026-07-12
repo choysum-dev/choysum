@@ -4,7 +4,6 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing } from './_normalizers';
-import { writeConstraintFields } from '@/core/service/utils/constraint_writeback';
 
 @Model('Locale')
 export default class Locale extends BaseModel {
@@ -45,18 +44,13 @@ export default class Locale extends BaseModel {
   @Field({ type: 'boolean', column: { default: () => false } })
   CurrencySymbolSpacing?: boolean;
 
-  private static validateEntity(values: Record<string, any>): void {
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolPosition')) {
-      values.CurrencySymbolPosition = normalizeCurrencySymbolPosition(values.CurrencySymbolPosition);
-    }
-    if (Object.prototype.hasOwnProperty.call(values, 'CurrencySymbolSpacing')) {
-      values.CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(values.CurrencySymbolSpacing);
-    }
-  }
-
   @Constraint<Locale>(['CurrencySymbolPosition', 'CurrencySymbolSpacing'])
-  static validateLocaleConstraint(self: Locale, ctx: any): void {
-    Locale.validateEntity(self as any);
-    writeConstraintFields(self as any, ctx, ['CurrencySymbolPosition', 'CurrencySymbolSpacing']);
+  validateLocaleConstraint(): void {
+    if (this.CurrencySymbolPosition !== undefined) {
+      (this as any).CurrencySymbolPosition = normalizeCurrencySymbolPosition(this.CurrencySymbolPosition);
+    }
+    if (this.CurrencySymbolSpacing !== undefined) {
+      (this as any).CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+    }
   }
 }
