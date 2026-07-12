@@ -14,7 +14,7 @@
 
 import { ref, watch, nextTick, provide, inject, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import type { WebModelStore, FieldMetadata } from '@/web/web/stores/modelStore';
+import { getFieldMetadataCompatibility, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
 import type { OnchangeResult } from '@/core/service/api/onchange';
@@ -69,10 +69,27 @@ const RELATION_TYPE_HINTS = new Set(['many2one', 'one2many', 'many2many', 'manyt
 
 function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
   if (!meta) return false;
+  const compat = getFieldMetadataCompatibility(meta);
+  if (compat.isRelation) return true;
   if (typeof meta.relation === 'string') return true;
   if (typeof meta.relationModel === 'string') return true;
   if (typeof meta.type === 'string' && RELATION_TYPE_HINTS.has(meta.type.toLowerCase())) return true;
   return false;
+}
+
+function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relation?: 'ManyToOne'; type?: string }> {
+  const raw = (store as any).fieldsMetadata || {};
+  const normalized: Record<string, { relation?: 'ManyToOne'; type?: string }> = {};
+  for (const [fieldName, meta] of Object.entries(raw as Record<string, FieldMetadata | undefined>)) {
+    const typed = meta as FieldMetadata | undefined;
+    const compat = getFieldMetadataCompatibility(typed);
+    const hasLegacyRelation = typeof typed?.relation === 'string' && typed.relation.length > 0;
+    normalized[fieldName] = {
+      type: typed?.type,
+      relation: compat.isRelation || hasLegacyRelation ? 'ManyToOne' : undefined,
+    };
+  }
+  return normalized;
 }
 
 function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
@@ -393,7 +410,8 @@ function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any,
 
   for (const top of collapsed) {
     const m = meta[top];
-    const isRelArrayExplicit = m?.relation === 'OneToMany' || m?.relation === 'ManyToMany';
+    const lowerType = typeof m?.type === 'string' ? m.type.toLowerCase() : '';
+    const isRelArrayExplicit = lowerType === 'onetomany' || lowerType === 'manytomany';
     const oldArr = baseline && Array.isArray(baseline[top]) ? baseline[top] : undefined;
     const newArr = current && Array.isArray(current[top]) ? current[top] : undefined;
 
@@ -516,6 +534,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
       if (!changedRaw.length) return;
 
       const minimized = relationAwareMinimize(changedRaw, store, opts?.collapseRelationChildren !== false);
+      const diffFieldsMeta = buildDiffFieldsMeta(store);
 
       const selectorPaths = new Set<string>();
       for (const leaf of fullSnapshot) {
@@ -714,7 +733,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
           // 1) Top-level collapsed signals such as Lines or DiscountRate.
           const collapsed = collectChangedPaths(baseline, r, {
             pruneRelationChildren: true,
-            fieldsMeta: (store as any).fieldsMetadata,
+            fieldsMeta: diffFieldsMeta as any,
           });
           if (collapsed.size) collapsed.forEach(p => pending.value.add(p));
 
@@ -724,7 +743,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
             includeTopLevel: false,
             includeFullPath: true,
             normalizeArrayIndex: false,
-            fieldsMeta: (store as any).fieldsMetadata,
+            fieldsMeta: diffFieldsMeta as any,
             collapseFinal: false,
           });
 
@@ -812,10 +831,11 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
         return;
       }
       try {
+        const diffFieldsMeta = buildDiffFieldsMeta(store);
         // 1) Top-level collapsed signals.
         const collapsed = collectChangedPaths(baseline, cur, {
           pruneRelationChildren: true,
-          fieldsMeta: (store as any).fieldsMetadata,
+          fieldsMeta: diffFieldsMeta as any,
         });
 
         // 2) Full leaf paths with indexes preserved.
@@ -824,7 +844,7 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
           includeTopLevel: false,
           includeFullPath: true,
           normalizeArrayIndex: false,
-          fieldsMeta: (store as any).fieldsMetadata,
+          fieldsMeta: diffFieldsMeta as any,
           collapseFinal: false,
         });
 
