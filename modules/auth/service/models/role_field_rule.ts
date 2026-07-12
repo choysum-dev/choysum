@@ -238,7 +238,7 @@ export default class RoleFieldRule extends BaseModel {
    */
   @Onchange<RoleFieldRule>('IrModelId')
   async OnchangeIrModelId() {
-    this.IrFieldId = undefined;
+    this.IrFieldId = null as any;
 
     const modelId = this.IrModelId;
 
