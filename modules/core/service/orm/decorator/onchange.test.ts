@@ -95,49 +95,9 @@ test('onchange decorator tolerates metadata without onchangeHandlers list', () =
       triggers: ['State'],
       priority: ONCHANGE_DEFAULT_PRIORITY,
       reads: undefined,
-      signature: undefined,
     });
   } finally {
     storage.getModelMetadata = originalGetModelMetadata;
     storage.setModelMetadata = originalSetModelMetadata;
   }
-});
-
-class OnchangeDecoratorModelWithExplicitSignature extends BaseModel {
-  handle() {}
-}
-
-class OnchangeDecoratorModelWithDefaultSignature extends BaseModel {
-  handle() {}
-}
-
-test('onchange decorator writes explicit signature to metadata', () => {
-  const decorate = Onchange('Name' as any, { signature: 'instanceNoArgs' } as any) as (target: Object, key: string | symbol) => void;
-
-  decorate(
-    OnchangeDecoratorModelWithExplicitSignature.prototype,
-    'handle' as any,
-  );
-
-  const meta = MetadataStorage.instance.getModelMetadata(OnchangeDecoratorModelWithExplicitSignature as any);
-  const handler = (meta.onchangeHandlers || []).find(item => item.method === 'handle');
-
-  expect(handler).toBeDefined();
-  expect(handler?.signature).toBe('instanceNoArgs');
-  expect(handler?.priority).toBe(ONCHANGE_DEFAULT_PRIORITY);
-});
-
-test('onchange decorator omits signature when not specified (raw metadata)', () => {
-  const decorate = Onchange('Value' as any) as (target: Object, key: string | symbol) => void;
-
-  decorate(
-    OnchangeDecoratorModelWithDefaultSignature.prototype,
-    'handle' as any,
-  );
-
-  const meta = MetadataStorage.instance.getModelMetadata(OnchangeDecoratorModelWithDefaultSignature as any);
-  const handler = (meta.onchangeHandlers || []).find(item => item.method === 'handle');
-
-  expect(handler).toBeDefined();
-  expect(handler?.signature).toBeUndefined();
 });

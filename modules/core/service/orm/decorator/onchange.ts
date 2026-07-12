@@ -11,16 +11,13 @@ import { asObjectRecord } from '@/core/utils/object';
 interface OnchangeOptions {
   priority?: number;
   reads?: string[]; // Additional read-only dependencies, such as scalar fields or paths like 'PartnerId.Name'.
-  /** Calling convention: 'legacyCtx' (receives ctx) or 'instanceNoArgs' (receives no arguments). Defaults to 'legacyCtx'. */
-  signature?: 'legacyCtx' | 'instanceNoArgs';
 }
 
 /**
  * Usage:
  *
  * ```ts
- * // Recommended: instance-noargs style (signature: 'instanceNoArgs')
- * @Onchange<SaleOrder>('CustomerId', { signature: 'instanceNoArgs' })
+ * @Onchange<SaleOrder>('CustomerId')
  * onchangeCustomer() {
  *   this.PaymentTermId = null;
  *   return {
@@ -28,16 +25,10 @@ interface OnchangeOptions {
  *   };
  * }
  *
- * @Onchange<SaleOrder>('OrderLines', { signature: 'instanceNoArgs', reads: ['PartnerId.Name'] })
+ * @Onchange<SaleOrder>('OrderLines', { reads: ['PartnerId.Name'] })
  * async onchangeLines() {
  *   await Promise.resolve();
  *   this.Total = computeTotal(this.OrderLines);
- * }
- *
- * // Legacy: ctx-based style (signature: 'legacyCtx' — the default)
- * @Onchange<SaleOrder>('CustomerId','OrderLines')
- * _onchange_customer_or_lines(ctx) {
- *   ctx.emit(ctx.val('PaymentTermId', null));
  * }
  * ```
  */
@@ -51,10 +42,6 @@ export function Onchange<T extends BaseModel = BaseModel>(...args: (OnchangeTrig
       opt = {
         priority: typeof lastRecord.priority === 'number' ? lastRecord.priority : undefined,
         reads: Array.isArray(lastRecord.reads) ? lastRecord.reads.filter((x): x is string => typeof x === 'string') : undefined,
-        signature:
-          typeof lastRecord.signature === 'string' && (lastRecord.signature === 'legacyCtx' || lastRecord.signature === 'instanceNoArgs')
-            ? lastRecord.signature
-            : undefined,
       };
       args = args.slice(0, -1);
     }
@@ -94,7 +81,6 @@ export function Onchange<T extends BaseModel = BaseModel>(...args: (OnchangeTrig
       triggers: uniqueTriggers,
       priority: typeof opt.priority === 'number' ? opt.priority : ONCHANGE_DEFAULT_PRIORITY,
       reads,
-      signature: opt.signature,
     });
 
     MetadataStorage.instance.setModelMetadata(ctor, { ...meta, onchangeHandlers: list });

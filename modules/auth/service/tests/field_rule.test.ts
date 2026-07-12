@@ -1202,9 +1202,7 @@ test('RoleFieldRule OnchangeIrModelId clears IrFieldId and narrows picker when m
     ['IrModelId']
   );
 
-  expect(result.condition).toEqual([
-    { field: 'IrFieldId', condition: ['ModelId', '=', 'model-123'] },
-  ]);
+  expect(result.condition).toEqual([{ field: 'IrFieldId', condition: ['ModelId', '=', 'model-123'] }]);
   expect(result.value).toEqual({ IrFieldId: undefined });
 });
 
@@ -1218,8 +1216,6 @@ test('RoleFieldRule OnchangeIrModelId clears IrFieldId and blocks picker when mo
     ['IrModelId']
   );
 
-  expect(result.condition).toEqual([
-    { field: 'IrFieldId', condition: ['Id', '=', '0'] },
-  ]);
+  expect(result.condition).toEqual([{ field: 'IrFieldId', condition: ['Id', '=', '0'] }]);
   expect(result.value).toEqual({ IrFieldId: undefined });
 });

@@ -72,16 +72,6 @@ export class MetadataStorage {
       priority: typeof record.priority === 'number' ? record.priority : (existing?.priority ?? 100),
     };
 
-    // Only attach signature when a valid value is present so the raw metadata
-    // shape stays unchanged for handlers that never declared one.
-    const sig =
-      typeof record.signature === 'string' && (record.signature === 'legacyCtx' || record.signature === 'instanceNoArgs')
-        ? record.signature
-        : existing?.signature;
-    if (typeof sig === 'string') {
-      handler.signature = sig;
-    }
-
     return handler;
   }
 
@@ -433,14 +423,12 @@ export class MetadataStorage {
    * prototype chain from child to root:
    *
    * - **Child classes take precedence** for the same method name (override),
-   *   which includes all handler properties such as triggers, priority,
-   *   reads, and signature.
+   *   which includes all handler properties such as triggers, priority, and
+   *   reads.
    * - **New method names** introduced by a child are added alongside inherited
    *   ones (extend).
    * - **If a child does not re-decorate** a parent onchange handler, the
-   *   parent's handler (including its signature) is inherited as-is (reuse).
-   * - **When signature is absent**, it defaults to `'legacyCtx'` to preserve
-   *   backward compatibility with existing handlers.
+   *   parent's handler is inherited as-is (reuse).
    *
    * Handlers are returned sorted by priority then by method name.
    */
@@ -478,10 +466,6 @@ export class MetadataStorage {
             triggers: Array.isArray(handler.triggers) ? [...new Set(handler.triggers.map(v => String(v || '').trim()).filter(Boolean))] : [],
             priority: typeof handler.priority === 'number' ? handler.priority : 100,
             reads: Array.isArray(handler.reads) ? [...new Set(handler.reads.map(v => String(v || '').trim()).filter(Boolean))] : undefined,
-            signature:
-              typeof handler.signature === 'string' && (handler.signature === 'legacyCtx' || handler.signature === 'instanceNoArgs')
-                ? handler.signature
-                : 'legacyCtx',
             source,
           });
         }

@@ -7,7 +7,7 @@ import { MetadataStorage } from '../../orm/metadata/storage';
 function createMeta(config: {
   name?: string;
   fields?: Array<[string, any]>;
-  onchangeHandlers?: Array<{ method: string; triggers: string[]; priority?: number; signature?: 'legacyCtx' | 'instanceNoArgs' }>;
+  onchangeHandlers?: Array<{ method: string; triggers: string[]; priority?: number }>;
 }) {
   return {
     name: config.name || 'TestModel',
@@ -16,7 +16,6 @@ function createMeta(config: {
       method: handler.method,
       triggers: handler.triggers,
       priority: handler.priority ?? 100,
-      signature: handler.signature,
     })),
   } as any;
 }
@@ -996,7 +995,7 @@ test('onchange engine invokes instanceNoArgs sync handler without ctx', async ()
       ['Name', { type: 'varchar' }],
       ['Code', { type: 'varchar' }],
     ],
-    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'instanceNoArgs' }],
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
   });
 
   const draft: any = {
@@ -1019,7 +1018,7 @@ test('onchange engine invokes instanceNoArgs async handler and awaits its result
       ['Qty', { type: 'int' }],
       ['Total', { type: 'int' }],
     ],
-    onchangeHandlers: [{ method: 'onQty', triggers: ['Qty'], signature: 'instanceNoArgs' }],
+    onchangeHandlers: [{ method: 'onQty', triggers: ['Qty'] }],
   });
 
   const draft: any = {
@@ -1044,7 +1043,7 @@ test('onchange engine calls legacyCtx-signature handler without ctx in end-state
       ['Code', { type: 'varchar' }],
     ],
     // Even with legacyCtx signature, the end-state runtime calls handlers without ctx.
-    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'legacyCtx' }],
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
   });
 
   const draft: any = {
@@ -1094,8 +1093,8 @@ test('onchange engine runs mixed signature handlers in priority order', async ()
       ['C', { type: 'varchar' }],
     ],
     onchangeHandlers: [
-      { method: 'onLegacy', triggers: ['A'], priority: 1, signature: 'legacyCtx' },
-      { method: 'onInstance', triggers: ['A'], priority: 2, signature: 'instanceNoArgs' },
+      { method: 'onLegacy', triggers: ['A'], priority: 1 },
+      { method: 'onInstance', triggers: ['A'], priority: 2 },
     ],
   });
 
@@ -1129,8 +1128,8 @@ test('onchange engine respects stopOnError for instanceNoArgs handler that throw
       ['B', { type: 'varchar' }],
     ],
     onchangeHandlers: [
-      { method: 'onFail', triggers: ['A'], priority: 1, signature: 'instanceNoArgs' },
-      { method: 'onNext', triggers: ['A'], priority: 2, signature: 'instanceNoArgs' },
+      { method: 'onFail', triggers: ['A'], priority: 1 },
+      { method: 'onNext', triggers: ['A'], priority: 2 },
     ],
   });
 
@@ -1159,7 +1158,7 @@ test('onchange engine instanceNoArgs handler returns messages/condition/selectio
       ['Name', { type: 'varchar' }],
       ['Code', { type: 'varchar' }],
     ],
-    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'instanceNoArgs' }],
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
   });
 
   const draft: any = {
@@ -1192,8 +1191,8 @@ test('onchange engine ignores legacyCtx signature and runs all handlers without 
       ['B', { type: 'varchar' }],
     ],
     onchangeHandlers: [
-      { method: 'onLegacy', triggers: ['A'], priority: 1, signature: 'instanceNoArgs' },
-      { method: 'onInstance', triggers: ['A'], priority: 2, signature: 'instanceNoArgs' },
+      { method: 'onLegacy', triggers: ['A'], priority: 1 },
+      { method: 'onInstance', triggers: ['A'], priority: 2 },
     ],
   });
 

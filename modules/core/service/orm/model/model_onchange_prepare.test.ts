@@ -255,32 +255,3 @@ test('model onchange prepare helper normalizes changed fallback and parent-field
   const withoutKeys = __collectModelOnchangeParentAllFieldNamesForTest({ fields: {} } as any);
   expect(Array.from(withoutKeys)).toEqual([]);
 });
-
-test('model onchange prepare __collectModelOnchangeReadsRootForTest is signature-neutral', () => {
-  const meta = prepareModelMetadata();
-
-  // Simulate active handlers with different signatures — reads-root should be identical.
-  const instanceHandlers = [
-    { method: 'handleNamePreview', triggers: ['Name'], priority: 100, reads: ['Status', 'PartnerId.Name'], signature: 'instanceNoArgs' as const },
-  ];
-  const legacyHandlers = [
-    { method: 'handleNamePreview', triggers: ['Name'], priority: 100, reads: ['Status', 'PartnerId.Name'], signature: 'legacyCtx' as const },
-  ];
-
-  const instanceRoots = __collectModelOnchangeReadsRootForTest(meta, instanceHandlers);
-  const legacyRoots = __collectModelOnchangeReadsRootForTest(meta, legacyHandlers);
-
-  expect(Array.from(instanceRoots).sort()).toEqual(Array.from(legacyRoots).sort());
-  expect(instanceRoots.has('PartnerId')).toBe(true);
-  expect(instanceRoots.has('Status')).toBe(true);
-});
-
-test('model onchange prepare compute subset is signature-neutral', () => {
-  const meta = prepareModelMetadata();
-
-  const handlers = [{ method: 'handleNamePreview', triggers: ['Name'], priority: 100, signature: 'instanceNoArgs' as const }];
-
-  // Should not throw — signature field is ignored by compute-subset logic.
-  const subset = __collectModelOnchangeComputeSubsetForTest(meta, ['Name'], handlers);
-  expect(subset instanceof Set).toBe(true);
-});
