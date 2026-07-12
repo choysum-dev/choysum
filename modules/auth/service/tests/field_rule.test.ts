@@ -1187,3 +1187,39 @@ test('RoleFieldRule: permission-only update must not rewrite scoped fields to gl
     { merge: false }
   );
 });
+
+// ---------------------------------------------------------------------------
+// OnchangeIrModelId coverage
+// ---------------------------------------------------------------------------
+
+test('RoleFieldRule OnchangeIrModelId clears IrFieldId and narrows picker when model is selected', async () => {
+  const result = await RoleFieldRule.Onchange(
+    {
+      Id: 'onchange-rule-1',
+      IrModelId: 'model-123',
+      IrFieldId: 'field-456',
+    },
+    ['IrModelId']
+  );
+
+  expect(result.condition).toEqual([
+    { field: 'IrFieldId', condition: ['ModelId', '=', 'model-123'] },
+  ]);
+  expect(result.value).toEqual({ IrFieldId: undefined });
+});
+
+test('RoleFieldRule OnchangeIrModelId clears IrFieldId and blocks picker when model is cleared', async () => {
+  const result = await RoleFieldRule.Onchange(
+    {
+      Id: 'onchange-rule-2',
+      IrModelId: undefined,
+      IrFieldId: 'field-456',
+    },
+    ['IrModelId']
+  );
+
+  expect(result.condition).toEqual([
+    { field: 'IrFieldId', condition: ['Id', '=', '0'] },
+  ]);
+  expect(result.value).toEqual({ IrFieldId: undefined });
+});
