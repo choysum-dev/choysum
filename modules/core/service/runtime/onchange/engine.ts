@@ -3,7 +3,7 @@
 
 import type { ModelMetadata, OnchangeHandlerMeta } from '../../orm/metadata/model';
 import type BaseModel from '../../orm/model/model';
-import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS } from './constants';
+import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS, ENABLE_ONCHANGE_LEGACY_CTX } from './constants';
 import { createOnchangeContext, normalizeMessages, normalizeCondition, normalizeSelection, applyValuePatch } from './context';
 import type { OnchangeDraft, OnchangeMessage, OnchangeCondition, SelectionCondition, OnchangeRunOptions, OnchangeEngineResult } from './types';
 import { createOnchangeDraft } from '../proxy';
@@ -360,12 +360,7 @@ export class OnchangeEngine {
    *
    * The return value may be a Promise; the caller is responsible for awaiting.
    */
-  private static invokeOnchangeHandler(
-    handler: OnchangeHandlerMeta,
-    draft: OnchangeDraft,
-    onchangeDraft: BaseModel,
-    ctx: unknown
-  ): unknown {
+  private static invokeOnchangeHandler(handler: OnchangeHandlerMeta, draft: OnchangeDraft, onchangeDraft: BaseModel, ctx: unknown): unknown {
     const fn = draft[handler.method] as ((...args: unknown[]) => unknown) | undefined;
     if (typeof fn !== 'function') return undefined;
 

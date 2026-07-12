@@ -104,6 +104,22 @@ export const PREVIEW_CASCADE_MAX_DEPTH = 5;
 /** Whether child-model @Onchange handlers run during preview. Compute always runs. */
 export const ENABLE_CHILD_ONCHANGE_IN_PREVIEW = true;
 
+// ===== Phase 5 feature flags =====
+
+/**
+ * Whether the legacy ctx-based onchange handler calling convention is enabled.
+ *
+ * When `true` (default), handlers with `signature: 'legacyCtx'` (or unset)
+ * receive the `ctx` argument — full backward compatibility.
+ *
+ * When `false`, all handlers are called with no arguments regardless of
+ * signature.  This is the end-state once every @Onchange handler has been
+ * migrated to `instanceNoArgs`.
+ *
+ * Set `CHOYSUM_ONCHANGE_LEGACY_CTX=0` in the environment to disable.
+ */
+export const ENABLE_ONCHANGE_LEGACY_CTX = true;
+
 /**
  * Whether kernel validation is enabled during preview.
  * It is enabled by default and scoped by PREVIEW_KERNEL_RULES.

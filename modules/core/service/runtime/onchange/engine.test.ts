@@ -1180,3 +1180,45 @@ test('onchange engine instanceNoArgs handler returns messages/condition/selectio
   expect(result.condition).toEqual([{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }]);
   expect(result.selection).toEqual([{ field: 'Code', selection: ['A', 'CHANGED'] }]);
 });
+
+test('onchange engine ignores legacyCtx signature and runs all handlers without ctx when flag is disabled', async () => {
+  // Simulate ENABLE_ONCHANGE_LEGACY_CTX = false by setting signature to
+  // instanceNoArgs on handlers that would otherwise expect ctx.
+  // The engine should call all handlers without ctx regardless.
+  const meta = createMeta({
+    fields: [
+      ['A', { type: 'varchar' }],
+      ['B', { type: 'varchar' }],
+    ],
+    onchangeHandlers: [
+      { method: 'onLegacy', triggers: ['A'], priority: 1, signature: 'instanceNoArgs' },
+      { method: 'onInstance', triggers: ['A'], priority: 2, signature: 'instanceNoArgs' },
+    ],
+  });
+
+  let legacyCalled = false;
+  let instanceCalled = false;
+
+  const draft: any = {
+    A: 'x',
+    B: '',
+    onLegacy() {
+      legacyCalled = true;
+      // This handler was originally legacyCtx; after migration it works
+      // via this-assignment and return side-effects.
+      this.B = 'legacy-migrated';
+    },
+    onInstance() {
+      instanceCalled = true;
+      return { messages: [{ level: 'info', message: 'instance-ok' }] };
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['A'], { withCompute: false });
+
+  expect(legacyCalled).toBe(true);
+  expect(instanceCalled).toBe(true);
+  expect(result.touchedHandlers).toEqual(['onLegacy', 'onInstance']);
+  expect(result.value).toEqual({ B: 'legacy-migrated' });
+  expect(result.messages?.some(m => String(m.message || '').includes('instance-ok'))).toBe(true);
+});
