@@ -1038,13 +1038,13 @@ test('onchange engine invokes instanceNoArgs async handler and awaits its result
   expect(result.value).toEqual({ Total: 30 });
 });
 
-test('onchange engine calls legacyCtx-signature handler without ctx when flag is off (end-state)', async () => {
+test('onchange engine calls legacyCtx-signature handler without ctx in end-state runtime', async () => {
   const meta = createMeta({
     fields: [
       ['Name', { type: 'varchar' }],
       ['Code', { type: 'varchar' }],
     ],
-    // Even with legacyCtx signature, the engine calls without ctx when flag is off.
+    // Even with legacyCtx signature, the end-state runtime calls handlers without ctx.
     onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'legacyCtx' }],
   });
 
@@ -1063,13 +1063,13 @@ test('onchange engine calls legacyCtx-signature handler without ctx when flag is
   expect(result.value).toEqual({ Code: 'via-this' });
 });
 
-test('onchange engine calls unset-signature handler without ctx when flag is off (end-state)', async () => {
+test('onchange engine calls unset-signature handler without ctx in end-state runtime', async () => {
   const meta = createMeta({
     fields: [
       ['Name', { type: 'varchar' }],
       ['Code', { type: 'varchar' }],
     ],
-    // Omit signature entirely — default is legacyCtx, but flag is off so no ctx.
+    // Omit signature entirely; the end-state runtime still calls without ctx.
     onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
   });
 
@@ -1185,10 +1185,8 @@ test('onchange engine instanceNoArgs handler returns messages/condition/selectio
   expect(result.selection).toEqual([{ field: 'Code', selection: ['A', 'CHANGED'] }]);
 });
 
-test('onchange engine ignores legacyCtx signature and runs all handlers without ctx when flag is disabled', async () => {
-  // Simulate ENABLE_ONCHANGE_LEGACY_CTX = false by setting signature to
-  // instanceNoArgs on handlers that would otherwise expect ctx.
-  // The engine should call all handlers without ctx regardless.
+test('onchange engine ignores legacyCtx signature and runs all handlers without ctx in end-state runtime', async () => {
+  // End-state behavior: all handlers run without ctx regardless of metadata signature.
   const meta = createMeta({
     fields: [
       ['A', { type: 'varchar' }],

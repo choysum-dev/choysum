@@ -352,11 +352,10 @@ export class OnchangeEngine {
   }
 
   /**
-   * Invoke a single onchange handler with the calling convention determined by
-   * its {@link OnchangeHandlerMeta.signature}.
+   * Invoke a single onchange handler in the end-state runtime contract.
    *
-   * - `legacyCtx` (or absent): call with `(ctx)` — existing behavior.
-   * - `instanceNoArgs`: call with no arguments — `this`-only.
+   * All handlers are called without arguments and should use `this` for value
+   * mutation plus return payloads for side-effects.
    *
    * The return value may be a Promise; the caller is responsible for awaiting.
    */
