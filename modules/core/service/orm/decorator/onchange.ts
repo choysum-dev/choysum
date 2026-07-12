@@ -17,8 +17,29 @@ interface OnchangeOptions {
 
 /**
  * Usage:
- *  @Onchange<SaleOrder>('CustomerId','OrderLines')
- *  _onchange_customer_or_lines() { ... }
+ *
+ * ```ts
+ * // Recommended: instance-noargs style (signature: 'instanceNoArgs')
+ * @Onchange<SaleOrder>('CustomerId', { signature: 'instanceNoArgs' })
+ * onchangeCustomer() {
+ *   this.PaymentTermId = null;
+ *   return {
+ *     condition: [{ field: 'PaymentTermId', condition: ['Id', '=', '0'] }],
+ *   };
+ * }
+ *
+ * @Onchange<SaleOrder>('OrderLines', { signature: 'instanceNoArgs', reads: ['PartnerId.Name'] })
+ * async onchangeLines() {
+ *   await Promise.resolve();
+ *   this.Total = computeTotal(this.OrderLines);
+ * }
+ *
+ * // Legacy: ctx-based style (signature: 'legacyCtx' — the default)
+ * @Onchange<SaleOrder>('CustomerId','OrderLines')
+ * _onchange_customer_or_lines(ctx) {
+ *   ctx.emit(ctx.val('PaymentTermId', null));
+ * }
+ * ```
  */
 export function Onchange<T extends BaseModel = BaseModel>(...args: (OnchangeTrigger<T> | OnchangeOptions)[]): MethodDecorator {
   return (target, key) => {

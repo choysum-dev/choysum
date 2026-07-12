@@ -124,7 +124,12 @@ export function makeSelection(): SelectionBuilder {
 
 /**
  * Create a value builder.
+ *
  * Signature: val(key, value)
+ *
+ * @deprecated Prefer direct `this.Field = value` assignment in onchange handlers
+ * registered with {@link OnchangeHandlerMeta.signature} set to `'instanceNoArgs'`.
+ * `ctx.val` is preserved for backward compatibility with legacy `method(ctx)` handlers.
  */
 export function makeVal<T extends BaseModel>(): ValBuilder<T> {
   return ((key: PropertyKey, value: unknown) => ({ [key]: value })) as ValBuilder<T>;
@@ -297,6 +302,12 @@ export function applyValuePatch(target: ObjectRecord, patch: ObjectRecord) {
 
 /**
  * Create a type-safe Onchange context.
+ *
+ * @remarks
+ * **Migration note**: `ctx.val` is a legacy helper for emitting value patches
+ * via `ctx.emit(ctx.val('Field', value))`. When using the recommended
+ * `instanceNoArgs` handler signature, prefer direct `this.Field = value` and
+ * `return { messages, condition, selection }` instead.
  *
  * @param params - Context parameters.
  * @param params.draft - Mutable draft record.
