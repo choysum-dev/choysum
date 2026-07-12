@@ -7,7 +7,7 @@ import { MetadataStorage } from '../../orm/metadata/storage';
 function createMeta(config: {
   name?: string;
   fields?: Array<[string, any]>;
-  onchangeHandlers?: Array<{ method: string; triggers: string[]; priority?: number }>;
+  onchangeHandlers?: Array<{ method: string; triggers: string[]; priority?: number; signature?: 'legacyCtx' | 'instanceNoArgs' }>;
 }) {
   return {
     name: config.name || 'TestModel',
@@ -16,6 +16,7 @@ function createMeta(config: {
       method: handler.method,
       triggers: handler.triggers,
       priority: handler.priority ?? 100,
+      signature: handler.signature,
     })),
   } as any;
 }
@@ -983,4 +984,199 @@ test('onchange engine routes ctx condition and selection emit payloads through c
   expect(result.selection).toEqual([{ field: 'Code', selection: ['A', 'B'], disabled: ['B'] }]);
   expect(result.messages?.some(m => String(m.message || '').includes('ctx-info'))).toBe(true);
   expect(result.value).toBeUndefined();
+});
+
+test('onchange engine invokes instanceNoArgs sync handler without ctx', async () => {
+  const meta = createMeta({
+    fields: [
+      ['Name', { type: 'varchar' }],
+      ['Code', { type: 'varchar' }],
+    ],
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'instanceNoArgs' }],
+  });
+
+  const draft: any = {
+    Name: 'A',
+    Code: '',
+    onName() {
+      this.Code = 'set-by-instance';
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onName']);
+  expect(result.value).toEqual({ Code: 'set-by-instance' });
+});
+
+test('onchange engine invokes instanceNoArgs async handler and awaits its result', async () => {
+  const meta = createMeta({
+    fields: [
+      ['Qty', { type: 'int' }],
+      ['Total', { type: 'int' }],
+    ],
+    onchangeHandlers: [{ method: 'onQty', triggers: ['Qty'], signature: 'instanceNoArgs' }],
+  });
+
+  const draft: any = {
+    Qty: 3,
+    Total: 0,
+    async onQty() {
+      const multiplier = await Promise.resolve(10);
+      this.Total = Number(this.Qty || 0) * multiplier;
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['Qty'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onQty']);
+  expect(result.value).toEqual({ Total: 30 });
+});
+
+test('onchange engine still passes ctx to legacyCtx handlers (regression guard)', async () => {
+  const meta = createMeta({
+    fields: [
+      ['Name', { type: 'varchar' }],
+      ['Code', { type: 'varchar' }],
+    ],
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'legacyCtx' }],
+  });
+
+  const draft: any = {
+    Name: 'A',
+    Code: '',
+    onName(ctx: any) {
+      expect(ctx).toBeDefined();
+      expect(typeof ctx.emit).toBe('function');
+      expect(typeof ctx.val).toBe('function');
+      ctx.emit(ctx.val('Code', 'via-ctx'));
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onName']);
+  expect(result.value).toEqual({ Code: 'via-ctx' });
+});
+
+test('onchange engine routes unset signature handler the same as legacyCtx', async () => {
+  const meta = createMeta({
+    fields: [
+      ['Name', { type: 'varchar' }],
+      ['Code', { type: 'varchar' }],
+    ],
+    // Omit signature entirely — engine should default to legacyCtx.
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
+  });
+
+  const draft: any = {
+    Name: 'A',
+    Code: '',
+    onName(ctx: any) {
+      ctx.emit(ctx.val('Code', 'default-legacy'));
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onName']);
+  expect(result.value).toEqual({ Code: 'default-legacy' });
+});
+
+test('onchange engine runs mixed signature handlers in priority order', async () => {
+  const meta = createMeta({
+    fields: [
+      ['A', { type: 'varchar' }],
+      ['B', { type: 'varchar' }],
+      ['C', { type: 'varchar' }],
+    ],
+    onchangeHandlers: [
+      { method: 'onLegacy', triggers: ['A'], priority: 1, signature: 'legacyCtx' },
+      { method: 'onInstance', triggers: ['A'], priority: 2, signature: 'instanceNoArgs' },
+    ],
+  });
+
+  const order: string[] = [];
+
+  const draft: any = {
+    A: 'start',
+    B: '',
+    C: '',
+    onLegacy(ctx: any) {
+      order.push('legacy');
+      ctx.emit(ctx.val('B', 'legacy-ok'));
+    },
+    onInstance() {
+      order.push('instance');
+      this.C = 'instance-ok';
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['A'], { withCompute: false });
+
+  expect(order).toEqual(['legacy', 'instance']);
+  expect(result.touchedHandlers).toEqual(['onLegacy', 'onInstance']);
+  expect(result.value).toEqual({ B: 'legacy-ok', C: 'instance-ok' });
+});
+
+test('onchange engine respects stopOnError for instanceNoArgs handler that throws', async () => {
+  const meta = createMeta({
+    fields: [
+      ['A', { type: 'varchar' }],
+      ['B', { type: 'varchar' }],
+    ],
+    onchangeHandlers: [
+      { method: 'onFail', triggers: ['A'], priority: 1, signature: 'instanceNoArgs' },
+      { method: 'onNext', triggers: ['A'], priority: 2, signature: 'instanceNoArgs' },
+    ],
+  });
+
+  const draft: any = {
+    A: 'x',
+    B: '',
+    onFail() {
+      throw new Error('instance-boom');
+    },
+    onNext() {
+      this.B = 'should-not-run';
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['A'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onFail']);
+  expect(result.value).toBeUndefined();
+  expect(result.messages?.some(m => String(m.message || '').includes('instance-boom'))).toBe(true);
+  expect(draft.B).toBe('');
+});
+
+test('onchange engine instanceNoArgs handler returns messages/condition/selection', async () => {
+  const meta = createMeta({
+    fields: [
+      ['Name', { type: 'varchar' }],
+      ['Code', { type: 'varchar' }],
+    ],
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], signature: 'instanceNoArgs' }],
+  });
+
+  const draft: any = {
+    Name: 'A',
+    Code: 'A',
+    onName() {
+      this.Code = 'CHANGED';
+      return {
+        messages: [{ level: 'warn', message: 'instance-warn' }],
+        condition: [{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }],
+        selection: [{ field: 'Code', selection: ['A', 'CHANGED'] }],
+      };
+    },
+  };
+
+  const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onName']);
+  expect(result.value).toEqual({ Code: 'CHANGED' });
+  expect(result.messages?.some(m => String(m.message || '').includes('instance-warn'))).toBe(true);
+  expect(result.condition).toEqual([{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }]);
+  expect(result.selection).toEqual([{ field: 'Code', selection: ['A', 'CHANGED'] }]);
 });

@@ -157,9 +157,9 @@ export class OnchangeEngine {
         }
 
         try {
-          const fn = draft[handler.method];
-          const result = typeof fn === 'function' ? (fn as (this: unknown, context: unknown) => unknown).call(onchangeDraft, ctx) : undefined;
-          const ret = ((result instanceof Promise ? await result : result) ?? {}) as OnchangeHandlerReturn;
+          const rawResult = this.invokeOnchangeHandler(handler, draft, onchangeDraft, ctx);
+          const result = rawResult instanceof Promise ? await rawResult : rawResult;
+          const ret = (result ?? {}) as OnchangeHandlerReturn;
 
           // Process returned payloads while keeping compatibility with legacy object returns.
           const valuePatch = asOnchangePatch(ret.value);
@@ -349,6 +349,32 @@ export class OnchangeEngine {
       if (hs) hs.forEach(h => result.add(h));
     }
     return [...result];
+  }
+
+  /**
+   * Invoke a single onchange handler with the calling convention determined by
+   * its {@link OnchangeHandlerMeta.signature}.
+   *
+   * - `legacyCtx` (or absent): call with `(ctx)` — existing behavior.
+   * - `instanceNoArgs`: call with no arguments — `this`-only.
+   *
+   * The return value may be a Promise; the caller is responsible for awaiting.
+   */
+  private static invokeOnchangeHandler(
+    handler: OnchangeHandlerMeta,
+    draft: OnchangeDraft,
+    onchangeDraft: BaseModel,
+    ctx: unknown
+  ): unknown {
+    const fn = draft[handler.method] as ((...args: unknown[]) => unknown) | undefined;
+    if (typeof fn !== 'function') return undefined;
+
+    const sig = handler.signature;
+    if (sig === 'instanceNoArgs') {
+      return fn.call(onchangeDraft);
+    }
+    // legacyCtx or unset — pass ctx for backward compatibility.
+    return fn.call(onchangeDraft, ctx);
   }
 
   /**
