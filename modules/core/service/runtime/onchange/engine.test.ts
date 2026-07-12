@@ -662,7 +662,6 @@ test('onchange engine normalizes ctx.emit decimal value patch and keeps fallback
     Trigger: 'P',
     Price: '0',
     onTrigger() {
-      this.Price = '2.236';
       this.Price = { bad: true };
     },
   };

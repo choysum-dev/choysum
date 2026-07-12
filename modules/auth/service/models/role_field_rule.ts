@@ -244,13 +244,11 @@ export default class RoleFieldRule extends BaseModel {
 
     if (modelId) {
       // Narrow the field picker to the selected model
-      this.IrModelId = modelId;
       return {
         condition: [{ field: 'IrFieldId', condition: ['ModelId', '=', modelId] }],
       };
     } else {
       // Fallback to an always-false condition to block selection
-      this.IrModelId = undefined;
       return {
         condition: [{ field: 'IrFieldId', condition: ['Id', '=', '0'] }],
       };
