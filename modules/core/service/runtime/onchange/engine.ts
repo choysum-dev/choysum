@@ -142,7 +142,7 @@ export class OnchangeEngine {
 
         try {
           const rawResult = this.invokeOnchangeHandler(handler, draft, onchangeDraft);
-          const result = rawResult instanceof Promise ? await rawResult : rawResult;
+          const result = await rawResult;
           const ret = (result ?? {}) as OnchangeHandlerReturn;
 
           // Process returned payloads while keeping compatibility with legacy object returns.

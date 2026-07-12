@@ -127,9 +127,8 @@ export function makeSelection(): SelectionBuilder {
  *
  * Signature: val(key, value)
  *
- * @deprecated Prefer direct `this.Field = value` assignment in onchange handlers
- * registered with {@link OnchangeHandlerMeta.signature} set to `'instanceNoArgs'`.
- * `ctx.val` is preserved for backward compatibility with legacy `method(ctx)` handlers.
+ * @deprecated `ctx.val` is a legacy helper and is no longer used in the end-state
+ * runtime. All handlers use direct `this.Field = value` assignment.
  */
 export function makeVal<T extends BaseModel>(): ValBuilder<T> {
   return ((key: PropertyKey, value: unknown) => ({ [key]: value })) as ValBuilder<T>;
@@ -303,19 +302,13 @@ export function applyValuePatch(target: ObjectRecord, patch: ObjectRecord) {
 /**
  * Create a type-safe Onchange context.
  *
- * @remarks
- * **Migration note**: `ctx.val` is a legacy helper for emitting value patches
- * via `ctx.emit(ctx.val('Field', value))`. When using the recommended
- * `instanceNoArgs` handler signature, prefer direct `this.Field = value` and
- * `return { messages, condition, selection }` instead.
+ * @deprecated `createOnchangeContext` and the resulting `ctx` object are no longer
+ * used in the end-state runtime. Handlers are invoked without arguments and should
+ * use `this` for value mutation and `return` for side-effects.
+ *
+ * The function is retained for potential future tooling or debugging use.
  *
  * @param params - Context parameters.
- * @param params.draft - Mutable draft record.
- * @param params.changed - Read-only set of changed fields.
- * @param params.pushMessages - Message dispatch callback.
- * @param params.pushCondition - Condition dispatch callback.
- * @param params.pushSelection - Selection-condition dispatch callback.
- * @param params.applyValue - Value-application callback.
  * @returns The Onchange context object.
  */
 export function createOnchangeContext<T extends BaseModel>(params: {
