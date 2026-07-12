@@ -112,12 +112,11 @@ class OnchangeDecoratorModelWithDefaultSignature extends BaseModel {
 }
 
 test('onchange decorator writes explicit signature to metadata', () => {
-  const decorate = Onchange('Name' as any, { signature: 'instanceNoArgs' } as any);
+  const decorate = Onchange('Name' as any, { signature: 'instanceNoArgs' } as any) as (target: Object, key: string | symbol) => void;
 
   decorate(
     OnchangeDecoratorModelWithExplicitSignature.prototype,
     'handle' as any,
-    Object.getOwnPropertyDescriptor(OnchangeDecoratorModelWithExplicitSignature.prototype, 'handle')!
   );
 
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDecoratorModelWithExplicitSignature as any);
@@ -129,12 +128,11 @@ test('onchange decorator writes explicit signature to metadata', () => {
 });
 
 test('onchange decorator omits signature when not specified (raw metadata)', () => {
-  const decorate = Onchange('Value' as any);
+  const decorate = Onchange('Value' as any) as (target: Object, key: string | symbol) => void;
 
   decorate(
     OnchangeDecoratorModelWithDefaultSignature.prototype,
     'handle' as any,
-    Object.getOwnPropertyDescriptor(OnchangeDecoratorModelWithDefaultSignature.prototype, 'handle')!
   );
 
   const meta = MetadataStorage.instance.getModelMetadata(OnchangeDecoratorModelWithDefaultSignature as any);
