@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { MetadataStorage } from '@/core/service/api/metadata';
-import { parseDeps } from './parser';
+import { parseDeps, validateAutoInverseRelatedPath } from './parser';
 
 function withPatchedModelMetadata<T>(resolver: (model: Function) => any, fn: () => T): T {
   const storage = MetadataStorage.instance as any;
@@ -264,4 +264,22 @@ test('parseDeps model label fallback prefers modelName/className/typeName/Unknow
       expect(() => parseDeps(rootMeta, 'DisplayName', ['Root.Missing'])).toThrow('Unknown');
     }
   );
+});
+
+test('validateAutoInverseRelatedPath accepts single-hop ManyToOne to scalar leaf', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+  const resolved = validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId.Name');
+
+  expect(resolved).toEqual({
+    root: 'CustomerId',
+    leaf: 'Name',
+  });
+});
+
+test('validateAutoInverseRelatedPath rejects non-whitelisted related path shapes', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId.Orders.Name')).toThrow('single-hop ManyToOne path');
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'Name.Code')).toThrow('must be ManyToOne');
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId[Name]')).toThrow('expression syntax');
 });

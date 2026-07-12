@@ -20,6 +20,7 @@ import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_h
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { createServiceByModel } from '../../rpc';
+import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
 
 type AttachmentDownloadDisposition = 'inline' | 'attachment';
 type AttachmentWriteAction =
@@ -309,6 +310,9 @@ export class UpdateOperations {
     const meta = getModelRuntimeMetadata(ModelCtor);
     const ownerModel = resolveOwnerModelName(meta);
     const repository = UpdateOperations.resolveRepository(ModelCtor, options);
+
+    // 0) Rewrite behavior-field assignments through inverse handlers before raw write planning.
+    values = (await applyInverseWriteback(meta, values as UnknownRecord)) as Partial<Updateable<T>>;
 
     // 1) Strip compute fields so callers cannot write compute fields directly.
     if (meta.computeGraph?.computeFields?.size) {

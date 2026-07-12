@@ -15,9 +15,67 @@ function getRegisteredModelCtors(storage: MetadataStorage): Array<typeof BaseMod
   return Array.from(models.keys()).filter((ctor): ctor is typeof BaseModel => typeof ctor === 'function');
 }
 
+type GraphBehaviorSpec = {
+  deps: string[];
+  store: boolean;
+  kind: 'compute' | 'sql';
+};
+
+function normalizeDeps(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(dep => String(dep || '').trim()).filter(Boolean))];
+}
+
+function normalizeFieldName(primary: unknown, fallback: unknown): string {
+  const first = String(primary || '').trim();
+  if (first) return first;
+  return String(fallback || '').trim();
+}
+
+function collectGraphBehaviorSpecs(meta: ModelMetadata): Map<string, GraphBehaviorSpec> {
+  const out = new Map<string, GraphBehaviorSpec>();
+
+  // Legacy compatibility path: infer behavior from @Field({ column.compute }).
+  meta.fields.forEach((fieldMeta, fieldName) => {
+    const spec = fieldMeta?.column?.compute;
+    if (!spec) return;
+    const name = normalizeFieldName(fieldName, fieldName);
+    if (!name) return;
+    out.set(name, {
+      deps: normalizeDeps(spec.deps),
+      store: spec.store !== false,
+      kind: 'compute',
+    });
+  });
+
+  // New runtime path: @Compute handlers override legacy field-level compute metadata.
+  meta.computeHandlers?.forEach((handler, fieldKey) => {
+    const field = normalizeFieldName(handler?.field, fieldKey);
+    if (!field) return;
+    out.set(field, {
+      deps: normalizeDeps(handler?.deps),
+      store: handler?.store !== false,
+      kind: 'compute',
+    });
+  });
+
+  // New runtime path: @SqlCompute handlers are always virtual fields.
+  meta.sqlComputeHandlers?.forEach((handler, fieldKey) => {
+    const field = normalizeFieldName(handler?.field, fieldKey);
+    if (!field) return;
+    out.set(field, {
+      deps: normalizeDeps(handler?.deps),
+      store: false,
+      kind: 'sql',
+    });
+  });
+
+  return out;
+}
+
 /**
  * Build the compute graph for a model.
- *  - Enumerate fields that define column.compute.
+ *  - Enumerate fields that define runtime compute/sql behavior.
  *  - Parse dependencies.
  *  - Build reverseDeps from trigger source to affected compute fields.
  *  - Build collectionTouchIndex for computes triggered by collection fields.
@@ -26,17 +84,19 @@ function getRegisteredModelCtors(storage: MetadataStorage): Array<typeof BaseMod
 export function buildComputeGraph(meta: ModelMetadata): ModelComputeGraph | undefined {
   if (!meta.fields || !meta.fields.size) return;
   const modelLabel = String(meta.fullModelName || meta.modelName || meta.className || 'Unknown');
+  const behaviorSpecs = collectGraphBehaviorSpecs(meta);
+
+  if (!behaviorSpecs.size) return;
 
   const computeFields: string[] = [];
   const persistedComputeFields = new Set<string>();
   const virtualComputeFields = new Set<string>();
-  meta.fields.forEach((f, name) => {
-    if (!f.column?.compute) return;
-    computeFields.push(name);
-    if (f.column.compute.store === false) {
-      virtualComputeFields.add(name);
+  behaviorSpecs.forEach((behavior, field) => {
+    computeFields.push(field);
+    if (behavior.store === false) {
+      virtualComputeFields.add(field);
     } else {
-      persistedComputeFields.add(name);
+      persistedComputeFields.add(field);
     }
   });
 
@@ -181,8 +241,8 @@ export function buildComputeGraph(meta: ModelMetadata): ModelComputeGraph | unde
 
   // Parse dependencies and build the first-pass indexes.
   for (const cf of computeFields) {
-    const spec = meta.fields.get(cf)!.column!.compute!;
-    const baseDeps = parseDeps(meta, cf, spec.deps || []);
+    const behavior = behaviorSpecs.get(cf)!;
+    const baseDeps = parseDeps(meta, cf, behavior.deps || []);
 
     // If a decimal compute field declares scaleField, add that scale carrier implicitly as a dependency.
     try {

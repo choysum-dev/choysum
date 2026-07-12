@@ -126,3 +126,75 @@ function modelLabel(meta: ModelMetadata): string {
 function isCollectionField(fieldType: string) {
   return fieldType === 'OneToMany' || fieldType === 'ManyToMany';
 }
+
+const DISALLOWED_RELATED_PATH_CHARS = /[\[\](){}:+\-*/]/;
+
+export type AutoInverseRelatedPath = {
+  root: string;
+  leaf: string;
+};
+
+/**
+ * Validates whether a related path can use the automatic inverse writeback route.
+ *
+ * Allowed shape:
+ * - exactly one hop: <ManyToOneField>.<ScalarField>
+ */
+export function validateAutoInverseRelatedPath(meta: ModelMetadata, fieldName: string, relatedPath: string): AutoInverseRelatedPath {
+  const path = String(relatedPath || '').trim();
+  if (!path) {
+    throw new Error(`Field ${fieldName}: related.path is empty`);
+  }
+
+  if (DISALLOWED_RELATED_PATH_CHARS.test(path)) {
+    throw new Error(`Field ${fieldName}: related.path "${path}" contains unsupported expression syntax`);
+  }
+
+  const segments = path
+    .split('.')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  if (segments.length !== 2) {
+    throw new Error(`Field ${fieldName}: related.path "${path}" is not a single-hop ManyToOne path`);
+  }
+
+  const [root, leaf] = segments;
+  const rootMeta = meta.fields.get(root);
+  if (!rootMeta) {
+    throw new Error(`Field ${fieldName}: related.path root "${root}" does not exist on model "${modelLabel(meta)}"`);
+  }
+
+  if (rootMeta.type !== 'ManyToOne') {
+    throw new Error(`Field ${fieldName}: related.path root "${root}" must be ManyToOne`);
+  }
+
+  if (!rootMeta.relation?.targetModel) {
+    throw new Error(`Field ${fieldName}: related.path root "${root}" is missing relation.targetModel`);
+  }
+
+  const targetMeta = MetadataStorage.instance.getModelMetadata(rootMeta.relation.targetModel());
+  const leafMeta = targetMeta.fields.get(leaf);
+  if (!leafMeta) {
+    throw new Error(`Field ${fieldName}: related.path leaf "${leaf}" does not exist on model "${modelLabel(targetMeta)}"`);
+  }
+
+  if (
+    leafMeta.type === 'ManyToOne' ||
+    leafMeta.type === 'OneToMany' ||
+    leafMeta.type === 'ManyToMany' ||
+    leafMeta.type === 'ManyToOneRef' ||
+    leafMeta.type === 'ManyToManyRef'
+  ) {
+    throw new Error(`Field ${fieldName}: related.path leaf "${leaf}" must be a writable scalar field`);
+  }
+
+  if (leafMeta.related?.store === false) {
+    throw new Error(`Field ${fieldName}: related.path leaf "${leaf}" points to a virtual related field`);
+  }
+
+  if (leafMeta.column?.compute || targetMeta.computeHandlers?.has(leaf) || targetMeta.sqlComputeHandlers?.has(leaf)) {
+    throw new Error(`Field ${fieldName}: related.path leaf "${leaf}" points to a computed field`);
+  }
+
+  return { root, leaf };
+}

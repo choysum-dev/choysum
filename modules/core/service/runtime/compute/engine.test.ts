@@ -3,6 +3,7 @@
 
 import { RepositoryFactory } from '../../orm/repository/repository_factory';
 import { MetadataStorage } from '../../orm/metadata/storage';
+import BaseModel from '../../orm/model/model';
 import { ComputeEngine } from './engine';
 import Decimal from '@/core/utils/decimal';
 import { getReadonlyCtx } from '../context';
@@ -1468,4 +1469,92 @@ test('compute engine handles falsy primitive entity with decimal scaleField comp
   );
 
   expect(changed.has('Amount')).toBe(false);
+});
+
+test('compute engine executes @Compute handler method and writes back through this', async () => {
+  class HandlerComputeModel extends BaseModel {
+    Qty?: number;
+    Total?: number;
+
+    computeTotal() {
+      this.Total = Number((this as any).Qty || 0) + 5;
+    }
+  }
+
+  const entity: any = { Qty: 3, Total: 0 };
+  const changed = new Set<string>(['Qty']);
+
+  await ComputeEngine.recompute(
+    {
+      type: HandlerComputeModel,
+      fields: new Map([
+        ['Qty', { type: 'int', column: {} }],
+        ['Total', { type: 'int', column: {} }],
+      ]),
+      computeHandlers: new Map([
+        [
+          'Total',
+          {
+            field: 'Total',
+            method: 'computeTotal',
+            deps: ['Qty'],
+            store: true,
+          },
+        ],
+      ]),
+      computeGraph: {
+        computeFields: new Set(['Total']),
+        persistedComputeFields: new Set(['Total']),
+        fastReverseDeps: new Map([['Qty', ['Total']]]),
+        orderIndex: new Map([['Total', 0]]),
+        computePathDeps: new Map(),
+      },
+    } as any,
+    entity,
+    changed,
+    'persist'
+  );
+
+  expect(entity.Total).toBe(8);
+  expect(changed.has('Total')).toBe(true);
+});
+
+test('compute engine injectVirtualForRead executes @SqlCompute handler with $sql bridge context', () => {
+  class SqlComputeReadModel extends BaseModel {
+    Name?: string;
+    DisplayName?: string;
+
+    sqlDisplayName() {
+      const sql = this.$sql as any;
+      return sql.str.concat(sql.field(SqlComputeReadModel, 'Name'), '-suffix');
+    }
+  }
+
+  const meta = {
+    type: SqlComputeReadModel,
+    fields: new Map([
+      ['Name', { type: 'varchar', column: { size: 64 } }],
+      ['DisplayName', { type: 'varchar', column: { size: 64 } }],
+    ]),
+    sqlComputeHandlers: new Map([
+      [
+        'DisplayName',
+        {
+          field: 'DisplayName',
+          method: 'sqlDisplayName',
+          deps: ['Name'],
+        },
+      ],
+    ]),
+    computeGraph: {
+      order: ['DisplayName'],
+      virtualComputeFields: new Set(['DisplayName']),
+      parsedDeps: new Map([['DisplayName', [{ kind: 'scalar', field: 'Name' }]]]),
+    },
+  } as any;
+
+  const entity: any = { Name: 'Alice' };
+  ComputeEngine.injectVirtualForRead(meta, entity);
+
+  expect(entity.DisplayName).toBe('Alice-suffix');
 });

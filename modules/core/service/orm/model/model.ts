@@ -58,6 +58,7 @@ import { defaultModelValues, runModelOnchange } from './model_runtime_service_fa
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { updateModels, updateModelById } from './model_update_service_facade';
+import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
 
@@ -158,22 +159,22 @@ class BaseModel {
   /**
    * Bridge slot for @SqlCompute runtime context (wired in runtime phase).
    */
-  get $sql(): never {
-    throw new Error('BRIDGE_CONTEXT_UNAVAILABLE: $sql is only available during @SqlCompute execution');
+  get $sql(): unknown {
+    return currentBridgeFrame(this, 'sql');
   }
 
   /**
    * Bridge slot for @Search runtime context (wired in runtime phase).
    */
-  get $search(): never {
-    throw new Error('BRIDGE_CONTEXT_UNAVAILABLE: $search is only available during @Search execution');
+  get $search(): unknown {
+    return currentBridgeFrame(this, 'search');
   }
 
   /**
    * Bridge slot for @Inverse runtime context (wired in runtime phase).
    */
-  get $inverse(): never {
-    throw new Error('BRIDGE_CONTEXT_UNAVAILABLE: $inverse is only available during @Inverse execution');
+  get $inverse(): unknown {
+    return currentBridgeFrame(this, 'inverse');
   }
 
   /**

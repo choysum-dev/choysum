@@ -753,6 +753,51 @@ test('buildComputeGraph keeps non-decimal compute deps unchanged (scaleField fal
   expect(deps).toEqual([{ kind: 'scalar', field: 'Name' }]);
 });
 
+test('buildComputeGraph collects dependencies from compute/sql handler metadata', () => {
+  class GraphHandlerMetaModel extends BaseModel {}
+
+  const meta = {
+    fullModelName: 'test.GraphHandlerMetaModel',
+    modelName: 'GraphHandlerMetaModel',
+    className: 'GraphHandlerMetaModel',
+    type: GraphHandlerMetaModel,
+    fields: new Map([
+      ['Name', { type: 'varchar', column: { size: 64 } }],
+      ['VirtualName', { type: 'varchar', column: { size: 64 } }],
+      ['DisplayName', { type: 'varchar', column: { size: 64 } }],
+    ]),
+    computeHandlers: new Map([
+      [
+        'VirtualName',
+        {
+          field: 'VirtualName',
+          method: 'computeVirtualName',
+          deps: ['Name'],
+          store: false,
+        },
+      ],
+    ]),
+    sqlComputeHandlers: new Map([
+      [
+        'DisplayName',
+        {
+          field: 'DisplayName',
+          method: 'sqlDisplayName',
+          deps: ['Name'],
+        },
+      ],
+    ]),
+  } as any;
+
+  const graph = buildComputeGraph(meta);
+  expect(graph?.computeFields.has('VirtualName')).toBe(true);
+  expect(graph?.computeFields.has('DisplayName')).toBe(true);
+  expect(graph?.virtualComputeFields?.has('VirtualName')).toBe(true);
+  expect(graph?.virtualComputeFields?.has('DisplayName')).toBe(true);
+  expect(graph?.persistedComputeFields?.has('DisplayName')).toBe(false);
+  expect(graph?.fastReverseDeps.get('Name')).toEqual(['VirtualName', 'DisplayName']);
+});
+
 test('buildComputeGraph rejects persisted scalar dependency on virtual compute field (direct branch)', () => {
   class GraphScalarRejectModel extends BaseModel {}
 
