@@ -141,7 +141,7 @@ export class OnchangeEngine {
         }
 
         try {
-          const rawResult = this.invokeOnchangeHandler(handler, draft, onchangeDraft);
+          const rawResult = OnchangeEngine.invokeOnchangeHandler(handler, draft, onchangeDraft);
           // Avoid microtask overhead for sync handlers in QuickJS runtimes
           // where await on a non-Promise always yields to the event loop.
           const result = rawResult instanceof Promise ? await rawResult : rawResult;
