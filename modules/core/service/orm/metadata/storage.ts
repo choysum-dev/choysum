@@ -65,12 +65,24 @@ export class MetadataStorage {
     const rawTriggers = Array.isArray(record.triggers) ? record.triggers : existing?.triggers || [];
     const rawReads = Array.isArray(record.reads) ? record.reads : existing?.reads;
 
-    return {
+    const handler: OnchangeHandlerMeta = {
       method,
       triggers: [...new Set(this.ensureStringArray(rawTriggers))],
       reads: rawReads ? [...new Set(this.ensureStringArray(rawReads))] : undefined,
       priority: typeof record.priority === 'number' ? record.priority : (existing?.priority ?? 100),
     };
+
+    // Only attach signature when a valid value is present so the raw metadata
+    // shape stays unchanged for handlers that never declared one.
+    const sig =
+      typeof record.signature === 'string' && (record.signature === 'legacyCtx' || record.signature === 'instanceNoArgs')
+        ? record.signature
+        : existing?.signature;
+    if (typeof sig === 'string') {
+      handler.signature = sig;
+    }
+
+    return handler;
   }
 
   private clearStaticMetadataCache(value: unknown): void {
@@ -450,6 +462,10 @@ export class MetadataStorage {
             triggers: Array.isArray(handler.triggers) ? [...new Set(handler.triggers.map(v => String(v || '').trim()).filter(Boolean))] : [],
             priority: typeof handler.priority === 'number' ? handler.priority : 100,
             reads: Array.isArray(handler.reads) ? [...new Set(handler.reads.map(v => String(v || '').trim()).filter(Boolean))] : undefined,
+            signature:
+              typeof handler.signature === 'string' && (handler.signature === 'legacyCtx' || handler.signature === 'instanceNoArgs')
+                ? handler.signature
+                : 'legacyCtx',
             source,
           });
         }

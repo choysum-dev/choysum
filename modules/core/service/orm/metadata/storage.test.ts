@@ -578,6 +578,84 @@ test('getEffectiveOnchange fallback path works when instance method is unavailab
     expect(childOnly?.priority).toBe(100);
     expect(parentOnly?.source).toBe('core.onchangeParent');
     expect(parentOnly?.priority).toBe(10);
+
+    // Default signature when not specified: legacyCtx.
+    expect(shared?.signature).toBe('legacyCtx');
+    expect(childOnly?.signature).toBe('legacyCtx');
+    expect(parentOnly?.signature).toBe('legacyCtx');
+  } finally {
+    storage.getEffectiveOnchange = original;
+  }
+});
+
+test('getEffectiveOnchange resolves signature with child override and parent inheritance', () => {
+  const storage = MetadataStorage.instance as any;
+  const original = storage.getEffectiveOnchange;
+
+  class StorageOnchangeSigParent extends BaseModel {}
+  class StorageOnchangeSigChild extends StorageOnchangeSigParent {}
+
+  resetModelMetadata(StorageOnchangeSigParent as any);
+  resetModelMetadata(StorageOnchangeSigChild as any);
+
+  storage.setModelMetadata(
+    StorageOnchangeSigParent as any,
+    {
+      fullModelName: 'core.onchangeSigParent',
+      onchangeHandlers: [
+        {
+          method: 'onOverride',
+          triggers: ['ParentField'],
+          signature: 'legacyCtx',
+        },
+        {
+          method: 'onInherit',
+          triggers: ['BaseField'],
+          signature: 'instanceNoArgs',
+        },
+      ],
+    } as any
+  );
+
+  storage.setModelMetadata(
+    StorageOnchangeSigChild as any,
+    {
+      modelName: 'core.onchangeSigChild',
+      onchangeHandlers: [
+        {
+          method: 'onOverride',
+          triggers: ['ChildField'],
+          signature: 'instanceNoArgs',
+        },
+        {
+          method: 'onChildExtra',
+          triggers: ['Extra'],
+        },
+      ],
+    } as any
+  );
+
+  try {
+    storage.getEffectiveOnchange = undefined;
+
+    const out = getEffectiveOnchange(StorageOnchangeSigChild as any);
+    expect(out.map((x: any) => x.method)).toEqual(['onChildExtra', 'onInherit', 'onOverride']);
+
+    const override = out.find((x: any) => x.method === 'onOverride');
+    const inherit = out.find((x: any) => x.method === 'onInherit');
+    const extra = out.find((x: any) => x.method === 'onChildExtra');
+
+    // Child explicitly overrides signature.
+    expect(override?.source).toBe('core.onchangeSigChild');
+    expect(override?.signature).toBe('instanceNoArgs');
+
+    // Parent signature inherited when child does not redeclare handler.
+    expect(inherit?.source).toBe('core.onchangeSigParent');
+    expect(inherit?.signature).toBe('instanceNoArgs');
+
+    // Default signature when no one specifies it.
+    expect(extra?.source).toBe('core.onchangeSigChild');
+    expect(extra?.signature).toBe('legacyCtx');
   } finally {
     storage.getEffectiveOnchange = original;
   }

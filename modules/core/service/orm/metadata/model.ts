@@ -28,6 +28,8 @@ export interface OnchangeHandlerMeta {
   triggers: string[]; // Trigger fields.
   priority?: number; // Optional; defaults to 100.
   reads?: string[]; // Optional read-only dependencies, either scalar fields or paths.
+  /** Handler calling convention: legacyCtx receives `(ctx)`, instanceNoArgs receives no arguments. */
+  signature?: 'legacyCtx' | 'instanceNoArgs';
 }
 
 /**
@@ -39,6 +41,8 @@ export interface EffectiveOnchangeMeta {
   priority: number;
   reads?: string[];
   source: string;
+  /** Resolved calling convention. Defaults to 'legacyCtx' when not specified. */
+  signature: 'legacyCtx' | 'instanceNoArgs';
 }
 
 /**
