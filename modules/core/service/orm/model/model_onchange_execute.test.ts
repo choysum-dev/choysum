@@ -146,3 +146,63 @@ test('model onchange execute swallows diagnostics errors and still finalizes tra
   expect(transport).toBe(finalTransport);
   expect(calls).toEqual(['run', 'cascade', 'diagnostics', 'validate', 'finalize']);
 });
+
+test('model onchange execute produces consistent transport shape regardless of handler signature', async () => {
+  const previewResult: OnchangeResult<any> = {
+    value: { Code: 'CHANGED' },
+    messages: [{ level: 'warn', message: 'test-warn' }],
+    condition: [{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }],
+    selection: [{ field: 'Code', selection: ['A', 'CHANGED'] }],
+  };
+  const finalTransport: OnchangeResult<any> = { ...previewResult };
+
+  const prepared: ModelOnchangePreparation = {
+    preview: {
+      meta: { fullModelName: 'test.SigModel' } as any,
+      selParsed: { collectionRoots: new Set(), fieldSignals: new Map(), selectors: new Map(), normalizedSeeds: new Set(['Name']) } as any,
+      changedFields: ['Name'],
+      mergedDraft: { Name: 'A' },
+      previewProxy: { Name: 'A' },
+    },
+    diagnostics: {
+      missingCount: 0,
+      usedCache: false,
+      pathDepthMax: 1,
+      cachedSignature: 'sig',
+      readsRoot: new Set(['Name']),
+    },
+  };
+
+  const callsA: string[] = [];
+  const callsB: string[] = [];
+
+  const deps = {
+    runPreviewEngine: (async () => { callsA.push('run'); return previewResult; }) as any,
+    applyPreviewCascade: (async () => { callsA.push('cascade'); }) as any,
+    attachDiagnostics: (() => { callsA.push('diagnostics'); }) as any,
+    validatePreview: (async () => { callsA.push('validate'); }) as any,
+    finalizeTransport: (() => { callsA.push('finalize'); return finalTransport; }) as any,
+  };
+
+  const t1 = await executePreparedModelOnchangePreview(
+    { ModelCtor: {} as any, draft: {}, prepared, prefetchTimeMs: 0 },
+    deps
+  );
+
+  const depsB = {
+    runPreviewEngine: (async () => { callsB.push('run'); return previewResult; }) as any,
+    applyPreviewCascade: (async () => { callsB.push('cascade'); }) as any,
+    attachDiagnostics: (() => { callsB.push('diagnostics'); }) as any,
+    validatePreview: (async () => { callsB.push('validate'); }) as any,
+    finalizeTransport: (() => { callsB.push('finalize'); return finalTransport; }) as any,
+  };
+
+  const t2 = await executePreparedModelOnchangePreview(
+    { ModelCtor: {} as any, draft: {}, prepared, prefetchTimeMs: 0 },
+    depsB
+  );
+
+  expect(t1).toEqual(t2);
+  expect(callsA).toEqual(['run', 'cascade', 'diagnostics', 'validate', 'finalize']);
+  expect(callsB).toEqual(callsA);
+});
