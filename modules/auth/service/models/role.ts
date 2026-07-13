@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field, Compute } from '@/core/service';
+import { BaseModel, Model, Field, SqlCompute } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
@@ -35,12 +35,9 @@ export default class Role extends BaseModel {
   })
   public readonly DisplayName!: string;
 
-  @Compute<Role>('DisplayName', {
-    deps: ['Code'],
-    store: false,
-  })
-  computeDisplayName() {
-    return this.Code;
+  @SqlCompute<Role>('DisplayName')
+  sqlDisplayName() {
+    return this.$sql.field('Code');
   }
 
   /**

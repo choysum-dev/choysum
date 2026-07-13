@@ -23,7 +23,7 @@ import {
   GroupBySpec,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
-import type { OnchangeTrigger } from '../metadata/field';
+import type { ModelCtor, OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
 import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
@@ -69,24 +69,21 @@ type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
 
 export type SqlComputeCtx<TModel extends BaseModel = BaseModel> = {
   field: {
-    (path: string): unknown;
-    (model: Function, path: string): unknown;
+    (path: string): SelectExpressionValue;
+    <T extends BaseModel>(model: ModelCtor<T>, path: string): SelectExpressionValue;
   };
   fieldExist: {
     (path: string): boolean;
-    (model: Function, path: string): boolean;
+    <T extends BaseModel>(model: ModelCtor<T>, path: string): boolean;
   };
-  model?: Function;
+  model?: ModelCtor<TModel>;
   str: {
-    concat: (...items: unknown[]) => unknown;
-    concatWs?: (separator: string, ...items: unknown[]) => unknown;
-    lower: (value: unknown) => unknown;
+    concat: (...items: Array<SelectExpressionValue | string>) => SelectExpressionAtom;
+    concatWs?: (separator: string, ...items: Array<SelectExpressionValue | string>) => SelectExpressionAtom;
+    lower: (value: SelectExpressionValue | string) => SelectExpressionAtom;
   };
-  fn: {
-    coalesce: (...items: unknown[]) => unknown;
-  };
-  col?: (table: string, column: string) => unknown;
-  selectFrom?: (table: string) => unknown;
+  col: (table: string, column: string) => SelectExpressionAtom;
+  selectFrom: (table: string) => SelectSubqueryBuilder;
 };
 
 export type SearchCtx<TModel extends BaseModel = BaseModel> = {

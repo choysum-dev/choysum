@@ -118,6 +118,10 @@ function createSqlBridgeContext(entity: UnknownRecord) {
     return typeof modelOrKey === 'string' ? modelOrKey : '';
   };
 
+  const throwSqlQueryBridgeUnavailable = (method: 'col' | 'selectFrom'): never => {
+    throw new Error(`BRIDGE_CONTEXT_UNAVAILABLE: sql.${method} is unavailable in runtime read context`);
+  };
+
   return {
     field(modelOrKey: unknown, key?: unknown): unknown {
       const resolvedKey = resolveFieldKey(modelOrKey, key);
@@ -133,13 +137,11 @@ function createSqlBridgeContext(entity: UnknownRecord) {
       concat: (...items: unknown[]) => items.map(item => String(item ?? '')).join(''),
       lower: (value: unknown) => String(value ?? '').toLowerCase(),
     },
-    fn: {
-      coalesce: (...items: unknown[]) => {
-        for (const item of items) {
-          if (item != null) return item;
-        }
-        return null;
-      },
+    col() {
+      return throwSqlQueryBridgeUnavailable('col');
+    },
+    selectFrom() {
+      return throwSqlQueryBridgeUnavailable('selectFrom');
     },
   };
 }

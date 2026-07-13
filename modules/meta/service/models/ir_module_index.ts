@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Compute, Field, Model } from '@/core/service';
+import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
@@ -395,12 +395,9 @@ export default class IrModuleIndex extends BaseModel {
   })
   OriginTypes?: string;
 
-  @Compute<IrModuleIndex>('OriginTypes', {
-    deps: ['OriginType'],
-    store: false,
-  })
-  computeOriginTypes() {
-    return this.OriginType;
+  @SqlCompute<IrModuleIndex>('OriginTypes')
+  sqlOriginTypes() {
+    return this.$sql.field('OriginType');
   }
 
   @Field({
@@ -409,12 +406,9 @@ export default class IrModuleIndex extends BaseModel {
   })
   LocalVersion?: string;
 
-  @Compute<IrModuleIndex>('LocalVersion', {
-    deps: ['Version'],
-    store: false,
-  })
-  computeLocalVersion() {
-    return this.Version;
+  @SqlCompute<IrModuleIndex>('LocalVersion')
+  sqlLocalVersion() {
+    return this.$sql.field('Version');
   }
 
   @Field({
@@ -423,12 +417,9 @@ export default class IrModuleIndex extends BaseModel {
   })
   RegistryVersion?: string;
 
-  @Compute<IrModuleIndex>('RegistryVersion', {
-    deps: ['Version'],
-    store: false,
-  })
-  computeRegistryVersion() {
-    return this.Version;
+  @SqlCompute<IrModuleIndex>('RegistryVersion')
+  sqlRegistryVersion() {
+    return this.$sql.field('Version');
   }
 
   @Field({
@@ -437,11 +428,30 @@ export default class IrModuleIndex extends BaseModel {
   })
   InstalledStatus?: string;
 
+  @SqlCompute<IrModuleIndex>('InstalledStatus')
+  sqlInstalledStatus() {
+    const moduleStatus = this.$sql
+      .selectFrom('meta_ir_module as m')
+      .select('m.status')
+      .whereRef('m.name', '=', this.$sql.col('meta_ir_module_index', 'module_name'))
+      .limit(1);
+    return sql<string>`coalesce((${moduleStatus}), 'uninstalled')`;
+  }
+
   @Field({
     type: 'varchar',
     size: 255,
   })
   InstalledVersion?: string;
+
+  @SqlCompute<IrModuleIndex>('InstalledVersion')
+  sqlInstalledVersion() {
+    return this.$sql
+      .selectFrom('meta_ir_module as m')
+      .select('m.version')
+      .whereRef('m.name', '=', this.$sql.col('meta_ir_module_index', 'module_name'))
+      .limit(1);
+  }
 
   static async Search<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
