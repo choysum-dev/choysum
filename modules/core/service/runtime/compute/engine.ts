@@ -46,7 +46,7 @@ function readBigdecimalEnvelope(value: unknown): string | number | undefined {
 // Resolve the effective decimal scale: prefer a fixed scale, otherwise read the value from scaleField on the entity.
 function resolveDecimalScale(metaField: unknown, entity: unknown): number | undefined {
   const metaRecord = asObjectRecord(metaField);
-  const spec = asObjectRecord(metaRecord?.column) ?? asObjectRecord(metaRecord?.select) ?? {};
+  const spec = asObjectRecord(metaRecord?.column) ?? {};
   if (typeof spec.scale === 'number') return spec.scale;
   const s = spec.scaleField;
   const entityRecord = asObjectRecord(entity);
@@ -60,10 +60,10 @@ function resolveDecimalScale(metaField: unknown, entity: unknown): number | unde
 // Normalize or quantize a Decimal using metadata, including dynamic scaleField support.
 function quantizeByMeta(metaField: unknown, entity: UnknownRecord, value: unknown): unknown {
   const metaRecord = asObjectRecord(metaField);
-  const spec = asObjectRecord(metaRecord?.column) ?? asObjectRecord(metaRecord?.select) ?? {};
+  const spec = asObjectRecord(metaRecord?.column) ?? {};
   const effScale = resolveDecimalScale(metaField, entity);
   const override = (effScale != null ? { column: { ...spec, scale: effScale, round: spec.round, precision: spec.precision } } : metaRecord) as
-    | { column?: unknown; select?: unknown }
+    | { column?: unknown }
     | undefined;
   try {
     return normalizeDecimalByMeta(override, value) ?? value;
@@ -96,15 +96,20 @@ function resolveRuntimeComputeExecution(meta: ModelMetadata, field: string): Run
     };
   }
 
-  const fieldMeta = meta.fields.get(field);
-  const legacySpec = fieldMeta?.column?.compute;
-  if (!legacySpec) return;
+  // Fallback: read inline compute expression from field-level column metadata.
+  const fieldMeta = meta.fields?.get(field);
+  const colSpec = (fieldMeta?.column ?? {}) as UnknownRecord;
+  const computeSpec = colSpec.compute as UnknownRecord | undefined;
+  const expr = computeSpec?.expr;
+  if (typeof expr === 'function') {
+    return {
+      store: computeSpec?.store !== false,
+      runAs: computeSpec?.runAs === 'sudo' ? 'sudo' : 'user',
+      execute: modelInstance => (expr as (self: unknown) => unknown).call(modelInstance, modelInstance),
+    };
+  }
 
-  return {
-    store: legacySpec.store !== false,
-    runAs: legacySpec.runAs === 'sudo' ? 'sudo' : 'user',
-    execute: modelInstance => legacySpec.expr(modelInstance as never),
-  };
+  return;
 }
 
 function createSqlBridgeContext(entity: UnknownRecord) {

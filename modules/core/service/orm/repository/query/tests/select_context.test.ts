@@ -20,15 +20,20 @@ function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
 }
 
 test('repository select context resolves scalar/select fields and path existence from metadata', () => {
-  class DemoModel {}
+  class DemoModel {
+    sqlDisplayName() {
+      return (this as any).$sql.field(DemoModel as any, 'Name');
+    }
+  }
 
   const demoMeta = {
     type: DemoModel,
     tableName: () => 'demo_table',
     fields: new Map([
       ['Name', { column: { name: 'Name' } }],
-      ['DisplayName', { select: { expr: ({ field }: any) => field(DemoModel as any, 'Name') } }],
+      ['DisplayName', {}],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const builder = {
@@ -137,7 +142,7 @@ test('repository select context reports field errors for missing or unsupported 
   withFakeMetadata(new Map([[DemoModel, demoMeta]]), () => {
     const ctx = makeSelectCtx(db as any, () => 'postgres', builder as any, 'demo_table', demoMeta);
     expect(() => ctx.field(DemoModel as any, 'Missing')).toThrow('field(DemoModel.Missing) not found');
-    expect(() => ctx.field(DemoModel as any, 'Broken')).toThrow('field(DemoModel.Broken) has neither select nor column');
+    expect(() => ctx.field(DemoModel as any, 'Broken')).toThrow('field(DemoModel.Broken) has neither sql compute handler nor column');
     expect(ctx.fieldExist(DemoModel as any, 'Broken')).toBe(false);
   });
 });
@@ -198,7 +203,7 @@ test('repository select context dotted path errors when intermediate relation or
       );
       expect(() => ctx.field(DemoModel as any, 'Owner.Name')).toThrow('path segment Owner must be a ManyToOne field with a column');
       expect(() => ctx.field(DemoModel as any, 'Owner2.Missing')).toThrow('field(OwnerModel.Missing) not found');
-      expect(() => ctx.field(DemoModel as any, 'Owner2.Name')).toThrow('field(OwnerModel.Name) has neither select nor column');
+      expect(() => ctx.field(DemoModel as any, 'Owner2.Name')).toThrow('field(OwnerModel.Name) has neither sql compute handler nor column');
 
       expect(ctx.fieldExist(DemoModel as any, 'Name.Other')).toBe(false);
       expect(ctx.fieldExist(DemoModel as any, 'Owner2.Name')).toBe(false);
@@ -211,15 +216,20 @@ test('repository select context dotted path errors when intermediate relation or
 test('repository select context supports dotted leaf select, multi-hop anchor join and BaseModel fallback', () => {
   class DemoModel {}
   class OwnerModel {}
-  class CompanyModel {}
+  class CompanyModel {
+    sqlLabel() {
+      return 'expr:company_label';
+    }
+  }
 
   const companyMeta = {
     type: CompanyModel,
     tableName: () => 'company_table',
     fields: new Map([
-      ['Label', { select: { expr: () => 'expr:company_label' } }],
+      ['Label', {}],
       ['Id', { column: { name: 'Id' } }],
     ]),
+    sqlComputeHandlers: new Map([['Label', { field: 'Label', method: 'sqlLabel' }]]),
   } as any;
 
   const ownerMeta = {
@@ -357,15 +367,20 @@ test('repository select context can hit missing segment branch after relation ta
 
 test('repository select context executes dotted leaf select callback with nested select context', () => {
   class DemoModel {}
-  class OwnerModel {}
+  class OwnerModel {
+    sqlDisplayName() {
+      return (this as any).$sql.col('owner_table', 'Name');
+    }
+  }
 
   const ownerMeta = {
     type: OwnerModel,
     tableName: () => 'owner_table',
     fields: new Map([
-      ['DisplayName', { select: { expr: ({ col }: any) => col('owner_table', 'Name') } }],
+      ['DisplayName', {}],
       ['Id', { column: { name: 'Id' } }],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const demoMeta = {

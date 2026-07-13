@@ -7,7 +7,7 @@ import { Field } from './field';
 
 class FieldTargetModel extends BaseModel {}
 
-test('Field decorator validates missing type and select/column conflicts', () => {
+test('Field decorator validates missing type and rejects forbidden column/select syntax', () => {
   expect(() => {
     class MissingTypeModel extends BaseModel {
       @Field({} as any)
@@ -22,7 +22,7 @@ test('Field decorator validates missing type and select/column conflicts', () =>
       Name!: string;
     }
     return SelectColumnConflictModel;
-  }).toThrow('select branch cannot declare column');
+  }).toThrow('column/select syntax is forbidden');
 
   expect(() => {
     class SelectComputeConflictModel extends BaseModel {
@@ -30,7 +30,7 @@ test('Field decorator validates missing type and select/column conflicts', () =>
       Name!: string;
     }
     return SelectComputeConflictModel;
-  }).toThrow('select branch cannot declare column');
+  }).toThrow('column/select syntax is forbidden');
 });
 
 test('Field decorator validates selection schema and uniqueness', () => {
@@ -75,7 +75,7 @@ test('Field decorator validates selection schema and uniqueness', () => {
       Status!: string;
     }
     return SelectionSelectColumnConflictModel;
-  }).toThrow('selection field cannot declare both select and column');
+  }).toThrow('column/select syntax is forbidden');
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {
@@ -138,87 +138,7 @@ test('Field decorator validates ref/relation/compute/decimal constraints', () =>
       Lines!: any[];
     }
     return OneToManyColumnModel;
-  }).toThrow('OneToMany does not allow column');
-
-  expect(() => {
-    class ComputeDepsEmptyModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: [], expr: () => 'x' } } } as any)
-      Name!: string;
-    }
-    return ComputeDepsEmptyModel;
-  }).toThrow('compute.deps must not be empty');
-
-  expect(() => {
-    class DecimalScaleRangeModel extends BaseModel {
-      @Field({ type: 'decimal', column: { precision: 10, scale: 19 } } as any)
-      Amount!: number;
-    }
-    return DecimalScaleRangeModel;
-  }).toThrow('decimal.scale must be in 0..18');
-
-  expect(() => {
-    class DecimalScaleFieldConflictModel extends BaseModel {
-      @Field({ type: 'decimal', column: { precision: 10, scale: 2, scaleField: 'Scale' } } as any)
-      Amount!: number;
-    }
-    return DecimalScaleFieldConflictModel;
-  }).toThrow('cannot declare both scale and scaleField');
-
-  expect(() => {
-    class ComputeRunAsInvalidModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', runAs: 'root' } } } as any)
-      Name!: string;
-    }
-    return ComputeRunAsInvalidModel;
-  }).toThrow('compute.runAs only supports user|sudo');
-
-  expect(() => {
-    class ComputeStoreTrueSearchableModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', store: true, searchable: true } } } as any)
-      Name!: string;
-    }
-    return ComputeStoreTrueSearchableModel;
-  }).toThrow('compute.searchable should not be set when store=true');
-
-  expect(() => {
-    class ComputeStoreFalseInverseModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', store: false, inverse: 'handler.inverse' } } } as any)
-      Name!: string;
-    }
-    return ComputeStoreFalseInverseModel;
-  }).toThrow('compute.inverse is not allowed when store=false');
-
-  expect(() => {
-    class ComputeVirtualSearchableMissingSearchModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', store: false, searchable: true } } } as any)
-      Name!: string;
-    }
-    return ComputeVirtualSearchableMissingSearchModel;
-  }).toThrow('compute.search is required when store=false and searchable=true');
-
-  expect(() => {
-    class ComputeVirtualNonSearchableWithSearchModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', store: false, searchable: false, search: 'handler.search' } } } as any)
-      Name!: string;
-    }
-    return ComputeVirtualNonSearchableWithSearchModel;
-  }).toThrow('compute.search is not allowed when store=false and searchable=false');
-
-  expect(() => {
-    class ComputeInverseBlankModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', inverse: '   ' } } } as any)
-      Name!: string;
-    }
-    return ComputeInverseBlankModel;
-  }).toThrow('compute.inverse must not be blank');
-
-  expect(() => {
-    class ComputeSearchBlankModel extends BaseModel {
-      @Field({ type: 'varchar', column: { compute: { deps: ['Name'], expr: () => 'x', search: '   ' } } } as any)
-      Name!: string;
-    }
-    return ComputeSearchBlankModel;
-  }).toThrow('compute.search must not be blank');
+  }).toThrow('column/select syntax is forbidden');
 });
 
 test('Field decorator registers flat storage hints and related metadata', () => {
@@ -265,20 +185,20 @@ test('Field decorator registers flat storage hints and related metadata', () => 
   });
 });
 
-test('Field decorator rejects mixing flat options with legacy column/select branches', () => {
+test('Field decorator rejects mixing flat options with forbidden column/select branches', () => {
   expect(() => {
-    class FlatLegacyMixColumnModel extends BaseModel {
+    class FlatForbiddenMixColumnModel extends BaseModel {
       @Field({ type: 'varchar', size: 64, column: { size: 64 } } as any)
       Name!: string;
     }
-    return FlatLegacyMixColumnModel;
-  }).toThrow('flat options cannot be mixed with legacy column/select branches');
+    return FlatForbiddenMixColumnModel;
+  }).toThrow('column/select syntax is forbidden');
 
   expect(() => {
-    class FlatLegacyMixSelectModel extends BaseModel {
+    class FlatForbiddenMixSelectModel extends BaseModel {
       @Field({ type: 'varchar', indexed: true, select: { expr: () => 'X' } } as any)
       Name!: string;
     }
-    return FlatLegacyMixSelectModel;
-  }).toThrow('flat options cannot be mixed with legacy column/select branches');
+    return FlatForbiddenMixSelectModel;
+  }).toThrow('column/select syntax is forbidden');
 });

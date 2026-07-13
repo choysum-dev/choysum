@@ -220,6 +220,12 @@ test('repository update write helpers leave query unchanged when filtered condit
 });
 
 test('repository update write helpers load validation current rows with decoded map and selection aliases', async () => {
+  class DemoModel {
+    sqlName() {
+      return { kind: 'expr', ctx: (this as any).$sql };
+    }
+  }
+
   const calls: Array<Record<string, any>> = [];
   const query = {
     where(callback: ({ eb }: any) => unknown) {
@@ -255,17 +261,12 @@ test('repository update write helpers load validation current rows with decoded 
       },
       table: 'demo_table',
       meta: {
+        type: DemoModel,
         fields: new Map([
           ['Id', {}],
-          [
-            'Name',
-            {
-              select: {
-                expr: (ctx: any) => ({ kind: 'expr', ctx }),
-              },
-            },
-          ],
+          ['Name', {}],
         ]),
+        sqlComputeHandlers: new Map([['Name', { field: 'Name', method: 'sqlName' }]]),
       } as any,
       getScalarFields() {
         calls.push({ method: 'scalarFields' });

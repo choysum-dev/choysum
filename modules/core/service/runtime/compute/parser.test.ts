@@ -23,7 +23,7 @@ function withPatchedModelMetadata<T>(resolver: (model: Function) => any, fn: () 
 
 @Model('test.ParseDepsCustomer')
 class ParseDepsCustomer extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   @Field({
@@ -35,60 +35,45 @@ class ParseDepsCustomer extends BaseModel {
 
 @Model('test.ParseDepsCustomerOrder')
 class ParseDepsCustomerOrder extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsCustomer },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ParseDepsCustomer } })
   CustomerId?: ParseDepsCustomer;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.ParseDepsLine')
 class ParseDepsLine extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ParseDepsModel } })
   ParentId?: ParseDepsModel;
 }
 
 @Model('test.ParseDepsTag')
 class ParseDepsTag extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.ParseDepsModelTag')
 class ParseDepsModelTag extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ParseDepsModel } })
   ParentId!: ParseDepsModel;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsTag },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ParseDepsTag } })
   TagId!: ParseDepsTag;
 }
 
 @Model('test.ParseDepsModel')
 class ParseDepsModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsCustomer },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ParseDepsCustomer } })
   CustomerId?: ParseDepsCustomer;
 
   @Field({
@@ -111,11 +96,8 @@ class ParseDepsModel extends BaseModel {
 
 @Model('test.ParseDepsMissingTarget')
 class ParseDepsMissingTarget extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: {} as any,
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: {} as any })
   BrokenRef?: any;
 }
 

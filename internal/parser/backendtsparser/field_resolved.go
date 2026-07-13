@@ -6,7 +6,6 @@ package backendtsparser
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -18,26 +17,6 @@ type resolvedFieldBehaviorBinding struct {
 	sqlCompute *meta.IrFieldBehaviorSqlComputeSpec
 	search     *meta.IrFieldBehaviorMethodRef
 	inverse    *meta.IrFieldBehaviorMethodRef
-}
-
-type legacyFieldSyntaxMode string
-
-const (
-	legacyFieldSyntaxFatal legacyFieldSyntaxMode = "fatal"
-	legacyFieldSyntaxWarn  legacyFieldSyntaxMode = "warn"
-	legacyFieldSyntaxAllow legacyFieldSyntaxMode = "allow"
-)
-
-func resolveLegacyFieldSyntaxMode() legacyFieldSyntaxMode {
-	raw := strings.ToLower(strings.TrimSpace(os.Getenv("CHOYSUM_FIELD_LEGACY_SYNTAX")))
-	switch raw {
-	case "warn":
-		return legacyFieldSyntaxWarn
-	case "allow":
-		return legacyFieldSyntaxAllow
-	default:
-		return legacyFieldSyntaxFatal
-	}
 }
 
 func asObject(value any) map[string]any {
@@ -347,16 +326,13 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if len(options) == 0 {
 		return nil, nil
 	}
-	legacyMode := resolveLegacyFieldSyntaxMode()
 	_, hasLegacyColumnOption := options["column"]
 	_, hasLegacySelectOption := options["select"]
-	if legacyMode == legacyFieldSyntaxFatal {
-		if hasLegacyColumnOption {
-			return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option column", field.Name)
-		}
-		if hasLegacySelectOption {
-			return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option select", field.Name)
-		}
+	if hasLegacyColumnOption {
+		return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option column", field.Name)
+	}
+	if hasLegacySelectOption {
+		return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option select", field.Name)
 	}
 
 	legacyColumn := asObject(options["column"])
@@ -375,23 +351,6 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			FieldType: fieldType,
 		},
 		Diagnostics: append([]meta.IrFieldDiagnostic{}, inherited...),
-	}
-
-	if legacyMode == legacyFieldSyntaxWarn {
-		if hasLegacyColumnOption {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
-				Code:     "FIELD_LEGACY_SYNTAX_DEPRECATED",
-				Severity: "warning",
-				Message:  fmt.Sprintf("@Field(%s) legacy option column is deprecated and should be flattened", field.Name),
-			})
-		}
-		if hasLegacySelectOption {
-			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
-				Code:     "FIELD_LEGACY_SYNTAX_DEPRECATED",
-				Severity: "warning",
-				Message:  fmt.Sprintf("@Field(%s) legacy option select is deprecated and should be flattened", field.Name),
-			})
-		}
 	}
 
 	if relation, ok := options["relation"].(map[string]any); ok {

@@ -10,28 +10,28 @@ import type { PathPrefetchPlan, PrefetchBatchStat, PrefetchExecStats } from '../
 
 @Model('test.PlanPreloadCompany')
 class PlanPreloadCompany extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.PlanPreloadPartner')
 class PlanPreloadPartner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadCompany }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadCompany } })
   CompanyId?: PlanPreloadCompany;
 }
 
 @Model('test.PlanPreloadProduct')
 class PlanPreloadProduct extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.PlanPreloadOrder')
 class PlanPreloadOrder extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadPartner }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadPartner } })
   PartnerId?: PlanPreloadPartner;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => PlanPreloadLine, inverseField: 'OrderId' } })
@@ -40,13 +40,13 @@ class PlanPreloadOrder extends BaseModel {
 
 @Model('test.PlanPreloadLine')
 class PlanPreloadLine extends BaseModel {
-  @Field({ type: 'decimal', column: { precision: 10, scale: 2 } })
+  @Field({ type: 'decimal', precision: 10, scale: 2 })
   Qty?: any;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadProduct }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadProduct } })
   ProductId?: PlanPreloadProduct;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadOrder }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadOrder } })
   OrderId?: PlanPreloadOrder;
 }
 
@@ -58,10 +58,10 @@ class PlanPreloadBrokenNext extends BaseModel {
 
 @Model('test.PlanPreloadBrokenItem')
 class PlanPreloadBrokenItem extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any } })
   BadRef?: any;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadBrokenNext }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanPreloadBrokenNext } })
   ParentId?: PlanPreloadBrokenNext;
 }
 
@@ -405,7 +405,7 @@ test('plan preload collections handles empty rows and skips second-hop when ids 
 
 @Model('test.PlanPreloadBrokenParent')
 class PlanPreloadBrokenParent extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any } })
   BrokenOwner?: any;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => PlanPreloadLine } } as any)

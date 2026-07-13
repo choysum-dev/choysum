@@ -375,7 +375,7 @@ export class ComputeCascadeEngine {
         computeSet.forEach(cf => {
           const cfMeta = childMeta.fields.get(cf);
           if (cfMeta?.type === 'decimal') {
-            const spec = asObjectRecord(cfMeta.column) || asObjectRecord(cfMeta.select) || {};
+            const spec = asObjectRecord(cfMeta.column) || {};
             const s = spec.scaleField;
             if (typeof s === 'string' && s) needed.add(s);
           }
@@ -418,7 +418,7 @@ export class ComputeCascadeEngine {
             for (const cf of computeSet) {
               const cfMeta = childMeta.fields.get(cf);
               if (cfMeta?.type !== 'decimal') continue;
-              const spec = asObjectRecord(cfMeta.column) || asObjectRecord(cfMeta.select) || {};
+              const spec = asObjectRecord(cfMeta.column) || {};
               const sField = typeof spec.scaleField === 'string' ? spec.scaleField : undefined;
               if (sField && entityObj[sField] !== undefined && !(sField in updates)) {
                 updates[sField] = entityObj[sField];

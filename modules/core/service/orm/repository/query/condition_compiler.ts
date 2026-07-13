@@ -19,6 +19,7 @@ import {
   type RepositoryPredicate,
   type RepositoryPredicateBuilder,
 } from './predicate_builder_adapter';
+import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import { rewriteSearchCondition } from '../../../runtime/compute/search_rewrite';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
@@ -34,6 +35,7 @@ export function convertCondition(
   condition: BaseQueryCondition,
   selfTable?: string
 ): RepositoryPredicate {
+  const modelLabel = String(meta.fullModelName || meta.modelName || meta.className || meta.type?.name || 'Unknown');
   const createSelectCtx = (table: string) => createRepositoryPredicateSelectCtx(db, getDialect, eb, table, meta);
 
   const wrapIfDecimal = (fieldName: string | undefined, op: unknown, rhs: unknown) => {
@@ -127,9 +129,12 @@ export function convertCondition(
             const modelCtor = meta.type as unknown as ModelCtor<BaseModel>;
             lhsExpr = createSelectCtx(selfTable).field(modelCtor, fieldName);
           } else {
-            const fieldMeta = meta.fields.get(fieldName);
-            if (fieldMeta?.select) {
-              lhsExpr = fieldMeta.select!.expr(createSelectCtx(selfTable));
+            if (hasRepositorySqlComputeExpression(meta, fieldName)) {
+              const resolved = resolveRepositorySqlComputeExpression(meta, fieldName, createSelectCtx(selfTable));
+              if (resolved === undefined) {
+                throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
+              }
+              lhsExpr = resolved;
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }
@@ -165,9 +170,12 @@ export function convertCondition(
             const modelCtor = meta.type as unknown as ModelCtor<BaseModel>;
             lhsExpr = createSelectCtx(selfTable).field(modelCtor, fieldName);
           } else {
-            const fieldMeta = meta.fields.get(fieldName);
-            if (fieldMeta?.select) {
-              lhsExpr = fieldMeta.select!.expr(createSelectCtx(selfTable));
+            if (hasRepositorySqlComputeExpression(meta, fieldName)) {
+              const resolved = resolveRepositorySqlComputeExpression(meta, fieldName, createSelectCtx(selfTable));
+              if (resolved === undefined) {
+                throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
+              }
+              lhsExpr = resolved;
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }
@@ -304,8 +312,11 @@ export function convertCondition(
         }
 
         const fieldMeta = meta.fields.get(fieldName);
-        if (fieldMeta?.select) {
-          const expr = fieldMeta.select!.expr(createSelectCtx(selfTable));
+        if (hasRepositorySqlComputeExpression(meta, fieldName)) {
+          const expr = resolveRepositorySqlComputeExpression(meta, fieldName, createSelectCtx(selfTable));
+          if (expr === undefined) {
+            throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
+          }
           const right = wrapByMeta(fieldMeta, effectiveOp, effectiveRhs);
           return repositoryPredicateCall(eb, expr, effectiveOp, right);
         }

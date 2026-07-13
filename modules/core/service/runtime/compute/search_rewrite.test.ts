@@ -7,16 +7,16 @@ import { rewriteSearchCondition } from './search_rewrite';
 
 @Model('test.SearchRewriteTarget')
 class SearchRewriteTarget extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.SearchRewriteModel')
 class SearchRewriteModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   override DisplayName!: string;
 
   @SqlCompute<SearchRewriteModel>('DisplayName')
@@ -38,7 +38,7 @@ test('search rewrite keeps physical field condition unchanged when no handler is
   expect(rewritten).toBeUndefined();
 });
 
-test('search rewrite throws SEARCH_HANDLER_REQUIRED for virtual sql field without @Search', () => {
+test('search rewrite keeps sql-compute field condition unchanged when @Search is not declared', () => {
   class MissingSearchModel extends BaseModel {}
 
   const meta = {
@@ -64,15 +64,8 @@ test('search rewrite throws SEARCH_HANDLER_REQUIRED for virtual sql field withou
     ]),
   } as any;
 
-  let message = '';
-  try {
-    rewriteSearchCondition(meta, 'DisplayName', '=', 'A', 'postgres', 'query');
-  } catch (error) {
-    message = String((error as Error)?.message || error);
-  }
-
-  expect(message.includes('SEARCH_HANDLER_REQUIRED')).toBe(true);
-  expect(message.includes('MissingSearchModel.DisplayName')).toBe(true);
+  const rewritten = rewriteSearchCondition(meta, 'DisplayName', '=', 'A', 'postgres', 'query');
+  expect(rewritten).toBeUndefined();
 });
 
 test('search rewrite executes @Search instance handler through bridge context', () => {

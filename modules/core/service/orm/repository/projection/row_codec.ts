@@ -10,11 +10,10 @@ import type { UnknownRecord } from '../../../../utils/types';
 
 type DecimalMetaLike = {
   column?: UnknownRecord;
-  select?: UnknownRecord;
 };
 
 function getFieldSpec(fm: FieldMetadata | undefined): UnknownRecord {
-  return asObjectRecord(fm?.column) ?? asObjectRecord(fm?.select) ?? {};
+  return asObjectRecord(fm?.column) ?? {};
 }
 
 function normalizedModelIdentity(meta: ModelMetadata): string {

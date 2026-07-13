@@ -35,7 +35,7 @@ function normalizeFieldName(primary: unknown, fallback: unknown): string {
 function collectGraphBehaviorSpecs(meta: ModelMetadata): Map<string, GraphBehaviorSpec> {
   const out = new Map<string, GraphBehaviorSpec>();
 
-  // Legacy compatibility path: infer behavior from @Field({ column.compute }).
+  // Field-level fallback: infer behavior from embedded compute metadata.
   meta.fields.forEach((fieldMeta, fieldName) => {
     const spec = fieldMeta?.column?.compute;
     if (!spec) return;
@@ -48,7 +48,7 @@ function collectGraphBehaviorSpecs(meta: ModelMetadata): Map<string, GraphBehavi
     });
   });
 
-  // New runtime path: @Compute handlers override legacy field-level compute metadata.
+  // Handler path: @Compute handlers override field-level fallback metadata.
   meta.computeHandlers?.forEach((handler, fieldKey) => {
     const field = normalizeFieldName(handler?.field, fieldKey);
     if (!field) return;
@@ -248,7 +248,7 @@ export function buildComputeGraph(meta: ModelMetadata): ModelComputeGraph | unde
     try {
       const fm = meta.fields.get(cf);
       const isDecimal = fm?.type === 'decimal';
-      const scaleCarrier = asObjectRecord(fm?.column) ?? asObjectRecord(fm?.select);
+      const scaleCarrier = asObjectRecord(fm?.column);
       const scaleField = isDecimal ? scaleCarrier?.scaleField : undefined;
 
       if (isDecimal && typeof scaleField === 'string' && scaleField) {

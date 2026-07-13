@@ -188,9 +188,10 @@ export class ValidationEngine {
       }
 
       const computeHandler = ctx.metadata.computeHandlers?.get(field);
+      const sqlComputeHandler = ctx.metadata.sqlComputeHandlers?.get(field);
       const isVirtualComputeField = Boolean(ctx.metadata.computeGraph?.virtualComputeFields?.has(field));
-      const writeToSelectOnlyField = (meta.select && !meta.column) || computeHandler?.store === false || isVirtualComputeField;
-      const writeToComputedField = Boolean(meta.column?.compute);
+      const writeToSelectOnlyField = (Boolean(sqlComputeHandler) && !meta.column) || computeHandler?.store === false || isVirtualComputeField;
+      const writeToComputedField = Boolean(computeHandler) || Boolean(sqlComputeHandler);
 
       if (shouldCheckWriteScope && writeToSelectOnlyField && !isWhitelistedOnCreate) {
         issues.push({

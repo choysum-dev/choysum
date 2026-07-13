@@ -472,7 +472,7 @@ test('field rule helper normalizes fetched spec and reuses cached value', async 
   );
 });
 
-test('field rule helper keeps repository legacy normalization semantics after core-helper reuse', async () => {
+test('field rule helper keeps repository normalization semantics after core-helper reuse', async () => {
   await withPatchedChoysum(
     {
       request: {

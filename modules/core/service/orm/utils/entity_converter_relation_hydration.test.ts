@@ -8,13 +8,13 @@ import { EntityConverter } from './converter';
 
 @Model('test.EntityConverterHydratedUser')
 class EntityConverterHydratedUser extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.EntityConverterHydratedTeam')
 class EntityConverterHydratedTeam extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterHydratedUser }, column: { notNull: false } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterHydratedUser }, notNull: false })
   Owner?: EntityConverterHydratedUser;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => EntityConverterHydratedMember, inverseField: 'TeamId' } })
@@ -23,10 +23,10 @@ class EntityConverterHydratedTeam extends BaseModel {
 
 @Model('test.EntityConverterHydratedMember')
 class EntityConverterHydratedMember extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterHydratedTeam }, column: { notNull: false } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterHydratedTeam }, notNull: false })
   TeamId?: EntityConverterHydratedTeam;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 

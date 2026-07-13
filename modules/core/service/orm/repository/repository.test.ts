@@ -1775,12 +1775,12 @@ test('repository root update resolves targets via locateIdsForCondition when mod
     return [{ numUpdatedRows: 1 } as any];
   };
 
-  const result = await repository.update({ Name: 'newer' }, ['Name', '=', 'legacy'] as any);
+  const result = await repository.update({ Name: 'newer' }, ['Name', '=', 'old-name'] as any);
 
   expect(result).toEqual([{ numUpdatedRows: 1 }]);
-  expect(calls.locateCondition).toEqual(['Name', '=', 'legacy']);
+  expect(calls.locateCondition).toEqual(['Name', '=', 'old-name']);
   expect(calls.rrTargets).toEqual({ op: 'write', ids: ['id_2'] });
-  expect(calls.rrCondition).toEqual({ condition: ['Name', '=', 'legacy'], op: 'write' });
+  expect(calls.rrCondition).toEqual({ condition: ['Name', '=', 'old-name'], op: 'write' });
   expect(calls.fieldRulePayload).toEqual({ Name: 'newer' });
 });
 
@@ -1975,7 +1975,7 @@ test('repository root delete short-circuits when resolved target ids are empty',
     return [];
   };
 
-  const rows = await repository.delete(['Name', '=', 'legacy'] as any);
+  const rows = await repository.delete(['Name', '=', 'old-name'] as any);
 
   expect(rows).toEqual([]);
   expect(executeCalled).toBe(0);
@@ -3369,11 +3369,18 @@ test('repository root low-level wrapper methods delegate to query and projection
       },
     };
 
+    class Target {
+      sqlComputed() {
+        return 'SELECT-EXPR';
+      }
+    }
+
     (repository as any).applyOrderByToQuery(
       fakeQuery,
       {
-        type: class Target {},
-        fields: new Map([['Computed', { select: { expr: () => 'SELECT-EXPR' } }]]),
+        type: Target,
+        fields: new Map([['Computed', {}]]),
+        sqlComputeHandlers: new Map([['Computed', { field: 'Computed', method: 'sqlComputed' }]]),
       } as any,
       'demo_table',
       [

@@ -58,7 +58,11 @@ test('repository condition compiler normalizes null comparisons and decimal cons
 });
 
 test('repository condition compiler reuses select-context for select and many2one path expressions', () => {
-  class DemoModel {}
+  class DemoModel {
+    sqlDisplayName() {
+      return (this as any).$sql.field(DemoModel as any, 'Name');
+    }
+  }
   class OwnerModel {}
 
   const ownerMeta = {
@@ -72,9 +76,10 @@ test('repository condition compiler reuses select-context for select and many2on
     tableName: () => 'demo_table',
     fields: new Map([
       ['Name', { column: { name: 'Name' } }],
-      ['DisplayName', { select: { expr: ({ field }: any) => field(DemoModel as any, 'Name') } }],
+      ['DisplayName', {}],
       ['Owner', { type: 'ManyToOne', column: { name: 'Owner' }, relation: { targetModel: () => OwnerModel } }],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const eb = createExpressionBuilder();
@@ -1347,12 +1352,17 @@ test('repository condition compiler dotted-path guard branches are covered for i
 });
 
 test('repository condition compiler ilike on postgres uses select expression and normalizes non-string rhs', () => {
-  class DemoModel {}
+  class DemoModel {
+    sqlDisplayName() {
+      return 'expr:display_name';
+    }
+  }
 
   const meta = {
     type: DemoModel,
     tableName: () => 'demo_table',
-    fields: new Map([['DisplayName', { select: { expr: () => 'expr:display_name' } }]]),
+    fields: new Map([['DisplayName', {}]]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const eb = createExpressionBuilder();
@@ -1432,12 +1442,17 @@ test('repository condition compiler maps not ilike to lower-not-like in mysql wh
 });
 
 test('repository condition compiler contains with select expression uses select-context expression', () => {
-  class DemoModel {}
+  class DemoModel {
+    sqlPayload() {
+      return 'expr:payload';
+    }
+  }
 
   const meta = {
     type: DemoModel,
     tableName: () => 'demo_table',
-    fields: new Map([['Payload', { type: 'jsonobject', select: { expr: () => 'expr:payload' } }]]),
+    fields: new Map([['Payload', { type: 'jsonobject' }]]),
+    sqlComputeHandlers: new Map([['Payload', { field: 'Payload', method: 'sqlPayload' }]]),
   } as any;
 
   const eb = createExpressionBuilder();

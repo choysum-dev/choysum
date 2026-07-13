@@ -13,10 +13,10 @@ import { ReadOperations } from './model_read';
 import { UpdateOperations } from './model_update';
 
 class ModelSurfaceHarness extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Username!: string;
 }
 

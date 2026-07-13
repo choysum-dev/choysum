@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field } from '@/core/service';
+import { BaseModel, Compute, Field } from '@/core/service';
 import { Constraint, ValidationPipelineError } from '@/core/service/api/constraint';
 import { MetadataStorage } from '@/core/service/api/metadata';
 import { ValidationEngine } from '@/core/service/api/validation';
 import { RepositoryFactory } from '../../orm/repository/repository_factory';
 
 const engineCallLog: Array<Record<string, unknown>> = [];
+type ObjectRecord = Record<string, unknown>;
 
 class ConstraintEngineModel extends BaseModel {
   Name?: string;
@@ -63,38 +64,38 @@ class ConstraintEngineEdgeModel extends BaseModel {
 }
 
 class PlatformValidationModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'varchar',
-    select: {
-      expr: ({ model, field }) => field(model, 'Name' as any) as any,
-      size: 64,
-    },
-  })
+  @Field({ type: 'varchar', size: 64 })
   VirtualName?: string;
 
-  @Field({
-    type: 'varchar',
-    column: {
-      size: 64,
-      compute: {
-        expr: (self: PlatformValidationModel) => self.Name || '',
-        deps: ['Name' as any],
-      },
-    },
+  @Compute<PlatformValidationModel>('VirtualName', {
+    deps: ['Name' as any],
+    store: false,
   })
+  computeVirtualName() {
+    return this.Name || '';
+  }
+
+  @Field({ type: 'varchar', size: 64 })
   ComputedName?: string;
+
+  @Compute<PlatformValidationModel>('ComputedName', {
+    deps: ['Name' as any],
+  })
+  computeComputedName() {
+    return this.Name || '';
+  }
 }
 
 class PlatformReadonlyModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 class PlatformCompanyTargetModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 20 } })
+  @Field({ type: 'varchar', size: 20 })
   CompanyId?: string;
 }
 
@@ -102,7 +103,6 @@ class PlatformCompanySourceModel extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PlatformCompanyTargetModel },
-    column: {},
   })
   TargetId?: PlatformCompanyTargetModel;
 }
@@ -111,7 +111,6 @@ class PlatformCompanyRefSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: () => PlatformCompanyTargetModel },
-    column: {},
   })
   TargetRefId?: string;
 }
@@ -120,7 +119,6 @@ class PlatformCompanyRefStringSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'test.PlatformCompanyTargetModel' },
-    column: {},
   })
   TargetRefId?: string;
 }
@@ -129,34 +127,31 @@ class PlatformBaseCompanyRefSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
-    column: {},
   })
   CompanyId?: string;
 }
 
 class KernelValidationTargetModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 20 } })
+  @Field({ type: 'varchar', size: 20 })
   Name?: string;
 }
 
 class KernelValidationModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64, notNull: true } })
+  @Field({ type: 'varchar', size: 64, notNull: true })
   RequiredName?: string;
 
-  @Field({ type: 'decimal', column: { precision: 5, scale: 2 } })
+  @Field({ type: 'decimal', precision: 5, scale: 2 })
   Amount?: any;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => KernelValidationTargetModel },
-    column: {},
   })
   TargetId?: KernelValidationTargetModel;
 
   @Field({
     type: 'ManyToOneRef',
     relation: { targetModel: 'base.Company' },
-    column: {},
   })
   CompanyId?: string;
 }
@@ -905,13 +900,13 @@ test('validation engine kernel: decimal precision/format validation', async () =
 const instanceCallLog: Array<Record<string, unknown>> = [];
 
 class InstanceConstraintModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 32 } })
+  @Field({ type: 'varchar', size: 32 })
   Status?: string;
 
-  @Field({ type: 'int', column: { notNull: true, default: () => 0 } })
+  @Field({ type: 'int', notNull: true, default: () => 0 })
   Rank?: number;
 
   static resetLog() {
@@ -1051,7 +1046,7 @@ test('static and instance constraints run together in priority order', async () 
   const mixedCallOrder: string[] = [];
 
   class MixedConstraintModel extends BaseModel {
-    @Field({ type: 'varchar', column: { size: 64 } })
+    @Field({ type: 'varchar', size: 64 })
     Name?: string;
 
     static staticCheck(_self: MixedConstraintModel) {
@@ -1084,7 +1079,7 @@ test('static and instance constraints run together in priority order', async () 
 
 test('instance constraint write to unknown field is silently skipped', async () => {
   class UnknownFieldModel extends BaseModel {
-    @Field({ type: 'varchar', column: { size: 64 } })
+    @Field({ type: 'varchar', size: 64 })
     Name?: string;
 
     writeUnknown(): void {
@@ -1116,10 +1111,10 @@ test('instance constraint write to unknown field is silently skipped', async () 
 
 test('post-constraint mutation triggers kernel re-validation for new fields', async () => {
   class MutatingConstraintModel extends BaseModel {
-    @Field({ type: 'varchar', column: { size: 64, notNull: true } })
+    @Field({ type: 'varchar', size: 64, notNull: true })
     RequiredField?: string;
 
-    @Field({ type: 'varchar', column: { size: 64 } })
+    @Field({ type: 'varchar', size: 64 })
     OtherField?: string;
 
     normalizeRequired(): void {
@@ -1280,7 +1275,7 @@ test('validation engine platform uses values keys when changedFields is empty an
 
 test('validation engine platform short-circuits when reference id or target ctor is missing', async () => {
   class MissingTargetRefModel extends BaseModel {
-    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.UnknownTarget' }, column: {} })
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.UnknownTarget' } })
     TargetRefId?: string;
   }
 
@@ -1310,17 +1305,17 @@ test('validation engine platform short-circuits when reference id or target ctor
 
 test('validation engine platform skips company check for non-company-scoped target and enforces base.Company via targetMeta', async () => {
   class NonCompanyScopedTarget extends BaseModel {
-    @Field({ type: 'varchar', column: { size: 20 } })
+    @Field({ type: 'varchar', size: 20 })
     Name?: string;
   }
 
   class NonCompanyScopedSource extends BaseModel {
-    @Field({ type: 'ManyToOne', relation: { targetModel: () => NonCompanyScopedTarget }, column: {} })
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => NonCompanyScopedTarget } })
     TargetId?: NonCompanyScopedTarget;
   }
 
   class BaseCompanyViaTargetMeta extends BaseModel {
-    @Field({ type: 'ManyToOne', relation: { targetModel: () => PlatformCompanyTargetModel }, column: {} })
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => PlatformCompanyTargetModel } })
     CompanyId?: PlatformCompanyTargetModel;
   }
 
@@ -1475,7 +1470,7 @@ test('validation engine kernel fallback maps non-kernel errors and non-error thr
 
 test('validation engine platform skips unresolved target ctor and empty target company id rows', async () => {
   class MissingCtorRefModel extends BaseModel {
-    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.MissingCtorModel' }, column: {} })
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.MissingCtorModel' } })
     TargetRefId?: string;
   }
 
@@ -1614,7 +1609,7 @@ test('validation engine constraint execution sorts same-priority handlers by met
 const inheritLog: string[] = [];
 
 class InheritEngineParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   // Parent instance constraint.

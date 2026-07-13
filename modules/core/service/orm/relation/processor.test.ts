@@ -8,25 +8,25 @@ import type { RelationFieldType } from './types';
 
 @Model('test.RelationProcessorJoin')
 class RelationProcessorJoin extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   OwnerId?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   TagId?: string;
 }
 
 @Model('test.RelationProcessorTarget')
 class RelationProcessorTarget extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.RelationProcessorParent')
 class RelationProcessorParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => RelationProcessorTarget }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => RelationProcessorTarget } })
   OwnerId?: RelationProcessorTarget | null;
 
   @Field({
@@ -58,37 +58,28 @@ class RelationProcessorParent extends BaseModel {
 
 @Model('test.RelationProcessorChild')
 class RelationProcessorChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => RelationProcessorParent, onDelete: 'CASCADE' },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => RelationProcessorParent, onDelete: 'CASCADE' } })
   ParentId?: RelationProcessorParent | null;
 }
 
 @Model('test.RelationProcessorRestrictChild')
 class RelationProcessorRestrictChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => RelationProcessorParent, onDelete: 'RESTRICT' },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => RelationProcessorParent, onDelete: 'RESTRICT' } })
   ParentId?: RelationProcessorParent | null;
 }
 
 @Model('test.RelationProcessorNoPolicyChild')
 class RelationProcessorNoPolicyChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => RelationProcessorParent },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => RelationProcessorParent } })
   ParentId?: RelationProcessorParent | null;
 }
 
 @Model('test.RelationProcessorPlainChild')
 class RelationProcessorPlainChild extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   ParentId?: string;
 }
 

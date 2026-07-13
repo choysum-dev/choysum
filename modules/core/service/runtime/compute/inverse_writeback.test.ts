@@ -7,17 +7,14 @@ import { applyInverseWriteback, tryAutoInverseWriteback } from './inverse_writeb
 
 @Model('test.InverseTargetModel')
 class InverseTargetModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.InverseAutoModel')
 class InverseAutoModel extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => InverseTargetModel },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => InverseTargetModel } })
   PartnerId?: InverseTargetModel;
 
   @Field({
@@ -32,11 +29,8 @@ class InverseAutoModel extends BaseModel {
 
 @Model('test.InverseManualModel')
 class InverseManualModel extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => InverseTargetModel },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => InverseTargetModel } })
   PartnerId?: InverseTargetModel;
 
   @Field({

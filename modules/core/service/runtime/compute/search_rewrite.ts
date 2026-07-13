@@ -41,7 +41,8 @@ export function rewriteSearchCondition(
   const sqlComputeHandler = meta.sqlComputeHandlers?.get(fieldName);
   const legacyCompute = fieldMeta.column?.compute;
 
-  const isVirtual = Boolean(sqlComputeHandler) || computeHandler?.store === false || legacyCompute?.store === false || fieldMeta.related?.store === false;
+  // Sql-compute fields can be compiled as query expressions directly and do not require @Search handlers.
+  const isVirtual = computeHandler?.store === false || legacyCompute?.store === false || fieldMeta.related?.store === false;
 
   const explicitSearchHandler = meta.searchHandlers?.get(fieldName)?.method;
   const legacySearch = typeof legacyCompute?.search === 'string' ? legacyCompute.search.trim() : '';

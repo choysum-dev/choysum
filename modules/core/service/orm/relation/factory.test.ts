@@ -11,25 +11,25 @@ type ModelCtor<T extends BaseModel> = { new (...args: never[]): T } & typeof Bas
 
 @Model('test.RelationFactoryTarget')
 class RelationFactoryTarget extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.RelationFactoryJoin')
 class RelationFactoryJoin extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   OwnerId?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   TagId?: string;
 }
 
 @Model('test.RelationFactoryParent')
 class RelationFactoryParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => RelationFactoryTarget }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => RelationFactoryTarget } })
   OwnerId?: RelationFactoryTarget | null;
 
   @Field({

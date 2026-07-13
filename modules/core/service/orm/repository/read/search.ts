@@ -24,6 +24,7 @@ import type { DialectName } from '../repository_dialect';
 import { buildHiddenScaleAlias } from '../hidden_scale_alias';
 import type { SelectionNode, SelectionRelationEntry } from '../projection';
 import type { RepositoryOrderSpec } from '../query/ordering';
+import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from '../query';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
 
@@ -117,23 +118,27 @@ export async function executeRepositorySearch(
       if (column.includes('.')) {
         const expr = selectCtx.field(params.meta.type, column);
         selections.push(params.aliasSelection(expr, column));
-      } else if (fieldMeta?.select) {
-        const selectExpr = fieldMeta.select.expr as (ctx: unknown) => unknown;
-        const out = selectExpr(selectCtx);
+      } else if (hasRepositorySqlComputeExpression(params.meta, column)) {
+        const out = resolveRepositorySqlComputeExpression(params.meta, column, selectCtx);
+        if (out === undefined) {
+          throw new Error(`field sql compute handler is missing: ${params.meta.fullModelName || params.meta.modelName || params.meta.name}.${column}`);
+        }
         selections.push(params.aliasSelection(out, column));
       } else {
         selections.push(refBuilder.ref(`${params.table}.${column}`).as(column));
       }
 
       if (fieldMeta?.type === 'decimal') {
-        const spec = asObjectRecord(fieldMeta.column || fieldMeta.select || {});
+        const spec = asObjectRecord(fieldMeta.column || {});
         const scale = spec?.scale;
         const scaleField = typeof spec?.scaleField === 'string' ? spec.scaleField : undefined;
         if (typeof scale !== 'number' && scaleField) {
           const scaleMeta = params.meta.fields.get(scaleField);
-          if (scaleMeta?.select) {
-            const scaleExpr = scaleMeta.select.expr as (ctx: unknown) => unknown;
-            const out = scaleExpr(selectCtx);
+          if (hasRepositorySqlComputeExpression(params.meta, scaleField)) {
+            const out = resolveRepositorySqlComputeExpression(params.meta, scaleField, selectCtx);
+            if (out === undefined) {
+              throw new Error(`field sql compute handler is missing: ${params.meta.fullModelName || params.meta.modelName || params.meta.name}.${scaleField}`);
+            }
             selections.push(params.aliasSelection(out, buildHiddenScaleAlias(column)));
           } else if (scaleMeta?.column) {
             selections.push(refBuilder.ref(`${params.table}.${scaleField}`).as(buildHiddenScaleAlias(column)));

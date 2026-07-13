@@ -573,7 +573,7 @@ test('compute engine persist ignores invalid compute paths before prefetch', asy
 test('compute engine preview handles primitive entity when trigger collection is empty', async () => {
   await ComputeEngine.recompute(
     {
-      fields: new Map([['Amount', { type: 'decimal', select: { scaleField: 'Scale' } }]]),
+      fields: new Map([['Amount', { type: 'decimal', column: { scaleField: 'Scale' } }]]),
       computeGraph: {
         computeFields: new Set(['Computed']),
         fastReverseDeps: new Map(),
@@ -601,8 +601,8 @@ test('compute engine preview skips fields without compute spec after trigger col
     {
       fields: new Map([
         ['Trigger', { type: 'int', column: {} }],
-        ['AmountA', { type: 'decimal', select: { scaleField: 'ScaleA' } }],
-        ['AmountB', { type: 'decimal', select: { scaleField: 'ScaleB' } }],
+        ['AmountA', { type: 'decimal', column: { scaleField: 'ScaleA' } }],
+        ['AmountB', { type: 'decimal', column: { scaleField: 'ScaleB' } }],
         ['NoCompute', { type: 'int', column: {} }],
       ]),
       computeGraph: {
@@ -1070,8 +1070,8 @@ test('compute engine preview keeps Decimal values, supports valid scaleField and
       type: PreviewScaleModel,
       fields: new Map([
         ['Scale', { type: 'int', column: {} }],
-        ['AmountWithScale', { type: 'decimal', select: { scaleField: 'Scale' } }],
-        // Omit column and select to exercise (metaField?.column || metaField?.select) ?? {}.
+        ['AmountWithScale', { type: 'decimal', column: { scaleField: 'Scale' } }],
+        // Omit column to exercise (metaField?.column) ?? {}.
         ['AmountDecimalAlready', { type: 'decimal' }],
         ['AmountEnvelope', { type: 'decimal', column: { scale: 2 } }],
       ]),

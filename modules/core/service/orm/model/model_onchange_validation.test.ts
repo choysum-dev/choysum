@@ -11,7 +11,7 @@ import { ValidationEngine } from '../../runtime/validation';
 
 @Model('test.ModelOnchangeValidationModel')
 class ModelOnchangeValidationModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   static get ctx() {

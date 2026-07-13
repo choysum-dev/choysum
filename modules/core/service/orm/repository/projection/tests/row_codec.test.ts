@@ -209,18 +209,6 @@ test('repository row codec decodes early-return and many2many array/null branche
   expect(decodedNull.Tags).toEqual([]);
 });
 
-test('repository row codec scale resolvers support select metadata and object parse passthrough', () => {
-  const decimalFromSelect = { type: 'decimal', name: 'Amount', select: { scaleField: 'Scale' } } as any;
-  expect(resolveDecimalScaleForWrite(decimalFromSelect, { Scale: '3' } as any)).toBe(3);
-
-  const meta = { fields: new Map([['Amount', decimalFromSelect]]) } as any;
-  expect(resolveDecimalScaleFromRow(meta, decimalFromSelect, 'Amount', { Scale: 4 })).toBe(4);
-  expect(resolveDecimalScaleFromRow(meta, decimalFromSelect, 'Amount', { Scale: 'x', [buildHiddenScaleAlias('Amount')]: 'y' })).toBeUndefined();
-
-  const obj = { keep: true };
-  expect(parseJsonObjectFieldValue(obj)).toBe(obj);
-});
-
 test('repository row codec skips owner binary/image writes but keeps storage blob carrier writes', () => {
   const ownerMeta = {
     application: 'auth',

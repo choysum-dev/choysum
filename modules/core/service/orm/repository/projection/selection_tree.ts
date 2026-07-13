@@ -4,6 +4,7 @@
 import type BaseModel from '../../model/model';
 import { FieldMetadata, ManyToManyMetadata, ManyToOneMetadata, ModelMetadata, OneToManyMetadata, type RelationFieldType } from '../../metadata';
 import { MetadataStorage } from '../../metadata';
+import { isRepositorySelectableScalarField } from '../query/sql_compute_expression';
 import { getRuntimeEnvValue, parseRuntimeEnvBoolean } from '@/core/utils/env';
 import { asObjectRecord } from '../../../../utils/object';
 
@@ -119,7 +120,7 @@ export function getScalarFields(meta: ModelMetadata): string[] {
   for (const [name, fieldMeta] of meta.fields) {
     if (isOrmRelationField(fieldMeta)) continue;
     if (isAttachmentBackedBinaryImageField(meta, fieldMeta)) continue;
-    if (fieldMeta.column || fieldMeta.select) {
+    if (isRepositorySelectableScalarField(meta, name, fieldMeta)) {
       fields.push(name);
     }
   }
@@ -155,7 +156,7 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
           fail(`Selection field does not exist: ${toPathLabel(pathPrefix, field)} (model=${modelLabel(currentMeta)})`);
           continue;
         }
-        if ((fieldMeta.column || fieldMeta.select) && !isAttachmentBackedBinaryImageField(currentMeta, fieldMeta)) {
+        if (isRepositorySelectableScalarField(currentMeta, field, fieldMeta) && !isAttachmentBackedBinaryImageField(currentMeta, fieldMeta)) {
           node.columns.add(field);
         }
         if (isOrmRelationField(fieldMeta)) {

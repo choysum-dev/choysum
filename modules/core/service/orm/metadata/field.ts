@@ -5,7 +5,8 @@ import BaseModel from '../model/model';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { ComputeRunAs } from './compute';
-import type { ObjectRecord } from '../../../utils/types';
+
+type ObjectRecord = Record<string, unknown>;
 
 /**
  * Scalar field values supported by field path inference.
@@ -93,12 +94,6 @@ type FlatCommonOptions = {
   default?: unknown;
 };
 
-type FlatLegacyBranch<T extends BaseModel> = {
-  // Keep optional legacy branches for gradual migration in runtime decorators.
-  column?: ColumnOptions<T, unknown> & ObjectRecord;
-  select?: SelectOptions<T, unknown> & ObjectRecord;
-};
-
 type FlatNoRelationOption = { relation?: never };
 type FlatNoSelectionOption = { selection?: never };
 type FlatNoSizeOption = { size?: never };
@@ -148,7 +143,6 @@ type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
   type: 'char' | 'varchar';
   size?: number;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoDecimalOptions;
@@ -156,7 +150,6 @@ type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
 type FlatScalarFieldOptions<T extends BaseModel> = {
   type: Exclude<FieldType, 'char' | 'varchar' | 'decimal' | 'selection' | 'ManyToOneRef' | 'ManyToManyRef' | 'ManyToOne' | 'OneToMany' | 'ManyToMany'>;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoSizeOption &
@@ -168,7 +161,6 @@ type FlatDecimalFieldOptions<T extends BaseModel> = {
   scale?: number;
   round?: DecimalRound;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoRelationOption &
   FlatNoSelectionOption &
   FlatNoSizeOption;
@@ -178,7 +170,6 @@ type FlatSelectionFieldOptions<T extends BaseModel> = {
   selection: SelectionItem[];
   size?: number;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoRelationOption &
   FlatNoDecimalOptions;
 
@@ -187,7 +178,6 @@ type FlatManyToOneRefFieldOptions<T extends BaseModel, TTarget extends BaseModel
   relation: FlatRefRelationOption<TTarget>;
   size?: number;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoSelectionOption &
   FlatNoDecimalOptions;
 
@@ -195,7 +185,6 @@ type FlatManyToManyRefFieldOptions<T extends BaseModel, TTarget extends BaseMode
   type: 'ManyToManyRef';
   relation: FlatRefRelationOption<TTarget>;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoDecimalOptions;
@@ -204,7 +193,6 @@ type FlatManyToOneFieldOptions<T extends BaseModel, TTarget extends BaseModel> =
   type: 'ManyToOne';
   relation: FlatManyToOneRelationOption<TTarget>;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoDecimalOptions;
@@ -213,7 +201,6 @@ type FlatOneToManyFieldOptions<T extends BaseModel, TTarget extends BaseModel> =
   type: 'OneToMany';
   relation: FlatOneToManyRelationOption<TTarget>;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoDecimalOptions;
@@ -222,7 +209,6 @@ type FlatManyToManyFieldOptions<T extends BaseModel, TJoin extends BaseModel, TT
   type: 'ManyToMany';
   relation: FlatManyToManyRelationOption<TJoin, TTarget>;
 } & FlatCommonOptions &
-  FlatLegacyBranch<T> &
   FlatNoSelectionOption &
   FlatNoSizeOption &
   FlatNoDecimalOptions;
@@ -282,8 +268,6 @@ export type RelationFieldType = Extract<FieldType, 'ManyToOne' | 'OneToMany' | '
 export type ToManyRelationFieldType = Extract<RelationFieldType, 'OneToMany' | 'ManyToMany'>;
 
 type KeysOfType<T, V> = Extract<{ [K in keyof T]-?: T[K] extends V ? K : never }[keyof T], string>;
-type IdOf<T> = T extends { Id: infer I } ? I : never;
-type FieldValue<T extends BaseModel, R extends keyof T> = [R] extends [never] ? unknown : [keyof T] extends [R] ? unknown : T[R];
 
 /**
  * Constructor type for runtime model classes.
@@ -368,13 +352,6 @@ export type SelectCtx<TCurrent extends BaseModel = BaseModel> = {
 export type SelectExpressionFn<T extends BaseModel, V> = (ctx: SelectCtx<T>) => SelectExpressionValue<V>;
 
 /**
- * Options for a virtual or projected select field.
- */
-export type SelectOptions<T extends BaseModel, V> = {
-  expr: SelectExpressionFn<T, V>;
-};
-
-/**
  * Compute metadata stored on a column definition.
  */
 export interface ColumnComputeSpec<T extends BaseModel = BaseModel, R = unknown> {
@@ -406,243 +383,6 @@ export interface ColumnOptions<TModel extends BaseModel = BaseModel, TValue = un
   round?: DecimalRound;
 }
 
-/**
- * Options for a fixed-width char field.
- */
-export type CharFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'char';
-} & (
-    | { column: ColumnOptions<T, FieldValue<T, R>> & { size: number }; select?: never }
-    | { select: SelectOptions<T, FieldValue<T, R>> & { size?: number }; column?: never }
-  );
-
-/**
- * Options for a varchar field.
- */
-export type VarcharFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'varchar';
-} & (
-    | { column?: ColumnOptions<T, FieldValue<T, R>> & { size?: number }; select?: never }
-    | { select: SelectOptions<T, FieldValue<T, R>> & { size?: number }; column?: never }
-  );
-
-/**
- * Options for a text field.
- */
-export type TextFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'text';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a binary field.
- */
-export type BinaryFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'binary';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for an image field.
- */
-export type ImageFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'image';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a numeric field.
- */
-export type NumberFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'number';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for an integer field.
- */
-export type IntFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'int';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a bigint field.
- */
-export type BigIntFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'bigint';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Decimal field definition
- * - precision/scale/round are used for business-level quantization and validation only; DDL is fixed at NUMERIC(38,18)
- * - Optional scaleField points to a field name on the same model (column or select), path syntax is not supported
- * - Constraint: scale and scaleField are mutually exclusive (validated at decorator runtime)
- */
-export type DecimalFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'decimal';
-} & (
-    | {
-        // Column branch: business-level quantization settings
-        column: ColumnOptions<T, FieldValue<T, R>> & {
-          precision?: number; // Optional; max significant digits at application layer (default 38)
-          scale?: number; // Optional; fixed decimal places
-          scaleField?: KeysOfType<T, number>; // Optional; same-model field name (column or select), no path syntax
-          round?: DecimalRound; // Optional; field-level rounding (default ROUND_HALF_UP)
-        };
-        select?: never;
-      }
-    | {
-        // Select branch: same quantization settings for virtual field presentation/export
-        select: SelectOptions<T, FieldValue<T, R>> & {
-          precision?: number;
-          scale?: number;
-          scaleField?: KeysOfType<T, number>;
-          round?: DecimalRound;
-        };
-        column?: never;
-      }
-  );
-
-/**
- * Options for a boolean field.
- */
-export type BooleanFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'boolean';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a datetime field.
- */
-export type DateTimeFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'datetime';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a date field.
- */
-export type DateFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'date';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a time field.
- */
-export type TimeFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'time';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a JSON object field.
- */
-export type JsonObjectFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'jsonobject';
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>>; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a cross-service single-Id reference field.
- */
-export type ManyToOneRefFieldOptions<T extends BaseModel, R extends keyof T, TTarget extends BaseModel> = BaseFieldOptions & {
-  type: 'ManyToOneRef';
-  relation: {
-    targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
-  };
-} & (
-    | { column?: ColumnOptions<T, string> & { size?: number; index?: string | boolean }; select?: never }
-    | { select: SelectOptions<T, string>; column?: never }
-  );
-
-/**
- * Options for a cross-service multi-Id reference field.
- */
-export type ManyToManyRefFieldOptions<T extends BaseModel, R extends keyof T, TTarget extends BaseModel> = BaseFieldOptions & {
-  type: 'ManyToManyRef';
-  relation: {
-    targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
-  };
-} & ({ column?: ColumnOptions<T, string[]>; select?: never } | { select: SelectOptions<T, string[]>; column?: never });
-
-/**
- * Options for a selection field.
- */
-export type SelectionFieldOptions<T extends BaseModel, R extends keyof T> = BaseFieldOptions & {
-  type: 'selection';
-  selection: readonly SelectionItem[];
-} & ({ column?: ColumnOptions<T, FieldValue<T, R>> & { size?: number }; select?: never } | { select: SelectOptions<T, FieldValue<T, R>>; column?: never });
-
-/**
- * Options for a ManyToOne relation field.
- */
-export type ManyToOneFieldOptions<T extends BaseModel, R extends keyof T, TTarget extends BaseModel> = BaseFieldOptions & {
-  type: 'ManyToOne';
-} & (
-    | {
-        relation: {
-          targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-          onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
-          onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
-        };
-        column?: Omit<ColumnOptions<T, FieldValue<T, R>>, 'primaryKey'>;
-        select?: never;
-      }
-    | {
-        relation: {
-          targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-          onDelete?: never;
-          onUpdate?: never;
-        };
-        select: SelectOptions<T, IdOf<TTarget>>;
-        column?: never;
-      }
-  );
-
-/**
- * Options for a OneToMany relation field.
- */
-export type OneToManyFieldOptions<T extends BaseModel, R extends keyof T, TTarget extends BaseModel> = BaseFieldOptions & {
-  type: 'OneToMany';
-} & (
-    | {
-        relation: {
-          targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-          inverseField: KeysOfType<TTarget, BaseModel | undefined>;
-        };
-        column?: never;
-        select?: never;
-      }
-    | {
-        relation: {
-          targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-          inverseField?: never;
-        };
-        select: SelectOptions<T, IdOf<TTarget>[]>;
-        column?: never;
-      }
-  );
-
-/**
- * Options for a ManyToMany relation field.
- */
-export type ManyToManyFieldOptions<T extends BaseModel, R extends keyof T, TJoin extends BaseModel, TTarget extends BaseModel> = BaseFieldOptions & {
-  type: 'ManyToMany';
-} & (
-    | {
-        relation: {
-          joinModel: () => ModelCtor<TJoin> & typeof BaseModel;
-          targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-          joinField: KeysOfType<TJoin, BaseModel>;
-          inverseJoinField: KeysOfType<TJoin, BaseModel>;
-        };
-        column?: never;
-        select?: never;
-      }
-    | {
-        relation: {
-          targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
-          joinModel?: never;
-          joinField?: never;
-          inverseJoinField?: never;
-        };
-        select: SelectOptions<T, IdOf<TTarget>[]>;
-        column?: never;
-      }
-  );
-
 type RuntimeRelationMetadata = {
   targetModel?: () => ModelCtor<BaseModel> & typeof BaseModel;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
@@ -661,7 +401,6 @@ export interface FieldMetadata {
   type: FieldType;
   column?: ColumnOptions<BaseModel, unknown>;
   relation?: RuntimeRelationMetadata;
-  select?: SelectOptions<BaseModel, unknown>;
   selection?: readonly SelectionItem[]; // Selection options list
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
@@ -764,25 +503,4 @@ export type FieldOptions<
   R extends keyof T = keyof T,
   TJoin extends BaseModel = BaseModel,
   TTarget extends BaseModel = BaseModel,
-> =
-  | CharFieldOptions<T, R>
-  | VarcharFieldOptions<T, R>
-  | TextFieldOptions<T, R>
-  | BinaryFieldOptions<T, R>
-  | ImageFieldOptions<T, R>
-  | NumberFieldOptions<T, R>
-  | IntFieldOptions<T, R>
-  | BigIntFieldOptions<T, R>
-  | DecimalFieldOptions<T, R>
-  | BooleanFieldOptions<T, R>
-  | DateTimeFieldOptions<T, R>
-  | DateFieldOptions<T, R>
-  | TimeFieldOptions<T, R>
-  | JsonObjectFieldOptions<T, R>
-  | ManyToOneRefFieldOptions<T, R, TTarget>
-  | ManyToManyRefFieldOptions<T, R, TTarget>
-  | SelectionFieldOptions<T, R>
-  | ManyToOneFieldOptions<T, R, TTarget>
-  | OneToManyFieldOptions<T, R, TTarget>
-  | ManyToManyFieldOptions<T, R, TJoin, TTarget>
-  | FlatFieldOptions<T, TJoin, TTarget>;
+> = FlatFieldOptions<T, TJoin, TTarget>;

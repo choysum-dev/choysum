@@ -395,7 +395,7 @@ export class UpdateOperations {
       set.add(fieldName);
       const fm = meta.fields.get(fieldName);
       if (fm?.type === 'decimal') {
-        const scaleField = getScaleFieldName(fm.column || fm.select || {});
+        const scaleField = getScaleFieldName(fm.column || {});
         if (scaleField) {
           set.add(scaleField);
         }
@@ -446,7 +446,7 @@ export class UpdateOperations {
         fieldSet.forEach(fieldName => {
           const fm = meta.fields.get(fieldName);
           if (fm?.type !== 'decimal') return;
-          const scaleField = getScaleFieldName(fm.column || fm.select || {});
+          const scaleField = getScaleFieldName(fm.column || {});
           if (scaleField) {
             if (source[scaleField] !== undefined && !(scaleField in target)) {
               target[scaleField] = source[scaleField];

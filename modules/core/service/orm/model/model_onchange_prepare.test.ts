@@ -9,7 +9,7 @@ import {
   __normalizeModelOnchangeChangedFieldsRawForTest,
   prepareModelOnchangePreview,
 } from './model_onchange_prepare';
-import { Field, Model, Onchange } from '../decorator';
+import { Compute, Field, Model, Onchange } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { buildComputeGraph } from '../../runtime/compute/graph';
@@ -17,47 +17,45 @@ import { PathPlanBuilder } from '../../runtime/onchange/plan';
 
 @Model('test.ModelOnchangePreparePartner')
 class ModelOnchangePreparePartner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.ModelOnchangePrepareLine')
 class ModelOnchangePrepareLine extends BaseModel {
-  @Field({ type: 'decimal', column: { precision: 10, scale: 2 } })
+  @Field({ type: 'decimal', precision: 10, scale: 2 })
   Qty?: any;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelOnchangePrepareModel }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelOnchangePrepareModel } })
   OrderId?: ModelOnchangePrepareModel;
 }
 
 @Model('test.ModelOnchangePrepareModel')
 class ModelOnchangePrepareModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Status?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Code?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelOnchangePreparePartner }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelOnchangePreparePartner } })
   PartnerId?: ModelOnchangePreparePartner;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => ModelOnchangePrepareLine, inverseField: 'OrderId' } })
   Lines?: ModelOnchangePrepareLine[];
 
-  @Field({
-    type: 'varchar',
-    column: {
-      size: 128,
-      compute: {
-        expr: (self: ModelOnchangePrepareModel) => `${self.Name || ''}:${self.Code || ''}`,
-        deps: ['Name' as any, 'Code' as any],
-      },
-    },
-  })
+  @Field({ type: 'varchar', size: 128 })
   Summary?: string;
+
+  @Compute<ModelOnchangePrepareModel>('Summary', {
+    deps: ['Name' as any, 'Code' as any],
+  })
+  computeSummary() {
+    return `${this.Name || ''}:${this.Code || ''}`;
+  }
 
   @Onchange<ModelOnchangePrepareModel>('Name', { reads: ['Status', 'PartnerId.Name'] })
   handleNamePreview() {}

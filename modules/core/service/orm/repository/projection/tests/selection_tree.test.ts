@@ -19,13 +19,14 @@ function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
   }
 }
 
-test('repository selection tree collects only scalar column/select fields', () => {
+test('repository selection tree collects only scalar persisted and virtual display fields', () => {
   const meta = {
     fields: new Map([
       ['Name', { column: { name: 'Name' } }],
-      ['DisplayName', { select: { expr: () => 'display' } }],
+      ['DisplayName', {}],
       ['Owner', { type: 'ManyToOne', relation: { targetModel: () => null } }],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   expect(getScalarFields(meta)).toEqual(['Name', 'DisplayName']);
@@ -77,17 +78,19 @@ test('repository selection tree expands shorthand relations to child scalar fiel
     type: OwnerModel,
     fields: new Map([
       ['Title', { column: { name: 'Title' } }],
-      ['DisplayName', { select: { expr: () => 'display' } }],
+      ['DisplayName', {}],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const demoMeta = {
     type: DemoModel,
     fields: new Map([
       ['Name', { column: { name: 'Name' } }],
-      ['DisplayName', { select: { expr: () => 'display' } }],
+      ['DisplayName', {}],
       ['Owner', { type: 'ManyToOne', column: { name: 'Owner' }, relation: { targetModel: () => OwnerModel } }],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   withFakeMetadata(

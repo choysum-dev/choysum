@@ -13,62 +13,54 @@ import {
   __toTreeResultForTest,
   ReadOperations,
 } from './model_read';
-import { Field, Model } from '../decorator';
+import { Compute, Field, Model } from '../decorator';
 import { MetadataStorage } from '../metadata/storage';
 import { RepositoryFactory } from '../repository/repository_factory';
 import { GrpcCode, ChoysumError } from '@/core/service/error';
 
 @Model('ModelReadUser', { application: 'test' })
 class ModelReadUser extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   DisplayName!: string;
 }
 
 @Model('ModelReadOrder', { application: 'test' })
 class ModelReadOrder extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelReadUser }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelReadUser } })
   OwnerId?: ModelReadUser;
 
-  @Field({ type: 'datetime', column: {} })
+  @Field({ type: 'datetime' })
   OrderedAt?: Date;
 
-  @Field({ type: 'decimal', column: { precision: 16, scale: 2 } })
+  @Field({ type: 'decimal', precision: 16, scale: 2 })
   Amount?: string;
 
-  @Field({
-    type: 'varchar',
-    column: {
-      compute: {
-        expr: (self: any) => `${String(self.Name || '').trim()}-v`,
-        deps: ['Name'],
-        store: false,
-      },
-    },
-  } as any)
+  @Field({ type: 'varchar' } as any)
   NameVirtual?: string;
 
-  @Field({
-    type: 'varchar',
-    column: {
-      compute: {
-        expr: (self: any) => `${String(self.NameVirtual || '')}-d`,
-        deps: ['NameVirtual'],
-        store: false,
-      },
-    },
-  } as any)
+  @Compute<ModelReadOrder>('NameVirtual', { deps: ['Name'], store: false })
+  computeNameVirtual() {
+    return `${String(this.Name || '').trim()}-v`;
+  }
+
+  @Field({ type: 'varchar' } as any)
   NameVirtualDerived?: string;
+
+  @Compute<ModelReadOrder>('NameVirtualDerived', { deps: ['NameVirtual'], store: false })
+  computeNameVirtualDerived() {
+    return `${String(this.NameVirtual || '')}-d`;
+  }
 }
 
 @Model('ModelReadAttachmentOwner', { application: 'test' })
 class ModelReadAttachmentOwner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'image', column: { index: true } })
+  @Field({ type: 'image', index: true })
   Avatar?: string;
 
   @Field({ type: 'binary' })
@@ -77,10 +69,10 @@ class ModelReadAttachmentOwner extends BaseModel {
 
 @Model('ModelReadBrokenOwner', { application: 'test' })
 class ModelReadBrokenOwner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any } })
   OwnerId?: any;
 }
 

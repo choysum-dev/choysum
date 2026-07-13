@@ -201,7 +201,7 @@ test('repository tree decode covers many2manyref null and decimal select/no-spec
     type: DemoModel,
     fields: new Map([
       ['TagIds', { type: 'ManyToManyRef', column: { name: 'TagIds' } }],
-      ['AmountSelect', { type: 'decimal', select: { scale: 1 } }],
+      ['AmountSelect', { type: 'decimal', column: { scale: 1 } }],
       ['AmountRaw', { type: 'decimal' }],
       ['AmountDecimal', { type: 'decimal', column: { scale: 2 } }],
       ['AmountLarge', { type: 'decimal', column: { precision: 2 } }],

@@ -19,4 +19,5 @@ export { normalizeOrderBy, computeFallbackOrder, resolveEffectiveOrder, applyOrd
 export type { DbLike } from './select_context';
 export { makeSelectCtx } from './select_context';
 export { getStringHelpers } from './string_helpers';
+export { hasRepositorySqlComputeExpression, isRepositorySelectableScalarField, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 export type { RepositoryPredicateBuilder, RepositoryPredicate } from './predicate_builder_adapter';
