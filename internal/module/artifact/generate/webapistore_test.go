@@ -25,7 +25,6 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		Name:                     "Amount",
 		FieldType:                "Decimal",
 		TsTypeAnnotation:         "number",
-		Relation:                 "partner_id",
 		RelationModel:            "Partner",
 		RelationFilter:           "active = true",
 		RelationModelParentField: "ParentId",
@@ -108,6 +107,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(storeContent), "PartnerFieldsMetadata") || !strings.Contains(string(storeContent), "CompanyId") || !strings.Contains(string(storeContent), "relationModel: 'Company'") {
 		t.Fatalf("unexpected store content: %s", string(storeContent))
+	}
+	if strings.Contains(string(storeContent), "relation: '") {
+		t.Fatalf("unexpected legacy relation key in store content: %s", string(storeContent))
 	}
 	if !strings.Contains(string(storeContent), "storageKind") || !strings.Contains(string(storeContent), "searchable") {
 		t.Fatalf("expected resolved contract keys in store content: %s", string(storeContent))

@@ -41,7 +41,6 @@ type FieldMetadata struct {
 	RelatedStore             *bool   `json:"relatedStore,omitempty"`
 	Searchable               *bool   `json:"searchable,omitempty"`
 	RunAs                    *string `json:"runAs,omitempty"`
-	Relation                 *string `json:"relation,omitempty"`
 	RelationModel            *string `json:"relationModel,omitempty"`
 	RelationFilter           *string `json:"relationFilter,omitempty"`
 	RelationModelParentField *string `json:"relationModelParentField,omitempty"`
@@ -147,9 +146,6 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 
 	// Only include non-empty values in the metadata.
-	if field.Relation != "" {
-		metadata.Relation = &field.Relation
-	}
 	if field.RelationModel != "" {
 		metadata.RelationModel = &field.RelationModel
 	}

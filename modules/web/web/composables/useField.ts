@@ -10,7 +10,7 @@
 
 import { computed, inject, onMounted, onUnmounted, ref, watch, watchEffect, type ComputedRef, type Ref, type WritableComputedRef } from 'vue';
 import { createStoreByModel, getStoreFactoryRegistryVersion } from '@/web/web/stores/registry';
-import { getFieldMetadataCompatibility, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
 import { registerFieldPath, unregisterFieldPath } from '@/web/web/query/utils/registry/field';
 import { registerMetric, unregisterMetric } from '@/web/web/query/utils/registry/metric';
 import type { MetricSpec } from '@/web/web/query/utils/registry/metric';
@@ -189,12 +189,12 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i]!;
       const meta = (owningStore?.fieldsMetadata as any)?.[seg] as FieldMetadata | undefined;
-      const compat = getFieldMetadataCompatibility(meta);
+      const view = getFieldMetadataView(meta);
       leafMeta = meta;
       const isLeaf = i === segs.length - 1;
-      if (!isLeaf && compat.isRelation && compat.relationModel) {
+      if (!isLeaf && view.isRelation && view.relationModel) {
         try {
-          owningStore = createStoreByModel(compat.relationModel, { scopeManager: relationScope });
+          owningStore = createStoreByModel(view.relationModel, { scopeManager: relationScope });
         } catch {
           // Stop current attempt; watchEffect will retry after factory registry updates.
           leafMeta = undefined;
@@ -204,10 +204,10 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
     }
 
     let relationStore: WebModelStore<any> | undefined;
-    const leafCompat = getFieldMetadataCompatibility(leafMeta);
-    if (leafCompat.isRelation && leafCompat.relationModel) {
+    const leafView = getFieldMetadataView(leafMeta);
+    if (leafView.isRelation && leafView.relationModel) {
       try {
-        relationStore = createStoreByModel(leafCompat.relationModel, { scopeManager: relationScope });
+        relationStore = createStoreByModel(leafView.relationModel, { scopeManager: relationScope });
       } catch {
         relationStore = undefined;
       }

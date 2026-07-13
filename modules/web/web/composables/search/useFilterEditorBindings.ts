@@ -3,7 +3,7 @@
 
 import { computed, onUnmounted } from 'vue';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { getFieldMetadataCompatibility, type WebModelStore } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
 import {
   getOperatorOptions as baseGetOperatorOptions,
   isNullOperator as baseIsNull,
@@ -27,7 +27,7 @@ export function useFilterEditorBindings(store: WebModelStore<any>) {
   function relationModelOf(field?: string): string | undefined {
     if (!field) return undefined;
     const md = (store as WebModelStore<any>).fieldsMetadata || {};
-    return getFieldMetadataCompatibility(md[field] as any).relationModel;
+    return getFieldMetadataView(md[field] as any).relationModel;
   }
 
   const relStoreCache = new Map<string, any>();
@@ -47,15 +47,15 @@ export function useFilterEditorBindings(store: WebModelStore<any>) {
     const s: any = store as any;
     const md = (s?.fieldsMetadata || {}) as Record<string, any>;
     const meta = md[field];
-    const compat = getFieldMetadataCompatibility(meta as any);
+    const view = getFieldMetadataView(meta as any);
     const modelName = relationModelOf(field) || 'Relation';
 
     const cacheKey = `${s.storeId}::${field}::Filter`;
     if (relStoreCache.has(cacheKey)) return relStoreCache.get(cacheKey);
 
-    if (compat.relationModel) {
+    if (view.relationModel) {
       try {
-        const rs = createStoreByModel(compat.relationModel, { scopeManager: undefined });
+        const rs = createStoreByModel(view.relationModel, { scopeManager: undefined });
         if (rs) {
           relStoreCache.set(cacheKey, rs);
           return rs;
@@ -86,8 +86,8 @@ export function useFilterEditorBindings(store: WebModelStore<any>) {
     if (!field) return false;
     const md = (store as any)?.fieldsMetadata || {};
     const meta = md[field] || {};
-    const compat = getFieldMetadataCompatibility(meta as any);
-    return compat.isRelation && String(meta?.type || '').toLowerCase() === 'manytoone' && !!meta?.relationModelParentField;
+    const view = getFieldMetadataView(meta as any);
+    return view.isRelation && String(meta?.type || '').toLowerCase() === 'manytoone' && !!meta?.relationModelParentField;
   }
 
   function getOperatorOptionsForField(field?: string): OperatorOption[] {

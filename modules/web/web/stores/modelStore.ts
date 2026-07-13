@@ -34,7 +34,6 @@ export type FieldMetadata = {
   isReadonly?: boolean;
   indexed?: boolean;
   selection?: readonly SelectionItem[];
-  relation?: string;
   relationModel?: string;
   relationFilter?: string;
   relationModelParentField?: string;
@@ -44,12 +43,16 @@ export type FieldMetadata = {
   relationInverseJoinField?: string;
 };
 
-export function getFieldMetadataCompatibility(meta: FieldMetadata | undefined) {
-  const lowerType = typeof meta?.type === 'string' ? meta.type.toLowerCase() : '';
-  const isRelationByType = lowerType.includes('manytoone') || lowerType.includes('onetomany') || lowerType.includes('manytomany');
+const RELATION_FIELD_TYPES = new Set(['manytoone', 'onetomany', 'manytomany', 'manytooneref', 'manytomanyref']);
+
+export function isRelationFieldType(type: string | undefined): boolean {
+  return RELATION_FIELD_TYPES.has(String(type || '').toLowerCase());
+}
+
+export function getFieldMetadataView(meta: FieldMetadata | undefined) {
+  const type = typeof meta?.type === 'string' ? meta.type : '';
 
   const relationModel = meta?.relationModel;
-  const relation = meta?.relation;
   const relatedPath = meta?.relatedPath;
   const computedKind = meta?.computedKind;
   const storageKind = meta?.storageKind;
@@ -62,7 +65,6 @@ export function getFieldMetadataCompatibility(meta: FieldMetadata | undefined) {
 
   return {
     relationModel,
-    relation,
     relatedPath,
     relatedStore,
     computedKind,
@@ -72,7 +74,7 @@ export function getFieldMetadataCompatibility(meta: FieldMetadata | undefined) {
     reasonCode,
     searchable,
     runAs,
-    isRelation: !!relationModel || !!relation || isRelationByType,
+    isRelation: isRelationFieldType(type),
   } as const;
 }
 

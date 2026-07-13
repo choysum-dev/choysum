@@ -36,7 +36,6 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if ne $field.RelatedStore nil}}relatedStore: {{$field.RelatedStore}},{{- end}}
     {{- if ne $field.Searchable nil}}searchable: {{$field.Searchable}},{{- end}}
     {{- if $field.RunAs}}runAs: '{{$field.RunAs}}',{{- end}}
-    {{- if $field.Relation}}relation: '{{$field.Relation}}',{{- end}}
     {{- if and $field.RelationModel (or (eq $field.FieldType "ManyToOne") (eq $field.FieldType "OneToMany") (eq $field.FieldType "ManyToMany") (eq $field.FieldType "ManyToOneRef") (eq $field.FieldType "ManyToManyRef"))}}relationModel: '{{$field.RelationModel}}',{{- end}}
     {{- if $field.RelationFilter}}relationFilter: "{{$field.RelationFilter}}",{{- end}}
     {{- if $field.RelationModelParentField}}relationModelParentField: '{{$field.RelationModelParentField}}',{{- end}}

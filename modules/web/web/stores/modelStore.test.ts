@@ -3,16 +3,15 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { getFieldMetadataCompatibility, type FieldMetadata } from './modelStore';
+import { getFieldMetadataView, type FieldMetadata } from './modelStore';
 
-describe('getFieldMetadataCompatibility', () => {
+describe('getFieldMetadataView', () => {
   it('exposes resolved contract keys when present', () => {
     const meta: FieldMetadata = {
       id: 'f1',
       type: 'ManyToOne',
       typeAnnotation: 'Company',
       relationModel: 'Company',
-      relation: 'company_id',
       storageKind: 'column',
       shouldCreateColumn: true,
       resolvedColumnType: 'INTEGER',
@@ -24,7 +23,7 @@ describe('getFieldMetadataCompatibility', () => {
       runAs: 'system',
     };
 
-    const normalized = getFieldMetadataCompatibility(meta);
+    const normalized = getFieldMetadataView(meta);
 
     expect(normalized.isRelation).toBe(true);
     expect(normalized.storageKind).toBe('column');
@@ -38,17 +37,31 @@ describe('getFieldMetadataCompatibility', () => {
     expect(normalized.runAs).toBe('system');
   });
 
-  it('keeps relation fallback based on legacy type metadata', () => {
+  it('marks relation only by declared relation field types', () => {
     const meta: FieldMetadata = {
       id: 'f2',
       type: 'ManyToMany',
       typeAnnotation: 'Tag[]',
     };
 
-    const normalized = getFieldMetadataCompatibility(meta);
+    const normalized = getFieldMetadataView(meta);
 
     expect(normalized.isRelation).toBe(true);
     expect(normalized.relationModel).toBeUndefined();
     expect(normalized.searchable).toBeUndefined();
+  });
+
+  it('does not infer relation from relationModel alone without relation type', () => {
+    const meta: FieldMetadata = {
+      id: 'f3',
+      type: 'String',
+      typeAnnotation: 'string',
+      relationModel: 'Company',
+    };
+
+    const normalized = getFieldMetadataView(meta);
+
+    expect(normalized.relationModel).toBe('Company');
+    expect(normalized.isRelation).toBe(false);
   });
 });

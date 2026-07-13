@@ -14,7 +14,7 @@
 
 import { ref, watch, nextTick, provide, inject, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { getFieldMetadataCompatibility, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, isRelationFieldType, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
 import type { OnchangeResult } from '@/core/service/api/onchange';
@@ -65,16 +65,9 @@ export interface CreateOnchangeOptions {
 
 /* ============================= Helper functions ============================= */
 
-const RELATION_TYPE_HINTS = new Set(['many2one', 'one2many', 'many2many', 'manytoone', 'onetomany', 'manytomany', 'manytooneref', 'manytomanyref', 'relation']);
-
 function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
   if (!meta) return false;
-  const compat = getFieldMetadataCompatibility(meta);
-  if (compat.isRelation) return true;
-  if (typeof meta.relation === 'string') return true;
-  if (typeof meta.relationModel === 'string') return true;
-  if (typeof meta.type === 'string' && RELATION_TYPE_HINTS.has(meta.type.toLowerCase())) return true;
-  return false;
+  return isRelationFieldType(meta.type);
 }
 
 function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relation?: 'ManyToOne'; type?: string }> {
@@ -82,11 +75,10 @@ function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relati
   const normalized: Record<string, { relation?: 'ManyToOne'; type?: string }> = {};
   for (const [fieldName, meta] of Object.entries(raw as Record<string, FieldMetadata | undefined>)) {
     const typed = meta as FieldMetadata | undefined;
-    const compat = getFieldMetadataCompatibility(typed);
-    const hasLegacyRelation = typeof typed?.relation === 'string' && typed.relation.length > 0;
+    const view = getFieldMetadataView(typed);
     normalized[fieldName] = {
       type: typed?.type,
-      relation: compat.isRelation || hasLegacyRelation ? 'ManyToOne' : undefined,
+      relation: view.isRelation ? 'ManyToOne' : undefined,
     };
   }
   return normalized;
@@ -410,8 +402,9 @@ function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any,
 
   for (const top of collapsed) {
     const m = meta[top];
-    const lowerType = typeof m?.type === 'string' ? m.type.toLowerCase() : '';
-    const isRelArrayExplicit = lowerType === 'onetomany' || lowerType === 'manytomany';
+    const fieldType = typeof m?.type === 'string' ? m.type : '';
+    const lowerType = fieldType.toLowerCase();
+    const isRelArrayExplicit = isRelationFieldType(fieldType) && (lowerType === 'onetomany' || lowerType === 'manytomany' || lowerType === 'manytomanyref');
     const oldArr = baseline && Array.isArray(baseline[top]) ? baseline[top] : undefined;
     const newArr = current && Array.isArray(current[top]) ? current[top] : undefined;
 
