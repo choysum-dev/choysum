@@ -3,7 +3,7 @@
 
 import { Entity } from '../repository';
 import type { Repository } from '../repository';
-import { Field } from '../decorator';
+import { Compute, Field } from '../decorator';
 import {
   QueryCondition,
   SearchOptions,
@@ -21,7 +21,7 @@ import {
   GroupBySpec,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
-import type { ModelCtor as MetadataModelCtor, OnchangeTrigger } from '../metadata/field';
+import type { OnchangeTrigger } from '../metadata/field';
 import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
@@ -64,7 +64,6 @@ import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 type BaseModelCtor<T extends BaseModel> = { new (factoryToken: Symbol, entity: Entity, fields?: unknown): T };
 type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
-type DisplayNameModelCtor = MetadataModelCtor<BaseModel>;
 
 /**
  * BaseModel exposes the caller-facing ORM facade shared by runtime models.
@@ -256,7 +255,7 @@ class BaseModel {
   /**
    * Primary key for the model instance.
    */
-  @Field({ type: 'char', column: { size: 20, primaryKey: true } })
+  @Field({ type: 'char', size: 20, primaryKey: true })
   public readonly Id: string;
 
   /**
@@ -264,38 +263,41 @@ class BaseModel {
    */
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ model, field, fieldExist }) => {
-        const dynamicModel = model as unknown as DisplayNameModelCtor;
-        if (fieldExist(dynamicModel, 'Name')) {
-          return field(dynamicModel, 'Name');
-        }
-        if (fieldExist(dynamicModel, 'Username')) {
-          return field(dynamicModel, 'Username');
-        }
-        return field(dynamicModel, 'Id');
-      },
-      size: 255,
-    },
+    size: 255,
   })
   public readonly DisplayName!: string;
+
+  @Compute<BaseModel & { Name?: unknown; Username?: unknown }>('DisplayName', {
+    deps: ['Id'],
+    store: false,
+  })
+  computeDisplayName() {
+    const self = this as BaseModel & { Name?: unknown; Username?: unknown };
+    const name = typeof self.Name === 'string' ? self.Name.trim() : '';
+    if (name) return name;
+
+    const username = typeof self.Username === 'string' ? self.Username.trim() : '';
+    if (username) return username;
+
+    return String(this.Id || '');
+  }
 
   /**
    * Timestamp recorded when the record was created.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   public readonly CreatedAt: Date;
 
   /**
    * Timestamp recorded when the record was last updated.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   public UpdatedAt: Date;
 
   /**
    * Soft-delete timestamp for the record.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   public DeletedAt: Date;
 
   // The model_runtime layer stores the metadata cache on the constructor static.

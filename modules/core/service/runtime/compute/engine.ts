@@ -29,6 +29,13 @@ function isObject(v: unknown): v is UnknownRecord {
   return v !== null && typeof v === 'object';
 }
 
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  if (value == null) return false;
+  const t = typeof value;
+  if (t !== 'object' && t !== 'function') return false;
+  return typeof (value as { then?: unknown }).then === 'function';
+}
+
 function readBigdecimalEnvelope(value: unknown): string | number | undefined {
   const record = asObjectRecord(value);
   if (!record || !hasOwnKey(record, '$bigdecimal')) return undefined;
@@ -252,7 +259,7 @@ export class ComputeEngine {
         newVal = currentFieldValue;
       }
 
-      if (fieldMeta.type === 'decimal') {
+      if (fieldMeta?.type === 'decimal') {
         newVal = quantizeByMeta(fieldMeta, entity, newVal);
       }
       entity[field] = newVal;

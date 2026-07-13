@@ -36,34 +36,34 @@ type EffectiveOnchangeQueryOptions = {
   orderBy: { field: 'Id', order: 'asc' },
 })
 export default class IrModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 512, notNull: true } })
+  @Field({ type: 'varchar', size: 512, notNull: true})
   Path!: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Application?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ClassName?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ModelTable?: string;
 
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   Abstract?: boolean;
 
-  @Field({ type: 'boolean', column: { default: () => true } })
+  @Field({ type: 'boolean', default: () => true})
   AutoMigrate?: boolean;
 
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   Readonly?: boolean;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RawExtends?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Extends?: string;
 
   @Field({ type: 'boolean' })

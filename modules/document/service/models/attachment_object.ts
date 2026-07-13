@@ -35,44 +35,44 @@ export default class AttachmentContent extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     targetModel: 'document.StoredContent',
-    column: { size: 20, notNull: true, index: true },
+    size: 20, notNull: true, index: true,
   })
   StoredContentId: string;
 
   /**
    * Persisted payload size in bytes.
    */
-  @Field({ type: 'bigint', column: { notNull: true, index: 'idx_document_object_checksum_size_company' } })
+  @Field({ type: 'bigint', notNull: true, index: 'idx_document_object_checksum_size_company'})
   SizeBytes: number;
 
   /**
    * Persisted MIME type for the payload.
    */
-  @Field({ type: 'varchar', column: { size: 255, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true, index: true})
   MimeType: string;
 
   /**
    * SHA-256 checksum for the payload bytes.
    */
-  @Field({ type: 'char', column: { size: 64, notNull: true, index: 'idx_document_object_checksum_size_company' } })
+  @Field({ type: 'char', size: 64, notNull: true, index: 'idx_document_object_checksum_size_company'})
   ChecksumSha256: string;
 
   /**
    * Persisted image width when the payload is an image.
    */
-  @Field({ type: 'int', column: { index: true } })
+  @Field({ type: 'int', index: true})
   ImageWidth?: number;
 
   /**
    * Persisted image height when the payload is an image.
    */
-  @Field({ type: 'int', column: { index: true } })
+  @Field({ type: 'int', index: true})
   ImageHeight?: number;
 
   /**
    * Persisted image format when the payload is an image.
    */
-  @Field({ type: 'varchar', column: { size: 32, index: true } })
+  @Field({ type: 'varchar', size: 32, index: true})
   ImageFormat?: string;
 
   /**
@@ -91,7 +91,7 @@ export default class AttachmentContent extends BaseModel {
       { value: 'active', label: 'active' },
       { value: 'deleted', label: 'deleted' },
     ],
-    column: { size: 16, notNull: true, default: () => 'staging', index: true },
+    size: 16, notNull: true, default: () => 'staging', index: true,
   })
   Status: AttachmentContentStatus;
 
@@ -101,11 +101,9 @@ export default class AttachmentContent extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     targetModel: 'base.Company',
-    column: {
-      size: 20,
+    size: 20,
       notNull: true,
       index: 'idx_document_object_checksum_size_company',
-    },
   })
   CompanyId: string;
 

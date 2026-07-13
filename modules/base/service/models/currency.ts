@@ -31,22 +31,22 @@ export type CurrencyConvertResult = { Amount: any; RateUsed?: any; Warnings?: st
 
 @Model('Currency')
 export default class Currency extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 8, notNull: true, unique: true, index: true } })
+  @Field({ type: 'varchar', size: 8, notNull: true, unique: true, index: true})
   Code: string;
 
-  @Field({ type: 'varchar', column: { size: 16 } })
+  @Field({ type: 'varchar', size: 16})
   Symbol?: string;
 
-  @Field({ type: 'int', column: { notNull: true, default: () => 2 } })
+  @Field({ type: 'int', notNull: true, default: () => 2})
   DecimalDigits: number;
 
-  @Field({ type: 'decimal', column: { notNull: true, precision: 38, scale: 18 } })
+  @Field({ type: 'decimal', notNull: true, precision: 38, scale: 18})
   Rounding: any;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])

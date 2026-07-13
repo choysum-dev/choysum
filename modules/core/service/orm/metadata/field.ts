@@ -89,6 +89,14 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   size?: number;
   precision?: number;
   scale?: number;
+  notNull?: boolean;
+  index?: boolean | string;
+  primaryKey?: boolean;
+  unique?: boolean;
+  uniqueIndex?: boolean | string;
+  checkConstraint?: string;
+  default?: unknown;
+  round?: DecimalRound;
   targetModel?: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
   // Keep optional legacy branches for gradual migration in runtime decorators.
   column?: ColumnOptions<T, unknown> & ObjectRecord;

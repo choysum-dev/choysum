@@ -38,10 +38,18 @@ type FieldDecoratorOptionBag = {
   relation?: unknown;
   related?: unknown;
   required?: unknown;
+  notNull?: unknown;
   indexed?: unknown;
+  index?: unknown;
   size?: unknown;
   precision?: unknown;
   scale?: unknown;
+  primaryKey?: unknown;
+  unique?: unknown;
+  uniqueIndex?: unknown;
+  checkConstraint?: unknown;
+  default?: unknown;
+  round?: unknown;
 };
 
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
@@ -74,12 +82,21 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     const hasFlatStorageHints =
       optionBag.required !== undefined ||
+      optionBag.notNull !== undefined ||
       optionBag.indexed !== undefined ||
+      optionBag.index !== undefined ||
       optionBag.size !== undefined ||
       optionBag.precision !== undefined ||
       optionBag.scale !== undefined;
+    const hasFlatColumnOptions =
+      optionBag.primaryKey !== undefined ||
+      optionBag.unique !== undefined ||
+      optionBag.uniqueIndex !== undefined ||
+      optionBag.checkConstraint !== undefined ||
+      optionBag.default !== undefined ||
+      optionBag.round !== undefined;
     const hasRelated = optionBag.related !== undefined;
-    const hasFlatContract = hasFlatStorageHints || hasRelated;
+    const hasFlatContract = hasFlatStorageHints || hasFlatColumnOptions || hasRelated;
 
     if ((hasSelect || hasColumn) && hasFlatContract) {
       throw new Error(`@Field(${name}) flat options cannot be mixed with legacy column/select branches`);
@@ -97,6 +114,13 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         hints.required = optionBag.required;
       }
 
+      if (optionBag.notNull !== undefined) {
+        if (typeof optionBag.notNull !== 'boolean') {
+          throw new Error(`@Field(${name}) notNull must be a boolean`);
+        }
+        hints.required = optionBag.notNull;
+      }
+
       if (optionBag.indexed !== undefined) {
         if (typeof optionBag.indexed !== 'boolean') {
           throw new Error(`@Field(${name}) indexed must be a boolean`);
@@ -104,12 +128,19 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         hints.indexed = optionBag.indexed;
       }
 
+      if (optionBag.index !== undefined) {
+        if (typeof optionBag.index !== 'boolean' && typeof optionBag.index !== 'string') {
+          throw new Error(`@Field(${name}) index must be a boolean or string`);
+        }
+        hints.indexed = optionBag.index === true || (typeof optionBag.index === 'string' && optionBag.index.trim().length > 0);
+      }
+
       if (optionBag.size !== undefined) {
         if (!isInt(optionBag.size) || optionBag.size < 1) {
           throw new Error(`@Field(${name}) size must be a positive integer`);
         }
-        if (type !== 'char' && type !== 'varchar') {
-          throw new Error(`@Field(${name}) size is only supported on char/varchar fields`);
+        if (type !== 'char' && type !== 'varchar' && type !== 'selection' && type !== 'ManyToOneRef') {
+          throw new Error(`@Field(${name}) size is only supported on char/varchar/selection/ManyToOneRef fields`);
         }
         hints.size = optionBag.size;
       }
@@ -166,13 +197,22 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       };
     }
 
-    if (!hasSelect && !hasColumn && normalizedStorageHints) {
+    if (!hasSelect && !hasColumn && (normalizedStorageHints || hasFlatColumnOptions)) {
       const normalizedColumn: ObjectRecord = {};
-      if (normalizedStorageHints.required === true) normalizedColumn.notNull = true;
-      if (normalizedStorageHints.indexed === true) normalizedColumn.index = true;
-      if (normalizedStorageHints.size != null) normalizedColumn.size = normalizedStorageHints.size;
-      if (normalizedStorageHints.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
-      if (normalizedStorageHints.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
+      if (normalizedStorageHints?.required === true) normalizedColumn.notNull = true;
+      if (normalizedStorageHints?.indexed === true) normalizedColumn.index = true;
+      if (normalizedStorageHints?.size != null) normalizedColumn.size = normalizedStorageHints.size;
+      if (normalizedStorageHints?.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
+      if (normalizedStorageHints?.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
+
+      if (optionBag.index !== undefined) normalizedColumn.index = optionBag.index;
+      if (optionBag.primaryKey !== undefined) normalizedColumn.primaryKey = optionBag.primaryKey;
+      if (optionBag.unique !== undefined) normalizedColumn.unique = optionBag.unique;
+      if (optionBag.uniqueIndex !== undefined) normalizedColumn.uniqueIndex = optionBag.uniqueIndex;
+      if (optionBag.checkConstraint !== undefined) normalizedColumn.checkConstraint = optionBag.checkConstraint;
+      if (optionBag.default !== undefined) normalizedColumn.default = optionBag.default;
+      if (optionBag.round !== undefined) normalizedColumn.round = optionBag.round;
+
       optionBag.column = normalizedColumn;
       hasColumn = true;
     }
@@ -359,7 +399,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     }
 
     // Auto-fill column metadata for scalar fields without select/column
-    const autoColumnScalar = !isRelation && scalarTypes.has(type) && !hasSelect && !hasColumn;
+    const autoColumnScalar = !isRelation && scalarTypes.has(type) && !hasSelect && !hasColumn && name !== 'DisplayName';
     const autoColumnManyToOne = type === 'ManyToOne' && !hasSelect && !hasColumn;
 
     const meta: FieldMetadata = { name, type };
@@ -386,6 +426,12 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;
     const prev = MetadataStorage.instance.getModelMetadata(ctor);
+    const existingCompute = prev?.computeHandlers?.get(name);
+
+    if (existingCompute?.store === false) {
+      delete meta.column;
+    }
+
     const fields = new Map(prev?.fields ?? []);
     fields.set(name, { ...(fields.get(name) || {}), ...meta });
 

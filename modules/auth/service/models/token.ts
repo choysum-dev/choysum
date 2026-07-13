@@ -37,37 +37,37 @@ export default class Token extends BaseModel {
   /**
    * Stable token identifier embedded in the signed token payload.
    */
-  @Field({ type: 'varchar', column: { size: 36, notNull: true, unique: true } })
+  @Field({ type: 'varchar', size: 36, notNull: true, unique: true })
   TokenId: string;
 
   /**
    * Token category such as access or refresh.
    */
-  @Field({ type: 'varchar', column: { size: 10, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 10, notNull: true, index: true })
   TokenType: string;
 
   /**
    * Token expiration timestamp.
    */
-  @Field({ type: 'datetime', column: { notNull: true, index: true } })
+  @Field({ type: 'datetime', notNull: true, index: true })
   ExpiresAt: Date;
 
   /**
    * Whether the token has been revoked.
    */
-  @Field({ type: 'boolean', column: { default: () => false, index: true } })
+  @Field({ type: 'boolean', default: () => false, index: true })
   Revoked: boolean;
 
   /**
    * Time when the token was revoked.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   RevokedAt: Date;
 
   /**
    * Human-readable explanation for the revocation.
    */
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   RevocationReason: string;
 
   /**

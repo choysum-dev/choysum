@@ -44,6 +44,18 @@ export function Compute<TModel extends BaseModel>(field: Extract<keyof TModel, s
     const ctor = target.constructor as ModelCtor<BaseModel>;
     const prev = MetadataStorage.instance.getModelMetadata(ctor);
     const computeHandlers = new Map(prev.computeHandlers || []);
+    const fields = new Map(prev.fields || []);
+
+    if (options?.store === false) {
+      const existing = fields.get(fieldName);
+      if (existing && existing.column != null) {
+        fields.set(fieldName, {
+          ...existing,
+          column: undefined,
+        });
+      }
+    }
+
     computeHandlers.set(fieldName, {
       field: fieldName,
       method,
@@ -56,6 +68,7 @@ export function Compute<TModel extends BaseModel>(field: Extract<keyof TModel, s
     MetadataStorage.instance.setModelMetadata(ctor, {
       ...prev,
       type: ctor,
+      fields,
       computeHandlers,
     });
   };

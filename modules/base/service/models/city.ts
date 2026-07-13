@@ -10,23 +10,23 @@ import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_nor
 
 @Model('City')
 export default class City extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_city_country_state_name' } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_city_country_state_name'})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 16, index: true } })
+  @Field({ type: 'varchar', size: 16, index: true})
   Code?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
-    column: { notNull: true, index: true, uniqueIndex: 'uidx_base_city_country_state_name' },
+    notNull: true, index: true, uniqueIndex: 'uidx_base_city_country_state_name',
   })
   CountryId: Country;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => State }, column: { index: true, uniqueIndex: 'uidx_base_city_country_state_name' } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => State }, index: true, uniqueIndex: 'uidx_base_city_country_state_name'})
   StateId?: State;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   private static async ensureStateCountryConsistency(countryId: string, stateId: string | null): Promise<void> {

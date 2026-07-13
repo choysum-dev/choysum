@@ -730,6 +730,8 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
       const r = root();
       if (r && baseline) {
         try {
+          const diffFieldsMeta = buildDiffFieldsMeta(store);
+
           // 1) Top-level collapsed signals such as Lines or DiscountRate.
           const collapsed = collectChangedPaths(baseline, r, {
             pruneRelationChildren: true,

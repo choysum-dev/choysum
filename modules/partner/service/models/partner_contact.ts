@@ -18,63 +18,63 @@ const ADDRESS_TYPES = new Set(['billing', 'shipping', 'office', 'registered', 'o
 @Model('PartnerContact', { companyScoped: true })
 export default class PartnerContact extends BaseModel {
   /** Owning partner relation. */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Partner, onDelete: 'CASCADE' }, column: { notNull: true, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Partner, onDelete: 'CASCADE' }, notNull: true, index: true})
   PartnerId: Partner;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /** Contact name. */
-  @Field({ type: 'varchar', column: { size: 100, index: true } })
+  @Field({ type: 'varchar', size: 100, index: true})
   Name?: string;
 
   /** Contact email address. */
-  @Field({ type: 'varchar', column: { size: 120, index: true } })
+  @Field({ type: 'varchar', size: 120, index: true})
   Email?: string;
 
   /** Contact phone number. */
-  @Field({ type: 'varchar', column: { size: 40, index: true } })
+  @Field({ type: 'varchar', size: 40, index: true})
   Phone?: string;
 
   /** Contact mobile number. */
-  @Field({ type: 'varchar', column: { size: 40, index: true } })
+  @Field({ type: 'varchar', size: 40, index: true})
   Mobile?: string;
 
   /** Contact title. */
-  @Field({ type: 'varchar', column: { size: 80, index: true } })
+  @Field({ type: 'varchar', size: 80, index: true})
   Title?: string;
 
   /** Contact department. */
-  @Field({ type: 'varchar', column: { size: 80, index: true } })
+  @Field({ type: 'varchar', size: 80, index: true})
   Department?: string;
 
   /** Business role label for the contact. */
-  @Field({ type: 'varchar', column: { size: 30, index: true } })
+  @Field({ type: 'varchar', size: 30, index: true})
   ContactRole?: string;
 
   /** Linked address reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Address', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Address', size: 20, index: true})
   AddressId?: string;
 
   /** Contact address category. */
-  @Field({ type: 'varchar', column: { size: 20, index: true } })
+  @Field({ type: 'varchar', size: 20, index: true})
   AddressType?: string;
 
   /** Whether this row is the default contact for its category. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => false, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => false, index: true})
   IsDefault: boolean;
 
   /** Whether this contact row is active. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   /** Display ordering hint. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 10, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 10, index: true})
   Sequence: number;
 
   /** Attention line used for address labels. */
-  @Field({ type: 'varchar', column: { size: 100 } })
+  @Field({ type: 'varchar', size: 100})
   AttentionTo?: string;
 
   /** Internal notes. */

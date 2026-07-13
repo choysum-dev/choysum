@@ -356,25 +356,25 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
   autoMigrate: false,
 })
 export default class IrModuleIndex extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true })
   ModuleName!: string;
 
-  @Field({ type: 'varchar', column: { size: 32, notNull: true } })
+  @Field({ type: 'varchar', size: 32, notNull: true })
   OriginType!: ModuleOriginType;
 
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true })
   OriginRef!: string;
 
-  @Field({ type: 'boolean', column: { notNull: true } })
+  @Field({ type: 'boolean', notNull: true })
   Available!: boolean;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Version?: string;
 
   @Field({ type: 'jsonobject' })
   ManifestJson?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512 })
   LocalPath?: string;
 
   @Field({ type: 'datetime' })
@@ -383,7 +383,7 @@ export default class IrModuleIndex extends BaseModel {
   @Field({ type: 'datetime' })
   LastBatchSyncAt!: Date;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   SyncRevision?: string;
 
   @Field({ type: 'text' })

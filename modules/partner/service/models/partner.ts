@@ -41,59 +41,59 @@ type PartnerComputeModel = BaseModel &
 @Model('Partner', { companyScoped: true })
 export default class Partner extends BaseModel {
   /** Partner display name. */
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
   Name: string;
 
   /** Unique partner code within a company. */
-  @Field({ type: 'varchar', column: { size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' } })
+  @Field({ type: 'varchar', size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code'})
   Code: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code'})
   CompanyId: string;
 
   /** Whether the partner is active. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   /** Whether the record represents an organization instead of an individual. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsCompany: boolean;
 
   /** Customer classification rank. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 0, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 0, index: true})
   CustomerRank: number;
 
   /** Supplier classification rank. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 0, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 0, index: true})
   SupplierRank: number;
 
   /** Default language reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Language', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Language', size: 20, index: true})
   LanguageId?: string;
 
   /** Default currency reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Currency', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Currency', size: 20, index: true})
   CurrencyId?: string;
 
   /** Default country reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', size: 20, index: true})
   CountryId?: string;
 
   /** External reference code. */
-  @Field({ type: 'varchar', column: { size: 80, index: true } })
+  @Field({ type: 'varchar', size: 80, index: true})
   Reference?: string;
 
   /** Primary email address. */
-  @Field({ type: 'varchar', column: { size: 120, index: true } })
+  @Field({ type: 'varchar', size: 120, index: true})
   Email?: string;
 
   /** Primary phone number. */
-  @Field({ type: 'varchar', column: { size: 40, index: true } })
+  @Field({ type: 'varchar', size: 40, index: true})
   Phone?: string;
 
   /** Primary mobile number. */
-  @Field({ type: 'varchar', column: { size: 40, index: true } })
+  @Field({ type: 'varchar', size: 40, index: true})
   Mobile?: string;
 
   /** Related contact and address rows. */
@@ -149,7 +149,7 @@ export default class Partner extends BaseModel {
   }
 
   /** Display ordering hint. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 10, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 10, index: true})
   Sequence: number;
 
   /** Internal notes. */

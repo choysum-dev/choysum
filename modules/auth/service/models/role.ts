@@ -46,31 +46,31 @@ export default class Role extends BaseModel {
   /**
    * Human-readable role name.
    */
-  @Field({ type: 'varchar', column: { size: 100, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, unique: true, notNull: true })
   Name: string;
 
   /**
    * Stable programmatic role code.
    */
-  @Field({ type: 'varchar', column: { size: 50, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 50, unique: true, notNull: true })
   Code: string;
 
   /**
    * Free-form description shown in management surfaces.
    */
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true })
   Description: string;
 
   /**
    * Whether the role can still be assigned and evaluated.
    */
-  @Field({ type: 'boolean', column: { default: () => true, index: true } })
+  @Field({ type: 'boolean', default: () => true, index: true })
   IsActive: boolean;
 
   /**
    * Whether the role is part of the built-in system baseline.
    */
-  @Field({ type: 'boolean', column: { default: () => false, index: true } })
+  @Field({ type: 'boolean', default: () => false, index: true })
   IsSystem: boolean;
 
   /**

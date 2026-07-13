@@ -19,7 +19,7 @@ export default class Session extends BaseModel {
   /**
    * Access token identifier bound to the session. This is the token JTI, not a bearer secret.
    */
-  @Field({ type: 'varchar', column: { size: 36, index: true } })
+  @Field({ type: 'varchar', size: 36, index: true})
   AccessTokenId: string;
 
   /**
@@ -31,25 +31,25 @@ export default class Session extends BaseModel {
   /**
    * Client IP address recorded for the session.
    */
-  @Field({ type: 'varchar', column: { size: 45 } })
+  @Field({ type: 'varchar', size: 45})
   IpAddress: string;
 
   /**
    * Session expiration timestamp.
    */
-  @Field({ type: 'datetime', column: { notNull: true, index: true } })
+  @Field({ type: 'datetime', notNull: true, index: true})
   ExpiresAt: Date;
 
   /**
    * Last observed activity time for the session.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   LastActivityAt: Date;
 
   /**
    * Session lifecycle state such as active, expired, or revoked.
    */
-  @Field({ type: 'varchar', column: { size: 20, default: () => 'active', index: true } })
+  @Field({ type: 'varchar', size: 20, default: () => 'active', index: true})
   Status: string;
 
   /**

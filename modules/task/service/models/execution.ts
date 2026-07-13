@@ -9,35 +9,35 @@ import { BaseModel, Field, Model } from '@/core/service';
 @Model('JobExecution', { application: 'task', companyScoped: false, tableName: 'task_job_execution', autoMigrate: false })
 export default class JobExecution extends BaseModel {
   /** Related job identifier. */
-  @Field({ type: 'varchar', column: { size: 100, primaryKey: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, primaryKey: true, notNull: true})
   JobId: string;
 
   /** Current execution status. */
-  @Field({ type: 'varchar', column: { size: 32, index: true } })
+  @Field({ type: 'varchar', size: 32, index: true})
   Status: string;
 
   /** Current lease owner for the executing worker. */
-  @Field({ type: 'varchar', column: { size: 128 } })
+  @Field({ type: 'varchar', size: 128})
   LeaseOwner: string;
 
   /** Lease expiration time for the current worker. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   LeaseUntil: Date;
 
   /** Attempt number for the execution. */
-  @Field({ type: 'int', column: { default: () => 0 } })
+  @Field({ type: 'int', default: () => 0})
   Attempt: number;
 
   /** User who scheduled the job. */
-  @Field({ type: 'varchar', column: { size: 20, index: true } })
+  @Field({ type: 'varchar', size: 20, index: true})
   SchedulerUserId: string;
 
   /** User who triggered the job. */
-  @Field({ type: 'varchar', column: { size: 20, index: true } })
+  @Field({ type: 'varchar', size: 20, index: true})
   TriggeredByUserId: string;
 
   /** Fully-qualified method executed by the job. */
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true})
   FullMethod: string;
 
   /** Stored job payload. */
@@ -53,14 +53,14 @@ export default class JobExecution extends BaseModel {
   ErrorJson: Record<string, any>;
 
   /** Time when the execution was cancelled. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   CancelledAt: Date;
 
   /** Time when the execution started. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   StartedAt: Date;
 
   /** Time when the execution finished. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   FinishedAt: Date;
 }

@@ -13,19 +13,19 @@ import IrTypeParameter from './ir_type_parameter';
   orderBy: { field: 'Id', order: 'asc' },
 })
 export default class IrService extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   OriginModelPath?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   AccessibilityModifier?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   TsTypeAnnotation?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ProtobufType?: string;
 
   @Field({ type: 'boolean' })

@@ -35,14 +35,16 @@ export default class RoleUiResource extends BaseModel {
       { value: 'allow', label: 'Allow' },
       { value: 'deny', label: 'Deny' },
     ],
-    column: { default: () => 'allow', size: 16, index: true },
+    default: () => 'allow',
+    size: 16,
+    index: true,
   })
   Mode: RoleUiResourceMode;
 
   /**
    * Application-level scope. Mutually exclusive with IrUiResourceId.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', notNull: false, size: 20, index: true })
   IrApplicationId: string | null;
 
   /**
@@ -51,17 +53,15 @@ export default class RoleUiResource extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     targetModel: 'meta.IrUiResource',
-    column: {
-      notNull: false,
-      size: 20,
-      index: true,
-      checkConstraint: `(
+    notNull: false,
+    size: 20,
+    index: true,
+    checkConstraint: `(
         (deleted_at IS NOT NULL)
         OR (ir_ui_resource_id IS NOT NULL AND ir_application_id IS NULL)
         OR (ir_ui_resource_id IS NULL AND ir_application_id IS NOT NULL)
         OR (ir_ui_resource_id IS NULL AND ir_application_id IS NULL)
-      )`,
-    },
+    )`,
   })
   IrUiResourceId: string | null;
 

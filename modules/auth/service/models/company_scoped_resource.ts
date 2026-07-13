@@ -18,12 +18,12 @@ export default class CompanyScopedResource extends BaseModel {
   /**
    * Company scope for the row. Null means the row is shared across companies.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', notNull: false, size: 20, index: true})
   CompanyId?: string;
 
   /**
    * Human-readable name used by the auth company-scope test fixtures.
    */
-  @Field({ type: 'varchar', column: { size: 200, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 200, notNull: true, index: true})
   Name: string;
 }

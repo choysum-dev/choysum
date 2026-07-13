@@ -430,8 +430,23 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if v, ok := options["required"].(bool); ok {
 		hints.Required = toBoolPtr(v)
 	}
+	if hints.Required == nil {
+		if v, ok := options["notNull"].(bool); ok {
+			hints.Required = toBoolPtr(v)
+		}
+	}
 	if v, ok := options["indexed"].(bool); ok {
 		hints.Indexed = toBoolPtr(v)
+	}
+	if hints.Indexed == nil {
+		switch raw := options["index"].(type) {
+		case bool:
+			hints.Indexed = toBoolPtr(raw)
+		case string:
+			if strings.TrimSpace(raw) != "" {
+				hints.Indexed = toBoolPtr(true)
+			}
+		}
 	}
 	if v, ok := asInt(options["size"]); ok {
 		hints.Size = toIntPtr(v)

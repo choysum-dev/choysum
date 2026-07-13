@@ -115,16 +115,16 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
   autoMigrate: false,
 })
 export default class IrModule extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, unique: true, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 1024 } })
+  @Field({ type: 'varchar', size: 1024})
   ShortDesc?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Version?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Tarball?: string;
 
   @Field({ type: 'text' })
@@ -133,16 +133,16 @@ export default class IrModule extends BaseModel {
   @Field({ type: 'text' })
   Description?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ApplicationStr?: string;
 
   @Field({ type: 'jsonobject' })
   EntryPoints?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   WebEntryPoint?: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   ServiceEntryPoint?: string;
 
   @Field({ type: 'jsonobject' })
@@ -151,10 +151,10 @@ export default class IrModule extends BaseModel {
   @Field({ type: 'jsonobject' })
   ExternalDependencies?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Author?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   License?: string;
 
   @Field({ type: 'text' })
@@ -163,13 +163,13 @@ export default class IrModule extends BaseModel {
   @Field({ type: 'text' })
   Repository?: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   Path?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64})
   Status?: string;
 
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true})
   Category?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication } })

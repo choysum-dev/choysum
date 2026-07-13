@@ -63,6 +63,8 @@ type MutableChildCarrier = {
   Childs?: UiResourceChildProjection[];
 };
 
+type IrUiResourceComputeDeps = IrUiResource & Record<'ParentId.ParentPath', unknown>;
+
 const uiResourceChildProjectionFields = [
   'Id',
   'Name',
@@ -113,28 +115,28 @@ function stripChildsFromSelection<T>(selection: T): T {
   autoMigrate: false,
 })
 export default class IrUiResource extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true, unique: true, index: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true, unique: true, index: true })
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 16, notNull: true } })
+  @Field({ type: 'varchar', size: 16, notNull: true })
   Type!: UiResourceType;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Title?: string;
 
-  @Field({ type: 'int', column: { default: 0 } })
+  @Field({ type: 'int', default: 0 })
   Sequence?: number;
 
   @Field({ type: 'jsonobject' })
   Requires?: string[] | null;
 
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true })
   Module?: string;
 
-  @Field({ type: 'varchar', column: { size: 1024, index: true } })
+  @Field({ type: 'varchar', size: 1024, index: true })
   Path?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, column: { notNull: false, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, notNull: false, index: true })
   ParentId?: IrUiResource;
 
   @Field({
@@ -144,7 +146,7 @@ export default class IrUiResource extends BaseModel {
   })
   readonly ParentPath?: string | null;
 
-  @Compute('ParentPath', {
+  @Compute<IrUiResourceComputeDeps>('ParentPath', {
     deps: ['Id', 'Type', 'ParentId', 'ParentId.ParentPath'],
   })
   computeParentPath() {
@@ -161,16 +163,16 @@ export default class IrUiResource extends BaseModel {
     return `${parentPath}${id}/`;
   }
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512 })
   UiPath?: string;
 
   @Field({ type: 'jsonobject' })
   DefaultRoles?: string[] | null;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, column: { notNull: false, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, notNull: false, index: true })
   IrApplicationId?: IrApplication;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, column: { notNull: false, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, notNull: false, index: true })
   ModuleId?: IrModule;
 
   @Field({
@@ -211,11 +213,11 @@ export default class IrUiResource extends BaseModel {
     if (!ids.length) return new Map();
 
     const rows = (await super.Search(
-      ['Id', 'in', ids] as unknown as QueryCondition<IrUiResource>,
+      ['Id', 'in', ids] as any,
       {
         fields: [...uiResourceChildProjectionFields],
         limit: Math.max(1000, ids.length * 4),
-      } as unknown as SearchOptions<IrUiResource>
+      } as any
     )) as IrUiResource[];
 
     const map = new Map<string, UiResourceChildProjection>();
@@ -249,11 +251,11 @@ export default class IrUiResource extends BaseModel {
 
     if (menuIds.length > 0) {
       const directRows = (await super.Search(
-        ['ParentId', 'in', menuIds] as unknown as QueryCondition<IrUiResource>,
+        ['ParentId', 'in', menuIds] as any,
         {
           fields: [...uiResourceChildProjectionFields, 'ParentId'],
           limit: Math.max(1000, menuIds.length * 200),
-        } as unknown as SearchOptions<IrUiResource>
+        } as any
       )) as IrUiResource[];
 
       for (const row of directRows || []) {
@@ -322,37 +324,37 @@ export default class IrUiResource extends BaseModel {
   }
 
   static override async Browse<T extends BaseModel>(
-    this: { new (...args: unknown[]): T } & typeof BaseModel,
+    this: { new (...args: any[]): T } & typeof BaseModel,
     id: string,
     fields?: FieldSelection<T>,
-    options?: unknown
+    options?: any
   ): Promise<T> {
     const shouldHydrateChilds = wantsChildsField(fields);
     const effectiveFields = shouldHydrateChilds ? stripChildsFromSelection(fields) : fields;
-    const row = (await super.Browse(id, effectiveFields as FieldSelection<T>, options)) as T;
+    const row = (await super.Browse(id, effectiveFields as any, options as any)) as any;
     if (shouldHydrateChilds) {
-      await this.hydrateChildsField([row as unknown as IrUiResource]);
+      await IrUiResource.hydrateChildsField([row as IrUiResource]);
     }
-    return row;
+    return row as T;
   }
 
   static override async BrowseMany<T extends BaseModel>(
-    this: { new (...args: unknown[]): T } & typeof BaseModel,
+    this: { new (...args: any[]): T } & typeof BaseModel,
     ids: string[],
     fields?: (keyof any)[],
-    options?: unknown
+    options?: any
   ): Promise<T[]> {
     const shouldHydrateChilds = wantsChildsField(fields);
     const effectiveFields = shouldHydrateChilds ? stripChildsFromSelection(fields) : fields;
-    const rows = (await super.BrowseMany(ids, effectiveFields, options)) as T[];
+    const rows = (await super.BrowseMany(ids as any, effectiveFields as any, options as any)) as any[];
     if (shouldHydrateChilds) {
-      await this.hydrateChildsField(rows as unknown as IrUiResource[]);
+      await IrUiResource.hydrateChildsField(rows as IrUiResource[]);
     }
-    return rows;
+    return rows as T[];
   }
 
   static override async Search<T extends BaseModel>(
-    this: { new (...args: unknown[]): T } & typeof BaseModel,
+    this: { new (...args: any[]): T } & typeof BaseModel,
     condition: QueryCondition<T> | [] = [],
     options?: SearchOptions<T>
   ): Promise<T[]> {
@@ -364,11 +366,11 @@ export default class IrUiResource extends BaseModel {
         } as SearchOptions<T>)
       : options;
 
-    const rows = (await super.Search(condition, effectiveOptions)) as T[];
+    const rows = (await super.Search(condition as any, effectiveOptions as any)) as any[];
     if (shouldHydrateChilds) {
-      await this.hydrateChildsField(rows as unknown as IrUiResource[]);
+      await IrUiResource.hydrateChildsField(rows as IrUiResource[]);
     }
-    return rows;
+    return rows as T[];
   }
 
   private static normalizeRequireToken(token: string): EffectiveUiResourceRequire | null {

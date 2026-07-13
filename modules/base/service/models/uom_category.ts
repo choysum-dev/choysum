@@ -7,13 +7,13 @@ import { normalizeCodeOptional } from './_normalizers';
 
 @Model('UoMCategory')
 export default class UoMCategory extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 40, unique: true, index: true } })
+  @Field({ type: 'varchar', size: 40, unique: true, index: true})
   Code?: string;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   @Constraint<UoMCategory>(['Code'])

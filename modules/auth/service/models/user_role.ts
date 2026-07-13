@@ -30,7 +30,7 @@ export default class UserRole extends BaseModel {
   /**
    * Company scope for the assignment when the grant is company-specific.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', notNull: false, size: 20, index: true})
   CompanyId?: string;
 
   /**

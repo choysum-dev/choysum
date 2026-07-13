@@ -24,7 +24,7 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Application-level scope when the rule targets an entire application.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', notNull: false, size: 20, index: true})
   IrApplicationId: string | null;
 
   /**
@@ -33,8 +33,7 @@ export default class RoleRecordRule extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
     targetModel: 'meta.IrModel',
-    column: {
-      notNull: false,
+    notNull: false,
       size: 20,
       index: true,
       checkConstraint: `(
@@ -43,38 +42,37 @@ export default class RoleRecordRule extends BaseModel {
         OR (ir_model_id IS NULL AND ir_application_id IS NOT NULL)
         OR (ir_model_id IS NULL AND ir_application_id IS NULL)
       )`,
-    },
   })
   IrModelId: string | null;
 
   /**
    * Condition envelope applied to matching records.
    */
-  @Field({ type: 'jsonobject', column: { notNull: false } })
+  @Field({ type: 'jsonobject', notNull: false})
   Condition: QueryCondition<any>;
 
   /**
    * Whether reads are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   PermRead: boolean;
 
   /**
    * Whether writes are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   PermWrite: boolean;
 
   /**
    * Whether creates are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   PermCreate: boolean;
 
   /**
    * Whether deletes are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   PermDelete: boolean;
 
   /**

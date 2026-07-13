@@ -11,43 +11,43 @@ import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredT
 @Model('PartnerIdentifier', { application: 'partner', companyScoped: true })
 export default class PartnerIdentifier extends BaseModel {
   /** Owning partner reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'partner.Partner', column: { size: 20, notNull: true, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'partner.Partner', size: 20, notNull: true, index: true})
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /** Identifier category, normalized in lowercase. */
-  @Field({ type: 'varchar', column: { size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_identifier_partner_type_value' } })
+  @Field({ type: 'varchar', size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_identifier_partner_type_value'})
   IdentifierType: string;
 
   /** Identifier value, normalized in uppercase. */
-  @Field({ type: 'varchar', column: { size: 120, notNull: true, index: true, uniqueIndex: 'uidx_partner_identifier_partner_type_value' } })
+  @Field({ type: 'varchar', size: 120, notNull: true, index: true, uniqueIndex: 'uidx_partner_identifier_partner_type_value'})
   Value: string;
 
   /** Optional country reference associated with the identifier. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', size: 20, index: true})
   CountryId?: string;
 
   /** Whether this is the primary identifier for its type. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => false, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => false, index: true})
   IsPrimary: boolean;
 
   /** Whether the identifier row is active. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   /** Issuing authority for the identifier. */
-  @Field({ type: 'varchar', column: { size: 120, index: true } })
+  @Field({ type: 'varchar', size: 120, index: true})
   IssuedBy?: string;
 
   /** Identifier validity start time. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   ValidFrom?: Date;
 
   /** Identifier validity end time. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   ValidTo?: Date;
 
   /** Internal notes. */
