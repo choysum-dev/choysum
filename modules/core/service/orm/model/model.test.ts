@@ -137,15 +137,18 @@ test('model context accessors are available on static and instance surfaces', ()
 test('model DisplayName compute handler covers Name/Username/Id fallback branches', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ModelSurfaceHarness as any);
   const displayNameMeta = meta.fields.get('DisplayName') as any;
-  const sqlComputeHandler = meta.sqlComputeHandlers?.get('DisplayName') as any;
+  const computeHandler = meta.computeHandlers?.get('DisplayName') as any;
 
   expect(displayNameMeta?.column).toBeUndefined();
-  expect(sqlComputeHandler?.field).toBe('DisplayName');
+  expect(computeHandler?.store).toBe(false);
 
-  // The sqlDisplayName method is exercised via the SQL bridge in repository projection;
-  // here we verify the method exists on the prototype.
-  const proto = ModelSurfaceHarness.prototype as any;
-  expect(typeof proto.sqlDisplayName).toBe('function');
+  const byName = makeInstance({ Id: 'I-1', Name: 'N-1' }).computeDisplayName();
+  const byUsername = makeInstance({ Id: 'I-2', Username: 'U-2' } as any).computeDisplayName();
+  const byId = makeInstance({ Id: 'I-3' }).computeDisplayName();
+
+  expect(byName).toBe('N-1');
+  expect(byUsername).toBe('U-2');
+  expect(byId).toBe('I-3');
 });
 
 test('model static service methods delegate to operation layers', async () => {
