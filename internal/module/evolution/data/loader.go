@@ -588,7 +588,7 @@ func (l *Loader) applyFiles(ctx context.Context, mod *meta.IrModule, relPaths []
 		now := time.Now()
 		for _, idx := range order {
 			br := batch[idx]
-			if err := l.applyRecord(tx, mod, br.FilePath, br.RecordIndex, br.Rec, now); err != nil {
+			if err := l.applyRecord(tx, br.FilePath, br.RecordIndex, br.Rec, now); err != nil {
 				return err
 			}
 		}
@@ -850,7 +850,7 @@ func (l *Loader) applyFile(ctx context.Context, mod *meta.IrModule, absPath stri
 		now := time.Now()
 		for _, idx := range order {
 			rec := df.Records[idx]
-			if err := l.applyRecord(tx, mod, absPath, idx, rec, now); err != nil {
+			if err := l.applyRecord(tx, absPath, idx, rec, now); err != nil {
 				return err
 			}
 		}
@@ -1147,7 +1147,7 @@ func collectRefOccurrencesAny(v any, fieldPath string) []refOccurrence {
 	}
 }
 
-func (l *Loader) applyRecord(tx *gorm.DB, owner *meta.IrModule, filePath string, recordIndex int, rec record, now time.Time) error {
+func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec record, now time.Time) error {
 	moduleName := strings.TrimSpace(rec.Module)
 	if moduleName == "" {
 		return &LoadError{Kind: LoadErrorKindValidation, Code: LoadErrorCodeMissingModule, FilePath: filePath, RecordIndex: recordIndex, Message: "missing module"}

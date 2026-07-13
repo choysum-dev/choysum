@@ -1070,7 +1070,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 		{name: "invalid model", rec: record{Module: "auth", ExternalID: "x", Model: "broken", Values: map[string]any{}}, code: LoadErrorCodeInvalidModel},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := l.applyRecord(db, nil, "/tmp/data.json", 0, tc.rec, now)
+			err := l.applyRecord(db, "/tmp/data.json", 0, tc.rec, now)
 			var le *LoadError
 			if !errors.As(err, &le) || le.Code != tc.code {
 				t.Fatalf("applyRecord() error = %#v, want code %s", err, tc.code)
@@ -1081,7 +1081,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 	if err := db.Create(&meta.IrModel{Name: "Broken", Application: "auth", Path: "/tmp", ModelTable: ""}).Error; err != nil {
 		t.Fatalf("seed broken model: %v", err)
 	}
-	err := l.applyRecord(db, nil, "/tmp/data.json", 0, record{Module: "auth", ExternalID: "x", Model: "auth.Broken", Values: map[string]any{}}, now)
+	err := l.applyRecord(db, "/tmp/data.json", 0, record{Module: "auth", ExternalID: "x", Model: "auth.Broken", Values: map[string]any{}}, now)
 	var le *LoadError
 	if !errors.As(err, &le) || le.Code != LoadErrorCodeDBModelTableEmpty {
 		t.Fatalf("expected model table empty error, got %#v", err)
@@ -1106,7 +1106,7 @@ func TestApplyRecord_DirectBranches(t *testing.T) {
 		t.Fatalf("seed group mapping: %v", err)
 	}
 	freeze := true
-	if err := l.applyRecord(db, nil, "/tmp/data.json", 1, record{
+	if err := l.applyRecord(db, "/tmp/data.json", 1, record{
 		Module:     "auth",
 		ExternalID: "user_admin",
 		Model:      "auth.User",

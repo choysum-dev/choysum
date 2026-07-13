@@ -43,12 +43,12 @@ func TestBuildPlanValidationAndGuardErrors(t *testing.T) {
 		t.Fatalf("unexpected unknown op error: %v", err)
 	}
 
-	plan, err := BuildPlan(nil, OpUpgrade, root, fakeResolver{})
+	plan, err := BuildPlan(context.TODO(), OpUpgrade, root, fakeResolver{})
 	if err != nil {
-		t.Fatalf("BuildPlan(nil ctx) error: %v", err)
+		t.Fatalf("BuildPlan(context.TODO()) error: %v", err)
 	}
 	if len(plan.ModuleOrder) != 1 || plan.ModuleOrder[0] != "auth" {
-		t.Fatalf("unexpected module order with nil ctx: %v", plan.ModuleOrder)
+		t.Fatalf("unexpected module order with context.TODO(): %v", plan.ModuleOrder)
 	}
 }
 

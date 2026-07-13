@@ -81,10 +81,6 @@ func migrateSchemaMetaTables(t *testing.T, session *scope.Session) {
 	}
 }
 
-func boolPtr(value bool) *bool {
-	return &value
-}
-
 func newFieldWithOptions(t *testing.T, name string, options string) *meta.IrField {
 	t.Helper()
 	field := &meta.IrField{
