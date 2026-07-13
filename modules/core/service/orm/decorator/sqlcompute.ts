@@ -32,6 +32,14 @@ export function SqlCompute<TModel extends BaseModel>(field: Extract<keyof TModel
     const ctor = target.constructor as ModelCtor<BaseModel>;
     const prev = MetadataStorage.instance.getModelMetadata(ctor);
     const sqlComputeHandlers = new Map(prev.sqlComputeHandlers || []);
+    const fields = new Map(prev.fields || []);
+
+    // SqlCompute fields are always virtual — strip any column metadata.
+    const existing = fields.get(fieldName);
+    if (existing && existing.column != null) {
+      fields.set(fieldName, { ...existing, column: undefined });
+    }
+
     sqlComputeHandlers.set(fieldName, {
       field: fieldName,
       method,
@@ -41,6 +49,7 @@ export function SqlCompute<TModel extends BaseModel>(field: Extract<keyof TModel
     MetadataStorage.instance.setModelMetadata(ctor, {
       ...prev,
       type: ctor,
+      fields,
       sqlComputeHandlers,
     });
   };
