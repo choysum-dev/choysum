@@ -147,12 +147,29 @@ export class ValidationEngine {
       ];
     }
 
-    const fields = ctx.changedFields.size > 0 ? Array.from(ctx.changedFields) : Object.keys(ctx.values || {});
+    const fields = Array.from(new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]));
     const createWriteWhitelist = new Set((options?.createWriteWhitelist || []).map(field => String(field || '').trim()).filter(Boolean));
     const whitelistedHits: string[] = [];
 
     for (const field of fields) {
       if (!field || field.startsWith('__')) {
+        continue;
+      }
+
+      const shouldCheckWriteScope = ctx.mode === 'create' || ctx.mode === 'update';
+      const isWhitelistedOnCreate = shouldCheckWriteScope && createWriteWhitelist.has(field);
+      if (isWhitelistedOnCreate) {
+        whitelistedHits.push(field);
+      }
+
+      if (shouldCheckWriteScope && field === 'DisplayName' && !isWhitelistedOnCreate) {
+        issues.push({
+          scope: 'platform',
+          field,
+          code: 'platform_write_to_select_field',
+          message: `field "${field}" is select-only and cannot be written`,
+          severity: 'error',
+        });
         continue;
       }
 
@@ -170,13 +187,10 @@ export class ValidationEngine {
         continue;
       }
 
-      const writeToSelectOnlyField = meta.select && !meta.column;
+      const computeHandler = ctx.metadata.computeHandlers?.get(field);
+      const isVirtualComputeField = Boolean(ctx.metadata.computeGraph?.virtualComputeFields?.has(field));
+      const writeToSelectOnlyField = (meta.select && !meta.column) || computeHandler?.store === false || isVirtualComputeField;
       const writeToComputedField = Boolean(meta.column?.compute);
-      const shouldCheckWriteScope = ctx.mode === 'create' || ctx.mode === 'update';
-      const isWhitelistedOnCreate = shouldCheckWriteScope && createWriteWhitelist.has(field);
-      if (isWhitelistedOnCreate) {
-        whitelistedHits.push(field);
-      }
 
       if (shouldCheckWriteScope && writeToSelectOnlyField && !isWhitelistedOnCreate) {
         issues.push({

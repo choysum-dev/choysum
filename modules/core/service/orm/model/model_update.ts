@@ -317,9 +317,13 @@ export class UpdateOperations {
     // 1) Strip compute fields so callers cannot write compute fields directly.
     if (meta.computeGraph?.computeFields?.size) {
       const cleaned: UnknownRecord = { ...(values as UnknownRecord) };
+      const virtualComputeFields = meta.computeGraph?.virtualComputeFields || new Set<string>();
       let removed = 0;
       meta.computeGraph.computeFields.forEach((f: string) => {
         if (f in cleaned) {
+          const handler = meta.computeHandlers?.get(f);
+          const isVirtual = virtualComputeFields.has(f) || handler?.store === false;
+          if (isVirtual) return;
           delete cleaned[f];
           removed++;
         }

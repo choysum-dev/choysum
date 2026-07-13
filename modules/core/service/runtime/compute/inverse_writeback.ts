@@ -126,6 +126,11 @@ export async function applyInverseWriteback(meta: ModelMetadata, values: Unknown
       }
 
       if (hasRelated || hasComputeBehavior) {
+        if (hasComputeBehavior && !hasRelated) {
+          // Keep compute-field payload untouched and let platform validation
+          // return canonical write-protection errors.
+          continue;
+        }
         throw new Error(`INVERSE_HANDLER_REQUIRED: ${model}.${fieldName} requires an explicit @Inverse handler`);
       }
       continue;
