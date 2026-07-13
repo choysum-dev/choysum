@@ -113,13 +113,21 @@ function resolveRuntimeComputeExecution(meta: ModelMetadata, field: string): Run
 }
 
 function createSqlBridgeContext(entity: UnknownRecord) {
+  const resolveFieldKey = (modelOrKey: unknown, key: unknown): string => {
+    if (typeof key === 'string') return key;
+    return typeof modelOrKey === 'string' ? modelOrKey : '';
+  };
+
   return {
-    field(model: unknown, key: string): unknown {
-      if (!key) return undefined;
-      if (model && typeof model === 'function') {
-        return entity[key];
-      }
-      return entity[key];
+    field(modelOrKey: unknown, key?: unknown): unknown {
+      const resolvedKey = resolveFieldKey(modelOrKey, key);
+      if (!resolvedKey) return undefined;
+      return entity[resolvedKey];
+    },
+    fieldExist(modelOrKey: unknown, key?: unknown): boolean {
+      const resolvedKey = resolveFieldKey(modelOrKey, key);
+      if (!resolvedKey) return false;
+      return resolvedKey in entity;
     },
     str: {
       concat: (...items: unknown[]) => items.map(item => String(item ?? '')).join(''),

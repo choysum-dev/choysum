@@ -53,9 +53,13 @@ test('repository select context resolves scalar/select fields and path existence
     const ctx = makeSelectCtx(db as any, () => 'postgres', builder as any, 'demo_table', demoMeta);
     expect(ctx.model as any).toBe(DemoModel as any);
     expect(ctx.field(DemoModel as any, 'Name') as any).toBe('ref:demo_table.Name');
+    expect(ctx.field('Name' as any) as any).toBe('ref:demo_table.Name');
     expect(ctx.field(DemoModel as any, 'DisplayName') as any).toBe('ref:demo_table.Name');
+    expect(ctx.field('DisplayName' as any) as any).toBe('ref:demo_table.Name');
     expect(ctx.fieldExist(DemoModel as any, 'DisplayName')).toBe(true);
+    expect(ctx.fieldExist('DisplayName' as any)).toBe(true);
     expect(ctx.fieldExist(DemoModel as any, 'Missing')).toBe(false);
+    expect(ctx.fieldExist('Missing' as any)).toBe(false);
   });
 });
 

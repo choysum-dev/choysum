@@ -185,9 +185,30 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
   };
 
   const currentModelCtor = (curMeta.type as unknown as ModelCtor<BaseModel>) || (BaseModel as unknown as ModelCtor<BaseModel>);
-  const fieldResolver: SelectCtx['field'] = (model: ModelCtor<BaseModel>, path: string) => fieldImpl(model as ModelCtor<BaseModel>, String(path));
-  const fieldExistResolver: SelectCtx['fieldExist'] = (model: ModelCtor<BaseModel>, path: string) =>
-    fieldExistImpl(model as ModelCtor<BaseModel>, String(path));
+
+  const resolveFieldArgs = (modelOrPath: unknown, path: unknown): { model: ModelCtor<BaseModel>; fieldPath: string } => {
+    if (typeof path === 'string') {
+      return {
+        model: modelOrPath as ModelCtor<BaseModel>,
+        fieldPath: String(path),
+      };
+    }
+
+    return {
+      model: currentModelCtor,
+      fieldPath: String(modelOrPath ?? ''),
+    };
+  };
+
+  const fieldResolver: SelectCtx['field'] = ((modelOrPath: unknown, path?: unknown) => {
+    const resolved = resolveFieldArgs(modelOrPath, path);
+    return fieldImpl(resolved.model, resolved.fieldPath);
+  }) as SelectCtx['field'];
+
+  const fieldExistResolver: SelectCtx['fieldExist'] = ((modelOrPath: unknown, path?: unknown) => {
+    const resolved = resolveFieldArgs(modelOrPath, path);
+    return fieldExistImpl(resolved.model, resolved.fieldPath);
+  }) as SelectCtx['fieldExist'];
 
   const ctx: SelectCtx = {
     eb: expressionBuilder,

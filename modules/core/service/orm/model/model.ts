@@ -6,6 +6,8 @@ import type { Repository } from '../repository';
 import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,
+  BaseQueryCondition,
+  Operator,
   SearchOptions,
   Insertable,
   Updateable,
@@ -64,6 +66,50 @@ import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 type BaseModelCtor<T extends BaseModel> = { new (factoryToken: Symbol, entity: Entity, fields?: unknown): T };
 type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
+
+export type SqlComputeCtx<TModel extends BaseModel = BaseModel> = {
+  field: {
+    (path: string): unknown;
+    (model: Function, path: string): unknown;
+  };
+  fieldExist: {
+    (path: string): boolean;
+    (model: Function, path: string): boolean;
+  };
+  model?: Function;
+  str: {
+    concat: (...items: unknown[]) => unknown;
+    concatWs?: (separator: string, ...items: unknown[]) => unknown;
+    lower: (value: unknown) => unknown;
+  };
+  fn: {
+    coalesce: (...items: unknown[]) => unknown;
+  };
+  col?: (table: string, column: string) => unknown;
+  selectFrom?: (table: string) => unknown;
+};
+
+export type SearchCtx<TModel extends BaseModel = BaseModel> = {
+  field: <K extends Extract<keyof TModel, string>>(name: K) => string;
+  op: () => Operator;
+  value: <V = unknown>() => V;
+  and: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
+  or: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
+  cmp: (left: unknown, op: Operator, right: unknown) => BaseQueryCondition;
+};
+
+export type InverseCtx<TModel extends BaseModel = BaseModel> = {
+  value: <V = unknown>() => V;
+  writePath: (path: string, value: unknown) => void;
+  readPath: (path: string) => unknown;
+  record: TModel;
+};
+
+export type DecoratorRuntimeBridge<TModel extends BaseModel = BaseModel> = {
+  readonly $sql: SqlComputeCtx<TModel>;
+  readonly $search: SearchCtx<TModel>;
+  readonly $inverse: InverseCtx<TModel>;
+};
 
 /**
  * BaseModel exposes the caller-facing ORM facade shared by runtime models.
@@ -158,22 +204,22 @@ class BaseModel {
   /**
    * Bridge slot for @SqlCompute runtime context (wired in runtime phase).
    */
-  get $sql(): unknown {
-    return currentBridgeFrame(this, 'sql');
+  get $sql(): SqlComputeCtx<this> {
+    return currentBridgeFrame<SqlComputeCtx<this>>(this, 'sql');
   }
 
   /**
    * Bridge slot for @Search runtime context (wired in runtime phase).
    */
-  get $search(): unknown {
-    return currentBridgeFrame(this, 'search');
+  get $search(): SearchCtx<this> {
+    return currentBridgeFrame<SearchCtx<this>>(this, 'search');
   }
 
   /**
    * Bridge slot for @Inverse runtime context (wired in runtime phase).
    */
-  get $inverse(): unknown {
-    return currentBridgeFrame(this, 'inverse');
+  get $inverse(): InverseCtx<this> {
+    return currentBridgeFrame<InverseCtx<this>>(this, 'inverse');
   }
 
   /**
@@ -269,12 +315,13 @@ class BaseModel {
 
   @SqlCompute<BaseModel>('DisplayName')
   sqlDisplayName() {
-    const sql = this.$sql as any;
-    return sql.fn.coalesce(
-      sql.field(this.constructor, 'Name'),
-      sql.field(this.constructor, 'Username'),
-      sql.field(this.constructor, 'Id')
-    );
+    if (this.$sql.fieldExist('Name')) {
+      return this.$sql.field('Name');
+    }
+    if (this.$sql.fieldExist('Username')) {
+      return this.$sql.field('Username');
+    }
+    return this.$sql.field('Id');
   }
 
   /**

@@ -148,6 +148,38 @@ test('model DisplayName compute handler covers Name/Username/Id fallback branche
   expect(typeof proto.sqlDisplayName).toBe('function');
 });
 
+test('model DisplayName sql compute skips missing fields and falls back to Id', () => {
+  const proto = ModelSurfaceHarness.prototype as any;
+  const fieldCalls: string[] = [];
+
+  const sql = {
+    fieldExist: (field: string) => field === 'Id',
+    field: (field: string) => {
+      fieldCalls.push(field);
+      return field === 'Id' ? 'ID-1' : `VALUE-${field}`;
+    },
+    fn: {
+      coalesce: (...items: unknown[]) => {
+        for (const item of items) {
+          if (item != null) return item;
+        }
+        return null;
+      },
+    },
+  };
+
+  const host = Object.create(proto);
+  Object.defineProperty(host, '$sql', {
+    configurable: true,
+    enumerable: false,
+    get: () => sql,
+  });
+  const out = proto.sqlDisplayName.call(host);
+
+  expect(out).toBe('ID-1');
+  expect(fieldCalls).toEqual(['Id']);
+});
+
 test('model static service methods delegate to operation layers', async () => {
   const originalDefaultGet = DefaultOperations.DefaultGet;
   const originalCreate = CreateOperations.Create;

@@ -317,7 +317,9 @@ export type SelectExpressionValue<V = unknown> = SelectExpressionAtom<V> | Selec
 /**
  * Resolves a model field path into a select expression.
  */
-export type SelectFieldResolver = {
+export type SelectFieldResolver<TCurrent extends BaseModel = BaseModel> = {
+  <P extends M2OScalarPath<TCurrent>>(path: P): SelectExpressionValue;
+  (path: string): SelectExpressionValue;
   <T extends BaseModel, P extends M2OScalarPath<T>>(model: ModelCtor<T>, path: P): SelectExpressionValue;
   (model: ModelCtor<BaseModel>, path: string): SelectExpressionValue;
 };
@@ -325,7 +327,9 @@ export type SelectFieldResolver = {
 /**
  * Checks whether a model field path exists for select expression resolution.
  */
-export type SelectFieldExistResolver = {
+export type SelectFieldExistResolver<TCurrent extends BaseModel = BaseModel> = {
+  <P extends M2OScalarPath<TCurrent>>(path: P): boolean;
+  (path: string): boolean;
   <T extends BaseModel, P extends M2OScalarPath<T>>(model: ModelCtor<T>, path: P): boolean;
   (model: ModelCtor<BaseModel>, path: string): boolean;
 };
@@ -336,8 +340,8 @@ export type SelectFieldExistResolver = {
 export type SelectCtx<TCurrent extends BaseModel = BaseModel> = {
   eb: ExpressionBuilder<ObjectRecord, string>;
   col: (table: string, column: string) => SelectExpressionAtom;
-  field: SelectFieldResolver;
-  fieldExist: SelectFieldExistResolver;
+  field: SelectFieldResolver<TCurrent>;
+  fieldExist: SelectFieldExistResolver<TCurrent>;
   model: ModelCtor<TCurrent>;
   str: {
     concat: (...parts: Array<SelectExpressionAtom | string>) => SelectExpressionAtom;
