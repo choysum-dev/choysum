@@ -811,7 +811,7 @@ test('repository condition compiler fails fast when compute.search returns both 
 test('repository condition compiler fails fast when compute.search returns neither domain nor sql', () => {
   class DemoModel {
     static buildEmptyPayload(_ctx: any) {
-      return {};
+      return null;
     }
   }
 

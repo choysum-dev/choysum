@@ -8,7 +8,7 @@ import BaseModel from '../../../model/model';
 
 class ValidationBridgeModel extends BaseModel {}
 
-test('validation bridge composes create whitelist from context and internal compute fields', async () => {
+test('validation bridge composes create whitelist from context and internal persisted compute fields', async () => {
   const original = ValidationEngine.validateOrThrow;
 
   const captured: any = {
@@ -42,6 +42,7 @@ test('validation bridge composes create whitelist from context and internal comp
         fields: new Map(),
         computeGraph: {
           computeFields: new Set(['ComputedA', 'ComputedA']),
+          persistedComputeFields: new Set(['ComputedA', 'ComputedA']),
         },
       } as any,
       repository: {} as any,

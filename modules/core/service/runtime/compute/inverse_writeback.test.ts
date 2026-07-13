@@ -82,6 +82,20 @@ test('inverse writeback executes explicit @Inverse handler and removes source fi
   });
 });
 
+test('inverse writeback keeps compute-field writes without inverse for downstream validation', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(InverseTargetModel as any);
+
+  const rewritten = await applyInverseWriteback(meta, {
+    DisplayName: 'forbidden_display_name',
+    Name: 'kept_name',
+  });
+
+  expect(rewritten).toEqual({
+    DisplayName: 'forbidden_display_name',
+    Name: 'kept_name',
+  });
+});
+
 test('inverse writeback throws INVERSE_HANDLER_REQUIRED when related auto path is not whitelisted', async () => {
   class InverseInvalidPathModel extends BaseModel {}
 

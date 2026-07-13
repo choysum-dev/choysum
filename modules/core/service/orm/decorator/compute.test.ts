@@ -4,13 +4,15 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Compute } from './compute';
+import { Field } from './field';
 
 test('@Compute registers handler metadata with defaults', () => {
   class ComputeDecoratorModel extends BaseModel {
+    @Field({ type: 'varchar', size: 64 } as any)
     Name?: string;
 
     @Compute<ComputeDecoratorModel>('Name', {
-      deps: ['Name', 'Name'],
+      deps: ['Id', 'Id'],
       store: false,
       searchable: true,
       runAs: 'sudo',
@@ -26,7 +28,7 @@ test('@Compute registers handler metadata with defaults', () => {
   expect(handler).toEqual({
     field: 'Name',
     method: 'computeName',
-    deps: ['Name'],
+    deps: ['Id'],
     store: false,
     searchable: true,
     runAs: 'sudo',

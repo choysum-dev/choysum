@@ -1227,7 +1227,7 @@ test('model read default argument branches: count/search/group with omitted opti
     expect(count).toBe(2);
     expect(countCalls).toEqual([[]]);
     expect(searchCalls).toEqual([['Id', '=', 'S-1']]);
-    expect(rows).toEqual([{ Id: 'S-1', Name: 'row', NameVirtual: 'row-v', NameVirtualDerived: 'row-v-d' }]);
+    expect(rows).toEqual([{ Id: 'S-1', Name: 'row', DisplayName: 'row', NameVirtual: 'row-v', NameVirtualDerived: 'row-v-d' }]);
     expect(groupCalls.length).toBe(1);
     expect(groupCalls[0]?.condition).toEqual([]);
     expect(grouped[0]?.count).toBe(0);

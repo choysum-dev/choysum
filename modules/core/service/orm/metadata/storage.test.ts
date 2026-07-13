@@ -336,6 +336,13 @@ test('metadata storage merges behavior handler maps and applies subclass overrid
   storage.setModelMetadata(
     StorageParentModel as any,
     {
+      fields: new Map([
+        ['Amount', { type: 'int', column: {} }],
+        ['Tax', { type: 'int', column: {} }],
+        ['Name', { type: 'varchar', column: {} }],
+        ['Total', { type: 'int', column: {} }],
+        ['DisplayName', { type: 'varchar', column: {} }],
+      ]),
       computeHandlers: new Map([
         [
           'Total',
@@ -381,6 +388,11 @@ test('metadata storage merges behavior handler maps and applies subclass overrid
   storage.setModelMetadata(
     StorageChildModel as any,
     {
+      fields: new Map([
+        ['Amount', { type: 'int', column: {} }],
+        ['Tax', { type: 'int', column: {} }],
+        ['Total', { type: 'int', column: {} }],
+      ]),
       computeHandlers: new Map([
         [
           'Total',

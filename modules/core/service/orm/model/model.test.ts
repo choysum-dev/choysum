@@ -15,6 +15,9 @@ import { UpdateOperations } from './model_update';
 class ModelSurfaceHarness extends BaseModel {
   @Field({ type: 'varchar', column: { size: 64 } })
   Name!: string;
+
+  @Field({ type: 'varchar', column: { size: 64 } })
+  Username!: string;
 }
 
 function makeInstance(entity: Record<string, any>, fields?: any) {
@@ -131,20 +134,21 @@ test('model context accessors are available on static and instance surfaces', ()
   expect(instanceWithContext).toBe('ok');
 });
 
-test('model DisplayName select expression covers Name/Username/Id fallback branches', () => {
+test('model DisplayName compute handler covers Name/Username/Id fallback branches', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ModelSurfaceHarness as any);
   const displayNameMeta = meta.fields.get('DisplayName') as any;
-  const expr = displayNameMeta?.select?.expr;
+  const computeHandler = meta.computeHandlers?.get('DisplayName') as any;
 
-  const field = (_model: any, key: string) => `F:${key}`;
+  expect(displayNameMeta?.column).toBeUndefined();
+  expect(computeHandler?.store).toBe(false);
 
-  const byName = expr({ model: 'm', field, fieldExist: (_m: any, key: string) => key === 'Name' });
-  const byUsername = expr({ model: 'm', field, fieldExist: (_m: any, key: string) => key === 'Username' });
-  const byId = expr({ model: 'm', field, fieldExist: () => false });
+  const byName = makeInstance({ Id: 'I-1', Name: 'N-1' }).computeDisplayName();
+  const byUsername = makeInstance({ Id: 'I-2', Username: 'U-2' } as any).computeDisplayName();
+  const byId = makeInstance({ Id: 'I-3' }).computeDisplayName();
 
-  expect(byName).toBe('F:Name');
-  expect(byUsername).toBe('F:Username');
-  expect(byId).toBe('F:Id');
+  expect(byName).toBe('N-1');
+  expect(byUsername).toBe('U-2');
+  expect(byId).toBe('I-3');
 });
 
 test('model static service methods delegate to operation layers', async () => {

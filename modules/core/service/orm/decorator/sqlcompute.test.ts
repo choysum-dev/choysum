@@ -4,13 +4,15 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { SqlCompute } from './sqlcompute';
+import { Field } from './field';
 
 test('@SqlCompute registers handler metadata', () => {
   class SqlComputeDecoratorModel extends BaseModel {
+    @Field({ type: 'varchar', size: 64 } as any)
     Name?: string;
 
     @SqlCompute<SqlComputeDecoratorModel>('Name', {
-      deps: ['Name', 'Name'],
+      deps: ['Id', 'Id'],
     })
     sqlName() {
       return 'expr' as any;
@@ -23,7 +25,7 @@ test('@SqlCompute registers handler metadata', () => {
   expect(handler).toEqual({
     field: 'Name',
     method: 'sqlName',
-    deps: ['Name'],
+    deps: ['Id'],
   });
 });
 
