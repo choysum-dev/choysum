@@ -3,7 +3,7 @@
 
 import { Entity } from '../repository';
 import type { Repository } from '../repository';
-import { Compute, Field } from '../decorator';
+import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,
   SearchOptions,
@@ -267,19 +267,14 @@ class BaseModel {
   })
   public readonly DisplayName!: string;
 
-  @Compute<BaseModel & { Name?: unknown; Username?: unknown }>('DisplayName', {
-    deps: ['Id'],
-    store: false,
-  })
-  computeDisplayName() {
-    const self = this as BaseModel & { Name?: unknown; Username?: unknown };
-    const name = typeof self.Name === 'string' ? self.Name.trim() : '';
-    if (name) return name;
-
-    const username = typeof self.Username === 'string' ? self.Username.trim() : '';
-    if (username) return username;
-
-    return String(this.Id || '');
+  @SqlCompute<BaseModel>('DisplayName')
+  sqlDisplayName() {
+    const sql = this.$sql as any;
+    return sql.fn.coalesce(
+      sql.field(this.constructor, 'Name'),
+      sql.field(this.constructor, 'Username'),
+      sql.field(this.constructor, 'Id')
+    );
   }
 
   /**
