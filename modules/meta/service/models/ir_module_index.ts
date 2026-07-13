@@ -535,8 +535,8 @@ export default class IrModuleIndex extends BaseModel {
       if (!moduleName) continue;
 
       const installed = installedByName.get(moduleName);
-      row.InstalledStatus = row.InstalledStatus || installed?.status || 'uninstalled';
-      row.InstalledVersion = row.InstalledVersion || installed?.version;
+      row.InstalledStatus = installed?.status || row.InstalledStatus || 'uninstalled';
+      row.InstalledVersion = installed?.version || row.InstalledVersion;
 
       mergedByModule.set(moduleName, row);
     }

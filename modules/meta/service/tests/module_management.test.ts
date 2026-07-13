@@ -223,6 +223,17 @@ function mockIrModuleIndexBaseSearch(result: any[]): () => void {
 }
 
 /**
+ * Replaces IrModule.Search used by IrModuleIndex aggregate Search status merge.
+ */
+function mockIrModuleSearch(result: any[]): () => void {
+  const original = (IrModule as any).Search;
+  (IrModule as any).Search = async () => result;
+  return () => {
+    (IrModule as any).Search = original;
+  };
+}
+
+/**
  * Generates a stable unique suffix for module-management test fixtures.
  */
 function uid(prefix: string): string {
@@ -830,6 +841,63 @@ test('meta.IrModuleIndex Search projection returns model instances and blocks da
   } finally {
     restoreGroupedRepo();
     restoreBaseSearch();
+  }
+});
+
+test('meta.IrModuleIndex Search prefers IrModule status over aggregate default uninstalled', async () => {
+  resetRequestContext();
+
+  const now = new Date();
+  const restoreGroupedRepo = mockIrModuleIndexGroupedRepo([{ ModuleName: 'auth' }]);
+  const restoreBaseSearch = mockIrModuleIndexBaseSearch([
+    {
+      Id: 'idx_local',
+      ModuleName: 'auth',
+      OriginType: 'local',
+      OriginRef: 'local',
+      Available: true,
+      Version: '1.0.0',
+      ManifestJson: { source: 'local' },
+      LocalPath: '/modules/auth',
+      LastSyncAt: now,
+      LastBatchSyncAt: now,
+      SyncRevision: 'r1',
+      LastErrorMessage: '',
+    },
+    {
+      Id: 'idx_registry',
+      ModuleName: 'auth',
+      OriginType: 'registry',
+      OriginRef: '@choysum-dev/auth',
+      Available: true,
+      Version: '2.0.0',
+      ManifestJson: { source: 'registry' },
+      LocalPath: '',
+      LastSyncAt: now,
+      LastBatchSyncAt: now,
+      SyncRevision: 'r2',
+      LastErrorMessage: '',
+    },
+  ]);
+  const restoreIrModuleSearch = mockIrModuleSearch([
+    {
+      Name: 'auth',
+      Status: 'installed',
+      Version: '1.0.0',
+    },
+  ]);
+
+  try {
+    const rows = await (IrModuleIndex as any).Search([], { fields: ['ModuleName', 'InstalledStatus', 'InstalledVersion'], limit: 10 });
+    expect(Array.isArray(rows)).toBe(true);
+    expect(rows.length).toBe(1);
+    expect(rows[0].ModuleName).toBe('auth');
+    expect(rows[0].InstalledStatus).toBe('installed');
+    expect(rows[0].InstalledVersion).toBe('1.0.0');
+  } finally {
+    restoreGroupedRepo();
+    restoreBaseSearch();
+    restoreIrModuleSearch();
   }
 });
 
