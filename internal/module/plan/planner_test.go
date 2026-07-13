@@ -282,9 +282,9 @@ func TestBuildPlan_UpgradeUsesRootOnly(t *testing.T) {
 func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 	root := &meta.IrModule{Name: "base", ApplicationStr: "base"}
 	modules := map[string]*meta.IrModule{
-		"base":     {Name: "base", ApplicationStr: "base", Dependents: []*meta.IrModule{{Name: "auth"}}},
-		"auth":     {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.IrModule{{Name: "auth_ext"}}},
-		"auth_ext": {Name: "auth_ext", ApplicationStr: "auth"},
+		"base":       {Name: "base", ApplicationStr: "base", Dependents: []*meta.IrModule{{Name: "auth"}}},
+		"auth":       {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.IrModule{{Name: "auth_addon"}}},
+		"auth_addon": {Name: "auth_addon", ApplicationStr: "auth"},
 	}
 	r := fakeResolver{
 		peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, nil },
@@ -295,7 +295,7 @@ func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildPlan error: %v", err)
 	}
-	if len(plan.ModuleOrder) != 3 || plan.ModuleOrder[0] != "auth_ext" || plan.ModuleOrder[1] != "auth" || plan.ModuleOrder[2] != "base" {
+	if len(plan.ModuleOrder) != 3 || plan.ModuleOrder[0] != "auth_addon" || plan.ModuleOrder[1] != "auth" || plan.ModuleOrder[2] != "base" {
 		t.Fatalf("unexpected uninstall order: %v", plan.ModuleOrder)
 	}
 	if len(plan.AffectedApps) != 2 {

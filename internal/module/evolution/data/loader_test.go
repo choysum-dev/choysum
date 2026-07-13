@@ -30,7 +30,7 @@ func TestBuildModuleRulesFromOwner(t *testing.T) {
 	t.Parallel()
 
 	depLeaf := &meta.IrModule{Name: "base", ApplicationStr: "auth"}
-	depMid := &meta.IrModule{Name: "auth_ext", ApplicationStr: "auth", Dependencies: []*meta.IrModule{depLeaf}}
+	depMid := &meta.IrModule{Name: "auth_addon", ApplicationStr: "auth", Dependencies: []*meta.IrModule{depLeaf}}
 	rules, err := buildModuleRulesFromOwner(&meta.IrModule{
 		Name:           "auth",
 		ApplicationStr: "auth",
@@ -42,7 +42,7 @@ func TestBuildModuleRulesFromOwner(t *testing.T) {
 	if rules.OwnerName != "auth" || rules.OwnerApp != "auth" {
 		t.Fatalf("unexpected owner rules: %#v", rules)
 	}
-	for _, name := range []string{"auth", "auth_ext", "base"} {
+	for _, name := range []string{"auth", "auth_addon", "base"} {
 		if _, ok := rules.Allowed[name]; !ok {
 			t.Fatalf("expected module %q in allowed set: %#v", name, rules.Allowed)
 		}
@@ -281,27 +281,27 @@ func TestBuildModuleRules_DBBackedPaths(t *testing.T) {
 	l, db := newTestLoader(t)
 	_ = l
 
-	rules, err := buildModuleRules(db, &meta.IrModule{Name: "auth_ext", ApplicationStr: "auth"})
+	rules, err := buildModuleRules(db, &meta.IrModule{Name: "auth_addon", ApplicationStr: "auth"})
 	if err != nil {
 		t.Fatalf("buildModuleRules(db-backed) error = %v", err)
 	}
-	if rules.OwnerName != "auth_ext" || rules.OwnerApp != "auth" {
+	if rules.OwnerName != "auth_addon" || rules.OwnerApp != "auth" {
 		t.Fatalf("unexpected rules owner: %#v", rules)
 	}
-	for _, want := range []string{"auth_ext", "auth"} {
+	for _, want := range []string{"auth_addon", "auth"} {
 		if _, ok := rules.Allowed[want]; !ok {
 			t.Fatalf("expected %q in dependency closure: %#v", want, rules.Allowed)
 		}
 	}
 
-	if err := db.Model(&meta.IrModule{}).Where("name = ?", "auth_ext").Update("application_str", "").Error; err != nil {
-		t.Fatalf("blank auth_ext application_str: %v", err)
+	if err := db.Model(&meta.IrModule{}).Where("name = ?", "auth_addon").Update("application_str", "").Error; err != nil {
+		t.Fatalf("blank auth_addon application_str: %v", err)
 	}
-	if err := db.Model(&meta.IrModule{}).Where("name = ?", "auth_ext").Update("application_str", "").Error; err != nil {
-		t.Fatalf("confirm blank auth_ext application_str: %v", err)
+	if err := db.Model(&meta.IrModule{}).Where("name = ?", "auth_addon").Update("application_str", "").Error; err != nil {
+		t.Fatalf("confirm blank auth_addon application_str: %v", err)
 	}
-	_, err = buildModuleRules(db, &meta.IrModule{Name: "auth_ext", ApplicationStr: ""})
-	if err == nil || !strings.Contains(err.Error(), "owner module auth_ext has empty application") {
+	_, err = buildModuleRules(db, &meta.IrModule{Name: "auth_addon", ApplicationStr: ""})
+	if err == nil || !strings.Contains(err.Error(), "owner module auth_addon has empty application") {
 		t.Fatalf("expected empty application error, got %v", err)
 	}
 	if _, _, err := loadModuleIndex(nil); err == nil || !strings.Contains(err.Error(), "nil db session") {
@@ -424,16 +424,16 @@ func seedLoaderTestSchema(t *testing.T, db *gorm.DB) {
 	if err := db.Create(auth).Error; err != nil {
 		t.Fatalf("create module auth: %v", err)
 	}
-	authExt := &meta.IrModule{Name: "auth_ext", ApplicationStr: "auth", Path: "/tmp"}
-	if err := db.Create(authExt).Error; err != nil {
-		t.Fatalf("create module auth_ext: %v", err)
+	authAddon := &meta.IrModule{Name: "auth_addon", ApplicationStr: "auth", Path: "/tmp"}
+	if err := db.Create(authAddon).Error; err != nil {
+		t.Fatalf("create module auth_addon: %v", err)
 	}
 	base := &meta.IrModule{Name: "base", ApplicationStr: "base", Path: "/tmp"}
 	if err := db.Create(base).Error; err != nil {
 		t.Fatalf("create module base: %v", err)
 	}
-	if err := db.Exec("INSERT INTO meta_ir_module_dependencies (module_id, depend_module_id) VALUES (?, ?)", authExt.Id.String, auth.Id.String).Error; err != nil {
-		t.Fatalf("insert module dependency auth_ext -> auth: %v", err)
+	if err := db.Exec("INSERT INTO meta_ir_module_dependencies (module_id, depend_module_id) VALUES (?, ?)", authAddon.Id.String, auth.Id.String).Error; err != nil {
+		t.Fatalf("insert module dependency auth_addon -> auth: %v", err)
 	}
 }
 
@@ -1371,7 +1371,7 @@ func TestApplyModule_ModuleNotInDependencyChainIsRejected(t *testing.T) {
 	dir := t.TempDir()
 	writeDataFile(t, dir, map[string]any{
 		"records": []any{
-			map[string]any{"module": "auth_ext", "external_id": "x", "model": "auth.User", "values": map[string]any{}},
+			map[string]any{"module": "auth_addon", "external_id": "x", "model": "auth.User", "values": map[string]any{}},
 		},
 	})
 	mod := moduleWithDataFile(t, dir)
@@ -1403,7 +1403,7 @@ func TestApplyModule_CrossModuleSameApplicationAllowedWithDependency(t *testing.
 			map[string]any{"module": "auth", "external_id": "x", "model": "auth.User", "values": map[string]any{}},
 		},
 	})
-	mod := moduleWithDataFileNamed(t, dir, "auth_ext")
+	mod := moduleWithDataFileNamed(t, dir, "auth_addon")
 
 	if err := l.ApplyModule(context.Background(), mod, ApplyOptions{}); err != nil {
 		t.Fatalf("expected no error, got %v", err)
