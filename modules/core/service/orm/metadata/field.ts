@@ -80,15 +80,10 @@ export type FieldRelationOption<TJoin extends BaseModel = BaseModel, TTarget ext
 /**
  * Flat @Field authoring contract (PR-1).
  */
-export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = BaseFieldOptions & {
-  relation?: FieldRelationOption<TJoin, TTarget>;
-  selection?: SelectionItem[];
+type FlatCommonOptions = {
   related?: FieldRelatedOption;
   required?: boolean;
   indexed?: boolean;
-  size?: number;
-  precision?: number;
-  scale?: number;
   notNull?: boolean;
   index?: boolean | string;
   primaryKey?: boolean;
@@ -96,11 +91,152 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   uniqueIndex?: boolean | string;
   checkConstraint?: string;
   default?: unknown;
-  round?: DecimalRound;
+};
+
+type FlatLegacyBranch<T extends BaseModel> = {
   // Keep optional legacy branches for gradual migration in runtime decorators.
   column?: ColumnOptions<T, unknown> & ObjectRecord;
   select?: SelectOptions<T, unknown> & ObjectRecord;
 };
+
+type FlatNoRelationOption = { relation?: never };
+type FlatNoSelectionOption = { selection?: never };
+type FlatNoSizeOption = { size?: never };
+type FlatNoDecimalOptions = { precision?: never; scale?: never; round?: never };
+
+type FlatRefRelationOption<TTarget extends BaseModel> = {
+  targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  onDelete?: never;
+  onUpdate?: never;
+  inverseField?: never;
+  joinModel?: never;
+  joinField?: never;
+  inverseJoinField?: never;
+};
+
+type FlatManyToOneRelationOption<TTarget extends BaseModel> = {
+  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
+  onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+  onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
+  inverseField?: never;
+  joinModel?: never;
+  joinField?: never;
+  inverseJoinField?: never;
+};
+
+type FlatOneToManyRelationOption<TTarget extends BaseModel> = {
+  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
+  inverseField?: string;
+  onDelete?: never;
+  onUpdate?: never;
+  joinModel?: never;
+  joinField?: never;
+  inverseJoinField?: never;
+};
+
+type FlatManyToManyRelationOption<TJoin extends BaseModel, TTarget extends BaseModel> = {
+  targetModel: () => ModelCtor<TTarget> & typeof BaseModel;
+  joinModel?: () => ModelCtor<TJoin> & typeof BaseModel;
+  joinField?: string;
+  inverseJoinField?: string;
+  onDelete?: never;
+  onUpdate?: never;
+  inverseField?: never;
+};
+
+type FlatCharOrVarcharFieldOptions<T extends BaseModel> = {
+  type: 'char' | 'varchar';
+  size?: number;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoRelationOption &
+  FlatNoSelectionOption &
+  FlatNoDecimalOptions;
+
+type FlatScalarFieldOptions<T extends BaseModel> = {
+  type: Exclude<FieldType, 'char' | 'varchar' | 'decimal' | 'selection' | 'ManyToOneRef' | 'ManyToManyRef' | 'ManyToOne' | 'OneToMany' | 'ManyToMany'>;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoRelationOption &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions;
+
+type FlatDecimalFieldOptions<T extends BaseModel> = {
+  type: 'decimal';
+  precision?: number;
+  scale?: number;
+  round?: DecimalRound;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoRelationOption &
+  FlatNoSelectionOption &
+  FlatNoSizeOption;
+
+type FlatSelectionFieldOptions<T extends BaseModel> = {
+  type: 'selection';
+  selection: SelectionItem[];
+  size?: number;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoRelationOption &
+  FlatNoDecimalOptions;
+
+type FlatManyToOneRefFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+  type: 'ManyToOneRef';
+  relation: FlatRefRelationOption<TTarget>;
+  size?: number;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoSelectionOption &
+  FlatNoDecimalOptions;
+
+type FlatManyToManyRefFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+  type: 'ManyToManyRef';
+  relation: FlatRefRelationOption<TTarget>;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions;
+
+type FlatManyToOneFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+  type: 'ManyToOne';
+  relation: FlatManyToOneRelationOption<TTarget>;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions;
+
+type FlatOneToManyFieldOptions<T extends BaseModel, TTarget extends BaseModel> = {
+  type: 'OneToMany';
+  relation: FlatOneToManyRelationOption<TTarget>;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions;
+
+type FlatManyToManyFieldOptions<T extends BaseModel, TJoin extends BaseModel, TTarget extends BaseModel> = {
+  type: 'ManyToMany';
+  relation: FlatManyToManyRelationOption<TJoin, TTarget>;
+} & FlatCommonOptions &
+  FlatLegacyBranch<T> &
+  FlatNoSelectionOption &
+  FlatNoSizeOption &
+  FlatNoDecimalOptions;
+
+export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> =
+  | FlatCharOrVarcharFieldOptions<T>
+  | FlatScalarFieldOptions<T>
+  | FlatDecimalFieldOptions<T>
+  | FlatSelectionFieldOptions<T>
+  | FlatManyToOneRefFieldOptions<T, TTarget>
+  | FlatManyToManyRefFieldOptions<T, TTarget>
+  | FlatManyToOneFieldOptions<T, TTarget>
+  | FlatOneToManyFieldOptions<T, TTarget>
+  | FlatManyToManyFieldOptions<T, TJoin, TTarget>;
 
 /**
  * One selectable option for a selection field.
