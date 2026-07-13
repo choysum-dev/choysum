@@ -32,7 +32,12 @@ export interface ProxyFactory {
 // Model-level summary cache for relation and computed fields.
 const MODEL_SUMMARY_CACHE = new WeakMap<Function, { relationKeys: Set<string>; computedKeys: Set<string> }>();
 
-function isOrmRelationFieldMeta(f: FieldMetadata | undefined): boolean {
+type OrmRelationFieldMetadata = FieldMetadata & {
+  type: 'ManyToOne' | 'OneToMany' | 'ManyToMany';
+  relation: NonNullable<FieldMetadata['relation']>;
+};
+
+function isOrmRelationFieldMeta(f: FieldMetadata | undefined): f is OrmRelationFieldMetadata {
   if (!f?.relation) return false;
   return f.type === 'ManyToOne' || f.type === 'OneToMany' || f.type === 'ManyToMany';
 }

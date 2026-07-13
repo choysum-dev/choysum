@@ -341,7 +341,7 @@ export class ValidationEngine {
   }
 
   private static resolveReferenceTargetCtor(meta: ReferenceModelMeta): (ModelCtor<BaseModel> & typeof BaseModel) | undefined {
-    const resolver = meta?.relation?.targetModel;
+    const resolver = (meta?.relation as { targetModel?: unknown } | undefined)?.targetModel;
     if (!resolver) return undefined;
 
     if (typeof resolver === 'function') {
@@ -379,7 +379,7 @@ export class ValidationEngine {
       if (app === 'base' && modelName === 'Company') return true;
     }
 
-    const resolver = meta?.relation?.targetModel;
+    const resolver = (meta?.relation as { targetModel?: unknown } | undefined)?.targetModel;
     if (typeof resolver === 'string') {
       return resolver.trim() === 'base.Company';
     }

@@ -15,6 +15,10 @@ import { asObjectRecord } from '../../../utils/object';
 
 type InstantiableBaseModelCtor = InstantiableModelCtor<BaseModel>;
 type RelationMetadataLike = ManyToOneMetadata<BaseModel> | OneToManyMetadata<BaseModel> | ManyToManyMetadata<BaseModel, BaseModel>;
+type OrmRelationFieldMetadata = FieldMetadata & {
+  type: 'ManyToOne' | 'OneToMany' | 'ManyToMany';
+  relation: NonNullable<FieldMetadata['relation']>;
+};
 
 // Cache the set of public non-relation fields to speed up calls without an explicit fields list.
 const NON_REL_PUBLIC_FIELD_CACHE = new WeakMap<InstantiableBaseModelCtor, string[]>();
@@ -67,11 +71,10 @@ function getRelationTargetCtor(relation: unknown): InstantiableBaseModelCtor | u
   return typeof resolved === 'function' ? (resolved as InstantiableBaseModelCtor) : undefined;
 }
 
-function isOrmRelationFieldMeta(fm: unknown): fm is FieldMetadata {
-  const fieldMeta = asObjectRecord(fm);
+function isOrmRelationFieldMeta(fm: unknown): fm is OrmRelationFieldMetadata {
+  const fieldMeta = asObjectRecord(fm) as FieldMetadata | undefined;
   if (!fieldMeta?.relation) return false;
-  const type = fieldMeta.type;
-  return type === 'ManyToOne' || type === 'OneToMany' || type === 'ManyToMany';
+  return fieldMeta.type === 'ManyToOne' || fieldMeta.type === 'OneToMany' || fieldMeta.type === 'ManyToMany';
 }
 
 function assignField(instance: BaseModel, key: string, value: unknown): void {
