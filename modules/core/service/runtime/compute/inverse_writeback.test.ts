@@ -27,7 +27,7 @@ class InverseAutoModel extends BaseModel {
       store: true,
     },
   } as any)
-  DisplayName?: string;
+  override DisplayName!: string;
 }
 
 @Model('test.InverseManualModel')
@@ -46,7 +46,7 @@ class InverseManualModel extends BaseModel {
       store: true,
     },
   } as any)
-  DisplayName?: string;
+  override DisplayName!: string;
 
   @Inverse<InverseManualModel>('DisplayName')
   inverseDisplayName() {

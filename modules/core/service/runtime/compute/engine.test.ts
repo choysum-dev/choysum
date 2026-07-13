@@ -1522,7 +1522,7 @@ test('compute engine executes @Compute handler method and writes back through th
 test('compute engine injectVirtualForRead executes @SqlCompute handler with $sql bridge context', () => {
   class SqlComputeReadModel extends BaseModel {
     Name?: string;
-    DisplayName?: string;
+    override DisplayName!: string;
 
     sqlDisplayName() {
       const sql = this.$sql as any;

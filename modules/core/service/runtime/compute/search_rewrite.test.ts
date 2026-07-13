@@ -17,7 +17,7 @@ class SearchRewriteModel extends BaseModel {
   Name?: string;
 
   @Field({ type: 'varchar', column: { size: 64 } })
-  DisplayName?: string;
+  override DisplayName!: string;
 
   @SqlCompute<SearchRewriteModel>('DisplayName')
   sqlDisplayName() {
