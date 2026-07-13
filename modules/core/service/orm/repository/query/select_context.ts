@@ -196,6 +196,9 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
     fieldExist: fieldExistResolver,
     model: currentModelCtor,
     str,
+    fn: {
+      coalesce: (...items: unknown[]) => (expressionBuilder as any).fn.coalesce(...items),
+    },
     selectFrom: (table: string) => db.selectFrom(table),
   };
   void selfTable;

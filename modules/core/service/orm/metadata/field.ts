@@ -343,6 +343,9 @@ export type SelectCtx<TCurrent extends BaseModel = BaseModel> = {
     concat: (...parts: Array<SelectExpressionAtom | string>) => SelectExpressionAtom;
     concatWs: (sep: string, ...parts: Array<SelectExpressionAtom | string>) => SelectExpressionAtom;
   };
+  fn: {
+    coalesce: (...items: Array<SelectExpressionAtom | string>) => SelectExpressionValue;
+  };
   selectFrom: (table: string) => SelectSubqueryBuilder;
 };
 
