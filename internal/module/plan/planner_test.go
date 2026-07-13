@@ -385,8 +385,8 @@ func TestWithBuildPlanProgressReporter_NilReporterReturnsSameCtx(t *testing.T) {
 	}
 }
 
-func TestWithBuildPlanProgressReporter_NilContextUsesBackground(t *testing.T) {
-	result := WithBuildPlanProgressReporter(nil, func(progress BuildPlanProgress) {})
+func TestWithBuildPlanProgressReporter_MissingContextUsesBackground(t *testing.T) {
+	result := WithBuildPlanProgressReporter(context.TODO(), func(progress BuildPlanProgress) {})
 	if result == nil {
 		t.Fatal("expected non-nil ctx when input ctx is nil")
 	}
@@ -396,8 +396,8 @@ func TestWithBuildPlanProgressReporter_NilContextUsesBackground(t *testing.T) {
 	}
 }
 
-func TestBuildPlanProgressReporterFromContext_NilContext(t *testing.T) {
-	reporter := BuildPlanProgressReporterFromContext(nil)
+func TestBuildPlanProgressReporterFromContext_MissingContext(t *testing.T) {
+	reporter := BuildPlanProgressReporterFromContext(context.TODO())
 	if reporter != nil {
 		t.Fatal("expected nil reporter from nil context")
 	}
