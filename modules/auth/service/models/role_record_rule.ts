@@ -24,15 +24,14 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Application-level scope when the rule targets an entire application.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', notNull: false, size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
   IrApplicationId: string | null;
 
   /**
    * Model-level scope when the rule targets one concrete model.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'meta.IrModel',
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' },
     notNull: false,
       size: 20,
       index: true,

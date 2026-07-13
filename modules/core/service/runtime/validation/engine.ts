@@ -13,7 +13,7 @@ import type { BaseQueryCondition, SearchOptions } from '../../orm/repository/typ
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import type { ObjectRecord } from '../../../utils/types';
 
-type ReferenceModelMeta = Pick<FieldMetadata, 'relation' | 'targetModel'>;
+type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
 type RuntimeModelNameMeta = Pick<ModelMetadata, 'fullModelName' | 'application' | 'modelName'>;
 
 type GlobalPool = {
@@ -341,7 +341,7 @@ export class ValidationEngine {
   }
 
   private static resolveReferenceTargetCtor(meta: ReferenceModelMeta): (ModelCtor<BaseModel> & typeof BaseModel) | undefined {
-    const resolver = meta?.relation?.targetModel ?? meta?.targetModel;
+    const resolver = meta?.relation?.targetModel;
     if (!resolver) return undefined;
 
     if (typeof resolver === 'function') {
@@ -379,7 +379,7 @@ export class ValidationEngine {
       if (app === 'base' && modelName === 'Company') return true;
     }
 
-    const resolver = meta?.relation?.targetModel || meta?.targetModel;
+    const resolver = meta?.relation?.targetModel;
     if (typeof resolver === 'string') {
       return resolver.trim() === 'base.Company';
     }

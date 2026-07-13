@@ -3,7 +3,7 @@
 
 import { Entity } from '../repository';
 import { MetadataStorage } from '../metadata/storage';
-import { ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../metadata';
+import { FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../metadata';
 import BaseModel from '../model/model';
 import type { InstantiableModelCtor } from '../model/types';
 import { hydrateModel } from '../model/model_hydration';
@@ -67,6 +67,13 @@ function getRelationTargetCtor(relation: unknown): InstantiableBaseModelCtor | u
   return typeof resolved === 'function' ? (resolved as InstantiableBaseModelCtor) : undefined;
 }
 
+function isOrmRelationFieldMeta(fm: unknown): fm is FieldMetadata {
+  const fieldMeta = asObjectRecord(fm);
+  if (!fieldMeta?.relation) return false;
+  const type = fieldMeta.type;
+  return type === 'ManyToOne' || type === 'OneToMany' || type === 'ManyToMany';
+}
+
 function assignField(instance: BaseModel, key: string, value: unknown): void {
   (instance as unknown as ObjectRecord)[key] = value;
 }
@@ -100,7 +107,7 @@ export class EntityConverter {
     const list: string[] = [];
     for (const [k, fm] of meta.fields.entries()) {
       if (!this.isPublicKey(k)) continue;
-      if (fm.relation) continue;
+      if (isOrmRelationFieldMeta(fm)) continue;
       list.push(k);
     }
     NON_REL_PUBLIC_FIELD_CACHE.set(ctor, list);
@@ -119,7 +126,7 @@ export class EntityConverter {
       if (!fm) continue;
 
       // Handle relation fields that are present directly on the entity, such as 'Roles': [...].
-      if (fm.relation) {
+      if (isOrmRelationFieldMeta(fm)) {
         if (value === undefined) continue;
         const relValue = this.parseJsonRelationValue(value);
 
@@ -150,7 +157,7 @@ export class EntityConverter {
 
     // 2. Walk relation fields from metadata and look for preloaded $rel$ aliases such as $rel$_roles.
     for (const [key, fm] of meta.fields) {
-      if (!fm.relation) continue;
+      if (!isOrmRelationFieldMeta(fm)) continue;
 
       // If the entity already contains the field directly, step 1 handled it.
       if (Object.prototype.hasOwnProperty.call(entity, key)) continue;
@@ -291,7 +298,7 @@ export class EntityConverter {
 
     const pushScalarOp = (key: string) => {
       const fm = meta.fields.get(key);
-      if (!fm || fm.relation) return;
+      if (!fm || isOrmRelationFieldMeta(fm)) return;
       const conv = this.inferScalarConvByType(fm.type);
       if (conv !== 'none') jsonSafe = false;
 
@@ -300,7 +307,7 @@ export class EntityConverter {
 
     const pushRelationOp = (key: string, subSel?: unknown[]) => {
       const fm = meta.fields.get(key);
-      if (!fm || !fm.relation) return;
+      if (!fm || !isOrmRelationFieldMeta(fm)) return;
 
       hasRelations = true;
       if (fm.type === 'ManyToOne') {
@@ -345,7 +352,7 @@ export class EntityConverter {
         const fm = meta.fields.get(item);
         if (!fm) continue;
 
-        if (!fm.relation) {
+        if (!isOrmRelationFieldMeta(fm)) {
           pushScalarOp(item);
         } else {
           // A relation name without a nested selection uses the child model default selection.

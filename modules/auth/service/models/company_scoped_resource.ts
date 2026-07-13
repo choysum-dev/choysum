@@ -18,7 +18,7 @@ export default class CompanyScopedResource extends BaseModel {
   /**
    * Company scope for the row. Null means the row is shared across companies.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', notNull: false, size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, notNull: false, size: 20, index: true})
   CompanyId?: string;
 
   /**

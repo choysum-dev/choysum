@@ -50,7 +50,7 @@ export default class AttachmentBinding extends BaseModel {
   /**
    * Attachment content row currently bound to the owner field.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'document.AttachmentContent', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'document.AttachmentContent' }, size: 20, notNull: true, index: true})
   AttachmentContentId: string;
 
   /**
@@ -98,7 +98,7 @@ export default class AttachmentBinding extends BaseModel {
   /**
    * Company that owns the attachment binding.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   // -----------------------------------------------------------------------

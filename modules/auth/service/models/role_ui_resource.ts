@@ -44,15 +44,14 @@ export default class RoleUiResource extends BaseModel {
   /**
    * Application-level scope. Mutually exclusive with IrUiResourceId.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', notNull: false, size: 20, index: true })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true })
   IrApplicationId: string | null;
 
   /**
    * Concrete UI resource scope. Mutually exclusive with IrApplicationId.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'meta.IrUiResource',
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrUiResource' },
     notNull: false,
     size: 20,
     index: true,

@@ -294,8 +294,13 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     // Validate targetModel for ref types
     if (type === 'ManyToOneRef' || type === 'ManyToManyRef') {
-      if (!optionBag.targetModel) {
-        throw new Error(`@Field(${name}) ${type} requires targetModel`);
+      if (optionBag.targetModel !== undefined) {
+        throw new Error(`@Field(${name}) ${type} requires relation.targetModel (top-level targetModel is not supported)`);
+      }
+
+      const relation = asObjectRecord(optionBag.relation);
+      if (!relation?.targetModel) {
+        throw new Error(`@Field(${name}) ${type} requires relation.targetModel`);
       }
     }
 
@@ -407,11 +412,6 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     // Persist selection metadata before column/select handling
     if (type === 'selection') {
       meta.selection = validatedSelection;
-    }
-
-    // Persist targetModel metadata for ref types
-    if (type === 'ManyToOneRef' || type === 'ManyToManyRef') {
-      meta.targetModel = optionBag.targetModel as FieldMetadata['targetModel'];
     }
 
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];

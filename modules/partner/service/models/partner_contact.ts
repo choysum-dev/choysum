@@ -22,7 +22,7 @@ export default class PartnerContact extends BaseModel {
   PartnerId: Partner;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /** Contact name. */
@@ -54,7 +54,7 @@ export default class PartnerContact extends BaseModel {
   ContactRole?: string;
 
   /** Linked address reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Address', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Address' }, size: 20, index: true})
   AddressId?: string;
 
   /** Contact address category. */

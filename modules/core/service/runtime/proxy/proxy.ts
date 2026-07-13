@@ -32,6 +32,11 @@ export interface ProxyFactory {
 // Model-level summary cache for relation and computed fields.
 const MODEL_SUMMARY_CACHE = new WeakMap<Function, { relationKeys: Set<string>; computedKeys: Set<string> }>();
 
+function isOrmRelationFieldMeta(f: FieldMetadata | undefined): boolean {
+  if (!f?.relation) return false;
+  return f.type === 'ManyToOne' || f.type === 'OneToMany' || f.type === 'ManyToMany';
+}
+
 function getModelSummary(meta: ModelMetadata, ctor: Function) {
   let summary = MODEL_SUMMARY_CACHE.get(ctor);
   if (summary) return summary;
@@ -40,7 +45,7 @@ function getModelSummary(meta: ModelMetadata, ctor: Function) {
   const computedKeys = new Set<string>();
 
   for (const [k, f] of meta.fields as Map<string, FieldMetadata>) {
-    if (f?.relation) relationKeys.add(k);
+    if (isOrmRelationFieldMeta(f)) relationKeys.add(k);
     // Compute metadata is now object-shaped, so look for f.column.compute.expr.
     if (f.column?.compute?.expr) computedKeys.add(k);
   }
@@ -194,7 +199,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
    */
   private handleRelation(target: T, key: string): unknown {
     const fieldMeta = this.getFieldMeta(key);
-    if (!fieldMeta?.relation) return undefined;
+    if (!isOrmRelationFieldMeta(fieldMeta)) return undefined;
 
     if (this.relationCache.has(key)) {
       const cachedResult = this.relationCache.get(key);

@@ -68,7 +68,7 @@ export default class AttachmentMutationLedger extends BaseModel {
   /**
    * Company that owns the mutation ledger row.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, uniqueIndex: 'uidx_document_mutation_company_action_id'})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, uniqueIndex: 'uidx_document_mutation_company_action_id'})
   CompanyId: string;
 
   /**

@@ -33,8 +33,7 @@ export default class AttachmentContent extends BaseModel {
    * Stored payload row that backs the attachment content.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'document.StoredContent',
+    type: 'ManyToOneRef', relation: { targetModel: 'document.StoredContent' },
     size: 20, notNull: true, index: true,
   })
   StoredContentId: string;
@@ -99,8 +98,7 @@ export default class AttachmentContent extends BaseModel {
    * Company that owns the attachment content.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'base.Company',
+    type: 'ManyToOneRef', relation: { targetModel: 'base.Company' },
     size: 20,
       notNull: true,
       index: 'idx_document_object_checksum_size_company',

@@ -76,7 +76,7 @@ export default class Role extends BaseModel {
   /**
    * UI-tree editor projection that only carries allow/resource-level UI resource Ids.
    */
-  @Field({ type: 'ManyToManyRef', targetModel: 'meta.IrUiResource' })
+  @Field({ type: 'ManyToManyRef', relation: { targetModel: 'meta.IrUiResource' } })
   AccessUiResourceIds: string[];
 
   /**

@@ -11,11 +11,11 @@ import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredT
 @Model('PartnerIdentifier', { application: 'partner', companyScoped: true })
 export default class PartnerIdentifier extends BaseModel {
   /** Owning partner reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'partner.Partner', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'partner.Partner' }, size: 20, notNull: true, index: true})
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /** Identifier category, normalized in lowercase. */
@@ -27,7 +27,7 @@ export default class PartnerIdentifier extends BaseModel {
   Value: string;
 
   /** Optional country reference associated with the identifier. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true})
   CountryId?: string;
 
   /** Whether this is the primary identifier for its type. */

@@ -14,15 +14,15 @@ import Bank from '@/base/service/models/bank';
 @Model('BankAccount', { application: 'partner', companyScoped: true })
 export default class BankAccount extends BaseModel {
   /** Owning partner reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'partner.Partner', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'partner.Partner' }, size: 20, notNull: true, index: true})
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /** Linked bank reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Bank', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Bank' }, size: 20, notNull: true, index: true})
   BankId: string;
 
   /** Bank account holder name. */
@@ -59,11 +59,11 @@ export default class BankAccount extends BaseModel {
   BranchName?: string;
 
   /** Account currency reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Currency', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, index: true})
   CurrencyId?: string;
 
   /** Account country reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true})
   CountryId?: string;
 
   /** Whether inbound payments are allowed. */

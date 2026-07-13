@@ -68,7 +68,7 @@ export interface FieldRelatedOption {
  * Relation contract used by flat @Field options.
  */
 export type FieldRelationOption<TJoin extends BaseModel = BaseModel, TTarget extends BaseModel = BaseModel> = {
-  targetModel?: () => ModelCtor<TTarget> & typeof BaseModel;
+  targetModel?: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
   onDelete?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   onUpdate?: 'CASCADE' | 'SET NULL' | 'RESTRICT' | 'NO ACTION';
   inverseField?: string;
@@ -97,7 +97,6 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   checkConstraint?: string;
   default?: unknown;
   round?: DecimalRound;
-  targetModel?: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
   // Keep optional legacy branches for gradual migration in runtime decorators.
   column?: ColumnOptions<T, unknown> & ObjectRecord;
   select?: SelectOptions<T, unknown> & ObjectRecord;
@@ -404,7 +403,9 @@ export type JsonObjectFieldOptions<T extends BaseModel, R extends keyof T> = Bas
  */
 export type ManyToOneRefFieldOptions<T extends BaseModel, R extends keyof T, TTarget extends BaseModel> = BaseFieldOptions & {
   type: 'ManyToOneRef';
-  targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  relation: {
+    targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  };
 } & (
     | { column?: ColumnOptions<T, string> & { size?: number; index?: string | boolean }; select?: never }
     | { select: SelectOptions<T, string>; column?: never }
@@ -415,7 +416,9 @@ export type ManyToOneRefFieldOptions<T extends BaseModel, R extends keyof T, TTa
  */
 export type ManyToManyRefFieldOptions<T extends BaseModel, R extends keyof T, TTarget extends BaseModel> = BaseFieldOptions & {
   type: 'ManyToManyRef';
-  targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  relation: {
+    targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  };
 } & ({ column?: ColumnOptions<T, string[]>; select?: never } | { select: SelectOptions<T, string[]>; column?: never });
 
 /**
@@ -524,7 +527,6 @@ export interface FieldMetadata {
   relation?: RuntimeRelationMetadata;
   select?: SelectOptions<BaseModel, unknown>;
   selection?: readonly SelectionItem[]; // Selection options list
-  targetModel?: (() => ModelCtor<BaseModel> & typeof BaseModel) | string;
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
 }

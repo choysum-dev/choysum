@@ -74,6 +74,11 @@ function toPathLabel(pathPrefix: string, field: string): string {
   return pathPrefix ? `${pathPrefix}.${field}` : field;
 }
 
+function isOrmRelationField(fieldMeta: FieldMetadata | undefined): boolean {
+  if (!fieldMeta?.relation) return false;
+  return fieldMeta.type === 'ManyToOne' || fieldMeta.type === 'OneToMany' || fieldMeta.type === 'ManyToMany';
+}
+
 type AliasableSelection = {
   as: (name: string) => unknown;
 };
@@ -112,7 +117,7 @@ export type SelectionNode = {
 export function getScalarFields(meta: ModelMetadata): string[] {
   const fields: string[] = [];
   for (const [name, fieldMeta] of meta.fields) {
-    if (fieldMeta.relation) continue;
+    if (isOrmRelationField(fieldMeta)) continue;
     if (isAttachmentBackedBinaryImageField(meta, fieldMeta)) continue;
     if (fieldMeta.column || fieldMeta.select) {
       fields.push(name);
@@ -153,7 +158,7 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
         if ((fieldMeta.column || fieldMeta.select) && !isAttachmentBackedBinaryImageField(currentMeta, fieldMeta)) {
           node.columns.add(field);
         }
-        if (fieldMeta.relation) {
+        if (isOrmRelationField(fieldMeta)) {
           relationKey = field;
           subFields = [];
         }
@@ -184,8 +189,12 @@ export function buildSelectionTree(meta: ModelMetadata, fields: unknown[], optio
         fail(`Selection relation field does not exist: ${toPathLabel(pathPrefix, relationKey)} (model=${modelLabel(currentMeta)})`);
         continue;
       }
-      if (!fieldMeta.relation) {
+      if (fieldMeta.type !== 'ManyToOne' && fieldMeta.type !== 'OneToMany' && fieldMeta.type !== 'ManyToMany') {
         fail(`Selection field is not a relation field: ${toPathLabel(pathPrefix, relationKey)} (model=${modelLabel(currentMeta)})`);
+        continue;
+      }
+      if (!fieldMeta.relation) {
+        fail(`Selection relation field is missing relation metadata: ${toPathLabel(pathPrefix, relationKey)} (model=${modelLabel(currentMeta)})`);
         continue;
       }
 

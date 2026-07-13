@@ -56,7 +56,7 @@ export default class StoredContent extends BaseModel {
   /**
    * Company that owns the stored payload.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /**

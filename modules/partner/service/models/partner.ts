@@ -49,7 +49,7 @@ export default class Partner extends BaseModel {
   Code: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code'})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code'})
   CompanyId: string;
 
   /** Whether the partner is active. */
@@ -69,15 +69,15 @@ export default class Partner extends BaseModel {
   SupplierRank: number;
 
   /** Default language reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Language', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Language' }, size: 20, index: true})
   LanguageId?: string;
 
   /** Default currency reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Currency', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, index: true})
   CurrencyId?: string;
 
   /** Default country reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true})
   CountryId?: string;
 
   /** External reference code. */

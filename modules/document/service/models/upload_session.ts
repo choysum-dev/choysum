@@ -49,8 +49,7 @@ export default class AttachmentUploadSession extends BaseModel {
    * User who prepared the upload session.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'auth.User',
+    type: 'ManyToOneRef', relation: { targetModel: 'auth.User' },
     size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request',
   })
   IssuerUserId: string;
@@ -151,15 +150,14 @@ export default class AttachmentUploadSession extends BaseModel {
   /**
    * Attachment content record created when the upload is finalized.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'document.AttachmentContent', size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'document.AttachmentContent' }, size: 20, index: true})
   AttachmentContentId?: string;
 
   /**
    * Company that owns the upload session.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'base.Company',
+    type: 'ManyToOneRef', relation: { targetModel: 'base.Company' },
     size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request',
   })
   CompanyId: string;

@@ -110,7 +110,7 @@ class PlatformCompanySourceModel extends BaseModel {
 class PlatformCompanyRefSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
-    targetModel: () => PlatformCompanyTargetModel,
+    relation: { targetModel: () => PlatformCompanyTargetModel },
     column: {},
   })
   TargetRefId?: string;
@@ -119,7 +119,7 @@ class PlatformCompanyRefSourceModel extends BaseModel {
 class PlatformCompanyRefStringSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
-    targetModel: 'test.PlatformCompanyTargetModel',
+    relation: { targetModel: 'test.PlatformCompanyTargetModel' },
     column: {},
   })
   TargetRefId?: string;
@@ -128,7 +128,7 @@ class PlatformCompanyRefStringSourceModel extends BaseModel {
 class PlatformBaseCompanyRefSourceModel extends BaseModel {
   @Field({
     type: 'ManyToOneRef',
-    targetModel: 'base.Company',
+    relation: { targetModel: 'base.Company' },
     column: {},
   })
   CompanyId?: string;
@@ -155,7 +155,7 @@ class KernelValidationModel extends BaseModel {
 
   @Field({
     type: 'ManyToOneRef',
-    targetModel: 'base.Company',
+    relation: { targetModel: 'base.Company' },
     column: {},
   })
   CompanyId?: string;
@@ -1233,7 +1233,7 @@ test('validation engine private helpers resolve target ctor and base-company tar
     };
 
     expect(resolveReferenceTargetCtor({ relation: { targetModel: () => DummyTarget } })).toBe(DummyTarget);
-    expect(resolveReferenceTargetCtor({ targetModel: 'test.DummyTarget' })).toBe(DummyTarget);
+    expect(resolveReferenceTargetCtor({ relation: { targetModel: 'test.DummyTarget' } })).toBe(DummyTarget);
 
     const throwingResolver = (() => {
       throw new Error('resolver failed');
@@ -1241,12 +1241,12 @@ test('validation engine private helpers resolve target ctor and base-company tar
     throwingResolver.prototype = DummyTarget.prototype;
     expect(resolveReferenceTargetCtor({ relation: { targetModel: throwingResolver } })).toBe(throwingResolver);
 
-    expect(resolveReferenceTargetCtor({ targetModel: 'test.UnknownTarget' })).toBe(undefined);
+    expect(resolveReferenceTargetCtor({ relation: { targetModel: 'test.UnknownTarget' } })).toBe(undefined);
 
-    expect(isBaseCompanyTarget({ targetModel: 'base.Company' })).toBe(true);
+    expect(isBaseCompanyTarget({ relation: { targetModel: 'base.Company' } })).toBe(true);
     expect(isBaseCompanyTarget({}, { fullModelName: 'base.Company' })).toBe(true);
     expect(isBaseCompanyTarget({}, { application: 'base', modelName: 'Company' })).toBe(true);
-    expect(isBaseCompanyTarget({ targetModel: 'test.Other' }, { application: 'test', modelName: 'Other' })).toBe(false);
+    expect(isBaseCompanyTarget({ relation: { targetModel: 'test.Other' } }, { application: 'test', modelName: 'Other' })).toBe(false);
   } finally {
     (globalThis as any).pool = previousPool;
   }
@@ -1280,7 +1280,7 @@ test('validation engine platform uses values keys when changedFields is empty an
 
 test('validation engine platform short-circuits when reference id or target ctor is missing', async () => {
   class MissingTargetRefModel extends BaseModel {
-    @Field({ type: 'ManyToOneRef', targetModel: 'test.UnknownTarget', column: {} })
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.UnknownTarget' }, column: {} })
     TargetRefId?: string;
   }
 
@@ -1475,7 +1475,7 @@ test('validation engine kernel fallback maps non-kernel errors and non-error thr
 
 test('validation engine platform skips unresolved target ctor and empty target company id rows', async () => {
   class MissingCtorRefModel extends BaseModel {
-    @Field({ type: 'ManyToOneRef', targetModel: 'test.MissingCtorModel', column: {} })
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.MissingCtorModel' }, column: {} })
     TargetRefId?: string;
   }
 

@@ -24,21 +24,20 @@ export default class RoleMethodAccess extends BaseModel {
   /**
    * Application-level scope when the entry targets an entire application.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', notNull: false, size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
   IrApplicationId: string | null;
 
   /**
    * Model-level scope when the entry targets an entire model.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrModel', notNull: false, size: 20, index: true})
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' }, notNull: false, size: 20, index: true})
   IrModelId: string | null;
 
   /**
    * Service-level scope when the entry targets one concrete RPC method surface.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'meta.IrService',
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrService' },
     notNull: false,
       size: 20,
       index: true,

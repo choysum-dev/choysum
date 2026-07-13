@@ -95,12 +95,12 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
   }
 
   class ManyToOneRefModel extends BaseModel {
-    @Field({ type: 'ManyToOneRef', targetModel: () => FieldTargetModel } as any)
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: () => FieldTargetModel } } as any)
     ParentId!: string;
   }
 
   class ManyToManyRefModel extends BaseModel {
-    @Field({ type: 'ManyToManyRef', targetModel: () => FieldTargetModel } as any)
+    @Field({ type: 'ManyToManyRef', relation: { targetModel: () => FieldTargetModel } } as any)
     TagIds!: string[];
   }
 
@@ -116,10 +116,10 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
   expect(binaryMeta?.column).toEqual({});
   expect(imageMeta?.column).toEqual({});
 
-  expect(m2oRefMeta?.targetModel).toBeDefined();
+  expect(m2oRefMeta?.relation?.targetModel).toBeDefined();
   expect(m2oRefMeta?.column).toEqual({ size: 20, index: true });
 
-  expect(m2mRefMeta?.targetModel).toBeDefined();
+  expect(m2mRefMeta?.relation?.targetModel).toBeDefined();
   expect(m2mRefMeta?.column).toEqual({});
 });
 
@@ -130,7 +130,7 @@ test('Field decorator validates ref/relation/compute/decimal constraints', () =>
       Ref!: string;
     }
     return MissingRefTargetModel;
-  }).toThrow('ManyToOneRef requires targetModel');
+  }).toThrow('ManyToOneRef requires relation.targetModel');
 
   expect(() => {
     class OneToManyColumnModel extends BaseModel {
