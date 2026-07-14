@@ -124,4 +124,13 @@ func TestTypeHelpers(t *testing.T) {
 	if !strings.Contains(strings.Join(quotedArrowLiteralTags, ";"), "default:'A => B'") {
 		t.Fatalf("expected scalar default tag for quoted arrow string, got %q", strings.Join(quotedArrowLiteralTags, ";"))
 	}
+
+	// Backtick-quoted template literal containing => is still a scalar literal.
+	backtickArrowLiteralTags := []string{}
+	addStandardTags(&backtickArrowLiteralTags, map[string]interface{}{
+		"default": "`A => B`",
+	})
+	if !strings.Contains(strings.Join(backtickArrowLiteralTags, ";"), "default:`A => B`") {
+		t.Fatalf("expected scalar default tag for backtick-quoted arrow string, got %q", strings.Join(backtickArrowLiteralTags, ";"))
+	}
 }

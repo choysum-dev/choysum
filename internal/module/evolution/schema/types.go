@@ -153,7 +153,8 @@ func isJSFunctionDefaultLiteral(value string) bool {
 	}
 	// Quoted string literals are not JS functions.
 	if (strings.HasPrefix(trimmed, "'") && strings.HasSuffix(trimmed, "'")) ||
-		(strings.HasPrefix(trimmed, "\"") && strings.HasSuffix(trimmed, "\"")) {
+		(strings.HasPrefix(trimmed, "\"") && strings.HasSuffix(trimmed, "\"")) ||
+		(strings.HasPrefix(trimmed, "`") && strings.HasSuffix(trimmed, "`")) {
 		return false
 	}
 	lower := strings.ToLower(trimmed)
