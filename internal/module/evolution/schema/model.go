@@ -144,8 +144,20 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 			metaMap["notNull"] = true
 		}
 		if _, ok := metaMap["index"]; !ok {
-			_, hasUniqueIndex := metaMap["uniqueIndex"]
-			_, hasUnique := metaMap["unique"]
+			hasUniqueIndex := false
+			if val, ok := metaMap["uniqueIndex"]; ok {
+				if b, ok := val.(bool); ok {
+					hasUniqueIndex = b
+				} else if s, ok := val.(string); ok {
+					hasUniqueIndex = strings.TrimSpace(s) != ""
+				}
+			}
+			hasUnique := false
+			if val, ok := metaMap["unique"]; ok {
+				if b, ok := val.(bool); ok {
+					hasUnique = b
+				}
+			}
 			if !hasUniqueIndex && !hasUnique {
 				metaMap["index"] = true
 			}
