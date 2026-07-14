@@ -446,9 +446,178 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 			t.Fatalf("unexpected related+storage-hints column meta: %#v", metaMap)
 		}
 	})
+
+	t.Run("check constraint is carried to column meta", func(t *testing.T) {
+		field := newFieldWithOptions(t, "Status", `{"type":"selection","column":{"checkConstraint":"status in ('draft','done')"}}`)
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(check) error = %v", err)
+		}
+		if metaMap == nil || metaMap["checkConstraint"] != "status in ('draft','done')" {
+			t.Fatalf("expected check constraint in meta, got %#v", metaMap)
+		}
+	})
+
+	t.Run("ManyToOne with explicit unique:true suppresses default index", func(t *testing.T) {
+		field := newFieldWithOptions(t, "UniqueRefId", `{"type":"ManyToOne","unique":true}`)
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+unique) error = %v", err)
+		}
+		if metaMap["type"] != "char" || metaMap["unique"] != true || metaMap["index"] != nil {
+			t.Fatalf("expected ManyToOne unique to suppress default index, got %#v", metaMap)
+		}
+	})
+
+	t.Run("ManyToOne with explicit unique:false keeps default index", func(t *testing.T) {
+		field := newFieldWithOptions(t, "NonUniqueRefId", `{"type":"ManyToOne","unique":false}`)
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+unique=false) error = %v", err)
+		}
+		if metaMap["type"] != "char" || metaMap["index"] != true {
+			t.Fatalf("expected ManyToOne unique=false to keep default index, got %#v", metaMap)
+		}
+	})
+
+	t.Run("empty resolved column type falls back to struct field type", func(t *testing.T) {
+		field := &meta.IrField{Name: "FallbackType"}
+		spec := &meta.IrFieldResolvedSpec{
+			FieldName: "FallbackType",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "FallbackType",
+				FieldType: "varchar",
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Size: intPtr(64),
+				},
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "",
+				ReasonCode:         "OK",
+			},
+		}
+		if err := field.SetResolvedSpec(spec); err != nil {
+			t.Fatalf("SetResolvedSpec error = %v", err)
+		}
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(empty columnType) error = %v", err)
+		}
+		if metaMap == nil || metaMap["type"] != "varchar" || metaMap["size"] != 64 {
+			t.Fatalf("expected fallback to struct field type, got %#v", metaMap)
+		}
+	})
+
+	t.Run("primaryKey and uniqueIndex as string propagate to column meta", func(t *testing.T) {
+		field := &meta.IrField{Name: "Code"}
+		spec := &meta.IrFieldResolvedSpec{
+			FieldName: "Code",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "Code",
+				FieldType: "varchar",
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					PrimaryKey:  boolPtr(true),
+					UniqueIndex: strPtr("idx_code"),
+					Size:        intPtr(32),
+				},
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "varchar",
+				ReasonCode:         "OK",
+			},
+		}
+		if err := field.SetResolvedSpec(spec); err != nil {
+			t.Fatalf("SetResolvedSpec error = %v", err)
+		}
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(pk) error = %v", err)
+		}
+		if metaMap == nil || metaMap["primaryKey"] != true {
+			t.Fatalf("expected primaryKey=true, got %#v", metaMap)
+		}
+		if metaMap["uniqueIndex"] != "idx_code" {
+			t.Fatalf("expected uniqueIndex=idx_code, got %#v", metaMap)
+		}
+	})
+
+	t.Run("precision and scale hints propagate to column meta", func(t *testing.T) {
+		field := &meta.IrField{Name: "Amount"}
+		spec := &meta.IrFieldResolvedSpec{
+			FieldName: "Amount",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "Amount",
+				FieldType: "decimal",
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Precision: intPtr(16),
+					Scale:     intPtr(2),
+				},
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "decimal",
+				ReasonCode:         "OK",
+			},
+		}
+		if err := field.SetResolvedSpec(spec); err != nil {
+			t.Fatalf("SetResolvedSpec error = %v", err)
+		}
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta error = %v", err)
+		}
+		if metaMap == nil || metaMap["precision"] != 16 || metaMap["scale"] != 2 {
+			t.Fatalf("expected precision=16 scale=2, got %#v", metaMap)
+		}
+	})
+
+	t.Run("isStorageBlobCarrierModel covers all document carriers", func(t *testing.T) {
+		carriers := []struct {
+			app   string
+			name  string
+			table string
+		}{
+			{app: "document", name: "AttachmentObject", table: ""},
+			{app: "document", name: "UploadSession", table: ""},
+			{app: "document", name: "AttachmentContent", table: ""},
+			{app: "document", name: "AttachmentUploadSession", table: ""},
+			{app: "document", name: "StoredContent", table: ""},
+			{app: "other", name: "User", table: "document_attachment_object"},
+			{app: "other", name: "User", table: "document_upload_session"},
+			{app: "other", name: "User", table: "document_attachment_content"},
+			{app: "other", name: "User", table: "document_attachment_upload_session"},
+			{app: "other", name: "User", table: "document_stored_content"},
+		}
+		for _, c := range carriers {
+			model := &meta.IrModel{Application: c.app, Name: c.name, ModelTable: c.table}
+			if !isStorageBlobCarrierModel(model) {
+				t.Fatalf("expected isStorageBlobCarrierModel=true for app=%q name=%q table=%q", c.app, c.name, c.table)
+			}
+		}
+		notCarrier := &meta.IrModel{Application: "auth", Name: "User", ModelTable: "auth_user"}
+		if isStorageBlobCarrierModel(notCarrier) {
+			t.Fatal("expected auth.User not to be a blob carrier")
+		}
+		if isStorageBlobCarrierModel(nil) {
+			t.Fatal("expected nil model not to be a blob carrier")
+		}
+	})
 }
 
 func intPtr(v int) *int {
 	value := v
 	return &value
+}
+
+func boolPtr(v bool) *bool {
+	return &v
+}
+
+func strPtr(v string) *string {
+	return &v
 }
