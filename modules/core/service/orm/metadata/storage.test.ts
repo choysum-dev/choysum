@@ -714,3 +714,175 @@ test('getEffectiveOnchange returns empty array when no models are registered', (
     storage.getEffectiveOnchange = original;
   }
 });
+
+test('metadata storage normalize handlers return undefined for non-object input', () => {
+  const storage = MetadataStorage.instance as any;
+
+  expect(storage.normalizeComputeHandler(null)).toBeUndefined();
+  expect(storage.normalizeComputeHandler(undefined)).toBeUndefined();
+  expect(storage.normalizeComputeHandler('string')).toBeUndefined();
+
+  expect(storage.normalizeSqlComputeHandler(null)).toBeUndefined();
+  expect(storage.normalizeSqlComputeHandler(undefined)).toBeUndefined();
+  expect(storage.normalizeSqlComputeHandler(42)).toBeUndefined();
+
+  expect(storage.normalizeSearchHandler(null)).toBeUndefined();
+  expect(storage.normalizeSearchHandler(undefined)).toBeUndefined();
+  expect(storage.normalizeSearchHandler(true)).toBeUndefined();
+
+  expect(storage.normalizeInverseHandler(null)).toBeUndefined();
+  expect(storage.normalizeInverseHandler(undefined)).toBeUndefined();
+  expect(storage.normalizeInverseHandler([])).toBeUndefined();
+});
+
+test('metadata storage merge handler maps return existing when incoming is not a Map', () => {
+  const storage = MetadataStorage.instance as any;
+
+  const existingCompute = new Map([['A', { field: 'A', method: 'mA', deps: [], store: true }]]);
+  expect(storage.mergeComputeHandlers(existingCompute, null)).toBe(existingCompute);
+  expect(storage.mergeComputeHandlers(existingCompute, 'not-map')).toBe(existingCompute);
+
+  const existingSql = new Map([['B', { field: 'B', method: 'mB', deps: [] }]]);
+  expect(storage.mergeSqlComputeHandlers(existingSql, undefined)).toBe(existingSql);
+  expect(storage.mergeSqlComputeHandlers(existingSql, [])).toBe(existingSql);
+
+  const existingSearch = new Map([['C', { field: 'C', method: 'mC' }]]);
+  expect(storage.mergeSearchHandlers(existingSearch, 0)).toBe(existingSearch);
+  expect(storage.mergeSearchHandlers(existingSearch, {})).toBe(existingSearch);
+
+  const existingInverse = new Map([['D', { field: 'D', method: 'mD' }]]);
+  expect(storage.mergeInverseHandlers(existingInverse, false)).toBe(existingInverse);
+  expect(storage.mergeInverseHandlers(existingInverse, 'x')).toBe(existingInverse);
+});
+
+test('metadata storage clearStaticMetadataCache handles non-object input', () => {
+  const storage = MetadataStorage.instance as any;
+  // Should not throw on non-object values
+  expect(() => storage.clearStaticMetadataCache(null)).not.toThrow();
+  expect(() => storage.clearStaticMetadataCache(undefined)).not.toThrow();
+  expect(() => storage.clearStaticMetadataCache(42)).not.toThrow();
+  expect(() => storage.clearStaticMetadataCache('str')).not.toThrow();
+});
+
+test('metadata storage getModelMetadata skips non-registered parent in prototype chain', () => {
+  const storage = MetadataStorage.instance as any;
+
+  class StorageUnregisteredParent extends BaseModel {}
+  class StorageRegisteredChild extends StorageUnregisteredParent {}
+
+  resetModelMetadata(StorageUnregisteredParent as any);
+  resetModelMetadata(StorageRegisteredChild as any);
+
+  // Only register the child, not the parent
+  storage.setModelMetadata(
+    StorageRegisteredChild as any,
+    {
+      modelName: 'core.childOnly',
+      fields: new Map([['Name', { type: 'varchar', column: {} }]]),
+    } as any
+  );
+
+  // Delete parent from models map if it was auto-created
+  storage.models.delete(StorageUnregisteredParent as any);
+
+  const meta = storage.getModelMetadata(StorageRegisteredChild as any);
+  expect(meta.modelName).toBe('core.childOnly');
+  expect(meta.fields.has('Name')).toBe(true);
+});
+
+test('metadata storage getModelMetadata handles parent with non-Map handler types', () => {
+  const storage = MetadataStorage.instance as any;
+
+  class StorageParentBadHandlers extends BaseModel {}
+  class StorageChildGoodHandlers extends StorageParentBadHandlers {}
+
+  resetModelMetadata(StorageParentBadHandlers as any);
+  resetModelMetadata(StorageChildGoodHandlers as any);
+
+  storage.setModelMetadata(
+    StorageParentBadHandlers as any,
+    {
+      modelName: 'core.badParent',
+      fields: new Map([['Amount', { type: 'int', column: {} }]]),
+      // Set non-Map handler types
+      computeHandlers: 'not-a-map',
+      sqlComputeHandlers: 42,
+      searchHandlers: null,
+      inverseHandlers: undefined,
+    } as any
+  );
+
+  storage.setModelMetadata(
+    StorageChildGoodHandlers as any,
+    {
+      modelName: 'core.goodChild',
+      fields: new Map([['Name', { type: 'varchar', column: {} }]]),
+    } as any
+  );
+
+  const meta = storage.getModelMetadata(StorageChildGoodHandlers as any) as any;
+  expect(meta.modelName).toBe('core.goodChild');
+  // Child fields + parent fields merge
+  expect(meta.fields.has('Amount')).toBe(true);
+  expect(meta.fields.has('Name')).toBe(true);
+});
+
+test('metadata storage clearCacheForClassAndSubclasses handles deep inheritance', () => {
+  const storage = MetadataStorage.instance as any;
+
+  class StorageGrandParent extends BaseModel {}
+  class StorageMidParent extends StorageGrandParent {}
+  class StorageLeafChild extends StorageMidParent {}
+
+  resetModelMetadata(StorageGrandParent as any);
+  resetModelMetadata(StorageMidParent as any);
+  resetModelMetadata(StorageLeafChild as any);
+
+  storage.setModelMetadata(StorageGrandParent as any, { modelName: 'core.gp', fields: new Map([['A', { type: 'int', column: {} }]]) } as any);
+  storage.setModelMetadata(StorageMidParent as any, { modelName: 'core.mp', fields: new Map([['B', { type: 'int', column: {} }]]) } as any);
+  storage.setModelMetadata(StorageLeafChild as any, { modelName: 'core.lc', fields: new Map([['C', { type: 'int', column: {} }]]) } as any);
+
+  // Add static metadata to all three levels
+  (StorageGrandParent as any).metadata = { deep: true };
+  (StorageMidParent as any).metadata = { deep: true };
+  (StorageLeafChild as any).metadata = { deep: true };
+
+  // clearCacheForClassAndSubclasses walks DOWN from target to subclasses.
+  // Calling on grandparent should clear all three levels.
+  storage.setModelMetadata(StorageGrandParent as any, { fields: new Map([['X', { type: 'bool', column: {} }]]) } as any);
+
+  expect((StorageGrandParent as any).metadata).toBeUndefined();
+  expect((StorageMidParent as any).metadata).toBeUndefined();
+  expect((StorageLeafChild as any).metadata).toBeUndefined();
+
+  // Merged metadata should reflect the overridden grandparent field (not the original A)
+  const merged = storage.getModelMetadata(StorageLeafChild as any) as any;
+  expect(merged.fields.has('X')).toBe(true);
+  expect(merged.fields.has('B')).toBe(true);
+  expect(merged.fields.has('C')).toBe(true);
+});
+
+test('metadata storage getEffectiveConstraints/getEffectiveOnchange use instance method when available', () => {
+  const storage = MetadataStorage.instance as any;
+
+  class StorageInstanceMethodModel extends BaseModel {}
+  resetModelMetadata(StorageInstanceMethodModel as any);
+
+  storage.setModelMetadata(
+    StorageInstanceMethodModel as any,
+    {
+      fullModelName: 'core.instance',
+      constraintHandlers: [{ method: 'c1', fields: ['Name'] }],
+      onchangeHandlers: [{ method: 'o1', triggers: ['Name'] }],
+    } as any
+  );
+
+  // Instance method should be used (not the fallback)
+  const constraints = storage.getEffectiveConstraints(StorageInstanceMethodModel as any);
+  const onchanges = storage.getEffectiveOnchange(StorageInstanceMethodModel as any);
+
+  expect(constraints.length).toBeGreaterThanOrEqual(1);
+  expect(onchanges.length).toBeGreaterThanOrEqual(1);
+  expect(constraints[0]?.method).toBe('c1');
+  expect(onchanges[0]?.method).toBe('o1');
+});

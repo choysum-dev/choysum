@@ -95,7 +95,7 @@ export function rewriteSearchCondition(
         dialect,
       };
 
-      return withBridgeFrame(modelInstance as object, 'search', searchCtx, (executionInstance) => instanceMethod.call(executionInstance));
+      return withBridgeFrame(modelInstance as object, 'search', searchCtx, executionInstance => instanceMethod.call(executionInstance));
     }
 
     const legacyHandler = resolveLegacySearchHandler(meta, handlerName);

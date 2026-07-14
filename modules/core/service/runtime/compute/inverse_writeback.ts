@@ -187,7 +187,7 @@ export async function applyInverseWriteback(meta: ModelMetadata, values: Unknown
       record: modelInstance,
     };
 
-    const result = withBridgeFrame(modelInstance as object, 'inverse', inverseCtx, (executionInstance) => inverseMethod.call(executionInstance));
+    const result = withBridgeFrame(modelInstance as object, 'inverse', inverseCtx, executionInstance => inverseMethod.call(executionInstance));
     const settledResult = isPromiseLike(result) ? await result : result;
 
     if (Object.keys(handlerWrites).length) {
