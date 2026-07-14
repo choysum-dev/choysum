@@ -51,6 +51,12 @@ jobs:
       run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: main-root-node-modules
 
+  prepare-go-package:
+    name: main / prepare-go-package
+    uses: ./.github/workflows/prepare-go-package.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+
   discover-modules:
     name: main / discover-modules
     runs-on: ubuntu-latest
@@ -74,6 +80,7 @@ jobs:
     name: main / build-choysum-cli
     needs:
       - prepare-embedded-assets
+      - prepare-go-package
     uses: ./.github/workflows/build-choysum-cli.yml
     with:
       run_ref: ${{ inputs.ref || github.ref }}
@@ -87,6 +94,7 @@ jobs:
     name: main / go-test
     needs:
       - prepare-embedded-assets
+      - prepare-go-package
       - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 45

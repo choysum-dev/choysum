@@ -1,0 +1,44 @@
+name: Prepare Go Package Cache
+
+on:
+  workflow_call:
+    inputs:
+      run_ref:
+        description: "Branch, tag, or SHA to checkout"
+        required: true
+        type: string
+      docs_only:
+        description: "Skip Go package download when docs-only routing is active"
+        required: false
+        default: "false"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-go-package:
+    name: prepare-go-package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Skip Go package preparation when docs-only routing is active
+        if: ${{ inputs.docs_only == 'true' }}
+        run: echo "Go package preparation skipped by routing"
+
+      - name: Checkout
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.run_ref }}
+
+      - name: Setup Go
+        if: ${{ inputs.docs_only != 'true' }}
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Download Go modules
+        if: ${{ inputs.docs_only != 'true' }}
+        run: go mod download

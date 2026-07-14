@@ -89,6 +89,15 @@ jobs:
       run_ref: ${{ inputs.ref || github.ref }}
       artifact_name: pr-root-node-modules
 
+  prepare-go-package:
+    name: pr / prepare-go-package
+    needs:
+      - discover-impact
+    uses: ./.github/workflows/prepare-go-package.yml
+    with:
+      run_ref: ${{ inputs.ref || github.ref }}
+      docs_only: ${{ needs.discover-impact.outputs.docs_only }}
+
   build-choysum-cli:
     name: pr / build-choysum-cli
     if: >-
@@ -99,6 +108,7 @@ jobs:
     needs:
       - discover-impact
       - prepare-embedded-assets
+      - prepare-go-package
     uses: ./.github/workflows/build-choysum-cli.yml
     with:
       run_ref: ${{ inputs.ref || github.ref }}
@@ -113,6 +123,7 @@ jobs:
     needs:
       - discover-impact
       - prepare-embedded-assets
+      - prepare-go-package
       - prepare-root-node-modules
     runs-on: ubuntu-latest
     timeout-minutes: 30
