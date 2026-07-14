@@ -159,6 +159,9 @@ func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*r
 				if v, ok := opts["store"].(bool); ok {
 					store = v
 				}
+				if method.IsAsync && !store {
+					addDiag(fieldName, "ASYNC_VIRTUAL_COMPUTE", "virtual compute handler (store: false) cannot be async")
+				}
 				var searchable *bool
 				if v, ok := opts["searchable"].(bool); ok {
 					searchable = toBoolPtr(v)
@@ -239,6 +242,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 
 	if len(options) == 0 {
+		if binding != nil {
+			return nil, fmt.Errorf("field %s has behavior decorators but is missing @Field decorator", field.Name)
+		}
 		return nil, nil
 	}
 	_, hasLegacyColumnOption := options["column"]

@@ -309,6 +309,35 @@ export default class Legacy extends BaseModel {
 	}
 }
 
+func TestTsParser_ParseModelRejectsBehaviorBindingsWithoutFieldDecorator(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/missing_field_decorator.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('MissingFieldDecorator')
+export default class MissingFieldDecorator extends BaseModel {
+  public DisplayName: string
+
+  @Compute<MissingFieldDecorator>('DisplayName', { deps: ['DisplayName'], store: false })
+  computeDisplayName() {
+    return this.DisplayName
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil {
+		t.Fatal("expected parser to reject behavior binding without @Field decorator")
+	}
+	if got := err.Error(); !strings.Contains(got, "missing @Field decorator") {
+		t.Fatalf("unexpected parser error: %v", err)
+	}
+}
+
 func TestTsParser_ParseModelEmitsConflictDiagnosticsInResolvedSpec(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
@@ -556,6 +585,14 @@ export default class DiagModel extends BaseModel {
   computeNonStoredRelated() {
     return this.NonStoredRelated
   }
+
+	@Field({ type: 'varchar', size: 64 })
+	public AsyncVirtual: string
+
+	@Compute<DiagModel>('AsyncVirtual', { deps: ['AsyncVirtual'], store: false })
+	async computeAsyncVirtual() {
+		return this.AsyncVirtual
+	}
 }
 `
 
@@ -644,6 +681,18 @@ export default class DiagModel extends BaseModel {
 	}
 	if nonStoredRelatedSpec.Resolved.Store.Source != "@Compute" {
 		t.Fatalf("expected Compute store source, got %s", nonStoredRelatedSpec.Resolved.Store.Source)
+	}
+
+	// ASYNC_VIRTUAL_COMPUTE
+	asyncVirtualSpec, _ := fieldByName["AsyncVirtual"].GetResolvedSpec()
+	foundAsyncVirtual := false
+	for _, d := range asyncVirtualSpec.Diagnostics {
+		if d.Code == "ASYNC_VIRTUAL_COMPUTE" {
+			foundAsyncVirtual = true
+		}
+	}
+	if !foundAsyncVirtual {
+		t.Fatalf("expected ASYNC_VIRTUAL_COMPUTE diagnostic, got %+v", asyncVirtualSpec.Diagnostics)
 	}
 }
 
