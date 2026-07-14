@@ -185,16 +185,16 @@ func collectFieldBehaviorBindings(methods []*parser.MemberMethod) (map[string]*r
 					ReturnType: "SelectExpressionValue",
 				}
 			case "Search":
-			if binding.search != nil {
-				addDiag(fieldName, "DUPLICATE_SEARCH", "same field declares multiple @Search handlers")
-				continue
-			}
-			binding.search = &meta.IrFieldBehaviorMethodRef{Method: method.Name}
-		case "Inverse":
-			if binding.inverse != nil {
-				addDiag(fieldName, "DUPLICATE_INVERSE", "same field declares multiple @Inverse handlers")
-				continue
-			}
+				if binding.search != nil {
+					addDiag(fieldName, "DUPLICATE_SEARCH", "same field declares multiple @Search handlers")
+					continue
+				}
+				binding.search = &meta.IrFieldBehaviorMethodRef{Method: method.Name}
+			case "Inverse":
+				if binding.inverse != nil {
+					addDiag(fieldName, "DUPLICATE_INVERSE", "same field declares multiple @Inverse handlers")
+					continue
+				}
 				binding.inverse = &meta.IrFieldBehaviorMethodRef{Method: method.Name}
 			}
 		}
