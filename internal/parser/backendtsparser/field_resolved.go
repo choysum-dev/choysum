@@ -267,6 +267,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			if !ok {
 				continue
 			}
+			if entry["value"] == nil || entry["label"] == nil {
+				continue
+			}
 			value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
 			label := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
 			if value == "" || label == "" {
@@ -277,8 +280,12 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 
 	if related, ok := options["related"].(map[string]any); ok {
+		path := ""
+		if related["path"] != nil {
+			path = strings.TrimSpace(fmt.Sprintf("%v", related["path"]))
+		}
 		relatedSpec := &meta.IrFieldRelatedSpec{
-			Path: strings.TrimSpace(fmt.Sprintf("%v", related["path"])),
+			Path: path,
 		}
 		if v, ok := related["store"].(bool); ok {
 			relatedSpec.Store = v
@@ -366,8 +373,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if spec.Behavior.SqlCompute != nil {
 		storeValue = false
 		storeSource = "@SqlCompute"
-	}
-	if spec.Behavior.Compute != nil {
+	} else if spec.Behavior.Compute != nil {
 		storeValue = spec.Behavior.Compute.Store
 		storeSource = "@Compute"
 	} else if spec.Structural.Related != nil {

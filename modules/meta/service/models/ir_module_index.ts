@@ -511,21 +511,23 @@ export default class IrModuleIndex extends BaseModel {
 
     const detailRows = (await (BaseModel as any).Search.call(this, buildModuleNamesCondition(normalized, groupedModuleNames), detailOptions)) as any[];
 
-    const installedRows = await IrModule.Search(
-      ['Name', 'in', groupedModuleNames] as any,
-      {
-        fields: ['Name', 'Status', 'Version'] as any,
-        limit: groupedModuleNames.length * 2,
-      } as any
-    );
     const installedByName = new Map<string, { status?: string; version?: string }>();
-    for (const module of installedRows || []) {
-      const moduleName = String((module as any)?.Name || '').trim();
-      if (!moduleName) continue;
-      installedByName.set(moduleName, {
-        status: String((module as any)?.Status || '').trim() || undefined,
-        version: String((module as any)?.Version || '').trim() || undefined,
-      });
+    if (groupedModuleNames.length > 0) {
+      const installedRows = await IrModule.Search(
+        ['Name', 'in', groupedModuleNames] as any,
+        {
+          fields: ['Name', 'Status', 'Version'] as any,
+          limit: groupedModuleNames.length * 2,
+        } as any
+      );
+      for (const module of installedRows || []) {
+        const moduleName = String((module as any)?.Name || '').trim();
+        if (!moduleName) continue;
+        installedByName.set(moduleName, {
+          status: String((module as any)?.Status || '').trim() || undefined,
+          version: String((module as any)?.Version || '').trim() || undefined,
+        });
+      }
     }
 
     const mergedByModule = new Map<string, ModuleIndexRecord>();

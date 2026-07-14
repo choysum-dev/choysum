@@ -93,6 +93,7 @@ export type SearchCtx<TModel extends BaseModel = BaseModel> = {
   and: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
   or: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
   cmp: (left: unknown, op: Operator, right: unknown) => BaseQueryCondition;
+  readonly dialect: string;
 };
 
 export type InverseCtx<TModel extends BaseModel = BaseModel> = {

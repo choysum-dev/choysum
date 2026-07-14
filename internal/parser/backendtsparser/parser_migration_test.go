@@ -360,4 +360,65 @@ export default class ConflictModel extends BaseModel {
 	if !seen {
 		t.Fatalf("expected CONFLICT_COMPUTE_SQLCOMPUTE diagnostic, got %+v", spec.Diagnostics)
 	}
+	if spec.Resolved.Store.Value != false || spec.Resolved.Store.Source != "@SqlCompute" {
+		t.Fatalf("expected SqlCompute store resolution to win conflict, got %+v", spec.Resolved.Store)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecSkipsNilSelectionAndRelatedPath(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/nil_fields.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('NilFieldsModel')
+export default class NilFieldsModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: null, label: 'IgnoredNilValue' },
+      { value: 'active', label: null },
+      { value: 'active', label: 'Active' }
+    ]
+  })
+  public Status: string
+
+  @Field({ type: 'varchar', related: { path: null, store: true, deps: ['PartnerId'] } })
+  public DisplayName: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		fieldByName[field.Name] = field
+	}
+
+	statusSpec, err := fieldByName["Status"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse Status resolved spec failed: %v", err)
+	}
+	if statusSpec == nil {
+		t.Fatal("expected Status resolved spec")
+	}
+	if len(statusSpec.Structural.Selection) != 1 || statusSpec.Structural.Selection[0]["value"] != "active" || statusSpec.Structural.Selection[0]["label"] != "Active" {
+		t.Fatalf("unexpected selection entries: %+v", statusSpec.Structural.Selection)
+	}
+
+	displaySpec, err := fieldByName["DisplayName"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse DisplayName resolved spec failed: %v", err)
+	}
+	if displaySpec == nil {
+		t.Fatal("expected DisplayName resolved spec")
+	}
+	if displaySpec.Structural.Related != nil {
+		t.Fatalf("expected related spec to be skipped when path is nil, got %+v", displaySpec.Structural.Related)
+	}
 }
