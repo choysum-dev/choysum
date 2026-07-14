@@ -97,4 +97,12 @@ func TestTypeHelpers(t *testing.T) {
 	if !strings.Contains(strings.Join(nonFunctionWordTags, ";"), "default:text with function keyword") {
 		t.Fatalf("expected scalar default tag, got %q", strings.Join(nonFunctionWordTags, ";"))
 	}
+
+	arrowStringLiteralTags := []string{}
+	addStandardTags(&arrowStringLiteralTags, map[string]interface{}{
+		"default": "A => B",
+	})
+	if !strings.Contains(strings.Join(arrowStringLiteralTags, ";"), "default:A => B") {
+		t.Fatalf("expected scalar default tag for plain arrow string, got %q", strings.Join(arrowStringLiteralTags, ";"))
+	}
 }

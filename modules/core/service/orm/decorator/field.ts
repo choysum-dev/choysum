@@ -139,8 +139,8 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         if (!isInt(optionBag.size) || optionBag.size < 1) {
           throw new Error(`@Field(${name}) size must be a positive integer`);
         }
-        if (type !== 'char' && type !== 'varchar' && type !== 'selection' && type !== 'ManyToOneRef') {
-          throw new Error(`@Field(${name}) size is only supported on char/varchar/selection/ManyToOneRef fields`);
+        if (type !== 'char' && type !== 'varchar' && type !== 'selection' && type !== 'ManyToOneRef' && type !== 'ManyToOne') {
+          throw new Error(`@Field(${name}) size is only supported on char/varchar/selection/ManyToOneRef/ManyToOne fields`);
         }
         hints.size = optionBag.size;
       }
