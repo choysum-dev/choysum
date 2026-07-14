@@ -3,10 +3,10 @@
 
 import type BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
-import type { ModelCtor } from '../metadata/field';
+import type { ComputeDep, ModelCtor } from '../metadata/field';
 
 export type SqlComputeOptions<TModel extends BaseModel = BaseModel> = {
-  deps?: Array<Extract<keyof TModel, string>>;
+  deps?: Array<ComputeDep<TModel>>;
 };
 
 export function SqlCompute<TModel extends BaseModel>(field: Extract<keyof TModel, string>, options?: SqlComputeOptions<TModel>): MethodDecorator {

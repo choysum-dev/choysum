@@ -3,11 +3,11 @@
 
 import type BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
-import type { ModelCtor } from '../metadata/field';
+import type { ComputeDep, ModelCtor } from '../metadata/field';
 import type { ComputeRunAs } from '../metadata/compute';
 
 export type ComputeOptions<TModel extends BaseModel = BaseModel> = {
-  deps: Array<Extract<keyof TModel, string>>;
+  deps: Array<ComputeDep<TModel>>;
   store?: boolean;
   searchable?: boolean;
   runAs?: ComputeRunAs;

@@ -6,9 +6,6 @@ import PartnerBase from '@/partner/service/models/partner';
 import { pickDefaultBankAccountId } from './_helpers';
 import BankAccount from './bank_account';
 
-type PartnerBankComputeModel = Partner &
-  Record<'BankAccounts.Id' | 'BankAccounts.IsDefaultInbound' | 'BankAccounts.IsDefaultOutbound' | 'BankAccounts.IsActive', unknown>;
-
 /**
  * Partner extension that derives default inbound and outbound bank accounts.
  */
@@ -29,7 +26,7 @@ export default class Partner extends PartnerBase {
   })
   readonly DefaultInboundBankAccountId?: BankAccount;
 
-  @Compute<PartnerBankComputeModel>('DefaultInboundBankAccountId', {
+  @Compute<Partner>('DefaultInboundBankAccountId', {
     deps: ['BankAccounts.Id', 'BankAccounts.IsDefaultInbound', 'BankAccounts.IsActive'],
   })
   computeDefaultInboundBankAccountId() {
@@ -44,7 +41,7 @@ export default class Partner extends PartnerBase {
   })
   readonly DefaultOutboundBankAccountId?: BankAccount;
 
-  @Compute<PartnerBankComputeModel>('DefaultOutboundBankAccountId', {
+  @Compute<Partner>('DefaultOutboundBankAccountId', {
     deps: ['BankAccounts.Id', 'BankAccounts.IsDefaultOutbound', 'BankAccounts.IsActive'],
   })
   computeDefaultOutboundBankAccountId() {
