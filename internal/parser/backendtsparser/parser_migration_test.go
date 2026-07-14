@@ -854,3 +854,366 @@ export default class BehaviorsModel extends BaseModel {
 		t.Fatalf("expected both Compute and Inverse, got %+v", spec.Behavior)
 	}
 }
+
+func TestGetProtoTypeFromTsType_EdgeCases(t *testing.T) {
+	tests := map[string]string{
+		"":                "google.protobuf.Value",
+		"   ":             "google.protobuf.Value",
+		"  string  ":      "string",
+		"Promise<void>":   "google.protobuf.Empty",
+		"Promise<boolean>": "bool",
+		"Promise<string>": "string",
+		"Promise<Custom>": "google.protobuf.Value",
+	}
+	for input, want := range tests {
+		if got := getProtoTypeFromTsType(input); got != want {
+			t.Fatalf("getProtoTypeFromTsType(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestTsParser_ParseSkipsOnchangeTypesCompatibilityPath(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "runtime", "onchange", "types.ts")
+	r, err := p.Parse(nil, path, "export default class Ignored {}")
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Path != path || r.RawContent == "" {
+		t.Fatalf("unexpected skipped parser result: %+v", r)
+	}
+	if r.Model != nil || r.Imports != nil || r.Exports != nil {
+		t.Fatalf("expected compatibility skip to bypass deeper parsing, got %+v", r)
+	}
+}
+
+func TestTsParser_ParseModelRejectsOrphanBehaviorBinding(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/orphan.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('OrphanModel')
+export default class OrphanModel extends BaseModel {
+  @Compute<OrphanModel>('NonExistentField', { deps: ['Name'], store: false })
+  computeOrphan() {
+    return ''
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "orphan behavior decorator binding for unknown field") {
+		t.Fatalf("expected orphan binding error, got %v", err)
+	}
+}
+
+func TestTsParser_ParseModelRejectsOrphanBehaviorBindingWithPrivateStaticMember(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/private_static_orphan.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PrivateStaticOrphan')
+export default class PrivateStaticOrphan extends BaseModel {
+  private static InternalCode: string
+
+  @Compute<PrivateStaticOrphan>('InternalCode', { deps: ['Name'], store: false })
+  computeInternal() {
+    return ''
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "orphan behavior decorator binding for unknown field") {
+		t.Fatalf("expected orphan binding error for private static member, got %v", err)
+	}
+}
+
+func TestTsParser_ParseAllowsProtectedStaticMemberToPassFilter(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/protected_static.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ProtectedStaticModel')
+export default class ProtectedStaticModel extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+
+  protected static Secret: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	// The filtered-out protected static member should not appear in fields.
+	for _, f := range r.Model.Fields {
+		if f.Name == "Secret" {
+			t.Fatalf("expected protected static field to be filtered out")
+		}
+	}
+}
+
+func TestTsParser_ParseAllowsPrivateInstanceMember(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/private_instance.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PrivateInstanceModel')
+export default class PrivateInstanceModel extends BaseModel {
+  private InternalNote: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	found := false
+	for _, f := range r.Model.Fields {
+		if f.Name == "InternalNote" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected private instance field to be kept")
+	}
+}
+
+func TestTsParser_ParseModelRejectsBehaviorDecoratorWithParameters(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/behavior_params.ts"
+	content := `import { Model, Field, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BehaviorParamsModel')
+export default class BehaviorParamsModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  @Compute<BehaviorParamsModel>('Name', { deps: ['Name'], store: false })
+  computeName(extraParam: string) {
+    return this.Name
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "must be parameterless") {
+		t.Fatalf("expected parameterless error, got %v", err)
+	}
+}
+
+func TestTsParser_ParseModelRejectsBehaviorDecoratorWithEmptyFieldName(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/empty_field_name.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('EmptyFieldNameModel')
+export default class EmptyFieldNameModel extends BaseModel {
+  @Compute<EmptyFieldNameModel>('', { deps: ['Name'], store: false })
+  computeEmpty() {
+    return ''
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "requires a field name") {
+		t.Fatalf("expected empty field name error, got %v", err)
+	}
+}
+
+func TestTsParser_ParseModelNoExtendsClass(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/no_extends.ts"
+	content := `import { Model, Field } from '../../core/service';
+
+@Model('NoExtendsModel')
+export default class NoExtendsModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil || r.Model.Name != "NoExtendsModel" {
+		t.Fatalf("unexpected model: %+v", r.Model)
+	}
+	// Without extends, RawExtends should be empty and no extends property synthesized.
+	if r.Model.RawExtends != "" {
+		t.Fatalf("expected empty RawExtends, got %q", r.Model.RawExtends)
+	}
+	if r.ModelExtendsProperty != nil {
+		t.Fatalf("expected nil ModelExtendsProperty, got %+v", r.ModelExtendsProperty)
+	}
+}
+
+func TestTsParser_ParseModelServiceWithDecorators(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/decorated_svc.ts"
+	content := `import { Model, Field, Api, Guard } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DecoratedSvcModel')
+export default class DecoratedSvcModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  @Api
+  @Guard
+  public static async FindByName(name: string): Promise<void> {}
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(r.Model.Services) != 1 {
+		t.Fatalf("expected one service, got %+v", r.Model.Services)
+	}
+	svc := r.Model.Services[0]
+	if len(svc.Decorators) != 2 {
+		t.Fatalf("expected two service decorators, got %d", len(svc.Decorators))
+	}
+}
+
+func TestTsParser_ParseModelServiceWithTypeParameters(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/generic_svc.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('GenericSvcModel')
+export default class GenericSvcModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  public static async FindOne<T>(id: string): Promise<T> {
+    return {} as T
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(r.Model.Services) != 1 {
+		t.Fatalf("expected one service, got %+v", r.Model.Services)
+	}
+	svc := r.Model.Services[0]
+	if len(svc.TypeParameters) != 1 || svc.TypeParameters[0].Name != "T" {
+		t.Fatalf("expected one type parameter T, got %+v", svc.TypeParameters)
+	}
+}
+
+func TestTsParser_ParseModelWithExistingParentPathField(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/existing_parent.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ExistingParentModel', { parentField: 'ParentId' })
+export default class ExistingParentModel extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+
+  @Field({ type: 'ManyToOne' })
+  public ParentPath: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	// Only one ParentPath field should exist (the explicit one, not synthesized).
+	count := 0
+	for _, f := range r.Model.Fields {
+		if f.Name == "ParentPath" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly one ParentPath field, got %d", count)
+	}
+}
+
+func TestTsParser_ParseSkipsModelWithPublicStaticField(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/public_static.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PublicStaticModel')
+export default class PublicStaticModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  public static DefaultName: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	found := false
+	for _, f := range r.Model.Fields {
+		if f.Name == "DefaultName" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected public static field to be kept")
+	}
+}
