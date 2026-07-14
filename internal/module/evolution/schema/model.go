@@ -167,10 +167,6 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 	return metaMap, nil
 }
 
-func (m *modelMigrator) getFieldColumnMeta(field *meta.IrField, modelCtx ...*meta.IrModel) (map[string]interface{}, error) {
-	return m.getResolvedFieldColumnMeta(field, modelCtx...)
-}
-
 func (m *modelMigrator) getDialect() string {
 	dialector := m.runtimeScope.Session().Dialector.Name()
 	switch dialector {

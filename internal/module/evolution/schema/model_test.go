@@ -137,90 +137,90 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 
 	manyToOneField := newFieldWithOptions(t, "OwnerId", `{"type":"ManyToOne","relation":{"onDelete":"CASCADE"}}`)
 	manyToOneField.NotNull = true
-	metaMap, err := migrator.getFieldColumnMeta(manyToOneField)
+	metaMap, err := migrator.getResolvedFieldColumnMeta(manyToOneField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(ManyToOne) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne) error = %v", err)
 	}
 	if metaMap["type"] != "char" || metaMap["size"] != 20 || metaMap["notNull"] != true || metaMap["index"] != true {
 		t.Fatalf("unexpected ManyToOne meta: %#v", metaMap)
 	}
 
 	selectionField := newFieldWithOptions(t, "Status", `{"type":"selection"}`)
-	selectionMeta, err := migrator.getFieldColumnMeta(selectionField)
+	selectionMeta, err := migrator.getResolvedFieldColumnMeta(selectionField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(selection) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(selection) error = %v", err)
 	}
 	if selectionMeta["type"] != "varchar" || selectionMeta["size"] != 255 {
 		t.Fatalf("unexpected selection meta: %#v", selectionMeta)
 	}
 
 	refField := newFieldWithOptions(t, "RemoteId", `{"type":"ManyToOneRef"}`)
-	refMeta, err := migrator.getFieldColumnMeta(refField)
+	refMeta, err := migrator.getResolvedFieldColumnMeta(refField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(ManyToOneRef) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(ManyToOneRef) error = %v", err)
 	}
 	if refMeta["type"] != "char" || refMeta["index"] != true {
 		t.Fatalf("unexpected ManyToOneRef meta: %#v", refMeta)
 	}
 
 	manyRefField := newFieldWithOptions(t, "RemoteIds", `{"type":"ManyToManyRef"}`)
-	manyRefMeta, err := migrator.getFieldColumnMeta(manyRefField)
+	manyRefMeta, err := migrator.getResolvedFieldColumnMeta(manyRefField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(ManyToManyRef) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(ManyToManyRef) error = %v", err)
 	}
 	if manyRefMeta["type"] != "jsonobject" {
 		t.Fatalf("unexpected ManyToManyRef meta: %#v", manyRefMeta)
 	}
 
 	binaryField := newFieldWithOptions(t, "Payload", `{"type":"binary"}`)
-	binaryMeta, err := migrator.getFieldColumnMeta(binaryField)
+	binaryMeta, err := migrator.getResolvedFieldColumnMeta(binaryField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(binary) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(binary) error = %v", err)
 	}
 	if binaryMeta["type"] != "blob" {
 		t.Fatalf("unexpected binary meta: %#v", binaryMeta)
 	}
 
 	ownerModel := &meta.IrModel{Name: "User", Application: "auth", ModelTable: "auth_user"}
-	ownerBinaryMeta, err := migrator.getFieldColumnMeta(binaryField, ownerModel)
+	ownerBinaryMeta, err := migrator.getResolvedFieldColumnMeta(binaryField, ownerModel)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(binary, owner model) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(binary, owner model) error = %v", err)
 	}
 	if ownerBinaryMeta != nil {
 		t.Fatalf("expected owner model binary field to be skipped, got %#v", ownerBinaryMeta)
 	}
 
 	imageField := newFieldWithOptions(t, "Avatar", `{"type":"image"}`)
-	imageMeta, err := migrator.getFieldColumnMeta(imageField)
+	imageMeta, err := migrator.getResolvedFieldColumnMeta(imageField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(image) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(image) error = %v", err)
 	}
 	if imageMeta["type"] != "blob" {
 		t.Fatalf("unexpected image meta: %#v", imageMeta)
 	}
 
 	documentModel := &meta.IrModel{Name: "AttachmentObject", Application: "document", ModelTable: "document_attachment_object"}
-	documentImageMeta, err := migrator.getFieldColumnMeta(imageField, documentModel)
+	documentImageMeta, err := migrator.getResolvedFieldColumnMeta(imageField, documentModel)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(image, document model) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(image, document model) error = %v", err)
 	}
 	if documentImageMeta == nil || documentImageMeta["type"] != "blob" {
 		t.Fatalf("expected document model image field to remain blob, got %#v", documentImageMeta)
 	}
 
 	virtualField := newFieldWithOptions(t, "DisplayName", `{"type":"varchar","select":"expr"}`)
-	virtualMeta, err := migrator.getFieldColumnMeta(virtualField)
+	virtualMeta, err := migrator.getResolvedFieldColumnMeta(virtualField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(virtual) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(virtual) error = %v", err)
 	}
 	if virtualMeta != nil {
 		t.Fatalf("expected virtual field to be skipped, got %#v", virtualMeta)
 	}
 
 	oneToManyField := newFieldWithOptions(t, "Items", `{"type":"OneToMany"}`)
-	oneToManyMeta, err := migrator.getFieldColumnMeta(oneToManyField)
+	oneToManyMeta, err := migrator.getResolvedFieldColumnMeta(oneToManyField)
 	if err != nil {
-		t.Fatalf("getFieldColumnMeta(OneToMany) error = %v", err)
+		t.Fatalf("getResolvedFieldColumnMeta(OneToMany) error = %v", err)
 	}
 	if oneToManyMeta != nil {
 		t.Fatalf("expected OneToMany field to be skipped, got %#v", oneToManyMeta)
@@ -251,43 +251,43 @@ func TestModelMigratorFieldParsingEdgeCasesAndDialectHelpers(t *testing.T) {
 
 	t.Run("field metadata parsing edge cases", func(t *testing.T) {
 		fieldWithoutDecorators := &meta.IrField{Name: "Plain"}
-		metaMap, err := migrator.getFieldColumnMeta(fieldWithoutDecorators)
+		metaMap, err := migrator.getResolvedFieldColumnMeta(fieldWithoutDecorators)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(no decorators) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(no decorators) error = %v", err)
 		}
 		if metaMap != nil {
 			t.Fatalf("expected nil meta for no decorators, got %#v", metaMap)
 		}
 
 		nonObject := &meta.IrField{Name: "Plain", Decorators: []*meta.IrDecorator{{Name: "Field", Arguments: []*meta.IrArgument{{Type: "StringLiteral", Value: `"ignored"`}}}}}
-		metaMap, err = migrator.getFieldColumnMeta(nonObject)
+		metaMap, err = migrator.getResolvedFieldColumnMeta(nonObject)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(non object) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(non object) error = %v", err)
 		}
 		if metaMap != nil {
 			t.Fatalf("expected nil meta for non-object decorator, got %#v", metaMap)
 		}
 
 		missingType := newFieldWithOptions(t, "MissingType", `{"column":{"size":32}}`)
-		metaMap, err = migrator.getFieldColumnMeta(missingType)
+		metaMap, err = migrator.getResolvedFieldColumnMeta(missingType)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(missing type) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(missing type) error = %v", err)
 		}
 		if metaMap != nil {
 			t.Fatalf("expected nil meta for missing type, got %#v", metaMap)
 		}
 
 		manyToManyField := newFieldWithOptions(t, "Tags", `{"type":"ManyToMany"}`)
-		metaMap, err = migrator.getFieldColumnMeta(manyToManyField)
+		metaMap, err = migrator.getResolvedFieldColumnMeta(manyToManyField)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(ManyToMany) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(ManyToMany) error = %v", err)
 		}
 		if metaMap != nil {
 			t.Fatalf("expected ManyToMany field to be skipped, got %#v", metaMap)
 		}
 
 		invalidJSON := newFieldWithOptions(t, "Broken", `{invalid}`)
-		if _, err := migrator.getFieldColumnMeta(invalidJSON); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
+		if _, err := migrator.getResolvedFieldColumnMeta(invalidJSON); err == nil || !strings.Contains(err.Error(), "error unmarshal field resolved spec") {
 			t.Fatalf("expected invalid JSON error, got %v", err)
 		}
 	})
@@ -343,9 +343,9 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 			t.Fatalf("SetResolvedSpec error = %v", err)
 		}
 
-		metaMap, err := migrator.getFieldColumnMeta(field)
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(sql compute) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(sql compute) error = %v", err)
 		}
 		if metaMap != nil {
 			t.Fatalf("expected sql compute field to skip column, got %#v", metaMap)
@@ -396,17 +396,17 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 			t.Fatalf("SetResolvedSpec(persisted) error = %v", err)
 		}
 
-		virtualMeta, err := migrator.getFieldColumnMeta(virtualField)
+		virtualMeta, err := migrator.getResolvedFieldColumnMeta(virtualField)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(virtual) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(virtual) error = %v", err)
 		}
 		if virtualMeta != nil {
 			t.Fatalf("expected virtual compute field to skip column, got %#v", virtualMeta)
 		}
 
-		persistedMeta, err := migrator.getFieldColumnMeta(persistedField)
+		persistedMeta, err := migrator.getResolvedFieldColumnMeta(persistedField)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(persisted) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(persisted) error = %v", err)
 		}
 		if persistedMeta == nil || persistedMeta["type"] != "decimal" || persistedMeta["precision"] != 18 || persistedMeta["scale"] != 4 {
 			t.Fatalf("unexpected persisted compute meta: %#v", persistedMeta)
@@ -415,9 +415,9 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 
 	t.Run("related store true and flat hints map to physical column params", func(t *testing.T) {
 		field := newFieldWithOptions(t, "PartnerName", `{"type":"varchar","related":{"path":"PartnerId.Name","store":true},"required":true,"indexed":true,"size":120}`)
-		metaMap, err := migrator.getFieldColumnMeta(field)
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
 		if err != nil {
-			t.Fatalf("getFieldColumnMeta(related store=true) error = %v", err)
+			t.Fatalf("getResolvedFieldColumnMeta(related store=true) error = %v", err)
 		}
 		if metaMap == nil {
 			t.Fatal("expected related store=true field to create a column")
