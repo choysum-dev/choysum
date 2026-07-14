@@ -15,11 +15,16 @@ type IrResolvedValue[T any] struct {
 }
 
 type IrFieldStructuralStorageHints struct {
-	Required  *bool `json:"required,omitempty"`
-	Indexed   *bool `json:"indexed,omitempty"`
-	Size      *int  `json:"size,omitempty"`
-	Precision *int  `json:"precision,omitempty"`
-	Scale     *int  `json:"scale,omitempty"`
+	Required           *bool   `json:"required,omitempty"`
+	Indexed            *bool   `json:"indexed,omitempty"`
+	Size               *int    `json:"size,omitempty"`
+	Precision          *int    `json:"precision,omitempty"`
+	Scale              *int    `json:"scale,omitempty"`
+	PrimaryKey         *bool   `json:"primaryKey,omitempty"`
+	Unique             *bool   `json:"unique,omitempty"`
+	UniqueIndex        *string `json:"uniqueIndex,omitempty"`
+	UniqueIndexEnabled *bool   `json:"uniqueIndexEnabled,omitempty"`
+	Default            *string `json:"default,omitempty"`
 }
 
 type IrFieldRelatedSpec struct {

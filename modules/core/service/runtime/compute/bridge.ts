@@ -127,7 +127,7 @@ export function currentBridgeFrame<TPayload>(instance: object, kind: BridgeKind)
   }
 
   const lastFrame = getLastFrameMap(carrier).get(instance);
-  if (lastFrame?.expired) {
+  if (lastFrame?.expired && lastFrame.kind === normalizedKind) {
     throw new Error(`BRIDGE_CONTEXT_EXPIRED: ${normalizedKind} bridge context has expired`);
   }
 

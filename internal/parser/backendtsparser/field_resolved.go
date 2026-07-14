@@ -45,6 +45,18 @@ func mergeStorageHintInt(target **int, candidate any) {
 	}
 }
 
+func mergeStorageHintString(target **string, candidate any) {
+	if *target != nil {
+		return
+	}
+	if v, ok := candidate.(string); ok {
+		trimmed := strings.TrimSpace(v)
+		if trimmed != "" {
+			*target = toStringPtr(trimmed)
+		}
+	}
+}
+
 func applyLegacyBranchStorageHints(hints *meta.IrFieldStructuralStorageHints, branch map[string]any) {
 	if hints == nil || len(branch) == 0 {
 		return
@@ -57,6 +69,11 @@ func applyLegacyBranchStorageHints(hints *meta.IrFieldStructuralStorageHints, br
 	mergeStorageHintInt(&hints.Size, branch["size"])
 	mergeStorageHintInt(&hints.Precision, branch["precision"])
 	mergeStorageHintInt(&hints.Scale, branch["scale"])
+	mergeStorageHintBool(&hints.PrimaryKey, branch["primaryKey"])
+	mergeStorageHintBool(&hints.Unique, branch["unique"])
+	mergeStorageHintString(&hints.UniqueIndex, branch["uniqueIndex"])
+	mergeStorageHintBool(&hints.UniqueIndexEnabled, branch["uniqueIndex"])
+	mergeStorageHintString(&hints.Default, branch["default"])
 }
 
 func applyLegacyColumnComputeBehavior(spec *meta.IrFieldResolvedSpec, column map[string]any) bool {
@@ -167,6 +184,11 @@ func toBoolPtr(value bool) *bool {
 }
 
 func toIntPtr(value int) *int {
+	v := value
+	return &v
+}
+
+func toStringPtr(value string) *string {
 	v := value
 	return &v
 }
@@ -416,9 +438,33 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if v, ok := asInt(options["scale"]); ok {
 		hints.Scale = toIntPtr(v)
 	}
+	if v, ok := options["primaryKey"].(bool); ok {
+		hints.PrimaryKey = toBoolPtr(v)
+	}
+	if v, ok := options["unique"].(bool); ok {
+		hints.Unique = toBoolPtr(v)
+	}
+	switch raw := options["uniqueIndex"].(type) {
+	case bool:
+		hints.UniqueIndexEnabled = toBoolPtr(raw)
+	case string:
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" {
+			hints.UniqueIndex = toStringPtr(trimmed)
+		}
+	}
+	switch raw := options["default"].(type) {
+	case string:
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" {
+			hints.Default = toStringPtr(trimmed)
+		}
+	case bool, float64, float32, int, int32, int64, uint, uint32, uint64:
+		hints.Default = toStringPtr(strings.TrimSpace(fmt.Sprintf("%v", raw)))
+	}
 	applyLegacyBranchStorageHints(hints, legacyColumn)
 	applyLegacyBranchStorageHints(hints, legacySelect)
-	if hints.Required != nil || hints.Indexed != nil || hints.Size != nil || hints.Precision != nil || hints.Scale != nil {
+	if hints.Required != nil || hints.Indexed != nil || hints.Size != nil || hints.Precision != nil || hints.Scale != nil || hints.PrimaryKey != nil || hints.Unique != nil || hints.UniqueIndex != nil || hints.UniqueIndexEnabled != nil || hints.Default != nil {
 		spec.Structural.StorageHints = hints
 	}
 
@@ -585,6 +631,9 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	}
 
 	if relation := spec.Structural.Relation; relation != nil {
+		if v, ok := relation["targetModel"]; ok {
+			field.RelationModel = strings.TrimSpace(fmt.Sprintf("%v", v))
+		}
 		if v, ok := relation["inverseField"]; ok {
 			field.RelationInverseField = strings.TrimSpace(fmt.Sprintf("%v", v))
 		}

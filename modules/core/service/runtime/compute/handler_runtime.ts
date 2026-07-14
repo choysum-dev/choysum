@@ -40,6 +40,15 @@ export function createEntityBackedModelInstance(meta: ModelMetadata, entity: Unk
 
     set(_target, key, value, receiver) {
       if (typeof key === 'string') {
+        let proto: unknown = target;
+        while (proto && (typeof proto === 'object' || typeof proto === 'function')) {
+          const desc = Object.getOwnPropertyDescriptor(proto as object, key);
+          if (desc?.set) {
+            return Reflect.set(target, key, value, receiver);
+          }
+          proto = Object.getPrototypeOf(proto as object);
+        }
+
         entityRecord[key] = value;
         return true;
       }

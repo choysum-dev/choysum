@@ -218,6 +218,19 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 	if err != nil {
 		return nil, nil, nil, xfmt.Errorf("failed to collect field behavior decorators: %w", err)
 	}
+	fieldNames := make(map[string]struct{}, len(model.Fields))
+	for _, field := range model.Fields {
+		if field == nil {
+			continue
+		}
+		fieldNames[field.Name] = struct{}{}
+	}
+	for bindingField := range behaviorBindings {
+		if _, ok := fieldNames[bindingField]; ok {
+			continue
+		}
+		return nil, nil, nil, xfmt.Errorf("orphan behavior decorator binding for unknown field: %s", bindingField)
+	}
 	for _, field := range model.Fields {
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]

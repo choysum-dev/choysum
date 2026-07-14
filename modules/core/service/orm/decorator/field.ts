@@ -353,8 +353,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;
     const prev = MetadataStorage.instance.getModelMetadata(ctor);
     const existingCompute = prev?.computeHandlers?.get(name);
+    const existingSqlCompute = prev?.sqlComputeHandlers?.get(name);
 
-    if (existingCompute?.store === false) {
+    if (existingCompute?.store === false || !!existingSqlCompute) {
       delete meta.column;
     }
 

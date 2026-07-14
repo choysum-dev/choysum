@@ -198,6 +198,18 @@ func addStandardTags(tags *[]string, meta map[string]interface{}) {
 		}
 	}
 
+	// Default value handling.
+	if v, ok := meta["default"]; ok {
+		switch val := v.(type) {
+		case string:
+			if strings.TrimSpace(val) != "" {
+				*tags = append(*tags, fmt.Sprintf("default:%s", strings.TrimSpace(val)))
+			}
+		case bool, int, int32, int64, uint, uint32, uint64, float32, float64:
+			*tags = append(*tags, fmt.Sprintf("default:%v", val))
+		}
+	}
+
 	// CHECK constraint via gorm tag (helps MySQL/SQLite/SQLServer create it during migration).
 	// - Use `check:,<expr>` to force default naming: chk_<table>_<column>.
 	// - Normalize expressions to avoid SQL syntax errors caused by template quoting/whitespace.

@@ -103,11 +103,11 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 	}
 
 	if hints := resolved.Structural.StorageHints; hints != nil {
-		if hints.Required != nil && *hints.Required {
-			metaMap["notNull"] = true
+		if hints.Required != nil {
+			metaMap["notNull"] = *hints.Required
 		}
-		if hints.Indexed != nil && *hints.Indexed {
-			metaMap["index"] = true
+		if hints.Indexed != nil {
+			metaMap["index"] = *hints.Indexed
 		}
 		if hints.Size != nil {
 			metaMap["size"] = *hints.Size
@@ -117,6 +117,21 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 		}
 		if hints.Scale != nil {
 			metaMap["scale"] = *hints.Scale
+		}
+		if hints.PrimaryKey != nil {
+			metaMap["primaryKey"] = *hints.PrimaryKey
+		}
+		if hints.Unique != nil {
+			metaMap["unique"] = *hints.Unique
+		}
+		if hints.UniqueIndexEnabled != nil {
+			metaMap["uniqueIndex"] = *hints.UniqueIndexEnabled
+		}
+		if hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "" {
+			metaMap["uniqueIndex"] = strings.TrimSpace(*hints.UniqueIndex)
+		}
+		if hints.Default != nil && strings.TrimSpace(*hints.Default) != "" {
+			metaMap["default"] = strings.TrimSpace(*hints.Default)
 		}
 	}
 

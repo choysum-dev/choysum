@@ -33,6 +33,10 @@ function mergeDeep(target: UnknownRecord, patch: UnknownRecord): void {
   }
 }
 
+function isForbiddenPathSegment(seg: string): boolean {
+  return seg === '__proto__' || seg === 'constructor' || seg === 'prototype';
+}
+
 function setPath(target: UnknownRecord, path: string, value: unknown): void {
   const segments = String(path || '')
     .split('.')
@@ -45,12 +49,19 @@ function setPath(target: UnknownRecord, path: string, value: unknown): void {
   let cursor: UnknownRecord = target;
   for (let i = 0; i < segments.length - 1; i++) {
     const seg = segments[i];
+    if (isForbiddenPathSegment(seg)) {
+      throw new Error(`inverse write path contains forbidden segment: ${seg}`);
+    }
     const bucket = asObjectRecord(cursor[seg]) || {};
     cursor[seg] = bucket;
     cursor = bucket;
   }
 
-  cursor[segments[segments.length - 1]] = value;
+  const lastSeg = segments[segments.length - 1];
+  if (isForbiddenPathSegment(lastSeg)) {
+    throw new Error(`inverse write path contains forbidden segment: ${lastSeg}`);
+  }
+  cursor[lastSeg] = value;
 }
 
 function readPath(source: UnknownRecord, path: string): unknown {
@@ -62,6 +73,9 @@ function readPath(source: UnknownRecord, path: string): unknown {
 
   let cursor: unknown = source;
   for (const seg of segments) {
+    if (isForbiddenPathSegment(seg)) {
+      return undefined;
+    }
     const record = asObjectRecord(cursor);
     if (!record) return undefined;
     cursor = record[seg];
