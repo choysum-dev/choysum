@@ -337,7 +337,8 @@ export class ComputeCascadeEngine {
       // 2) Collect ManyToOne roots that point to the parent model.
       const m2oRoots: string[] = [];
       childMeta.fields.forEach((f, name) => {
-        if (f?.type === 'ManyToOne' && f.relation?.targetModel?.() === parentCtor) {
+        const targetModelFn = asObjectRecord(f?.relation)?.targetModel;
+        if (f?.type === 'ManyToOne' && typeof targetModelFn === 'function' && targetModelFn() === parentCtor) {
           m2oRoots.push(name);
         }
       });

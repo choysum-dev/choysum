@@ -119,6 +119,24 @@ export default class IrUiResource extends BaseModel {
 
   @SqlCompute<IrUiResource>('Childs')
   sqlChilds() {
+    const readFallback = () => {
+      const existing = this.$sql.field('Childs');
+      return existing ?? [];
+    };
+
+    let selfTypeRef: unknown;
+    let selfIdRef: unknown;
+    try {
+      selfTypeRef = this.$sql.col('meta_ir_ui_resource', 'Type');
+      selfIdRef = this.$sql.col('meta_ir_ui_resource', 'Id');
+    } catch (error) {
+      const message = String((error as Error)?.message || error || '');
+      if (message.includes('BRIDGE_CONTEXT_UNAVAILABLE')) {
+        return readFallback();
+      }
+      throw error;
+    }
+
     const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
 
     if (dialect === 'sqlite') {
@@ -146,8 +164,8 @@ export default class IrUiResource extends BaseModel {
                 'DefaultRoles', json(c.default_roles)
               ) as payload
             from meta_ir_ui_resource c
-            where ${this.$sql.col('meta_ir_ui_resource', 'Type')} = 'MENU'
-              and c.parent_id = ${this.$sql.col('meta_ir_ui_resource', 'Id')}
+            where ${selfTypeRef} = 'MENU'
+              and c.parent_id = ${selfIdRef}
 
             union all
 
@@ -169,8 +187,8 @@ export default class IrUiResource extends BaseModel {
               ) as payload
             from meta_ir_ui_resource_menu_route mr
             join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
-            where ${this.$sql.col('meta_ir_ui_resource', 'Type')} = 'MENU'
-              and mr.menu_ui_resource_id = ${this.$sql.col('meta_ir_ui_resource', 'Id')}
+            where ${selfTypeRef} = 'MENU'
+              and mr.menu_ui_resource_id = ${selfIdRef}
 
             union all
 
@@ -192,8 +210,8 @@ export default class IrUiResource extends BaseModel {
               ) as payload
             from meta_ir_ui_resource_route_action ra
             join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
-            where ${this.$sql.col('meta_ir_ui_resource', 'Type')} = 'ROUTE'
-              and ra.route_ui_resource_id = ${this.$sql.col('meta_ir_ui_resource', 'Id')}
+            where ${selfTypeRef} = 'ROUTE'
+              and ra.route_ui_resource_id = ${selfIdRef}
 
             order by seq asc, name asc
           ) as child_row
@@ -225,8 +243,8 @@ export default class IrUiResource extends BaseModel {
               'DefaultRoles', c.default_roles
             ) as payload
           from meta_ir_ui_resource c
-          where ${this.$sql.col('meta_ir_ui_resource', 'Type')} = 'MENU'
-            and c.parent_id = ${this.$sql.col('meta_ir_ui_resource', 'Id')}
+          where ${selfTypeRef} = 'MENU'
+            and c.parent_id = ${selfIdRef}
 
           union all
 
@@ -248,8 +266,8 @@ export default class IrUiResource extends BaseModel {
             ) as payload
           from meta_ir_ui_resource_menu_route mr
           join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
-          where ${this.$sql.col('meta_ir_ui_resource', 'Type')} = 'MENU'
-            and mr.menu_ui_resource_id = ${this.$sql.col('meta_ir_ui_resource', 'Id')}
+          where ${selfTypeRef} = 'MENU'
+            and mr.menu_ui_resource_id = ${selfIdRef}
 
           union all
 
@@ -271,8 +289,8 @@ export default class IrUiResource extends BaseModel {
             ) as payload
           from meta_ir_ui_resource_route_action ra
           join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
-          where ${this.$sql.col('meta_ir_ui_resource', 'Type')} = 'ROUTE'
-            and ra.route_ui_resource_id = ${this.$sql.col('meta_ir_ui_resource', 'Id')}
+          where ${selfTypeRef} = 'ROUTE'
+            and ra.route_ui_resource_id = ${selfIdRef}
         ) as child_row
       )
     `;

@@ -4,6 +4,7 @@
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Field } from './field';
+import type { FieldOptions } from '../metadata/field';
 
 class FieldTargetModel extends BaseModel {}
 
@@ -204,44 +205,46 @@ test('Field decorator rejects mixing flat options with forbidden column/select b
 });
 
 test('Field option typing enforces function-only relation models for object relations and string-only for ref relations', () => {
-  class TypingManyToOneAllowed extends BaseModel {
-    @Field({ type: 'ManyToOne', relation: { targetModel: () => FieldTargetModel } })
-    ParentId?: FieldTargetModel;
-  }
+  const validManyToOne = {
+    type: 'ManyToOne',
+    relation: { targetModel: () => FieldTargetModel },
+  } satisfies FieldOptions<any>;
 
-  class TypingManyToOneRefAllowed extends BaseModel {
-    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.FieldTargetModel' } })
-    ParentId!: string;
-  }
+  const validManyToOneRef = {
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'test.FieldTargetModel' },
+    size: 20,
+  } satisfies FieldOptions<any>;
 
-  class TypingManyToManyRefAllowed extends BaseModel {
-    @Field({ type: 'ManyToManyRef', relation: { targetModel: 'test.FieldTargetModel' } })
-    TagIds!: string[];
-  }
+  const validManyToManyRef = {
+    type: 'ManyToManyRef',
+    relation: { targetModel: 'test.FieldTargetModel' },
+  } satisfies FieldOptions<any>;
 
-  expect(TypingManyToOneAllowed).toBeDefined();
-  expect(TypingManyToOneRefAllowed).toBeDefined();
-  expect(TypingManyToManyRefAllowed).toBeDefined();
+  expect(validManyToOne).toBeDefined();
+  expect(validManyToOneRef).toBeDefined();
+  expect(validManyToManyRef).toBeDefined();
 
-  class TypingManyToOneStringTargetDisallowed extends BaseModel {
-    // @ts-expect-error ManyToOne relation.targetModel must be a constructor factory.
-    @Field({ type: 'ManyToOne', relation: { targetModel: 'test.FieldTargetModel' } })
-    ParentId?: FieldTargetModel;
-  }
+  // @ts-expect-error ManyToOne relation.targetModel must be a constructor factory.
+  const invalidManyToOne: FieldOptions<any> = {
+    type: 'ManyToOne',
+    relation: { targetModel: 'test.FieldTargetModel' },
+  };
 
-  class TypingManyToOneRefFunctionTargetDisallowed extends BaseModel {
-    // @ts-expect-error ManyToOneRef relation.targetModel must be a model identifier string.
-    @Field({ type: 'ManyToOneRef', relation: { targetModel: () => FieldTargetModel } })
-    ParentId!: string;
-  }
+  // @ts-expect-error ManyToOneRef relation.targetModel must be a model identifier string.
+  const invalidManyToOneRef: FieldOptions<any> = {
+    type: 'ManyToOneRef',
+    relation: { targetModel: () => FieldTargetModel },
+    size: 20,
+  };
 
-  class TypingManyToManyRefFunctionTargetDisallowed extends BaseModel {
-    // @ts-expect-error ManyToManyRef relation.targetModel must be a model identifier string.
-    @Field({ type: 'ManyToManyRef', relation: { targetModel: () => FieldTargetModel } })
-    TagIds!: string[];
-  }
+  // @ts-expect-error ManyToManyRef relation.targetModel must be a model identifier string.
+  const invalidManyToManyRef: FieldOptions<any> = {
+    type: 'ManyToManyRef',
+    relation: { targetModel: () => FieldTargetModel },
+  };
 
-  expect(TypingManyToOneStringTargetDisallowed).toBeDefined();
-  expect(TypingManyToOneRefFunctionTargetDisallowed).toBeDefined();
-  expect(TypingManyToManyRefFunctionTargetDisallowed).toBeDefined();
+  expect(invalidManyToOne).toBeDefined();
+  expect(invalidManyToOneRef).toBeDefined();
+  expect(invalidManyToManyRef).toBeDefined();
 });
