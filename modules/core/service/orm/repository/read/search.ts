@@ -90,10 +90,7 @@ export async function executeRepositorySearch(
   if (requestedFields && requestedFields.length > 0) {
     selectionTree = toSelectionNode(params.buildSelectionTree(params.meta, requestedFields));
   } else {
-    const defaultColumns = params.getScalarFields(params.meta).filter(fieldName => {
-      const metaField = params.meta.fields.get(fieldName);
-      return Boolean(metaField?.column);
-    });
+    const defaultColumns = params.getScalarFields(params.meta);
     selectionTree = { columns: new Set(defaultColumns), relations: new Map() };
   }
 

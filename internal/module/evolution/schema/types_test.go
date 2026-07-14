@@ -65,4 +65,28 @@ func TestTypeHelpers(t *testing.T) {
 			t.Fatalf("expected tag %q in %q", want, joined)
 		}
 	}
+
+	defaultLiteralTags := []string{}
+	addStandardTags(&defaultLiteralTags, map[string]interface{}{
+		"default": "active",
+	})
+	if !strings.Contains(strings.Join(defaultLiteralTags, ";"), "default:active") {
+		t.Fatalf("expected scalar default tag, got %q", strings.Join(defaultLiteralTags, ";"))
+	}
+
+	arrowDefaultTags := []string{}
+	addStandardTags(&arrowDefaultTags, map[string]interface{}{
+		"default": "() => true",
+	})
+	if strings.Contains(strings.Join(arrowDefaultTags, ";"), "default:") {
+		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(arrowDefaultTags, ";"))
+	}
+
+	functionDefaultTags := []string{}
+	addStandardTags(&functionDefaultTags, map[string]interface{}{
+		"default": "function () { return 'active'; }",
+	})
+	if strings.Contains(strings.Join(functionDefaultTags, ";"), "default:") {
+		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(functionDefaultTags, ";"))
+	}
 }

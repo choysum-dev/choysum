@@ -8,7 +8,6 @@ import type BaseModel from '../../orm/model/model';
 import Decimal, { decimalEqual, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import { withComputeRunAsExecution } from './runas';
-import { withBridgeFrame } from './bridge';
 import { createEntityBackedModelInstance, resolveInstanceHandler } from './handler_runtime';
 import { asObjectRecord, hasOwnKey } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
@@ -112,47 +111,6 @@ function resolveRuntimeComputeExecution(meta: ModelMetadata, field: string): Run
   return;
 }
 
-function createSqlBridgeContext(entity: UnknownRecord) {
-  const resolveFieldKey = (modelOrKey: unknown, key: unknown): string => {
-    if (typeof key === 'string') return key;
-    return typeof modelOrKey === 'string' ? modelOrKey : '';
-  };
-
-  const throwSqlQueryBridgeUnavailable = (method: 'col' | 'selectFrom'): never => {
-    throw new Error(`BRIDGE_CONTEXT_UNAVAILABLE: sql.${method} is unavailable in runtime read context`);
-  };
-
-  return {
-    field(modelOrKey: unknown, key?: unknown): unknown {
-      const resolvedKey = resolveFieldKey(modelOrKey, key);
-      if (!resolvedKey) return undefined;
-      return entity[resolvedKey];
-    },
-    fieldExist(modelOrKey: unknown, key?: unknown): boolean {
-      const resolvedKey = resolveFieldKey(modelOrKey, key);
-      if (!resolvedKey) return false;
-      return resolvedKey in entity;
-    },
-    str: {
-      concat: (...items: unknown[]) => items.map(item => String(item ?? '')).join(''),
-      lower: (value: unknown) => String(value ?? '').toLowerCase(),
-    },
-    col() {
-      return throwSqlQueryBridgeUnavailable('col');
-    },
-    selectFrom() {
-      return throwSqlQueryBridgeUnavailable('selectFrom');
-    },
-  };
-}
-
-function resolveSqlComputeExecution(meta: ModelMetadata, field: string): ((modelInstance: BaseModel) => unknown) | undefined {
-  const sqlHandler = meta.sqlComputeHandlers?.get(field);
-  if (!sqlHandler) return;
-  const method = resolveInstanceHandler(meta, field, sqlHandler.method, '@SqlCompute');
-  return modelInstance => method.call(modelInstance);
-}
-
 // In preview mode, normalize decimal fields on the entity and any attached ManyToOne objects as a fallback.
 // Prefer normalizeDecimalByMeta to stay aligned with repository behavior, then fall back to best-effort Decimal construction.
 function normalizeDecimalFields(meta: ModelMetadata, entity: UnknownRecord) {
@@ -251,20 +209,9 @@ export class ComputeEngine {
 
     for (const field of orderedSubset) {
       const fieldMeta = meta.fields.get(field);
-      const runSql = resolveSqlComputeExecution(meta, field);
-      if (runSql) {
-        // When the DB row already carries this sql-computed field, keep that value.
-        // This avoids executing query-only SqlCompute handlers in runtime read context.
-        if (entity[field] !== undefined) {
-          continue;
-        }
-        const sqlCtx = createSqlBridgeContext(entity);
-        let sqlVal = withBridgeFrame(wrapped as object, 'sql', sqlCtx, () => runSql(wrapped));
-        sqlVal = ensureSyncBridgeResult(sqlVal, `@SqlCompute(${field})`);
-        if (fieldMeta?.type === 'decimal') {
-          sqlVal = quantizeByMeta(fieldMeta, entity, sqlVal);
-        }
-        entity[field] = sqlVal;
+      if (meta.sqlComputeHandlers?.has(field)) {
+        // SqlCompute is query-time only. Runtime read injection never executes SqlCompute
+        // handlers and only keeps values that were already projected by repository search.
         continue;
       }
 

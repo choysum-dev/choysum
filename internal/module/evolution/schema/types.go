@@ -146,6 +146,18 @@ func buildColumnTypeTag(dialect string, columnType string, meta map[string]inter
 	}
 }
 
+func isJSFunctionDefaultLiteral(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return false
+	}
+	lower := strings.ToLower(trimmed)
+	if strings.Contains(lower, "=>") {
+		return true
+	}
+	return strings.Contains(lower, "function(") || strings.Contains(lower, "function ")
+}
+
 // addStandardTags appends standard gorm tags.
 func addStandardTags(tags *[]string, meta map[string]interface{}) {
 	// Primary key
@@ -202,8 +214,9 @@ func addStandardTags(tags *[]string, meta map[string]interface{}) {
 	if v, ok := meta["default"]; ok {
 		switch val := v.(type) {
 		case string:
-			if strings.TrimSpace(val) != "" {
-				*tags = append(*tags, fmt.Sprintf("default:%s", strings.TrimSpace(val)))
+			trimmed := strings.TrimSpace(val)
+			if trimmed != "" && !isJSFunctionDefaultLiteral(trimmed) {
+				*tags = append(*tags, fmt.Sprintf("default:%s", trimmed))
 			}
 		case bool, int, int32, int64, uint, uint32, uint64, float32, float64:
 			*tags = append(*tags, fmt.Sprintf("default:%v", val))

@@ -289,7 +289,7 @@ test('repository read search runtime tolerates decimal field without column or s
   expect(serialized.includes(buildHiddenScaleAlias('Amount'))).toBe(false);
 });
 
-test('repository read search runtime excludes sql-compute fields from default projection when fields are omitted', async () => {
+test('repository read search runtime includes sql-compute fields in default projection when fields are omitted', async () => {
   class DemoModel {
     sqlDisplayName() {
       return { kind: 'display-select-expr' };
@@ -319,12 +319,12 @@ test('repository read search runtime excludes sql-compute fields from default pr
   const rows = await executeRepositorySearch(deps as any, ['Id', '=', 'id_1'] as any);
   expect(rows).toEqual([]);
   expect(calls.executed.length).toBe(1);
-  expect(calls.aliases.some(item => item.alias === 'DisplayName')).toBe(false);
+  expect(calls.aliases.some(item => item.alias === 'DisplayName')).toBe(true);
   expect(Array.isArray(query.selected)).toBe(true);
-  expect((query.selected || []).length).toBe(2);
+  expect((query.selected || []).length).toBe(3);
   const serialized = JSON.stringify(query.selected || []);
   expect(serialized.includes('demo_table.Id')).toBe(true);
   expect(serialized.includes('demo_table.Name')).toBe(true);
-  expect(serialized.includes('DisplayName')).toBe(false);
-  expect(serialized.includes('display-select-expr')).toBe(false);
+  expect(serialized.includes('DisplayName')).toBe(true);
+  expect(serialized.includes('display-select-expr')).toBe(true);
 });

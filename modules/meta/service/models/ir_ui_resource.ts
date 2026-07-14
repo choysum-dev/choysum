@@ -119,23 +119,8 @@ export default class IrUiResource extends BaseModel {
 
   @SqlCompute<IrUiResource>('Childs')
   sqlChilds() {
-    const readFallback = () => {
-      const existing = this.$sql.field('Childs');
-      return existing ?? [];
-    };
-
-    let selfTypeRef: unknown;
-    let selfIdRef: unknown;
-    try {
-      selfTypeRef = this.$sql.col('meta_ir_ui_resource', 'Type');
-      selfIdRef = this.$sql.col('meta_ir_ui_resource', 'Id');
-    } catch (error) {
-      const message = String((error as Error)?.message || error || '');
-      if (message.includes('BRIDGE_CONTEXT_UNAVAILABLE')) {
-        return readFallback();
-      }
-      throw error;
-    }
+    const selfTypeRef = this.$sql.col('meta_ir_ui_resource', 'Type');
+    const selfIdRef = this.$sql.col('meta_ir_ui_resource', 'Id');
 
     const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
 

@@ -1519,14 +1519,13 @@ test('compute engine executes @Compute handler method and writes back through th
   expect(changed.has('Total')).toBe(true);
 });
 
-test('compute engine injectVirtualForRead executes @SqlCompute handler with $sql bridge context', () => {
+test('compute engine injectVirtualForRead does not execute @SqlCompute handler in runtime read stage', () => {
   class SqlComputeReadModel extends BaseModel {
     Name?: string;
     override DisplayName!: string;
 
     sqlDisplayName() {
-      const sql = this.$sql as any;
-      return sql.str.concat(sql.field(SqlComputeReadModel, 'Name'), '-suffix');
+      throw new Error('sql compute should not run in runtime read stage');
     }
   }
 
@@ -1556,7 +1555,7 @@ test('compute engine injectVirtualForRead executes @SqlCompute handler with $sql
   const entity: any = { Name: 'Alice' };
   ComputeEngine.injectVirtualForRead(meta, entity);
 
-  expect(entity.DisplayName).toBe('Alice-suffix');
+  expect(entity.DisplayName).toBeUndefined();
 });
 
 test('compute engine injectVirtualForRead keeps prefilled @SqlCompute value and skips runtime sql bridge execution', () => {
