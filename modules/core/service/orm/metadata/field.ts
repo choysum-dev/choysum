@@ -100,7 +100,7 @@ type FlatNoSizeOption = { size?: never };
 type FlatNoDecimalOptions = { precision?: never; scale?: never; round?: never };
 
 type FlatRefRelationOption<TTarget extends BaseModel> = {
-  targetModel: (() => ModelCtor<TTarget> & typeof BaseModel) | string;
+  targetModel: string;
   onDelete?: never;
   onUpdate?: never;
   inverseField?: never;

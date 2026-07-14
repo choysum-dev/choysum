@@ -95,12 +95,12 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
   }
 
   class ManyToOneRefModel extends BaseModel {
-    @Field({ type: 'ManyToOneRef', relation: { targetModel: () => FieldTargetModel } } as any)
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.FieldTargetModel' } } as any)
     ParentId!: string;
   }
 
   class ManyToManyRefModel extends BaseModel {
-    @Field({ type: 'ManyToManyRef', relation: { targetModel: () => FieldTargetModel } } as any)
+    @Field({ type: 'ManyToManyRef', relation: { targetModel: 'test.FieldTargetModel' } } as any)
     TagIds!: string[];
   }
 
@@ -201,4 +201,47 @@ test('Field decorator rejects mixing flat options with forbidden column/select b
     }
     return FlatForbiddenMixSelectModel;
   }).toThrow('column/select syntax is forbidden');
+});
+
+test('Field option typing enforces function-only relation models for object relations and string-only for ref relations', () => {
+  class TypingManyToOneAllowed extends BaseModel {
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => FieldTargetModel } })
+    ParentId?: FieldTargetModel;
+  }
+
+  class TypingManyToOneRefAllowed extends BaseModel {
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: 'test.FieldTargetModel' } })
+    ParentId!: string;
+  }
+
+  class TypingManyToManyRefAllowed extends BaseModel {
+    @Field({ type: 'ManyToManyRef', relation: { targetModel: 'test.FieldTargetModel' } })
+    TagIds!: string[];
+  }
+
+  expect(TypingManyToOneAllowed).toBeDefined();
+  expect(TypingManyToOneRefAllowed).toBeDefined();
+  expect(TypingManyToManyRefAllowed).toBeDefined();
+
+  class TypingManyToOneStringTargetDisallowed extends BaseModel {
+    // @ts-expect-error ManyToOne relation.targetModel must be a constructor factory.
+    @Field({ type: 'ManyToOne', relation: { targetModel: 'test.FieldTargetModel' } })
+    ParentId?: FieldTargetModel;
+  }
+
+  class TypingManyToOneRefFunctionTargetDisallowed extends BaseModel {
+    // @ts-expect-error ManyToOneRef relation.targetModel must be a model identifier string.
+    @Field({ type: 'ManyToOneRef', relation: { targetModel: () => FieldTargetModel } })
+    ParentId!: string;
+  }
+
+  class TypingManyToManyRefFunctionTargetDisallowed extends BaseModel {
+    // @ts-expect-error ManyToManyRef relation.targetModel must be a model identifier string.
+    @Field({ type: 'ManyToManyRef', relation: { targetModel: () => FieldTargetModel } })
+    TagIds!: string[];
+  }
+
+  expect(TypingManyToOneStringTargetDisallowed).toBeDefined();
+  expect(TypingManyToOneRefFunctionTargetDisallowed).toBeDefined();
+  expect(TypingManyToManyRefFunctionTargetDisallowed).toBeDefined();
 });
