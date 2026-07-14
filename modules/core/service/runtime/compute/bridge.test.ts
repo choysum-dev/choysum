@@ -41,6 +41,19 @@ test('bridge context enforces kind checks', () => {
   });
 });
 
+test('bridge context resolves outer matching kind when inner frame uses another kind on same instance', () => {
+  const instance = {};
+
+  withBridgeFrame(instance, 'search', { token: 'outer' }, () => {
+    withBridgeFrame(instance, 'inverse', { token: 'inner' }, () => {
+      const searchFrame = currentBridgeFrame<{ token: string }>(instance, 'search');
+      const inverseFrame = currentBridgeFrame<{ token: string }>(instance, 'inverse');
+      expect(searchFrame.token).toBe('outer');
+      expect(inverseFrame.token).toBe('inner');
+    });
+  });
+});
+
 test('bridge context enforces instance checks', () => {
   const first = {};
   const second = {};

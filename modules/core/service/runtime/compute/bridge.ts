@@ -108,22 +108,30 @@ export function currentBridgeFrame<TPayload>(instance: object, kind: BridgeKind)
   const normalizedKind = normalizeKind(kind);
   const carrier = getBridgeCarrier();
   const stack = getBridgeStack(carrier);
+  let mismatchedKind: BridgeKind | undefined;
 
   for (let index = stack.length - 1; index >= 0; index--) {
     const frame = stack[index];
     if (frame.instance !== instance) continue;
 
+    if (frame.kind !== normalizedKind) {
+      if (!mismatchedKind) {
+        mismatchedKind = frame.kind;
+      }
+      continue;
+    }
+
     if (frame.expired) {
       throw new Error(`BRIDGE_CONTEXT_EXPIRED: ${normalizedKind} bridge context has expired`);
     }
 
-    if (frame.kind !== normalizedKind) {
-      throw new Error(
-        `BRIDGE_CONTEXT_KIND_MISMATCH: requested ${normalizedKind} bridge but active context is ${frame.kind} for ${formatInstanceLabel(instance)}`
-      );
-    }
-
     return frame.payload as TPayload;
+  }
+
+  if (mismatchedKind) {
+    throw new Error(
+      `BRIDGE_CONTEXT_KIND_MISMATCH: requested ${normalizedKind} bridge but active context is ${mismatchedKind} for ${formatInstanceLabel(instance)}`
+    );
   }
 
   const lastFrame = getLastFrameMap(carrier).get(instance);
