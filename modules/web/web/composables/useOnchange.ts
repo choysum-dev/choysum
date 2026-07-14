@@ -527,7 +527,6 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
       if (!changedRaw.length) return;
 
       const minimized = relationAwareMinimize(changedRaw, store, opts?.collapseRelationChildren !== false);
-      const diffFieldsMeta = buildDiffFieldsMeta(store);
 
       const selectorPaths = new Set<string>();
       for (const leaf of fullSnapshot) {

@@ -38,7 +38,6 @@ export function rewriteSearchCondition(
   if (!fieldMeta) return;
 
   const computeHandler = meta.computeHandlers?.get(fieldName);
-  const sqlComputeHandler = meta.sqlComputeHandlers?.get(fieldName);
   const legacyCompute = fieldMeta.column?.compute;
 
   // Sql-compute fields can be compiled as query expressions directly and do not require @Search handlers.
