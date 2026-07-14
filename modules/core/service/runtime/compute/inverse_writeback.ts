@@ -30,10 +30,17 @@ function mergeDeep(target: UnknownRecord, patch: UnknownRecord): void {
       continue;
     }
 
-    const current = asObjectRecord(target[key]);
+    const currentVal = target[key];
+    const current = asObjectRecord(currentVal);
     const nextRecord = asObjectRecord(nextVal);
     const canMergeCurrent = isMergeableRecord(current);
     const canMergeNext = isMergeableRecord(nextRecord);
+    if (typeof currentVal === 'string' && canMergeNext) {
+      const promoted: UnknownRecord = { Id: currentVal };
+      mergeDeep(promoted, nextRecord);
+      target[key] = promoted;
+      continue;
+    }
     if (canMergeCurrent && canMergeNext) {
       mergeDeep(current, nextRecord);
       target[key] = current;

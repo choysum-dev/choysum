@@ -119,6 +119,22 @@ test('inverse writeback executes explicit @Inverse handler and removes source fi
   });
 });
 
+test('inverse writeback preserves relation Id when patching nested fields onto string relation value', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(InverseManualModel as any);
+
+  const rewritten = await applyInverseWriteback(meta, {
+    DisplayName: 'Bob',
+    PartnerId: 'partner_1',
+  });
+
+  expect(rewritten).toEqual({
+    PartnerId: {
+      Id: 'partner_1',
+      Name: 'Bob',
+    },
+  });
+});
+
 test('inverse writeback overwrites array nodes instead of merging by index', async () => {
   const meta = MetadataStorage.instance.getModelMetadata(InverseArrayPatchModel as any);
 
