@@ -37,7 +37,7 @@ type ModuleIndexRecord = {
   RegistryVersion?: string;
 };
 
-function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
+export function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
   const emptyArray = Array.isArray(condition) && condition.length === 0;
   const emptyObject = !Array.isArray(condition) && condition && typeof condition === 'object' && Object.keys(condition).length === 0;
   return emptyArray || emptyObject ? (['Available', '=', true] as any) : condition;
@@ -46,13 +46,13 @@ function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
 type SortSpec = { field: string; desc: boolean };
 type GroupSortSpec = { field: string; order: 'asc' | 'desc' };
 
-function toText(value: unknown): string {
+export function toText(value: unknown): string {
   return String(value ?? '')
     .trim()
     .toLowerCase();
 }
 
-function toComparableValue(value: unknown): unknown {
+export function toComparableValue(value: unknown): unknown {
   if (value == null) return null;
   if (value instanceof Date) return value.getTime();
   if (typeof value === 'boolean') return value ? 1 : 0;
@@ -69,7 +69,7 @@ function toComparableValue(value: unknown): unknown {
   return String(value).toLowerCase();
 }
 
-function parseSortSpecs(orderBy: any): SortSpec[] {
+export function parseSortSpecs(orderBy: any): SortSpec[] {
   if (!orderBy) return [];
   const rawList = Array.isArray(orderBy) ? orderBy : [orderBy];
   const specs: SortSpec[] = [];
@@ -88,7 +88,7 @@ function parseSortSpecs(orderBy: any): SortSpec[] {
   return specs;
 }
 
-function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortSpec[]): number {
+export function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortSpec[]): number {
   for (const spec of specs) {
     const av = toComparableValue((a as any)?.[spec.field]);
     const bv = toComparableValue((b as any)?.[spec.field]);
@@ -105,7 +105,7 @@ function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortS
   return 0;
 }
 
-function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
+export function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
   if (Object.prototype.hasOwnProperty.call(source, 'withDeleted')) {
     target.withDeleted = !!(source as any).withDeleted;
   }
@@ -114,7 +114,7 @@ function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<
   }
 }
 
-function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
+export function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
   supported: boolean;
   orderBy: GroupSortSpec[];
   aggregateFields: Array<{ field: string; agg: 'max'; alias: string }>;
@@ -163,7 +163,7 @@ function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
   };
 }
 
-function extractGroupedModuleNames(rows: any[]): string[] {
+export function extractGroupedModuleNames(rows: any[]): string[] {
   const out: string[] = [];
   for (const row of rows || []) {
     const moduleName = String((row as any)?.ModuleName ?? (row as any)?.module_name ?? '').trim();
@@ -173,7 +173,7 @@ function extractGroupedModuleNames(rows: any[]): string[] {
   return out;
 }
 
-function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): any {
+export function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): any {
   if (!Array.isArray(moduleNames) || moduleNames.length === 0) {
     return ['Id', '=', '__never_match__'] as any;
   }
@@ -188,7 +188,7 @@ function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): a
   } as any;
 }
 
-function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
+export function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
   if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
   const blockedFields = new Set(['__proto__', 'constructor', 'prototype']);
   const fields = Array.from(new Set(requestedFields.map(field => String(field || '').trim()).filter(field => !!field && !blockedFields.has(field))));
@@ -203,7 +203,7 @@ function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): Mo
   });
 }
 
-function toPlainRecord(input: any): ModuleIndexRecord {
+export function toPlainRecord(input: any): ModuleIndexRecord {
   if (!input || typeof input !== 'object') return {};
   if (typeof input.toPlainObject === 'function') {
     try {
@@ -219,7 +219,7 @@ function toPlainRecord(input: any): ModuleIndexRecord {
   return out as ModuleIndexRecord;
 }
 
-function pickNewestTimestamp(values: Array<Date | string | null | undefined>): Date | string | null | undefined {
+export function pickNewestTimestamp(values: Array<Date | string | null | undefined>): Date | string | null | undefined {
   let picked: Date | string | null | undefined;
   let pickedTs = -Infinity;
   for (const value of values) {
@@ -237,7 +237,7 @@ function pickNewestTimestamp(values: Array<Date | string | null | undefined>): D
   return picked;
 }
 
-function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
+export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   const byModule = new Map<string, ModuleIndexRecord[]>();
   for (const raw of rows) {
     const moduleName = String(raw?.ModuleName || '').trim();
@@ -299,7 +299,7 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   return merged;
 }
 
-function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
+export function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
   const raw = String(value || '')
     .trim()
     .toLowerCase();
@@ -310,7 +310,7 @@ function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
   return '';
 }
 
-function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {
+export function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {
   if (requested === 'all') return running === 'all';
   if (running === 'all') return true;
   return running === requested;
