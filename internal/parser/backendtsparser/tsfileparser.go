@@ -232,6 +232,9 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		return nil, nil, nil, xfmt.Errorf("orphan behavior decorator binding for unknown field: %s", bindingField)
 	}
 	for _, field := range model.Fields {
+		if field == nil {
+			continue
+		}
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]
 		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics)
