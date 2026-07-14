@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../../orm/model/model';
-import { Field } from '../../orm/decorator/field';
 import { MetadataStorage } from '../../orm/metadata/storage';
 import { resolveInstanceHandler, createEntityBackedModelInstance } from './handler_runtime';
 
