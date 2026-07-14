@@ -24,6 +24,20 @@ test('bridge contexts isolate payloads across concurrent calls', async () => {
   expect(right).toBe('second');
 });
 
+test('bridge context supports thenables without finally', async () => {
+  const instance = {};
+
+  const result = withBridgeFrame(instance, 'search', { token: 'thenable' }, () => ({
+    then(resolve: (value: string) => void) {
+      resolve('ok');
+    },
+  }));
+
+  const settled = await Promise.resolve(result);
+  expect(settled).toBe('ok');
+  expect(() => currentBridgeFrame(instance, 'search')).toThrow('BRIDGE_CONTEXT_EXPIRED');
+});
+
 test('bridge context expires after execution returns', () => {
   const instance = {};
 

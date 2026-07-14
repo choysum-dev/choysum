@@ -152,9 +152,9 @@ export function withBridgeFrame<TPayload, TResult>(instance: object, kind: Bridg
   try {
     const result = run();
     if (isPromiseLike(result)) {
-      return result.finally(() => {
+      return Promise.resolve(result).finally(() => {
         exitBridgeFrame(frame);
-      }) as TResult;
+      }) as unknown as TResult;
     }
 
     exitBridgeFrame(frame);

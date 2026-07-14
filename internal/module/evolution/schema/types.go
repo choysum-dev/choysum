@@ -167,6 +167,39 @@ func isJSFunctionDefaultLiteral(value string) bool {
 	return false
 }
 
+func isQuotedStringLiteral(value string) bool {
+	return (strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'")) ||
+		(strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"")) ||
+		(strings.HasPrefix(value, "`") && strings.HasSuffix(value, "`"))
+}
+
+func isKnownSQLDefaultKeyword(value string) bool {
+	switch strings.ToUpper(strings.TrimSpace(value)) {
+	case "NULL", "CURRENT_TIMESTAMP", "CURRENT_DATE", "CURRENT_TIME", "TRUE", "FALSE":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeDefaultStringLiteral(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return ""
+	}
+	if isQuotedStringLiteral(trimmed) {
+		return trimmed
+	}
+	if isKnownSQLDefaultKeyword(trimmed) {
+		return trimmed
+	}
+	if strings.ContainsAny(trimmed, "()") {
+		return trimmed
+	}
+	escaped := strings.ReplaceAll(trimmed, "'", "''")
+	return "'" + escaped + "'"
+}
+
 // addStandardTags appends standard gorm tags.
 func addStandardTags(tags *[]string, meta map[string]interface{}) {
 	// Primary key
@@ -225,6 +258,7 @@ func addStandardTags(tags *[]string, meta map[string]interface{}) {
 		case string:
 			trimmed := strings.TrimSpace(val)
 			if trimmed != "" && !isJSFunctionDefaultLiteral(trimmed) {
+				trimmed = normalizeDefaultStringLiteral(trimmed)
 				*tags = append(*tags, fmt.Sprintf("default:%s", trimmed))
 			}
 		case bool, int, int32, int64, uint, uint32, uint64, float32, float64:

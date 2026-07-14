@@ -70,7 +70,7 @@ func TestTypeHelpers(t *testing.T) {
 	addStandardTags(&defaultLiteralTags, map[string]interface{}{
 		"default": "active",
 	})
-	if !strings.Contains(strings.Join(defaultLiteralTags, ";"), "default:active") {
+	if !strings.Contains(strings.Join(defaultLiteralTags, ";"), "default:'active'") {
 		t.Fatalf("expected scalar default tag, got %q", strings.Join(defaultLiteralTags, ";"))
 	}
 
@@ -94,8 +94,32 @@ func TestTypeHelpers(t *testing.T) {
 	addStandardTags(&nonFunctionWordTags, map[string]interface{}{
 		"default": "text with function keyword",
 	})
-	if !strings.Contains(strings.Join(nonFunctionWordTags, ";"), "default:text with function keyword") {
+	if !strings.Contains(strings.Join(nonFunctionWordTags, ";"), "default:'text with function keyword'") {
 		t.Fatalf("expected scalar default tag, got %q", strings.Join(nonFunctionWordTags, ";"))
+	}
+
+	sqlKeywordDefaultTags := []string{}
+	addStandardTags(&sqlKeywordDefaultTags, map[string]interface{}{
+		"default": "NULL",
+	})
+	if !strings.Contains(strings.Join(sqlKeywordDefaultTags, ";"), "default:NULL") {
+		t.Fatalf("expected SQL keyword default tag, got %q", strings.Join(sqlKeywordDefaultTags, ";"))
+	}
+
+	sqlFunctionDefaultTags := []string{}
+	addStandardTags(&sqlFunctionDefaultTags, map[string]interface{}{
+		"default": "uuid_generate_v4()",
+	})
+	if !strings.Contains(strings.Join(sqlFunctionDefaultTags, ";"), "default:uuid_generate_v4()") {
+		t.Fatalf("expected SQL function default tag, got %q", strings.Join(sqlFunctionDefaultTags, ";"))
+	}
+
+	escapedQuoteDefaultTags := []string{}
+	addStandardTags(&escapedQuoteDefaultTags, map[string]interface{}{
+		"default": "O'Reilly",
+	})
+	if !strings.Contains(strings.Join(escapedQuoteDefaultTags, ";"), "default:'O''Reilly'") {
+		t.Fatalf("expected escaped scalar default tag, got %q", strings.Join(escapedQuoteDefaultTags, ";"))
 	}
 
 	// A => B (unquoted, contains =>): treated as arrow function, no default: tag.
