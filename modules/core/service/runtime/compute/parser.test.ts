@@ -101,6 +101,48 @@ class ParseDepsMissingTarget extends BaseModel {
   BrokenRef?: any;
 }
 
+// ----- models for validateAutoInverseRelatedPath edge cases -----
+
+@Model('test.AutoInvLeafRelation')
+class AutoInvLeafRelation extends BaseModel {
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ParseDepsModel } })
+  PartnerId?: ParseDepsModel;
+}
+
+@Model('test.AutoInvVirtualRelatedTarget')
+class AutoInvVirtualRelatedTarget extends BaseModel {
+  @Field({
+    type: 'varchar', size: 64,
+    related: { store: false, path: 'SomeId.SomeField' },
+  } as any)
+  VirtualName?: string;
+}
+
+@Model('test.AutoInvLeafVirtualRelated')
+class AutoInvLeafVirtualRelated extends BaseModel {
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => AutoInvVirtualRelatedTarget } })
+  ParentId?: AutoInvVirtualRelatedTarget;
+}
+
+// Model with a compute handler on the leaf field
+@Model('test.AutoInvComputedLeafTarget')
+class AutoInvComputedLeafTarget extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  ComputedName?: string;
+
+  static computeHandlers = new Map([['ComputedName', () => 'computed']]);
+  static sqlComputeHandlers = new Map();
+}
+
+@Model('test.AutoInvComputedLeaf')
+class AutoInvComputedLeaf extends BaseModel {
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => AutoInvComputedLeafTarget } })
+  ParentId?: AutoInvComputedLeafTarget;
+}
+
 test('parseDeps classifies scalar, path, collection and collectionPath dependencies', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
 
@@ -302,4 +344,68 @@ test('validateAutoInverseRelatedPath rejects related roots with invalid relation
   } as any;
 
   expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'BrokenRef.Name')).toThrow('missing relation.targetModel');
+});
+
+test('validateAutoInverseRelatedPath rejects empty and whitespace-only paths', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', '')).toThrow('related.path is empty');
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', '   ')).toThrow('related.path is empty');
+});
+
+test('validateAutoInverseRelatedPath rejects when root field does not exist on model', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'NonExistent.Name')).toThrow('does not exist on model');
+});
+
+test('validateAutoInverseRelatedPath rejects when root is missing relation.targetModel', () => {
+  const meta = {
+    fullModelName: 'test.RootNoTarget',
+    fields: new Map([
+      ['Parent', { type: 'ManyToOne', relation: {} }],
+    ]),
+  } as any;
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'Parent.Name')).toThrow('missing relation.targetModel');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf does not exist on target model', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'CustomerId.NoSuchField')).toThrow('does not exist on model');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf is a relation type', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(AutoInvLeafRelation as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'PartnerId.CustomerId')).toThrow('must be a writable scalar field');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf is a virtual related field', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(AutoInvLeafVirtualRelated as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'ParentId.VirtualName')).toThrow('virtual related field');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf is a computed field', () => {
+  const leafMeta = MetadataStorage.instance.getModelMetadata(AutoInvComputedLeaf as any);
+  // Capture original target metadata before patching the storage.
+  const originalTargetMeta = MetadataStorage.instance.getModelMetadata(AutoInvComputedLeafTarget as any);
+
+  withPatchedModelMetadata(
+    (model: Function) => {
+      if (model === (AutoInvComputedLeafTarget as any)) {
+        return {
+          ...originalTargetMeta,
+          computeHandlers: new Map([['ComputedName', () => 'computed']]),
+          sqlComputeHandlers: new Map(),
+        };
+      }
+      return undefined; // fall back to original
+    },
+    () => {
+      expect(() => validateAutoInverseRelatedPath(leafMeta, 'F', 'ParentId.ComputedName')).toThrow('computed field');
+    }
+  );
 });
