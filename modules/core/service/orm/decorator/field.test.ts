@@ -275,6 +275,14 @@ test('Field decorator validates size/precision/scale constraints', () => {
   }).toThrow('scale is only supported');
 
   expect(() => {
+    class BadScaleFieldTypeModel extends BaseModel {
+      @Field({ type: 'varchar', scaleField: 'AmountScale' } as any)
+      Name!: string;
+    }
+    return BadScaleFieldTypeModel;
+  }).toThrow('scaleField is only supported on decimal fields');
+
+  expect(() => {
     class ScaleOverPrecisionModel extends BaseModel {
       @Field({ type: 'decimal', precision: 5, scale: 8 } as any)
       Amount!: string;

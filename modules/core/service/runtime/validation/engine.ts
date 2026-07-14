@@ -191,7 +191,7 @@ export class ValidationEngine {
       const sqlComputeHandler = ctx.metadata.sqlComputeHandlers?.get(field);
       const isVirtualComputeField = Boolean(ctx.metadata.computeGraph?.virtualComputeFields?.has(field));
       const writeToSelectOnlyField = (Boolean(sqlComputeHandler) && !meta.column) || computeHandler?.store === false || isVirtualComputeField;
-      const writeToComputedField = Boolean(computeHandler) || Boolean(sqlComputeHandler);
+      const writeToComputedField = Boolean(computeHandler) || Boolean(sqlComputeHandler) || Boolean(meta.column?.compute);
 
       if (shouldCheckWriteScope && writeToSelectOnlyField && !isWhitelistedOnCreate) {
         issues.push({

@@ -349,6 +349,54 @@ test('validation engine reports platform issues for create writes to select-only
   ]);
 });
 
+test('validation engine reports computed write issue when only legacy column.compute metadata is present', async () => {
+  const baseMeta = MetadataStorage.instance.getModelMetadata(PlatformReadonlyModel as any);
+  const fields = new Map(baseMeta.fields);
+  fields.set('LegacyComputed', {
+    name: 'LegacyComputed',
+    type: 'varchar',
+    column: {
+      compute: {
+        deps: ['Name'],
+      },
+    },
+  } as any);
+
+  const legacyMeta = {
+    ...baseMeta,
+    fields,
+    computeHandlers: new Map(),
+    sqlComputeHandlers: new Map(),
+  } as any;
+
+  const issues = await ValidationEngine.validate(
+    {
+      mode: 'update',
+      model: PlatformReadonlyModel as any,
+      metadata: legacyMeta,
+      current: { Id: '1', Name: 'Old Name' },
+      values: { LegacyComputed: 'X' },
+      changedFields: new Set(['LegacyComputed']),
+      repository: {} as any,
+      requestContext: {},
+    },
+    {
+      includeKernel: false,
+      includeConstraints: false,
+    }
+  );
+
+  expect(issues).toEqual([
+    {
+      scope: 'platform',
+      field: 'LegacyComputed',
+      code: 'platform_write_to_computed_field',
+      message: 'field "LegacyComputed" is computed and cannot be written directly',
+      severity: 'error',
+    },
+  ]);
+});
+
 test('validation engine allows create writes to select-only/computed fields via whitelist', async () => {
   const metadata = MetadataStorage.instance.getModelMetadata(PlatformValidationModel as any);
 

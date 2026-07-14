@@ -160,6 +160,25 @@ test('parseDeps fails fast when relation target metadata is missing', () => {
   expect(errorMessage.includes('missing relation.targetModel')).toBe(true);
 });
 
+test('parseDeps fails with domain error when relation.targetModel resolver returns invalid target', () => {
+  const meta = {
+    fullModelName: 'test.InvalidTargetModel',
+    fields: new Map([
+      [
+        'BrokenRef',
+        {
+          type: 'ManyToOne',
+          relation: {
+            targetModel: () => 'test.ParseDepsCustomer',
+          },
+        },
+      ],
+    ]),
+  } as any;
+
+  expect(() => parseDeps(meta, 'DisplayName', ['BrokenRef.Name'])).toThrow('missing relation.targetModel');
+});
+
 test('parseDeps rejects invalid dependency token kinds, empty dotted token and non-navigable roots', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
 
@@ -264,4 +283,23 @@ test('validateAutoInverseRelatedPath rejects non-whitelisted related path shapes
   expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId.Orders.Name')).toThrow('single-hop ManyToOne path');
   expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'Name.Code')).toThrow('must be ManyToOne');
   expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId[Name]')).toThrow('expression syntax');
+});
+
+test('validateAutoInverseRelatedPath rejects related roots with invalid relation.targetModel resolver results', () => {
+  const meta = {
+    fullModelName: 'test.InvalidTargetModel',
+    fields: new Map([
+      [
+        'BrokenRef',
+        {
+          type: 'ManyToOne',
+          relation: {
+            targetModel: () => 'test.ParseDepsCustomer',
+          },
+        },
+      ],
+    ]),
+  } as any;
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'BrokenRef.Name')).toThrow('missing relation.targetModel');
 });

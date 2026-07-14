@@ -282,6 +282,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       }
     }
 
+    if (optionBag.scaleField !== undefined && type !== 'decimal') {
+      throw new Error(`@Field(${name}) scaleField is only supported on decimal fields`);
+    }
+
     // Decimal option validation (DDL stays NUMERIC(38,18); scale metadata is validated here)
     if (type === 'decimal') {
       const branch = normalizedColumn;
