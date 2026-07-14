@@ -1202,7 +1202,7 @@ test('model read default argument branches: count/search/group with omitted opti
       },
       async search(condition: any) {
         searchCalls.push(condition);
-        return [{ Id: 'S-1', Name: 'row' }];
+        return [{ Id: 'S-1', Name: 'row', DisplayName: 'row' }];
       },
       async readGroup(options: any) {
         groupCalls.push(options);
