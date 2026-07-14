@@ -144,7 +144,11 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 			metaMap["notNull"] = true
 		}
 		if _, ok := metaMap["index"]; !ok {
-			metaMap["index"] = true
+			_, hasUniqueIndex := metaMap["uniqueIndex"]
+			_, hasUnique := metaMap["unique"]
+			if !hasUniqueIndex && !hasUnique {
+				metaMap["index"] = true
+			}
 		}
 	}
 	if typeStr == "ManyToManyRef" {

@@ -145,6 +145,16 @@ func TestModelMigratorFieldParsingAndStructTags(t *testing.T) {
 		t.Fatalf("unexpected ManyToOne meta: %#v", metaMap)
 	}
 
+	// ManyToOne with uniqueIndex should not also default an ordinary index.
+	manyToOneUniqueField := newFieldWithOptions(t, "UniqueOwnerId", `{"type":"ManyToOne","uniqueIndex":true,"relation":{"onDelete":"CASCADE"}}`)
+	manyToOneUniqueMeta, err := migrator.getResolvedFieldColumnMeta(manyToOneUniqueField)
+	if err != nil {
+		t.Fatalf("getResolvedFieldColumnMeta(ManyToOne+uniqueIndex) error = %v", err)
+	}
+	if manyToOneUniqueMeta["type"] != "char" || manyToOneUniqueMeta["index"] != nil || manyToOneUniqueMeta["uniqueIndex"] == nil {
+		t.Fatalf("expected ManyToOne uniqueIndex to suppress redundant index, got %#v", manyToOneUniqueMeta)
+	}
+
 	selectionField := newFieldWithOptions(t, "Status", `{"type":"selection"}`)
 	selectionMeta, err := migrator.getResolvedFieldColumnMeta(selectionField)
 	if err != nil {

@@ -169,6 +169,24 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 		}
 		spec.Structural.StorageHints.Scale = intPtrValue(v)
 	}
+	if v, ok := opts["unique"].(bool); ok {
+		if spec.Structural.StorageHints == nil {
+			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+		}
+		spec.Structural.StorageHints.Unique = boolPtrValue(v)
+	}
+	if v, ok := opts["uniqueIndex"]; ok {
+		if spec.Structural.StorageHints == nil {
+			spec.Structural.StorageHints = &meta.IrFieldStructuralStorageHints{}
+		}
+		switch val := v.(type) {
+		case bool:
+			spec.Structural.StorageHints.UniqueIndexEnabled = boolPtrValue(val)
+		case string:
+			trimmed := strings.TrimSpace(val)
+			spec.Structural.StorageHints.UniqueIndex = &trimmed
+		}
+	}
 
 	if col, ok := opts["column"].(map[string]any); ok {
 		hints := spec.Structural.StorageHints
