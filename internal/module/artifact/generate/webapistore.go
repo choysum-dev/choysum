@@ -69,8 +69,7 @@ func toStringPtr(value string) *string {
 	if value == "" {
 		return nil
 	}
-	v := value
-	return &v
+	return &value
 }
 
 func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
