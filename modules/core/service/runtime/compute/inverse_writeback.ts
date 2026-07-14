@@ -20,6 +20,10 @@ function modelLabel(meta: ModelMetadata): string {
   return String(meta.fullModelName || meta.modelName || meta.className || meta.type?.name || 'Unknown');
 }
 
+function isMergeableRecord(value: unknown): value is UnknownRecord {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
 function mergeDeep(target: UnknownRecord, patch: UnknownRecord): void {
   for (const [key, nextVal] of Object.entries(patch)) {
     if (isForbiddenPathSegment(key)) {
@@ -28,7 +32,9 @@ function mergeDeep(target: UnknownRecord, patch: UnknownRecord): void {
 
     const current = asObjectRecord(target[key]);
     const nextRecord = asObjectRecord(nextVal);
-    if (current && nextRecord) {
+    const canMergeCurrent = isMergeableRecord(current);
+    const canMergeNext = isMergeableRecord(nextRecord);
+    if (canMergeCurrent && canMergeNext) {
       mergeDeep(current, nextRecord);
       target[key] = current;
       continue;

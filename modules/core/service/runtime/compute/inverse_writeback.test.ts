@@ -47,6 +47,27 @@ class InverseManualModel extends BaseModel {
   }
 }
 
+@Model('test.InverseArrayPatchModel')
+class InverseArrayPatchModel extends BaseModel {
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
+  PartnerId?: InverseTargetModel;
+
+  @Field({
+    type: 'varchar',
+    related: {
+      path: 'PartnerId.Name',
+      store: true,
+    },
+  } as any)
+  override DisplayName!: string;
+
+  @Inverse<InverseArrayPatchModel>('DisplayName')
+  inverseDisplayName() {
+    const ctx = this.$inverse as any;
+    ctx.writePath('PartnerId.Tags', ['c']);
+  }
+}
+
 @Model('test.InversePoisonPatchModel')
 class InversePoisonPatchModel extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
@@ -94,6 +115,23 @@ test('inverse writeback executes explicit @Inverse handler and removes source fi
     Other: 1,
     PartnerId: {
       Name: 'Bob',
+    },
+  });
+});
+
+test('inverse writeback overwrites array nodes instead of merging by index', async () => {
+  const meta = MetadataStorage.instance.getModelMetadata(InverseArrayPatchModel as any);
+
+  const rewritten = await applyInverseWriteback(meta, {
+    DisplayName: 'Patch',
+    PartnerId: {
+      Tags: ['a', 'b'],
+    },
+  });
+
+  expect(rewritten).toEqual({
+    PartnerId: {
+      Tags: ['c'],
     },
   });
 });
