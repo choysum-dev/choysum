@@ -66,12 +66,12 @@ export interface CreateOnchangeOptions {
 
 /* ============================= Helper functions ============================= */
 
-function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
+export function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
   if (!meta) return false;
   return isRelationFieldType(meta.type);
 }
 
-function normalizeDiffRelation(type: string | undefined): RelationType | undefined {
+export function normalizeDiffRelation(type: string | undefined): RelationType | undefined {
   switch (String(type || '').toLowerCase()) {
     case 'manytoone':
     case 'manytooneref':
@@ -88,12 +88,15 @@ function normalizeDiffRelation(type: string | undefined): RelationType | undefin
 
 type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
 
-const diffFieldsMetaCache = new WeakMap<WebModelStore<any>, {
-  source: Record<string, FieldMetadata | undefined>;
-  normalized: DiffFieldsMeta;
-}>();
+const diffFieldsMetaCache = new WeakMap<
+  WebModelStore<any>,
+  {
+    source: Record<string, FieldMetadata | undefined>;
+    normalized: DiffFieldsMeta;
+  }
+>();
 
-function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
+export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
   const raw = ((store as any).fieldsMetadata || {}) as Record<string, FieldMetadata | undefined>;
   const cached = diffFieldsMetaCache.get(store);
   if (cached && cached.source === raw) {
@@ -114,7 +117,7 @@ function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
   return normalized;
 }
 
-function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
+export function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
   const rel = new Set<string>();
   const fields: Record<string, FieldMetadata | undefined> = store.fieldsMetadata || {};
   for (const [fieldName, meta] of Object.entries(fields)) {
@@ -123,7 +126,7 @@ function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
   return rel;
 }
 
-function relationAwareMinimize(paths: string[], store: WebModelStore<any>, collapseRelationChildren: boolean): string[] {
+export function relationAwareMinimize(paths: string[], store: WebModelStore<any>, collapseRelationChildren: boolean): string[] {
   if (!paths.length) return [];
   const relationFields = collapseRelationChildren ? buildRelationFieldSet(store) : new Set<string>();
 
@@ -158,7 +161,7 @@ function relationAwareMinimize(paths: string[], store: WebModelStore<any>, colla
 /**
  * Adds top-level relation roots even when collapsed diffs did not detect them.
  */
-function augmentCollapsedWithRelationRoots(target: Set<string>, fullLeafPaths: Set<string>) {
+export function augmentCollapsedWithRelationRoots(target: Set<string>, fullLeafPaths: Set<string>) {
   if (!fullLeafPaths.size) return;
   for (const leaf of fullLeafPaths) {
     if (!leaf || !leaf.includes('.')) continue;
@@ -167,17 +170,17 @@ function augmentCollapsedWithRelationRoots(target: Set<string>, fullLeafPaths: S
   }
 }
 
-function isIndexSeg(seg: string) {
+export function isIndexSeg(seg: string) {
   return /^\d+$/.test(seg);
 }
 
 // Normalize array-index syntax, for example Lines[0].Qty -> Lines.0.Qty.
-function normalizeArrayIndexInPath(path: string): string {
+export function normalizeArrayIndexInPath(path: string): string {
   return path ? path.replace(/\[(\d+)\]/g, '.$1') : path;
 }
 
 // Extract the raw collection root from a selector path by removing (...) or [...].
-function extractBaseRoot(path: string): string {
+export function extractBaseRoot(path: string): string {
   const head = (path.split('.')[0] || '').trim();
   const m = head.match(/^([A-Za-z_][A-Za-z0-9_]*)/);
   return m ? m[1] : head;
@@ -188,7 +191,7 @@ function extractBaseRoot(path: string): string {
  * For example: Lines.1.UnitPrice => Lines.UnitPrice
  *              Lines.1.Batches.0.Qty => Lines.Batches.Qty
  */
-function toOneHopFieldSignal(leafPath: string): string | null {
+export function toOneHopFieldSignal(leafPath: string): string | null {
   if (!leafPath || !leafPath.includes('.')) return null;
   const segs = leafPath.split('.').filter(Boolean);
   if (segs.length < 2) return null;
@@ -205,7 +208,7 @@ function toOneHopFieldSignal(leafPath: string): string | null {
  * For example: Lines.1.UnitPrice => ['Lines']
  *              Lines.1.Batches.0.Qty => ['Lines', 'Lines.Batches']
  */
-function collectAncestorCollectionRoots(leafPath: string): string[] {
+export function collectAncestorCollectionRoots(leafPath: string): string[] {
   const out: string[] = [];
   if (!leafPath) return out;
   const segs = leafPath.split('.').filter(Boolean);
@@ -223,7 +226,7 @@ function collectAncestorCollectionRoots(leafPath: string): string[] {
 }
 
 // Slim reference-like values only for the currently changed fields.
-function slimRelationRefsForChanged(draft: any, changed: string[], fieldsMeta?: Record<string, FieldMetadata | undefined>): any {
+export function slimRelationRefsForChanged(draft: any, changed: string[], fieldsMeta?: Record<string, FieldMetadata | undefined>): any {
   if (!draft || !changed?.length) return draft;
 
   const out = deepClone(draft);
@@ -316,7 +319,7 @@ function slimRelationRefsForChanged(draft: any, changed: string[], fieldsMeta?: 
 }
 
 /** Returns the array at a path whose final segment names the collection, or null on failure. */
-function getArrayAtPath(root: any, pathKey: string): any[] | null {
+export function getArrayAtPath(root: any, pathKey: string): any[] | null {
   const segs = pathKey.split('.').filter(Boolean);
   if (!segs.length) return null;
   let node: any = root;
@@ -332,7 +335,7 @@ function getArrayAtPath(root: any, pathKey: string): any[] | null {
   return null;
 }
 
-function findIndexById(arr: any[], id: any): number {
+export function findIndexById(arr: any[], id: any): number {
   if (!Array.isArray(arr)) return -1;
   const sid = String(id);
   for (let i = 0; i < arr.length; i++) {
@@ -346,7 +349,7 @@ function findIndexById(arr: any[], id: any): number {
  * Recursively finds an array row by Id across nested collections.
  * Segments may look like ['Lines'] or ['Lines', 'Batches'].
  */
-function deepFindById(root: any, segments: string[], targetId: any): { arr: any[]; idx: number } | null {
+export function deepFindById(root: any, segments: string[], targetId: any): { arr: any[]; idx: number } | null {
   if (!segments.length) return null;
   const sid = String(targetId);
 
@@ -371,7 +374,7 @@ function deepFindById(root: any, segments: string[], targetId: any): { arr: any[
   return scanLevel(root, 0);
 }
 
-function applyRowPatchToArray(arr: any[], idx: number, patch: Record<string, any>) {
+export function applyRowPatchToArray(arr: any[], idx: number, patch: Record<string, any>) {
   if (!Array.isArray(arr) || idx < 0 || idx >= arr.length) return;
   for (const [k, v] of Object.entries(patch)) {
     if (k === 'Id' || k === 'id' || k === 'pos' || k === 'ParentId' || k === 'parentId' || k === 'parentPos' || k === 'ParentPos') continue;
@@ -383,7 +386,7 @@ function applyRowPatchToArray(arr: any[], idx: number, patch: Record<string, any
  * Converts a leaf path such as Lines.0.UnitPrice into selector syntax.
  * Supports nested collection paths.
  */
-function toSelectorPath(rootObj: any, leafPath: string): string | null {
+export function toSelectorPath(rootObj: any, leafPath: string): string | null {
   if (!leafPath || !leafPath.includes('.')) return null;
   const segs = leafPath.split('.').filter(Boolean);
   let obj = rootObj;
@@ -425,7 +428,7 @@ function toSelectorPath(rootObj: any, leafPath: string): string | null {
  * Detects whether a top-level relation changed structurally.
  * Structural changes include different lengths or different Id sequences.
  */
-function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any, current: any, store: WebModelStore<any>): Set<string> {
+export function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any, current: any, store: WebModelStore<any>): Set<string> {
   const structural = new Set<string>();
   if (!collapsed.size) return structural;
   const meta = (store as any).fieldsMetadata || {};
