@@ -186,9 +186,14 @@ test('inverse writeback throws when related.store=false without explicit handler
     ]),
   } as any;
 
-  await expect(applyInverseWriteback(meta, { DisplayName: 'Test' })).rejects.toThrow(
-    'related.store=false and cannot be written'
-  );
+  let message = '';
+  try {
+    await applyInverseWriteback(meta, { DisplayName: 'Test' });
+  } catch (error) {
+    message = String((error as Error)?.message || error);
+  }
+
+  expect(message.includes('related.store=false and cannot be written')).toBe(true);
 });
 
 test('inverse writeback skips compute-field writes without related when no handler', async () => {

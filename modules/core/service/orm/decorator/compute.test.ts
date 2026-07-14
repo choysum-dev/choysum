@@ -81,7 +81,13 @@ test('@Compute deduplicates deps', () => {
     @Field({ type: 'varchar', size: 64 } as any)
     Name?: string;
 
-    @Compute<ComputeDedupModel>('Name', { deps: ['Id', 'DisplayName', 'Id', 'DisplayName'] })
+    @Field({ type: 'varchar' } as any)
+    FirstName?: string;
+
+    @Field({ type: 'varchar' } as any)
+    LastName?: string;
+
+    @Compute<ComputeDedupModel>('Name', { deps: ['FirstName', 'LastName', 'FirstName', 'LastName'] })
     computeName() {
       return undefined;
     }
@@ -90,5 +96,5 @@ test('@Compute deduplicates deps', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ComputeDedupModel as any);
   const handler = meta.computeHandlers?.get('Name') as any;
 
-  expect(handler.deps).toEqual(['Id', 'DisplayName']);
+  expect(handler.deps).toEqual(['FirstName', 'LastName']);
 });

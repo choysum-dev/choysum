@@ -131,7 +131,8 @@ test('createEntityBackedModelInstance ownKeys merges entity and target keys', ()
   const keys = Reflect.ownKeys(instance as any);
   expect(keys).toContain('Name');
   expect(keys).toContain('Age');
-  expect(keys).toContain('protoMethod');
+  // ownKeys should not include inherited prototype methods.
+  expect(keys).not.toContain('protoMethod');
 });
 
 test('createEntityBackedModelInstance getOwnPropertyDescriptor returns entity descriptor', () => {
