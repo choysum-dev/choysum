@@ -165,6 +165,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            .github/workflows/prepare-go-package.yml
 
       - name: Setup Node
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}

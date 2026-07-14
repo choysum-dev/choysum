@@ -124,6 +124,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+          cache-dependency-path: |
+            go.sum
+            .github/workflows/prepare-go-package.yml
 
       - name: Setup Node
         uses: actions/setup-node@v6
