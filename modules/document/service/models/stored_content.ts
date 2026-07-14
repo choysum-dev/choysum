@@ -24,20 +24,20 @@ export default class StoredContent extends BaseModel {
       { value: 'db', label: 'db' },
       { value: 's3', label: 's3' },
     ],
-    column: { size: 16, notNull: true, index: true },
+    size: 16, notNull: true, index: true,
   })
   Provider: AttachmentBackend;
 
   /**
    * Backend-specific locator metadata for external payload stores.
    */
-  @Field({ type: 'jsonobject', column: { notNull: false } })
+  @Field({ type: 'jsonobject', notNull: false})
   LocatorJson?: Record<string, unknown>;
 
   /**
    * Inline blob storage used when the provider is database-backed.
    */
-  @Field({ type: 'binary', column: { notNull: false } })
+  @Field({ type: 'binary', notNull: false})
   BlobData?: string;
 
   /**
@@ -49,14 +49,14 @@ export default class StoredContent extends BaseModel {
       { value: 'active', label: 'active' },
       { value: 'deleted', label: 'deleted' },
     ],
-    column: { size: 16, notNull: true, default: () => 'active', index: true },
+    size: 16, notNull: true, default: () => 'active', index: true,
   })
   Status: StoredContentStatus;
 
   /**
    * Company that owns the stored payload.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   /**

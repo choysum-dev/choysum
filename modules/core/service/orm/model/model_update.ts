@@ -20,6 +20,7 @@ import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_h
 import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { createServiceByModel } from '../../rpc';
+import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
 
 type AttachmentDownloadDisposition = 'inline' | 'attachment';
 type AttachmentWriteAction =
@@ -310,12 +311,19 @@ export class UpdateOperations {
     const ownerModel = resolveOwnerModelName(meta);
     const repository = UpdateOperations.resolveRepository(ModelCtor, options);
 
+    // 0) Rewrite behavior-field assignments through inverse handlers before raw write planning.
+    values = (await applyInverseWriteback(meta, values as UnknownRecord)) as Partial<Updateable<T>>;
+
     // 1) Strip compute fields so callers cannot write compute fields directly.
     if (meta.computeGraph?.computeFields?.size) {
       const cleaned: UnknownRecord = { ...(values as UnknownRecord) };
+      const virtualComputeFields = meta.computeGraph?.virtualComputeFields || new Set<string>();
       let removed = 0;
       meta.computeGraph.computeFields.forEach((f: string) => {
         if (f in cleaned) {
+          const handler = meta.computeHandlers?.get(f);
+          const isVirtual = virtualComputeFields.has(f) || handler?.store === false;
+          if (isVirtual) return;
           delete cleaned[f];
           removed++;
         }
@@ -387,7 +395,7 @@ export class UpdateOperations {
       set.add(fieldName);
       const fm = meta.fields.get(fieldName);
       if (fm?.type === 'decimal') {
-        const scaleField = getScaleFieldName(fm.column || fm.select || {});
+        const scaleField = getScaleFieldName(fm.column || {});
         if (scaleField) {
           set.add(scaleField);
         }
@@ -438,7 +446,7 @@ export class UpdateOperations {
         fieldSet.forEach(fieldName => {
           const fm = meta.fields.get(fieldName);
           if (fm?.type !== 'decimal') return;
-          const scaleField = getScaleFieldName(fm.column || fm.select || {});
+          const scaleField = getScaleFieldName(fm.column || {});
           if (scaleField) {
             if (source[scaleField] !== undefined && !(scaleField in target)) {
               target[scaleField] = source[scaleField];

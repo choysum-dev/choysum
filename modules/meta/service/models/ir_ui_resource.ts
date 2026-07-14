@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model, SqlCompute } from '@/core/service';
 import { sql } from 'kysely';
 import IrApplication from './ir_application';
 import IrModule from './ir_module';
@@ -43,239 +43,243 @@ type EffectiveUiResourceDeclarationOptions = {
   offset?: number;
 };
 
+type IrUiResourceComputeDeps = IrUiResource & Record<'ParentId.ParentPath', unknown>;
+
 @Model('IrUiResource', {
   tableName: 'meta_ir_ui_resource',
   parentField: 'ParentId',
   autoMigrate: false,
 })
 export default class IrUiResource extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true, unique: true, index: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true, unique: true, index: true })
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 16, notNull: true } })
+  @Field({ type: 'varchar', size: 16, notNull: true })
   Type!: UiResourceType;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Title?: string;
 
-  @Field({ type: 'int', column: { default: 0 } })
+  @Field({ type: 'int', default: 0 })
   Sequence?: number;
 
   @Field({ type: 'jsonobject' })
   Requires?: string[] | null;
 
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true })
   Module?: string;
 
-  @Field({ type: 'varchar', column: { size: 1024, index: true } })
+  @Field({ type: 'varchar', size: 1024, index: true })
   Path?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, column: { notNull: false, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, notNull: false, index: true })
   ParentId?: IrUiResource;
 
   @Field({
     type: 'varchar',
-    column: {
-      size: 1000,
-      index: true,
-      compute: {
-        expr: (self: IrUiResource) => {
-          const id = String((self as any)?.Id || '').trim();
-          if (!id) return null;
-          if (String((self as any)?.Type || '').trim() !== 'MENU') return null;
-
-          const parentRef = (self as any)?.ParentId;
-          const parentPath = parentRef && typeof parentRef === 'object' ? String((parentRef as any).ParentPath || '') : '';
-          if (parentPath && parentPath.includes(`${id}/`)) {
-            throw new Error(`Cycle detected: ${id} cannot be assigned under one of its descendants`);
-          }
-
-          return `${parentPath}${id}/`;
-        },
-        deps: ['Id', 'Type', 'ParentId', 'ParentId.ParentPath'],
-      },
-    },
+    size: 1000,
+    indexed: true,
   })
   readonly ParentPath?: string | null;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Compute<IrUiResourceComputeDeps>('ParentPath', {
+    deps: ['Id', 'Type', 'ParentId', 'ParentId.ParentPath'],
+  })
+  computeParentPath() {
+    const id = String(this.Id || '').trim();
+    if (!id) return null;
+    if (String(this.Type || '').trim() !== 'MENU') return null;
+
+    const parentRef = this.ParentId;
+    const parentPath = parentRef ? String(parentRef.ParentPath || '') : '';
+    if (parentPath && parentPath.includes(`${id}/`)) {
+      throw new Error(`Cycle detected: ${id} cannot be assigned under one of its descendants`);
+    }
+
+    return `${parentPath}${id}/`;
+  }
+
+  @Field({ type: 'varchar', size: 512 })
   UiPath?: string;
 
   @Field({ type: 'jsonobject' })
   DefaultRoles?: string[] | null;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, column: { notNull: false, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, notNull: false, index: true })
   IrApplicationId?: IrApplication;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, column: { notNull: false, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, notNull: false, index: true })
   ModuleId?: IrModule;
 
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => IrUiResource },
-    select: {
-      expr: ({ col }) => {
-        const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
-
-        if (dialect === 'sqlite') {
-          return sql<any>`
-            (
-              select coalesce(
-                json_group_array(json(child_row.payload)),
-                json('[]')
-              )
-              from (
-                select
-                  coalesce(c.sequence, 0) as seq,
-                  c.name as name,
-                  json_object(
-                    'Id', c.id,
-                    'Name', c.name,
-                    'Type', c.type,
-                    'Title', c.title,
-                    'Sequence', c.sequence,
-                    'Requires', json(c.requires),
-                    'Module', c.module,
-                    'Path', c.path,
-                    'ParentPath', c.parent_path,
-                    'UiPath', c.ui_path,
-                    'DefaultRoles', json(c.default_roles)
-                  ) as payload
-                from meta_ir_ui_resource c
-                where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                  and c.parent_id = ${col('meta_ir_ui_resource', 'Id')}
-
-                union all
-
-                select
-                  coalesce(r.sequence, 0) as seq,
-                  r.name as name,
-                  json_object(
-                    'Id', r.id,
-                    'Name', r.name,
-                    'Type', r.type,
-                    'Title', r.title,
-                    'Sequence', r.sequence,
-                    'Requires', json(r.requires),
-                    'Module', r.module,
-                    'Path', r.path,
-                    'ParentPath', r.parent_path,
-                    'UiPath', r.ui_path,
-                    'DefaultRoles', json(r.default_roles)
-                  ) as payload
-                from meta_ir_ui_resource_menu_route mr
-                join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
-                where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                  and mr.menu_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-
-                union all
-
-                select
-                  coalesce(a.sequence, 0) as seq,
-                  a.name as name,
-                  json_object(
-                    'Id', a.id,
-                    'Name', a.name,
-                    'Type', a.type,
-                    'Title', a.title,
-                    'Sequence', a.sequence,
-                    'Requires', json(a.requires),
-                    'Module', a.module,
-                    'Path', a.path,
-                    'ParentPath', a.parent_path,
-                    'UiPath', a.ui_path,
-                    'DefaultRoles', json(a.default_roles)
-                  ) as payload
-                from meta_ir_ui_resource_route_action ra
-                join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
-                where ${col('meta_ir_ui_resource', 'Type')} = 'ROUTE'
-                  and ra.route_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-
-                order by seq asc, name asc
-              ) as child_row
-            )
-          `;
-        }
-
-        return sql<any>`
-          (
-            select coalesce(
-              json_agg(child_row.payload order by child_row.seq asc, child_row.name asc),
-              '[]'::json
-            )
-            from (
-              select
-                coalesce(c.sequence, 0) as seq,
-                c.name as name,
-                json_build_object(
-                  'Id', c.id,
-                  'Name', c.name,
-                  'Type', c.type,
-                  'Title', c.title,
-                  'Sequence', c.sequence,
-                  'Requires', c.requires,
-                  'Module', c.module,
-                  'Path', c.path,
-                  'ParentPath', c.parent_path,
-                  'UiPath', c.ui_path,
-                  'DefaultRoles', c.default_roles
-                ) as payload
-              from meta_ir_ui_resource c
-              where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                and c.parent_id = ${col('meta_ir_ui_resource', 'Id')}
-
-              union all
-
-              select
-                coalesce(r.sequence, 0) as seq,
-                r.name as name,
-                json_build_object(
-                  'Id', r.id,
-                  'Name', r.name,
-                  'Type', r.type,
-                  'Title', r.title,
-                  'Sequence', r.sequence,
-                  'Requires', r.requires,
-                  'Module', r.module,
-                  'Path', r.path,
-                  'ParentPath', r.parent_path,
-                  'UiPath', r.ui_path,
-                  'DefaultRoles', r.default_roles
-                ) as payload
-              from meta_ir_ui_resource_menu_route mr
-              join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
-              where ${col('meta_ir_ui_resource', 'Type')} = 'MENU'
-                and mr.menu_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-
-              union all
-
-              select
-                coalesce(a.sequence, 0) as seq,
-                a.name as name,
-                json_build_object(
-                  'Id', a.id,
-                  'Name', a.name,
-                  'Type', a.type,
-                  'Title', a.title,
-                  'Sequence', a.sequence,
-                  'Requires', a.requires,
-                  'Module', a.module,
-                  'Path', a.path,
-                  'ParentPath', a.parent_path,
-                  'UiPath', a.ui_path,
-                  'DefaultRoles', a.default_roles
-                ) as payload
-              from meta_ir_ui_resource_route_action ra
-              join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
-              where ${col('meta_ir_ui_resource', 'Type')} = 'ROUTE'
-                and ra.route_ui_resource_id = ${col('meta_ir_ui_resource', 'Id')}
-            ) as child_row
-          )
-        `;
-      },
-    },
   })
   readonly Childs?: IrUiResource[];
+
+  @SqlCompute<IrUiResource>('Childs')
+  sqlChilds() {
+    const selfTypeRef = this.$sql.col('meta_ir_ui_resource', 'Type');
+    const selfIdRef = this.$sql.col('meta_ir_ui_resource', 'Id');
+
+    const dialect = String((globalThis as any)?.$choysum?.db?.dialectName || 'postgres').toLowerCase();
+
+    if (dialect === 'sqlite') {
+      return sql<any>`
+        (
+          select coalesce(
+            json_group_array(json(child_row.payload)),
+            json('[]')
+          )
+          from (
+            select
+              coalesce(c.sequence, 0) as seq,
+              c.name as name,
+              json_object(
+                'Id', c.id,
+                'Name', c.name,
+                'Type', c.type,
+                'Title', c.title,
+                'Sequence', c.sequence,
+                'Requires', json(c.requires),
+                'Module', c.module,
+                'Path', c.path,
+                'ParentPath', c.parent_path,
+                'UiPath', c.ui_path,
+                'DefaultRoles', json(c.default_roles)
+              ) as payload
+            from meta_ir_ui_resource c
+            where ${selfTypeRef} = 'MENU'
+              and c.parent_id = ${selfIdRef}
+
+            union all
+
+            select
+              coalesce(r.sequence, 0) as seq,
+              r.name as name,
+              json_object(
+                'Id', r.id,
+                'Name', r.name,
+                'Type', r.type,
+                'Title', r.title,
+                'Sequence', r.sequence,
+                'Requires', json(r.requires),
+                'Module', r.module,
+                'Path', r.path,
+                'ParentPath', r.parent_path,
+                'UiPath', r.ui_path,
+                'DefaultRoles', json(r.default_roles)
+              ) as payload
+            from meta_ir_ui_resource_menu_route mr
+            join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
+            where ${selfTypeRef} = 'MENU'
+              and mr.menu_ui_resource_id = ${selfIdRef}
+
+            union all
+
+            select
+              coalesce(a.sequence, 0) as seq,
+              a.name as name,
+              json_object(
+                'Id', a.id,
+                'Name', a.name,
+                'Type', a.type,
+                'Title', a.title,
+                'Sequence', a.sequence,
+                'Requires', json(a.requires),
+                'Module', a.module,
+                'Path', a.path,
+                'ParentPath', a.parent_path,
+                'UiPath', a.ui_path,
+                'DefaultRoles', json(a.default_roles)
+              ) as payload
+            from meta_ir_ui_resource_route_action ra
+            join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
+            where ${selfTypeRef} = 'ROUTE'
+              and ra.route_ui_resource_id = ${selfIdRef}
+
+            order by seq asc, name asc
+          ) as child_row
+        )
+      `;
+    }
+
+    return sql<any>`
+      (
+        select coalesce(
+          json_agg(child_row.payload order by child_row.seq asc, child_row.name asc),
+          '[]'::json
+        )
+        from (
+          select
+            coalesce(c.sequence, 0) as seq,
+            c.name as name,
+            json_build_object(
+              'Id', c.id,
+              'Name', c.name,
+              'Type', c.type,
+              'Title', c.title,
+              'Sequence', c.sequence,
+              'Requires', c.requires,
+              'Module', c.module,
+              'Path', c.path,
+              'ParentPath', c.parent_path,
+              'UiPath', c.ui_path,
+              'DefaultRoles', c.default_roles
+            ) as payload
+          from meta_ir_ui_resource c
+          where ${selfTypeRef} = 'MENU'
+            and c.parent_id = ${selfIdRef}
+
+          union all
+
+          select
+            coalesce(r.sequence, 0) as seq,
+            r.name as name,
+            json_build_object(
+              'Id', r.id,
+              'Name', r.name,
+              'Type', r.type,
+              'Title', r.title,
+              'Sequence', r.sequence,
+              'Requires', r.requires,
+              'Module', r.module,
+              'Path', r.path,
+              'ParentPath', r.parent_path,
+              'UiPath', r.ui_path,
+              'DefaultRoles', r.default_roles
+            ) as payload
+          from meta_ir_ui_resource_menu_route mr
+          join meta_ir_ui_resource r on r.id = mr.route_ui_resource_id
+          where ${selfTypeRef} = 'MENU'
+            and mr.menu_ui_resource_id = ${selfIdRef}
+
+          union all
+
+          select
+            coalesce(a.sequence, 0) as seq,
+            a.name as name,
+            json_build_object(
+              'Id', a.id,
+              'Name', a.name,
+              'Type', a.type,
+              'Title', a.title,
+              'Sequence', a.sequence,
+              'Requires', a.requires,
+              'Module', a.module,
+              'Path', a.path,
+              'ParentPath', a.parent_path,
+              'UiPath', a.ui_path,
+              'DefaultRoles', a.default_roles
+            ) as payload
+          from meta_ir_ui_resource_route_action ra
+          join meta_ir_ui_resource a on a.id = ra.action_ui_resource_id
+          where ${selfTypeRef} = 'ROUTE'
+            and ra.route_ui_resource_id = ${selfIdRef}
+        ) as child_row
+      )
+    `;
+  }
 
   private static normalizeRequireToken(token: string): EffectiveUiResourceRequire | null {
     const raw = String(token || '').trim();

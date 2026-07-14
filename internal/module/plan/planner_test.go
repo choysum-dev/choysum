@@ -43,12 +43,12 @@ func TestBuildPlanValidationAndGuardErrors(t *testing.T) {
 		t.Fatalf("unexpected unknown op error: %v", err)
 	}
 
-	plan, err := BuildPlan(nil, OpUpgrade, root, fakeResolver{})
+	plan, err := BuildPlan(context.TODO(), OpUpgrade, root, fakeResolver{})
 	if err != nil {
-		t.Fatalf("BuildPlan(nil ctx) error: %v", err)
+		t.Fatalf("BuildPlan(context.TODO()) error: %v", err)
 	}
 	if len(plan.ModuleOrder) != 1 || plan.ModuleOrder[0] != "auth" {
-		t.Fatalf("unexpected module order with nil ctx: %v", plan.ModuleOrder)
+		t.Fatalf("unexpected module order with context.TODO(): %v", plan.ModuleOrder)
 	}
 }
 
@@ -282,9 +282,9 @@ func TestBuildPlan_UpgradeUsesRootOnly(t *testing.T) {
 func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 	root := &meta.IrModule{Name: "base", ApplicationStr: "base"}
 	modules := map[string]*meta.IrModule{
-		"base":     {Name: "base", ApplicationStr: "base", Dependents: []*meta.IrModule{{Name: "auth"}}},
-		"auth":     {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.IrModule{{Name: "auth_ext"}}},
-		"auth_ext": {Name: "auth_ext", ApplicationStr: "auth"},
+		"base":       {Name: "base", ApplicationStr: "base", Dependents: []*meta.IrModule{{Name: "auth"}}},
+		"auth":       {Name: "auth", ApplicationStr: "auth", Dependents: []*meta.IrModule{{Name: "auth_addon"}}},
+		"auth_addon": {Name: "auth_addon", ApplicationStr: "auth"},
 	}
 	r := fakeResolver{
 		peek: func(ctx context.Context, name string) (*meta.IrModule, error) { return nil, nil },
@@ -295,7 +295,7 @@ func TestBuildPlan_UninstallOrdersDependentsFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildPlan error: %v", err)
 	}
-	if len(plan.ModuleOrder) != 3 || plan.ModuleOrder[0] != "auth_ext" || plan.ModuleOrder[1] != "auth" || plan.ModuleOrder[2] != "base" {
+	if len(plan.ModuleOrder) != 3 || plan.ModuleOrder[0] != "auth_addon" || plan.ModuleOrder[1] != "auth" || plan.ModuleOrder[2] != "base" {
 		t.Fatalf("unexpected uninstall order: %v", plan.ModuleOrder)
 	}
 	if len(plan.AffectedApps) != 2 {
@@ -385,8 +385,8 @@ func TestWithBuildPlanProgressReporter_NilReporterReturnsSameCtx(t *testing.T) {
 	}
 }
 
-func TestWithBuildPlanProgressReporter_NilContextUsesBackground(t *testing.T) {
-	result := WithBuildPlanProgressReporter(nil, func(progress BuildPlanProgress) {})
+func TestWithBuildPlanProgressReporter_MissingContextUsesBackground(t *testing.T) {
+	result := WithBuildPlanProgressReporter(context.TODO(), func(progress BuildPlanProgress) {})
 	if result == nil {
 		t.Fatal("expected non-nil ctx when input ctx is nil")
 	}
@@ -396,8 +396,8 @@ func TestWithBuildPlanProgressReporter_NilContextUsesBackground(t *testing.T) {
 	}
 }
 
-func TestBuildPlanProgressReporterFromContext_NilContext(t *testing.T) {
-	reporter := BuildPlanProgressReporterFromContext(nil)
+func TestBuildPlanProgressReporterFromContext_MissingContext(t *testing.T) {
+	reporter := BuildPlanProgressReporterFromContext(context.TODO())
 	if reporter != nil {
 		t.Fatal("expected nil reporter from nil context")
 	}

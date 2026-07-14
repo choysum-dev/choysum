@@ -31,31 +31,31 @@ export type SequenceCleanupIdempotencyResult = { Deleted: number };
 
 @Model('Sequence', { companyScoped: true })
 export default class Sequence extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_sequence_scope_code' } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_sequence_scope_code'})
   Code: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
   CompanyId?: Company;
 
-  @Field({ type: 'varchar', column: { size: 20, notNull: true, default: () => '__GLOBAL__', index: true, uniqueIndex: 'uidx_base_sequence_scope_code' } })
+  @Field({ type: 'varchar', size: 20, notNull: true, default: () => '__GLOBAL__', index: true, uniqueIndex: 'uidx_base_sequence_scope_code'})
   CompanyScopeKey: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64})
   Prefix?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64})
   Suffix?: string;
 
-  @Field({ type: 'int', column: { notNull: true, default: () => 5 } })
+  @Field({ type: 'int', notNull: true, default: () => 5})
   Padding: number;
 
-  @Field({ type: 'bigint', column: { notNull: true, default: () => 1 } })
+  @Field({ type: 'bigint', notNull: true, default: () => 1})
   NextNumber: bigint;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   @Constraint<Sequence>(['Code', 'CompanyId'])

@@ -11,10 +11,10 @@ import { OnchangeEngine } from '../../runtime/onchange/engine';
 
 @Model('test.ModelOnchangePreviewCascadeOrder')
 class ModelOnchangePreviewCascadeOrder extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Status?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Total?: string;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => ModelOnchangePreviewCascadeLine, inverseField: 'OrderId' } })
@@ -23,13 +23,13 @@ class ModelOnchangePreviewCascadeOrder extends BaseModel {
 
 @Model('test.ModelOnchangePreviewCascadeLine')
 class ModelOnchangePreviewCascadeLine extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelOnchangePreviewCascadeOrder }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ModelOnchangePreviewCascadeOrder } })
   OrderId?: ModelOnchangePreviewCascadeOrder;
 
-  @Field({ type: 'int', column: {} })
+  @Field({ type: 'int' })
   Qty?: number;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Amount?: string;
 }
 

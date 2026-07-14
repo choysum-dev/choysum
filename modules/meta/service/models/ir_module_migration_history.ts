@@ -9,36 +9,36 @@ import { BaseModel, Field, Model } from '@/core/service';
   autoMigrate: false,
 })
 export default class IrModuleMigrationHistory extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, index: true, notNull: true})
   ModuleName: string;
 
-  @Field({ type: 'varchar', column: { size: 64, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 64, index: true, notNull: true})
   Version: string;
 
-  @Field({ type: 'varchar', column: { size: 16, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 16, index: true, notNull: true})
   Phase: string;
 
-  @Field({ type: 'varchar', column: { size: 255, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, index: true, notNull: true})
   Script: string;
 
-  @Field({ type: 'varchar', column: { size: 128 } })
+  @Field({ type: 'varchar', size: 128})
   Checksum: string;
 
-  @Field({ type: 'varchar', column: { size: 16, index: true } })
+  @Field({ type: 'varchar', size: 16, index: true})
   Status: string;
 
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   StartedAt: Date;
 
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   FinishedAt: Date;
 
   @Field({ type: 'text' })
   Error: string;
 
-  @Field({ type: 'varchar', column: { size: 64, index: true } })
+  @Field({ type: 'varchar', size: 64, index: true})
   TraceId: string;
 
-  @Field({ type: 'varchar', column: { size: 64, index: true } })
+  @Field({ type: 'varchar', size: 64, index: true})
   JobId: string;
 }

@@ -3,9 +3,11 @@
 
 import { Entity } from '../repository';
 import type { Repository } from '../repository';
-import { Field } from '../decorator';
+import { Field, SqlCompute } from '../decorator';
 import {
   QueryCondition,
+  BaseQueryCondition,
+  Operator,
   SearchOptions,
   Insertable,
   Updateable,
@@ -21,7 +23,7 @@ import {
   GroupBySpec,
 } from '../repository/types';
 import { EntityConverter } from '../utils/converter';
-import type { ModelCtor as MetadataModelCtor, OnchangeTrigger } from '../metadata/field';
+import type { ModelCtor, OnchangeTrigger, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../metadata/field';
 import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
@@ -58,12 +60,54 @@ import { defaultModelValues, runModelOnchange } from './model_runtime_service_fa
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { updateModels, updateModelById } from './model_update_service_facade';
+import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
 
 type BaseModelCtor<T extends BaseModel> = { new (factoryToken: Symbol, entity: Entity, fields?: unknown): T };
 type ModelLoadFieldSelection = FieldSelection<ObjectRecord>;
-type DisplayNameModelCtor = MetadataModelCtor<BaseModel>;
+
+export type SqlComputeCtx<TModel extends BaseModel = BaseModel> = {
+  field: {
+    (path: string): SelectExpressionValue;
+    <T extends BaseModel>(model: ModelCtor<T>, path: string): SelectExpressionValue;
+  };
+  fieldExist: {
+    (path: string): boolean;
+    <T extends BaseModel>(model: ModelCtor<T>, path: string): boolean;
+  };
+  model?: ModelCtor<TModel>;
+  str: {
+    concat: (...items: Array<SelectExpressionValue | string>) => SelectExpressionAtom;
+    concatWs?: (separator: string, ...items: Array<SelectExpressionValue | string>) => SelectExpressionAtom;
+    lower: (value: SelectExpressionValue | string) => SelectExpressionAtom;
+  };
+  col: (table: string, column: string) => SelectExpressionAtom;
+  selectFrom: (table: string) => SelectSubqueryBuilder;
+};
+
+export type SearchCtx<TModel extends BaseModel = BaseModel> = {
+  field: <K extends Extract<keyof TModel, string>>(name: K) => string;
+  op: () => Operator;
+  value: <V = unknown>() => V;
+  and: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
+  or: (clauses: BaseQueryCondition[]) => BaseQueryCondition;
+  cmp: (left: unknown, op: Operator, right: unknown) => BaseQueryCondition;
+  readonly dialect: string;
+};
+
+export type InverseCtx<TModel extends BaseModel = BaseModel> = {
+  value: <V = unknown>() => V;
+  writePath: (path: string, value: unknown) => void;
+  readPath: (path: string) => unknown;
+  record: TModel;
+};
+
+export type DecoratorRuntimeBridge<TModel extends BaseModel = BaseModel> = {
+  readonly $sql: SqlComputeCtx<TModel>;
+  readonly $search: SearchCtx<TModel>;
+  readonly $inverse: InverseCtx<TModel>;
+};
 
 /**
  * BaseModel exposes the caller-facing ORM facade shared by runtime models.
@@ -156,6 +200,27 @@ class BaseModel {
   }
 
   /**
+   * Bridge slot for @SqlCompute runtime context (wired in runtime phase).
+   */
+  get $sql(): SqlComputeCtx<this> {
+    return currentBridgeFrame<SqlComputeCtx<this>>(this, 'sql');
+  }
+
+  /**
+   * Bridge slot for @Search runtime context (wired in runtime phase).
+   */
+  get $search(): SearchCtx<this> {
+    return currentBridgeFrame<SearchCtx<this>>(this, 'search');
+  }
+
+  /**
+   * Bridge slot for @Inverse runtime context (wired in runtime phase).
+   */
+  get $inverse(): InverseCtx<this> {
+    return currentBridgeFrame<InverseCtx<this>>(this, 'inverse');
+  }
+
+  /**
    * Returns the current request user Id, throwing when no user identity
    * can be resolved.
    */
@@ -234,7 +299,7 @@ class BaseModel {
   /**
    * Primary key for the model instance.
    */
-  @Field({ type: 'char', column: { size: 20, primaryKey: true } })
+  @Field({ type: 'char', size: 20, primaryKey: true })
   public readonly Id: string;
 
   /**
@@ -242,38 +307,37 @@ class BaseModel {
    */
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ model, field, fieldExist }) => {
-        const dynamicModel = model as unknown as DisplayNameModelCtor;
-        if (fieldExist(dynamicModel, 'Name')) {
-          return field(dynamicModel, 'Name');
-        }
-        if (fieldExist(dynamicModel, 'Username')) {
-          return field(dynamicModel, 'Username');
-        }
-        return field(dynamicModel, 'Id');
-      },
-      size: 255,
-    },
+    size: 255,
   })
   public readonly DisplayName!: string;
+
+  @SqlCompute<BaseModel>('DisplayName')
+  sqlDisplayName() {
+    if (this.$sql.fieldExist('Name')) {
+      return this.$sql.field('Name');
+    }
+    if (this.$sql.fieldExist('Username')) {
+      return this.$sql.field('Username');
+    }
+    return this.$sql.field('Id');
+  }
 
   /**
    * Timestamp recorded when the record was created.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   public readonly CreatedAt: Date;
 
   /**
    * Timestamp recorded when the record was last updated.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   public UpdatedAt: Date;
 
   /**
    * Soft-delete timestamp for the record.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   public DeletedAt: Date;
 
   // The model_runtime layer stores the metadata cache on the constructor static.

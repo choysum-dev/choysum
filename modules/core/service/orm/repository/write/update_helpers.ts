@@ -16,6 +16,7 @@ import type {
   RepositorySelectFromDbLike,
   RepositoryWhereCapableLike,
 } from '../types';
+import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from '../query';
 import {
   applyRepositoryMutationWriteCondition,
   resolveRepositoryMutationWriteTargetIds,
@@ -71,9 +72,11 @@ export async function loadRepositoryUpdateValidationCurrentRows(
     const selections: unknown[] = [];
     for (const field of scalarFields) {
       const fieldMeta = params.meta.fields.get(field);
-      if (fieldMeta?.select) {
-        const selectExpr = fieldMeta.select.expr as (ctx: unknown) => unknown;
-        const expr = selectExpr(params.makeSelectCtx(builder, params.table, params.meta));
+      if (hasRepositorySqlComputeExpression(params.meta, field)) {
+        const expr = resolveRepositorySqlComputeExpression(params.meta, field, params.makeSelectCtx(builder, params.table, params.meta));
+        if (expr === undefined) {
+          throw new Error(`field sql compute handler is missing: ${params.meta.fullModelName || params.meta.modelName || params.meta.name}.${field}`);
+        }
         selections.push(params.aliasSelection(expr, field));
         continue;
       }

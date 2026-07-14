@@ -1036,31 +1036,6 @@ test('onchange engine invokes instanceNoArgs async handler and awaits its result
   expect(result.value).toEqual({ Total: 30 });
 });
 
-test('onchange engine calls legacyCtx-signature handler without ctx in end-state runtime', async () => {
-  const meta = createMeta({
-    fields: [
-      ['Name', { type: 'varchar' }],
-      ['Code', { type: 'varchar' }],
-    ],
-    // Even with legacyCtx signature, the end-state runtime calls handlers without ctx.
-    onchangeHandlers: [{ method: 'onName', triggers: ['Name'] }],
-  });
-
-  const draft: any = {
-    Name: 'A',
-    Code: '',
-    onName() {
-      // No ctx argument — works via this assignment only.
-      this.Code = 'via-this';
-    },
-  };
-
-  const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
-
-  expect(result.touchedHandlers).toEqual(['onName']);
-  expect(result.value).toEqual({ Code: 'via-this' });
-});
-
 test('onchange engine calls unset-signature handler without ctx in end-state runtime', async () => {
   const meta = createMeta({
     fields: [
@@ -1085,7 +1060,7 @@ test('onchange engine calls unset-signature handler without ctx in end-state run
   expect(result.value).toEqual({ Code: 'default-this' });
 });
 
-test('onchange engine runs mixed signature handlers in priority order', async () => {
+test('onchange engine runs multiple handlers in priority order', async () => {
   const meta = createMeta({
     fields: [
       ['A', { type: 'varchar' }],
@@ -1093,8 +1068,8 @@ test('onchange engine runs mixed signature handlers in priority order', async ()
       ['C', { type: 'varchar' }],
     ],
     onchangeHandlers: [
-      { method: 'onLegacy', triggers: ['A'], priority: 1 },
-      { method: 'onInstance', triggers: ['A'], priority: 2 },
+      { method: 'onFirst', triggers: ['A'], priority: 1 },
+      { method: 'onSecond', triggers: ['A'], priority: 2 },
     ],
   });
 
@@ -1104,21 +1079,21 @@ test('onchange engine runs mixed signature handlers in priority order', async ()
     A: 'start',
     B: '',
     C: '',
-    onLegacy() {
-      order.push('legacy');
-      this.B = 'legacy-ok';
+    onFirst() {
+      order.push('first');
+      this.B = 'first-ok';
     },
-    onInstance() {
-      order.push('instance');
-      this.C = 'instance-ok';
+    onSecond() {
+      order.push('second');
+      this.C = 'second-ok';
     },
   };
 
   const result = await OnchangeEngine.run(meta, draft, ['A'], { withCompute: false });
 
-  expect(order).toEqual(['legacy', 'instance']);
-  expect(result.touchedHandlers).toEqual(['onLegacy', 'onInstance']);
-  expect(result.value).toEqual({ B: 'legacy-ok', C: 'instance-ok' });
+  expect(order).toEqual(['first', 'second']);
+  expect(result.touchedHandlers).toEqual(['onFirst', 'onSecond']);
+  expect(result.value).toEqual({ B: 'first-ok', C: 'second-ok' });
 });
 
 test('onchange engine respects stopOnError for instanceNoArgs handler that throws', async () => {
@@ -1181,44 +1156,4 @@ test('onchange engine instanceNoArgs handler returns messages/condition/selectio
   expect(result.messages?.some(m => String(m.message || '').includes('instance-warn'))).toBe(true);
   expect(result.condition).toEqual([{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }]);
   expect(result.selection).toEqual([{ field: 'Code', selection: ['A', 'CHANGED'] }]);
-});
-
-test('onchange engine ignores legacyCtx signature and runs all handlers without ctx in end-state runtime', async () => {
-  // End-state behavior: all handlers run without ctx regardless of metadata signature.
-  const meta = createMeta({
-    fields: [
-      ['A', { type: 'varchar' }],
-      ['B', { type: 'varchar' }],
-    ],
-    onchangeHandlers: [
-      { method: 'onLegacy', triggers: ['A'], priority: 1 },
-      { method: 'onInstance', triggers: ['A'], priority: 2 },
-    ],
-  });
-
-  let legacyCalled = false;
-  let instanceCalled = false;
-
-  const draft: any = {
-    A: 'x',
-    B: '',
-    onLegacy() {
-      legacyCalled = true;
-      // This handler was originally legacyCtx; after migration it works
-      // via this-assignment and return side-effects.
-      this.B = 'legacy-migrated';
-    },
-    onInstance() {
-      instanceCalled = true;
-      return { messages: [{ level: 'info', message: 'instance-ok' }] };
-    },
-  };
-
-  const result = await OnchangeEngine.run(meta, draft, ['A'], { withCompute: false });
-
-  expect(legacyCalled).toBe(true);
-  expect(instanceCalled).toBe(true);
-  expect(result.touchedHandlers).toEqual(['onLegacy', 'onInstance']);
-  expect(result.value).toEqual({ B: 'legacy-migrated' });
-  expect(result.messages?.some(m => String(m.message || '').includes('instance-ok'))).toBe(true);
 });

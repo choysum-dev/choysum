@@ -2,13 +2,13 @@
   "records": [
     {
       "module": "meta",
-      "external_id": "e2e_auth_ext_module",
+      "external_id": "e2e_partner_module",
       "model": "meta.IrModule",
       "values": {
-        "Name": "auth_ext",
+        "Name": "partner",
         "Status": "uninstalled",
-        "ApplicationStr": "auth",
-        "Category": "User/Authentication",
+        "ApplicationStr": "base",
+        "Category": "Base",
         "Summary": "E2E fixture module"
       }
     }

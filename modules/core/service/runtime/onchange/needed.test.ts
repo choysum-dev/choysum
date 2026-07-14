@@ -1,46 +1,43 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { MetadataStorage } from '@/core/service/api/metadata';
 import { buildComputeGraph } from '../compute/graph';
 import { buildNeededFields } from './needed';
 
 @Model('test.NeededPartner')
 class NeededPartner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.NeededFieldsModel')
 class NeededFieldsModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Status?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Code?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => NeededPartner },
-    column: {},
   })
   PartnerId?: NeededPartner;
 
-  @Field({
-    type: 'varchar',
-    column: {
-      size: 128,
-      compute: {
-        expr: (self: NeededFieldsModel) => `${self.Name || ''}:${self.Code || ''}`,
-        deps: ['Name' as any, 'Code' as any],
-      },
-    },
-  })
+  @Field({ type: 'varchar', size: 128 })
   Summary?: string;
+
+  @Compute<NeededFieldsModel>('Summary', {
+    deps: ['Name' as any, 'Code' as any],
+  })
+  computeSummary() {
+    return `${this.Name || ''}:${this.Code || ''}`;
+  }
 }
 
 test('buildNeededFields merges onchange reads roots and compute scalar deps', () => {

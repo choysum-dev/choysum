@@ -17,19 +17,19 @@ export default class AttachmentUploadSession extends BaseModel {
   /**
    * Owner model that will receive the uploaded attachment.
    */
-  @Field({ type: 'varchar', column: { size: 120, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 120, notNull: true, index: true})
   OwnerModel: string;
 
   /**
    * Optional owner record targeted by the upload.
    */
-  @Field({ type: 'char', column: { size: 20, index: true } })
+  @Field({ type: 'char', size: 20, index: true})
   OwnerRecordId?: string;
 
   /**
    * Owner field that will bind the uploaded content.
    */
-  @Field({ type: 'varchar', column: { size: 120, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 120, notNull: true, index: true})
   FieldName: string;
 
   /**
@@ -41,7 +41,7 @@ export default class AttachmentUploadSession extends BaseModel {
       { value: 'create', label: 'create' },
       { value: 'update', label: 'update' },
     ],
-    column: { size: 16, notNull: true, index: true },
+    size: 16, notNull: true, index: true,
   })
   Operation: UploadOperation;
 
@@ -49,28 +49,27 @@ export default class AttachmentUploadSession extends BaseModel {
    * User who prepared the upload session.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'auth.User',
-    column: { size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request' },
+    type: 'ManyToOneRef', relation: { targetModel: 'auth.User' },
+    size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request',
   })
   IssuerUserId: string;
 
   /**
    * Idempotency key supplied by the caller.
    */
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request' } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request'})
   BusinessRequestId: string;
 
   /**
    * Suggested file name captured during prepare.
    */
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ProposedFileName?: string;
 
   /**
    * Suggested content type captured during prepare.
    */
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ProposedContentType?: string;
 
   /**
@@ -82,7 +81,7 @@ export default class AttachmentUploadSession extends BaseModel {
   /**
    * Expected payload checksum supplied during prepare.
    */
-  @Field({ type: 'char', column: { size: 64, index: true } })
+  @Field({ type: 'char', size: 64, index: true})
   ChecksumSha256?: string;
 
   /**
@@ -94,31 +93,31 @@ export default class AttachmentUploadSession extends BaseModel {
   /**
    * Uploaded payload checksum captured after PUT authorization completes.
    */
-  @Field({ type: 'char', column: { size: 64, index: true } })
+  @Field({ type: 'char', size: 64, index: true})
   UploadedChecksumSha256?: string;
 
   /**
    * Uploaded payload content type captured after PUT authorization completes.
    */
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   UploadedContentType?: string;
 
   /**
    * Reference to the staged payload stored by the backing content provider.
    */
-  @Field({ type: 'jsonobject', column: { notNull: false } })
+  @Field({ type: 'jsonobject', notNull: false})
   UploadedPayloadRef?: UploadedPayloadRef;
 
   /**
    * Maximum payload size allowed for the session.
    */
-  @Field({ type: 'bigint', column: { notNull: true } })
+  @Field({ type: 'bigint', notNull: true})
   MaxUploadBytes: number;
 
   /**
    * Checksum algorithm required for authorized upload requests.
    */
-  @Field({ type: 'selection', selection: [{ value: 'sha256', label: 'sha256' }], column: { size: 16, notNull: true, default: () => 'sha256' } })
+  @Field({ type: 'selection', selection: [{ value: 'sha256', label: 'sha256' }], size: 16, notNull: true, default: () => 'sha256'})
   RequiredChecksumAlgorithm: 'sha256';
 
   /**
@@ -130,7 +129,7 @@ export default class AttachmentUploadSession extends BaseModel {
   /**
    * Expiration timestamp for the session.
    */
-  @Field({ type: 'datetime', column: { notNull: true, index: true } })
+  @Field({ type: 'datetime', notNull: true, index: true})
   ExpiresAt: Date;
 
   /**
@@ -144,23 +143,22 @@ export default class AttachmentUploadSession extends BaseModel {
       { value: 'finalized', label: 'finalized' },
       { value: 'expired', label: 'expired' },
     ],
-    column: { size: 16, notNull: true, default: () => 'prepared', index: true },
+    size: 16, notNull: true, default: () => 'prepared', index: true,
   })
   Status: UploadSessionStatus;
 
   /**
    * Attachment content record created when the upload is finalized.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'document.AttachmentContent', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'document.AttachmentContent' }, size: 20, index: true})
   AttachmentContentId?: string;
 
   /**
    * Company that owns the upload session.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'base.Company',
-    column: { size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request' },
+    type: 'ManyToOneRef', relation: { targetModel: 'base.Company' },
+    size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_upload_business_request',
   })
   CompanyId: string;
 

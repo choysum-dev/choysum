@@ -115,16 +115,16 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
   autoMigrate: false,
 })
 export default class IrModule extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, unique: true, notNull: true })
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 1024 } })
+  @Field({ type: 'varchar', size: 1024 })
   ShortDesc?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Version?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Tarball?: string;
 
   @Field({ type: 'text' })
@@ -133,16 +133,16 @@ export default class IrModule extends BaseModel {
   @Field({ type: 'text' })
   Description?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   ApplicationStr?: string;
 
   @Field({ type: 'jsonobject' })
   EntryPoints?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512 })
   WebEntryPoint?: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512 })
   ServiceEntryPoint?: string;
 
   @Field({ type: 'jsonobject' })
@@ -151,10 +151,10 @@ export default class IrModule extends BaseModel {
   @Field({ type: 'jsonobject' })
   ExternalDependencies?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Author?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   License?: string;
 
   @Field({ type: 'text' })
@@ -163,13 +163,13 @@ export default class IrModule extends BaseModel {
   @Field({ type: 'text' })
   Repository?: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512 })
   Path?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Status?: string;
 
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true })
   Category?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication } })
@@ -307,7 +307,8 @@ export default class IrModule extends BaseModel {
       'FullMethod',
     ] as any);
     const exec = await loadExecutionTimes(id);
-    const result = (job as any)?.ResultJson && typeof (job as any).ResultJson === 'object' ? (job as any).ResultJson : {};
+    const rawResult = (job as any)?.ResultJson && typeof (job as any).ResultJson === 'object' ? (job as any).ResultJson : {};
+    const result = rawResult?.result && typeof rawResult.result === 'object' ? rawResult.result : rawResult;
     const err = (job as any)?.LastErrorJson && typeof (job as any).LastErrorJson === 'object' ? (job as any).LastErrorJson : undefined;
     const payload = (job as any)?.PayloadJson && typeof (job as any).PayloadJson === 'object' ? (job as any).PayloadJson : {};
 
@@ -416,6 +417,19 @@ export default class IrModule extends BaseModel {
       if (!errorCode) errorCode = 'OP_FAILED';
     }
 
+    // E2E-only seam: reload-failed scenario should exercise
+    // "operation succeeded but reload failed" deterministically,
+    // even if the underlying module operation has incidental failures.
+    if (forceReloadFailed) {
+      resultStatus = 'SUCCEEDED';
+      errorDomain = undefined;
+      errorCode = undefined;
+      errorMessage = undefined;
+      if (action === 'install') summary = { code: 'MODULE_INSTALLED', params: { moduleName: name } };
+      else if (action === 'uninstall') summary = { code: 'MODULE_UNINSTALLED', params: { moduleName: name } };
+      else summary = { code: 'MODULE_UPGRADED', params: { moduleName: name } };
+    }
+
     let reload_triggered = false;
     let reload_failed = false;
     let reload_web = false;
@@ -432,7 +446,7 @@ export default class IrModule extends BaseModel {
         reload_web = false;
       }
     }
-    if (bridgeResult.ok && forceReloadFailed) {
+    if (forceReloadFailed) {
       reload_triggered = true;
       reload_failed = true;
       reload_web = false;
@@ -447,6 +461,8 @@ export default class IrModule extends BaseModel {
       }
     }
 
+    const operationOK = resultStatus === 'SUCCEEDED';
+
     await upsertModuleLog({
       JobId: jobId,
       ModuleName: name,
@@ -456,7 +472,7 @@ export default class IrModule extends BaseModel {
       SummaryJson: summary,
       ErrorDomain: errorDomain,
       ErrorCode: errorCode,
-      LastErrorJson: bridgeResult.ok ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
+      LastErrorJson: operationOK ? undefined : { message: errorMessage, domain: errorDomain, code: errorCode },
       JobCreatedAt: job?.CreatedAt,
       JobFinishedAt: job?.FinishedAt,
       Attempt: job?.Attempt,

@@ -11,41 +11,41 @@ import { mapNormalizationToBase } from './_normalizers';
 
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
   CompanyId?: Company;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Sequence },
-    column: { notNull: true, uniqueIndex: 'uidx_base_sequence_idem_seq_key', index: true },
+    notNull: true, uniqueIndex: 'uidx_base_sequence_idem_seq_key', index: true,
   })
   SequenceId: Sequence;
 
-  @Field({ type: 'varchar', column: { size: 100, notNull: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true})
   CodeSnapshot: string;
 
-  @Field({ type: 'jsonobject', column: { notNull: true } })
+  @Field({ type: 'jsonobject', notNull: true})
   FormatSnapshot: Record<string, any>;
 
-  @Field({ type: 'varchar', column: { size: 200, notNull: true, uniqueIndex: 'uidx_base_sequence_idem_seq_key', index: true } })
+  @Field({ type: 'varchar', size: 200, notNull: true, uniqueIndex: 'uidx_base_sequence_idem_seq_key', index: true})
   IdempotencyKey: string;
 
-  @Field({ type: 'int', column: { notNull: true } })
+  @Field({ type: 'int', notNull: true})
   Count: number;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => false } })
+  @Field({ type: 'boolean', notNull: true, default: () => false})
   DryRun: boolean;
 
-  @Field({ type: 'bigint', column: { notNull: true } })
+  @Field({ type: 'bigint', notNull: true})
   RangeStart: bigint;
 
-  @Field({ type: 'bigint', column: { notNull: true } })
+  @Field({ type: 'bigint', notNull: true})
   RangeEnd: bigint;
 
-  @Field({ type: 'varchar', column: { size: 128 } })
+  @Field({ type: 'varchar', size: 128})
   RequestHash?: string;
 
-  @Field({ type: 'datetime', column: { notNull: true, index: true } })
+  @Field({ type: 'datetime', notNull: true, index: true})
   ExpiresAt: Date;
 
   private static async validateWriteEntity(values: Record<string, any>): Promise<void> {

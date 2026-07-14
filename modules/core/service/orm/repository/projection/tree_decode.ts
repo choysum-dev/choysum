@@ -60,7 +60,7 @@ export function decodeRowWithTree(meta: ModelMetadata, node: SelectionNode, row:
     if (val == null) continue;
 
     const effScale = resolveDecimalScaleFromRow(meta, fieldMeta, col, rowRecord);
-    const baseSpec = asObjectRecord(fieldMeta?.column) ?? asObjectRecord(fieldMeta?.select) ?? {};
+    const baseSpec = asObjectRecord(fieldMeta?.column) ?? {};
     const overrideFieldMeta = effScale != null ? { column: { ...baseSpec, scale: effScale } } : fieldMeta;
 
     try {

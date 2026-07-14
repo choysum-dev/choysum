@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { FieldMetadata, ModelCtor } from './field';
-import { ModelMetadata } from './model';
+import { ModelMetadata, ComputeHandlerMeta, SqlComputeHandlerMeta, SearchHandlerMeta, InverseHandlerMeta } from './model';
 import BaseModel from '../model/model';
 import type { ConstraintMeta, EffectiveConstraintMeta } from './constraint';
 import type { OnchangeHandlerMeta, EffectiveOnchangeMeta } from './model';
@@ -71,6 +71,75 @@ export class MetadataStorage {
       reads: rawReads ? [...new Set(this.ensureStringArray(rawReads))] : undefined,
       priority: typeof record.priority === 'number' ? record.priority : (existing?.priority ?? 100),
     };
+  }
+
+  private normalizeComputeHandler(value: unknown, existing?: ComputeHandlerMeta): ComputeHandlerMeta | undefined {
+    const record = this.asRecord(value);
+    if (!record) return undefined;
+
+    const field = typeof record.field === 'string' && record.field.trim() ? record.field.trim() : existing?.field;
+    const method = this.getMethodName(record) || existing?.method;
+    if (!field || !method) {
+      return undefined;
+    }
+
+    const depsRaw = Array.isArray(record.deps) ? record.deps : existing?.deps || [];
+    const deps = [...new Set(this.ensureStringArray(depsRaw))];
+
+    return {
+      field,
+      method,
+      deps,
+      store: typeof record.store === 'boolean' ? record.store : (existing?.store ?? true),
+      searchable: typeof record.searchable === 'boolean' ? record.searchable : existing?.searchable,
+      runAs: record.runAs === 'user' || record.runAs === 'sudo' ? record.runAs : existing?.runAs,
+    };
+  }
+
+  private normalizeSqlComputeHandler(value: unknown, existing?: SqlComputeHandlerMeta): SqlComputeHandlerMeta | undefined {
+    const record = this.asRecord(value);
+    if (!record) return undefined;
+
+    const field = typeof record.field === 'string' && record.field.trim() ? record.field.trim() : existing?.field;
+    const method = this.getMethodName(record) || existing?.method;
+    if (!field || !method) {
+      return undefined;
+    }
+
+    const depsRaw = Array.isArray(record.deps) ? record.deps : existing?.deps;
+    const deps = depsRaw ? [...new Set(this.ensureStringArray(depsRaw))] : undefined;
+
+    return {
+      field,
+      method,
+      deps,
+    };
+  }
+
+  private normalizeSearchHandler(value: unknown, existing?: SearchHandlerMeta): SearchHandlerMeta | undefined {
+    const record = this.asRecord(value);
+    if (!record) return undefined;
+
+    const field = typeof record.field === 'string' && record.field.trim() ? record.field.trim() : existing?.field;
+    const method = this.getMethodName(record) || existing?.method;
+    if (!field || !method) {
+      return undefined;
+    }
+
+    return { field, method };
+  }
+
+  private normalizeInverseHandler(value: unknown, existing?: InverseHandlerMeta): InverseHandlerMeta | undefined {
+    const record = this.asRecord(value);
+    if (!record) return undefined;
+
+    const field = typeof record.field === 'string' && record.field.trim() ? record.field.trim() : existing?.field;
+    const method = this.getMethodName(record) || existing?.method;
+    if (!field || !method) {
+      return undefined;
+    }
+
+    return { field, method };
   }
 
   private clearStaticMetadataCache(value: unknown): void {
@@ -143,6 +212,110 @@ export class MetadataStorage {
     return Object.values(merged);
   }
 
+  private mergeComputeHandlers(existing: Map<string, ComputeHandlerMeta> | undefined, incoming: unknown): Map<string, ComputeHandlerMeta> | undefined {
+    if (!(incoming instanceof Map)) {
+      return existing;
+    }
+
+    const merged = new Map<string, ComputeHandlerMeta>();
+    (existing || new Map()).forEach((handler, key) => {
+      const normalized = this.normalizeComputeHandler(handler);
+      if (normalized) {
+        merged.set(key, normalized);
+      }
+    });
+
+    incoming.forEach((handler, fieldKey) => {
+      const fallbackField = typeof fieldKey === 'string' ? fieldKey : '';
+      const handlerRecord = this.asRecord(handler) || {};
+      const inferredField = fallbackField || (typeof handlerRecord.field === 'string' ? handlerRecord.field : '');
+      const normalized = this.normalizeComputeHandler({ ...handlerRecord, field: inferredField }, merged.get(fallbackField));
+      if (normalized) {
+        merged.set(normalized.field, normalized);
+      }
+    });
+
+    return merged;
+  }
+
+  private mergeSqlComputeHandlers(existing: Map<string, SqlComputeHandlerMeta> | undefined, incoming: unknown): Map<string, SqlComputeHandlerMeta> | undefined {
+    if (!(incoming instanceof Map)) {
+      return existing;
+    }
+
+    const merged = new Map<string, SqlComputeHandlerMeta>();
+    (existing || new Map()).forEach((handler, key) => {
+      const normalized = this.normalizeSqlComputeHandler(handler);
+      if (normalized) {
+        merged.set(key, normalized);
+      }
+    });
+
+    incoming.forEach((handler, fieldKey) => {
+      const fallbackField = typeof fieldKey === 'string' ? fieldKey : '';
+      const handlerRecord = this.asRecord(handler) || {};
+      const inferredField = fallbackField || (typeof handlerRecord.field === 'string' ? handlerRecord.field : '');
+      const normalized = this.normalizeSqlComputeHandler({ ...handlerRecord, field: inferredField }, merged.get(fallbackField));
+      if (normalized) {
+        merged.set(normalized.field, normalized);
+      }
+    });
+
+    return merged;
+  }
+
+  private mergeSearchHandlers(existing: Map<string, SearchHandlerMeta> | undefined, incoming: unknown): Map<string, SearchHandlerMeta> | undefined {
+    if (!(incoming instanceof Map)) {
+      return existing;
+    }
+
+    const merged = new Map<string, SearchHandlerMeta>();
+    (existing || new Map()).forEach((handler, key) => {
+      const normalized = this.normalizeSearchHandler(handler);
+      if (normalized) {
+        merged.set(key, normalized);
+      }
+    });
+
+    incoming.forEach((handler, fieldKey) => {
+      const fallbackField = typeof fieldKey === 'string' ? fieldKey : '';
+      const handlerRecord = this.asRecord(handler) || {};
+      const inferredField = fallbackField || (typeof handlerRecord.field === 'string' ? handlerRecord.field : '');
+      const normalized = this.normalizeSearchHandler({ ...handlerRecord, field: inferredField }, merged.get(fallbackField));
+      if (normalized) {
+        merged.set(normalized.field, normalized);
+      }
+    });
+
+    return merged;
+  }
+
+  private mergeInverseHandlers(existing: Map<string, InverseHandlerMeta> | undefined, incoming: unknown): Map<string, InverseHandlerMeta> | undefined {
+    if (!(incoming instanceof Map)) {
+      return existing;
+    }
+
+    const merged = new Map<string, InverseHandlerMeta>();
+    (existing || new Map()).forEach((handler, key) => {
+      const normalized = this.normalizeInverseHandler(handler);
+      if (normalized) {
+        merged.set(key, normalized);
+      }
+    });
+
+    incoming.forEach((handler, fieldKey) => {
+      const fallbackField = typeof fieldKey === 'string' ? fieldKey : '';
+      const handlerRecord = this.asRecord(handler) || {};
+      const inferredField = fallbackField || (typeof handlerRecord.field === 'string' ? handlerRecord.field : '');
+      const normalized = this.normalizeInverseHandler({ ...handlerRecord, field: inferredField }, merged.get(fallbackField));
+      if (normalized) {
+        merged.set(normalized.field, normalized);
+      }
+    });
+
+    return merged;
+  }
+
   // Use explicit builder-style merging for stable ModelMetadata fields only.
   // This avoids implicit shape expansion from dynamic deep merges.
   private mergeModelMetadata(target: ModelMetadata, patch: Partial<ModelMetadata>): void {
@@ -183,6 +356,26 @@ export class MetadataStorage {
     const mergedOnchangeHandlers = this.mergeOnchangeHandlers(target.onchangeHandlers, patch.onchangeHandlers);
     if (mergedOnchangeHandlers) {
       target.onchangeHandlers = mergedOnchangeHandlers;
+    }
+
+    const mergedComputeHandlers = this.mergeComputeHandlers(target.computeHandlers, patch.computeHandlers);
+    if (mergedComputeHandlers) {
+      target.computeHandlers = mergedComputeHandlers;
+    }
+
+    const mergedSqlComputeHandlers = this.mergeSqlComputeHandlers(target.sqlComputeHandlers, patch.sqlComputeHandlers);
+    if (mergedSqlComputeHandlers) {
+      target.sqlComputeHandlers = mergedSqlComputeHandlers;
+    }
+
+    const mergedSearchHandlers = this.mergeSearchHandlers(target.searchHandlers, patch.searchHandlers);
+    if (mergedSearchHandlers) {
+      target.searchHandlers = mergedSearchHandlers;
+    }
+
+    const mergedInverseHandlers = this.mergeInverseHandlers(target.inverseHandlers, patch.inverseHandlers);
+    if (mergedInverseHandlers) {
+      target.inverseHandlers = mergedInverseHandlers;
     }
   }
 
@@ -269,6 +462,10 @@ export class MetadataStorage {
     const mergedFields = new Map(metadata.fields);
     const mergedOnchangeHandlers = [...(metadata.onchangeHandlers || [])];
     const mergedConstraintHandlers = [...(metadata.constraintHandlers || [])];
+    const mergedComputeHandlers = new Map(metadata.computeHandlers || []);
+    const mergedSqlComputeHandlers = new Map(metadata.sqlComputeHandlers || []);
+    const mergedSearchHandlers = new Map(metadata.searchHandlers || []);
+    const mergedInverseHandlers = new Map(metadata.inverseHandlers || []);
 
     function mergeByMethod<T extends { method: string }>(targetList: T[], parentList: T[] | undefined): void {
       if (!Array.isArray(parentList) || parentList.length === 0) return;
@@ -303,6 +500,50 @@ export class MetadataStorage {
 
         mergeByMethod(mergedOnchangeHandlers, parentMetadata.onchangeHandlers);
         mergeByMethod(mergedConstraintHandlers, parentMetadata.constraintHandlers);
+
+        if (parentMetadata.computeHandlers instanceof Map) {
+          parentMetadata.computeHandlers.forEach((handler, field) => {
+            if (!mergedComputeHandlers.has(field)) {
+              const normalized = this.normalizeComputeHandler(handler);
+              if (normalized) {
+                mergedComputeHandlers.set(field, normalized);
+              }
+            }
+          });
+        }
+
+        if (parentMetadata.sqlComputeHandlers instanceof Map) {
+          parentMetadata.sqlComputeHandlers.forEach((handler, field) => {
+            if (!mergedSqlComputeHandlers.has(field)) {
+              const normalized = this.normalizeSqlComputeHandler(handler);
+              if (normalized) {
+                mergedSqlComputeHandlers.set(field, normalized);
+              }
+            }
+          });
+        }
+
+        if (parentMetadata.searchHandlers instanceof Map) {
+          parentMetadata.searchHandlers.forEach((handler, field) => {
+            if (!mergedSearchHandlers.has(field)) {
+              const normalized = this.normalizeSearchHandler(handler);
+              if (normalized) {
+                mergedSearchHandlers.set(field, normalized);
+              }
+            }
+          });
+        }
+
+        if (parentMetadata.inverseHandlers instanceof Map) {
+          parentMetadata.inverseHandlers.forEach((handler, field) => {
+            if (!mergedInverseHandlers.has(field)) {
+              const normalized = this.normalizeInverseHandler(handler);
+              if (normalized) {
+                mergedInverseHandlers.set(field, normalized);
+              }
+            }
+          });
+        }
       }
 
       // Continue walking up the prototype chain.
@@ -315,6 +556,10 @@ export class MetadataStorage {
       fields: mergedFields,
       onchangeHandlers: mergedOnchangeHandlers,
       constraintHandlers: mergedConstraintHandlers,
+      computeHandlers: mergedComputeHandlers,
+      sqlComputeHandlers: mergedSqlComputeHandlers,
+      searchHandlers: mergedSearchHandlers,
+      inverseHandlers: mergedInverseHandlers,
     };
 
     // Inject ParentPath field metadata, including compute and dependency wiring.

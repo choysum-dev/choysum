@@ -65,4 +65,96 @@ func TestTypeHelpers(t *testing.T) {
 			t.Fatalf("expected tag %q in %q", want, joined)
 		}
 	}
+
+	defaultLiteralTags := []string{}
+	addStandardTags(&defaultLiteralTags, map[string]interface{}{
+		"default": "active",
+	})
+	if !strings.Contains(strings.Join(defaultLiteralTags, ";"), "default:'active'") {
+		t.Fatalf("expected scalar default tag, got %q", strings.Join(defaultLiteralTags, ";"))
+	}
+
+	arrowDefaultTags := []string{}
+	addStandardTags(&arrowDefaultTags, map[string]interface{}{
+		"default": "() => true",
+	})
+	if strings.Contains(strings.Join(arrowDefaultTags, ";"), "default:") {
+		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(arrowDefaultTags, ";"))
+	}
+
+	functionDefaultTags := []string{}
+	addStandardTags(&functionDefaultTags, map[string]interface{}{
+		"default": "function () { return 'active'; }",
+	})
+	if strings.Contains(strings.Join(functionDefaultTags, ";"), "default:") {
+		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(functionDefaultTags, ";"))
+	}
+
+	nonFunctionWordTags := []string{}
+	addStandardTags(&nonFunctionWordTags, map[string]interface{}{
+		"default": "text with function keyword",
+	})
+	if !strings.Contains(strings.Join(nonFunctionWordTags, ";"), "default:'text with function keyword'") {
+		t.Fatalf("expected scalar default tag, got %q", strings.Join(nonFunctionWordTags, ";"))
+	}
+
+	sqlKeywordDefaultTags := []string{}
+	addStandardTags(&sqlKeywordDefaultTags, map[string]interface{}{
+		"default": "NULL",
+	})
+	if !strings.Contains(strings.Join(sqlKeywordDefaultTags, ";"), "default:NULL") {
+		t.Fatalf("expected SQL keyword default tag, got %q", strings.Join(sqlKeywordDefaultTags, ";"))
+	}
+
+	sqlFunctionDefaultTags := []string{}
+	addStandardTags(&sqlFunctionDefaultTags, map[string]interface{}{
+		"default": "uuid_generate_v4()",
+	})
+	if !strings.Contains(strings.Join(sqlFunctionDefaultTags, ";"), "default:uuid_generate_v4()") {
+		t.Fatalf("expected SQL function default tag, got %q", strings.Join(sqlFunctionDefaultTags, ";"))
+	}
+
+	escapedQuoteDefaultTags := []string{}
+	addStandardTags(&escapedQuoteDefaultTags, map[string]interface{}{
+		"default": "O'Reilly",
+	})
+	if !strings.Contains(strings.Join(escapedQuoteDefaultTags, ";"), "default:'O''Reilly'") {
+		t.Fatalf("expected escaped scalar default tag, got %q", strings.Join(escapedQuoteDefaultTags, ";"))
+	}
+
+	// A => B (unquoted, contains =>): treated as arrow function, no default: tag.
+	arrowStringLiteralTags := []string{}
+	addStandardTags(&arrowStringLiteralTags, map[string]interface{}{
+		"default": "A => B",
+	})
+	if strings.Contains(strings.Join(arrowStringLiteralTags, ";"), "default:") {
+		t.Fatalf("did not expect default: tag for arrow-like value, got %q", strings.Join(arrowStringLiteralTags, ";"))
+	}
+
+	// Single-param arrow with space: x => 'active'
+	singleParamArrowTags := []string{}
+	addStandardTags(&singleParamArrowTags, map[string]interface{}{
+		"default": "x => 'active'",
+	})
+	if strings.Contains(strings.Join(singleParamArrowTags, ";"), "default:") {
+		t.Fatalf("did not expect default: tag for single-param arrow, got %q", strings.Join(singleParamArrowTags, ";"))
+	}
+
+	// Quoted string containing => is still a scalar literal.
+	quotedArrowLiteralTags := []string{}
+	addStandardTags(&quotedArrowLiteralTags, map[string]interface{}{
+		"default": "'A => B'",
+	})
+	if !strings.Contains(strings.Join(quotedArrowLiteralTags, ";"), "default:'A => B'") {
+		t.Fatalf("expected scalar default tag for quoted arrow string, got %q", strings.Join(quotedArrowLiteralTags, ";"))
+	}
+
+	// Backtick-quoted template literal containing => is still a scalar literal.
+	backtickArrowLiteralTags := []string{}
+	addStandardTags(&backtickArrowLiteralTags, map[string]interface{}{
+		"default": "`A => B`",
+	})
+	if !strings.Contains(strings.Join(backtickArrowLiteralTags, ";"), "default:`A => B`") {
+		t.Fatalf("expected scalar default tag for backtick-quoted arrow string, got %q", strings.Join(backtickArrowLiteralTags, ";"))
+	}
 }

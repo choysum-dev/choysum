@@ -35,6 +35,18 @@
           "fixtures": [
             "e2e/fixtures/smoke.json"
           ]
+        },
+        "result-failed": {
+          "extends": "default",
+          "fixtures": []
+        },
+        "reload-failed": {
+          "extends": "default",
+          "fixtures": []
+        },
+        "lock-conflict": {
+          "extends": "default",
+          "fixtures": []
         }
       }
     }

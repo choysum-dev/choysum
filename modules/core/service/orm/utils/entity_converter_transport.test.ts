@@ -6,7 +6,7 @@ import { EntityConverter } from './converter';
 
 @Model('test.EntityConverterTransportParent')
 class EntityConverterTransportParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   @Field({
@@ -18,20 +18,17 @@ class EntityConverterTransportParent extends BaseModel {
 
 @Model('test.EntityConverterTransportChild')
 class EntityConverterTransportChild extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => EntityConverterTransportParent },
-    column: { notNull: false },
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => EntityConverterTransportParent }, notNull: false })
   ParentId?: EntityConverterTransportParent;
 }
 
 @Model('test.EntityConverterTransportNoTarget')
 class EntityConverterTransportNoTarget extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: {} as any, column: { notNull: false } })
+  @Field({ type: 'ManyToOne', relation: {} as any, notNull: false })
   OwnerId?: any;
 }
 
@@ -43,7 +40,7 @@ class EntityConverterTransportNoTargetMany extends BaseModel {
 
 @Model('test.EntityConverterTransportBrokenOne')
 class EntityConverterTransportBrokenOne extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any }, column: { notNull: false } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => undefined as any }, notNull: false })
   OwnerId?: any;
 }
 
@@ -55,7 +52,7 @@ class EntityConverterTransportBrokenMany extends BaseModel {
 
 @Model('test.EntityConverterTransportTag')
 class EntityConverterTransportTag extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
@@ -67,13 +64,13 @@ class EntityConverterTransportGroup extends BaseModel {
 
 @Model('test.EntityConverterTransportPrivate')
 class EntityConverterTransportPrivate extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   privateField?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterTransportParent }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterTransportParent } })
   OwnerId?: EntityConverterTransportParent;
 }
 

@@ -24,23 +24,21 @@ export default class RoleMethodAccess extends BaseModel {
   /**
    * Application-level scope when the entry targets an entire application.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
   IrApplicationId: string | null;
 
   /**
    * Model-level scope when the entry targets an entire model.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrModel', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' }, notNull: false, size: 20, index: true})
   IrModelId: string | null;
 
   /**
    * Service-level scope when the entry targets one concrete RPC method surface.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'meta.IrService',
-    column: {
-      notNull: false,
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrService' },
+    notNull: false,
       size: 20,
       index: true,
       checkConstraint: `(
@@ -50,7 +48,6 @@ export default class RoleMethodAccess extends BaseModel {
         OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NOT NULL)
         OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NULL)
       )`,
-    },
   })
   IrServiceId: string | null;
 
@@ -63,7 +60,7 @@ export default class RoleMethodAccess extends BaseModel {
       { value: 'allow', label: 'Allow' },
       { value: 'deny', label: 'Deny' },
     ],
-    column: { default: () => 'deny' },
+    default: () => 'deny',
   })
   Mode: 'allow' | 'deny';
 
@@ -76,7 +73,7 @@ export default class RoleMethodAccess extends BaseModel {
       { value: 'manual', label: 'Manual' },
       { value: 'ui', label: 'UI' },
     ],
-    column: { default: () => 'manual', size: 16, index: true },
+    default: () => 'manual', size: 16, index: true,
   })
   Source: 'manual' | 'ui';
 

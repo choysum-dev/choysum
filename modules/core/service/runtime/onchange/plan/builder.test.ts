@@ -50,7 +50,7 @@ test('plan builder rejects paths deeper than the allowed preview depth', () => {
   expect(error?.message).toBe('PathPlanBuilder: compute path "PartnerId.CompanyId.ParentId.Name" depth (3) exceeds limit (2)');
 });
 
-test('plan builder merges legacy reads map and skips empty m2o chains', () => {
+test('plan builder merges reads map and skips empty m2o chains', () => {
   const plan = makePlan();
 
   mergeOnchangeReadsIntoPlan(plan, new Map([['PartnerId', [['Name'], ['Code']]]]));

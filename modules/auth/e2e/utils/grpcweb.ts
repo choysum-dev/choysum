@@ -11,11 +11,20 @@ export type GrpcWebOkOptions = {
 };
 
 /**
- * Wait for a unary gRPC-Web call to complete with grpc-status=0.
+ * Parsed unary gRPC-Web result.
  */
-export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts: GrpcWebOkOptions = {}): Promise<Response> {
-  const timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 30_000;
+export type GrpcWebUnaryResult = {
+  response: Response;
+  grpcStatus: string;
+  grpcMessage: string;
+};
 
+type GrpcWebStatus = {
+  status: string;
+  message: string;
+};
+
+async function waitForGrpcWebUnaryResponse(page: Page, fullMethod: string, timeoutMs: number): Promise<Response> {
   const res = await page.waitForResponse(
     r => {
       const url = r.url();
@@ -29,7 +38,10 @@ export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts
   );
 
   expect(res.status(), `HTTP status for ${fullMethod}`).toBe(200);
+  return res;
+}
 
+async function readGrpcWebStatus(res: Response, fullMethod: string): Promise<GrpcWebStatus> {
   // Strict mode: enforce gRPC status=0.
   // Note: grpc-status is typically a *trailer* in gRPC-Web and may not be visible via Response.headers().
   // We therefore parse the gRPC-Web body trailer frame (flag 0x80).
@@ -38,8 +50,7 @@ export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts
   const headerGrpcMessage = headers['grpc-message'];
   if (typeof headerGrpcStatus === 'string' && headerGrpcStatus !== '') {
     const msg = decodeGrpcMessage(typeof headerGrpcMessage === 'string' ? headerGrpcMessage : '');
-    expect(headerGrpcStatus, formatGrpcAssertMessage(fullMethod, msg)).toBe('0');
-    return res;
+    return { status: headerGrpcStatus, message: msg };
   }
 
   const body = await res.body();
@@ -52,9 +63,30 @@ export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts
   const msg = decodeGrpcMessage(grpcMessage);
 
   expect(grpcStatus, `missing grpc-status trailer for ${fullMethod}${msg ? ` (grpc-message=${msg})` : ''}`).toBeTruthy();
-  expect(String(grpcStatus), formatGrpcAssertMessage(fullMethod, msg)).toBe('0');
+  return { status: String(grpcStatus), message: msg };
+}
 
-  return res;
+/**
+ * Wait for one unary gRPC-Web call and return its parsed grpc-status/message.
+ */
+export async function waitForGrpcWebUnary(page: Page, fullMethod: string, opts: GrpcWebOkOptions = {}): Promise<GrpcWebUnaryResult> {
+  const timeoutMs = typeof opts.timeoutMs === 'number' ? opts.timeoutMs : 30_000;
+  const response = await waitForGrpcWebUnaryResponse(page, fullMethod, timeoutMs);
+  const grpc = await readGrpcWebStatus(response, fullMethod);
+  return {
+    response,
+    grpcStatus: grpc.status,
+    grpcMessage: grpc.message,
+  };
+}
+
+/**
+ * Wait for a unary gRPC-Web call to complete with grpc-status=0.
+ */
+export async function waitForGrpcWebUnaryOk(page: Page, fullMethod: string, opts: GrpcWebOkOptions = {}): Promise<Response> {
+  const unary = await waitForGrpcWebUnary(page, fullMethod, opts);
+  expect(unary.grpcStatus, formatGrpcAssertMessage(fullMethod, unary.grpcMessage)).toBe('0');
+  return unary.response;
 }
 
 /**

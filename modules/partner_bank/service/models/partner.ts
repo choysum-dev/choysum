@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { Field, Model } from '@/core/service';
+import { Compute, Field, Model } from '@/core/service';
 import PartnerBase from '@/partner/service/models/partner';
 import { pickDefaultBankAccountId } from './_helpers';
 import BankAccount from './bank_account';
@@ -14,7 +14,7 @@ export default class Partner extends PartnerBase {
   /** Related bank account rows. */
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => BankAccount, inverseField: 'PartnerId' } as any,
+    relation: { targetModel: () => BankAccount, inverseField: 'PartnerId' },
   })
   BankAccounts?: BankAccount[];
 
@@ -22,27 +22,29 @@ export default class Partner extends PartnerBase {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => BankAccount },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => pickDefaultBankAccountId((self as any).BankAccounts, 'inbound'),
-        deps: ['BankAccounts.Id' as any, 'BankAccounts.IsDefaultInbound' as any, 'BankAccounts.IsActive' as any],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultInboundBankAccountId?: BankAccount;
+
+  @Compute<Partner>('DefaultInboundBankAccountId', {
+    deps: ['BankAccounts.Id', 'BankAccounts.IsDefaultInbound', 'BankAccounts.IsActive'],
+  })
+  computeDefaultInboundBankAccountId() {
+    return pickDefaultBankAccountId(this.BankAccounts, 'inbound');
+  }
 
   /** Derived default outbound bank account. */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => BankAccount },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => pickDefaultBankAccountId((self as any).BankAccounts, 'outbound'),
-        deps: ['BankAccounts.Id' as any, 'BankAccounts.IsDefaultOutbound' as any, 'BankAccounts.IsActive' as any],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultOutboundBankAccountId?: BankAccount;
+
+  @Compute<Partner>('DefaultOutboundBankAccountId', {
+    deps: ['BankAccounts.Id', 'BankAccounts.IsDefaultOutbound', 'BankAccounts.IsActive'],
+  })
+  computeDefaultOutboundBankAccountId() {
+    return pickDefaultBankAccountId(this.BankAccounts, 'outbound');
+  }
 }

@@ -9,16 +9,16 @@ import IrModule from './ir_module';
   autoMigrate: false,
 })
 export default class IrApplication extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, unique: true, notNull: true})
   Name!: string;
 
   @Field({ type: 'bigint' })
   Revision!: number;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   ProtoDir?: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   ProtoFile?: string;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => IrModule, inverseField: 'ApplicationId' } })

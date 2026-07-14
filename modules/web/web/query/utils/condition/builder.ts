@@ -59,6 +59,8 @@ export function deriveKeywordFieldsFromMeta(fieldsMeta?: Record<string, any>, op
     const textTypes = Array.isArray(options?.textTypes) && options!.textTypes!.length > 0 ? options!.textTypes! : ['char', 'varchar'];
     const allowed = new Set(textTypes.map(t => String(t || '').toLowerCase()));
     const derived = Object.keys(md).filter(k => {
+      const searchable = md[k]?.searchable;
+      if (typeof searchable === 'boolean') return searchable;
       const t = String(md[k]?.type || '').toLowerCase();
       return allowed.has(t);
     });

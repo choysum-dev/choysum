@@ -19,38 +19,8 @@ import {
   type RepositoryPredicate,
   type RepositoryPredicateBuilder,
 } from './predicate_builder_adapter';
-import { withComputeRunAsExecution } from '../../../runtime/compute/runas';
-
-function isPromiseLike<T = unknown>(value: unknown): value is Promise<T> {
-  return !!value && typeof (value as { then?: unknown }).then === 'function';
-}
-
-function resolveComputeSearchHandler(meta: ModelMetadata, fieldName: string, handlerKey: string) {
-  const modelCtor = meta.type;
-  const modelCtorRecord = modelCtor as unknown as {
-    computeSearchHandlers?: Record<string, (...args: unknown[]) => unknown>;
-    __computeSearchHandlers__?: Record<string, (...args: unknown[]) => unknown>;
-    [key: string]: unknown;
-  };
-  const key = handlerKey.trim();
-  const modelLabel = String(meta.fullModelName || meta.modelName || meta.className || 'Unknown');
-
-  const registry = modelCtorRecord.computeSearchHandlers || modelCtorRecord.__computeSearchHandlers__;
-  if (registry && typeof registry === 'object' && typeof registry[key] === 'function') {
-    return registry[key].bind(modelCtor);
-  }
-
-  if (typeof modelCtorRecord[key] === 'function') {
-    return (modelCtorRecord[key] as (...args: unknown[]) => unknown).bind(modelCtor);
-  }
-
-  if (typeof modelCtor?.prototype?.[key] === 'function') {
-    const fn = modelCtor.prototype[key];
-    return (ctx: unknown) => fn.call(Object.create(modelCtor.prototype), ctx);
-  }
-
-  throw new Error(`compute.search handler not found: ${modelLabel}.${fieldName} -> ${key}`);
-}
+import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
+import { rewriteSearchCondition } from '../../../runtime/compute/search_rewrite';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;
@@ -65,7 +35,7 @@ export function convertCondition(
   condition: BaseQueryCondition,
   selfTable?: string
 ): RepositoryPredicate {
-  const modelLabel = String(meta.fullModelName || meta.modelName || meta.className || 'Unknown');
+  const modelLabel = String(meta.fullModelName || meta.modelName || meta.className || meta.type?.name || 'Unknown');
   const createSelectCtx = (table: string) => createRepositoryPredicateSelectCtx(db, getDialect, eb, table, meta);
 
   const wrapIfDecimal = (fieldName: string | undefined, op: unknown, rhs: unknown) => {
@@ -140,54 +110,12 @@ export function convertCondition(
       const lowerOp = String(effectiveOp || '').toLowerCase();
 
       if (typeof fieldName === 'string' && !fieldName.includes('.')) {
-        const fieldMeta = meta.fields.get(fieldName) as FieldMetadata | undefined;
-        const compute = fieldMeta?.column?.compute;
-        if (compute) {
-          const isVirtual = compute.store === false;
-          const searchKey = typeof compute.search === 'string' ? compute.search.trim() : '';
-
-          if (isVirtual && !searchKey) {
-            throw new Error(`Virtual compute field ${modelLabel}.${fieldName} does not declare compute.search and cannot participate in query conditions`);
+        const rewritten = rewriteSearchCondition(meta, fieldName, effectiveOp, effectiveRhs, String(getDialect() || 'postgres') as DialectName, 'query');
+        if (rewritten) {
+          if (rewritten.kind === 'domain') {
+            return asPredicate(rewritten.domain);
           }
-
-          if (searchKey) {
-            const handler = resolveComputeSearchHandler(meta, fieldName, searchKey);
-            const runAs = compute.runAs === 'sudo' ? 'sudo' : 'user';
-            const result = withComputeRunAsExecution(
-              meta,
-              fieldName,
-              runAs,
-              'search',
-              () =>
-                handler({
-                  field: fieldName,
-                  op: effectiveOp,
-                  value: effectiveRhs,
-                  dialect: String(getDialect() || 'postgres') as DialectName,
-                  runAs,
-                }),
-              'query'
-            );
-
-            if (isPromiseLike(result)) {
-              throw new Error(
-                `compute.search handler returned a Promise, but the current query compilation path only supports synchronous handlers: ${modelLabel}.${fieldName}`
-              );
-            }
-
-            const resultObject = result && typeof result === 'object' ? (result as { domain?: unknown; sql?: unknown }) : undefined;
-            const hasDomain = resultObject?.domain != null;
-            const hasSql = resultObject?.sql != null;
-            if ((hasDomain && hasSql) || (!hasDomain && !hasSql)) {
-              throw new Error(`compute.search handler returned an invalid value and must provide exactly one of domain or sql: ${modelLabel}.${fieldName}`);
-            }
-
-            if (hasDomain) {
-              return asPredicate(resultObject!.domain as BaseQueryCondition);
-            }
-
-            return resultObject!.sql as RepositoryPredicate;
-          }
+          return rewritten.sql as RepositoryPredicate;
         }
       }
 
@@ -201,9 +129,12 @@ export function convertCondition(
             const modelCtor = meta.type as unknown as ModelCtor<BaseModel>;
             lhsExpr = createSelectCtx(selfTable).field(modelCtor, fieldName);
           } else {
-            const fieldMeta = meta.fields.get(fieldName);
-            if (fieldMeta?.select) {
-              lhsExpr = fieldMeta.select!.expr(createSelectCtx(selfTable));
+            if (hasRepositorySqlComputeExpression(meta, fieldName)) {
+              const resolved = resolveRepositorySqlComputeExpression(meta, fieldName, createSelectCtx(selfTable));
+              if (resolved === undefined) {
+                throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
+              }
+              lhsExpr = resolved;
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }
@@ -239,9 +170,12 @@ export function convertCondition(
             const modelCtor = meta.type as unknown as ModelCtor<BaseModel>;
             lhsExpr = createSelectCtx(selfTable).field(modelCtor, fieldName);
           } else {
-            const fieldMeta = meta.fields.get(fieldName);
-            if (fieldMeta?.select) {
-              lhsExpr = fieldMeta.select!.expr(createSelectCtx(selfTable));
+            if (hasRepositorySqlComputeExpression(meta, fieldName)) {
+              const resolved = resolveRepositorySqlComputeExpression(meta, fieldName, createSelectCtx(selfTable));
+              if (resolved === undefined) {
+                throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
+              }
+              lhsExpr = resolved;
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }
@@ -378,8 +312,11 @@ export function convertCondition(
         }
 
         const fieldMeta = meta.fields.get(fieldName);
-        if (fieldMeta?.select) {
-          const expr = fieldMeta.select!.expr(createSelectCtx(selfTable));
+        if (hasRepositorySqlComputeExpression(meta, fieldName)) {
+          const expr = resolveRepositorySqlComputeExpression(meta, fieldName, createSelectCtx(selfTable));
+          if (expr === undefined) {
+            throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
+          }
           const right = wrapByMeta(fieldMeta, effectiveOp, effectiveRhs);
           return repositoryPredicateCall(eb, expr, effectiveOp, right);
         }

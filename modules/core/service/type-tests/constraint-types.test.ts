@@ -15,7 +15,7 @@ class ConstraintTypeModel extends BaseModel {
 }
 
 class ConstraintTypeCases extends BaseModel {
-  // -- legacy static self/ctx signature --
+  // -- static self/ctx signature --
   @Constraint<ConstraintTypeModel>('Name')
   static validateName() {
     return undefined;

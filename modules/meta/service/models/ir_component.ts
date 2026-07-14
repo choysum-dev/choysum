@@ -9,16 +9,16 @@ import IrModule from './ir_module';
   autoMigrate: false,
 })
 export default class IrComponent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 512, notNull: true } })
+  @Field({ type: 'varchar', size: 512, notNull: true})
   Path!: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RawExtends?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Extends?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule } })

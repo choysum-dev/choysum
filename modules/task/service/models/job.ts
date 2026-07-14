@@ -63,11 +63,11 @@ function buildJobCondition(params: ListJobsParams): QueryCondition<Job> | [] {
 @Model('Job', { application: 'task', companyScoped: false })
 export default class Job extends BaseModel {
   /** Target application that owns the job. */
-  @Field({ type: 'varchar', column: { size: 100, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, index: true, notNull: true})
   TargetApp: string;
 
   /** Fully-qualified method invoked by the job. */
-  @Field({ type: 'varchar', column: { size: 255, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, index: true, notNull: true})
   FullMethod: string;
 
   /** Sanitized job payload. */
@@ -75,11 +75,11 @@ export default class Job extends BaseModel {
   PayloadJson: Record<string, any>;
 
   /** User who scheduled the job. */
-  @Field({ type: 'varchar', column: { size: 20, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
   SchedulerUserId: string;
 
   /** User who triggered the job. */
-  @Field({ type: 'varchar', column: { size: 20, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
   TriggeredByUserId: string;
 
   /** Current queue status. */
@@ -92,36 +92,36 @@ export default class Job extends BaseModel {
       { value: 'failed', label: 'failed' },
       { value: 'cancelled', label: 'cancelled' },
     ],
-    column: { size: 20, index: true, notNull: true, default: () => 'queued' },
+    size: 20, index: true, notNull: true, default: () => 'queued',
   })
   Status: JobStatus;
 
   /** Earliest time the job may run. */
-  @Field({ type: 'datetime', column: { index: true, notNull: true } })
+  @Field({ type: 'datetime', index: true, notNull: true})
   RunAfter: Date;
 
   /** Current attempt count. */
-  @Field({ type: 'int', column: { default: () => 0 } })
+  @Field({ type: 'int', default: () => 0})
   Attempt: number;
 
   /** Maximum attempt count before the job stops retrying. */
-  @Field({ type: 'int', column: { default: () => 1 } })
+  @Field({ type: 'int', default: () => 1})
   MaxAttempts: number;
 
   /** Per-job timeout budget in milliseconds. */
-  @Field({ type: 'int', column: { default: () => 0 } })
+  @Field({ type: 'int', default: () => 0})
   TimeoutMs: number;
 
   /** Time when cancellation was requested. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   CancelRequestedAt: Date;
 
   /** Time when the job was cancelled. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   CancelledAt: Date;
 
   /** Time when the job finished. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   FinishedAt: Date;
 
   /** Last execution error payload. */
@@ -129,11 +129,11 @@ export default class Job extends BaseModel {
   LastErrorJson: Record<string, any>;
 
   /** Hash of the last execution error payload. */
-  @Field({ type: 'varchar', column: { size: 128 } })
+  @Field({ type: 'varchar', size: 128})
   LastErrorHash: string;
 
   /** Whether the last error payload was truncated. */
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   LastErrorTruncated: boolean;
 
   /** Last execution result payload. */
@@ -141,11 +141,11 @@ export default class Job extends BaseModel {
   ResultJson: Record<string, any>;
 
   /** Hash of the last execution result payload. */
-  @Field({ type: 'varchar', column: { size: 128 } })
+  @Field({ type: 'varchar', size: 128})
   ResultHash: string;
 
   /** Whether the last result payload was truncated. */
-  @Field({ type: 'boolean', column: { default: () => false } })
+  @Field({ type: 'boolean', default: () => false})
   ResultTruncated: boolean;
 
   /** Creates a queued job with sanitized payload data. */

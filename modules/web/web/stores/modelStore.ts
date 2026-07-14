@@ -16,6 +16,15 @@ export type FieldMetadata = {
   id: string;
   type: string;
   typeAnnotation: string;
+  storageKind?: string;
+  shouldCreateColumn?: boolean;
+  resolvedColumnType?: string;
+  reasonCode?: string;
+  computedKind?: string;
+  relatedPath?: string;
+  relatedStore?: boolean;
+  searchable?: boolean;
+  runAs?: string;
   notNull?: boolean;
   size?: number;
   precision?: number;
@@ -25,7 +34,6 @@ export type FieldMetadata = {
   isReadonly?: boolean;
   indexed?: boolean;
   selection?: readonly SelectionItem[];
-  relation?: string;
   relationModel?: string;
   relationFilter?: string;
   relationModelParentField?: string;
@@ -34,6 +42,41 @@ export type FieldMetadata = {
   relationJoinField?: string;
   relationInverseJoinField?: string;
 };
+
+const RELATION_FIELD_TYPES = new Set(['manytoone', 'onetomany', 'manytomany', 'manytooneref', 'manytomanyref']);
+
+export function isRelationFieldType(type: string | undefined): boolean {
+  return RELATION_FIELD_TYPES.has(String(type || '').toLowerCase());
+}
+
+export function getFieldMetadataView(meta: FieldMetadata | undefined) {
+  const type = typeof meta?.type === 'string' ? meta.type : '';
+
+  const relationModel = meta?.relationModel;
+  const relatedPath = meta?.relatedPath;
+  const computedKind = meta?.computedKind;
+  const storageKind = meta?.storageKind;
+  const searchable = typeof meta?.searchable === 'boolean' ? meta.searchable : undefined;
+  const shouldCreateColumn = typeof meta?.shouldCreateColumn === 'boolean' ? meta.shouldCreateColumn : undefined;
+  const resolvedColumnType = meta?.resolvedColumnType;
+  const reasonCode = meta?.reasonCode;
+  const relatedStore = typeof meta?.relatedStore === 'boolean' ? meta.relatedStore : undefined;
+  const runAs = meta?.runAs;
+
+  return {
+    relationModel,
+    relatedPath,
+    relatedStore,
+    computedKind,
+    storageKind,
+    shouldCreateColumn,
+    resolvedColumnType,
+    reasonCode,
+    searchable,
+    runAs,
+    isRelation: isRelationFieldType(type),
+  } as const;
+}
 
 export type PlanCacheEntry = {
   signature: string;

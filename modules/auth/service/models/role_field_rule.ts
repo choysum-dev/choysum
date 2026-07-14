@@ -25,23 +25,21 @@ export default class RoleFieldRule extends BaseModel {
   /**
    * Application-level scope when the rule applies to an entire application.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrApplication', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
   IrApplicationId?: string;
 
   /**
    * Model-level scope when the rule applies to an entire model.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'meta.IrModel', column: { notNull: false, size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' }, notNull: false, size: 20, index: true})
   IrModelId?: string;
 
   /**
    * Field-level scope when the rule applies to one concrete field.
    */
   @Field({
-    type: 'ManyToOneRef',
-    targetModel: 'meta.IrField',
-    column: {
-      notNull: false,
+    type: 'ManyToOneRef', relation: { targetModel: 'meta.IrField' },
+    notNull: false,
       size: 20,
       index: true,
       checkConstraint: `(
@@ -54,7 +52,6 @@ export default class RoleFieldRule extends BaseModel {
         )
         AND (perm_read IS NOT NULL OR perm_write IS NOT NULL)
       )`,
-    },
   })
   IrFieldId?: string;
 
@@ -67,7 +64,7 @@ export default class RoleFieldRule extends BaseModel {
       { value: 'allow', label: 'Allow' },
       { value: 'deny', label: 'Deny' },
     ],
-    column: { notNull: false },
+    notNull: false,
   })
   PermRead?: 'allow' | 'deny';
 
@@ -80,7 +77,7 @@ export default class RoleFieldRule extends BaseModel {
       { value: 'allow', label: 'Allow' },
       { value: 'deny', label: 'Deny' },
     ],
-    column: { notNull: false },
+    notNull: false,
   })
   PermWrite?: 'allow' | 'deny';
 

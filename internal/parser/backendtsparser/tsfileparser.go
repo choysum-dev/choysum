@@ -183,13 +183,11 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			}
 		}
 		if !exists {
-			// Equivalent to @Field({ type:'varchar', column:{ size:1000, index:true } }).
+			// Equivalent to @Field({ type:'varchar', size: 1000, indexed: true }).
 			argObj := map[string]any{
-				"type": "varchar",
-				"column": map[string]any{
-					"size":  1000,
-					"index": true,
-				},
+				"type":    "varchar",
+				"size":    1000,
+				"indexed": true,
 			}
 			argBytes, _ := json.Marshal(argObj)
 
@@ -216,10 +214,49 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		}
 	}
 
+	behaviorBindings, behaviorDiagnostics, err := collectFieldBehaviorBindings(class.MemberMethods)
+	if err != nil {
+		return nil, nil, nil, xfmt.Errorf("failed to collect field behavior decorators: %w", err)
+	}
+	fieldNames := make(map[string]struct{}, len(model.Fields))
+	for _, field := range model.Fields {
+		if field == nil {
+			continue
+		}
+		fieldNames[field.Name] = struct{}{}
+	}
+	for bindingField := range behaviorBindings {
+		if _, ok := fieldNames[bindingField]; ok {
+			continue
+		}
+		return nil, nil, nil, xfmt.Errorf("orphan behavior decorator binding for unknown field: %s", bindingField)
+	}
+	for _, field := range model.Fields {
+		if field == nil {
+			continue
+		}
+		binding := behaviorBindings[field.Name]
+		diagnostics := behaviorDiagnostics[field.Name]
+		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics)
+		if err != nil {
+			return nil, nil, nil, xfmt.Errorf("failed to resolve field %s: %w", field.Name, err)
+		}
+		if resolvedSpec == nil {
+			continue
+		}
+		if err := field.SetResolvedSpec(resolvedSpec); err != nil {
+			return nil, nil, nil, xfmt.Errorf("failed to persist resolved field %s spec: %w", field.Name, err)
+		}
+		applyResolvedSpecToLegacyField(field, resolvedSpec)
+	}
+
 	// services
 	if len(class.MemberMethods) > 0 {
 		model.Services = make([]*meta.IrService, 0)
 		for _, memberMethod := range class.MemberMethods {
+			if !memberMethod.IsAsync {
+				continue
+			}
 			if !meta.IsConventionalModelService(memberMethod.AccessibilityModifier, memberMethod.IsStatic, memberMethod.Name) {
 				continue
 			}

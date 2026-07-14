@@ -11,43 +11,43 @@ import IrModel from './ir_model';
   orderBy: { field: 'Id', order: 'asc' },
 })
 export default class IrField extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 1000 } })
+  @Field({ type: 'varchar', size: 1000})
   TsTypeAnnotation?: string;
 
-  @Field({ type: 'varchar', column: { size: 1000 } })
+  @Field({ type: 'varchar', size: 1000})
   TsTypeReference?: string;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512})
   OriginModelPath?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   FieldType?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Relation?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationModel?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationFilter?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationInverseField?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationJoinModel?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationJoinField?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationInverseJoinField?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   RelationModelParentField?: string;
 
   @Field({ type: 'text' })
@@ -59,7 +59,7 @@ export default class IrField extends BaseModel {
   @Field({ type: 'varchar' })
   ModuleSpecPath?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   AccessibilityModifier?: string;
 
   @Field({ type: 'boolean' })
@@ -83,10 +83,10 @@ export default class IrField extends BaseModel {
   @Field({ type: 'int' })
   Scale?: number;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ScaleField?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Round?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModel } })

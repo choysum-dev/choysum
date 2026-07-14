@@ -55,19 +55,19 @@ function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Sch
 @Model('Schedule', { application: 'task', companyScoped: false })
 export default class Schedule extends BaseModel {
   /** Whether the schedule is active. */
-  @Field({ type: 'boolean', column: { default: () => true, index: true } })
+  @Field({ type: 'boolean', default: () => true, index: true})
   Active: boolean;
 
   /** Display name of the schedule. */
-  @Field({ type: 'varchar', column: { size: 200, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 200, index: true, notNull: true})
   Name: string;
 
   /** Target application that owns triggered jobs. */
-  @Field({ type: 'varchar', column: { size: 100, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, index: true, notNull: true})
   TargetApp: string;
 
   /** Fully-qualified method invoked by triggered jobs. */
-  @Field({ type: 'varchar', column: { size: 255, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 255, index: true, notNull: true})
   FullMethod: string;
 
   /** Payload template applied to triggered jobs. */
@@ -75,35 +75,35 @@ export default class Schedule extends BaseModel {
   PayloadTemplateJson: Record<string, any>;
 
   /** User who owns the schedule configuration. */
-  @Field({ type: 'varchar', column: { size: 20, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
   SchedulerUserId: string;
 
   /** User recorded as the trigger actor. */
-  @Field({ type: 'varchar', column: { size: 20, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
   TriggeredByUserId: string;
 
   /** Five-field cron expression. */
-  @Field({ type: 'varchar', column: { size: 100, index: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, index: true, notNull: true})
   CronExpr: string;
 
   /** IANA timezone used to evaluate the cron expression. */
-  @Field({ type: 'varchar', column: { size: 100, notNull: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true})
   Timezone: string;
 
   /** Timeout budget applied to triggered jobs. */
-  @Field({ type: 'int', column: { default: () => 0 } })
+  @Field({ type: 'int', default: () => 0})
   TimeoutMs: number;
 
   /** Next computed run time preview. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   NextRunAt: Date;
 
   /** Time when the schedule last ran. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   LastRunAt: Date;
 
   /** Time when the schedule last triggered a job. */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   LastTriggeredAt: Date;
 
   /** Creates a persisted schedule with an initial next-run preview. */

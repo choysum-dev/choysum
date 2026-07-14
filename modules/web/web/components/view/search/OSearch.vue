@@ -161,7 +161,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
 import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import OSearchFilter from './OSearchFilter.vue';
@@ -293,9 +293,10 @@ const availableFields = computed(() => {
     .filter(([k, m]: any) => {
       if (k === 'DeletedAt') return false;
       if (k === 'Id') return true;
-      const rel = String(m?.relation ?? '').toLowerCase();
-      if (!rel) return true;
-      return rel === 'manytoone';
+      const view = getFieldMetadataView(m);
+      if (!view.isRelation) return true;
+      const lowerType = String(m?.type ?? '').toLowerCase();
+      return lowerType === 'manytoone' || lowerType === 'manytooneref';
     })
     .map(([k, m]: any) => ({ prop: k, label: k, id: m?.id })) as Array<{ prop: string; label: string; id?: string }>;
 

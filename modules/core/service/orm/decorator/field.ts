@@ -32,10 +32,25 @@ const relationTypes = new Set<FieldType>(['ManyToOne', 'OneToMany', 'ManyToMany'
 type FieldDecoratorOptionBag = {
   type?: FieldType;
   select?: unknown;
-  column?: ObjectRecord;
+  column?: unknown;
   selection?: Array<{ value?: unknown; label?: unknown }>;
   targetModel?: unknown;
   relation?: unknown;
+  related?: unknown;
+  required?: unknown;
+  notNull?: unknown;
+  indexed?: unknown;
+  index?: unknown;
+  size?: unknown;
+  precision?: unknown;
+  scale?: unknown;
+  scaleField?: unknown;
+  primaryKey?: unknown;
+  unique?: unknown;
+  uniqueIndex?: unknown;
+  checkConstraint?: unknown;
+  default?: unknown;
+  round?: unknown;
 };
 
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
@@ -58,13 +73,149 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     const type = optionBag.type;
     if (!type) throw new Error(`@Field(${name}) missing type`);
 
+    const hasLegacySelect = optionBag.select !== undefined;
+    const hasLegacyColumn = optionBag.column !== undefined;
+    if (hasLegacySelect || hasLegacyColumn) {
+      throw new Error(`@Field(${name}) column/select syntax is forbidden; use flat field options and behavior decorators`);
+    }
+
     let validatedSelection: FieldMetadata['selection'];
+    let normalizedColumn: ObjectRecord | undefined;
 
     const isRelation = relationTypes.has(type);
-    const hasSelect = optionBag.select !== undefined;
-    let hasColumn = optionBag.column !== undefined;
-    const columnCompute = asObjectRecord(optionBag.column)?.compute;
-    const hasColumnCompute = !!columnCompute;
+
+    const hasFlatStorageHints =
+      optionBag.required !== undefined ||
+      optionBag.notNull !== undefined ||
+      optionBag.indexed !== undefined ||
+      optionBag.index !== undefined ||
+      optionBag.size !== undefined ||
+      optionBag.precision !== undefined ||
+      optionBag.scale !== undefined;
+    const hasFlatColumnOptions =
+      optionBag.primaryKey !== undefined ||
+      optionBag.unique !== undefined ||
+      optionBag.uniqueIndex !== undefined ||
+      optionBag.checkConstraint !== undefined ||
+      optionBag.default !== undefined ||
+      optionBag.round !== undefined ||
+      optionBag.scaleField !== undefined;
+    const hasRelated = optionBag.related !== undefined;
+
+    let normalizedStorageHints: FieldMetadata['storageHints'] | undefined;
+    if (hasFlatStorageHints) {
+      const hints: NonNullable<FieldMetadata['storageHints']> = {};
+      const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x);
+
+      if (optionBag.required !== undefined) {
+        if (typeof optionBag.required !== 'boolean') {
+          throw new Error(`@Field(${name}) required must be a boolean`);
+        }
+        hints.required = optionBag.required;
+      }
+
+      if (optionBag.notNull !== undefined) {
+        if (typeof optionBag.notNull !== 'boolean') {
+          throw new Error(`@Field(${name}) notNull must be a boolean`);
+        }
+        hints.required = optionBag.notNull;
+      }
+
+      if (optionBag.indexed !== undefined) {
+        if (typeof optionBag.indexed !== 'boolean') {
+          throw new Error(`@Field(${name}) indexed must be a boolean`);
+        }
+        hints.indexed = optionBag.indexed;
+      }
+
+      if (optionBag.index !== undefined) {
+        if (typeof optionBag.index !== 'boolean' && typeof optionBag.index !== 'string') {
+          throw new Error(`@Field(${name}) index must be a boolean or string`);
+        }
+        hints.indexed = optionBag.index === true || (typeof optionBag.index === 'string' && optionBag.index.trim().length > 0);
+      }
+
+      if (optionBag.size !== undefined) {
+        if (!isInt(optionBag.size) || optionBag.size < 1) {
+          throw new Error(`@Field(${name}) size must be a positive integer`);
+        }
+        if (type !== 'char' && type !== 'varchar' && type !== 'selection' && type !== 'ManyToOneRef' && type !== 'ManyToOne') {
+          throw new Error(`@Field(${name}) size is only supported on char/varchar/selection/ManyToOneRef/ManyToOne fields`);
+        }
+        hints.size = optionBag.size;
+      }
+
+      if (optionBag.precision !== undefined) {
+        if (!isInt(optionBag.precision) || optionBag.precision < 1 || optionBag.precision > 38) {
+          throw new Error(`@Field(${name}) precision must be in 1..38`);
+        }
+        if (type !== 'decimal') {
+          throw new Error(`@Field(${name}) precision is only supported on decimal fields`);
+        }
+        hints.precision = optionBag.precision;
+      }
+
+      if (optionBag.scale !== undefined) {
+        if (!isInt(optionBag.scale) || optionBag.scale < 0 || optionBag.scale > 18) {
+          throw new Error(`@Field(${name}) scale must be in 0..18`);
+        }
+        if (type !== 'decimal') {
+          throw new Error(`@Field(${name}) scale is only supported on decimal fields`);
+        }
+        hints.scale = optionBag.scale;
+      }
+
+      if (hints.precision != null && hints.scale != null && hints.scale > hints.precision) {
+        throw new Error(`@Field(${name}) scale must not be greater than precision (${hints.scale} > ${hints.precision})`);
+      }
+
+      normalizedStorageHints = hints;
+    }
+
+    let normalizedRelated: FieldMetadata['related'] | undefined;
+    if (hasRelated) {
+      const related = asObjectRecord(optionBag.related);
+      const path = String(related?.path || '').trim();
+      if (!path) {
+        throw new Error(`@Field(${name}) related.path must be a non-empty string`);
+      }
+
+      if (related?.store != null && typeof related.store !== 'boolean') {
+        throw new Error(`@Field(${name}) related.store must be a boolean when provided`);
+      }
+
+      if (related?.deps != null && !Array.isArray(related.deps)) {
+        throw new Error(`@Field(${name}) related.deps must be a string array when provided`);
+      }
+
+      const deps = Array.isArray(related?.deps) ? [...new Set(related.deps.map(dep => String(dep || '').trim()).filter(Boolean))] : undefined;
+
+      normalizedRelated = {
+        path,
+        store: related?.store === true,
+        ...(deps && deps.length ? { deps } : {}),
+      };
+    }
+
+    if (normalizedStorageHints || hasFlatColumnOptions) {
+      normalizedColumn = {};
+      if (normalizedStorageHints?.required === true) normalizedColumn.notNull = true;
+      if (normalizedStorageHints?.indexed === true) normalizedColumn.index = true;
+      if (normalizedStorageHints?.size != null) normalizedColumn.size = normalizedStorageHints.size;
+      if (normalizedStorageHints?.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
+      if (normalizedStorageHints?.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
+
+      if (optionBag.index !== undefined) normalizedColumn.index = optionBag.index;
+      if (optionBag.primaryKey !== undefined) normalizedColumn.primaryKey = optionBag.primaryKey;
+      if (optionBag.unique !== undefined) normalizedColumn.unique = optionBag.unique;
+      if (optionBag.uniqueIndex !== undefined) normalizedColumn.uniqueIndex = optionBag.uniqueIndex;
+      if (optionBag.checkConstraint !== undefined) normalizedColumn.checkConstraint = optionBag.checkConstraint;
+      if (optionBag.default !== undefined) normalizedColumn.default = optionBag.default;
+      if (optionBag.round !== undefined) normalizedColumn.round = optionBag.round;
+      if (optionBag.scaleField !== undefined) normalizedColumn.scaleField = optionBag.scaleField;
+    }
+
+    const hasColumn = normalizedColumn !== undefined;
 
     // Selection-specific validation
     if (type === 'selection') {
@@ -100,58 +251,46 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         normalizedSelection.push({ value, label });
       }
       validatedSelection = normalizedSelection;
-
-      // 4) selection cannot declare both select and column
-      if (hasSelect && hasColumn) {
-        throw new Error(`@Field(${name}) selection field cannot declare both select and column`);
-      }
-
-      // 5) selection defaults to a physical column unless select is explicitly provided
-      if (!hasSelect && !hasColumn) {
-        // Auto-fill column metadata later
-      }
     }
 
-    // Mutual exclusion validation: select vs column (non-selection types)
-    if (type !== 'selection') {
-      if (hasSelect && hasColumn) {
-        throw new Error(`@Field(${name}) select branch cannot declare column`);
-      }
-      if (hasSelect && hasColumnCompute) {
-        throw new Error(`@Field(${name}) select branch cannot declare compute`);
-      }
-    }
-
-    // ManyToOneRef default physical column: char(20) + index (when column/select is absent)
-    if (type === 'ManyToOneRef' && !hasSelect && !hasColumn) {
-      optionBag.column = {
-        ...(optionBag.column || {}),
+    // ManyToOneRef default physical column: char(20) + index when no explicit storage hints are provided.
+    if (type === 'ManyToOneRef' && !hasColumn) {
+      normalizedColumn = {
+        ...(normalizedColumn || {}),
         size: 20,
         index: true,
       };
     }
 
-    // ManyToManyRef default physical column: jsonobject (actual physical mapping is decided by migrator)
-    if (type === 'ManyToManyRef' && !hasSelect && !hasColumn) {
+    // ManyToManyRef default physical column: jsonobject (actual physical mapping is decided by migrator).
+    if (type === 'ManyToManyRef' && !hasColumn) {
       // Do not force a default value; encode/decode layer will fall back to [] on read
-      optionBag.column = {
-        ...(optionBag.column || {}),
+      normalizedColumn = {
+        ...(normalizedColumn || {}),
       };
     }
 
     // Validate targetModel for ref types
     if (type === 'ManyToOneRef' || type === 'ManyToManyRef') {
-      if (!optionBag.targetModel) {
-        throw new Error(`@Field(${name}) ${type} requires targetModel`);
+      if (optionBag.targetModel !== undefined) {
+        throw new Error(`@Field(${name}) ${type} requires relation.targetModel (top-level targetModel is not supported)`);
       }
+
+      const relation = asObjectRecord(optionBag.relation);
+      if (!relation?.targetModel) {
+        throw new Error(`@Field(${name}) ${type} requires relation.targetModel`);
+      }
+    }
+
+    if (optionBag.scaleField !== undefined && type !== 'decimal') {
+      throw new Error(`@Field(${name}) scaleField is only supported on decimal fields`);
     }
 
     // Decimal option validation (DDL stays NUMERIC(38,18); scale metadata is validated here)
     if (type === 'decimal') {
-      const branch = hasSelect ? asObjectRecord(optionBag.select) : hasColumn ? asObjectRecord(optionBag.column) : undefined;
+      const branch = normalizedColumn;
       const p = branch?.precision;
       const s = branch?.scale;
-      const sf = branch?.scaleField;
 
       const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x);
 
@@ -174,14 +313,15 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         throw new Error(`@Field(${name}) decimal.scale must not be greater than precision (${s} > ${p})`);
       }
 
-      // scale and scaleField are mutually exclusive
-      if (s != null && sf != null) {
-        throw new Error(`@Field(${name}) decimal cannot declare both scale and scaleField`);
-      }
-
-      // scaleField must be a string field name on the same model
-      if (sf != null && typeof sf !== 'string') {
-        throw new Error(`@Field(${name}) decimal.scaleField must be a string field name on the same model`);
+      // scaleField: validates that the companion column name is a non-empty string (only for decimal).
+      const sf = optionBag.scaleField;
+      if (sf !== undefined) {
+        if (typeof sf !== 'string' || !sf.trim()) {
+          throw new Error(`@Field(${name}) scaleField must be a non-empty string`);
+        }
+        if (sf !== sf.trim()) {
+          throw new Error(`@Field(${name}) scaleField must not contain leading or trailing whitespace`);
+        }
       }
     }
 
@@ -193,83 +333,36 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if ((type === 'OneToMany' || type === 'ManyToMany') && hasColumn) {
         throw new Error(`@Field(${name}) ${type} does not allow column`);
       }
-      if ((type === 'OneToMany' || type === 'ManyToMany') && hasColumnCompute) {
-        throw new Error(`@Field(${name}) ${type} does not support compute`);
-      }
     }
 
-    // Compute validation
-    if (hasColumnCompute) {
-      const compute = asObjectRecord(columnCompute);
-      const deps = compute?.deps;
-
-      if (!Array.isArray(deps) || deps.length === 0) {
-        throw new Error(`@Field(${name}) compute.deps must not be empty`);
-      }
-
-      const store = compute?.store !== false;
-      const searchable = compute?.searchable === true;
-      const runAs = compute?.runAs;
-
-      const inverse = typeof compute?.inverse === 'string' ? compute.inverse.trim() : '';
-      const hasInverse = inverse.length > 0;
-      const search = typeof compute?.search === 'string' ? compute.search.trim() : '';
-      const hasSearch = search.length > 0;
-
-      if (runAs != null && runAs !== 'user' && runAs !== 'sudo') {
-        throw new Error(`@Field(${name}) compute.runAs only supports user|sudo`);
-      }
-
-      if (store && compute?.searchable != null) {
-        throw new Error(`@Field(${name}) compute.searchable should not be set when store=true`);
-      }
-
-      if (!store && hasInverse) {
-        throw new Error(`@Field(${name}) compute.inverse is not allowed when store=false`);
-      }
-
-      if (!store && searchable && !hasSearch) {
-        throw new Error(`@Field(${name}) compute.search is required when store=false and searchable=true`);
-      }
-
-      if (!store && !searchable && hasSearch) {
-        throw new Error(`@Field(${name}) compute.search is not allowed when store=false and searchable=false`);
-      }
-
-      if (compute?.inverse != null && !hasInverse) {
-        throw new Error(`@Field(${name}) compute.inverse must not be blank`);
-      }
-
-      if (compute?.search != null && !hasSearch) {
-        throw new Error(`@Field(${name}) compute.search must not be blank`);
-      }
-    }
-
-    // Auto-fill column metadata for scalar fields without select/column
-    const autoColumnScalar = !isRelation && scalarTypes.has(type) && !hasSelect && !hasColumn;
-    const autoColumnManyToOne = type === 'ManyToOne' && !hasSelect && !hasColumn;
+    // Auto-fill column metadata for scalar fields without explicit storage options.
+    const autoColumnScalar = !isRelation && scalarTypes.has(type) && !normalizedColumn && name !== 'DisplayName';
+    const autoColumnManyToOne = type === 'ManyToOne' && !normalizedColumn;
 
     const meta: FieldMetadata = { name, type };
 
-    // Persist selection metadata before column/select handling
+    // Persist selection metadata before final storage/relation defaults.
     if (type === 'selection') {
       meta.selection = validatedSelection;
     }
 
-    // Persist targetModel metadata for ref types
-    if (type === 'ManyToOneRef' || type === 'ManyToManyRef') {
-      meta.targetModel = optionBag.targetModel as FieldMetadata['targetModel'];
-    }
-
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];
-    if (hasColumn) meta.column = optionBag.column as FieldMetadata['column'];
+    if (normalizedColumn) meta.column = normalizedColumn as FieldMetadata['column'];
     else if (autoColumnScalar || autoColumnManyToOne) meta.column = {};
 
-    if (hasSelect) meta.select = optionBag.select as FieldMetadata['select'];
+    if (normalizedRelated) meta.related = normalizedRelated;
+    if (normalizedStorageHints) meta.storageHints = normalizedStorageHints;
 
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;
     const prev = MetadataStorage.instance.getModelMetadata(ctor);
+    const existingCompute = prev?.computeHandlers?.get(name);
+    const existingSqlCompute = prev?.sqlComputeHandlers?.get(name);
+
+    if (existingCompute?.store === false || !!existingSqlCompute) {
+      delete meta.column;
+    }
+
     const fields = new Map(prev?.fields ?? []);
     fields.set(name, { ...(fields.get(name) || {}), ...meta });
 

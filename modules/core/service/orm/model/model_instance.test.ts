@@ -11,7 +11,7 @@ import BaseModel from './model';
 import { deleteModelInstance, loadModelInstance, reloadModelInstance, toTransportObject, updateModelInstance } from './model_instance';
 
 class ModelInstanceHarness extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 }
 

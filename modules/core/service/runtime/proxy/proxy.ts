@@ -32,6 +32,16 @@ export interface ProxyFactory {
 // Model-level summary cache for relation and computed fields.
 const MODEL_SUMMARY_CACHE = new WeakMap<Function, { relationKeys: Set<string>; computedKeys: Set<string> }>();
 
+type OrmRelationFieldMetadata = FieldMetadata & {
+  type: 'ManyToOne' | 'OneToMany' | 'ManyToMany';
+  relation: NonNullable<FieldMetadata['relation']>;
+};
+
+function isOrmRelationFieldMeta(f: FieldMetadata | undefined): f is OrmRelationFieldMetadata {
+  if (!f?.relation) return false;
+  return f.type === 'ManyToOne' || f.type === 'OneToMany' || f.type === 'ManyToMany';
+}
+
 function getModelSummary(meta: ModelMetadata, ctor: Function) {
   let summary = MODEL_SUMMARY_CACHE.get(ctor);
   if (summary) return summary;
@@ -40,10 +50,18 @@ function getModelSummary(meta: ModelMetadata, ctor: Function) {
   const computedKeys = new Set<string>();
 
   for (const [k, f] of meta.fields as Map<string, FieldMetadata>) {
-    if (f?.relation) relationKeys.add(k);
-    // Compute metadata is now object-shaped, so look for f.column.compute.expr.
-    if (f.column?.compute?.expr) computedKeys.add(k);
+    if (isOrmRelationFieldMeta(f)) relationKeys.add(k);
   }
+
+  meta.computeHandlers?.forEach((handler, fieldKey) => {
+    const field = String(handler?.field || fieldKey || '').trim();
+    if (field) computedKeys.add(field);
+  });
+
+  meta.sqlComputeHandlers?.forEach((handler, fieldKey) => {
+    const field = String(handler?.field || fieldKey || '').trim();
+    if (field) computedKeys.add(field);
+  });
 
   summary = { relationKeys, computedKeys };
   MODEL_SUMMARY_CACHE.set(ctor, summary);
@@ -168,12 +186,12 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
   }
 
   private handlePropertySet(target: T, key: string, value: unknown): boolean {
-    const fieldMeta = this.getFieldMeta(key);
-
     // Disallow setting computed fields directly.
-    if (fieldMeta?.column?.compute?.expr) {
+    if (this.summary.computedKeys.has(key)) {
       throw new Error(`Cannot set computed property "${key}". It is read-only.`);
     }
+
+    const fieldMeta = this.getFieldMeta(key);
 
     // Quantize decimal writes consistently with metadata scale and rounding rules.
     const valueToSet = fieldMeta?.type === 'decimal' ? (normalizeDecimalByMeta(fieldMeta, value) ?? value) : value;
@@ -194,7 +212,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
    */
   private handleRelation(target: T, key: string): unknown {
     const fieldMeta = this.getFieldMeta(key);
-    if (!fieldMeta?.relation) return undefined;
+    if (!isOrmRelationFieldMeta(fieldMeta)) return undefined;
 
     if (this.relationCache.has(key)) {
       const cachedResult = this.relationCache.get(key);
@@ -362,20 +380,26 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
   private handleComputed(target: T, key: string): unknown {
     if (!this.summary.computedKeys.has(key)) return undefined;
 
-    const fieldMeta = this.getFieldMeta(key);
-    // Only proceed when compute.expr exists.
-    if (!fieldMeta?.column?.compute?.expr) return undefined;
+    const computeHandler = this.meta.computeHandlers?.get(key);
+    const sqlComputeHandler = this.meta.sqlComputeHandlers?.get(key);
+    if (!computeHandler && !sqlComputeHandler) return undefined;
+
+    if (sqlComputeHandler) {
+      // Sql compute values are injected in read pipelines; proxy only exposes stored snapshots.
+      return Reflect.get(target, key);
+    }
+
+    const methodName = String(computeHandler?.method || '').trim();
+    if (!methodName) return undefined;
 
     // Optimization: for pristine objects, return the stored computed value directly.
     // This avoids recomputation failures in serialization-like flows when dependencies are not loaded.
-    if (fieldMeta.column) {
-      const isPristine = this.getChangedFields(target).length === 0 && Object.keys(this.collectRelationChanges(target)).length === 0;
+    const isPristine = this.getChangedFields(target).length === 0 && Object.keys(this.collectRelationChanges(target)).length === 0;
 
-      if (isPristine) {
-        const storedValue = Reflect.get(target, key);
-        if (storedValue !== undefined) {
-          return storedValue;
-        }
+    if (isPristine) {
+      const storedValue = Reflect.get(target, key);
+      if (storedValue !== undefined) {
+        return storedValue;
       }
     }
 
@@ -388,8 +412,20 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
 
       if (!this.computedWatchers.get(key)) {
         const self = this.proxyRef ?? target;
-        // Invoke column.compute.expr directly.
-        this.computedWatchers.set(key, new Watcher<T>(self, options => fieldMeta.column!.compute!.expr(options.self), key));
+        this.computedWatchers.set(
+          key,
+          new Watcher<T>(
+            self,
+            options => {
+              const fn = (options.self as unknown as Record<string, unknown>)[methodName];
+              if (typeof fn !== 'function') {
+                throw new Error(`@Compute handler not found: ${this.meta.type?.name || 'Unknown'}.${key} -> ${methodName}`);
+              }
+              return (fn as (this: unknown) => unknown).call(options.self);
+            },
+            key
+          )
+        );
       }
 
       return this.computedWatchers.get(key)!.get();

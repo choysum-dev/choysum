@@ -8,28 +8,28 @@ import { fail, normalizeCodeRequired } from './_normalizers';
 
 @Model('Country')
 export default class Country extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 8, notNull: true, unique: true, index: true } })
+  @Field({ type: 'varchar', size: 8, notNull: true, unique: true, index: true})
   Code: string;
 
-  @Field({ type: 'varchar', column: { size: 16 } })
+  @Field({ type: 'varchar', size: 16})
   PhonePrefix?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Currency }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Currency }, index: true})
   DefaultCurrencyId?: Currency;
 
   @Field({ type: 'text' })
   AddressFormat?: string;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true})
   ZipRequired: boolean;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => false } })
+  @Field({ type: 'boolean', notNull: true, default: () => false})
   StateRequired: boolean;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   private validateAddressFormat(value: any): string | null {

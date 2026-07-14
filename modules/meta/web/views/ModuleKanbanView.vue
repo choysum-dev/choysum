@@ -229,7 +229,9 @@ const props = withDefaults(defineProps<{ store: WebModelStore<IrModuleIndex>; mo
 const { store, showHeader } = props;
 const moduleStore = props.moduleStore;
 
-const keywordFields = ['ModuleName', 'Version', 'LocalVersion', 'RegistryVersion', 'OriginTypes', 'InstalledStatus', 'InstalledVersion'];
+// Keep keyword search on persisted fields only; computed/derived fields require
+// explicit backend @Search handlers and can break list queries.
+const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 
 const router = useRouter();
 const moduleInstallAction = defineAction('meta.action.module_install', {

@@ -7,7 +7,7 @@ import { ReadOperations } from './model_read';
 import { browseManyModels, browseModel, countGroupedModels, countModels, readGroupedModels, searchModels } from './model_read_facade';
 
 class ReadFacadeModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 }
 

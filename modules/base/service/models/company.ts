@@ -15,34 +15,34 @@ import { fail, mapNormalizationToBase } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, unique: true, notNull: true})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 40, unique: true, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 40, unique: true, notNull: true, index: true})
   Code: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
   ParentId?: Company;
 
-  @Field({ type: 'varchar', column: { size: 64, notNull: true } })
+  @Field({ type: 'varchar', size: 64, notNull: true})
   Timezone: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Currency }, column: { notNull: true, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Currency }, notNull: true, index: true})
   CurrencyId: Currency;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Language }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Language }, index: true})
   LanguageId?: Language;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, index: true})
   LocaleId?: Locale;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Country }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Country }, index: true})
   CountryId?: Country;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Address }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Address }, index: true})
   AddressId?: Address;
 
   private static normalizeRequiredText(value: unknown, fieldName: string): string {

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { ModelMetadata } from '../../metadata';
+import { hasRepositorySqlComputeExpression } from './sql_compute_expression';
 import type { ObjectRecord } from '../../../../utils/types';
 
 export type RepositoryOrderSpec = {
@@ -91,7 +92,7 @@ export function applyOrderByToQuery<T>(
       continue;
     }
 
-    if ((fieldMeta as { select?: unknown })?.select) {
+    if (hasRepositorySqlComputeExpression(targetMeta, field)) {
       qb = orderable.orderBy((inner: unknown) => deps.resolveSelectField(inner as RepositoryOrderBuilder, field, fieldMeta), order);
       continue;
     }

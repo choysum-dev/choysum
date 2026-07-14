@@ -15,7 +15,7 @@ import { MetadataStorage } from '../metadata/storage';
 
 @Model('test.ModelInternalPublicBridge')
 class ModelInternalPublicBridge extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 }
 
@@ -1716,7 +1716,7 @@ test('UpdateOperations.Update skips direct update when processed scalar payload 
   }
 });
 
-test('UpdateOperations.Update includes decimal scale field from select spec when column spec is absent', async () => {
+test('UpdateOperations.Update includes decimal scale field from column spec', async () => {
   const originalPrepareForUpdate = RelationFactory.prepareForUpdate;
   const originalResolveRepository = (UpdateOperations as any).resolveRepository;
   const originalTriggerUpstream = ComputeCascadeEngine.triggerUpstream;
@@ -1727,10 +1727,7 @@ test('UpdateOperations.Update includes decimal scale field from select spec when
   const searchCalls: any[] = [];
 
   try {
-    meta.fields.set('SelectDecimal', {
-      type: 'decimal',
-      select: { scaleField: 'SelectDecimalScale' },
-    });
+    meta.fields.set('SelectDecimal', { type: 'decimal', column: { scaleField: 'SelectDecimalScale' } });
     meta.fields.set('SelectDecimalScale', { type: 'int' });
 
     RelationFactory.prepareForUpdate = (async (_ModelCtor: any, values: any) => ({

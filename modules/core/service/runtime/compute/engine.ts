@@ -8,6 +8,7 @@ import type BaseModel from '../../orm/model/model';
 import Decimal, { decimalEqual, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import { withComputeRunAsExecution } from './runas';
+import { createEntityBackedModelInstance, resolveInstanceHandler } from './handler_runtime';
 import { asObjectRecord, hasOwnKey } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
 
@@ -27,6 +28,13 @@ function isObject(v: unknown): v is UnknownRecord {
   return v !== null && typeof v === 'object';
 }
 
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  if (value == null) return false;
+  const t = typeof value;
+  if (t !== 'object' && t !== 'function') return false;
+  return typeof (value as { then?: unknown }).then === 'function';
+}
+
 function readBigdecimalEnvelope(value: unknown): string | number | undefined {
   const record = asObjectRecord(value);
   if (!record || !hasOwnKey(record, '$bigdecimal')) return undefined;
@@ -37,7 +45,7 @@ function readBigdecimalEnvelope(value: unknown): string | number | undefined {
 // Resolve the effective decimal scale: prefer a fixed scale, otherwise read the value from scaleField on the entity.
 function resolveDecimalScale(metaField: unknown, entity: unknown): number | undefined {
   const metaRecord = asObjectRecord(metaField);
-  const spec = asObjectRecord(metaRecord?.column) ?? asObjectRecord(metaRecord?.select) ?? {};
+  const spec = asObjectRecord(metaRecord?.column) ?? {};
   if (typeof spec.scale === 'number') return spec.scale;
   const s = spec.scaleField;
   const entityRecord = asObjectRecord(entity);
@@ -51,16 +59,56 @@ function resolveDecimalScale(metaField: unknown, entity: unknown): number | unde
 // Normalize or quantize a Decimal using metadata, including dynamic scaleField support.
 function quantizeByMeta(metaField: unknown, entity: UnknownRecord, value: unknown): unknown {
   const metaRecord = asObjectRecord(metaField);
-  const spec = asObjectRecord(metaRecord?.column) ?? asObjectRecord(metaRecord?.select) ?? {};
+  const spec = asObjectRecord(metaRecord?.column) ?? {};
   const effScale = resolveDecimalScale(metaField, entity);
   const override = (effScale != null ? { column: { ...spec, scale: effScale, round: spec.round, precision: spec.precision } } : metaRecord) as
-    | { column?: unknown; select?: unknown }
+    | { column?: unknown }
     | undefined;
   try {
     return normalizeDecimalByMeta(override, value) ?? value;
   } catch {
     return value;
   }
+}
+
+function ensureSyncBridgeResult(value: unknown, label: string): unknown {
+  if (isPromiseLike(value)) {
+    throw new Error(`${label} returned a Promise in a sync execution path`);
+  }
+  return value;
+}
+
+type RuntimeComputeExecution = {
+  store: boolean;
+  runAs: 'user' | 'sudo';
+  execute: (modelInstance: BaseModel) => unknown;
+};
+
+function resolveRuntimeComputeExecution(meta: ModelMetadata, field: string): RuntimeComputeExecution | undefined {
+  const computeHandler = meta.computeHandlers?.get(field);
+  if (computeHandler) {
+    const method = resolveInstanceHandler(meta, field, computeHandler.method, '@Compute');
+    return {
+      store: computeHandler.store !== false,
+      runAs: computeHandler.runAs === 'sudo' ? 'sudo' : 'user',
+      execute: modelInstance => method.call(modelInstance),
+    };
+  }
+
+  // Fallback: read inline compute expression from field-level column metadata.
+  const fieldMeta = meta.fields?.get(field);
+  const colSpec = (fieldMeta?.column ?? {}) as UnknownRecord;
+  const computeSpec = colSpec.compute as UnknownRecord | undefined;
+  const expr = computeSpec?.expr;
+  if (typeof expr === 'function') {
+    return {
+      store: computeSpec?.store !== false,
+      runAs: computeSpec?.runAs === 'sudo' ? 'sudo' : 'user',
+      execute: modelInstance => (expr as (self: unknown) => unknown).call(modelInstance, modelInstance),
+    };
+  }
+
+  return;
 }
 
 // In preview mode, normalize decimal fields on the entity and any attached ManyToOne objects as a fallback.
@@ -157,17 +205,28 @@ export class ComputeEngine {
     targets.forEach(includeWithVirtualDeps);
 
     const orderedSubset = g.order.filter(field => required.has(field));
-    const wrapped = entity;
+    const wrapped = createEntityBackedModelInstance(meta, entity);
 
     for (const field of orderedSubset) {
       const fieldMeta = meta.fields.get(field);
-      if (!fieldMeta?.column?.compute) continue;
-      const spec = fieldMeta.column.compute;
-      if (spec.store !== false) continue;
+      if (meta.sqlComputeHandlers?.has(field)) {
+        // SqlCompute is query-time only. Runtime read injection never executes SqlCompute
+        // handlers and only keeps values that were already projected by repository search.
+        continue;
+      }
 
-      const runAs = spec.runAs === 'sudo' ? 'sudo' : 'user';
-      let newVal = withComputeRunAsExecution(meta, field, runAs, 'expr', () => spec.expr(wrapped as never), 'read');
-      if (fieldMeta.type === 'decimal') {
+      const runtimeCompute = resolveRuntimeComputeExecution(meta, field);
+      if (!runtimeCompute || runtimeCompute.store !== false) continue;
+
+      let newVal = withComputeRunAsExecution(meta, field, runtimeCompute.runAs, 'expr', () => runtimeCompute.execute(wrapped), 'read');
+      newVal = ensureSyncBridgeResult(newVal, `@Compute(${field})`);
+
+      const currentFieldValue = entity[field];
+      if (newVal === undefined && currentFieldValue !== undefined) {
+        newVal = currentFieldValue;
+      }
+
+      if (fieldMeta?.type === 'decimal') {
         newVal = quantizeByMeta(fieldMeta, entity, newVal);
       }
       entity[field] = newVal;
@@ -218,24 +277,29 @@ export class ComputeEngine {
     const orderedSubset = this.sortSubsetTopologically(g, toRecompute);
 
     // 3) Execute the compute expressions.
-    const wrapped = entity;
+    const wrapped = createEntityBackedModelInstance(meta, entity);
 
     for (const f of orderedSubset) {
+      const runtimeCompute = resolveRuntimeComputeExecution(meta, f);
+      if (!runtimeCompute) continue;
+
       const fieldMeta = meta.fields.get(f);
-      if (!fieldMeta?.column?.compute) continue;
       try {
-        const spec = fieldMeta.column.compute;
-        const runAs = spec.runAs === 'sudo' ? 'sudo' : 'user';
         const oldVal = entity[f];
-        let newVal = withComputeRunAsExecution(meta, f, runAs, 'expr', () => spec.expr(wrapped as never), mode);
+        const result = await withComputeRunAsExecution(meta, f, runtimeCompute.runAs, 'expr', () => runtimeCompute.execute(wrapped), mode);
+
+        let newVal = entity[f];
+        if (newVal === oldVal && result !== undefined) {
+          newVal = result;
+        }
 
         // Quantize decimal results using the effective scale, either a fixed scale or the current scaleField value.
-        if (fieldMeta.type === 'decimal') {
+        if (fieldMeta?.type === 'decimal') {
           newVal = quantizeByMeta(fieldMeta, entity, newVal);
         }
 
-        const changed =
-          fieldMeta.type === 'decimal' ? !(newVal == null && oldVal == null) && !decimalEqual(newVal, oldVal) && newVal !== oldVal : newVal !== oldVal;
+        const isDecimalField = fieldMeta?.type === 'decimal';
+        const changed = isDecimalField ? !(newVal == null && oldVal == null) && !decimalEqual(newVal, oldVal) && newVal !== oldVal : newVal !== oldVal;
 
         if (changed) {
           entity[f] = newVal;

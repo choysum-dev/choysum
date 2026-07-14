@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
@@ -26,59 +26,59 @@ type PartnerContactLike = {
 @Model('Partner', { companyScoped: true })
 export default class Partner extends BaseModel {
   /** Partner display name. */
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true })
   Name: string;
 
   /** Unique partner code within a company. */
-  @Field({ type: 'varchar', column: { size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' } })
+  @Field({ type: 'varchar', size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' })
   Code: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' })
   CompanyId: string;
 
   /** Whether the partner is active. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true })
   IsActive: boolean;
 
   /** Whether the record represents an organization instead of an individual. */
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true })
   IsCompany: boolean;
 
   /** Customer classification rank. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 0, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 0, index: true })
   CustomerRank: number;
 
   /** Supplier classification rank. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 0, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 0, index: true })
   SupplierRank: number;
 
   /** Default language reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Language', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Language' }, size: 20, index: true })
   LanguageId?: string;
 
   /** Default currency reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Currency', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, index: true })
   CurrencyId?: string;
 
   /** Default country reference. */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Country', column: { size: 20, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true })
   CountryId?: string;
 
   /** External reference code. */
-  @Field({ type: 'varchar', column: { size: 80, index: true } })
+  @Field({ type: 'varchar', size: 80, index: true })
   Reference?: string;
 
   /** Primary email address. */
-  @Field({ type: 'varchar', column: { size: 120, index: true } })
+  @Field({ type: 'varchar', size: 120, index: true })
   Email?: string;
 
   /** Primary phone number. */
-  @Field({ type: 'varchar', column: { size: 40, index: true } })
+  @Field({ type: 'varchar', size: 40, index: true })
   Phone?: string;
 
   /** Primary mobile number. */
-  @Field({ type: 'varchar', column: { size: 40, index: true } })
+  @Field({ type: 'varchar', size: 40, index: true })
   Mobile?: string;
 
   /** Related contact and address rows. */
@@ -92,67 +92,49 @@ export default class Partner extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => Partner.pickDefaultContactId((self as any).Contacts),
-        deps: [
-          'Contacts.Id' as any,
-          'Contacts.Name' as any,
-          'Contacts.AddressType' as any,
-          'Contacts.IsDefault' as any,
-          'Contacts.IsActive' as any,
-          'Contacts.Sequence' as any,
-        ],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultContactId?: PartnerContact;
+
+  @Compute<Partner>('DefaultContactId', {
+    deps: ['Contacts.Id', 'Contacts.Name', 'Contacts.AddressType', 'Contacts.IsDefault', 'Contacts.IsActive', 'Contacts.Sequence'],
+  })
+  computeDefaultContactId() {
+    return Partner.pickDefaultContactId(this.Contacts);
+  }
 
   /** Derived default billing address contact. */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => Partner.pickDefaultAddressId((self as any).Contacts, 'billing'),
-        deps: [
-          'Contacts.Id' as any,
-          'Contacts.AddressId' as any,
-          'Contacts.AddressType' as any,
-          'Contacts.IsDefault' as any,
-          'Contacts.IsActive' as any,
-          'Contacts.Sequence' as any,
-        ],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultBillingAddressId?: PartnerContact;
+
+  @Compute<Partner>('DefaultBillingAddressId', {
+    deps: ['Contacts.Id', 'Contacts.AddressId', 'Contacts.AddressType', 'Contacts.IsDefault', 'Contacts.IsActive', 'Contacts.Sequence'],
+  })
+  computeDefaultBillingAddressId() {
+    return Partner.pickDefaultAddressId(this.Contacts, 'billing');
+  }
 
   /** Derived default shipping address contact. */
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
-    column: {
-      index: true,
-      compute: {
-        expr: (self: Partner) => Partner.pickDefaultAddressId((self as any).Contacts, 'shipping'),
-        deps: [
-          'Contacts.Id' as any,
-          'Contacts.AddressId' as any,
-          'Contacts.AddressType' as any,
-          'Contacts.IsDefault' as any,
-          'Contacts.IsActive' as any,
-          'Contacts.Sequence' as any,
-        ],
-      },
-    },
+    indexed: true,
   })
   readonly DefaultShippingAddressId?: PartnerContact;
 
+  @Compute<Partner>('DefaultShippingAddressId', {
+    deps: ['Contacts.Id', 'Contacts.AddressId', 'Contacts.AddressType', 'Contacts.IsDefault', 'Contacts.IsActive', 'Contacts.Sequence'],
+  })
+  computeDefaultShippingAddressId() {
+    return Partner.pickDefaultAddressId(this.Contacts, 'shipping');
+  }
+
   /** Display ordering hint. */
-  @Field({ type: 'int', column: { notNull: true, default: () => 10, index: true } })
+  @Field({ type: 'int', notNull: true, default: () => 10, index: true })
   Sequence: number;
 
   /** Internal notes. */

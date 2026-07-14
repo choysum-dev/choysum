@@ -212,8 +212,12 @@ export class CreateOperations {
     if (!meta.computeGraph?.computeFields?.size) return value;
 
     const cleaned: UnknownRecord = { ...(value as UnknownRecord) };
+    const virtualComputeFields = meta.computeGraph?.virtualComputeFields || new Set<string>();
     meta.computeGraph.computeFields.forEach((f: string) => {
-      if (f in cleaned) delete cleaned[f];
+      if (!(f in cleaned)) return;
+      const handler = meta.computeHandlers?.get(f);
+      const isVirtual = virtualComputeFields.has(f) || handler?.store === false;
+      if (!isVirtual) delete cleaned[f];
     });
     return cleaned as Partial<Insertable<T>>;
   }
