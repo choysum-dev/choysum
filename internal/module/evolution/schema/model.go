@@ -130,9 +130,6 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 		if hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "" {
 			metaMap["uniqueIndex"] = strings.TrimSpace(*hints.UniqueIndex)
 		}
-		if hints.Default != nil && strings.TrimSpace(*hints.Default) != "" {
-			metaMap["default"] = strings.TrimSpace(*hints.Default)
-		}
 	}
 
 	// Keep compatibility defaults for reference and relation-like scalar carriers.
