@@ -89,4 +89,12 @@ func TestTypeHelpers(t *testing.T) {
 	if strings.Contains(strings.Join(functionDefaultTags, ";"), "default:") {
 		t.Fatalf("did not expect function-like default tag, got %q", strings.Join(functionDefaultTags, ";"))
 	}
+
+	nonFunctionWordTags := []string{}
+	addStandardTags(&nonFunctionWordTags, map[string]interface{}{
+		"default": "text with function keyword",
+	})
+	if !strings.Contains(strings.Join(nonFunctionWordTags, ";"), "default:text with function keyword") {
+		t.Fatalf("expected scalar default tag, got %q", strings.Join(nonFunctionWordTags, ";"))
+	}
 }

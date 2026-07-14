@@ -155,7 +155,10 @@ func isJSFunctionDefaultLiteral(value string) bool {
 	if strings.Contains(lower, "=>") {
 		return true
 	}
-	return strings.Contains(lower, "function(") || strings.Contains(lower, "function ")
+	if strings.HasPrefix(lower, "async function") || strings.HasPrefix(lower, "function") {
+		return strings.Contains(lower, "(") || strings.Contains(lower, "{")
+	}
+	return false
 }
 
 // addStandardTags appends standard gorm tags.

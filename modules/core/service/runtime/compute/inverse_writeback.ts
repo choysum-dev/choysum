@@ -22,6 +22,10 @@ function modelLabel(meta: ModelMetadata): string {
 
 function mergeDeep(target: UnknownRecord, patch: UnknownRecord): void {
   for (const [key, nextVal] of Object.entries(patch)) {
+    if (isForbiddenPathSegment(key)) {
+      continue;
+    }
+
     const current = asObjectRecord(target[key]);
     const nextRecord = asObjectRecord(nextVal);
     if (current && nextRecord) {

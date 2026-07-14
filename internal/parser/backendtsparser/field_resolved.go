@@ -19,121 +19,6 @@ type resolvedFieldBehaviorBinding struct {
 	inverse    *meta.IrFieldBehaviorMethodRef
 }
 
-func asObject(value any) map[string]any {
-	record, ok := value.(map[string]any)
-	if !ok {
-		return nil
-	}
-	return record
-}
-
-func mergeStorageHintBool(target **bool, candidate any) {
-	if *target != nil {
-		return
-	}
-	if v, ok := candidate.(bool); ok {
-		*target = toBoolPtr(v)
-	}
-}
-
-func mergeStorageHintInt(target **int, candidate any) {
-	if *target != nil {
-		return
-	}
-	if v, ok := asInt(candidate); ok {
-		*target = toIntPtr(v)
-	}
-}
-
-func mergeStorageHintString(target **string, candidate any) {
-	if *target != nil {
-		return
-	}
-	if v, ok := candidate.(string); ok {
-		trimmed := strings.TrimSpace(v)
-		if trimmed != "" {
-			*target = toStringPtr(trimmed)
-		}
-	}
-}
-
-func applyLegacyBranchStorageHints(hints *meta.IrFieldStructuralStorageHints, branch map[string]any) {
-	if hints == nil || len(branch) == 0 {
-		return
-	}
-
-	mergeStorageHintBool(&hints.Required, branch["required"])
-	mergeStorageHintBool(&hints.Required, branch["notNull"])
-	mergeStorageHintBool(&hints.Indexed, branch["indexed"])
-	mergeStorageHintBool(&hints.Indexed, branch["index"])
-	mergeStorageHintInt(&hints.Size, branch["size"])
-	mergeStorageHintInt(&hints.Precision, branch["precision"])
-	mergeStorageHintInt(&hints.Scale, branch["scale"])
-	mergeStorageHintBool(&hints.PrimaryKey, branch["primaryKey"])
-	mergeStorageHintBool(&hints.Unique, branch["unique"])
-	mergeStorageHintString(&hints.UniqueIndex, branch["uniqueIndex"])
-	mergeStorageHintBool(&hints.UniqueIndexEnabled, branch["uniqueIndex"])
-	mergeStorageHintString(&hints.Default, branch["default"])
-}
-
-func applyLegacyColumnComputeBehavior(spec *meta.IrFieldResolvedSpec, column map[string]any) bool {
-	if spec == nil || len(column) == 0 {
-		return false
-	}
-	compute := asObject(column["compute"])
-	if len(compute) == 0 {
-		return false
-	}
-
-	legacyComputeBound := false
-	if spec.Behavior.Compute == nil {
-		deps := parseStringSlice(compute["deps"])
-		if len(deps) > 0 {
-			store := true
-			if v, ok := compute["store"].(bool); ok {
-				store = v
-			}
-			var searchable *bool
-			if v, ok := compute["searchable"].(bool); ok {
-				searchable = toBoolPtr(v)
-			}
-			runAs := ""
-			if v, ok := compute["runAs"].(string); ok {
-				runAs = strings.TrimSpace(v)
-			}
-
-			spec.Behavior.Compute = &meta.IrFieldBehaviorComputeSpec{
-				Method:     "legacyColumnCompute",
-				Deps:       deps,
-				Store:      store,
-				Searchable: searchable,
-				RunAs:      runAs,
-			}
-			legacyComputeBound = true
-		}
-	}
-
-	if spec.Behavior.Search == nil {
-		if method, ok := compute["search"].(string); ok {
-			method = strings.TrimSpace(method)
-			if method != "" {
-				spec.Behavior.Search = &meta.IrFieldBehaviorMethodRef{Method: method}
-			}
-		}
-	}
-
-	if spec.Behavior.Inverse == nil {
-		if method, ok := compute["inverse"].(string); ok {
-			method = strings.TrimSpace(method)
-			if method != "" {
-				spec.Behavior.Inverse = &meta.IrFieldBehaviorMethodRef{Method: method}
-			}
-		}
-	}
-
-	return legacyComputeBound
-}
-
 func parseDecoratorObjectArg(args []*parser.Argument, index int) (map[string]any, error) {
 	if len(args) <= index || args[index] == nil {
 		return nil, nil
@@ -357,9 +242,6 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		return nil, fmt.Errorf("FIELD_LEGACY_SYNTAX_FORBIDDEN: @Field(%s) uses legacy option select", field.Name)
 	}
 
-	legacyColumn := asObject(options["column"])
-	legacySelect := asObject(options["select"])
-
 	fieldType, _ := options["type"].(string)
 	fieldType = strings.TrimSpace(fieldType)
 	if fieldType == "" {
@@ -464,8 +346,6 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	case bool, float64, float32, int, int32, int64, uint, uint32, uint64:
 		hints.Default = toStringPtr(strings.TrimSpace(fmt.Sprintf("%v", raw)))
 	}
-	applyLegacyBranchStorageHints(hints, legacyColumn)
-	applyLegacyBranchStorageHints(hints, legacySelect)
 	if hints.Required != nil || hints.Indexed != nil || hints.Index != nil || hints.Size != nil || hints.Precision != nil || hints.Scale != nil || hints.PrimaryKey != nil || hints.Unique != nil || hints.UniqueIndex != nil || hints.UniqueIndexEnabled != nil || hints.Default != nil {
 		spec.Structural.StorageHints = hints
 	}
@@ -477,11 +357,8 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		spec.Behavior.Inverse = binding.inverse
 	}
 
-	legacyComputeBound := applyLegacyColumnComputeBehavior(spec, legacyColumn)
-	if spec.Structural.CheckConstraint == "" {
-		if legacyCheck, ok := legacyColumn["checkConstraint"].(string); ok {
-			spec.Structural.CheckConstraint = strings.TrimSpace(legacyCheck)
-		}
+	if v, ok := options["checkConstraint"].(string); ok {
+		spec.Structural.CheckConstraint = strings.TrimSpace(v)
 	}
 
 	storeValue := true
@@ -492,11 +369,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	if spec.Behavior.Compute != nil {
 		storeValue = spec.Behavior.Compute.Store
-		if legacyComputeBound {
-			storeSource = "@Field.column.compute.store"
-		} else {
-			storeSource = "@Compute"
-		}
+		storeSource = "@Compute"
 	} else if spec.Structural.Related != nil {
 		storeValue = spec.Structural.Related.Store
 		storeSource = "@Field.related.store"

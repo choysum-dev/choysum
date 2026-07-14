@@ -16,6 +16,7 @@ import { ref, watch, nextTick, provide, inject, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { getFieldMetadataView, isRelationFieldType, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
+import type { RelationType } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
 import type { OnchangeResult } from '@/core/service/api/onchange';
 import type { ViewMode, ViewContainer } from '@/web/web/components/view/OViewScope.vue';
@@ -70,15 +71,30 @@ function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
   return isRelationFieldType(meta.type);
 }
 
-function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relation?: 'ManyToOne'; type?: string }> {
+function normalizeDiffRelation(type: string | undefined): RelationType | undefined {
+  switch (String(type || '').toLowerCase()) {
+  case 'manytoone':
+  case 'manytooneref':
+    return 'ManyToOne';
+  case 'onetomany':
+    return 'OneToMany';
+  case 'manytomany':
+  case 'manytomanyref':
+    return 'ManyToMany';
+  default:
+    return undefined;
+  }
+}
+
+function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relation?: RelationType; type?: string }> {
   const raw = (store as any).fieldsMetadata || {};
-  const normalized: Record<string, { relation?: 'ManyToOne'; type?: string }> = {};
+  const normalized: Record<string, { relation?: RelationType; type?: string }> = {};
   for (const [fieldName, meta] of Object.entries(raw as Record<string, FieldMetadata | undefined>)) {
     const typed = meta as FieldMetadata | undefined;
     const view = getFieldMetadataView(typed);
     normalized[fieldName] = {
       type: typed?.type,
-      relation: view.isRelation ? 'ManyToOne' : undefined,
+      relation: view.isRelation ? normalizeDiffRelation(typed?.type) : undefined,
     };
   }
   return normalized;
