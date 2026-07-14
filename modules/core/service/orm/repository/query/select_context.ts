@@ -137,7 +137,7 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
       if (hasRepositorySqlComputeExpression(meta, fieldName)) {
         const targetCtx = makeSelectCtx(db, getDialect, builder, table, meta);
         const resolved = resolveRepositorySqlComputeExpression(meta, fieldName, targetCtx);
-        if (resolved == null) {
+        if (resolved === undefined) {
           throw new Error(`field(${model.name}.${fieldName}) sql compute handler is missing`);
         }
         return resolved as SelectExpressionValue;
