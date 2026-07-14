@@ -424,8 +424,10 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		case bool:
 			hints.Indexed = toBoolPtr(raw)
 		case string:
-			if strings.TrimSpace(raw) != "" {
+			trimmed := strings.TrimSpace(raw)
+			if trimmed != "" {
 				hints.Indexed = toBoolPtr(true)
+				hints.Index = toStringPtr(trimmed)
 			}
 		}
 	}
@@ -464,7 +466,7 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 	applyLegacyBranchStorageHints(hints, legacyColumn)
 	applyLegacyBranchStorageHints(hints, legacySelect)
-	if hints.Required != nil || hints.Indexed != nil || hints.Size != nil || hints.Precision != nil || hints.Scale != nil || hints.PrimaryKey != nil || hints.Unique != nil || hints.UniqueIndex != nil || hints.UniqueIndexEnabled != nil || hints.Default != nil {
+	if hints.Required != nil || hints.Indexed != nil || hints.Index != nil || hints.Size != nil || hints.Precision != nil || hints.Scale != nil || hints.PrimaryKey != nil || hints.Unique != nil || hints.UniqueIndex != nil || hints.UniqueIndexEnabled != nil || hints.Default != nil {
 		spec.Structural.StorageHints = hints
 	}
 
@@ -604,6 +606,10 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	}
 	field.FieldType = spec.Structural.FieldType
 	field.Relation = spec.Structural.FieldType
+
+	if spec.Behavior.Compute != nil || spec.Behavior.SqlCompute != nil {
+		field.IsReadonly = true
+	}
 
 	if spec.Structural.StorageHints != nil {
 		hints := spec.Structural.StorageHints

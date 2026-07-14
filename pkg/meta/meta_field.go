@@ -17,6 +17,7 @@ type IrResolvedValue[T any] struct {
 type IrFieldStructuralStorageHints struct {
 	Required           *bool   `json:"required,omitempty"`
 	Indexed            *bool   `json:"indexed,omitempty"`
+	Index              *string `json:"index,omitempty"`
 	Size               *int    `json:"size,omitempty"`
 	Precision          *int    `json:"precision,omitempty"`
 	Scale              *int    `json:"scale,omitempty"`

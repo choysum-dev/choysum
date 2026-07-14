@@ -106,7 +106,9 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 		if hints.Required != nil {
 			metaMap["notNull"] = *hints.Required
 		}
-		if hints.Indexed != nil {
+		if hints.Index != nil && strings.TrimSpace(*hints.Index) != "" {
+			metaMap["index"] = strings.TrimSpace(*hints.Index)
+		} else if hints.Indexed != nil {
 			metaMap["index"] = *hints.Indexed
 		}
 		if hints.Size != nil {
