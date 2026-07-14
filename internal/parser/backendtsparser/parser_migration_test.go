@@ -14,6 +14,8 @@ import (
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+
+	"github.com/choysum-dev/choysum/internal/parser"
 )
 
 type backendParserTestScope struct {
@@ -1215,5 +1217,87 @@ export default class PublicStaticModel extends BaseModel {
 	}
 	if !found {
 		t.Fatal("expected public static field to be kept")
+	}
+}
+
+func TestAsInt_AllTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  int
+		ok    bool
+	}{
+		{name: "float64", input: float64(42), want: 42, ok: true},
+		{name: "float32", input: float32(3.14), want: 3, ok: true},
+		{name: "int", input: int(100), want: 100, ok: true},
+		{name: "int32", input: int32(200), want: 200, ok: true},
+		{name: "int64", input: int64(300), want: 300, ok: true},
+		{name: "uint", input: uint(400), want: 400, ok: true},
+		{name: "uint32", input: uint32(500), want: 500, ok: true},
+		{name: "uint64", input: uint64(600), want: 600, ok: true},
+		{name: "string", input: "not int", want: 0, ok: false},
+		{name: "bool", input: true, want: 0, ok: false},
+		{name: "nil", input: nil, want: 0, ok: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := asInt(tc.input)
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("asInt(%v) = (%d, %v), want (%d, %v)", tc.input, got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
+func TestParseDecoratorObjectArg_InvalidJSON(t *testing.T) {
+	args := []*parser.Argument{
+		{Type: "ObjectLiteral", Value: `{invalid}`},
+	}
+	_, err := parseDecoratorObjectArg(args, 0)
+	if err == nil {
+		t.Fatal("expected JSON parse error, got nil")
+	}
+}
+
+func TestParseDecoratorObjectArg_NilAndNonObject(t *testing.T) {
+	// nil when index out of range
+	got, err := parseDecoratorObjectArg([]*parser.Argument{}, 0)
+	if err != nil || got != nil {
+		t.Fatalf("expected (nil, nil), got (%v, %v)", got, err)
+	}
+
+	// nil for non-ObjectLiteral type
+	got, err = parseDecoratorObjectArg([]*parser.Argument{{Type: "StringLiteral", Value: `"hello"`}}, 0)
+	if err != nil || got != nil {
+		t.Fatalf("expected (nil, nil) for non-object, got (%v, %v)", got, err)
+	}
+
+	// nil for empty string value
+	got, err = parseDecoratorObjectArg([]*parser.Argument{{Type: "ObjectLiteral", Value: "   "}}, 0)
+	if err != nil || got != nil {
+		t.Fatalf("expected (nil, nil) for empty value, got (%v, %v)", got, err)
+	}
+}
+
+func TestParseDecoratorStringArg_EdgeCases(t *testing.T) {
+	// empty args
+	if got := parseDecoratorStringArg([]*parser.Argument{}, 0); got != "" {
+		t.Fatalf("expected empty string, got %q", got)
+	}
+	// nil element
+	if got := parseDecoratorStringArg([]*parser.Argument{nil}, 0); got != "" {
+		t.Fatalf("expected empty string for nil, got %q", got)
+	}
+	// quoted value
+	if got := parseDecoratorStringArg([]*parser.Argument{{Value: "  `quoted`  "}}, 0); got != "quoted" {
+		t.Fatalf("expected 'quoted', got %q", got)
+	}
+	// double-quoted value
+	if got := parseDecoratorStringArg([]*parser.Argument{{Value: `  "double"  `}}, 0); got != "double" {
+		t.Fatalf("expected 'double', got %q", got)
+	}
+	// single-quoted value
+	if got := parseDecoratorStringArg([]*parser.Argument{{Value: `  'single'  `}}, 0); got != "single" {
+		t.Fatalf("expected 'single', got %q", got)
 	}
 }

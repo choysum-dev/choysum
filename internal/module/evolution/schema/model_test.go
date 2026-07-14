@@ -621,3 +621,19 @@ func boolPtr(v bool) *bool {
 func strPtr(v string) *string {
 	return &v
 }
+
+func TestMigrateSchema_EnsureTaskJobExecutionTableFailure(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+	// Close the underlying DB so that ensureTaskJobExecutionTable fails.
+	db, _ := runtimeScope.Session().DB.DB()
+	if err := db.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+
+	migrator := newModelMigrator(runtimeScope, nil, nil)
+	// migrateTableSchema with empty models is a no-op and succeeds,
+	// but ensureTaskJobExecutionTable should fail with a closed DB.
+	if err := migrator.MigrateSchema(); err == nil {
+		t.Fatal("expected MigrateSchema to fail with closed database")
+	}
+}
