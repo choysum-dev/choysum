@@ -97,15 +97,11 @@ test('bridge context rejects non-object instance', () => {
 test('bridge context isolates the same instance across sequential calls', () => {
   const instance = {};
 
-  const first = withBridgeFrame(instance, 'sql', { token: 'first' }, () =>
-    currentBridgeFrame<{ token: string }>(instance, 'sql').token
-  );
+  const first = withBridgeFrame(instance, 'sql', { token: 'first' }, () => currentBridgeFrame<{ token: string }>(instance, 'sql').token);
   expect(first).toBe('first');
   // Frame is expired after first call completes
   expect(() => currentBridgeFrame(instance, 'sql')).toThrow('BRIDGE_CONTEXT_EXPIRED');
 
-  const second = withBridgeFrame(instance, 'sql', { token: 'second' }, () =>
-    currentBridgeFrame<{ token: string }>(instance, 'sql').token
-  );
+  const second = withBridgeFrame(instance, 'sql', { token: 'second' }, () => currentBridgeFrame<{ token: string }>(instance, 'sql').token);
   expect(second).toBe('second');
 });
