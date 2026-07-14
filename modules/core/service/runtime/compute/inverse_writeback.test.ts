@@ -303,6 +303,39 @@ test('inverse writeback uses readPath from inverse context', async () => {
   });
 });
 
+test('inverse writeback readPath can observe writePath updates within same handler execution', async () => {
+  class ReadOwnWritesModel extends BaseModel {
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
+    PartnerId?: InverseTargetModel;
+
+    @Field({
+      type: 'varchar',
+      related: { path: 'PartnerId.Name', store: true },
+    } as any)
+    override DisplayName!: string;
+
+    @Inverse<ReadOwnWritesModel>('DisplayName')
+    inverseDisplayName() {
+      const ctx = this.$inverse as any;
+      ctx.writePath('PartnerId.Name', ctx.value());
+      const written = ctx.readPath('PartnerId.Name');
+      ctx.writePath('PartnerId.Alias', String(written || '') + '_alias');
+    }
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(ReadOwnWritesModel as any);
+  const rewritten = await applyInverseWriteback(meta, {
+    DisplayName: 'Alice',
+  });
+
+  expect(rewritten).toEqual({
+    PartnerId: {
+      Name: 'Alice',
+      Alias: 'Alice_alias',
+    },
+  });
+});
+
 test('inverse writeback handles legacy column.compute.inverse method reference', async () => {
   class LegacyInverseModel extends BaseModel {}
 

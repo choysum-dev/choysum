@@ -180,6 +180,8 @@ export async function applyInverseWriteback(meta: ModelMetadata, values: Unknown
         setPath(handlerWrites, path, next);
       },
       readPath(path: string) {
+        const written = readPath(handlerWrites, path);
+        if (written !== undefined) return written;
         return readPath(nextValues, path);
       },
       record: modelInstance,
