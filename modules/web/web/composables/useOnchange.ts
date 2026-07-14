@@ -86,10 +86,22 @@ function normalizeDiffRelation(type: string | undefined): RelationType | undefin
   }
 }
 
-function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relation?: RelationType; type?: string }> {
-  const raw = (store as any).fieldsMetadata || {};
-  const normalized: Record<string, { relation?: RelationType; type?: string }> = {};
-  for (const [fieldName, meta] of Object.entries(raw as Record<string, FieldMetadata | undefined>)) {
+type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string }>;
+
+const diffFieldsMetaCache = new WeakMap<WebModelStore<any>, {
+  source: Record<string, FieldMetadata | undefined>;
+  normalized: DiffFieldsMeta;
+}>();
+
+function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
+  const raw = ((store as any).fieldsMetadata || {}) as Record<string, FieldMetadata | undefined>;
+  const cached = diffFieldsMetaCache.get(store);
+  if (cached && cached.source === raw) {
+    return cached.normalized;
+  }
+
+  const normalized: DiffFieldsMeta = {};
+  for (const [fieldName, meta] of Object.entries(raw)) {
     const typed = meta as FieldMetadata | undefined;
     const view = getFieldMetadataView(typed);
     normalized[fieldName] = {
@@ -97,6 +109,8 @@ function buildDiffFieldsMeta(store: WebModelStore<any>): Record<string, { relati
       relation: view.isRelation ? normalizeDiffRelation(typed?.type) : undefined,
     };
   }
+
+  diffFieldsMetaCache.set(store, { source: raw, normalized });
   return normalized;
 }
 
