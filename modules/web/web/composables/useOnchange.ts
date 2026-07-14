@@ -73,16 +73,16 @@ function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
 
 function normalizeDiffRelation(type: string | undefined): RelationType | undefined {
   switch (String(type || '').toLowerCase()) {
-  case 'manytoone':
-  case 'manytooneref':
-    return 'ManyToOne';
-  case 'onetomany':
-    return 'OneToMany';
-  case 'manytomany':
-  case 'manytomanyref':
-    return 'ManyToMany';
-  default:
-    return undefined;
+    case 'manytoone':
+    case 'manytooneref':
+      return 'ManyToOne';
+    case 'onetomany':
+      return 'OneToMany';
+    case 'manytomany':
+    case 'manytomanyref':
+      return 'ManyToMany';
+    default:
+      return undefined;
   }
 }
 

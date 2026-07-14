@@ -13,8 +13,7 @@ class InverseTargetModel extends BaseModel {
 
 @Model('test.InverseAutoModel')
 class InverseAutoModel extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => InverseTargetModel } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
   PartnerId?: InverseTargetModel;
 
   @Field({
@@ -29,8 +28,7 @@ class InverseAutoModel extends BaseModel {
 
 @Model('test.InverseManualModel')
 class InverseManualModel extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => InverseTargetModel } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
   PartnerId?: InverseTargetModel;
 
   @Field({
@@ -51,8 +49,7 @@ class InverseManualModel extends BaseModel {
 
 @Model('test.InversePoisonPatchModel')
 class InversePoisonPatchModel extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => InverseTargetModel } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
   PartnerId?: InverseTargetModel;
 
   @Field({
@@ -68,7 +65,9 @@ class InversePoisonPatchModel extends BaseModel {
   inverseDisplayName() {
     const ctx = this.$inverse as any;
     ctx.writePath('PartnerId.Name', ctx.value());
-    return JSON.parse('{"__proto__":{"__inverseWritebackPolluted__":true},"constructor":{"prototype":{"__inverseWritebackPolluted__":true}},"Safe":{"Flag":true}}');
+    return JSON.parse(
+      '{"__proto__":{"__inverseWritebackPolluted__":true},"constructor":{"prototype":{"__inverseWritebackPolluted__":true}},"Safe":{"Flag":true}}'
+    );
   }
 }
 
