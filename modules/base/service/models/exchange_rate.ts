@@ -13,23 +13,23 @@ export default class ExchangeRate extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Currency },
-    column: { notNull: true, index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date' },
+    notNull: true, index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
   })
   CurrencyId: Currency;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
   CompanyId?: Company;
 
   @Field({
     type: 'varchar',
-    column: { size: 20, notNull: true, default: () => '__GLOBAL__', index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date' },
+    size: 20, notNull: true, default: () => '__GLOBAL__', index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
   })
   CompanyScopeKey: string;
 
-  @Field({ type: 'date', column: { notNull: true, index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date' } })
+  @Field({ type: 'date', notNull: true, index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date'})
   Date: any;
 
-  @Field({ type: 'decimal', column: { notNull: true, precision: 38, scale: 18 } })
+  @Field({ type: 'decimal', notNull: true, precision: 38, scale: 18})
   Rate: any;
 
   private static coerceDateKey(value: any): string {

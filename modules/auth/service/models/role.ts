@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, SqlCompute } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
@@ -31,47 +31,49 @@ export default class Role extends BaseModel {
    */
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ field }) => field(Role, 'Code'),
-      size: 36,
-    },
+    size: 36,
   })
   public readonly DisplayName!: string;
+
+  @SqlCompute<Role>('DisplayName')
+  sqlDisplayName() {
+    return this.$sql.field('Code');
+  }
 
   /**
    * Human-readable role name.
    */
-  @Field({ type: 'varchar', column: { size: 100, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, unique: true, notNull: true })
   Name: string;
 
   /**
    * Stable programmatic role code.
    */
-  @Field({ type: 'varchar', column: { size: 50, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 50, unique: true, notNull: true })
   Code: string;
 
   /**
    * Free-form description shown in management surfaces.
    */
-  @Field({ type: 'varchar', column: { size: 255, index: true } })
+  @Field({ type: 'varchar', size: 255, index: true })
   Description: string;
 
   /**
    * Whether the role can still be assigned and evaluated.
    */
-  @Field({ type: 'boolean', column: { default: () => true, index: true } })
+  @Field({ type: 'boolean', default: () => true, index: true })
   IsActive: boolean;
 
   /**
    * Whether the role is part of the built-in system baseline.
    */
-  @Field({ type: 'boolean', column: { default: () => false, index: true } })
+  @Field({ type: 'boolean', default: () => false, index: true })
   IsSystem: boolean;
 
   /**
    * UI-tree editor projection that only carries allow/resource-level UI resource Ids.
    */
-  @Field({ type: 'ManyToManyRef', targetModel: 'meta.IrUiResource' })
+  @Field({ type: 'ManyToManyRef', relation: { targetModel: 'meta.IrUiResource' } })
   AccessUiResourceIds: string[];
 
   /**

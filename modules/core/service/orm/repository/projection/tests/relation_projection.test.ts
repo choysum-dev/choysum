@@ -74,28 +74,26 @@ test('repository relation projection applies company filter from runtime context
 });
 
 test('repository relation projection child select adds Id, scalar/select fields, hidden scale alias and nested relation alias', () => {
-  class DemoModel {}
+  class DemoModel {
+    sqlDisplayName() {
+      return {
+        as(alias: string) {
+          return { type: 'display', alias };
+        },
+      };
+    }
+  }
 
   const targetMeta = {
     type: DemoModel,
     fields: new Map<string, any>([
       ['Id', { column: { name: 'Id' } }],
       ['Name', { column: { name: 'Name' } }],
-      [
-        'DisplayName',
-        {
-          select: {
-            expr: () => ({
-              as(alias: string) {
-                return { type: 'display', alias };
-              },
-            }),
-          },
-        },
-      ],
+      ['DisplayName', {}],
       ['Amount', { type: 'decimal', column: { name: 'Amount', scaleField: 'AmountScale' } }],
       ['AmountScale', { column: { name: 'AmountScale' } }],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const node: SelectionNode = {
@@ -494,26 +492,24 @@ test('repository relation projection company filter requires CompanyId field and
 });
 
 test('repository relation projection child select uses decimal scale select expression alias', () => {
-  class DemoModel {}
+  class DemoModel {
+    sqlAmountScale() {
+      return {
+        as(alias: string) {
+          return { type: 'scale-select', alias };
+        },
+      };
+    }
+  }
 
   const targetMeta = {
     type: DemoModel,
     fields: new Map<string, any>([
       ['Id', { column: { name: 'Id' } }],
       ['Amount', { type: 'decimal', column: { name: 'Amount', scaleField: 'AmountScale' } }],
-      [
-        'AmountScale',
-        {
-          select: {
-            expr: () => ({
-              as(alias: string) {
-                return { type: 'scale-select', alias };
-              },
-            }),
-          },
-        },
-      ],
+      ['AmountScale', {}],
     ]),
+    sqlComputeHandlers: new Map([['AmountScale', { field: 'AmountScale', method: 'sqlAmountScale' }]]),
   } as any;
 
   const node: SelectionNode = {
@@ -588,7 +584,11 @@ test('repository relation projection uses lowercase activeCompanyId and defaults
 
 test('repository relation projection executes path/select order resolvers for one2many and many2many', () => {
   class ParentModel {}
-  class ChildModel {}
+  class ChildModel {
+    sqlDisplayName() {
+      return { kind: 'display-expr' };
+    }
+  }
   class OwnerModel {}
   class JoinModel {}
 
@@ -608,15 +608,9 @@ test('repository relation projection executes path/select order resolvers for on
       ['Id', { column: { name: 'Id' } }],
       ['ParentId', { column: { name: 'ParentId' } }],
       ['OwnerId', { type: 'ManyToOne', relation: { targetModel: () => OwnerModel }, column: { name: 'OwnerId' } }],
-      [
-        'DisplayName',
-        {
-          select: {
-            expr: () => ({ kind: 'display-expr' }),
-          },
-        },
-      ],
+      ['DisplayName', {}],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   const parentMeta = {

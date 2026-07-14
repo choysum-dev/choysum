@@ -9,13 +9,13 @@ import { createRelationModel, updateRelationModelById } from './relation_model_s
 
 @Model('test.RelationFacadeDefaultModel')
 class RelationFacadeDefaultModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 }
 
 @Model('test.RelationFacadeOverrideModel')
 class RelationFacadeOverrideModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 
   static override async Create<T extends BaseModel>(this: { new (...args: any[]): T } & typeof BaseModel, value: Record<string, any>): Promise<T> {

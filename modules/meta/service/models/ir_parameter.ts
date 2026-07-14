@@ -9,13 +9,13 @@ import IrService from './ir_service';
   autoMigrate: false,
 })
 export default class IrParameter extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   TsTypeAnnotation?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ProtobufType?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrService } })

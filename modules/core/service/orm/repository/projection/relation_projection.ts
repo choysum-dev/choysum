@@ -3,7 +3,15 @@
 
 import { getJsonHelpers } from './json_helpers';
 import { buildHiddenScaleAlias } from '../hidden_scale_alias';
-import { makeSelectCtx, type DbLike, normalizeOrderBy, resolveEffectiveOrder, applyOrderByToQuery } from '../query';
+import {
+  makeSelectCtx,
+  type DbLike,
+  normalizeOrderBy,
+  resolveEffectiveOrder,
+  applyOrderByToQuery,
+  hasRepositorySqlComputeExpression,
+  resolveRepositorySqlComputeExpression,
+} from '../query';
 import type BaseModel from '../../model/model';
 import { FieldMetadata, ManyToManyMetadata, ManyToOneMetadata, ModelMetadata, OneToManyMetadata, type ModelCtor } from '../../metadata';
 import { MetadataStorage } from '../../metadata';
@@ -33,7 +41,7 @@ function toModelCtor(meta: ModelMetadata): ModelCtor<BaseModel> {
 }
 
 function getFieldSpec(fieldMeta: FieldMetadata | undefined): UnknownRecord {
-  return asObjectRecord(fieldMeta?.column) ?? asObjectRecord(fieldMeta?.select) ?? {};
+  return asObjectRecord(fieldMeta?.column) ?? {};
 }
 
 function getRelationOrderBy(relation: unknown): unknown {
@@ -120,8 +128,11 @@ export function buildRepositoryRelationChildSelect(
       if (field.includes('.')) {
         const expr = makeSelectCtx(db, getDialect, builder, targetTable, targetMeta).field(toModelCtor(targetMeta), field);
         selections.push(aliasSelection(expr, field));
-      } else if (fieldMeta?.select) {
-        const out = fieldMeta.select.expr(makeSelectCtx(db, getDialect, builder, targetTable, targetMeta));
+      } else if (hasRepositorySqlComputeExpression(targetMeta, field)) {
+        const out = resolveRepositorySqlComputeExpression(targetMeta, field, makeSelectCtx(db, getDialect, builder, targetTable, targetMeta));
+        if (out === undefined) {
+          throw new Error(`field sql compute handler is missing: ${targetMeta.fullModelName || targetMeta.modelName || targetMeta.name}.${field}`);
+        }
         selections.push(aliasSelection(out, field));
       } else {
         selections.push(builder.ref(`${targetTable}.${field}`).as(field));
@@ -132,8 +143,11 @@ export function buildRepositoryRelationChildSelect(
         const scaleField = typeof spec.scaleField === 'string' ? spec.scaleField : undefined;
         if (typeof spec.scale !== 'number' && scaleField) {
           const scaleMeta = targetMeta.fields.get(scaleField);
-          if (scaleMeta?.select) {
-            const out = scaleMeta.select.expr(makeSelectCtx(db, getDialect, builder, targetTable, targetMeta));
+          if (hasRepositorySqlComputeExpression(targetMeta, scaleField)) {
+            const out = resolveRepositorySqlComputeExpression(targetMeta, scaleField, makeSelectCtx(db, getDialect, builder, targetTable, targetMeta));
+            if (out === undefined) {
+              throw new Error(`field sql compute handler is missing: ${targetMeta.fullModelName || targetMeta.modelName || targetMeta.name}.${scaleField}`);
+            }
             selections.push(aliasSelection(out, buildHiddenScaleAlias(field)));
           } else if (scaleMeta?.column) {
             selections.push(builder.ref(`${targetTable}.${scaleField}`).as(buildHiddenScaleAlias(field)));
@@ -202,10 +216,9 @@ export function buildRelationJsonSelect(
         const ctx = makeSelectCtx(db, getDialect, builder, targetRef, targetMeta);
         return ctx.field(toModelCtor(targetMeta), field);
       },
-      resolveSelectField(builder, _field, fieldMeta) {
-        const typedFieldMeta = fieldMeta as FieldMetadata;
-        if (!typedFieldMeta.select) return undefined;
-        return typedFieldMeta.select.expr(makeSelectCtx(db, getDialect, builder, targetRef, targetMeta));
+      resolveSelectField(builder, _field, _fieldMeta) {
+        if (!hasRepositorySqlComputeExpression(targetMeta, _field)) return undefined;
+        return resolveRepositorySqlComputeExpression(targetMeta, _field, makeSelectCtx(db, getDialect, builder, targetRef, targetMeta));
       },
     });
 
@@ -242,10 +255,9 @@ export function buildRelationJsonSelect(
         const ctx = makeSelectCtx(db, getDialect, builder, targetRef, targetMeta);
         return ctx.field(toModelCtor(targetMeta), field);
       },
-      resolveSelectField(builder, _field, fieldMeta) {
-        const typedFieldMeta = fieldMeta as FieldMetadata;
-        if (!typedFieldMeta.select) return undefined;
-        return typedFieldMeta.select.expr(makeSelectCtx(db, getDialect, builder, targetRef, targetMeta));
+      resolveSelectField(builder, _field, _fieldMeta) {
+        if (!hasRepositorySqlComputeExpression(targetMeta, _field)) return undefined;
+        return resolveRepositorySqlComputeExpression(targetMeta, _field, makeSelectCtx(db, getDialect, builder, targetRef, targetMeta));
       },
     });
 

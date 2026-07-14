@@ -24,14 +24,14 @@ export default class AttachmentMutationLedger extends BaseModel {
       { value: 'bind', label: 'bind' },
       { value: 'unbind', label: 'unbind' },
     ],
-    column: { size: 16, notNull: true, index: true, uniqueIndex: 'uidx_document_mutation_company_action_id' },
+    size: 16, notNull: true, index: true, uniqueIndex: 'uidx_document_mutation_company_action_id',
   })
   Action: MutationAction;
 
   /**
    * Caller-supplied idempotency key for the mutation.
    */
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, uniqueIndex: 'uidx_document_mutation_company_action_id' } })
+  @Field({ type: 'varchar', size: 100, notNull: true, uniqueIndex: 'uidx_document_mutation_company_action_id'})
   MutationId: string;
 
   /**
@@ -55,20 +55,20 @@ export default class AttachmentMutationLedger extends BaseModel {
       { value: 'succeeded', label: 'succeeded' },
       { value: 'failed', label: 'failed' },
     ],
-    column: { size: 16, notNull: true, default: () => 'succeeded', index: true },
+    size: 16, notNull: true, default: () => 'succeeded', index: true,
   })
   Status: MutationLedgerStatus;
 
   /**
    * Optional document-domain error code captured for failed mutations.
    */
-  @Field({ type: 'varchar', column: { size: 120, index: true } })
+  @Field({ type: 'varchar', size: 120, index: true})
   ErrorCode?: string;
 
   /**
    * Company that owns the mutation ledger row.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, uniqueIndex: 'uidx_document_mutation_company_action_id' } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, uniqueIndex: 'uidx_document_mutation_company_action_id'})
   CompanyId: string;
 
   /**

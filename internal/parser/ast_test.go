@@ -309,7 +309,7 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 	if classInfo.Extends == nil || classInfo.Extends.Name != "Entity" || classInfo.Extends.ReferenceIdent != "Entity" || classInfo.Extends.ModuleSpecPath != "/virtual/modules/test/decorators" {
 		t.Fatalf("unexpected extends info: %#v", classInfo.Extends)
 	}
-	if len(classInfo.Decorators) != 1 || len(classInfo.MemberVars) != 3 || len(classInfo.MemberMethods) != 1 {
+	if len(classInfo.Decorators) != 1 || len(classInfo.MemberVars) != 3 || len(classInfo.MemberMethods) != 2 {
 		t.Fatalf("unexpected class members: decorators=%d vars=%d methods=%d", len(classInfo.Decorators), len(classInfo.MemberVars), len(classInfo.MemberMethods))
 	}
 
@@ -376,8 +376,8 @@ func TestTSGoParseDecoratorObjectAndClassMembers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("tsgoParseMemberMethod(syncMethod) error = %v", err)
 		}
-		if parsedSync != nil {
-			t.Fatalf("expected sync method to be skipped, got %#v", parsedSync)
+		if parsedSync == nil || parsedSync.Name != "syncMethod" {
+			t.Fatalf("expected sync method to be parsed, got %#v", parsedSync)
 		}
 	}
 

@@ -27,9 +27,10 @@ test('repository ordering applies alias, path, select and scalar ordering bounda
 
   const meta = {
     fields: new Map([
-      ['DisplayName', { select: { expr: () => 'display-expr' } }],
+      ['DisplayName', {}],
       ['CreatedAt', { column: { name: 'CreatedAt' } }],
     ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
   } as any;
 
   applyOrderByToQuery(

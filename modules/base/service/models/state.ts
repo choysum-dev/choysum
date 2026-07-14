@@ -8,20 +8,20 @@ import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_nor
 
 @Model('State')
 export default class State extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_state_country_name' } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_state_country_name'})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 16, index: true, uniqueIndex: 'uidx_base_state_country_code' } })
+  @Field({ type: 'varchar', size: 16, index: true, uniqueIndex: 'uidx_base_state_country_code'})
   Code?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
-    column: { notNull: true, index: true, uniqueIndex: 'uidx_base_state_country_name uidx_base_state_country_code' },
+    notNull: true, index: true, uniqueIndex: 'uidx_base_state_country_name uidx_base_state_country_code',
   })
   CountryId: Country;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {

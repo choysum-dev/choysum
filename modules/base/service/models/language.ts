@@ -8,13 +8,13 @@ import { normalizeDirection } from './_normalizers';
 
 @Model('Language')
 export default class Language extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 16, notNull: true, unique: true, index: true } })
+  @Field({ type: 'varchar', size: 16, notNull: true, unique: true, index: true})
   Code: string;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   @Field({
@@ -23,11 +23,11 @@ export default class Language extends BaseModel {
       { value: 'ltr', label: 'ltr' },
       { value: 'rtl', label: 'rtl' },
     ],
-    column: { size: 8 },
+    size: 8,
   })
   Direction?: 'ltr' | 'rtl';
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, index: true})
   DefaultLocaleId?: Locale;
 
   @Constraint<Language>(['Direction'])

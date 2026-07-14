@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { MetadataStorage } from '../../orm/metadata/storage';
 import { buildComputeGraph } from './graph';
 
@@ -13,16 +13,15 @@ class GraphParentModel extends BaseModel {
   })
   Lines?: GraphChildModel[];
 
-  @Field({
-    type: 'int',
-    column: {
-      compute: {
-        expr: () => 0,
-        deps: ['Lines.Name' as any, 'Lines' as any],
-      },
-    },
-  })
+  @Field({ type: 'int' })
   Score?: number;
+
+  @Compute<GraphParentModel>('Score', {
+    deps: ['Lines.Name' as any, 'Lines' as any],
+  })
+  computeScore() {
+    return 0;
+  }
 }
 
 @Model('test.GraphChildModel')
@@ -30,33 +29,30 @@ class GraphChildModel extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => GraphParentModel },
-    column: {},
   })
   ParentId?: GraphParentModel;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.GraphDecimalModel')
 class GraphDecimalModel extends BaseModel {
-  @Field({ type: 'int', column: {} })
+  @Field({ type: 'int' })
   Qty?: number;
 
-  @Field({ type: 'int', column: {} })
+  @Field({ type: 'int' })
   UnitPriceScale?: number;
 
-  @Field({
-    type: 'decimal',
-    column: {
-      scaleField: 'UnitPriceScale',
-      compute: {
-        expr: () => '0',
-        deps: ['Qty' as any],
-      },
-    } as any,
-  })
+  @Field({ type: 'decimal', scale: 0 } as any)
   UnitPrice?: any;
+
+  @Compute<GraphDecimalModel>('UnitPrice', {
+    deps: ['Qty' as any, 'UnitPriceScale' as any],
+  })
+  computeUnitPrice() {
+    return '0';
+  }
 }
 
 test('buildComputeGraph builds reverse compute index with deduplicated lifecycle and membership triggers', () => {
@@ -751,6 +747,51 @@ test('buildComputeGraph keeps non-decimal compute deps unchanged (scaleField fal
   const graph = buildComputeGraph(meta);
   const deps = graph?.parsedDeps.get('Score') || [];
   expect(deps).toEqual([{ kind: 'scalar', field: 'Name' }]);
+});
+
+test('buildComputeGraph collects dependencies from compute/sql handler metadata', () => {
+  class GraphHandlerMetaModel extends BaseModel {}
+
+  const meta = {
+    fullModelName: 'test.GraphHandlerMetaModel',
+    modelName: 'GraphHandlerMetaModel',
+    className: 'GraphHandlerMetaModel',
+    type: GraphHandlerMetaModel,
+    fields: new Map([
+      ['Name', { type: 'varchar', column: { size: 64 } }],
+      ['VirtualName', { type: 'varchar', column: { size: 64 } }],
+      ['DisplayName', { type: 'varchar', column: { size: 64 } }],
+    ]),
+    computeHandlers: new Map([
+      [
+        'VirtualName',
+        {
+          field: 'VirtualName',
+          method: 'computeVirtualName',
+          deps: ['Name'],
+          store: false,
+        },
+      ],
+    ]),
+    sqlComputeHandlers: new Map([
+      [
+        'DisplayName',
+        {
+          field: 'DisplayName',
+          method: 'sqlDisplayName',
+          deps: ['Name'],
+        },
+      ],
+    ]),
+  } as any;
+
+  const graph = buildComputeGraph(meta);
+  expect(graph?.computeFields.has('VirtualName')).toBe(true);
+  expect(graph?.computeFields.has('DisplayName')).toBe(true);
+  expect(graph?.virtualComputeFields?.has('VirtualName')).toBe(true);
+  expect(graph?.virtualComputeFields?.has('DisplayName')).toBe(true);
+  expect(graph?.persistedComputeFields?.has('DisplayName')).toBe(false);
+  expect(graph?.fastReverseDeps.get('Name')).toEqual(['VirtualName', 'DisplayName']);
 });
 
 test('buildComputeGraph rejects persisted scalar dependency on virtual compute field (direct branch)', () => {

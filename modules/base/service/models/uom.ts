@@ -9,29 +9,29 @@ import { fail, mapNormalizationToBase, normalizeName, requireRefId } from './_no
 
 @Model('UoM')
 export default class UoM extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_uom_category_name' } })
+  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_uom_category_name'})
   Name: string;
 
-  @Field({ type: 'varchar', column: { size: 24 } })
+  @Field({ type: 'varchar', size: 24})
   Symbol?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UoMCategory },
-    column: { notNull: true, index: true, uniqueIndex: 'uidx_base_uom_category_name' },
+    notNull: true, index: true, uniqueIndex: 'uidx_base_uom_category_name',
   })
   CategoryId: UoMCategory;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => false } })
+  @Field({ type: 'boolean', notNull: true, default: () => false})
   IsReference: boolean;
 
-  @Field({ type: 'decimal', column: { notNull: true, precision: 38, scale: 18 } })
+  @Field({ type: 'decimal', notNull: true, precision: 38, scale: 18})
   Factor: any;
 
-  @Field({ type: 'decimal', column: { precision: 38, scale: 18 } })
+  @Field({ type: 'decimal', precision: 38, scale: 18})
   Rounding?: any;
 
-  @Field({ type: 'boolean', column: { notNull: true, default: () => true, index: true } })
+  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
   private static async ensureNameUnique(categoryId: string, name: string, currentId?: string): Promise<void> {

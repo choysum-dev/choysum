@@ -71,7 +71,7 @@ test('onchange reads parser deduplicates m2o and collection chains', () => {
   expect(parsed.m2o.get('Owner')).toEqual([['Name']]);
   expect(parsed.collections.get('Lines')).toEqual([['Product', 'Name']]);
 
-  const legacy = withFakeMetadata(
+  const parsedReadMap = withFakeMetadata(
     new Map([
       [RootModel, rootMeta],
       [OwnerModel, ownerMeta],
@@ -80,8 +80,8 @@ test('onchange reads parser deduplicates m2o and collection chains', () => {
     ]),
     () => parseOnchangeReads(rootMeta, handlers)
   );
-  expect(legacy.get('Owner')).toEqual([['Name']]);
-  expect(legacy.has('Lines')).toBe(false);
+  expect(parsedReadMap.get('Owner')).toEqual([['Name']]);
+  expect(parsedReadMap.has('Lines')).toBe(false);
 });
 
 test('onchange reads parser rejects non-many2one root with chained path', () => {

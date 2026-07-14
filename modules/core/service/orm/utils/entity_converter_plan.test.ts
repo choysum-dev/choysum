@@ -9,31 +9,31 @@ import { EntityConverter } from './converter';
 
 @Model('test.EntityConverterPlanOwner')
 class EntityConverterPlanOwner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.EntityConverterPlanLine')
 class EntityConverterPlanLine extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.EntityConverterPlanModel')
 class EntityConverterPlanModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'datetime', column: {} })
+  @Field({ type: 'datetime' })
   CreatedAt?: Date;
 
-  @Field({ type: 'decimal', column: { precision: 16, scale: 2 } })
+  @Field({ type: 'decimal', precision: 16, scale: 2 })
   Amount?: any;
 
-  @Field({ type: 'bigint', column: {} })
+  @Field({ type: 'bigint' })
   CountBig?: any;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterPlanOwner }, column: { notNull: false } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => EntityConverterPlanOwner }, notNull: false })
   OwnerId?: EntityConverterPlanOwner;
 
   @Field({

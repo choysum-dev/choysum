@@ -3,6 +3,7 @@
 
 import { RepositoryFactory } from '../../orm/repository/repository_factory';
 import { MetadataStorage } from '../../orm/metadata/storage';
+import BaseModel from '../../orm/model/model';
 import { ComputeEngine } from './engine';
 import Decimal from '@/core/utils/decimal';
 import { getReadonlyCtx } from '../context';
@@ -572,7 +573,7 @@ test('compute engine persist ignores invalid compute paths before prefetch', asy
 test('compute engine preview handles primitive entity when trigger collection is empty', async () => {
   await ComputeEngine.recompute(
     {
-      fields: new Map([['Amount', { type: 'decimal', select: { scaleField: 'Scale' } }]]),
+      fields: new Map([['Amount', { type: 'decimal', column: { scaleField: 'Scale' } }]]),
       computeGraph: {
         computeFields: new Set(['Computed']),
         fastReverseDeps: new Map(),
@@ -600,8 +601,8 @@ test('compute engine preview skips fields without compute spec after trigger col
     {
       fields: new Map([
         ['Trigger', { type: 'int', column: {} }],
-        ['AmountA', { type: 'decimal', select: { scaleField: 'ScaleA' } }],
-        ['AmountB', { type: 'decimal', select: { scaleField: 'ScaleB' } }],
+        ['AmountA', { type: 'decimal', column: { scaleField: 'ScaleA' } }],
+        ['AmountB', { type: 'decimal', column: { scaleField: 'ScaleB' } }],
         ['NoCompute', { type: 'int', column: {} }],
       ]),
       computeGraph: {
@@ -1069,8 +1070,8 @@ test('compute engine preview keeps Decimal values, supports valid scaleField and
       type: PreviewScaleModel,
       fields: new Map([
         ['Scale', { type: 'int', column: {} }],
-        ['AmountWithScale', { type: 'decimal', select: { scaleField: 'Scale' } }],
-        // Omit column and select to exercise (metaField?.column || metaField?.select) ?? {}.
+        ['AmountWithScale', { type: 'decimal', column: { scaleField: 'Scale' } }],
+        // Omit column to exercise (metaField?.column) ?? {}.
         ['AmountDecimalAlready', { type: 'decimal' }],
         ['AmountEnvelope', { type: 'decimal', column: { scale: 2 } }],
       ]),
@@ -1468,4 +1469,127 @@ test('compute engine handles falsy primitive entity with decimal scaleField comp
   );
 
   expect(changed.has('Amount')).toBe(false);
+});
+
+test('compute engine executes @Compute handler method and writes back through this', async () => {
+  class HandlerComputeModel extends BaseModel {
+    Qty?: number;
+    Total?: number;
+
+    computeTotal() {
+      this.Total = Number((this as any).Qty || 0) + 5;
+    }
+  }
+
+  const entity: any = { Qty: 3, Total: 0 };
+  const changed = new Set<string>(['Qty']);
+
+  await ComputeEngine.recompute(
+    {
+      type: HandlerComputeModel,
+      fields: new Map([
+        ['Qty', { type: 'int', column: {} }],
+        ['Total', { type: 'int', column: {} }],
+      ]),
+      computeHandlers: new Map([
+        [
+          'Total',
+          {
+            field: 'Total',
+            method: 'computeTotal',
+            deps: ['Qty'],
+            store: true,
+          },
+        ],
+      ]),
+      computeGraph: {
+        computeFields: new Set(['Total']),
+        persistedComputeFields: new Set(['Total']),
+        fastReverseDeps: new Map([['Qty', ['Total']]]),
+        orderIndex: new Map([['Total', 0]]),
+        computePathDeps: new Map(),
+      },
+    } as any,
+    entity,
+    changed,
+    'persist'
+  );
+
+  expect(entity.Total).toBe(8);
+  expect(changed.has('Total')).toBe(true);
+});
+
+test('compute engine injectVirtualForRead does not execute @SqlCompute handler in runtime read stage', () => {
+  class SqlComputeReadModel extends BaseModel {
+    Name?: string;
+    override DisplayName!: string;
+
+    sqlDisplayName() {
+      throw new Error('sql compute should not run in runtime read stage');
+    }
+  }
+
+  const meta = {
+    type: SqlComputeReadModel,
+    fields: new Map([
+      ['Name', { type: 'varchar', column: { size: 64 } }],
+      ['DisplayName', { type: 'varchar', column: { size: 64 } }],
+    ]),
+    sqlComputeHandlers: new Map([
+      [
+        'DisplayName',
+        {
+          field: 'DisplayName',
+          method: 'sqlDisplayName',
+          deps: ['Name'],
+        },
+      ],
+    ]),
+    computeGraph: {
+      order: ['DisplayName'],
+      virtualComputeFields: new Set(['DisplayName']),
+      parsedDeps: new Map([['DisplayName', [{ kind: 'scalar', field: 'Name' }]]]),
+    },
+  } as any;
+
+  const entity: any = { Name: 'Alice' };
+  ComputeEngine.injectVirtualForRead(meta, entity);
+
+  expect(entity.DisplayName).toBeUndefined();
+});
+
+test('compute engine injectVirtualForRead keeps prefilled @SqlCompute value and skips runtime sql bridge execution', () => {
+  class SqlComputePrefilledModel extends BaseModel {
+    override DisplayName!: string;
+
+    sqlDisplayName() {
+      const sql = this.$sql as any;
+      return sql.col('demo_table', 'DisplayName');
+    }
+  }
+
+  const meta = {
+    type: SqlComputePrefilledModel,
+    fields: new Map([['DisplayName', { type: 'varchar', column: { size: 64 } }]]),
+    sqlComputeHandlers: new Map([
+      [
+        'DisplayName',
+        {
+          field: 'DisplayName',
+          method: 'sqlDisplayName',
+          deps: ['Id'],
+        },
+      ],
+    ]),
+    computeGraph: {
+      order: ['DisplayName'],
+      virtualComputeFields: new Set(['DisplayName']),
+      parsedDeps: new Map([['DisplayName', []]]),
+    },
+  } as any;
+
+  const entity: any = { DisplayName: 'from-db' };
+  ComputeEngine.injectVirtualForRead(meta, entity);
+
+  expect(entity.DisplayName).toBe('from-db');
 });

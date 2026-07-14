@@ -9,9 +9,9 @@ import IrUiResource from './ir_ui_resource';
   autoMigrate: false,
 })
 export default class IrUiResourceRouteAction extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, column: { notNull: true, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, notNull: true, index: true})
   RouteUiResourceId!: IrUiResource;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, column: { notNull: true, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, notNull: true, index: true})
   ActionUiResourceId!: IrUiResource;
 }

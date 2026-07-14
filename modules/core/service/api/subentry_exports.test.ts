@@ -32,7 +32,7 @@ test('core/service/api stable sub-entry runtime export surfaces are frozen', () 
   expect(Object.keys(onchangeApi).sort()).toEqual(['Onchange']);
   expect(Object.keys(validationApi).sort()).toEqual(['ValidationEngine', 'resolveValidationSummary']);
 
-  // Legacy compatibility barrel should stay type-only at runtime.
+  // Types-only barrel should stay type-only at runtime.
   expect(Object.keys(typesApi).sort()).toEqual([]);
 });
 

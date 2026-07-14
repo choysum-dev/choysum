@@ -6,7 +6,7 @@
 //   - By position: Lines[2]
 //   - By Id: Lines(id=abcd)
 // Multi-hop examples: Lines[2].Batches[0].Qty or Lines(id=...).Batches(id=...).Qty
-// Legacy paths without selectors are not handled specially here and continue through the existing flow.
+// Paths without selectors are not handled specially here and continue through the existing flow.
 
 export type RowSelector = { kind: 'all' } | { kind: 'pos'; positions: Set<number> } | { kind: 'id'; ids: Set<string> };
 
@@ -53,7 +53,7 @@ function mergeSelector(dst: RowSelector | undefined, add: RowSelector): RowSelec
 
 /**
  * Parse changed paths while only handling entries that include selectors.
- * Legacy paths still follow the existing flow.
+ * Paths without selectors still follow the existing flow.
  * Returns:
  *  - normalizedSeeds: equivalent paths with selectors removed, plus their collection roots.
  *  - collectionRoots: all collection dotted keys encountered, including top-level and multi-hop ones.
@@ -101,7 +101,7 @@ export function parseChangedSelectors(changed: string[]): ParsedChangedSelectors
       selectors.set(key, mergeSelector(prev, addSel));
     }
 
-    // Legacy root-only collection access without explicit selectors is intentionally left to the older path.
+    // Root-only collection access without explicit selectors is intentionally left to the existing path.
     // Field signals attach to the nearest collection path.
     if (parsed.length >= 2) {
       const leaf = parsed[parsed.length - 1]!;

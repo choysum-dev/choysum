@@ -11,13 +11,13 @@ type ModelCtor<T extends BaseModel> = { new (...args: never[]): T } & typeof Bas
 
 @Model('test.OneToManyProcessorParent')
 class OneToManyProcessorParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.OneToManyPrepareParent')
 class OneToManyPrepareParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   @Field({
@@ -29,17 +29,14 @@ class OneToManyPrepareParent extends BaseModel {
 
 @Model('test.OneToManyProcessorChild')
 class OneToManyProcessorChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'SET NULL' },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'SET NULL' } })
   ParentId?: OneToManyProcessorParent | null;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   ComputedFlag?: string;
 
   static createCalls: Array<Record<string, any>> = [];
@@ -63,40 +60,31 @@ class OneToManyProcessorChild extends BaseModel {
 
 @Model('test.OneToManyRestrictChild')
 class OneToManyRestrictChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'RESTRICT' },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'RESTRICT' } })
   ParentId?: OneToManyProcessorParent | null;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.OneToManyCascadeChild')
 class OneToManyCascadeChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'CASCADE' },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'CASCADE' } })
   ParentId?: OneToManyProcessorParent | null;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.OneToManyNoActionChild')
 class OneToManyNoActionChild extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'NO ACTION' },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => OneToManyProcessorParent, onDelete: 'NO ACTION' } })
   ParentId?: OneToManyProcessorParent | null;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 

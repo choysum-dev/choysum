@@ -13,7 +13,7 @@ export default class Partner extends PartnerBase {
   /** Related commercial identifier rows. */
   @Field({
     type: 'OneToMany',
-    relation: { targetModel: () => PartnerIdentifier, inverseField: 'PartnerId' } as any,
+    relation: { targetModel: () => PartnerIdentifier, inverseField: 'PartnerId' },
   })
   PartnerIdentifiers?: PartnerIdentifier[];
 }

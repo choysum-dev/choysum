@@ -169,6 +169,7 @@ type MemberMethod struct {
 	TypeAnnotation        string
 	AccessibilityModifier string
 	IsStatic              bool
+	IsAsync               bool
 	Decorators            []*Decorator
 	Parameters            []*Parameter
 	TypeParameters        []*TypeParameter
@@ -1017,9 +1018,6 @@ func (p *TsParser) tsgoParseMemberMethod(ctx *tsgoImportExportCtx, memberMethodN
 	if ctx == nil || memberMethodNode == nil || memberMethodNode.Kind != tsast.KindMethodDeclaration {
 		return nil, nil
 	}
-	if !tsast.HasSyntacticModifier(memberMethodNode, tsast.ModifierFlagsAsync) {
-		return nil, nil
-	}
 
 	memberMethodText, memberMethodStart, memberMethodEnd, memberMethodLine, memberMethodColumn := tsgoNodeStableInfo(ctx, memberMethodNode)
 	methodDecl := memberMethodNode.AsMethodDeclaration()
@@ -1063,6 +1061,7 @@ func (p *TsParser) tsgoParseMemberMethod(ctx *tsgoImportExportCtx, memberMethodN
 	}
 
 	memberMethod.IsStatic = tsast.HasSyntacticModifier(memberMethodNode, tsast.ModifierFlagsStatic)
+	memberMethod.IsAsync = tsast.HasSyntacticModifier(memberMethodNode, tsast.ModifierFlagsAsync)
 
 	if methodDecl.TypeParameters != nil {
 		for _, typeParameterNode := range methodDecl.TypeParameters.Nodes {

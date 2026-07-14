@@ -38,7 +38,7 @@ export async function validateRepositoryWrite(params: {
 
   try {
     const internalValidationBypass = getValidationBypassDepth() > 0;
-    const internalComputedWriteWhitelist = internalValidationBypass ? Array.from(meta.computeGraph?.computeFields || new Set<string>()) : [];
+    const internalComputedWriteWhitelist = internalValidationBypass ? Array.from(meta.computeGraph?.persistedComputeFields || new Set<string>()) : [];
     const configuredCreateWhitelist = mode === 'create' ? resolveRepositoryPlatformCreateWriteWhitelist(meta, requestContext) : [];
     const platformCreateWriteWhitelist = Array.from(new Set([...configuredCreateWhitelist, ...internalComputedWriteWhitelist]));
     await validateRuntimeOrThrow(

@@ -11,25 +11,25 @@ import { fail, normalizeNullableString, requireRefId } from './_normalizers';
 
 @Model('Address')
 export default class Address extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 120 } })
+  @Field({ type: 'varchar', size: 120})
   Label?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Street1?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   Street2?: string;
 
-  @Field({ type: 'varchar', column: { size: 32 } })
+  @Field({ type: 'varchar', size: 32})
   Zip?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Country }, column: { notNull: true, index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => Country }, notNull: true, index: true})
   CountryId: Country;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => State }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => State }, index: true})
   StateId?: State;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => City }, column: { index: true } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => City }, index: true})
   CityId?: City;
 
   private static async getCountry(countryId: string): Promise<any> {

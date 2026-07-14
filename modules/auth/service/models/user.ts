@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Model, Field } from '@/core/service';
+import { BaseModel, Model, Field, Compute } from '@/core/service';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
@@ -49,37 +49,37 @@ export default class User extends BaseModel {
   /**
    * Unique username used for sign-in.
    */
-  @Field({ type: 'varchar', column: { size: 100, unique: true, notNull: true } })
+  @Field({ type: 'varchar', size: 100, unique: true, notNull: true })
   Username: string;
 
   /**
    * Primary email address for the user.
    */
-  @Field({ type: 'varchar', column: { size: 100, unique: true } })
+  @Field({ type: 'varchar', size: 100, unique: true })
   readonly Email: string;
 
   /**
    * Optional phone number for the user.
    */
-  @Field({ type: 'varchar', column: { size: 20, unique: true } })
+  @Field({ type: 'varchar', size: 20, unique: true })
   Phone: string;
 
   /**
    * Stored password hash for local authentication.
    */
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true })
   PasswordHash: string;
 
   /**
    * Given name used in profile and display contexts.
    */
-  @Field({ type: 'varchar', column: { size: 100, index: true } })
+  @Field({ type: 'varchar', size: 100, index: true })
   FirstName: string;
 
   /**
    * Family name used in profile and display contexts.
    */
-  @Field({ type: 'varchar', column: { size: 100, index: true } })
+  @Field({ type: 'varchar', size: 100, index: true })
   LastName: string;
 
   /**
@@ -87,38 +87,39 @@ export default class User extends BaseModel {
    */
   @Field({
     type: 'varchar',
-    column: {
-      size: 200,
-      compute: {
-        expr: (self: User) => self.FirstName + ' ' + self.LastName,
-        deps: ['FirstName', 'LastName'],
-      },
-    },
+    size: 200,
   })
   FullName: string;
+
+  @Compute<User>('FullName', {
+    deps: ['FirstName', 'LastName'],
+  })
+  computeFullName() {
+    return this.FirstName + ' ' + this.LastName;
+  }
 
   /**
    * Optional avatar image for the user profile.
    */
-  @Field({ type: 'image', column: { index: true } })
+  @Field({ type: 'image', index: true })
   Avatar?: string;
 
   /**
    * Preferred language reserved for future localization support.
    */
-  @Field({ type: 'varchar', column: { size: 20 } })
+  @Field({ type: 'varchar', size: 20 })
   Language: string;
 
   /**
    * Preferred timezone reserved for future localization support.
    */
-  @Field({ type: 'varchar', column: { size: 40 } })
+  @Field({ type: 'varchar', size: 40 })
   Timezone: string;
 
   /**
    * User-specific UI and company-scope preferences.
    */
-  @Field({ type: 'jsonobject', column: { default: () => {} } })
+  @Field({ type: 'jsonobject', default: () => {} })
   Preferences: {
     // Company scope preferences (P3).
     activeCompanyId?: string;
@@ -149,25 +150,25 @@ export default class User extends BaseModel {
   /**
    * Primary company assigned by the base company module.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company' })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' } })
   CompanyId: string;
 
   /**
    * Additional company ids available to the user in multi-company mode.
    */
-  @Field({ type: 'ManyToManyRef', targetModel: 'base.Company' })
+  @Field({ type: 'ManyToManyRef', relation: { targetModel: 'base.Company' } })
   CompanyIds: string[];
 
   /**
    * Whether the account is currently active.
    */
-  @Field({ type: 'boolean', column: { default: () => true, index: true } })
+  @Field({ type: 'boolean', default: () => true, index: true })
   IsActive: boolean;
 
   /**
    * Timestamp of the most recent successful login.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true })
   LastLogin: Date;
 
   /**

@@ -86,13 +86,13 @@ function createJoinRepoMock(seedRows: JoinRow[]) {
 
 @Model('test.ManyToManyParent')
 class ManyToManyParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.ManyToManyTarget')
 class ManyToManyTarget extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   static createCalls: Array<Record<string, any>> = [];
@@ -115,16 +115,16 @@ class ManyToManyTarget extends BaseModel {
 
 @Model('test.ManyToManyJoin')
 class ManyToManyJoin extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   OwnerId?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   TagId?: string;
 }
 
 @Model('test.ManyToManyPrepareParent')
 class ManyToManyPrepareParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   @Field({

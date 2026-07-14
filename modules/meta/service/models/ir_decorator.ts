@@ -13,13 +13,13 @@ import IrArgument from './ir_argument';
   autoMigrate: false,
 })
 export default class IrDecorator extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true})
   Name!: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ModuleSpecPath?: string;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   ReferenceIdent?: string;
 
   @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModel } })

@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Field, Model, SqlCompute } from '@/core/service';
 import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
+import IrModule from './ir_module';
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -36,7 +37,7 @@ type ModuleIndexRecord = {
   RegistryVersion?: string;
 };
 
-function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
+export function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
   const emptyArray = Array.isArray(condition) && condition.length === 0;
   const emptyObject = !Array.isArray(condition) && condition && typeof condition === 'object' && Object.keys(condition).length === 0;
   return emptyArray || emptyObject ? (['Available', '=', true] as any) : condition;
@@ -45,13 +46,13 @@ function normalizeSearchCondition(condition: any[] | Record<string, any>): any {
 type SortSpec = { field: string; desc: boolean };
 type GroupSortSpec = { field: string; order: 'asc' | 'desc' };
 
-function toText(value: unknown): string {
+export function toText(value: unknown): string {
   return String(value ?? '')
     .trim()
     .toLowerCase();
 }
 
-function toComparableValue(value: unknown): unknown {
+export function toComparableValue(value: unknown): unknown {
   if (value == null) return null;
   if (value instanceof Date) return value.getTime();
   if (typeof value === 'boolean') return value ? 1 : 0;
@@ -68,7 +69,7 @@ function toComparableValue(value: unknown): unknown {
   return String(value).toLowerCase();
 }
 
-function parseSortSpecs(orderBy: any): SortSpec[] {
+export function parseSortSpecs(orderBy: any): SortSpec[] {
   if (!orderBy) return [];
   const rawList = Array.isArray(orderBy) ? orderBy : [orderBy];
   const specs: SortSpec[] = [];
@@ -87,7 +88,7 @@ function parseSortSpecs(orderBy: any): SortSpec[] {
   return specs;
 }
 
-function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortSpec[]): number {
+export function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortSpec[]): number {
   for (const spec of specs) {
     const av = toComparableValue((a as any)?.[spec.field]);
     const bv = toComparableValue((b as any)?.[spec.field]);
@@ -104,7 +105,7 @@ function compareBySpecs(a: ModuleIndexRecord, b: ModuleIndexRecord, specs: SortS
   return 0;
 }
 
-function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
+export function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<string, unknown>): void {
   if (Object.prototype.hasOwnProperty.call(source, 'withDeleted')) {
     target.withDeleted = !!(source as any).withDeleted;
   }
@@ -113,7 +114,7 @@ function applySoftDeleteOptions(target: Record<string, unknown>, source: Record<
   }
 }
 
-function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
+export function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
   supported: boolean;
   orderBy: GroupSortSpec[];
   aggregateFields: Array<{ field: string; agg: 'max'; alias: string }>;
@@ -162,7 +163,7 @@ function buildSortPushdownPlan(sortSpecs: SortSpec[]): {
   };
 }
 
-function extractGroupedModuleNames(rows: any[]): string[] {
+export function extractGroupedModuleNames(rows: any[]): string[] {
   const out: string[] = [];
   for (const row of rows || []) {
     const moduleName = String((row as any)?.ModuleName ?? (row as any)?.module_name ?? '').trim();
@@ -172,7 +173,7 @@ function extractGroupedModuleNames(rows: any[]): string[] {
   return out;
 }
 
-function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): any {
+export function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): any {
   if (!Array.isArray(moduleNames) || moduleNames.length === 0) {
     return ['Id', '=', '__never_match__'] as any;
   }
@@ -187,7 +188,7 @@ function buildModuleNamesCondition(baseCondition: any, moduleNames: string[]): a
   } as any;
 }
 
-function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
+export function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): ModuleIndexRecord[] {
   if (!Array.isArray(requestedFields) || requestedFields.length === 0) return rows;
   const blockedFields = new Set(['__proto__', 'constructor', 'prototype']);
   const fields = Array.from(new Set(requestedFields.map(field => String(field || '').trim()).filter(field => !!field && !blockedFields.has(field))));
@@ -202,7 +203,7 @@ function projectFields(rows: ModuleIndexRecord[], requestedFields: string[]): Mo
   });
 }
 
-function toPlainRecord(input: any): ModuleIndexRecord {
+export function toPlainRecord(input: any): ModuleIndexRecord {
   if (!input || typeof input !== 'object') return {};
   if (typeof input.toPlainObject === 'function') {
     try {
@@ -218,7 +219,7 @@ function toPlainRecord(input: any): ModuleIndexRecord {
   return out as ModuleIndexRecord;
 }
 
-function pickNewestTimestamp(values: Array<Date | string | null | undefined>): Date | string | null | undefined {
+export function pickNewestTimestamp(values: Array<Date | string | null | undefined>): Date | string | null | undefined {
   let picked: Date | string | null | undefined;
   let pickedTs = -Infinity;
   for (const value of values) {
@@ -236,7 +237,7 @@ function pickNewestTimestamp(values: Array<Date | string | null | undefined>): D
   return picked;
 }
 
-function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
+export function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   const byModule = new Map<string, ModuleIndexRecord[]>();
   for (const raw of rows) {
     const moduleName = String(raw?.ModuleName || '').trim();
@@ -298,7 +299,7 @@ function aggregateRows(rows: ModuleIndexRecord[]): ModuleIndexRecord[] {
   return merged;
 }
 
-function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
+export function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
   const raw = String(value || '')
     .trim()
     .toLowerCase();
@@ -309,7 +310,7 @@ function normalizeOriginType(value?: string): ModuleSyncOriginType | '' {
   return '';
 }
 
-function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {
+export function canReuseRunningSync(requested: ModuleSyncOriginType, running: ModuleSyncOriginType): boolean {
   if (requested === 'all') return running === 'all';
   if (running === 'all') return true;
   return running === requested;
@@ -355,25 +356,25 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
   autoMigrate: false,
 })
 export default class IrModuleIndex extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true })
   ModuleName!: string;
 
-  @Field({ type: 'varchar', column: { size: 32, notNull: true } })
+  @Field({ type: 'varchar', size: 32, notNull: true })
   OriginType!: ModuleOriginType;
 
-  @Field({ type: 'varchar', column: { size: 255, notNull: true } })
+  @Field({ type: 'varchar', size: 255, notNull: true })
   OriginRef!: string;
 
-  @Field({ type: 'boolean', column: { notNull: true } })
+  @Field({ type: 'boolean', notNull: true })
   Available!: boolean;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   Version?: string;
 
   @Field({ type: 'jsonobject' })
   ManifestJson?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', column: { size: 512 } })
+  @Field({ type: 'varchar', size: 512 })
   LocalPath?: string;
 
   @Field({ type: 'datetime' })
@@ -382,7 +383,7 @@ export default class IrModuleIndex extends BaseModel {
   @Field({ type: 'datetime' })
   LastBatchSyncAt!: Date;
 
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255 })
   SyncRevision?: string;
 
   @Field({ type: 'text' })
@@ -390,53 +391,67 @@ export default class IrModuleIndex extends BaseModel {
 
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ col }) => col('meta_ir_module_index', 'origin_type'),
-      size: 64,
-    },
+    size: 64,
   })
   OriginTypes?: string;
 
+  @SqlCompute<IrModuleIndex>('OriginTypes')
+  sqlOriginTypes() {
+    return this.$sql.field('OriginType');
+  }
+
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ col }) => col('meta_ir_module_index', 'version'),
-      size: 255,
-    },
+    size: 255,
   })
   LocalVersion?: string;
 
+  @SqlCompute<IrModuleIndex>('LocalVersion')
+  sqlLocalVersion() {
+    return this.$sql.field('Version');
+  }
+
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ col }) => col('meta_ir_module_index', 'version'),
-      size: 255,
-    },
+    size: 255,
   })
   RegistryVersion?: string;
 
-  @Field({
-    type: 'varchar',
-    select: {
-      expr: ({ selectFrom, col }) =>
-        sql<string>`coalesce((${selectFrom('meta_ir_module as m')
-          .select('m.status')
-          .whereRef('m.name', '=', col('meta_ir_module_index', 'module_name'))
-          .limit(1)}), 'uninstalled')`,
-      size: 64,
-    },
-  })
-  InstalledStatus?: string;
+  @SqlCompute<IrModuleIndex>('RegistryVersion')
+  sqlRegistryVersion() {
+    return this.$sql.field('Version');
+  }
 
   @Field({
     type: 'varchar',
-    select: {
-      expr: ({ selectFrom, col }) =>
-        selectFrom('meta_ir_module as m').select('m.version').whereRef('m.name', '=', col('meta_ir_module_index', 'module_name')).limit(1),
-      size: 255,
-    },
+    size: 64,
+  })
+  InstalledStatus?: string;
+
+  @SqlCompute<IrModuleIndex>('InstalledStatus')
+  sqlInstalledStatus() {
+    const moduleStatus = this.$sql
+      .selectFrom('meta_ir_module as m')
+      .select('m.status')
+      .whereRef('m.name', '=', this.$sql.col('meta_ir_module_index', 'module_name'))
+      .limit(1);
+    return sql<string>`coalesce((${moduleStatus}), 'uninstalled')`;
+  }
+
+  @Field({
+    type: 'varchar',
+    size: 255,
   })
   InstalledVersion?: string;
+
+  @SqlCompute<IrModuleIndex>('InstalledVersion')
+  sqlInstalledVersion() {
+    return this.$sql
+      .selectFrom('meta_ir_module as m')
+      .select('m.version')
+      .whereRef('m.name', '=', this.$sql.col('meta_ir_module_index', 'module_name'))
+      .limit(1);
+  }
 
   static async Search<T extends BaseModel>(
     this: { new (...args: any[]): T } & typeof BaseModel,
@@ -486,8 +501,6 @@ export default class IrModuleIndex extends BaseModel {
       'LastBatchSyncAt',
       'SyncRevision',
       'LastErrorMessage',
-      'InstalledStatus',
-      'InstalledVersion',
     ];
     const detailOptions: Record<string, unknown> = {
       fields: detailFields,
@@ -498,10 +511,35 @@ export default class IrModuleIndex extends BaseModel {
 
     const detailRows = (await (BaseModel as any).Search.call(this, buildModuleNamesCondition(normalized, groupedModuleNames), detailOptions)) as any[];
 
+    const installedByName = new Map<string, { status?: string; version?: string }>();
+    if (groupedModuleNames.length > 0) {
+      const installedRows = await IrModule.Search(
+        ['Name', 'in', groupedModuleNames] as any,
+        {
+          fields: ['Name', 'Status', 'Version'] as any,
+          limit: groupedModuleNames.length * 2,
+        } as any
+      );
+      for (const module of installedRows || []) {
+        const moduleName = String((module as any)?.Name || '').trim();
+        if (!moduleName) continue;
+        installedByName.set(moduleName, {
+          status: String((module as any)?.Status || '').trim() || undefined,
+          version: String((module as any)?.Version || '').trim() || undefined,
+        });
+      }
+    }
+
     const mergedByModule = new Map<string, ModuleIndexRecord>();
-    for (const row of aggregateRows((detailRows || []).map(toPlainRecord))) {
+    for (const rawRow of aggregateRows((detailRows || []).map(toPlainRecord))) {
+      const row = { ...rawRow };
       const moduleName = String(row?.ModuleName || '').trim();
       if (!moduleName) continue;
+
+      const installed = installedByName.get(moduleName);
+      row.InstalledStatus = installed?.status || row.InstalledStatus || 'uninstalled';
+      row.InstalledVersion = installed?.version || row.InstalledVersion;
+
       mergedByModule.set(moduleName, row);
     }
 

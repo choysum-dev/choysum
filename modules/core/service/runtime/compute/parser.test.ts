@@ -3,7 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { MetadataStorage } from '@/core/service/api/metadata';
-import { parseDeps } from './parser';
+import { parseDeps, validateAutoInverseRelatedPath } from './parser';
 
 function withPatchedModelMetadata<T>(resolver: (model: Function) => any, fn: () => T): T {
   const storage = MetadataStorage.instance as any;
@@ -23,7 +23,7 @@ function withPatchedModelMetadata<T>(resolver: (model: Function) => any, fn: () 
 
 @Model('test.ParseDepsCustomer')
 class ParseDepsCustomer extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   @Field({
@@ -35,60 +35,40 @@ class ParseDepsCustomer extends BaseModel {
 
 @Model('test.ParseDepsCustomerOrder')
 class ParseDepsCustomerOrder extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsCustomer },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsCustomer } })
   CustomerId?: ParseDepsCustomer;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.ParseDepsLine')
 class ParseDepsLine extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsModel } })
   ParentId?: ParseDepsModel;
 }
 
 @Model('test.ParseDepsTag')
 class ParseDepsTag extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.ParseDepsModelTag')
 class ParseDepsModelTag extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsModel } })
   ParentId!: ParseDepsModel;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsTag },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsTag } })
   TagId!: ParseDepsTag;
 }
 
 @Model('test.ParseDepsModel')
 class ParseDepsModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsCustomer },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsCustomer } })
   CustomerId?: ParseDepsCustomer;
 
   @Field({
@@ -111,12 +91,48 @@ class ParseDepsModel extends BaseModel {
 
 @Model('test.ParseDepsMissingTarget')
 class ParseDepsMissingTarget extends BaseModel {
-  @Field({
-    type: 'ManyToOne',
-    relation: {} as any,
-    column: {},
-  })
+  @Field({ type: 'ManyToOne', relation: {} as any })
   BrokenRef?: any;
+}
+
+// ----- models for validateAutoInverseRelatedPath edge cases -----
+
+@Model('test.AutoInvLeafRelation')
+class AutoInvLeafRelation extends BaseModel {
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsModel } })
+  PartnerId?: ParseDepsModel;
+}
+
+@Model('test.AutoInvVirtualRelatedTarget')
+class AutoInvVirtualRelatedTarget extends BaseModel {
+  @Field({
+    type: 'varchar',
+    size: 64,
+    related: { store: false, path: 'SomeId.SomeField' },
+  } as any)
+  VirtualName?: string;
+}
+
+@Model('test.AutoInvLeafVirtualRelated')
+class AutoInvLeafVirtualRelated extends BaseModel {
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => AutoInvVirtualRelatedTarget } })
+  ParentId?: AutoInvVirtualRelatedTarget;
+}
+
+// Model with a compute handler on the leaf field
+@Model('test.AutoInvComputedLeafTarget')
+class AutoInvComputedLeafTarget extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  ComputedName?: string;
+
+  static computeHandlers = new Map([['ComputedName', () => 'computed']]);
+  static sqlComputeHandlers = new Map();
+}
+
+@Model('test.AutoInvComputedLeaf')
+class AutoInvComputedLeaf extends BaseModel {
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => AutoInvComputedLeafTarget } })
+  ParentId?: AutoInvComputedLeafTarget;
 }
 
 test('parseDeps classifies scalar, path, collection and collectionPath dependencies', () => {
@@ -176,6 +192,25 @@ test('parseDeps fails fast when relation target metadata is missing', () => {
 
   expect(errorMessage.includes('BrokenRef.Name')).toBe(true);
   expect(errorMessage.includes('missing relation.targetModel')).toBe(true);
+});
+
+test('parseDeps fails with domain error when relation.targetModel resolver returns invalid target', () => {
+  const meta = {
+    fullModelName: 'test.InvalidTargetModel',
+    fields: new Map([
+      [
+        'BrokenRef',
+        {
+          type: 'ManyToOne',
+          relation: {
+            targetModel: () => 'test.ParseDepsCustomer',
+          },
+        },
+      ],
+    ]),
+  } as any;
+
+  expect(() => parseDeps(meta, 'DisplayName', ['BrokenRef.Name'])).toThrow('missing relation.targetModel');
 });
 
 test('parseDeps rejects invalid dependency token kinds, empty dotted token and non-navigable roots', () => {
@@ -262,6 +297,105 @@ test('parseDeps model label fallback prefers modelName/className/typeName/Unknow
     }),
     () => {
       expect(() => parseDeps(rootMeta, 'DisplayName', ['Root.Missing'])).toThrow('Unknown');
+    }
+  );
+});
+
+test('validateAutoInverseRelatedPath accepts single-hop ManyToOne to scalar leaf', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+  const resolved = validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId.Name');
+
+  expect(resolved).toEqual({
+    root: 'CustomerId',
+    leaf: 'Name',
+  });
+});
+
+test('validateAutoInverseRelatedPath rejects non-whitelisted related path shapes', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId.Orders.Name')).toThrow('single-hop ManyToOne path');
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'Name.Code')).toThrow('must be ManyToOne');
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'CustomerId[Name]')).toThrow('expression syntax');
+});
+
+test('validateAutoInverseRelatedPath rejects related roots with invalid relation.targetModel resolver results', () => {
+  const meta = {
+    fullModelName: 'test.InvalidTargetModel',
+    fields: new Map([
+      [
+        'BrokenRef',
+        {
+          type: 'ManyToOne',
+          relation: {
+            targetModel: () => 'test.ParseDepsCustomer',
+          },
+        },
+      ],
+    ]),
+  } as any;
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'DisplayName', 'BrokenRef.Name')).toThrow('missing relation.targetModel');
+});
+
+test('validateAutoInverseRelatedPath rejects empty and whitespace-only paths', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', '')).toThrow('related.path is empty');
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', '   ')).toThrow('related.path is empty');
+});
+
+test('validateAutoInverseRelatedPath rejects when root field does not exist on model', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'NonExistent.Name')).toThrow('does not exist on model');
+});
+
+test('validateAutoInverseRelatedPath rejects when root is missing relation.targetModel', () => {
+  const meta = {
+    fullModelName: 'test.RootNoTarget',
+    fields: new Map([['Parent', { type: 'ManyToOne', relation: {} }]]),
+  } as any;
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'Parent.Name')).toThrow('missing relation.targetModel');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf does not exist on target model', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(ParseDepsModel as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'CustomerId.NoSuchField')).toThrow('does not exist on model');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf is a relation type', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(AutoInvLeafRelation as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'PartnerId.CustomerId')).toThrow('must be a writable scalar field');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf is a virtual related field', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(AutoInvLeafVirtualRelated as any);
+
+  expect(() => validateAutoInverseRelatedPath(meta, 'F', 'ParentId.VirtualName')).toThrow('virtual related field');
+});
+
+test('validateAutoInverseRelatedPath rejects when leaf is a computed field', () => {
+  const leafMeta = MetadataStorage.instance.getModelMetadata(AutoInvComputedLeaf as any);
+  // Capture original target metadata before patching the storage.
+  const originalTargetMeta = MetadataStorage.instance.getModelMetadata(AutoInvComputedLeafTarget as any);
+
+  withPatchedModelMetadata(
+    (model: Function) => {
+      if (model === (AutoInvComputedLeafTarget as any)) {
+        return {
+          ...originalTargetMeta,
+          computeHandlers: new Map([['ComputedName', () => 'computed']]),
+          sqlComputeHandlers: new Map(),
+        };
+      }
+      return undefined; // fall back to original
+    },
+    () => {
+      expect(() => validateAutoInverseRelatedPath(leafMeta, 'F', 'ParentId.ComputedName')).toThrow('computed field');
     }
   );
 });

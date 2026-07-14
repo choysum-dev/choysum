@@ -7,6 +7,7 @@ import { FieldMetadata, ManyToOneMetadata, MetadataStorage, ModelCtor, ModelMeta
 import type { SelectCtx, SelectExpressionAtom, SelectExpressionValue, SelectSubqueryBuilder } from '../../metadata';
 import type { DialectName } from '../repository_dialect';
 import type { ExpressionBuilder } from '../types';
+import { hasRepositorySqlComputeExpression, isRepositorySelectableScalarField, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import type { ObjectRecord } from '../../../../utils/types';
 
 export interface DbLike {
@@ -64,7 +65,7 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
     const finalFieldMeta = finalMeta.fields.get(finalField) as FieldMetadata | undefined;
     if (!finalFieldMeta) throw new Error(`field(${finalMeta.type.name}.${finalField}) not found`);
 
-    const canShortcutIdTail = finalField === 'Id' && Boolean(finalFieldMeta.column) && !finalFieldMeta.select;
+    const canShortcutIdTail = finalField === 'Id' && Boolean(finalFieldMeta.column) && !hasRepositorySqlComputeExpression(finalMeta, finalField);
     if (canShortcutIdTail && hops.length === 1) {
       // A single-hop ManyToOne Id path can reuse the root foreign-key column directly.
       return refBuilder.ref(`${rootTable}.${hops[0].fieldName}`);
@@ -100,15 +101,19 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
       rightTable = hop.table;
     }
 
-    if (finalFieldMeta.select) {
+    if (hasRepositorySqlComputeExpression(finalMeta, finalField)) {
       subquery = subquery.select((subBuilder: unknown) => {
         const targetCtx = makeSelectCtx(db, getDialect, subBuilder, finalTable, finalMeta);
-        return finalFieldMeta.select!.expr(targetCtx);
+        const resolved = resolveRepositorySqlComputeExpression(finalMeta, finalField, targetCtx);
+        if (resolved === undefined) {
+          throw new Error(`field(${finalMeta.type.name}.${finalField}) sql compute handler is missing`);
+        }
+        return resolved;
       });
     } else if (finalFieldMeta.column) {
       subquery = subquery.select(`${finalTable}.${finalField}`);
     } else {
-      throw new Error(`field(${finalMeta.type.name}.${finalField}) has neither select nor column`);
+      throw new Error(`field(${finalMeta.type.name}.${finalField}) has neither sql compute handler nor column`);
     }
 
     if (hops.length > 0) {
@@ -128,12 +133,18 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
       const fieldName = parts[0];
       const fieldMeta = meta.fields.get(fieldName) as FieldMetadata | undefined;
       if (!fieldMeta) throw new Error(`field(${model.name}.${fieldName}) not found`);
-      if (fieldMeta.select) {
+
+      if (hasRepositorySqlComputeExpression(meta, fieldName)) {
         const targetCtx = makeSelectCtx(db, getDialect, builder, table, meta);
-        return fieldMeta.select!.expr(targetCtx);
+        const resolved = resolveRepositorySqlComputeExpression(meta, fieldName, targetCtx);
+        if (resolved === undefined) {
+          throw new Error(`field(${model.name}.${fieldName}) sql compute handler is missing`);
+        }
+        return resolved as SelectExpressionValue;
       }
+
       if (fieldMeta.column) return refBuilder.ref(`${table}.${fieldName}`);
-      throw new Error(`field(${model.name}.${fieldName}) has neither select nor column`);
+      throw new Error(`field(${model.name}.${fieldName}) has neither sql compute handler nor column`);
     }
 
     let currentMeta = meta;
@@ -162,7 +173,7 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
 
       const isLeaf = index === parts.length - 1;
       if (isLeaf) {
-        return Boolean(fieldMeta.column || fieldMeta.select);
+        return isRepositorySelectableScalarField(currentMeta, segment, fieldMeta);
       }
 
       if (fieldMeta.type !== 'ManyToOne' || !fieldMeta.relation) return false;
@@ -174,9 +185,30 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
   };
 
   const currentModelCtor = (curMeta.type as unknown as ModelCtor<BaseModel>) || (BaseModel as unknown as ModelCtor<BaseModel>);
-  const fieldResolver: SelectCtx['field'] = (model: ModelCtor<BaseModel>, path: string) => fieldImpl(model as ModelCtor<BaseModel>, String(path));
-  const fieldExistResolver: SelectCtx['fieldExist'] = (model: ModelCtor<BaseModel>, path: string) =>
-    fieldExistImpl(model as ModelCtor<BaseModel>, String(path));
+
+  const resolveFieldArgs = (modelOrPath: unknown, path: unknown): { model: ModelCtor<BaseModel>; fieldPath: string } => {
+    if (typeof path === 'string') {
+      return {
+        model: modelOrPath as ModelCtor<BaseModel>,
+        fieldPath: String(path),
+      };
+    }
+
+    return {
+      model: currentModelCtor,
+      fieldPath: String(modelOrPath ?? ''),
+    };
+  };
+
+  const fieldResolver: SelectCtx['field'] = ((modelOrPath: unknown, path?: unknown) => {
+    const resolved = resolveFieldArgs(modelOrPath, path);
+    return fieldImpl(resolved.model, resolved.fieldPath);
+  }) as SelectCtx['field'];
+
+  const fieldExistResolver: SelectCtx['fieldExist'] = ((modelOrPath: unknown, path?: unknown) => {
+    const resolved = resolveFieldArgs(modelOrPath, path);
+    return fieldExistImpl(resolved.model, resolved.fieldPath);
+  }) as SelectCtx['fieldExist'];
 
   const ctx: SelectCtx = {
     eb: expressionBuilder,

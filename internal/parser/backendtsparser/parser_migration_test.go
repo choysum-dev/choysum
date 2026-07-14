@@ -7,12 +7,15 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+
+	"github.com/choysum-dev/choysum/internal/parser"
 )
 
 type backendParserTestScope struct {
@@ -203,5 +206,1098 @@ func TestTsParser_ParseSkipsCompatibilityPath(t *testing.T) {
 	}
 	if r.Model != nil || r.Imports != nil || r.Exports != nil {
 		t.Fatalf("expected compatibility skip to bypass deeper parsing, got %+v", r)
+	}
+}
+
+func TestTsParser_ParseModelBuildsResolvedFieldSpecFromNewDecorators(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/demo.ts"
+	content := `import { Model, Field, Compute, Search } from '../../core/service';
+import BaseModel from './base';
+
+@Model('Demo')
+export default class Demo extends BaseModel {
+	@Field({ type: 'varchar', size: 64, required: true, indexed: true })
+  public Name: string
+
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: true, deps: ['PartnerId', 'PartnerId.Name'] } })
+  public PartnerName: string
+
+  @Compute<Demo>('PartnerName', { deps: ['Name'], store: false, searchable: true, runAs: 'sudo' })
+  computePartnerName() {
+    return this.Name
+  }
+
+  @Search<Demo>('PartnerName')
+  searchPartnerName() {
+    return ['Name', '=', 'A']
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil {
+		t.Fatal("expected parsed model")
+	}
+
+	fieldByName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		fieldByName[field.Name] = field
+	}
+
+	nameSpec, err := fieldByName["Name"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse Name resolved spec failed: %v", err)
+	}
+	if nameSpec == nil {
+		t.Fatal("expected Name resolved spec")
+	}
+	if nameSpec.Structural.FieldType != "varchar" || nameSpec.Structural.StorageHints == nil || nameSpec.Structural.StorageHints.Size == nil || *nameSpec.Structural.StorageHints.Size != 64 {
+		t.Fatalf("unexpected Name resolved structural spec: %+v", nameSpec.Structural)
+	}
+	if nameSpec.Migration.ShouldCreateColumn != true || nameSpec.Migration.ReasonCode != "FIELD_DEFAULT" {
+		t.Fatalf("unexpected Name migration decision: %+v", nameSpec.Migration)
+	}
+
+	partnerSpec, err := fieldByName["PartnerName"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse PartnerName resolved spec failed: %v", err)
+	}
+	if partnerSpec == nil {
+		t.Fatal("expected PartnerName resolved spec")
+	}
+	if partnerSpec.Behavior.Compute == nil || partnerSpec.Behavior.Compute.Method != "computePartnerName" || partnerSpec.Behavior.Compute.Store != false {
+		t.Fatalf("unexpected PartnerName compute behavior: %+v", partnerSpec.Behavior)
+	}
+	if partnerSpec.Behavior.Search == nil || partnerSpec.Behavior.Search.Method != "searchPartnerName" {
+		t.Fatalf("unexpected PartnerName search behavior: %+v", partnerSpec.Behavior)
+	}
+	if partnerSpec.Migration.ShouldCreateColumn != false || partnerSpec.Migration.ReasonCode != "COMPUTE_STORE_FALSE" {
+		t.Fatalf("unexpected PartnerName migration decision: %+v", partnerSpec.Migration)
+	}
+	if partnerSpec.Resolved.RunAs.Value == nil || *partnerSpec.Resolved.RunAs.Value != "sudo" {
+		t.Fatalf("unexpected PartnerName runAs resolution: %+v", partnerSpec.Resolved.RunAs)
+	}
+}
+
+func TestTsParser_ParseModelRejectsLegacyFieldSyntax(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/legacy.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('Legacy')
+export default class Legacy extends BaseModel {
+  @Field({ type: 'varchar', column: { size: 64 } })
+  public Name: string
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil {
+		t.Fatal("expected parser to reject legacy field syntax")
+	}
+	if got := err.Error(); got == "" || !strings.Contains(got, "FIELD_LEGACY_SYNTAX_FORBIDDEN") {
+		t.Fatalf("unexpected parser error: %v", err)
+	}
+}
+
+func TestTsParser_ParseModelRejectsBehaviorBindingsWithoutFieldDecorator(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/missing_field_decorator.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('MissingFieldDecorator')
+export default class MissingFieldDecorator extends BaseModel {
+  public DisplayName: string
+
+  @Compute<MissingFieldDecorator>('DisplayName', { deps: ['DisplayName'], store: false })
+  computeDisplayName() {
+    return this.DisplayName
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil {
+		t.Fatal("expected parser to reject behavior binding without @Field decorator")
+	}
+	if got := err.Error(); !strings.Contains(got, "missing @Field decorator") {
+		t.Fatalf("unexpected parser error: %v", err)
+	}
+}
+
+func TestTsParser_ParseModelEmitsConflictDiagnosticsInResolvedSpec(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/conflict.ts"
+	content := `import { Model, Field, Compute, SqlCompute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ConflictModel')
+export default class ConflictModel extends BaseModel {
+	@Field({ type: 'varchar', size: 64 })
+  public DisplayName: string
+
+  @Compute<ConflictModel>('DisplayName', { deps: ['DisplayName'], store: true })
+  computeDisplayName() {
+    return this.DisplayName
+  }
+
+  @SqlCompute<ConflictModel>('DisplayName')
+  sqlDisplayName() {
+    return this.$sql.field(ConflictModel, 'DisplayName')
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		fieldByName[field.Name] = field
+	}
+	spec, err := fieldByName["DisplayName"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse DisplayName resolved spec failed: %v", err)
+	}
+	if spec == nil {
+		t.Fatal("expected resolved spec for DisplayName")
+	}
+	seen := false
+	for _, d := range spec.Diagnostics {
+		if d.Code == "CONFLICT_COMPUTE_SQLCOMPUTE" && d.Severity == "error" {
+			seen = true
+			break
+		}
+	}
+	if !seen {
+		t.Fatalf("expected CONFLICT_COMPUTE_SQLCOMPUTE diagnostic, got %+v", spec.Diagnostics)
+	}
+	if spec.Resolved.Store.Value != false || spec.Resolved.Store.Source != "@SqlCompute" {
+		t.Fatalf("expected SqlCompute store resolution to win conflict, got %+v", spec.Resolved.Store)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecSkipsNilSelectionAndRelatedPath(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/nil_fields.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('NilFieldsModel')
+export default class NilFieldsModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: null, label: 'IgnoredNilValue' },
+      { value: 'active', label: null },
+      { value: 'active', label: 'Active' }
+    ]
+  })
+  public Status: string
+
+  @Field({ type: 'varchar', related: { path: null, store: true, deps: ['PartnerId'] } })
+  public DisplayName: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		fieldByName[field.Name] = field
+	}
+
+	statusSpec, err := fieldByName["Status"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse Status resolved spec failed: %v", err)
+	}
+	if statusSpec == nil {
+		t.Fatal("expected Status resolved spec")
+	}
+	if len(statusSpec.Structural.Selection) != 1 || statusSpec.Structural.Selection[0]["value"] != "active" || statusSpec.Structural.Selection[0]["label"] != "Active" {
+		t.Fatalf("unexpected selection entries: %+v", statusSpec.Structural.Selection)
+	}
+
+	displaySpec, err := fieldByName["DisplayName"].GetResolvedSpec()
+	if err != nil {
+		t.Fatalf("parse DisplayName resolved spec failed: %v", err)
+	}
+	if displaySpec == nil {
+		t.Fatal("expected DisplayName resolved spec")
+	}
+	if displaySpec.Structural.Related != nil {
+		t.Fatalf("expected related spec to be skipped when path is nil, got %+v", displaySpec.Structural.Related)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversRelationTypesAndMigrationDecisions(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/migration.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('MigrationModel')
+export default class MigrationModel extends BaseModel {
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => BaseModel, inverseField: 'ParentId' } })
+  public PartnerId: string
+
+  @Field({ type: 'OneToMany', relation: { targetModel: () => BaseModel, inverseField: 'ParentId' } })
+  public Lines: any
+
+  @Field({ type: 'ManyToMany', relation: { targetModel: () => BaseModel, inverseField: 'Tags' } })
+  public Tags: any
+
+  @Field({ type: 'ManyToManyRef', relation: { targetModel: () => BaseModel } })
+  public TagIds: any
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	partnerSpec, err := fieldByName["PartnerId"].GetResolvedSpec()
+	if err != nil || partnerSpec == nil {
+		t.Fatalf("PartnerId resolved spec: err=%v spec=%v", err, partnerSpec)
+	}
+	if partnerSpec.Migration.ShouldCreateColumn != true || partnerSpec.Migration.ReasonCode != "FIELD_DEFAULT" || partnerSpec.Structural.ColumnType != "char" {
+		t.Fatalf("unexpected PartnerId migration: %+v", partnerSpec.Migration)
+	}
+
+	linesSpec, err := fieldByName["Lines"].GetResolvedSpec()
+	if err != nil || linesSpec == nil {
+		t.Fatalf("Lines resolved spec: err=%v spec=%v", err, linesSpec)
+	}
+	if linesSpec.Migration.ShouldCreateColumn != false || linesSpec.Migration.ReasonCode != "RELATION_NON_COLUMN" {
+		t.Fatalf("expected OneToMany non-column, got %+v", linesSpec.Migration)
+	}
+
+	tagsSpec, err := fieldByName["Tags"].GetResolvedSpec()
+	if err != nil || tagsSpec == nil {
+		t.Fatalf("Tags resolved spec: err=%v spec=%v", err, tagsSpec)
+	}
+	if tagsSpec.Migration.ShouldCreateColumn != false || tagsSpec.Migration.ReasonCode != "RELATION_NON_COLUMN" {
+		t.Fatalf("expected ManyToMany non-column, got %+v", tagsSpec.Migration)
+	}
+
+	tagIdsSpec, err := fieldByName["TagIds"].GetResolvedSpec()
+	if err != nil || tagIdsSpec == nil {
+		t.Fatalf("TagIds resolved spec: err=%v spec=%v", err, tagIdsSpec)
+	}
+	if tagIdsSpec.Structural.ColumnType != "jsonobject" {
+		t.Fatalf("expected ManyToManyRef columnType jsonobject, got %s", tagIdsSpec.Structural.ColumnType)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversDiagnosticBranches(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/diag.ts"
+	content := `import { Model, Field, Compute, Search, SqlCompute, Inverse } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DiagModel')
+export default class DiagModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public PhysicalSearch: string
+
+  @Search<DiagModel>('PhysicalSearch')
+  searchPhysical() {
+    return ['Name', '=', 'A']
+  }
+
+  @Field({ type: 'varchar' })
+  public InverseOnly: string
+
+  @Inverse<DiagModel>('InverseOnly')
+  inverseOnly() {
+    this.$inverse.value()
+  }
+
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: true } })
+  public SqlRelated: string
+
+  @SqlCompute<DiagModel>('SqlRelated')
+  sqlComputeRelated() {
+    return this.$sql.field(DiagModel, 'SqlRelated')
+  }
+
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: false } })
+  public NonStoredWithInverse: string
+
+  @Inverse<DiagModel>('NonStoredWithInverse')
+  inverseNonStored() {
+    this.$inverse.value()
+  }
+
+  @Field({ type: 'varchar', size: 64 })
+  public StoreCompute: string
+
+  @Compute<DiagModel>('StoreCompute', { deps: ['StoreCompute'], store: true })
+  computeStore() {
+    return this.StoreCompute
+  }
+
+  @Field({ type: 'varchar', size: 64, required: true })
+  public RequiredVirtual: string
+
+  @Compute<DiagModel>('RequiredVirtual', { deps: ['RequiredVirtual'], store: false })
+  computeRequiredVirtual() {
+    return this.RequiredVirtual
+  }
+
+  @Field({ type: 'varchar', size: 64, related: { path: 'PartnerId.Name', store: false } })
+  public NonStoredRelated: string
+
+  @Compute<DiagModel>('NonStoredRelated', { deps: ['NonStoredRelated'], store: false })
+  computeNonStoredRelated() {
+    return this.NonStoredRelated
+  }
+
+	@Field({ type: 'varchar', size: 64 })
+	public AsyncVirtual: string
+
+	@Compute<DiagModel>('AsyncVirtual', { deps: ['AsyncVirtual'], store: false })
+	async computeAsyncVirtual() {
+		return this.AsyncVirtual
+	}
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	// WARN_SEARCH_ON_PHYSICAL_FIELD
+	physicalSearchSpec, _ := fieldByName["PhysicalSearch"].GetResolvedSpec()
+	foundSearchWarn := false
+	for _, d := range physicalSearchSpec.Diagnostics {
+		if d.Code == "WARN_SEARCH_ON_PHYSICAL_FIELD" && d.Severity == "warning" {
+			foundSearchWarn = true
+		}
+	}
+	if !foundSearchWarn {
+		t.Fatalf("expected WARN_SEARCH_ON_PHYSICAL_FIELD diagnostic, got %+v", physicalSearchSpec.Diagnostics)
+	}
+
+	// CONFLICT_INVERSE_WITHOUT_SOURCE
+	inverseOnlySpec, _ := fieldByName["InverseOnly"].GetResolvedSpec()
+	foundInvSrc := false
+	for _, d := range inverseOnlySpec.Diagnostics {
+		if d.Code == "CONFLICT_INVERSE_WITHOUT_SOURCE" {
+			foundInvSrc = true
+		}
+	}
+	if !foundInvSrc {
+		t.Fatalf("expected CONFLICT_INVERSE_WITHOUT_SOURCE diagnostic, got %+v", inverseOnlySpec.Diagnostics)
+	}
+
+	// CONFLICT_SQLCOMPUTE_RELATED_STORE
+	sqlRelatedSpec, _ := fieldByName["SqlRelated"].GetResolvedSpec()
+	foundSqlRelStore := false
+	for _, d := range sqlRelatedSpec.Diagnostics {
+		if d.Code == "CONFLICT_SQLCOMPUTE_RELATED_STORE" {
+			foundSqlRelStore = true
+		}
+	}
+	if !foundSqlRelStore {
+		t.Fatalf("expected CONFLICT_SQLCOMPUTE_RELATED_STORE diagnostic, got %+v", sqlRelatedSpec.Diagnostics)
+	}
+
+	// CONFLICT_INVERSE_ON_NON_STORED_RELATED
+	nonStoredSpec, _ := fieldByName["NonStoredWithInverse"].GetResolvedSpec()
+	if nonStoredSpec.Migration.ShouldCreateColumn != false || nonStoredSpec.Migration.ReasonCode != "RELATED_STORE_FALSE" {
+		t.Fatalf("expected RELATED_STORE_FALSE migration, got %+v", nonStoredSpec.Migration)
+	}
+	foundNonStoredInv := false
+	for _, d := range nonStoredSpec.Diagnostics {
+		if d.Code == "CONFLICT_INVERSE_ON_NON_STORED_RELATED" {
+			foundNonStoredInv = true
+		}
+	}
+	if !foundNonStoredInv {
+		t.Fatalf("expected CONFLICT_INVERSE_ON_NON_STORED_RELATED diagnostic, got %+v", nonStoredSpec.Diagnostics)
+	}
+
+	// COMPUTE_STORE_TRUE
+	storeComputeSpec, _ := fieldByName["StoreCompute"].GetResolvedSpec()
+	if storeComputeSpec.Migration.ReasonCode != "COMPUTE_STORE_TRUE" || storeComputeSpec.Migration.ShouldCreateColumn != true {
+		t.Fatalf("expected COMPUTE_STORE_TRUE migration, got %+v", storeComputeSpec.Migration)
+	}
+
+	// CONFLICT_REQUIRED_VIRTUAL_COMPUTE
+	requiredVirtualSpec, _ := fieldByName["RequiredVirtual"].GetResolvedSpec()
+	foundReqVirtual := false
+	for _, d := range requiredVirtualSpec.Diagnostics {
+		if d.Code == "CONFLICT_REQUIRED_VIRTUAL_COMPUTE" {
+			foundReqVirtual = true
+		}
+	}
+	if !foundReqVirtual {
+		t.Fatalf("expected CONFLICT_REQUIRED_VIRTUAL_COMPUTE diagnostic, got %+v", requiredVirtualSpec.Diagnostics)
+	}
+
+	// non-stored related with compute → related store propagation
+	nonStoredRelatedSpec, _ := fieldByName["NonStoredRelated"].GetResolvedSpec()
+	if nonStoredRelatedSpec.Resolved.Store.Value != false {
+		t.Fatalf("expected non-stored related store=false, got %+v", nonStoredRelatedSpec.Resolved.Store)
+	}
+	if nonStoredRelatedSpec.Resolved.Store.Source != "@Compute" {
+		t.Fatalf("expected Compute store source, got %s", nonStoredRelatedSpec.Resolved.Store.Source)
+	}
+
+	// ASYNC_VIRTUAL_COMPUTE
+	asyncVirtualSpec, _ := fieldByName["AsyncVirtual"].GetResolvedSpec()
+	foundAsyncVirtual := false
+	for _, d := range asyncVirtualSpec.Diagnostics {
+		if d.Code == "ASYNC_VIRTUAL_COMPUTE" {
+			foundAsyncVirtual = true
+		}
+	}
+	if !foundAsyncVirtual {
+		t.Fatalf("expected ASYNC_VIRTUAL_COMPUTE diagnostic, got %+v", asyncVirtualSpec.Diagnostics)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversStorageHintVariants(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/hints.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('HintsModel')
+export default class HintsModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64, required: true, primaryKey: true, unique: true, uniqueIndex: 'uq_hints_name', index: 'idx_hints_name', default: 'default_value' })
+  public Name: string
+
+  @Field({ type: 'varchar', indexed: true })
+  public IndexedName: string
+
+  @Field({ type: 'decimal', precision: 12, scale: 4, default: 0 })
+  public Amount: string
+
+  @Field({ type: 'varchar', notNull: true })
+  public NotNullName: string
+
+  @Field({ type: 'varchar', index: 'idx_custom' })
+  public CustomIndex: string
+
+  @Field({ type: 'varchar', index: true })
+  public BoolIndex: string
+
+  @Field({ type: 'varchar', default: 42 })
+  public NumDefault: string
+
+  @Field({ type: 'varchar', checkConstraint: 'status in (draft,done)' })
+  public CheckedStatus: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	nameSpec, err := fieldByName["Name"].GetResolvedSpec()
+	if err != nil || nameSpec == nil {
+		t.Fatalf("Name resolved spec: err=%v", err)
+	}
+	h := nameSpec.Structural.StorageHints
+	if h == nil {
+		t.Fatal("expected storage hints")
+	}
+	if h.PrimaryKey == nil || !*h.PrimaryKey {
+		t.Fatal("expected primaryKey=true")
+	}
+	if h.Unique == nil || !*h.Unique {
+		t.Fatal("expected unique=true")
+	}
+	if h.UniqueIndex == nil || *h.UniqueIndex != "uq_hints_name" {
+		t.Fatalf("expected uniqueIndex string, got %v", h.UniqueIndex)
+	}
+	if h.Index == nil || *h.Index != "idx_hints_name" {
+		t.Fatalf("expected named index, got %v", h.Index)
+	}
+	if h.Indexed == nil || !*h.Indexed {
+		t.Fatal("expected Indexed to be true when index string is set")
+	}
+	if h.Required == nil || !*h.Required {
+		t.Fatal("expected required=true")
+	}
+	if h.Default == nil || *h.Default != "default_value" {
+		t.Fatalf("expected default='default_value', got %v", h.Default)
+	}
+
+	amountSpec, _ := fieldByName["Amount"].GetResolvedSpec()
+	ah := amountSpec.Structural.StorageHints
+	if ah == nil || ah.Precision == nil || *ah.Precision != 12 || ah.Scale == nil || *ah.Scale != 4 {
+		t.Fatalf("expected precision=12 scale=4, got %+v", ah)
+	}
+	if ah.Default == nil || *ah.Default != "0" {
+		t.Fatalf("expected numeric default '0', got %v", ah.Default)
+	}
+
+	notNullSpec, _ := fieldByName["NotNullName"].GetResolvedSpec()
+	nh := notNullSpec.Structural.StorageHints
+	if nh == nil || nh.Required == nil || !*nh.Required {
+		t.Fatal("expected required=true from notNull")
+	}
+
+	customIdxSpec, _ := fieldByName["CustomIndex"].GetResolvedSpec()
+	ch := customIdxSpec.Structural.StorageHints
+	if ch == nil || ch.Index == nil || *ch.Index != "idx_custom" || ch.Indexed == nil || !*ch.Indexed {
+		t.Fatalf("expected named index hint, got %+v", ch)
+	}
+
+	boolIdxSpec, _ := fieldByName["BoolIndex"].GetResolvedSpec()
+	bh := boolIdxSpec.Structural.StorageHints
+	if bh == nil || bh.Indexed == nil || !*bh.Indexed {
+		t.Fatalf("expected boolean index hint, got %+v", bh)
+	}
+
+	numDefaultSpec, _ := fieldByName["NumDefault"].GetResolvedSpec()
+	ndh := numDefaultSpec.Structural.StorageHints
+	if ndh == nil || ndh.Default == nil || *ndh.Default != "42" {
+		t.Fatalf("expected numeric default '42', got %v", ndh)
+	}
+
+	checkedSpec, _ := fieldByName["CheckedStatus"].GetResolvedSpec()
+	if checkedSpec.Structural.CheckConstraint != "status in (draft,done)" {
+		t.Fatalf("expected checkConstraint, got %q", checkedSpec.Structural.CheckConstraint)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversCollectBehaviorBindingsBranches(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/behaviors.ts"
+	content := `import { Model, Field, Inverse, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BehaviorsModel')
+export default class BehaviorsModel extends BaseModel {
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: true } })
+  public DisplayName: string
+
+  @Compute<BehaviorsModel>('DisplayName', { deps: ['PartnerId'], store: false })
+  computeDn() {
+    return this.DisplayName
+  }
+
+  @Inverse<BehaviorsModel>('DisplayName')
+  inverseDn() {
+    this.$inverse.value()
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	spec, err := fieldByName["DisplayName"].GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("DisplayName resolved spec: err=%v", err)
+	}
+	if spec.Behavior.Compute == nil || spec.Behavior.Inverse == nil {
+		t.Fatalf("expected both Compute and Inverse, got %+v", spec.Behavior)
+	}
+}
+
+func TestGetProtoTypeFromTsType_EdgeCases(t *testing.T) {
+	tests := map[string]string{
+		"":                 "google.protobuf.Value",
+		"   ":              "google.protobuf.Value",
+		"  string  ":       "string",
+		"Promise<void>":    "google.protobuf.Empty",
+		"Promise<boolean>": "bool",
+		"Promise<string>":  "string",
+		"Promise<Custom>":  "google.protobuf.Value",
+	}
+	for input, want := range tests {
+		if got := getProtoTypeFromTsType(input); got != want {
+			t.Fatalf("getProtoTypeFromTsType(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
+func TestTsParser_ParseSkipsOnchangeTypesCompatibilityPath(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/core", ApplicationStr: "core"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "runtime", "onchange", "types.ts")
+	r, err := p.Parse(nil, path, "export default class Ignored {}")
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Path != path || r.RawContent == "" {
+		t.Fatalf("unexpected skipped parser result: %+v", r)
+	}
+	if r.Model != nil || r.Imports != nil || r.Exports != nil {
+		t.Fatalf("expected compatibility skip to bypass deeper parsing, got %+v", r)
+	}
+}
+
+func TestTsParser_ParseModelRejectsOrphanBehaviorBinding(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/orphan.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('OrphanModel')
+export default class OrphanModel extends BaseModel {
+  @Compute<OrphanModel>('NonExistentField', { deps: ['Name'], store: false })
+  computeOrphan() {
+    return ''
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "orphan behavior decorator binding for unknown field") {
+		t.Fatalf("expected orphan binding error, got %v", err)
+	}
+}
+
+func TestTsParser_ParseModelRejectsOrphanBehaviorBindingWithPrivateStaticMember(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/private_static_orphan.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PrivateStaticOrphan')
+export default class PrivateStaticOrphan extends BaseModel {
+  private static InternalCode: string
+
+  @Compute<PrivateStaticOrphan>('InternalCode', { deps: ['Name'], store: false })
+  computeInternal() {
+    return ''
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "orphan behavior decorator binding for unknown field") {
+		t.Fatalf("expected orphan binding error for private static member, got %v", err)
+	}
+}
+
+func TestTsParser_ParseAllowsProtectedStaticMemberToPassFilter(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/protected_static.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ProtectedStaticModel')
+export default class ProtectedStaticModel extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+
+  protected static Secret: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	// The filtered-out protected static member should not appear in fields.
+	for _, f := range r.Model.Fields {
+		if f.Name == "Secret" {
+			t.Fatalf("expected protected static field to be filtered out")
+		}
+	}
+}
+
+func TestTsParser_ParseAllowsPrivateInstanceMember(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/private_instance.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PrivateInstanceModel')
+export default class PrivateInstanceModel extends BaseModel {
+  private InternalNote: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	found := false
+	for _, f := range r.Model.Fields {
+		if f.Name == "InternalNote" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected private instance field to be kept")
+	}
+}
+
+func TestTsParser_ParseModelRejectsBehaviorDecoratorWithParameters(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/behavior_params.ts"
+	content := `import { Model, Field, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BehaviorParamsModel')
+export default class BehaviorParamsModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  @Compute<BehaviorParamsModel>('Name', { deps: ['Name'], store: false })
+  computeName(extraParam: string) {
+    return this.Name
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "must be parameterless") {
+		t.Fatalf("expected parameterless error, got %v", err)
+	}
+}
+
+func TestTsParser_ParseModelRejectsBehaviorDecoratorWithEmptyFieldName(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/empty_field_name.ts"
+	content := `import { Model, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('EmptyFieldNameModel')
+export default class EmptyFieldNameModel extends BaseModel {
+  @Compute<EmptyFieldNameModel>('', { deps: ['Name'], store: false })
+  computeEmpty() {
+    return ''
+  }
+}
+`
+
+	_, err := p.Parse(map[string]string{}, path, content)
+	if err == nil || !strings.Contains(err.Error(), "requires a field name") {
+		t.Fatalf("expected empty field name error, got %v", err)
+	}
+}
+
+func TestTsParser_ParseModelNoExtendsClass(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/no_extends.ts"
+	content := `import { Model, Field } from '../../core/service';
+
+@Model('NoExtendsModel')
+export default class NoExtendsModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil || r.Model.Name != "NoExtendsModel" {
+		t.Fatalf("unexpected model: %+v", r.Model)
+	}
+	// Without extends, RawExtends should be empty and no extends property synthesized.
+	if r.Model.RawExtends != "" {
+		t.Fatalf("expected empty RawExtends, got %q", r.Model.RawExtends)
+	}
+	if r.ModelExtendsProperty != nil {
+		t.Fatalf("expected nil ModelExtendsProperty, got %+v", r.ModelExtendsProperty)
+	}
+}
+
+func TestTsParser_ParseModelServiceWithDecorators(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/decorated_svc.ts"
+	content := `import { Model, Field, Api, Guard } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DecoratedSvcModel')
+export default class DecoratedSvcModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  @Api
+  @Guard
+  public static async FindByName(name: string): Promise<void> {}
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(r.Model.Services) != 1 {
+		t.Fatalf("expected one service, got %+v", r.Model.Services)
+	}
+	svc := r.Model.Services[0]
+	if len(svc.Decorators) != 2 {
+		t.Fatalf("expected two service decorators, got %d", len(svc.Decorators))
+	}
+}
+
+func TestTsParser_ParseModelServiceWithTypeParameters(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/generic_svc.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('GenericSvcModel')
+export default class GenericSvcModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  public static async FindOne<T>(id: string): Promise<T> {
+    return {} as T
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if len(r.Model.Services) != 1 {
+		t.Fatalf("expected one service, got %+v", r.Model.Services)
+	}
+	svc := r.Model.Services[0]
+	if len(svc.TypeParameters) != 1 || svc.TypeParameters[0].Name != "T" {
+		t.Fatalf("expected one type parameter T, got %+v", svc.TypeParameters)
+	}
+}
+
+func TestTsParser_ParseModelWithExistingParentPathField(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/existing_parent.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('ExistingParentModel', { parentField: 'ParentId' })
+export default class ExistingParentModel extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+
+  @Field({ type: 'ManyToOne' })
+  public ParentPath: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	// Only one ParentPath field should exist (the explicit one, not synthesized).
+	count := 0
+	for _, f := range r.Model.Fields {
+		if f.Name == "ParentPath" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly one ParentPath field, got %d", count)
+	}
+}
+
+func TestTsParser_ParseSkipsModelWithPublicStaticField(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/public_static.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PublicStaticModel')
+export default class PublicStaticModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public Name: string
+
+  public static DefaultName: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	found := false
+	for _, f := range r.Model.Fields {
+		if f.Name == "DefaultName" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("expected public static field to be kept")
+	}
+}
+
+func TestAsInt_AllTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  int
+		ok    bool
+	}{
+		{name: "float64", input: float64(42), want: 42, ok: true},
+		{name: "float32", input: float32(3.14), want: 3, ok: true},
+		{name: "int", input: int(100), want: 100, ok: true},
+		{name: "int32", input: int32(200), want: 200, ok: true},
+		{name: "int64", input: int64(300), want: 300, ok: true},
+		{name: "uint", input: uint(400), want: 400, ok: true},
+		{name: "uint32", input: uint32(500), want: 500, ok: true},
+		{name: "uint64", input: uint64(600), want: 600, ok: true},
+		{name: "string", input: "not int", want: 0, ok: false},
+		{name: "bool", input: true, want: 0, ok: false},
+		{name: "nil", input: nil, want: 0, ok: false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := asInt(tc.input)
+			if ok != tc.ok || got != tc.want {
+				t.Fatalf("asInt(%v) = (%d, %v), want (%d, %v)", tc.input, got, ok, tc.want, tc.ok)
+			}
+		})
+	}
+}
+
+func TestParseDecoratorObjectArg_InvalidJSON(t *testing.T) {
+	args := []*parser.Argument{
+		{Type: "ObjectLiteral", Value: `{invalid}`},
+	}
+	_, err := parseDecoratorObjectArg(args, 0)
+	if err == nil {
+		t.Fatal("expected JSON parse error, got nil")
+	}
+}
+
+func TestParseDecoratorObjectArg_NilAndNonObject(t *testing.T) {
+	// nil when index out of range
+	got, err := parseDecoratorObjectArg([]*parser.Argument{}, 0)
+	if err != nil || got != nil {
+		t.Fatalf("expected (nil, nil), got (%v, %v)", got, err)
+	}
+
+	// nil for non-ObjectLiteral type
+	got, err = parseDecoratorObjectArg([]*parser.Argument{{Type: "StringLiteral", Value: `"hello"`}}, 0)
+	if err != nil || got != nil {
+		t.Fatalf("expected (nil, nil) for non-object, got (%v, %v)", got, err)
+	}
+
+	// nil for empty string value
+	got, err = parseDecoratorObjectArg([]*parser.Argument{{Type: "ObjectLiteral", Value: "   "}}, 0)
+	if err != nil || got != nil {
+		t.Fatalf("expected (nil, nil) for empty value, got (%v, %v)", got, err)
+	}
+}
+
+func TestParseDecoratorStringArg_EdgeCases(t *testing.T) {
+	// empty args
+	if got := parseDecoratorStringArg([]*parser.Argument{}, 0); got != "" {
+		t.Fatalf("expected empty string, got %q", got)
+	}
+	// nil element
+	if got := parseDecoratorStringArg([]*parser.Argument{nil}, 0); got != "" {
+		t.Fatalf("expected empty string for nil, got %q", got)
+	}
+	// quoted value
+	if got := parseDecoratorStringArg([]*parser.Argument{{Value: "  `quoted`  "}}, 0); got != "quoted" {
+		t.Fatalf("expected 'quoted', got %q", got)
+	}
+	// double-quoted value
+	if got := parseDecoratorStringArg([]*parser.Argument{{Value: `  "double"  `}}, 0); got != "double" {
+		t.Fatalf("expected 'double', got %q", got)
+	}
+	// single-quoted value
+	if got := parseDecoratorStringArg([]*parser.Argument{{Value: `  'single'  `}}, 0); got != "single" {
+		t.Fatalf("expected 'single', got %q", got)
 	}
 }

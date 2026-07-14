@@ -10,34 +10,34 @@ import { PathPlanExecutor } from './executor';
 
 @Model('test.PlanExecutorModel')
 class PlanExecutorModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.PlanExecutorCompany')
 class PlanExecutorCompany extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.PlanExecutorPartner')
 class PlanExecutorPartner extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorCompany }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorCompany } })
   CompanyId?: PlanExecutorCompany;
 }
 
 @Model('test.PlanExecutorProduct')
 class PlanExecutorProduct extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('test.PlanExecutorOrder')
 class PlanExecutorOrder extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorPartner }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorPartner } })
   PartnerId?: PlanExecutorPartner;
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => PlanExecutorLine, inverseField: 'OrderId' } })
@@ -46,13 +46,13 @@ class PlanExecutorOrder extends BaseModel {
 
 @Model('test.PlanExecutorLine')
 class PlanExecutorLine extends BaseModel {
-  @Field({ type: 'decimal', column: { precision: 10, scale: 2 } })
+  @Field({ type: 'decimal', precision: 10, scale: 2 })
   Qty?: any;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorProduct }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorProduct } })
   ProductId?: PlanExecutorProduct;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorOrder }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => PlanExecutorOrder } })
   OrderId?: PlanExecutorOrder;
 }
 

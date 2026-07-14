@@ -13,7 +13,7 @@ import type { BaseQueryCondition, SearchOptions } from '../../orm/repository/typ
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import type { ObjectRecord } from '../../../utils/types';
 
-type ReferenceModelMeta = Pick<FieldMetadata, 'relation' | 'targetModel'>;
+type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
 type RuntimeModelNameMeta = Pick<ModelMetadata, 'fullModelName' | 'application' | 'modelName'>;
 
 type GlobalPool = {
@@ -147,12 +147,29 @@ export class ValidationEngine {
       ];
     }
 
-    const fields = ctx.changedFields.size > 0 ? Array.from(ctx.changedFields) : Object.keys(ctx.values || {});
+    const fields = Array.from(new Set<string>([...Array.from(ctx.changedFields || []), ...Object.keys(ctx.values || {})]));
     const createWriteWhitelist = new Set((options?.createWriteWhitelist || []).map(field => String(field || '').trim()).filter(Boolean));
     const whitelistedHits: string[] = [];
 
     for (const field of fields) {
       if (!field || field.startsWith('__')) {
+        continue;
+      }
+
+      const shouldCheckWriteScope = ctx.mode === 'create' || ctx.mode === 'update';
+      const isWhitelistedOnCreate = shouldCheckWriteScope && createWriteWhitelist.has(field);
+      if (isWhitelistedOnCreate) {
+        whitelistedHits.push(field);
+      }
+
+      if (shouldCheckWriteScope && field === 'DisplayName' && !isWhitelistedOnCreate) {
+        issues.push({
+          scope: 'platform',
+          field,
+          code: 'platform_write_to_select_field',
+          message: `field "${field}" is select-only and cannot be written`,
+          severity: 'error',
+        });
         continue;
       }
 
@@ -170,13 +187,11 @@ export class ValidationEngine {
         continue;
       }
 
-      const writeToSelectOnlyField = meta.select && !meta.column;
-      const writeToComputedField = Boolean(meta.column?.compute);
-      const shouldCheckWriteScope = ctx.mode === 'create' || ctx.mode === 'update';
-      const isWhitelistedOnCreate = shouldCheckWriteScope && createWriteWhitelist.has(field);
-      if (isWhitelistedOnCreate) {
-        whitelistedHits.push(field);
-      }
+      const computeHandler = ctx.metadata.computeHandlers?.get(field);
+      const sqlComputeHandler = ctx.metadata.sqlComputeHandlers?.get(field);
+      const isVirtualComputeField = Boolean(ctx.metadata.computeGraph?.virtualComputeFields?.has(field));
+      const writeToSelectOnlyField = (Boolean(sqlComputeHandler) && !meta.column) || computeHandler?.store === false || isVirtualComputeField;
+      const writeToComputedField = Boolean(computeHandler) || Boolean(sqlComputeHandler) || Boolean(meta.column?.compute);
 
       if (shouldCheckWriteScope && writeToSelectOnlyField && !isWhitelistedOnCreate) {
         issues.push({
@@ -327,7 +342,7 @@ export class ValidationEngine {
   }
 
   private static resolveReferenceTargetCtor(meta: ReferenceModelMeta): (ModelCtor<BaseModel> & typeof BaseModel) | undefined {
-    const resolver = meta?.relation?.targetModel ?? meta?.targetModel;
+    const resolver = (meta?.relation as { targetModel?: unknown } | undefined)?.targetModel;
     if (!resolver) return undefined;
 
     if (typeof resolver === 'function') {
@@ -365,7 +380,7 @@ export class ValidationEngine {
       if (app === 'base' && modelName === 'Company') return true;
     }
 
-    const resolver = meta?.relation?.targetModel || meta?.targetModel;
+    const resolver = (meta?.relation as { targetModel?: unknown } | undefined)?.targetModel;
     if (typeof resolver === 'string') {
       return resolver.trim() === 'base.Company';
     }

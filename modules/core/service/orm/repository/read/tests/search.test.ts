@@ -167,22 +167,22 @@ test('repository read search runtime skips forUpdate when dialect is sqlite and 
 
 test('repository read search runtime supports dotted and select fields together with relation and decimal scale aliases', async () => {
   const dottedCalls: string[] = [];
+  class DemoModel {
+    sqlDisplayName() {
+      return { kind: 'display-expr' };
+    }
+  }
+
   const { deps, query, calls } = createSearchHarness({
     meta: {
-      type: class DemoModel {},
+      type: DemoModel,
       fields: new Map([
         ['Id', { type: 'char', column: { name: 'Id' } }],
         ['AmountScale', { type: 'integer', column: { name: 'AmountScale' } }],
         ['Amount', { type: 'decimal', column: { name: 'Amount', scaleField: 'AmountScale' } }],
-        [
-          'DisplayName',
-          {
-            select: {
-              expr: () => ({ kind: 'display-expr' }),
-            },
-          },
-        ],
+        ['DisplayName', {}],
       ]),
+      sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
       orderBy: undefined,
     },
     buildSelectionTree() {
@@ -217,31 +217,29 @@ test('repository read search runtime supports dotted and select fields together 
 });
 
 test('repository read search runtime keeps explicit Id field, supports decimal select scale, and returns empty result directly', async () => {
+  class DemoModel {
+    sqlAmountScale() {
+      return { kind: 'amount-scale-select' };
+    }
+  }
+
   const { deps, query, calls } = createSearchHarness({
     meta: {
-      type: class DemoModel {},
+      type: DemoModel,
       fields: new Map([
         ['Id', { type: 'char', column: { name: 'Id' } }],
-        [
-          'AmountScale',
-          {
-            type: 'integer',
-            select: {
-              expr: () => ({ kind: 'amount-scale-select' }),
-            },
-          },
-        ],
+        ['AmountScale', { type: 'integer' }],
         [
           'Amount',
           {
             type: 'decimal',
-            select: {
+            column: {
               scaleField: 'AmountScale',
-              expr: () => ({ kind: 'amount-select' }),
             },
           },
         ],
       ]),
+      sqlComputeHandlers: new Map([['AmountScale', { field: 'AmountScale', method: 'sqlAmountScale' }]]),
       orderBy: undefined,
     },
     buildSelectionTree(_meta: any, fields: any[]) {
@@ -291,23 +289,22 @@ test('repository read search runtime tolerates decimal field without column or s
   expect(serialized.includes(buildHiddenScaleAlias('Amount'))).toBe(false);
 });
 
-test('repository read search runtime excludes select fields from default projection when fields are omitted', async () => {
+test('repository read search runtime includes sql-compute fields in default projection when fields are omitted', async () => {
+  class DemoModel {
+    sqlDisplayName() {
+      return { kind: 'display-select-expr' };
+    }
+  }
+
   const { deps, query, calls } = createSearchHarness({
     meta: {
-      type: class DemoModel {},
+      type: DemoModel,
       fields: new Map([
         ['Id', { type: 'char', column: { name: 'Id' } }],
         ['Name', { type: 'varchar', column: { name: 'Name' } }],
-        [
-          'DisplayName',
-          {
-            type: 'varchar',
-            select: {
-              expr: () => ({ kind: 'display-select-expr' }),
-            },
-          },
-        ],
+        ['DisplayName', { type: 'varchar' }],
       ]),
+      sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
       orderBy: undefined,
     },
     getScalarFields() {
@@ -322,12 +319,12 @@ test('repository read search runtime excludes select fields from default project
   const rows = await executeRepositorySearch(deps as any, ['Id', '=', 'id_1'] as any);
   expect(rows).toEqual([]);
   expect(calls.executed.length).toBe(1);
-  expect(calls.aliases.some(item => item.alias === 'DisplayName')).toBe(false);
+  expect(calls.aliases.some(item => item.alias === 'DisplayName')).toBe(true);
   expect(Array.isArray(query.selected)).toBe(true);
-  expect((query.selected || []).length).toBe(2);
+  expect((query.selected || []).length).toBe(3);
   const serialized = JSON.stringify(query.selected || []);
   expect(serialized.includes('demo_table.Id')).toBe(true);
   expect(serialized.includes('demo_table.Name')).toBe(true);
-  expect(serialized.includes('DisplayName')).toBe(false);
-  expect(serialized.includes('display-select-expr')).toBe(false);
+  expect(serialized.includes('DisplayName')).toBe(true);
+  expect(serialized.includes('display-select-expr')).toBe(true);
 });

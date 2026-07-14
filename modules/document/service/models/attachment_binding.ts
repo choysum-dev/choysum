@@ -32,31 +32,31 @@ export default class AttachmentBinding extends BaseModel {
   /**
    * Owner model that holds the attachment binding.
    */
-  @Field({ type: 'varchar', column: { size: 120, notNull: true, index: true, uniqueIndex: 'uidx_document_binding_owner_field_status' } })
+  @Field({ type: 'varchar', size: 120, notNull: true, index: true, uniqueIndex: 'uidx_document_binding_owner_field_status'})
   OwnerModel: string;
 
   /**
    * Owner record that holds the attachment binding.
    */
-  @Field({ type: 'char', column: { size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_binding_owner_field_status' } })
+  @Field({ type: 'char', size: 20, notNull: true, index: true, uniqueIndex: 'uidx_document_binding_owner_field_status'})
   OwnerRecordId: string;
 
   /**
    * Owner field that exposes the attachment binding.
    */
-  @Field({ type: 'varchar', column: { size: 120, notNull: true, index: true, uniqueIndex: 'uidx_document_binding_owner_field_status' } })
+  @Field({ type: 'varchar', size: 120, notNull: true, index: true, uniqueIndex: 'uidx_document_binding_owner_field_status'})
   FieldName: string;
 
   /**
    * Attachment content row currently bound to the owner field.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'document.AttachmentContent', column: { size: 20, notNull: true, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'document.AttachmentContent' }, size: 20, notNull: true, index: true})
   AttachmentContentId: string;
 
   /**
    * Caller-visible file name presented in download descriptors.
    */
-  @Field({ type: 'varchar', column: { size: 255 } })
+  @Field({ type: 'varchar', size: 255})
   DisplayFileName?: string;
 
   /**
@@ -68,7 +68,7 @@ export default class AttachmentBinding extends BaseModel {
       { value: 'inline', label: 'inline' },
       { value: 'attachment', label: 'attachment' },
     ],
-    column: { size: 20, notNull: true, default: () => 'attachment' },
+    size: 20, notNull: true, default: () => 'attachment',
   })
   DownloadDisposition: DownloadDisposition;
 
@@ -81,26 +81,24 @@ export default class AttachmentBinding extends BaseModel {
       { value: 'active', label: 'active' },
       { value: 'unbound', label: 'unbound' },
     ],
-    column: {
-      size: 20,
+    size: 20,
       notNull: true,
       default: () => 'active',
       index: true,
       uniqueIndex: 'uidx_document_binding_owner_field_status',
-    },
   })
   Status: AttachmentBindingStatus;
 
   /**
    * Timestamp captured when the binding becomes unbound.
    */
-  @Field({ type: 'datetime', column: { index: true } })
+  @Field({ type: 'datetime', index: true})
   UnboundAt?: Date;
 
   /**
    * Company that owns the attachment binding.
    */
-  @Field({ type: 'ManyToOneRef', targetModel: 'base.Company', column: { size: 20, notNull: true, index: true } })
+  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
   CompanyId: string;
 
   // -----------------------------------------------------------------------

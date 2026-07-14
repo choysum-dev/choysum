@@ -11,19 +11,19 @@ import { isTopLevelGrpcRequest, registerGeneratedModelServiceDefinitions } from 
 
 @Model('ServiceDecoratorChild', { application: 'test' })
 class ServiceDecoratorChild extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Secret?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('ServiceDecoratorParent', { application: 'test' })
 class ServiceDecoratorParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   SecretNote?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => ServiceDecoratorChild }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ServiceDecoratorChild } })
   OwnerId?: ServiceDecoratorChild;
 
   static async ReadForGrpc() {
@@ -90,10 +90,10 @@ class ServiceDecoratorParent extends BaseModel {
 
 @Model('ServiceDecoratorResultModel', { application: 'test' })
 class ServiceDecoratorResultModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Secret?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   static async ReadModelForGrpc() {
@@ -110,19 +110,19 @@ class ServiceDecoratorResultModel extends BaseModel {
 
 @Model('ServiceDecoratorEdgeChild', { application: 'test' })
 class ServiceDecoratorEdgeChild extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Secret?: string;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
 @Model('ServiceDecoratorEdgeParent', { application: 'test' })
 class ServiceDecoratorEdgeParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   SecretNote?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => ServiceDecoratorEdgeChild }, column: {} })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ServiceDecoratorEdgeChild } })
   OwnerId?: ServiceDecoratorEdgeChild;
 
   static async ReadPlainRelationStringForGrpc() {

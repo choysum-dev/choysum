@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import BaseModel from '../../orm/model/model';
-import { Field } from '../../orm/decorator';
+import { Compute, Field } from '../../orm/decorator';
 import { REL_ALIAS_PREFIX } from '../../orm/relation/relation_alias';
 import { ModelProxyFactory } from './proxy';
 import { MODEL_SYMBOLS } from './symbols';
 import { Dep } from './dep';
 
 class ProxyHydratedUser extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 }
 
@@ -25,51 +25,41 @@ class ProxyHydratedTag extends BaseModel {
   @Field({ type: 'ManyToOne', relation: { targetModel: () => ProxyHydratedPost } })
   PostId?: ProxyHydratedPost;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
 }
 
 class ProxyEdgeModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'varchar',
-    column: {
-      size: 64,
-      compute: {
-        expr: (self: ProxyEdgeModel) => String(self.Name || '').toUpperCase(),
-        deps: ['Name' as any],
-      },
-    },
-  })
+  @Field({ type: 'varchar', size: 64 })
   ComputedName?: string;
+
+  @Compute<ProxyEdgeModel>('ComputedName', { deps: ['Name' as any] })
+  computeComputedName() {
+    return String(this.Name || '').toUpperCase();
+  }
 
   @Field({ type: 'OneToMany', relation: { targetModel: () => ProxyHydratedTag, inverseField: 'PostId' } })
   Tags?: ProxyHydratedTag[];
 }
 
 class ProxyBrokenComputedModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'varchar',
-    column: {
-      size: 64,
-      compute: {
-        expr: () => {
-          throw new Error('compute exploded');
-        },
-        deps: ['Name' as any],
-      },
-    },
-  })
+  @Field({ type: 'varchar', size: 64 })
   BrokenComputed?: string;
+
+  @Compute<ProxyBrokenComputedModel>('BrokenComputed', { deps: ['Name' as any] })
+  computeBroken() {
+    throw new Error('compute exploded');
+  }
 }
 
 class ProxyDecimalModel extends BaseModel {
-  @Field({ type: 'decimal', column: { precision: 16, scale: 2 } })
+  @Field({ type: 'decimal', precision: 16, scale: 2 })
   Amount?: any;
 }
 

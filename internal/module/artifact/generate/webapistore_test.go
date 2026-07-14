@@ -18,12 +18,13 @@ import (
 func TestWebApiStoreGenerate(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	round := "HALF_UP"
+	searchable := true
+	runAs := "system"
 	field := &meta.IrField{
 		BaseModel:                meta.BaseModel{Id: sql.NullString{String: "field-1", Valid: true}},
 		Name:                     "Amount",
 		FieldType:                "Decimal",
 		TsTypeAnnotation:         "number",
-		Relation:                 "partner_id",
 		RelationModel:            "Partner",
 		RelationFilter:           "active = true",
 		RelationModelParentField: "ParentId",
@@ -41,9 +42,33 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		Selection:                "['allow','deny']",
 		Round:                    &round,
 	}
+	resolvedSpec := &meta.IrFieldResolvedSpec{
+		FieldName: "Amount",
+		Structural: meta.IrFieldStructuralSpec{
+			Related: &meta.IrFieldRelatedSpec{Path: "CurrencyId.Symbol", Store: true},
+		},
+		Behavior: meta.IrFieldBehaviorSpec{
+			Compute: &meta.IrFieldBehaviorComputeSpec{Method: "ComputeAmount", Deps: []string{"CurrencyId"}, Store: true, RunAs: "user"},
+		},
+		Migration: meta.IrFieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "NUMERIC(12,4)", ReasonCode: "LEGACY_COLUMN"},
+	}
+	resolvedSpec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: &searchable, Source: "decorator"}
+	resolvedSpec.Resolved.RunAs = meta.IrResolvedValue[*string]{Value: &runAs, Source: "decorator"}
+	if err := field.SetResolvedSpec(resolvedSpec); err != nil {
+		t.Fatalf("set resolved spec: %v", err)
+	}
 	metadata := convertFieldToMetadata(field)
 	if metadata.Id == nil || *metadata.Id != "field-1" || metadata.Round == nil || *metadata.Round != round || metadata.Selection == nil {
 		t.Fatalf("unexpected field metadata: %#v", metadata)
+	}
+	if metadata.StorageKind == nil || *metadata.StorageKind != "column" || metadata.ComputedKind == nil || *metadata.ComputedKind != "runtime" {
+		t.Fatalf("expected resolved contract fields, got %#v", metadata)
+	}
+	if metadata.RelatedPath == nil || *metadata.RelatedPath != "CurrencyId.Symbol" || metadata.Searchable == nil || !*metadata.Searchable {
+		t.Fatalf("expected related/searchable fields, got %#v", metadata)
+	}
+	if metadata.RunAs == nil || *metadata.RunAs != "system" || metadata.ShouldCreateColumn == nil || !*metadata.ShouldCreateColumn {
+		t.Fatalf("expected migration/runAs fields, got %#v", metadata)
 	}
 
 	relationFields, importModels := analyzeRelationFields(testApp().Models[1])
@@ -56,9 +81,20 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if NewWebApiStoreGenerator(runtimeScope, &meta.IrModule{Name: "base"}) == nil {
 		t.Fatal("expected web api store generator constructor to return non-nil")
 	}
+	app := testApp()
+	if len(app.Models) > 1 && len(app.Models[1].Fields) > 1 {
+		companyField := app.Models[1].Fields[1]
+		if err := companyField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+			FieldName: "CompanyId",
+			Behavior:  meta.IrFieldBehaviorSpec{Search: &meta.IrFieldBehaviorMethodRef{Method: "SearchCompany"}},
+			Migration: meta.IrFieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "INTEGER", ReasonCode: "RELATION_DEFAULT"},
+		}); err != nil {
+			t.Fatalf("set resolved spec on app fixture: %v", err)
+		}
+	}
 
 	webStoreDir := t.TempDir()
-	storeResults, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), testApp())
+	storeResults, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(context.Background(), app)
 	if err != nil {
 		t.Fatalf("web api store generate() error = %v", err)
 	}
@@ -71,6 +107,12 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(storeContent), "PartnerFieldsMetadata") || !strings.Contains(string(storeContent), "CompanyId") || !strings.Contains(string(storeContent), "relationModel: 'Company'") {
 		t.Fatalf("unexpected store content: %s", string(storeContent))
+	}
+	if strings.Contains(string(storeContent), "relation: '") {
+		t.Fatalf("unexpected legacy relation key in store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), "storageKind") || !strings.Contains(string(storeContent), "searchable") {
+		t.Fatalf("expected resolved contract keys in store content: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)

@@ -6,13 +6,13 @@ import { Onchange } from '@/core/service/api/onchange';
 import { Constraint } from '@/core/service/api/constraint';
 
 class ConstraintOnchangeModel extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'varchar', column: { size: 32 } })
+  @Field({ type: 'varchar', size: 32 })
   State?: string;
 
-  @Field({ type: 'decimal', column: { precision: 5, scale: 2 } })
+  @Field({ type: 'decimal', precision: 5, scale: 2 })
   Amount?: any;
 
   static validatePreviewName(self: ConstraintOnchangeModel) {
@@ -78,10 +78,10 @@ test('onchange runs configured preview kernel subset and reports decimal issues'
 
 test('onchange constraint preview runs alongside instanceNoArgs handler returning condition', async () => {
   class ConstraintPreviewNoArgsModel extends BaseModel {
-    @Field({ type: 'varchar', column: { size: 64 } })
+    @Field({ type: 'varchar', size: 64 })
     Name?: string;
 
-    @Field({ type: 'varchar', column: { size: 64 } })
+    @Field({ type: 'varchar', size: 64 })
     Code?: string;
 
     static validateNoArgsPreview(self: ConstraintPreviewNoArgsModel) {

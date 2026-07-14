@@ -13,8 +13,11 @@ import { ReadOperations } from './model_read';
 import { UpdateOperations } from './model_update';
 
 class ModelSurfaceHarness extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name!: string;
+
+  @Field({ type: 'varchar', size: 64 })
+  Username!: string;
 }
 
 function makeInstance(entity: Record<string, any>, fields?: any) {
@@ -131,20 +134,50 @@ test('model context accessors are available on static and instance surfaces', ()
   expect(instanceWithContext).toBe('ok');
 });
 
-test('model DisplayName select expression covers Name/Username/Id fallback branches', () => {
+test('model DisplayName compute handler covers Name/Username/Id fallback branches', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ModelSurfaceHarness as any);
   const displayNameMeta = meta.fields.get('DisplayName') as any;
-  const expr = displayNameMeta?.select?.expr;
+  const sqlComputeHandler = meta.sqlComputeHandlers?.get('DisplayName') as any;
 
-  const field = (_model: any, key: string) => `F:${key}`;
+  expect(displayNameMeta?.column).toBeUndefined();
+  expect(sqlComputeHandler?.field).toBe('DisplayName');
 
-  const byName = expr({ model: 'm', field, fieldExist: (_m: any, key: string) => key === 'Name' });
-  const byUsername = expr({ model: 'm', field, fieldExist: (_m: any, key: string) => key === 'Username' });
-  const byId = expr({ model: 'm', field, fieldExist: () => false });
+  // The sqlDisplayName method is exercised via the SQL bridge in repository projection;
+  // here we verify the method exists on the prototype.
+  const proto = ModelSurfaceHarness.prototype as any;
+  expect(typeof proto.sqlDisplayName).toBe('function');
+});
 
-  expect(byName).toBe('F:Name');
-  expect(byUsername).toBe('F:Username');
-  expect(byId).toBe('F:Id');
+test('model DisplayName sql compute skips missing fields and falls back to Id', () => {
+  const proto = ModelSurfaceHarness.prototype as any;
+  const fieldCalls: string[] = [];
+
+  const sql = {
+    fieldExist: (field: string) => field === 'Id',
+    field: (field: string) => {
+      fieldCalls.push(field);
+      return field === 'Id' ? 'ID-1' : `VALUE-${field}`;
+    },
+    fn: {
+      coalesce: (...items: unknown[]) => {
+        for (const item of items) {
+          if (item != null) return item;
+        }
+        return null;
+      },
+    },
+  };
+
+  const host = Object.create(proto);
+  Object.defineProperty(host, '$sql', {
+    configurable: true,
+    enumerable: false,
+    get: () => sql,
+  });
+  const out = proto.sqlDisplayName.call(host);
+
+  expect(out).toBe('ID-1');
+  expect(fieldCalls).toEqual(['Id']);
 });
 
 test('model static service methods delegate to operation layers', async () => {

@@ -4,7 +4,6 @@
 package schema
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -61,114 +60,127 @@ func isStorageBlobCarrierModel(model *meta.IrModel) bool {
 	return false
 }
 
-// getFieldColumnMeta adapts the newer @Field decorator options.
-func (m *modelMigrator) getFieldColumnMeta(field *meta.IrField, modelCtx ...*meta.IrModel) (map[string]interface{}, error) {
+// getResolvedFieldColumnMeta builds migration column metadata from parser-resolved field specs.
+func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx ...*meta.IrModel) (map[string]interface{}, error) {
 	var model *meta.IrModel
 	if len(modelCtx) > 0 {
 		model = modelCtx[0]
 	}
-
-	for _, deco := range field.Decorators {
-		if deco.Name != "Field" || len(deco.Arguments) == 0 {
-			continue
-		}
-		arg := deco.Arguments[0]
-		if arg.Type != "ObjectLiteral" {
-			continue
-		}
-
-		var opts map[string]interface{}
-		if err := json.Unmarshal([]byte(arg.Value), &opts); err != nil {
-			return nil, fmt.Errorf("error unmarshal @Field options: %w", err)
-		}
-
-		typeStr, _ := opts["type"].(string)
-		if typeStr == "" {
-			return nil, nil
-		}
-
-		// Binary/Image are attachment-backed in owner models and should not materialize
-		// physical columns there. Document internal blob carrier models still keep columns.
-		if (typeStr == "binary" || typeStr == "image") && model != nil && !isStorageBlobCarrierModel(model) {
-			return nil, nil
-		}
-
-		// Virtual field: skip physical column creation when select is present.
-		if _, hasSelect := opts["select"]; hasSelect {
-			return nil, nil
-		}
-
-		// Non-column relations: skip OneToMany/ManyToMany.
-		if typeStr == "OneToMany" || typeStr == "ManyToMany" {
-			return nil, nil
-		}
-
-		meta := map[string]interface{}{
-			"type": typeStr,
-		}
-
-		// Merge column options.
-		if col, ok := opts["column"].(map[string]interface{}); ok {
-			for k, v := range col {
-				meta[k] = v
-			}
-		}
-
-		// Ensure ManyToOne always maps to a concrete physical column definition.
-		if typeStr == "ManyToOne" {
-			// Force physical type to char.
-			meta["type"] = "char"
-			// Default length.
-			if _, ok := meta["size"]; !ok {
-				meta["size"] = 20
-			}
-			// notNull: honor explicit column setting, otherwise inherit field.NotNull.
-			if _, ok := meta["notNull"]; !ok && field.NotNull {
-				meta["notNull"] = true
-			}
-			// Index: add default index when index/uniqueIndex are both absent.
-			if _, ok := meta["index"]; !ok {
-				if _, ok2 := meta["uniqueIndex"]; !ok2 {
-					meta["index"] = true
-				}
-			}
-		}
-
-		// Selection maps to varchar with default size 255 when omitted.
-		if typeStr == "selection" {
-			meta["type"] = "varchar"
-			if _, ok := meta["size"]; !ok {
-				meta["size"] = 255
-			}
-		}
-
-		// ManyToOneRef: cross-service single Id reference, stored as char(20) with default index.
-		if typeStr == "ManyToOneRef" {
-			meta["type"] = "char"
-			if _, ok := meta["size"]; !ok {
-				meta["size"] = 20
-			}
-			if _, ok := meta["index"]; !ok {
-				if _, ok2 := meta["uniqueIndex"]; !ok2 {
-					meta["index"] = true
-				}
-			}
-		}
-
-		// ManyToManyRef: cross-service Id list reference, mapped to jsonobject.
-		if typeStr == "ManyToManyRef" {
-			meta["type"] = "jsonobject"
-		}
-
-		// Binary/Image are unified as blob physical columns in migration layer.
-		if typeStr == "binary" || typeStr == "image" {
-			meta["type"] = "blob"
-		}
-
-		// ManyToOne without explicit column still follows the same mapping path above.
-		return meta, nil
+	if field == nil {
+		return nil, nil
 	}
-	return nil, nil
+
+	resolved, err := field.GetResolvedSpec()
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshal field resolved spec: %w", err)
+	}
+	if resolved == nil {
+		return nil, nil
+	}
+
+	if !resolved.Migration.ShouldCreateColumn {
+		return nil, nil
+	}
+
+	typeStr := strings.TrimSpace(resolved.Structural.FieldType)
+	if typeStr == "" {
+		return nil, nil
+	}
+
+	// Binary/Image are attachment-backed in owner models and should not materialize
+	// physical columns there. Document internal blob carrier models still keep columns.
+	if (typeStr == "binary" || typeStr == "image") && model != nil && !isStorageBlobCarrierModel(model) {
+		return nil, nil
+	}
+
+	columnType := strings.TrimSpace(resolved.Migration.ResolvedColumnType)
+	if columnType == "" {
+		columnType = typeStr
+	}
+
+	metaMap := map[string]interface{}{
+		"type": columnType,
+	}
+
+	if hints := resolved.Structural.StorageHints; hints != nil {
+		if hints.Required != nil {
+			metaMap["notNull"] = *hints.Required
+		}
+		if hints.Index != nil && strings.TrimSpace(*hints.Index) != "" {
+			metaMap["index"] = strings.TrimSpace(*hints.Index)
+		} else if hints.Indexed != nil {
+			metaMap["index"] = *hints.Indexed
+		}
+		if hints.Size != nil {
+			metaMap["size"] = *hints.Size
+		}
+		if hints.Precision != nil {
+			metaMap["precision"] = *hints.Precision
+		}
+		if hints.Scale != nil {
+			metaMap["scale"] = *hints.Scale
+		}
+		if hints.PrimaryKey != nil {
+			metaMap["primaryKey"] = *hints.PrimaryKey
+		}
+		if hints.Unique != nil {
+			metaMap["unique"] = *hints.Unique
+		}
+		if hints.UniqueIndexEnabled != nil {
+			metaMap["uniqueIndex"] = *hints.UniqueIndexEnabled
+		}
+		if hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "" {
+			metaMap["uniqueIndex"] = strings.TrimSpace(*hints.UniqueIndex)
+		}
+	}
+
+	// Keep compatibility defaults for reference and relation-like scalar carriers.
+	if typeStr == "ManyToOne" || typeStr == "ManyToOneRef" {
+		metaMap["type"] = "char"
+		if _, ok := metaMap["size"]; !ok {
+			metaMap["size"] = 20
+		}
+		if _, ok := metaMap["notNull"]; !ok && field.NotNull {
+			metaMap["notNull"] = true
+		}
+		if _, ok := metaMap["index"]; !ok {
+			hasUniqueIndex := false
+			if val, ok := metaMap["uniqueIndex"]; ok {
+				if b, ok := val.(bool); ok {
+					hasUniqueIndex = b
+				} else if s, ok := val.(string); ok {
+					hasUniqueIndex = strings.TrimSpace(s) != ""
+				}
+			}
+			hasUnique := false
+			if val, ok := metaMap["unique"]; ok {
+				if b, ok := val.(bool); ok {
+					hasUnique = b
+				}
+			}
+			if !hasUniqueIndex && !hasUnique {
+				metaMap["index"] = true
+			}
+		}
+	}
+	if typeStr == "ManyToManyRef" {
+		metaMap["type"] = "jsonobject"
+	}
+	if typeStr == "selection" {
+		metaMap["type"] = "varchar"
+		if _, ok := metaMap["size"]; !ok {
+			metaMap["size"] = 255
+		}
+	}
+	if typeStr == "binary" || typeStr == "image" {
+		metaMap["type"] = "blob"
+	}
+
+	if cc := strings.TrimSpace(resolved.Structural.CheckConstraint); cc != "" {
+		metaMap["checkConstraint"] = cc
+	}
+
+	return metaMap, nil
 }
 
 func (m *modelMigrator) getDialect() string {
@@ -238,7 +250,7 @@ func (m *modelMigrator) migrateTableSchema(models []*meta.IrModel) error {
 
 		// Add fields
 		for _, field := range model.Fields {
-			meta, err := m.getFieldColumnMeta(field, model)
+			meta, err := m.getResolvedFieldColumnMeta(field, model)
 			if err != nil {
 				return err
 			}
@@ -268,7 +280,7 @@ func (m *modelMigrator) applyTableCheckConstraints(tableName string, model *meta
 	}
 
 	for _, field := range model.Fields {
-		colMeta, err := m.getFieldColumnMeta(field, model)
+		colMeta, err := m.getResolvedFieldColumnMeta(field, model)
 		if err != nil {
 			return err
 		}

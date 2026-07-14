@@ -8,7 +8,7 @@ import { ManyToOneProcessor } from './many-to-one';
 
 @Model('test.ManyToOneTarget')
 class ManyToOneTarget extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   static createCalls: Array<Record<string, any>> = [];
@@ -21,27 +21,21 @@ class ManyToOneTarget extends BaseModel {
 
 @Model('test.ManyToOneParent')
 class ManyToOneParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => ManyToOneTarget },
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: { targetModel: () => ManyToOneTarget } })
   OwnerId?: ManyToOneTarget | null;
 }
 
 @Model('test.ManyToOneBrokenParent')
 class ManyToOneBrokenParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({
-    type: 'ManyToOne',
-    relation: {} as any,
-    column: {},
-  })
+  @Field({ type: 'ManyToOne',
+    relation: {} as any })
   OwnerId?: any;
 }
 

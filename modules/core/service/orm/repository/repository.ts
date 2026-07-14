@@ -45,6 +45,8 @@ import {
   repositorySoftDeleteEnabled,
   resolveEffectiveOrder as resolveEffectiveOrderExternal,
   applyOrderByToQuery as applyOrderByToQueryExternal,
+  hasRepositorySqlComputeExpression,
+  resolveRepositorySqlComputeExpression,
 } from './query';
 import type { RepositoryPredicateBuilder, RepositoryPredicate } from './query/predicate_builder_adapter';
 import type { SelectionNode, SelectionRelationEntry } from './projection';
@@ -814,8 +816,7 @@ export class Repository {
     if (!field || field.type !== 'decimal') return undefined;
 
     const columnSpec = this.asRecord(field.column);
-    const selectSpec = this.asRecord(field.select);
-    const scaleField = columnSpec?.scaleField ?? selectSpec?.scaleField;
+    const scaleField = columnSpec?.scaleField;
     if (typeof scaleField !== 'string') return undefined;
 
     const normalized = scaleField.trim();
@@ -1091,12 +1092,16 @@ export class Repository {
         }
         return fieldResolver(targetMeta.type, field);
       },
-      resolveSelectField: (builder, field, fieldMeta) => {
-        const selectExpr = (fieldMeta as { select?: { expr?: (ctx: unknown) => unknown } }).select?.expr;
-        if (typeof selectExpr !== 'function') {
-          throw new Error(`field select expression is missing: ${targetMeta.fullModelName || targetMeta.modelName || targetMeta.name}.${field}`);
+      resolveSelectField: (builder, field, _fieldMeta) => {
+        if (!hasRepositorySqlComputeExpression(targetMeta, field)) {
+          throw new Error(`field sql compute handler is missing: ${targetMeta.fullModelName || targetMeta.modelName || targetMeta.name}.${field}`);
         }
-        return selectExpr(this.makeSelectCtx(builder, targetTable, targetMeta));
+
+        const out = resolveRepositorySqlComputeExpression(targetMeta, field, this.makeSelectCtx(builder, targetTable, targetMeta));
+        if (out === undefined) {
+          throw new Error(`field sql compute handler is missing: ${targetMeta.fullModelName || targetMeta.modelName || targetMeta.name}.${field}`);
+        }
+        return out;
       },
     });
   }

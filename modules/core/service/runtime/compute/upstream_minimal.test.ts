@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { BaseModel, Field, Model } from '@/core/service';
+import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { MetadataStorage } from '../../orm/metadata/storage';
 import { RelationFactory } from '../../orm/relation';
 import { RepositoryFactory } from '../../orm/repository/repository_factory';
@@ -11,7 +11,7 @@ import { buildComputeGraph } from './graph';
 
 @Model('test.UpstreamParent')
 class UpstreamParent extends BaseModel {
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
   @Field({
@@ -20,16 +20,15 @@ class UpstreamParent extends BaseModel {
   })
   Lines?: UpstreamChild[];
 
-  @Field({
-    type: 'int',
-    column: {
-      compute: {
-        expr: (self: UpstreamParent) => (Array.isArray((self as any).Lines) ? (self as any).Lines.length : 0),
-        deps: ['Lines.Id' as any],
-      },
-    },
-  })
+  @Field({ type: 'int' })
   LineCount?: number;
+
+  @Compute<UpstreamParent>('LineCount', {
+    deps: ['Lines.Id' as any],
+  })
+  computeLineCount() {
+    return Array.isArray((this as any).Lines) ? (this as any).Lines.length : 0;
+  }
 }
 
 @Model('test.UpstreamChild')
@@ -37,11 +36,10 @@ class UpstreamChild extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UpstreamParent },
-    column: {},
   })
   ParentId?: UpstreamParent;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
@@ -264,16 +262,15 @@ class UpstreamCollectionParent extends BaseModel {
   })
   Lines?: UpstreamCollectionChild[];
 
-  @Field({
-    type: 'int',
-    column: {
-      compute: {
-        expr: (self: UpstreamCollectionParent) => (Array.isArray((self as any).Lines) ? (self as any).Lines.length : 0),
-        deps: ['Lines' as any],
-      },
-    },
-  })
+  @Field({ type: 'int' })
   LineCount?: number;
+
+  @Compute<UpstreamCollectionParent>('LineCount', {
+    deps: ['Lines' as any],
+  })
+  computeLineCount() {
+    return Array.isArray((this as any).Lines) ? (this as any).Lines.length : 0;
+  }
 }
 
 @Model('test.UpstreamCollectionChild')
@@ -281,11 +278,10 @@ class UpstreamCollectionChild extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UpstreamCollectionParent },
-    column: {},
   })
   ParentId?: UpstreamCollectionParent;
 
-  @Field({ type: 'varchar', column: { size: 64 } })
+  @Field({ type: 'varchar', size: 64 })
   Name?: string;
 }
 
@@ -297,17 +293,15 @@ class UpstreamCompany extends BaseModel {
   })
   Partners?: UpstreamPartner[];
 
-  @Field({
-    type: 'int',
-    column: {
-      compute: {
-        expr: (self: UpstreamCompany) =>
-          Array.isArray((self as any).Partners) ? (self as any).Partners.filter((p: any) => Boolean(p?.PrimaryContactId)).length : 0,
-        deps: ['Partners.PrimaryContactId' as any],
-      },
-    },
-  })
+  @Field({ type: 'int' })
   PrimaryContactCount?: number;
+
+  @Compute<UpstreamCompany>('PrimaryContactCount', {
+    deps: ['Partners.PrimaryContactId' as any],
+  })
+  computePrimaryContactCount() {
+    return Array.isArray((this as any).Partners) ? (this as any).Partners.filter((p: any) => Boolean(p?.PrimaryContactId)).length : 0;
+  }
 }
 
 @Model('test.UpstreamPartner')
@@ -315,7 +309,6 @@ class UpstreamPartner extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UpstreamCompany },
-    column: {},
   })
   CompanyId?: UpstreamCompany;
 
@@ -325,21 +318,17 @@ class UpstreamPartner extends BaseModel {
   })
   Contacts?: UpstreamContact[];
 
-  @Field({
-    type: 'varchar',
-    column: {
-      size: 20,
-      compute: {
-        expr: (self: UpstreamPartner) => {
-          const rows = Array.isArray((self as any).Contacts) ? (self as any).Contacts : [];
-          const hit = rows.find((x: any) => Boolean(x?.IsPrimary));
-          return hit?.Id || '';
-        },
-        deps: ['Contacts.IsPrimary' as any],
-      },
-    },
-  })
+  @Field({ type: 'varchar', size: 20 })
   PrimaryContactId?: string;
+
+  @Compute<UpstreamPartner>('PrimaryContactId', {
+    deps: ['Contacts.IsPrimary' as any],
+  })
+  computePrimaryContactId() {
+    const rows = Array.isArray((this as any).Contacts) ? (this as any).Contacts : [];
+    const hit = rows.find((x: any) => Boolean(x?.IsPrimary));
+    return hit?.Id || '';
+  }
 }
 
 @Model('test.UpstreamContact')
@@ -347,11 +336,10 @@ class UpstreamContact extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UpstreamPartner },
-    column: {},
   })
   PartnerId?: UpstreamPartner;
 
-  @Field({ type: 'boolean', column: {} })
+  @Field({ type: 'boolean' })
   IsPrimary?: boolean;
 }
 
@@ -360,7 +348,6 @@ class CycleA extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => CycleB },
-    column: {},
   })
   BId?: CycleB;
 
@@ -370,17 +357,15 @@ class CycleA extends BaseModel {
   })
   BackRefs?: CycleB[];
 
-  @Field({
-    type: 'int',
-    column: {
-      compute: {
-        expr: (self: CycleA) =>
-          Array.isArray((self as any).BackRefs) ? (self as any).BackRefs.reduce((n: number, x: any) => n + Number(x?.RefCount || 0), 0) : 0,
-        deps: ['BackRefs.RefCount' as any],
-      },
-    },
-  })
+  @Field({ type: 'int' })
   TotalFromB?: number;
+
+  @Compute<CycleA>('TotalFromB', {
+    deps: ['BackRefs.RefCount' as any],
+  })
+  computeTotalFromB() {
+    return Array.isArray((this as any).BackRefs) ? (this as any).BackRefs.reduce((n: number, x: any) => n + Number(x?.RefCount || 0), 0) : 0;
+  }
 }
 
 @Model('test.CycleB')
@@ -388,7 +373,6 @@ class CycleB extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => CycleA },
-    column: {},
   })
   AId?: CycleA;
 
@@ -398,23 +382,23 @@ class CycleB extends BaseModel {
   })
   Refs?: CycleA[];
 
-  @Field({
-    type: 'int',
-    column: {
-      compute: {
-        expr: (self: CycleB) => (Array.isArray((self as any).Refs) ? (self as any).Refs.reduce((n: number, x: any) => n + Number(x?.TotalFromB || 0), 0) : 0),
-        deps: ['Refs.TotalFromB' as any],
-      },
-    },
-  })
+  @Field({ type: 'int' })
   RefCount?: number;
+
+  @Compute<CycleB>('RefCount', {
+    deps: ['Refs.TotalFromB' as any],
+  })
+  computeRefCount() {
+    return Array.isArray((this as any).Refs) ? (this as any).Refs.reduce((n: number, x: any) => n + Number(x?.TotalFromB || 0), 0) : 0;
+  }
 }
 
 @Model('test.DownstreamParent')
 class DownstreamParent extends BaseModel {
   @Field({
     type: 'decimal',
-    column: { precision: 6, scale: 2 },
+    precision: 6,
+    scale: 2,
   })
   DiscountRate?: any;
 }
@@ -424,28 +408,28 @@ class DownstreamLine extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => DownstreamParent },
-    column: {},
   })
   ParentId?: DownstreamParent;
 
-  @Field({ type: 'int', column: {} })
+  @Field({ type: 'int' })
   Qty?: number;
 
-  @Field({ type: 'int', column: {} })
+  @Field({ type: 'int' })
   AmountScale?: number;
 
   @Field({
     type: 'decimal',
-    column: {
-      precision: 10,
-      scaleField: 'AmountScale' as any,
-      compute: {
-        expr: (_self: DownstreamLine) => '0',
-        deps: ['ParentId.DiscountRate' as any, 'Qty' as any],
-      },
-    },
-  })
+    precision: 10,
+    scaleField: 'AmountScale' as any,
+  } as any)
   Amount?: any;
+
+  @Compute<DownstreamLine>('Amount', {
+    deps: ['ParentId.DiscountRate' as any, 'Qty' as any],
+  })
+  computeAmount() {
+    return '0';
+  }
 }
 
 function buildPairComputeGraph(parentCtor: any, childCtor: any) {

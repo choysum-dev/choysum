@@ -42,6 +42,43 @@ export interface EffectiveOnchangeMeta {
 }
 
 /**
+ * Runtime metadata registered by @Compute.
+ */
+export interface ComputeHandlerMeta {
+  field: string;
+  method: string;
+  deps: string[];
+  store: boolean;
+  searchable?: boolean;
+  runAs?: 'user' | 'sudo';
+}
+
+/**
+ * Runtime metadata registered by @SqlCompute.
+ */
+export interface SqlComputeHandlerMeta {
+  field: string;
+  method: string;
+  deps?: string[];
+}
+
+/**
+ * Runtime metadata registered by @Search.
+ */
+export interface SearchHandlerMeta {
+  field: string;
+  method: string;
+}
+
+/**
+ * Runtime metadata registered by @Inverse.
+ */
+export interface InverseHandlerMeta {
+  field: string;
+  method: string;
+}
+
+/**
  * Parsed compute dependency categories kept in sync with compute/parser.ts.
  */
 export type ParsedDep =
@@ -176,4 +213,8 @@ export interface ModelMetadata {
 
   // Compute
   computeGraph?: ModelComputeGraph;
+  computeHandlers?: Map<string, ComputeHandlerMeta>;
+  sqlComputeHandlers?: Map<string, SqlComputeHandlerMeta>;
+  searchHandlers?: Map<string, SearchHandlerMeta>;
+  inverseHandlers?: Map<string, InverseHandlerMeta>;
 }
