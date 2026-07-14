@@ -5,11 +5,13 @@ import { MetadataStorage } from '../../orm/metadata/storage';
 import { resolveInstanceHandler, createEntityBackedModelInstance } from './handler_runtime';
 
 function fakeMeta(type: any, overrides?: Record<string, unknown>) {
-  const base = MetadataStorage.instance.getModelMetadata(type as any) || {
-    type,
-    fields: new Map(),
-    modelName: type?.name || 'Unknown',
-  } as any;
+  const base =
+    MetadataStorage.instance.getModelMetadata(type as any) ||
+    ({
+      type,
+      fields: new Map(),
+      modelName: type?.name || 'Unknown',
+    } as any);
   return { ...base, ...overrides };
 }
 
@@ -32,18 +34,14 @@ test('resolveInstanceHandler throws when method name is empty', () => {
   class Target {}
   const meta = fakeMeta(Target, { type: Target });
 
-  expect(() => resolveInstanceHandler(meta as any, 'X', '', '@Compute')).toThrow(
-    '@Compute handler is missing method name'
-  );
+  expect(() => resolveInstanceHandler(meta as any, 'X', '', '@Compute')).toThrow('@Compute handler is missing method name');
 });
 
 test('resolveInstanceHandler throws when method not found on prototype', () => {
   class Target {}
   const meta = fakeMeta(Target, { type: Target });
 
-  expect(() => resolveInstanceHandler(meta as any, 'X', 'missingMethod', '@Compute')).toThrow(
-    '@Compute handler not found'
-  );
+  expect(() => resolveInstanceHandler(meta as any, 'X', 'missingMethod', '@Compute')).toThrow('@Compute handler not found');
 });
 
 test('createEntityBackedModelInstance get trap prefers entityRecord over prototype', () => {
@@ -111,7 +109,9 @@ test('createEntityBackedModelInstance deleteProperty removes from entityRecord',
 
 test('createEntityBackedModelInstance has trap checks entityRecord first', () => {
   class Target {
-    protoMethod() { return 1; }
+    protoMethod() {
+      return 1;
+    }
   }
   const meta = fakeMeta(Target, { type: Target });
   const instance = createEntityBackedModelInstance(meta as any, { Name: 'test' });
@@ -123,7 +123,9 @@ test('createEntityBackedModelInstance has trap checks entityRecord first', () =>
 
 test('createEntityBackedModelInstance ownKeys merges entity and target keys', () => {
   class Target {
-    protoMethod() { return 1; }
+    protoMethod() {
+      return 1;
+    }
   }
   const meta = fakeMeta(Target, { type: Target });
   const instance = createEntityBackedModelInstance(meta as any, { Name: 'test', Age: 25 });

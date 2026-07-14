@@ -98,11 +98,30 @@ func TestTypeHelpers(t *testing.T) {
 		t.Fatalf("expected scalar default tag, got %q", strings.Join(nonFunctionWordTags, ";"))
 	}
 
+	// A => B (unquoted, contains =>): treated as arrow function, no default: tag.
 	arrowStringLiteralTags := []string{}
 	addStandardTags(&arrowStringLiteralTags, map[string]interface{}{
 		"default": "A => B",
 	})
-	if !strings.Contains(strings.Join(arrowStringLiteralTags, ";"), "default:A => B") {
-		t.Fatalf("expected scalar default tag for plain arrow string, got %q", strings.Join(arrowStringLiteralTags, ";"))
+	if strings.Contains(strings.Join(arrowStringLiteralTags, ";"), "default:") {
+		t.Fatalf("did not expect default: tag for arrow-like value, got %q", strings.Join(arrowStringLiteralTags, ";"))
+	}
+
+	// Single-param arrow with space: x => 'active'
+	singleParamArrowTags := []string{}
+	addStandardTags(&singleParamArrowTags, map[string]interface{}{
+		"default": "x => 'active'",
+	})
+	if strings.Contains(strings.Join(singleParamArrowTags, ";"), "default:") {
+		t.Fatalf("did not expect default: tag for single-param arrow, got %q", strings.Join(singleParamArrowTags, ";"))
+	}
+
+	// Quoted string containing => is still a scalar literal.
+	quotedArrowLiteralTags := []string{}
+	addStandardTags(&quotedArrowLiteralTags, map[string]interface{}{
+		"default": "'A => B'",
+	})
+	if !strings.Contains(strings.Join(quotedArrowLiteralTags, ";"), "default:'A => B'") {
+		t.Fatalf("expected scalar default tag for quoted arrow string, got %q", strings.Join(quotedArrowLiteralTags, ";"))
 	}
 }

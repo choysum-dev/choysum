@@ -151,18 +151,14 @@ func isJSFunctionDefaultLiteral(value string) bool {
 	if trimmed == "" {
 		return false
 	}
+	// Quoted string literals are not JS functions.
+	if (strings.HasPrefix(trimmed, "'") && strings.HasSuffix(trimmed, "'")) ||
+		(strings.HasPrefix(trimmed, "\"") && strings.HasSuffix(trimmed, "\"")) {
+		return false
+	}
 	lower := strings.ToLower(trimmed)
 	if strings.Contains(lower, "=>") {
-		// Arrow functions start with '(' (parameter list), 'async', or
-		// are compact single-param arrows without spaces.
-		// This avoids false positives for plain strings like "A => B".
-		if strings.HasPrefix(trimmed, "(") || strings.HasPrefix(lower, "async") {
-			return true
-		}
-		if !strings.Contains(trimmed, " ") {
-			return true
-		}
-		return false
+		return true
 	}
 	if strings.HasPrefix(lower, "async function") || strings.HasPrefix(lower, "function") {
 		return strings.Contains(lower, "(") || strings.Contains(lower, "{")
