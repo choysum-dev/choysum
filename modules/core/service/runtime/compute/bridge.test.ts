@@ -7,15 +7,15 @@ test('bridge contexts isolate payloads across concurrent calls', async () => {
   const first = {};
   const second = {};
 
-  const p1 = withBridgeFrame(first, 'search', { token: 'first' }, async () => {
+  const p1 = withBridgeFrame(first, 'search', { token: 'first' }, async (executionInstance) => {
     await Promise.resolve();
-    const frame = currentBridgeFrame<{ token: string }>(first, 'search');
+    const frame = currentBridgeFrame<{ token: string }>(executionInstance, 'search');
     return frame.token;
   });
 
-  const p2 = withBridgeFrame(second, 'search', { token: 'second' }, async () => {
+  const p2 = withBridgeFrame(second, 'search', { token: 'second' }, async (executionInstance) => {
     await Promise.resolve();
-    const frame = currentBridgeFrame<{ token: string }>(second, 'search');
+    const frame = currentBridgeFrame<{ token: string }>(executionInstance, 'search');
     return frame.token;
   });
 
@@ -35,37 +35,57 @@ test('bridge context supports thenables without finally', async () => {
 
   const settled = await Promise.resolve(result);
   expect(settled).toBe('ok');
-  expect(() => currentBridgeFrame(instance, 'search')).toThrow('BRIDGE_CONTEXT_EXPIRED');
+  expect(() => currentBridgeFrame(instance, 'search')).toThrow('BRIDGE_CONTEXT_UNAVAILABLE');
 });
 
 test('bridge context expires after execution returns', () => {
   const instance = {};
 
-  const observed = withBridgeFrame(instance, 'sql', { value: 1 }, () => currentBridgeFrame<{ value: number }>(instance, 'sql').value);
+  const observed = withBridgeFrame(instance, 'sql', { value: 1 }, (executionInstance) => currentBridgeFrame<{ value: number }>(executionInstance, 'sql').value);
   expect(observed).toBe(1);
 
-  expect(() => currentBridgeFrame(instance, 'sql')).toThrow('BRIDGE_CONTEXT_EXPIRED');
+  expect(() => currentBridgeFrame(instance, 'sql')).toThrow('BRIDGE_CONTEXT_UNAVAILABLE');
 });
 
 test('bridge context enforces kind checks', () => {
   const instance = {};
 
-  withBridgeFrame(instance, 'sql', { value: 1 }, () => {
-    expect(() => currentBridgeFrame(instance, 'search')).toThrow('BRIDGE_CONTEXT_KIND_MISMATCH');
+  withBridgeFrame(instance, 'sql', { value: 1 }, (executionInstance) => {
+    expect(() => currentBridgeFrame(executionInstance, 'search')).toThrow('BRIDGE_CONTEXT_KIND_MISMATCH');
   });
 });
 
 test('bridge context resolves outer matching kind when inner frame uses another kind on same instance', () => {
   const instance = {};
 
-  withBridgeFrame(instance, 'search', { token: 'outer' }, () => {
-    withBridgeFrame(instance, 'inverse', { token: 'inner' }, () => {
-      const searchFrame = currentBridgeFrame<{ token: string }>(instance, 'search');
-      const inverseFrame = currentBridgeFrame<{ token: string }>(instance, 'inverse');
+  withBridgeFrame(instance, 'search', { token: 'outer' }, (outerExecutionInstance) => {
+    withBridgeFrame(instance, 'inverse', { token: 'inner' }, (innerExecutionInstance) => {
+      const searchFrame = currentBridgeFrame<{ token: string }>(outerExecutionInstance, 'search');
+      const inverseFrame = currentBridgeFrame<{ token: string }>(innerExecutionInstance, 'inverse');
       expect(searchFrame.token).toBe('outer');
       expect(inverseFrame.token).toBe('inner');
     });
   });
+});
+
+test('bridge contexts isolate payloads across concurrent calls on the same instance', async () => {
+  const instance = {};
+
+  const p1 = withBridgeFrame(instance, 'search', { token: 'first' }, async (executionInstance) => {
+    await Promise.resolve();
+    const frame = currentBridgeFrame<{ token: string }>(executionInstance, 'search');
+    return frame.token;
+  });
+
+  const p2 = withBridgeFrame(instance, 'search', { token: 'second' }, async (executionInstance) => {
+    await Promise.resolve();
+    const frame = currentBridgeFrame<{ token: string }>(executionInstance, 'search');
+    return frame.token;
+  });
+
+  const [left, right] = await Promise.all([p1, p2]);
+  expect(left).toBe('first');
+  expect(right).toBe('second');
 });
 
 test('bridge context enforces instance checks', () => {
@@ -97,11 +117,11 @@ test('bridge context rejects non-object instance', () => {
 test('bridge context isolates the same instance across sequential calls', () => {
   const instance = {};
 
-  const first = withBridgeFrame(instance, 'sql', { token: 'first' }, () => currentBridgeFrame<{ token: string }>(instance, 'sql').token);
+  const first = withBridgeFrame(instance, 'sql', { token: 'first' }, (executionInstance) => currentBridgeFrame<{ token: string }>(executionInstance, 'sql').token);
   expect(first).toBe('first');
-  // Frame is expired after first call completes
-  expect(() => currentBridgeFrame(instance, 'sql')).toThrow('BRIDGE_CONTEXT_EXPIRED');
+  // Frame is isolated to execution instance and unavailable from original instance.
+  expect(() => currentBridgeFrame(instance, 'sql')).toThrow('BRIDGE_CONTEXT_UNAVAILABLE');
 
-  const second = withBridgeFrame(instance, 'sql', { token: 'second' }, () => currentBridgeFrame<{ token: string }>(instance, 'sql').token);
+  const second = withBridgeFrame(instance, 'sql', { token: 'second' }, (executionInstance) => currentBridgeFrame<{ token: string }>(executionInstance, 'sql').token);
   expect(second).toBe('second');
 });

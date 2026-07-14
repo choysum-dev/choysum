@@ -68,6 +68,10 @@ function formatInstanceLabel(instance: object): string {
   return ctorName || 'Unknown';
 }
 
+function createBridgeExecutionInstance<TInstance extends object>(instance: TInstance): TInstance {
+  return new Proxy(instance, {}) as TInstance;
+}
+
 export function enterBridgeFrame<TPayload>(instance: object, kind: BridgeKind, payload: TPayload): BridgeFrame<TPayload> {
   assertInstance(instance);
   const normalizedKind = normalizeKind(kind);
@@ -146,11 +150,18 @@ export function currentBridgeFrame<TPayload>(instance: object, kind: BridgeKind)
   throw new Error(`BRIDGE_CONTEXT_UNAVAILABLE: ${normalizedKind} bridge context is unavailable`);
 }
 
-export function withBridgeFrame<TPayload, TResult>(instance: object, kind: BridgeKind, payload: TPayload, run: () => TResult): TResult {
-  const frame = enterBridgeFrame(instance, kind, payload);
+export function withBridgeFrame<TInstance extends object, TPayload, TResult>(
+  instance: TInstance,
+  kind: BridgeKind,
+  payload: TPayload,
+  run: (executionInstance: TInstance) => TResult
+): TResult {
+  assertInstance(instance);
+  const executionInstance = createBridgeExecutionInstance(instance);
+  const frame = enterBridgeFrame(executionInstance as object, kind, payload);
 
   try {
-    const result = run();
+    const result = run(executionInstance);
     if (isPromiseLike(result)) {
       return Promise.resolve(result).finally(() => {
         exitBridgeFrame(frame);
