@@ -116,6 +116,7 @@ export async function applyInverseWriteback(meta: ModelMetadata, values: Unknown
   const fields = Object.keys(nextValues);
 
   for (const fieldName of fields) {
+    if (!(fieldName in nextValues)) continue;
     const fieldMeta = meta.fields.get(fieldName);
     if (!fieldMeta) continue;
 

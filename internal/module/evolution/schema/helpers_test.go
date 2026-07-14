@@ -171,7 +171,11 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 	}
 
 	if col, ok := opts["column"].(map[string]any); ok {
-		hints := &meta.IrFieldStructuralStorageHints{}
+		hints := spec.Structural.StorageHints
+		if hints == nil {
+			hints = &meta.IrFieldStructuralStorageHints{}
+			spec.Structural.StorageHints = hints
+		}
 		if v, ok := col["notNull"].(bool); ok {
 			hints.Required = boolPtrValue(v)
 		}
