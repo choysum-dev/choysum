@@ -47,8 +47,17 @@ export function rewriteSearchCondition(
   const legacySearch = typeof legacyCompute?.search === 'string' ? legacyCompute.search.trim() : '';
   const handlerName = String(explicitSearchHandler || legacySearch || '').trim();
   const fromExplicitSearchDecorator = Boolean(explicitSearchHandler);
+  const relatedPath = typeof fieldMeta.related?.path === 'string' ? fieldMeta.related.path.trim() : '';
+  const isVirtualRelatedWithoutCompute = fieldMeta.related?.store === false && computeHandler == null && legacyCompute?.store !== false;
 
   if (!handlerName) {
+    if (isVirtualRelatedWithoutCompute && relatedPath) {
+      return {
+        kind: 'domain',
+        domain: [relatedPath, op, value] as BaseQueryCondition,
+      };
+    }
+
     if (!isVirtual) return;
 
     if (legacyCompute?.store === false) {

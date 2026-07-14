@@ -423,6 +423,11 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		spec.Migration.ShouldCreateColumn = false
 		spec.Migration.ReasonCode = "RELATION_NON_COLUMN"
 		spec.Migration.ResolvedColumnType = ""
+	case spec.Structural.Related != nil && !spec.Structural.Related.Store:
+		spec.Migration.StorageKind = "virtualRuntime"
+		spec.Migration.ShouldCreateColumn = false
+		spec.Migration.ReasonCode = "RELATED_STORE_FALSE"
+		spec.Migration.ResolvedColumnType = ""
 	case spec.Behavior.Compute != nil && !spec.Behavior.Compute.Store:
 		spec.Migration.StorageKind = "virtualRuntime"
 		spec.Migration.ShouldCreateColumn = false

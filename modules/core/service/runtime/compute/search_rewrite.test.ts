@@ -77,3 +77,31 @@ test('search rewrite executes @Search instance handler through bridge context', 
     domain: ['Name', 'ilike', 's:ABC'],
   });
 });
+
+test('search rewrite auto-resolves virtual related field to related.path when @Search is missing', () => {
+  class RelatedVirtualModel extends BaseModel {}
+
+  const meta = {
+    type: RelatedVirtualModel,
+    modelName: 'RelatedVirtualModel',
+    fields: new Map([
+      [
+        'PartnerName',
+        {
+          type: 'varchar',
+          related: {
+            path: 'PartnerId.Name',
+            store: false,
+          },
+        },
+      ],
+    ]),
+  } as any;
+
+  const rewritten = rewriteSearchCondition(meta, 'PartnerName', 'ilike', 'ALICE', 'postgres', 'query');
+
+  expect(rewritten).toEqual({
+    kind: 'domain',
+    domain: ['PartnerId.Name', 'ilike', 'ALICE'],
+  });
+});

@@ -606,6 +606,9 @@ export default class DiagModel extends BaseModel {
 
 	// CONFLICT_INVERSE_ON_NON_STORED_RELATED
 	nonStoredSpec, _ := fieldByName["NonStoredWithInverse"].GetResolvedSpec()
+	if nonStoredSpec.Migration.ShouldCreateColumn != false || nonStoredSpec.Migration.ReasonCode != "RELATED_STORE_FALSE" {
+		t.Fatalf("expected RELATED_STORE_FALSE migration, got %+v", nonStoredSpec.Migration)
+	}
 	foundNonStoredInv := false
 	for _, d := range nonStoredSpec.Diagnostics {
 		if d.Code == "CONFLICT_INVERSE_ON_NON_STORED_RELATED" {
