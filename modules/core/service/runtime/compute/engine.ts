@@ -253,6 +253,11 @@ export class ComputeEngine {
       const fieldMeta = meta.fields.get(field);
       const runSql = resolveSqlComputeExecution(meta, field);
       if (runSql) {
+        // When the DB row already carries this sql-computed field, keep that value.
+        // This avoids executing query-only SqlCompute handlers in runtime read context.
+        if (entity[field] !== undefined) {
+          continue;
+        }
         const sqlCtx = createSqlBridgeContext(entity);
         let sqlVal = withBridgeFrame(wrapped as object, 'sql', sqlCtx, () => runSql(wrapped));
         sqlVal = ensureSyncBridgeResult(sqlVal, `@SqlCompute(${field})`);

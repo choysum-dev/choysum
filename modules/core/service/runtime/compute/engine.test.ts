@@ -1558,3 +1558,39 @@ test('compute engine injectVirtualForRead executes @SqlCompute handler with $sql
 
   expect(entity.DisplayName).toBe('Alice-suffix');
 });
+
+test('compute engine injectVirtualForRead keeps prefilled @SqlCompute value and skips runtime sql bridge execution', () => {
+  class SqlComputePrefilledModel extends BaseModel {
+    override DisplayName!: string;
+
+    sqlDisplayName() {
+      const sql = this.$sql as any;
+      return sql.col('demo_table', 'DisplayName');
+    }
+  }
+
+  const meta = {
+    type: SqlComputePrefilledModel,
+    fields: new Map([['DisplayName', { type: 'varchar', column: { size: 64 } }]]),
+    sqlComputeHandlers: new Map([
+      [
+        'DisplayName',
+        {
+          field: 'DisplayName',
+          method: 'sqlDisplayName',
+          deps: ['Id'],
+        },
+      ],
+    ]),
+    computeGraph: {
+      order: ['DisplayName'],
+      virtualComputeFields: new Set(['DisplayName']),
+      parsedDeps: new Map([['DisplayName', []]]),
+    },
+  } as any;
+
+  const entity: any = { DisplayName: 'from-db' };
+  ComputeEngine.injectVirtualForRead(meta, entity);
+
+  expect(entity.DisplayName).toBe('from-db');
+});
