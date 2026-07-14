@@ -248,3 +248,93 @@ test('Field option typing enforces function-only relation models for object rela
   expect(invalidManyToOneRef).toBeDefined();
   expect(invalidManyToManyRef).toBeDefined();
 });
+
+test('Field decorator validates size/precision/scale constraints', () => {
+  expect(() => {
+    class BadSizeModel extends BaseModel {
+      @Field({ type: 'decimal', size: 10 } as any)
+      Amount!: string;
+    }
+    return BadSizeModel;
+  }).toThrow('size is only supported');
+
+  expect(() => {
+    class BadPrecisionModel extends BaseModel {
+      @Field({ type: 'varchar', precision: 10 } as any)
+      Name!: string;
+    }
+    return BadPrecisionModel;
+  }).toThrow('precision is only supported');
+
+  expect(() => {
+    class BadScaleModel extends BaseModel {
+      @Field({ type: 'varchar', scale: 2 } as any)
+      Name!: string;
+    }
+    return BadScaleModel;
+  }).toThrow('scale is only supported');
+
+  expect(() => {
+    class ScaleOverPrecisionModel extends BaseModel {
+      @Field({ type: 'decimal', precision: 5, scale: 8 } as any)
+      Amount!: string;
+    }
+    return ScaleOverPrecisionModel;
+  }).toThrow('scale must not be greater than precision');
+});
+
+test('Field decorator validates related constraints', () => {
+  expect(() => {
+    class EmptyRelatedPathModel extends BaseModel {
+      @Field({ type: 'varchar', related: { path: '' } } as any)
+      Name!: string;
+    }
+    return EmptyRelatedPathModel;
+  }).toThrow('related.path must be a non-empty string');
+
+  expect(() => {
+    class BadRelatedStoreModel extends BaseModel {
+      @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: 'true' as any } } as any)
+      Name!: string;
+    }
+    return BadRelatedStoreModel;
+  }).toThrow('related.store must be a boolean');
+
+  expect(() => {
+    class BadRelatedDepsModel extends BaseModel {
+      @Field({ type: 'varchar', related: { path: 'PartnerId.Name', deps: 'not-array' as any } } as any)
+      Name!: string;
+    }
+    return BadRelatedDepsModel;
+  }).toThrow('related.deps must be a string array');
+});
+
+test('Field decorator handles index as string and uniqueIndex as string', () => {
+  class IndexStringModel extends BaseModel {
+    @Field({ type: 'varchar', index: 'idx_custom' } as any)
+    Name!: string;
+  }
+  const meta = MetadataStorage.instance.getModelMetadata(IndexStringModel as any).fields.get('Name') as any;
+  expect(meta?.storageHints?.indexed).toBe(true);
+  expect(meta?.column?.index).toBe('idx_custom');
+});
+
+test('Field decorator validates index type', () => {
+  expect(() => {
+    class BadIndexModel extends BaseModel {
+      @Field({ type: 'varchar', index: 42 as any } as any)
+      Name!: string;
+    }
+    return BadIndexModel;
+  }).toThrow('index must be a boolean or string');
+});
+
+test('Field decorator handles ManyToOne with custom size', () => {
+  class ManyToOneSizedModel extends BaseModel {
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => FieldTargetModel }, size: 36 } as any)
+    ParentId!: string;
+  }
+  const meta = MetadataStorage.instance.getModelMetadata(ManyToOneSizedModel as any).fields.get('ParentId') as any;
+  expect(meta?.storageHints?.size).toBe(36);
+  expect(meta?.column?.size).toBe(36);
+});

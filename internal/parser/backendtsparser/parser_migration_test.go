@@ -422,3 +422,383 @@ export default class NilFieldsModel extends BaseModel {
 		t.Fatalf("expected related spec to be skipped when path is nil, got %+v", displaySpec.Structural.Related)
 	}
 }
+
+func TestTsParser_ParseModelResolvedSpecCoversRelationTypesAndMigrationDecisions(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/migration.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('MigrationModel')
+export default class MigrationModel extends BaseModel {
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => BaseModel, inverseField: 'ParentId' } })
+  public PartnerId: string
+
+  @Field({ type: 'OneToMany', relation: { targetModel: () => BaseModel, inverseField: 'ParentId' } })
+  public Lines: any
+
+  @Field({ type: 'ManyToMany', relation: { targetModel: () => BaseModel, inverseField: 'Tags' } })
+  public Tags: any
+
+  @Field({ type: 'ManyToManyRef', relation: { targetModel: () => BaseModel } })
+  public TagIds: any
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	partnerSpec, err := fieldByName["PartnerId"].GetResolvedSpec()
+	if err != nil || partnerSpec == nil {
+		t.Fatalf("PartnerId resolved spec: err=%v spec=%v", err, partnerSpec)
+	}
+	if partnerSpec.Migration.ShouldCreateColumn != true || partnerSpec.Migration.ReasonCode != "FIELD_DEFAULT" || partnerSpec.Structural.ColumnType != "char" {
+		t.Fatalf("unexpected PartnerId migration: %+v", partnerSpec.Migration)
+	}
+
+	linesSpec, err := fieldByName["Lines"].GetResolvedSpec()
+	if err != nil || linesSpec == nil {
+		t.Fatalf("Lines resolved spec: err=%v spec=%v", err, linesSpec)
+	}
+	if linesSpec.Migration.ShouldCreateColumn != false || linesSpec.Migration.ReasonCode != "RELATION_NON_COLUMN" {
+		t.Fatalf("expected OneToMany non-column, got %+v", linesSpec.Migration)
+	}
+
+	tagsSpec, err := fieldByName["Tags"].GetResolvedSpec()
+	if err != nil || tagsSpec == nil {
+		t.Fatalf("Tags resolved spec: err=%v spec=%v", err, tagsSpec)
+	}
+	if tagsSpec.Migration.ShouldCreateColumn != false || tagsSpec.Migration.ReasonCode != "RELATION_NON_COLUMN" {
+		t.Fatalf("expected ManyToMany non-column, got %+v", tagsSpec.Migration)
+	}
+
+	tagIdsSpec, err := fieldByName["TagIds"].GetResolvedSpec()
+	if err != nil || tagIdsSpec == nil {
+		t.Fatalf("TagIds resolved spec: err=%v spec=%v", err, tagIdsSpec)
+	}
+	if tagIdsSpec.Structural.ColumnType != "jsonobject" {
+		t.Fatalf("expected ManyToManyRef columnType jsonobject, got %s", tagIdsSpec.Structural.ColumnType)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversDiagnosticBranches(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/diag.ts"
+	content := `import { Model, Field, Compute, Search, SqlCompute, Inverse } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DiagModel')
+export default class DiagModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  public PhysicalSearch: string
+
+  @Search<DiagModel>('PhysicalSearch')
+  searchPhysical() {
+    return ['Name', '=', 'A']
+  }
+
+  @Field({ type: 'varchar' })
+  public InverseOnly: string
+
+  @Inverse<DiagModel>('InverseOnly')
+  inverseOnly() {
+    this.$inverse.value()
+  }
+
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: true } })
+  public SqlRelated: string
+
+  @SqlCompute<DiagModel>('SqlRelated')
+  sqlComputeRelated() {
+    return this.$sql.field(DiagModel, 'SqlRelated')
+  }
+
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: false } })
+  public NonStoredWithInverse: string
+
+  @Inverse<DiagModel>('NonStoredWithInverse')
+  inverseNonStored() {
+    this.$inverse.value()
+  }
+
+  @Field({ type: 'varchar', size: 64 })
+  public StoreCompute: string
+
+  @Compute<DiagModel>('StoreCompute', { deps: ['StoreCompute'], store: true })
+  computeStore() {
+    return this.StoreCompute
+  }
+
+  @Field({ type: 'varchar', size: 64, required: true })
+  public RequiredVirtual: string
+
+  @Compute<DiagModel>('RequiredVirtual', { deps: ['RequiredVirtual'], store: false })
+  computeRequiredVirtual() {
+    return this.RequiredVirtual
+  }
+
+  @Field({ type: 'varchar', size: 64, related: { path: 'PartnerId.Name', store: false } })
+  public NonStoredRelated: string
+
+  @Compute<DiagModel>('NonStoredRelated', { deps: ['NonStoredRelated'], store: false })
+  computeNonStoredRelated() {
+    return this.NonStoredRelated
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	// WARN_SEARCH_ON_PHYSICAL_FIELD
+	physicalSearchSpec, _ := fieldByName["PhysicalSearch"].GetResolvedSpec()
+	foundSearchWarn := false
+	for _, d := range physicalSearchSpec.Diagnostics {
+		if d.Code == "WARN_SEARCH_ON_PHYSICAL_FIELD" && d.Severity == "warning" {
+			foundSearchWarn = true
+		}
+	}
+	if !foundSearchWarn {
+		t.Fatalf("expected WARN_SEARCH_ON_PHYSICAL_FIELD diagnostic, got %+v", physicalSearchSpec.Diagnostics)
+	}
+
+	// CONFLICT_INVERSE_WITHOUT_SOURCE
+	inverseOnlySpec, _ := fieldByName["InverseOnly"].GetResolvedSpec()
+	foundInvSrc := false
+	for _, d := range inverseOnlySpec.Diagnostics {
+		if d.Code == "CONFLICT_INVERSE_WITHOUT_SOURCE" {
+			foundInvSrc = true
+		}
+	}
+	if !foundInvSrc {
+		t.Fatalf("expected CONFLICT_INVERSE_WITHOUT_SOURCE diagnostic, got %+v", inverseOnlySpec.Diagnostics)
+	}
+
+	// CONFLICT_SQLCOMPUTE_RELATED_STORE
+	sqlRelatedSpec, _ := fieldByName["SqlRelated"].GetResolvedSpec()
+	foundSqlRelStore := false
+	for _, d := range sqlRelatedSpec.Diagnostics {
+		if d.Code == "CONFLICT_SQLCOMPUTE_RELATED_STORE" {
+			foundSqlRelStore = true
+		}
+	}
+	if !foundSqlRelStore {
+		t.Fatalf("expected CONFLICT_SQLCOMPUTE_RELATED_STORE diagnostic, got %+v", sqlRelatedSpec.Diagnostics)
+	}
+
+	// CONFLICT_INVERSE_ON_NON_STORED_RELATED
+	nonStoredSpec, _ := fieldByName["NonStoredWithInverse"].GetResolvedSpec()
+	foundNonStoredInv := false
+	for _, d := range nonStoredSpec.Diagnostics {
+		if d.Code == "CONFLICT_INVERSE_ON_NON_STORED_RELATED" {
+			foundNonStoredInv = true
+		}
+	}
+	if !foundNonStoredInv {
+		t.Fatalf("expected CONFLICT_INVERSE_ON_NON_STORED_RELATED diagnostic, got %+v", nonStoredSpec.Diagnostics)
+	}
+
+	// COMPUTE_STORE_TRUE
+	storeComputeSpec, _ := fieldByName["StoreCompute"].GetResolvedSpec()
+	if storeComputeSpec.Migration.ReasonCode != "COMPUTE_STORE_TRUE" || storeComputeSpec.Migration.ShouldCreateColumn != true {
+		t.Fatalf("expected COMPUTE_STORE_TRUE migration, got %+v", storeComputeSpec.Migration)
+	}
+
+	// CONFLICT_REQUIRED_VIRTUAL_COMPUTE
+	requiredVirtualSpec, _ := fieldByName["RequiredVirtual"].GetResolvedSpec()
+	foundReqVirtual := false
+	for _, d := range requiredVirtualSpec.Diagnostics {
+		if d.Code == "CONFLICT_REQUIRED_VIRTUAL_COMPUTE" {
+			foundReqVirtual = true
+		}
+	}
+	if !foundReqVirtual {
+		t.Fatalf("expected CONFLICT_REQUIRED_VIRTUAL_COMPUTE diagnostic, got %+v", requiredVirtualSpec.Diagnostics)
+	}
+
+	// non-stored related with compute → related store propagation
+	nonStoredRelatedSpec, _ := fieldByName["NonStoredRelated"].GetResolvedSpec()
+	if nonStoredRelatedSpec.Resolved.Store.Value != false {
+		t.Fatalf("expected non-stored related store=false, got %+v", nonStoredRelatedSpec.Resolved.Store)
+	}
+	if nonStoredRelatedSpec.Resolved.Store.Source != "@Compute" {
+		t.Fatalf("expected Compute store source, got %s", nonStoredRelatedSpec.Resolved.Store.Source)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversStorageHintVariants(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/hints.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('HintsModel')
+export default class HintsModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64, required: true, primaryKey: true, unique: true, uniqueIndex: 'uq_hints_name', index: 'idx_hints_name', default: 'default_value' })
+  public Name: string
+
+  @Field({ type: 'varchar', indexed: true })
+  public IndexedName: string
+
+  @Field({ type: 'decimal', precision: 12, scale: 4, default: 0 })
+  public Amount: string
+
+  @Field({ type: 'varchar', notNull: true })
+  public NotNullName: string
+
+  @Field({ type: 'varchar', index: 'idx_custom' })
+  public CustomIndex: string
+
+  @Field({ type: 'varchar', index: true })
+  public BoolIndex: string
+
+  @Field({ type: 'varchar', default: 42 })
+  public NumDefault: string
+
+  @Field({ type: 'varchar', checkConstraint: 'status in (draft,done)' })
+  public CheckedStatus: string
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	nameSpec, err := fieldByName["Name"].GetResolvedSpec()
+	if err != nil || nameSpec == nil {
+		t.Fatalf("Name resolved spec: err=%v", err)
+	}
+	h := nameSpec.Structural.StorageHints
+	if h == nil {
+		t.Fatal("expected storage hints")
+	}
+	if h.PrimaryKey == nil || !*h.PrimaryKey {
+		t.Fatal("expected primaryKey=true")
+	}
+	if h.Unique == nil || !*h.Unique {
+		t.Fatal("expected unique=true")
+	}
+	if h.UniqueIndex == nil || *h.UniqueIndex != "uq_hints_name" {
+		t.Fatalf("expected uniqueIndex string, got %v", h.UniqueIndex)
+	}
+	if h.Index == nil || *h.Index != "idx_hints_name" {
+		t.Fatalf("expected named index, got %v", h.Index)
+	}
+	if h.Indexed == nil || !*h.Indexed {
+		t.Fatal("expected Indexed to be true when index string is set")
+	}
+	if h.Required == nil || !*h.Required {
+		t.Fatal("expected required=true")
+	}
+	if h.Default == nil || *h.Default != "default_value" {
+		t.Fatalf("expected default='default_value', got %v", h.Default)
+	}
+
+	amountSpec, _ := fieldByName["Amount"].GetResolvedSpec()
+	ah := amountSpec.Structural.StorageHints
+	if ah == nil || ah.Precision == nil || *ah.Precision != 12 || ah.Scale == nil || *ah.Scale != 4 {
+		t.Fatalf("expected precision=12 scale=4, got %+v", ah)
+	}
+	if ah.Default == nil || *ah.Default != "0" {
+		t.Fatalf("expected numeric default '0', got %v", ah.Default)
+	}
+
+	notNullSpec, _ := fieldByName["NotNullName"].GetResolvedSpec()
+	nh := notNullSpec.Structural.StorageHints
+	if nh == nil || nh.Required == nil || !*nh.Required {
+		t.Fatal("expected required=true from notNull")
+	}
+
+	customIdxSpec, _ := fieldByName["CustomIndex"].GetResolvedSpec()
+	ch := customIdxSpec.Structural.StorageHints
+	if ch == nil || ch.Index == nil || *ch.Index != "idx_custom" || ch.Indexed == nil || !*ch.Indexed {
+		t.Fatalf("expected named index hint, got %+v", ch)
+	}
+
+	boolIdxSpec, _ := fieldByName["BoolIndex"].GetResolvedSpec()
+	bh := boolIdxSpec.Structural.StorageHints
+	if bh == nil || bh.Indexed == nil || !*bh.Indexed {
+		t.Fatalf("expected boolean index hint, got %+v", bh)
+	}
+
+	numDefaultSpec, _ := fieldByName["NumDefault"].GetResolvedSpec()
+	ndh := numDefaultSpec.Structural.StorageHints
+	if ndh == nil || ndh.Default == nil || *ndh.Default != "42" {
+		t.Fatalf("expected numeric default '42', got %v", ndh)
+	}
+
+	checkedSpec, _ := fieldByName["CheckedStatus"].GetResolvedSpec()
+	if checkedSpec.Structural.CheckConstraint != "status in (draft,done)" {
+		t.Fatalf("expected checkConstraint, got %q", checkedSpec.Structural.CheckConstraint)
+	}
+}
+
+func TestTsParser_ParseModelResolvedSpecCoversCollectBehaviorBindingsBranches(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/behaviors.ts"
+	content := `import { Model, Field, Inverse, Compute } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BehaviorsModel')
+export default class BehaviorsModel extends BaseModel {
+  @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: true } })
+  public DisplayName: string
+
+  @Compute<BehaviorsModel>('DisplayName', { deps: ['PartnerId'], store: false })
+  computeDn() {
+    return this.DisplayName
+  }
+
+  @Inverse<BehaviorsModel>('DisplayName')
+  inverseDn() {
+    this.$inverse.value()
+  }
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	spec, err := fieldByName["DisplayName"].GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("DisplayName resolved spec: err=%v", err)
+	}
+	if spec.Behavior.Compute == nil || spec.Behavior.Inverse == nil {
+		t.Fatalf("expected both Compute and Inverse, got %+v", spec.Behavior)
+	}
+}

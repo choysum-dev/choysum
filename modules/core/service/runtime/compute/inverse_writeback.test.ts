@@ -165,3 +165,111 @@ test('inverse writeback throws INVERSE_HANDLER_REQUIRED when related auto path i
   expect(message.includes('INVERSE_HANDLER_REQUIRED')).toBe(true);
   expect(message.includes('InverseInvalidPathModel.DisplayName')).toBe(true);
 });
+
+test('inverse writeback throws when related.store=false without explicit handler', async () => {
+  class NoHandlerModel extends BaseModel {}
+
+  const meta = {
+    type: NoHandlerModel,
+    modelName: 'NoHandlerModel',
+    fields: new Map([
+      [
+        'DisplayName',
+        {
+          type: 'varchar',
+          related: {
+            path: 'PartnerId.Name',
+            store: false,
+          },
+        },
+      ],
+    ]),
+  } as any;
+
+  await expect(applyInverseWriteback(meta, { DisplayName: 'Test' })).rejects.toThrow(
+    'related.store=false and cannot be written'
+  );
+});
+
+test('inverse writeback skips compute-field writes without related when no handler', async () => {
+  class ComputeOnlyModel extends BaseModel {}
+
+  const meta = {
+    type: ComputeOnlyModel,
+    modelName: 'ComputeOnlyModel',
+    fields: new Map([
+      [
+        'DisplayName',
+        {
+          type: 'varchar',
+          column: { compute: { deps: ['Name'] } },
+        },
+      ],
+    ]),
+    computeHandlers: new Map([['DisplayName', { method: 'computeDisplayName' }]]),
+  } as any;
+
+  const rewritten = await applyInverseWriteback(meta, { DisplayName: 'computed-value' });
+  // Compute-field write is kept untouched for platform validation.
+  expect(rewritten).toEqual({ DisplayName: 'computed-value' });
+});
+
+test('inverse writeback uses readPath from inverse context', async () => {
+  class ReadPathModel extends BaseModel {
+    @Field({ type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel } })
+    PartnerId?: InverseTargetModel;
+
+    @Field({
+      type: 'varchar',
+      related: { path: 'PartnerId.Name', store: true },
+    } as any)
+    override DisplayName!: string;
+
+    @Inverse<ReadPathModel>('DisplayName')
+    inverseDisplayName() {
+      const ctx = this.$inverse as any;
+      const existing = ctx.readPath('PartnerId.Name');
+      ctx.writePath('PartnerId.Name', String(existing || '') + '_' + ctx.value());
+    }
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(ReadPathModel as any);
+  const rewritten = await applyInverseWriteback(meta, {
+    DisplayName: 'Suffix',
+    PartnerId: { Name: 'ExistingName' },
+  });
+
+  expect(rewritten).toEqual({
+    PartnerId: { Name: 'ExistingName_Suffix' },
+  });
+});
+
+test('inverse writeback handles legacy column.compute.inverse method reference', async () => {
+  class LegacyInverseModel extends BaseModel {}
+
+  const meta = {
+    type: LegacyInverseModel,
+    modelName: 'LegacyInverseModel',
+    fields: new Map([
+      [
+        'DisplayName',
+        {
+          type: 'varchar',
+          related: { path: 'PartnerId.Name', store: true },
+          column: { compute: { inverse: 'legacyHandler' } },
+        },
+      ],
+      ['PartnerId', { type: 'ManyToOne', relation: { targetModel: () => InverseTargetModel }, column: {} }],
+    ]),
+  } as any;
+
+  let message = '';
+  try {
+    await applyInverseWriteback(meta, { DisplayName: 'Test' });
+  } catch (error) {
+    message = String((error as Error)?.message || error);
+  }
+  // Legacy handler name should be resolved but the method won't exist
+  expect(message).toContain('@Inverse handler not found');
+  expect(message).toContain('legacyHandler');
+});

@@ -49,3 +49,36 @@ test('bridge context enforces instance checks', () => {
     expect(() => currentBridgeFrame(second, 'inverse')).toThrow('BRIDGE_CONTEXT_INSTANCE_MISMATCH');
   });
 });
+
+test('bridge context rejects unknown kind', () => {
+  const instance = {};
+  expect(() => {
+    withBridgeFrame(instance, 'unknown' as any, {}, () => {});
+  }).toThrow('BRIDGE_CONTEXT_UNAVAILABLE');
+});
+
+test('bridge context rejects non-object instance', () => {
+  expect(() => {
+    withBridgeFrame(null as any, 'sql', {}, () => {});
+  }).toThrow('BRIDGE_CONTEXT_UNAVAILABLE');
+
+  expect(() => {
+    withBridgeFrame(42 as any, 'sql', {}, () => {});
+  }).toThrow('BRIDGE_CONTEXT_UNAVAILABLE');
+});
+
+test('bridge context isolates the same instance across sequential calls', () => {
+  const instance = {};
+
+  const first = withBridgeFrame(instance, 'sql', { token: 'first' }, () =>
+    currentBridgeFrame<{ token: string }>(instance, 'sql').token
+  );
+  expect(first).toBe('first');
+  // Frame is expired after first call completes
+  expect(() => currentBridgeFrame(instance, 'sql')).toThrow('BRIDGE_CONTEXT_EXPIRED');
+
+  const second = withBridgeFrame(instance, 'sql', { token: 'second' }, () =>
+    currentBridgeFrame<{ token: string }>(instance, 'sql').token
+  );
+  expect(second).toBe('second');
+});

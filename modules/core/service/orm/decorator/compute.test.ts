@@ -56,3 +56,39 @@ test('@Compute validates non-empty deps and parameterless method', () => {
     return ComputeMethodArgsModel;
   }).toThrow('method must be parameterless');
 });
+
+test('@Compute with store=true and no searchable defaults correctly', () => {
+  class ComputeDefaultStoreModel extends BaseModel {
+    @Field({ type: 'varchar', size: 64 } as any)
+    Name?: string;
+
+    @Compute<ComputeDefaultStoreModel>('Name', { deps: ['Id'] })
+    computeName() {
+      return undefined;
+    }
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(ComputeDefaultStoreModel as any);
+  const handler = meta.computeHandlers?.get('Name') as any;
+
+  expect(handler?.store).toBe(true);
+  expect(handler?.searchable).toBeUndefined();
+  expect(handler?.runAs).toBeUndefined();
+});
+
+test('@Compute deduplicates deps', () => {
+  class ComputeDedupModel extends BaseModel {
+    @Field({ type: 'varchar', size: 64 } as any)
+    Name?: string;
+
+    @Compute<ComputeDedupModel>('Name', { deps: ['Id', 'Name', 'Id', 'Name'] })
+    computeName() {
+      return undefined;
+    }
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(ComputeDedupModel as any);
+  const handler = meta.computeHandlers?.get('Name') as any;
+
+  expect(handler.deps).toEqual(['Id', 'Name']);
+});
