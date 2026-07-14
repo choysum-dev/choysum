@@ -857,13 +857,13 @@ export default class BehaviorsModel extends BaseModel {
 
 func TestGetProtoTypeFromTsType_EdgeCases(t *testing.T) {
 	tests := map[string]string{
-		"":                "google.protobuf.Value",
-		"   ":             "google.protobuf.Value",
-		"  string  ":      "string",
-		"Promise<void>":   "google.protobuf.Empty",
+		"":                 "google.protobuf.Value",
+		"   ":              "google.protobuf.Value",
+		"  string  ":       "string",
+		"Promise<void>":    "google.protobuf.Empty",
 		"Promise<boolean>": "bool",
-		"Promise<string>": "string",
-		"Promise<Custom>": "google.protobuf.Value",
+		"Promise<string>":  "string",
+		"Promise<Custom>":  "google.protobuf.Value",
 	}
 	for input, want := range tests {
 		if got := getProtoTypeFromTsType(input); got != want {

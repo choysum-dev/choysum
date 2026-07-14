@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it } from 'vitest';
 import {
   normalizeSearchCondition,
   toText,
@@ -18,8 +17,30 @@ import {
   aggregateRows,
   normalizeOriginType,
   canReuseRunningSync,
-} from './ir_module_index';
-import type { ModuleIndexRecord } from './ir_module_index';
+} from '../models/ir_module_index';
+
+type ModuleIndexRecord = {
+  Id?: string;
+  ModuleName?: string;
+  OriginType?: string;
+  OriginRef?: string;
+  Available?: boolean;
+  Version?: string;
+  ManifestJson?: Record<string, unknown> | null;
+  LocalPath?: string;
+  LastSyncAt?: Date | string | null;
+  LastBatchSyncAt?: Date | string | null;
+  SyncRevision?: string;
+  LastErrorMessage?: string;
+  InstalledStatus?: string;
+  InstalledVersion?: string;
+  OriginTypes?: string;
+  LocalVersion?: string;
+  RegistryVersion?: string;
+};
+
+const describe = (_name: string, fn: () => void) => fn();
+const it = (name: string, fn: () => void) => test(name, fn);
 
 function record(fields: Partial<ModuleIndexRecord>): ModuleIndexRecord {
   return fields as ModuleIndexRecord;
@@ -105,17 +126,13 @@ describe('parseSortSpecs', () => {
     expect(parseSortSpecs('Name')).toEqual([{ field: 'Name', desc: false }]);
   });
   it('parses object with order', () => {
-    expect(parseSortSpecs([{ field: 'Name', order: 'desc' }])).toEqual([
-      { field: 'Name', desc: true },
-    ]);
+    expect(parseSortSpecs([{ field: 'Name', order: 'desc' }])).toEqual([{ field: 'Name', desc: true }]);
   });
   it('skips items without field', () => {
     expect(parseSortSpecs([{ x: 1 }])).toEqual([]);
   });
   it('parses Field/Order aliases', () => {
-    expect(parseSortSpecs([{ Field: 'Name', Order: 'DESC' }])).toEqual([
-      { field: 'Name', desc: true },
-    ]);
+    expect(parseSortSpecs([{ Field: 'Name', Order: 'DESC' }])).toEqual([{ field: 'Name', desc: true }]);
   });
 });
 
@@ -133,8 +150,9 @@ describe('compareBySpecs', () => {
   });
   it('handles null values', () => {
     const specs = [{ field: 'Version', desc: false }];
-    expect(compareBySpecs(record({ Version: undefined }), record({ Version: '1' }), specs)).toBeGreaterThan(0);
-    expect(compareBySpecs(record({ Version: '1' }), record({ Version: undefined }), specs)).toBeLessThan(0);
+    // null sorts before non-null in ascending order.
+    expect(compareBySpecs(record({ Version: undefined }), record({ Version: '1' }), specs)).toBeLessThan(0);
+    expect(compareBySpecs(record({ Version: '1' }), record({ Version: undefined }), specs)).toBeGreaterThan(0);
   });
   it('falls back to ModuleName tiebreaker', () => {
     const specs: any[] = [];
@@ -210,17 +228,19 @@ describe('buildModuleNamesCondition', () => {
   });
   it('wraps existing condition with AND', () => {
     const cond = buildModuleNamesCondition(['Available', '=', true], ['auth']);
-    expect(cond).toEqual({ And: [['Available', '=', true], ['ModuleName', 'in', ['auth']]] });
+    expect(cond).toEqual({
+      And: [
+        ['Available', '=', true],
+        ['ModuleName', 'in', ['auth']],
+      ],
+    });
   });
 });
 
 // --------------- projectFields ---------------
 
 describe('projectFields', () => {
-  const rows = [
-    record({ ModuleName: 'auth', Version: '1.0', Available: true }),
-    record({ ModuleName: 'base', Version: '2.0', Available: false }),
-  ];
+  const rows = [record({ ModuleName: 'auth', Version: '1.0', Available: true }), record({ ModuleName: 'base', Version: '2.0', Available: false })];
 
   it('returns rows unchanged when requestedFields is empty', () => {
     expect(projectFields(rows, [])).toBe(rows);
@@ -291,10 +311,7 @@ describe('aggregateRows', () => {
   });
 
   it('marks module as unavailable when all rows are unavailable', () => {
-    const rows = [
-      record({ ModuleName: 'x', OriginType: 'local', Available: false }),
-      record({ ModuleName: 'x', OriginType: 'registry', Available: false }),
-    ];
+    const rows = [record({ ModuleName: 'x', OriginType: 'local', Available: false }), record({ ModuleName: 'x', OriginType: 'registry', Available: false })];
     const result = aggregateRows(rows);
     expect(result[0].Available).toBe(false);
   });

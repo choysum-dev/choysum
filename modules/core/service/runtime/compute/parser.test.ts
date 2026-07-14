@@ -35,8 +35,7 @@ class ParseDepsCustomer extends BaseModel {
 
 @Model('test.ParseDepsCustomerOrder')
 class ParseDepsCustomerOrder extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsCustomer } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsCustomer } })
   CustomerId?: ParseDepsCustomer;
 
   @Field({ type: 'varchar', size: 64 })
@@ -45,8 +44,7 @@ class ParseDepsCustomerOrder extends BaseModel {
 
 @Model('test.ParseDepsLine')
 class ParseDepsLine extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsModel } })
   ParentId?: ParseDepsModel;
 }
 
@@ -58,12 +56,10 @@ class ParseDepsTag extends BaseModel {
 
 @Model('test.ParseDepsModelTag')
 class ParseDepsModelTag extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsModel } })
   ParentId!: ParseDepsModel;
 
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsTag } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsTag } })
   TagId!: ParseDepsTag;
 }
 
@@ -72,8 +68,7 @@ class ParseDepsModel extends BaseModel {
   @Field({ type: 'varchar', size: 64 })
   Name?: string;
 
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsCustomer } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsCustomer } })
   CustomerId?: ParseDepsCustomer;
 
   @Field({
@@ -96,8 +91,7 @@ class ParseDepsModel extends BaseModel {
 
 @Model('test.ParseDepsMissingTarget')
 class ParseDepsMissingTarget extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: {} as any })
+  @Field({ type: 'ManyToOne', relation: {} as any })
   BrokenRef?: any;
 }
 
@@ -105,15 +99,15 @@ class ParseDepsMissingTarget extends BaseModel {
 
 @Model('test.AutoInvLeafRelation')
 class AutoInvLeafRelation extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => ParseDepsModel } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => ParseDepsModel } })
   PartnerId?: ParseDepsModel;
 }
 
 @Model('test.AutoInvVirtualRelatedTarget')
 class AutoInvVirtualRelatedTarget extends BaseModel {
   @Field({
-    type: 'varchar', size: 64,
+    type: 'varchar',
+    size: 64,
     related: { store: false, path: 'SomeId.SomeField' },
   } as any)
   VirtualName?: string;
@@ -121,8 +115,7 @@ class AutoInvVirtualRelatedTarget extends BaseModel {
 
 @Model('test.AutoInvLeafVirtualRelated')
 class AutoInvLeafVirtualRelated extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => AutoInvVirtualRelatedTarget } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => AutoInvVirtualRelatedTarget } })
   ParentId?: AutoInvVirtualRelatedTarget;
 }
 
@@ -138,8 +131,7 @@ class AutoInvComputedLeafTarget extends BaseModel {
 
 @Model('test.AutoInvComputedLeaf')
 class AutoInvComputedLeaf extends BaseModel {
-  @Field({ type: 'ManyToOne',
-    relation: { targetModel: () => AutoInvComputedLeafTarget } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => AutoInvComputedLeafTarget } })
   ParentId?: AutoInvComputedLeafTarget;
 }
 
@@ -362,9 +354,7 @@ test('validateAutoInverseRelatedPath rejects when root field does not exist on m
 test('validateAutoInverseRelatedPath rejects when root is missing relation.targetModel', () => {
   const meta = {
     fullModelName: 'test.RootNoTarget',
-    fields: new Map([
-      ['Parent', { type: 'ManyToOne', relation: {} }],
-    ]),
+    fields: new Map([['Parent', { type: 'ManyToOne', relation: {} }]]),
   } as any;
 
   expect(() => validateAutoInverseRelatedPath(meta, 'F', 'Parent.Name')).toThrow('missing relation.targetModel');
