@@ -187,17 +187,19 @@ describe('buildSortPushdownPlan', () => {
       { field: 'LastBatchSyncAt', desc: true },
     ]);
     expect(plan.supported).toBe(true);
-    expect(plan.orderBy).toHaveLength(5); // 4 fields + ModuleName fallback
+    // ModuleName already in sortSpecs, so fallback does not add a duplicate.
+    expect(plan.orderBy).toHaveLength(4);
     expect(plan.aggregateFields).toHaveLength(3); // Available, LastSyncAt, LastBatchSyncAt
   });
   it('returns unsupported for unknown field', () => {
     const plan = buildSortPushdownPlan([{ field: 'UnknownField', desc: false }]);
     expect(plan.supported).toBe(false);
   });
-  it('always adds ModuleName as final sort', () => {
-    const plan = buildSortPushdownPlan([{ field: 'ModuleName', desc: false }]);
+  it('appends ModuleName as final sort when not in spec list', () => {
+    const plan = buildSortPushdownPlan([{ field: 'Available', desc: false }]);
     expect(plan.supported).toBe(true);
-    expect(plan.orderBy).toHaveLength(1);
+    expect(plan.orderBy).toHaveLength(2); // Available + fallback ModuleName
+    expect(plan.orderBy[1].field).toBe('ModuleName');
   });
 });
 
