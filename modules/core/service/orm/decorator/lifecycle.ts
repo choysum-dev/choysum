@@ -126,6 +126,15 @@ function assertStaticLifecycleMethod(kind: LifecycleDecoratorKind, args: Normali
   throw new Error(`${code}: ${decorator} on ${name} must be static and must not rely on this`);
 }
 
+function readMethodFromTarget(target: unknown, propertyKey: unknown): unknown {
+  if (target == null || propertyKey == null) return undefined;
+  const key = String(propertyKey);
+  if (typeof target === 'function' || (typeof target === 'object' && target !== null)) {
+    return (target as Record<string, unknown>)[key];
+  }
+  return undefined;
+}
+
 function normalizeDecoratorArgs(args: unknown[]): NormalizedDecoratorArgs {
   const second = args.length > 1 ? asObjectRecord(args[1]) : undefined;
   if (args.length === 2 && second && 'kind' in second) {
@@ -139,9 +148,18 @@ function normalizeDecoratorArgs(args: unknown[]): NormalizedDecoratorArgs {
   const propertyKey = args.length > 1 ? args[1] : undefined;
   const descriptor = (args.length > 2 ? args[2] : undefined) as { value?: unknown } | undefined;
   const descriptorFn = descriptor?.value;
-  const name = propertyKey != null ? String(propertyKey) : typeof descriptorFn === 'function' ? descriptorFn.name : '';
-  const fn = descriptorFn;
+  const fn =
+    typeof descriptorFn === 'function'
+      ? descriptorFn
+      : readMethodFromTarget(target, propertyKey);
+  const name =
+    propertyKey != null ? String(propertyKey) : typeof fn === 'function' ? (fn as { name?: string }).name || '' : '';
   return { fn, name, target };
+}
+
+function assertMigrationOptions(options: MigrationOptions | undefined, name: string): void {
+  if (options?.version && options?.phase) return;
+  throw new Error(`LIFECYCLE_MIGRATION_INVALID_OPTIONS: @Migration on ${name} requires both version and phase`);
 }
 
 function createHookDecorator(phase: HookPhase): MethodDecorator {
@@ -166,6 +184,7 @@ export function Migration(options: MigrationOptions): MethodDecorator {
     const finalName = options?.name ? String(options.name) : (normalized.name ?? '');
     if (!normalized.fn || !finalName) return;
     assertStaticLifecycleMethod('migration', { ...normalized, name: finalName });
+    assertMigrationOptions(options, finalName);
     registerMigration(options, finalName, normalized.fn);
   };
 }
