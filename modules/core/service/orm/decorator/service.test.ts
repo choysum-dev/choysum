@@ -669,14 +669,9 @@ test('service wrapper rejects onchange-write proxy thisArg', async () => {
   const draft = createWriteProxy(base, () => {});
   expect(getProxyKind(draft)).toBe('onchange-write');
 
-  let error: any;
-  try {
+  await expectRejects(async () => {
     await (ServiceDecoratorParent as any).Echo.call(draft, { ok: 1 });
-  } catch (e) {
-    error = e;
-  }
-  expect(String(error?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
-  expect(String(error?.message || '')).toContain('kind=onchange-write');
+  }, /SERVICE_WRAPPER_INVALID_THIS.*kind=onchange-write/);
 });
 
 test('service wrapper rejects nested onchange-write proxy thisArg', async () => {
@@ -686,14 +681,9 @@ test('service wrapper rejects nested onchange-write proxy thisArg', async () => 
   const nested = draft.profile;
   expect(getProxyKind(nested)).toBe('onchange-write');
 
-  let error: any;
-  try {
+  await expectRejects(async () => {
     await (ServiceDecoratorParent as any).Echo.call(nested, { ok: 1 });
-  } catch (e) {
-    error = e;
-  }
-  expect(String(error?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
-  expect(String(error?.message || '')).toContain('kind=onchange-write');
+  }, /SERVICE_WRAPPER_INVALID_THIS.*kind=onchange-write/);
 });
 
 test('service wrapper rejects onchange-preview and constraint-draft proxy thisArg', async () => {
@@ -707,24 +697,16 @@ test('service wrapper rejects onchange-preview and constraint-draft proxy thisAr
   });
   expect(getProxyKind(preview)).toBe('onchange-preview');
 
-  let previewError: any;
-  try {
+  await expectRejects(async () => {
     await (ServiceDecoratorParent as any).Echo.call(preview, { ok: 2 });
-  } catch (e) {
-    previewError = e;
-  }
-  expect(String(previewError?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
+  }, /SERVICE_WRAPPER_INVALID_THIS/);
 
   const constraintDraft = new Proxy(base, {});
   markProxyKind(constraintDraft, 'constraint-draft');
 
-  let constraintError: any;
-  try {
+  await expectRejects(async () => {
     await (ServiceDecoratorParent as any).Echo.call(constraintDraft, { ok: 3 });
-  } catch (e) {
-    constraintError = e;
-  }
-  expect(String(constraintError?.message || '')).toContain('kind=constraint-draft');
+  }, /kind=constraint-draft/);
 });
 
 test('service wrapper rejects bridge-execution and model-hydrate proxy thisArg', async () => {
@@ -736,24 +718,16 @@ test('service wrapper rejects bridge-execution and model-hydrate proxy thisArg',
     return undefined;
   });
 
-  let bridgeError: any;
-  try {
+  await expectRejects(async () => {
     await (ServiceDecoratorParent as any).Echo.call(bridgeExecution, { ok: 4 });
-  } catch (e) {
-    bridgeError = e;
-  }
-  expect(String(bridgeError?.message || '')).toContain('kind=bridge-execution');
+  }, /kind=bridge-execution/);
 
   const hydrateProxy = new Proxy(base, {});
   markProxyKind(hydrateProxy, 'model-hydrate');
 
-  let hydrateError: any;
-  try {
+  await expectRejects(async () => {
     await (ServiceDecoratorParent as any).Echo.call(hydrateProxy, { ok: 5 });
-  } catch (e) {
-    hydrateError = e;
-  }
-  expect(String(hydrateError?.message || '')).toContain('kind=model-hydrate');
+  }, /kind=model-hydrate/);
 });
 
 test('class-level service wrapper call still works when proxy is not used as thisArg', async () => {
@@ -766,13 +740,12 @@ test('service wrapper invalid thisArg does not increment service depth', async (
   const restore = setRequest(req);
   const draft = createWriteProxy(Object.create(ServiceDecoratorParent.prototype), () => {});
 
-  let error: any;
   try {
-    await (ServiceDecoratorParent as any).Echo.call(draft, {});
-  } catch (e) {
-    error = e;
+    await expectRejects(async () => {
+      await (ServiceDecoratorParent as any).Echo.call(draft, {});
+    }, /SERVICE_WRAPPER_INVALID_THIS/);
+    expect(req.__choysumServiceState?.depth ?? 0).toBe(0);
+  } finally {
+    restore();
   }
-  expect(String(error?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
-  expect(req.__choysumServiceState?.depth ?? 0).toBe(0);
-  restore();
 });
