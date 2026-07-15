@@ -121,6 +121,9 @@ func TestRunnerHelpers(t *testing.T) {
 	if wrapper := runner.buildMigrationWrapperScript(); wrapper == nil || !strings.Contains(wrapper.Content, `__choysum_migration_list__`) || !strings.Contains(wrapper.Content, `MIGRATION_FAILED`) {
 		t.Fatalf("unexpected migration wrapper: %#v", wrapper)
 	}
+	if wrapper := runner.buildMigrationWrapperScript(); wrapper == nil || !strings.Contains(wrapper.Content, `await fn()`) || strings.Contains(wrapper.Content, `fn.call(`) || strings.Contains(wrapper.Content, `fn.apply(`) {
+		t.Fatalf("migration wrapper must invoke handlers with bare await fn() (no call/apply): %#v", wrapper)
+	}
 	runner.module.Name = "base"
 
 	runner.module.ServiceEntryPoint = ""

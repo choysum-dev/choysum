@@ -270,6 +270,9 @@ func TestRunnerBuildScriptsAndContexts(t *testing.T) {
 	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `__choysum_hook__ = async function (app, moduleName, phase)`) || !strings.Contains(script.Content, `HOOK_UNSUPPORTED`) {
 		t.Fatalf("unexpected hook wrapper script: %#v", script)
 	}
+	if script := runner.buildHookWrapperScript(); script == nil || !strings.Contains(script.Content, `await fn()`) || strings.Contains(script.Content, `fn.call(`) || strings.Contains(script.Content, `fn.apply(`) {
+		t.Fatalf("hook wrapper must invoke handlers with bare await fn() (no call/apply): %#v", script)
+	}
 	runner.module.ApplicationStr = ""
 	runner.module.Name = ""
 	if script := runner.buildHookWrapperScript(); script == nil {
