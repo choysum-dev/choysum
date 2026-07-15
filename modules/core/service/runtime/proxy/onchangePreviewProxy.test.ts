@@ -149,6 +149,7 @@ test('preview proxy set trap passes through symbols non-fields and model fields'
   (proxy as any).Name = 'Alice';
 
   expect(base[sym]).toBe(1);
+  expect((proxy as any)[sym]).toBe(1);
   expect(base.TempFlag).toBe(true);
   expect(base.Name).toBe('Alice');
 });

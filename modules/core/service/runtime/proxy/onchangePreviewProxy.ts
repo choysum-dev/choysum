@@ -44,6 +44,9 @@ export function createPreviewProxy<T extends BaseModel>(base: T, ctx: PreviewPro
 
   const preview = new Proxy(base, {
     get(target, prop, receiver) {
+      if (typeof prop === 'symbol') {
+        return Reflect.get(target, prop, receiver);
+      }
       const key = String(prop);
       const original = Reflect.get(target, prop, receiver);
       const fieldMeta = fields.get(key);
