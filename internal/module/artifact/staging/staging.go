@@ -334,7 +334,10 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 //
 // Layout:
 //
-//	<workspace>/.choysum/tmp/staging/<opid>/<target-hash>  (stagingDir)
+//	<tmpRoot>/staging/<opid>/<target-hash>  (stagingDir)
+//
+// tmpRoot is provided via WithTmpRoot(ctx, ...) and usually comes from
+// runtime tmpPath (which defaults to <defaultChoysumPath>/tmp).
 //
 // The swap is best-effort atomic and uses rename to promote stagingDir.
 func WithStagingDir(ctx context.Context, targetDir string, fn func(stagingDir string) error) error {
