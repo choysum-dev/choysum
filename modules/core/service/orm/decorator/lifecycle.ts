@@ -191,12 +191,33 @@ function assertMigrationOptions(options: MigrationOptions | undefined, name: str
   );
 }
 
+function assertHookNameUnique(ctx: RegistryContext | null, name: string, fn: unknown): void {
+  if (!ctx) return;
+  const existing = ctx.root.hook?.[name];
+  if (existing !== undefined && existing !== fn) {
+    throw new Error(
+      `LIFECYCLE_HOOK_DUPLICATE_NAME: A hook named '${name}' is already registered. Hook names must be unique within a module to prevent silent overwrites.`
+    );
+  }
+}
+
+function assertMigrationNameUnique(ctx: RegistryContext | null, version: string, phase: MigrationPhase, name: string, fn: unknown): void {
+  if (!ctx) return;
+  const existing = ctx.root.migration?.[version]?.[phase]?.[name];
+  if (existing !== undefined && existing !== fn) {
+    throw new Error(
+      `LIFECYCLE_MIGRATION_DUPLICATE_NAME: A migration named '${name}' for version '${version}' and phase '${phase}' is already registered. Migration names must be unique within the same version and phase.`
+    );
+  }
+}
+
 function createHookDecorator(phase: HookPhase): MethodDecorator {
   return (...args: unknown[]) => {
     const normalized = normalizeDecoratorArgs(args);
     assertResolvedLifecycleMethod('hook', normalized.name ?? '', normalized.fn, normalized);
     if (!normalized.fn || !normalized.name) return;
     assertStaticLifecycleMethod('hook', normalized);
+    assertHookNameUnique(ensureModuleRoot(), normalized.name, normalized.fn);
     registerHook(phase, normalized.name, normalized.fn);
   };
 }
@@ -216,6 +237,7 @@ export function Migration(options: MigrationOptions): MethodDecorator {
     if (!normalized.fn || !finalName) return;
     assertStaticLifecycleMethod('migration', { ...normalized, name: finalName });
     assertMigrationOptions(options, finalName);
+    assertMigrationNameUnique(ensureModuleRoot(), options.version, options.phase, finalName, normalized.fn);
     registerMigration(options, finalName, normalized.fn);
   };
 }

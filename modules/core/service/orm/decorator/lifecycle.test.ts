@@ -342,3 +342,35 @@ test('stage-3 decorator path ignores missing method name', () => {
     expect(moduleRoot()?.hook?.ensureNameless).toBeUndefined();
   });
 });
+
+test('duplicate hook registration with different functions throws LIFECYCLE_HOOK_DUPLICATE_NAME', () => {
+  withModuleEnv(() => {
+    class HostA {
+      static async init() {}
+    }
+    class HostB {
+      static async init() {}
+    }
+    const decorate = HookPostInit();
+    decorate(HostA, 'init', Object.getOwnPropertyDescriptor(HostA, 'init')!);
+    expect(() => {
+      decorate(HostB, 'init', Object.getOwnPropertyDescriptor(HostB, 'init')!);
+    }).toThrow(/LIFECYCLE_HOOK_DUPLICATE_NAME/);
+  });
+});
+
+test('duplicate migration registration with different functions throws LIFECYCLE_MIGRATION_DUPLICATE_NAME', () => {
+  withModuleEnv(() => {
+    class HostA {
+      static async migrate() {}
+    }
+    class HostB {
+      static async migrate() {}
+    }
+    const decorate = Migration({ version: '1.0.0', phase: 'pre' });
+    decorate(HostA, 'migrate', Object.getOwnPropertyDescriptor(HostA, 'migrate')!);
+    expect(() => {
+      decorate(HostB, 'migrate', Object.getOwnPropertyDescriptor(HostB, 'migrate')!);
+    }).toThrow(/LIFECYCLE_MIGRATION_DUPLICATE_NAME/);
+  });
+});
