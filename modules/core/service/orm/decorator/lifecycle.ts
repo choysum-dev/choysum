@@ -94,26 +94,54 @@ function registerMigration(opts: MigrationOptions, name: string, fn: unknown): v
   ctx.root.__migrationRegistry__ = registry;
 }
 
-function normalizeDecoratorArgs(args: unknown[]): { fn?: unknown; name?: string } {
+type NormalizedDecoratorArgs = {
+  fn?: unknown;
+  name?: string;
+  /** Legacy decorator target (ctor for static, prototype for instance). */
+  target?: unknown;
+  /** Stage-3 context.static when available. */
+  isStaticHint?: boolean;
+};
+
+type LifecycleDecoratorKind = 'hook' | 'migration';
+
+function assertStaticLifecycleMethod(kind: LifecycleDecoratorKind, args: NormalizedDecoratorArgs): void {
+  const name = args.name || '(anonymous)';
+  const isStatic =
+    typeof args.isStaticHint === 'boolean' ? args.isStaticHint : typeof args.target === 'function';
+
+  if (isStatic) return;
+
+  const code =
+    kind === 'hook' ? 'LIFECYCLE_HOOK_INSTANCE_METHOD_FORBIDDEN' : 'LIFECYCLE_MIGRATION_INSTANCE_METHOD_FORBIDDEN';
+  const decorator = kind === 'hook' ? '@Hook*' : '@Migration';
+  throw new Error(`${code}: ${decorator} on ${name} must be static and must not rely on this`);
+}
+
+function normalizeDecoratorArgs(args: unknown[]): NormalizedDecoratorArgs {
   const second = args.length > 1 ? asObjectRecord(args[1]) : undefined;
   if (args.length === 2 && second && 'kind' in second) {
     const value = args[0];
     const name = second.name != null ? String(second.name) : '';
-    return { fn: value, name };
+    const isStaticHint = typeof second.static === 'boolean' ? second.static : undefined;
+    return { fn: value, name, isStaticHint };
   }
 
+  const target = args.length > 0 ? args[0] : undefined;
   const propertyKey = args.length > 1 ? args[1] : undefined;
   const descriptor = (args.length > 2 ? args[2] : undefined) as { value?: unknown } | undefined;
   const descriptorFn = descriptor?.value;
   const name = propertyKey != null ? String(propertyKey) : typeof descriptorFn === 'function' ? descriptorFn.name : '';
   const fn = descriptorFn;
-  return { fn, name };
+  return { fn, name, target };
 }
 
 function createHookDecorator(phase: HookPhase): MethodDecorator {
   return (...args: unknown[]) => {
-    const { fn, name } = normalizeDecoratorArgs(args);
-    if (fn && name) registerHook(phase, name, fn);
+    const normalized = normalizeDecoratorArgs(args);
+    if (!normalized.fn || !normalized.name) return;
+    assertStaticLifecycleMethod('hook', normalized);
+    registerHook(phase, normalized.name, normalized.fn);
   };
 }
 
@@ -126,8 +154,10 @@ export const HookPostUninstall = () => createHookDecorator('post_uninstall');
 
 export function Migration(options: MigrationOptions): MethodDecorator {
   return (...args: unknown[]) => {
-    const { fn, name } = normalizeDecoratorArgs(args);
-    const finalName = options?.name ? String(options.name) : (name ?? '');
-    if (fn && finalName) registerMigration(options, finalName, fn);
+    const normalized = normalizeDecoratorArgs(args);
+    const finalName = options?.name ? String(options.name) : (normalized.name ?? '');
+    if (!normalized.fn || !finalName) return;
+    assertStaticLifecycleMethod('migration', { ...normalized, name: finalName });
+    registerMigration(options, finalName, normalized.fn);
   };
 }
