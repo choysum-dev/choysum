@@ -126,6 +126,28 @@ function assertStaticLifecycleMethod(kind: LifecycleDecoratorKind, args: Normali
   throw new Error(`${code}: ${decorator} on ${name} must be static and must not rely on this`);
 }
 
+function isDecoratorHost(target: unknown): boolean {
+  return typeof target === 'function' || (target != null && typeof target === 'object');
+}
+
+function assertResolvedLifecycleMethod(
+  kind: LifecycleDecoratorKind,
+  name: string,
+  fn: unknown,
+  args: NormalizedDecoratorArgs
+): void {
+  if (typeof fn === 'function' || !name) return;
+  const looksLikeDecoratorApplication =
+    isDecoratorHost(args.target) || typeof args.isStaticHint === 'boolean';
+  if (!looksLikeDecoratorApplication) return;
+
+  const code = kind === 'hook' ? 'LIFECYCLE_HOOK_INVALID_METHOD' : 'LIFECYCLE_MIGRATION_INVALID_METHOD';
+  const decorator = kind === 'hook' ? '@Hook*' : '@Migration';
+  throw new Error(
+    `${code}: ${decorator} on ${name} could not resolve the method function. Ensure it is defined as a static method, not a property initializer or field.`
+  );
+}
+
 function readMethodFromTarget(target: unknown, propertyKey: unknown): unknown {
   if (target == null || propertyKey == null) return undefined;
   const key = String(propertyKey);
@@ -158,14 +180,21 @@ function normalizeDecoratorArgs(args: unknown[]): NormalizedDecoratorArgs {
   return { fn, name, target };
 }
 
+const MIGRATION_PHASES: readonly MigrationPhase[] = ['pre', 'post', 'end'];
+
 function assertMigrationOptions(options: MigrationOptions | undefined, name: string): void {
-  if (options?.version && options?.phase) return;
-  throw new Error(`LIFECYCLE_MIGRATION_INVALID_OPTIONS: @Migration on ${name} requires both version and phase`);
+  const version = options?.version;
+  const phase = options?.phase;
+  if (version && phase && (MIGRATION_PHASES as readonly string[]).includes(phase)) return;
+  throw new Error(
+    `LIFECYCLE_MIGRATION_INVALID_OPTIONS: @Migration on ${name} requires both version and a valid phase ('pre' | 'post' | 'end')`
+  );
 }
 
 function createHookDecorator(phase: HookPhase): MethodDecorator {
   return (...args: unknown[]) => {
     const normalized = normalizeDecoratorArgs(args);
+    assertResolvedLifecycleMethod('hook', normalized.name ?? '', normalized.fn, normalized);
     if (!normalized.fn || !normalized.name) return;
     assertStaticLifecycleMethod('hook', normalized);
     registerHook(phase, normalized.name, normalized.fn);
@@ -183,6 +212,7 @@ export function Migration(options: MigrationOptions): MethodDecorator {
   return (...args: unknown[]) => {
     const normalized = normalizeDecoratorArgs(args);
     const finalName = options?.name ? String(options.name) : (normalized.name ?? '');
+    assertResolvedLifecycleMethod('migration', finalName, normalized.fn, normalized);
     if (!normalized.fn || !finalName) return;
     assertStaticLifecycleMethod('migration', { ...normalized, name: finalName });
     assertMigrationOptions(options, finalName);

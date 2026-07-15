@@ -19,8 +19,10 @@ Short contract for `@Hook*` / `@Migration`. Full design notes live in
    (or other module-scope helpers), not via instance fields or IOC.
 4. Treat handlers as **module install/upgrade/uninstall callbacks**, not Record
    create/write lifecycle hooks.
-5. `@Migration` requires both `version` and `phase`; missing either fails with
-   `LIFECYCLE_MIGRATION_INVALID_OPTIONS`.
+5. `@Migration` requires both `version` and a valid `phase` (`'pre' | 'post' | 'end'`);
+   missing or invalid options fail with `LIFECYCLE_MIGRATION_INVALID_OPTIONS`.
+6. Decorate **methods**, not property/field initializers. Unresolvable method functions
+   fail with `LIFECYCLE_HOOK_INVALID_METHOD` / `LIFECYCLE_MIGRATION_INVALID_METHOD`.
 
 ## Canonical sample
 

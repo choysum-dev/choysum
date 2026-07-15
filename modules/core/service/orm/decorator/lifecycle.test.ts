@@ -237,6 +237,40 @@ test('@Migration rejects missing version/phase with LIFECYCLE_MIGRATION_INVALID_
   });
 });
 
+test('@Migration rejects invalid phase with LIFECYCLE_MIGRATION_INVALID_OPTIONS', () => {
+  withModuleEnv(() => {
+    expect(() => {
+      class InvalidPhaseHost {
+        @Migration({ version: '3.1.0', phase: 'pree' as MigrationPhase })
+        static async migrateInvalidPhase(): Promise<void> {}
+      }
+      return InvalidPhaseHost;
+    }).toThrow(/LIFECYCLE_MIGRATION_INVALID_OPTIONS/);
+  });
+});
+
+test('@HookPostInit rejects unresolved method with LIFECYCLE_HOOK_INVALID_METHOD', () => {
+  withModuleEnv(() => {
+    class MissingMethodHost {}
+    const decorate = HookPostInit();
+    expect(() => decorate(MissingMethodHost, 'ensureMissing', undefined as any)).toThrow(
+      /LIFECYCLE_HOOK_INVALID_METHOD/
+    );
+    expect(moduleRoot()?.hook?.ensureMissing).toBeUndefined();
+  });
+});
+
+test('@Migration rejects unresolved method with LIFECYCLE_MIGRATION_INVALID_METHOD', () => {
+  withModuleEnv(() => {
+    class MissingMethodHost {}
+    const decorate = Migration({ version: '5.0.0', phase: 'pre' });
+    expect(() => decorate(MissingMethodHost, 'migrateMissing', undefined as any)).toThrow(
+      /LIFECYCLE_MIGRATION_INVALID_METHOD/
+    );
+    expect(moduleRoot()?.migration?.['5.0.0']?.pre?.migrateMissing).toBeUndefined();
+  });
+});
+
 test('duplicate hook/migration registration does not duplicate registry entries', () => {
   withModuleEnv(() => {
     class DupHost {
