@@ -8,7 +8,6 @@ import json
 import os
 import pathlib
 import subprocess
-import sys
 from collections import deque
 from pathlib import PurePosixPath
 
