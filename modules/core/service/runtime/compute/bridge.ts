@@ -4,6 +4,7 @@
 import { getJsCtxRoot } from '../context/source';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
+import { markProxyKind } from '../proxy/brand';
 
 export type BridgeKind = 'sql' | 'search' | 'inverse';
 
@@ -69,7 +70,9 @@ function formatInstanceLabel(instance: object): string {
 }
 
 function createBridgeExecutionInstance<TInstance extends object>(instance: TInstance): TInstance {
-  return new Proxy(instance, {}) as TInstance;
+  const executionInstance = new Proxy(instance, {}) as TInstance;
+  markProxyKind(executionInstance as object, 'bridge-execution');
+  return executionInstance;
 }
 
 export function enterBridgeFrame<TPayload>(instance: object, kind: BridgeKind, payload: TPayload): BridgeFrame<TPayload> {

@@ -7,6 +7,7 @@ export { MODEL_SYMBOLS } from './symbols';
 
 export { createPreviewProxy, type PreviewProxyCtx } from './onchangePreviewProxy';
 export { createWriteProxy } from './onchangeDraftProxy';
+export { getProxyKind, isBrandedProxy, markProxyKind, type ChoysumProxyKind } from './brand';
 
 import BaseModel from '../../orm/model/model';
 import { createPreviewProxy, type PreviewProxyCtx } from './onchangePreviewProxy';

@@ -8,6 +8,10 @@ import Decimal from '@/core/utils/decimal';
 import { Field } from './field';
 import { Model } from './model';
 import { isTopLevelGrpcRequest, registerGeneratedModelServiceDefinitions } from './service';
+import { createWriteProxy } from '../../runtime/proxy/onchangeDraftProxy';
+import { createPreviewProxy } from '../../runtime/proxy/onchangePreviewProxy';
+import { getProxyKind, markProxyKind } from '../../runtime/proxy/brand';
+import { withBridgeFrame } from '../../runtime/compute/bridge';
 
 @Model('ServiceDecoratorChild', { application: 'test' })
 class ServiceDecoratorChild extends BaseModel {
@@ -658,4 +662,100 @@ test('service decorator handles json-array relation payload and relation target 
     MetadataStorage.instance.setModelMetadata(ServiceDecoratorEdgeParent as any, edgeMeta as any);
     restore();
   }
+});
+
+test('service wrapper rejects onchange-write proxy thisArg', async () => {
+  const base = Object.create(ServiceDecoratorParent.prototype);
+  const draft = createWriteProxy(base, () => {});
+  expect(getProxyKind(draft)).toBe('onchange-write');
+
+  let error: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(draft, { ok: 1 });
+  } catch (e) {
+    error = e;
+  }
+  expect(String(error?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
+  expect(String(error?.message || '')).toContain('kind=onchange-write');
+});
+
+test('service wrapper rejects onchange-preview and constraint-draft proxy thisArg', async () => {
+  const base = Object.create(ServiceDecoratorParent.prototype);
+  const meta = MetadataStorage.instance.getModelMetadata(ServiceDecoratorParent as any);
+  const preview = createPreviewProxy(base as any, {
+    meta,
+    triggers: new Set<string>(),
+    reads: new Set<string>(),
+    loaded: new Set<string>(['Name']),
+  });
+  expect(getProxyKind(preview)).toBe('onchange-preview');
+
+  let previewError: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(preview, { ok: 2 });
+  } catch (e) {
+    previewError = e;
+  }
+  expect(String(previewError?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
+
+  const constraintDraft = new Proxy(base, {});
+  markProxyKind(constraintDraft, 'constraint-draft');
+
+  let constraintError: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(constraintDraft, { ok: 3 });
+  } catch (e) {
+    constraintError = e;
+  }
+  expect(String(constraintError?.message || '')).toContain('kind=constraint-draft');
+});
+
+test('service wrapper rejects bridge-execution and model-hydrate proxy thisArg', async () => {
+  const base = Object.create(ServiceDecoratorParent.prototype);
+  let bridgeExecution: object | undefined;
+  withBridgeFrame(base, 'search', { token: 't' }, executionInstance => {
+    bridgeExecution = executionInstance as object;
+    expect(getProxyKind(executionInstance)).toBe('bridge-execution');
+    return undefined;
+  });
+
+  let bridgeError: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(bridgeExecution, { ok: 4 });
+  } catch (e) {
+    bridgeError = e;
+  }
+  expect(String(bridgeError?.message || '')).toContain('kind=bridge-execution');
+
+  const hydrateProxy = new Proxy(base, {});
+  markProxyKind(hydrateProxy, 'model-hydrate');
+
+  let hydrateError: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(hydrateProxy, { ok: 5 });
+  } catch (e) {
+    hydrateError = e;
+  }
+  expect(String(hydrateError?.message || '')).toContain('kind=model-hydrate');
+});
+
+test('class-level service wrapper call still works when proxy is not used as thisArg', async () => {
+  const out = await (ServiceDecoratorParent as any).Echo({ keep: 'yes' });
+  expect(out.keep).toBe('yes');
+});
+
+test('service wrapper invalid thisArg does not increment service depth', async () => {
+  const req: any = { context: { req: { kind: 'grpc', depth: 0 } } };
+  const restore = setRequest(req);
+  const draft = createWriteProxy(Object.create(ServiceDecoratorParent.prototype), () => {});
+
+  let error: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(draft, {});
+  } catch (e) {
+    error = e;
+  }
+  expect(String(error?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
+  expect(req.__choysumServiceState?.depth ?? 0).toBe(0);
+  restore();
 });

@@ -11,6 +11,7 @@ import type { FieldMetadata, ModelCtor } from '../../orm/metadata/field';
 import type { ModelMetadata } from '../../orm/metadata/model';
 import type { BaseQueryCondition, SearchOptions } from '../../orm/repository/types';
 import { getRuntimeRepository } from '../runtime_repository_facade';
+import { markProxyKind } from '../proxy/brand';
 import type { ObjectRecord } from '../../../utils/types';
 
 type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
@@ -650,6 +651,8 @@ export class ValidationEngine {
         return true;
       },
     }) as unknown as TModel;
+
+    markProxyKind(draft as object, 'constraint-draft');
 
     return { draft, changes };
   }

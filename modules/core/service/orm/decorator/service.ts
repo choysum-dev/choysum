@@ -9,6 +9,7 @@ import { isDecimal, isDecimalLeak } from '../../../utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 import Decimal from '@/core/utils/decimal';
+import { getProxyKind } from '../../runtime/proxy/brand';
 
 const WRAPPED_CONVENTIONAL_SERVICE_METHODS = Symbol.for('choysum.wrappedConventionalServiceMethods');
 const GENERATED_MODEL_SERVICE_DEFINITIONS = new Map<string, Map<string, ServiceMetadata>>();
@@ -583,7 +584,20 @@ function collectConventionalServiceMethods(modelCtor: Function): Array<{ name: s
   return out;
 }
 
-function invokeWithServiceRuntime(thisArg: unknown, modelCtor: unknown, original: (...args: unknown[]) => unknown, args: unknown[]): unknown {
+function assertValidServiceWrapperThisArg(thisArg: unknown, methodName: string): void {
+  const kind = getProxyKind(thisArg);
+  if (!kind) return;
+  throw new Error(`SERVICE_WRAPPER_INVALID_THIS: conventional service "${methodName}" refused draft/proxy thisArg (kind=${kind})`);
+}
+
+function invokeWithServiceRuntime(
+  thisArg: unknown,
+  modelCtor: unknown,
+  methodName: string,
+  original: (...args: unknown[]) => unknown,
+  args: unknown[]
+): unknown {
+  assertValidServiceWrapperThisArg(thisArg, methodName);
   const req = getCurrentChoysumRequest();
   incServiceDepth(req);
   const topLevelGrpc = isTopLevelGrpcRequestForReq(req);
@@ -648,7 +662,7 @@ export function installConventionalServiceRuntimeWrappers(modelCtor: unknown): v
 
     const original = descriptor.value as (...args: unknown[]) => unknown;
     const wrapped = function (this: unknown, ...args: unknown[]) {
-      return invokeWithServiceRuntime(this, ctor, original, args);
+      return invokeWithServiceRuntime(this, ctor, name, original, args);
     };
 
     Object.defineProperty(ctor, name, {

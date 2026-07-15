@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { markProxyKind } from './brand';
+
 type PatchSink = (path: string, value: unknown) => void;
 
 function isObject(value: unknown): value is object {
@@ -67,5 +69,9 @@ export function createWriteProxy<T>(root: T, sink: PatchSink, basePath = ''): T 
     return proxy;
   };
 
-  return wrap(root, basePath) as T;
+  const draft = wrap(root, basePath) as T;
+  if (draft !== null && typeof draft === 'object') {
+    markProxyKind(draft as object, 'onchange-write');
+  }
+  return draft;
 }

@@ -4,6 +4,7 @@
 import type { ModelMetadata } from '../../orm/metadata/model';
 import BaseModel from '../../orm/model/model';
 import { asObjectRecord } from '@/core/utils/object';
+import { markProxyKind } from './brand';
 
 // Read-only empty-array placeholder for safely reading unloaded collection roots.
 const READONLY_EMPTY_ARRAY = Object.freeze([]) as ReadonlyArray<unknown>;
@@ -56,7 +57,7 @@ export interface PreviewProxyCtx {
 export function createPreviewProxy<T extends BaseModel>(base: T, ctx: PreviewProxyCtx): T {
   const fields = ctx.meta.fields;
 
-  return new Proxy(base, {
+  const preview = new Proxy(base, {
     get(target, prop, receiver) {
       const key = String(prop);
       const original = Reflect.get(target, prop, receiver);
@@ -114,4 +115,7 @@ export function createPreviewProxy<T extends BaseModel>(base: T, ctx: PreviewPro
       return Reflect.set(target, prop, value, receiver);
     },
   });
+
+  markProxyKind(preview as object, 'onchange-preview');
+  return preview;
 }
