@@ -9,6 +9,7 @@ import type { InstantiableModelCtor } from '../../orm/model/types';
 import { MetadataStorage, ModelMetadata, FieldMetadata, ManyToOneMetadata, OneToManyMetadata, ManyToManyMetadata } from '../../orm/metadata';
 import { buildRelationAliasCandidates, REL_ALIAS_PREFIX } from '../../orm/relation/relation_alias';
 import { MODEL_SYMBOLS } from './symbols';
+import { markProxyKind } from './brand';
 import { FieldSelection } from '../../orm/repository';
 
 // Track relation-array mutations.
@@ -126,6 +127,7 @@ export class ModelProxyFactory<T extends BaseModel> implements ProxyFactory {
     };
 
     const proxy = new Proxy(this.target, proxyHandler) as T;
+    markProxyKind(proxy as object, 'model-hydrate');
     this.proxyRef = proxy;
     return proxy;
   }

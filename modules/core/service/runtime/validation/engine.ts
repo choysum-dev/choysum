@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * Validation / Constraint runtime: instance constraints run with `this` bound
+ * to a constraint draft proxy (prototype resolve + persistence guards).
+ *
+ * Author contract: `../RECORD_LIFECYCLE_THIS.md`
+ * Full design: `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
+ */
 import type BaseModel from '../../orm/model/model';
 import { KernelValidationError, validateFields as validateKernelFields } from '../../orm/repository/validation';
 import type { KernelValidationRule } from '../../orm/repository/validation';
@@ -11,6 +18,8 @@ import type { FieldMetadata, ModelCtor } from '../../orm/metadata/field';
 import type { ModelMetadata } from '../../orm/metadata/model';
 import type { BaseQueryCondition, SearchOptions } from '../../orm/repository/types';
 import { getRuntimeRepository } from '../runtime_repository_facade';
+import { markProxyKind } from '../proxy/brand';
+import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from '../proxy/draftPersistenceGuards';
 import type { ObjectRecord } from '../../../utils/types';
 
 type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
@@ -626,7 +635,14 @@ export class ValidationEngine {
           return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
         }
         const key = String(prop);
-        return resolve(key, receiver);
+        // Block persistence / CRUD entrypoints reached through draft `this`
+        // (class-level Model.Search(...) remains allowed). Resolve once so
+        // field overlay and prototype lookup are not repeated.
+        const original = resolve(key, receiver);
+        if (typeof original === 'function' && isDraftForbiddenPersistenceMethod(key)) {
+          return createForbiddenPersistenceMethodStub('constraint-draft', key);
+        }
+        return original;
       },
       set(_target, prop, value, _receiver) {
         if (typeof prop === 'symbol') {
@@ -650,6 +666,8 @@ export class ValidationEngine {
         return true;
       },
     }) as unknown as TModel;
+
+    markProxyKind(draft as object, 'constraint-draft');
 
     return { draft, changes };
   }

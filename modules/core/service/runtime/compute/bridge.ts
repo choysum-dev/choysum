@@ -1,9 +1,20 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * Compute bridge frames for `$sql` / `$search` / `$inverse`.
+ *
+ * Identity contract: frames are keyed by the execution instance created in
+ * `withBridgeFrame` (`instance ===`). Onchange/Constraint draft proxies are a
+ * different identity and must not resolve bridge context.
+ *
+ * Author contract: `../RECORD_LIFECYCLE_THIS.md`
+ * Full design: `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
+ */
 import { getJsCtxRoot } from '../context/source';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
+import { markProxyKind } from '../proxy/brand';
 
 export type BridgeKind = 'sql' | 'search' | 'inverse';
 
@@ -69,7 +80,9 @@ function formatInstanceLabel(instance: object): string {
 }
 
 function createBridgeExecutionInstance<TInstance extends object>(instance: TInstance): TInstance {
-  return new Proxy(instance, {}) as TInstance;
+  const executionInstance = new Proxy(instance, {}) as TInstance;
+  markProxyKind(executionInstance as object, 'bridge-execution');
+  return executionInstance;
 }
 
 export function enterBridgeFrame<TPayload>(instance: object, kind: BridgeKind, payload: TPayload): BridgeFrame<TPayload> {

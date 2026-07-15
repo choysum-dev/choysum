@@ -7,6 +7,13 @@ export { MODEL_SYMBOLS } from './symbols';
 
 export { createPreviewProxy, type PreviewProxyCtx } from './onchangePreviewProxy';
 export { createWriteProxy } from './onchangeDraftProxy';
+export { getProxyKind, isBrandedProxy, markProxyKind, type ChoysumProxyKind } from './brand';
+export {
+  DRAFT_FORBIDDEN_PERSISTENCE_METHODS,
+  createForbiddenPersistenceMethodStub,
+  isDraftForbiddenPersistenceMethod,
+  type DraftPersistenceGuardContext,
+} from './draftPersistenceGuards';
 
 import BaseModel from '../../orm/model/model';
 import { createPreviewProxy, type PreviewProxyCtx } from './onchangePreviewProxy';

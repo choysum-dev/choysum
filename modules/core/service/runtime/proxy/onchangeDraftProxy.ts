@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { markProxyKind } from './brand';
+
 type PatchSink = (path: string, value: unknown) => void;
 
 function isObject(value: unknown): value is object {
@@ -64,6 +66,9 @@ export function createWriteProxy<T>(root: T, sink: PatchSink, basePath = ''): T 
 
     targetToProxy.set(obj, proxy);
     proxyToTarget.set(proxy, obj);
+    // Brand every nested write proxy so nested relation/object identities are
+    // also rejected as conventional service thisArg (not only the root draft).
+    markProxyKind(proxy, 'onchange-write');
     return proxy;
   };
 

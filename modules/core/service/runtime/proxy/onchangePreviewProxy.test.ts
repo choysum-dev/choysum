@@ -34,6 +34,27 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
     update() {
       return 'should-not-run';
     },
+    save() {
+      return 'save-should-not-run';
+    },
+    Upsert() {
+      return 'upsert-should-not-run';
+    },
+    create() {
+      return 'create-should-not-run';
+    },
+    search() {
+      return 'search-should-not-run';
+    },
+    count() {
+      return 'count-should-not-run';
+    },
+    write() {
+      return 'write-should-not-run';
+    },
+    Unlink() {
+      return 'unlink-should-not-run';
+    },
     hello() {
       return 'ok';
     },
@@ -41,7 +62,15 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
 
   const proxy = createPreviewProxy(base, makeCtx(new Map()));
 
-  expect(() => (proxy as any).update()).toThrow('Preview context: method "update" is disabled');
+  expect(() => (proxy as any).update()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).update()).toThrow('method "update" is disabled in onchange preview');
+  expect(() => (proxy as any).save()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).Upsert()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).create()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).search()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).count()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).write()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).Unlink()).toThrow('PREVIEW_METHOD_FORBIDDEN');
   expect((proxy as any).hello()).toBe('ok');
 });
 
@@ -120,6 +149,7 @@ test('preview proxy set trap passes through symbols non-fields and model fields'
   (proxy as any).Name = 'Alice';
 
   expect(base[sym]).toBe(1);
+  expect((proxy as any)[sym]).toBe(1);
   expect(base.TempFlag).toBe(true);
   expect(base.Name).toBe('Alice');
 });

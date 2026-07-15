@@ -4,6 +4,8 @@
 import type { ModelMetadata } from '../../orm/metadata/model';
 import BaseModel from '../../orm/model/model';
 import { asObjectRecord } from '@/core/utils/object';
+import { markProxyKind } from './brand';
+import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from './draftPersistenceGuards';
 
 // Read-only empty-array placeholder for safely reading unloaded collection roots.
 const READONLY_EMPTY_ARRAY = Object.freeze([]) as ReadonlyArray<unknown>;
@@ -11,29 +13,13 @@ const isCollectionFieldType = (t?: string) => t === 'OneToMany' || t === 'ManyTo
 
 /**
  * Read-only preview proxy in permissive mode.
- *  - Disables persistence and query methods.
+ *  - Disables persistence and query methods reached via draft `this`.
  *  - When an unloaded field is read:
  *    - return the existing value if the target already carries one.
  *    - otherwise return undefined and emit a console.warn message.
  *  - Allows assignment to model-defined fields regardless of prefetch state.
  *  - Allows collection roots by returning a read-only empty-array placeholder when the field is allowed but not loaded.
  */
-const FORBIDDEN_METHODS = new Set([
-  'update',
-  'delete',
-  'reload',
-  'Create',
-  'CreateMany',
-  'Browse',
-  'BrowseMany',
-  'Search',
-  'Update',
-  'UpdateById',
-  'Delete',
-  'DeleteById',
-  'Count',
-  'Hydrate',
-]);
 
 export interface PreviewProxyCtx {
   meta: ModelMetadata;
@@ -56,17 +42,18 @@ export interface PreviewProxyCtx {
 export function createPreviewProxy<T extends BaseModel>(base: T, ctx: PreviewProxyCtx): T {
   const fields = ctx.meta.fields;
 
-  return new Proxy(base, {
+  const preview = new Proxy(base, {
     get(target, prop, receiver) {
+      if (typeof prop === 'symbol') {
+        return Reflect.get(target, prop, receiver);
+      }
       const key = String(prop);
       const original = Reflect.get(target, prop, receiver);
       const fieldMeta = fields.get(key);
 
-      // Disable dangerous methods.
-      if (typeof original === 'function' && FORBIDDEN_METHODS.has(key)) {
-        return () => {
-          throw new Error(`Preview context: method "${key}" is disabled (read-only preview blocks persistence and query methods)`);
-        };
+      // Disable persistence / CRUD entrypoints reached through draft `this`.
+      if (typeof original === 'function' && isDraftForbiddenPersistenceMethod(key)) {
+        return createForbiddenPersistenceMethodStub('onchange-preview', key);
       }
 
       // In permissive mode, unloaded fields return undefined with a warning.
@@ -114,4 +101,7 @@ export function createPreviewProxy<T extends BaseModel>(base: T, ctx: PreviewPro
       return Reflect.set(target, prop, value, receiver);
     },
   });
+
+  markProxyKind(preview as object, 'onchange-preview');
+  return preview;
 }

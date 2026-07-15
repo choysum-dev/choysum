@@ -1157,3 +1157,113 @@ test('onchange engine instanceNoArgs handler returns messages/condition/selectio
   expect(result.condition).toEqual([{ field: 'Code', condition: ['Code', '=', 'CHANGED'] }]);
   expect(result.selection).toEqual([{ field: 'Code', selection: ['A', 'CHANGED'] }]);
 });
+
+test('onchange engine resolves handler from prototype and allows class-level Search', async () => {
+  const searchCalls: unknown[] = [];
+
+  class PeerSearchModel {
+    static async Search(condition: unknown) {
+      searchCalls.push(condition);
+      return [{ Id: 'P1' }];
+    }
+  }
+
+  class ProtoOnchangeModel {
+    Name?: string;
+    Code?: string;
+
+    onName() {
+      void PeerSearchModel.Search([['Name', '=', this.Name]]);
+      this.Code = 'FROM_PROTO';
+    }
+  }
+
+  const meta = {
+    name: 'ProtoOnchangeModel',
+    type: ProtoOnchangeModel,
+    fields: new Map<string, any>([
+      ['Name', { type: 'varchar' }],
+      ['Code', { type: 'varchar' }],
+    ]),
+    onchangeHandlers: [{ method: 'onName', triggers: ['Name'], priority: 100 }],
+  } as any;
+
+  // Own-property handler must be ignored when meta.type is present.
+  const draft: any = Object.assign(Object.create(ProtoOnchangeModel.prototype), {
+    Name: 'A',
+    Code: '',
+    onName() {
+      this.Code = 'FROM_OWN';
+    },
+  });
+
+  const result = await OnchangeEngine.run(meta, draft, ['Name'], { withCompute: false });
+
+  expect(result.touchedHandlers).toEqual(['onName']);
+  expect(result.value).toEqual({ Code: 'FROM_PROTO' });
+  expect(searchCalls).toEqual([[['Name', '=', 'A']]]);
+});
+
+test('onchange preview draft forbids this.update and this.Create', async () => {
+  class ForbidPersistenceOnchangeModel {
+    Name?: string;
+    Code?: string;
+
+    update() {
+      return 'update-should-not-run';
+    }
+
+    Create() {
+      return 'create-should-not-run';
+    }
+
+    onNameUpdate() {
+      (this as any).update();
+    }
+
+    onNameCreate() {
+      (this as any).Create({});
+    }
+  }
+
+  const metaUpdate = {
+    name: 'ForbidPersistenceOnchangeModel',
+    type: ForbidPersistenceOnchangeModel,
+    fields: new Map<string, any>([
+      ['Name', { type: 'varchar' }],
+      ['Code', { type: 'varchar' }],
+    ]),
+    onchangeHandlers: [{ method: 'onNameUpdate', triggers: ['Name'], priority: 100 }],
+  } as any;
+
+  const draftUpdate: any = Object.assign(Object.create(ForbidPersistenceOnchangeModel.prototype), {
+    Name: 'A',
+    Code: '',
+  });
+
+  const updateResult = await OnchangeEngine.run(metaUpdate, draftUpdate, ['Name'], {
+    withCompute: false,
+    stopOnError: false,
+  });
+  expect(updateResult.messages?.some(m => String(m.message || '').includes('PREVIEW_METHOD_FORBIDDEN'))).toBe(true);
+  expect(String(updateResult.messages?.find(m => String(m.message || '').includes('PREVIEW_METHOD_FORBIDDEN'))?.message || '')).toContain(
+    'method "update"'
+  );
+
+  const metaCreate = {
+    ...metaUpdate,
+    onchangeHandlers: [{ method: 'onNameCreate', triggers: ['Name'], priority: 100 }],
+  } as any;
+  const draftCreate: any = Object.assign(Object.create(ForbidPersistenceOnchangeModel.prototype), {
+    Name: 'A',
+    Code: '',
+  });
+  const createResult = await OnchangeEngine.run(metaCreate, draftCreate, ['Name'], {
+    withCompute: false,
+    stopOnError: false,
+  });
+  expect(createResult.messages?.some(m => String(m.message || '').includes('PREVIEW_METHOD_FORBIDDEN'))).toBe(true);
+  expect(String(createResult.messages?.find(m => String(m.message || '').includes('PREVIEW_METHOD_FORBIDDEN'))?.message || '')).toContain(
+    'method "Create"'
+  );
+});
