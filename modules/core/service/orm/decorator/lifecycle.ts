@@ -1,6 +1,14 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * Module lifecycle Hook/Migration decorators.
+ *
+ * Author contract (see `./LIFECYCLE_HOOKS.md`):
+ * - methods must be static
+ * - methods must not rely on `this` (runner invokes with bare `await fn()`)
+ * - resolve deps via module-level imports / `createServiceByModel`
+ */
 import { getRuntimeEnvValue, getRuntimeGlobalRecord, getRuntimeGlobalValue } from '@/core/utils/env';
 import { asObjectRecord } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
