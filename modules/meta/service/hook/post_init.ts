@@ -66,8 +66,12 @@ async function updateSchedule(scheduleId: string): Promise<void> {
   } as any);
 }
 
+/**
+ * Sample host kept static + no-`this` for lifecycle contract.
+ * Daily Cron replaced by on-demand Lazy Sync from ModuleKanbanView;
+ * decorator stays disabled on purpose. See `@/core/service/orm/decorator/LIFECYCLE_HOOKS.md`.
+ */
 export class MetaModuleIndexHooks {
-  // Daily Cron replaced by on-demand Lazy Sync triggered from ModuleKanbanView.
   // @HookPostInit()
   static async ensureModuleIndexDailySync(): Promise<void> {
     const items = await listScheduleByName(scheduleName);

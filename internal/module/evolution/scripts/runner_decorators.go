@@ -236,6 +236,10 @@ func (r *Runner) buildMigrationWrapperScript() *jsengine.JsScript {
 	if r == nil || r.module == nil {
 		return nil
 	}
+	// Migration handlers are module-level callbacks (static, no this). Invoke with
+	// bare `await fn()` only — do not switch to fn.call/fn.apply unless the
+	// lifecycle this-boundary plan is explicitly upgraded past the near-term contract.
+	// See .dev/docs/core/service/lifecycle_hook_this_boundary_plan20260715.md.
 	content := `(() => {
 	const resolveModuleRoot = (app, moduleName) => {
 		const root = globalThis[app];

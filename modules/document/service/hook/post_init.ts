@@ -65,6 +65,7 @@ async function updateSchedule(scheduleId: string): Promise<void> {
   } as any);
 }
 
+/** Canonical @HookPostInit sample: static method, no `this`. See `@/core/service/orm/decorator/LIFECYCLE_HOOKS.md`. */
 export class DocumentAttachmentHooks {
   @HookPostInit()
   static async ensureAttachmentGcSchedule(): Promise<void> {
