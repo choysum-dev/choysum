@@ -66,12 +66,11 @@ export function createWriteProxy<T>(root: T, sink: PatchSink, basePath = ''): T 
 
     targetToProxy.set(obj, proxy);
     proxyToTarget.set(proxy, obj);
+    // Brand every nested write proxy so nested relation/object identities are
+    // also rejected as conventional service thisArg (not only the root draft).
+    markProxyKind(proxy, 'onchange-write');
     return proxy;
   };
 
-  const draft = wrap(root, basePath) as T;
-  if (draft !== null && typeof draft === 'object') {
-    markProxyKind(draft as object, 'onchange-write');
-  }
-  return draft;
+  return wrap(root, basePath) as T;
 }

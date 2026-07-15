@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createWriteProxy } from './onchangeDraftProxy';
+import { getProxyKind } from './brand';
 
 test('createWriteProxy records nested set and delete operations with full paths', () => {
   const patches: Array<{ path: string; value: any }> = [];
@@ -111,4 +112,17 @@ test('createWriteProxy passes through non-object root values', () => {
 
   expect(proxy).toBe(123);
   expect(patches).toEqual([]);
+});
+
+test('createWriteProxy brands nested object and array proxies as onchange-write', () => {
+  const state = {
+    profile: { name: 'Alice' },
+    items: [{ id: 1 }],
+  };
+  const proxy = createWriteProxy(state, () => {});
+
+  expect(getProxyKind(proxy)).toBe('onchange-write');
+  expect(getProxyKind(proxy.profile)).toBe('onchange-write');
+  expect(getProxyKind(proxy.items)).toBe('onchange-write');
+  expect(getProxyKind(proxy.items[0])).toBe('onchange-write');
 });

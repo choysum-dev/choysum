@@ -679,6 +679,23 @@ test('service wrapper rejects onchange-write proxy thisArg', async () => {
   expect(String(error?.message || '')).toContain('kind=onchange-write');
 });
 
+test('service wrapper rejects nested onchange-write proxy thisArg', async () => {
+  const base: any = Object.create(ServiceDecoratorParent.prototype);
+  base.profile = { Name: 'nested' };
+  const draft = createWriteProxy(base, () => {});
+  const nested = draft.profile;
+  expect(getProxyKind(nested)).toBe('onchange-write');
+
+  let error: any;
+  try {
+    await (ServiceDecoratorParent as any).Echo.call(nested, { ok: 1 });
+  } catch (e) {
+    error = e;
+  }
+  expect(String(error?.message || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
+  expect(String(error?.message || '')).toContain('kind=onchange-write');
+});
+
 test('service wrapper rejects onchange-preview and constraint-draft proxy thisArg', async () => {
   const base = Object.create(ServiceDecoratorParent.prototype);
   const meta = MetadataStorage.instance.getModelMetadata(ServiceDecoratorParent as any);
