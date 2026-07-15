@@ -636,14 +636,13 @@ export class ValidationEngine {
         }
         const key = String(prop);
         // Block persistence / CRUD entrypoints reached through draft `this`
-        // (class-level Model.Search(...) remains allowed).
-        if (isDraftForbiddenPersistenceMethod(key)) {
-          const original = Reflect.get(self as unknown as ObjectRecord, key, receiver);
-          if (typeof original === 'function') {
-            return createForbiddenPersistenceMethodStub('constraint-draft', key);
-          }
+        // (class-level Model.Search(...) remains allowed). Resolve once so
+        // field overlay and prototype lookup are not repeated.
+        const original = resolve(key, receiver);
+        if (typeof original === 'function' && isDraftForbiddenPersistenceMethod(key)) {
+          return createForbiddenPersistenceMethodStub('constraint-draft', key);
         }
-        return resolve(key, receiver);
+        return original;
       },
       set(_target, prop, value, _receiver) {
         if (typeof prop === 'symbol') {
