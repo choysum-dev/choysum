@@ -13,6 +13,11 @@ export const DRAFT_FORBIDDEN_PERSISTENCE_METHODS = new Set([
   'update',
   'delete',
   'reload',
+  // Common persistence aliases (not currently on BaseModel; block if present on draft `this`).
+  'save',
+  'Save',
+  'upsert',
+  'Upsert',
   'Create',
   'CreateMany',
   'Browse',
