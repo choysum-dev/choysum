@@ -129,7 +129,8 @@ function assertStaticLifecycleMethod(kind: LifecycleDecoratorKind, args: Normali
 function readMethodFromTarget(target: unknown, propertyKey: unknown): unknown {
   if (target == null || propertyKey == null) return undefined;
   const key = String(propertyKey);
-  if (typeof target === 'function' || (typeof target === 'object' && target !== null)) {
+  // null is already excluded above; typeof null === 'object' cannot reach here.
+  if (typeof target === 'function' || typeof target === 'object') {
     return (target as Record<string, unknown>)[key];
   }
   return undefined;
