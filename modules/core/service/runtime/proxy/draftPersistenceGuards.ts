@@ -7,40 +7,57 @@
  * Class-level Model API (e.g. `OtherModel.Search(...)`) remains allowed; this
  * list only blocks methods reached via draft `this.<name>()`.
  *
- * See `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`.
+ * Aliases cover BaseModel entrypoints, conventional PascalCase services, and
+ * common Odoo/ORM persistence names (write/unlink/save/...) so draft `this`
+ * cannot smuggle persistence through helper aliases.
+ *
+ * See `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
+ * and `modules/core/service/runtime/RECORD_LIFECYCLE_THIS.md`.
  */
-export const DRAFT_FORBIDDEN_PERSISTENCE_METHODS = new Set([
-  // Instance persistence methods on BaseModel.
-  'update',
-  'Update',
-  'delete',
-  'Delete',
-  'reload',
-  // Common persistence aliases (not currently on BaseModel; block if present on draft `this`).
-  'save',
-  'Save',
-  'upsert',
-  'Upsert',
-  // Conventional model service names (PascalCase) and camelCase aliases.
-  'Create',
-  'create',
-  'CreateMany',
-  'createMany',
-  'Browse',
-  'browse',
-  'BrowseMany',
-  'browseMany',
-  'Search',
-  'search',
-  'UpdateById',
-  'updateById',
-  'DeleteById',
-  'deleteById',
-  'Count',
-  'count',
-  'Hydrate',
-  'hydrate',
-]);
+
+function withCaseVariants(names: string[]): string[] {
+  const out = new Set<string>();
+  for (const name of names) {
+    if (!name) continue;
+    out.add(name);
+    const camel = name.charAt(0).toLowerCase() + name.slice(1);
+    const pascal = name.charAt(0).toUpperCase() + name.slice(1);
+    out.add(camel);
+    out.add(pascal);
+  }
+  return [...out];
+}
+
+export const DRAFT_FORBIDDEN_PERSISTENCE_METHODS = new Set(
+  withCaseVariants([
+    // BaseModel instance persistence / refresh.
+    'update',
+    'delete',
+    'reload',
+    // Conventional model service / query entrypoints.
+    'Create',
+    'CreateMany',
+    'Browse',
+    'BrowseMany',
+    'Search',
+    'Update',
+    'UpdateById',
+    'Delete',
+    'DeleteById',
+    'Count',
+    'Hydrate',
+    // Common Odoo / ORM persistence aliases (may appear as helpers on models).
+    'save',
+    'upsert',
+    'write',
+    'unlink',
+    'destroy',
+    'remove',
+    'insert',
+    'patch',
+    'persist',
+  ])
+);
 
 export type DraftPersistenceGuardContext = 'onchange-preview' | 'constraint-draft';
 

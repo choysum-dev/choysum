@@ -48,8 +48,9 @@ This is the **opposite** of the Hook/Migration contract
    ```
 
 5. Onchange preview forbids current-record persistence via draft `this`
-   (`update` / `delete` / `reload` and instance-reachable CRUD names). Constraint
-   drafts use the same persistence guard. Class-level reads remain allowed.
+   (`update` / `delete` / `reload`, conventional CRUD/query names, and common
+   Odoo/ORM aliases such as `write` / `unlink` / `save`). Constraint drafts use
+   the same persistence guard. Class-level reads remain allowed.
 6. One call stack, one `this` identity. Do not mix Onchange/Constraint drafts
    with `$search` / `$sql` / `$inverse`, and do not wrap drafts with another
    hydrate/bridge proxy.

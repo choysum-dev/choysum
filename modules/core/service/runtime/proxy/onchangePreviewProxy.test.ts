@@ -49,6 +49,12 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
     count() {
       return 'count-should-not-run';
     },
+    write() {
+      return 'write-should-not-run';
+    },
+    Unlink() {
+      return 'unlink-should-not-run';
+    },
     hello() {
       return 'ok';
     },
@@ -63,6 +69,8 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
   expect(() => (proxy as any).create()).toThrow('PREVIEW_METHOD_FORBIDDEN');
   expect(() => (proxy as any).search()).toThrow('PREVIEW_METHOD_FORBIDDEN');
   expect(() => (proxy as any).count()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).write()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).Unlink()).toThrow('PREVIEW_METHOD_FORBIDDEN');
   expect((proxy as any).hello()).toBe('ok');
 });
 
