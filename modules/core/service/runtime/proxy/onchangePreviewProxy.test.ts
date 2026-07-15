@@ -40,6 +40,15 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
     Upsert() {
       return 'upsert-should-not-run';
     },
+    create() {
+      return 'create-should-not-run';
+    },
+    search() {
+      return 'search-should-not-run';
+    },
+    count() {
+      return 'count-should-not-run';
+    },
     hello() {
       return 'ok';
     },
@@ -51,6 +60,9 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
   expect(() => (proxy as any).update()).toThrow('method "update" is disabled in onchange preview');
   expect(() => (proxy as any).save()).toThrow('PREVIEW_METHOD_FORBIDDEN');
   expect(() => (proxy as any).Upsert()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).create()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).search()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).count()).toThrow('PREVIEW_METHOD_FORBIDDEN');
   expect((proxy as any).hello()).toBe('ok');
 });
 

@@ -10,25 +10,36 @@
  * See `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`.
  */
 export const DRAFT_FORBIDDEN_PERSISTENCE_METHODS = new Set([
+  // Instance persistence methods on BaseModel.
   'update',
+  'Update',
   'delete',
+  'Delete',
   'reload',
   // Common persistence aliases (not currently on BaseModel; block if present on draft `this`).
   'save',
   'Save',
   'upsert',
   'Upsert',
+  // Conventional model service names (PascalCase) and camelCase aliases.
   'Create',
+  'create',
   'CreateMany',
+  'createMany',
   'Browse',
+  'browse',
   'BrowseMany',
+  'browseMany',
   'Search',
-  'Update',
+  'search',
   'UpdateById',
-  'Delete',
+  'updateById',
   'DeleteById',
+  'deleteById',
   'Count',
+  'count',
   'Hydrate',
+  'hydrate',
 ]);
 
 export type DraftPersistenceGuardContext = 'onchange-preview' | 'constraint-draft';
