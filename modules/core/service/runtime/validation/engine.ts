@@ -12,6 +12,7 @@ import type { ModelMetadata } from '../../orm/metadata/model';
 import type { BaseQueryCondition, SearchOptions } from '../../orm/repository/types';
 import { getRuntimeRepository } from '../runtime_repository_facade';
 import { markProxyKind } from '../proxy/brand';
+import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from '../proxy/draftPersistenceGuards';
 import type { ObjectRecord } from '../../../utils/types';
 
 type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
@@ -627,6 +628,14 @@ export class ValidationEngine {
           return Reflect.get(self as unknown as ObjectRecord, prop, receiver);
         }
         const key = String(prop);
+        // Block persistence / CRUD entrypoints reached through draft `this`
+        // (class-level Model.Search(...) remains allowed).
+        if (isDraftForbiddenPersistenceMethod(key)) {
+          const original = Reflect.get(self as unknown as ObjectRecord, key, receiver);
+          if (typeof original === 'function') {
+            return createForbiddenPersistenceMethodStub('constraint-draft', key);
+          }
+        }
         return resolve(key, receiver);
       },
       set(_target, prop, value, _receiver) {

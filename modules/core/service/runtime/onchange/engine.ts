@@ -10,6 +10,7 @@ import { createOnchangeDraft } from '../proxy';
 import Decimal, { normalizeDecimalByMeta, isDecimal } from '@/core/utils/decimal';
 import { MetadataStorage } from '../../orm/metadata/storage';
 import type { FieldMetadata } from '../../orm/metadata/field';
+import { asObjectRecord } from '@/core/utils/object';
 import type { ObjectRecord } from '../../../utils/types';
 
 type OnchangePatch = ObjectRecord;
@@ -141,7 +142,7 @@ export class OnchangeEngine {
         }
 
         try {
-          const rawResult = OnchangeEngine.invokeOnchangeHandler(handler, draft, onchangeDraft);
+          const rawResult = OnchangeEngine.invokeOnchangeHandler(meta, handler, draft, onchangeDraft);
           // Avoid microtask overhead for sync handlers in QuickJS runtimes
           // where await on a non-Promise always yields to the event loop.
           // Use a thenable check instead of instanceof Promise to also handle
@@ -342,16 +343,38 @@ export class OnchangeEngine {
   /**
    * Invoke a single onchange handler in the end-state runtime contract.
    *
-   * All handlers are called without arguments and should use `this` for value
-   * mutation plus return payloads for side-effects.
+   * Handlers are resolved from the Model prototype (same contract as Constraint /
+   * Compute instance handlers), then invoked with `this` bound to the onchange
+   * draft proxy. All handlers run without arguments.
    *
-   * The return value may be a Promise; the caller is responsible for awaiting.
+   * When `meta.type` is absent (plain-object unit harness drafts), falls back to
+   * an own-property method on `draft` for test compatibility only.
    */
-  private static invokeOnchangeHandler(handler: OnchangeHandlerMeta, draft: OnchangeDraft, onchangeDraft: BaseModel): unknown {
-    const fn = draft[handler.method] as ((...args: unknown[]) => unknown) | undefined;
-    if (typeof fn !== 'function') return undefined;
-    // All handlers run without arguments — the end-state of the onchange migration.
-    return fn.call(onchangeDraft);
+  private static invokeOnchangeHandler(
+    meta: ModelMetadata,
+    handler: OnchangeHandlerMeta,
+    draft: OnchangeDraft,
+    onchangeDraft: BaseModel
+  ): unknown {
+    const methodName = String(handler.method || '').trim();
+    if (!methodName) return undefined;
+
+    const prototypeRecord = asObjectRecord(meta.type?.prototype);
+    const fromPrototype = prototypeRecord?.[methodName];
+    if (typeof fromPrototype === 'function') {
+      return (fromPrototype as (...args: unknown[]) => unknown).call(onchangeDraft);
+    }
+
+    // Production models always provide meta.type; this branch is for unit tests
+    // that attach handlers as own properties on plain draft objects.
+    if (!meta.type) {
+      const fromDraft = asObjectRecord(draft)?.[methodName];
+      if (typeof fromDraft === 'function') {
+        return (fromDraft as (...args: unknown[]) => unknown).call(onchangeDraft);
+      }
+    }
+
+    return undefined;
   }
 
   /**

@@ -41,7 +41,8 @@ test('preview proxy disables forbidden persistence methods and keeps safe method
 
   const proxy = createPreviewProxy(base, makeCtx(new Map()));
 
-  expect(() => (proxy as any).update()).toThrow('Preview context: method "update" is disabled');
+  expect(() => (proxy as any).update()).toThrow('PREVIEW_METHOD_FORBIDDEN');
+  expect(() => (proxy as any).update()).toThrow('method "update" is disabled in onchange preview');
   expect((proxy as any).hello()).toBe('ok');
 });
 

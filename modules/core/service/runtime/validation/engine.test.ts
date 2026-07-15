@@ -5,6 +5,7 @@ import { BaseModel, Compute, Field } from '@/core/service';
 import { Constraint, ValidationPipelineError } from '@/core/service/api/constraint';
 import { MetadataStorage } from '@/core/service/api/metadata';
 import { ValidationEngine } from '@/core/service/api/validation';
+import { Model } from '../../orm/decorator/model';
 import { RepositoryFactory } from '../../orm/repository/repository_factory';
 
 const engineCallLog: Array<Record<string, unknown>> = [];
@@ -1714,4 +1715,71 @@ test('constraint reuse: grandchild without re-decoration inherits child handler'
 
   // Grandchild reuses child's handler (closest ancestor with same method name).
   expect(inheritLog).toEqual(['child-validateName']);
+});
+
+const draftGuardLog: Array<Record<string, unknown>> = [];
+
+@Model('ConstraintDraftPeerSearch', { application: 'test' })
+class ConstraintDraftPeerSearch extends BaseModel {
+  static async Search(_condition?: unknown) {
+    return [{ Id: 'peer-1' }];
+  }
+}
+
+class ConstraintDraftGuardModel extends BaseModel {
+  @Field({ type: 'varchar', size: 64 })
+  Name?: string;
+
+  static resetLog() {
+    draftGuardLog.length = 0;
+  }
+
+  async validateName(): Promise<void> {
+    const peers = await ConstraintDraftPeerSearch.Search([['Name', '=', this.Name]]);
+    draftGuardLog.push({ peers });
+
+    let updateError: unknown;
+    try {
+      await (this as any).update();
+    } catch (err) {
+      updateError = err;
+    }
+    draftGuardLog.push({ updateError: String((updateError as Error)?.message || updateError || '') });
+
+    let bindError: unknown;
+    try {
+      await (ConstraintDraftPeerSearch as any).Search.call(this, []);
+    } catch (err) {
+      bindError = err;
+    }
+    draftGuardLog.push({ bindError: String((bindError as Error)?.message || bindError || '') });
+  }
+}
+
+Constraint<ConstraintDraftGuardModel>('Name', { priority: 1, alwaysOnCreate: true })(
+  ConstraintDraftGuardModel.prototype,
+  'validateName',
+  undefined as any
+);
+
+test('constraint draft allows class-level Search and forbids draft persistence / proxy thisArg', async () => {
+  ConstraintDraftGuardModel.resetLog();
+  const metadata = MetadataStorage.instance.getModelMetadata(ConstraintDraftGuardModel as any);
+
+  await ValidationEngine.validateOrThrow({
+    mode: 'update',
+    model: ConstraintDraftGuardModel as any,
+    metadata,
+    current: { Id: '1', Name: 'old' },
+    values: { Name: 'next' },
+    changedFields: new Set(['Name']),
+    repository: {} as any,
+    requestContext: {},
+  });
+
+  expect(draftGuardLog[0]).toEqual({ peers: [{ Id: 'peer-1' }] });
+  expect(String((draftGuardLog[1] as any)?.updateError || '')).toContain('CONSTRAINT_DRAFT_METHOD_FORBIDDEN');
+  expect(String((draftGuardLog[1] as any)?.updateError || '')).toContain('method "update"');
+  expect(String((draftGuardLog[2] as any)?.bindError || '')).toContain('SERVICE_WRAPPER_INVALID_THIS');
+  expect(String((draftGuardLog[2] as any)?.bindError || '')).toContain('kind=constraint-draft');
 });
