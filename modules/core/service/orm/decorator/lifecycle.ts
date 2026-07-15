@@ -150,19 +150,34 @@ function assertResolvedLifecycleMethod(
 
 function readMethodFromTarget(target: unknown, propertyKey: unknown): unknown {
   if (target == null || propertyKey == null) return undefined;
-  const key = String(propertyKey);
+  // Preserve symbol PropertyKeys; String(symbol) cannot resolve the method.
+  if (
+    typeof propertyKey !== 'string' &&
+    typeof propertyKey !== 'symbol' &&
+    typeof propertyKey !== 'number'
+  ) {
+    return undefined;
+  }
   // null is already excluded above; typeof null === 'object' cannot reach here.
   if (typeof target === 'function' || typeof target === 'object') {
-    return (target as Record<string, unknown>)[key];
+    return (target as Record<string | symbol | number, unknown>)[propertyKey];
   }
   return undefined;
+}
+
+function propertyKeyToRegistryName(propertyKey: unknown): string {
+  if (propertyKey == null) return '';
+  if (typeof propertyKey === 'symbol') {
+    return propertyKey.description ? propertyKey.description : String(propertyKey);
+  }
+  return String(propertyKey);
 }
 
 function normalizeDecoratorArgs(args: unknown[]): NormalizedDecoratorArgs {
   const second = args.length > 1 ? asObjectRecord(args[1]) : undefined;
   if (args.length === 2 && second && 'kind' in second) {
     const value = args[0];
-    const name = second.name != null ? String(second.name) : '';
+    const name = second.name != null ? propertyKeyToRegistryName(second.name) : '';
     const isStaticHint = typeof second.static === 'boolean' ? second.static : undefined;
     return { fn: value, name, isStaticHint };
   }
@@ -176,7 +191,11 @@ function normalizeDecoratorArgs(args: unknown[]): NormalizedDecoratorArgs {
       ? descriptorFn
       : readMethodFromTarget(target, propertyKey);
   const name =
-    propertyKey != null ? String(propertyKey) : typeof fn === 'function' ? (fn as { name?: string }).name || '' : '';
+    propertyKey != null
+      ? propertyKeyToRegistryName(propertyKey)
+      : typeof fn === 'function'
+        ? (fn as { name?: string }).name || ''
+        : '';
   return { fn, name, target };
 }
 

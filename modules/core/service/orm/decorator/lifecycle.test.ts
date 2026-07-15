@@ -17,6 +17,7 @@ import {
 
 const TEST_APP = '__lifecycle_test_app__';
 const TEST_MODULE = '__lifecycle_test_module__';
+const RUNTIME_ENV_BAG_KEYS = ['__CHOYSUM_RUNTIME_ENV__', '__CHOYSUM_ENV__'] as const;
 
 type MigrationRegistryEntry = {
   version: string;
@@ -32,34 +33,80 @@ type TestModuleRoot = {
   __migrationRegistry__?: MigrationRegistryEntry[];
 };
 
-function withModuleEnv<T>(run: () => T): T {
-  const prevApp = getRuntimeGlobalRecord().CHOYSUM_APP_NAME;
-  const prevModule = getRuntimeGlobalRecord().CHOYSUM_MODULE_NAME;
-  setRuntimeGlobalValue('CHOYSUM_APP_NAME', TEST_APP);
-  setRuntimeGlobalValue('CHOYSUM_MODULE_NAME', TEST_MODULE);
+type RuntimeEnvOverride = {
+  CHOYSUM_APP_NAME: unknown;
+  CHOYSUM_MODULE_NAME: unknown;
+};
+
+function withRuntimeNameOverride<T>(values: RuntimeEnvOverride, run: () => T): T {
+  const root = getRuntimeGlobalRecord();
+  const prevGlobals = {
+    CHOYSUM_APP_NAME: root.CHOYSUM_APP_NAME,
+    CHOYSUM_MODULE_NAME: root.CHOYSUM_MODULE_NAME,
+  };
+
+  // getRuntimeEnvValue prefers import.meta.env and __CHOYSUM_*_ENV__ bags over bare globals.
+  // Isolate those sources so CI/runtime names cannot leak into decorator registration tests.
+  const bagSnapshots = RUNTIME_ENV_BAG_KEYS.map(key => {
+    const bag = asObjectRecord(root[key]);
+    if (!bag) return null;
+    return {
+      bag,
+      CHOYSUM_APP_NAME: bag.CHOYSUM_APP_NAME,
+      CHOYSUM_MODULE_NAME: bag.CHOYSUM_MODULE_NAME,
+    };
+  }).filter((item): item is NonNullable<typeof item> => item != null);
+
+  const metaEnv = (import.meta as { env?: Record<string, unknown> }).env;
+  const prevMeta = metaEnv
+    ? {
+        CHOYSUM_APP_NAME: metaEnv.CHOYSUM_APP_NAME,
+        CHOYSUM_MODULE_NAME: metaEnv.CHOYSUM_MODULE_NAME,
+      }
+    : undefined;
+
+  const applyOverride = (owner: Record<string, unknown>, override: RuntimeEnvOverride) => {
+    if (override.CHOYSUM_APP_NAME === undefined) delete owner.CHOYSUM_APP_NAME;
+    else owner.CHOYSUM_APP_NAME = override.CHOYSUM_APP_NAME;
+    if (override.CHOYSUM_MODULE_NAME === undefined) delete owner.CHOYSUM_MODULE_NAME;
+    else owner.CHOYSUM_MODULE_NAME = override.CHOYSUM_MODULE_NAME;
+  };
+
+  setRuntimeGlobalValue('CHOYSUM_APP_NAME', values.CHOYSUM_APP_NAME);
+  setRuntimeGlobalValue('CHOYSUM_MODULE_NAME', values.CHOYSUM_MODULE_NAME);
+  for (const snap of bagSnapshots) applyOverride(snap.bag, values);
+  if (metaEnv) applyOverride(metaEnv, values);
+
   try {
     return run();
   } finally {
-    setRuntimeGlobalValue('CHOYSUM_APP_NAME', prevApp);
-    setRuntimeGlobalValue('CHOYSUM_MODULE_NAME', prevModule);
-    const root = getRuntimeGlobalRecord();
-    const appRoot = asObjectRecord(root[TEST_APP]);
-    if (appRoot) delete appRoot[TEST_MODULE];
-    if (appRoot && Object.keys(appRoot).length === 0) delete root[TEST_APP];
+    setRuntimeGlobalValue('CHOYSUM_APP_NAME', prevGlobals.CHOYSUM_APP_NAME);
+    setRuntimeGlobalValue('CHOYSUM_MODULE_NAME', prevGlobals.CHOYSUM_MODULE_NAME);
+    for (const snap of bagSnapshots) {
+      applyOverride(snap.bag, {
+        CHOYSUM_APP_NAME: snap.CHOYSUM_APP_NAME,
+        CHOYSUM_MODULE_NAME: snap.CHOYSUM_MODULE_NAME,
+      });
+    }
+    if (metaEnv && prevMeta) applyOverride(metaEnv, prevMeta);
   }
 }
 
+function withModuleEnv<T>(run: () => T): T {
+  return withRuntimeNameOverride({ CHOYSUM_APP_NAME: TEST_APP, CHOYSUM_MODULE_NAME: TEST_MODULE }, () => {
+    try {
+      return run();
+    } finally {
+      const root = getRuntimeGlobalRecord();
+      const appRoot = asObjectRecord(root[TEST_APP]);
+      if (appRoot) delete appRoot[TEST_MODULE];
+      if (appRoot && Object.keys(appRoot).length === 0) delete root[TEST_APP];
+    }
+  });
+}
+
 function withoutModuleEnv<T>(run: () => T): T {
-  const prevApp = getRuntimeGlobalRecord().CHOYSUM_APP_NAME;
-  const prevModule = getRuntimeGlobalRecord().CHOYSUM_MODULE_NAME;
-  setRuntimeGlobalValue('CHOYSUM_APP_NAME', undefined);
-  setRuntimeGlobalValue('CHOYSUM_MODULE_NAME', undefined);
-  try {
-    return run();
-  } finally {
-    setRuntimeGlobalValue('CHOYSUM_APP_NAME', prevApp);
-    setRuntimeGlobalValue('CHOYSUM_MODULE_NAME', prevModule);
-  }
+  return withRuntimeNameOverride({ CHOYSUM_APP_NAME: undefined, CHOYSUM_MODULE_NAME: undefined }, run);
 }
 
 function moduleRoot(): TestModuleRoot | undefined {
@@ -331,6 +378,18 @@ test('legacy decorator ignores non-object target when descriptor is missing', ()
     const decorate = HookPostInit();
     expect(() => decorate(42 as any, 'ensureWeird', undefined as any)).not.toThrow();
     expect(moduleRoot()?.hook?.ensureWeird).toBeUndefined();
+  });
+});
+
+test('legacy decorator falls back to symbol property keys without String(symbol)', () => {
+  withModuleEnv(() => {
+    const methodKey = Symbol('ensureFromSymbol');
+    class SymbolHost {
+      static [methodKey]() {}
+    }
+    const decorate = HookPostInit();
+    expect(() => decorate(SymbolHost, methodKey, undefined as any)).not.toThrow();
+    expect(typeof moduleRoot()?.hook?.ensureFromSymbol).toBe('function');
   });
 });
 
