@@ -6,8 +6,10 @@
  *
  * Identity contract: frames are keyed by the execution instance created in
  * `withBridgeFrame` (`instance ===`). Onchange/Constraint draft proxies are a
- * different identity and must not resolve bridge context — see
- * `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`.
+ * different identity and must not resolve bridge context.
+ *
+ * Author contract: `../RECORD_LIFECYCLE_THIS.md`
+ * Full design: `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
  */
 import { getJsCtxRoot } from '../context/source';
 import { asObjectRecord } from '../../../utils/object';

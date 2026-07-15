@@ -52,3 +52,14 @@ export class Bad {
   }
 }
 ```
+
+## Contrast: Record lifecycle (`@Onchange` / `@Constraint` / `@Compute`)
+
+Hook/Migration handlers are **module-level** and must not use `this`.
+
+Record create/write lifecycle handlers are the opposite: they **require** a correct
+draft or bridge `this`, and may call **class-level** Model APIs such as
+`OtherModel.Search(...)`. Do not apply “never use `this`” or “never call Model
+RPC” from this Hook doc to those handlers.
+
+See `modules/core/service/runtime/RECORD_LIFECYCLE_THIS.md`.

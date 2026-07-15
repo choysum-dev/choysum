@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * Validation / Constraint runtime: instance constraints run with `this` bound
+ * to a constraint draft proxy (prototype resolve + persistence guards).
+ *
+ * Author contract: `../RECORD_LIFECYCLE_THIS.md`
+ * Full design: `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
+ */
 import type BaseModel from '../../orm/model/model';
 import { KernelValidationError, validateFields as validateKernelFields } from '../../orm/repository/validation';
 import type { KernelValidationRule } from '../../orm/repository/validation';

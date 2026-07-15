@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * Onchange runtime: handlers resolve from Model.prototype and run with
+ * `this` bound to the onchange draft proxy.
+ *
+ * Author contract: `../RECORD_LIFECYCLE_THIS.md`
+ * Full design: `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
+ */
 import type { ModelMetadata, OnchangeHandlerMeta } from '../../orm/metadata/model';
 import type BaseModel from '../../orm/model/model';
 import { DEFAULT_LOOP_THRESHOLD, MAX_ITERATIONS } from './constants';

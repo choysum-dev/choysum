@@ -1,6 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/**
+ * Conventional Model static service wrappers (depth / transport / deny-read).
+ *
+ * Author contract for draft `this` vs class-level RPC:
+ * `modules/core/service/runtime/RECORD_LIFECYCLE_THIS.md`
+ *
+ * Full design:
+ * `.dev/docs/core/service/record_lifecycle_proxy_wrapper_boundary_plan20260715.md`
+ */
 import { ServiceMetadata, ParamMetadata, MetadataStorage, ValueType } from '../metadata';
 import BaseModel from '../model/model';
 import { buildRelationAliasCandidates } from '../relation/relation_alias';
