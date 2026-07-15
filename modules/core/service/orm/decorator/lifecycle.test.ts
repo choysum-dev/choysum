@@ -57,7 +57,7 @@ function withRuntimeNameOverride<T>(values: RuntimeEnvOverride, run: () => T): T
     };
   }).filter((item): item is NonNullable<typeof item> => item != null);
 
-  const metaEnv = (import.meta as { env?: Record<string, unknown> }).env;
+  const metaEnv = (import.meta as unknown as { env?: Record<string, unknown> }).env;
   const prevMeta = metaEnv
     ? {
         CHOYSUM_APP_NAME: metaEnv.CHOYSUM_APP_NAME,
