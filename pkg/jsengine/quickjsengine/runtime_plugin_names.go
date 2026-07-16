@@ -12,6 +12,7 @@ const (
 	RuntimePluginAuth             = "auth"
 	RuntimePluginCrypto           = "crypto"
 	RuntimePluginFS               = "fs"
+	RuntimePluginI18n             = "i18n"
 	RuntimePluginGRPC             = "grpc"
 	RuntimePluginDocumentStorage  = "document-storage"
 	RuntimePluginModuleManagement = "module-management"
@@ -26,6 +27,7 @@ var defaultRuntimePluginNames = []string{
 	RuntimePluginAuth,
 	RuntimePluginCrypto,
 	RuntimePluginFS,
+	RuntimePluginI18n,
 	RuntimePluginGRPC,
 	RuntimePluginDocumentStorage,
 	RuntimePluginModuleManagement,
@@ -40,6 +42,7 @@ var replaceableRuntimePluginNames = []string{
 	RuntimePluginAuth,
 	RuntimePluginCrypto,
 	RuntimePluginFS,
+	RuntimePluginI18n,
 	RuntimePluginGRPC,
 	RuntimePluginDocumentStorage,
 	RuntimePluginModuleManagement,
@@ -57,6 +60,7 @@ var replaceableRuntimePluginNameSet = map[string]struct{}{
 	RuntimePluginAuth:             {},
 	RuntimePluginCrypto:           {},
 	RuntimePluginFS:               {},
+	RuntimePluginI18n:             {},
 	RuntimePluginGRPC:             {},
 	RuntimePluginDocumentStorage:  {},
 	RuntimePluginModuleManagement: {},
