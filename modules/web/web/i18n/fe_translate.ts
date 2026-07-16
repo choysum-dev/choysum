@@ -81,7 +81,7 @@ export function createFeTranslate(module: string): {
         }
       }
       const translated =
-        interp.length > 0 ? i18n.t(src, interp as any, { namespace }) : i18n.t(src, { namespace });
+        interp.length > 0 ? i18n.t(src, interp as any[], { namespace }) : i18n.t(src, undefined as any, { namespace });
       const text = translated == null ? '' : String(translated);
       if (!text || text === src || text === `${namespace}.${src}`) {
         return interpolate(src, interp);
