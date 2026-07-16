@@ -40,8 +40,8 @@ func (p *tsParser) parse() (*parser.ParserResult, error) {
 	return &parser.ParserResult{
 		Path:                 p.Path,
 		RawContent:           p.Content,
-		Imports:              ctx.imports,
-		Exports:              ctx.exports,
+		Imports:              ctx.Imports,
+		Exports:              ctx.Exports,
 		UiResourceDecls:      uiDecls,
 		UiResourceDeclIssues: uiIssues,
 	}, nil

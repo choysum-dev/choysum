@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-package vueparser
+package tsgoctx
 
 import (
 	"path/filepath"
@@ -26,13 +26,13 @@ export default toolkit.Widget
 export const ready = true
 `
 
-	ctx, err := parseTSGoCtx(map[string]string{"@": filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(path))), "")}, path, content)
+	ctx, err := Parse(map[string]string{"@": filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(path))), "")}, path, content)
 	if err != nil {
-		t.Fatalf("parseTSGoCtx() error = %v", err)
+		t.Fatalf("Parse() error = %v", err)
 	}
 
 	if got := ctx.CurrentModuleSpecPath(); got != path[:len(path)-len(filepath.Ext(path))] {
-		t.Fatalf("currentModuleSpecPath() = %q", got)
+		t.Fatalf("CurrentModuleSpecPath() = %q", got)
 	}
 	if ctx.Imports["DefaultView"] == nil || ctx.Imports["DefaultView"].ReferenceIdent != "default" {
 		t.Fatalf("unexpected default import: %#v", ctx.Imports["DefaultView"])
@@ -74,12 +74,12 @@ export default class NamedView {}
 export const enabled = true
 `
 
-	ctx, err := parseTSGoCtxWithKind(nil, path, content, tscore.ScriptKindTS, true)
+	ctx, err := ParseWithKind(nil, path, content, tscore.ScriptKindTS, true)
 	if err != nil {
-		t.Fatalf("parseTSGoCtxWithKind() error = %v", err)
+		t.Fatalf("ParseWithKind() error = %v", err)
 	}
 	if got := ctx.CurrentModuleSpecPath(); got != path {
-		t.Fatalf("currentModuleSpecPath() for vue = %q, want %q", got, path)
+		t.Fatalf("CurrentModuleSpecPath() for vue = %q, want %q", got, path)
 	}
 	if ctx.Exports["default"] == nil || ctx.Exports["default"].ReferenceIdent != "NamedView" {
 		t.Fatalf("unexpected default declaration export: %#v", ctx.Exports["default"])
@@ -89,7 +89,7 @@ export const enabled = true
 	}
 
 	dstImports := map[string]*parser.Import{"keep": {ReferenceIdent: "keep"}}
-	mergeImports(dstImports, map[string]*parser.Import{"next": {ReferenceIdent: "next"}})
+	MergeImports(dstImports, map[string]*parser.Import{"next": {ReferenceIdent: "next"}})
 	if dstImports["keep"] == nil || dstImports["next"] == nil {
 		t.Fatalf("unexpected merged imports: %#v", dstImports)
 	}
@@ -97,17 +97,17 @@ export const enabled = true
 	dstExports := map[string]*parser.Export{
 		"*": {Wildcard: []*parser.Export{{ReferenceIdent: "*", ModuleSpecPath: "one"}}},
 	}
-	mergeExports(dstExports, map[string]*parser.Export{
+	MergeExports(dstExports, map[string]*parser.Export{
 		"*": {Wildcard: []*parser.Export{{ReferenceIdent: "*", ModuleSpecPath: "two"}}},
 	})
 	if len(dstExports["*"].Wildcard) != 2 {
 		t.Fatalf("unexpected merged wildcard exports: %#v", dstExports["*"])
 	}
-	mergeExports(nil, dstExports)
-	mergeImports(nil, dstImports)
+	MergeExports(nil, dstExports)
+	MergeImports(nil, dstImports)
 
-	if got := exportDeclarationName(nil); got != "" {
-		t.Fatalf("exportDeclarationName(nil) = %q, want empty", got)
+	if got := ExportDeclarationName(nil); got != "" {
+		t.Fatalf("ExportDeclarationName(nil) = %q, want empty", got)
 	}
 }
 
@@ -121,9 +121,9 @@ const localView = DefaultView
 export default localView
 `
 
-	ctx, err := parseTSGoCtx(nil, path, content)
+	ctx, err := Parse(nil, path, content)
 	if err != nil {
-		t.Fatalf("parseTSGoCtx() error = %v", err)
+		t.Fatalf("Parse() error = %v", err)
 	}
 
 	if moduleSpec, referenceIdent := ctx.ConvertReferenceWithModuleSpec("DefaultView"); referenceIdent != "default" || moduleSpec != filepath.Join(filepath.Dir(path), "base") {
@@ -138,9 +138,33 @@ export default localView
 
 	identifierNode := findFirstNodeInSourceFile(ctx.Source, tsast.KindIdentifier)
 	if identifierNode == nil || ctx.NodeText(identifierNode) == "" {
-		t.Fatalf("expected nodeText() to return source text for valid identifier node")
+		t.Fatalf("expected NodeText() to return source text for valid identifier node")
 	}
 	if got := ctx.NodeText(&tsast.Node{}); got != "" {
-		t.Fatalf("nodeText(invalid) = %q, want empty", got)
+		t.Fatalf("NodeText(invalid) = %q, want empty", got)
 	}
+}
+
+func findFirstNodeInSourceFile(sourceFile *tsast.SourceFile, kind tsast.Kind) *tsast.Node {
+	for _, stmt := range sourceFile.Statements.Nodes {
+		if found := findFirstNodeByKind(stmt, kind); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func findFirstNodeByKind(node *tsast.Node, kind tsast.Kind) *tsast.Node {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == kind {
+		return node
+	}
+	var found *tsast.Node
+	node.ForEachChild(func(child *tsast.Node) bool {
+		found = findFirstNodeByKind(child, kind)
+		return found != nil
+	})
+	return found
 }
