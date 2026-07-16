@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/i18n/extract"
+	i18nsync "github.com/choysum-dev/choysum/internal/i18n/sync"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -27,7 +28,7 @@ Vue <template> extraction uses a temporary regex (S1-MVP); S1+ will use a full t
 			lightweightScopeAnnotation: "true",
 		},
 	}
-	cmd.AddCommand(newI18nExtractCmd(envGetter))
+	cmd.AddCommand(newI18nExtractCmd(envGetter), newI18nSyncCmd(envGetter))
 	return cmd
 }
 
@@ -93,6 +94,68 @@ func newI18nExtractCmd(envGetter func() scope.Scope) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&all, "all", false, "extract all modules under modules path")
+	return cmd
+}
+
+func newI18nSyncCmd(envGetter func() scope.Scope) *cobra.Command {
+	var all bool
+	var lang string
+
+	cmd := &cobra.Command{
+		Use:   "sync [module...]",
+		Short: "Sync module .po files from .pot (msgmerge semantics)",
+		Long: `Update language .po catalogs from the module .pot.
+
+Preserves existing msgstr for matching (msgctxt, msgid), adds new empty entries,
+and marks removed pot entries obsolete (#~) without deleting translation history.`,
+		Annotations: map[string]string{
+			lightweightScopeAnnotation: "true",
+		},
+		Args: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(lang) == "" {
+				return xfmt.Errorf("i18n sync: --lang is required")
+			}
+			if all && len(args) > 0 {
+				return xfmt.Errorf("i18n sync: --all cannot be used with module arguments")
+			}
+			if !all && len(args) == 0 {
+				return xfmt.Errorf("i18n sync: provide module name(s) or --all")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			env, err := requireCommandScope(envGetter)
+			if err != nil {
+				return err
+			}
+			runtimeOpts, ok := scope.PathsRuntimeOptionsFromScope(env)
+			if !ok {
+				return xfmt.Errorf("i18n sync: missing runtime options")
+			}
+			modulesPath := strings.TrimSpace(runtimeOpts.ModulesPath)
+			if modulesPath == "" {
+				return xfmt.Errorf("i18n sync: modules path is empty")
+			}
+
+			modules, err := resolveI18nModules(modulesPath, all, args)
+			if err != nil {
+				return err
+			}
+
+			for _, moduleName := range modules {
+				moduleRoot := filepath.Join(modulesPath, moduleName)
+				result, err := i18nsync.SyncModulePo(moduleRoot, moduleName, lang)
+				if err != nil {
+					return xfmt.Errorf("i18n sync %s: %w", moduleName, err)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "synced %s (kept=%d added=%d obsolete=%d)\n",
+					result.PoPath, result.Kept, result.Added, result.Obsoleted)
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&all, "all", false, "sync all modules under modules path")
+	cmd.Flags().StringVar(&lang, "lang", "", "language code for the .po file (e.g. zh_CN)")
 	return cmd
 }
 
