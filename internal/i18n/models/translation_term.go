@@ -14,6 +14,16 @@ import (
 const (
 	// KindLiteral is the default term kind (source literal; ≠ programming type).
 	KindLiteral = "literal"
+	// KindFieldLabel is a Vue field label / search-view-title (S7).
+	KindFieldLabel = "field_label"
+	// KindSelectionLabel is a selection option display label (S7); never selection value.
+	KindSelectionLabel = "selection_label"
+	// KindMenu is a defineMenu title (S7).
+	KindMenu = "menu"
+	// KindRoute is a defineRoute page title (S7).
+	KindRoute = "route"
+	// KindAction is a defineAction / model action title (S7).
+	KindAction = "action"
 
 	// SourcePackaged is set when the term comes from module PO import.
 	SourcePackaged = "packaged"
@@ -22,6 +32,25 @@ const (
 
 	coreApplication = "core"
 )
+
+// NormalizeKind returns a known kind or KindLiteral when empty/unknown-blank.
+func NormalizeKind(kind string) string {
+	kind = strings.TrimSpace(kind)
+	if kind == "" {
+		return KindLiteral
+	}
+	return kind
+}
+
+// IsKnownKind reports whether kind is one of the frozen S7 kinds (including literal).
+func IsKnownKind(kind string) bool {
+	switch NormalizeKind(kind) {
+	case KindLiteral, KindFieldLabel, KindSelectionLabel, KindMenu, KindRoute, KindAction:
+		return true
+	default:
+		return false
+	}
+}
 
 // TranslationTerm is the per-application terminology storage row.
 // Physical table name is {application}_translation_term (see TranslationTermTableName).

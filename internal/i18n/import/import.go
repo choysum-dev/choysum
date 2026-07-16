@@ -3,10 +3,12 @@
 
 // Package i18nimport loads module PO catalogs into per-application TranslationTerm rows.
 // PO text is parsed with leonelquinteros/gotext (Po.Parse / Domain iteration only).
+// Kind is read from `#. kind:` via internal/i18n/po (gotext does not expose extracted comments).
 // Runtime lookup never uses gotext Get() — only TermStore cache after Warm/Invalidate.
 package i18nimport
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/i18n/po"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -34,12 +37,14 @@ type poTerm struct {
 	scope    string
 	src      string
 	value    string
+	kind     string
 	comments string
 }
 
 // ImportModulePo parses poText with gotext and upserts packaged terms for (application, module, lang).
 // Existing Source=override rows are not overwritten. Obsolete (#~) entries are ignored by gotext
 // and never DELETE existing DB rows (D12a). Entries without msgctxt are rejected and logged (D12c).
+// Kind defaults to literal; `#. kind: <name>` overrides (D19).
 func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)
@@ -72,7 +77,7 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	}
 
 	for _, term := range terms {
-		kind := i18nmodels.KindLiteral
+		kind := i18nmodels.NormalizeKind(term.kind)
 		var existing i18nmodels.TranslationTerm
 		err := session.Table(tableName).
 			Where("module = ? AND lang = ? AND scope = ? AND src = ? AND kind = ?",
@@ -86,6 +91,7 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 			existing.Value = term.value
 			existing.Source = i18nmodels.SourcePackaged
 			existing.Application = application
+			existing.Kind = kind
 			if term.comments != "" {
 				existing.Comments = term.comments
 			}
@@ -125,10 +131,12 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	return stats, nil
 }
 
-// parsePoTerms uses gotext Po.Parse. Returns contexted terms, count of no-msgctxt
-// msgid entries (excluding header), and count of obsolete #~ msgid lines (D12a observability).
+// parsePoTerms uses gotext Po.Parse for msgstr values and internal po.Parse for Kind
+// (`#. kind:`). Returns contexted terms, count of no-msgctxt msgid entries (excluding
+// header), and count of obsolete #~ msgid lines (D12a observability).
 func parsePoTerms(poText []byte) (terms []poTerm, rejectedNoCtxt int, obsolete int) {
 	obsolete = countObsoleteMsgid(poText)
+	kindByKey := kindIndexFromPO(poText)
 
 	poObj := gotext.NewPo()
 	poObj.Parse(poText)
@@ -150,15 +158,48 @@ func parsePoTerms(poText []byte) (terms []poTerm, rejectedNoCtxt int, obsolete i
 			if msgid == "" || tr == nil {
 				continue
 			}
+			kind := kindByKey[poEntryKey(ctx, msgid)]
 			terms = append(terms, poTerm{
 				scope:    ctx,
 				src:      msgid,
 				value:    msgstrValue(tr),
+				kind:     kind,
 				comments: strings.Join(tr.Refs, " "),
 			})
 		}
 	}
 	return terms, rejectedNoCtxt, obsolete
+}
+
+func kindIndexFromPO(poText []byte) map[string]string {
+	out := map[string]string{}
+	entries, err := po.Parse(bytes.NewReader(poText))
+	if err != nil {
+		return out
+	}
+	for _, e := range entries {
+		if po.IsHeader(e) || e.Obsolete || e.Msgctxt == "" || e.Msgid == "" {
+			continue
+		}
+		if kind := kindFromExtractedComments(e.ExtractedComments); kind != "" {
+			out[poEntryKey(e.Msgctxt, e.Msgid)] = kind
+		}
+	}
+	return out
+}
+
+func kindFromExtractedComments(comments []string) string {
+	for _, c := range comments {
+		c = strings.TrimSpace(c)
+		if strings.HasPrefix(strings.ToLower(c), "kind:") {
+			return i18nmodels.NormalizeKind(strings.TrimSpace(c[len("kind:"):]))
+		}
+	}
+	return ""
+}
+
+func poEntryKey(msgctxt, msgid string) string {
+	return msgctxt + "\x00" + msgid
 }
 
 func msgstrValue(tr *gotext.Translation) string {

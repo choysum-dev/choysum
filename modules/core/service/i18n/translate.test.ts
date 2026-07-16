@@ -60,6 +60,23 @@ describe('createTranslate', () => {
     expect(_t('Sign in', { scope: 'login@title' })).toBe('登录');
   });
 
+  test('hit via bridge with kind', () => {
+    const root = globalThis as { $choysum: { i18n: { t: (...args: string[]) => string } } };
+    root.$choysum = {
+      i18n: {
+        t: (module, _lang, scope, src, kind = 'literal') => {
+          if (module === 'auth' && src === 'Company' && scope === 'm@id' && kind === 'menu') {
+            return '公司';
+          }
+          return '';
+        },
+      },
+    };
+    setGlobalRequestContextProvider({ lang: 'zh_CN' });
+    const { _t } = createTranslate('auth');
+    expect(_t('Company', { scope: 'm@id', kind: 'menu' })).toBe('公司');
+  });
+
   test('interpolation', () => {
     const root = globalThis as { $choysum: { i18n: { t: () => string } } };
     root.$choysum = { i18n: { t: () => '用户 %s 不存在' } };

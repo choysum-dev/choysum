@@ -23,8 +23,8 @@ type TermStore struct {
 	mu           sync.RWMutex
 	runtimeScope scope.Scope
 	application  string
-	// lang → module → scope → src → value
-	cache map[string]map[string]map[string]map[string]string
+	// lang → module → scope → kind → src → value
+	cache map[string]map[string]map[string]map[string]map[string]string
 	// lang → termHash
 	termHash map[string]string
 }
@@ -34,7 +34,7 @@ func NewTermStore(runtimeScope scope.Scope, application string) *TermStore {
 	return &TermStore{
 		runtimeScope: runtimeScope,
 		application:  strings.TrimSpace(application),
-		cache:        make(map[string]map[string]map[string]map[string]string),
+		cache:        make(map[string]map[string]map[string]map[string]map[string]string),
 		termHash:     make(map[string]string),
 	}
 }
@@ -57,7 +57,7 @@ func (s *TermStore) WarmLanguage(lang string) error {
 	tableName := i18nmodels.TranslationTermTableName(s.application)
 	if !s.runtimeScope.Session().Migrator().HasTable(tableName) {
 		s.mu.Lock()
-		s.cache[lang] = make(map[string]map[string]map[string]string)
+		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
 		s.termHash[lang] = emptyTermHash()
 		s.mu.Unlock()
 		return nil
@@ -70,28 +70,22 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		return fmt.Errorf("warm %s lang=%s: %w", tableName, lang, err)
 	}
 
-	next := make(map[string]map[string]map[string]string)
+	next := make(map[string]map[string]map[string]map[string]string)
 	for _, row := range rows {
-		kind := row.Kind
-		if kind == "" {
-			kind = i18nmodels.KindLiteral
-		}
-		// MVP cache key omits kind in the nested map; Lookup defaults kind=literal
-		// and only stores literal in the hot path for S0. Non-literal kinds share
-		// the same src slot only when Kind matches literal default.
-		if kind != i18nmodels.KindLiteral {
-			continue
-		}
+		kind := i18nmodels.NormalizeKind(row.Kind)
 		mod := row.Module
 		scp := row.Scope
 		src := row.Src
 		if next[mod] == nil {
-			next[mod] = make(map[string]map[string]string)
+			next[mod] = make(map[string]map[string]map[string]string)
 		}
 		if next[mod][scp] == nil {
-			next[mod][scp] = make(map[string]string)
+			next[mod][scp] = make(map[string]map[string]string)
 		}
-		next[mod][scp][src] = row.Value
+		if next[mod][scp][kind] == nil {
+			next[mod][scp][kind] = make(map[string]string)
+		}
+		next[mod][scp][kind][src] = row.Value
 	}
 
 	hash := computeTermHash(rows)
@@ -118,13 +112,7 @@ func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bo
 	lang = strings.TrimSpace(lang)
 	scopeKey = strings.TrimSpace(scopeKey)
 	src = strings.TrimSpace(src)
-	if kind == "" {
-		kind = i18nmodels.KindLiteral
-	}
-	if kind != i18nmodels.KindLiteral {
-		// S0 hot cache only holds literal; miss for other kinds.
-		return "", false
-	}
+	kind = i18nmodels.NormalizeKind(kind)
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -136,7 +124,11 @@ func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bo
 	if !ok {
 		return "", false
 	}
-	bySrc, ok := byScope[scopeKey]
+	byKind, ok := byScope[scopeKey]
+	if !ok {
+		return "", false
+	}
+	bySrc, ok := byKind[kind]
 	if !ok {
 		return "", false
 	}
@@ -144,7 +136,8 @@ func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bo
 	return val, ok
 }
 
-// TermsByModules returns a deep copy of warmed terms for the given modules.
+// TermsByModules returns a deep copy of warmed **literal** terms for the given modules.
+// Non-literal kinds are omitted so Gateway vue-i18n messages stay kind-free (D19).
 // Modules absent from cache are omitted. Call WarmLanguage first for a complete view.
 // Shape: module → scope → src → value.
 func (s *TermStore) TermsByModules(lang string, modules []string) map[string]map[string]map[string]string {
@@ -176,15 +169,21 @@ func (s *TermStore) TermsByModules(lang string, modules []string) map[string]map
 		if !ok {
 			continue
 		}
-		modCopy := make(map[string]map[string]string, len(byScope))
-		for scopeKey, bySrc := range byScope {
+		modCopy := make(map[string]map[string]string)
+		for scopeKey, byKind := range byScope {
+			bySrc, ok := byKind[i18nmodels.KindLiteral]
+			if !ok || len(bySrc) == 0 {
+				continue
+			}
 			srcCopy := make(map[string]string, len(bySrc))
 			for src, val := range bySrc {
 				srcCopy[src] = val
 			}
 			modCopy[scopeKey] = srcCopy
 		}
-		out[mod] = modCopy
+		if len(modCopy) > 0 {
+			out[mod] = modCopy
+		}
 	}
 	return out
 }
@@ -285,10 +284,7 @@ func (s *TermStore) UpsertOverride(module, lang, scopeKey, src, kind, value stri
 	lang = strings.TrimSpace(lang)
 	scopeKey = strings.TrimSpace(scopeKey)
 	src = strings.TrimSpace(src)
-	kind = strings.TrimSpace(kind)
-	if kind == "" {
-		kind = i18nmodels.KindLiteral
-	}
+	kind = i18nmodels.NormalizeKind(kind)
 	if module == "" || lang == "" || scopeKey == "" || src == "" {
 		return TermListItem{}, fmt.Errorf("upsert override: module, lang, scope, and src are required")
 	}
@@ -344,28 +340,26 @@ func (s *TermStore) UpsertOverride(module, lang, scopeKey, src, kind, value stri
 }
 
 func (s *TermStore) applyOverrideToCache(module, lang, scopeKey, src, kind, value string) {
-	if kind != i18nmodels.KindLiteral {
-		return
-	}
+	kind = i18nmodels.NormalizeKind(kind)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cache[lang] == nil {
-		s.cache[lang] = make(map[string]map[string]map[string]string)
+		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
 	}
 	if s.cache[lang][module] == nil {
-		s.cache[lang][module] = make(map[string]map[string]string)
+		s.cache[lang][module] = make(map[string]map[string]map[string]string)
 	}
 	if s.cache[lang][module][scopeKey] == nil {
-		s.cache[lang][module][scopeKey] = make(map[string]string)
+		s.cache[lang][module][scopeKey] = make(map[string]map[string]string)
 	}
-	s.cache[lang][module][scopeKey][src] = value
+	if s.cache[lang][module][scopeKey][kind] == nil {
+		s.cache[lang][module][scopeKey][kind] = make(map[string]string)
+	}
+	s.cache[lang][module][scopeKey][kind][src] = value
 }
 
 func termListItemFromRow(application string, row i18nmodels.TranslationTerm) TermListItem {
-	kind := row.Kind
-	if kind == "" {
-		kind = i18nmodels.KindLiteral
-	}
+	kind := i18nmodels.NormalizeKind(row.Kind)
 	source := row.Source
 	if source == "" {
 		source = i18nmodels.SourcePackaged
@@ -430,10 +424,7 @@ func computeTermHash(rows []i18nmodels.TranslationTerm) string {
 	}
 	keys := make([]key, 0, len(rows))
 	for _, row := range rows {
-		kind := row.Kind
-		if kind == "" {
-			kind = i18nmodels.KindLiteral
-		}
+		kind := i18nmodels.NormalizeKind(row.Kind)
 		source := row.Source
 		if source == "" {
 			source = i18nmodels.SourcePackaged

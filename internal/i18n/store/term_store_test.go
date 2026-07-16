@@ -133,3 +133,59 @@ func TestRegistryLookupViaModuleMapping(t *testing.T) {
 		t.Fatalf("Registry.Lookup = %q ok=%v", val, ok)
 	}
 }
+
+func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	table := rs.Session().Table("auth_translation_term")
+	rows := []i18nmodels.TranslationTerm{
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "web/menu/menus.ts@base.menu.company", Src: "Company Management", Value: "公司管理",
+			Kind: i18nmodels.KindMenu, Source: i18nmodels.SourcePackaged,
+		},
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "web/pages/Login@title", Src: "Sign in", Value: "登录",
+			Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+		},
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "web/pages/Login@title", Src: "Sign in", Value: "登录字段",
+			Kind: i18nmodels.KindFieldLabel, Source: i18nmodels.SourcePackaged,
+		},
+	}
+	for i := range rows {
+		if err := table.Create(&rows[i]).Error; err != nil {
+			t.Fatalf("seed %d: %v", i, err)
+		}
+	}
+
+	ts := store.NewTermStore(rs, "auth")
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatalf("warm: %v", err)
+	}
+
+	menuVal, ok := ts.Lookup("auth", "zh_CN", "web/menu/menus.ts@base.menu.company", "Company Management", i18nmodels.KindMenu)
+	if !ok || menuVal != "公司管理" {
+		t.Fatalf("menu Lookup = %q ok=%v", menuVal, ok)
+	}
+	fieldVal, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", i18nmodels.KindFieldLabel)
+	if !ok || fieldVal != "登录字段" {
+		t.Fatalf("field_label Lookup = %q ok=%v", fieldVal, ok)
+	}
+	litVal, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", "")
+	if !ok || litVal != "登录" {
+		t.Fatalf("literal Lookup = %q ok=%v", litVal, ok)
+	}
+
+	exported := ts.TermsByModules("zh_CN", []string{"auth"})
+	if got := exported["auth"]["web/pages/Login@title"]["Sign in"]; got != "登录" {
+		t.Fatalf("TermsByModules literal = %q", got)
+	}
+	if _, hasMenu := exported["auth"]["web/menu/menus.ts@base.menu.company"]; hasMenu {
+		t.Fatal("TermsByModules must omit non-literal kinds")
+	}
+}

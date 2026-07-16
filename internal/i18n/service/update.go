@@ -28,10 +28,11 @@ func (s *Service) handleUpdateTerm(reqMap map[string]any) (any, error) {
 	if value == "<nil>" {
 		value = ""
 	}
-	kind := strings.TrimSpace(fmt.Sprintf("%v", reqMap["kind"]))
-	if kind == "" || kind == "<nil>" {
-		kind = i18nmodels.KindLiteral
+	kindRaw := strings.TrimSpace(fmt.Sprintf("%v", reqMap["kind"]))
+	if kindRaw == "" || kindRaw == "<nil>" {
+		kindRaw = i18nmodels.KindLiteral
 	}
+	kind := i18nmodels.NormalizeKind(kindRaw)
 
 	if module == "" || module == "<nil>" {
 		return nil, status.Error(codes.InvalidArgument, "module is required")

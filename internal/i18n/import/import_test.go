@@ -205,3 +205,80 @@ msgstr ""
 		t.Fatalf("multiline msgstr = %q", row.Value)
 	}
 }
+
+func TestImportModulePoKindFromExtractedComment(t *testing.T) {
+	rs := newTestScope(t)
+	poText := []byte(`
+msgid ""
+msgstr "Language: zh_CN\n"
+
+#. kind: menu
+#: web/menu/menus.ts
+msgctxt "web/menu/menus.ts@base.menu.company"
+msgid "Company Management"
+msgstr "公司管理"
+
+#. kind: selection_label
+msgctxt "service/models/bank_account.ts@Type.checking"
+msgid "Checking"
+msgstr "支票"
+
+msgctxt "web/a@literal"
+msgid "Hello"
+msgstr "你好"
+`)
+	reg := store.NewRegistry(rs)
+	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	if err != nil {
+		t.Fatalf("ImportModulePo: %v", err)
+	}
+	if stats.Upserted != 3 {
+		t.Fatalf("stats=%+v", stats)
+	}
+
+	var menu i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").
+		Where("src = ? AND kind = ?", "Company Management", i18nmodels.KindMenu).
+		Take(&menu).Error; err != nil {
+		t.Fatal(err)
+	}
+	if menu.Value != "公司管理" {
+		t.Fatalf("menu row: %+v", menu)
+	}
+
+	var sel i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").
+		Where("src = ? AND kind = ?", "Checking", i18nmodels.KindSelectionLabel).
+		Take(&sel).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	var lit i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").
+		Where("src = ? AND kind = ?", "Hello", i18nmodels.KindLiteral).
+		Take(&lit).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// Same scope/src different kind can coexist.
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "web/a@literal", Src: "Hello", Value: "字段你好",
+		Kind: i18nmodels.KindFieldLabel, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	_ = reg.StoreFor("auth").WarmLanguage("zh_CN")
+	menuVal, ok := reg.Lookup("auth", "zh_CN", "web/menu/menus.ts@base.menu.company", "Company Management", i18nmodels.KindMenu)
+	if !ok || menuVal != "公司管理" {
+		t.Fatalf("menu cache = %q ok=%v", menuVal, ok)
+	}
+	fieldVal, ok := reg.Lookup("auth", "zh_CN", "web/a@literal", "Hello", i18nmodels.KindFieldLabel)
+	if !ok || fieldVal != "字段你好" {
+		t.Fatalf("field cache = %q ok=%v", fieldVal, ok)
+	}
+	litVal, ok := reg.Lookup("auth", "zh_CN", "web/a@literal", "Hello", "")
+	if !ok || litVal != "你好" {
+		t.Fatalf("literal cache = %q ok=%v", litVal, ok)
+	}
+}
