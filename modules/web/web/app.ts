@@ -105,6 +105,17 @@ function setupApp(app: ChoysumWebApp): void {
     { immediate: true }
   );
 
+  // Terminology Editor save → reloadTerminology updates lastTerminologyLoad without locale change.
+  watch(
+    () => i18nStore.lastTerminologyLoad,
+    terminology => {
+      if (shouldMergeTerminology(terminology) && terminology?.messages) {
+        const mergeLocale = terminology.locale || i18nStore.currentLocale.code;
+        i18n.global.mergeLocaleMessage(mergeLocale, terminology.messages);
+      }
+    }
+  );
+
   // Register i18n.
   app.usePlugin('i18n', i18n);
 

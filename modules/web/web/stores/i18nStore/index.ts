@@ -19,8 +19,11 @@ export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { localeToLang, langToLocale } from './lang';
 export { fetchWebTranslations } from './terminology_loader';
+export { fetchTerms, patchTerms } from './terms_api';
+export { componentHintFromScope } from './component_hint';
 export { afterLocaleChange, resolveLocaleRemountMode } from './locale_remount';
 export type { TerminologyLoadResult } from './terminology_loader';
+export type { TermItem, TermsListResponse } from './terms_api';
 export type { SupportedLocale };
 
 /**
@@ -199,6 +202,49 @@ export const useI18nStore = defineStore(
     }
 
     /**
+     * Reload terminology for the current (or given) locale from Gateway and
+     * refresh lastTerminologyLoad for vue-i18n merge (post Terminology Editor save).
+     */
+    async function reloadTerminology(locale?: string): Promise<TerminologyLoadResult | null> {
+      const targetLocale = String(locale || localeCode.value || '').trim();
+      if (!targetLocale || !(targetLocale in SUPPORTED_LOCALES)) {
+        return null;
+      }
+      const lang = localeToLang(targetLocale);
+      // Force catalog refresh: omit client hash so Gateway always returns messages.
+      try {
+        const res = await fetchWebTranslations(lang, undefined);
+        if (res.hash) {
+          terminologyHashByLang.value = {
+            ...terminologyHashByLang.value,
+            [lang]: res.hash,
+          };
+        }
+        const load: TerminologyLoadResult = {
+          lang: res.lang,
+          locale: res.locale || targetLocale,
+          hash: res.hash,
+          unchanged: false,
+          messages: res.messages ?? {},
+        };
+        lastTerminologyLoad.value = load;
+        return load;
+      } catch (error) {
+        console.warn('Failed to reload terminology from Gateway', error);
+        const load: TerminologyLoadResult = {
+          lang,
+          locale: targetLocale,
+          hash: terminologyHashByLang.value[lang] || '',
+          unchanged: false,
+          messages: null,
+          gatewayError: true,
+        };
+        lastTerminologyLoad.value = load;
+        return load;
+      }
+    }
+
+    /**
      * Initialize locale resources.
      */
     async function initialize() {
@@ -246,6 +292,7 @@ export const useI18nStore = defineStore(
       // Locale management methods.
       setLocale,
       setActiveLocales,
+      reloadTerminology,
 
       // Formatting helpers.
       formatDateTime: wrappedFormatDateTime,
