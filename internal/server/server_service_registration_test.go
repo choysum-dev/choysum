@@ -170,8 +170,14 @@ func TestServerRegisterApplicationServicesBuildsWatchDirsAndScripts(t *testing.T
 	assertRegistrationInitScripts(t, registration, []string{filepath.Join(appDistDir, "index.js")}, "registerApplicationServices() init scripts")
 	requireSingleRegistrationBinding(t, registration, "registerApplicationServices() result bindings")
 	assertRegisteredBindings(t, srv, registration.Bindings, "registerApplicationServices() registered bindings")
-	assertRegisteredGRPCMethods(t, srv, map[string]struct{}{}, "registerApplicationServices() registered grpc methods")
-	assertRegistrationGRPCMethods(t, registration, map[string]struct{}{}, "registerApplicationServices() grpc methods")
+	assertRegisteredGRPCMethods(t, srv, map[string]struct{}{
+		"/auth.I18n/GetTranslations":  {},
+		"/auth.TaskWorker/ExecuteJob": {},
+	}, "registerApplicationServices() registered grpc methods")
+	assertRegistrationGRPCMethods(t, registration, map[string]struct{}{
+		"/auth.I18n/GetTranslations":  {},
+		"/auth.TaskWorker/ExecuteJob": {},
+	}, "registerApplicationServices() grpc methods")
 
 	watchTargets := srv.hotreload.watchTargetsSnapshot()
 	if len(watchTargets) != 2 {

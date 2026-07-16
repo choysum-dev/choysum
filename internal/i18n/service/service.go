@@ -40,6 +40,24 @@ func FullMethod(appName string) string {
 	return "/" + strings.TrimSpace(appName) + ".I18n/GetTranslations"
 }
 
+// NewRequestMessage builds an empty GetTranslationsReq for appName.
+func NewRequestMessage(appName string) (*dynamicpb.Message, error) {
+	_, reqDesc, _, err := descriptors(appName)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicpb.NewMessage(reqDesc), nil
+}
+
+// NewResponseMessage builds an empty GetTranslationsResp for appName.
+func NewResponseMessage(appName string) (*dynamicpb.Message, error) {
+	_, _, respDesc, err := descriptors(appName)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicpb.NewMessage(respDesc), nil
+}
+
 // ServiceDesc builds the gRPC service descriptor for {app}.I18n.
 func (s *Service) ServiceDesc() (*grpc.ServiceDesc, error) {
 	md, _, _, err := descriptors(s.appName)

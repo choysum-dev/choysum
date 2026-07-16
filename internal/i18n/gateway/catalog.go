@@ -1,0 +1,93 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package i18ngateway
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/pkg/meta"
+	"github.com/choysum-dev/choysum/pkg/scope"
+)
+
+// CatalogHash computes the multi-app catalogHash for a lang (D2).
+// Input is app → termHash; apps are sorted and joined as "app:termHash\n".
+func CatalogHash(appTermHashes map[string]string) string {
+	if len(appTermHashes) == 0 {
+		return store.EmptyTermHash()
+	}
+	apps := make([]string, 0, len(appTermHashes))
+	for app := range appTermHashes {
+		app = strings.TrimSpace(app)
+		if app == "" {
+			continue
+		}
+		apps = append(apps, app)
+	}
+	sort.Strings(apps)
+	var b strings.Builder
+	for _, app := range apps {
+		hash := strings.TrimSpace(appTermHashes[app])
+		if hash == "" {
+			hash = store.EmptyTermHash()
+		}
+		b.WriteString(app)
+		b.WriteByte(':')
+		b.WriteString(hash)
+		b.WriteByte('\n')
+	}
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:8])
+}
+
+// LangToLocale maps terminology lang (zh_CN) to format locale (zh-CN).
+func LangToLocale(lang string) string {
+	lang = strings.TrimSpace(lang)
+	if lang == "" {
+		return ""
+	}
+	return strings.ReplaceAll(lang, "_", "-")
+}
+
+// installedModulesByApp returns ApplicationStr → installed module names (skips core).
+func installedModulesByApp(runtimeScope scope.Scope) (map[string][]string, error) {
+	out := map[string][]string{}
+	if runtimeScope == nil || runtimeScope.Session() == nil {
+		return out, nil
+	}
+	session := runtimeScope.Session()
+	if !session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+		return out, nil
+	}
+
+	var modules []meta.IrModule
+	if err := session.Where("status = ?", meta.Installed).Find(&modules).Error; err != nil {
+		return nil, fmt.Errorf("list installed modules: %w", err)
+	}
+
+	seen := map[string]map[string]struct{}{}
+	for _, mod := range modules {
+		app := strings.TrimSpace(mod.ApplicationStr)
+		name := strings.TrimSpace(mod.Name)
+		if app == "" || app == "core" || name == "" {
+			continue
+		}
+		if seen[app] == nil {
+			seen[app] = map[string]struct{}{}
+		}
+		if _, ok := seen[app][name]; ok {
+			continue
+		}
+		seen[app][name] = struct{}{}
+		out[app] = append(out[app], name)
+	}
+	for app := range out {
+		sort.Strings(out[app])
+	}
+	return out, nil
+}
