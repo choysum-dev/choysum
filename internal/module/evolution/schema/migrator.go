@@ -6,6 +6,7 @@ package schema
 import (
 	"fmt"
 
+	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -74,7 +75,16 @@ func (m *migrator) Migrate() error {
 		return fmt.Errorf("migrate schema: %w", err)
 	}
 
-	// 2. Apply foreign key constraints.
+	// 2. Ensure per-application terminology table (skip application == "core").
+	application := ""
+	if m.module != nil {
+		application = m.module.ApplicationStr
+	}
+	if err := i18nmodels.EnsureTranslationTermTable(m.runtimeScope, application); err != nil {
+		return fmt.Errorf("ensure translation term table: %w", err)
+	}
+
+	// 3. Apply foreign key constraints.
 	if err := m.foreignKeyMigrator.MigrateForeignKeys(); err != nil {
 		return fmt.Errorf("migrate foreign keys: %w", err)
 	}
