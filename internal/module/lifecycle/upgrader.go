@@ -176,6 +176,10 @@ func (m *moduleUpgrader) upgrade() error {
 	}
 	m.logUpgradeStep(target.Name, moduleStepSave, persistModuleStarted, "from_version", fromVersion, "to_version", target.Version)
 
+	if err := importModuleTerminology(m.runtimeScope, target, runtimeOptionsFromScope(m.runtimeScope).modulesPath); err != nil {
+		return err
+	}
+
 	finalizeStarted := time.Now()
 	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); runner != nil {
 		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePost, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {

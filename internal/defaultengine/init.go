@@ -37,7 +37,7 @@ func defaultQuickjsReplaceableRuntimePlugins() []jsengine.RuntimePlugin {
 			return []jsengine.JsEngineOption{quickjsruntime.WithCompilerFs()}
 		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginI18n, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {
-			reg := i18nstore.NewRegistry(runtimeScope)
+			reg := i18nstore.RegistryFor(runtimeScope)
 			return []jsengine.JsEngineOption{i18nbridge.WithTerminology(reg)}
 		}),
 		jsengine.NewRuntimePlugin(quickjsengine.RuntimePluginGRPC, func(runtimeScope scope.Scope, authenticator auth.Authenticator) []jsengine.JsEngineOption {

@@ -179,7 +179,8 @@ func DeleteModuleTerms(runtimeScope scope.Scope, reg *store.Registry, applicatio
 	if !runtimeScope.Session().Migrator().HasTable(tableName) {
 		return nil
 	}
-	if err := runtimeScope.Session().Table(tableName).Where("module = ?", module).Delete(&i18nmodels.TranslationTerm{}).Error; err != nil {
+	if err := runtimeScope.Session().Table(tableName).Where("module = ?", module).
+		Unscoped().Delete(&i18nmodels.TranslationTerm{}).Error; err != nil {
 		return err
 	}
 	if reg != nil {

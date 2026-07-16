@@ -129,6 +129,9 @@ func (m *moduleUninstaller) uninstall() error {
 	if err := m.cleanModels(); err != nil {
 		return xfmt.Errorf("error cleaning models: %w", err)
 	}
+	if err := deleteModuleTerminology(m.runtimeScope, m.module); err != nil {
+		return err
+	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepCleanup, cleanupStarted)
 
 	finalizeStarted := time.Now()
