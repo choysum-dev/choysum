@@ -36,6 +36,8 @@ message GetTranslationsResp {
   string hash = 2;
   bool unchanged = 3;
   google.protobuf.Struct terms_by_module = 4;
+  // S7: non-literal kinds (module → scope → kind → src → value). Literal stays in terms_by_module.
+  google.protobuf.Struct metadata_by_module = 5;
 }
 
 message SearchTermsReq {

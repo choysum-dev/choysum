@@ -145,13 +145,7 @@ func (s *TermStore) TermsByModules(lang string, modules []string) map[string]map
 	if lang == "" || len(modules) == 0 {
 		return map[string]map[string]map[string]string{}
 	}
-	wanted := make(map[string]struct{}, len(modules))
-	for _, m := range modules {
-		m = strings.TrimSpace(m)
-		if m != "" {
-			wanted[m] = struct{}{}
-		}
-	}
+	wanted := wantedModules(modules)
 	if len(wanted) == 0 {
 		return map[string]map[string]map[string]string{}
 	}
@@ -186,6 +180,66 @@ func (s *TermStore) TermsByModules(lang string, modules []string) map[string]map
 		}
 	}
 	return out
+}
+
+// MetadataByModules returns warmed **non-literal** terms for the given modules (D19 / S7).
+// Shape: module → scope → kind → src → value.
+func (s *TermStore) MetadataByModules(lang string, modules []string) map[string]map[string]map[string]map[string]string {
+	lang = strings.TrimSpace(lang)
+	if lang == "" || len(modules) == 0 {
+		return map[string]map[string]map[string]map[string]string{}
+	}
+	wanted := wantedModules(modules)
+	if len(wanted) == 0 {
+		return map[string]map[string]map[string]map[string]string{}
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	byMod, ok := s.cache[lang]
+	if !ok {
+		return map[string]map[string]map[string]map[string]string{}
+	}
+
+	out := make(map[string]map[string]map[string]map[string]string)
+	for mod := range wanted {
+		byScope, ok := byMod[mod]
+		if !ok {
+			continue
+		}
+		modCopy := make(map[string]map[string]map[string]string)
+		for scopeKey, byKind := range byScope {
+			kindCopy := make(map[string]map[string]string)
+			for kind, bySrc := range byKind {
+				if kind == i18nmodels.KindLiteral || len(bySrc) == 0 {
+					continue
+				}
+				srcCopy := make(map[string]string, len(bySrc))
+				for src, val := range bySrc {
+					srcCopy[src] = val
+				}
+				kindCopy[kind] = srcCopy
+			}
+			if len(kindCopy) > 0 {
+				modCopy[scopeKey] = kindCopy
+			}
+		}
+		if len(modCopy) > 0 {
+			out[mod] = modCopy
+		}
+	}
+	return out
+}
+
+func wantedModules(modules []string) map[string]struct{} {
+	wanted := make(map[string]struct{}, len(modules))
+	for _, m := range modules {
+		m = strings.TrimSpace(m)
+		if m != "" {
+			wanted[m] = struct{}{}
+		}
+	}
+	return wanted
 }
 
 // InvalidateModule drops module entries from all warmed languages and bumps hashes.

@@ -85,6 +85,7 @@ SPDX-License-Identifier: Apache-2.0
           </template>
         </el-table-column>
         <el-table-column prop="source" label="Source" width="100" />
+        <el-table-column prop="kind" label="Kind" width="120" />
         <el-table-column prop="status" label="Status" width="100" />
       </el-table>
 

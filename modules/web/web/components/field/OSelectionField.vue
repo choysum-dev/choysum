@@ -54,6 +54,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 // Added: narrowed aggregate type (count_distinct only)
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import { tSelectionLabel } from '@/web/web/i18n/meta_translate';
 
 defineOptions({ name: 'OSelectionField', inheritAttrs: false });
 
@@ -125,7 +126,15 @@ const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(nul
 const metaOptions = computed<MetaOption[]>(() => {
   const sel = binding.meta?.selection;
   if (!Array.isArray(sel) || sel.length === 0) return [];
-  return sel.map(item => ({ value: String(item.value), label: String(item.label) }));
+  const field = String(binding.prop || '');
+  return sel.map(item => {
+    const value = String(item.value);
+    const label = String(item.label);
+    return {
+      value,
+      label: tSelectionLabel({ src: label, field, value }),
+    };
+  });
 });
 
 // 1.1) Normalize props.selection against metadata, keeping metadata labels and prop order

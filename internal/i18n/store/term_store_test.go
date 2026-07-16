@@ -188,4 +188,12 @@ func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
 	if _, hasMenu := exported["auth"]["web/menu/menus.ts@base.menu.company"]; hasMenu {
 		t.Fatal("TermsByModules must omit non-literal kinds")
 	}
+
+	meta := ts.MetadataByModules("zh_CN", []string{"auth"})
+	if got := meta["auth"]["web/menu/menus.ts@base.menu.company"][i18nmodels.KindMenu]["Company Management"]; got != "公司管理" {
+		t.Fatalf("MetadataByModules menu = %q", got)
+	}
+	if _, hasLit := meta["auth"]["web/pages/Login@title"][i18nmodels.KindLiteral]; hasLit {
+		t.Fatal("MetadataByModules must omit literal")
+	}
 }

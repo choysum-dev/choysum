@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     v-show="visibleForm"
     class="o-field-base"
     v-bind="formItemProps"
-    :label="label"
+    :label="displayLabel"
     :prop="String(binding.prop)"
     :rules="effectiveRules"
     :required="requiredForm"
@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
   <OVColumn
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
-    :label="label"
+    :label="displayLabel"
     :vColumnProps="vColumnProps"
     v-slot="{ row, $index }"
   >
@@ -234,6 +234,7 @@ import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
+import { tFieldLabel } from '@/web/web/i18n/meta_translate';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -290,6 +291,13 @@ const requiredInline = computed(() => requiredForm.value);
 const effectiveEditInline = computed(() => binding.env.isEditMode && visibleInline.value && !readonlyInline.value);
 
 const binding = props.binding;
+
+const displayLabel = computed(() =>
+  tFieldLabel({
+    src: String(props.label || ''),
+    prop: String(binding.prop || ''),
+  })
+);
 
 // Unwrap row records to the actual business record (row-level detection, not snapshot-level QueryKind):
 // - Legacy grouped-tree detail row: { type:'record', record:{...} }

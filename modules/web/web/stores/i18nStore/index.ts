@@ -13,6 +13,7 @@ import { loadElementLocale, loadDayjsLocale, loadVueI18nMessages } from './loade
 import { localeToLang } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
 import { afterLocaleChange } from './locale_remount';
+import { setMetadataCatalog } from '@/web/web/i18n/meta_translate';
 
 // Re-export types for external consumers.
 export * from './types';
@@ -117,7 +118,11 @@ export const useI18nStore = defineStore(
             hash: res.hash,
             unchanged: res.unchanged,
             messages: res.unchanged ? null : res.messages,
+            metadata: res.unchanged ? null : res.metadata,
           };
+          if (!res.unchanged) {
+            setMetadataCatalog(res.metadata);
+          }
         } catch (error) {
           console.warn('Failed to load terminology from Gateway; falling back to msgid', error);
           lastTerminologyLoad.value = {
@@ -126,6 +131,7 @@ export const useI18nStore = defineStore(
             hash: prevHash,
             unchanged: false,
             messages: null,
+            metadata: null,
             gatewayError: true,
           };
         }
@@ -228,8 +234,10 @@ export const useI18nStore = defineStore(
           hash: res.hash,
           unchanged: false,
           messages: res.messages ?? {},
+          metadata: res.metadata ?? {},
         };
         lastTerminologyLoad.value = load;
+        setMetadataCatalog(load.metadata);
         return load;
       } catch (error) {
         console.warn('Failed to reload terminology from Gateway', error);
@@ -239,6 +247,7 @@ export const useI18nStore = defineStore(
           hash: terminologyHashByLang.value[lang] || '',
           unchanged: false,
           messages: null,
+          metadata: null,
           gatewayError: true,
         };
         lastTerminologyLoad.value = load;

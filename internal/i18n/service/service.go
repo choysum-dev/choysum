@@ -164,10 +164,11 @@ func (s *Service) unaryHandler(methodName string) grpc.UnaryHandler {
 }
 
 type getTranslationsResult struct {
-	Lang          string
-	Hash          string
-	Unchanged     bool
-	TermsByModule map[string]map[string]map[string]string
+	Lang             string
+	Hash             string
+	Unchanged        bool
+	TermsByModule    map[string]map[string]map[string]string
+	MetadataByModule map[string]map[string]map[string]map[string]string
 }
 
 func (s *Service) handleGetTranslations(reqMap map[string]any) (any, error) {
@@ -222,11 +223,16 @@ func (s *Service) getTranslations(lang string, moduleNames []string, clientHash 
 	if terms == nil {
 		terms = map[string]map[string]map[string]string{}
 	}
+	metadata := ts.MetadataByModules(lang, owned)
+	if metadata == nil {
+		metadata = map[string]map[string]map[string]map[string]string{}
+	}
 	return &getTranslationsResult{
-		Lang:          lang,
-		Hash:          termHash,
-		Unchanged:     false,
-		TermsByModule: terms,
+		Lang:             lang,
+		Hash:             termHash,
+		Unchanged:        false,
+		TermsByModule:    terms,
+		MetadataByModule: metadata,
 	}, nil
 }
 
@@ -263,6 +269,7 @@ func (s *Service) buildGetTranslationsResp(result *getTranslationsResult) (any, 
 	}
 	if !result.Unchanged {
 		payload["terms_by_module"] = termsToStructMap(result.TermsByModule)
+		payload["metadata_by_module"] = metadataToStructMap(result.MetadataByModule)
 	}
 	if err := converter.MapToMessage(payload, respMsg); err != nil {
 		return nil, err
@@ -280,6 +287,26 @@ func termsToStructMap(terms map[string]map[string]map[string]string) map[string]
 				srcMap[src] = val
 			}
 			modMap[scopeKey] = srcMap
+		}
+		out[mod] = modMap
+	}
+	return out
+}
+
+func metadataToStructMap(meta map[string]map[string]map[string]map[string]string) map[string]any {
+	out := make(map[string]any, len(meta))
+	for mod, byScope := range meta {
+		modMap := make(map[string]any, len(byScope))
+		for scopeKey, byKind := range byScope {
+			kindMap := make(map[string]any, len(byKind))
+			for kind, bySrc := range byKind {
+				srcMap := make(map[string]any, len(bySrc))
+				for src, val := range bySrc {
+					srcMap[src] = val
+				}
+				kindMap[kind] = srcMap
+			}
+			modMap[scopeKey] = kindMap
 		}
 		out[mod] = modMap
 	}

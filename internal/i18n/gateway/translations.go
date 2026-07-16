@@ -86,6 +86,7 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 
 	appHashes := make(map[string]string, len(results))
 	messages := map[string]map[string]map[string]string{}
+	metadata := map[string]map[string]map[string]map[string]string{}
 	for _, item := range results {
 		if item.trans == nil {
 			continue
@@ -93,6 +94,9 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 		appHashes[item.app] = item.trans.Hash
 		for mod, byScope := range item.trans.Terms {
 			messages[mod] = byScope
+		}
+		for mod, byScope := range item.trans.Metadata {
+			metadata[mod] = byScope
 		}
 	}
 
@@ -105,9 +109,11 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 	if clientHash != "" && clientHash == catalogHash {
 		resp["unchanged"] = true
 		resp["messages"] = nil
+		resp["metadata"] = nil
 	} else {
 		resp["unchanged"] = false
 		resp["messages"] = messages
+		resp["metadata"] = metadata
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
