@@ -21,6 +21,8 @@ import "google/protobuf/struct.proto";
 
 service I18n {
   rpc GetTranslations(GetTranslationsReq) returns (GetTranslationsResp);
+  rpc SearchTerms(SearchTermsReq) returns (SearchTermsResp);
+  rpc UpdateTerm(UpdateTermReq) returns (UpdateTermResp);
 }
 
 message GetTranslationsReq {
@@ -35,7 +37,54 @@ message GetTranslationsResp {
   bool unchanged = 3;
   google.protobuf.Struct terms_by_module = 4;
 }
+
+message SearchTermsReq {
+  string lang = 1;
+  repeated string modules = 2;
+  string q = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message TermItem {
+  string application = 1;
+  string module = 2;
+  string scope = 3;
+  string src = 4;
+  string value = 5;
+  string kind = 6;
+  string source = 7;
+  string status = 8;
+}
+
+message SearchTermsResp {
+  string lang = 1;
+  repeated TermItem items = 2;
+  int32 total = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+message UpdateTermReq {
+  string module = 1;
+  string lang = 2;
+  string scope = 3;
+  string src = 4;
+  string value = 5;
+  string kind = 6;
+}
+
+message UpdateTermResp {
+  TermItem item = 1;
+  string hash = 2;
+}
 `
+
+const (
+	MethodGetTranslations = "GetTranslations"
+	MethodSearchTerms     = "SearchTerms"
+	MethodUpdateTerm      = "UpdateTerm"
+)
 
 type i18nResolver struct {
 	path    string
@@ -56,11 +105,10 @@ var (
 )
 
 type i18nDescriptorSet struct {
-	method protoreflect.MethodDescriptor
-	req    protoreflect.MessageDescriptor
-	resp   protoreflect.MessageDescriptor
+	methods map[string]protoreflect.MethodDescriptor
 }
 
+// ProtoPath returns the synthetic proto path for an application I18n service.
 func ProtoPath(appName string) string {
 	name := strings.TrimSpace(appName)
 	if name == "" {
@@ -69,24 +117,47 @@ func ProtoPath(appName string) string {
 	return fmt.Sprintf(i18nProtoPathFmt, name)
 }
 
-func descriptors(appName string) (protoreflect.MethodDescriptor, protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, error) {
+// FullMethod returns /{app}.I18n/{method}.
+func FullMethod(appName, method string) string {
+	app := strings.TrimSpace(appName)
+	method = strings.TrimSpace(method)
+	if method == "" {
+		method = MethodGetTranslations
+	}
+	return "/" + app + ".I18n/" + method
+}
+
+// FullMethodGetTranslations is the legacy helper for GetTranslations.
+func FullMethodGetTranslations(appName string) string {
+	return FullMethod(appName, MethodGetTranslations)
+}
+
+// ResetDescriptorCacheForTests clears compiled I18n descriptors (unit tests only).
+func ResetDescriptorCacheForTests() {
+	i18nMu.Lock()
+	defer i18nMu.Unlock()
+	i18nCache = map[string]*i18nDescriptorSet{}
+	i18nErrs = map[string]error{}
+}
+
+func descriptors(appName string) (*i18nDescriptorSet, error) {
 	name := strings.TrimSpace(appName)
 	if name == "" {
 		name = "i18n"
 	}
-	path := ProtoPath(name)
 
 	i18nMu.Lock()
 	if set, ok := i18nCache[name]; ok {
 		i18nMu.Unlock()
-		return set.method, set.req, set.resp, nil
+		return set, nil
 	}
 	if err, ok := i18nErrs[name]; ok {
 		i18nMu.Unlock()
-		return nil, nil, nil, err
+		return nil, err
 	}
 	i18nMu.Unlock()
 
+	path := ProtoPath(name)
 	content := fmt.Sprintf(i18nProtoTemplate, name)
 	resolver := &i18nResolver{path: path, content: content}
 	compiler := protocompile.Compiler{Resolver: protocompile.WithStandardImports(resolver)}
@@ -104,24 +175,40 @@ func descriptors(appName string) (protoreflect.MethodDescriptor, protoreflect.Me
 	if methods.Len() == 0 {
 		return storeError(name, fmt.Errorf("i18n proto missing method"))
 	}
-	methodDesc := methods.Get(0)
-	set := &i18nDescriptorSet{
-		method: methodDesc,
-		req:    methodDesc.Input(),
-		resp:   methodDesc.Output(),
+	set := &i18nDescriptorSet{methods: make(map[string]protoreflect.MethodDescriptor, methods.Len())}
+	for i := 0; i < methods.Len(); i++ {
+		md := methods.Get(i)
+		set.methods[string(md.Name())] = md
+	}
+	for _, required := range []string{MethodGetTranslations, MethodSearchTerms, MethodUpdateTerm} {
+		if _, ok := set.methods[required]; !ok {
+			return storeError(name, fmt.Errorf("i18n proto missing method %s", required))
+		}
 	}
 
 	i18nMu.Lock()
 	i18nCache[name] = set
 	delete(i18nErrs, name)
 	i18nMu.Unlock()
-	return set.method, set.req, set.resp, nil
+	return set, nil
 }
 
-func storeError(appName string, err error) (protoreflect.MethodDescriptor, protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, error) {
+func methodDescriptors(appName, methodName string) (protoreflect.MethodDescriptor, protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, error) {
+	set, err := descriptors(appName)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	md, ok := set.methods[strings.TrimSpace(methodName)]
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("i18n method not found: %s", methodName)
+	}
+	return md, md.Input(), md.Output(), nil
+}
+
+func storeError(appName string, err error) (*i18nDescriptorSet, error) {
 	i18nMu.Lock()
 	i18nErrs[appName] = err
 	delete(i18nCache, appName)
 	i18nMu.Unlock()
-	return nil, nil, nil, err
+	return nil, err
 }

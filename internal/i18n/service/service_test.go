@@ -5,6 +5,7 @@ package i18nservice_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -16,6 +17,9 @@ import (
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/grpc/converter"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -49,6 +53,7 @@ func (s *testScope) Logger() *slog.Logger { return s.logger }
 func newTestScope(t *testing.T) *testScope {
 	t.Helper()
 	store.ResetSharedRegistryForTests()
+	i18nservice.ResetDescriptorCacheForTests()
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "i18n_svc.db")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
@@ -81,26 +86,47 @@ func seedTerm(t *testing.T, rs scope.Scope, module, scopeKey, src, value string)
 
 func invokeGetTranslations(t *testing.T, svc *i18nservice.Service, lang string, modules []string, hash string) map[string]any {
 	t.Helper()
+	out, err := invokeMethod(t, svc, i18nservice.MethodGetTranslations, map[string]any{
+		"lang":         lang,
+		"module_names": stringListAny(modules),
+		"hash":         hash,
+	})
+	if err != nil {
+		t.Fatalf("handler: %v", err)
+	}
+	return out
+}
+
+func stringListAny(modules []string) []any {
+	out := make([]any, 0, len(modules))
+	for _, m := range modules {
+		out = append(out, m)
+	}
+	return out
+}
+
+func invokeMethod(t *testing.T, svc *i18nservice.Service, methodName string, payload map[string]any) (map[string]any, error) {
+	t.Helper()
 	desc, err := svc.ServiceDesc()
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := desc.Methods[0].Handler
-	moduleNames := make([]any, 0, len(modules))
-	for _, m := range modules {
-		moduleNames = append(moduleNames, m)
+	var handler func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error)
+	for _, m := range desc.Methods {
+		if m.MethodName == methodName {
+			handler = m.Handler
+			break
+		}
 	}
-	payload := map[string]any{
-		"lang":         lang,
-		"module_names": moduleNames,
-		"hash":         hash,
+	if handler == nil {
+		t.Fatalf("method %s not found", methodName)
 	}
 	resp, err := handler(nil, context.Background(), func(v any) error {
 		msg := v.(*dynamicpb.Message)
 		return converter.MapToMessage(payload, msg)
 	}, nil)
 	if err != nil {
-		t.Fatalf("handler: %v", err)
+		return nil, err
 	}
 	msg, ok := resp.(*dynamicpb.Message)
 	if !ok {
@@ -110,7 +136,7 @@ func invokeGetTranslations(t *testing.T, svc *i18nservice.Service, lang string, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	return out
+	return out, nil
 }
 
 func TestGetTranslationsFiltersModulesAndHash(t *testing.T) {
@@ -122,8 +148,14 @@ func TestGetTranslationsFiltersModulesAndHash(t *testing.T) {
 	reg.RememberModuleApplication("other", "partner")
 
 	svc := i18nservice.New("auth", rs)
-	if got := i18nservice.FullMethod("auth"); got != "/auth.I18n/GetTranslations" {
-		t.Fatalf("FullMethod = %q", got)
+	if got := i18nservice.FullMethodGetTranslations("auth"); got != "/auth.I18n/GetTranslations" {
+		t.Fatalf("FullMethodGetTranslations = %q", got)
+	}
+	if got := i18nservice.FullMethod("auth", i18nservice.MethodSearchTerms); got != "/auth.I18n/SearchTerms" {
+		t.Fatalf("FullMethod SearchTerms = %q", got)
+	}
+	if got := i18nservice.FullMethod("auth", i18nservice.MethodUpdateTerm); got != "/auth.I18n/UpdateTerm" {
+		t.Fatalf("FullMethod UpdateTerm = %q", got)
 	}
 	desc, err := svc.ServiceDesc()
 	if err != nil {
@@ -131,6 +163,9 @@ func TestGetTranslationsFiltersModulesAndHash(t *testing.T) {
 	}
 	if desc.ServiceName != "auth.I18n" {
 		t.Fatalf("ServiceName = %q", desc.ServiceName)
+	}
+	if len(desc.Methods) != 3 {
+		t.Fatalf("Methods len = %d, want 3", len(desc.Methods))
 	}
 
 	out := invokeGetTranslations(t, svc, "zh_CN", []string{"auth", "other", "missing"}, "")
@@ -198,5 +233,114 @@ func TestServiceDescName(t *testing.T) {
 	}
 	if desc.ServiceName != "web.I18n" {
 		t.Fatalf("ServiceName = %q", desc.ServiceName)
+	}
+}
+
+func TestSearchTermsPaginationAndStatus(t *testing.T) {
+	rs := newTestScope(t)
+	seedTerm(t, rs, "auth", "web/a@title", "Hello", "你好")
+	seedTerm(t, rs, "auth", "web/a@ok", "OK", "")
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth",
+		Module:      "auth",
+		Lang:        "zh_CN",
+		Scope:       "web/a@bye",
+		Src:         "Bye",
+		Value:       "再见",
+		Kind:        i18nmodels.KindLiteral,
+		Source:      i18nmodels.SourcePackaged,
+		Comments:    "fuzzy",
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	reg := store.RegistryFor(rs)
+	reg.RememberModuleApplication("auth", "auth")
+
+	svc := i18nservice.New("auth", rs)
+	out, err := invokeMethod(t, svc, i18nservice.MethodSearchTerms, map[string]any{
+		"lang":    "zh_CN",
+		"modules": stringListAny([]string{"auth"}),
+		"q":       "Hello",
+		"limit":   10,
+		"offset":  0,
+	})
+	if err != nil {
+		t.Fatalf("SearchTerms: %v", err)
+	}
+	items, _ := out["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 Hello hit, got %#v", out)
+	}
+	first := items[0].(map[string]any)
+	if first["status"] != "translated" || first["value"] != "你好" {
+		t.Fatalf("unexpected item: %#v", first)
+	}
+
+	all, err := invokeMethod(t, svc, i18nservice.MethodSearchTerms, map[string]any{
+		"lang":   "zh_CN",
+		"limit":  50,
+		"offset": 0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	allItems, _ := all["items"].([]any)
+	if len(allItems) != 3 {
+		t.Fatalf("expected 3 items, got %#v", all)
+	}
+	bySrc := map[string]string{}
+	for _, raw := range allItems {
+		item := raw.(map[string]any)
+		bySrc[fmt.Sprintf("%v", item["src"])] = fmt.Sprintf("%v", item["status"])
+	}
+	if bySrc["OK"] != "missing" || bySrc["Bye"] != "fuzzy" || bySrc["Hello"] != "translated" {
+		t.Fatalf("status map: %#v", bySrc)
+	}
+}
+
+func TestUpdateTermSetsOverrideAndCache(t *testing.T) {
+	rs := newTestScope(t)
+	seedTerm(t, rs, "auth", "web/a@title", "Hello", "你好")
+	reg := store.RegistryFor(rs)
+	reg.RememberModuleApplication("auth", "auth")
+	ts := reg.StoreFor("auth")
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatal(err)
+	}
+	beforeHash := ts.TermHash("zh_CN")
+
+	svc := i18nservice.New("auth", rs)
+	out, err := invokeMethod(t, svc, i18nservice.MethodUpdateTerm, map[string]any{
+		"module": "auth",
+		"lang":   "zh_CN",
+		"scope":  "web/a@title",
+		"src":    "Hello",
+		"value":  "您好",
+	})
+	if err != nil {
+		t.Fatalf("UpdateTerm: %v", err)
+	}
+	item, _ := out["item"].(map[string]any)
+	if item["source"] != i18nmodels.SourceOverride || item["value"] != "您好" {
+		t.Fatalf("unexpected item: %#v", item)
+	}
+	if got, ok := ts.Lookup("auth", "zh_CN", "web/a@title", "Hello", ""); !ok || got != "您好" {
+		t.Fatalf("cache lookup = %q ok=%v", got, ok)
+	}
+	if ts.TermHash("zh_CN") == beforeHash {
+		t.Fatal("termHash must bump after UpdateTerm")
+	}
+
+	// Foreign module must be denied.
+	reg.RememberModuleApplication("partner", "partner")
+	_, err = invokeMethod(t, svc, i18nservice.MethodUpdateTerm, map[string]any{
+		"module": "partner",
+		"lang":   "zh_CN",
+		"scope":  "a@b",
+		"src":    "X",
+		"value":  "Y",
+	})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("expected PermissionDenied, got %v", err)
 	}
 }

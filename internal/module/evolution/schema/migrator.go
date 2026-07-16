@@ -4,6 +4,7 @@
 package schema
 
 import (
+	"database/sql"
 	"fmt"
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
@@ -77,11 +78,16 @@ func (m *migrator) Migrate() error {
 
 	// 2. Ensure per-application terminology table (skip application == "core").
 	application := ""
+	var moduleID sql.NullString
 	if m.module != nil {
 		application = m.module.ApplicationStr
+		moduleID = m.module.Id
 	}
 	if err := i18nmodels.EnsureTranslationTermTable(m.runtimeScope, application); err != nil {
 		return fmt.Errorf("ensure translation term table: %w", err)
+	}
+	if err := i18nmodels.EnsureI18nIrMeta(m.runtimeScope, application, moduleID); err != nil {
+		return fmt.Errorf("ensure i18n ir meta: %w", err)
 	}
 
 	// 3. Apply foreign key constraints.

@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-// Package i18nservice implements Go-native {app}.I18n RPCs (GetTranslations).
-// Handlers never enter QuickJS; they read TermStore only.
+// Package i18nservice implements Go-native {app}.I18n RPCs
+// (GetTranslations, SearchTerms, UpdateTerm). Handlers never enter QuickJS;
+// they read/write TermStore only.
 package i18nservice
 
 import (
@@ -19,7 +20,7 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-// Service is the per-application terminology read API.
+// Service is the per-application terminology API.
 type Service struct {
 	appName      string
 	runtimeScope scope.Scope
@@ -35,14 +36,9 @@ func New(appName string, runtimeScope scope.Scope) *Service {
 	}
 }
 
-// FullMethod returns /{app}.I18n/GetTranslations.
-func FullMethod(appName string) string {
-	return "/" + strings.TrimSpace(appName) + ".I18n/GetTranslations"
-}
-
 // NewRequestMessage builds an empty GetTranslationsReq for appName.
 func NewRequestMessage(appName string) (*dynamicpb.Message, error) {
-	_, reqDesc, _, err := descriptors(appName)
+	_, reqDesc, _, err := methodDescriptors(appName, MethodGetTranslations)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +47,43 @@ func NewRequestMessage(appName string) (*dynamicpb.Message, error) {
 
 // NewResponseMessage builds an empty GetTranslationsResp for appName.
 func NewResponseMessage(appName string) (*dynamicpb.Message, error) {
-	_, _, respDesc, err := descriptors(appName)
+	_, _, respDesc, err := methodDescriptors(appName, MethodGetTranslations)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicpb.NewMessage(respDesc), nil
+}
+
+// NewSearchRequestMessage builds an empty SearchTermsReq for appName.
+func NewSearchRequestMessage(appName string) (*dynamicpb.Message, error) {
+	_, reqDesc, _, err := methodDescriptors(appName, MethodSearchTerms)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicpb.NewMessage(reqDesc), nil
+}
+
+// NewSearchResponseMessage builds an empty SearchTermsResp for appName.
+func NewSearchResponseMessage(appName string) (*dynamicpb.Message, error) {
+	_, _, respDesc, err := methodDescriptors(appName, MethodSearchTerms)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicpb.NewMessage(respDesc), nil
+}
+
+// NewUpdateRequestMessage builds an empty UpdateTermReq for appName.
+func NewUpdateRequestMessage(appName string) (*dynamicpb.Message, error) {
+	_, reqDesc, _, err := methodDescriptors(appName, MethodUpdateTerm)
+	if err != nil {
+		return nil, err
+	}
+	return dynamicpb.NewMessage(reqDesc), nil
+}
+
+// NewUpdateResponseMessage builds an empty UpdateTermResp for appName.
+func NewUpdateResponseMessage(appName string) (*dynamicpb.Message, error) {
+	_, _, respDesc, err := methodDescriptors(appName, MethodUpdateTerm)
 	if err != nil {
 		return nil, err
 	}
@@ -60,26 +92,35 @@ func NewResponseMessage(appName string) (*dynamicpb.Message, error) {
 
 // ServiceDesc builds the gRPC service descriptor for {app}.I18n.
 func (s *Service) ServiceDesc() (*grpc.ServiceDesc, error) {
-	md, _, _, err := descriptors(s.appName)
+	set, err := descriptors(s.appName)
 	if err != nil {
 		return nil, err
+	}
+	order := []string{MethodGetTranslations, MethodSearchTerms, MethodUpdateTerm}
+	methods := make([]grpc.MethodDesc, 0, len(order))
+	for _, methodName := range order {
+		if _, ok := set.methods[methodName]; !ok {
+			continue
+		}
+		name := methodName
+		methods = append(methods, grpc.MethodDesc{
+			MethodName: name,
+			Handler:    s.methodHandler(name),
+		})
 	}
 	return &grpc.ServiceDesc{
 		ServiceName: s.appName + ".I18n",
 		HandlerType: (*interface{})(nil),
-		Methods: []grpc.MethodDesc{{
-			MethodName: string(md.Name()),
-			Handler:    s.methodHandler(),
-		}},
-		Streams:  []grpc.StreamDesc{},
-		Metadata: ProtoPath(s.appName),
+		Methods:     methods,
+		Streams:     []grpc.StreamDesc{},
+		Metadata:    ProtoPath(s.appName),
 	}, nil
 }
 
-func (s *Service) methodHandler() func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
-	unaryHandler := s.unaryHandler()
+func (s *Service) methodHandler(methodName string) func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
+	unaryHandler := s.unaryHandler(methodName)
 	return func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
-		_, reqDesc, _, err := descriptors(s.appName)
+		_, reqDesc, _, err := methodDescriptors(s.appName, methodName)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
@@ -92,13 +133,13 @@ func (s *Service) methodHandler() func(srv any, ctx context.Context, dec func(an
 		}
 		info := &grpc.UnaryServerInfo{
 			Server:     srv,
-			FullMethod: FullMethod(s.appName),
+			FullMethod: FullMethod(s.appName, methodName),
 		}
 		return interceptor(ctx, reqMsg, info, unaryHandler)
 	}
 }
 
-func (s *Service) unaryHandler() grpc.UnaryHandler {
+func (s *Service) unaryHandler(methodName string) grpc.UnaryHandler {
 	return func(ctx context.Context, req any) (any, error) {
 		reqMsg, ok := req.(*dynamicpb.Message)
 		if !ok {
@@ -109,21 +150,16 @@ func (s *Service) unaryHandler() grpc.UnaryHandler {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		lang := strings.TrimSpace(fmt.Sprintf("%v", reqMap["lang"]))
-		if lang == "" || lang == "<nil>" {
-			return nil, status.Error(codes.InvalidArgument, "lang is required")
+		switch methodName {
+		case MethodGetTranslations:
+			return s.handleGetTranslations(reqMap)
+		case MethodSearchTerms:
+			return s.handleSearchTerms(reqMap)
+		case MethodUpdateTerm:
+			return s.handleUpdateTerm(reqMap)
+		default:
+			return nil, status.Errorf(codes.Unimplemented, "unknown method %s", methodName)
 		}
-		clientHash := strings.TrimSpace(fmt.Sprintf("%v", reqMap["hash"]))
-		if clientHash == "<nil>" {
-			clientHash = ""
-		}
-		moduleNames := parseStringList(reqMap["module_names"])
-
-		result, err := s.getTranslations(lang, moduleNames, clientHash)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		return s.buildResp(result)
 	}
 }
 
@@ -132,6 +168,24 @@ type getTranslationsResult struct {
 	Hash          string
 	Unchanged     bool
 	TermsByModule map[string]map[string]map[string]string
+}
+
+func (s *Service) handleGetTranslations(reqMap map[string]any) (any, error) {
+	lang := strings.TrimSpace(fmt.Sprintf("%v", reqMap["lang"]))
+	if lang == "" || lang == "<nil>" {
+		return nil, status.Error(codes.InvalidArgument, "lang is required")
+	}
+	clientHash := strings.TrimSpace(fmt.Sprintf("%v", reqMap["hash"]))
+	if clientHash == "<nil>" {
+		clientHash = ""
+	}
+	moduleNames := parseStringList(reqMap["module_names"])
+
+	result, err := s.getTranslations(lang, moduleNames, clientHash)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return s.buildGetTranslationsResp(result)
 }
 
 func (s *Service) getTranslations(lang string, moduleNames []string, clientHash string) (*getTranslationsResult, error) {
@@ -196,8 +250,8 @@ func (s *Service) filterOwnedModules(moduleNames []string) []string {
 	return out
 }
 
-func (s *Service) buildResp(result *getTranslationsResult) (any, error) {
-	_, _, respDesc, err := descriptors(s.appName)
+func (s *Service) buildGetTranslationsResp(result *getTranslationsResult) (any, error) {
+	_, _, respDesc, err := methodDescriptors(s.appName, MethodGetTranslations)
 	if err != nil {
 		return nil, err
 	}
@@ -250,5 +304,41 @@ func parseStringList(v any) []string {
 		return out
 	default:
 		return nil
+	}
+}
+
+func parseInt32(v any, fallback int) int {
+	if v == nil {
+		return fallback
+	}
+	switch typed := v.(type) {
+	case int:
+		return typed
+	case int32:
+		return int(typed)
+	case int64:
+		return int(typed)
+	case float64:
+		return int(typed)
+	case string:
+		s := strings.TrimSpace(typed)
+		if s == "" || s == "<nil>" {
+			return fallback
+		}
+		var n int
+		if _, err := fmt.Sscanf(s, "%d", &n); err == nil {
+			return n
+		}
+		return fallback
+	default:
+		s := strings.TrimSpace(fmt.Sprintf("%v", v))
+		if s == "" || s == "<nil>" {
+			return fallback
+		}
+		var n int
+		if _, err := fmt.Sscanf(s, "%d", &n); err == nil {
+			return n
+		}
+		return fallback
 	}
 }

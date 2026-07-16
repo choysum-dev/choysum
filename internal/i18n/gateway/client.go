@@ -55,7 +55,7 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 	if err != nil {
 		return nil, client.ToStatusError(err)
 	}
-	if err := conn.Invoke(rpcCtx, i18nservice.FullMethod(app), reqMsg, respMsg); err != nil {
+	if err := conn.Invoke(rpcCtx, i18nservice.FullMethodGetTranslations(app), reqMsg, respMsg); err != nil {
 		return nil, client.ToStatusError(err)
 	}
 

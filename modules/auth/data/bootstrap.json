@@ -26,6 +26,18 @@
     },
     {
       "module": "auth",
+      "external_id": "role_terminology_editor",
+      "model": "auth.Role",
+      "values": {
+        "Name": "Terminology Editor",
+        "Code": "terminology.editor",
+        "Description": "Edit terminology translations via SearchTerms/UpdateTerm",
+        "IsActive": true,
+        "IsSystem": true
+      }
+    },
+    {
+      "module": "auth",
       "external_id": "user_admin",
       "model": "auth.User",
       "values": {
@@ -55,6 +67,30 @@
         "IrApplicationId": null,
         "IrModelId": null,
         "IrServiceId": null,
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rma_terminology_editor_auth_search_terms",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_terminology_editor" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": { "serviceRef": "auth.I18n/SearchTerms" },
+        "Mode": "allow"
+      }
+    },
+    {
+      "module": "auth",
+      "external_id": "rma_terminology_editor_auth_update_term",
+      "model": "auth.RoleMethodAccess",
+      "values": {
+        "RoleId": { "ref": "auth.role_terminology_editor" },
+        "IrApplicationId": null,
+        "IrModelId": null,
+        "IrServiceId": { "serviceRef": "auth.I18n/UpdateTerm" },
         "Mode": "allow"
       }
     },
