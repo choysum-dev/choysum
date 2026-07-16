@@ -1,0 +1,333 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package i18ngateway
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"sort"
+	"strconv"
+	"strings"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+const (
+	termsPath          = "/web/i18n/terms"
+	defaultTermsLimit  = 50
+	maxTermsLimit      = 100
+	allAppsSearchLimit = 100
+)
+
+func (h *handler) serveTerms(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.serveTermsList(w, r)
+	case http.MethodPatch:
+		h.serveTermsPatch(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
+	accessToken, ok := requireTermsAuth(r.Context(), r.Header.Get("Authorization"))
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication is required"})
+		return
+	}
+
+	lang := strings.TrimSpace(r.URL.Query().Get("lang"))
+	if lang == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "lang is required"})
+		return
+	}
+	application := strings.TrimSpace(r.URL.Query().Get("application"))
+	module := strings.TrimSpace(r.URL.Query().Get("module"))
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	limit := parseQueryInt(r.URL.Query().Get("limit"), defaultTermsLimit)
+	offset := parseQueryInt(r.URL.Query().Get("offset"), 0)
+	if limit <= 0 {
+		limit = defaultTermsLimit
+	}
+	if limit > maxTermsLimit {
+		limit = maxTermsLimit
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	byApp, err := h.modulesByApp()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+
+	// D8: without q, application is required (no All-apps pagination).
+	if q == "" && application == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": "application is required when q is empty",
+		})
+		return
+	}
+
+	if application != "" {
+		if _, known := byApp[application]; !known {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "unknown application"})
+			return
+		}
+		modules := byApp[application]
+		if module != "" {
+			modules = []string{module}
+		}
+		result, err := h.searchApp(r.Context(), accessToken, application, lang, modules, q, limit, offset)
+		if err != nil {
+			writeTermsRPCError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"lang":   lang,
+			"items":  result.Items,
+			"total":  result.Total,
+			"limit":  limit,
+			"offset": offset,
+		})
+		return
+	}
+
+	// All-apps search with q: fan-out, limit capped, no pagination (D8).
+	limit = allAppsSearchLimit
+	apps := sortedAppNames(byApp)
+	var items []termItem
+	var denied bool
+	for _, app := range apps {
+		modules := byApp[app]
+		if module != "" {
+			modules = []string{module}
+		}
+		remaining := limit - len(items)
+		if remaining <= 0 {
+			break
+		}
+		result, err := h.searchApp(r.Context(), accessToken, app, lang, modules, q, remaining, 0)
+		if err != nil {
+			if status.Code(err) == codes.PermissionDenied {
+				denied = true
+				continue
+			}
+			writeTermsRPCError(w, err)
+			return
+		}
+		items = append(items, result.Items...)
+	}
+	if denied && len(items) == 0 {
+		writeJSON(w, http.StatusForbidden, map[string]any{"error": "terminology editor permission required"})
+		return
+	}
+	truncated := len(items) >= limit
+	if len(items) > limit {
+		items = items[:limit]
+		truncated = true
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"lang":      lang,
+		"items":     items,
+		"total":     len(items),
+		"limit":     limit,
+		"offset":    0,
+		"truncated": truncated,
+	})
+}
+
+func (h *handler) serveTermsPatch(w http.ResponseWriter, r *http.Request) {
+	accessToken, ok := requireTermsAuth(r.Context(), r.Header.Get("Authorization"))
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication is required"})
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid body"})
+		return
+	}
+	items, lang, err := parsePatchBody(body)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	if lang == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "lang is required"})
+		return
+	}
+	if len(items) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "items are required"})
+		return
+	}
+
+	byApp, err := h.modulesByApp()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+
+	// Pre-validate all items (D7: all-or-nothing via validate-then-write).
+	grouped := map[string][]termItem{}
+	for i, item := range items {
+		app := strings.TrimSpace(item.Application)
+		if app == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "application is required", "index": i})
+			return
+		}
+		if _, known := byApp[app]; !known {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "unknown application", "application": app, "index": i})
+			return
+		}
+		if strings.TrimSpace(item.Module) == "" || strings.TrimSpace(item.Scope) == "" || strings.TrimSpace(item.Src) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module, scope, and src are required", "index": i})
+			return
+		}
+		grouped[app] = append(grouped[app], item)
+	}
+
+	updated := make([]termItem, 0, len(items))
+	for _, app := range sortedKeys(grouped) {
+		for _, item := range grouped[app] {
+			out, _, err := h.updateApp(r.Context(), accessToken, app, lang, item)
+			if err != nil {
+				writeTermsRPCError(w, err)
+				return
+			}
+			if out != nil {
+				updated = append(updated, *out)
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"lang":  lang,
+		"items": updated,
+	})
+}
+
+func (h *handler) searchApp(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+	if h.search != nil {
+		return h.search(ctx, accessToken, app, lang, modules, q, limit, offset)
+	}
+	return fetchAppSearchTerms(ctx, h.runtimeScope, accessToken, app, lang, modules, q, limit, offset)
+}
+
+func (h *handler) updateApp(ctx context.Context, accessToken, app, lang string, item termItem) (*termItem, string, error) {
+	if h.update != nil {
+		return h.update(ctx, accessToken, app, lang, item)
+	}
+	return invokeAppUpdateTerm(ctx, h.runtimeScope, accessToken, app, lang, item)
+}
+
+func parsePatchBody(body []byte) ([]termItem, string, error) {
+	body = []byte(strings.TrimSpace(string(body)))
+	if len(body) == 0 {
+		return nil, "", fmt.Errorf("empty body")
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, "", fmt.Errorf("invalid json")
+	}
+	lang := strings.TrimSpace(fmt.Sprintf("%v", raw["lang"]))
+	if lang == "<nil>" {
+		lang = ""
+	}
+
+	if itemsRaw, ok := raw["items"]; ok && itemsRaw != nil {
+		encoded, err := json.Marshal(itemsRaw)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid items")
+		}
+		var items []termItem
+		if err := json.Unmarshal(encoded, &items); err != nil {
+			return nil, "", fmt.Errorf("invalid items")
+		}
+		return items, lang, nil
+	}
+
+	item := termItem{
+		Application: strings.TrimSpace(fmt.Sprintf("%v", raw["application"])),
+		Module:      strings.TrimSpace(fmt.Sprintf("%v", raw["module"])),
+		Scope:       strings.TrimSpace(fmt.Sprintf("%v", raw["scope"])),
+		Src:         fmt.Sprintf("%v", raw["src"]),
+		Value:       fmt.Sprintf("%v", raw["value"]),
+		Kind:        strings.TrimSpace(fmt.Sprintf("%v", raw["kind"])),
+	}
+	if item.Application == "<nil>" {
+		item.Application = ""
+	}
+	if item.Module == "<nil>" {
+		item.Module = ""
+	}
+	if item.Scope == "<nil>" {
+		item.Scope = ""
+	}
+	if item.Src == "<nil>" {
+		item.Src = ""
+	}
+	if item.Value == "<nil>" {
+		item.Value = ""
+	}
+	if item.Kind == "<nil>" {
+		item.Kind = ""
+	}
+	if item.Application == "" && item.Module == "" {
+		return nil, "", fmt.Errorf("items or term object required")
+	}
+	return []termItem{item}, lang, nil
+}
+
+func writeTermsRPCError(w http.ResponseWriter, err error) {
+	code := status.Code(err)
+	switch code {
+	case codes.PermissionDenied:
+		writeJSON(w, http.StatusForbidden, map[string]any{"error": "terminology editor permission required"})
+	case codes.Unauthenticated:
+		writeJSON(w, http.StatusUnauthorized, map[string]any{"error": "authentication is required"})
+	case codes.InvalidArgument:
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+	default:
+		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+	}
+}
+
+func parseQueryInt(raw string, fallback int) int {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return n
+}
+
+func sortedAppNames(byApp map[string][]string) []string {
+	apps := make([]string, 0, len(byApp))
+	for app := range byApp {
+		apps = append(apps, app)
+	}
+	sort.Strings(apps)
+	return apps
+}
+
+func sortedKeys(m map[string][]termItem) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
