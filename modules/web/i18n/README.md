@@ -8,6 +8,9 @@ Catalogs here are the **packaged terminology** for the `web` application.
 
 Runtime reads terms via Go `web.I18n` → host Gateway → FE `createFeTranslate` / vue-i18n.
 
+S7 metadata: `choysum i18n extract` also pulls Vue `label=` / selection labels / `defineMenu|Route|Action` titles
+(use `--no-metadata` to skip). Non-`literal` kinds are stored with `#. kind:` in pot/po.
+
 Language switch (D9 / S6): default `location.reload`. Soft remount is experimental
 (`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.
 

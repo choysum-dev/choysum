@@ -79,15 +79,15 @@ msgstr "已删除"
 		byKey[e.Key()] = e
 	}
 
-	hello := byKey["web/a@title\x00Hello"]
+	hello := byKey["web/a@title\x00Hello\x00literal"]
 	if hello.Msgstr != "你好" || hello.Obsolete {
 		t.Fatalf("Hello not preserved: %+v", hello)
 	}
-	ok := byKey["web/a@ok\x00OK"]
+	ok := byKey["web/a@ok\x00OK\x00literal"]
 	if ok.Msgstr != "" || ok.Obsolete {
 		t.Fatalf("OK should be new empty: %+v", ok)
 	}
-	gone := byKey["web/a@gone\x00Gone"]
+	gone := byKey["web/a@gone\x00Gone\x00literal"]
 	if !gone.Obsolete || gone.Msgstr != "已删除" {
 		t.Fatalf("Gone should be obsolete with msgstr: %+v", gone)
 	}

@@ -24,7 +24,8 @@ func newI18nCmd(envGetter func() scope.Scope) *cobra.Command {
 		Short: "Terminology extract, sync, and status tools",
 		Long: `Development tooling for terminology i18n (gettext PO catalogs).
 
-extract scans module source for _t/_lt literals and writes modules/<m>/i18n/<m>.pot.
+extract scans module source for _t/_lt literals (and S7 metadata labels) and writes modules/<m>/i18n/<m>.pot.
+Use --no-metadata to skip field/menu/selection implicit extract.
 sync merges pot into language .po files (msgmerge semantics).
 status reports missing/fuzzy/orphan/pot-dirty findings for CI gates.
 Vue <template> extraction uses a temporary regex (S1-MVP); S1+ will use a full template AST.`,
@@ -38,10 +39,11 @@ Vue <template> extraction uses a temporary regex (S1-MVP); S1+ will use a full t
 
 func newI18nExtractCmd(envGetter func() scope.Scope) *cobra.Command {
 	var all bool
+	var noMetadata bool
 
 	cmd := &cobra.Command{
 		Use:   "extract [module...]",
-		Short: "Extract _t/_lt literals into module .pot catalogs",
+		Short: "Extract _t/_lt literals (and metadata labels) into module .pot catalogs",
 		Annotations: map[string]string{
 			lightweightScopeAnnotation: "true",
 		},
@@ -78,10 +80,15 @@ func newI18nExtractCmd(envGetter func() scope.Scope) *cobra.Command {
 				return xfmt.Errorf("i18n extract: load path alias: %w", err)
 			}
 
+			metadata := extract.MetadataEnabledFromEnv() && !noMetadata
 			var warnCount int
 			for _, moduleName := range modules {
 				moduleRoot := filepath.Join(modulesPath, moduleName)
-				result, err := extract.ExtractModule(moduleRoot, moduleName, pathAlias, true)
+				result, err := extract.ExtractModuleWithOptions(moduleRoot, moduleName, extract.ExtractModuleOptions{
+					PathAlias: pathAlias,
+					WritePot:  true,
+					Metadata:  metadata,
+				})
 				if err != nil {
 					return xfmt.Errorf("i18n extract %s: %w", moduleName, err)
 				}
@@ -98,6 +105,7 @@ func newI18nExtractCmd(envGetter func() scope.Scope) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&all, "all", false, "extract all modules under modules path")
+	cmd.Flags().BoolVar(&noMetadata, "no-metadata", false, "skip S7 metadata implicit extract (field/menu/selection)")
 	return cmd
 }
 

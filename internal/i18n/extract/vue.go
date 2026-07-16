@@ -13,7 +13,7 @@ import (
 
 // CollectVue extracts terms from a Vue SFC: script blocks via AST, template via regex (D12e).
 func CollectVue(opts CollectOptions, content string) ([]TermOccurrence, []ExtractIssue) {
-	scriptNodes, templateNode, _, err := vuesfchtmlparser.ParseVueSfcToHtmlNode(strings.NewReader(content))
+	scriptContents, templateHTML, err := splitVueSFC(content)
 	if err != nil {
 		return nil, []ExtractIssue{{
 			Severity:   IssueSeverityWarn,
@@ -28,11 +28,7 @@ func CollectVue(opts CollectOptions, content string) ([]TermOccurrence, []Extrac
 	var terms []TermOccurrence
 	var issues []ExtractIssue
 
-	for _, scriptNode := range scriptNodes {
-		if scriptNode == nil {
-			continue
-		}
-		scriptContent := htmlquery.InnerText(scriptNode)
+	for _, scriptContent := range scriptContents {
 		if strings.TrimSpace(scriptContent) == "" {
 			continue
 		}
@@ -41,14 +37,30 @@ func CollectVue(opts CollectOptions, content string) ([]TermOccurrence, []Extrac
 		issues = append(issues, i...)
 	}
 
-	if templateNode != nil {
-		templateText := templateInnerHTML(templateNode)
-		t, i := CollectTemplateRegex(opts, templateText)
+	if templateHTML != "" {
+		t, i := CollectTemplateRegex(opts, templateHTML)
 		terms = append(terms, t...)
 		issues = append(issues, i...)
 	}
 
 	return terms, issues
+}
+
+func splitVueSFC(content string) (scriptContents []string, templateHTML string, err error) {
+	scriptNodes, templateNode, _, err := vuesfchtmlparser.ParseVueSfcToHtmlNode(strings.NewReader(content))
+	if err != nil {
+		return nil, "", err
+	}
+	for _, scriptNode := range scriptNodes {
+		if scriptNode == nil {
+			continue
+		}
+		scriptContents = append(scriptContents, htmlquery.InnerText(scriptNode))
+	}
+	if templateNode != nil {
+		templateHTML = templateInnerHTML(templateNode)
+	}
+	return scriptContents, templateHTML, nil
 }
 
 func templateInnerHTML(templateNode *html.Node) string {

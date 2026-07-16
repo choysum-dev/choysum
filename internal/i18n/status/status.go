@@ -219,7 +219,7 @@ func checkModule(moduleRoot, moduleName, lang string, pathAlias map[string]strin
 		}
 		// Entries present in PO but absent from pot (and not obsolete) are also orphan-like.
 		if len(potKeys) > 0 {
-			key := entryKey(e.Msgctxt, e.Msgid)
+			key := e.Key()
 			if _, ok := potKeys[key]; !ok {
 				issues = append(issues, Issue{
 					Module: moduleName,
@@ -242,7 +242,11 @@ func checkPotDirty(moduleRoot, moduleName, potPath string, pathAlias map[string]
 	}
 	liveKeys := map[string]struct{}{}
 	for _, e := range result.Entries {
-		liveKeys[entryKey(e.Msgctxt, e.Msgid)] = struct{}{}
+		kind := e.Kind
+		if kind == "" {
+			kind = "literal"
+		}
+		liveKeys[entryKey(e.Msgctxt, e.Msgid, kind)] = struct{}{}
 	}
 
 	committedKeys, err := loadPotKeys(potPath)
@@ -305,18 +309,21 @@ func loadPotKeys(potPath string) (map[string]struct{}, error) {
 		if e.Obsolete {
 			continue
 		}
-		keys[entryKey(e.Msgctxt, e.Msgid)] = struct{}{}
+		keys[e.Key()] = struct{}{}
 	}
 	return keys, nil
 }
 
-func entryKey(scope, src string) string {
-	return scope + "\x00" + src
+func entryKey(scope, src, kind string) string {
+	if strings.TrimSpace(kind) == "" {
+		kind = "literal"
+	}
+	return scope + "\x00" + src + "\x00" + kind
 }
 
 func splitKey(key string) (scope, src string) {
-	parts := strings.SplitN(key, "\x00", 2)
-	if len(parts) != 2 {
+	parts := strings.SplitN(key, "\x00", 3)
+	if len(parts) < 2 {
 		return "", key
 	}
 	return parts[0], parts[1]

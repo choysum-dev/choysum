@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -22,8 +23,26 @@ type ModuleResult struct {
 	PotPath    string
 }
 
-// ExtractModule scans a module tree for `_t` / `_lt` literals and optionally writes pot.
+// ExtractModuleOptions configures ExtractModule.
+type ExtractModuleOptions struct {
+	PathAlias map[string]string
+	WritePot  bool
+	// Metadata enables S7 implicit extract (field/menu/selection). Default true when using ExtractModule.
+	Metadata bool
+}
+
+// ExtractModule scans a module tree for `_t` / `_lt` literals (and metadata when enabled)
+// and optionally writes pot. Metadata defaults to on (S7); pass ExtractModuleWithOptions to disable.
 func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]string, writePot bool) (*ModuleResult, error) {
+	return ExtractModuleWithOptions(moduleRoot, moduleName, ExtractModuleOptions{
+		PathAlias: pathAlias,
+		WritePot:  writePot,
+		Metadata:  true,
+	})
+}
+
+// ExtractModuleWithOptions is the configurable extract entrypoint.
+func ExtractModuleWithOptions(moduleRoot string, moduleName string, opts ExtractModuleOptions) (*ModuleResult, error) {
 	moduleRoot = filepath.Clean(moduleRoot)
 	if moduleName == "" {
 		moduleName = filepath.Base(moduleRoot)
@@ -64,18 +83,28 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 			return err
 		}
 
-		opts := CollectOptions{
+		collectOpts := CollectOptions{
 			ModuleName: moduleName,
 			RelPath:    rel,
-			PathAlias:  pathAlias,
+			PathAlias:  opts.PathAlias,
 		}
 		var fileTerms []TermOccurrence
 		var fileIssues []ExtractIssue
 		switch ext {
 		case ".vue":
-			fileTerms, fileIssues = CollectVue(opts, string(content))
+			fileTerms, fileIssues = CollectVue(collectOpts, string(content))
+			if opts.Metadata {
+				mt, mi := CollectVueMetadata(collectOpts, string(content))
+				fileTerms = append(fileTerms, mt...)
+				fileIssues = append(fileIssues, mi...)
+			}
 		default:
-			fileTerms, fileIssues = CollectScript(opts, string(content))
+			fileTerms, fileIssues = CollectScript(collectOpts, string(content))
+			if opts.Metadata {
+				mt, mi := CollectScriptMetadata(collectOpts, string(content))
+				fileTerms = append(fileTerms, mt...)
+				fileIssues = append(fileIssues, mi...)
+			}
 		}
 		terms = append(terms, fileTerms...)
 		issues = append(issues, fileIssues...)
@@ -94,7 +123,7 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 		PotPath:    filepath.Join(moduleRoot, "i18n", moduleName+".pot"),
 	}
 
-	if writePot {
+	if opts.WritePot {
 		if err := os.MkdirAll(filepath.Dir(result.PotPath), 0o755); err != nil {
 			return result, fmt.Errorf("create i18n dir: %w", err)
 		}
@@ -108,6 +137,74 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 		}
 	}
 	return result, nil
+}
+
+// CollectScriptMetadata runs S7 AST collectors on a TS/TSX (or Vue script) file.
+func CollectScriptMetadata(opts CollectOptions, content string) ([]TermOccurrence, []ExtractIssue) {
+	var terms []TermOccurrence
+	var issues []ExtractIssue
+	t, i := CollectMetadataSelection(opts, content)
+	terms = append(terms, t...)
+	issues = append(issues, i...)
+	t, i = CollectMetadataResources(opts, content)
+	terms = append(terms, t...)
+	issues = append(issues, i...)
+	return terms, issues
+}
+
+// CollectVueMetadata runs S7 collectors on a Vue SFC (template labels + script selection/resources).
+func CollectVueMetadata(opts CollectOptions, content string) ([]TermOccurrence, []ExtractIssue) {
+	scriptContents, templateHTML, err := splitVueSFC(content)
+	if err != nil {
+		// Template-only SFCs (or parser requiring <script>) still need label extract.
+		if tmpl, ok := extractTemplateBodyFallback(content); ok {
+			return CollectMetadataVueTemplate(opts, tmpl)
+		}
+		return nil, []ExtractIssue{{
+			Severity:   IssueSeverityWarn,
+			Code:       "vue_parse_error",
+			Message:    err.Error(),
+			SourcePath: opts.RelPath,
+			Line:       1,
+			Col:        1,
+		}}
+	}
+	var terms []TermOccurrence
+	var issues []ExtractIssue
+	for _, scriptContent := range scriptContents {
+		if strings.TrimSpace(scriptContent) == "" {
+			continue
+		}
+		t, i := CollectScriptMetadata(opts, scriptContent)
+		terms = append(terms, t...)
+		issues = append(issues, i...)
+	}
+	if templateHTML != "" {
+		t, i := CollectMetadataVueTemplate(opts, templateHTML)
+		terms = append(terms, t...)
+		issues = append(issues, i...)
+	}
+	return terms, issues
+}
+
+func extractTemplateBodyFallback(content string) (string, bool) {
+	re := regexp.MustCompile(`(?is)<template\b[^>]*>([\s\S]*?)</template>`)
+	m := re.FindStringSubmatch(content)
+	if len(m) < 2 {
+		return "", false
+	}
+	return m[1], true
+}
+
+// MetadataEnabledFromEnv returns false when CHOYSUM_I18N_EXTRACT_METADATA=0/false/off.
+func MetadataEnabledFromEnv() bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv("CHOYSUM_I18N_EXTRACT_METADATA")))
+	switch v {
+	case "0", "false", "off", "no":
+		return false
+	default:
+		return true
+	}
 }
 
 // LoadPathAliasFromModulesTsconfig loads path aliases from modules/tsconfig.json when present.

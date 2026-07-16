@@ -25,9 +25,26 @@ type Entry struct {
 	Obsolete           bool
 }
 
-// Key returns the sync/import lookup key (msgctxt, msgid).
+// Key returns the sync/import lookup key (msgctxt, msgid, kind).
+// Kind comes from `#. kind:` extracted comments; missing kind means "literal".
 func (e Entry) Key() string {
-	return e.Msgctxt + "\x00" + e.Msgid
+	return e.Msgctxt + "\x00" + e.Msgid + "\x00" + e.Kind()
+}
+
+// Kind returns the terminology kind from `#. kind:` comments (default "literal").
+func (e Entry) Kind() string {
+	for _, c := range e.ExtractedComments {
+		c = strings.TrimSpace(c)
+		lower := strings.ToLower(c)
+		if strings.HasPrefix(lower, "kind:") {
+			kind := strings.TrimSpace(c[len("kind:"):])
+			if kind == "" {
+				return "literal"
+			}
+			return kind
+		}
+	}
+	return "literal"
 }
 
 // Parse reads a PO/POT file into entries (including obsolete #~ blocks).
@@ -239,7 +256,7 @@ func Write(w io.Writer, entries []Entry) error {
 	return err
 }
 
-// SortEntries orders by obsolete last, then msgctxt, msgid.
+// SortEntries orders by obsolete last, then msgctxt, msgid, kind.
 func SortEntries(entries []Entry) {
 	sort.SliceStable(entries, func(i, j int) bool {
 		if entries[i].Obsolete != entries[j].Obsolete {
@@ -248,7 +265,10 @@ func SortEntries(entries []Entry) {
 		if entries[i].Msgctxt != entries[j].Msgctxt {
 			return entries[i].Msgctxt < entries[j].Msgctxt
 		}
-		return entries[i].Msgid < entries[j].Msgid
+		if entries[i].Msgid != entries[j].Msgid {
+			return entries[i].Msgid < entries[j].Msgid
+		}
+		return entries[i].Kind() < entries[j].Kind()
 	})
 }
 
