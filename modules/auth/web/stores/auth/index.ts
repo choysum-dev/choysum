@@ -52,6 +52,7 @@ export const useAuthStore = defineStore(
       ensureAuthReady: actions.ensureAuthReady,
       register: actions.register,
       getCsrfToken: actions.getCsrfToken,
+      persistLanguagePreference: actions.persistLanguagePreference,
     };
   },
   {

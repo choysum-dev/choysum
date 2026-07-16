@@ -253,7 +253,17 @@ function handleAppChange(appId: string) {
 }
 
 async function handleLanguageChange(locale: string) {
-  await i18nStore.setLocale(locale);
+  const ok = await i18nStore.setLocale(locale);
+  if (!ok) {
+    return;
+  }
+  try {
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const authStore = useAuthStore();
+    await authStore.persistLanguagePreference(i18nStore.terminologyLang);
+  } catch {
+    // Auth module may be unavailable; anonymous preference stays in i18nStore localStorage.
+  }
 }
 
 function handleDrawerMenuItemClick(item: MenuItem) {

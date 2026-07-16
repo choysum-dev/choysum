@@ -7,6 +7,7 @@ import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
+import { _t } from '../i18n';
 import Session from './session';
 import Role from './role';
 import RoleMethodAccess from './role_method_access';
@@ -105,7 +106,7 @@ export default class User extends BaseModel {
   Avatar?: string;
 
   /**
-   * Preferred language reserved for future localization support.
+   * Preferred terminology language (e.g. zh_CN). Written by FE language switch when logged in.
    */
   @Field({ type: 'varchar', size: 20 })
   Language: string;
@@ -231,7 +232,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_CREATION_FAILED,
-        message: 'User registration failed',
+        message: _t('User registration failed', { scope: 'auth/service/models/user@Register' }),
       }).withMetadata({ username: String(userData.Username || '') });
     }
   }
@@ -262,7 +263,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_CREATION_FAILED,
-        message: 'Login failed: unable to create token pair',
+        message: _t('Login failed: unable to create token pair', { scope: 'auth/service/models/user@Login' }),
       }).withMetadata({ userId: user.Id, username: user.Username });
     }
   }

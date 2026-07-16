@@ -1,0 +1,66 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#: service/models/user.ts:266
+msgctxt "auth/service/models/user@Login"
+msgid "Login failed: unable to create token pair"
+msgstr "登录失败：无法创建令牌对"
+
+#: service/models/user.ts:235
+msgctxt "auth/service/models/user@Register"
+msgid "User registration failed"
+msgstr "用户注册失败"
+
+#: web/pages/Login.vue:23
+msgctxt "web/pages/Login"
+msgid "Don't have an account?"
+msgstr "还没有账号？"
+
+#: web/pages/Login.vue:20
+msgctxt "web/pages/Login"
+msgid "Enter password"
+msgstr "请输入密码"
+
+#: web/pages/Login.vue:19
+msgctxt "web/pages/Login"
+msgid "Enter username"
+msgstr "请输入用户名"
+
+#: web/pages/Login.vue:22
+msgctxt "web/pages/Login"
+msgid "Log In"
+msgstr "登录"
+
+#: web/pages/Login.vue:126
+msgctxt "web/pages/Login"
+msgid "Login failed. Please try again later."
+msgstr "登录失败，请稍后重试。"
+
+#: web/pages/Login.vue:18
+msgctxt "web/pages/Login"
+msgid "Password"
+msgstr "密码"
+
+#: web/pages/Login.vue:24
+msgctxt "web/pages/Login"
+msgid "Register now"
+msgstr "立即注册"
+
+#: web/pages/Login.vue:21
+msgctxt "web/pages/Login"
+msgid "Remember me"
+msgstr "记住我"
+
+#: web/pages/Login.vue:16
+msgctxt "web/pages/Login"
+msgid "User Login"
+msgstr "用户登录"
+
+#: web/pages/Login.vue:17
+msgctxt "web/pages/Login"
+msgid "Username"
+msgstr "用户名"
+
+#~ msgctxt "web/pages/Login@handleLogin"
+#~ msgid "Login failed. Please try again later."
+#~ msgstr "登录失败，请稍后重试。"

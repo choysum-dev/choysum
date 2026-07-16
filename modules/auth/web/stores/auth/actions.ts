@@ -427,6 +427,28 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     await initInFlight;
   }
 
+  /**
+   * Persist terminology language preference for the logged-in user (User.Language).
+   * Anonymous callers no-op; FE still keeps locale in i18nStore localStorage.
+   */
+  async function persistLanguagePreference(lang: string): Promise<void> {
+    const terminologyLang = String(lang || '').trim();
+    if (!terminologyLang) {
+      return;
+    }
+    if (!state.isAuthenticated.value) {
+      return;
+    }
+    const userId = state.currentUser.value?.Id || state.identity.value?.userId || null;
+    if (!userId) {
+      return;
+    }
+    await state.userStore.UpdateById(userId, { Language: terminologyLang } as any, ['Id', 'Language'] as any);
+    if (state.currentUser.value) {
+      (state.currentUser.value as any).Language = terminologyLang;
+    }
+  }
+
   // Wrap public async actions with shared loading-state bookkeeping.
   const register = withLoading(registerImpl, state.loading);
   const login = withLoading(loginImpl, state.loading);
@@ -448,6 +470,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     switchCompanyScope,
     register,
     getCsrfToken,
+    persistLanguagePreference,
   };
 }
 

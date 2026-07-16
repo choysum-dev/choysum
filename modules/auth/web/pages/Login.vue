@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <el-card class="login-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h3>User Login</h3>
+          <h3>{{ labels.title }}</h3>
         </div>
       </template>
 
@@ -17,25 +17,25 @@ SPDX-License-Identifier: Apache-2.0
       </transition>
 
       <el-form ref="loginForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleLogin">
-        <el-form-item prop="username" label="Username">
-          <el-input v-model="form.username" placeholder="Enter username" :prefix-icon="User" autocomplete="username" />
+        <el-form-item prop="username" :label="labels.username">
+          <el-input v-model="form.username" :placeholder="labels.usernamePlaceholder" :prefix-icon="User" autocomplete="username" />
         </el-form-item>
 
-        <el-form-item prop="password" label="Password">
-          <el-input v-model="form.password" placeholder="Enter password" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
+        <el-form-item prop="password" :label="labels.password">
+          <el-input v-model="form.password" :placeholder="labels.passwordPlaceholder" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
         </el-form-item>
 
         <div class="login-options">
-          <el-checkbox v-model="form.rememberMe">Remember me</el-checkbox>
+          <el-checkbox v-model="form.rememberMe">{{ labels.rememberMe }}</el-checkbox>
         </div>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button"> Log In </el-button>
+          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">{{ labels.submit }}</el-button>
         </el-form-item>
 
         <div v-if="showRegisterLink" class="register-link">
-          Don't have an account?
-          <router-link to="/register">Register now</router-link>
+          {{ labels.noAccount }}
+          <router-link to="/register">{{ labels.registerNow }}</router-link>
         </div>
       </el-form>
     </el-card>
@@ -52,6 +52,21 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 import type { FormRules } from 'element-plus';
+import { createFeTranslate } from '@/web/web/i18n/fe_translate';
+import { useI18nStore, langToLocale } from '@/web/web/stores/i18nStore';
+
+const { _t } = createFeTranslate('auth');
+const labels = {
+  title: _t('User Login', { scope: 'web/pages/Login' }),
+  username: _t('Username', { scope: 'web/pages/Login' }),
+  password: _t('Password', { scope: 'web/pages/Login' }),
+  usernamePlaceholder: _t('Enter username', { scope: 'web/pages/Login' }),
+  passwordPlaceholder: _t('Enter password', { scope: 'web/pages/Login' }),
+  rememberMe: _t('Remember me', { scope: 'web/pages/Login' }),
+  submit: _t('Log In', { scope: 'web/pages/Login' }),
+  noAccount: _t("Don't have an account?", { scope: 'web/pages/Login' }),
+  registerNow: _t('Register now', { scope: 'web/pages/Login' }),
+};
 
 /**
  * Form model for the login page.
@@ -78,14 +93,14 @@ const rules: FormRules<LoginFormData> = {
   username: [
     {
       required: true,
-      message: 'Enter username',
+      message: labels.usernamePlaceholder,
       trigger: 'blur',
     },
   ],
   password: [
     {
       required: true,
-      message: 'Enter password',
+      message: labels.passwordPlaceholder,
       trigger: 'blur',
     },
   ],
@@ -134,12 +149,25 @@ async function handleLogin() {
 
     await authStore.login(form.username, form.password, '', '', form.rememberMe);
 
+    // Apply persisted User.Language when present (terminology lang → UI locale).
+    try {
+      await authStore.loadUser(true);
+      const preferredLang = String((authStore.currentUser as any)?.Language || '').trim();
+      if (preferredLang) {
+        const i18nStore = useI18nStore();
+        await i18nStore.setLocale(langToLocale(preferredLang));
+      }
+    } catch {
+      // Preference apply is best-effort; login already succeeded.
+    }
+
     handleRedirect();
   } catch (err) {
     if (err instanceof ChoysumError) {
+      // Show translated message; keep machine code on the error object for FE routing.
       error.value = err.message;
     } else {
-      error.value = 'Login failed. Please try again later.';
+      error.value = _t('Login failed. Please try again later.', { scope: 'web/pages/Login' });
       console.error('Login flow failed:', err);
     }
   }
