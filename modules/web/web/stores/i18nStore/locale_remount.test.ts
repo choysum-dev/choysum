@@ -20,6 +20,12 @@ describe('afterLocaleChange', () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it('falls back to reload when remount mode has no hook', async () => {
+    const reload = vi.fn();
+    await afterLocaleChange({ mode: 'remount', reload });
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
   it('resolveLocaleRemountMode defaults to reload', () => {
     expect(resolveLocaleRemountMode()).toBe('reload');
   });

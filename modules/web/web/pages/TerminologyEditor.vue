@@ -38,6 +38,9 @@ SPDX-License-Identifier: Apache-2.0
         <el-button type="success" :disabled="!dirtyRows.length" :loading="saving" @click="saveDirty">
           Save
         </el-button>
+        <el-button :disabled="!application.trim()" :loading="downloading" @click="downloadPo">
+          Download PO
+        </el-button>
       </div>
 
       <el-alert
@@ -108,6 +111,7 @@ import {
   localeToLang,
   fetchTerms,
   patchTerms,
+  downloadTerminologyPo,
   componentHintFromScope,
   type TermItem,
 } from '@/web/web/stores/i18nStore';
@@ -119,6 +123,7 @@ type EditableTerm = TermItem & { _key: string; _dirty?: boolean };
 const i18nStore = useI18nStore();
 const loading = ref(false);
 const saving = ref(false);
+const downloading = ref(false);
 const errorMessage = ref('');
 const truncated = ref(false);
 const rows = ref<EditableTerm[]>([]);
@@ -224,6 +229,34 @@ async function saveDirty() {
     errorMessage.value = String(err?.message || err);
   } finally {
     saving.value = false;
+  }
+}
+
+async function downloadPo() {
+  const app = application.value.trim();
+  if (!app) {
+    ElMessage.warning('Select an Application before downloading PO');
+    return;
+  }
+  downloading.value = true;
+  errorMessage.value = '';
+  try {
+    const { filename, blob } = await downloadTerminologyPo({
+      lang: lang.value,
+      application: app,
+      module: moduleFilter.value.trim() || undefined,
+    });
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(href);
+    ElMessage.success(`Downloaded ${filename}`);
+  } catch (err: any) {
+    errorMessage.value = String(err?.message || err);
+  } finally {
+    downloading.value = false;
   }
 }
 

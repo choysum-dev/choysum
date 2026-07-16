@@ -24,4 +24,5 @@ func RegisterHandlers(mux *http.ServeMux, envs ...scope.Scope) {
 	h := newHandler(runtimeScope)
 	mux.HandleFunc(translationsPath, h.serveTranslations)
 	mux.HandleFunc(termsPath, h.serveTerms)
+	mux.HandleFunc(poPath, h.servePO)
 }

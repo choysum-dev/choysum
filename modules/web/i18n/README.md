@@ -8,4 +8,9 @@ Catalogs here are the **packaged terminology** for the `web` application.
 
 Runtime reads terms via Go `web.I18n` → host Gateway → FE `createFeTranslate` / vue-i18n.
 
+Language switch (D9 / S6): default `location.reload`. Soft remount is experimental
+(`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.
+
+Optional admin PO download: `GET /web/i18n/po?lang=&application=` (Terminology Editor).
+
 The handwritten packs under `web/web/i18n/source` and `web/web/i18n/translations/` are **legacy coexistence** only (English msgid baseline / historical zh-CN). New shell copy must use `_t` + this PO tree.

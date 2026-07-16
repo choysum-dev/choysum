@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, vi } from 'vitest';
-import { fetchTerms, patchTerms } from './terms_api';
+import { fetchTerms, patchTerms, downloadTerminologyPo } from './terms_api';
 import { componentHintFromScope } from './component_hint';
 
 describe('componentHintFromScope', () => {
@@ -63,5 +63,28 @@ describe('terms_api', () => {
       { fetchImpl: fetchImpl as any, accessToken: 't1' }
     );
     expect(out.items[0].value).toBe('您好');
+  });
+
+  it('GET /web/i18n/po downloads attachment blob', async () => {
+    const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toContain('/web/i18n/po?');
+      expect(url).toContain('lang=zh_CN');
+      expect(url).toContain('application=auth');
+      expect(init?.method).toBe('GET');
+      return new Response('msgid ""\nmsgstr ""\n', {
+        status: 200,
+        headers: {
+          'content-type': 'text/x-po; charset=utf-8',
+          'content-disposition': 'attachment; filename="auth-zh_CN.po"',
+        },
+      });
+    });
+
+    const out = await downloadTerminologyPo(
+      { lang: 'zh_CN', application: 'auth' },
+      { fetchImpl: fetchImpl as any, accessToken: 't1' }
+    );
+    expect(out.filename).toBe('auth-zh_CN.po');
+    expect(out.blob.size).toBeGreaterThan(0);
   });
 });

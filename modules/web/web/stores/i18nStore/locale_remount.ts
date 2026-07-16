@@ -2,9 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Post-locale-change strategy (D9).
- * S4-MVP default: full page reload so RequestContext / metadata stay consistent.
- * Optional remount flag can soft-refresh later (S6).
+ * Post-locale-change strategy (D9, frozen in S6).
+ *
+ * Supported production path: location.reload.
+ * Soft remount stays experimental behind:
+ * - localStorage `choysum.web.i18n.remountMode=remount`
+ * - or `globalThis.__CHOYSUM_I18N_REMOUNT_MODE__ = 'remount'`
+ *
+ * Soft remount bounds (S6):
+ * - Clears menu/global scoped model stores only.
+ * - Does not guarantee RequestContext.lang / keep-alive view consistency.
+ * - Without an explicit remount hook, falls back to reload (never a silent no-op).
  */
 
 export type LocaleRemountMode = 'reload' | 'remount';
@@ -38,20 +46,22 @@ export type AfterLocaleChangeOptions = {
   mode?: LocaleRemountMode;
   /** Injected location.reload for tests. */
   reload?: () => void;
-  /** Soft remount hook when mode=remount (clears route views / stores). */
+  /** Soft remount hook when mode=remount (clears scoped stores). */
   remount?: () => void | Promise<void>;
 };
 
 /**
- * Run after a successful setLocale. Default strategy is location.reload (D9).
+ * Run after a successful setLocale.
+ * Default strategy is location.reload (D9 / S6 freeze).
  */
 export async function afterLocaleChange(options?: AfterLocaleChangeOptions): Promise<void> {
   const mode = options?.mode || resolveLocaleRemountMode();
   if (mode === 'remount') {
     if (options?.remount) {
       await options.remount();
+      return;
     }
-    return;
+    // Experimental remount without a hook must not silently no-op.
   }
   const reload =
     options?.reload ||
@@ -61,4 +71,19 @@ export async function afterLocaleChange(options?: AfterLocaleChangeOptions): Pro
       }
     });
   reload();
+}
+
+/**
+ * Experimental soft remount: destroy menu/global scoped stores.
+ * Callers that need full RPC/metadata consistency should keep using reload.
+ */
+export async function softLocaleRemount(): Promise<void> {
+  try {
+    const { useScopeManager } = await import('@/web/web/stores/storeScopeManager');
+    const { menuScopeManager, globalScopeManager } = useScopeManager();
+    menuScopeManager.destroyAll();
+    globalScopeManager.destroyAll();
+  } catch {
+    // Best-effort; missing managers should not block locale change.
+  }
 }

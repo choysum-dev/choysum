@@ -19,9 +19,11 @@ export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { localeToLang, langToLocale } from './lang';
 export { fetchWebTranslations } from './terminology_loader';
-export { fetchTerms, patchTerms } from './terms_api';
+export { fetchTerms, patchTerms, downloadTerminologyPo } from './terms_api';
+
 export { componentHintFromScope } from './component_hint';
-export { afterLocaleChange, resolveLocaleRemountMode } from './locale_remount';
+export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './locale_remount';
+
 export type { TerminologyLoadResult } from './terminology_loader';
 export type { TermItem, TermsListResponse } from './terms_api';
 export type { SupportedLocale };

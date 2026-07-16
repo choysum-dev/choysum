@@ -176,3 +176,43 @@ export async function patchTerms(body: TermsPatchBody, options?: FetchTermsOptio
     offset: Number(payload.offset || 0),
   };
 }
+
+export type DownloadPoQuery = {
+  lang: string;
+  application: string;
+  module?: string;
+};
+
+/**
+ * Download a read-only PO export for one application/lang (authenticated).
+ * This is an admin HTTP export — not `choysum i18n export`.
+ */
+export async function downloadTerminologyPo(
+  query: DownloadPoQuery,
+  options?: FetchTermsOptions
+): Promise<{ filename: string; blob: Blob }> {
+  const lang = String(query.lang || '').trim();
+  const application = String(query.application || '').trim();
+  if (!lang) {
+    throw new Error('lang is required');
+  }
+  if (!application) {
+    throw new Error('application is required');
+  }
+  const params = new URLSearchParams({ lang, application });
+  const moduleName = String(query.module || '').trim();
+  if (moduleName) {
+    params.set('module', moduleName);
+  }
+  const base = String(options?.baseUrl ?? '').replace(/\/$/, '');
+  const url = `${base}/web/i18n/po?${params.toString()}`;
+  const res = await authorizedFetch(url, { method: 'GET', headers: { Accept: 'text/x-po, text/plain, */*' } }, options);
+  if (!res.ok) {
+    throw new Error(`po gateway HTTP ${res.status}`);
+  }
+  const cd = res.headers.get('Content-Disposition') || '';
+  const match = /filename="([^"]+)"/i.exec(cd);
+  const filename = match?.[1] || `${application}-${lang}.po`;
+  const blob = await res.blob();
+  return { filename, blob };
+}
