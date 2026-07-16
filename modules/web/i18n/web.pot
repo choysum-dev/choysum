@@ -7,6 +7,55 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: web/components/field/OBooleanField.vue:4
+#. kind: field_label
+msgctxt "web/components/field/OBooleanField@label"
+msgid "checkboxLabel"
+msgstr ""
+
+#: web/components/field/OManyToManyField.vue:26
+#: web/components/field/OManyToManyField.vue:47
+#: web/components/field/OManyToManyField.vue:8
+#. kind: field_label
+msgctxt "web/components/field/OManyToManyField@label"
+msgid "#"
+msgstr ""
+
+#: web/components/field/OManyToManyField.vue:10
+#: web/components/field/OManyToManyField.vue:28
+#. kind: field_label
+msgctxt "web/components/field/OManyToManyField@label"
+msgid "操作"
+msgstr ""
+
+#: web/components/field/OManyToManyRefField.vue:28
+#: web/components/field/OManyToManyRefField.vue:51
+#: web/components/field/OManyToManyRefField.vue:8
+#. kind: field_label
+msgctxt "web/components/field/OManyToManyRefField@label"
+msgid "#"
+msgstr ""
+
+#: web/components/field/OManyToManyRefField.vue:12
+#: web/components/field/OManyToManyRefField.vue:32
+#. kind: field_label
+msgctxt "web/components/field/OManyToManyRefField@label"
+msgid "操作"
+msgstr ""
+
+#: web/components/field/OOneToManyField.vue:25
+#: web/components/field/OOneToManyField.vue:7
+#. kind: field_label
+msgctxt "web/components/field/OOneToManyField@label"
+msgid "#"
+msgstr ""
+
+#: web/components/field/OOneToManyField.vue:9
+#. kind: field_label
+msgctxt "web/components/field/OOneToManyField@label"
+msgid "操作"
+msgstr ""
+
 #: web/components/layout/OHeader.vue:17
 msgctxt "web/components/layout/OHeader@collapseMenuLabel"
 msgid "Collapse menu"
@@ -118,5 +167,11 @@ msgstr ""
 #: web/pages/ErrorView.vue:78
 msgctxt "web/pages/ErrorView@shell"
 msgid "You do not have permission to access this page"
+msgstr ""
+
+#: web/router/routes.ts:30
+#. kind: route
+msgctxt "web/router/routes@web.route.home"
+msgid "首页"
 msgstr ""
 

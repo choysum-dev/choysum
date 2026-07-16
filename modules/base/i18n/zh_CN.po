@@ -1,0 +1,1592 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#. kind: selection_label
+#: service/models/language.ts:23
+msgctxt "service/models/language@Direction.ltr"
+msgid "ltr"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/language.ts:24
+msgctxt "service/models/language@Direction.rtl"
+msgid "rtl"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/locale.ts:38
+msgctxt "service/models/locale@CurrencySymbolPosition.after"
+msgid "after"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/locale.ts:37
+msgctxt "service/models/locale@CurrencySymbolPosition.before"
+msgid "before"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:15
+msgctxt "web/menu/menus@base.menu.address"
+msgid "Address Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:16
+msgctxt "web/menu/menus@base.menu.bank"
+msgid "Bank Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:19
+msgctxt "web/menu/menus@base.menu.city"
+msgid "City Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:14
+msgctxt "web/menu/menus@base.menu.company"
+msgid "Company Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:17
+msgctxt "web/menu/menus@base.menu.country"
+msgid "Country Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:20
+msgctxt "web/menu/menus@base.menu.currency"
+msgid "Currency Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:21
+msgctxt "web/menu/menus@base.menu.exchange_rate"
+msgid "Exchange Rate Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:22
+msgctxt "web/menu/menus@base.menu.language"
+msgid "Language Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:31
+msgctxt "web/menu/menus@base.menu.locale"
+msgid "Locale Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:10
+msgctxt "web/menu/menus@base.menu.root"
+msgid "Master Data"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:32
+msgctxt "web/menu/menus@base.menu.sequence"
+msgid "Sequence Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:33
+msgctxt "web/menu/menus@base.menu.sequence_idempotency"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus@base.menu.state"
+msgid "State Management"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:24
+msgctxt "web/menu/menus@base.menu.terminology"
+msgid "术语翻译"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:35
+msgctxt "web/menu/menus@base.menu.uom"
+msgid "Unit of Measure"
+msgstr ""
+
+#. kind: menu
+#: web/menu/menus.ts:34
+msgctxt "web/menu/menus@base.menu.uom_category"
+msgid "Unit of Measure Category"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:61
+msgctxt "web/route/routes@base.route.address_create"
+msgid "Create Address"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:51
+msgctxt "web/route/routes@base.route.address_detail"
+msgid "Address Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:42
+msgctxt "web/route/routes@base.route.address_list"
+msgid "Address List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:93
+msgctxt "web/route/routes@base.route.bank_create"
+msgid "Create Bank"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:83
+msgctxt "web/route/routes@base.route.bank_detail"
+msgid "Bank Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:74
+msgctxt "web/route/routes@base.route.bank_list"
+msgid "Bank List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:125
+msgctxt "web/route/routes@base.route.city_create"
+msgid "Create City"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:115
+msgctxt "web/route/routes@base.route.city_detail"
+msgid "City Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:106
+msgctxt "web/route/routes@base.route.city_list"
+msgid "City List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:29
+msgctxt "web/route/routes@base.route.company_create"
+msgid "Create Company"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:19
+msgctxt "web/route/routes@base.route.company_detail"
+msgid "Company Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:10
+msgctxt "web/route/routes@base.route.company_list"
+msgid "Company List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:157
+msgctxt "web/route/routes@base.route.country_create"
+msgid "Create Country"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:147
+msgctxt "web/route/routes@base.route.country_detail"
+msgid "Country Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:138
+msgctxt "web/route/routes@base.route.country_list"
+msgid "Country List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:189
+msgctxt "web/route/routes@base.route.currency_create"
+msgid "Create Currency"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:179
+msgctxt "web/route/routes@base.route.currency_detail"
+msgid "Currency Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:170
+msgctxt "web/route/routes@base.route.currency_list"
+msgid "Currency List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:221
+msgctxt "web/route/routes@base.route.exchange_rate_create"
+msgid "Create Exchange Rate"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:211
+msgctxt "web/route/routes@base.route.exchange_rate_detail"
+msgid "Exchange Rate Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:202
+msgctxt "web/route/routes@base.route.exchange_rate_list"
+msgid "Exchange Rate List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:253
+msgctxt "web/route/routes@base.route.language_create"
+msgid "Create Language"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:243
+msgctxt "web/route/routes@base.route.language_detail"
+msgid "Language Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:234
+msgctxt "web/route/routes@base.route.language_list"
+msgid "Language List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:295
+msgctxt "web/route/routes@base.route.locale_create"
+msgid "Create Locale"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:285
+msgctxt "web/route/routes@base.route.locale_detail"
+msgid "Locale Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:276
+msgctxt "web/route/routes@base.route.locale_list"
+msgid "Locale List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:327
+msgctxt "web/route/routes@base.route.sequence_create"
+msgid "Create Sequence"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:317
+msgctxt "web/route/routes@base.route.sequence_detail"
+msgid "Sequence Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:369
+msgctxt "web/route/routes@base.route.sequence_idempotency_create"
+msgid "Create Idempotency Record"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:354
+msgctxt "web/route/routes@base.route.sequence_idempotency_detail"
+msgid "Idempotency Record Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:340
+msgctxt "web/route/routes@base.route.sequence_idempotency_list"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:308
+msgctxt "web/route/routes@base.route.sequence_list"
+msgid "Sequence List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:406
+msgctxt "web/route/routes@base.route.state_create"
+msgid "Create State"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:396
+msgctxt "web/route/routes@base.route.state_detail"
+msgid "State Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:387
+msgctxt "web/route/routes@base.route.state_list"
+msgid "State List"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:263
+msgctxt "web/route/routes@base.route.terminology_editor"
+msgid "术语翻译"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:470
+msgctxt "web/route/routes@base.route.uom_category_create"
+msgid "Create Unit of Measure Category"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:460
+msgctxt "web/route/routes@base.route.uom_category_detail"
+msgid "Unit of Measure Category Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:451
+msgctxt "web/route/routes@base.route.uom_category_list"
+msgid "Unit of Measure Category"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:438
+msgctxt "web/route/routes@base.route.uom_create"
+msgid "Create Unit of Measure"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:428
+msgctxt "web/route/routes@base.route.uom_detail"
+msgid "Unit of Measure Details"
+msgstr ""
+
+#. kind: route
+#: web/route/routes.ts:419
+msgctxt "web/route/routes@base.route.uom_list"
+msgid "Unit of Measure List"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:18
+msgctxt "web/views/AddressFormView@CityId"
+msgid "City"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:9
+msgctxt "web/views/AddressFormView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:6
+msgctxt "web/views/AddressFormView@Label"
+msgid "Label"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:17
+msgctxt "web/views/AddressFormView@StateId"
+msgid "State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:13
+msgctxt "web/views/AddressFormView@Street1"
+msgid "Address Line 1"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:14
+msgctxt "web/views/AddressFormView@Street2"
+msgid "Address Line 2"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:7
+msgctxt "web/views/AddressFormView@Zip"
+msgid "ZIP"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:18
+msgctxt "web/views/AddressFormView@searchViewTitle"
+msgid "Select City"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:9
+msgctxt "web/views/AddressFormView@searchViewTitle"
+msgid "Select Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressFormView.vue:17
+msgctxt "web/views/AddressFormView@searchViewTitle"
+msgid "Select State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:10
+msgctxt "web/views/AddressListView@CityId"
+msgid "City"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:10
+msgctxt "web/views/AddressListView@CityId.Name"
+msgid "City"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:8
+msgctxt "web/views/AddressListView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:8
+msgctxt "web/views/AddressListView@CountryId.Name"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:5
+msgctxt "web/views/AddressListView@Label"
+msgid "Label"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:9
+msgctxt "web/views/AddressListView@StateId"
+msgid "State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:9
+msgctxt "web/views/AddressListView@StateId.Name"
+msgid "State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:6
+msgctxt "web/views/AddressListView@Street1"
+msgid "Address Line 1"
+msgstr ""
+
+#. kind: field_label
+#: web/views/AddressListView.vue:7
+msgctxt "web/views/AddressListView@Zip"
+msgid "ZIP"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:12
+msgctxt "web/views/BankFormView@AddressId"
+msgid "Address"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:8
+msgctxt "web/views/BankFormView@BIC"
+msgid "BIC"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:7
+msgctxt "web/views/BankFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:11
+msgctxt "web/views/BankFormView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:13
+msgctxt "web/views/BankFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:6
+msgctxt "web/views/BankFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:12
+msgctxt "web/views/BankFormView@searchViewTitle"
+msgid "Select Address"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankFormView.vue:11
+msgctxt "web/views/BankFormView@searchViewTitle"
+msgid "Select Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankListView.vue:7
+msgctxt "web/views/BankListView@BIC"
+msgid "BIC"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankListView.vue:6
+msgctxt "web/views/BankListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankListView.vue:8
+msgctxt "web/views/BankListView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankListView.vue:8
+msgctxt "web/views/BankListView@CountryId.Name"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankListView.vue:9
+msgctxt "web/views/BankListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/BankListView.vue:5
+msgctxt "web/views/BankListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:7
+msgctxt "web/views/CityFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:11
+msgctxt "web/views/CityFormView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:8
+msgctxt "web/views/CityFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:6
+msgctxt "web/views/CityFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:12
+msgctxt "web/views/CityFormView@StateId"
+msgid "State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:11
+msgctxt "web/views/CityFormView@searchViewTitle"
+msgid "Select Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityFormView.vue:12
+msgctxt "web/views/CityFormView@searchViewTitle"
+msgid "Select State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:6
+msgctxt "web/views/CityListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:7
+msgctxt "web/views/CityListView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:7
+msgctxt "web/views/CityListView@CountryId.Name"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:9
+msgctxt "web/views/CityListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:5
+msgctxt "web/views/CityListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:8
+msgctxt "web/views/CityListView@StateId"
+msgid "State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CityListView.vue:8
+msgctxt "web/views/CityListView@StateId.Name"
+msgid "State/Province"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:12
+msgctxt "web/views/CompanyFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:28
+msgctxt "web/views/CompanyFormView@CreatedAt"
+msgid "Created At"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:18
+msgctxt "web/views/CompanyFormView@CurrencyId"
+msgid "Base Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:9
+msgctxt "web/views/CompanyFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:23
+msgctxt "web/views/CompanyFormView@ParentId"
+msgid "Parent Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:15
+msgctxt "web/views/CompanyFormView@Timezone"
+msgid "Time Zone"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:31
+msgctxt "web/views/CompanyFormView@UpdatedAt"
+msgid "Updated At"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:18
+msgctxt "web/views/CompanyFormView@searchViewTitle"
+msgid "Select Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyFormView.vue:23
+msgctxt "web/views/CompanyFormView@searchViewTitle"
+msgid "Select Parent Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyListView.vue:7
+msgctxt "web/views/CompanyListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyListView.vue:11
+msgctxt "web/views/CompanyListView@CreatedAt"
+msgid "Created At"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyListView.vue:6
+msgctxt "web/views/CompanyListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyListView.vue:8
+msgctxt "web/views/CompanyListView@ParentId"
+msgid "Parent Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyListView.vue:9
+msgctxt "web/views/CompanyListView@ParentId.Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CompanyListView.vue:12
+msgctxt "web/views/CompanyListView@UpdatedAt"
+msgid "Updated At"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:17
+msgctxt "web/views/CountryFormView@AddressFormat"
+msgid "Address Format"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:7
+msgctxt "web/views/CountryFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:11
+msgctxt "web/views/CountryFormView@DefaultCurrencyId"
+msgid "Default Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:16
+msgctxt "web/views/CountryFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:6
+msgctxt "web/views/CountryFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:8
+msgctxt "web/views/CountryFormView@PhonePrefix"
+msgid "Dialing Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:13
+msgctxt "web/views/CountryFormView@StateRequired"
+msgid "State/Province Required"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:12
+msgctxt "web/views/CountryFormView@ZipRequired"
+msgid "ZIP Required"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryFormView.vue:11
+msgctxt "web/views/CountryFormView@searchViewTitle"
+msgid "Select Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:6
+msgctxt "web/views/CountryListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:8
+msgctxt "web/views/CountryListView@DefaultCurrencyId"
+msgid "Default Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:8
+msgctxt "web/views/CountryListView@DefaultCurrencyId.Name"
+msgid "Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:11
+msgctxt "web/views/CountryListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:5
+msgctxt "web/views/CountryListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:7
+msgctxt "web/views/CountryListView@PhonePrefix"
+msgid "Dialing Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:10
+msgctxt "web/views/CountryListView@StateRequired"
+msgid "State/Province Required"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CountryListView.vue:9
+msgctxt "web/views/CountryListView@ZipRequired"
+msgid "ZIP Required"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyFormView.vue:7
+msgctxt "web/views/CurrencyFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyFormView.vue:11
+msgctxt "web/views/CurrencyFormView@DecimalDigits"
+msgid "Decimal Digits"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyFormView.vue:13
+msgctxt "web/views/CurrencyFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyFormView.vue:6
+msgctxt "web/views/CurrencyFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyFormView.vue:12
+msgctxt "web/views/CurrencyFormView@Rounding"
+msgid "Rounding Precision"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyFormView.vue:8
+msgctxt "web/views/CurrencyFormView@Symbol"
+msgid "Symbol"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyListView.vue:6
+msgctxt "web/views/CurrencyListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyListView.vue:8
+msgctxt "web/views/CurrencyListView@DecimalDigits"
+msgid "Decimal Digits"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyListView.vue:10
+msgctxt "web/views/CurrencyListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyListView.vue:5
+msgctxt "web/views/CurrencyListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyListView.vue:9
+msgctxt "web/views/CurrencyListView@Rounding"
+msgid "Rounding Precision"
+msgstr ""
+
+#. kind: field_label
+#: web/views/CurrencyListView.vue:7
+msgctxt "web/views/CurrencyListView@Symbol"
+msgid "Symbol"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateFormView.vue:7
+msgctxt "web/views/ExchangeRateFormView@CompanyId"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateFormView.vue:6
+msgctxt "web/views/ExchangeRateFormView@CurrencyId"
+msgid "Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateFormView.vue:8
+msgctxt "web/views/ExchangeRateFormView@Date"
+msgid "Date"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateFormView.vue:11
+msgctxt "web/views/ExchangeRateFormView@Rate"
+msgid "Exchange Rate"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateFormView.vue:7
+msgctxt "web/views/ExchangeRateFormView@searchViewTitle"
+msgid "Select Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateFormView.vue:6
+msgctxt "web/views/ExchangeRateFormView@searchViewTitle"
+msgid "Select Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateListView.vue:6
+msgctxt "web/views/ExchangeRateListView@CompanyId"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateListView.vue:6
+msgctxt "web/views/ExchangeRateListView@CompanyId.Name"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateListView.vue:5
+msgctxt "web/views/ExchangeRateListView@CurrencyId"
+msgid "Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateListView.vue:5
+msgctxt "web/views/ExchangeRateListView@CurrencyId.Name"
+msgid "Currency"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateListView.vue:7
+msgctxt "web/views/ExchangeRateListView@Date"
+msgid "Date"
+msgstr ""
+
+#. kind: field_label
+#: web/views/ExchangeRateListView.vue:8
+msgctxt "web/views/ExchangeRateListView@Rate"
+msgid "Exchange Rate"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageFormView.vue:7
+msgctxt "web/views/LanguageFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageFormView.vue:11
+msgctxt "web/views/LanguageFormView@DefaultLocaleId"
+msgid "Default Locale"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageFormView.vue:8
+msgctxt "web/views/LanguageFormView@Direction"
+msgid "Direction"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageFormView.vue:12
+msgctxt "web/views/LanguageFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageFormView.vue:6
+msgctxt "web/views/LanguageFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageFormView.vue:11
+msgctxt "web/views/LanguageFormView@searchViewTitle"
+msgid "Select Locale"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageListView.vue:6
+msgctxt "web/views/LanguageListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageListView.vue:8
+msgctxt "web/views/LanguageListView@DefaultLocaleId"
+msgid "Default Locale"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageListView.vue:8
+msgctxt "web/views/LanguageListView@DefaultLocaleId.Name"
+msgid "Locale"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageListView.vue:7
+msgctxt "web/views/LanguageListView@Direction"
+msgid "Direction"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageListView.vue:9
+msgctxt "web/views/LanguageListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LanguageListView.vue:5
+msgctxt "web/views/LanguageListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:7
+msgctxt "web/views/LocaleFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:18
+msgctxt "web/views/LocaleFormView@CurrencySymbolPosition"
+msgid "Currency Symbol Position"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:21
+msgctxt "web/views/LocaleFormView@CurrencySymbolSpacing"
+msgid "Symbol Spacing"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:16
+msgctxt "web/views/LocaleFormView@DateFormat"
+msgid "Date Format"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:11
+msgctxt "web/views/LocaleFormView@DecimalSeparator"
+msgid "Decimal Separator"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:13
+msgctxt "web/views/LocaleFormView@FirstDayOfWeek"
+msgid "First Day of Week"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:8
+msgctxt "web/views/LocaleFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:6
+msgctxt "web/views/LocaleFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:12
+msgctxt "web/views/LocaleFormView@ThousandSeparator"
+msgid "Thousands Separator"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleFormView.vue:17
+msgctxt "web/views/LocaleFormView@TimeFormat"
+msgid "Time Format"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleListView.vue:6
+msgctxt "web/views/LocaleListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleListView.vue:9
+msgctxt "web/views/LocaleListView@CurrencySymbolPosition"
+msgid "Currency Symbol Position"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleListView.vue:7
+msgctxt "web/views/LocaleListView@DateFormat"
+msgid "Date Format"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleListView.vue:10
+msgctxt "web/views/LocaleListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleListView.vue:5
+msgctxt "web/views/LocaleListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/LocaleListView.vue:8
+msgctxt "web/views/LocaleListView@TimeFormat"
+msgid "Time Format"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:7
+msgctxt "web/views/SequenceFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:8
+msgctxt "web/views/SequenceFormView@CompanyId"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:17
+msgctxt "web/views/SequenceFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:6
+msgctxt "web/views/SequenceFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:14
+msgctxt "web/views/SequenceFormView@NextNumber"
+msgid "Next Number"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:13
+msgctxt "web/views/SequenceFormView@Padding"
+msgid "Padding Length"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:11
+msgctxt "web/views/SequenceFormView@Prefix"
+msgid "Prefix"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:12
+msgctxt "web/views/SequenceFormView@Suffix"
+msgid "Suffix"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceFormView.vue:8
+msgctxt "web/views/SequenceFormView@searchViewTitle"
+msgid "Select Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:22
+msgctxt "web/views/SequenceIdempotencyFormView@CodeSnapshot"
+msgid "Code Snapshot"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:12
+msgctxt "web/views/SequenceIdempotencyFormView@CompanyId"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:16
+msgctxt "web/views/SequenceIdempotencyFormView@Count"
+msgid "Count"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:17
+msgctxt "web/views/SequenceIdempotencyFormView@DryRun"
+msgid "Dry Run"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:29
+msgctxt "web/views/SequenceIdempotencyFormView@ExpiresAt"
+msgid "Expires At"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:26
+msgctxt "web/views/SequenceIdempotencyFormView@FormatSnapshot"
+msgid "Format Snapshot"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:13
+msgctxt "web/views/SequenceIdempotencyFormView@IdempotencyKey"
+msgid "Idempotency Key"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:19
+msgctxt "web/views/SequenceIdempotencyFormView@RangeEnd"
+msgid "End"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:18
+msgctxt "web/views/SequenceIdempotencyFormView@RangeStart"
+msgid "Start"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:23
+msgctxt "web/views/SequenceIdempotencyFormView@RequestHash"
+msgid "Request Hash"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:11
+msgctxt "web/views/SequenceIdempotencyFormView@SequenceId"
+msgid "Sequence"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:12
+msgctxt "web/views/SequenceIdempotencyFormView@searchViewTitle"
+msgid "Select Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyFormView.vue:11
+msgctxt "web/views/SequenceIdempotencyFormView@searchViewTitle"
+msgid "Select Sequence"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:7
+msgctxt "web/views/SequenceIdempotencyListView@Count"
+msgid "Count"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:8
+msgctxt "web/views/SequenceIdempotencyListView@DryRun"
+msgid "Dry Run"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:11
+msgctxt "web/views/SequenceIdempotencyListView@ExpiresAt"
+msgid "Expires At"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:6
+msgctxt "web/views/SequenceIdempotencyListView@IdempotencyKey"
+msgid "Idempotency Key"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:10
+msgctxt "web/views/SequenceIdempotencyListView@RangeEnd"
+msgid "End"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:9
+msgctxt "web/views/SequenceIdempotencyListView@RangeStart"
+msgid "Start"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:5
+msgctxt "web/views/SequenceIdempotencyListView@SequenceId"
+msgid "Sequence"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceIdempotencyListView.vue:5
+msgctxt "web/views/SequenceIdempotencyListView@SequenceId.Name"
+msgid "Sequence"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:6
+msgctxt "web/views/SequenceListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:7
+msgctxt "web/views/SequenceListView@CompanyId"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:7
+msgctxt "web/views/SequenceListView@CompanyId.Name"
+msgid "Company"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:12
+msgctxt "web/views/SequenceListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:5
+msgctxt "web/views/SequenceListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:11
+msgctxt "web/views/SequenceListView@NextNumber"
+msgid "Next Number"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:10
+msgctxt "web/views/SequenceListView@Padding"
+msgid "Padding Length"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:8
+msgctxt "web/views/SequenceListView@Prefix"
+msgid "Prefix"
+msgstr ""
+
+#. kind: field_label
+#: web/views/SequenceListView.vue:9
+msgctxt "web/views/SequenceListView@Suffix"
+msgid "Suffix"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateFormView.vue:7
+msgctxt "web/views/StateFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateFormView.vue:8
+msgctxt "web/views/StateFormView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateFormView.vue:11
+msgctxt "web/views/StateFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateFormView.vue:6
+msgctxt "web/views/StateFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateFormView.vue:8
+msgctxt "web/views/StateFormView@searchViewTitle"
+msgid "Select Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateListView.vue:6
+msgctxt "web/views/StateListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateListView.vue:7
+msgctxt "web/views/StateListView@CountryId"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateListView.vue:7
+msgctxt "web/views/StateListView@CountryId.Name"
+msgid "Country"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateListView.vue:8
+msgctxt "web/views/StateListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/StateListView.vue:5
+msgctxt "web/views/StateListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMCategoryFormView.vue:7
+msgctxt "web/views/UoMCategoryFormView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMCategoryFormView.vue:8
+msgctxt "web/views/UoMCategoryFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMCategoryFormView.vue:6
+msgctxt "web/views/UoMCategoryFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMCategoryListView.vue:6
+msgctxt "web/views/UoMCategoryListView@Code"
+msgid "Code"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMCategoryListView.vue:7
+msgctxt "web/views/UoMCategoryListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMCategoryListView.vue:5
+msgctxt "web/views/UoMCategoryListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:8
+msgctxt "web/views/UoMFormView@CategoryId"
+msgid "Category"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:12
+msgctxt "web/views/UoMFormView@Factor"
+msgid "Conversion Factor"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:14
+msgctxt "web/views/UoMFormView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:11
+msgctxt "web/views/UoMFormView@IsReference"
+msgid "Reference Unit"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:6
+msgctxt "web/views/UoMFormView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:13
+msgctxt "web/views/UoMFormView@Rounding"
+msgid "Rounding"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:7
+msgctxt "web/views/UoMFormView@Symbol"
+msgid "Symbol"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMFormView.vue:8
+msgctxt "web/views/UoMFormView@searchViewTitle"
+msgid "Select Category"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:7
+msgctxt "web/views/UoMListView@CategoryId"
+msgid "Category"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:7
+msgctxt "web/views/UoMListView@CategoryId.Name"
+msgid "Category"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:9
+msgctxt "web/views/UoMListView@Factor"
+msgid "Conversion Factor"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:11
+msgctxt "web/views/UoMListView@IsActive"
+msgid "Active"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:8
+msgctxt "web/views/UoMListView@IsReference"
+msgid "Reference Unit"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:5
+msgctxt "web/views/UoMListView@Name"
+msgid "Name"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:10
+msgctxt "web/views/UoMListView@Rounding"
+msgid "Rounding"
+msgstr ""
+
+#. kind: field_label
+#: web/views/UoMListView.vue:6
+msgctxt "web/views/UoMListView@Symbol"
+msgid "Symbol"
+msgstr ""

@@ -1,0 +1,32 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#. kind: selection_label
+#: service/models/job.ts:93
+msgctxt "service/models/job@Status.cancelled"
+msgid "cancelled"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/job.ts:90
+msgctxt "service/models/job@Status.dispatching"
+msgid "dispatching"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/job.ts:92
+msgctxt "service/models/job@Status.failed"
+msgid "failed"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/job.ts:89
+msgctxt "service/models/job@Status.queued"
+msgid "queued"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/job.ts:91
+msgctxt "service/models/job@Status.succeeded"
+msgid "succeeded"
+msgstr ""

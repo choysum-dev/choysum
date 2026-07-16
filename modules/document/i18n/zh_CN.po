@@ -1,0 +1,134 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#. kind: selection_label
+#: service/models/attachment_binding.ts:69
+msgctxt "service/models/attachment_binding@DownloadDisposition.attachment"
+msgid "attachment"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_binding.ts:68
+msgctxt "service/models/attachment_binding@DownloadDisposition.inline"
+msgid "inline"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_binding.ts:81
+msgctxt "service/models/attachment_binding@Status.active"
+msgid "active"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_binding.ts:82
+msgctxt "service/models/attachment_binding@Status.unbound"
+msgid "unbound"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_mutation_ledger.ts:24
+msgctxt "service/models/attachment_mutation_ledger@Action.bind"
+msgid "bind"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_mutation_ledger.ts:25
+msgctxt "service/models/attachment_mutation_ledger@Action.unbind"
+msgid "unbind"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_mutation_ledger.ts:56
+msgctxt "service/models/attachment_mutation_ledger@Status.failed"
+msgid "failed"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_mutation_ledger.ts:55
+msgctxt "service/models/attachment_mutation_ledger@Status.succeeded"
+msgid "succeeded"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_object.ts:90
+msgctxt "service/models/attachment_object@Status.active"
+msgid "active"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_object.ts:91
+msgctxt "service/models/attachment_object@Status.deleted"
+msgid "deleted"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/attachment_object.ts:89
+msgctxt "service/models/attachment_object@Status.staging"
+msgid "staging"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/stored_content.ts:24
+msgctxt "service/models/stored_content@Provider.db"
+msgid "db"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/stored_content.ts:25
+msgctxt "service/models/stored_content@Provider.s3"
+msgid "s3"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/stored_content.ts:49
+msgctxt "service/models/stored_content@Status.active"
+msgid "active"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/stored_content.ts:50
+msgctxt "service/models/stored_content@Status.deleted"
+msgid "deleted"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:41
+msgctxt "service/models/upload_session@Operation.create"
+msgid "create"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:42
+msgctxt "service/models/upload_session@Operation.update"
+msgid "update"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:120
+msgctxt "service/models/upload_session@RequiredChecksumAlgorithm.sha256"
+msgid "sha256"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:144
+msgctxt "service/models/upload_session@Status.expired"
+msgid "expired"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:143
+msgctxt "service/models/upload_session@Status.finalized"
+msgid "finalized"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:141
+msgctxt "service/models/upload_session@Status.prepared"
+msgid "prepared"
+msgstr ""
+
+#. kind: selection_label
+#: service/models/upload_session.ts:142
+msgctxt "service/models/upload_session@Status.uploaded"
+msgid "uploaded"
+msgstr ""
