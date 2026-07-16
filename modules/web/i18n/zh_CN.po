@@ -1,0 +1,240 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#: web/components/layout/OHeader.vue:17
+msgctxt "web/components/layout/OHeader@collapseMenuLabel"
+msgid "Collapse menu"
+msgstr "折叠菜单"
+
+#: web/components/layout/OHeader.vue:16
+msgctxt "web/components/layout/OHeader@expandMenuLabel"
+msgid "Expand menu"
+msgstr "展开菜单"
+
+#: web/components/layout/OHeader.vue:20
+msgctxt "web/components/layout/OHeader@getHelpLabel"
+msgid "Get help"
+msgstr "获取帮助"
+
+#: web/components/layout/OHeader.vue:22
+msgctxt "web/components/layout/OHeader@homeAriaLabel"
+msgid "%s - Home"
+msgstr "%s - 首页"
+
+#: web/components/layout/OHeader.vue:18
+msgctxt "web/components/layout/OHeader@selectAppLabel"
+msgid "Select an app"
+msgstr "选择应用"
+
+#: web/components/layout/OHeader.vue:19
+msgctxt "web/components/layout/OHeader@switchLanguageLabel"
+msgid "Switch language"
+msgstr "切换语言"
+
+#: web/pages/ErrorView.vue:97
+msgctxt "web/pages/ErrorView@shell"
+msgid "Access denied"
+msgstr "权限不足"
+
+#: web/pages/ErrorView.vue:110
+msgctxt "web/pages/ErrorView@shell"
+msgid "An internal error occurred. Try again later or contact support."
+msgstr "系统发生了内部错误，请稍后重试或联系技术支持。"
+
+#: web/pages/ErrorView.vue:112 web/pages/ErrorView.vue:125 web/pages/ErrorView.vue:86
+msgctxt "web/pages/ErrorView@shell"
+msgid "Back to home"
+msgstr "返回首页"
+
+#: web/pages/ErrorView.vue:123
+msgctxt "web/pages/ErrorView@shell"
+msgid "Check that the URL is correct, or the page may have been moved or deleted."
+msgstr "请检查 URL 是否正确，或者该页面可能已被移动或删除。"
+
+#: web/pages/ErrorView.vue:101
+msgctxt "web/pages/ErrorView@shell"
+msgid "Confirm you have access to this resource, or contact an administrator."
+msgstr "请确认您拥有访问此资源的权限，或联系系统管理员获取帮助。"
+
+#: web/pages/ErrorView.vue:94
+msgctxt "web/pages/ErrorView@shell"
+msgid "Contact administrator"
+msgstr "联系管理员"
+
+#: web/pages/ErrorView.vue:126 web/pages/ErrorView.vue:90
+msgctxt "web/pages/ErrorView@shell"
+msgid "Go back"
+msgstr "返回上一页"
+
+#: web/pages/ErrorView.vue:119
+msgctxt "web/pages/ErrorView@shell"
+msgid "Page not found"
+msgstr "页面未找到"
+
+#: web/pages/ErrorView.vue:114
+msgctxt "web/pages/ErrorView@shell"
+msgid "Report a problem"
+msgstr "报告问题"
+
+#: web/pages/ErrorView.vue:113
+msgctxt "web/pages/ErrorView@shell"
+msgid "Retry"
+msgstr "重试"
+
+#: web/pages/ErrorView.vue:106
+msgctxt "web/pages/ErrorView@shell"
+msgid "Server error"
+msgstr "服务器错误"
+
+#: web/pages/ErrorView.vue:120
+msgctxt "web/pages/ErrorView@shell"
+msgid "The page you requested does not exist"
+msgstr "您访问的页面不存在"
+
+#: web/pages/ErrorView.vue:107
+msgctxt "web/pages/ErrorView@shell"
+msgid "The server encountered an error"
+msgstr "服务器遇到了一个错误"
+
+#: web/pages/ErrorView.vue:82
+msgctxt "web/pages/ErrorView@shell"
+msgid "You are missing the required permission"
+msgstr "您缺少所需访问权限"
+
+#: web/pages/ErrorView.vue:80
+msgctxt "web/pages/ErrorView@shell"
+msgid "You are missing the required role"
+msgstr "您缺少所需角色权限"
+
+#: web/pages/ErrorView.vue:78
+msgctxt "web/pages/ErrorView@shell"
+msgid "You do not have permission to access this page"
+msgstr "您没有权限访问此页面"
+
+#~ msgctxt "web/components/layout/OHeader@template"
+#~ msgid "Select an app"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Access denied"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "An internal error occurred. Try again later or contact support."
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Back to home"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Check that the URL is correct, or the page may have been moved or deleted."
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Confirm you have access to this resource, or contact an administrator."
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Contact administrator"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Go back"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Page not found"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Report a problem"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Retry"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "Server error"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "The page you requested does not exist"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "The server encountered an error"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "You are missing the required permission"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView"
+#~ msgid "You are missing the required role"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Access denied"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "An internal error occurred. Try again later or contact support."
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Back to home"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Check that the URL is correct, or the page may have been moved or deleted."
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Confirm you have access to this resource, or contact an administrator."
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Contact administrator"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Go back"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Page not found"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Report a problem"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Retry"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "Server error"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "The page you requested does not exist"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "The server encountered an error"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "You are missing the required permission"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@errorConfig"
+#~ msgid "You are missing the required role"
+#~ msgstr ""
+
+#~ msgctxt "web/pages/ErrorView@subtitle"
+#~ msgid "You do not have permission to access this page"
+#~ msgstr ""

@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
       <div class="o-header__nav">
         <!-- Menu toggle button area. -->
         <div class="o-header__menu-toggle-area">
-          <el-button class="o-header__menu-toggle" text @click="handleMenuToggle" :aria-label="isSidebarCollapsed ? '展开菜单' : '折叠菜单'">
+          <el-button class="o-header__menu-toggle" text @click="handleMenuToggle" :aria-label="isSidebarCollapsed ? expandMenuLabel : collapseMenuLabel">
             <el-icon :size="24">
               <component :is="menuToggleIcon" />
             </el-icon>
@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <!-- Logo section. -->
         <div class="o-header__logo">
-          <router-link to="/" class="o-header__logo-link" :aria-label="`${appName} - 首页`">
+          <router-link to="/" class="o-header__logo-link" :aria-label="homeAriaLabel(appName)">
             <img v-if="logoUrl" :src="logoUrl" :alt="appName" class="o-header__logo-img" />
           </router-link>
         </div>
@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
               </el-icon>
               <span class="o-header__app-name">{{ menu.activeApp.value.title }}</span>
             </template>
-            <span v-else class="o-header__app-name">选择应用</span>
+            <span v-else class="o-header__app-name">{{ selectAppLabel }}</span>
             <el-icon class="o-header__dropdown-arrow" size="1.5em">
               <component :is="isMobile ? '' : ArrowDropDownOutlined" />
             </el-icon>
@@ -66,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
             :max-height="400"
             popper-class="o-header__language-dropdown"
           >
-            <el-button text class="o-header__action-btn" aria-label="切换语言">
+            <el-button text class="o-header__action-btn" :aria-label="switchLanguageLabel">
               <el-icon :size="20">
                 <component :is="TranslateOutlined" />
               </el-icon>
@@ -90,7 +90,7 @@ SPDX-License-Identifier: Apache-2.0
 
           <!-- Support dropdown using a dedicated popper class. -->
           <el-dropdown trigger="click" class="o-header__action-item" placement="bottom-end" popper-class="o-header__support-dropdown">
-            <el-button text class="o-header__action-btn" aria-label="获取帮助">
+            <el-button text class="o-header__action-btn" :aria-label="getHelpLabel">
               <el-icon :size="20">
                 <QuestionFilled />
               </el-icon>
@@ -152,6 +152,18 @@ import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDro
 import { QuestionFilled } from '@element-plus/icons-vue';
 import { MenuOutlined, AppsOutlined, TranslateOutlined, ArrowDropDownOutlined } from '@vicons/material';
 import defaultLogo from '@/web/web/assets/logo.svg';
+import { createFeTranslate } from '@/web/web/i18n/fe_translate';
+
+const { _t } = createFeTranslate('web');
+// Scopes must match extract auto-locations (binding names).
+const expandMenuLabel = _t('Expand menu', { path: 'web/components/layout/OHeader', location: 'expandMenuLabel' });
+const collapseMenuLabel = _t('Collapse menu', { path: 'web/components/layout/OHeader', location: 'collapseMenuLabel' });
+const selectAppLabel = _t('Select an app', { path: 'web/components/layout/OHeader', location: 'selectAppLabel' });
+const switchLanguageLabel = _t('Switch language', { path: 'web/components/layout/OHeader', location: 'switchLanguageLabel' });
+const getHelpLabel = _t('Get help', { path: 'web/components/layout/OHeader', location: 'getHelpLabel' });
+function homeAriaLabel(name: string) {
+  return _t('%s - Home', { path: 'web/components/layout/OHeader', location: 'homeAriaLabel' }, name);
+}
 
 // Fixed height constants.
 const HEADER_HEIGHT = 48;
