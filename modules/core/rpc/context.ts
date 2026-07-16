@@ -3,7 +3,10 @@
 
 /**
  * Request context stored as lightweight key-value pairs and encoded into W3C Baggage headers.
- * Used to carry business context such as tenant, locale, and feature flags along the same trace.
+ * Used to carry business context such as tenant, locale, lang, and feature flags along the same trace.
+ *
+ * - `lang`: terminology language code (e.g. zh_CN) — used by `_t` / errors
+ * - `locale`: format/region code (e.g. zh-CN) — dates/numbers; ≠ lang
  */
 export type RequestContextKV = Record<string, string>;
 
