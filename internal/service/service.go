@@ -240,52 +240,53 @@ func (s *ApplicationService) parseProtoFiles(protoFiles []string) ([]*grpc.Servi
 }
 
 func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
+	var serviceDescs []*grpc.ServiceDesc
+
 	protDir := s.protoRootDir
 	if strings.TrimSpace(protDir) == "" {
 		protDir = filepath.Join(s.appDistPath, "assets")
 	}
-	if _, err := os.Stat(protDir); os.IsNotExist(err) {
-		return nil, nil
-	}
-
-	protoFiles := make([]string, 0)
-	if err := filepath.WalkDir(protDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
+	if _, err := os.Stat(protDir); err == nil {
+		protoFiles := make([]string, 0)
+		if err := filepath.WalkDir(protDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if filepath.Ext(d.Name()) == ".proto" {
+				protoFiles = append(protoFiles, path)
+			}
 			return nil
+		}); err != nil {
+			return nil, err
 		}
-		if filepath.Ext(d.Name()) == ".proto" {
-			protoFiles = append(protoFiles, path)
+
+		parsed, err := s.parseProtoFiles(protoFiles)
+		if err != nil {
+			return nil, err
 		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
+		serviceDescs = append(serviceDescs, parsed...)
 
-	serviceDescs, err := s.parseProtoFiles(protoFiles)
-	if err != nil {
-		return nil, err
-	}
-
-	// Register app protos into the global loader for ExecuteJob routing.
-	if len(protoFiles) > 0 && len(s.protoImportPaths) > 0 {
-		importRoot := s.protoImportPaths[0]
-		for _, file := range protoFiles {
-			rel, err := filepath.Rel(importRoot, file)
-			if err != nil {
-				continue
+		// Register app protos into the global loader for ExecuteJob routing.
+		if len(protoFiles) > 0 && len(s.protoImportPaths) > 0 {
+			importRoot := s.protoImportPaths[0]
+			for _, file := range protoFiles {
+				rel, err := filepath.Rel(importRoot, file)
+				if err != nil {
+					continue
+				}
+				rel = filepath.ToSlash(rel)
+				if rel == "." || strings.HasPrefix(rel, "..") {
+					continue
+				}
+				content, err := os.ReadFile(file)
+				if err != nil {
+					continue
+				}
+				loader.Global().RegisterProto(rel, string(content))
 			}
-			rel = filepath.ToSlash(rel)
-			if rel == "." || strings.HasPrefix(rel, "..") {
-				continue
-			}
-			content, err := os.ReadFile(file)
-			if err != nil {
-				continue
-			}
-			loader.Global().RegisterProto(rel, string(content))
 		}
 	}
 
@@ -294,6 +295,11 @@ func (s *ApplicationService) ServiceDescs() ([]*grpc.ServiceDesc, error) {
 		if tw, err := s.taskWorkerServiceDesc(); err == nil && tw != nil {
 			serviceDescs = append(serviceDescs, tw)
 		}
+	}
+
+	// Always inject {app}.I18n (D5: empty apps still register).
+	if i18nDesc, err := s.i18nServiceDesc(); err == nil && i18nDesc != nil {
+		serviceDescs = append(serviceDescs, i18nDesc)
 	}
 
 	return serviceDescs, nil

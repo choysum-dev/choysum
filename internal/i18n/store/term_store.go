@@ -142,6 +142,51 @@ func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bo
 	return val, ok
 }
 
+// TermsByModules returns a deep copy of warmed terms for the given modules.
+// Modules absent from cache are omitted. Call WarmLanguage first for a complete view.
+// Shape: module → scope → src → value.
+func (s *TermStore) TermsByModules(lang string, modules []string) map[string]map[string]map[string]string {
+	lang = strings.TrimSpace(lang)
+	if lang == "" || len(modules) == 0 {
+		return map[string]map[string]map[string]string{}
+	}
+	wanted := make(map[string]struct{}, len(modules))
+	for _, m := range modules {
+		m = strings.TrimSpace(m)
+		if m != "" {
+			wanted[m] = struct{}{}
+		}
+	}
+	if len(wanted) == 0 {
+		return map[string]map[string]map[string]string{}
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	byMod, ok := s.cache[lang]
+	if !ok {
+		return map[string]map[string]map[string]string{}
+	}
+
+	out := make(map[string]map[string]map[string]string)
+	for mod := range wanted {
+		byScope, ok := byMod[mod]
+		if !ok {
+			continue
+		}
+		modCopy := make(map[string]map[string]string, len(byScope))
+		for scopeKey, bySrc := range byScope {
+			srcCopy := make(map[string]string, len(bySrc))
+			for src, val := range bySrc {
+				srcCopy[src] = val
+			}
+			modCopy[scopeKey] = srcCopy
+		}
+		out[mod] = modCopy
+	}
+	return out
+}
+
 // InvalidateModule drops module entries from all warmed languages and bumps hashes.
 func (s *TermStore) InvalidateModule(module string) {
 	module = strings.TrimSpace(module)
@@ -173,6 +218,11 @@ func (s *TermStore) TermHash(lang string) string {
 func emptyTermHash() string {
 	sum := sha256.Sum256(nil)
 	return hex.EncodeToString(sum[:8])
+}
+
+// EmptyTermHash returns the stable hash for an empty terminology set (D5).
+func EmptyTermHash() string {
+	return emptyTermHash()
 }
 
 func bumpHash(prev string) string {
