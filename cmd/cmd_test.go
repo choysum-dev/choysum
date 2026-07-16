@@ -1604,6 +1604,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		"run":        false,
 		"test":       false,
 		"type-fetch": false,
+		"i18n":       false,
 	}
 	for _, sub := range commander.rootCmd.Commands() {
 		if _, ok := wantCommands[sub.Name()]; ok {
@@ -1648,6 +1649,20 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		if !shouldUseLightweightRuntimeScope(typeFetchCmd) {
 			t.Fatal("expected lightweight scope for type-fetch")
+		}
+
+		i18nExtractCmd, _, err := commander.rootCmd.Find([]string{"i18n", "extract"})
+		if err != nil {
+			t.Fatalf("find i18n extract subcommand: %v", err)
+		}
+		if i18nExtractCmd == nil {
+			t.Fatal("expected i18n extract subcommand")
+		}
+		if got := i18nExtractCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
+			t.Fatalf("i18n extract annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		}
+		if !shouldUseLightweightRuntimeScope(i18nExtractCmd) {
+			t.Fatal("expected lightweight scope for i18n extract")
 		}
 	})
 
