@@ -15,6 +15,8 @@ import { watch } from 'vue';
 import sourceMessages from './i18n/source';
 import { createAppRouter } from './router';
 import { registerGlobalDirectives } from './directives';
+import { setGlobalRequestContextProvider } from '@/core/rpc/context';
+import { shouldMergeTerminology } from './stores/i18nStore/merge';
 
 // Import Element Plus.
 import ElementPlus from 'element-plus';
@@ -47,6 +49,12 @@ function setupApp(app: ChoysumWebApp): void {
   // Initialize the i18n store before creating the i18n instance.
   const i18nStore = useI18nStore();
 
+  // RequestContext: locale (format) + lang (terminology) — D12d.
+  setGlobalRequestContextProvider(() => ({
+    locale: i18nStore.currentLocale.code,
+    lang: i18nStore.terminologyLang,
+  }));
+
   // Internationalization.
   const i18n = createI18n<false, { [key: string]: any }>({
     legacy: false,
@@ -64,7 +72,7 @@ function setupApp(app: ChoysumWebApp): void {
     (window as any).$i18n = i18n.global;
   }
 
-  // React to locale changes.
+  // React to locale changes: Element + legacy source coexist + Gateway merge (S4-1).
   watch(
     () => i18nStore.currentLocale.code,
     async newLocale => {
@@ -73,20 +81,26 @@ function setupApp(app: ChoysumWebApp): void {
         app.config.globalProperties.$ELEMENT.locale = i18nStore.currentLocale.elementLocale;
       }
 
-      // Load locale messages lazily for non-English locales.
+      // Keep legacy handwritten source as a coexistence baseline until S4-2 PO migration.
       if (newLocale !== 'en') {
         try {
-          const messages = await i18nStore.loadVueI18nMessages(newLocale);
-          if (messages) {
-            i18n.global.setLocaleMessage(newLocale, messages);
-            i18n.global.locale.value = newLocale;
+          const legacy = await i18nStore.loadVueI18nMessages(newLocale);
+          if (legacy) {
+            i18n.global.mergeLocaleMessage(newLocale, legacy);
           }
         } catch (error) {
-          console.error(`Failed to load locale ${newLocale}`, error);
+          console.warn(`Failed to load legacy locale messages for ${newLocale}`, error);
         }
-      } else {
-        i18n.global.locale.value = 'en';
       }
+
+      const terminology = i18nStore.lastTerminologyLoad;
+      if (shouldMergeTerminology(terminology) && terminology?.messages) {
+        const mergeLocale = terminology.locale || newLocale;
+        i18n.global.mergeLocaleMessage(mergeLocale, terminology.messages);
+      }
+      // unchanged / gatewayError: do not merge empty objects (D4); UI keeps msgid.
+
+      i18n.global.locale.value = newLocale;
     },
     { immediate: true }
   );

@@ -202,16 +202,18 @@ const direction = useTextDirection();
 // Compute the drawer direction from the text direction.
 const drawerDirection = computed(() => (direction.value === 'rtl' ? 'rtl' : 'ltr'));
 
-// Supported locale list.
+// Supported locale list (active terminology locales, not the full format catalog).
 const localeOptions = computed(() =>
-  i18nStore.supportedLocales.map((code: SupportedLocale) => {
-    const locale = SUPPORTED_LOCALES[code];
-    return {
-      code,
-      name: locale.name,
-      textDirection: locale.textDirection,
-    };
-  })
+  i18nStore.activeLocaleCodes
+    .filter((code: string) => code in SUPPORTED_LOCALES)
+    .map((code: string) => {
+      const locale = SUPPORTED_LOCALES[code as SupportedLocale];
+      return {
+        code,
+        name: locale.name,
+        textDirection: locale.textDirection,
+      };
+    })
 );
 
 // Currently selected locale code.

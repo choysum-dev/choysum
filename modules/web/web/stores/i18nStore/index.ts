@@ -6,13 +6,19 @@ import { ref, computed, shallowRef } from 'vue';
 import { isClient } from '@vueuse/core';
 import dayjs from 'dayjs';
 import { SUPPORTED_LOCALES } from './locales';
+import { DEFAULT_ACTIVE_LOCALES } from './active_locales';
 import { SupportedLocale, DateTimeFormatType } from './types';
 import { detectBestLocale, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
 import { loadElementLocale, loadDayjsLocale, loadVueI18nMessages } from './loader';
+import { localeToLang } from './lang';
+import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
+export { localeToLang, langToLocale } from './lang';
+export { fetchWebTranslations } from './terminology_loader';
+export type { TerminologyLoadResult } from './terminology_loader';
 export type { SupportedLocale };
 
 /**
@@ -32,6 +38,15 @@ export const useI18nStore = defineStore(
     // Current loading state.
     const isLoading = ref(false);
 
+    // Terminology catalogHash by lang (for Gateway hash negotiation).
+    const terminologyHashByLang = ref<Record<string, string>>({});
+
+    // Last Gateway load result (consumed by app.ts for mergeLocaleMessage).
+    const lastTerminologyLoad = shallowRef<TerminologyLoadResult | null>(null);
+
+    // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_LOCALES).
+    const activeLocaleCodes = ref<string[]>([...DEFAULT_ACTIVE_LOCALES]);
+
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
       if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
@@ -48,11 +63,13 @@ export const useI18nStore = defineStore(
       };
     });
 
+    const terminologyLang = computed(() => localeToLang(currentLocale.value.code));
+
     /**
-     * Set the application locale.
+     * Set the application locale (format UI + Gateway terminology).
      */
     async function setLocale(locale: string) {
-      // Check whether the locale is supported.
+      // Check whether the locale is supported for format metadata.
       if (!(locale in SUPPORTED_LOCALES)) {
         console.warn(`Locale ${locale} is not supported`);
         return false;
@@ -76,6 +93,36 @@ export const useI18nStore = defineStore(
           };
         }
 
+        // Load terminology from host Gateway (S4-1); failures fall back to msgid.
+        const lang = localeToLang(locale);
+        const prevHash = terminologyHashByLang.value[lang] || '';
+        try {
+          const res = await fetchWebTranslations(lang, prevHash || undefined);
+          if (res.hash) {
+            terminologyHashByLang.value = {
+              ...terminologyHashByLang.value,
+              [lang]: res.hash,
+            };
+          }
+          lastTerminologyLoad.value = {
+            lang: res.lang,
+            locale: res.locale || locale,
+            hash: res.hash,
+            unchanged: res.unchanged,
+            messages: res.unchanged ? null : res.messages,
+          };
+        } catch (error) {
+          console.warn('Failed to load terminology from Gateway; falling back to msgid', error);
+          lastTerminologyLoad.value = {
+            lang,
+            locale,
+            hash: prevHash,
+            unchanged: false,
+            messages: null,
+            gatewayError: true,
+          };
+        }
+
         // Update the active locale.
         localeCode.value = locale as SupportedLocale;
 
@@ -95,6 +142,16 @@ export const useI18nStore = defineStore(
       } finally {
         isLoading.value = false;
       }
+    }
+
+    /**
+     * Restrict the language switcher to active terminology locales.
+     */
+    function setActiveLocales(codes: string[]) {
+      const next = codes
+        .map(c => String(c || '').trim())
+        .filter(c => c && c in SUPPORTED_LOCALES);
+      activeLocaleCodes.value = next.length > 0 ? next : [...DEFAULT_ACTIVE_LOCALES];
     }
 
     /**
@@ -177,11 +234,16 @@ export const useI18nStore = defineStore(
       isInitialized,
       localeCode,
       initialize,
+      terminologyLang,
+      terminologyHashByLang,
+      lastTerminologyLoad,
+      activeLocaleCodes,
       // Locale support information.
       supportedLocales: Object.keys(SUPPORTED_LOCALES) as SupportedLocale[],
 
       // Locale management methods.
       setLocale,
+      setActiveLocales,
 
       // Formatting helpers.
       formatDateTime: wrappedFormatDateTime,
