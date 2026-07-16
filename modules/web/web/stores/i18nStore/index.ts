@@ -12,12 +12,14 @@ import { detectBestLocale, updateDocumentDirection, formatDateTime, formatNumber
 import { loadElementLocale, loadDayjsLocale, loadVueI18nMessages } from './loader';
 import { localeToLang } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
+import { afterLocaleChange } from './locale_remount';
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { localeToLang, langToLocale } from './lang';
 export { fetchWebTranslations } from './terminology_loader';
+export { afterLocaleChange, resolveLocaleRemountMode } from './locale_remount';
 export type { TerminologyLoadResult } from './terminology_loader';
 export type { SupportedLocale };
 

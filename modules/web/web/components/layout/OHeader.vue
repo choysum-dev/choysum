@@ -264,6 +264,9 @@ async function handleLanguageChange(locale: string) {
   } catch {
     // Auth module may be unavailable; anonymous preference stays in i18nStore localStorage.
   }
+  // D9: default full reload so RPC/metadata match the new lang.
+  const { afterLocaleChange } = await import('@/web/web/stores/i18nStore/locale_remount');
+  await afterLocaleChange();
 }
 
 function handleDrawerMenuItemClick(item: MenuItem) {
