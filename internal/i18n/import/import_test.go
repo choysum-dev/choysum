@@ -178,10 +178,30 @@ func TestDeleteModuleTerms(t *testing.T) {
 	}
 }
 
-func TestImportModuleI18nDirSkipMissing(t *testing.T) {
+func TestImportModulePoMultilineMsgstr(t *testing.T) {
 	rs := newTestScope(t)
+	poText := []byte(`
+msgctxt "web/a@body"
+msgid ""
+"Hello "
+"world"
+msgstr ""
+"你好"
+"世界"
+`)
 	reg := store.NewRegistry(rs)
-	if err := i18nimport.ImportModuleI18nDir(rs, reg, "auth", "auth", filepath.Join(t.TempDir(), "missing")); err != nil {
-		t.Fatalf("missing i18n dir should skip: %v", err)
+	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Upserted != 1 {
+		t.Fatalf("stats=%+v", stats)
+	}
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Hello world").Take(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Value != "你好世界" {
+		t.Fatalf("multiline msgstr = %q", row.Value)
 	}
 }

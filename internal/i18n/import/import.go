@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 // Package i18nimport loads module PO catalogs into per-application TranslationTerm rows.
-// PO text is parsed via internal/i18n/po (GNU gettext subset). Runtime lookup never uses
-// gettext Get() — only TermStore cache after Warm/Invalidate.
+// PO text is parsed with leonelquinteros/gotext (Po.Parse / Domain iteration only).
+// Runtime lookup never uses gotext Get() — only TermStore cache after Warm/Invalidate.
 package i18nimport
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,25 +15,31 @@ import (
 	"strings"
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
-	"github.com/choysum-dev/choysum/internal/i18n/po"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"github.com/leonelquinteros/gotext"
 	"gorm.io/gorm"
 )
 
 // ImportStats summarizes one PO import.
 type ImportStats struct {
-	Upserted   int
+	Upserted        int
 	SkippedOverride int
 	RejectedNoCtxt  int
 	SkippedObsolete int
-	Lang       string
+	Lang            string
 }
 
-// ImportModulePo parses poText and upserts packaged terms for (application, module, lang).
-// Existing Source=override rows are not overwritten. Obsolete (#~) entries are ignored
-// for DB writes and never DELETE existing rows (D12a). Entries without msgctxt are
-// rejected and logged (D12c).
+type poTerm struct {
+	scope    string
+	src      string
+	value    string
+	comments string
+}
+
+// ImportModulePo parses poText with gotext and upserts packaged terms for (application, module, lang).
+// Existing Source=override rows are not overwritten. Obsolete (#~) entries are ignored by gotext
+// and never DELETE existing DB rows (D12a). Entries without msgctxt are rejected and logged (D12c).
 func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)
@@ -48,10 +53,9 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		return stats, fmt.Errorf("import po: missing runtime session")
 	}
 
-	entries, err := po.Parse(bytes.NewReader(poText))
-	if err != nil {
-		return stats, fmt.Errorf("parse po: %w", err)
-	}
+	terms, rejectedNoCtxt, obsolete := parsePoTerms(poText)
+	stats.RejectedNoCtxt = rejectedNoCtxt
+	stats.SkippedObsolete = obsolete
 
 	tableName := i18nmodels.TranslationTermTableName(application)
 	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, application); err != nil {
@@ -62,38 +66,28 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	if logger == nil {
 		logger = slog.Default()
 	}
+	if rejectedNoCtxt > 0 {
+		logger.Warn("i18n import rejected PO entries without msgctxt",
+			"application", application, "module", module, "lang", lang, "count", rejectedNoCtxt)
+	}
 
-	for _, entry := range entries {
-		if po.IsHeader(entry) {
-			continue
-		}
-		if entry.Obsolete {
-			stats.SkippedObsolete++
-			continue
-		}
-		if strings.TrimSpace(entry.Msgctxt) == "" {
-			stats.RejectedNoCtxt++
-			logger.Warn("i18n import rejected PO entry without msgctxt",
-				"application", application, "module", module, "lang", lang, "msgid", entry.Msgid)
-			continue
-		}
-
+	for _, term := range terms {
 		kind := i18nmodels.KindLiteral
 		var existing i18nmodels.TranslationTerm
 		err := session.Table(tableName).
 			Where("module = ? AND lang = ? AND scope = ? AND src = ? AND kind = ?",
-				module, lang, entry.Msgctxt, entry.Msgid, kind).
+				module, lang, term.scope, term.src, kind).
 			Take(&existing).Error
 		if err == nil {
 			if existing.Source == i18nmodels.SourceOverride {
 				stats.SkippedOverride++
 				continue
 			}
-			existing.Value = entry.Msgstr
+			existing.Value = term.value
 			existing.Source = i18nmodels.SourcePackaged
 			existing.Application = application
-			if comments := joinComments(entry); comments != "" {
-				existing.Comments = comments
+			if term.comments != "" {
+				existing.Comments = term.comments
 			}
 			if err := session.Table(tableName).Save(&existing).Error; err != nil {
 				return stats, fmt.Errorf("update term: %w", err)
@@ -109,12 +103,12 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 			Application: application,
 			Module:      module,
 			Lang:        lang,
-			Scope:       entry.Msgctxt,
-			Src:         entry.Msgid,
-			Value:       entry.Msgstr,
+			Scope:       term.scope,
+			Src:         term.src,
+			Value:       term.value,
 			Kind:        kind,
 			Source:      i18nmodels.SourcePackaged,
-			Comments:    joinComments(entry),
+			Comments:    term.comments,
 		}
 		if err := session.Table(tableName).Create(&row).Error; err != nil {
 			return stats, fmt.Errorf("create term: %w", err)
@@ -129,6 +123,65 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		_ = ts.WarmLanguage(lang)
 	}
 	return stats, nil
+}
+
+// parsePoTerms uses gotext Po.Parse. Returns contexted terms, count of no-msgctxt
+// msgid entries (excluding header), and count of obsolete #~ msgid lines (D12a observability).
+func parsePoTerms(poText []byte) (terms []poTerm, rejectedNoCtxt int, obsolete int) {
+	obsolete = countObsoleteMsgid(poText)
+
+	poObj := gotext.NewPo()
+	poObj.Parse(poText)
+	domain := poObj.GetDomain()
+	if domain == nil {
+		return nil, 0, obsolete
+	}
+
+	for msgid := range domain.GetTranslations() {
+		if msgid == "" {
+			continue // header
+		}
+		rejectedNoCtxt++
+	}
+
+	for ctx, byID := range domain.GetCtxTranslations() {
+		ctx = strings.TrimSpace(ctx)
+		for msgid, tr := range byID {
+			if msgid == "" || tr == nil {
+				continue
+			}
+			terms = append(terms, poTerm{
+				scope:    ctx,
+				src:      msgid,
+				value:    msgstrValue(tr),
+				comments: strings.Join(tr.Refs, " "),
+			})
+		}
+	}
+	return terms, rejectedNoCtxt, obsolete
+}
+
+func msgstrValue(tr *gotext.Translation) string {
+	if tr == nil || tr.Trs == nil {
+		return ""
+	}
+	// Prefer raw msgstr[0]; do not use Translation.Get() (falls back to msgid when empty).
+	return tr.Trs[0]
+}
+
+func countObsoleteMsgid(poText []byte) int {
+	count := 0
+	for _, line := range strings.Split(string(poText), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#~") && strings.Contains(trimmed, "msgid") && !strings.Contains(trimmed, "msgid_plural") {
+			// Match "#~ msgid" / "#~msgid"
+			rest := strings.TrimSpace(strings.TrimPrefix(trimmed, "#~"))
+			if strings.HasPrefix(rest, "msgid") && !strings.HasPrefix(rest, "msgid_plural") {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 // ImportModuleI18nDir imports all *.po files under moduleRoot/i18n (skip if missing).
@@ -187,13 +240,4 @@ func DeleteModuleTerms(runtimeScope scope.Scope, reg *store.Registry, applicatio
 		reg.StoreFor(application).InvalidateModule(module)
 	}
 	return nil
-}
-
-func joinComments(entry po.Entry) string {
-	parts := append([]string{}, entry.TranslatorComments...)
-	parts = append(parts, entry.ExtractedComments...)
-	if len(entry.References) > 0 {
-		parts = append(parts, strings.Join(entry.References, " "))
-	}
-	return strings.Join(parts, "\n")
 }
