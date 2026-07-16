@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+# SPDX-License-Identifier: LGPL-3.0-or-later
+#
+# Optional terminology catalog gate (S6).
+# Disable or skip this workflow to leave runtime unaffected.
+
+name: I18n Status
+
+on:
+  pull_request:
+    paths:
+      - "modules/**/i18n/**"
+      - "modules/**/*.{ts,tsx,vue}"
+      - "internal/i18n/**"
+      - "cmd/cmd_i18n.go"
+      - "scripts/ci/i18n_status.sh"
+      - ".github/workflows/i18n-status.yml"
+  workflow_dispatch:
+    inputs:
+      skip_pot_check:
+        description: Skip extract pot-drift check (faster)
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: i18n-status-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  status:
+    name: i18n / status
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Terminology status gate
+        env:
+          I18N_STATUS_LANG: zh_CN
+          I18N_STATUS_SKIP_POT: ${{ inputs.skip_pot_check && '1' || '0' }}
+        run: bash scripts/ci/i18n_status.sh
