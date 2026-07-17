@@ -3,8 +3,11 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { createTranslate } from '@/core/service/i18n';
 import Locale from './locale';
 import { normalizeDirection } from './_normalizers';
+
+const { _td } = createTranslate('base');
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -20,8 +23,8 @@ export default class Language extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'ltr', label: 'ltr' },
-      { value: 'rtl', label: 'rtl' },
+      { value: 'ltr', label: _td('Left to right', { scope: 'base.Language.Direction.ltr' }) },
+      { value: 'rtl', label: _td('Right to left', { scope: 'base.Language.Direction.rtl' }) },
     ],
     size: 8,
   })

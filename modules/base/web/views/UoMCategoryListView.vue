@@ -15,9 +15,9 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -33,8 +33,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMCategoryListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/UoMCategoryListView' });
 const props = defineProps<{ store: WebModelStore<UoMCategory> }>();
 const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: 'Unit of Measure Category' });
 const { hasAction } = usePermission();

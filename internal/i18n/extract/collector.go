@@ -24,7 +24,7 @@ type CollectOptions struct {
 	PathAlias map[string]string
 }
 
-// CollectScript extracts `_t` / `_lt` / `_tr` literal terms from TS/TSX (or Vue script) source.
+// CollectScript extracts `_t` / `_lt` / `_tr` / `_td` literal terms from TS/TSX (or Vue script) source.
 func CollectScript(opts CollectOptions, content string) ([]TermOccurrence, []ExtractIssue) {
 	terms, issues, _ := collectScript(opts, content)
 	return terms, issues
@@ -64,6 +64,7 @@ func collectScript(opts CollectOptions, content string) ([]TermOccurrence, []Ext
 		ctx:                    ctx,
 		scopePath:              ScopePathFromRelPath(opts.RelPath),
 		translateIdents:        map[string]bool{},
+		descriptorIdents:       map[string]bool{},
 		translateDefaultScopes: map[string]string{},
 	}
 	for _, stmt := range ctx.Source.Statements.Nodes {
@@ -79,6 +80,7 @@ type scriptCollector struct {
 	scopeStack             []string
 	enclosing              []string
 	translateIdents        map[string]bool
+	descriptorIdents       map[string]bool
 	translateDefaultScopes map[string]string
 	terms                  []TermOccurrence
 	issues                 []ExtractIssue
@@ -202,12 +204,13 @@ func (c *scriptCollector) tryRegisterCreateTranslate(call *tsast.Node, nameNode 
 		})
 	}
 
-	registerTranslateBindings(c.translateIdents, c.translateDefaultScopes, defaultScope, c.ctx, nameNode)
+	registerTranslateBindings(c.translateIdents, c.descriptorIdents, c.translateDefaultScopes, defaultScope, c.ctx, nameNode)
 	return true
 }
 
 func registerTranslateBindings(
 	idents map[string]bool,
+	descriptorIdents map[string]bool,
 	defaultScopes map[string]string,
 	defaultScope string,
 	ctx *tsgoctx.ParseCtx,
@@ -242,6 +245,9 @@ func registerTranslateBindings(
 			if isTranslateIdentifier(propName) || isTranslateIdentifier(localName) {
 				if localName != "" {
 					idents[localName] = true
+					if propName == "_td" {
+						descriptorIdents[localName] = true
+					}
 					if defaultScope != "" {
 						defaultScopes[localName] = defaultScope
 					}
@@ -318,7 +324,7 @@ func (c *scriptCollector) isTranslateCallee(expr *tsast.Node) bool {
 }
 
 func isTranslateIdentifier(name string) bool {
-	return name == "_t" || name == "_lt" || name == "_tr"
+	return name == "_t" || name == "_lt" || name == "_tr" || name == "_td"
 }
 
 func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast.CallExpression, pendingLocation string) {
@@ -351,11 +357,41 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 
 	manualScope := ""
 	kind := KindLiteral
-	if len(args.Nodes) > 1 {
+	calleeName := ""
+	if callExpr.Expression != nil && callExpr.Expression.Kind == tsast.KindIdentifier {
+		calleeName = strings.TrimSpace(c.ctx.NodeText(callExpr.Expression))
+	}
+	isDescriptor := calleeName == "_td" || c.descriptorIdents[calleeName]
+	if isDescriptor {
+		if len(args.Nodes) > 1 {
+			var scopeOK bool
+			manualScope, scopeOK = parseDescriptorScope(c.ctx, args.Nodes[1])
+			if !scopeOK || strings.TrimSpace(manualScope) == "" {
+				c.issues = append(c.issues, ExtractIssue{
+					Severity:   IssueSeverityWarn,
+					Code:       IssueNonLiteralScope,
+					Message:    "_td scope must be a non-empty string literal; skipped",
+					SourcePath: c.opts.RelPath,
+					Line:       line,
+					Col:        col,
+				})
+				return
+			}
+		} else if strings.TrimSpace(c.translateDefaultScopes[calleeName]) == "" {
+			c.issues = append(c.issues, ExtractIssue{
+				Severity:   IssueSeverityWarn,
+				Code:       IssueNonLiteralScope,
+				Message:    "_td requires an explicit or factory-default literal scope; skipped",
+				SourcePath: c.opts.RelPath,
+				Line:       line,
+				Col:        col,
+			})
+			return
+		}
+	} else if len(args.Nodes) > 1 {
 		manualScope, kind = parseTranslateOptions(c.ctx, args.Nodes[1])
 	}
-	if manualScope == "" && callExpr.Expression != nil && callExpr.Expression.Kind == tsast.KindIdentifier {
-		calleeName := strings.TrimSpace(c.ctx.NodeText(callExpr.Expression))
+	if manualScope == "" && calleeName != "" {
 		manualScope = c.translateDefaultScopes[calleeName]
 	}
 
@@ -374,6 +410,27 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 		Line:       line,
 		Col:        col,
 	})
+}
+
+func parseDescriptorScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {
+	if node == nil || node.Kind != tsast.KindObjectLiteralExpression {
+		return "", false
+	}
+	obj := node.AsObjectLiteralExpression()
+	if obj == nil || obj.Properties.Nodes == nil {
+		return "", false
+	}
+	for _, prop := range obj.Properties.Nodes {
+		if prop == nil || prop.Kind != tsast.KindPropertyAssignment {
+			continue
+		}
+		pa := prop.AsPropertyAssignment()
+		if pa == nil || pa.Name() == nil || strings.TrimSpace(ctx.NodeText(pa.Name())) != "scope" {
+			continue
+		}
+		return stringLiteralValue(ctx, prop.Initializer())
+	}
+	return "", false
 }
 
 func parseTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope string, kind string) {

@@ -3,10 +3,13 @@
 
 import { Decimal } from '@/core/service';
 import { ChoysumError, GrpcCode } from '@/core/service/error';
+import { createTranslate } from '@/core/service/i18n';
 import { normalizeDateString, parseDecimalInput, resolveModelRefId, roundToCurrencyAmount, toDateOnlyString } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, normalizeRatePolicyMode, normalizeRoundingMode } from './_normalizers';
 import type Currency from './currency';
 import type { CurrencyConvertParams, CurrencyConvertResult } from './currency';
+
+const { _t } = createTranslate('base');
 
 async function getRateRecord(opts: {
   companyId: string;
@@ -65,7 +68,7 @@ export async function convertCurrency(
   const fromCurrencyId = String(params?.FromCurrencyId ?? '').trim();
   const toCurrencyId = String(params?.ToCurrencyId ?? '').trim();
   if (!companyId || !fromCurrencyId || !toCurrencyId) {
-    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: 'CompanyId/FromCurrencyId/ToCurrencyId are required' }).withGrpcCode(
+    throw new ChoysumError({ domain: 'base', code: 'InvalidArgument', message: _t('CompanyId/FromCurrencyId/ToCurrencyId are required', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(
       GrpcCode.InvalidArgument
     );
   }
@@ -73,14 +76,14 @@ export async function convertCurrency(
   const date = mapNormalizationToBase(
     () => normalizeDateString(params?.Date),
     err => {
-      if (err.code === 'required') return 'Date is required';
-      if (err.code === 'invalid_date_value') return 'Date is invalid';
-      return 'Date must be YYYY-MM-DD';
+      if (err.code === 'required') return _t('Date is required', { scope: 'service/models/_currency_convert' });
+      if (err.code === 'invalid_date_value') return _t('Date is invalid', { scope: 'service/models/_currency_convert' });
+      return _t('Date must be YYYY-MM-DD', { scope: 'service/models/_currency_convert' });
     }
   );
   const amount = mapNormalizationToBase(
     () => parseDecimalInput(params?.Amount, { allowNumber: false }),
-    () => 'Invalid Amount'
+    () => _t('Invalid Amount', { scope: 'service/models/_currency_convert' })
   );
 
   if (fromCurrencyId === toCurrencyId) {
@@ -92,14 +95,16 @@ export async function convertCurrency(
   try {
     company = (await Company.Browse(companyId, ['Id', 'CurrencyId'] as any)) as any;
   } catch {
-    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Company not found' }).withGrpcCode(GrpcCode.NotFound);
+    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Company not found', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(GrpcCode.NotFound);
   }
   if (!company) {
-    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Company not found' }).withGrpcCode(GrpcCode.NotFound);
+    throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Company not found', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(GrpcCode.NotFound);
   }
   const companyCurrencyId = String(resolveModelRefId(company, 'CurrencyId') ?? '').trim();
   if (!companyCurrencyId) {
-    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Company.CurrencyId is required' }).withGrpcCode(GrpcCode.FailedPrecondition);
+    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: _t('Company.CurrencyId is required', { scope: 'service/models/_currency_convert' }) }).withGrpcCode(
+      GrpcCode.FailedPrecondition
+    );
   }
 
   const mode = normalizeRatePolicyMode(params?.RatePolicy?.Mode);
@@ -125,7 +130,7 @@ export async function convertCurrency(
       allowFallbackToGlobal,
     });
     if (!rec) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: `ExchangeRate not found for currency ${fromCurrencyId}` }).withGrpcCode(
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, fromCurrencyId) }).withGrpcCode(
         GrpcCode.NotFound
       );
     }
@@ -144,7 +149,7 @@ export async function convertCurrency(
       allowFallbackToGlobal,
     });
     if (!rec) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: `ExchangeRate not found for currency ${toCurrencyId}` }).withGrpcCode(
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('ExchangeRate not found for currency %s', { scope: 'service/models/_currency_convert' }, toCurrencyId) }).withGrpcCode(
         GrpcCode.NotFound
       );
     }
@@ -166,7 +171,9 @@ export async function convertCurrency(
   if (roundingMode === 'currency') {
     const toCurrency = (await model.Browse(toCurrencyId, ['Id', 'DecimalDigits', 'Rounding'] as any)) as any;
     if (!toCurrency) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: `Target currency ${toCurrencyId} not found` }).withGrpcCode(GrpcCode.NotFound);
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Target currency %s not found', { scope: 'service/models/_currency_convert' }, toCurrencyId) }).withGrpcCode(
+        GrpcCode.NotFound
+      );
     }
     out = roundToCurrencyAmount(out, toCurrency as any, overrideDigits);
   }

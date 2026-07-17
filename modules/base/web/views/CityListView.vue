@@ -15,13 +15,13 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OManyToOneField :store="store" prop="CountryId" label="Country"><OVarCharField :store="store" prop="CountryId.Name" label="Country" /></OManyToOneField>
-    <OManyToOneField :store="store" prop="StateId" label="State/Province"
-      ><OVarCharField :store="store" prop="StateId.Name" label="State/Province"
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OManyToOneField :store="store" prop="CountryId" :label="_t('Country')"><OVarCharField :store="store" prop="CountryId.Name" :label="_t('Country')" /></OManyToOneField>
+    <OManyToOneField :store="store" prop="StateId" :label="_t('State/Province')"
+      ><OVarCharField :store="store" prop="StateId.Name" :label="_t('State/Province')"
     /></OManyToOneField>
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -38,8 +38,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CityListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/CityListView' });
 const props = defineProps<{ store: WebModelStore<City> }>();
 const cityActions = defineModelActions('base.City', { entityTitle: 'City' });
 const { hasAction } = usePermission();

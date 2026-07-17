@@ -12,6 +12,7 @@ import {
   getResourceDeclarationFromMeta,
   listResourceDeclarations,
 } from './index';
+import { createTranslate } from '../../service/i18n';
 
 describe('resource declaration helpers', () => {
   beforeEach(() => {
@@ -59,6 +60,28 @@ describe('resource declaration helpers', () => {
     } as any);
 
     expect((route as any).meta?.pageTitle).toBe('User Details - Dynamic Override');
+  });
+
+  it('normalizes descriptor titles to English fallbacks plus metadata', () => {
+    const { _td } = createTranslate('auth');
+    const descriptor = _td('Users', { scope: 'auth.route.users' });
+    const route = defineRoute('auth.route.users', {
+      path: '/auth/users',
+      title: descriptor,
+    } as any);
+    const menu = defineMenu('auth.menu.users', {
+      path: '/auth/users',
+      title: descriptor,
+    });
+
+    expect((route as any).meta.pageTitle).toBe('Users');
+    expect((route as any).meta.pageTitleText).toEqual(descriptor);
+    expect(menu.title).toBe('Users');
+    expect(menu.titleText).toEqual(descriptor);
+    expect(getResourceDeclaration('auth.route.users')).toMatchObject({
+      title: 'Users',
+      titleText: descriptor,
+    });
   });
 
   it('defineRoute strips actions from returned route config', () => {

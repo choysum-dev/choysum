@@ -5,6 +5,7 @@ import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata/storage';
 import { Field } from './field';
 import type { FieldOptions } from '../metadata/field';
+import { createTranslate } from '../../i18n';
 
 class FieldTargetModel extends BaseModel {}
 
@@ -49,7 +50,7 @@ test('Field decorator validates selection schema and uniqueness', () => {
       Status!: string;
     }
     return InvalidSelectionItemModel;
-  }).toThrow('must include a string label field');
+  }).toThrow('must include a string or text descriptor label field');
 
   expect(() => {
     class DuplicateSelectionValueModel extends BaseModel {
@@ -80,8 +81,16 @@ test('Field decorator validates selection schema and uniqueness', () => {
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {
+  const { _td } = createTranslate('demo');
+  const labelDescriptor = _td('B', { scope: 'demo.status.b' });
   class AutoSelectionModel extends BaseModel {
-    @Field({ type: 'selection', selection: [{ value: 'a', label: 'A' }] } as any)
+    @Field({
+      type: 'selection',
+      selection: [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: labelDescriptor },
+      ],
+    } as any)
     Status!: string;
   }
 
@@ -111,7 +120,14 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
   const m2oRefMeta = MetadataStorage.instance.getModelMetadata(ManyToOneRefModel as any).fields.get('ParentId') as any;
   const m2mRefMeta = MetadataStorage.instance.getModelMetadata(ManyToManyRefModel as any).fields.get('TagIds') as any;
 
-  expect(selectionMeta?.selection).toEqual([{ value: 'a', label: 'A' }]);
+  expect(selectionMeta?.selection).toEqual([
+    { value: 'a', label: 'A' },
+    {
+      value: 'b',
+      label: 'B',
+      labelText: labelDescriptor,
+    },
+  ]);
   expect(selectionMeta?.column).toEqual({});
 
   expect(binaryMeta?.column).toEqual({});

@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('City')
 export default class City extends BaseModel {
@@ -34,8 +37,8 @@ export default class City extends BaseModel {
     const { default: StateModel } = await import('./state');
     const state = await StateModel.Browse(stateId, ['Id', 'CountryId'] as any);
     const stateCountryId = normalizeRefId((state as any)?.CountryId);
-    if (!state?.Id || !stateCountryId) fail('State not found');
-    if (stateCountryId !== countryId) fail('State.CountryId must equal City.CountryId');
+    if (!state?.Id || !stateCountryId) fail(_t('State not found', { scope: 'service/models/city' }));
+    if (stateCountryId !== countryId) fail(_t('State.CountryId must equal City.CountryId', { scope: 'service/models/city' }));
   }
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
@@ -53,7 +56,7 @@ export default class City extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) fail('City Name must be unique within Country + State');
+    if (nameConflict) fail(_t('City Name must be unique within Country + State', { scope: 'service/models/city' }));
 
     values.Name = name;
     values.Code = code;

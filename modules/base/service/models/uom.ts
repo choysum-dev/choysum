@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import UoMCategory from './uom_category';
 import { fail, mapNormalizationToBase, normalizeName, requireRefId } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -45,7 +48,7 @@ export default class UoM extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const conflict = (hits || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (conflict) fail('UoM Name must be unique within Category');
+    if (conflict) fail(_t('UoM Name must be unique within Category', { scope: 'service/models/uom' }));
   }
 
   private static async ensureCategoryReferenceInvariant(categoryId: string, isReference: boolean, currentId?: string): Promise<void> {
@@ -62,13 +65,13 @@ export default class UoM extends BaseModel {
 
     if (isReference) {
       if (refsExcludingCurrent.length > 0) {
-        fail('Each UoM category can only have one reference unit');
+        fail(_t('Each UoM category can only have one reference unit', { scope: 'service/models/uom' }));
       }
       return;
     }
 
     if (refsExcludingCurrent.length === 0) {
-      fail('Each UoM category must have one reference unit');
+      fail(_t('Each UoM category must have one reference unit', { scope: 'service/models/uom' }));
     }
   }
 
@@ -79,16 +82,22 @@ export default class UoM extends BaseModel {
     const isRef = values.IsReference === true;
     const factor = mapNormalizationToBase(
       () => toPositiveDecimal(values.Factor),
-      err => (err.code === 'non_positive_decimal' ? 'Factor must be greater than 0' : 'Factor must be a valid decimal')
+      err =>
+        err.code === 'non_positive_decimal'
+          ? _t('Factor must be greater than 0', { scope: 'service/models/uom' })
+          : _t('Factor must be a valid decimal', { scope: 'service/models/uom' })
     );
     if (isRef && !factor.eq(1)) {
-      fail('Reference UoM must have Factor = 1');
+      fail(_t('Reference UoM must have Factor = 1', { scope: 'service/models/uom' }));
     }
 
     if (values.Rounding !== undefined && values.Rounding !== null && values.Rounding !== '') {
       const rounding = mapNormalizationToBase(
         () => toPositiveDecimal(values.Rounding),
-        err => (err.code === 'non_positive_decimal' ? 'Rounding must be greater than 0' : 'Rounding must be a valid decimal')
+        err =>
+          err.code === 'non_positive_decimal'
+            ? _t('Rounding must be greater than 0', { scope: 'service/models/uom' })
+            : _t('Rounding must be a valid decimal', { scope: 'service/models/uom' })
       );
       values.Rounding = rounding.toString();
     } else {

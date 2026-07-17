@@ -17,6 +17,7 @@ import (
 type tsFileParser struct {
 	*parser.TsParser
 	runtimeScope scope.Scope
+	ownerModule  string
 }
 
 func getProtoTypeFromTsType(tsType string) string {
@@ -237,7 +238,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		}
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]
-		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics)
+		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule)
 		if err != nil {
 			return nil, nil, nil, xfmt.Errorf("failed to resolve field %s: %w", field.Name, err)
 		}

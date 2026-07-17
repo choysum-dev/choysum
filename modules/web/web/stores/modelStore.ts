@@ -7,9 +7,10 @@ import type { QueryState } from '@/web/web/query/state';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import type { BaseModel } from '@/core/service';
 import type { ClientModelService } from '@/core/rpc';
+import type { TextDescriptor } from '@/core/service/i18n';
 
 // Selection dropdown option.
-export type SelectionItem = { value: string; label: string };
+export type SelectionItem = { value: string; label: string; labelText?: TextDescriptor };
 
 // Field metadata.
 export type FieldMetadata = {

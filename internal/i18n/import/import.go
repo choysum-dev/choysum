@@ -30,7 +30,16 @@ type ImportStats struct {
 	SkippedOverride int
 	RejectedNoCtxt  int
 	SkippedObsolete int
+	PurgedRetired   int
 	Lang            string
+}
+
+var retiredS7Kinds = []string{
+	"field_label",
+	"selection_label",
+	"menu",
+	"route",
+	"action",
 }
 
 type poTerm struct {
@@ -42,8 +51,9 @@ type poTerm struct {
 }
 
 // ImportModulePo parses poText with gotext and upserts packaged terms for (application, module, lang).
-// Existing Source=override rows are not overwritten. Obsolete (#~) entries are ignored by gotext
-// and never DELETE existing DB rows (D12a). Entries without msgctxt are rejected and logged (D12c).
+// Existing Source=override rows are not overwritten. Obsolete (#~) entries do not prune ordinary
+// rows (D12a), but retired S7 metadata kinds are removed for the imported module, including overrides.
+// Entries without msgctxt are rejected and logged (D12c).
 // Kind defaults to literal; an explicit `#. kind: <name>` comment overrides it.
 func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
@@ -122,13 +132,45 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		stats.Upserted++
 	}
 
+	affectedLangs, purged, err := purgeRetiredS7Terms(session, tableName, module)
+	if err != nil {
+		return stats, err
+	}
+	stats.PurgedRetired = purged
+
 	if reg != nil {
 		reg.RememberModuleApplication(module, application)
 		ts := reg.StoreFor(application)
 		ts.InvalidateModule(module)
-		_ = ts.WarmLanguage(lang)
+		affectedLangs[lang] = struct{}{}
+		for affectedLang := range affectedLangs {
+			if err := ts.WarmLanguage(affectedLang); err != nil {
+				return stats, fmt.Errorf("warm terminology cache for %s: %w", affectedLang, err)
+			}
+		}
 	}
 	return stats, nil
+}
+
+func purgeRetiredS7Terms(session *scope.Session, tableName, module string) (map[string]struct{}, int, error) {
+	var langs []string
+	query := session.Table(tableName).
+		Where("module = ? AND kind IN ?", module, retiredS7Kinds)
+	if err := query.Distinct("lang").Pluck("lang", &langs).Error; err != nil {
+		return nil, 0, fmt.Errorf("list retired S7 term languages: %w", err)
+	}
+	result := query.Unscoped().Delete(&i18nmodels.TranslationTerm{})
+	if result.Error != nil {
+		return nil, 0, fmt.Errorf("purge retired S7 terms: %w", result.Error)
+	}
+	affected := make(map[string]struct{}, len(langs))
+	for _, affectedLang := range langs {
+		affectedLang = strings.TrimSpace(affectedLang)
+		if affectedLang != "" {
+			affected[affectedLang] = struct{}{}
+		}
+	}
+	return affected, int(result.RowsAffected), nil
 }
 
 // parsePoTerms uses gotext Po.Parse for msgstr values and internal po.Parse for Kind

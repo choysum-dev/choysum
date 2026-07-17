@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { raiseDomainError } from '@/core/service/error';
+import { createTranslate } from '@/core/service/i18n';
 import {
   NormalizationError,
   normalizeCodeOptional as normalizeCodeOptionalCore,
@@ -10,6 +11,8 @@ import {
   normalizeNullableString as normalizeNullableStringCore,
   requireRefId as requireRefIdCore,
 } from '@/core/service/utils/normalization';
+
+const { _t } = createTranslate('base');
 
 /**
  * Throw a base-domain InvalidArgument error.
@@ -24,7 +27,7 @@ export function fail(message: string): never {
 export function normalizeCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
   return mapNormalizationToBase(
     () => normalizeCodeRequiredCore(value, opts),
-    () => 'Code is required'
+    () => _t('Code is required', { scope: 'service/models/_normalization_bridge' })
   );
 }
 
@@ -42,7 +45,7 @@ export function normalizeCodeOptional(value: any, opts?: { uppercase?: boolean }
 export function normalizeName(value: any): string {
   return mapNormalizationToBase(
     () => normalizeNameCore(value),
-    () => 'Name is required'
+    () => _t('Name is required', { scope: 'service/models/_normalization_bridge' })
   );
 }
 
@@ -52,7 +55,7 @@ export function normalizeName(value: any): string {
 export function requireRefId(value: unknown, fieldName: string): string {
   return mapNormalizationToBase(
     () => requireRefIdCore(value),
-    () => `${fieldName} is required`
+    () => _t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName)
   );
 }
 

@@ -12,32 +12,32 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="bfv-card">
       <template #header
-        ><div class="bfv-card__header"><span>Exchange Rate Information</span></div></template
+        ><div class="bfv-card__header"><span>{{ _t('Exchange Rate Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="CurrencyId"
-            label="Currency"
+            :label="_t('Currency')"
             :search-view="CurrencyListView"
-            search-view-title="Select Currency"
+            :search-view-title="_t('Select Currency')"
             @value-click="onCurrencyValueClick"
         /></el-col>
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="CompanyId"
-            label="Company"
+            :label="_t('Company')"
             :search-view="CompanyListView"
-            search-view-title="Select Company"
+            :search-view-title="_t('Select Company')"
             @value-click="onCompanyValueClick"
         /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><ODateField :store="store" prop="Date" label="Date" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><ODateField :store="store" prop="Date" :label="_t('Date')" /></el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
-          ><ODecimalField :store="store" prop="Rate" label="Exchange Rate" :rules="[{ required: true, message: 'Required' }]"
+          ><ODecimalField :store="store" prop="Rate" :label="_t('Exchange Rate')" :rules="requiredRules"
         /></el-col>
       </el-row>
     </el-card>
@@ -45,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -62,8 +63,11 @@ import CompanyListView from './CompanyListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ExchangeRateFormView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/ExchangeRateFormView' });
+const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{
     store: WebModelStore<ExchangeRate>;

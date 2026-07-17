@@ -31,6 +31,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/grpc/client"
+	grpcloader "github.com/choysum-dev/choysum/pkg/grpc/loader"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysumtest"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -522,6 +523,11 @@ func RunOneAppBackendTests(
 			return false, err
 		}
 	}
+	// Proto registrations are process-global in production, but each unit-test
+	// application gets its own database, API assets, and gRPC harness. Without
+	// this reset, an earlier app can leave a method descriptor visible to a
+	// later app whose harness does not register that service.
+	grpcloader.ResetGlobalForTests()
 	prepareStarted := time.Now()
 	writeBackendProgress("# prepare runtime %s\n", app)
 

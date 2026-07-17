@@ -15,15 +15,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OManyToOneField :store="store" prop="SequenceId" label="Sequence"
-      ><OVarCharField :store="store" prop="SequenceId.Name" label="Sequence"
+    <OManyToOneField :store="store" prop="SequenceId" :label="_t('Sequence')"
+      ><OVarCharField :store="store" prop="SequenceId.Name" :label="_t('Sequence')"
     /></OManyToOneField>
-    <OVarCharField :store="store" prop="IdempotencyKey" label="Idempotency Key" />
-    <OIntField :store="store" prop="Count" label="Count" />
-    <OBooleanField :store="store" prop="DryRun" label="Dry Run" />
-    <OBigintField :store="store" prop="RangeStart" label="Start" />
-    <OBigintField :store="store" prop="RangeEnd" label="End" />
-    <ODateTimeField :store="store" prop="ExpiresAt" label="Expires At" />
+    <OVarCharField :store="store" prop="IdempotencyKey" :label="_t('Idempotency Key')" />
+    <OIntField :store="store" prop="Count" :label="_t('Count')" />
+    <OBooleanField :store="store" prop="DryRun" :label="_t('Dry Run')" />
+    <OBigintField :store="store" prop="RangeStart" :label="_t('Start')" />
+    <OBigintField :store="store" prop="RangeEnd" :label="_t('End')" />
+    <ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" />
   </OListView>
 </template>
 
@@ -43,8 +43,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceIdempotencyListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyListView' });
 const props = defineProps<{ store: WebModelStore<SequenceIdempotency> }>();
 const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: 'Sequence Idempotency Record' });
 const { hasAction } = usePermission();

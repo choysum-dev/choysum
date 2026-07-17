@@ -52,6 +52,23 @@ func TestGlobalReturnsSingleton(t *testing.T) {
 	}
 }
 
+func TestResetGlobalForTestsClearsRegisteredProtos(t *testing.T) {
+	ResetGlobalForTests()
+	t.Cleanup(ResetGlobalForTests)
+
+	global := Global()
+	global.RegisterProto("demo/greeter.proto", greeterProtoV1)
+	if _, err := global.GetMethodDescriptor("demo.Greeter.SayHello"); err != nil {
+		t.Fatalf("GetMethodDescriptor before reset returned error: %v", err)
+	}
+
+	ResetGlobalForTests()
+	if _, err := global.GetMethodDescriptor("demo.Greeter.SayHello"); err == nil ||
+		!strings.Contains(err.Error(), "no registered proto files for app demo") {
+		t.Fatalf("expected reset loader to forget registered protos, got %v", err)
+	}
+}
+
 func TestGetMethodDescriptor(t *testing.T) {
 	t.Run("returns descriptor for registered proto", func(t *testing.T) {
 		loader := New()

@@ -31,7 +31,16 @@ SPDX-License-Identifier: Apache-2.0
               <el-icon v-if="menu.activeApp.value.icon" class="o-header__app-icon">
                 <component :is="menu.activeApp.value.icon" />
               </el-icon>
-              <span class="o-header__app-name">{{ menu.activeApp.value.title }}</span>
+              <span class="o-header__app-name">
+                {{
+                  menu.activeApp.value.titleText
+                    ? $t(
+                        menu.activeApp.value.titleText.key,
+                        menu.activeApp.value.titleText.src || menu.activeApp.value.title
+                      )
+                    : menu.activeApp.value.title
+                }}
+              </span>
             </template>
             <span v-else class="o-header__app-name">{{ selectAppLabel }}</span>
             <el-icon class="o-header__dropdown-arrow" size="1.5em">
@@ -45,7 +54,13 @@ SPDX-License-Identifier: Apache-2.0
                   <el-icon v-if="app.icon" class="o-header__app-option-icon">
                     <component :is="app.icon" />
                   </el-icon>
-                  <span>{{ app.title }}</span>
+                  <span>
+                    {{
+                      app.titleText
+                        ? $t(app.titleText.key, app.titleText.src || app.title)
+                        : app.title
+                    }}
+                  </span>
                 </div>
               </el-dropdown-item>
             </el-dropdown-menu>

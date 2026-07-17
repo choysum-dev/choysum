@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OVarCharField :store="store" prop="Symbol" label="Symbol" />
-    <OIntField :store="store" prop="DecimalDigits" label="Decimal Digits" />
-    <ODecimalField :store="store" prop="Rounding" label="Rounding Precision" />
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OVarCharField :store="store" prop="Symbol" :label="_t('Symbol')" />
+    <OIntField :store="store" prop="DecimalDigits" :label="_t('Decimal Digits')" />
+    <ODecimalField :store="store" prop="Rounding" :label="_t('Rounding Precision')" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -38,8 +38,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/CurrencyListView' });
 const props = defineProps<{ store: WebModelStore<Currency> }>();
 const currencyActions = defineModelActions('base.Currency', { entityTitle: 'Currency' });
 const { hasAction } = usePermission();

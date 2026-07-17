@@ -12,30 +12,30 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="bfv-card">
       <template #header
-        ><div class="bfv-card__header"><span>City Information</span></div></template
+        ><div class="bfv-card__header"><span>{{ _t('City Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" label="Name" :rules="[{ required: true, message: 'Required' }]" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" label="Code" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" label="Active" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :label="_t('Code')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" :label="_t('Active')" /></el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="CountryId"
-            label="Country"
+            :label="_t('Country')"
             :search-view="CountryListView"
-            search-view-title="Select Country"
+            :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
         /></el-col>
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="StateId"
-            label="State/Province"
+            :label="_t('State/Province')"
             :search-view="StateListView"
-            search-view-title="Select State/Province"
+            :search-view-title="_t('Select State/Province')"
             @value-click="onStateValueClick"
         /></el-col>
       </el-row>
@@ -44,6 +44,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -61,8 +62,11 @@ import StateListView from './StateListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CityFormView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/CityFormView' });
+const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<City>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }

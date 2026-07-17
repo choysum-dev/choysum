@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { createTranslate } from './translate';
+import {
+  createTermIdentity,
+  createTextDescriptor,
+  createTextDescriptorKey,
+  createTranslate,
+} from './translate';
 import { __resetI18nScopeStackForTests } from './scope';
 import { resolveRequestLang } from './request_lang';
 import {
@@ -103,6 +108,47 @@ test('i18n createTranslate: hit via bridge with kind', () => {
   });
 });
 
+test('i18n term identity normalizes fields and defaults kind', () => {
+  expect(createTermIdentity('  auth  ', ' Sign in ', { scope: ' login@title ' })).toEqual({
+    module: 'auth',
+    scope: 'login@title',
+    src: ' Sign in ',
+    kind: 'literal',
+  });
+  expect(createTermIdentity(' auth ', 'Company', {
+    scope: ' m@id ',
+    kind: ' menu ',
+  })).toEqual({
+    module: 'auth',
+    scope: 'm@id',
+    src: 'Company',
+    kind: 'menu',
+  });
+});
+
+test('i18n text descriptor derives from literal canonical identity and key', () => {
+  const identity = createTermIdentity(' auth ', 'Users', {
+    scope: ' auth.menu.users ',
+    kind: 'menu',
+  });
+  const descriptor = createTextDescriptor(' auth ', 'Users', {
+    scope: ' auth.menu.users ',
+    kind: 'menu',
+  });
+
+  expect(identity.kind).toBe('menu');
+  expect(descriptor).toEqual({
+    ...identity,
+    kind: 'literal',
+    key: createTextDescriptorKey(
+      identity.module,
+      identity.scope,
+      identity.src,
+      'literal'
+    ),
+  });
+});
+
 test('i18n createTranslate: interpolation', () => {
   withResetI18nState(() => {
     setTestI18nBridge({ t: () => '用户 %s 不存在' });
@@ -128,4 +174,63 @@ test('i18n createTranslate: _lt is lazy', () => {
     expect(String(lazy)).toBe('访问错误');
     expect(calls).toBe(1);
   });
+});
+
+test('i18n createTranslate: _lt captures canonical identity once', () => {
+  withResetI18nState(() => {
+    const calls: string[][] = [];
+    setTestI18nBridge({
+      t: (...args) => {
+        calls.push(args);
+        return '';
+      },
+    });
+    setGlobalRequestContextProvider({ lang: 'zh_CN' });
+    const options = { scope: ' original ', kind: ' menu ' };
+    const { _lt } = createTranslate(' auth ');
+    const lazy = _lt('Users', options);
+
+    options.scope = 'changed';
+    options.kind = 'literal';
+    expect(String(lazy)).toBe('Users');
+    expect(calls).toEqual([
+      ['auth', 'zh_CN', 'original', 'Users', 'menu'],
+    ]);
+  });
+});
+
+test('i18n createTranslate: _td is serializable and does not translate', () => {
+  withResetI18nState(() => {
+    let calls = 0;
+    setTestI18nBridge({
+      t: () => {
+        calls += 1;
+        return '用户';
+      },
+    });
+    const { _td } = createTranslate('auth');
+    const descriptor = _td('Users', { scope: 'auth.menu.users' });
+
+    expect(descriptor).toEqual({
+      key: createTextDescriptorKey('auth', 'auth.menu.users', 'Users', 'literal'),
+      module: 'auth',
+      scope: 'auth.menu.users',
+      src: 'Users',
+      kind: 'literal',
+    });
+    expect(JSON.parse(JSON.stringify(descriptor))).toEqual(descriptor);
+    expect(calls).toBe(0);
+  });
+});
+
+test('i18n descriptor keys encode the full identity deterministically', () => {
+  const identity = ['模块', 'scope.with.dots', '用户 🍀', 'literal'] as const;
+  const key = createTextDescriptorKey(...identity);
+  expect(createTextDescriptorKey(...identity)).toBe(key);
+  expect(key).toMatch(/^__terms\.[0-9a-f]+$/);
+  for (let index = 0; index < identity.length; index += 1) {
+    const changed = [...identity] as [string, string, string, string];
+    changed[index] += '!';
+    expect(createTextDescriptorKey(...changed)).not.toBe(key);
+  }
 });

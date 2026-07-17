@@ -6,6 +6,7 @@ package backendtsparser
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -221,7 +222,30 @@ func resolveColumnType(fieldType string) string {
 	}
 }
 
-func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic) (*meta.IrFieldResolvedSpec, error) {
+var textDescriptorCallPattern = regexp.MustCompile(`(?s)^_td\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)\s*,\s*\{\s*scope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)\s*\}\s*\)$`)
+
+func parseTextDescriptorCall(raw string, ownerModule string) (*meta.TextDescriptor, bool) {
+	match := textDescriptorCallPattern.FindStringSubmatch(strings.TrimSpace(raw))
+	if len(match) != 3 || strings.TrimSpace(ownerModule) == "" {
+		return nil, false
+	}
+	parseLiteral := func(value string) (string, bool) {
+		if strings.HasPrefix(value, "`") && strings.HasSuffix(value, "`") {
+			return strings.TrimSuffix(strings.TrimPrefix(value, "`"), "`"), true
+		}
+		parsed, err := parser.ParseJSStringLiteral(value)
+		return parsed, err == nil
+	}
+	src, srcOK := parseLiteral(match[1])
+	scope, scopeOK := parseLiteral(match[2])
+	if !srcOK || !scopeOK || strings.TrimSpace(src) == "" || strings.TrimSpace(scope) == "" {
+		return nil, false
+	}
+	descriptor := meta.NewTextDescriptor(ownerModule, scope, src, "literal")
+	return &descriptor, true
+}
+
+func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic, ownerModule string) (*meta.IrFieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
 	}
@@ -285,11 +309,21 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 				continue
 			}
 			value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
-			label := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+			labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+			label := labelRaw
+			var labelText *meta.TextDescriptor
+			if descriptor, ok := parseTextDescriptorCall(labelRaw, ownerModule); ok {
+				label = descriptor.Src
+				labelText = descriptor
+			}
 			if value == "" || label == "" {
 				continue
 			}
-			spec.Structural.Selection = append(spec.Structural.Selection, map[string]string{"value": value, "label": label})
+			spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
+				Value:     value,
+				Label:     label,
+				LabelText: labelText,
+			})
 		}
 	}
 

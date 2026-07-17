@@ -7,3 +7,1778 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/models/language.ts:26
+msgctxt "base.Language.Direction.ltr"
+msgid "Left to right"
+msgstr ""
+
+#: service/models/language.ts:27
+msgctxt "base.Language.Direction.rtl"
+msgid "Right to left"
+msgstr ""
+
+#: service/models/locale.ts:41
+msgctxt "base.Locale.CurrencySymbolPosition.after"
+msgid "After amount"
+msgstr ""
+
+#: service/models/locale.ts:40
+msgctxt "base.Locale.CurrencySymbolPosition.before"
+msgid "Before amount"
+msgstr ""
+
+#: service/models/_currency_convert.ts:101
+#: service/models/_currency_convert.ts:98
+msgctxt "service/models/_currency_convert"
+msgid "Company not found"
+msgstr ""
+
+#: service/models/_currency_convert.ts:105
+msgctxt "service/models/_currency_convert"
+msgid "Company.CurrencyId is required"
+msgstr ""
+
+#: service/models/_currency_convert.ts:71
+msgctxt "service/models/_currency_convert"
+msgid "CompanyId/FromCurrencyId/ToCurrencyId are required"
+msgstr ""
+
+#: service/models/_currency_convert.ts:80
+msgctxt "service/models/_currency_convert"
+msgid "Date is invalid"
+msgstr ""
+
+#: service/models/_currency_convert.ts:79
+msgctxt "service/models/_currency_convert"
+msgid "Date is required"
+msgstr ""
+
+#: service/models/_currency_convert.ts:81
+msgctxt "service/models/_currency_convert"
+msgid "Date must be YYYY-MM-DD"
+msgstr ""
+
+#: service/models/_currency_convert.ts:133
+#: service/models/_currency_convert.ts:152
+msgctxt "service/models/_currency_convert"
+msgid "ExchangeRate not found for currency %s"
+msgstr ""
+
+#: service/models/_currency_convert.ts:86
+msgctxt "service/models/_currency_convert"
+msgid "Invalid Amount"
+msgstr ""
+
+#: service/models/_currency_convert.ts:174
+msgctxt "service/models/_currency_convert"
+msgid "Target currency %s not found"
+msgstr ""
+
+#: service/models/_normalization_bridge.ts:58
+msgctxt "service/models/_normalization_bridge"
+msgid "%s is required"
+msgstr ""
+
+#: service/models/_normalization_bridge.ts:30
+msgctxt "service/models/_normalization_bridge"
+msgid "Code is required"
+msgstr ""
+
+#: service/models/_normalization_bridge.ts:48
+msgctxt "service/models/_normalization_bridge"
+msgid "Name is required"
+msgstr ""
+
+#: service/models/_option_normalizers.ts:30
+msgctxt "service/models/_option_normalizers"
+msgid "CurrencySymbolPosition must be before or after"
+msgstr ""
+
+#: service/models/_option_normalizers.ts:19
+msgctxt "service/models/_option_normalizers"
+msgid "Direction must be ltr or rtl"
+msgstr ""
+
+#: service/models/_option_normalizers.ts:54
+msgctxt "service/models/_option_normalizers"
+msgid "RatePolicy.Mode must be exact or latest_before"
+msgstr ""
+
+#: service/models/_option_normalizers.ts:65
+msgctxt "service/models/_option_normalizers"
+msgid "Rounding.Mode must be currency or none"
+msgstr ""
+
+#: service/models/_sequence_cleanup.ts:22
+msgctxt "service/models/_sequence_cleanup"
+msgid "OlderThan is invalid"
+msgstr ""
+
+#: service/models/_sequence_cleanup.ts:21
+msgctxt "service/models/_sequence_cleanup"
+msgid "OlderThan is required"
+msgstr ""
+
+#: service/models/_sequence_cleanup.ts:23
+msgctxt "service/models/_sequence_cleanup"
+msgid "OlderThan must be YYYY-MM-DD"
+msgstr ""
+
+#: service/models/_sequence_next.ts:24
+msgctxt "service/models/_sequence_next"
+msgid "Count must be an integer >= 1"
+msgstr ""
+
+#: service/models/_sequence_next.ts:27
+msgctxt "service/models/_sequence_next"
+msgid "Count must be within 1..1000"
+msgstr ""
+
+#: service/models/_sequence_next.ts:75
+msgctxt "service/models/_sequence_next"
+msgid "IdempotencyKey conflict with different request"
+msgstr ""
+
+#: service/models/_sequence_next.ts:38
+msgctxt "service/models/_sequence_next"
+msgid "IdempotencyKey is invalid"
+msgstr ""
+
+#: service/models/_sequence_next.ts:37
+msgctxt "service/models/_sequence_next"
+msgid "IdempotencyKey is too long"
+msgstr ""
+
+#: service/models/_sequence_next.ts:36
+msgctxt "service/models/_sequence_next"
+msgid "IdempotencyKey must be non-empty"
+msgstr ""
+
+#: service/models/_sequence_next.ts:153
+msgctxt "service/models/_sequence_next"
+msgid "Sequence allocation conflicted; please retry"
+msgstr ""
+
+#: service/models/_sequence_next.ts:172
+msgctxt "service/models/_sequence_next"
+msgid "Sequence is inactive"
+msgstr ""
+
+#: service/models/_sequence_next.ts:131
+#: service/models/_sequence_next.ts:197
+msgctxt "service/models/_sequence_next"
+msgid "Sequence not found"
+msgstr ""
+
+#: service/models/_sequence_next.ts:119
+msgctxt "service/models/_sequence_next"
+msgid "Sequence not found for Code=%s"
+msgstr ""
+
+#: service/models/address.ts:82
+msgctxt "service/models/address"
+msgid "City not found"
+msgstr ""
+
+#: service/models/address.ts:84
+msgctxt "service/models/address"
+msgid "City.CountryId must equal Address.CountryId"
+msgstr ""
+
+#: service/models/address.ts:87
+msgctxt "service/models/address"
+msgid "City.StateId must equal Address.StateId"
+msgstr ""
+
+#: service/models/address.ts:59
+msgctxt "service/models/address"
+msgid "Country not found"
+msgstr ""
+
+#: service/models/address.ts:72
+msgctxt "service/models/address"
+msgid "State not found"
+msgstr ""
+
+#: service/models/address.ts:74
+msgctxt "service/models/address"
+msgid "State.CountryId must equal Address.CountryId"
+msgstr ""
+
+#: service/models/address.ts:62
+msgctxt "service/models/address"
+msgid "StateId is required for this country"
+msgstr ""
+
+#: service/models/address.ts:66
+msgctxt "service/models/address"
+msgid "Zip is required for this country"
+msgstr ""
+
+#: service/models/city.ts:59
+msgctxt "service/models/city"
+msgid "City Name must be unique within Country + State"
+msgstr ""
+
+#: service/models/city.ts:40
+msgctxt "service/models/city"
+msgid "State not found"
+msgstr ""
+
+#: service/models/city.ts:41
+msgctxt "service/models/city"
+msgid "State.CountryId must equal City.CountryId"
+msgstr ""
+
+#: service/models/company.ts:54
+msgctxt "service/models/company"
+msgid "%s is required"
+msgstr ""
+
+#: service/models/company.ts:78
+msgctxt "service/models/company"
+msgid "Company Code must be unique"
+msgstr ""
+
+#: service/models/company.ts:69
+msgctxt "service/models/company"
+msgid "Company Name must be unique"
+msgstr ""
+
+#: service/models/company.ts:87
+msgctxt "service/models/company"
+msgid "CurrencyId is required"
+msgstr ""
+
+#: service/models/company.ts:98
+msgctxt "service/models/company"
+msgid "Invalid IANA timezone: %s"
+msgstr ""
+
+#: service/models/company.ts:121
+msgctxt "service/models/company"
+msgid "ParentId cannot be a descendant of the company"
+msgstr ""
+
+#: service/models/company.ts:108
+msgctxt "service/models/company"
+msgid "ParentId cannot be self"
+msgstr ""
+
+#: service/models/company.ts:95
+msgctxt "service/models/company"
+msgid "Timezone is required"
+msgstr ""
+
+#: service/models/country.ts:49
+msgctxt "service/models/country"
+msgid "AddressFormat contains unsupported token: %s"
+msgstr ""
+
+#: service/models/currency.ts:62
+msgctxt "service/models/currency"
+msgid "DecimalDigits is required"
+msgstr ""
+
+#: service/models/currency.ts:63
+msgctxt "service/models/currency"
+msgid "DecimalDigits must be a non-negative integer"
+msgstr ""
+
+#: service/models/currency.ts:70
+msgctxt "service/models/currency"
+msgid "Rounding must be a valid decimal"
+msgstr ""
+
+#: service/models/currency.ts:69
+msgctxt "service/models/currency"
+msgid "Rounding must be greater than 0"
+msgstr ""
+
+#: service/models/exchange_rate.ts:41
+#: service/models/exchange_rate.ts:49
+msgctxt "service/models/exchange_rate"
+msgid "Date is invalid"
+msgstr ""
+
+#: service/models/exchange_rate.ts:48
+msgctxt "service/models/exchange_rate"
+msgid "Date is required"
+msgstr ""
+
+#: service/models/exchange_rate.ts:50
+msgctxt "service/models/exchange_rate"
+msgid "Date must be YYYY-MM-DD"
+msgstr ""
+
+#: service/models/exchange_rate.ts:77
+msgctxt "service/models/exchange_rate"
+msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
+msgstr ""
+
+#: service/models/exchange_rate.ts:87
+msgctxt "service/models/exchange_rate"
+msgid "Rate must be a valid decimal"
+msgstr ""
+
+#: service/models/exchange_rate.ts:86
+msgctxt "service/models/exchange_rate"
+msgid "Rate must be greater than 0"
+msgstr ""
+
+#: service/models/sequence_idempotency.ts:81
+msgctxt "service/models/sequence_idempotency"
+msgid "CompanyId must match Sequence.CompanyId"
+msgstr ""
+
+#: service/models/sequence_idempotency.ts:62
+msgctxt "service/models/sequence_idempotency"
+msgid "Count must be an integer >= 1"
+msgstr ""
+
+#: service/models/sequence_idempotency.ts:70
+msgctxt "service/models/sequence_idempotency"
+msgid "RangeEnd must be a valid integer"
+msgstr ""
+
+#: service/models/sequence_idempotency.ts:74
+msgctxt "service/models/sequence_idempotency"
+msgid "RangeEnd must equal RangeStart + Count - 1"
+msgstr ""
+
+#: service/models/sequence_idempotency.ts:66
+msgctxt "service/models/sequence_idempotency"
+msgid "RangeStart must be a valid integer"
+msgstr ""
+
+#: service/models/sequence_idempotency.ts:57
+msgctxt "service/models/sequence_idempotency"
+msgid "SequenceId is required"
+msgstr ""
+
+#: service/models/state.ts:58
+msgctxt "service/models/state"
+msgid "State Code must be unique within Country"
+msgstr ""
+
+#: service/models/state.ts:45
+msgctxt "service/models/state"
+msgid "State Name must be unique within Country"
+msgstr ""
+
+#: service/models/uom.ts:68
+msgctxt "service/models/uom"
+msgid "Each UoM category can only have one reference unit"
+msgstr ""
+
+#: service/models/uom.ts:74
+msgctxt "service/models/uom"
+msgid "Each UoM category must have one reference unit"
+msgstr ""
+
+#: service/models/uom.ts:88
+msgctxt "service/models/uom"
+msgid "Factor must be a valid decimal"
+msgstr ""
+
+#: service/models/uom.ts:87
+msgctxt "service/models/uom"
+msgid "Factor must be greater than 0"
+msgstr ""
+
+#: service/models/uom.ts:91
+msgctxt "service/models/uom"
+msgid "Reference UoM must have Factor = 1"
+msgstr ""
+
+#: service/models/uom.ts:100
+msgctxt "service/models/uom"
+msgid "Rounding must be a valid decimal"
+msgstr ""
+
+#: service/models/uom.ts:99
+msgctxt "service/models/uom"
+msgid "Rounding must be greater than 0"
+msgstr ""
+
+#: service/models/uom.ts:51
+msgctxt "service/models/uom"
+msgid "UoM Name must be unique within Category"
+msgstr ""
+
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "Address Management"
+msgstr ""
+
+#: web/menu/menus.ts:19
+msgctxt "web/menu/menus"
+msgid "Bank Management"
+msgstr ""
+
+#: web/menu/menus.ts:22
+msgctxt "web/menu/menus"
+msgid "City Management"
+msgstr ""
+
+#: web/menu/menus.ts:17
+msgctxt "web/menu/menus"
+msgid "Company Management"
+msgstr ""
+
+#: web/menu/menus.ts:20
+msgctxt "web/menu/menus"
+msgid "Country Management"
+msgstr ""
+
+#: web/menu/menus.ts:23
+msgctxt "web/menu/menus"
+msgid "Currency Management"
+msgstr ""
+
+#: web/menu/menus.ts:24
+msgctxt "web/menu/menus"
+msgid "Exchange Rate Management"
+msgstr ""
+
+#: web/menu/menus.ts:25
+msgctxt "web/menu/menus"
+msgid "Language Management"
+msgstr ""
+
+#: web/menu/menus.ts:34
+msgctxt "web/menu/menus"
+msgid "Locale Management"
+msgstr ""
+
+#: web/menu/menus.ts:13
+msgctxt "web/menu/menus"
+msgid "Master Data"
+msgstr ""
+
+#: web/menu/menus.ts:36
+msgctxt "web/menu/menus"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
+#: web/menu/menus.ts:35
+msgctxt "web/menu/menus"
+msgid "Sequence Management"
+msgstr ""
+
+#: web/menu/menus.ts:21
+msgctxt "web/menu/menus"
+msgid "State Management"
+msgstr ""
+
+#: web/menu/menus.ts:27
+msgctxt "web/menu/menus"
+msgid "Terminology Editor"
+msgstr ""
+
+#: web/menu/menus.ts:38
+msgctxt "web/menu/menus"
+msgid "Unit of Measure"
+msgstr ""
+
+#: web/menu/menus.ts:37
+msgctxt "web/menu/menus"
+msgid "Unit of Measure Category"
+msgstr ""
+
+#: web/route/routes.ts:54
+msgctxt "web/route/routes"
+msgid "Address Details"
+msgstr ""
+
+#: web/route/routes.ts:45
+msgctxt "web/route/routes"
+msgid "Address List"
+msgstr ""
+
+#: web/route/routes.ts:86
+msgctxt "web/route/routes"
+msgid "Bank Details"
+msgstr ""
+
+#: web/route/routes.ts:77
+msgctxt "web/route/routes"
+msgid "Bank List"
+msgstr ""
+
+#: web/route/routes.ts:118
+msgctxt "web/route/routes"
+msgid "City Details"
+msgstr ""
+
+#: web/route/routes.ts:109
+msgctxt "web/route/routes"
+msgid "City List"
+msgstr ""
+
+#: web/route/routes.ts:22
+msgctxt "web/route/routes"
+msgid "Company Details"
+msgstr ""
+
+#: web/route/routes.ts:13
+msgctxt "web/route/routes"
+msgid "Company List"
+msgstr ""
+
+#: web/route/routes.ts:150
+msgctxt "web/route/routes"
+msgid "Country Details"
+msgstr ""
+
+#: web/route/routes.ts:141
+msgctxt "web/route/routes"
+msgid "Country List"
+msgstr ""
+
+#: web/route/routes.ts:64
+msgctxt "web/route/routes"
+msgid "Create Address"
+msgstr ""
+
+#: web/route/routes.ts:96
+msgctxt "web/route/routes"
+msgid "Create Bank"
+msgstr ""
+
+#: web/route/routes.ts:128
+msgctxt "web/route/routes"
+msgid "Create City"
+msgstr ""
+
+#: web/route/routes.ts:32
+msgctxt "web/route/routes"
+msgid "Create Company"
+msgstr ""
+
+#: web/route/routes.ts:160
+msgctxt "web/route/routes"
+msgid "Create Country"
+msgstr ""
+
+#: web/route/routes.ts:192
+msgctxt "web/route/routes"
+msgid "Create Currency"
+msgstr ""
+
+#: web/route/routes.ts:224
+msgctxt "web/route/routes"
+msgid "Create Exchange Rate"
+msgstr ""
+
+#: web/route/routes.ts:372
+msgctxt "web/route/routes"
+msgid "Create Idempotency Record"
+msgstr ""
+
+#: web/route/routes.ts:256
+msgctxt "web/route/routes"
+msgid "Create Language"
+msgstr ""
+
+#: web/route/routes.ts:298
+msgctxt "web/route/routes"
+msgid "Create Locale"
+msgstr ""
+
+#: web/route/routes.ts:330
+msgctxt "web/route/routes"
+msgid "Create Sequence"
+msgstr ""
+
+#: web/route/routes.ts:409
+msgctxt "web/route/routes"
+msgid "Create State"
+msgstr ""
+
+#: web/route/routes.ts:441
+msgctxt "web/route/routes"
+msgid "Create Unit of Measure"
+msgstr ""
+
+#: web/route/routes.ts:473
+msgctxt "web/route/routes"
+msgid "Create Unit of Measure Category"
+msgstr ""
+
+#: web/route/routes.ts:182
+msgctxt "web/route/routes"
+msgid "Currency Details"
+msgstr ""
+
+#: web/route/routes.ts:173
+msgctxt "web/route/routes"
+msgid "Currency List"
+msgstr ""
+
+#: web/route/routes.ts:214
+msgctxt "web/route/routes"
+msgid "Exchange Rate Details"
+msgstr ""
+
+#: web/route/routes.ts:205
+msgctxt "web/route/routes"
+msgid "Exchange Rate List"
+msgstr ""
+
+#: web/route/routes.ts:357
+msgctxt "web/route/routes"
+msgid "Idempotency Record Details"
+msgstr ""
+
+#: web/route/routes.ts:246
+msgctxt "web/route/routes"
+msgid "Language Details"
+msgstr ""
+
+#: web/route/routes.ts:237
+msgctxt "web/route/routes"
+msgid "Language List"
+msgstr ""
+
+#: web/route/routes.ts:288
+msgctxt "web/route/routes"
+msgid "Locale Details"
+msgstr ""
+
+#: web/route/routes.ts:279
+msgctxt "web/route/routes"
+msgid "Locale List"
+msgstr ""
+
+#: web/route/routes.ts:320
+msgctxt "web/route/routes"
+msgid "Sequence Details"
+msgstr ""
+
+#: web/route/routes.ts:343
+msgctxt "web/route/routes"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
+#: web/route/routes.ts:311
+msgctxt "web/route/routes"
+msgid "Sequence List"
+msgstr ""
+
+#: web/route/routes.ts:399
+msgctxt "web/route/routes"
+msgid "State Details"
+msgstr ""
+
+#: web/route/routes.ts:390
+msgctxt "web/route/routes"
+msgid "State List"
+msgstr ""
+
+#: web/route/routes.ts:266
+msgctxt "web/route/routes"
+msgid "Terminology Editor"
+msgstr ""
+
+#: web/route/routes.ts:454
+msgctxt "web/route/routes"
+msgid "Unit of Measure Category"
+msgstr ""
+
+#: web/route/routes.ts:463
+msgctxt "web/route/routes"
+msgid "Unit of Measure Category Details"
+msgstr ""
+
+#: web/route/routes.ts:431
+msgctxt "web/route/routes"
+msgid "Unit of Measure Details"
+msgstr ""
+
+#: web/route/routes.ts:422
+msgctxt "web/route/routes"
+msgid "Unit of Measure List"
+msgstr ""
+
+#: web/views/AddressFormView.vue:4
+msgctxt "web/views/AddressFormView"
+msgid "Address Information"
+msgstr ""
+
+#: web/views/AddressFormView.vue:13
+msgctxt "web/views/AddressFormView"
+msgid "Address Line 1"
+msgstr ""
+
+#: web/views/AddressFormView.vue:14
+msgctxt "web/views/AddressFormView"
+msgid "Address Line 2"
+msgstr ""
+
+#: web/views/AddressFormView.vue:18
+msgctxt "web/views/AddressFormView"
+msgid "City"
+msgstr ""
+
+#: web/views/AddressFormView.vue:9
+msgctxt "web/views/AddressFormView"
+msgid "Country"
+msgstr ""
+
+#: web/views/AddressFormView.vue:6
+msgctxt "web/views/AddressFormView"
+msgid "Label"
+msgstr ""
+
+#: web/views/AddressFormView.vue:18
+msgctxt "web/views/AddressFormView"
+msgid "Select City"
+msgstr ""
+
+#: web/views/AddressFormView.vue:9
+msgctxt "web/views/AddressFormView"
+msgid "Select Country"
+msgstr ""
+
+#: web/views/AddressFormView.vue:17
+msgctxt "web/views/AddressFormView"
+msgid "Select State/Province"
+msgstr ""
+
+#: web/views/AddressFormView.vue:17
+msgctxt "web/views/AddressFormView"
+msgid "State/Province"
+msgstr ""
+
+#: web/views/AddressFormView.vue:7
+msgctxt "web/views/AddressFormView"
+msgid "ZIP"
+msgstr ""
+
+#: web/views/AddressListView.vue:6
+msgctxt "web/views/AddressListView"
+msgid "Address Line 1"
+msgstr ""
+
+#: web/views/AddressListView.vue:10
+msgctxt "web/views/AddressListView"
+msgid "City"
+msgstr ""
+
+#: web/views/AddressListView.vue:8
+msgctxt "web/views/AddressListView"
+msgid "Country"
+msgstr ""
+
+#: web/views/AddressListView.vue:5
+msgctxt "web/views/AddressListView"
+msgid "Label"
+msgstr ""
+
+#: web/views/AddressListView.vue:9
+msgctxt "web/views/AddressListView"
+msgid "State/Province"
+msgstr ""
+
+#: web/views/AddressListView.vue:7
+msgctxt "web/views/AddressListView"
+msgid "ZIP"
+msgstr ""
+
+#: web/views/BankFormView.vue:13
+msgctxt "web/views/BankFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/BankFormView.vue:12
+msgctxt "web/views/BankFormView"
+msgid "Address"
+msgstr ""
+
+#: web/views/BankFormView.vue:8
+msgctxt "web/views/BankFormView"
+msgid "BIC"
+msgstr ""
+
+#: web/views/BankFormView.vue:4
+msgctxt "web/views/BankFormView"
+msgid "Bank Information"
+msgstr ""
+
+#: web/views/BankFormView.vue:7
+msgctxt "web/views/BankFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/BankFormView.vue:11
+msgctxt "web/views/BankFormView"
+msgid "Country"
+msgstr ""
+
+#: web/views/BankFormView.vue:6
+msgctxt "web/views/BankFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/BankFormView.vue:23
+msgctxt "web/views/BankFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/BankFormView.vue:12
+msgctxt "web/views/BankFormView"
+msgid "Select Address"
+msgstr ""
+
+#: web/views/BankFormView.vue:11
+msgctxt "web/views/BankFormView"
+msgid "Select Country"
+msgstr ""
+
+#: web/views/BankListView.vue:9
+msgctxt "web/views/BankListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/BankListView.vue:7
+msgctxt "web/views/BankListView"
+msgid "BIC"
+msgstr ""
+
+#: web/views/BankListView.vue:6
+msgctxt "web/views/BankListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/BankListView.vue:8
+msgctxt "web/views/BankListView"
+msgid "Country"
+msgstr ""
+
+#: web/views/BankListView.vue:5
+msgctxt "web/views/BankListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CityFormView.vue:8
+msgctxt "web/views/CityFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/CityFormView.vue:4
+msgctxt "web/views/CityFormView"
+msgid "City Information"
+msgstr ""
+
+#: web/views/CityFormView.vue:7
+msgctxt "web/views/CityFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CityFormView.vue:11
+msgctxt "web/views/CityFormView"
+msgid "Country"
+msgstr ""
+
+#: web/views/CityFormView.vue:6
+msgctxt "web/views/CityFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CityFormView.vue:24
+msgctxt "web/views/CityFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/CityFormView.vue:11
+msgctxt "web/views/CityFormView"
+msgid "Select Country"
+msgstr ""
+
+#: web/views/CityFormView.vue:12
+msgctxt "web/views/CityFormView"
+msgid "Select State/Province"
+msgstr ""
+
+#: web/views/CityFormView.vue:12
+msgctxt "web/views/CityFormView"
+msgid "State/Province"
+msgstr ""
+
+#: web/views/CityListView.vue:9
+msgctxt "web/views/CityListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/CityListView.vue:6
+msgctxt "web/views/CityListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CityListView.vue:7
+msgctxt "web/views/CityListView"
+msgid "Country"
+msgstr ""
+
+#: web/views/CityListView.vue:5
+msgctxt "web/views/CityListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CityListView.vue:8
+msgctxt "web/views/CityListView"
+msgid "State/Province"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:18
+msgctxt "web/views/CompanyFormView"
+msgid "Base Currency"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:5
+msgctxt "web/views/CompanyFormView"
+msgid "Basic Information"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:12
+msgctxt "web/views/CompanyFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:28
+msgctxt "web/views/CompanyFormView"
+msgid "Created At"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:9
+msgctxt "web/views/CompanyFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:23
+msgctxt "web/views/CompanyFormView"
+msgid "Parent Company"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:26
+msgctxt "web/views/CompanyFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:18
+msgctxt "web/views/CompanyFormView"
+msgid "Select Currency"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:23
+msgctxt "web/views/CompanyFormView"
+msgid "Select Parent Company"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:15
+msgctxt "web/views/CompanyFormView"
+msgid "Select a time zone"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:15
+msgctxt "web/views/CompanyFormView"
+msgid "Time Zone"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:31
+msgctxt "web/views/CompanyFormView"
+msgid "Updated At"
+msgstr ""
+
+#: web/views/CompanyListView.vue:7
+msgctxt "web/views/CompanyListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CompanyListView.vue:11
+msgctxt "web/views/CompanyListView"
+msgid "Created At"
+msgstr ""
+
+#: web/views/CompanyListView.vue:6
+#: web/views/CompanyListView.vue:9
+msgctxt "web/views/CompanyListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CompanyListView.vue:8
+msgctxt "web/views/CompanyListView"
+msgid "Parent Company"
+msgstr ""
+
+#: web/views/CompanyListView.vue:12
+msgctxt "web/views/CompanyListView"
+msgid "Updated At"
+msgstr ""
+
+#: web/views/CountryFormView.vue:16
+msgctxt "web/views/CountryFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/CountryFormView.vue:17
+msgctxt "web/views/CountryFormView"
+msgid "Address Format"
+msgstr ""
+
+#: web/views/CountryFormView.vue:7
+msgctxt "web/views/CountryFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CountryFormView.vue:4
+msgctxt "web/views/CountryFormView"
+msgid "Country Information"
+msgstr ""
+
+#: web/views/CountryFormView.vue:11
+msgctxt "web/views/CountryFormView"
+msgid "Default Currency"
+msgstr ""
+
+#: web/views/CountryFormView.vue:8
+msgctxt "web/views/CountryFormView"
+msgid "Dialing Code"
+msgstr ""
+
+#: web/views/CountryFormView.vue:6
+msgctxt "web/views/CountryFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CountryFormView.vue:20
+msgctxt "web/views/CountryFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/CountryFormView.vue:11
+msgctxt "web/views/CountryFormView"
+msgid "Select Currency"
+msgstr ""
+
+#: web/views/CountryFormView.vue:13
+msgctxt "web/views/CountryFormView"
+msgid "State/Province Required"
+msgstr ""
+
+#: web/views/CountryFormView.vue:12
+msgctxt "web/views/CountryFormView"
+msgid "ZIP Required"
+msgstr ""
+
+#: web/views/CountryListView.vue:11
+msgctxt "web/views/CountryListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/CountryListView.vue:6
+msgctxt "web/views/CountryListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CountryListView.vue:8
+msgctxt "web/views/CountryListView"
+msgid "Currency"
+msgstr ""
+
+#: web/views/CountryListView.vue:8
+msgctxt "web/views/CountryListView"
+msgid "Default Currency"
+msgstr ""
+
+#: web/views/CountryListView.vue:7
+msgctxt "web/views/CountryListView"
+msgid "Dialing Code"
+msgstr ""
+
+#: web/views/CountryListView.vue:5
+msgctxt "web/views/CountryListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CountryListView.vue:10
+msgctxt "web/views/CountryListView"
+msgid "State/Province Required"
+msgstr ""
+
+#: web/views/CountryListView.vue:9
+msgctxt "web/views/CountryListView"
+msgid "ZIP Required"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:13
+msgctxt "web/views/CurrencyFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:7
+msgctxt "web/views/CurrencyFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:4
+msgctxt "web/views/CurrencyFormView"
+msgid "Currency Information"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:11
+msgctxt "web/views/CurrencyFormView"
+msgid "Decimal Digits"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:6
+msgctxt "web/views/CurrencyFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:19
+msgctxt "web/views/CurrencyFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:12
+msgctxt "web/views/CurrencyFormView"
+msgid "Rounding Precision"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:8
+msgctxt "web/views/CurrencyFormView"
+msgid "Symbol"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:10
+msgctxt "web/views/CurrencyListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:6
+msgctxt "web/views/CurrencyListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:8
+msgctxt "web/views/CurrencyListView"
+msgid "Decimal Digits"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:5
+msgctxt "web/views/CurrencyListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:9
+msgctxt "web/views/CurrencyListView"
+msgid "Rounding Precision"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:7
+msgctxt "web/views/CurrencyListView"
+msgid "Symbol"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:7
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Company"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:6
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Currency"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:8
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Date"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:11
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Exchange Rate"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:4
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Exchange Rate Information"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:24
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:7
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Select Company"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:6
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Select Currency"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:6
+msgctxt "web/views/ExchangeRateListView"
+msgid "Company"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:5
+msgctxt "web/views/ExchangeRateListView"
+msgid "Currency"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:7
+msgctxt "web/views/ExchangeRateListView"
+msgid "Date"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:8
+msgctxt "web/views/ExchangeRateListView"
+msgid "Exchange Rate"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:12
+msgctxt "web/views/LanguageFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:7
+msgctxt "web/views/LanguageFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:11
+msgctxt "web/views/LanguageFormView"
+msgid "Default Locale"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:8
+msgctxt "web/views/LanguageFormView"
+msgid "Direction"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:4
+msgctxt "web/views/LanguageFormView"
+msgid "Language Information"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:6
+msgctxt "web/views/LanguageFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:20
+msgctxt "web/views/LanguageFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:11
+msgctxt "web/views/LanguageFormView"
+msgid "Select Locale"
+msgstr ""
+
+#: web/views/LanguageListView.vue:9
+msgctxt "web/views/LanguageListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/LanguageListView.vue:6
+msgctxt "web/views/LanguageListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/LanguageListView.vue:8
+msgctxt "web/views/LanguageListView"
+msgid "Default Locale"
+msgstr ""
+
+#: web/views/LanguageListView.vue:7
+msgctxt "web/views/LanguageListView"
+msgid "Direction"
+msgstr ""
+
+#: web/views/LanguageListView.vue:8
+msgctxt "web/views/LanguageListView"
+msgid "Locale"
+msgstr ""
+
+#: web/views/LanguageListView.vue:5
+msgctxt "web/views/LanguageListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:8
+msgctxt "web/views/LocaleFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:7
+msgctxt "web/views/LocaleFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:18
+msgctxt "web/views/LocaleFormView"
+msgid "Currency Symbol Position"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:16
+msgctxt "web/views/LocaleFormView"
+msgid "Date Format"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:11
+msgctxt "web/views/LocaleFormView"
+msgid "Decimal Separator"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:13
+msgctxt "web/views/LocaleFormView"
+msgid "First Day of Week"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:4
+msgctxt "web/views/LocaleFormView"
+msgid "Locale Information"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:6
+msgctxt "web/views/LocaleFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:19
+msgctxt "web/views/LocaleFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:21
+msgctxt "web/views/LocaleFormView"
+msgid "Symbol Spacing"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:12
+msgctxt "web/views/LocaleFormView"
+msgid "Thousands Separator"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:17
+msgctxt "web/views/LocaleFormView"
+msgid "Time Format"
+msgstr ""
+
+#: web/views/LocaleListView.vue:10
+msgctxt "web/views/LocaleListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/LocaleListView.vue:6
+msgctxt "web/views/LocaleListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/LocaleListView.vue:9
+msgctxt "web/views/LocaleListView"
+msgid "Currency Symbol Position"
+msgstr ""
+
+#: web/views/LocaleListView.vue:7
+msgctxt "web/views/LocaleListView"
+msgid "Date Format"
+msgstr ""
+
+#: web/views/LocaleListView.vue:5
+msgctxt "web/views/LocaleListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/LocaleListView.vue:8
+msgctxt "web/views/LocaleListView"
+msgid "Time Format"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:17
+msgctxt "web/views/SequenceFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:7
+msgctxt "web/views/SequenceFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:8
+msgctxt "web/views/SequenceFormView"
+msgid "Company"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:6
+msgctxt "web/views/SequenceFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:14
+msgctxt "web/views/SequenceFormView"
+msgid "Next Number"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:13
+msgctxt "web/views/SequenceFormView"
+msgid "Padding Length"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:11
+msgctxt "web/views/SequenceFormView"
+msgid "Prefix"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:21
+msgctxt "web/views/SequenceFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:8
+msgctxt "web/views/SequenceFormView"
+msgid "Select Company"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:4
+msgctxt "web/views/SequenceFormView"
+msgid "Sequence Configuration"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:12
+msgctxt "web/views/SequenceFormView"
+msgid "Suffix"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:22
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Code Snapshot"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:12
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Company"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:16
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Count"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:17
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Dry Run"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:19
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "End"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:29
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Expires At"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:26
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Format Snapshot"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:13
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Idempotency Key"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:23
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Request Hash"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:12
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Select Company"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:11
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Select Sequence"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:11
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Sequence"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:9
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:18
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Start"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:7
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Count"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:8
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Dry Run"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:10
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "End"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:11
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Expires At"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:6
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Idempotency Key"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:5
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Sequence"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:9
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Start"
+msgstr ""
+
+#: web/views/SequenceListView.vue:12
+msgctxt "web/views/SequenceListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/SequenceListView.vue:6
+msgctxt "web/views/SequenceListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/SequenceListView.vue:7
+msgctxt "web/views/SequenceListView"
+msgid "Company"
+msgstr ""
+
+#: web/views/SequenceListView.vue:5
+msgctxt "web/views/SequenceListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/SequenceListView.vue:11
+msgctxt "web/views/SequenceListView"
+msgid "Next Number"
+msgstr ""
+
+#: web/views/SequenceListView.vue:10
+msgctxt "web/views/SequenceListView"
+msgid "Padding Length"
+msgstr ""
+
+#: web/views/SequenceListView.vue:8
+msgctxt "web/views/SequenceListView"
+msgid "Prefix"
+msgstr ""
+
+#: web/views/SequenceListView.vue:9
+msgctxt "web/views/SequenceListView"
+msgid "Suffix"
+msgstr ""
+
+#: web/views/StateFormView.vue:11
+msgctxt "web/views/StateFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/StateFormView.vue:7
+msgctxt "web/views/StateFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/StateFormView.vue:8
+msgctxt "web/views/StateFormView"
+msgid "Country"
+msgstr ""
+
+#: web/views/StateFormView.vue:6
+msgctxt "web/views/StateFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/StateFormView.vue:19
+msgctxt "web/views/StateFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/StateFormView.vue:8
+msgctxt "web/views/StateFormView"
+msgid "Select Country"
+msgstr ""
+
+#: web/views/StateFormView.vue:4
+msgctxt "web/views/StateFormView"
+msgid "State/Province Information"
+msgstr ""
+
+#: web/views/StateListView.vue:8
+msgctxt "web/views/StateListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/StateListView.vue:6
+msgctxt "web/views/StateListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/StateListView.vue:7
+msgctxt "web/views/StateListView"
+msgid "Country"
+msgstr ""
+
+#: web/views/StateListView.vue:5
+msgctxt "web/views/StateListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:8
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:7
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Code"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:6
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:17
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:4
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:7
+msgctxt "web/views/UoMCategoryListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:6
+msgctxt "web/views/UoMCategoryListView"
+msgid "Code"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:5
+msgctxt "web/views/UoMCategoryListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UoMFormView.vue:14
+msgctxt "web/views/UoMFormView"
+msgid "Active"
+msgstr ""
+
+#: web/views/UoMFormView.vue:8
+msgctxt "web/views/UoMFormView"
+msgid "Category"
+msgstr ""
+
+#: web/views/UoMFormView.vue:12
+msgctxt "web/views/UoMFormView"
+msgid "Conversion Factor"
+msgstr ""
+
+#: web/views/UoMFormView.vue:6
+msgctxt "web/views/UoMFormView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UoMFormView.vue:11
+msgctxt "web/views/UoMFormView"
+msgid "Reference Unit"
+msgstr ""
+
+#: web/views/UoMFormView.vue:20
+msgctxt "web/views/UoMFormView"
+msgid "Required"
+msgstr ""
+
+#: web/views/UoMFormView.vue:13
+msgctxt "web/views/UoMFormView"
+msgid "Rounding"
+msgstr ""
+
+#: web/views/UoMFormView.vue:8
+msgctxt "web/views/UoMFormView"
+msgid "Select Category"
+msgstr ""
+
+#: web/views/UoMFormView.vue:7
+msgctxt "web/views/UoMFormView"
+msgid "Symbol"
+msgstr ""
+
+#: web/views/UoMFormView.vue:4
+msgctxt "web/views/UoMFormView"
+msgid "Unit of Measure Information"
+msgstr ""
+
+#: web/views/UoMListView.vue:11
+msgctxt "web/views/UoMListView"
+msgid "Active"
+msgstr ""
+
+#: web/views/UoMListView.vue:7
+msgctxt "web/views/UoMListView"
+msgid "Category"
+msgstr ""
+
+#: web/views/UoMListView.vue:9
+msgctxt "web/views/UoMListView"
+msgid "Conversion Factor"
+msgstr ""
+
+#: web/views/UoMListView.vue:5
+msgctxt "web/views/UoMListView"
+msgid "Name"
+msgstr ""
+
+#: web/views/UoMListView.vue:8
+msgctxt "web/views/UoMListView"
+msgid "Reference Unit"
+msgstr ""
+
+#: web/views/UoMListView.vue:10
+msgctxt "web/views/UoMListView"
+msgid "Rounding"
+msgstr ""
+
+#: web/views/UoMListView.vue:6
+msgctxt "web/views/UoMListView"
+msgid "Symbol"
+msgstr ""
+

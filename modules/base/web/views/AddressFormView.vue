@@ -12,43 +12,43 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="bfv-card">
       <template #header
-        ><div class="bfv-card__header"><span>Address Information</span></div></template
+        ><div class="bfv-card__header"><span>{{ _t('Address Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Label" label="Label" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Zip" label="ZIP" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Label" :label="_t('Label')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Zip" :label="_t('ZIP')" /></el-col>
         <el-col :xs="24" :sm="12" :md="8">
           <OManyToOneField
             :store="store"
             prop="CountryId"
-            label="Country"
+            :label="_t('Country')"
             :search-view="CountryListView"
-            search-view-title="Select Country"
+            :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
           />
         </el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street1" label="Address Line 1" /></el-col>
-        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street2" label="Address Line 2" /></el-col>
+        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street1" :label="_t('Address Line 1')" /></el-col>
+        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street2" :label="_t('Address Line 2')" /></el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="StateId"
-            label="State/Province"
+            :label="_t('State/Province')"
             :search-view="StateListView"
-            search-view-title="Select State/Province"
+            :search-view-title="_t('Select State/Province')"
             @value-click="onStateValueClick"
         /></el-col>
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="CityId"
-            label="City"
+            :label="_t('City')"
             :search-view="CityListView"
-            search-view-title="Select City"
+            :search-view-title="_t('Select City')"
             @value-click="onCityValueClick"
         /></el-col>
       </el-row>
@@ -75,8 +75,10 @@ import CityListView from './CityListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'AddressFormView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/AddressFormView' });
 
 const props = withDefaults(
   defineProps<{

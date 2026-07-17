@@ -282,3 +282,193 @@ msgstr "你好"
 		t.Fatalf("literal cache = %q ok=%v", litVal, ok)
 	}
 }
+
+func TestImportModulePoPurgesOnlyRetiredS7Kinds(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	table := rs.Session().Table("auth_translation_term")
+	retiredKinds := []string{"field_label", "selection_label", "menu", "route", "action"}
+	rows := []i18nmodels.TranslationTerm{
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "web/view", Src: "Literal", Value: "字面量",
+			Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+		},
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "future/metadata", Src: "Future", Value: "未来",
+			Kind: "future_metadata", Source: i18nmodels.SourceOverride,
+		},
+		{
+			Application: "auth", Module: "other", Lang: "zh_CN",
+			Scope: "other/menu", Src: "Other", Value: "其他",
+			Kind: "menu", Source: i18nmodels.SourcePackaged,
+		},
+	}
+	for i, kind := range retiredKinds {
+		source := i18nmodels.SourcePackaged
+		if i%2 != 0 {
+			source = i18nmodels.SourceOverride
+		}
+		rows = append(rows, i18nmodels.TranslationTerm{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "retired/" + kind, Src: "Retired " + kind, Value: "旧值",
+			Kind: kind, Source: source,
+		})
+	}
+	rows = append(rows, i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "fr_FR",
+		Scope: "retired/menu/fr", Src: "Retired menu", Value: "Ancien",
+		Kind: "menu", Source: i18nmodels.SourceOverride,
+	})
+	if err := table.Create(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	reg := store.NewRegistry(rs)
+	reg.RememberModuleApplication("auth", "auth")
+	if err := reg.StoreFor("auth").WarmLanguage("zh_CN"); err != nil {
+		t.Fatal(err)
+	}
+	if err := reg.StoreFor("auth").WarmLanguage("fr_FR"); err != nil {
+		t.Fatal(err)
+	}
+
+	poText := []byte(`
+msgid ""
+msgstr "Language: zh_CN\n"
+
+msgctxt "web/new"
+msgid "New"
+msgstr "新的"
+
+#. kind: menu
+msgctxt "retired/reintroduced"
+msgid "Reintroduced"
+msgstr "不应保留"
+`)
+	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", poText)
+	if err != nil {
+		t.Fatalf("ImportModulePo: %v", err)
+	}
+	if stats.PurgedRetired != 7 {
+		t.Fatalf("PurgedRetired = %d, want 7", stats.PurgedRetired)
+	}
+
+	var retiredCount int64
+	if err := rs.Session().Table("auth_translation_term").
+		Where("module = ? AND kind IN ?", "auth", retiredKinds).
+		Count(&retiredCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if retiredCount != 0 {
+		t.Fatalf("retired S7 row count = %d, want 0", retiredCount)
+	}
+	for _, tc := range []struct {
+		module string
+		kind   string
+		src    string
+	}{
+		{module: "auth", kind: i18nmodels.KindLiteral, src: "Literal"},
+		{module: "auth", kind: "future_metadata", src: "Future"},
+		{module: "other", kind: "menu", src: "Other"},
+	} {
+		var count int64
+		if err := rs.Session().Table("auth_translation_term").
+			Where("module = ? AND kind = ? AND src = ?", tc.module, tc.kind, tc.src).
+			Count(&count).Error; err != nil {
+			t.Fatal(err)
+		}
+		if count != 1 {
+			t.Fatalf("preserved row (%s, %s, %s) count = %d, want 1", tc.module, tc.kind, tc.src, count)
+		}
+	}
+	if value, ok := reg.Lookup("auth", "zh_CN", "future/metadata", "Future", "future_metadata"); !ok || value != "未来" {
+		t.Fatalf("future nonliteral cache = %q ok=%v", value, ok)
+	}
+	if _, ok := reg.Lookup("auth", "fr_FR", "retired/menu/fr", "Retired menu", "menu"); ok {
+		t.Fatal("retired override remained in warmed fr_FR cache")
+	}
+	if _, ok := reg.Lookup("auth", "zh_CN", "retired/reintroduced", "Reintroduced", "menu"); ok {
+		t.Fatal("retired kind from imported PO remained in cache")
+	}
+}
+
+func TestImportModulePoUsesCallerTransaction(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	table := rs.Session().Table("auth_translation_term")
+	if err := table.Create(&[]i18nmodels.TranslationTerm{
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "retired/menu", Src: "Retired", Value: "旧值",
+			Kind: "menu", Source: i18nmodels.SourceOverride,
+		},
+		{
+			Application: "auth", Module: "auth", Lang: "zh_CN",
+			Scope: "literal/missing", Src: "Keep", Value: "保留",
+			Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+		},
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	tx := rs.Session().Begin()
+	if tx.Error != nil {
+		t.Fatal(tx.Error)
+	}
+	txScope := &testScope{
+		ctx:     rs.ctx,
+		logger:  rs.logger,
+		session: &scope.Session{DB: tx},
+	}
+	stats, err := i18nimport.ImportModulePo(txScope, nil, "auth", "auth", "zh_CN", []byte(`
+msgctxt "literal/new"
+msgid "New"
+msgstr "新的"
+`))
+	if err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("ImportModulePo: %v", err)
+	}
+	if stats.PurgedRetired != 1 {
+		_ = tx.Rollback()
+		t.Fatalf("PurgedRetired = %d, want 1", stats.PurgedRetired)
+	}
+	var inTxRetired int64
+	if err := tx.Table("auth_translation_term").Where("kind = ?", "menu").Count(&inTxRetired).Error; err != nil {
+		_ = tx.Rollback()
+		t.Fatal(err)
+	}
+	if inTxRetired != 0 {
+		_ = tx.Rollback()
+		t.Fatalf("retired rows inside transaction = %d, want 0", inTxRetired)
+	}
+	if err := tx.Rollback().Error; err != nil {
+		t.Fatal(err)
+	}
+
+	var retiredAfterRollback, newAfterRollback, literalAfterRollback int64
+	if err := rs.Session().Table("auth_translation_term").
+		Where("kind = ?", "menu").Count(&retiredAfterRollback).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Table("auth_translation_term").
+		Where("scope = ?", "literal/new").Count(&newAfterRollback).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Table("auth_translation_term").
+		Where("scope = ?", "literal/missing").Count(&literalAfterRollback).Error; err != nil {
+		t.Fatal(err)
+	}
+	if retiredAfterRollback != 1 || newAfterRollback != 0 || literalAfterRollback != 1 {
+		t.Fatalf(
+			"rollback counts retired=%d new=%d literal=%d, want 1/0/1",
+			retiredAfterRollback, newAfterRollback, literalAfterRollback,
+		)
+	}
+}

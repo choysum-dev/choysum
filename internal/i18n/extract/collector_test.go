@@ -131,6 +131,68 @@ const override = _t('Override', { scope: 'manual.override' })
 	}
 }
 
+func TestCollectScriptDescriptorUsesCreateTranslateDefaultScope(t *testing.T) {
+	content := `
+const { _td, _td: descriptor } = createTranslate('base', { scope: 'web/menu/menus' })
+const menuTitle = _td('Master Data')
+descriptor('Company Management')
+`
+
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "base",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 2 {
+		t.Fatalf("expected 2 descriptor terms, got %#v", terms)
+	}
+	for _, term := range terms {
+		if term.Scope != "web/menu/menus" {
+			t.Fatalf("scope for %q = %q", term.Src, term.Scope)
+		}
+	}
+}
+
+func TestCollectScriptDescriptorRequiresLiteralSourceAndScope(t *testing.T) {
+	content := `
+const { _td, _td: descriptor } = createTranslate('base')
+const valid = _td('Users', { scope: 'base.menu.users' })
+descriptor('Settings', { scope: 'base.menu.settings' })
+_td(dynamicSrc, { scope: 'base.menu.dynamic' })
+_td('Dynamic scope', { scope: dynamicScope })
+_td('Missing scope')
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "base",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+
+	if len(terms) != 2 {
+		t.Fatalf("expected 2 literal descriptor terms, got %#v", terms)
+	}
+	if terms[0].Module != "base" || terms[0].Scope != "base.menu.users" || terms[0].Src != "Users" || terms[0].Kind != KindLiteral {
+		t.Fatalf("unexpected first descriptor term: %#v", terms[0])
+	}
+	if terms[1].Scope != "base.menu.settings" || terms[1].Src != "Settings" {
+		t.Fatalf("unexpected aliased descriptor term: %#v", terms[1])
+	}
+
+	var msgidIssues, scopeIssues int
+	for _, issue := range issues {
+		switch issue.Code {
+		case IssueNonLiteralMsgid:
+			msgidIssues++
+		case IssueNonLiteralScope:
+			scopeIssues++
+		}
+	}
+	if msgidIssues != 1 || scopeIssues != 2 {
+		t.Fatalf("expected one msgid and two scope warnings, got %#v", issues)
+	}
+}
+
 func TestCollectScriptCreateTranslateMismatch(t *testing.T) {
 	content := `const { _t } = createTranslate('other')
 _t('Hi')

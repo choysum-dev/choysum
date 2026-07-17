@@ -16,7 +16,12 @@ import sourceMessages from './i18n/source';
 import { createAppRouter } from './router';
 import { registerGlobalDirectives } from './directives';
 import { setGlobalRequestContextProvider } from '@/core/rpc/context';
-import { shouldMergeTerminology } from './stores/i18nStore/merge';
+import { createTerminologyCatalogMerger } from './stores/i18nStore/merge';
+import { projectTerminologyMessages } from './i18n/terminology';
+import {
+  notifyComposerMessagesChanged,
+  trackComposerMessageRevision,
+} from './i18n';
 
 // Import Element Plus.
 import ElementPlus from 'element-plus';
@@ -60,11 +65,20 @@ function setupApp(app: ChoysumWebApp): void {
     legacy: false,
     locale: i18nStore.currentLocale.code,
     fallbackLocale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
     messages: {
       en: sourceMessages,
     },
+    postTranslation: trackComposerMessageRevision,
     datetimeFormats: i18nStore.getDateTimeFormats(),
     numberFormats: i18nStore.getNumberFormats(),
+  });
+  const mergeTerminologyCatalog = createTerminologyCatalogMerger({
+    merge: (locale, messages) => {
+      i18n.global.mergeLocaleMessage(locale, projectTerminologyMessages(messages));
+    },
+    notify: notifyComposerMessagesChanged,
   });
 
   // Expose i18n globally for non-component callers.
@@ -93,13 +107,6 @@ function setupApp(app: ChoysumWebApp): void {
         }
       }
 
-      const terminology = i18nStore.lastTerminologyLoad;
-      if (shouldMergeTerminology(terminology) && terminology?.messages) {
-        const mergeLocale = terminology.locale || newLocale;
-        i18n.global.mergeLocaleMessage(mergeLocale, terminology.messages);
-      }
-      // unchanged / gatewayError: do not merge empty objects (D4); UI keeps msgid.
-
       i18n.global.locale.value = newLocale;
     },
     { immediate: true }
@@ -109,10 +116,8 @@ function setupApp(app: ChoysumWebApp): void {
   watch(
     () => i18nStore.lastTerminologyLoad,
     terminology => {
-      if (shouldMergeTerminology(terminology) && terminology?.messages) {
-        const mergeLocale = terminology.locale || i18nStore.currentLocale.code;
-        i18n.global.mergeLocaleMessage(mergeLocale, terminology.messages);
-      }
+      mergeTerminologyCatalog(terminology, i18nStore.currentLocale.code);
+      // unchanged / gatewayError / empty / duplicate: keep the current catalog.
     }
   );
 
@@ -120,7 +125,7 @@ function setupApp(app: ChoysumWebApp): void {
   app.usePlugin('i18n', i18n);
 
   // Router.
-  const router = createAppRouter(import.meta.env.BASE_URL);
+  const router = createAppRouter(import.meta.env.BASE_URL, i18n.global);
   app.usePlugin('router', router);
 
   // Menu plugin.

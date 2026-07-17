@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
 import Company from './company';
 import Currency from './currency';
 import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {
@@ -35,16 +38,16 @@ export default class ExchangeRate extends BaseModel {
   private static coerceDateKey(value: any): string {
     if (value instanceof Date) {
       if (Number.isNaN(value.getTime())) {
-        fail('Date is invalid');
+        fail(_t('Date is invalid', { scope: 'service/models/exchange_rate' }));
       }
       return value.toISOString().slice(0, 10);
     }
     return mapNormalizationToBase(
       () => normalizeDateString(value),
       err => {
-        if (err.code === 'required') return 'Date is required';
-        if (err.code === 'invalid_date_value') return 'Date is invalid';
-        return 'Date must be YYYY-MM-DD';
+        if (err.code === 'required') return _t('Date is required', { scope: 'service/models/exchange_rate' });
+        if (err.code === 'invalid_date_value') return _t('Date is invalid', { scope: 'service/models/exchange_rate' });
+        return _t('Date must be YYYY-MM-DD', { scope: 'service/models/exchange_rate' });
       }
     );
   }
@@ -71,14 +74,17 @@ export default class ExchangeRate extends BaseModel {
 
     const hasConflict = (conflicts || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
     if (hasConflict) {
-      fail('ExchangeRate must be unique for CompanyId + CurrencyId + Date');
+      fail(_t('ExchangeRate must be unique for CompanyId + CurrencyId + Date', { scope: 'service/models/exchange_rate' }));
     }
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
     values.Rate = mapNormalizationToBase(
       () => toPositiveDecimal(values.Rate).toString(),
-      err => (err.code === 'non_positive_decimal' ? 'Rate must be greater than 0' : 'Rate must be a valid decimal')
+      err =>
+        err.code === 'non_positive_decimal'
+          ? _t('Rate must be greater than 0', { scope: 'service/models/exchange_rate' })
+          : _t('Rate must be a valid decimal', { scope: 'service/models/exchange_rate' })
     );
     values.CompanyScopeKey = normalizeRefId(values.CompanyId) || '__GLOBAL__';
     values.Date = this.dateKey(values.Date);

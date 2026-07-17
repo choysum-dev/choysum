@@ -3,7 +3,7 @@
 
 package extract
 
-// TermOccurrence is one extractable `_t` / `_lt` / `_tr` literal call site.
+// TermOccurrence is one extractable `_t` / `_lt` / `_tr` / `_td` literal call site.
 type TermOccurrence struct {
 	Module     string
 	Scope      string
@@ -28,6 +28,7 @@ const (
 	KindLiteral = "literal"
 
 	IssueNonLiteralMsgid = "non_literal_msgid"
+	IssueNonLiteralScope = "non_literal_scope"
 	IssueModuleMismatch  = "create_translate_module_mismatch"
 	IssueSeverityWarn    = "warn"
 )

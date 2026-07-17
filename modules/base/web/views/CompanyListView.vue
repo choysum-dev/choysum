@@ -16,13 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OManyToOneField :store="store" prop="ParentId" label="Parent Company">
-      <OVarCharField :store="store" prop="ParentId.Name" label="Name" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OManyToOneField :store="store" prop="ParentId" :label="_t('Parent Company')">
+      <OVarCharField :store="store" prop="ParentId.Name" :label="_t('Name')" />
     </OManyToOneField>
-    <ODateTimeField :store="store" prop="CreatedAt" label="Created At" />
-    <ODateTimeField :store="store" prop="UpdatedAt" label="Updated At" />
+    <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+    <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
   </OListView>
 </template>
 
@@ -40,8 +40,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CompanyListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/CompanyListView' });
 
 const props = defineProps<{
   store: WebModelStore<Company>;

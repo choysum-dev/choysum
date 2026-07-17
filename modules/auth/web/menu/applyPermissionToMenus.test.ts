@@ -3,6 +3,7 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { MenuItem } from '@/core/web/menu';
+import { createTextDescriptor } from '@/core/service/i18n';
 
 const canMenuMock = vi.fn<(resourceId: string | undefined, state: any, ctx: any) => boolean>(() => true);
 
@@ -77,5 +78,22 @@ describe('applyPermissionToMenus', () => {
     expect(Boolean((menus[0] as any).hidden)).toBe(true);
     expect(Boolean((menus[0].children?.[0] as any).hidden)).toBe(true);
     expect(Boolean((menus[0].children?.[1] as any).hidden)).toBe(true);
+  });
+
+  it('preserves descriptor metadata while applying permissions recursively', async () => {
+    canMenuMock.mockReturnValue(true);
+    const { applyPermissionToMenus } = await import('./applyPermissionToMenus');
+    const descriptor = createTextDescriptor('auth', 'Users', { scope: 'auth.menu.users' });
+    const menus = clone([
+      {
+        id: 'auth.menu.root',
+        title: 'Root',
+        children: [{ id: 'auth.menu.users', title: 'Users', titleText: descriptor }],
+      },
+    ]) as MenuItem[];
+
+    applyPermissionToMenus(menus, { byCompany: {}, permStateVersion: 1 } as any, {});
+
+    expect(menus[0].children?.[0].titleText).toEqual(descriptor);
   });
 });

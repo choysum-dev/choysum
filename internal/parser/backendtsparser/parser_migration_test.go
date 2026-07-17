@@ -438,7 +438,7 @@ export default class NilFieldsModel extends BaseModel {
 	if statusSpec == nil {
 		t.Fatal("expected Status resolved spec")
 	}
-	if len(statusSpec.Structural.Selection) != 1 || statusSpec.Structural.Selection[0]["value"] != "active" || statusSpec.Structural.Selection[0]["label"] != "Active" {
+	if len(statusSpec.Structural.Selection) != 1 || statusSpec.Structural.Selection[0].Value != "active" || statusSpec.Structural.Selection[0].Label != "Active" {
 		t.Fatalf("unexpected selection entries: %+v", statusSpec.Structural.Selection)
 	}
 
@@ -451,6 +451,56 @@ export default class NilFieldsModel extends BaseModel {
 	}
 	if displaySpec.Structural.Related != nil {
 		t.Fatalf("expected related spec to be skipped when path is nil, got %+v", displaySpec.Structural.Related)
+	}
+}
+
+func TestTsParser_PreservesSelectionTextDescriptorWithEnglishFallback(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _td } = createTranslate('demo');
+
+@Model('SelectionDescriptorModel')
+export default class SelectionDescriptorModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: _td('Active', { scope: 'demo.model.status.active' }) },
+      { value: 'archived', label: 'Archived' }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if len(spec.Structural.Selection) != 2 {
+		t.Fatalf("unexpected selection: %+v", spec.Structural.Selection)
+	}
+	first := spec.Structural.Selection[0]
+	if first.Value != "active" || first.Label != "Active" || first.LabelText == nil {
+		t.Fatalf("unexpected descriptor selection: %+v", first)
+	}
+	if first.LabelText.Module != "demo" || first.LabelText.Scope != "demo.model.status.active" || first.LabelText.Src != "Active" || first.LabelText.Kind != "literal" {
+		t.Fatalf("unexpected descriptor: %+v", first.LabelText)
+	}
+	if first.LabelText.Key != meta.TextDescriptorKey("demo", "demo.model.status.active", "Active", "literal") {
+		t.Fatalf("unexpected descriptor key: %q", first.LabelText.Key)
+	}
+	if spec.Structural.Selection[1].LabelText != nil {
+		t.Fatalf("plain label unexpectedly gained descriptor: %+v", spec.Structural.Selection[1])
+	}
+	if !strings.Contains(r.Model.Fields[0].Selection, `"label":"Active"`) || !strings.Contains(r.Model.Fields[0].Selection, `"labelText"`) {
+		t.Fatalf("legacy selection JSON did not preserve fallback and descriptor: %s", r.Model.Fields[0].Selection)
 	}
 }
 

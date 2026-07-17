@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { raiseDomainError } from '@/core/service/error';
 import { normalizeRefId, parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
 import Company from './company';
 import Sequence from './sequence';
 import { mapNormalizationToBase } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
@@ -51,31 +54,31 @@ export default class SequenceIdempotency extends BaseModel {
   private static async validateWriteEntity(values: Record<string, any>): Promise<void> {
     const sequenceId = normalizeRefId(values.SequenceId);
     if (!sequenceId) {
-      raiseDomainError('base', 'InvalidArgument', 'SequenceId is required');
+      raiseDomainError('base', 'InvalidArgument', _t('SequenceId is required', { scope: 'service/models/sequence_idempotency' }));
     }
 
     const count = mapNormalizationToBase(
       () => parsePositiveInt(values.Count),
-      () => 'Count must be an integer >= 1'
+      () => _t('Count must be an integer >= 1', { scope: 'service/models/sequence_idempotency' })
     );
     const rangeStart = mapNormalizationToBase(
       () => parseBigInt(values.RangeStart),
-      () => 'RangeStart must be a valid integer'
+      () => _t('RangeStart must be a valid integer', { scope: 'service/models/sequence_idempotency' })
     );
     const rangeEnd = mapNormalizationToBase(
       () => parseBigInt(values.RangeEnd),
-      () => 'RangeEnd must be a valid integer'
+      () => _t('RangeEnd must be a valid integer', { scope: 'service/models/sequence_idempotency' })
     );
     const expectedRangeEnd = rangeStart + BigInt(count) - 1n;
     if (rangeEnd !== expectedRangeEnd) {
-      raiseDomainError('base', 'InvalidArgument', 'RangeEnd must equal RangeStart + Count - 1');
+      raiseDomainError('base', 'InvalidArgument', _t('RangeEnd must equal RangeStart + Count - 1', { scope: 'service/models/sequence_idempotency' }));
     }
 
     const sequence = await Sequence.Browse(sequenceId, ['Id', 'CompanyId'] as any);
     const sequenceCompanyId = normalizeRefId((sequence as any)?.CompanyId);
     const companyId = normalizeRefId(values.CompanyId) ?? null;
     if (companyId !== sequenceCompanyId) {
-      raiseDomainError('base', 'InvalidArgument', 'CompanyId must match Sequence.CompanyId');
+      raiseDomainError('base', 'InvalidArgument', _t('CompanyId must match Sequence.CompanyId', { scope: 'service/models/sequence_idempotency' }));
     }
   }
 

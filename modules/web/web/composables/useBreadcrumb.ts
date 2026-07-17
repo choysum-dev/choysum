@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useBreadcrumbStore } from '../stores/breadcrumbStore';
 import type { BreadcrumbItem } from '../stores/breadcrumbStore';
@@ -13,18 +12,6 @@ export function useBreadcrumb() {
   const router = useRouter();
   const route = useRoute();
   const breadcrumbStore = useBreadcrumbStore();
-
-  /**
-   * Returns the breadcrumb list exposed to the view.
-   */
-  const breadcrumbs = computed(() => {
-    return breadcrumbStore.breadcrumbStack.map((item: BreadcrumbItem, index: number) => {
-      return {
-        ...item,
-        displayTitle: item.title,
-      };
-    });
-  });
 
   /**
    * Navigates to a breadcrumb target when the item is clickable.
@@ -43,7 +30,7 @@ export function useBreadcrumb() {
   }
 
   return {
-    breadcrumbs,
+    breadcrumbs: breadcrumbStore.breadcrumbStack,
     navigateTo,
   };
 }

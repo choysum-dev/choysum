@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import Currency from './currency';
 import { fail, normalizeCodeRequired } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('Country')
 export default class Country extends BaseModel {
@@ -43,7 +46,7 @@ export default class Country extends BaseModel {
     while ((m = tokenPattern.exec(format)) !== null) {
       const token = (m[1] || m[2] || '').toLowerCase();
       if (!allowed.has(token)) {
-        fail(`AddressFormat contains unsupported token: ${m[1] || m[2]}`);
+        fail(_t('AddressFormat contains unsupported token: %s', { scope: 'service/models/country' }, m[1] || m[2]));
       }
     }
     return format;

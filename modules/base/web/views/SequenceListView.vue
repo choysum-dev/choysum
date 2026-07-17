@@ -15,14 +15,14 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OManyToOneField :store="store" prop="CompanyId" label="Company"><OVarCharField :store="store" prop="CompanyId.Name" label="Company" /></OManyToOneField>
-    <OVarCharField :store="store" prop="Prefix" label="Prefix" />
-    <OVarCharField :store="store" prop="Suffix" label="Suffix" />
-    <OIntField :store="store" prop="Padding" label="Padding Length" />
-    <OBigintField :store="store" prop="NextNumber" label="Next Number" />
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OManyToOneField :store="store" prop="CompanyId" :label="_t('Company')"><OVarCharField :store="store" prop="CompanyId.Name" :label="_t('Company')" /></OManyToOneField>
+    <OVarCharField :store="store" prop="Prefix" :label="_t('Prefix')" />
+    <OVarCharField :store="store" prop="Suffix" :label="_t('Suffix')" />
+    <OIntField :store="store" prop="Padding" :label="_t('Padding Length')" />
+    <OBigintField :store="store" prop="NextNumber" :label="_t('Next Number')" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -41,8 +41,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/SequenceListView' });
 const props = defineProps<{ store: WebModelStore<Sequence> }>();
 const sequenceActions = defineModelActions('base.Sequence', { entityTitle: 'Sequence' });
 const { hasAction } = usePermission();

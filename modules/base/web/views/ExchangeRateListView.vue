@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OManyToOneField :store="store" prop="CurrencyId" label="Currency"
-      ><OVarCharField :store="store" prop="CurrencyId.Name" label="Currency"
+    <OManyToOneField :store="store" prop="CurrencyId" :label="_t('Currency')"
+      ><OVarCharField :store="store" prop="CurrencyId.Name" :label="_t('Currency')"
     /></OManyToOneField>
-    <OManyToOneField :store="store" prop="CompanyId" label="Company"><OVarCharField :store="store" prop="CompanyId.Name" label="Company" /></OManyToOneField>
-    <ODateField :store="store" prop="Date" label="Date" />
-    <ODecimalField :store="store" prop="Rate" label="Exchange Rate" />
+    <OManyToOneField :store="store" prop="CompanyId" :label="_t('Company')"><OVarCharField :store="store" prop="CompanyId.Name" :label="_t('Company')" /></OManyToOneField>
+    <ODateField :store="store" prop="Date" :label="_t('Date')" />
+    <ODecimalField :store="store" prop="Rate" :label="_t('Exchange Rate')" />
   </OListView>
 </template>
 
@@ -38,8 +38,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ExchangeRateListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/ExchangeRateListView' });
 const props = defineProps<{ store: WebModelStore<ExchangeRate> }>();
 const exchangeRateActions = defineModelActions('base.ExchangeRate', { entityTitle: 'Exchange Rate' });
 const { hasAction } = usePermission();

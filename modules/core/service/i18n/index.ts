@@ -7,7 +7,18 @@ export {
   resolveI18nScope,
   formatScope,
   resolveRequestLang,
+  createTermIdentity,
+  createTextDescriptor,
+  createTextDescriptorKey,
+  isTextDescriptor,
+  TEXT_DESCRIPTOR_NAMESPACE,
 } from './translate';
-export type { TranslateFn, LazyTranslate } from './translate';
+export type {
+  TranslateFn,
+  LazyTranslate,
+  TermIdentity,
+  TextDescriptor,
+  TranslateOptions,
+} from './translate';
 export type { ResolveI18nScopeOptions } from './scope';
 export type { ResolveRequestLangFallbacks } from './request_lang';

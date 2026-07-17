@@ -4,8 +4,27 @@
 import Language from '@/base/service/models/language';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
+import { MetadataStorage } from '@/core/service/api/metadata';
+import { createTextDescriptor } from '@/core/service/i18n';
 
 import { companyCode8, uid } from './_helpers';
+
+test('base.language: Direction selection exposes localized labels without changing values', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Language).fields.get('Direction');
+
+  expect(field?.selection).toEqual([
+    {
+      value: 'ltr',
+      label: 'Left to right',
+      labelText: createTextDescriptor('base', 'Left to right', { scope: 'base.Language.Direction.ltr' }),
+    },
+    {
+      value: 'rtl',
+      label: 'Right to left',
+      labelText: createTextDescriptor('base', 'Right to left', { scope: 'base.Language.Direction.rtl' }),
+    },
+  ]);
+});
 
 test('base.language: Direction invalid is rejected', async () => {
   let error: unknown;

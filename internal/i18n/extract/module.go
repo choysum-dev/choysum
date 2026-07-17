@@ -40,7 +40,7 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 		name := d.Name()
 		if d.IsDir() {
 			switch name {
-			case "node_modules", "dist", ".git", "i18n":
+			case "node_modules", "dist", ".git", "i18n", "test", "tests", "__tests__":
 				return filepath.SkipDir
 			}
 			return nil
@@ -52,6 +52,9 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 			return nil
 		}
 		if strings.HasSuffix(strings.ToLower(name), ".d.ts") {
+			return nil
+		}
+		if isConventionalTestSource(name) {
 			return nil
 		}
 
@@ -109,6 +112,16 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 		}
 	}
 	return result, nil
+}
+
+func isConventionalTestSource(name string) bool {
+	lower := strings.ToLower(name)
+	for _, suffix := range []string{".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx"} {
+		if strings.HasSuffix(lower, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 // LoadPathAliasFromModulesTsconfig loads path aliases from modules/tsconfig.json when present.

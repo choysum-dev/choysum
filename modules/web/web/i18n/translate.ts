@@ -6,23 +6,74 @@
  * Looks up module/scope/msgid in the active locale catalog.
  */
 
-import { computed, type ComputedRef } from 'vue';
+import { computed, ref, type ComputedRef } from 'vue';
 
-import { resolveI18nScope, type ResolveI18nScopeOptions } from '../../../core/service/i18n/scope';
+import { resolveI18nScope } from '../../../core/service/i18n/scope';
+import {
+  createTextDescriptor,
+  type TextDescriptor,
+  type TranslateOptions as CoreTranslateOptions,
+} from '../../../core/service/i18n/translate';
 
-export type TranslateOptions = ResolveI18nScopeOptions;
+export type TranslateOptions = CoreTranslateOptions;
+export type TextSource = string | TextDescriptor;
 
-type VueI18nLike = {
-  locale?: { value?: string } | string;
-  getLocaleMessage?: (locale: string) => unknown;
+export type ComposerLike = {
+  t: (key: string, fallback: string) => unknown;
 };
 
-function getI18n(): VueI18nLike | undefined {
-  const g = globalThis as { window?: { $i18n?: VueI18nLike }; $i18n?: VueI18nLike };
+const composerMessageRevision = ref(0);
+
+export function notifyComposerMessagesChanged(): void {
+  composerMessageRevision.value += 1;
+}
+
+/**
+ * vue-i18n post-translation hook that makes native template `$t()` calls
+ * depend on runtime catalog revisions without changing translated content.
+ *
+ * `createI18n` accepts one postTranslation handler. If another handler is
+ * added later, it must be composed with this hook rather than replacing it.
+ */
+export function trackComposerMessageRevision(translated: string): string {
+  void composerMessageRevision.value;
+  return translated;
+}
+
+export function getGlobalComposer(): ComposerLike | undefined {
+  // Register catalog replacement/merge as a dependency for computed consumers.
+  void composerMessageRevision.value;
+  const g = globalThis as { window?: { $i18n?: ComposerLike }; $i18n?: ComposerLike };
   if (g.window?.$i18n) {
     return g.window.$i18n;
   }
   return g.$i18n;
+}
+
+/**
+ * Translate a static text descriptor at the frontend display boundary.
+ *
+ * vue-i18n treats the second string argument as the default message, so a
+ * separate `te` probe is unnecessary and would incorrectly bypass locale
+ * fallback. Calling `t` also keeps the active locale reactive for Composer
+ * consumers; the revision dependency covers runtime catalog merges.
+ */
+export function translateTerm(
+  composer: ComposerLike | undefined,
+  descriptor?: TextDescriptor,
+  fallback = ''
+): string {
+  void composerMessageRevision.value;
+  const defaultText = descriptor?.src || fallback;
+  if (!descriptor || !composer || typeof composer.t !== 'function') {
+    return defaultText;
+  }
+  try {
+    const translated = composer.t(descriptor.key, descriptor.src || fallback);
+    return typeof translated === 'string' && translated !== '' ? translated : defaultText;
+  } catch {
+    return defaultText;
+  }
 }
 
 function interpolate(template: string, args: unknown[]): string {
@@ -51,36 +102,24 @@ function isTranslateOptions(value: unknown): value is TranslateOptions {
   );
 }
 
-function currentLocale(i18n: VueI18nLike): string {
-  const locale = i18n.locale;
-  if (typeof locale === 'string') {
-    return locale;
+function parseTranslateArgs(args: unknown[]): {
+  opts: TranslateOptions | undefined;
+  interpolation: unknown[];
+} {
+  if (args.length > 0 && isTranslateOptions(args[0])) {
+    return {
+      opts: args[0],
+      interpolation: args.slice(1),
+    };
   }
-  return String(locale?.value || '').trim();
+  return { opts: undefined, interpolation: args };
 }
 
-function catalogValue(i18n: VueI18nLike, module: string, scope: string, src: string): string | undefined {
-  if (!scope || typeof i18n.getLocaleMessage !== 'function') {
-    return undefined;
-  }
-  const locale = currentLocale(i18n);
-  if (!locale) {
-    return undefined;
-  }
-  const root = i18n.getLocaleMessage(locale);
-  if (!root || typeof root !== 'object') {
-    return undefined;
-  }
-  const byModule = (root as Record<string, unknown>)[module];
-  if (!byModule || typeof byModule !== 'object') {
-    return undefined;
-  }
-  const byScope = (byModule as Record<string, unknown>)[scope];
-  if (!byScope || typeof byScope !== 'object') {
-    return undefined;
-  }
-  const value = (byScope as Record<string, unknown>)[src];
-  return typeof value === 'string' && value ? value : undefined;
+function translateDescriptor(
+  descriptor: TextDescriptor,
+  interpolation: unknown[]
+): string {
+  return interpolate(translateTerm(getGlobalComposer(), descriptor, descriptor.src), interpolation);
 }
 
 /**
@@ -89,33 +128,28 @@ function catalogValue(i18n: VueI18nLike, module: string, scope: string, src: str
 export function createTranslate(module: string, defaults?: TranslateOptions): {
   _t: (src: string, ...args: unknown[]) => string;
   _tr: (src: string, ...args: unknown[]) => ComputedRef<string>;
+  _td: (src: string, opts?: TranslateOptions) => TextDescriptor;
 } {
   const mod = String(module || '').trim() || 'web';
   const defaultScope = resolveI18nScope(defaults);
 
-  const _t = (src: string, ...args: unknown[]): string => {
-    let opts: TranslateOptions | undefined;
-    let interp: unknown[] = args;
-    if (args.length > 0 && isTranslateOptions(args[0])) {
-      opts = args[0] as TranslateOptions;
-      interp = args.slice(1);
-    }
-
+  const resolveDescriptor = (src: string, opts?: TranslateOptions): TextDescriptor => {
     const scope = resolveI18nScope(opts) || defaultScope;
-    const i18n = getI18n();
-    if (!i18n) {
-      return interpolate(src, interp);
-    }
-
-    try {
-      const translated = catalogValue(i18n, mod, scope, src);
-      return interpolate(translated || src, interp);
-    } catch {
-      return interpolate(src, interp);
-    }
+    return createTextDescriptor(mod, src, { ...opts, scope });
   };
 
-  const _tr = (src: string, ...args: unknown[]): ComputedRef<string> => computed(() => _t(src, ...args));
+  const _t = (src: string, ...args: unknown[]): string => {
+    const { opts, interpolation } = parseTranslateArgs(args);
+    return translateDescriptor(resolveDescriptor(src, opts), interpolation);
+  };
 
-  return { _t, _tr };
+  const _tr = (src: string, ...args: unknown[]): ComputedRef<string> => {
+    const { opts, interpolation } = parseTranslateArgs(args);
+    const descriptor = resolveDescriptor(src, opts);
+    return computed(() => translateDescriptor(descriptor, interpolation));
+  };
+  const _td = (src: string, opts?: TranslateOptions): TextDescriptor =>
+    resolveDescriptor(src, opts);
+
+  return { _t, _tr, _td };
 }

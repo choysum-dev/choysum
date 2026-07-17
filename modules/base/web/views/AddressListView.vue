@@ -15,14 +15,14 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Label" label="Label" />
-    <OVarCharField :store="store" prop="Street1" label="Address Line 1" />
-    <OVarCharField :store="store" prop="Zip" label="ZIP" />
-    <OManyToOneField :store="store" prop="CountryId" label="Country"><OVarCharField :store="store" prop="CountryId.Name" label="Country" /></OManyToOneField>
-    <OManyToOneField :store="store" prop="StateId" label="State/Province"
-      ><OVarCharField :store="store" prop="StateId.Name" label="State/Province"
+    <OVarCharField :store="store" prop="Label" :label="_t('Label')" />
+    <OVarCharField :store="store" prop="Street1" :label="_t('Address Line 1')" />
+    <OVarCharField :store="store" prop="Zip" :label="_t('ZIP')" />
+    <OManyToOneField :store="store" prop="CountryId" :label="_t('Country')"><OVarCharField :store="store" prop="CountryId.Name" :label="_t('Country')" /></OManyToOneField>
+    <OManyToOneField :store="store" prop="StateId" :label="_t('State/Province')"
+      ><OVarCharField :store="store" prop="StateId.Name" :label="_t('State/Province')"
     /></OManyToOneField>
-    <OManyToOneField :store="store" prop="CityId" label="City"><OVarCharField :store="store" prop="CityId.Name" label="City" /></OManyToOneField>
+    <OManyToOneField :store="store" prop="CityId" :label="_t('City')"><OVarCharField :store="store" prop="CityId.Name" :label="_t('City')" /></OManyToOneField>
   </OListView>
 </template>
 
@@ -38,8 +38,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/AddressListView' });
 const props = defineProps<{ store: WebModelStore<Address> }>();
 const addressActions = defineModelActions('base.Address', { entityTitle: 'Address' });
 const { hasAction } = usePermission();

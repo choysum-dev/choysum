@@ -5,9 +5,12 @@ import { ref, readonly } from 'vue';
 import { defineStore } from 'pinia';
 import { nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { isTextDescriptor, type TextDescriptor } from '@/core/service/i18n';
+import type { TextSource } from '../../i18n';
 
 export interface BreadcrumbItem {
   title: string;
+  titleText?: TextDescriptor;
   path: string;
   clickable: boolean;
   timestamp: number;
@@ -79,10 +82,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       // Only create breadcrumbs when an active menu is available.
       if (activeMenu) {
         const menuId = getMenuId(activeMenu);
-        const menuTitle = activeMenu.title || '页面';
+        const menuSource = activeMenu.titleText || activeMenu.title || '页面';
         const menuPath = getMenuBasePath(route.path, activeMenu);
 
-        resetBreadcrumb(menuId, menuTitle, menuPath);
+        resetBreadcrumb(menuId, menuSource, menuPath);
 
         if (route.path !== menuPath) {
           const pageTitle = getPageTitle(route);
@@ -115,10 +118,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       const isFirstVisit = currentMenuId.value === null;
 
       if (isMenuChanged || isFirstVisit) {
-        const menuTitle = currentActiveMenu.title || '页面';
+        const menuSource = currentActiveMenu.titleText || currentActiveMenu.title || '页面';
         const menuPath = getMenuBasePath(to.path, currentActiveMenu);
 
-        resetBreadcrumb(activeMenuId, menuTitle, menuPath);
+        resetBreadcrumb(activeMenuId, menuSource, menuPath);
 
         if (to.path !== menuPath) {
           const pageTitle = getPageTitle(to);
@@ -159,7 +162,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   /**
    * Resolves the page title for a route.
    */
-  function getPageTitle(route: any): string {
+  function getPageTitle(route: any): TextSource {
+    if (route.meta?.pageTitleText) {
+      return route.meta.pageTitleText;
+    }
     // 1. Prefer meta.pageTitle, which defineRoute.title maps to by default.
     if (route.meta?.pageTitle) {
       return typeof route.meta.pageTitle === 'function' ? route.meta.pageTitle(route) : String(route.meta.pageTitle);
@@ -193,11 +199,17 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   /**
    * Resets the breadcrumb trail to the active menu root.
    */
-  function resetBreadcrumb(menuId: string, menuTitle: string, menuPath: string) {
+  function normalizeTitle(source: TextSource): Pick<BreadcrumbItem, 'title' | 'titleText'> {
+    return isTextDescriptor(source)
+      ? { title: source.src, titleText: { ...source } }
+      : { title: String(source || ''), titleText: undefined };
+  }
+
+  function resetBreadcrumb(menuId: string, source: TextSource, menuPath: string) {
     currentMenuId.value = menuId;
     breadcrumbStack.value = [
       {
-        title: menuTitle,
+        ...normalizeTitle(source),
         path: menuPath,
         clickable: false,
         timestamp: Date.now(),
@@ -208,13 +220,13 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   /**
    * Pushes a new breadcrumb item or truncates to an existing path.
    */
-  function pushBreadcrumb(title: string, path: string) {
+  function pushBreadcrumb(title: TextSource, path: string) {
     const existingIndex = breadcrumbStack.value.findIndex(item => item.path === path);
 
     if (existingIndex > -1) {
       // Truncate to the existing item and refresh its title.
       breadcrumbStack.value = breadcrumbStack.value.slice(0, existingIndex + 1);
-      breadcrumbStack.value[existingIndex].title = title;
+      Object.assign(breadcrumbStack.value[existingIndex], normalizeTitle(title));
       breadcrumbStack.value[existingIndex].clickable = false;
     } else {
       // Earlier items become clickable once a deeper item is pushed.
@@ -223,7 +235,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       });
 
       breadcrumbStack.value.push({
-        title,
+        ...normalizeTitle(title),
         path,
         clickable: false,
         timestamp: Date.now(),
@@ -254,10 +266,10 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   /**
    * Updates the title of the current breadcrumb item.
    */
-  function updateCurrentTitle(title: string) {
+  function updateCurrentTitle(title: TextSource) {
     if (breadcrumbStack.value.length > 0) {
       const currentItem = breadcrumbStack.value[breadcrumbStack.value.length - 1];
-      currentItem.title = title;
+      Object.assign(currentItem, normalizeTitle(title));
     }
   }
 

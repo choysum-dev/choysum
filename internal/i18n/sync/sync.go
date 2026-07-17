@@ -15,17 +15,18 @@ import (
 
 // Result summarizes a sync operation.
 type Result struct {
-	PoPath       string
-	Kept         int
-	Added        int
-	Obsoleted    int
-	TotalActive  int
+	PoPath        string
+	Kept          int
+	Added         int
+	Obsoleted     int
+	TotalActive   int
 	TotalObsolete int
 }
 
 // SyncModulePo merges module pot into lang.po (msgmerge semantics).
 // Preserves msgstr for matching (msgctxt, msgid); adds new empty entries;
-// marks missing pot entries obsolete without deleting msgstr history (D12a).
+// marks missing pot entries obsolete without deleting general msgstr history (D12a).
+// Module import separately purges the five unsupported S7 metadata kinds.
 func SyncModulePo(moduleRoot, moduleName, langCode string) (*Result, error) {
 	moduleRoot = filepath.Clean(moduleRoot)
 	if moduleName == "" {

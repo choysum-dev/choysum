@@ -54,13 +54,18 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 // Added: narrowed aggregate type (count_distinct only)
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import type { TextDescriptor } from '@/core/service/i18n';
+import { useI18n } from 'vue-i18n';
+import { translateTerm } from '@/web/web/i18n';
 
 defineOptions({ name: 'OSelectionField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
-type MetaOption = { value: string; label: string };
+type MetaOption = { value: string; label: string; labelText?: TextDescriptor };
 type EffectiveOption = { value: string; label: string; disabled: boolean };
+
+const composer = useI18n({ useScope: 'global' });
 
 const props = withDefaults(
   defineProps<{
@@ -125,7 +130,11 @@ const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(nul
 const metaOptions = computed<MetaOption[]>(() => {
   const sel = binding.meta?.selection;
   if (!Array.isArray(sel) || sel.length === 0) return [];
-  return sel.map(item => ({ value: String(item.value), label: String(item.label) }));
+  return sel.map(item => ({
+    value: String(item.value),
+    label: translateTerm(composer, item.labelText, String(item.label)),
+    labelText: item.labelText,
+  }));
 });
 
 // 1.1) Normalize props.selection against metadata, keeping metadata labels and prop order

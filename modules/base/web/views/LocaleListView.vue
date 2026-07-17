@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OVarCharField :store="store" prop="DateFormat" label="Date Format" />
-    <OVarCharField :store="store" prop="TimeFormat" label="Time Format" />
-    <OSelectionField :store="store" prop="CurrencySymbolPosition" label="Currency Symbol Position" />
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OVarCharField :store="store" prop="DateFormat" :label="_t('Date Format')" />
+    <OVarCharField :store="store" prop="TimeFormat" :label="_t('Time Format')" />
+    <OSelectionField :store="store" prop="CurrencySymbolPosition" :label="_t('Currency Symbol Position')" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -37,8 +37,10 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'LocaleListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/LocaleListView' });
 const props = defineProps<{ store: WebModelStore<Locale> }>();
 const localeActions = defineModelActions('base.Locale', { entityTitle: 'Locale' });
 const { hasAction } = usePermission();

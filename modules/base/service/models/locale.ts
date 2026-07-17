@@ -3,7 +3,10 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { createTranslate } from '@/core/service/i18n';
 import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing } from './_normalizers';
+
+const { _td } = createTranslate('base');
 
 @Model('Locale')
 export default class Locale extends BaseModel {
@@ -34,8 +37,8 @@ export default class Locale extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'before', label: 'before' },
-      { value: 'after', label: 'after' },
+      { value: 'before', label: _td('Before amount', { scope: 'base.Locale.CurrencySymbolPosition.before' }) },
+      { value: 'after', label: _td('After amount', { scope: 'base.Locale.CurrencySymbolPosition.after' }) },
     ],
     size: 16, default: () => 'before',
   })

@@ -277,7 +277,7 @@ func attachResolvedSpecForTestField(field *meta.IrField, options string) {
 			if value == "" || label == "" {
 				continue
 			}
-			spec.Structural.Selection = append(spec.Structural.Selection, map[string]string{"value": value, "label": label})
+			spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{Value: value, Label: label})
 		}
 	}
 
