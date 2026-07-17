@@ -7,16 +7,12 @@
 
 export type TerminologyMessages = Record<string, Record<string, Record<string, string>>>;
 
-/** module → scope → kind → src → value */
-export type TerminologyMetadata = Record<string, Record<string, Record<string, Record<string, string>>>>;
-
 export type WebTranslationsResponse = {
   lang: string;
   locale: string;
   hash: string;
   unchanged: boolean;
   messages: TerminologyMessages | null;
-  metadata: TerminologyMetadata | null;
 };
 
 export type TerminologyLoadResult = WebTranslationsResponse & {
@@ -75,6 +71,5 @@ export async function fetchWebTranslations(
     hash: String(body.hash || ''),
     unchanged,
     messages: unchanged ? null : ((body.messages as TerminologyMessages) ?? {}),
-    metadata: unchanged ? null : ((body.metadata as TerminologyMetadata) ?? {}),
   };
 }

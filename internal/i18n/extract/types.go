@@ -25,12 +25,7 @@ type ExtractIssue struct {
 }
 
 const (
-	KindLiteral        = "literal"
-	KindFieldLabel     = "field_label"
-	KindSelectionLabel = "selection_label"
-	KindMenu           = "menu"
-	KindRoute          = "route"
-	KindAction         = "action"
+	KindLiteral = "literal"
 
 	IssueNonLiteralMsgid = "non_literal_msgid"
 	IssueModuleMismatch  = "create_translate_module_mismatch"

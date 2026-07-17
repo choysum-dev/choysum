@@ -44,9 +44,9 @@ func TestWithTerminologyLookupSync(t *testing.T) {
 	}
 }
 
-func TestWithTerminologyLookupNonLiteralKind(t *testing.T) {
+func TestWithTerminologyLookupExplicitKind(t *testing.T) {
 	lookup := func(module, lang, scope, src, kind string) (string, bool) {
-		if kind == "menu" && src == "Company" {
+		if kind == "custom" && src == "Company" {
 			return "公司", true
 		}
 		if kind == "literal" && src == "Hello" {
@@ -62,13 +62,13 @@ func TestWithTerminologyLookupNonLiteralKind(t *testing.T) {
 	engine := engineIface.(*quickjsengine.QuickjsEngine)
 	t.Cleanup(func() { _ = engine.Close() })
 
-	menu := engine.Ctx.Eval(`$choysum.i18n.t('auth', 'zh_CN', 'm@id', 'Company', 'menu')`)
-	defer menu.Free()
-	if menu.IsException() {
-		t.Fatalf("Eval menu: %v", engine.Ctx.Exception())
+	custom := engine.Ctx.Eval(`$choysum.i18n.t('auth', 'zh_CN', 'm@id', 'Company', 'custom')`)
+	defer custom.Free()
+	if custom.IsException() {
+		t.Fatalf("Eval custom kind: %v", engine.Ctx.Exception())
 	}
-	if menu.String() != "公司" {
-		t.Fatalf("menu = %q, want 公司", menu.String())
+	if custom.String() != "公司" {
+		t.Fatalf("custom kind = %q, want 公司", custom.String())
 	}
 	lit := engine.Ctx.Eval(`$choysum.i18n.t('auth', 'zh_CN', 'a@b', 'Hello')`)
 	defer lit.Free()

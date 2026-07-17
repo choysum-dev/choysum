@@ -1,26 +1,22 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#. kind: action
-#: web/resource/resource.test.ts:136
-msgctxt "web/resource/resource.test@auth.UserRole.delete"
-msgid "Deactivate User Role"
-msgstr ""
+#~ #. kind: action
+#~ msgctxt "web/resource/resource.test@auth.UserRole.delete"
+#~ msgid "Deactivate User Role"
+#~ msgstr ""
 
-#. kind: action
-#: web/resource/resource.test.ts:103
-msgctxt "web/resource/resource.test@auth.action.user_export"
-msgid "Export Users"
-msgstr ""
+#~ #. kind: action
+#~ msgctxt "web/resource/resource.test@auth.action.user_export"
+#~ msgid "Export Users"
+#~ msgstr ""
 
-#. kind: menu
-#: web/resource/resource.test.ts:76
-msgctxt "web/resource/resource.test@auth.menu.user_list"
-msgid "User List"
-msgstr ""
+#~ #. kind: menu
+#~ msgctxt "web/resource/resource.test@auth.menu.user_list"
+#~ msgid "User List"
+#~ msgstr ""
 
-#. kind: action
-#: web/resource/resource.test.ts:127
-msgctxt "web/resource/resource.test@demo.action.open"
-msgid "Open"
-msgstr ""
+#~ #. kind: action
+#~ msgctxt "web/resource/resource.test@demo.action.open"
+#~ msgid "Open"
+#~ msgstr ""

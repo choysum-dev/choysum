@@ -27,6 +27,49 @@ func TestTypecheckRequiredModules(t *testing.T) {
 	}
 }
 
+func TestTypecheckInstallCommandPinsVueToolchain(t *testing.T) {
+	got := typecheckInstallCommand([]string{"vite", "vue-tsc"})
+	want := "npm install -g vite vue-tsc@3.3.7 typescript@6.0.3 @types/node"
+	if got != want {
+		t.Fatalf("typecheckInstallCommand() = %q, want %q", got, want)
+	}
+}
+
+func TestValidateTypecheckToolchainVersions(t *testing.T) {
+	root := t.TempDir()
+	writePackage := func(name string, version string) {
+		t.Helper()
+		dir := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", name, err)
+		}
+		content := `{"version":"` + version + `"}`
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s package.json: %v", name, err)
+		}
+	}
+
+	writePackage("vue-tsc", "3.3.7")
+	writePackage("typescript", "6.0.3")
+	if err := validateTypecheckToolchainVersions(root); err != nil {
+		t.Fatalf("expected pinned toolchain to pass, got %v", err)
+	}
+
+	writePackage("typescript", "7.0.2")
+	err := validateTypecheckToolchainVersions(root)
+	if err == nil {
+		t.Fatal("expected TypeScript version mismatch")
+	}
+	for _, want := range []string{
+		"typescript=7.0.2 (required 6.0.3)",
+		"vue-tsc@3.3.7 typescript@6.0.3 @types/node",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("expected %q in error, got %v", want, err)
+		}
+	}
+}
+
 func TestTypecheckApp_AllowsNpxWithoutGlobalVueTsc(t *testing.T) {
 	ctx := context.Background()
 

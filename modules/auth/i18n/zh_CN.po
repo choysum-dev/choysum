@@ -11,860 +11,726 @@ msgctxt "auth/service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
 
-#. kind: selection_label
-#: service/models/role_field_rule.ts:64
-msgctxt "service/models/role_field_rule@PermRead.allow"
-msgid "Allow"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_field_rule.ts:65
-msgctxt "service/models/role_field_rule@PermRead.deny"
-msgid "Deny"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_field_rule.ts:77
-msgctxt "service/models/role_field_rule@PermWrite.allow"
-msgid "Allow"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_field_rule.ts:78
-msgctxt "service/models/role_field_rule@PermWrite.deny"
-msgid "Deny"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_method_access.ts:60
-msgctxt "service/models/role_method_access@Mode.allow"
-msgid "Allow"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_method_access.ts:61
-msgctxt "service/models/role_method_access@Mode.deny"
-msgid "Deny"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_method_access.ts:73
-msgctxt "service/models/role_method_access@Source.manual"
-msgid "Manual"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_method_access.ts:74
-msgctxt "service/models/role_method_access@Source.ui"
-msgid "UI"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_ui_resource.ts:35
-msgctxt "service/models/role_ui_resource@Mode.allow"
-msgid "Allow"
-msgstr ""
-
-#. kind: selection_label
-#: service/models/role_ui_resource.ts:36
-msgctxt "service/models/role_ui_resource@Mode.deny"
-msgid "Deny"
-msgstr ""
-
-#. kind: menu
-#: web/menu/menus.ts:25
-msgctxt "web/menu/menus@auth.menu.role_list"
-msgid "Role List"
-msgstr ""
-
-#. kind: menu
-#: web/menu/menus.ts:15
-msgctxt "web/menu/menus@auth.menu.root"
-msgid "Access Control"
-msgstr ""
-
-#. kind: menu
-#: web/menu/menus.ts:30
-msgctxt "web/menu/menus@auth.menu.session_list"
-msgid "Session List"
-msgstr ""
-
-#. kind: menu
-#: web/menu/menus.ts:35
-msgctxt "web/menu/menus@auth.menu.token_list"
-msgid "Token List"
-msgstr ""
-
-#. kind: menu
-#: web/menu/menus.ts:20
-msgctxt "web/menu/menus@auth.menu.user_list"
-msgid "User List"
-msgstr ""
-
-#: web/pages/Login.vue:23
+#: web/pages/Login.vue:32
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr "还没有账号？"
 
-#: web/pages/Login.vue:20
+#: web/pages/Login.vue:20 web/pages/Login.vue:48
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Login.vue:19
+#: web/pages/Login.vue:16 web/pages/Login.vue:41
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Login.vue:22
+#: web/pages/Login.vue:28
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
 
-#: web/pages/Login.vue:126
+#: web/pages/Login.vue:115
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
 
-#: web/pages/Login.vue:18
+#: web/pages/Login.vue:19
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:24
+#: web/pages/Login.vue:33
 msgctxt "web/pages/Login"
 msgid "Register now"
 msgstr "立即注册"
 
-#: web/pages/Login.vue:21
+#: web/pages/Login.vue:24
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
 
-#: web/pages/Login.vue:16
+#: web/pages/Login.vue:6
 msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr "用户登录"
 
-#: web/pages/Login.vue:17
+#: web/pages/Login.vue:15
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
 
-#. kind: route
-#: web/route/routes.ts:175
-msgctxt "web/route/routes@auth.route.register"
-msgid "Register"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:92
-msgctxt "web/route/routes@auth.route.role_create"
-msgid "Create Role"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:82
-msgctxt "web/route/routes@auth.route.role_detail"
-msgid "Role Details"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:121
-msgctxt "web/route/routes@auth.route.session_create"
-msgid "Create Session"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:111
-msgctxt "web/route/routes@auth.route.session_detail"
-msgid "Session Details"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:102
-msgctxt "web/route/routes@auth.route.session_list"
-msgid "Session Management"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:152
-msgctxt "web/route/routes@auth.route.token_create"
-msgid "Create Token"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:142
-msgctxt "web/route/routes@auth.route.token_detail"
-msgid "Token Details"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:162
-msgctxt "web/route/routes@auth.route.token_kanban"
-msgid "Token Board"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:61
-msgctxt "web/route/routes@auth.route.user_create"
-msgid "Create User"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:51
-msgctxt "web/route/routes@auth.route.user_detail"
-msgid "User Details"
-msgstr ""
-
-#. kind: route
-#: web/route/routes.ts:42
-msgctxt "web/route/routes@auth.route.user_list"
-msgid "User List"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:56
-msgctxt "web/views/RoleFormView@AccessUiResourceIds"
-msgid "Accessible UI Resources"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:13
-msgctxt "web/views/RoleFormView@Code"
-msgid "Code"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:31
-msgctxt "web/views/RoleFormView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:22
-msgctxt "web/views/RoleFormView@Description"
-msgid "Description"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:10
-msgctxt "web/views/RoleFormView@DisplayName"
-msgid "Display Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:89
-msgctxt "web/views/RoleFormView@FieldRules.IrFieldId"
-msgid "Field"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:88
-msgctxt "web/views/RoleFormView@FieldRules.IrModelId"
-msgid "Model"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:90
-msgctxt "web/views/RoleFormView@FieldRules.PermRead"
-msgid "Read"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:91
-msgctxt "web/views/RoleFormView@FieldRules.PermWrite"
-msgid "Write"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:52
-msgctxt "web/views/RoleFormView@ImpliedRoles.Code"
-msgid "Code"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:51
-msgctxt "web/views/RoleFormView@ImpliedRoles.Name"
-msgid "Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:16
-msgctxt "web/views/RoleFormView@IsActive"
-msgid "Active"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:19
-msgctxt "web/views/RoleFormView@IsSystem"
-msgid "Built-in"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:97
-msgctxt "web/views/RoleFormView@MethodAccesses.IrModelId"
-msgid "Model"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:98
-msgctxt "web/views/RoleFormView@MethodAccesses.IrServiceId"
-msgid "Service"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:99
-msgctxt "web/views/RoleFormView@MethodAccesses.Mode"
-msgid "Mode"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:7
-msgctxt "web/views/RoleFormView@Name"
-msgid "Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:78
-msgctxt "web/views/RoleFormView@RecordRules.Condition"
-msgid "Filter Condition"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:77
-msgctxt "web/views/RoleFormView@RecordRules.IrModelId"
-msgid "Model"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:81
-msgctxt "web/views/RoleFormView@RecordRules.PermCreate"
-msgid "Create"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:82
-msgctxt "web/views/RoleFormView@RecordRules.PermDelete"
-msgid "Delete"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:79
-msgctxt "web/views/RoleFormView@RecordRules.PermRead"
-msgid "Read"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:80
-msgctxt "web/views/RoleFormView@RecordRules.PermWrite"
-msgid "Write"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:106
-msgctxt "web/views/RoleFormView@UiResources.IrApplicationId"
-msgid "Application Scope"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:107
-msgctxt "web/views/RoleFormView@UiResources.IrUiResourceId"
-msgid "UI Resource"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:105
-msgctxt "web/views/RoleFormView@UiResources.Mode"
-msgid "Mode"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:34
-msgctxt "web/views/RoleFormView@UpdatedAt"
-msgid "Updated At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:46
-msgctxt "web/views/RoleFormView@Users.FullName"
-msgid "Full Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:44
-msgctxt "web/views/RoleFormView@Users.Id"
-msgid "ID"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:45
-msgctxt "web/views/RoleFormView@Users.Username"
-msgid "Username"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:50
-msgctxt "web/views/RoleFormView@searchViewTitle"
-msgid "Select Role"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleFormView.vue:43
-msgctxt "web/views/RoleFormView@searchViewTitle"
-msgid "Select User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleListView.vue:6
-msgctxt "web/views/RoleListView@Code"
-msgid "Code"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleListView.vue:10
-msgctxt "web/views/RoleListView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleListView.vue:7
-msgctxt "web/views/RoleListView@Description"
-msgid "Description"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleListView.vue:8
-msgctxt "web/views/RoleListView@IsActive"
-msgid "Active"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleListView.vue:9
-msgctxt "web/views/RoleListView@IsSystem"
-msgid "Built-in"
-msgstr ""
-
-#. kind: field_label
-#: web/views/RoleListView.vue:5
-msgctxt "web/views/RoleListView@Name"
-msgid "Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:10
-msgctxt "web/views/SessionFormView@AccessTokenId"
-msgid "Access Token ID"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:34
-msgctxt "web/views/SessionFormView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:13
-msgctxt "web/views/SessionFormView@DeviceInfo"
-msgid "Device Info"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:19
-msgctxt "web/views/SessionFormView@ExpiresAt"
-msgid "Expires At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:16
-msgctxt "web/views/SessionFormView@IpAddress"
-msgid "IP Address"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:22
-msgctxt "web/views/SessionFormView@LastActivityAt"
-msgid "Last Activity"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:25
-msgctxt "web/views/SessionFormView@Status"
-msgid "Status"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:37
-msgctxt "web/views/SessionFormView@UpdatedAt"
-msgid "Updated At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:7
-msgctxt "web/views/SessionFormView@UserId"
-msgid "User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionFormView.vue:7
-msgctxt "web/views/SessionFormView@searchViewTitle"
-msgid "Select User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionListView.vue:10
-msgctxt "web/views/SessionListView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionListView.vue:9
-msgctxt "web/views/SessionListView@ExpiresAt"
-msgid "Expires At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionListView.vue:6
-msgctxt "web/views/SessionListView@IpAddress"
-msgid "IP Address"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionListView.vue:8
-msgctxt "web/views/SessionListView@LastActivityAt"
-msgid "Last Activity"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionListView.vue:7
-msgctxt "web/views/SessionListView@Status"
-msgid "Status"
-msgstr ""
-
-#. kind: field_label
-#: web/views/SessionListView.vue:5
-msgctxt "web/views/SessionListView@UserId.Username"
-msgid "User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:37
-msgctxt "web/views/TokenFormView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:10
-msgctxt "web/views/TokenFormView@DisplayName"
-msgid "Display Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:19
-msgctxt "web/views/TokenFormView@ExpiresAt"
-msgid "Expires At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:25
-msgctxt "web/views/TokenFormView@RevocationReason"
-msgid "Revocation Reason"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:22
-msgctxt "web/views/TokenFormView@Revoked"
-msgid "Revoked"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:34
-msgctxt "web/views/TokenFormView@RevokedAt"
-msgid "Revoked At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:16
-msgctxt "web/views/TokenFormView@TokenId"
-msgid "Token ID"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:13
-msgctxt "web/views/TokenFormView@TokenType"
-msgid "Type"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:40
-msgctxt "web/views/TokenFormView@UpdatedAt"
-msgid "Updated At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:7
-msgctxt "web/views/TokenFormView@UserId"
-msgid "User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenFormView.vue:7
-msgctxt "web/views/TokenFormView@searchViewTitle"
-msgid "Select User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenKanbanView.vue:33
-msgctxt "web/views/TokenKanbanView@UserId.Username"
-msgid "User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenListView.vue:19
-msgctxt "web/views/TokenListView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenListView.vue:16
-msgctxt "web/views/TokenListView@ExpiresAt"
-msgid "Expires At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenListView.vue:17
-msgctxt "web/views/TokenListView@Revoked"
-msgid "Revoked"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenListView.vue:18
-msgctxt "web/views/TokenListView@RevokedAt"
-msgid "Revoked At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenListView.vue:15
-msgctxt "web/views/TokenListView@TokenType"
-msgid "Type"
-msgstr ""
-
-#. kind: field_label
-#: web/views/TokenListView.vue:14
-msgctxt "web/views/TokenListView@UserId.Username"
-msgid "User"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:7
-msgctxt "web/views/UserFormView@Avatar"
-msgid "Avatar"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:37
-msgctxt "web/views/UserFormView@CompanyId"
-msgid "Company"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:58
-msgctxt "web/views/UserFormView@CompanyIds"
-msgid "Accessible Companies"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:49
-msgctxt "web/views/UserFormView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:13
-msgctxt "web/views/UserFormView@Email"
-msgid "Email"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:22
-msgctxt "web/views/UserFormView@FirstName"
-msgid "First Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:28
-msgctxt "web/views/UserFormView@FullName"
-msgid "Full Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:19
-msgctxt "web/views/UserFormView@IsActive"
-msgid "Active"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:31
-msgctxt "web/views/UserFormView@Language"
-msgid "Language"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:46
-msgctxt "web/views/UserFormView@LastLogin"
-msgid "Last Login"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:25
-msgctxt "web/views/UserFormView@LastName"
-msgid "Last Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:16
-msgctxt "web/views/UserFormView@Phone"
-msgid "Phone"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:40
-msgctxt "web/views/UserFormView@Preferences"
-msgid "Preferences"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:68
-msgctxt "web/views/UserFormView@Roles.CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:66
-msgctxt "web/views/UserFormView@Roles.Id"
-msgid "ID"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:67
-msgctxt "web/views/UserFormView@Roles.Name"
-msgid "Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:77
-msgctxt "web/views/UserFormView@Sessions.CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:74
-msgctxt "web/views/UserFormView@Sessions.Id"
-msgid "ID"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:76
-msgctxt "web/views/UserFormView@Sessions.LastActivityAt"
-msgid "Last Activity"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:75
-msgctxt "web/views/UserFormView@Sessions.Status"
-msgid "Status"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:34
-msgctxt "web/views/UserFormView@Timezone"
-msgid "Timezone"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:85
-msgctxt "web/views/UserFormView@Tokens.CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:83
-msgctxt "web/views/UserFormView@Tokens.Id"
-msgid "ID"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:84
-msgctxt "web/views/UserFormView@Tokens.TokenType"
-msgid "Type"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:52
-msgctxt "web/views/UserFormView@UpdatedAt"
-msgid "Updated At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:10
-msgctxt "web/views/UserFormView@Username"
-msgid "Username"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:58
-msgctxt "web/views/UserFormView@searchViewTitle"
-msgid "Select Company"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserFormView.vue:65
-msgctxt "web/views/UserFormView@searchViewTitle"
-msgid "Select Role"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:6
-msgctxt "web/views/UserListView@Avatar"
-msgid "Avatar"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:8
-msgctxt "web/views/UserListView@CompanyId"
-msgid "Company"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:12
-msgctxt "web/views/UserListView@CreatedAt"
-msgid "Created At"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:9
-msgctxt "web/views/UserListView@Email"
-msgid "Email"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:11
-msgctxt "web/views/UserListView@FullName"
-msgid "Full Name"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:10
-msgctxt "web/views/UserListView@Phone"
-msgid "Phone"
-msgstr ""
-
-#. kind: field_label
-#: web/views/UserListView.vue:7
-msgctxt "web/views/UserListView@Username"
-msgid "Username"
-msgstr ""
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_field_rule@PermRead.allow"
+#~ msgid "Allow"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_field_rule@PermRead.deny"
+#~ msgid "Deny"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_field_rule@PermWrite.allow"
+#~ msgid "Allow"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_field_rule@PermWrite.deny"
+#~ msgid "Deny"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_method_access@Mode.allow"
+#~ msgid "Allow"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_method_access@Mode.deny"
+#~ msgid "Deny"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_method_access@Source.manual"
+#~ msgid "Manual"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_method_access@Source.ui"
+#~ msgid "UI"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_ui_resource@Mode.allow"
+#~ msgid "Allow"
+#~ msgstr ""
+
+#~ #. kind: selection_label
+#~ msgctxt "service/models/role_ui_resource@Mode.deny"
+#~ msgid "Deny"
+#~ msgstr ""
+
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@auth.menu.role_list"
+#~ msgid "Role List"
+#~ msgstr ""
+
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@auth.menu.root"
+#~ msgid "Access Control"
+#~ msgstr ""
+
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@auth.menu.session_list"
+#~ msgid "Session List"
+#~ msgstr ""
+
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@auth.menu.token_list"
+#~ msgid "Token List"
+#~ msgstr ""
+
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@auth.menu.user_list"
+#~ msgid "User List"
+#~ msgstr ""
 
 #~ msgctxt "web/pages/Login@handleLogin"
 #~ msgid "Login failed. Please try again later."
 #~ msgstr "登录失败，请稍后重试。"
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.register"
+#~ msgid "Register"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.role_create"
+#~ msgid "Create Role"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.role_detail"
+#~ msgid "Role Details"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.session_create"
+#~ msgid "Create Session"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.session_detail"
+#~ msgid "Session Details"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.session_list"
+#~ msgid "Session Management"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.token_create"
+#~ msgid "Create Token"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.token_detail"
+#~ msgid "Token Details"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.token_kanban"
+#~ msgid "Token Board"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.user_create"
+#~ msgid "Create User"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.user_detail"
+#~ msgid "User Details"
+#~ msgstr ""
+
+#~ #. kind: route
+#~ msgctxt "web/route/routes@auth.route.user_list"
+#~ msgid "User List"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@AccessUiResourceIds"
+#~ msgid "Accessible UI Resources"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@Code"
+#~ msgid "Code"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@Description"
+#~ msgid "Description"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@DisplayName"
+#~ msgid "Display Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@FieldRules.IrFieldId"
+#~ msgid "Field"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@FieldRules.IrModelId"
+#~ msgid "Model"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@FieldRules.PermRead"
+#~ msgid "Read"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@FieldRules.PermWrite"
+#~ msgid "Write"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@ImpliedRoles.Code"
+#~ msgid "Code"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@ImpliedRoles.Name"
+#~ msgid "Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@IsActive"
+#~ msgid "Active"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@IsSystem"
+#~ msgid "Built-in"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@MethodAccesses.IrModelId"
+#~ msgid "Model"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@MethodAccesses.IrServiceId"
+#~ msgid "Service"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@MethodAccesses.Mode"
+#~ msgid "Mode"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@Name"
+#~ msgid "Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@RecordRules.Condition"
+#~ msgid "Filter Condition"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@RecordRules.IrModelId"
+#~ msgid "Model"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@RecordRules.PermCreate"
+#~ msgid "Create"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@RecordRules.PermDelete"
+#~ msgid "Delete"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@RecordRules.PermRead"
+#~ msgid "Read"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@RecordRules.PermWrite"
+#~ msgid "Write"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@UiResources.IrApplicationId"
+#~ msgid "Application Scope"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@UiResources.IrUiResourceId"
+#~ msgid "UI Resource"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@UiResources.Mode"
+#~ msgid "Mode"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@UpdatedAt"
+#~ msgid "Updated At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@Users.FullName"
+#~ msgid "Full Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@Users.Id"
+#~ msgid "ID"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@Users.Username"
+#~ msgid "Username"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@searchViewTitle"
+#~ msgid "Select Role"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleFormView@searchViewTitle"
+#~ msgid "Select User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleListView@Code"
+#~ msgid "Code"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleListView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleListView@Description"
+#~ msgid "Description"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleListView@IsActive"
+#~ msgid "Active"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleListView@IsSystem"
+#~ msgid "Built-in"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/RoleListView@Name"
+#~ msgid "Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@AccessTokenId"
+#~ msgid "Access Token ID"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@DeviceInfo"
+#~ msgid "Device Info"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@ExpiresAt"
+#~ msgid "Expires At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@IpAddress"
+#~ msgid "IP Address"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@LastActivityAt"
+#~ msgid "Last Activity"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@Status"
+#~ msgid "Status"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@UpdatedAt"
+#~ msgid "Updated At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@UserId"
+#~ msgid "User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionFormView@searchViewTitle"
+#~ msgid "Select User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionListView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionListView@ExpiresAt"
+#~ msgid "Expires At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionListView@IpAddress"
+#~ msgid "IP Address"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionListView@LastActivityAt"
+#~ msgid "Last Activity"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionListView@Status"
+#~ msgid "Status"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/SessionListView@UserId.Username"
+#~ msgid "User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@DisplayName"
+#~ msgid "Display Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@ExpiresAt"
+#~ msgid "Expires At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@RevocationReason"
+#~ msgid "Revocation Reason"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@Revoked"
+#~ msgid "Revoked"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@RevokedAt"
+#~ msgid "Revoked At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@TokenId"
+#~ msgid "Token ID"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@TokenType"
+#~ msgid "Type"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@UpdatedAt"
+#~ msgid "Updated At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@UserId"
+#~ msgid "User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenFormView@searchViewTitle"
+#~ msgid "Select User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenKanbanView@UserId.Username"
+#~ msgid "User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenListView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenListView@ExpiresAt"
+#~ msgid "Expires At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenListView@Revoked"
+#~ msgid "Revoked"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenListView@RevokedAt"
+#~ msgid "Revoked At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenListView@TokenType"
+#~ msgid "Type"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/TokenListView@UserId.Username"
+#~ msgid "User"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Avatar"
+#~ msgid "Avatar"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@CompanyId"
+#~ msgid "Company"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@CompanyIds"
+#~ msgid "Accessible Companies"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Email"
+#~ msgid "Email"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@FirstName"
+#~ msgid "First Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@FullName"
+#~ msgid "Full Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@IsActive"
+#~ msgid "Active"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Language"
+#~ msgid "Language"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@LastLogin"
+#~ msgid "Last Login"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@LastName"
+#~ msgid "Last Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Phone"
+#~ msgid "Phone"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Preferences"
+#~ msgid "Preferences"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Roles.CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Roles.Id"
+#~ msgid "ID"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Roles.Name"
+#~ msgid "Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Sessions.CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Sessions.Id"
+#~ msgid "ID"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Sessions.LastActivityAt"
+#~ msgid "Last Activity"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Sessions.Status"
+#~ msgid "Status"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Timezone"
+#~ msgid "Timezone"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Tokens.CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Tokens.Id"
+#~ msgid "ID"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Tokens.TokenType"
+#~ msgid "Type"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@UpdatedAt"
+#~ msgid "Updated At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@Username"
+#~ msgid "Username"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@searchViewTitle"
+#~ msgid "Select Company"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserFormView@searchViewTitle"
+#~ msgid "Select Role"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@Avatar"
+#~ msgid "Avatar"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@CompanyId"
+#~ msgid "Company"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@CreatedAt"
+#~ msgid "Created At"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@Email"
+#~ msgid "Email"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@FullName"
+#~ msgid "Full Name"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@Phone"
+#~ msgid "Phone"
+#~ msgstr ""
+
+#~ #. kind: field_label
+#~ msgctxt "web/views/UserListView@Username"
+#~ msgid "Username"
+#~ msgstr ""

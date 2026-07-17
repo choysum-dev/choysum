@@ -8,8 +8,11 @@ Catalogs here are the **packaged terminology** for the `web` application.
 
 Runtime reads terms via Go `web.I18n` → host Gateway → frontend `createTranslate` / vue-i18n.
 
-S7 metadata: `choysum i18n extract` also pulls Vue `label=` / selection labels / `defineMenu|Route|Action` titles
-(use `--no-metadata` to skip). Non-`literal` kinds are stored with `#. kind:` in pot/po.
+Extraction is explicit and literal-only: `_t`, backend `_lt`, and `_tr` calls with
+string-literal messages are written to POT. Vue labels, selections, menus, routes,
+actions, and other static metadata are not extracted and remain English source text.
+Frontend code has no `_lt`; backend `_lt` is reserved for static declarations that
+must resolve lazily at request/render time.
 
 Language switch (D9 / S6): default `location.reload`. Soft remount is experimental
 (`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.

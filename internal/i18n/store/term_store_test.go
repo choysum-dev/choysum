@@ -134,7 +134,7 @@ func TestRegistryLookupViaModuleMapping(t *testing.T) {
 	}
 }
 
-func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
+func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
 	rs := newTestScope(t)
 	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
@@ -144,7 +144,7 @@ func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
 		{
 			Application: "auth", Module: "auth", Lang: "zh_CN",
 			Scope: "web/menu/menus.ts@base.menu.company", Src: "Company Management", Value: "公司管理",
-			Kind: i18nmodels.KindMenu, Source: i18nmodels.SourcePackaged,
+			Kind: "custom_title", Source: i18nmodels.SourcePackaged,
 		},
 		{
 			Application: "auth", Module: "auth", Lang: "zh_CN",
@@ -154,7 +154,7 @@ func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
 		{
 			Application: "auth", Module: "auth", Lang: "zh_CN",
 			Scope: "web/pages/Login@title", Src: "Sign in", Value: "登录字段",
-			Kind: i18nmodels.KindFieldLabel, Source: i18nmodels.SourcePackaged,
+			Kind: "custom_label", Source: i18nmodels.SourcePackaged,
 		},
 	}
 	for i := range rows {
@@ -168,13 +168,13 @@ func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
 		t.Fatalf("warm: %v", err)
 	}
 
-	menuVal, ok := ts.Lookup("auth", "zh_CN", "web/menu/menus.ts@base.menu.company", "Company Management", i18nmodels.KindMenu)
-	if !ok || menuVal != "公司管理" {
-		t.Fatalf("menu Lookup = %q ok=%v", menuVal, ok)
+	titleVal, ok := ts.Lookup("auth", "zh_CN", "web/menu/menus.ts@base.menu.company", "Company Management", "custom_title")
+	if !ok || titleVal != "公司管理" {
+		t.Fatalf("custom kind Lookup = %q ok=%v", titleVal, ok)
 	}
-	fieldVal, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", i18nmodels.KindFieldLabel)
+	fieldVal, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", "custom_label")
 	if !ok || fieldVal != "登录字段" {
-		t.Fatalf("field_label Lookup = %q ok=%v", fieldVal, ok)
+		t.Fatalf("custom label Lookup = %q ok=%v", fieldVal, ok)
 	}
 	litVal, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", "")
 	if !ok || litVal != "登录" {
@@ -185,15 +185,7 @@ func TestTermStoreNonLiteralKindAndTermsByModulesLiteralOnly(t *testing.T) {
 	if got := exported["auth"]["web/pages/Login@title"]["Sign in"]; got != "登录" {
 		t.Fatalf("TermsByModules literal = %q", got)
 	}
-	if _, hasMenu := exported["auth"]["web/menu/menus.ts@base.menu.company"]; hasMenu {
-		t.Fatal("TermsByModules must omit non-literal kinds")
-	}
-
-	meta := ts.MetadataByModules("zh_CN", []string{"auth"})
-	if got := meta["auth"]["web/menu/menus.ts@base.menu.company"][i18nmodels.KindMenu]["Company Management"]; got != "公司管理" {
-		t.Fatalf("MetadataByModules menu = %q", got)
-	}
-	if _, hasLit := meta["auth"]["web/pages/Login@title"][i18nmodels.KindLiteral]; hasLit {
-		t.Fatal("MetadataByModules must omit literal")
+	if _, hasCustom := exported["auth"]["web/menu/menus.ts@base.menu.company"]; hasCustom {
+		t.Fatal("TermsByModules must omit explicit non-literal kinds")
 	}
 }

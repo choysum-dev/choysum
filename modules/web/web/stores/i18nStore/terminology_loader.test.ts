@@ -62,7 +62,6 @@ describe('fetchWebTranslations', () => {
     const out = await fetchWebTranslations('zh_CN', 'abc', { fetchImpl });
     expect(out.unchanged).toBe(true);
     expect(out.messages).toBeNull();
-    expect(out.metadata).toBeNull();
   });
 
   it('throws when gateway fails', async () => {

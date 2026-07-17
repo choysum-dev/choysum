@@ -7,27 +7,3 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: web/resource/resource.test.ts:136
-#. kind: action
-msgctxt "web/resource/resource.test@auth.UserRole.delete"
-msgid "Deactivate User Role"
-msgstr ""
-
-#: web/resource/resource.test.ts:103
-#. kind: action
-msgctxt "web/resource/resource.test@auth.action.user_export"
-msgid "Export Users"
-msgstr ""
-
-#: web/resource/resource.test.ts:76
-#. kind: menu
-msgctxt "web/resource/resource.test@auth.menu.user_list"
-msgid "User List"
-msgstr ""
-
-#: web/resource/resource.test.ts:127
-#. kind: action
-msgctxt "web/resource/resource.test@demo.action.open"
-msgid "Open"
-msgstr ""
-

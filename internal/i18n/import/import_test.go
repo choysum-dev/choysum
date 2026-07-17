@@ -212,13 +212,13 @@ func TestImportModulePoKindFromExtractedComment(t *testing.T) {
 msgid ""
 msgstr "Language: zh_CN\n"
 
-#. kind: menu
+#. kind: custom_title
 #: web/menu/menus.ts
 msgctxt "web/menu/menus.ts@base.menu.company"
 msgid "Company Management"
 msgstr "公司管理"
 
-#. kind: selection_label
+#. kind: custom_option
 msgctxt "service/models/bank_account.ts@Type.checking"
 msgid "Checking"
 msgstr "支票"
@@ -236,19 +236,19 @@ msgstr "你好"
 		t.Fatalf("stats=%+v", stats)
 	}
 
-	var menu i18nmodels.TranslationTerm
+	var title i18nmodels.TranslationTerm
 	if err := rs.Session().Table("auth_translation_term").
-		Where("src = ? AND kind = ?", "Company Management", i18nmodels.KindMenu).
-		Take(&menu).Error; err != nil {
+		Where("src = ? AND kind = ?", "Company Management", "custom_title").
+		Take(&title).Error; err != nil {
 		t.Fatal(err)
 	}
-	if menu.Value != "公司管理" {
-		t.Fatalf("menu row: %+v", menu)
+	if title.Value != "公司管理" {
+		t.Fatalf("custom kind row: %+v", title)
 	}
 
 	var sel i18nmodels.TranslationTerm
 	if err := rs.Session().Table("auth_translation_term").
-		Where("src = ? AND kind = ?", "Checking", i18nmodels.KindSelectionLabel).
+		Where("src = ? AND kind = ?", "Checking", "custom_option").
 		Take(&sel).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -264,16 +264,16 @@ msgstr "你好"
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
 		Application: "auth", Module: "auth", Lang: "zh_CN",
 		Scope: "web/a@literal", Src: "Hello", Value: "字段你好",
-		Kind: i18nmodels.KindFieldLabel, Source: i18nmodels.SourcePackaged,
+		Kind: "custom_label", Source: i18nmodels.SourcePackaged,
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
 	_ = reg.StoreFor("auth").WarmLanguage("zh_CN")
-	menuVal, ok := reg.Lookup("auth", "zh_CN", "web/menu/menus.ts@base.menu.company", "Company Management", i18nmodels.KindMenu)
-	if !ok || menuVal != "公司管理" {
-		t.Fatalf("menu cache = %q ok=%v", menuVal, ok)
+	titleVal, ok := reg.Lookup("auth", "zh_CN", "web/menu/menus.ts@base.menu.company", "Company Management", "custom_title")
+	if !ok || titleVal != "公司管理" {
+		t.Fatalf("custom cache = %q ok=%v", titleVal, ok)
 	}
-	fieldVal, ok := reg.Lookup("auth", "zh_CN", "web/a@literal", "Hello", i18nmodels.KindFieldLabel)
+	fieldVal, ok := reg.Lookup("auth", "zh_CN", "web/a@literal", "Hello", "custom_label")
 	if !ok || fieldVal != "字段你好" {
 		t.Fatalf("field cache = %q ok=%v", fieldVal, ok)
 	}

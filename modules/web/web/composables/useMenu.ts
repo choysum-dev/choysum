@@ -9,14 +9,6 @@ import { QuestionFilled } from '@element-plus/icons-vue';
 import { BookmarkBorderOutlined } from '@vicons/material';
 import { useMenuStore } from '../stores/menuStore';
 import type { MenuItem } from '@/core/web/menu';
-import { tMenuTitle } from '@/web/web/i18n/meta_translate';
-
-function displayMenuTitle(item: MenuItem): string {
-  return tMenuTitle({
-    src: String(item.title || ''),
-    menuId: String(item.id || ''),
-  });
-}
 
 /**
  * Provides menu navigation helpers and render utilities backed by the menu store.
@@ -148,7 +140,7 @@ export function useMenu() {
               onClose: () => onSubMenuClose?.(item.id || ''),
             },
             {
-              title: () => [renderIcon(item.icon, useDefaultIcon, defaultIcon), h('span', {}, displayMenuTitle(item))],
+              title: () => [renderIcon(item.icon, useDefaultIcon, defaultIcon), h('span', {}, item.title)],
               default: () => renderMenuItems(item.children || [], options),
             }
           );
@@ -163,7 +155,7 @@ export function useMenu() {
             onSelect: () => onItemSelect?.(item.id || '', item),
           },
           {
-            default: () => [renderIcon(item.icon, useDefaultIcon, defaultIcon), h('span', {}, displayMenuTitle(item))],
+            default: () => [renderIcon(item.icon, useDefaultIcon, defaultIcon), h('span', {}, item.title)],
           }
         );
       });

@@ -7,33 +7,3 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/job.ts:93
-#. kind: selection_label
-msgctxt "service/models/job@Status.cancelled"
-msgid "cancelled"
-msgstr ""
-
-#: service/models/job.ts:90
-#. kind: selection_label
-msgctxt "service/models/job@Status.dispatching"
-msgid "dispatching"
-msgstr ""
-
-#: service/models/job.ts:92
-#. kind: selection_label
-msgctxt "service/models/job@Status.failed"
-msgid "failed"
-msgstr ""
-
-#: service/models/job.ts:89
-#. kind: selection_label
-msgctxt "service/models/job@Status.queued"
-msgid "queued"
-msgstr ""
-
-#: service/models/job.ts:91
-#. kind: selection_label
-msgctxt "service/models/job@Status.succeeded"
-msgid "succeeded"
-msgstr ""
-

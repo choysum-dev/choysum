@@ -1,302 +1,252 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#. kind: menu
-#: web/menu/menus.ts:18
-msgctxt "web/menu/menus@partner.menu.partner_list"
-msgid "伙伴列表"
-msgstr ""
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@partner.menu.partner_list"
+#~ msgid "伙伴列表"
+#~ msgstr ""
 
-#. kind: menu
-#: web/menu/menus.ts:13
-msgctxt "web/menu/menus@partner.menu.root"
-msgid "伙伴管理"
-msgstr ""
+#~ #. kind: menu
+#~ msgctxt "web/menu/menus@partner.menu.root"
+#~ msgid "伙伴管理"
+#~ msgstr ""
 
-#. kind: route
-#: web/route/routes.ts:38
-msgctxt "web/route/routes@partner.route.partner_create"
-msgid "新建伙伴"
-msgstr ""
+#~ #. kind: route
+#~ msgctxt "web/route/routes@partner.route.partner_create"
+#~ msgid "新建伙伴"
+#~ msgstr ""
 
-#. kind: route
-#: web/route/routes.ts:28
-msgctxt "web/route/routes@partner.route.partner_detail"
-msgid "伙伴详情"
-msgstr ""
+#~ #. kind: route
+#~ msgctxt "web/route/routes@partner.route.partner_detail"
+#~ msgid "伙伴详情"
+#~ msgstr ""
 
-#. kind: route
-#: web/route/routes.ts:13
-msgctxt "web/route/routes@partner.route.partner_list"
-msgid "伙伴列表"
-msgstr ""
+#~ #. kind: route
+#~ msgctxt "web/route/routes@partner.route.partner_list"
+#~ msgid "伙伴列表"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:18
-msgctxt "web/views/PartnerContactFormView@AddressId"
-msgid "地址"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@AddressId"
+#~ msgid "地址"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:15
-msgctxt "web/views/PartnerContactFormView@AddressType"
-msgid "地址类型"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@AddressType"
+#~ msgid "地址类型"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:9
-msgctxt "web/views/PartnerContactFormView@ContactRole"
-msgid "角色"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@ContactRole"
+#~ msgid "角色"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:24
-msgctxt "web/views/PartnerContactFormView@Email"
-msgid "邮箱"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@Email"
+#~ msgid "邮箱"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:45
-msgctxt "web/views/PartnerContactFormView@IsActive"
-msgid "启用"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@IsActive"
+#~ msgid "启用"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:42
-msgctxt "web/views/PartnerContactFormView@IsDefault"
-msgid "默认"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@IsDefault"
+#~ msgid "默认"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:33
-msgctxt "web/views/PartnerContactFormView@Mobile"
-msgid "手机"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@Mobile"
+#~ msgid "手机"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:6
-msgctxt "web/views/PartnerContactFormView@Name"
-msgid "姓名/名称"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@Name"
+#~ msgid "姓名/名称"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:27
-msgctxt "web/views/PartnerContactFormView@Phone"
-msgid "电话"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@Phone"
+#~ msgid "电话"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:36
-msgctxt "web/views/PartnerContactFormView@Sequence"
-msgid "排序"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@Sequence"
+#~ msgid "排序"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerContactFormView.vue:18
-msgctxt "web/views/PartnerContactFormView@searchViewTitle"
-msgid "选择地址"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerContactFormView@searchViewTitle"
+#~ msgid "选择地址"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:14
-msgctxt "web/views/PartnerFormView@Code"
-msgid "编码"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@Code"
+#~ msgid "编码"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:17
-msgctxt "web/views/PartnerFormView@CompanyId"
-msgid "所属公司"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@CompanyId"
+#~ msgid "所属公司"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:56
-msgctxt "web/views/PartnerFormView@CountryId"
-msgid "国家"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@CountryId"
+#~ msgid "国家"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:28
-msgctxt "web/views/PartnerFormView@CreatedAt"
-msgid "创建时间"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@CreatedAt"
+#~ msgid "创建时间"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:51
-msgctxt "web/views/PartnerFormView@CurrencyId"
-msgid "默认币种"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@CurrencyId"
+#~ msgid "默认币种"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:42
-msgctxt "web/views/PartnerFormView@CustomerRank"
-msgid "客户等级"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@CustomerRank"
+#~ msgid "客户等级"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:92
-msgctxt "web/views/PartnerFormView@DefaultBillingAddressId"
-msgid "默认开票地址"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@DefaultBillingAddressId"
+#~ msgid "默认开票地址"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:93
-msgctxt "web/views/PartnerFormView@DefaultBillingAddressId.Name"
-msgid "名称"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@DefaultBillingAddressId.Name"
+#~ msgid "名称"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:87
-msgctxt "web/views/PartnerFormView@DefaultContactId"
-msgid "默认联系人"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@DefaultContactId"
+#~ msgid "默认联系人"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:88
-msgctxt "web/views/PartnerFormView@DefaultContactId.Name"
-msgid "名称"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@DefaultContactId.Name"
+#~ msgid "名称"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:97
-msgctxt "web/views/PartnerFormView@DefaultShippingAddressId"
-msgid "默认收货地址"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@DefaultShippingAddressId"
+#~ msgid "默认收货地址"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:98
-msgctxt "web/views/PartnerFormView@DefaultShippingAddressId.Name"
-msgid "名称"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@DefaultShippingAddressId.Name"
+#~ msgid "名称"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:67
-msgctxt "web/views/PartnerFormView@Email"
-msgid "邮箱"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@Email"
+#~ msgid "邮箱"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:25
-msgctxt "web/views/PartnerFormView@IsActive"
-msgid "启用"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@IsActive"
+#~ msgid "启用"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:20
-msgctxt "web/views/PartnerFormView@IsCompany"
-msgid "组织主体"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@IsCompany"
+#~ msgid "组织主体"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:48
-msgctxt "web/views/PartnerFormView@LanguageId"
-msgid "默认语言"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@LanguageId"
+#~ msgid "默认语言"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:73
-msgctxt "web/views/PartnerFormView@Mobile"
-msgid "手机"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@Mobile"
+#~ msgid "手机"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:11
-msgctxt "web/views/PartnerFormView@Name"
-msgid "名称"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@Name"
+#~ msgid "名称"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:70
-msgctxt "web/views/PartnerFormView@Phone"
-msgid "电话"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@Phone"
+#~ msgid "电话"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:76
-msgctxt "web/views/PartnerFormView@Reference"
-msgid "外部参考"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@Reference"
+#~ msgid "外部参考"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:45
-msgctxt "web/views/PartnerFormView@SupplierRank"
-msgid "供应商等级"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@SupplierRank"
+#~ msgid "供应商等级"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:31
-msgctxt "web/views/PartnerFormView@UpdatedAt"
-msgid "更新时间"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@UpdatedAt"
+#~ msgid "更新时间"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:17
-msgctxt "web/views/PartnerFormView@searchViewTitle"
-msgid "选择公司"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
+#~ msgid "选择公司"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:56
-msgctxt "web/views/PartnerFormView@searchViewTitle"
-msgid "选择国家"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
+#~ msgid "选择国家"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:51
-msgctxt "web/views/PartnerFormView@searchViewTitle"
-msgid "选择币种"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
+#~ msgid "选择币种"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerFormView.vue:48
-msgctxt "web/views/PartnerFormView@searchViewTitle"
-msgid "选择语言"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
+#~ msgid "选择语言"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:7
-msgctxt "web/views/PartnerListView@Code"
-msgid "编码"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@Code"
+#~ msgid "编码"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:8
-msgctxt "web/views/PartnerListView@CompanyId"
-msgid "所属公司"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@CompanyId"
+#~ msgid "所属公司"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:9
-msgctxt "web/views/PartnerListView@CustomerRank"
-msgid "客户等级"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@CustomerRank"
+#~ msgid "客户等级"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:11
-msgctxt "web/views/PartnerListView@IsActive"
-msgid "启用"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@IsActive"
+#~ msgid "启用"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:6
-msgctxt "web/views/PartnerListView@Name"
-msgid "名称"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@Name"
+#~ msgid "名称"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:10
-msgctxt "web/views/PartnerListView@SupplierRank"
-msgid "供应商等级"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@SupplierRank"
+#~ msgid "供应商等级"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerListView.vue:12
-msgctxt "web/views/PartnerListView@UpdatedAt"
-msgid "更新时间"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerListView@UpdatedAt"
+#~ msgid "更新时间"
+#~ msgstr ""
 
-#. kind: action
-#: web/views/PartnerListView.vue:32
-msgctxt "web/views/PartnerListView@partner.action.partner_open_detail"
-msgid "打开伙伴详情"
-msgstr ""
+#~ #. kind: action
+#~ msgctxt "web/views/PartnerListView@partner.action.partner_open_detail"
+#~ msgid "打开伙伴详情"
+#~ msgstr ""

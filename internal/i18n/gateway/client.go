@@ -18,9 +18,8 @@ import (
 const internalKeyHeader = "x-choysum-internal-key"
 
 type appTranslations struct {
-	Hash     string
-	Terms    map[string]map[string]map[string]string
-	Metadata map[string]map[string]map[string]map[string]string
+	Hash  string
+	Terms map[string]map[string]map[string]string
 }
 
 // fetchAppTranslations dials {app}.I18n/GetTranslations with internal identity (D1).
@@ -69,62 +68,34 @@ func fetchAppTranslations(ctx context.Context, runtimeScope scope.Scope, app, la
 
 func parseAppTranslations(out map[string]any) *appTranslations {
 	result := &appTranslations{
-		Hash:     strings.TrimSpace(fmt.Sprintf("%v", out["hash"])),
-		Terms:    map[string]map[string]map[string]string{},
-		Metadata: map[string]map[string]map[string]map[string]string{},
+		Hash:  strings.TrimSpace(fmt.Sprintf("%v", out["hash"])),
+		Terms: map[string]map[string]map[string]string{},
 	}
 	if result.Hash == "<nil>" {
 		result.Hash = ""
 	}
-	if raw, ok := out["terms_by_module"].(map[string]any); ok && raw != nil {
-		for mod, byScopeAny := range raw {
-			byScope, ok := byScopeAny.(map[string]any)
-			if !ok {
-				continue
-			}
-			modMap := make(map[string]map[string]string, len(byScope))
-			for scopeKey, bySrcAny := range byScope {
-				bySrc, ok := bySrcAny.(map[string]any)
-				if !ok {
-					continue
-				}
-				srcMap := make(map[string]string, len(bySrc))
-				for src, val := range bySrc {
-					srcMap[src] = fmt.Sprintf("%v", val)
-				}
-				modMap[scopeKey] = srcMap
-			}
-			result.Terms[mod] = modMap
-		}
+	raw, ok := out["terms_by_module"].(map[string]any)
+	if !ok || raw == nil {
+		return result
 	}
-	if raw, ok := out["metadata_by_module"].(map[string]any); ok && raw != nil {
-		for mod, byScopeAny := range raw {
-			byScope, ok := byScopeAny.(map[string]any)
+	for mod, byScopeAny := range raw {
+		byScope, ok := byScopeAny.(map[string]any)
+		if !ok {
+			continue
+		}
+		modMap := make(map[string]map[string]string, len(byScope))
+		for scopeKey, bySrcAny := range byScope {
+			bySrc, ok := bySrcAny.(map[string]any)
 			if !ok {
 				continue
 			}
-			modMap := make(map[string]map[string]map[string]string)
-			for scopeKey, byKindAny := range byScope {
-				byKind, ok := byKindAny.(map[string]any)
-				if !ok {
-					continue
-				}
-				kindMap := make(map[string]map[string]string)
-				for kind, bySrcAny := range byKind {
-					bySrc, ok := bySrcAny.(map[string]any)
-					if !ok {
-						continue
-					}
-					srcMap := make(map[string]string, len(bySrc))
-					for src, val := range bySrc {
-						srcMap[src] = fmt.Sprintf("%v", val)
-					}
-					kindMap[kind] = srcMap
-				}
-				modMap[scopeKey] = kindMap
+			srcMap := make(map[string]string, len(bySrc))
+			for src, val := range bySrc {
+				srcMap[src] = fmt.Sprintf("%v", val)
 			}
-			result.Metadata[mod] = modMap
+			modMap[scopeKey] = srcMap
 		}
+		result.Terms[mod] = modMap
 	}
 	return result
 }

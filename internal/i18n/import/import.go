@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/choysum-dev/choysum/internal/i18n/po"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
+	"github.com/choysum-dev/choysum/internal/i18n/po"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/leonelquinteros/gotext"
@@ -44,7 +44,7 @@ type poTerm struct {
 // ImportModulePo parses poText with gotext and upserts packaged terms for (application, module, lang).
 // Existing Source=override rows are not overwritten. Obsolete (#~) entries are ignored by gotext
 // and never DELETE existing DB rows (D12a). Entries without msgctxt are rejected and logged (D12c).
-// Kind defaults to literal; `#. kind: <name>` overrides (D19).
+// Kind defaults to literal; an explicit `#. kind: <name>` comment overrides it.
 func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, module, lang string, poText []byte) (*ImportStats, error) {
 	application = strings.TrimSpace(application)
 	module = strings.TrimSpace(module)

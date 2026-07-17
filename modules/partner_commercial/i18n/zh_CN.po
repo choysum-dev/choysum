@@ -1,56 +1,47 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:15
-msgctxt "web/views/PartnerIdentifierFormView@CountryId"
-msgid "国家"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@CountryId"
+#~ msgid "国家"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:6
-msgctxt "web/views/PartnerIdentifierFormView@IdentifierType"
-msgid "类型"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@IdentifierType"
+#~ msgid "类型"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:36
-msgctxt "web/views/PartnerIdentifierFormView@IsActive"
-msgid "启用"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@IsActive"
+#~ msgid "启用"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:33
-msgctxt "web/views/PartnerIdentifierFormView@IsPrimary"
-msgid "主标识"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@IsPrimary"
+#~ msgid "主标识"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:18
-msgctxt "web/views/PartnerIdentifierFormView@IssuedBy"
-msgid "签发机构"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@IssuedBy"
+#~ msgid "签发机构"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:24
-msgctxt "web/views/PartnerIdentifierFormView@ValidFrom"
-msgid "生效时间"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@ValidFrom"
+#~ msgid "生效时间"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:27
-msgctxt "web/views/PartnerIdentifierFormView@ValidTo"
-msgid "失效时间"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@ValidTo"
+#~ msgid "失效时间"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:9
-msgctxt "web/views/PartnerIdentifierFormView@Value"
-msgid "标识值"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@Value"
+#~ msgid "标识值"
+#~ msgstr ""
 
-#. kind: field_label
-#: web/views/PartnerIdentifierFormView.vue:15
-msgctxt "web/views/PartnerIdentifierFormView@searchViewTitle"
-msgid "选择国家"
-msgstr ""
+#~ #. kind: field_label
+#~ msgctxt "web/views/PartnerIdentifierFormView@searchViewTitle"
+#~ msgid "选择国家"
+#~ msgstr ""
