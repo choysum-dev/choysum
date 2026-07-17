@@ -101,6 +101,14 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	catalogHash := CatalogHash(appHashes)
+	etag := catalogETag(catalogHash)
+	w.Header().Set("Cache-Control", "private, no-cache")
+	w.Header().Set("ETag", etag)
+	if ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+
 	resp := map[string]any{
 		"lang":   lang,
 		"locale": LangToLocale(lang),
@@ -130,6 +138,28 @@ func (h *handler) fetchApp(ctx context.Context, app, lang string, moduleNames []
 		return h.fetch(ctx, app, lang, moduleNames)
 	}
 	return fetchAppTranslations(ctx, h.runtimeScope, app, lang, moduleNames)
+}
+
+func catalogETag(catalogHash string) string {
+	return `W/"i18n-` + catalogHash + `"`
+}
+
+func ifNoneMatch(header, currentETag string) bool {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return false
+	}
+	current := strings.TrimPrefix(strings.TrimSpace(currentETag), "W/")
+	for _, candidate := range strings.Split(header, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "*" {
+			return true
+		}
+		if strings.TrimPrefix(candidate, "W/") == current {
+			return true
+		}
+	}
+	return false
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload map[string]any) {
