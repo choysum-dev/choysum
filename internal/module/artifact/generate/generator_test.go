@@ -324,7 +324,15 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		ModelTable: "crm_company",
 		ModuleId:   mod.Id,
 	}
-	models := []*meta.IrModel{olderSamePath, base, extension, other}
+	synthetic := &meta.IrModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "model-synthetic", Valid: true}, UpdatedAt: time.Date(2026, 4, 8, 12, 0, 0, 0, time.UTC)},
+		Name:      "I18n",
+		Path:      "go://i18n/crm",
+		ModuleId:  mod.Id,
+		Abstract:  true,
+		Readonly:  true,
+	}
+	models := []*meta.IrModel{olderSamePath, base, extension, other, synthetic}
 	for _, model := range models {
 		if err := runtimeScope.db.Create(model).Error; err != nil {
 			t.Fatalf("create model %s: %v", model.Name, err)
@@ -345,6 +353,7 @@ func TestGetApplicationLoadsCanonicalModelsAndFiltersServices(t *testing.T) {
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-a", Valid: true}}, Name: "zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-b", Valid: true}}, Name: "Alpha", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
 		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-c", Valid: true}}, Name: "Zeta", AccessibilityModifier: "public", IsStatic: true, ModelId: extension.Id},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "service-i18n", Valid: true}}, Name: "GetTranslations", AccessibilityModifier: "public", IsStatic: true, ModelId: synthetic.Id},
 	}
 	for _, service := range services {
 		if err := runtimeScope.db.Create(service).Error; err != nil {
