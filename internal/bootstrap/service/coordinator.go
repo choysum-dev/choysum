@@ -467,6 +467,26 @@ func (c *coordinator) moduleInstallTimeout() time.Duration {
 	return time.Duration(runtimeTimeoutSeconds) * time.Second
 }
 
+// withInstallTransaction keeps bootstrap module installation aligned with the
+// CLI install path: lifecycle database writes commit only after the pipeline
+// succeeds. Meta-table bootstrap may still commit independently via RequiresNew.
+func (c *coordinator) withInstallTransaction(
+	ctx context.Context,
+	fn func(txScope scope.Scope, txCtx context.Context) error,
+) error {
+	txRoot := c.runtimeScope.WithContext(ctx)
+	if txRoot == nil {
+		txRoot = c.runtimeScope
+	}
+	return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+		txCtx := ctx
+		if tx != nil && tx.Context() != nil {
+			txCtx = tx.Context()
+		}
+		return fn(txScope, txCtx)
+	})
+}
+
 func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operationID string) error {
 	if c.runtimeScope == nil {
 		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "scope is not available", nil)
@@ -513,45 +533,44 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		}
 	})
 
-	installScope := c.runtimeScope.WithContext(installCtx)
-	if installScope == nil {
-		installScope = c.runtimeScope
-	}
-	executor, err := jsexecutor.NewCompilerExecutor(installScope)
-	if err != nil {
-		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to prepare the module installer", err)
-	}
-	if err := executor.Start(); err != nil {
-		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to start the module installer", err)
-	}
-	defer executor.Stop()
-
 	c.store.markStageDetail(operationID, "resolving core module installation plan...")
 	spinnerTicker.SetMessage("document: preparing metadata tables")
 
-	moduleLifecycle := lifecycle.NewService(installScope, executor)
-	if err := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false}); err != nil {
+	installErr := c.withInstallTransaction(installCtx, func(txScope scope.Scope, txCtx context.Context) error {
+		executor, err := jsexecutor.NewCompilerExecutor(txScope)
+		if err != nil {
+			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to prepare the module installer", err)
+		}
+		if err := executor.Start(); err != nil {
+			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to start the module installer", err)
+		}
+		defer executor.Stop()
+
+		moduleLifecycle := lifecycle.NewService(txScope, executor)
+		return moduleLifecycle.Install(txCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false})
+	})
+	if installErr != nil {
 		if progress != nil {
 			progress.Done("✗", "core module installation failed")
 		}
 		// Classify the error to produce an actionable message.
-		if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(installErr, context.DeadlineExceeded) {
 			return newBootstrapError(
 				bootstrapErrCodeModuleInstallTimeout,
 				"module installation timed out after "+installTimeout.String()+". "+
 					"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
-				err,
+				installErr,
 			)
 		}
-		if isNetworkError(err) {
+		if isNetworkError(installErr) {
 			return newBootstrapError(
 				bootstrapErrCodeRuntimePrepare,
 				"unable to download required modules. "+
 					"Check your network connection or place the required module sources in ModulesPath.",
-				err,
+				installErr,
 			)
 		}
-		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", err)
+		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", installErr)
 	}
 
 	c.store.markStageDetail(operationID, "core module installation completed")
