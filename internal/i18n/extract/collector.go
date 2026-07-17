@@ -24,8 +24,13 @@ type CollectOptions struct {
 	PathAlias map[string]string
 }
 
-// CollectScript extracts `_t` / `_lt` literal terms from TS/TSX (or Vue script) source.
+// CollectScript extracts `_t` / `_lt` / `_tr` literal terms from TS/TSX (or Vue script) source.
 func CollectScript(opts CollectOptions, content string) ([]TermOccurrence, []ExtractIssue) {
+	terms, issues, _ := collectScript(opts, content)
+	return terms, issues
+}
+
+func collectScript(opts CollectOptions, content string) ([]TermOccurrence, []ExtractIssue, map[string]string) {
 	fakePath := opts.RelPath
 	if fakePath == "" {
 		fakePath = "anonymous.ts"
@@ -51,30 +56,32 @@ func CollectScript(opts CollectOptions, content string) ([]TermOccurrence, []Ext
 			SourcePath: opts.RelPath,
 			Line:       1,
 			Col:        1,
-		}}
+		}}, nil
 	}
 
 	c := &scriptCollector{
-		opts:            opts,
-		ctx:             ctx,
-		scopePath:       ScopePathFromRelPath(opts.RelPath),
-		translateIdents: map[string]bool{},
+		opts:                   opts,
+		ctx:                    ctx,
+		scopePath:              ScopePathFromRelPath(opts.RelPath),
+		translateIdents:        map[string]bool{},
+		translateDefaultScopes: map[string]string{},
 	}
 	for _, stmt := range ctx.Source.Statements.Nodes {
 		c.walk(stmt, "")
 	}
-	return c.terms, c.issues
+	return c.terms, c.issues, c.translateDefaultScopes
 }
 
 type scriptCollector struct {
-	opts            CollectOptions
-	ctx             *tsgoctx.ParseCtx
-	scopePath       string
-	scopeStack      []string
-	enclosing       []string
-	translateIdents map[string]bool
-	terms           []TermOccurrence
-	issues          []ExtractIssue
+	opts                   CollectOptions
+	ctx                    *tsgoctx.ParseCtx
+	scopePath              string
+	scopeStack             []string
+	enclosing              []string
+	translateIdents        map[string]bool
+	translateDefaultScopes map[string]string
+	terms                  []TermOccurrence
+	issues                 []ExtractIssue
 }
 
 func (c *scriptCollector) walk(node *tsast.Node, pendingLocation string) {
@@ -167,15 +174,20 @@ func (c *scriptCollector) tryRegisterCreateTranslate(call *tsast.Node, nameNode 
 	if callExpr == nil {
 		return false
 	}
-	if !isIdentifierNamed(c.ctx, callExpr.Expression, "createTranslate") {
+	factoryName := strings.TrimSpace(c.ctx.NodeText(callExpr.Expression))
+	if factoryName != "createTranslate" {
 		return false
 	}
 
 	moduleArg := ""
+	defaultScope := ""
 	args := callExpr.Arguments
 	if args != nil && len(args.Nodes) > 0 {
 		if lit, ok := stringLiteralValue(c.ctx, args.Nodes[0]); ok {
 			moduleArg = lit
+		}
+		if len(args.Nodes) > 1 {
+			defaultScope, _ = parseTranslateOptions(c.ctx, args.Nodes[1])
 		}
 	}
 	if moduleArg != "" && c.opts.ModuleName != "" && moduleArg != c.opts.ModuleName {
@@ -183,18 +195,24 @@ func (c *scriptCollector) tryRegisterCreateTranslate(call *tsast.Node, nameNode 
 		c.issues = append(c.issues, ExtractIssue{
 			Severity:   IssueSeverityWarn,
 			Code:       IssueModuleMismatch,
-			Message:    fmt.Sprintf("createTranslate(%q) does not match module %q", moduleArg, c.opts.ModuleName),
+			Message:    fmt.Sprintf("%s(%q) does not match module %q", factoryName, moduleArg, c.opts.ModuleName),
 			SourcePath: c.opts.RelPath,
 			Line:       line,
 			Col:        col,
 		})
 	}
 
-	registerTranslateBindings(c.translateIdents, c.ctx, nameNode)
+	registerTranslateBindings(c.translateIdents, c.translateDefaultScopes, defaultScope, c.ctx, nameNode)
 	return true
 }
 
-func registerTranslateBindings(idents map[string]bool, ctx *tsgoctx.ParseCtx, nameNode *tsast.Node) {
+func registerTranslateBindings(
+	idents map[string]bool,
+	defaultScopes map[string]string,
+	defaultScope string,
+	ctx *tsgoctx.ParseCtx,
+	nameNode *tsast.Node,
+) {
 	if nameNode == nil {
 		return
 	}
@@ -221,9 +239,12 @@ func registerTranslateBindings(idents map[string]bool, ctx *tsgoctx.ParseCtx, na
 			if el.Name() != nil && el.Name().Kind == tsast.KindIdentifier {
 				localName = strings.TrimSpace(ctx.NodeText(el.Name()))
 			}
-			if propName == "_t" || propName == "_lt" || localName == "_t" || localName == "_lt" {
+			if isTranslateIdentifier(propName) || isTranslateIdentifier(localName) {
 				if localName != "" {
 					idents[localName] = true
+					if defaultScope != "" {
+						defaultScopes[localName] = defaultScope
+					}
 				}
 			}
 		}
@@ -288,12 +309,16 @@ func (c *scriptCollector) isTranslateCallee(expr *tsast.Node) bool {
 	}
 	if expr.Kind == tsast.KindIdentifier {
 		name := strings.TrimSpace(c.ctx.NodeText(expr))
-		if name == "_t" || name == "_lt" {
+		if isTranslateIdentifier(name) {
 			return true
 		}
 		return c.translateIdents[name]
 	}
 	return false
+}
+
+func isTranslateIdentifier(name string) bool {
+	return name == "_t" || name == "_lt" || name == "_tr"
 }
 
 func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast.CallExpression, pendingLocation string) {
@@ -328,6 +353,10 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 	kind := KindLiteral
 	if len(args.Nodes) > 1 {
 		manualScope, kind = parseTranslateOptions(c.ctx, args.Nodes[1])
+	}
+	if manualScope == "" && callExpr.Expression != nil && callExpr.Expression.Kind == tsast.KindIdentifier {
+		calleeName := strings.TrimSpace(c.ctx.NodeText(callExpr.Expression))
+		manualScope = c.translateDefaultScopes[calleeName]
 	}
 
 	location := pendingLocation

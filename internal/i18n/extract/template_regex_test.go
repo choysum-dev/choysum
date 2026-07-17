@@ -22,7 +22,7 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 
 	want := map[string]bool{"Hello": false, "Lazy": false, "Name": false, "Title": false}
 	for _, term := range terms {
-		if term.Scope != "web/widgets/Box@template" {
+		if term.Scope != "web/widgets/Box" {
 			t.Fatalf("unexpected scope %q for %q", term.Scope, term.Src)
 		}
 		if _, ok := want[term.Src]; ok {

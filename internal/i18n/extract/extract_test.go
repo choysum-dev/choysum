@@ -54,7 +54,7 @@ const label = _t('Page')
 		`msgid "Sign in"`,
 		`msgctxt "manual.box"`,
 		`msgid "Boxed"`,
-		`msgctxt "web/pages/Home@template"`,
+		`msgctxt "web/pages/Home"`,
 		`msgid "Welcome"`,
 		`msgctxt "web/pages/Home@label"`,
 		`msgid "Page"`,

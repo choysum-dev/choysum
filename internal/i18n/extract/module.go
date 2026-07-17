@@ -31,7 +31,7 @@ type ExtractModuleOptions struct {
 	Metadata bool
 }
 
-// ExtractModule scans a module tree for `_t` / `_lt` literals (and metadata when enabled)
+// ExtractModule scans a module tree for `_t` / `_lt` / `_tr` literals (and metadata when enabled)
 // and optionally writes pot. Metadata defaults to on (S7); pass ExtractModuleWithOptions to disable.
 func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]string, writePot bool) (*ModuleResult, error) {
 	return ExtractModuleWithOptions(moduleRoot, moduleName, ExtractModuleOptions{

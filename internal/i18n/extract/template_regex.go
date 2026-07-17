@@ -24,10 +24,17 @@ var (
 )
 
 // CollectTemplateRegex extracts literal `_t` / `_lt` calls from Vue template HTML text.
-// Default Scope is always path@template (no withI18nScope / enclosing symbol).
+// Standalone extraction uses the component path; CollectVue may supply a bound default scope.
 func CollectTemplateRegex(opts CollectOptions, templateHTML string) ([]TermOccurrence, []ExtractIssue) {
+	return collectTemplateRegex(opts, templateHTML, "")
+}
+
+func collectTemplateRegex(opts CollectOptions, templateHTML string, boundScope string) ([]TermOccurrence, []ExtractIssue) {
 	scopePath := ScopePathFromRelPath(opts.RelPath)
-	scope := FormatScope(scopePath, TemplateLocation)
+	scope := strings.TrimSpace(boundScope)
+	if scope == "" {
+		scope = scopePath
+	}
 
 	var terms []TermOccurrence
 	var issues []ExtractIssue

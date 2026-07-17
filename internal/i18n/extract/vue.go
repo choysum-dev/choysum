@@ -27,18 +27,22 @@ func CollectVue(opts CollectOptions, content string) ([]TermOccurrence, []Extrac
 
 	var terms []TermOccurrence
 	var issues []ExtractIssue
+	templateScope := ""
 
 	for _, scriptContent := range scriptContents {
 		if strings.TrimSpace(scriptContent) == "" {
 			continue
 		}
-		t, i := CollectScript(opts, scriptContent)
+		t, i, defaultScopes := collectScript(opts, scriptContent)
 		terms = append(terms, t...)
 		issues = append(issues, i...)
+		if scope := defaultScopes["_t"]; templateScope == "" && scope != "" {
+			templateScope = scope
+		}
 	}
 
 	if templateHTML != "" {
-		t, i := CollectTemplateRegex(opts, templateHTML)
+		t, i := collectTemplateRegex(opts, templateHTML, templateScope)
 		terms = append(terms, t...)
 		issues = append(issues, i...)
 	}

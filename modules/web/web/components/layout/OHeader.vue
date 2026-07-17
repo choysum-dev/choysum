@@ -152,15 +152,15 @@ import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDro
 import { QuestionFilled } from '@element-plus/icons-vue';
 import { MenuOutlined, AppsOutlined, TranslateOutlined, ArrowDropDownOutlined } from '@vicons/material';
 import defaultLogo from '@/web/web/assets/logo.svg';
-import { createFeTranslate } from '@/web/web/i18n/fe_translate';
+import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createFeTranslate('web');
+const { _t } = createTranslate('web');
 // Scopes must match extract auto-locations (binding names).
-const expandMenuLabel = _t('Expand menu', { path: 'web/components/layout/OHeader', location: 'expandMenuLabel' });
-const collapseMenuLabel = _t('Collapse menu', { path: 'web/components/layout/OHeader', location: 'collapseMenuLabel' });
-const selectAppLabel = _t('Select an app', { path: 'web/components/layout/OHeader', location: 'selectAppLabel' });
-const switchLanguageLabel = _t('Switch language', { path: 'web/components/layout/OHeader', location: 'switchLanguageLabel' });
-const getHelpLabel = _t('Get help', { path: 'web/components/layout/OHeader', location: 'getHelpLabel' });
+const expandMenuLabel = computed(() => _t('Expand menu', { path: 'web/components/layout/OHeader', location: 'expandMenuLabel' }));
+const collapseMenuLabel = computed(() => _t('Collapse menu', { path: 'web/components/layout/OHeader', location: 'collapseMenuLabel' }));
+const selectAppLabel = computed(() => _t('Select an app', { path: 'web/components/layout/OHeader', location: 'selectAppLabel' }));
+const switchLanguageLabel = computed(() => _t('Switch language', { path: 'web/components/layout/OHeader', location: 'switchLanguageLabel' }));
+const getHelpLabel = computed(() => _t('Get help', { path: 'web/components/layout/OHeader', location: 'getHelpLabel' }));
 function homeAriaLabel(name: string) {
   return _t('%s - Home', { path: 'web/components/layout/OHeader', location: 'homeAriaLabel' }, name);
 }

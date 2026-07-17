@@ -31,10 +31,11 @@ func TestFormatScopeAndResolveI18nScope(t *testing.T) {
 
 func TestCollectScriptLiteralsAndScopes(t *testing.T) {
 	content := `
-const { _t, _lt } = createTranslate('auth')
+const { _t, _lt, _tr } = createTranslate('auth')
 
 const saveLabel = _t('Save')
 const lazyTitle = _lt('Access Error')
+const reactiveTitle = _tr('Reactive title')
 
 function submitForm() {
   return _t('Submit')
@@ -81,6 +82,9 @@ _t(dynamicVar)
 	if got := bySrc["Access Error"]; len(got) != 1 || got[0].Scope != "web/pages/Login@lazyTitle" {
 		t.Fatalf("unexpected _lt term: %#v", got)
 	}
+	if got := bySrc["Reactive title"]; len(got) != 1 || got[0].Scope != "web/pages/Login@reactiveTitle" {
+		t.Fatalf("unexpected _tr term: %#v", got)
+	}
 	if got := bySrc["Submit"]; len(got) != 1 || got[0].Scope != "web/pages/Login@submitForm" {
 		t.Fatalf("unexpected function scope: %#v", got)
 	}
@@ -97,6 +101,33 @@ _t(dynamicVar)
 	}
 	if !foundNonLiteral {
 		t.Fatalf("expected non_literal_msgid warn, got %#v", issues)
+	}
+}
+
+func TestCollectScriptUsesCreateTranslateDefaultScope(t *testing.T) {
+	content := `
+const { _t, _tr: reactiveTranslate } = createTranslate('auth', { scope: 'web/pages/Login' })
+const title = reactiveTranslate('User Login')
+const override = _t('Override', { scope: 'manual.override' })
+`
+
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/pages/Login.vue",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+
+	bySrc := map[string]TermOccurrence{}
+	for _, term := range terms {
+		bySrc[term.Src] = term
+	}
+	if got := bySrc["User Login"].Scope; got != "web/pages/Login" {
+		t.Fatalf("default scope = %q", got)
+	}
+	if got := bySrc["Override"].Scope; got != "manual.override" {
+		t.Fatalf("override scope = %q", got)
 	}
 }
 
@@ -140,9 +171,9 @@ const title = _t('Page Title')
 		switch {
 		case term.Src == "Page Title" && term.Scope == "web/pages/Home@title":
 			scriptTitle = true
-		case term.Src == "Welcome" && term.Scope == "web/pages/Home@template":
+		case term.Src == "Welcome" && term.Scope == "web/pages/Home":
 			templateWelcome = true
-		case term.Src == "Click me" && term.Scope == "web/pages/Home@template":
+		case term.Src == "Click me" && term.Scope == "web/pages/Home":
 			templateClick = true
 		}
 	}
@@ -158,5 +189,32 @@ const title = _t('Page Title')
 	}
 	if !foundTemplateNonLiteral {
 		t.Fatalf("expected template non-literal warn, got %#v", issues)
+	}
+}
+
+func TestCollectVueTemplateUsesCreateTranslateDefaultScope(t *testing.T) {
+	content := `<template>
+  <h1>{{ _t('User Login') }}</h1>
+  <input :placeholder="_t('Enter username')" />
+</template>
+<script setup lang="ts">
+const { _t } = createTranslate('auth', { scope: 'web/pages/Login' })
+</script>
+`
+
+	terms, issues := CollectVue(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/pages/Login.vue",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 2 {
+		t.Fatalf("term count = %d, terms=%#v", len(terms), terms)
+	}
+	for _, term := range terms {
+		if term.Scope != "web/pages/Login" {
+			t.Fatalf("scope for %q = %q", term.Src, term.Scope)
+		}
 	}
 }

@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <el-card class="login-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h3>{{ labels.title }}</h3>
+          <h3>{{ _t('User Login') }}</h3>
         </div>
       </template>
 
@@ -17,25 +17,25 @@ SPDX-License-Identifier: Apache-2.0
       </transition>
 
       <el-form ref="loginForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleLogin">
-        <el-form-item prop="username" :label="labels.username">
-          <el-input v-model="form.username" :placeholder="labels.usernamePlaceholder" :prefix-icon="User" autocomplete="username" />
+        <el-form-item prop="username" :label="_t('Username')">
+          <el-input v-model="form.username" :placeholder="_t('Enter username')" :prefix-icon="User" autocomplete="username" />
         </el-form-item>
 
-        <el-form-item prop="password" :label="labels.password">
-          <el-input v-model="form.password" :placeholder="labels.passwordPlaceholder" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
+        <el-form-item prop="password" :label="_t('Password')">
+          <el-input v-model="form.password" :placeholder="_t('Enter password')" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
         </el-form-item>
 
         <div class="login-options">
-          <el-checkbox v-model="form.rememberMe">{{ labels.rememberMe }}</el-checkbox>
+          <el-checkbox v-model="form.rememberMe">{{ _t('Remember me') }}</el-checkbox>
         </div>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">{{ labels.submit }}</el-button>
+          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">{{ _t('Log In') }}</el-button>
         </el-form-item>
 
         <div v-if="showRegisterLink" class="register-link">
-          {{ labels.noAccount }}
-          <router-link to="/register">{{ labels.registerNow }}</router-link>
+          {{ _t("Don't have an account?") }}
+          <router-link to="/register">{{ _t('Register now') }}</router-link>
         </div>
       </el-form>
     </el-card>
@@ -52,21 +52,10 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 import type { FormRules } from 'element-plus';
-import { createFeTranslate } from '@/web/web/i18n/fe_translate';
+import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore, langToLocale } from '@/web/web/stores/i18nStore';
 
-const { _t } = createFeTranslate('auth');
-const labels = {
-  title: _t('User Login', { scope: 'web/pages/Login' }),
-  username: _t('Username', { scope: 'web/pages/Login' }),
-  password: _t('Password', { scope: 'web/pages/Login' }),
-  usernamePlaceholder: _t('Enter username', { scope: 'web/pages/Login' }),
-  passwordPlaceholder: _t('Enter password', { scope: 'web/pages/Login' }),
-  rememberMe: _t('Remember me', { scope: 'web/pages/Login' }),
-  submit: _t('Log In', { scope: 'web/pages/Login' }),
-  noAccount: _t("Don't have an account?", { scope: 'web/pages/Login' }),
-  registerNow: _t('Register now', { scope: 'web/pages/Login' }),
-};
+const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
 /**
  * Form model for the login page.
@@ -89,22 +78,22 @@ const form = reactive<LoginFormData>({
   rememberMe: true,
 });
 
-const rules: FormRules<LoginFormData> = {
+const rules = computed<FormRules<LoginFormData>>(() => ({
   username: [
     {
       required: true,
-      message: labels.usernamePlaceholder,
+      message: _t('Enter username'),
       trigger: 'blur',
     },
   ],
   password: [
     {
       required: true,
-      message: labels.passwordPlaceholder,
+      message: _t('Enter password'),
       trigger: 'blur',
     },
   ],
-};
+}));
 
 const error = ref('');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);
@@ -167,7 +156,7 @@ async function handleLogin() {
       // Show translated message; keep machine code on the error object for FE routing.
       error.value = err.message;
     } else {
-      error.value = _t('Login failed. Please try again later.', { scope: 'web/pages/Login' });
+      error.value = _t('Login failed. Please try again later.');
       console.error('Login flow failed:', err);
     }
   }

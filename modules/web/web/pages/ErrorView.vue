@@ -24,9 +24,9 @@ import { useI18nStore } from '@/web/web/stores';
 import OPage from '@/web/web/components/page/OPage.vue';
 import { ElButton, ElResult, ElIcon, ElDivider } from 'element-plus';
 import { WarningFilled, CircleCloseFilled, QuestionFilled } from '@element-plus/icons-vue';
-import { createFeTranslate } from '@/web/web/i18n/fe_translate';
+import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createFeTranslate('web');
+const { _t } = createTranslate('web');
 
 // Define local types.
 type ResultStatus = 'success' | 'warning' | 'info' | 'error' | '404' | '403' | '500';
