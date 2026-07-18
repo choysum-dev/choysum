@@ -58,12 +58,13 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CountryFormView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/CountryFormView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<Country>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
-const countryActions = defineModelActions('base.Country', { entityTitle: 'Country' });
+const countryActions = defineModelActions('base.Country', { entityTitle: _tRef('Country') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 </script>

@@ -386,82 +386,82 @@ msgctxt "service/models/uom"
 msgid "UoM Name must be unique within Category"
 msgstr ""
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:17
 msgctxt "web/menu/menus"
 msgid "Address Management"
 msgstr ""
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "Bank Management"
 msgstr ""
 
-#: web/menu/menus.ts:22
+#: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "City Management"
 msgstr ""
 
-#: web/menu/menus.ts:17
+#: web/menu/menus.ts:16
 msgctxt "web/menu/menus"
 msgid "Company Management"
 msgstr ""
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Country Management"
 msgstr ""
 
-#: web/menu/menus.ts:23
+#: web/menu/menus.ts:22
 msgctxt "web/menu/menus"
 msgid "Currency Management"
 msgstr ""
 
-#: web/menu/menus.ts:24
+#: web/menu/menus.ts:23
 msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr ""
 
-#: web/menu/menus.ts:25
+#: web/menu/menus.ts:24
 msgctxt "web/menu/menus"
 msgid "Language Management"
 msgstr ""
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:33
 msgctxt "web/menu/menus"
 msgid "Locale Management"
 msgstr ""
 
-#: web/menu/menus.ts:13
+#: web/menu/menus.ts:12
 msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
 
-#: web/menu/menus.ts:21
+#: web/menu/menus.ts:20
 msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr ""
 
-#: web/menu/menus.ts:27
+#: web/menu/menus.ts:26
 msgctxt "web/menu/menus"
 msgid "Terminology Editor"
 msgstr ""
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr ""
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr ""
@@ -681,6 +681,11 @@ msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr ""
 
+#: web/views/AddressFormView.vue:37
+msgctxt "web/views/AddressFormView"
+msgid "Address"
+msgstr ""
+
 #: web/views/AddressFormView.vue:4
 msgctxt "web/views/AddressFormView"
 msgid "Address Information"
@@ -701,9 +706,29 @@ msgctxt "web/views/AddressFormView"
 msgid "City"
 msgstr ""
 
+#: web/views/AddressFormView.vue:37
+msgctxt "web/views/AddressFormView"
+msgid "Copy Address"
+msgstr ""
+
 #: web/views/AddressFormView.vue:9
 msgctxt "web/views/AddressFormView"
 msgid "Country"
+msgstr ""
+
+#: web/views/AddressFormView.vue:37
+msgctxt "web/views/AddressFormView"
+msgid "Create Address"
+msgstr ""
+
+#: web/views/AddressFormView.vue:37
+msgctxt "web/views/AddressFormView"
+msgid "Delete Address"
+msgstr ""
+
+#: web/views/AddressFormView.vue:37
+msgctxt "web/views/AddressFormView"
+msgid "Edit Address"
 msgstr ""
 
 #: web/views/AddressFormView.vue:6
@@ -736,6 +761,11 @@ msgctxt "web/views/AddressFormView"
 msgid "ZIP"
 msgstr ""
 
+#: web/views/AddressListView.vue:19
+msgctxt "web/views/AddressListView"
+msgid "Address"
+msgstr ""
+
 #: web/views/AddressListView.vue:6
 msgctxt "web/views/AddressListView"
 msgid "Address Line 1"
@@ -746,9 +776,29 @@ msgctxt "web/views/AddressListView"
 msgid "City"
 msgstr ""
 
+#: web/views/AddressListView.vue:19
+msgctxt "web/views/AddressListView"
+msgid "Copy Address"
+msgstr ""
+
 #: web/views/AddressListView.vue:8
 msgctxt "web/views/AddressListView"
 msgid "Country"
+msgstr ""
+
+#: web/views/AddressListView.vue:19
+msgctxt "web/views/AddressListView"
+msgid "Create Address"
+msgstr ""
+
+#: web/views/AddressListView.vue:19
+msgctxt "web/views/AddressListView"
+msgid "Delete Address"
+msgstr ""
+
+#: web/views/AddressListView.vue:19
+msgctxt "web/views/AddressListView"
+msgid "Edit Address"
 msgstr ""
 
 #: web/views/AddressListView.vue:5
@@ -781,6 +831,11 @@ msgctxt "web/views/BankFormView"
 msgid "BIC"
 msgstr ""
 
+#: web/views/BankFormView.vue:29
+msgctxt "web/views/BankFormView"
+msgid "Bank"
+msgstr ""
+
 #: web/views/BankFormView.vue:4
 msgctxt "web/views/BankFormView"
 msgid "Bank Information"
@@ -791,9 +846,29 @@ msgctxt "web/views/BankFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/BankFormView.vue:29
+msgctxt "web/views/BankFormView"
+msgid "Copy Bank"
+msgstr ""
+
 #: web/views/BankFormView.vue:11
 msgctxt "web/views/BankFormView"
 msgid "Country"
+msgstr ""
+
+#: web/views/BankFormView.vue:29
+msgctxt "web/views/BankFormView"
+msgid "Create Bank"
+msgstr ""
+
+#: web/views/BankFormView.vue:29
+msgctxt "web/views/BankFormView"
+msgid "Delete Bank"
+msgstr ""
+
+#: web/views/BankFormView.vue:29
+msgctxt "web/views/BankFormView"
+msgid "Edit Bank"
 msgstr ""
 
 #: web/views/BankFormView.vue:6
@@ -801,7 +876,7 @@ msgctxt "web/views/BankFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/BankFormView.vue:23
+#: web/views/BankFormView.vue:24
 msgctxt "web/views/BankFormView"
 msgid "Required"
 msgstr ""
@@ -826,14 +901,39 @@ msgctxt "web/views/BankListView"
 msgid "BIC"
 msgstr ""
 
+#: web/views/BankListView.vue:20
+msgctxt "web/views/BankListView"
+msgid "Bank"
+msgstr ""
+
 #: web/views/BankListView.vue:6
 msgctxt "web/views/BankListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/BankListView.vue:20
+msgctxt "web/views/BankListView"
+msgid "Copy Bank"
+msgstr ""
+
 #: web/views/BankListView.vue:8
 msgctxt "web/views/BankListView"
 msgid "Country"
+msgstr ""
+
+#: web/views/BankListView.vue:20
+msgctxt "web/views/BankListView"
+msgid "Create Bank"
+msgstr ""
+
+#: web/views/BankListView.vue:20
+msgctxt "web/views/BankListView"
+msgid "Delete Bank"
+msgstr ""
+
+#: web/views/BankListView.vue:20
+msgctxt "web/views/BankListView"
+msgid "Edit Bank"
 msgstr ""
 
 #: web/views/BankListView.vue:5
@@ -846,6 +946,11 @@ msgctxt "web/views/CityFormView"
 msgid "Active"
 msgstr ""
 
+#: web/views/CityFormView.vue:30
+msgctxt "web/views/CityFormView"
+msgid "City"
+msgstr ""
+
 #: web/views/CityFormView.vue:4
 msgctxt "web/views/CityFormView"
 msgid "City Information"
@@ -856,9 +961,29 @@ msgctxt "web/views/CityFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CityFormView.vue:30
+msgctxt "web/views/CityFormView"
+msgid "Copy City"
+msgstr ""
+
 #: web/views/CityFormView.vue:11
 msgctxt "web/views/CityFormView"
 msgid "Country"
+msgstr ""
+
+#: web/views/CityFormView.vue:30
+msgctxt "web/views/CityFormView"
+msgid "Create City"
+msgstr ""
+
+#: web/views/CityFormView.vue:30
+msgctxt "web/views/CityFormView"
+msgid "Delete City"
+msgstr ""
+
+#: web/views/CityFormView.vue:30
+msgctxt "web/views/CityFormView"
+msgid "Edit City"
 msgstr ""
 
 #: web/views/CityFormView.vue:6
@@ -866,7 +991,7 @@ msgctxt "web/views/CityFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/CityFormView.vue:24
+#: web/views/CityFormView.vue:25
 msgctxt "web/views/CityFormView"
 msgid "Required"
 msgstr ""
@@ -891,14 +1016,39 @@ msgctxt "web/views/CityListView"
 msgid "Active"
 msgstr ""
 
+#: web/views/CityListView.vue:20
+msgctxt "web/views/CityListView"
+msgid "City"
+msgstr ""
+
 #: web/views/CityListView.vue:6
 msgctxt "web/views/CityListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CityListView.vue:20
+msgctxt "web/views/CityListView"
+msgid "Copy City"
+msgstr ""
+
 #: web/views/CityListView.vue:7
 msgctxt "web/views/CityListView"
 msgid "Country"
+msgstr ""
+
+#: web/views/CityListView.vue:20
+msgctxt "web/views/CityListView"
+msgid "Create City"
+msgstr ""
+
+#: web/views/CityListView.vue:20
+msgctxt "web/views/CityListView"
+msgid "Delete City"
+msgstr ""
+
+#: web/views/CityListView.vue:20
+msgctxt "web/views/CityListView"
+msgid "Edit City"
 msgstr ""
 
 #: web/views/CityListView.vue:5
@@ -926,9 +1076,34 @@ msgctxt "web/views/CompanyFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CompanyFormView.vue:44
+msgctxt "web/views/CompanyFormView"
+msgid "Company"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:44
+msgctxt "web/views/CompanyFormView"
+msgid "Copy Company"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:44
+msgctxt "web/views/CompanyFormView"
+msgid "Create Company"
+msgstr ""
+
 #: web/views/CompanyFormView.vue:28
 msgctxt "web/views/CompanyFormView"
 msgid "Created At"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:44
+msgctxt "web/views/CompanyFormView"
+msgid "Delete Company"
+msgstr ""
+
+#: web/views/CompanyFormView.vue:44
+msgctxt "web/views/CompanyFormView"
+msgid "Edit Company"
 msgstr ""
 
 #: web/views/CompanyFormView.vue:9
@@ -941,7 +1116,7 @@ msgctxt "web/views/CompanyFormView"
 msgid "Parent Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:26
+#: web/views/CompanyFormView.vue:27
 msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr ""
@@ -976,9 +1151,34 @@ msgctxt "web/views/CompanyListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CompanyListView.vue:25
+msgctxt "web/views/CompanyListView"
+msgid "Company"
+msgstr ""
+
+#: web/views/CompanyListView.vue:25
+msgctxt "web/views/CompanyListView"
+msgid "Copy Company"
+msgstr ""
+
+#: web/views/CompanyListView.vue:25
+msgctxt "web/views/CompanyListView"
+msgid "Create Company"
+msgstr ""
+
 #: web/views/CompanyListView.vue:11
 msgctxt "web/views/CompanyListView"
 msgid "Created At"
+msgstr ""
+
+#: web/views/CompanyListView.vue:25
+msgctxt "web/views/CompanyListView"
+msgid "Delete Company"
+msgstr ""
+
+#: web/views/CompanyListView.vue:25
+msgctxt "web/views/CompanyListView"
+msgid "Edit Company"
 msgstr ""
 
 #: web/views/CompanyListView.vue:6
@@ -1012,9 +1212,24 @@ msgctxt "web/views/CountryFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CountryFormView.vue:26
+msgctxt "web/views/CountryFormView"
+msgid "Copy Country"
+msgstr ""
+
+#: web/views/CountryFormView.vue:26
+msgctxt "web/views/CountryFormView"
+msgid "Country"
+msgstr ""
+
 #: web/views/CountryFormView.vue:4
 msgctxt "web/views/CountryFormView"
 msgid "Country Information"
+msgstr ""
+
+#: web/views/CountryFormView.vue:26
+msgctxt "web/views/CountryFormView"
+msgid "Create Country"
 msgstr ""
 
 #: web/views/CountryFormView.vue:11
@@ -1022,9 +1237,19 @@ msgctxt "web/views/CountryFormView"
 msgid "Default Currency"
 msgstr ""
 
+#: web/views/CountryFormView.vue:26
+msgctxt "web/views/CountryFormView"
+msgid "Delete Country"
+msgstr ""
+
 #: web/views/CountryFormView.vue:8
 msgctxt "web/views/CountryFormView"
 msgid "Dialing Code"
+msgstr ""
+
+#: web/views/CountryFormView.vue:26
+msgctxt "web/views/CountryFormView"
+msgid "Edit Country"
 msgstr ""
 
 #: web/views/CountryFormView.vue:6
@@ -1032,7 +1257,7 @@ msgctxt "web/views/CountryFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/CountryFormView.vue:20
+#: web/views/CountryFormView.vue:21
 msgctxt "web/views/CountryFormView"
 msgid "Required"
 msgstr ""
@@ -1062,6 +1287,21 @@ msgctxt "web/views/CountryListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CountryListView.vue:20
+msgctxt "web/views/CountryListView"
+msgid "Copy Country"
+msgstr ""
+
+#: web/views/CountryListView.vue:20
+msgctxt "web/views/CountryListView"
+msgid "Country"
+msgstr ""
+
+#: web/views/CountryListView.vue:20
+msgctxt "web/views/CountryListView"
+msgid "Create Country"
+msgstr ""
+
 #: web/views/CountryListView.vue:8
 msgctxt "web/views/CountryListView"
 msgid "Currency"
@@ -1072,9 +1312,19 @@ msgctxt "web/views/CountryListView"
 msgid "Default Currency"
 msgstr ""
 
+#: web/views/CountryListView.vue:20
+msgctxt "web/views/CountryListView"
+msgid "Delete Country"
+msgstr ""
+
 #: web/views/CountryListView.vue:7
 msgctxt "web/views/CountryListView"
 msgid "Dialing Code"
+msgstr ""
+
+#: web/views/CountryListView.vue:20
+msgctxt "web/views/CountryListView"
+msgid "Edit Country"
 msgstr ""
 
 #: web/views/CountryListView.vue:5
@@ -1102,6 +1352,21 @@ msgctxt "web/views/CurrencyFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CurrencyFormView.vue:25
+msgctxt "web/views/CurrencyFormView"
+msgid "Copy Currency"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:25
+msgctxt "web/views/CurrencyFormView"
+msgid "Create Currency"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:25
+msgctxt "web/views/CurrencyFormView"
+msgid "Currency"
+msgstr ""
+
 #: web/views/CurrencyFormView.vue:4
 msgctxt "web/views/CurrencyFormView"
 msgid "Currency Information"
@@ -1112,12 +1377,22 @@ msgctxt "web/views/CurrencyFormView"
 msgid "Decimal Digits"
 msgstr ""
 
+#: web/views/CurrencyFormView.vue:25
+msgctxt "web/views/CurrencyFormView"
+msgid "Delete Currency"
+msgstr ""
+
+#: web/views/CurrencyFormView.vue:25
+msgctxt "web/views/CurrencyFormView"
+msgid "Edit Currency"
+msgstr ""
+
 #: web/views/CurrencyFormView.vue:6
 msgctxt "web/views/CurrencyFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/CurrencyFormView.vue:19
+#: web/views/CurrencyFormView.vue:20
 msgctxt "web/views/CurrencyFormView"
 msgid "Required"
 msgstr ""
@@ -1142,9 +1417,34 @@ msgctxt "web/views/CurrencyListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/CurrencyListView.vue:21
+msgctxt "web/views/CurrencyListView"
+msgid "Copy Currency"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:21
+msgctxt "web/views/CurrencyListView"
+msgid "Create Currency"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:21
+msgctxt "web/views/CurrencyListView"
+msgid "Currency"
+msgstr ""
+
 #: web/views/CurrencyListView.vue:8
 msgctxt "web/views/CurrencyListView"
 msgid "Decimal Digits"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:21
+msgctxt "web/views/CurrencyListView"
+msgid "Delete Currency"
+msgstr ""
+
+#: web/views/CurrencyListView.vue:21
+msgctxt "web/views/CurrencyListView"
+msgid "Edit Currency"
 msgstr ""
 
 #: web/views/CurrencyListView.vue:5
@@ -1167,6 +1467,16 @@ msgctxt "web/views/ExchangeRateFormView"
 msgid "Company"
 msgstr ""
 
+#: web/views/ExchangeRateFormView.vue:36
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Copy Exchange Rate"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:36
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Create Exchange Rate"
+msgstr ""
+
 #: web/views/ExchangeRateFormView.vue:6
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Currency"
@@ -1177,7 +1487,18 @@ msgctxt "web/views/ExchangeRateFormView"
 msgid "Date"
 msgstr ""
 
+#: web/views/ExchangeRateFormView.vue:36
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Delete Exchange Rate"
+msgstr ""
+
+#: web/views/ExchangeRateFormView.vue:36
+msgctxt "web/views/ExchangeRateFormView"
+msgid "Edit Exchange Rate"
+msgstr ""
+
 #: web/views/ExchangeRateFormView.vue:11
+#: web/views/ExchangeRateFormView.vue:36
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Exchange Rate"
 msgstr ""
@@ -1187,7 +1508,7 @@ msgctxt "web/views/ExchangeRateFormView"
 msgid "Exchange Rate Information"
 msgstr ""
 
-#: web/views/ExchangeRateFormView.vue:24
+#: web/views/ExchangeRateFormView.vue:25
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Required"
 msgstr ""
@@ -1207,6 +1528,16 @@ msgctxt "web/views/ExchangeRateListView"
 msgid "Company"
 msgstr ""
 
+#: web/views/ExchangeRateListView.vue:21
+msgctxt "web/views/ExchangeRateListView"
+msgid "Copy Exchange Rate"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:21
+msgctxt "web/views/ExchangeRateListView"
+msgid "Create Exchange Rate"
+msgstr ""
+
 #: web/views/ExchangeRateListView.vue:5
 msgctxt "web/views/ExchangeRateListView"
 msgid "Currency"
@@ -1217,6 +1548,17 @@ msgctxt "web/views/ExchangeRateListView"
 msgid "Date"
 msgstr ""
 
+#: web/views/ExchangeRateListView.vue:21
+msgctxt "web/views/ExchangeRateListView"
+msgid "Delete Exchange Rate"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:21
+msgctxt "web/views/ExchangeRateListView"
+msgid "Edit Exchange Rate"
+msgstr ""
+
+#: web/views/ExchangeRateListView.vue:21
 #: web/views/ExchangeRateListView.vue:8
 msgctxt "web/views/ExchangeRateListView"
 msgid "Exchange Rate"
@@ -1232,14 +1574,39 @@ msgctxt "web/views/LanguageFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/LanguageFormView.vue:26
+msgctxt "web/views/LanguageFormView"
+msgid "Copy Language"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:26
+msgctxt "web/views/LanguageFormView"
+msgid "Create Language"
+msgstr ""
+
 #: web/views/LanguageFormView.vue:11
 msgctxt "web/views/LanguageFormView"
 msgid "Default Locale"
 msgstr ""
 
+#: web/views/LanguageFormView.vue:26
+msgctxt "web/views/LanguageFormView"
+msgid "Delete Language"
+msgstr ""
+
 #: web/views/LanguageFormView.vue:8
 msgctxt "web/views/LanguageFormView"
 msgid "Direction"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:26
+msgctxt "web/views/LanguageFormView"
+msgid "Edit Language"
+msgstr ""
+
+#: web/views/LanguageFormView.vue:26
+msgctxt "web/views/LanguageFormView"
+msgid "Language"
 msgstr ""
 
 #: web/views/LanguageFormView.vue:4
@@ -1252,7 +1619,7 @@ msgctxt "web/views/LanguageFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:20
+#: web/views/LanguageFormView.vue:21
 msgctxt "web/views/LanguageFormView"
 msgid "Required"
 msgstr ""
@@ -1272,14 +1639,39 @@ msgctxt "web/views/LanguageListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/LanguageListView.vue:21
+msgctxt "web/views/LanguageListView"
+msgid "Copy Language"
+msgstr ""
+
+#: web/views/LanguageListView.vue:21
+msgctxt "web/views/LanguageListView"
+msgid "Create Language"
+msgstr ""
+
 #: web/views/LanguageListView.vue:8
 msgctxt "web/views/LanguageListView"
 msgid "Default Locale"
 msgstr ""
 
+#: web/views/LanguageListView.vue:21
+msgctxt "web/views/LanguageListView"
+msgid "Delete Language"
+msgstr ""
+
 #: web/views/LanguageListView.vue:7
 msgctxt "web/views/LanguageListView"
 msgid "Direction"
+msgstr ""
+
+#: web/views/LanguageListView.vue:21
+msgctxt "web/views/LanguageListView"
+msgid "Edit Language"
+msgstr ""
+
+#: web/views/LanguageListView.vue:21
+msgctxt "web/views/LanguageListView"
+msgid "Language"
 msgstr ""
 
 #: web/views/LanguageListView.vue:8
@@ -1302,6 +1694,16 @@ msgctxt "web/views/LocaleFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/LocaleFormView.vue:25
+msgctxt "web/views/LocaleFormView"
+msgid "Copy Locale"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:25
+msgctxt "web/views/LocaleFormView"
+msgid "Create Locale"
+msgstr ""
+
 #: web/views/LocaleFormView.vue:18
 msgctxt "web/views/LocaleFormView"
 msgid "Currency Symbol Position"
@@ -1317,9 +1719,24 @@ msgctxt "web/views/LocaleFormView"
 msgid "Decimal Separator"
 msgstr ""
 
+#: web/views/LocaleFormView.vue:25
+msgctxt "web/views/LocaleFormView"
+msgid "Delete Locale"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:25
+msgctxt "web/views/LocaleFormView"
+msgid "Edit Locale"
+msgstr ""
+
 #: web/views/LocaleFormView.vue:13
 msgctxt "web/views/LocaleFormView"
 msgid "First Day of Week"
+msgstr ""
+
+#: web/views/LocaleFormView.vue:25
+msgctxt "web/views/LocaleFormView"
+msgid "Locale"
 msgstr ""
 
 #: web/views/LocaleFormView.vue:4
@@ -1332,7 +1749,7 @@ msgctxt "web/views/LocaleFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/LocaleFormView.vue:19
+#: web/views/LocaleFormView.vue:20
 msgctxt "web/views/LocaleFormView"
 msgid "Required"
 msgstr ""
@@ -1362,6 +1779,16 @@ msgctxt "web/views/LocaleListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/LocaleListView.vue:20
+msgctxt "web/views/LocaleListView"
+msgid "Copy Locale"
+msgstr ""
+
+#: web/views/LocaleListView.vue:20
+msgctxt "web/views/LocaleListView"
+msgid "Create Locale"
+msgstr ""
+
 #: web/views/LocaleListView.vue:9
 msgctxt "web/views/LocaleListView"
 msgid "Currency Symbol Position"
@@ -1370,6 +1797,21 @@ msgstr ""
 #: web/views/LocaleListView.vue:7
 msgctxt "web/views/LocaleListView"
 msgid "Date Format"
+msgstr ""
+
+#: web/views/LocaleListView.vue:20
+msgctxt "web/views/LocaleListView"
+msgid "Delete Locale"
+msgstr ""
+
+#: web/views/LocaleListView.vue:20
+msgctxt "web/views/LocaleListView"
+msgid "Edit Locale"
+msgstr ""
+
+#: web/views/LocaleListView.vue:20
+msgctxt "web/views/LocaleListView"
+msgid "Locale"
 msgstr ""
 
 #: web/views/LocaleListView.vue:5
@@ -1397,6 +1839,26 @@ msgctxt "web/views/SequenceFormView"
 msgid "Company"
 msgstr ""
 
+#: web/views/SequenceFormView.vue:27
+msgctxt "web/views/SequenceFormView"
+msgid "Copy Sequence"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:27
+msgctxt "web/views/SequenceFormView"
+msgid "Create Sequence"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:27
+msgctxt "web/views/SequenceFormView"
+msgid "Delete Sequence"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:27
+msgctxt "web/views/SequenceFormView"
+msgid "Edit Sequence"
+msgstr ""
+
 #: web/views/SequenceFormView.vue:6
 msgctxt "web/views/SequenceFormView"
 msgid "Name"
@@ -1417,7 +1879,7 @@ msgctxt "web/views/SequenceFormView"
 msgid "Prefix"
 msgstr ""
 
-#: web/views/SequenceFormView.vue:21
+#: web/views/SequenceFormView.vue:22
 msgctxt "web/views/SequenceFormView"
 msgid "Required"
 msgstr ""
@@ -1425,6 +1887,11 @@ msgstr ""
 #: web/views/SequenceFormView.vue:8
 msgctxt "web/views/SequenceFormView"
 msgid "Select Company"
+msgstr ""
+
+#: web/views/SequenceFormView.vue:27
+msgctxt "web/views/SequenceFormView"
+msgid "Sequence"
 msgstr ""
 
 #: web/views/SequenceFormView.vue:4
@@ -1447,14 +1914,34 @@ msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Company"
 msgstr ""
 
+#: web/views/SequenceIdempotencyFormView.vue:34
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Copy Sequence Idempotency Record"
+msgstr ""
+
 #: web/views/SequenceIdempotencyFormView.vue:16
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Count"
 msgstr ""
 
+#: web/views/SequenceIdempotencyFormView.vue:34
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Create Sequence Idempotency Record"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:34
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Delete Sequence Idempotency Record"
+msgstr ""
+
 #: web/views/SequenceIdempotencyFormView.vue:17
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Dry Run"
+msgstr ""
+
+#: web/views/SequenceIdempotencyFormView.vue:34
+msgctxt "web/views/SequenceIdempotencyFormView"
+msgid "Edit Sequence Idempotency Record"
 msgstr ""
 
 #: web/views/SequenceIdempotencyFormView.vue:19
@@ -1497,6 +1984,7 @@ msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Sequence"
 msgstr ""
 
+#: web/views/SequenceIdempotencyFormView.vue:34
 #: web/views/SequenceIdempotencyFormView.vue:9
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Sequence Idempotency Record"
@@ -1507,14 +1995,34 @@ msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Start"
 msgstr ""
 
+#: web/views/SequenceIdempotencyListView.vue:23
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Copy Sequence Idempotency Record"
+msgstr ""
+
 #: web/views/SequenceIdempotencyListView.vue:7
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Count"
 msgstr ""
 
+#: web/views/SequenceIdempotencyListView.vue:23
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Create Sequence Idempotency Record"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:23
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Delete Sequence Idempotency Record"
+msgstr ""
+
 #: web/views/SequenceIdempotencyListView.vue:8
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Dry Run"
+msgstr ""
+
+#: web/views/SequenceIdempotencyListView.vue:23
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Edit Sequence Idempotency Record"
 msgstr ""
 
 #: web/views/SequenceIdempotencyListView.vue:10
@@ -1537,6 +2045,11 @@ msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Sequence"
 msgstr ""
 
+#: web/views/SequenceIdempotencyListView.vue:23
+msgctxt "web/views/SequenceIdempotencyListView"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
 #: web/views/SequenceIdempotencyListView.vue:9
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Start"
@@ -1555,6 +2068,26 @@ msgstr ""
 #: web/views/SequenceListView.vue:7
 msgctxt "web/views/SequenceListView"
 msgid "Company"
+msgstr ""
+
+#: web/views/SequenceListView.vue:22
+msgctxt "web/views/SequenceListView"
+msgid "Copy Sequence"
+msgstr ""
+
+#: web/views/SequenceListView.vue:22
+msgctxt "web/views/SequenceListView"
+msgid "Create Sequence"
+msgstr ""
+
+#: web/views/SequenceListView.vue:22
+msgctxt "web/views/SequenceListView"
+msgid "Delete Sequence"
+msgstr ""
+
+#: web/views/SequenceListView.vue:22
+msgctxt "web/views/SequenceListView"
+msgid "Edit Sequence"
 msgstr ""
 
 #: web/views/SequenceListView.vue:5
@@ -1577,6 +2110,11 @@ msgctxt "web/views/SequenceListView"
 msgid "Prefix"
 msgstr ""
 
+#: web/views/SequenceListView.vue:22
+msgctxt "web/views/SequenceListView"
+msgid "Sequence"
+msgstr ""
+
 #: web/views/SequenceListView.vue:9
 msgctxt "web/views/SequenceListView"
 msgid "Suffix"
@@ -1592,9 +2130,29 @@ msgctxt "web/views/StateFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/StateFormView.vue:25
+msgctxt "web/views/StateFormView"
+msgid "Copy State"
+msgstr ""
+
 #: web/views/StateFormView.vue:8
 msgctxt "web/views/StateFormView"
 msgid "Country"
+msgstr ""
+
+#: web/views/StateFormView.vue:25
+msgctxt "web/views/StateFormView"
+msgid "Create State"
+msgstr ""
+
+#: web/views/StateFormView.vue:25
+msgctxt "web/views/StateFormView"
+msgid "Delete State"
+msgstr ""
+
+#: web/views/StateFormView.vue:25
+msgctxt "web/views/StateFormView"
+msgid "Edit State"
 msgstr ""
 
 #: web/views/StateFormView.vue:6
@@ -1602,7 +2160,7 @@ msgctxt "web/views/StateFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/StateFormView.vue:19
+#: web/views/StateFormView.vue:20
 msgctxt "web/views/StateFormView"
 msgid "Required"
 msgstr ""
@@ -1610,6 +2168,11 @@ msgstr ""
 #: web/views/StateFormView.vue:8
 msgctxt "web/views/StateFormView"
 msgid "Select Country"
+msgstr ""
+
+#: web/views/StateFormView.vue:25
+msgctxt "web/views/StateFormView"
+msgid "State"
 msgstr ""
 
 #: web/views/StateFormView.vue:4
@@ -1627,14 +2190,39 @@ msgctxt "web/views/StateListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/StateListView.vue:20
+msgctxt "web/views/StateListView"
+msgid "Copy State"
+msgstr ""
+
 #: web/views/StateListView.vue:7
 msgctxt "web/views/StateListView"
 msgid "Country"
 msgstr ""
 
+#: web/views/StateListView.vue:20
+msgctxt "web/views/StateListView"
+msgid "Create State"
+msgstr ""
+
+#: web/views/StateListView.vue:20
+msgctxt "web/views/StateListView"
+msgid "Delete State"
+msgstr ""
+
+#: web/views/StateListView.vue:20
+msgctxt "web/views/StateListView"
+msgid "Edit State"
+msgstr ""
+
 #: web/views/StateListView.vue:5
 msgctxt "web/views/StateListView"
 msgid "Name"
+msgstr ""
+
+#: web/views/StateListView.vue:20
+msgctxt "web/views/StateListView"
+msgid "State"
 msgstr ""
 
 #: web/views/UoMCategoryFormView.vue:8
@@ -1647,16 +2235,37 @@ msgctxt "web/views/UoMCategoryFormView"
 msgid "Code"
 msgstr ""
 
+#: web/views/UoMCategoryFormView.vue:29
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Copy Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:29
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Create Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:29
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Delete Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryFormView.vue:29
+msgctxt "web/views/UoMCategoryFormView"
+msgid "Edit Unit of Measure Category"
+msgstr ""
+
 #: web/views/UoMCategoryFormView.vue:6
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/UoMCategoryFormView.vue:17
+#: web/views/UoMCategoryFormView.vue:18
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Required"
 msgstr ""
 
+#: web/views/UoMCategoryFormView.vue:29
 #: web/views/UoMCategoryFormView.vue:4
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Unit of Measure Category"
@@ -1672,9 +2281,34 @@ msgctxt "web/views/UoMCategoryListView"
 msgid "Code"
 msgstr ""
 
+#: web/views/UoMCategoryListView.vue:19
+msgctxt "web/views/UoMCategoryListView"
+msgid "Copy Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:19
+msgctxt "web/views/UoMCategoryListView"
+msgid "Create Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:19
+msgctxt "web/views/UoMCategoryListView"
+msgid "Delete Unit of Measure Category"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:19
+msgctxt "web/views/UoMCategoryListView"
+msgid "Edit Unit of Measure Category"
+msgstr ""
+
 #: web/views/UoMCategoryListView.vue:5
 msgctxt "web/views/UoMCategoryListView"
 msgid "Name"
+msgstr ""
+
+#: web/views/UoMCategoryListView.vue:19
+msgctxt "web/views/UoMCategoryListView"
+msgid "Unit of Measure Category"
 msgstr ""
 
 #: web/views/UoMFormView.vue:14
@@ -1692,6 +2326,26 @@ msgctxt "web/views/UoMFormView"
 msgid "Conversion Factor"
 msgstr ""
 
+#: web/views/UoMFormView.vue:26
+msgctxt "web/views/UoMFormView"
+msgid "Copy Unit of Measure"
+msgstr ""
+
+#: web/views/UoMFormView.vue:26
+msgctxt "web/views/UoMFormView"
+msgid "Create Unit of Measure"
+msgstr ""
+
+#: web/views/UoMFormView.vue:26
+msgctxt "web/views/UoMFormView"
+msgid "Delete Unit of Measure"
+msgstr ""
+
+#: web/views/UoMFormView.vue:26
+msgctxt "web/views/UoMFormView"
+msgid "Edit Unit of Measure"
+msgstr ""
+
 #: web/views/UoMFormView.vue:6
 msgctxt "web/views/UoMFormView"
 msgid "Name"
@@ -1702,7 +2356,7 @@ msgctxt "web/views/UoMFormView"
 msgid "Reference Unit"
 msgstr ""
 
-#: web/views/UoMFormView.vue:20
+#: web/views/UoMFormView.vue:21
 msgctxt "web/views/UoMFormView"
 msgid "Required"
 msgstr ""
@@ -1720,6 +2374,11 @@ msgstr ""
 #: web/views/UoMFormView.vue:7
 msgctxt "web/views/UoMFormView"
 msgid "Symbol"
+msgstr ""
+
+#: web/views/UoMFormView.vue:26
+msgctxt "web/views/UoMFormView"
+msgid "Unit of Measure"
 msgstr ""
 
 #: web/views/UoMFormView.vue:4
@@ -1742,6 +2401,26 @@ msgctxt "web/views/UoMListView"
 msgid "Conversion Factor"
 msgstr ""
 
+#: web/views/UoMListView.vue:21
+msgctxt "web/views/UoMListView"
+msgid "Copy Unit of Measure"
+msgstr ""
+
+#: web/views/UoMListView.vue:21
+msgctxt "web/views/UoMListView"
+msgid "Create Unit of Measure"
+msgstr ""
+
+#: web/views/UoMListView.vue:21
+msgctxt "web/views/UoMListView"
+msgid "Delete Unit of Measure"
+msgstr ""
+
+#: web/views/UoMListView.vue:21
+msgctxt "web/views/UoMListView"
+msgid "Edit Unit of Measure"
+msgstr ""
+
 #: web/views/UoMListView.vue:5
 msgctxt "web/views/UoMListView"
 msgid "Name"
@@ -1760,5 +2439,10 @@ msgstr ""
 #: web/views/UoMListView.vue:6
 msgctxt "web/views/UoMListView"
 msgid "Symbol"
+msgstr ""
+
+#: web/views/UoMListView.vue:21
+msgctxt "web/views/UoMListView"
+msgid "Unit of Measure"
 msgstr ""
 

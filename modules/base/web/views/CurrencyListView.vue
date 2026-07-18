@@ -42,8 +42,9 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/CurrencyListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CurrencyListView' });
 const props = defineProps<{ store: WebModelStore<Currency> }>();
-const currencyActions = defineModelActions('base.Currency', { entityTitle: 'Currency' });
+const currencyActions = defineModelActions('base.Currency', { entityTitle: _tRef('Currency') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Currency>) {

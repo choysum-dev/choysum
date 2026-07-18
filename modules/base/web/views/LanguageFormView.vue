@@ -48,12 +48,13 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/LanguageFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<Language>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
-const languageActions = defineModelActions('base.Language', { entityTitle: 'Language' });
+const languageActions = defineModelActions('base.Language', { entityTitle: _tRef('Language') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 </script>

@@ -2622,6 +2622,63 @@ func TestExtractUiResources_DuplicateEquivalentDeclsAreDeduped(t *testing.T) {
 	}
 }
 
+func TestExtractUiResources_DuplicateModelActionsWithDifferentTitleTextScopesAreDeduped(t *testing.T) {
+	module := &meta.IrModule{Name: "base"}
+
+	listTitleText := &meta.TermReference{
+		Key:    "list-key",
+		Module: "base",
+		Scope:  "web/views/CountryListView",
+		Src:    "Create Country",
+		Kind:   "literal",
+	}
+	formTitleText := &meta.TermReference{
+		Key:    "form-key",
+		Module: "base",
+		Scope:  "web/views/CountryFormView",
+		Src:    "Create Country",
+		Kind:   "literal",
+	}
+
+	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
+		{
+			ID:         "base.action.country_create",
+			Type:       parser.UiResourceTypeAction,
+			Title:      "Create Country",
+			TitleText:  listTitleText,
+			Requires:   []string{"rpc:/base.Country/Create"},
+			SourcePath: "/modules/base/web/views/CountryListView.vue",
+			SourceLine: 20,
+		},
+		{
+			ID:         "base.action.country_create",
+			Type:       parser.UiResourceTypeAction,
+			Title:      "Create Country",
+			TitleText:  formTitleText,
+			Requires:   []string{"rpc:/base.Country/Create"},
+			SourcePath: "/modules/base/web/views/CountryFormView.vue",
+			SourceLine: 26,
+		},
+	}}
+
+	resources, warnings, err := extractUiResources(module, []*parser.ParserResult{pr})
+	if err != nil {
+		t.Fatalf("expected scope-only TitleText duplicates to be deduped, got error: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got %d", len(warnings))
+	}
+	if len(resources) != 1 {
+		t.Fatalf("expected 1 deduped resource, got %d", len(resources))
+	}
+	if resources[0].Name != "base.action.country_create" {
+		t.Fatalf("unexpected deduped resource: %s", resources[0].Name)
+	}
+	if len(resources[0].TitleText) == 0 {
+		t.Fatal("expected TitleText to be preserved on deduped resource")
+	}
+}
+
 func TestWebBuilder_IntegratesCrossFileDuplicateModelActionsFromVue(t *testing.T) {
 	tmpDir := t.TempDir()
 	modulesPath := filepath.Join(tmpDir, "modules")

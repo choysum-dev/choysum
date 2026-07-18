@@ -197,6 +197,43 @@ _t('Missing scope')
 	}
 }
 
+func TestCollectScriptSynthesizesModelActionTitles(t *testing.T) {
+	content := `
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' })
+defineModelActions('base.Country', { entityTitle: _tRef('Country') })
+defineModelActions('base.User', {
+  entityTitle: _tRef('User'),
+  exclude: ['copy'],
+  titles: { delete: _tRef('Deactivate User') },
+})
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "base",
+		RelPath:    "web/views/CountryListView.vue",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	bySrc := map[string][]string{}
+	for _, term := range terms {
+		bySrc[term.Src] = append(bySrc[term.Src], term.Scope)
+	}
+	for _, src := range []string{"Country", "Create Country", "Edit Country", "Delete Country", "Copy Country"} {
+		if len(bySrc[src]) == 0 {
+			t.Fatalf("missing synthesized/extracted term %q in %#v", src, bySrc)
+		}
+	}
+	if len(bySrc["Copy User"]) != 0 {
+		t.Fatalf("excluded copy should not emit Copy User: %#v", bySrc)
+	}
+	if len(bySrc["Deactivate User"]) == 0 {
+		t.Fatalf("expected titles.delete override, got %#v", bySrc)
+	}
+	if len(bySrc["Delete User"]) != 0 {
+		t.Fatalf("override should replace Delete User: %#v", bySrc)
+	}
+}
+
 func TestCollectScriptFactoryModeIsNotRecognized(t *testing.T) {
 	content := `
 const { _t } = createTranslate('base', { mode: 'reference' })

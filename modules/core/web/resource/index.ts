@@ -5,7 +5,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import type { MenuItem } from '../menu';
 import { asObjectRecord } from '../../utils/object';
 import type { ObjectRecord } from '../../utils/types';
-import { isTermReference, type TermReference } from '../../service/i18n';
+import { isTermReference, createTermReference, type TermReference } from '../../service/i18n';
 
 export type ResourceId = string;
 export type ResourceKind = 'route' | 'menu' | 'action';
@@ -81,10 +81,10 @@ export type ResourceMeta = ObjectRecord & {
   resource: ResourceDeclaration;
 };
 
-export type DefineModelActionTitles = Partial<Record<'create' | 'edit' | 'delete' | 'copy', string>>;
+export type DefineModelActionTitles = Partial<Record<'create' | 'edit' | 'delete' | 'copy', ResourceTitle>>;
 
 export type DefineModelActionsOptions = {
-  entityTitle?: string;
+  entityTitle?: ResourceTitle;
   titles?: DefineModelActionTitles;
   exclude?: Array<'create' | 'edit' | 'delete' | 'copy'>;
 };
@@ -151,10 +151,10 @@ function normalizeActions(value: unknown): string[] {
 function cloneDeclaration<T extends ResourceDeclaration>(declaration: T): T {
   return {
     ...declaration,
-    requires: declaration.requires.map(item => ({ ...item })),
-    defaultRoles: [...declaration.defaultRoles],
+    requires: (declaration.requires ?? []).map(item => ({ ...item })),
+    defaultRoles: [...(declaration.defaultRoles ?? [])],
     ...(declaration.titleText ? { titleText: { ...declaration.titleText } } : {}),
-    ...(declaration.kind === 'route' ? { actions: [...declaration.actions] } : {}),
+    ...(declaration.kind === 'route' ? { actions: [...(declaration.actions ?? [])] } : {}),
   } as T;
 }
 
@@ -282,11 +282,48 @@ export function defineModelActions(model: string, options: DefineModelActionsOpt
 
   const modelSnake = toSnake(modelName);
   const excludes = new Set((options.exclude ?? []).map(v => String(v)));
+  const normalizedEntityTitle = normalizeResourceTitle(options.entityTitle);
+  const titleOverrides = Object.fromEntries(
+    Object.entries(options.titles ?? {})
+      .map(([op, title]) => [op, normalizeResourceTitle(title)] as const)
+      .filter(([, normalized]) => Boolean(normalized.title))
+  ) as Partial<Record<'create' | 'edit' | 'delete' | 'copy', ReturnType<typeof normalizeResourceTitle>>>;
+  const prefixes: Record<'create' | 'edit' | 'delete' | 'copy', string> = {
+    create: 'Create ',
+    edit: 'Edit ',
+    delete: 'Delete ',
+    copy: 'Copy ',
+  };
   const result: ModelActions = {};
 
   for (const op of ['create', 'edit', 'delete', 'copy'] as const) {
     if (excludes.has(op)) continue;
-    result[op] = `${app}.action.${modelSnake}_${op}`;
+    const id = `${app}.action.${modelSnake}_${op}`;
+    result[op] = id;
+
+    const override = titleOverrides[op];
+    const titleConfig = override?.title
+      ? override
+      : normalizedEntityTitle.title
+        ? {
+            title: `${prefixes[op]}${normalizedEntityTitle.title}`,
+            titleText: normalizedEntityTitle.titleText
+              ? createTermReference(normalizedEntityTitle.titleText.module, `${prefixes[op]}${normalizedEntityTitle.titleText.src}`, {
+                  scope: normalizedEntityTitle.titleText.scope,
+                  kind: normalizedEntityTitle.titleText.kind,
+                })
+              : undefined,
+          }
+        : {};
+
+    registerResourceDeclaration({
+      id,
+      kind: 'action',
+      ...titleConfig,
+      requires: [],
+      defaultRoles: [],
+      override: false,
+    } satisfies ActionResourceDeclaration);
   }
 
   return result;

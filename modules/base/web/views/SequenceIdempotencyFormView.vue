@@ -70,6 +70,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceIdempotencyFormView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyFormView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/SequenceIdempotencyFormView' });
 const props = withDefaults(
   defineProps<{
     store: WebModelStore<SequenceIdempotency>;
@@ -80,7 +81,7 @@ const props = withDefaults(
   }>(),
   { showHeader: true, createAction: undefined }
 );
-const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: 'Sequence Idempotency Record' });
+const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: _tRef('Sequence Idempotency Record') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 </script>

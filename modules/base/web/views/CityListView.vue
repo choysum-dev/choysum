@@ -42,8 +42,9 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CityListView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/CityListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CityListView' });
 const props = defineProps<{ store: WebModelStore<City> }>();
-const cityActions = defineModelActions('base.City', { entityTitle: 'City' });
+const cityActions = defineModelActions('base.City', { entityTitle: _tRef('City') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<City>) {

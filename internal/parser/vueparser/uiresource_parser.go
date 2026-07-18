@@ -15,13 +15,16 @@ import (
 	tsparser "github.com/buke/typescript-go-internal/pkg/parser"
 	tspath "github.com/buke/typescript-go-internal/pkg/tspath"
 	"github.com/choysum-dev/choysum/internal/parser"
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/ettle/strcase"
 )
 
 type uiParseCtx struct {
-	sourcePath string
-	source     string
-	sourceFile *tsast.SourceFile
+	sourcePath  string
+	source      string
+	sourceFile  *tsast.SourceFile
+	ownerModule string
+	bindings    map[string]parser.TranslateBinding
 }
 
 func collectUiResourceDecls(sourcePath string, source string) ([]*parser.UiResourceDecl, []*parser.UiResourceDeclIssue) {
@@ -45,9 +48,11 @@ func collectUiResourceDecls(sourcePath string, source string) ([]*parser.UiResou
 	}, source, scriptKind)
 
 	ctx := &uiParseCtx{
-		sourcePath: sourcePath,
-		source:     source,
-		sourceFile: sourceFile,
+		sourcePath:  sourcePath,
+		source:      source,
+		sourceFile:  sourceFile,
+		ownerModule: parser.DeriveOwnerModuleFromSourcePath(sourcePath),
+		bindings:    parser.ParseTranslateBindings(source),
 	}
 	decls, issues := ctx.collectUiResourceDecls()
 	return decls, issues
@@ -238,12 +243,16 @@ func (c *uiParseCtx) parseModelActionsDecls(args []*tsast.Node, line int, column
 
 	issues := make([]*parser.UiResourceDeclIssue, 0)
 	entityTitle := ""
+	entityTitleText := (*meta.TermReference)(nil)
 	titleOverrides := map[string]string{}
+	titleOverrideTexts := map[string]*meta.TermReference{}
 	if len(args) > 1 {
 		issues = append(issues, c.fillUiDeclFromOptions(&parser.UiResourceDecl{}, args[1], "defineModelActions", line, column)...)
-		parsedEntityTitle, parsedTitleOverrides, titleIssues := c.parseModelActionDisplayOptions(args[1], line, column)
+		parsedEntityTitle, parsedEntityTitleText, parsedTitleOverrides, parsedTitleOverrideTexts, titleIssues := c.parseModelActionDisplayOptions(args[1], line, column)
 		entityTitle = parsedEntityTitle
+		entityTitleText = parsedEntityTitleText
 		titleOverrides = parsedTitleOverrides
+		titleOverrideTexts = parsedTitleOverrideTexts
 		issues = append(issues, titleIssues...)
 	}
 
@@ -260,10 +269,12 @@ func (c *uiParseCtx) parseModelActionsDecls(args []*tsast.Node, line int, column
 		}
 		requires := requiresForModelAction(app, modelName, op)
 		id := fmt.Sprintf("%s.action.%s_%s", app, strcase.ToSnake(modelName), op)
+		title, titleText := resolveModelActionTitleParts(op, entityTitle, entityTitleText, titleOverrides, titleOverrideTexts)
 		decls = append(decls, &parser.UiResourceDecl{
 			ID:           id,
 			Type:         parser.UiResourceTypeAction,
-			Title:        resolveModelActionTitle(op, entityTitle, titleOverrides),
+			Title:        title,
+			TitleText:    titleText,
 			Requires:     requires,
 			SourcePath:   c.sourcePath,
 			SourceLine:   line,
@@ -274,15 +285,17 @@ func (c *uiParseCtx) parseModelActionsDecls(args []*tsast.Node, line int, column
 	return decls, issues
 }
 
-func (c *uiParseCtx) parseModelActionDisplayOptions(options *tsast.Node, line int, column int) (string, map[string]string, []*parser.UiResourceDeclIssue) {
+func (c *uiParseCtx) parseModelActionDisplayOptions(options *tsast.Node, line int, column int) (string, *meta.TermReference, map[string]string, map[string]*meta.TermReference, []*parser.UiResourceDeclIssue) {
 	obj := c.toObjectLiteral(options)
 	if obj == nil {
-		return "", map[string]string{}, nil
+		return "", nil, map[string]string{}, map[string]*meta.TermReference{}, nil
 	}
 
 	issues := make([]*parser.UiResourceDeclIssue, 0)
 	entityTitle := ""
+	var entityTitleText *meta.TermReference
 	titles := map[string]string{}
+	titleTexts := map[string]*meta.TermReference{}
 	appendFatal := func(code parser.UiResourceIssueCode, message string) {
 		issues = append(issues, &parser.UiResourceDeclIssue{
 			Severity:   parser.UiResourceIssueSeverityFatal,
@@ -303,14 +316,16 @@ func (c *uiParseCtx) parseModelActionDisplayOptions(options *tsast.Node, line in
 		propertyText := c.nodeText(property)
 		switch name {
 		case "entityTitle":
-			value, err := parseJSStringLiteral(parsePropertyValueExpr(propertyText))
-			if err != nil {
-				appendFatal(parser.UiResourceIssueCodeModelActionEntityTitleNotLiteral, "entityTitle must be a string literal")
+			valueExpr := strings.TrimSpace(parsePropertyValueExpr(propertyText))
+			title, titleText, ok := parser.ParseResourceTitleExpr(valueExpr, c.ownerModule, c.bindings)
+			if !ok {
+				appendFatal(parser.UiResourceIssueCodeModelActionEntityTitleNotLiteral, "entityTitle must be a string literal or reference-output _t('literal'[, opts])")
 				break
 			}
-			entityTitle = value
+			entityTitle = title
+			entityTitleText = titleText
 		case "titles":
-			parsedTitles, err := parseStrictModelActionTitlesProperty(propertyText)
+			parsedTitles, parsedTitleTexts, err := parseStrictModelActionTitlesProperty(propertyText, c.ownerModule, c.bindings)
 			if err != nil {
 				appendFatal(parser.UiResourceIssueCodeModelActionTitlesInvalid, fmt.Sprintf("titles must be an object literal like { create: 'Create User' }; %s", err.Error()))
 				break
@@ -318,74 +333,84 @@ func (c *uiParseCtx) parseModelActionDisplayOptions(options *tsast.Node, line in
 			for op, title := range parsedTitles {
 				titles[op] = title
 			}
+			for op, titleText := range parsedTitleTexts {
+				titleTexts[op] = titleText
+			}
 		}
 	}
 
-	return entityTitle, titles, issues
+	return entityTitle, entityTitleText, titles, titleTexts, issues
 }
 
-func parseStrictModelActionTitlesProperty(propertyText string) (map[string]string, error) {
+func parseStrictModelActionTitlesProperty(propertyText string, ownerModule string, bindings map[string]parser.TranslateBinding) (map[string]string, map[string]*meta.TermReference, error) {
 	expr := parsePropertyValueExpr(propertyText)
 	if expr == "" {
-		return nil, fmt.Errorf("value is missing")
+		return nil, nil, fmt.Errorf("value is missing")
 	}
 	if !strings.HasPrefix(expr, "{") || !strings.HasSuffix(expr, "}") {
-		return nil, fmt.Errorf("found non-object expression %q", expr)
+		return nil, nil, fmt.Errorf("found non-object expression %q", expr)
 	}
 
 	body := strings.TrimSpace(expr[1 : len(expr)-1])
 	if body == "" {
-		return map[string]string{}, nil
+		return map[string]string{}, map[string]*meta.TermReference{}, nil
 	}
 
 	fields, err := splitTopLevelJSList(body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	allowed := map[string]bool{"create": true, "edit": true, "delete": true, "copy": true}
 	out := make(map[string]string, len(fields))
+	titleTexts := make(map[string]*meta.TermReference, len(fields))
 	seen := make(map[string]bool, len(fields))
 	for _, field := range fields {
 		parts := strings.SplitN(field, ":", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("found non-literal field %q", strings.TrimSpace(field))
+			return nil, nil, fmt.Errorf("found non-literal field %q", strings.TrimSpace(field))
 		}
 
 		key := strings.TrimSpace(parts[0])
 		if strings.HasPrefix(key, "'") || strings.HasPrefix(key, "\"") {
 			unquoted, err := strconv.Unquote(key)
 			if err != nil {
-				return nil, fmt.Errorf("invalid quoted property name %q", key)
+				return nil, nil, fmt.Errorf("invalid quoted property name %q", key)
 			}
 			key = unquoted
 		}
 		if !allowed[key] {
-			return nil, fmt.Errorf("unsupported action key %q", key)
+			return nil, nil, fmt.Errorf("unsupported action key %q", key)
 		}
 		if seen[key] {
-			return nil, fmt.Errorf("found duplicate property %q", key)
+			return nil, nil, fmt.Errorf("found duplicate property %q", key)
 		}
 		seen[key] = true
 
-		value, err := parseJSStringLiteral(strings.TrimSpace(parts[1]))
-		if err != nil {
-			return nil, fmt.Errorf("property %q must be a string literal", key)
+		value, titleText, ok := parser.ParseResourceTitleExpr(strings.TrimSpace(parts[1]), ownerModule, bindings)
+		if !ok {
+			return nil, nil, fmt.Errorf("property %q must be a string literal or reference-output _t('literal'[, opts])", key)
 		}
 		out[key] = value
+		if titleText != nil {
+			titleTexts[key] = titleText
+		}
 	}
 
-	return out, nil
+	return out, titleTexts, nil
 }
 
-func resolveModelActionTitle(op string, entityTitle string, overrides map[string]string) string {
+func resolveModelActionTitleParts(op string, entityTitle string, entityTitleText *meta.TermReference, overrides map[string]string, overrideTexts map[string]*meta.TermReference) (string, *meta.TermReference) {
 	if title, ok := overrides[op]; ok && strings.TrimSpace(title) != "" {
-		return strings.TrimSpace(title)
+		if titleText, ok := overrideTexts[op]; ok && titleText != nil {
+			return strings.TrimSpace(title), titleText
+		}
+		return strings.TrimSpace(title), nil
 	}
 
 	entityTitle = strings.TrimSpace(entityTitle)
 	if entityTitle == "" {
-		return ""
+		return "", nil
 	}
 
 	prefix := map[string]string{
@@ -395,9 +420,18 @@ func resolveModelActionTitle(op string, entityTitle string, overrides map[string
 		"copy":   "Copy ",
 	}[op]
 	if prefix == "" {
-		return ""
+		return "", nil
 	}
-	return prefix + entityTitle
+	title := prefix + entityTitle
+	if entityTitleText == nil {
+		return title, nil
+	}
+	return title, parser.CloneTermReferenceWithSrc(entityTitleText, title)
+}
+
+func resolveModelActionTitle(op string, entityTitle string, overrides map[string]string) string {
+	title, _ := resolveModelActionTitleParts(op, entityTitle, nil, overrides, nil)
+	return title
 }
 
 func requiresForModelAction(app string, modelName string, op string) []string {
@@ -466,8 +500,10 @@ func (c *uiParseCtx) fillUiDeclFromOptions(decl *parser.UiResourceDecl, options 
 		propertyText := c.nodeText(property)
 		switch name {
 		case "title":
-			if v := parseFirstQuotedString(propertyText); v != "" {
-				decl.Title = v
+			valueExpr := strings.TrimSpace(parsePropertyValueExpr(propertyText))
+			if title, titleText, ok := parser.ParseResourceTitleExpr(valueExpr, c.ownerModule, c.bindings); ok {
+				decl.Title = title
+				decl.TitleText = titleText
 			}
 		case "sequence":
 			if v, ok := parseNumericFromText(propertyText); ok {
@@ -596,8 +632,10 @@ func (c *uiParseCtx) fillUiDeclFromResourceContract(decl *parser.UiResourceDecl,
 		propertyText := c.nodeText(property)
 		switch name {
 		case "title":
-			if v := parseFirstQuotedString(propertyText); v != "" {
-				decl.Title = v
+			valueExpr := strings.TrimSpace(parsePropertyValueExpr(propertyText))
+			if title, titleText, ok := parser.ParseResourceTitleExpr(valueExpr, c.ownerModule, c.bindings); ok {
+				decl.Title = title
+				decl.TitleText = titleText
 			}
 		case "sequence":
 			if v, ok := parseNumericFromText(propertyText); ok {

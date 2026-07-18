@@ -40,8 +40,9 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'BankListView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/BankListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/BankListView' });
 const props = defineProps<{ store: WebModelStore<Bank> }>();
-const bankActions = defineModelActions('base.Bank', { entityTitle: 'Bank' });
+const bankActions = defineModelActions('base.Bank', { entityTitle: _tRef('Bank') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Bank>) {

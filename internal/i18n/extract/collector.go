@@ -282,6 +282,12 @@ func (c *scriptCollector) handleCall(node *tsast.Node, pendingLocation string) {
 		return
 	}
 
+	if isIdentifierNamed(c.ctx, callExpr.Expression, "defineModelActions") {
+		c.collectModelActionsTerms(node, callExpr)
+		c.walkChildren(node, pendingLocation)
+		return
+	}
+
 	c.walkChildren(node, pendingLocation)
 }
 
@@ -417,6 +423,170 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 		Line:       line,
 		Col:        col,
 	})
+}
+
+// collectModelActionsTerms emits synthesized Create/Edit/Delete/Copy titles when
+// defineModelActions uses entityTitle: _t('Entity') (D19). TitleText at build time
+// uses those synthesized msgids under the same scope as the entity _t call.
+func (c *scriptCollector) collectModelActionsTerms(node *tsast.Node, callExpr *tsast.CallExpression) {
+	if callExpr.Arguments == nil || len(callExpr.Arguments.Nodes) < 2 {
+		return
+	}
+	options := callExpr.Arguments.Nodes[1]
+	if options == nil || options.Kind != tsast.KindObjectLiteralExpression {
+		return
+	}
+	obj := options.AsObjectLiteralExpression()
+	if obj == nil || obj.Properties.Nodes == nil {
+		return
+	}
+
+	line, col := c.ctx.LineColumn(node.Pos())
+	var entitySrc string
+	var entityScope string
+	titleOverrides := map[string]struct {
+		src   string
+		scope string
+	}{}
+	excludes := map[string]bool{}
+
+	for _, prop := range obj.Properties.Nodes {
+		if prop == nil || prop.Kind != tsast.KindPropertyAssignment {
+			continue
+		}
+		pa := prop.AsPropertyAssignment()
+		if pa == nil || pa.Name() == nil {
+			continue
+		}
+		key := strings.TrimSpace(c.ctx.NodeText(pa.Name()))
+		init := prop.Initializer()
+		switch key {
+		case "entityTitle":
+			src, scope, ok := c.translateCallLiteral(init)
+			if ok {
+				entitySrc = src
+				entityScope = scope
+			}
+		case "titles":
+			if init == nil || init.Kind != tsast.KindObjectLiteralExpression {
+				continue
+			}
+			titlesObj := init.AsObjectLiteralExpression()
+			if titlesObj == nil || titlesObj.Properties.Nodes == nil {
+				continue
+			}
+			for _, titleProp := range titlesObj.Properties.Nodes {
+				if titleProp == nil || titleProp.Kind != tsast.KindPropertyAssignment {
+					continue
+				}
+				tpa := titleProp.AsPropertyAssignment()
+				if tpa == nil || tpa.Name() == nil {
+					continue
+				}
+				op := strings.TrimSpace(c.ctx.NodeText(tpa.Name()))
+				src, scope, ok := c.translateCallLiteral(titleProp.Initializer())
+				if !ok {
+					continue
+				}
+				titleOverrides[op] = struct {
+					src   string
+					scope string
+				}{src: src, scope: scope}
+			}
+		case "exclude":
+			if init == nil || init.Kind != tsast.KindArrayLiteralExpression {
+				continue
+			}
+			arr := init.AsArrayLiteralExpression()
+			if arr == nil || arr.Elements.Nodes == nil {
+				continue
+			}
+			for _, el := range arr.Elements.Nodes {
+				if lit, ok := stringLiteralValue(c.ctx, el); ok {
+					excludes[strings.TrimSpace(lit)] = true
+				}
+			}
+		}
+	}
+
+	prefixes := []struct {
+		op     string
+		prefix string
+	}{
+		{op: "create", prefix: "Create "},
+		{op: "edit", prefix: "Edit "},
+		{op: "delete", prefix: "Delete "},
+		{op: "copy", prefix: "Copy "},
+	}
+	for _, item := range prefixes {
+		if excludes[item.op] {
+			continue
+		}
+		src := ""
+		scope := ""
+		if override, ok := titleOverrides[item.op]; ok {
+			src = override.src
+			scope = override.scope
+		} else if entitySrc != "" {
+			src = item.prefix + entitySrc
+			scope = entityScope
+		}
+		if src == "" {
+			continue
+		}
+		if scope == "" {
+			scope = ResolveI18nScope("", c.scopeStack, c.scopePath, "")
+		}
+		c.terms = append(c.terms, TermOccurrence{
+			Module:     c.opts.ModuleName,
+			Scope:      scope,
+			Src:        src,
+			Kind:       KindLiteral,
+			SourcePath: c.opts.RelPath,
+			Line:       line,
+			Col:        col,
+		})
+	}
+}
+
+// translateCallLiteral returns msgid + resolved scope for a `_t('…')` / aliased call.
+func (c *scriptCollector) translateCallLiteral(node *tsast.Node) (src string, scope string, ok bool) {
+	if node == nil || node.Kind != tsast.KindCallExpression {
+		return "", "", false
+	}
+	callExpr := node.AsCallExpression()
+	if callExpr == nil || !c.isTranslateCallee(callExpr.Expression) {
+		return "", "", false
+	}
+	args := callExpr.Arguments
+	if args == nil || len(args.Nodes) == 0 {
+		return "", "", false
+	}
+	src, ok = stringLiteralValue(c.ctx, args.Nodes[0])
+	if !ok {
+		return "", "", false
+	}
+	calleeName := ""
+	if callExpr.Expression != nil && callExpr.Expression.Kind == tsast.KindIdentifier {
+		calleeName = strings.TrimSpace(c.ctx.NodeText(callExpr.Expression))
+	}
+	manualScope := ""
+	if len(args.Nodes) > 1 {
+		if s, scopeOK := parseReferenceScope(c.ctx, args.Nodes[1]); scopeOK {
+			manualScope = s
+		} else if s, scopeOK := parseCallScope(c.ctx, args.Nodes[1]); scopeOK {
+			manualScope = s
+		}
+	}
+	if manualScope == "" && calleeName != "" {
+		manualScope = c.translateDefaultScopes[calleeName]
+	}
+	scope = ResolveI18nScope(manualScope, c.scopeStack, c.scopePath, "")
+	return src, scope, true
+}
+
+func parseCallScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {
+	return parseReferenceScope(ctx, node)
 }
 
 func parseReferenceScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {

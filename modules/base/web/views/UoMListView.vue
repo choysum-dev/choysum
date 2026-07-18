@@ -45,8 +45,9 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMListView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/UoMListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/UoMListView' });
 const props = defineProps<{ store: WebModelStore<UoM> }>();
-const uomActions = defineModelActions('base.UoM', { entityTitle: 'Unit of Measure' });
+const uomActions = defineModelActions('base.UoM', { entityTitle: _tRef('Unit of Measure') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<UoM>) {

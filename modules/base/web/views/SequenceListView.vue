@@ -45,8 +45,9 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceListView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/SequenceListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/SequenceListView' });
 const props = defineProps<{ store: WebModelStore<Sequence> }>();
-const sequenceActions = defineModelActions('base.Sequence', { entityTitle: 'Sequence' });
+const sequenceActions = defineModelActions('base.Sequence', { entityTitle: _tRef('Sequence') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Sequence>) {

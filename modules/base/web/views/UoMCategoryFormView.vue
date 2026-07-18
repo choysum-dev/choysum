@@ -39,6 +39,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMCategoryFormView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/UoMCategoryFormView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/UoMCategoryFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{
@@ -50,7 +51,7 @@ const props = withDefaults(
   }>(),
   { showHeader: true, createAction: undefined }
 );
-const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: 'Unit of Measure Category' });
+const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: _tRef('Unit of Measure Category') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 </script>

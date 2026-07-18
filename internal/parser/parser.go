@@ -55,6 +55,7 @@ type UiResourceDecl struct {
 	ID           string
 	Type         UiResourceType
 	Title        string
+	TitleText    *meta.TermReference
 	Sequence     int
 	Requires     []string
 	ParentMenu   string

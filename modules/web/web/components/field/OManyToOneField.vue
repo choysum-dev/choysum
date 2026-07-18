@@ -258,7 +258,10 @@ function getDisplayId(val: any): string {
 
 function getDisplayLabel(val: any): string {
   if (!val || typeof val !== 'object') return '';
-  const label = val.DisplayName ?? val.Name ?? val.Title ?? val.Code ?? val.Id ?? val.id;
+  if (val.DisplayName != null) return String(val.DisplayName);
+  if (val.Name != null) return String(val.Name);
+  if (val.Title != null) return String(val.Title);
+  const label = val.Code ?? val.Id ?? val.id;
   return label == null ? '' : String(label);
 }
 

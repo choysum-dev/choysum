@@ -104,6 +104,11 @@ func collectFinalUiResourceDecls(parseResults []*parser.ParserResult) (*collecte
 
 			if prev, exists := declByID[id]; exists {
 				if equivalentUiDecl(prev, decl) {
+					// Prefer a declaration that carries TitleText when merging
+					// List/Form defineModelActions duplicates.
+					if prev.TitleText == nil && decl.TitleText != nil {
+						prev.TitleText = decl.TitleText
+					}
 					continue
 				}
 				if !prev.Override && !decl.Override {
@@ -177,11 +182,13 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 
 		requires := mustJSON(decl.Requires)
 		defaultRoles := mustJSON(decl.DefaultRoles)
+		titleText := mustOptionalJSON(decl.TitleText)
 
 		v := &meta.IrUiResource{
 			Name:               id,
 			Type:               meta.UiResourceType(decl.Type),
 			Title:              strings.TrimSpace(decl.Title),
+			TitleText:          titleText,
 			Sequence:           decl.Sequence,
 			Requires:           requires,
 			Module:             strings.TrimSpace(module.Name),
@@ -417,6 +424,9 @@ func equivalentUiDecl(a *parser.UiResourceDecl, b *parser.UiResourceDecl) bool {
 	if strings.TrimSpace(a.Title) != strings.TrimSpace(b.Title) {
 		return false
 	}
+	if !compatibleTitleTextsForDedupe(a.TitleText, b.TitleText) {
+		return false
+	}
 	if a.Sequence != b.Sequence {
 		return false
 	}
@@ -437,6 +447,36 @@ func equivalentUiDecl(a *parser.UiResourceDecl, b *parser.UiResourceDecl) bool {
 	}
 
 	return true
+}
+
+// compatibleTitleTextsForDedupe allows ListView + FormView defineModelActions
+// duplicates that share the same English Title / term src but use different
+// file-level reference scopes (e.g. web/views/CountryListView vs CountryFormView).
+func compatibleTitleTextsForDedupe(a *meta.TermReference, b *meta.TermReference) bool {
+	if equalTermReferenceJSON(a, b) {
+		return true
+	}
+	// One side still plain-string (no TitleText): compatible when Title already matched.
+	if a == nil || b == nil {
+		return true
+	}
+	return strings.TrimSpace(a.Module) == strings.TrimSpace(b.Module) &&
+		strings.TrimSpace(a.Src) == strings.TrimSpace(b.Src) &&
+		strings.TrimSpace(a.Kind) == strings.TrimSpace(b.Kind)
+}
+
+func equalTermReferenceJSON(a *meta.TermReference, b *meta.TermReference) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return strings.TrimSpace(a.Key) == strings.TrimSpace(b.Key) &&
+		strings.TrimSpace(a.Module) == strings.TrimSpace(b.Module) &&
+		strings.TrimSpace(a.Scope) == strings.TrimSpace(b.Scope) &&
+		strings.TrimSpace(a.Src) == strings.TrimSpace(b.Src) &&
+		strings.TrimSpace(a.Kind) == strings.TrimSpace(b.Kind)
 }
 
 func equalTrimmedStringSlices(a []string, b []string) bool {
@@ -613,6 +653,17 @@ func mustJSON(value any) []byte {
 	b, err := json.Marshal(value)
 	if err != nil {
 		return []byte("[]")
+	}
+	return b
+}
+
+func mustOptionalJSON(value any) []byte {
+	if value == nil {
+		return nil
+	}
+	b, err := json.Marshal(value)
+	if err != nil {
+		return nil
 	}
 	return b
 }

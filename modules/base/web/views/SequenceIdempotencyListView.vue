@@ -47,8 +47,9 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceIdempotencyListView', inheritAttrs: true });
 const { _t } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/SequenceIdempotencyListView' });
 const props = defineProps<{ store: WebModelStore<SequenceIdempotency> }>();
-const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: 'Sequence Idempotency Record' });
+const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: _tRef('Sequence Idempotency Record') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<SequenceIdempotency>) {

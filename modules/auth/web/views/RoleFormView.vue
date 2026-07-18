@@ -91,7 +91,7 @@ SPDX-License-Identifier: Apache-2.0
                 <el-icon class="rfv-ui-resource-node__icon">
                   <component :is="resolveUiResourceTypeIcon(row?.Type)" />
                 </el-icon>
-                <span class="rfv-ui-resource-node__label">{{ label || row?.Title || row?.Name || row?.Id }}</span>
+                <span class="rfv-ui-resource-node__label">{{ resolveUiResourceLabel(row, label) }}</span>
               </span>
             </template>
           </OManyToManyRefTreeField>
@@ -166,6 +166,9 @@ import RoleListView from './RoleListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { useI18n } from 'vue-i18n';
+import { translateTerm } from '@/web/web/i18n';
+import type { TermReference } from '@/core/service/i18n';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
 
@@ -186,6 +189,19 @@ const props = withDefaults(
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const roleActions = defineModelActions('auth.Role', { entityTitle: 'Role' });
 const { hasAction } = usePermission();
+const composer = useI18n({ useScope: 'global' });
+
+type UiResourceRow = {
+  Title?: string;
+  TitleText?: TermReference | null;
+  Name?: string;
+  Id?: string;
+};
+
+function resolveUiResourceLabel(row?: UiResourceRow, label?: string) {
+  const fallback = String(label || row?.Title || row?.Name || row?.Id || '');
+  return translateTerm(composer, row?.TitleText ?? undefined, fallback);
+}
 
 /**
  * Resolve the icon used for a UI resource node.
