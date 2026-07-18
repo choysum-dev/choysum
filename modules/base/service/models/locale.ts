@@ -3,10 +3,7 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { createTranslate } from '@/core/service/i18n';
 import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing } from './_normalizers';
-
-const { _t } = createTranslate('base', { output: 'reference' });
 
 @Model('Locale')
 export default class Locale extends BaseModel {
@@ -34,11 +31,13 @@ export default class Locale extends BaseModel {
   @Field({ type: 'int' })
   FirstDayOfWeek?: number;
 
+  // Selection labels stay English msgid until options are served by a request-scoped
+  // API that can text-_t with RequestContext.lang. Do not use output:'reference' here.
   @Field({
     type: 'selection',
     selection: [
-      { value: 'before', label: _t('Before amount', { scope: 'base.Locale.CurrencySymbolPosition.before' }) },
-      { value: 'after', label: _t('After amount', { scope: 'base.Locale.CurrencySymbolPosition.after' }) },
+      { value: 'before', label: 'Before amount' },
+      { value: 'after', label: 'After amount' },
     ],
     size: 16, default: () => 'before',
   })

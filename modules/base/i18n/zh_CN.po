@@ -1,26 +1,6 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/language.ts:26
-msgctxt "base.Language.Direction.ltr"
-msgid "Left to right"
-msgstr "从左到右"
-
-#: service/models/language.ts:27
-msgctxt "base.Language.Direction.rtl"
-msgid "Right to left"
-msgstr "从右到左"
-
-#: service/models/locale.ts:41
-msgctxt "base.Locale.CurrencySymbolPosition.after"
-msgid "After amount"
-msgstr "金额之后"
-
-#: service/models/locale.ts:40
-msgctxt "base.Locale.CurrencySymbolPosition.before"
-msgid "Before amount"
-msgstr "金额之前"
-
 #: service/models/_currency_convert.ts:101 service/models/_currency_convert.ts:98
 msgctxt "service/models/_currency_convert"
 msgid "Company not found"
@@ -1770,3 +1750,19 @@ msgstr "舍入精度"
 msgctxt "web/views/UoMListView"
 msgid "Symbol"
 msgstr "符号"
+
+#~ msgctxt "base.Language.Direction.ltr"
+#~ msgid "Left to right"
+#~ msgstr "从左到右"
+
+#~ msgctxt "base.Language.Direction.rtl"
+#~ msgid "Right to left"
+#~ msgstr "从右到左"
+
+#~ msgctxt "base.Locale.CurrencySymbolPosition.after"
+#~ msgid "After amount"
+#~ msgstr "金额之后"
+
+#~ msgctxt "base.Locale.CurrencySymbolPosition.before"
+#~ msgid "Before amount"
+#~ msgstr "金额之前"

@@ -7,26 +7,6 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/language.ts:26
-msgctxt "base.Language.Direction.ltr"
-msgid "Left to right"
-msgstr ""
-
-#: service/models/language.ts:27
-msgctxt "base.Language.Direction.rtl"
-msgid "Right to left"
-msgstr ""
-
-#: service/models/locale.ts:41
-msgctxt "base.Locale.CurrencySymbolPosition.after"
-msgid "After amount"
-msgstr ""
-
-#: service/models/locale.ts:40
-msgctxt "base.Locale.CurrencySymbolPosition.before"
-msgid "Before amount"
-msgstr ""
-
 #: service/models/_currency_convert.ts:101
 #: service/models/_currency_convert.ts:98
 msgctxt "service/models/_currency_convert"

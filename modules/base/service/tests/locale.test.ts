@@ -5,24 +5,15 @@ import Locale from '@/base/service/models/locale';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
 import { MetadataStorage } from '@/core/service/api/metadata';
-import { createTermReference } from '@/core/service/i18n';
 
 import { companyCode8, uid } from './_helpers';
 
-test('base.locale: CurrencySymbolPosition selection exposes localized labels without changing values', () => {
+test('base.locale: CurrencySymbolPosition selection keeps English msgid labels', () => {
   const field = MetadataStorage.instance.getModelMetadata(Locale).fields.get('CurrencySymbolPosition');
 
   expect(field?.selection).toEqual([
-    {
-      value: 'before',
-      label: 'Before amount',
-      labelText: createTermReference('base', 'Before amount', { scope: 'base.Locale.CurrencySymbolPosition.before' }),
-    },
-    {
-      value: 'after',
-      label: 'After amount',
-      labelText: createTermReference('base', 'After amount', { scope: 'base.Locale.CurrencySymbolPosition.after' }),
-    },
+    { value: 'before', label: 'Before amount' },
+    { value: 'after', label: 'After amount' },
   ]);
 });
 

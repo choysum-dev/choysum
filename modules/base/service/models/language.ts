@@ -3,11 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { createTranslate } from '@/core/service/i18n';
 import Locale from './locale';
 import { normalizeDirection } from './_normalizers';
-
-const { _t } = createTranslate('base', { output: 'reference' });
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -20,11 +17,13 @@ export default class Language extends BaseModel {
   @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
+  // Selection labels stay English msgid until options are served by a request-scoped
+  // API that can text-_t with RequestContext.lang. Do not use output:'reference' here.
   @Field({
     type: 'selection',
     selection: [
-      { value: 'ltr', label: _t('Left to right', { scope: 'base.Language.Direction.ltr' }) },
-      { value: 'rtl', label: _t('Right to left', { scope: 'base.Language.Direction.rtl' }) },
+      { value: 'ltr', label: 'Left to right' },
+      { value: 'rtl', label: 'Right to left' },
     ],
     size: 8,
   })
