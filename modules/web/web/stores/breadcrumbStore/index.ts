@@ -6,7 +6,11 @@ import { defineStore } from 'pinia';
 import { nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { isTermReference, type TermReference } from '@/core/service/i18n';
-import type { TextSource } from '../../i18n';
+import { createTranslate, type TextSource } from '../../i18n';
+
+const { _t: _tRef } = createTranslate('web', { output: 'reference', scope: 'web/stores/breadcrumbStore' });
+const pageFallback = _tRef('Page');
+const detailsFallback = _tRef('Details');
 
 export interface BreadcrumbItem {
   title: string;
@@ -82,7 +86,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       // Only create breadcrumbs when an active menu is available.
       if (activeMenu) {
         const menuId = getMenuId(activeMenu);
-        const menuSource = activeMenu.titleText || activeMenu.title || '页面';
+        const menuSource = activeMenu.titleText || activeMenu.title || pageFallback;
         const menuPath = getMenuBasePath(route.path, activeMenu);
 
         resetBreadcrumb(menuId, menuSource, menuPath);
@@ -118,7 +122,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       const isFirstVisit = currentMenuId.value === null;
 
       if (isMenuChanged || isFirstVisit) {
-        const menuSource = currentActiveMenu.titleText || currentActiveMenu.title || '页面';
+        const menuSource = currentActiveMenu.titleText || currentActiveMenu.title || pageFallback;
         const menuPath = getMenuBasePath(to.path, currentActiveMenu);
 
         resetBreadcrumb(activeMenuId, menuSource, menuPath);
@@ -187,11 +191,11 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
       const lastSegment = pathSegments[pathSegments.length - 1];
 
       if (/^[a-z0-9]{16,}$/.test(lastSegment) || /^\d+$/.test(lastSegment)) {
-        return '详情';
+        return detailsFallback;
       }
     }
 
-    return '页面';
+    return pageFallback;
   }
 
   // Core breadcrumb operations.

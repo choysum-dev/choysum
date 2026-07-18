@@ -10,12 +10,11 @@ function source(): string {
 }
 
 describe('OManyToOneField mapping/contract', () => {
-  it('exports value click payload and emit contract', () => {
+  it('uses shared value click payload and emit contract', () => {
     const s = source();
 
-    expect(s).toContain('export type ValueClickPayload<T = any> = {');
+    expect(s).toContain("from '@/web/web/components/field/manyToOneTypes'");
     expect(s).toContain("(e: 'value-click', payload: ValueClickPayload<any>): void;");
-    expect(s).toContain("source: 'display';");
   });
 
   it('supports auto value click mode by listener detection', () => {

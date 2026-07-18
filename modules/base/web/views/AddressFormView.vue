@@ -68,7 +68,7 @@ import { ElCard, ElRow, ElCol } from 'element-plus';
 import OFormView from '@/web/web/components/view/OFormView.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/OManyToOneField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import CountryListView from './CountryListView.vue';
 import StateListView from './StateListView.vue';
 import CityListView from './CityListView.vue';

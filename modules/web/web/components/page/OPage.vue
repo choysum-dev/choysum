@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <!-- Loading overlay. -->
     <div v-if="loading" class="o-page__loading-mask" aria-hidden="true">
-      <el-icon class="o-page__loading-icon is-loading" aria-label="页面加载中">
+      <el-icon class="o-page__loading-icon is-loading" :aria-label="_t('Page loading')">
         <Loading />
       </el-icon>
     </div>
@@ -52,6 +52,9 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, useId } from 'vue';
 import { Loading } from '@element-plus/icons-vue';
 import OBreadcrumb from '@/web/web/components/view/OBreadcrumb.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/page/OPage' });
 
 type PageWidth = '' | 'narrow' | 'medium' | 'wide' | 'full';
 

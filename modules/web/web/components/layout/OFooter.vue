@@ -16,9 +16,9 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <!-- Right section. -->
       <div class="o-footer__right">
-        <a href="#" class="o-footer__link" aria-label="查看隐私政策">隐私政策</a>
-        <a href="#" class="o-footer__link" aria-label="查看使用条款">使用条款</a>
-        <a href="#" class="o-footer__link" aria-label="联系我们">联系我们</a>
+        <a href="#" class="o-footer__link" :aria-label="_t('View privacy policy')">{{ _t('Privacy policy') }}</a>
+        <a href="#" class="o-footer__link" :aria-label="_t('View terms of use')">{{ _t('Terms of use') }}</a>
+        <a href="#" class="o-footer__link" :aria-label="_t('Contact us')">{{ _t('Contact us') }}</a>
       </div>
     </div>
   </el-footer>
@@ -28,6 +28,9 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useLayoutStore } from '@/web/web/stores';
 import { ElFooter } from 'element-plus';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/layout/OFooter' });
 
 const props = defineProps({
   copyright: {

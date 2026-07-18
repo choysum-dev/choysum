@@ -75,7 +75,7 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OTextField from '@/web/web/components/field/OTextField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/OManyToOneField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import UserListView from '@/auth/web/views/UserListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';

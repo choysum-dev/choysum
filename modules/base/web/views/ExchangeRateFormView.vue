@@ -55,7 +55,7 @@ import type Company from '@/base/service/models/company';
 import { ElCard, ElRow, ElCol } from 'element-plus';
 import OFormView from '@/web/web/components/view/OFormView.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/OManyToOneField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import ODateField from '@/web/web/components/field/ODateField.vue';
 import ODecimalField from '@/web/web/components/field/ODecimalField.vue';
 import CurrencyListView from './CurrencyListView.vue';

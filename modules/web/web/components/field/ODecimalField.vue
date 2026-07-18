@@ -45,6 +45,9 @@ import type { UseField, AggProp } from '@/web/web/composables/useField';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core/utils/decimal';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/ODecimalField' });
 
 defineOptions({ name: 'ODecimalField' });
 
@@ -453,12 +456,12 @@ function quantizeForCompare(x: any, scale: number): Decimal | null {
 function isValidValue(value: any, scale: number): string | null {
   if (value == null || value === '') return null;
   const d = asDecimal(value);
-  if (!d || !d.isFinite()) return '必须是有效数字';
-  if ((d.decimalPlaces() ?? 0) > scale) return `小数位不能超过 ${scale}`;
+  if (!d || !d.isFinite()) return _t('Must be a valid number');
+  if ((d.decimalPlaces() ?? 0) > scale) return _t('Decimal places must not exceed %s', scale);
   const digits = d.abs().sd(true) ?? 0;
-  if (digits > effectivePrecision.value) return `总位数不能超过 ${effectivePrecision.value}`;
-  if (minD.value && d.lessThan(minD.value)) return `不能小于 ${minD.value.toString()}`;
-  if (maxD.value && d.greaterThan(maxD.value)) return `不能大于 ${maxD.value.toString()}`;
+  if (digits > effectivePrecision.value) return _t('Total digits must not exceed %s', effectivePrecision.value);
+  if (minD.value && d.lessThan(minD.value)) return _t('Must not be less than %s', minD.value.toString());
+  if (maxD.value && d.greaterThan(maxD.value)) return _t('Must not be greater than %s', maxD.value.toString());
   return null;
 }
 

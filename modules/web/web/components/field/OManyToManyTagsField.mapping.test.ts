@@ -84,7 +84,7 @@ describe('OManyToManyTagsField mapping/contract', () => {
 
     expect(s).toContain("tagClickable?: boolean | 'auto';");
     expect(s).toContain("tagClickable: 'auto',");
-    expect(s).toContain('export type TagClickPayload<T = any> = {');
+    expect(s).toContain("from '@/web/web/components/field/manyToManyTagsTypes'");
     expect(s).toContain("(e: 'tag-click', payload: TagClickPayload<any>): void;");
     expect(s).toContain("return Boolean(p.onTagClick || p['onTag-click']);");
     expect(s).toContain("emit('tag-click', { id: item.id, item: item.record, label: item.label, source: 'display', event });");

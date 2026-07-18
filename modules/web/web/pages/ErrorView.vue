@@ -26,7 +26,7 @@ import { ElButton, ElResult, ElIcon, ElDivider } from 'element-plus';
 import { WarningFilled, CircleCloseFilled, QuestionFilled } from '@element-plus/icons-vue';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web');
+const { _t } = createTranslate('web', { scope: 'web/pages/ErrorView' });
 
 // Define local types.
 type ResultStatus = 'success' | 'warning' | 'info' | 'error' | '404' | '403' | '500';
@@ -80,55 +80,55 @@ const errorConfig = computed<ErrorConfig>(() => {
       const fromPath = route.query.from as string;
 
       // Build a reason-specific subtitle.
-      let subtitle = _t('You do not have permission to access this page', { scope: 'web/pages/ErrorView@shell' });
+      let subtitle = _t('You do not have permission to access this page');
       if (reason === 'role') {
-        subtitle = _t('You are missing the required role', { scope: 'web/pages/ErrorView@shell' });
+        subtitle = _t('You are missing the required role');
       } else if (reason === 'permission') {
-        subtitle = _t('You are missing the required permission', { scope: 'web/pages/ErrorView@shell' });
+        subtitle = _t('You are missing the required permission');
       }
 
       // Build custom action buttons.
-      const actions: ActionItem[] = [{ text: _t('Back to home', { scope: 'web/pages/ErrorView@shell' }), action: goHome, type: 'primary' }];
+      const actions: ActionItem[] = [{ text: _t('Back to home'), action: goHome, type: 'primary' }];
 
       // Add a return button when a source path is provided.
       if (fromPath) {
-        actions.push({ text: _t('Go back', { scope: 'web/pages/ErrorView@shell' }), action: () => goToPath(fromPath), type: 'default' });
+        actions.push({ text: _t('Go back'), action: () => goToPath(fromPath), type: 'default' });
       }
 
       // Add a contact administrator button.
-      actions.push({ text: _t('Contact administrator', { scope: 'web/pages/ErrorView@shell' }), action: contactAdmin, type: 'default' });
+      actions.push({ text: _t('Contact administrator'), action: contactAdmin, type: 'default' });
 
       return {
-        title: _t('Access denied', { scope: 'web/pages/ErrorView@shell' }),
+        title: _t('Access denied'),
         subtitle,
         icon: WarningFilled,
         status: '403',
-        message: message || _t('Confirm you have access to this resource, or contact an administrator.', { scope: 'web/pages/ErrorView@shell' }),
+        message: message || _t('Confirm you have access to this resource, or contact an administrator.'),
         actions,
       };
     case '500':
       return {
-        title: _t('Server error', { scope: 'web/pages/ErrorView@shell' }),
-        subtitle: _t('The server encountered an error', { scope: 'web/pages/ErrorView@shell' }),
+        title: _t('Server error'),
+        subtitle: _t('The server encountered an error'),
         icon: CircleCloseFilled,
         status: '500',
-        message: (route.query.message as string) || _t('An internal error occurred. Try again later or contact support.', { scope: 'web/pages/ErrorView@shell' }),
+        message: (route.query.message as string) || _t('An internal error occurred. Try again later or contact support.'),
         actions: [
-          { text: _t('Back to home', { scope: 'web/pages/ErrorView@shell' }), action: goHome, type: 'primary' },
-          { text: _t('Retry', { scope: 'web/pages/ErrorView@shell' }), action: retry, type: 'default' },
-          { text: _t('Report a problem', { scope: 'web/pages/ErrorView@shell' }), action: reportIssue, type: 'warning' },
+          { text: _t('Back to home'), action: goHome, type: 'primary' },
+          { text: _t('Retry'), action: retry, type: 'default' },
+          { text: _t('Report a problem'), action: reportIssue, type: 'warning' },
         ],
       };
     default: // 404
       return {
-        title: _t('Page not found', { scope: 'web/pages/ErrorView@shell' }),
-        subtitle: _t('The page you requested does not exist', { scope: 'web/pages/ErrorView@shell' }),
+        title: _t('Page not found'),
+        subtitle: _t('The page you requested does not exist'),
         icon: QuestionFilled,
         status: '404',
-        message: _t('Check that the URL is correct, or the page may have been moved or deleted.', { scope: 'web/pages/ErrorView@shell' }),
+        message: _t('Check that the URL is correct, or the page may have been moved or deleted.'),
         actions: [
-          { text: _t('Back to home', { scope: 'web/pages/ErrorView@shell' }), action: goHome, type: 'primary' },
-          { text: _t('Go back', { scope: 'web/pages/ErrorView@shell' }), action: goBack, type: 'default' },
+          { text: _t('Back to home'), action: goHome, type: 'primary' },
+          { text: _t('Go back'), action: goBack, type: 'default' },
         ],
       };
   }

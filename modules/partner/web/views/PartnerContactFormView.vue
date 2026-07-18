@@ -80,7 +80,7 @@ import OFormView from '@/web/web/components/view/OFormView.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/OManyToOneRefField.vue';
+import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OIntField from '@/web/web/components/field/OIntField.vue';
 import AddressListView from '@/base/web/views/AddressListView.vue';

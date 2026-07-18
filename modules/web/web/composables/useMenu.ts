@@ -10,7 +10,9 @@ import { BookmarkBorderOutlined } from '@vicons/material';
 import { useI18n } from 'vue-i18n';
 import { useMenuStore } from '../stores/menuStore';
 import type { MenuItem } from '@/core/web/menu';
-import { translateTerm } from '../i18n';
+import { translateTerm, createTranslate } from '../i18n';
+
+const { _t: _tMenu } = createTranslate('web', { scope: 'web/composables/useMenu' });
 
 /**
  * Provides menu navigation helpers and render utilities backed by the menu store.
@@ -206,7 +208,7 @@ export function useMenu() {
       onSubMenuClose,
       defaultIcon,
       useDefaultIcon = false,
-      emptyText = '无可用菜单',
+      emptyText = _tMenu('No menus available'),
       menuProps = {},
     } = options;
 

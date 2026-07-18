@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <el-aside :class="sidebarClass" ref="sidebarRef" role="navigation" aria-label="主导航">
+  <el-aside :class="sidebarClass" ref="sidebarRef" role="navigation" :aria-label="_t('Main navigation')">
     <div class="o-sidebar__inner" @mouseleave="handleMenuMouseLeave">
       <!-- Top section. -->
       <div class="o-sidebar__header"></div>
@@ -42,6 +42,9 @@ import { useMenu } from '@/web/web/composables';
 import type { MenuItem } from '@/core/web/menu';
 import { ElAside, ElScrollbar } from 'element-plus';
 import { BookmarkBorderOutlined } from '@vicons/material';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/layout/OSidebar' });
 
 // State store.
 const layoutStore = useLayoutStore();

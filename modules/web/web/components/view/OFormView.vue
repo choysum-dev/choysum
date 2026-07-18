@@ -13,51 +13,51 @@ SPDX-License-Identifier: Apache-2.0
               <template v-if="viewMode === 'display' && recordId">
                 <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                   <el-icon><Plus /></el-icon>
-                  新建
+                  {{ _t('New') }}
                 </el-button>
                 <el-button v-if="canEdit" size="small" plain type="primary" @click="handleEdit">
                   <el-icon><Edit /></el-icon>
-                  编辑
+                  {{ _t('Edit') }}
                 </el-button>
                 <el-button v-if="canRefresh" size="small" plain @click="handleRefresh">
                   <el-icon><Refresh /></el-icon>
-                  刷新
+                  {{ _t('Refresh') }}
                 </el-button>
                 <el-button v-if="canCopy" size="small" plain @click="handleCopy">
                   <el-icon><ContentCopyFilled /></el-icon>
-                  复制
+                  {{ _t('Copy') }}
                 </el-button>
                 <el-button v-if="canDelete" size="small" plain type="danger" @click="handleDelete">
                   <el-icon><Delete /></el-icon>
-                  删除
+                  {{ _t('Delete') }}
                 </el-button>
               </template>
               <template v-if="viewMode === 'edit'">
                 <el-button size="small" plain type="success" @click="handleSubmit" :loading="loading">
                   <el-icon><Check /></el-icon>
-                  {{ loading ? '保存中...' : '保存' }}
+                  {{ saveLabel }}
                 </el-button>
                 <el-button size="small" plain @click="handleCancel" :disabled="loading">
                   <el-icon><Close /></el-icon>
-                  取消
+                  {{ _t('Cancel') }}
                 </el-button>
                 <el-button size="small" plain @click="handleReset" :disabled="loading">
                   <el-icon><RestoreOutlined /></el-icon>
-                  重置
+                  {{ _t('Reset') }}
                 </el-button>
               </template>
               <template v-if="viewMode === 'create'">
                 <el-button size="small" plain type="success" @click="handleSubmit" :loading="loading">
                   <el-icon><Check /></el-icon>
-                  {{ loading ? '保存中...' : '保存' }}
+                  {{ saveLabel }}
                 </el-button>
                 <el-button size="small" plain @click="handleCancel" :disabled="loading">
                   <el-icon><Close /></el-icon>
-                  取消
+                  {{ _t('Cancel') }}
                 </el-button>
                 <el-button size="small" plain @click="handleReset" :disabled="loading">
                   <el-icon><RestoreOutlined /></el-icon>
-                  重置
+                  {{ _t('Reset') }}
                 </el-button>
               </template>
             </slot>
@@ -104,51 +104,23 @@ import { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggrega
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import OViewContainer from '@/web/web/components/view/OViewContainer.vue';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
+import { createTranslate } from '@/web/web/i18n';
+import type {
+  OFormSubmitMode,
+  OFormSubmitHandlerContext,
+  OFormSubmitHandlerResult,
+  OFormSubmitHandler,
+  OFormSubmitFailureReason,
+  OFormSubmitOutcome,
+  OFormChildSubmitApi,
+  OFormChildSubmitApiRegistration,
+  OFormChildSubmitApiRegister,
+} from '@/web/web/components/view/formViewTypes';
 
-export type OFormSubmitMode = 'create' | 'edit';
+const { _t } = createTranslate('web', { scope: 'web/components/view/OFormView' });
+const { _t: _tRef } = createTranslate('web', { output: 'reference', scope: 'web/components/view/OFormView' });
+const detailsTitle = _tRef('Details');
 
-export type OFormSubmitHandlerContext<T extends BaseModel> = {
-  mode: OFormSubmitMode;
-  data: Insertable<T> | Updateable<T>;
-  formData: Partial<ClientModel<T>>;
-  defaultSubmit: () => Promise<Partial<ClientModel<T>> | null>;
-};
-
-export type OFormSubmitHandlerResult<T extends BaseModel> =
-  | boolean
-  | {
-      handled?: boolean;
-      record?: Partial<ClientModel<T>> | null;
-      successMessage?: string;
-      skipSuccessMessage?: boolean;
-    }
-  | void;
-
-export type OFormSubmitHandler<T extends BaseModel> = (ctx: OFormSubmitHandlerContext<T>) => Promise<OFormSubmitHandlerResult<T>> | OFormSubmitHandlerResult<T>;
-
-export type OFormSubmitFailureReason = 'loading' | 'validate-failed' | 'before-submit-canceled' | 'error';
-
-export type OFormSubmitOutcome<T extends BaseModel> = {
-  ok: boolean;
-  mode: OFormSubmitMode;
-  handledByHandler: boolean;
-  record: Partial<ClientModel<T>> | null;
-  formData: Partial<ClientModel<T>> | null;
-  reason?: OFormSubmitFailureReason;
-  error?: Error;
-};
-
-export type OFormChildSubmitApi = {
-  submit: () => Promise<unknown>;
-  getFormData: () => unknown;
-};
-
-export type OFormChildSubmitApiRegistration = {
-  token: string;
-  api: OFormChildSubmitApi | null;
-};
-
-export type OFormChildSubmitApiRegister = (registration: OFormChildSubmitApiRegistration) => void;
 const O_FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'o-form-child-submit-api-register';
 const O_FORM_EMBEDDED_CONTEXT_KEY = 'o-form-embedded-context';
 
@@ -253,6 +225,7 @@ const controller = createFormController(store as any);
 controller.provideToChildren();
 const viewMode = computed<ViewMode>(() => controller.vm.mode as ViewMode);
 const loading = computed<boolean>(() => !!controller.vm.loading);
+const saveLabel = computed(() => (loading.value ? _t('Saving...') : _t('Save')));
 const registerChildSubmitApi = inject<OFormChildSubmitApiRegister | null>(O_FORM_CHILD_SUBMIT_API_REGISTER_KEY, null);
 const embeddedFromHost = inject<boolean | null>(O_FORM_EMBEDDED_CONTEXT_KEY, null);
 const childSubmitRegistrationToken = nextLocalToken('o-form-view');
@@ -387,7 +360,7 @@ async function validateForm() {
 
   // Block submission when server-side field errors are still present.
   if (fieldErrors.value.size > 0) {
-    if (resolvedShowMessages.value) ElMessage.error('请先修正表单中的错误');
+    if (resolvedShowMessages.value) ElMessage.error(_t('Please fix the errors in the form first'));
     return false;
   }
 
@@ -396,7 +369,7 @@ async function validateForm() {
 
     // Recheck field errors in case validation triggered new server-side issues.
     if (fieldErrors.value.size > 0) {
-      if (resolvedShowMessages.value) ElMessage.error('请先修正表单中的错误');
+      if (resolvedShowMessages.value) ElMessage.error(_t('Please fix the errors in the form first'));
       return false;
     }
     return true;
@@ -515,7 +488,7 @@ async function handleSubmit(): Promise<OFormSubmitOutcome<T>> {
 
     if (!handledByHandler) {
       await runDefaultSubmit();
-      if (resolvedShowMessages.value) ElMessage.success(viewMode.value === 'create' ? '创建成功' : '保存成功');
+      if (resolvedShowMessages.value) ElMessage.success(viewMode.value === 'create' ? _t('Created successfully') : _t('Saved successfully'));
       // Emit external success events.
       if (modeForEmit === 'create') {
         let defaultPrevented = false;
@@ -540,7 +513,10 @@ async function handleSubmit(): Promise<OFormSubmitOutcome<T>> {
                 if (stack.length > 0 && stack[stack.length - 1].path === currentRoute.path) {
                   stack[stack.length - 1].path = newPath;
                   // Seed a temporary title until the route guard applies the final one.
-                  stack[stack.length - 1].title = '详情';
+                  Object.assign(stack[stack.length - 1], {
+                    title: detailsTitle.src,
+                    titleText: { ...detailsTitle },
+                  });
                 }
               } catch (e) {
                 console.warn('Failed to update breadcrumb', e);
@@ -561,7 +537,7 @@ async function handleSubmit(): Promise<OFormSubmitOutcome<T>> {
       };
     } else {
       const handledRecord = (handlerRecord as any) || (toRaw(exposedFormData.value) as any) || null;
-      const msg = handlerSuccessMessage || (modeForEmit === 'create' ? '创建成功' : '保存成功');
+      const msg = handlerSuccessMessage || (modeForEmit === 'create' ? _t('Created successfully') : _t('Saved successfully'));
       if (resolvedShowMessages.value && !handlerSkipSuccessMessage) ElMessage.success(msg);
 
       if (modeForEmit === 'create') {
@@ -582,7 +558,7 @@ async function handleSubmit(): Promise<OFormSubmitOutcome<T>> {
       };
     }
   } catch (e: any) {
-    if (resolvedShowMessages.value) ElMessage.error(e?.message || '操作失败');
+    if (resolvedShowMessages.value) ElMessage.error(e?.message || _t('Operation failed'));
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: viewMode.value === 'create' ? 'create' : 'update', error: err });
     return {
@@ -621,10 +597,10 @@ async function handleRefresh() {
   }
   try {
     await controller.beginDisplay(props.recordId);
-    if (resolvedShowMessages.value) ElMessage.success('已刷新');
+    if (resolvedShowMessages.value) ElMessage.success(_t('Refreshed'));
     emit('refresh-success', { record: (controller.vm.original || null) as any });
   } catch (e: any) {
-    if (resolvedShowMessages.value) ElMessage.error('刷新失败');
+    if (resolvedShowMessages.value) ElMessage.error(_t('Refresh failed'));
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'refresh', error: err });
   }
@@ -644,9 +620,9 @@ function handleCopy() {
 function handleDelete() {
   const currId = (controller.vm.original as any)?.Id ?? (controller.vm.original as any)?.id;
   if (!currId) return;
-  ElMessageBox.confirm('确定要删除当前记录吗？此操作不可恢复。', '确认删除', {
-    confirmButtonText: '确定删除',
-    cancelButtonText: '取消',
+  ElMessageBox.confirm(_t('Are you sure you want to delete the current record? This action cannot be undone.'), _t('Confirm delete'), {
+    confirmButtonText: _t('Delete'),
+    cancelButtonText: _t('Cancel'),
     type: 'warning',
     confirmButtonClass: 'el-button--danger',
   })
@@ -657,7 +633,7 @@ function handleDelete() {
       await controller.delete();
       resetOnchangeAgg();
       emit('mode-change', { mode: 'display' });
-      ElMessage.success('记录已删除');
+      ElMessage.success(_t('Record deleted'));
       let defaultPrevented = false;
       emit('delete-success', {
         id,
@@ -690,7 +666,7 @@ function handleDelete() {
     })
     .catch((e: unknown) => {
       if (e !== 'cancel') {
-        ElMessage.error('删除失败');
+        ElMessage.error(_t('Delete failed'));
         const err = e instanceof Error ? e : new Error(String(e));
         emit('action-error', { action: 'delete', error: err });
       }

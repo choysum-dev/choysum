@@ -43,7 +43,10 @@ import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
 dayjs.extend(customParseFormat);
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/ODatetimeField' });
 
 defineOptions({ name: 'ODatetimeField' });
 
@@ -172,7 +175,7 @@ function isValidValue(value: any): boolean {
 
 const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
-    if (!isValidValue(value)) return cb(new Error('无效的日期时间'));
+    if (!isValidValue(value)) return cb(new Error(_t('Invalid date time')));
     cb();
   },
 } as RuleItem;

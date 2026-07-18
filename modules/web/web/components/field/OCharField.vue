@@ -47,6 +47,9 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OCharField' });
 
 defineOptions({ name: 'OCharField' });
 
@@ -192,16 +195,16 @@ const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
       if (props.nullable) return cb();
-      return cb(new Error('Value is required'));
+      return cb(new Error(_t('Value is required')));
     }
-    if (typeof value !== 'string') return cb(new Error('Value must be a string'));
+    if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
     const n = strLen(value);
     const N = effectiveLength.value;
     if (N != null) {
       if (props.exactLength) {
-        if (n !== N) return cb(new Error(`Length must equal ${N}`));
+        if (n !== N) return cb(new Error(_t('Length must equal %s', N)));
       } else {
-        if (n > N) return cb(new Error(`Length must not exceed ${N}`));
+        if (n > N) return cb(new Error(_t('Length must not exceed %s', N)));
       }
     }
     cb();

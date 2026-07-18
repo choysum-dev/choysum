@@ -84,7 +84,7 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/OManyToOneField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import CompanyListView from './CompanyListView.vue';
 import CurrencyListView from './CurrencyListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';

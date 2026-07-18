@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
           :default-expand-all="defaultExpandAll"
           :expand-on-click-node="false"
           :highlight-current="false"
-          :empty-text="emptyText"
+          :empty-text="effectiveEmptyText"
           :loading="loading"
           @check="onCheck"
           @node-click="onNodeClick"
@@ -66,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
           :default-expand-all="defaultExpandAll"
           :expand-on-click-node="false"
           :highlight-current="false"
-          :empty-text="emptyText"
+          :empty-text="effectiveEmptyText"
           :loading="loading"
           @node-click="onNodeClick"
         >
@@ -94,6 +94,9 @@ import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyRefTreeField' });
 
 defineOptions({ name: 'OManyToManyRefTreeField', inheritAttrs: false });
 
@@ -164,7 +167,7 @@ const props = withDefaults(
     checkStrictly: true,
     defaultExpandAll: false,
     expandOnClickNode: true,
-    emptyText: '暂无数据',
+    emptyText: '',
     treeHeight: 360,
     condition: undefined,
     required: false,
@@ -175,6 +178,8 @@ const props = withDefaults(
     showInlineError: false,
   }
 );
+
+const effectiveEmptyText = computed(() => props.emptyText || _t('No data'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 const { getItems, clearItems, insertItem } = binding.asMutableArray<any>();

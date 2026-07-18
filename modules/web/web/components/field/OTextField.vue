@@ -51,6 +51,9 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OTextField' });
 
 defineOptions({ name: 'OTextField' });
 
@@ -202,12 +205,12 @@ const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
       if (props.nullable) return cb();
-      return cb(new Error('不能为空'));
+      return cb(new Error(_t('Cannot be empty')));
     }
-    if (typeof value !== 'string') return cb(new Error('必须为字符串'));
+    if (typeof value !== 'string') return cb(new Error(_t('Must be a string')));
     if (props.maxLength != null) {
       const n = strLen(value);
-      if (n > props.maxLength) return cb(new Error(`长度不能超过 ${props.maxLength}`));
+      if (n > props.maxLength) return cb(new Error(_t('Length must not exceed %s', props.maxLength)));
     }
     cb();
   },

@@ -7,16 +7,16 @@ SPDX-License-Identifier: Apache-2.0
   <div class="osf-group" :class="group.logic === 'And' ? 'osf-group--and' : 'osf-group--or'">
     <div class="osf-group__header">
       <div class="osf-group__relation">
-        <span class="osf-group__relation-label">组内关系</span>
+        <span class="osf-group__relation-label">{{ _t('Group relation') }}</span>
         <el-radio-group size="small" :model-value="group.logic" @update:model-value="onLogicChange">
           <el-radio label="And">AND</el-radio>
           <el-radio label="Or">OR</el-radio>
         </el-radio-group>
       </div>
       <div class="osf-group__ops">
-        <el-button size="small" @click="onAddCondition(group.tempId || group.id)">+ 添加条件</el-button>
-        <el-button size="small" @click="onAddGroup(group.tempId || group.id)">+ 添加分组</el-button>
-        <el-button v-if="!isRoot" size="small" type="danger" text @click="onRemoveGroup(group.tempId || group.id)"> 删除分组 </el-button>
+        <el-button size="small" @click="onAddCondition(group.tempId || group.id)">+ {{ _t('Add condition') }}</el-button>
+        <el-button size="small" @click="onAddGroup(group.tempId || group.id)">+ {{ _t('Add group') }}</el-button>
+        <el-button v-if="!isRoot" size="small" type="danger" text @click="onRemoveGroup(group.tempId || group.id)">{{ _t('Remove group') }}</el-button>
       </div>
     </div>
 
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Field selector. -->
           <el-select
             class="w-field"
-            placeholder="字段"
+            :placeholder="_t('Field')"
             :model-value="(ch as any).field"
             @update:model-value="
               (val: string) => {
@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Operator selector derived from the field metadata. -->
           <el-select
             class="w-operator"
-            placeholder="操作符"
+            :placeholder="_t('Operator')"
             :disabled="!(ch as any).field"
             :model-value="(ch as any).operator"
             @update:model-value="(val: string) => onOperatorChange(ch as any, val)"
@@ -84,9 +84,9 @@ SPDX-License-Identifier: Apache-2.0
             :formItemProps="{ labelWidth: 0, style: { margin: 0, padding: 0 } }"
           />
           <span v-else-if="(ch as any).field && isNullOperator((ch as any).operator)" class="w-value o-null-flag">NULL</span>
-          <el-input v-else class="w-value" placeholder="请选择字段" disabled />
+          <el-input v-else class="w-value" :placeholder="_t('Select a field')" disabled />
 
-          <el-button type="danger" text size="small" @click="onRemoveCondition((ch as any).tempId || (ch as any).id)"> 删除 </el-button>
+          <el-button type="danger" text size="small" @click="onRemoveCondition((ch as any).tempId || (ch as any).id)">{{ _t('Remove') }}</el-button>
         </div>
       </template>
     </div>
@@ -100,6 +100,9 @@ import { useStandaloneField } from '@/web/web/composables/useField';
 import type { FieldMetadata } from '@/web/web/stores/modelStore';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearchFilterGroup' });
 
 import OCharField from '@/web/web/components/field/OCharField.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
@@ -239,17 +242,17 @@ function extraPropsFor(field?: string) {
 function valuePlaceholder(t: string) {
   switch (t) {
     case 'manytoone':
-      return '请选择记录';
+      return _t('Select a record');
     case 'date':
-      return '选择日期';
+      return _t('Select date');
     case 'datetime':
-      return '选择日期时间';
+      return _t('Select date and time');
     case 'time':
-      return '选择时间';
+      return _t('Select time');
     case 'jsonobject':
-      return '输入 JSON';
+      return _t('Enter JSON');
     default:
-      return '值';
+      return _t('Value');
   }
 }
 

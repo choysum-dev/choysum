@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
           :reserve-keyword="false"
           :model-value="selectedIds"
           :options="selectOptions"
-          :placeholder="placeholder"
+          :placeholder="effectivePlaceholder"
           :loading="loading"
           :clearable="false"
           :disabled="!relationStore"
@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
                 @keydown.enter.stop="openPicker"
                 @keydown.space.prevent.stop="openPicker"
               >
-                搜索更多
+                {{ _t('Search more') }}
               </div>
             </div>
           </template>
@@ -86,13 +86,13 @@ SPDX-License-Identifier: Apache-2.0
           <el-tag v-if="hiddenCount > 0" size="small" type="info" effect="plain">+{{ hiddenCount }}</el-tag>
         </template>
         <slot v-else name="empty">
-          <span class="o-m2m-tags__empty">暂无</span>
+          <span class="o-m2m-tags__empty">{{ _t('None') }}</span>
         </slot>
       </div>
     </template>
   </OFieldBase>
 
-  <el-dialog v-model="dialogVisible" :title="searchViewTitle" :width="searchViewWidth" append-to-body destroy-on-close>
+  <el-dialog v-model="dialogVisible" :title="effectiveSearchViewTitle" :width="searchViewWidth" append-to-body destroy-on-close>
     <OViewScope view-mode="display">
       <component
         v-if="searchList && relationStore"
@@ -108,8 +108,8 @@ SPDX-License-Identifier: Apache-2.0
     </OViewScope>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmPicker">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ _t('Cancel') }}</el-button>
+        <el-button type="primary" @click="confirmPicker">{{ _t('OK') }}</el-button>
       </span>
     </template>
   </el-dialog>
@@ -126,17 +126,13 @@ import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
-import type { SelectionExpose } from '@/web/web/components/view/OListView.vue';
+import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { buildKeywordCondition, resolveKeywordFieldsByMeta } from '@/web/web/query/utils/condition/builder';
+import { createTranslate } from '@/web/web/i18n';
+import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
 
-export type TagClickPayload<T = any> = {
-  id: string;
-  item: Partial<T>;
-  label: string;
-  source: 'display';
-  event: MouseEvent | KeyboardEvent;
-};
+const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyTagsField' });
 
 defineOptions({ name: 'OManyToManyTagsField', inheritAttrs: false });
 
@@ -201,11 +197,11 @@ const props = withDefaults(
     condition: undefined,
     renderMode: 'auto',
     showInlineError: false,
-    searchViewTitle: '选择关联项',
+    searchViewTitle: '',
     searchViewWidth: '75%',
     tagLabelField: () => ['DisplayName', 'Name', 'Title', 'Code', 'Id'],
     tagClickable: 'auto',
-    placeholder: '请选择...',
+    placeholder: '',
     maxTagsVisible: 0,
     tagClosable: true,
     suggestLimit: 20,
@@ -213,6 +209,9 @@ const props = withDefaults(
     selectProps: () => ({}),
   }
 );
+
+const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
+const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Select related items'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 binding.registerFields(`${binding.prop}.DisplayName`);
@@ -590,11 +589,11 @@ function onSelectedIdsChange(values: any[]) {
 function openPicker() {
   emit('picker-open');
   if (!props.searchList) {
-    ElMessage.warning('[OManyToManyTagsField] 未配置 searchList，无法打开选择器');
+    ElMessage.warning(_t('searchList is not configured; cannot open picker'));
     return;
   }
   if (!relationStore.value) {
-    ElMessage.warning('[OManyToManyTagsField] relationStore 未解析，无法打开选择器');
+    ElMessage.warning(_t('relationStore is unresolved; cannot open picker'));
     return;
   }
   dialogVisible.value = true;

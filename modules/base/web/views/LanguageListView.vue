@@ -29,7 +29,8 @@ SPDX-License-Identifier: Apache-2.0
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
 import { useRouter } from 'vue-router';
-import OListView, { type RowEventPayload } from '@/web/web/components/view/OListView.vue';
+import OListView from '@/web/web/components/view/OListView.vue';
+import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';

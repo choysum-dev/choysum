@@ -56,7 +56,7 @@ import OFormView from '@/web/web/components/view/OFormView.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/OManyToOneField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import CountryListView from './CountryListView.vue';
 import StateListView from './StateListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';

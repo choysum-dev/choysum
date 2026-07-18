@@ -12,12 +12,12 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="system-actions" :selected-items="emptySelection">
               <el-button v-if="createAction" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
-                新建
+                {{ _t('New') }}
               </el-button>
 
               <el-button v-if="refreshAction" size="small" plain @click="handleRefresh">
                 <el-icon><Refresh /></el-icon>
-                刷新
+                {{ _t('Refresh') }}
               </el-button>
             </slot>
           </div>
@@ -98,10 +98,10 @@ SPDX-License-Identifier: Apache-2.0
                 </template>
                 <template #footer>
                   <div v-if="getLaneRemain(lane) > 0" class="okanban__lane-more" @click="onClickLoadMore(lane)">
-                    点击加载更多(剩余 {{ getLaneRemain(lane) }})
+                    {{ _t('Load more (%s remaining)', getLaneRemain(lane)) }}
                   </div>
                   <div v-else-if="(laneRecords[lane.key] || []).length === 0" class="okanban__lane-empty">
-                    <slot name="card-empty" :lane="lane"> 该列暂无数据 </slot>
+                    <slot name="card-empty" :lane="lane">{{ _t('No data in this column') }}</slot>
                   </div>
                 </template>
               </draggable>
@@ -114,7 +114,7 @@ SPDX-License-Identifier: Apache-2.0
       <!-- Non-grouped mode: remove lane wrappers and lay cards out across the available width -->
       <div class="okanban__flat" v-else>
         <div v-if="flatRecords.length === 0" class="okanban__flat-empty">
-          <slot name="card-empty" :lane="flatLane"> 暂无数据 </slot>
+          <slot name="card-empty" :lane="flatLane">{{ _t('No data') }}</slot>
         </div>
         <div v-else class="okanban__flat-cards">
           <div v-for="element in flatRecords" :key="element.key" class="okanban__card" @click="emitCardClick(element)" :data-record-id="element.payload?.Id">
@@ -155,6 +155,9 @@ import { ElMessage } from 'element-plus';
 import draggable from 'vuedraggable';
 import { provide, defineComponent, reactive } from 'vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/OKanbanView' });
 
 // Props aligned with the simplified OListView surface
 
@@ -258,7 +261,7 @@ const laneRecords = controller.laneRecords as any;
 // Non-grouped mode: flattened records and a synthetic lane definition
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');
 const flatRecords = computed<RecordRow[]>(() => (controller.vm.result?.kind === 'search' ? (controller.vm.result?.rows as any[]) || [] : []));
-const flatLane = computed(() => ({ key: 'all', label: '全部', count: flatRecords.value.length }));
+const flatLane = computed(() => ({ key: 'all', label: _t('All'), count: flatRecords.value.length }));
 
 // Drag options, preserving the baseline behavior
 const dragOptions = { animation: 150, forceFallback: false } as any;
@@ -379,7 +382,7 @@ async function onDragEnd(evt: any) {
         await controller.moveCard(id, fromLaneKey, toLaneKey, newIndex);
         emit('card-move', { cardId: id, fromLane: fromLaneKey, toLane: toLaneKey, index: newIndex });
       } catch (e: any) {
-        ElMessage.error('移动失败，已刷新恢复');
+        ElMessage.error(_t('Move failed; refreshed to recover'));
         emit('action-error', { action: 'move', error: e instanceof Error ? e : new Error(String(e)) });
         // Refresh on failure so the UI rolls back
         await controller.apply();
@@ -424,7 +427,7 @@ async function handleRefresh() {
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'refresh', error: err });
-    ElMessage.error('看板刷新失败');
+    ElMessage.error(_t('Kanban refresh failed'));
   }
 }
 

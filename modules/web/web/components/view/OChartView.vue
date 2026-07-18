@@ -12,11 +12,11 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="system-actions">
               <el-button v-if="createAction" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
-                新建
+                {{ _t('New') }}
               </el-button>
               <el-button v-if="refreshAction" size="small" plain @click="handleRefresh">
                 <el-icon><Refresh /></el-icon>
-                刷新
+                {{ _t('Refresh') }}
               </el-button>
             </slot>
           </div>
@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
     <slot name="fields" />
     <!-- Move controls out of the chart body, using normal document flow to avoid absolute positioning and padding-top compensation -->
     <div class="o-chart__controls" v-if="props.showChartControls && (metricOptions.length || availableChartTypes.length)">
-      <label v-if="metricOptions.length" for="o-chart-metric-select" class="o-chart__metric-label">指标</label>
+      <label v-if="metricOptions.length" for="o-chart-metric-select" class="o-chart__metric-label">{{ _t('Metric') }}</label>
       <slot name="metric-switcher" :metrics="metricOptions" :current="currentMetricAlias" :change="selectMetric">
         <el-select
           id="o-chart-metric-select"
@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
           size="small"
           class="o-chart__control-select"
           @change="onMetricChange"
-          aria-label="指标选择"
+          :aria-label="_t('Metric selection')"
         >
           <el-option v-for="m in metricOptions" :key="m.alias" :label="m.label" :value="m.alias" />
         </el-select>
@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
         </el-button-group>
       </slot>
       <slot name="stacked-switcher" :stacked="localStacked" :toggle="toggleStacked">
-        <el-tooltip content="堆叠" placement="bottom">
+        <el-tooltip :content="_t('Stack')" placement="bottom">
           <el-button
             size="small"
             :type="stackedDisabled ? 'default' : localStacked ? 'primary' : 'default'"
@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
       </slot>
       <slot name="sort-switcher" :current="currentSort" :change="selectSort">
         <el-button-group v-if="showSortGroup" class="o-chart__sort-group">
-          <el-tooltip content="原序" placement="bottom">
+          <el-tooltip :content="_t('Original order')" placement="bottom">
             <el-button
               size="small"
               :type="currentSort === 'none' ? 'primary' : 'default'"
@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
               class="o-chart__sort-btn"
             />
           </el-tooltip>
-          <el-tooltip content="升序" placement="bottom">
+          <el-tooltip :content="_t('Ascending')" placement="bottom">
             <el-button
               size="small"
               :type="currentSort === 'asc' ? 'primary' : 'default'"
@@ -100,7 +100,7 @@ SPDX-License-Identifier: Apache-2.0
               :disabled="sortDisabled"
             />
           </el-tooltip>
-          <el-tooltip content="降序" placement="bottom">
+          <el-tooltip :content="_t('Descending')" placement="bottom">
             <el-button
               size="small"
               :type="currentSort === 'desc' ? 'primary' : 'default'"
@@ -116,9 +116,9 @@ SPDX-License-Identifier: Apache-2.0
     </div>
     <div ref="chartWrapRef" class="o-chart__body">
       <VChart v-if="option" :option="option" :autoresize="autoResize" :update-options="{ notMerge: true }" class="o-chart__echart" @click="onChartItemClick" />
-      <div v-else class="o-chart__empty">无数据或未配置分组</div>
-      <div v-if="loading" class="o-chart__overlay">加载中...</div>
-      <div v-if="error" class="o-chart__overlay error">加载失败</div>
+      <div v-else class="o-chart__empty">{{ _t('No data or grouping not configured') }}</div>
+      <div v-if="loading" class="o-chart__overlay">{{ _t('Loading...') }}</div>
+      <div v-if="error" class="o-chart__overlay error">{{ _t('Load failed') }}</div>
     </div>
   </OViewContainer>
 </template>
@@ -152,6 +152,9 @@ import {
 } from '@vicons/material';
 import { ElMessage, ElButton, ElTooltip, ElButtonGroup, ElSelect, ElOption, ElIcon } from 'element-plus';
 import VChart from 'vue-echarts';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/OChartView' });
 ensureEChartsRegistered();
 
 const props = withDefaults(
@@ -716,7 +719,7 @@ async function handleRefresh() {
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'refresh', error: err });
-    ElMessage.error('图表刷新失败');
+    ElMessage.error(_t('Chart refresh failed'));
   }
 }
 

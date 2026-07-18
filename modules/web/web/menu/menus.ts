@@ -4,6 +4,9 @@
 import { type MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
 import { House } from '@element-plus/icons-vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { output: 'reference', scope: 'web/menu/menus' });
 
 /**
  * Menu configuration with the full menu structure and display metadata.
@@ -12,7 +15,7 @@ import { House } from '@element-plus/icons-vue';
 export const menus: MenuItem[] = [
   // Home menu granted to base.user by default after sign-in.
   defineMenu('web.menu.home', {
-    title: '首页',
+    title: _t('Home'),
     icon: House,
     path: '/home',
     sequence: 1,

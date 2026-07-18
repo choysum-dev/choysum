@@ -6,13 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="o-search">
     <div class="o-search__main" ref="searchMainRef" @click="focusInput" @mouseenter="isHovering = true" @mouseleave="isHovering = false">
-      <el-tooltip content="搜索" placement="top">
+      <el-tooltip :content="_t('Search')" placement="top">
         <el-button
           size="small"
           text
           :icon="SearchIcon"
           class="o-search__leading-btn"
-          aria-label="执行搜索"
+          :aria-label="_t('Run search')"
           @mousedown.prevent
           @click.stop="onSearchIconClick"
         />
@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
           @close.stop="onGroupingClear"
           :title="groupingTooltip"
         >
-          分组: {{ groupingSummary }}
+          {{ _t('Group: %s', groupingSummary) }}
         </el-tag>
 
         <el-tag
@@ -73,12 +73,12 @@ SPDX-License-Identifier: Apache-2.0
           :popper-style="{ width: 'auto', minWidth: 'fit-content' }"
         >
           <template #reference>
-            <el-button size="small" text :icon="ArrowDown" class="o-search__trailing-btn" aria-label="打开搜索菜单" @click.stop />
+            <el-button size="small" text :icon="ArrowDown" class="o-search__trailing-btn" :aria-label="_t('Open search menu')" @click.stop />
           </template>
 
           <div class="o-search__menu-grid">
             <section class="o-search__menu-col">
-              <div class="o-search__menu-title">过滤器</div>
+              <div class="o-search__menu-title">{{ _t('Filters') }}</div>
               <div class="o-search__menu-list">
                 <el-button v-for="it in defaultFilterItems" :key="'df:' + it.name" class="o-search__menu-item" text @click="onToggleDefaultFilter(it)">
                   <el-icon v-if="it.name && appliedFilterNameSet.has(it.name)" class="o-search__menu-icon o-search__menu-icon--applied">
@@ -90,11 +90,11 @@ SPDX-License-Identifier: Apache-2.0
                 </el-button>
               </div>
               <el-divider class="o-search__menu-divider" />
-              <el-button class="o-search__menu-action" text @click="onAddFilterClickAndClose"> 自定义过滤器… </el-button>
+              <el-button class="o-search__menu-action" text @click="onAddFilterClickAndClose">{{ _t('Custom filter…') }}</el-button>
             </section>
 
             <section class="o-search__menu-col o-search__menu-col--right">
-              <div class="o-search__menu-title">分组</div>
+              <div class="o-search__menu-title">{{ _t('Group by') }}</div>
 
               <div v-if="currentAppliedGroups.length > 0" class="o-search__menu-list">
                 <el-button
@@ -110,11 +110,11 @@ SPDX-License-Identifier: Apache-2.0
                   <span class="o-search__menu-item-label">{{ it.label }}</span>
                 </el-button>
               </div>
-              <div v-else class="o-search__empty">未设置</div>
+              <div v-else class="o-search__empty">{{ _t('Not set') }}</div>
 
               <el-divider class="o-search__menu-divider" />
 
-              <div class="o-search__menu-subtitle">自定义分组</div>
+              <div class="o-search__menu-subtitle">{{ _t('Custom group by') }}</div>
               <div class="o-search__menu-list">
                 <el-tree-select
                   class="o-search__tree"
@@ -128,7 +128,7 @@ SPDX-License-Identifier: Apache-2.0
                   :render-after-expand="false"
                   :default-expand-all="false"
                   :expand-on-click-node="true"
-                  placeholder="选择字段或日期粒度"
+                  :placeholder="_t('Select field or date granularity')"
                   @change="onTreeSelectChange"
                 />
               </div>
@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </div>
 
-    <el-dialog v-model="isEditorOpen" :title="draftFilter?.baseId ? '编辑过滤器' : '新建过滤器'" append-to-body destroy-on-close @close="closeEditor()">
+    <el-dialog v-model="isEditorOpen" :title="filterEditorTitle" append-to-body destroy-on-close @close="closeEditor()">
       <OSearchFilter
         v-if="draftFilter"
         :store="store"
@@ -174,9 +174,18 @@ import { parseGbString, formatGroupItemForDisplay } from '@/web/web/query/utils/
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useGroupingOptions } from '@/web/web/composables/search/useGroupingOptions';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
 
 /* Grouping summary labels. */
-const granLabelMap: Record<string, string> = { year: '年', quarter: '季', month: '月', week: '周', day: '日' };
+const granLabelMap = computed(() => ({
+  year: _t('Year'),
+  quarter: _t('Quarter'),
+  month: _t('Month'),
+  week: _t('Week'),
+  day: _t('Day'),
+}));
 
 const props = defineProps<{
   store: WebModelStore<T>;
@@ -198,7 +207,7 @@ const store = props.store;
 const groupingSummary = computed(() => {
   const arr = props.currentAppliedGroups ? (Array.isArray(props.currentAppliedGroups) ? props.currentAppliedGroups : [props.currentAppliedGroups]) : [];
   if (!arr.length) return '';
-  return arr.map(x => formatGroupItemForDisplay(x, granLabelMap)).join(' > ');
+  return arr.map(x => formatGroupItemForDisplay(x, granLabelMap.value)).join(' > ');
 });
 const groupingTooltip = computed(() => groupingSummary.value);
 
@@ -211,6 +220,7 @@ const hasActive = state.hasActive;
 const isEditorOpen = editor.isEditorOpen;
 const activeFilterId = editor.activeFilterId;
 const draftFilter = editor.draftFilter;
+const filterEditorTitle = computed(() => (draftFilter.value?.baseId ? _t('Edit filter') : _t('New filter')));
 const openNewFilter = editor.openNew;
 const openEditFilter = editor.openEdit;
 const closeEditor = editor.close;
@@ -238,7 +248,7 @@ const hasGrouping = computed(() => {
 });
 
 /* Input and helper state. */
-const placeholder = computed(() => props.placeholder || '搜索...');
+const placeholder = computed(() => props.placeholder || _t('Search...'));
 const inputName = computed(() => `${(store as any)?.storeId || 'search'}-keyword`);
 const inputId = computed(() => `${inputName.value}-input`);
 const inputRef = ref<HTMLInputElement | null>(null);

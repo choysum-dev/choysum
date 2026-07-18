@@ -86,7 +86,7 @@ import type Bank from '@/base/service/models/bank';
 import { ElRow, ElCol } from 'element-plus';
 import OFormView from '@/web/web/components/view/OFormView.vue';
 import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/OManyToOneRefField.vue';
+import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';

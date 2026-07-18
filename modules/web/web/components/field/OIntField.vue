@@ -40,6 +40,9 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OIntField' });
 
 defineOptions({ name: 'OIntField' });
 
@@ -212,13 +215,13 @@ const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
       if (props.nullable) return cb();
-      return cb(new Error('不能为空'));
+      return cb(new Error(_t('Cannot be empty')));
     }
     if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
-      return cb(new Error('必须为整数'));
+      return cb(new Error(_t('Must be an integer')));
     }
     if (value < props.min! || value > props.max!) {
-      return cb(new Error(`范围 ${props.min} ~ ${props.max}`));
+      return cb(new Error(_t('Range %s ~ %s', props.min, props.max)));
     }
     cb();
   },

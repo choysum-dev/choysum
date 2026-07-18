@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
                 <el-button link type="primary" class="o-upload-action-btn" :disabled="uploadDisabled">{{ replaceButtonText }}</el-button>
               </el-upload>
               <el-button link type="danger" class="o-upload-action-btn" :disabled="uploadDisabled" @click="removeImage(fieldValue, onFieldChange)"
-                >移除</el-button
+                >{{ _t('Remove') }}</el-button
               >
             </div>
           </div>
@@ -131,7 +131,11 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import type { UploadFile, UploadRawFile, UploadProps } from 'element-plus';
 import { Picture, UploadFilled } from '@element-plus/icons-vue';
+import { computed } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OImageField' });
 
 defineOptions({ name: 'OImageField' });
 
@@ -176,8 +180,8 @@ const props = withDefaults(
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
     accept: 'image/*',
-    uploadText: '上传图片',
-    uploadDropText: '将图片拖拽到此处，或点击上传',
+    uploadText: '',
+    uploadDropText: '',
     uploadProps: () => ({ drag: true, showFileList: false }),
     renderMode: 'auto',
     showInlineError: false,
@@ -189,14 +193,14 @@ const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebM
 const toView = (raw: any): ViewType => raw;
 const fromView = (v: ViewType) => v as unknown as V;
 const accept = (props.accept || 'image/*').trim() || 'image/*';
-const uploadButtonText = (props.uploadText || '上传图片').trim() || '上传图片';
-const uploadDropText = (props.uploadDropText || '将图片拖拽到此处，或点击上传').trim() || '将图片拖拽到此处，或点击上传';
+const uploadButtonText = computed(() => (props.uploadText || _t('Upload image')).trim() || _t('Upload image'));
+const uploadDropText = computed(() => (props.uploadDropText || _t('Drop image here or click to upload')).trim() || _t('Drop image here or click to upload'));
 const uploadConfig = (props.uploadProps || {}) as UploadPassthroughProps;
 const uploadMultiple = uploadConfig.multiple ?? false;
 const uploadDrag = uploadConfig.drag ?? true;
 const uploadShowFileList = uploadConfig.showFileList ?? false;
 const uploadDisabled = uploadConfig.disabled ?? false;
-const replaceButtonText = uploadMultiple ? uploadButtonText : '更换图片';
+const replaceButtonText = computed(() => (uploadMultiple ? uploadButtonText.value : _t('Replace image')));
 
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();

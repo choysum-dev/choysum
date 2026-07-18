@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
         :remote="true"
         :filterable="true"
         :clearable="clearable"
-        :placeholder="placeholder"
+        :placeholder="effectivePlaceholder"
         :loading="loading"
         :remote-method="(q: string) => handleRemoteSearch(q, record)"
         @visible-change="onDropdownVisibleChange"
@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
             @keydown.enter.stop="openSearchDialog(fieldValue, record)"
             @keydown.space.prevent.stop="openSearchDialog(fieldValue, record)"
           >
-            搜索更多
+            {{ _t('Search more') }}
           </div>
         </template>
       </el-select-v2>
@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
   </OFieldBase>
 
-  <el-dialog v-model="dialogVisible" :title="searchViewTitle" :width="searchViewWidth" append-to-body destroy-on-close>
+  <el-dialog v-model="dialogVisible" :title="effectiveSearchViewTitle" :width="searchViewWidth" append-to-body destroy-on-close>
     <OViewScope view-mode="display" :container="'List'">
       <component
         v-if="searchView && relationStore"
@@ -85,8 +85,8 @@ SPDX-License-Identifier: Apache-2.0
     </OViewScope>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmPick">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ _t('Cancel') }}</el-button>
+        <el-button type="primary" @click="confirmPick">{{ _t('OK') }}</el-button>
       </span>
     </template>
   </el-dialog>
@@ -105,17 +105,13 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
-import type { SelectionExpose } from '@/web/web/components/view/OListView.vue';
+import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { buildKeywordCondition } from '@/web/web/query/utils/condition/builder';
+import { createTranslate } from '@/web/web/i18n';
+import type { ValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 
-export type ValueClickPayload<T = any> = {
-  id: string;
-  item: Partial<T> | null;
-  label: string;
-  source: 'display';
-  event: MouseEvent | KeyboardEvent;
-};
+const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToOneRefField' });
 
 type OptionType = { value: V; label: string };
 
@@ -167,13 +163,13 @@ const props = withDefaults(
     label: '',
     rules: () => [],
     clearable: true,
-    placeholder: '请选择...',
+    placeholder: '',
     pageSize: 20,
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
     selectProps: () => ({}),
     width: '100%',
-    searchViewTitle: '选择记录',
+    searchViewTitle: '',
     searchViewWidth: '70%',
     required: false,
     readonly: false,
@@ -188,6 +184,9 @@ const props = withDefaults(
     valueClickable: 'auto',
   }
 );
+
+const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
+const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Select record'));
 
 const binding = (props.binding ??
   useField<T, P, V>({

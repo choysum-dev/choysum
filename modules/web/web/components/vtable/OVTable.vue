@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
       >
         <template #empty>
           <slot name="empty">
-            <div class="ovtable__empty">暂无数据</div>
+            <div class="ovtable__empty">{{ _t('No data') }}</div>
           </slot>
         </template>
 
@@ -53,6 +53,9 @@ import { computed, watch, Ref, ref, isRef, cloneVNode, h } from 'vue';
 import { ElTableV2, ElAutoResizer } from 'element-plus';
 import type { Column, RowEventHandler, RowEventHandlerParams } from 'element-plus';
 import { useVTableSelection, getOVColumnMeta, useVTableProvideColumnRegistry, useVTableProvideBuildContext } from '@/web/web/composables/useVTable';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/vtable/OVTable' });
 
 const props = withDefaults(
   defineProps<{

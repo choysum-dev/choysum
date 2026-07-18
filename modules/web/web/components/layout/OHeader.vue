@@ -113,13 +113,13 @@ SPDX-License-Identifier: Apache-2.0
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item>
-                  <span>帮助文档</span>
+                  <span>{{ _t('Help documentation') }}</span>
                 </el-dropdown-item>
                 <el-dropdown-item>
-                  <span>视频教程</span>
+                  <span>{{ _t('Video tutorials') }}</span>
                 </el-dropdown-item>
                 <el-dropdown-item>
-                  <span>联系支持</span>
+                  <span>{{ _t('Contact support') }}</span>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -134,7 +134,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- App menu drawer used when the sidebar is hidden. -->
     <el-drawer
       v-model="appDrawerVisible"
-      title="应用导航"
+      :title="_t('App navigation')"
       :direction="drawerDirection"
       :size="280"
       :with-header="true"
@@ -169,15 +169,14 @@ import { MenuOutlined, AppsOutlined, TranslateOutlined, ArrowDropDownOutlined } 
 import defaultLogo from '@/web/web/assets/logo.svg';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web');
-// Scopes must match extract auto-locations (binding names).
-const expandMenuLabel = computed(() => _t('Expand menu', { path: 'web/components/layout/OHeader', location: 'expandMenuLabel' }));
-const collapseMenuLabel = computed(() => _t('Collapse menu', { path: 'web/components/layout/OHeader', location: 'collapseMenuLabel' }));
-const selectAppLabel = computed(() => _t('Select an app', { path: 'web/components/layout/OHeader', location: 'selectAppLabel' }));
-const switchLanguageLabel = computed(() => _t('Switch language', { path: 'web/components/layout/OHeader', location: 'switchLanguageLabel' }));
-const getHelpLabel = computed(() => _t('Get help', { path: 'web/components/layout/OHeader', location: 'getHelpLabel' }));
+const { _t } = createTranslate('web', { scope: 'web/components/layout/OHeader' });
+const expandMenuLabel = computed(() => _t('Expand menu'));
+const collapseMenuLabel = computed(() => _t('Collapse menu'));
+const selectAppLabel = computed(() => _t('Select an app'));
+const switchLanguageLabel = computed(() => _t('Switch language'));
+const getHelpLabel = computed(() => _t('Get help'));
 function homeAriaLabel(name: string) {
-  return _t('%s - Home', { path: 'web/components/layout/OHeader', location: 'homeAriaLabel' }, name);
+  return _t('%s - Home', name);
 }
 
 // Fixed height constants.

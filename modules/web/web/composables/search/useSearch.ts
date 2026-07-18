@@ -5,8 +5,11 @@
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
+import { createTranslate } from '@/web/web/i18n';
 import { useSearchState, type UseSearchStateOptions } from './useSearchState';
 import { useSearchEditor } from './useSearchEditor';
+
+const { _t } = createTranslate('web', { scope: 'web/composables/search/useSearch' });
 
 export interface UseSearchOptions extends UseSearchStateOptions {
   attachStore?: WebModelStore<any>; // Optional source of field metadata used while building query conditions.
@@ -35,7 +38,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
 
   // ===== summarization helpers (reintroduced for backward compatibility) =====
   function summarizeFilter(f: ConditionGroup, maxDepth = 2): string {
-    if (!f) return '(空)';
+    if (!f) return _t('(empty)');
     const parts: string[] = [];
     const children = Array.isArray((f as any).children) ? (f as any).children : [];
     for (const ch of children) {
@@ -46,10 +49,10 @@ export function useSearch(opts: UseSearchOptions = {}) {
         if (c.field && c.operator) parts.push(`${c.field} ${c.operator}`);
       }
     }
-    return parts.join(' AND ') || '(空)';
+    return parts.join(' AND ') || _t('(empty)');
   }
   function summarizeFilterFields(f: ConditionGroup, maxDepth = 1): string {
-    if (!f) return '未配置';
+    if (!f) return _t('Not configured');
     const fields: string[] = [];
     const children = Array.isArray((f as any).children) ? (f as any).children : [];
     for (const ch of children) {
@@ -60,7 +63,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
         if (c.field) fields.push(c.field);
       }
     }
-    return fields.join(', ') || '未配置';
+    return fields.join(', ') || _t('Not configured');
   }
   function filterTooltip(f: ConditionGroup): string {
     return summarizeFilter(f, 3);

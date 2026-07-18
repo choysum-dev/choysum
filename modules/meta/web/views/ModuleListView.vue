@@ -55,7 +55,7 @@ import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/OListView.vue';
+import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import { ElButton, ElTooltip, ElButtonGroup, ElMessage } from 'element-plus';
 import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vicons/material';
 import { Refresh } from '@element-plus/icons-vue';

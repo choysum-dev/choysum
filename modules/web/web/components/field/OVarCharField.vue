@@ -49,6 +49,9 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OVarCharField' });
 
 defineOptions({ name: 'OVarCharField' });
 
@@ -204,12 +207,12 @@ const internalRule = {
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
       if (props.nullable) return cb();
-      return cb(new Error('Value is required'));
+      return cb(new Error(_t('Value is required')));
     }
-    if (typeof value !== 'string') return cb(new Error('Value must be a string'));
+    if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
     const n = strLen(value);
     const N = effectiveMaxLength.value;
-    if (N != null && n > N) return cb(new Error(`Length must not exceed ${N}`));
+    if (N != null && n > N) return cb(new Error(_t('Length must not exceed %s', N)));
     cb();
   },
 } as RuleItem;

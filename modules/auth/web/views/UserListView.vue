@@ -36,7 +36,7 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/OListView.vue';
+import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
