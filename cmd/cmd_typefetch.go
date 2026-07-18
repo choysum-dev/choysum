@@ -45,6 +45,9 @@ func newTypeFetchCmd(envGetter func() scope.Scope) *cobra.Command {
 type definitions (.d.ts) from the configured ESM upstream, and caches them
 locally for IDE support.
 
+Also fetches fixed IDE tooling packages (for example vitest) that tests import
+via bare specifiers but are not declared in module package.json.
+
 When called without arguments, fetches types for all installed modules.
 When <app> is specified, fetches types for that module only.`,
 		Hidden: true,
@@ -204,6 +207,12 @@ When <app> is specified, fetches types for that module only.`,
 			totalCompilerTypeFailed := 0
 			totalCompilerTypeTransitiveCached := 0
 			totalCompilerTypeTransitiveFetched := 0
+			totalToolingTypeTargets := 0
+			totalToolingTypeCached := 0
+			totalToolingTypeFetched := 0
+			totalToolingTypeFailed := 0
+			totalToolingTypeTransitiveCached := 0
+			totalToolingTypeTransitiveFetched := 0
 			var allResults []esmresolver.TypeFetchResult
 			compilerTypeRootLinks := make([]esmresolver.CompilerTypeRootLink, 0, len(compilerTypeTargets))
 
@@ -234,6 +243,38 @@ When <app> is specified, fetches types for that module only.`,
 						totalCompilerTypeTransitiveCached++
 					} else {
 						totalCompilerTypeTransitiveFetched++
+					}
+				}
+				allResults = append(allResults, transitive...)
+			}
+
+			toolingTypeTargets := resolveTypeFetchToolingTypeTargets(modulesPath)
+			for i, target := range toolingTypeTargets {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				totalToolingTypeTargets++
+				setCommandProgress(fmt.Sprintf("[tooling] fetching IDE type (%d/%d): %s@%s", i+1, len(toolingTypeTargets), target.PackageName, target.Version))
+				result, transitive, err := esmresolver.FetchTypeDefinition(client, upstream, typesDir, target.PackageName, target.Version)
+				clearCommandProgress()
+				if err != nil {
+					totalToolingTypeFailed++
+					cmd.Printf("[tooling] warning: failed to fetch IDE tooling type %s@%s: %v\n", target.PackageName, target.Version, err)
+					continue
+				}
+				if result != nil {
+					if result.FromCache {
+						totalToolingTypeCached++
+					} else {
+						totalToolingTypeFetched++
+					}
+					allResults = append(allResults, *result)
+				}
+				for _, item := range transitive {
+					if item.FromCache {
+						totalToolingTypeTransitiveCached++
+					} else {
+						totalToolingTypeTransitiveFetched++
 					}
 				}
 				allResults = append(allResults, transitive...)
@@ -301,6 +342,16 @@ When <app> is specified, fetches types for that module only.`,
 					totalCompilerTypeTransitiveFetched,
 				)
 			}
+			if totalToolingTypeTargets > 0 {
+				cmd.Printf("IDE tooling types complete: targets=%d (cached=%d, fetched=%d, failed=%d), transitive (cached=%d, fetched=%d).\n",
+					totalToolingTypeTargets,
+					totalToolingTypeCached,
+					totalToolingTypeFetched,
+					totalToolingTypeFailed,
+					totalToolingTypeTransitiveCached,
+					totalToolingTypeTransitiveFetched,
+				)
+			}
 			cmd.Printf("Types directory: %s\n", typesDir)
 
 			// Update tsconfig paths for IDE support.
@@ -349,10 +400,41 @@ type typeFetchCompilerTypeTarget struct {
 	Version     string
 }
 
+type typeFetchToolingTypeTarget struct {
+	PackageName string
+	Version     string
+}
+
 const (
 	typeFetchMissingDepPolicyError = "error"
 	typeFetchMissingDepPolicyWarn  = "warn"
 )
+
+func resolveTypeFetchToolingTypeTargets(modulesPath string) []typeFetchToolingTypeTarget {
+	packages := esmresolver.IDEToolingTypePackages()
+	targets := make([]typeFetchToolingTypeTarget, 0, len(packages))
+	seen := make(map[string]struct{}, len(packages))
+	for _, packageName := range packages {
+		packageName = strings.TrimSpace(packageName)
+		if packageName == "" {
+			continue
+		}
+		if containsPathTraversal(packageName) {
+			continue
+		}
+		version := resolveTypeFetchCompilerTypeVersion(modulesPath, packageName, "")
+		key := packageName + "@" + version
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		targets = append(targets, typeFetchToolingTypeTarget{
+			PackageName: packageName,
+			Version:     version,
+		})
+	}
+	return targets
+}
 
 func resolveTypeFetchCompilerTypeTargets(tsconfigPath string, modulesPath string) ([]typeFetchCompilerTypeTarget, error) {
 	data, err := os.ReadFile(tsconfigPath)
