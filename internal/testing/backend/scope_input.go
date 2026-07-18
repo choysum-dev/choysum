@@ -206,6 +206,22 @@ func (i testRuntimeScopeInput) DistPath() string {
 	return i.cfg.DistPath
 }
 
+// withDistPath returns a copy of the input that serves an isolated DistPath for
+// backend unit tests (and thus a sibling api root via APIRootFromDist).
+func (i testRuntimeScopeInput) withDistPath(distPath string) testRuntimeScopeInput {
+	distPath = strings.TrimSpace(distPath)
+	if distPath == "" {
+		return i
+	}
+	if i.cfg != nil {
+		cloned := *i.cfg
+		cloned.DistPath = distPath
+		i.cfg = &cloned
+	}
+	i.runtimeOptions.distPath = distPath
+	return i
+}
+
 func (i testRuntimeScopeInput) TmpPath() string {
 	if i.runtimeOptions.tmpPath != "" {
 		return i.runtimeOptions.tmpPath
@@ -221,6 +237,21 @@ func (i testRuntimeScopeInput) DefaultChoysumPath() string {
 		return ""
 	}
 	return i.cfg.DefaultChoysumPath
+}
+
+// withDefaultChoysumPath returns a copy that serves an isolated DefaultChoysumPath
+// (ESM cache / generated under a CLI-test shared home).
+func (i testRuntimeScopeInput) withDefaultChoysumPath(defaultChoysumPath string) testRuntimeScopeInput {
+	defaultChoysumPath = strings.TrimSpace(defaultChoysumPath)
+	if defaultChoysumPath == "" {
+		return i
+	}
+	if i.cfg != nil {
+		cloned := *i.cfg
+		cloned.DefaultChoysumPath = defaultChoysumPath
+		i.cfg = &cloned
+	}
+	return i
 }
 
 func (i testRuntimeScopeInput) ConfigPath() string {

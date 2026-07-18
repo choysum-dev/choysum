@@ -207,3 +207,78 @@ func TestNewTestingRunIDAndContextHelpers(t *testing.T) {
 		t.Fatalf("TestingRunIDFromContext(background) = %q, want empty", got)
 	}
 }
+
+func TestCLITestTmpRootDefaultsUnderOSTemp(t *testing.T) {
+	t.Setenv(EnvCLITestTMP, "")
+	got, err := CLITestTmpRoot()
+	if err != nil {
+		t.Fatalf("CLITestTmpRoot() error = %v", err)
+	}
+	want := filepath.Join(os.TempDir(), defaultCLITestTmpDirName)
+	if filepath.Clean(got) != filepath.Clean(want) {
+		t.Fatalf("CLITestTmpRoot() = %q, want %q", got, want)
+	}
+	if st, err := os.Stat(got); err != nil || !st.IsDir() {
+		t.Fatalf("expected CLI test tmp root dir, stat err=%v", err)
+	}
+}
+
+func TestCLITestTmpRootHonorsEnvOverride(t *testing.T) {
+	override := filepath.Join(t.TempDir(), "custom-cli-test-tmp")
+	t.Setenv(EnvCLITestTMP, override)
+	got, err := CLITestTmpRoot()
+	if err != nil {
+		t.Fatalf("CLITestTmpRoot() error = %v", err)
+	}
+	if filepath.Clean(got) != filepath.Clean(override) {
+		t.Fatalf("CLITestTmpRoot() = %q, want %q", got, override)
+	}
+}
+
+func TestResolveCLITestingRunHomeUsesRunID(t *testing.T) {
+	workspaceRoot := filepath.Join(t.TempDir(), "repo")
+	tmpRoot := filepath.Join(t.TempDir(), "cli-tmp")
+	ctx := ContextWithTestingRunID(context.Background(), "runhome1")
+	got, err := ResolveCLITestingRunHome(ctx, workspaceRoot, tmpRoot)
+	if err != nil {
+		t.Fatalf("ResolveCLITestingRunHome() error = %v", err)
+	}
+	want, err := ResolveTestingTmpDirFromContext(ctx, workspaceRoot, tmpRoot, CLITestingRunHomeKind)
+	if err != nil {
+		t.Fatalf("ResolveTestingTmpDirFromContext(home) error = %v", err)
+	}
+	if filepath.Clean(got) != filepath.Clean(want) {
+		t.Fatalf("ResolveCLITestingRunHome() = %q, want %q", got, want)
+	}
+	if st, err := os.Stat(got); err != nil || !st.IsDir() {
+		t.Fatalf("expected run home dir, stat err=%v", err)
+	}
+}
+
+func TestBindCLITestRuntimePathsSetsContextOverrides(t *testing.T) {
+	cliTmp := filepath.Join(t.TempDir(), "bound-cli-tmp")
+	t.Setenv(EnvCLITestTMP, cliTmp)
+	workspaceRoot := filepath.Join(t.TempDir(), "repo")
+	ctx, testTmp, runHome, err := BindCLITestRuntimePaths(context.Background(), workspaceRoot)
+	if err != nil {
+		t.Fatalf("BindCLITestRuntimePaths() error = %v", err)
+	}
+	if filepath.Clean(testTmp) != filepath.Clean(cliTmp) {
+		t.Fatalf("testTmp = %q, want %q", testTmp, cliTmp)
+	}
+	if got := CLITestTmpRootFromContext(ctx); filepath.Clean(got) != filepath.Clean(cliTmp) {
+		t.Fatalf("CLITestTmpRootFromContext() = %q, want %q", got, cliTmp)
+	}
+	if got := EffectiveCLITestRunHome(ctx); filepath.Clean(got) != filepath.Clean(runHome) {
+		t.Fatalf("EffectiveCLITestRunHome() = %q, want %q", got, runHome)
+	}
+	if TestingRunIDFromContext(ctx) == "" {
+		t.Fatal("expected testing run-id on context")
+	}
+	if filepath.Base(runHome) != CLITestingRunHomeKind {
+		t.Fatalf("runHome base = %q, want %q", filepath.Base(runHome), CLITestingRunHomeKind)
+	}
+	if !strings.HasPrefix(filepath.Clean(runHome), filepath.Clean(cliTmp)+string(filepath.Separator)) {
+		t.Fatalf("runHome = %q, want under %q", runHome, cliTmp)
+	}
+}

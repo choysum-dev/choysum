@@ -152,3 +152,46 @@ func ResolveTestingTmpDirFromContext(ctx context.Context, workspaceRoot string, 
 	runID := TestingRunIDFromContext(ctx)
 	return ResolveTestingTmpDirWithRunID(workspaceRoot, tmpRoot, kind, runID)
 }
+
+const (
+	// EnvCLITestTMP overrides the CLI test temporary root.
+	EnvCLITestTMP = "CHOYSUM_TEST_TMP"
+	// defaultCLITestTmpDirName is the directory name under os.TempDir() used
+	// when CHOYSUM_TEST_TMP is unset.
+	defaultCLITestTmpDirName = "choysum-testing"
+	// CLITestingRunHomeKind is the testing kind for the shared DefaultChoysumPath
+	// of one CLI test invocation (pkg/esm warm cache across apps).
+	CLITestingRunHomeKind = "home"
+)
+
+// CLITestTmpRoot returns the temporary root for CLI test commands
+// (unit / e2e / typecheck). Prefer CHOYSUM_TEST_TMP; otherwise use
+// <os.TempDir()>/choysum-testing. This intentionally does not use the
+// production config TmpPath (~/.choysum/tmp).
+func CLITestTmpRoot() (string, error) {
+	root := strings.TrimSpace(os.Getenv(EnvCLITestTMP))
+	if root == "" {
+		root = filepath.Join(os.TempDir(), defaultCLITestTmpDirName)
+	}
+	normalized, err := normalizeTmpRoot(root)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(normalized, 0o755); err != nil {
+		return "", xfmt.Errorf("create CLI test tmp root: %w", err)
+	}
+	return normalized, nil
+}
+
+// ResolveCLITestingRunHome returns the shared DefaultChoysumPath for one CLI
+// test run: <tmpRoot>/testing/<workspace>/<run-id>/home.
+func ResolveCLITestingRunHome(ctx context.Context, workspaceRoot string, tmpRoot string) (string, error) {
+	home, err := ResolveTestingTmpDirFromContext(ctx, workspaceRoot, tmpRoot, CLITestingRunHomeKind)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		return "", xfmt.Errorf("create CLI testing run home: %w", err)
+	}
+	return home, nil
+}

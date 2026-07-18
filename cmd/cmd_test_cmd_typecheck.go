@@ -4,11 +4,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
+	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	pkgtypecheck "github.com/choysum-dev/choysum/internal/testing/typecheck"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -55,22 +57,32 @@ func newTypecheckCmd(envGetter func() scope.Scope, runtimeOptionsGetter func() c
 				return xfmt.Errorf("typecheck: cannot determine repo root")
 			}
 
+			ctx := cmd.Context()
+			boundCtx, testTmp, _, err := testingpathing.BindCLITestRuntimePaths(ctx, repoRoot)
+			if err != nil {
+				return err
+			}
+			ctx = boundCtx
+			if keep {
+				fmt.Fprintf(cmd.ErrOrStderr(), "choysum test typecheck: kept CLI test tmp root: %s\n", testTmp)
+			}
+
 			opts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOptions.ModulesPath,
 				NpmPath:     filepath.Join(runtimeOptions.ModulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
-				TmpPath:     runtimeOptions.TmpPath,
+				TmpPath:     testTmp,
 				Target:      target,
 				Keep:        keep,
 				Stdout:      cmd.OutOrStdout(),
 				Stderr:      cmd.ErrOrStderr(),
 			}
-			return pkgtypecheck.Run(cmd.Context(), opts)
+			return pkgtypecheck.Run(ctx, opts)
 		},
 	}
 
 	cmd.Flags().BoolVar(&all, "all", false, "type-check all apps")
-	cmd.Flags().BoolVar(&keep, "keep", false, "keep intermediate artifacts for debugging")
+	cmd.Flags().BoolVar(&keep, "keep", false, "keep intermediate artifacts under the CLI test tmp root (CHOYSUM_TEST_TMP or <os.TempDir>/choysum-testing); prints absolute paths on stderr")
 
 	return cmd
 }

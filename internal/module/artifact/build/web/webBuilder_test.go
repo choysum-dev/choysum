@@ -137,6 +137,18 @@ func newTestScopeWithDB(t *testing.T) scope.Scope {
 	}
 }
 
+// isolatedChoysumHome returns a writable per-test DefaultChoysumPath under t.TempDir.
+// Real-module tests may keep ModulesPath pointed at the repo modules tree, but must
+// not use repoRoot/.choysum (that pollutes the workspace with pkg/esm and dist).
+func isolatedChoysumHome(t *testing.T) string {
+	t.Helper()
+	home := filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		t.Fatalf("mkdir isolated choysum home: %v", err)
+	}
+	return home
+}
+
 func normalizeAbsImportPath(path string) string {
 	absPath := path
 	if resolved, err := filepath.Abs(path); err == nil {
@@ -932,9 +944,10 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 	}
 
 	modulesPath := filepath.Join(repoRoot, "modules")
+	choysumHome := isolatedChoysumHome(t)
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	testRuntimeScope.cfg.ModulesPath = modulesPath
-	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(repoRoot, ".choysum")
+	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
 	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
@@ -1019,10 +1032,11 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 	}
 
 	modulesPath := filepath.Join(repoRoot, "modules")
+	choysumHome := isolatedChoysumHome(t)
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	testRuntimeScope.cfg.ModulesPath = modulesPath
-	testRuntimeScope.cfg.DistPath = filepath.Join(repoRoot, ".choysum", "dist")
-	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(repoRoot, ".choysum")
+	testRuntimeScope.cfg.DistPath = filepath.Join(choysumHome, "dist")
+	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
 	testRuntimeScope.cfg.Server = &config.ServerConfig{WebBaseURL: "/web"}
 	testRuntimeScope.cfg.Compile = config.NewDefaultCompileConfig()
 	testRuntimeScope.cfg.FrontendEnv = map[string]any{}

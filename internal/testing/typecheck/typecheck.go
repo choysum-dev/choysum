@@ -191,7 +191,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	modulesRoot = filepath.Clean(modulesRoot)
 
-	tmpRoot := strings.TrimSpace(opts.TmpPath)
+	tmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpPath)
 	if tmpRoot == "" {
 		tmpRoot = os.TempDir()
 	}
@@ -284,6 +284,8 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	if !opts.Keep {
 		defer cleanupTmpArtifacts()
+	} else {
+		fmt.Fprintf(opts.Stderr, "choysum test typecheck: kept artifacts dir: %s\n", tmpTsconfigDir)
 	}
 
 	include := []string{
