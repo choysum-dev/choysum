@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :default-filters="[
       {
-        name: 'Active',
+        name: _t('Active'),
         query: ['IsActive', '=', true],
         selected: true,
       },
@@ -24,6 +24,9 @@ import type User from '@/auth/service/models/user';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { GroupBySpec, QueryUpdatePayload } from '@/web/web/query/types';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('auth', { scope: 'web/views/UserSearchView' });
 
 // Seed the initial group only once, then let store.queryState drive subsequent changes.
 const defaultGroups = ['IsActive'] as GroupBySpec<User>[];

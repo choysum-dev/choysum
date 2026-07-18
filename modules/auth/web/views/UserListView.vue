@@ -16,13 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OImageField prop="Avatar" label="Avatar" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Username" label="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OManyToOneRefField :store="store" prop="CompanyId" label="Company" />
-    <OVarCharField prop="Email" label="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="Phone" label="Phone" :store="store" />
-    <OVarCharField prop="FullName" label="Full Name" :store="store" />
-    <ODateTimeField prop="CreatedAt" label="Created At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OImageField prop="Avatar" :label="_t('Avatar')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="Username" :label="_t('Username')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OManyToOneRefField :store="store" prop="CompanyId" :label="_t('Company')" />
+    <OVarCharField prop="Email" :label="_t('Email')" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <OVarCharField prop="Phone" :label="_t('Phone')" :store="store" />
+    <OVarCharField prop="FullName" :label="_t('Full Name')" :store="store" />
+    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 
@@ -41,10 +41,13 @@ import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 const router = useRouter();
 
 defineOptions({ name: 'UserListView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/UserListView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/UserListView' });
 
 const props = withDefaults(
   defineProps<{
@@ -55,7 +58,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const userActions = defineModelActions('auth.User', { entityTitle: 'User' });
+const userActions = defineModelActions('auth.User', { entityTitle: _tRef('User') });
 const { hasAction } = usePermission();
 
 /**

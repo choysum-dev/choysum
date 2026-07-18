@@ -16,12 +16,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="Name" label="Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Code" label="Code" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Description" label="Description" :store="store" :vColumnProps="{ minWidth: 200 }" />
-    <OBooleanField :store="store" prop="IsActive" label="Active" widget="checkbox" />
-    <OBooleanField :store="store" prop="IsSystem" label="Built-in" widget="checkbox" />
-    <ODateTimeField prop="CreatedAt" label="Created At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="Name" :label="_t('Name')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="Code" :label="_t('Code')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="Description" :label="_t('Description')" :store="store" :vColumnProps="{ minWidth: 200 }" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="checkbox" />
+    <OBooleanField :store="store" prop="IsSystem" :label="_t('Built-in')" widget="checkbox" />
+    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 
@@ -39,8 +39,11 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'RoleListView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/RoleListView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/RoleListView' });
 
 const router = useRouter();
 
@@ -55,7 +58,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const roleActions = defineModelActions('auth.Role', { entityTitle: 'Role' });
+const roleActions = defineModelActions('auth.Role', { entityTitle: _tRef('Role') });
 const { hasAction } = usePermission();
 
 /**

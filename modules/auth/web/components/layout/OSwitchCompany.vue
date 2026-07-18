@@ -14,26 +14,26 @@ SPDX-License-Identifier: Apache-2.0
     @before-enter="ensureCompanies"
   >
     <template #reference>
-      <el-button text class="o-switch-company__trigger o-header__action-item" aria-label="Switch company" data-testid="company-switch-trigger" @click.stop>
+      <el-button text class="o-switch-company__trigger o-header__action-item" :aria-label="_t('Switch company')" data-testid="company-switch-trigger" @click.stop>
         {{ currentCompanyLabel }}
       </el-button>
     </template>
 
     <div class="o-switch-company__panel" data-testid="company-switch-panel" @click.stop>
       <el-form label-position="top" class="o-switch-company__form">
-        <el-form-item label="Current Company">
+        <el-form-item :label="_t('Current Company')">
           <el-select
             v-model="draftActiveCompanyId"
             filterable
             class="o-switch-company__select"
-            placeholder="Select company"
+            :placeholder="_t('Select company')"
             data-testid="company-active-select"
           >
             <el-option v-for="c in companies" :key="c.Id" :label="c.DisplayName || c.Id" :value="c.Id" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="Available Companies">
+        <el-form-item :label="_t('Available Companies')">
           <el-select
             v-model="draftEnabledCompanyIds"
             multiple
@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
             collapse-tags
             collapse-tags-tooltip
             class="o-switch-company__select"
-            placeholder="Select available companies"
+            :placeholder="_t('Select available companies')"
             data-testid="company-enabled-select"
           >
             <el-option v-for="c in companies" :key="c.Id" :label="c.DisplayName || c.Id" :value="c.Id" />
@@ -49,7 +49,9 @@ SPDX-License-Identifier: Apache-2.0
         </el-form-item>
 
         <div class="o-switch-company__actions">
-          <el-button type="primary" size="small" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply"> Apply </el-button>
+          <el-button type="primary" size="small" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
+            {{ _t('Apply') }}
+          </el-button>
         </div>
       </el-form>
     </div>
@@ -62,6 +64,9 @@ import { ElPopover, ElButton, ElForm, ElFormItem, ElSelect, ElOption } from 'ele
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('auth', { scope: 'web/components/layout/OSwitchCompany' });
 
 type CompanyRow = { Id: string; DisplayName?: string };
 
@@ -187,7 +192,7 @@ const companyNameById = computed(() => {
 
 const currentCompanyLabel = computed(() => {
   const id = currentActiveCompanyId.value;
-  if (!id) return 'Company';
+  if (!id) return _t('Company');
   return companyNameById.value.get(id) ?? id;
 });
 

@@ -16,12 +16,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="UserId.Username" label="User" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="IpAddress" label="IP Address" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Status" label="Status" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ODateTimeField prop="LastActivityAt" label="Last Activity" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="ExpiresAt" label="Expires At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="CreatedAt" label="Created At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="UserId.Username" :label="_t('User')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="IpAddress" :label="_t('IP Address')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="Status" :label="_t('Status')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ODateTimeField prop="LastActivityAt" :label="_t('Last Activity')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ODateTimeField prop="ExpiresAt" :label="_t('Expires At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 
@@ -38,8 +38,11 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SessionListView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/SessionListView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/SessionListView' });
 
 const router = useRouter();
 
@@ -54,7 +57,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const sessionActions = defineModelActions('auth.Session', { entityTitle: 'Session' });
+const sessionActions = defineModelActions('auth.Session', { entityTitle: _tRef('Session') });
 const { hasAction } = usePermission();
 
 /**

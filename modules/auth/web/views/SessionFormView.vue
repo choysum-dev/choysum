@@ -12,50 +12,50 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="sfv-card">
       <template #header
-        ><div class="sfv-card__header"><span>Session Information</span></div></template
+        ><div class="sfv-card__header"><span>{{ _t('Session Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OManyToOneField
             :store="store"
             prop="UserId"
-            label="User"
+            :label="_t('User')"
             :search-view="UserListView"
-            search-view-title="Select User"
+            :search-view-title="_t('Select User')"
             @value-click="onUserValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="AccessTokenId" label="Access Token ID" />
+          <OVarCharField :store="store" prop="AccessTokenId" :label="_t('Access Token ID')" />
         </el-col>
         <el-col :span="24">
-          <OTextField :store="store" prop="DeviceInfo" label="Device Info" />
+          <OTextField :store="store" prop="DeviceInfo" :label="_t('Device Info')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="IpAddress" label="IP Address" />
+          <OVarCharField :store="store" prop="IpAddress" :label="_t('IP Address')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="ExpiresAt" label="Expires At" />
+          <ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="LastActivityAt" label="Last Activity" />
+          <ODateTimeField :store="store" prop="LastActivityAt" :label="_t('Last Activity')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Status" label="Status" />
+          <OVarCharField :store="store" prop="Status" :label="_t('Status')" />
         </el-col>
       </el-row>
     </el-card>
 
     <el-card shadow="never" class="sfv-card">
       <template #header
-        ><div class="sfv-card__header"><span>System Information</span></div></template
+        ><div class="sfv-card__header"><span>{{ _t('System Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" label="Created At" />
+          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" label="Updated At" />
+          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
         </el-col>
       </el-row>
     </el-card>
@@ -80,8 +80,11 @@ import UserListView from '@/auth/web/views/UserListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SessionFormView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/SessionFormView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/SessionFormView' });
 
 const props = withDefaults(
   defineProps<{
@@ -98,7 +101,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const sessionActions = defineModelActions('auth.Session', { entityTitle: 'Session' });
+const sessionActions = defineModelActions('auth.Session', { entityTitle: _tRef('Session') });
 const { hasAction } = usePermission();
 const router = useRouter();
 

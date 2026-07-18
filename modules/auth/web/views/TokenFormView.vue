@@ -12,53 +12,53 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="tfv-card">
       <template #header
-        ><div class="tfv-card__header"><span>Token Information</span></div></template
+        ><div class="tfv-card__header"><span>{{ _t('Token Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OManyToOneField
             :store="store"
             prop="UserId"
-            label="User"
+            :label="_t('User')"
             :search-view="UserListView"
-            search-view-title="Select User"
+            :search-view-title="_t('Select User')"
             @value-click="onUserValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="DisplayName" label="Display Name" />
+          <OVarCharField :store="store" prop="DisplayName" :label="_t('Display Name')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="TokenType" label="Type" />
+          <OVarCharField :store="store" prop="TokenType" :label="_t('Type')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="TokenId" label="Token ID" />
+          <OVarCharField :store="store" prop="TokenId" :label="_t('Token ID')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="ExpiresAt" label="Expires At" />
+          <ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="Revoked" label="Revoked" widget="checkbox" />
+          <OBooleanField :store="store" prop="Revoked" :label="_t('Revoked')" widget="checkbox" />
         </el-col>
         <el-col :span="24">
-          <OVarCharField :store="store" prop="RevocationReason" label="Revocation Reason" />
+          <OVarCharField :store="store" prop="RevocationReason" :label="_t('Revocation Reason')" />
         </el-col>
       </el-row>
     </el-card>
 
     <el-card shadow="never" class="tfv-card">
       <template #header
-        ><div class="tfv-card__header"><span>System Information</span></div></template
+        ><div class="tfv-card__header"><span>{{ _t('System Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="RevokedAt" label="Revoked At" />
+          <ODateTimeField :store="store" prop="RevokedAt" :label="_t('Revoked At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" label="Created At" />
+          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" label="Updated At" />
+          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
         </el-col>
       </el-row>
     </el-card>
@@ -86,8 +86,11 @@ import type User from '@/auth/service/models/user';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenFormView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/TokenFormView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/TokenFormView' });
 
 const props = withDefaults(
   defineProps<{
@@ -104,7 +107,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const tokenActions = defineModelActions('auth.Token', { entityTitle: 'Token' });
+const tokenActions = defineModelActions('auth.Token', { entityTitle: _tRef('Token') });
 const { hasAction } = usePermission();
 const router = useRouter();
 

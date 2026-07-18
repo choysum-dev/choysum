@@ -12,67 +12,67 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="rfv-card">
       <template #header
-        ><div class="rfv-card__header"><span>Basic Information</span></div></template
+        ><div class="rfv-card__header"><span>{{ _t('Basic Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Name" label="Name" :rules="[{ required: true, message: 'Required' }]" />
+          <OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="DisplayName" label="Display Name" />
+          <OVarCharField :store="store" prop="DisplayName" :label="_t('Display Name')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Code" label="Code" :rules="[{ required: true, message: 'Required' }]" />
+          <OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsActive" label="Active" widget="checkbox" />
+          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="checkbox" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsSystem" label="Built-in" widget="checkbox" />
+          <OBooleanField :store="store" prop="IsSystem" :label="_t('Built-in')" widget="checkbox" />
         </el-col>
         <el-col :span="24">
-          <OVarCharField :store="store" prop="Description" label="Description" />
+          <OVarCharField :store="store" prop="Description" :label="_t('Description')" />
         </el-col>
       </el-row>
     </el-card>
 
     <el-card shadow="never" class="rfv-card">
       <template #header
-        ><div class="rfv-card__header"><span>System Information</span></div></template
+        ><div class="rfv-card__header"><span>{{ _t('System Information') }}</span></div></template
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" label="Created At" />
+          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" label="Updated At" />
+          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
         </el-col>
       </el-row>
     </el-card>
 
     <el-card shadow="never" class="rfv-card">
       <template #header
-        ><div class="rfv-card__header"><span>Related Data</span></div></template
+        ><div class="rfv-card__header"><span>{{ _t('Related Data') }}</span></div></template
       >
       <el-tabs v-model="activeTab" type="card" class="rfv-tabs">
-        <el-tab-pane label="Users" name="users">
-          <OManyToManyField :store="store" prop="Users" label="" :search-list="UserListView" search-view-title="Select User">
-            <OCharField :store="store" prop="Users.Id" label="ID" />
-            <OVarCharField :store="store" prop="Users.Username" label="Username" />
-            <OVarCharField :store="store" prop="Users.FullName" label="Full Name" />
+        <el-tab-pane :label="_t('Users')" name="users">
+          <OManyToManyField :store="store" prop="Users" label="" :search-list="UserListView" :search-view-title="_t('Select User')">
+            <OCharField :store="store" prop="Users.Id" :label="_t('ID')" />
+            <OVarCharField :store="store" prop="Users.Username" :label="_t('Username')" />
+            <OVarCharField :store="store" prop="Users.FullName" :label="_t('Full Name')" />
           </OManyToManyField>
         </el-tab-pane>
-        <el-tab-pane label="Included Roles" name="implied_roles">
-          <OManyToManyField :store="store" prop="ImpliedRoles" label="" :search-list="RoleListView" search-view-title="Select Role">
-            <OVarCharField :store="store" prop="ImpliedRoles.Name" label="Name" />
-            <OVarCharField :store="store" prop="ImpliedRoles.Code" label="Code" />
+        <el-tab-pane :label="_t('Included Roles')" name="implied_roles">
+          <OManyToManyField :store="store" prop="ImpliedRoles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
+            <OVarCharField :store="store" prop="ImpliedRoles.Name" :label="_t('Name')" />
+            <OVarCharField :store="store" prop="ImpliedRoles.Code" :label="_t('Code')" />
           </OManyToManyField>
         </el-tab-pane>
-        <el-tab-pane label="UI Resource Access" name="ui_permissions">
+        <el-tab-pane :label="_t('UI Resource Access')" name="ui_permissions">
           <OManyToManyRefTreeField
             :store="store"
             prop="AccessUiResourceIds"
-            label="Accessible UI Resources"
+            :label="_t('Accessible UI Resources')"
             :lazy="false"
             :max-depth="0"
             children-field="Childs"
@@ -97,41 +97,41 @@ SPDX-License-Identifier: Apache-2.0
           </OManyToManyRefTreeField>
         </el-tab-pane>
 
-        <el-tab-pane label="Advanced Mode" name="advanced">
+        <el-tab-pane :label="_t('Advanced Mode')" name="advanced">
           <el-collapse v-model="advancedPanels" class="rfv-advanced" accordion>
-            <el-collapse-item name="record_rules" title="Record Rules (Manual Maintenance)">
+            <el-collapse-item name="record_rules" :title="_t('Record Rules (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="RecordRules" label="">
-                <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" label="Model" />
-                <OJsonobjectField :store="store" prop="RecordRules.Condition" label="Filter Condition" :allow-array="true" />
-                <OBooleanField :store="store" prop="RecordRules.PermRead" label="Read" />
-                <OBooleanField :store="store" prop="RecordRules.PermWrite" label="Write" />
-                <OBooleanField :store="store" prop="RecordRules.PermCreate" label="Create" />
-                <OBooleanField :store="store" prop="RecordRules.PermDelete" label="Delete" />
+                <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" :label="_t('Model')" />
+                <OJsonobjectField :store="store" prop="RecordRules.Condition" :label="_t('Filter Condition')" :allow-array="true" />
+                <OBooleanField :store="store" prop="RecordRules.PermRead" :label="_t('Read')" />
+                <OBooleanField :store="store" prop="RecordRules.PermWrite" :label="_t('Write')" />
+                <OBooleanField :store="store" prop="RecordRules.PermCreate" :label="_t('Create')" />
+                <OBooleanField :store="store" prop="RecordRules.PermDelete" :label="_t('Delete')" />
               </OOneToManyField>
             </el-collapse-item>
 
-            <el-collapse-item name="field_rules" title="Field Rules (Manual Maintenance)">
+            <el-collapse-item name="field_rules" :title="_t('Field Rules (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="FieldRules" label="">
-                <OManyToOneRefField :store="store" prop="FieldRules.IrModelId" label="Model" />
-                <OManyToOneRefField :store="store" prop="FieldRules.IrFieldId" label="Field" />
-                <OSelectionField :store="store" prop="FieldRules.PermRead" label="Read" />
-                <OSelectionField :store="store" prop="FieldRules.PermWrite" label="Write" />
+                <OManyToOneRefField :store="store" prop="FieldRules.IrModelId" :label="_t('Model')" />
+                <OManyToOneRefField :store="store" prop="FieldRules.IrFieldId" :label="_t('Field')" />
+                <OSelectionField :store="store" prop="FieldRules.PermRead" :label="_t('Read')" />
+                <OSelectionField :store="store" prop="FieldRules.PermWrite" :label="_t('Write')" />
               </OOneToManyField>
             </el-collapse-item>
 
-            <el-collapse-item name="method_accesses" title="Method Access (Manual Maintenance)">
+            <el-collapse-item name="method_accesses" :title="_t('Method Access (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="MethodAccesses" label="">
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrModelId" label="Model" />
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrServiceId" label="Service" />
-                <OSelectionField :store="store" prop="MethodAccesses.Mode" label="Mode" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.IrModelId" :label="_t('Model')" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.IrServiceId" :label="_t('Service')" />
+                <OSelectionField :store="store" prop="MethodAccesses.Mode" :label="_t('Mode')" />
               </OOneToManyField>
             </el-collapse-item>
 
-            <el-collapse-item name="ui_resources" title="UI Resource Details (Manual Maintenance)">
+            <el-collapse-item name="ui_resources" :title="_t('UI Resource Details (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="UiResources" label="">
-                <OSelectionField :store="store" prop="UiResources.Mode" label="Mode" />
-                <OManyToOneRefField :store="store" prop="UiResources.IrApplicationId" label="Application Scope" />
-                <OManyToOneRefField :store="store" prop="UiResources.IrUiResourceId" label="UI Resource" />
+                <OSelectionField :store="store" prop="UiResources.Mode" :label="_t('Mode')" />
+                <OManyToOneRefField :store="store" prop="UiResources.IrApplicationId" :label="_t('Application Scope')" />
+                <OManyToOneRefField :store="store" prop="UiResources.IrUiResourceId" :label="_t('UI Resource')" />
               </OOneToManyField>
             </el-collapse-item>
           </el-collapse>
@@ -142,7 +142,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
@@ -167,10 +167,13 @@ import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { useI18n } from 'vue-i18n';
-import { translateTerm } from '@/web/web/i18n';
+import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/RoleFormView' });
+const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
   defineProps<{
@@ -187,7 +190,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const roleActions = defineModelActions('auth.Role', { entityTitle: 'Role' });
+const roleActions = defineModelActions('auth.Role', { entityTitle: _tRef('Role') });
 const { hasAction } = usePermission();
 const composer = useI18n({ useScope: 'global' });
 

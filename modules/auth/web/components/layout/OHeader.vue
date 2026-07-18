@@ -6,25 +6,27 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <Xpath expr="//div[@class='o-header__actions-primary']" position="inside">
     <el-divider direction="vertical" class="o-header__action-divider" />
-    <el-button v-if="!isAuthenticated" text class="o-header__action-btn o-header__action-item" aria-label="Log in" @click="handleLogin"> Log In </el-button>
-    <el-button v-if="isAuthenticated" text class="o-header__action-btn o-header__action-item" aria-label="Notifications" @click="handleNotificationClick">
+    <el-button v-if="!isAuthenticated" text class="o-header__action-btn o-header__action-item" :aria-label="_t('Log in')" @click="handleLogin">
+      {{ _t('Log In') }}
+    </el-button>
+    <el-button v-if="isAuthenticated" text class="o-header__action-btn o-header__action-item" :aria-label="_t('Notifications')" @click="handleNotificationClick">
       <el-icon :size="20"><Bell /></el-icon>
     </el-button>
     <OSwitchCompany v-if="isAuthenticated" />
     <el-dropdown v-if="isAuthenticated" trigger="click" class="o-header__action-item" placement="bottom-end">
-      <el-button text class="o-header__action-btn" aria-label="User menu">
+      <el-button text class="o-header__action-btn" :aria-label="_t('User menu')">
         <el-icon :size="20"><User /></el-icon>
       </el-button>
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item>
-            <span @click="handleProfileClick">Profile</span>
+            <span @click="handleProfileClick">{{ _t('Profile') }}</span>
           </el-dropdown-item>
           <el-dropdown-item>
-            <span @click="handleSettingsClick">Settings</span>
+            <span @click="handleSettingsClick">{{ _t('Settings') }}</span>
           </el-dropdown-item>
           <el-dropdown-item divided>
-            <span @click="handleLogout">Log Out</span>
+            <span @click="handleLogout">{{ _t('Log Out') }}</span>
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
@@ -41,6 +43,7 @@ import { ElDivider, ElButton, ElDropdown, ElDropdownMenu, ElDropdownItem } from 
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import OSwitchCompany from './OSwitchCompany.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 /**
  * Extend the shared header with auth-specific actions and menus.
@@ -60,6 +63,7 @@ export default defineComponent({
   },
   setup(props, ctx) {
     const baseSetup = OHeader?.setup?.(props, ctx) || {};
+    const { _t } = createTranslate('auth', { scope: 'web/components/layout/OHeader' });
     const router = useRouter();
     const authStore = useAuthStore();
     const isAuthenticated = computed(() => authStore.isAuthenticated);
@@ -101,6 +105,7 @@ export default defineComponent({
 
     return {
       ...baseSetup,
+      _t,
       isAuthenticated,
       handleLogin,
       handleNotificationClick,

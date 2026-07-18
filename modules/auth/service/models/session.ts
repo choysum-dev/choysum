@@ -3,6 +3,7 @@
 
 import { BaseModel, Model, Field } from '@/core/service';
 import { wrapAuthError, AuthErrCode } from '../error';
+import { _t } from '../i18n';
 import User from './user';
 
 /**
@@ -71,7 +72,7 @@ export default class Session extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.SESSION_REVOCATION_FAILED,
-        message: 'Failed to revoke session',
+        message: _t('Failed to revoke session', { scope: 'service/models/session' }),
       }).withMetadata({ sessionId });
     }
   }
@@ -100,7 +101,7 @@ export default class Session extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.SESSION_REVOCATION_FAILED,
-        message: 'Failed to revoke user sessions',
+        message: _t('Failed to revoke user sessions', { scope: 'service/models/session' }),
       }).withMetadata({
         userId,
         exceptSessionId: exceptSessionId || '',
