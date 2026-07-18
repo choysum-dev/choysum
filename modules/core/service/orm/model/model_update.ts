@@ -21,6 +21,7 @@ import type { UnknownRecord } from '../../../utils/types';
 import { asObjectRecord } from '../../../utils/object';
 import { createServiceByModel } from '../../rpc';
 import { applyInverseWriteback } from '../../runtime/compute/inverse_writeback';
+import { _t } from '@/core/service/i18n_binder';
 
 type AttachmentDownloadDisposition = 'inline' | 'attachment';
 type AttachmentWriteAction =
@@ -628,7 +629,7 @@ export class UpdateOperations {
   ): Promise<Partial<T>> {
     const results = await UpdateOperations.Update<T>(ModelCtor, ['Id', '=', id] as QueryCondition<T>, values, returnFields, options);
     if (results.length === 0) {
-      throw new Error(`Update failed: Record ${id} not found.`);
+      throw new Error(_t('Update failed: Record %s not found.', { scope: 'service/orm/model/model_update' }, id));
     }
     return results[0];
   }

@@ -37,6 +37,7 @@ import { getModelRuntimeMetadata } from './model_runtime_service_facade';
 import type { ObjectRecord } from '../../../utils/types';
 import type { RuntimeModelCtor } from './types';
 import { createServiceByModel } from '../../rpc';
+import { _t } from '@/core/service/i18n_binder';
 
 /**
  * Read-related delegated operations.
@@ -309,7 +310,11 @@ export class ReadOperations {
       const meta = MetadataStorage.instance.getModelMetadata(ModelCtor);
       const domain = typeof meta?.application === 'string' && meta.application.trim() ? meta.application.trim() : 'core';
       const modelLabel = meta?.fullModelName || meta?.modelName || meta?.name || 'Record';
-      throw new ChoysumError({ domain, code: 'NotFound', message: `${modelLabel} not found` }).withGrpcCode(GrpcCode.NotFound);
+      throw new ChoysumError({
+        domain,
+        code: 'NotFound',
+        message: _t('%s not found', { scope: 'service/orm/model/model_read' }, modelLabel),
+      }).withGrpcCode(GrpcCode.NotFound);
     }
     const typedResults = results as ObjectRecord[];
     await ReadOperations.injectAttachmentBindingsForRead(ModelCtor, typedResults, fields as FieldSelection<BaseModel> | undefined);

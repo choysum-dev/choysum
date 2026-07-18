@@ -6,6 +6,7 @@ import { GrpcCode, ChoysumError } from '@/core/service/error';
 import { getModelRepository } from './model_internal_facade';
 import type { Repository } from '../repository';
 import type { RuntimeModelCtor } from './types';
+import { _t } from '@/core/service/i18n_binder';
 
 type SoftDeleteOptionLike =
   | {
@@ -25,7 +26,7 @@ function assertSoftDeleteOptionsValid(ModelCtor: unknown, options?: SoftDeleteOp
     throw new ChoysumError({
       domain: resolveErrorDomain(ModelCtor),
       code: 'InvalidArgument',
-      message: 'withDeleted and onlyDeleted cannot both be true',
+      message: _t('withDeleted and onlyDeleted cannot both be true', { scope: 'service/orm/model/model_soft_delete_scope' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
 }

@@ -21,6 +21,7 @@ import { getRuntimeRepository } from '../runtime_repository_facade';
 import { markProxyKind } from '../proxy/brand';
 import { createForbiddenPersistenceMethodStub, isDraftForbiddenPersistenceMethod } from '../proxy/draftPersistenceGuards';
 import type { ObjectRecord } from '../../../utils/types';
+import { _t } from '@/core/service/i18n_binder';
 
 type ReferenceModelMeta = Pick<FieldMetadata, 'relation'>;
 type RuntimeModelNameMeta = Pick<ModelMetadata, 'fullModelName' | 'application' | 'modelName'>;
@@ -90,7 +91,7 @@ export class ValidationEngine {
     const issues = await this.validate(ctx, options);
 
     if (issues.some(issue => issue.severity === 'error')) {
-      throw new ValidationPipelineError('validation pipeline failed', issues);
+      throw new ValidationPipelineError(_t('validation pipeline failed', { scope: 'service/runtime/validation/engine' }), issues);
     }
   }
 
@@ -150,7 +151,7 @@ export class ValidationEngine {
         {
           scope: 'platform',
           code: 'platform_model_readonly',
-          message: `model "${modelName}" is readonly and cannot be written`,
+          message: _t('model "%s" is readonly and cannot be written', { scope: 'service/runtime/validation/engine' }, modelName),
           severity: 'error',
         },
       ];
@@ -176,7 +177,7 @@ export class ValidationEngine {
           scope: 'platform',
           field,
           code: 'platform_write_to_select_field',
-          message: `field "${field}" is select-only and cannot be written`,
+          message: _t('field "%s" is select-only and cannot be written', { scope: 'service/runtime/validation/engine' }, field),
           severity: 'error',
         });
         continue;
@@ -189,7 +190,11 @@ export class ValidationEngine {
             scope: 'platform',
             field,
             code: 'platform_unknown_field',
-            message: `field "${field}" does not exist on model metadata and cannot be written`,
+            message: _t(
+              'field "%s" does not exist on model metadata and cannot be written',
+              { scope: 'service/runtime/validation/engine' },
+              field
+            ),
             severity: 'error',
           });
         }
@@ -207,7 +212,7 @@ export class ValidationEngine {
           scope: 'platform',
           field,
           code: 'platform_write_to_select_field',
-          message: `field "${field}" is select-only and cannot be written`,
+          message: _t('field "%s" is select-only and cannot be written', { scope: 'service/runtime/validation/engine' }, field),
           severity: 'error',
         });
         continue;
@@ -218,7 +223,7 @@ export class ValidationEngine {
           scope: 'platform',
           field,
           code: 'platform_write_to_computed_field',
-          message: `field "${field}" is computed and cannot be written directly`,
+          message: _t('field "%s" is computed and cannot be written directly', { scope: 'service/runtime/validation/engine' }, field),
           severity: 'error',
         });
       }
@@ -243,7 +248,12 @@ export class ValidationEngine {
             scope: 'platform',
             field,
             code: 'platform_cross_company_reference_violation',
-            message: `reference "${field}" points to company "${refId}", which is outside ctx.enabledCompanyIds`,
+            message: _t(
+              'reference "%s" points to company "%s", which is outside ctx.enabledCompanyIds',
+              { scope: 'service/runtime/validation/engine' },
+              field,
+              refId
+            ),
             severity: 'error',
           });
         }
@@ -262,7 +272,12 @@ export class ValidationEngine {
             scope: 'platform',
             field,
             code: 'platform_cross_company_reference_violation',
-            message: `reference "${field}" points to company "${refId}", which is outside ctx.enabledCompanyIds`,
+            message: _t(
+              'reference "%s" points to company "%s", which is outside ctx.enabledCompanyIds',
+              { scope: 'service/runtime/validation/engine' },
+              field,
+              refId
+            ),
             severity: 'error',
           });
         }
@@ -286,7 +301,12 @@ export class ValidationEngine {
           scope: 'platform',
           field,
           code: 'platform_cross_company_reference_not_visible',
-          message: `reference "${field}" with id "${refId}" is not visible in current company scope`,
+          message: _t(
+            'reference "%s" with id "%s" is not visible in current company scope',
+            { scope: 'service/runtime/validation/engine' },
+            field,
+            refId
+          ),
           severity: 'error',
         });
         continue;
@@ -300,7 +320,12 @@ export class ValidationEngine {
           scope: 'platform',
           field,
           code: 'platform_cross_company_reference_violation',
-          message: `reference "${field}" points to company "${targetCompanyId}", which is outside ctx.enabledCompanyIds`,
+          message: _t(
+            'reference "%s" points to company "%s", which is outside ctx.enabledCompanyIds',
+            { scope: 'service/runtime/validation/engine' },
+            field,
+            targetCompanyId
+          ),
           severity: 'error',
         });
       }

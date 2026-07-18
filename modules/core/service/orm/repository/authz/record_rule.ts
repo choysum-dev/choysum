@@ -7,6 +7,7 @@ import { fetchRepositoryRecordRuleEnvelope, replaceRepositoryRecordRuleCondition
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
 import type { RepositoryCompanyScopeFacts, RepositoryReqMethodMeta } from './authz_runtime';
 import type { RepositoryEmitAuthzDecisionSummary, RepositoryPermissionDeniedFn } from './types';
+import { _t } from '@/core/service/i18n_binder';
 
 export async function getRepositoryRecordRuleEnvelope(params: RepositoryRecordRuleDeps, op: RecordRuleOp): Promise<ConditionEnvelope> {
   return await fetchRepositoryRecordRuleEnvelope(params, op);
@@ -59,7 +60,7 @@ export async function applyRepositoryRecordRuleToCondition(
       const never: BaseQueryCondition = ['Id', '=', '__choysum_never__'];
       return andAll(condition, never) as BaseQueryCondition;
     }
-    throw params.permissionDenied('record_rule_denied', 'record rule denied', {
+    throw params.permissionDenied('record_rule_denied', _t('record rule denied', { scope: 'service/orm/repository/authz/record_rule' }), {
       model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
       op,
       reason: env.reason || 'denied',
@@ -98,7 +99,7 @@ export async function assertRepositoryRecordRuleAllTargetsAllowed(
   const env = await params.getRecordRuleEnvelope(op);
   if (env.kind === 'true') return;
   if (env.kind === 'false') {
-    throw params.permissionDenied('record_rule_denied', 'record rule denied', {
+    throw params.permissionDenied('record_rule_denied', _t('record rule denied', { scope: 'service/orm/repository/authz/record_rule' }), {
       model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
       op,
       reason: env.reason || 'denied',
@@ -109,13 +110,17 @@ export async function assertRepositoryRecordRuleAllTargetsAllowed(
   const checkCondition: BaseQueryCondition = { And: [['Id', 'in', targetIds], rrExpr] };
   const allowed = await params.countConditionMatches(checkCondition);
   if (allowed !== targetIds.length) {
-    throw params.permissionDenied('record_rule_violation', 'target set violates record rule', {
-      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-      op,
-      targetCount: String(targetIds.length),
-      allowedCount: String(allowed),
-      reason: env.reason || 'denied',
-    });
+    throw params.permissionDenied(
+      'record_rule_violation',
+      _t('target set violates record rule', { scope: 'service/orm/repository/authz/record_rule' }),
+      {
+        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+        op,
+        targetCount: String(targetIds.length),
+        allowedCount: String(allowed),
+        reason: env.reason || 'denied',
+      }
+    );
   }
 }
 
@@ -123,7 +128,7 @@ export async function assertRepositoryRecordRuleCreateAllowed(params: Repository
   if (!params.recordRuleEnabled()) return;
   const env = await params.getRecordRuleEnvelope('create');
   if (env.kind === 'false') {
-    throw params.permissionDenied('record_rule_denied', 'record rule denied', {
+    throw params.permissionDenied('record_rule_denied', _t('record rule denied', { scope: 'service/orm/repository/authz/record_rule' }), {
       model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
       op: 'create',
       reason: env.reason || 'denied',
@@ -144,12 +149,16 @@ export async function assertRepositoryRecordRuleAllCreatedAllowed(
   const checkCondition: BaseQueryCondition = { And: [['Id', 'in', createdIds], rrExpr] };
   const allowed = await params.countConditionMatches(checkCondition);
   if (allowed !== createdIds.length) {
-    throw params.permissionDenied('record_rule_violation', 'created set violates record rule', {
-      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-      op: 'create',
-      createdCount: String(createdIds.length),
-      allowedCount: String(allowed),
-      reason: env.reason || 'denied',
-    });
+    throw params.permissionDenied(
+      'record_rule_violation',
+      _t('created set violates record rule', { scope: 'service/orm/repository/authz/record_rule' }),
+      {
+        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+        op: 'create',
+        createdCount: String(createdIds.length),
+        allowedCount: String(allowed),
+        reason: env.reason || 'denied',
+      }
+    );
   }
 }

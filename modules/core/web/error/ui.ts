@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError } from '../../error';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('core', { scope: 'web/error/ui' });
 
 export interface UIErrorState {
   code: string;
@@ -9,7 +12,7 @@ export interface UIErrorState {
   details?: Record<string, string>;
 }
 
-export function toUIErrorState(error: unknown, fallbackMessage = 'Unexpected error'): UIErrorState {
+export function toUIErrorState(error: unknown, fallbackMessage = _t('Unexpected error')): UIErrorState {
   if (error instanceof ChoysumError) {
     return {
       code: error.code,

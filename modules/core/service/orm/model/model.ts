@@ -28,6 +28,7 @@ import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
+import { _t } from '@/core/service/i18n_binder';
 import { MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from '../metadata/storage';
 import type { EffectiveConstraintMeta, EffectiveOnchangeMeta } from '../metadata';
 import {
@@ -227,7 +228,7 @@ class BaseModel {
   static ensureUserId(): string {
     const id = String(this.userId || '').trim();
     if (!id) {
-      throw new Error('current user is required');
+      throw new Error(_t('current user is required', { scope: 'service/orm/model/model' }));
     }
     return id;
   }

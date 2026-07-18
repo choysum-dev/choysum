@@ -17,6 +17,7 @@ import {
   encodeRepositoryMutationPayloads,
   validateRepositoryMutationPayload,
 } from './mutation_payload_helpers';
+import { _t } from '@/core/service/i18n_binder';
 
 export type RepositoryCreateWriteAuthzDeps = {
   meta: ModelMetadata;
@@ -37,11 +38,15 @@ export async function ensureRepositoryCreateAllowed(params: RepositoryCreateWrit
     return recordRuleEnvelope;
   }
 
-  throw params.permissionDenied('record_rule_denied', 'record rule denied', {
-    model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-    op: 'create',
-    reason: recordRuleEnvelope.reason || 'denied',
-  });
+  throw params.permissionDenied(
+    'record_rule_denied',
+    _t('record rule denied', { scope: 'service/orm/repository/write/create_helpers' }),
+    {
+      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+      op: 'create',
+      reason: recordRuleEnvelope.reason || 'denied',
+    }
+  );
 }
 
 export async function prepareRepositoryCreateEntities(params: RepositoryCreateWritePrepareDeps, value: Entity[]): Promise<Entity[]> {

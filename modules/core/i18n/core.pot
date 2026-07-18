@@ -7,3 +7,205 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/orm/model/model.ts:231
+msgctxt "service/orm/model/model"
+msgid "current user is required"
+msgstr ""
+
+#: service/orm/model/model_instance.ts:192
+msgctxt "service/orm/model/model_instance"
+msgid "Delete failed: Record with Id %s not found or could not be deleted"
+msgstr ""
+
+#: service/orm/model/model_instance.ts:229
+#: service/orm/model/model_instance.ts:89
+msgctxt "service/orm/model/model_instance"
+msgid "Record with Id %s no longer exists"
+msgstr ""
+
+#: service/orm/model/model_read.ts:316
+msgctxt "service/orm/model/model_read"
+msgid "%s not found"
+msgstr ""
+
+#: service/orm/model/model_soft_delete_scope.ts:29
+msgctxt "service/orm/model/model_soft_delete_scope"
+msgid "withDeleted and onlyDeleted cannot both be true"
+msgstr ""
+
+#: service/orm/model/model_update.ts:632
+msgctxt "service/orm/model/model_update"
+msgid "Update failed: Record %s not found."
+msgstr ""
+
+#: service/orm/repository/authz/company_scope.ts:84
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "company is not in ctx.enabledCompanyIds"
+msgstr ""
+
+#: service/orm/repository/authz/company_scope.ts:103
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "companyScoped model is missing CompanyId field"
+msgstr ""
+
+#: service/orm/repository/authz/company_scope.ts:173
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "missing ctx.activeCompanyId for company scoped create"
+msgstr ""
+
+#: service/orm/repository/authz/company_scope.ts:114
+msgctxt "service/orm/repository/authz/company_scope"
+msgid "missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation"
+msgstr ""
+
+#: service/orm/repository/authz/field_rule_helpers.ts:143
+msgctxt "service/orm/repository/authz/field_rule_helpers"
+msgid "failed to fetch field rule spec"
+msgstr ""
+
+#: service/orm/repository/authz/field_rule_helpers.ts:179
+msgctxt "service/orm/repository/authz/field_rule_helpers"
+msgid "field rule readonly violation"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule.ts:153
+msgctxt "service/orm/repository/authz/record_rule"
+msgid "created set violates record rule"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule.ts:102
+#: service/orm/repository/authz/record_rule.ts:131
+#: service/orm/repository/authz/record_rule.ts:63
+msgctxt "service/orm/repository/authz/record_rule"
+msgid "record rule denied"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule.ts:114
+msgctxt "service/orm/repository/authz/record_rule"
+msgid "target set violates record rule"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:109
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "entry record rule allowlist miss"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:137
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "failed to fetch record rule condition"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:201
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "invalid JSON in record rule condition"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:226
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "invalid record rule condition shape (type=%s, isArray=%s, preview=%s)"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:152
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "missing ctx.activeCompanyId for $companyId token"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:164
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "missing ctx.enabledCompanyIds for $companyIds token"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:250
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "missing identity.userId for $userId token"
+msgstr ""
+
+#: service/orm/repository/authz/record_rule_helpers.ts:264
+msgctxt "service/orm/repository/authz/record_rule_helpers"
+msgid "unknown token in record rule condition"
+msgstr ""
+
+#: service/orm/repository/validation/kernel.ts:119
+#: service/orm/repository/validation/kernel.ts:144
+msgctxt "service/orm/repository/validation/kernel"
+msgid "Field \"%s\" cannot be null"
+msgstr ""
+
+#: service/orm/repository/validation/kernel.ts:187
+msgctxt "service/orm/repository/validation/kernel"
+msgid "Field \"%s\" has an invalid reference shape and must be an Id or an object containing Id/id"
+msgstr ""
+
+#: service/orm/repository/validation/kernel.ts:74
+msgctxt "service/orm/repository/validation/kernel"
+msgid "Field \"%s\" has value \"%s\" outside the allowed selection values. Allowed values: %s"
+msgstr ""
+
+#: service/orm/repository/validation/kernel.ts:50
+msgctxt "service/orm/repository/validation/kernel"
+msgid "Field \"%s\" is not a valid int"
+msgstr ""
+
+#: service/orm/repository/validation/kernel.ts:134
+msgctxt "service/orm/repository/validation/kernel"
+msgid "Field \"%s\" is required"
+msgstr ""
+
+#: service/orm/repository/validation/kernel.ts:214
+msgctxt "service/orm/repository/validation/kernel"
+msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
+msgstr ""
+
+#: service/orm/repository/write/create_helpers.ts:42
+msgctxt "service/orm/repository/write/create_helpers"
+msgid "record rule denied"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:193
+msgctxt "service/runtime/validation/engine"
+msgid "field \"%s\" does not exist on model metadata and cannot be written"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:226
+msgctxt "service/runtime/validation/engine"
+msgid "field \"%s\" is computed and cannot be written directly"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:180
+#: service/runtime/validation/engine.ts:215
+msgctxt "service/runtime/validation/engine"
+msgid "field \"%s\" is select-only and cannot be written"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:154
+msgctxt "service/runtime/validation/engine"
+msgid "model \"%s\" is readonly and cannot be written"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:251
+#: service/runtime/validation/engine.ts:275
+#: service/runtime/validation/engine.ts:323
+msgctxt "service/runtime/validation/engine"
+msgid "reference \"%s\" points to company \"%s\", which is outside ctx.enabledCompanyIds"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:304
+msgctxt "service/runtime/validation/engine"
+msgid "reference \"%s\" with id \"%s\" is not visible in current company scope"
+msgstr ""
+
+#: service/runtime/validation/engine.ts:94
+msgctxt "service/runtime/validation/engine"
+msgid "validation pipeline failed"
+msgstr ""
+
+#: web/error/ui.ts:15
+msgctxt "web/error/ui"
+msgid "Unexpected error"
+msgstr ""
+
+#: web/rpc/errors.ts:30
+msgctxt "web/rpc/errors"
+msgid "Unknown API error"
+msgstr ""
+
