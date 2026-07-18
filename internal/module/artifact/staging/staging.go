@@ -5,6 +5,7 @@ package staging
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 type opIDKey struct{}
 type tmpRootKey struct{}
+type loggerKey struct{}
 
 // NewOpID generates an operation id suitable for grouping staging operations.
 func NewOpID() string {
@@ -48,6 +50,25 @@ func OpIDFromContext(ctx context.Context) (string, bool) {
 		return "", false
 	}
 	return s, true
+}
+
+// WithLogger associates a slog logger with ctx for staging commit diagnostics.
+func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if logger == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, loggerKey{}, logger)
+}
+
+func loggerFromContext(ctx context.Context) *slog.Logger {
+	if ctx == nil {
+		return nil
+	}
+	logger, _ := ctx.Value(loggerKey{}).(*slog.Logger)
+	return logger
 }
 
 // WithTmpRoot associates a tmp root with ctx so staging helpers can place
@@ -97,6 +118,7 @@ type DirStaging struct {
 	OpID        string
 	HadTarget   bool
 	committed   bool
+	logger      *slog.Logger
 }
 
 // PrepareDir creates a staging directory for targetDir but does NOT swap it into place.
@@ -141,6 +163,7 @@ func PrepareDir(ctx context.Context, targetDir string) (*DirStaging, error) {
 		OpDir:       opDir,
 		StagingRoot: stagingRoot,
 		OpID:        opid,
+		logger:      loggerFromContext(ctx),
 	}, nil
 }
 
@@ -200,11 +223,74 @@ func (s *DirStaging) CommitKeepBackup() error {
 		return xfmt.Errorf("stat target dir: %w", err)
 	}
 
+	logDirStagingCommit(s)
+
 	if err := atomicReplaceDir(s.StagingDir, s.TargetDir, s.BackupDir); err != nil {
 		return err
 	}
 	s.committed = true
 	return nil
+}
+
+func logDirStagingCommit(s *DirStaging) {
+	if s == nil {
+		return
+	}
+	logger := s.logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+	attrs := []any{
+		"target", s.TargetDir,
+		"staging", s.StagingDir,
+		"backup", s.BackupDir,
+		"had_target", s.HadTarget,
+	}
+	// Info so a normal `go run . run` repro surfaces every commit target without raising log level.
+	logger.Info("staging dir commit", attrs...)
+	if anomalousRuntimeAPICommitTarget(s.TargetDir) {
+		logger.Warn("staging dir commit target looks anomalous for runtime api layout", attrs...)
+	}
+}
+
+// anomalousRuntimeAPICommitTarget flags commits whose target sits under an "api"
+// path segment but is not the expected .../api/<app>/proto leaf. Those are the
+// only shapes that can wipe sibling app trees in one rename.
+func anomalousRuntimeAPICommitTarget(target string) bool {
+	target = filepath.Clean(strings.TrimSpace(target))
+	if target == "" || target == "." {
+		return false
+	}
+	parts := splitPathSegments(target)
+	apiIdx := -1
+	for i, part := range parts {
+		if part == "api" {
+			apiIdx = i
+			break
+		}
+	}
+	if apiIdx < 0 {
+		return false
+	}
+	// Expected: .../api/<app>/proto  (exactly two segments after "api")
+	rest := parts[apiIdx+1:]
+	if len(rest) == 2 && rest[1] == "proto" && rest[0] != "" && rest[0] != "." {
+		return false
+	}
+	return true
+}
+
+func splitPathSegments(path string) []string {
+	cleaned := filepath.Clean(path)
+	vol := filepath.VolumeName(cleaned)
+	if vol != "" {
+		cleaned = strings.TrimPrefix(cleaned, vol)
+	}
+	cleaned = strings.TrimPrefix(cleaned, string(filepath.Separator))
+	if cleaned == "" {
+		return nil
+	}
+	return strings.Split(cleaned, string(filepath.Separator))
 }
 
 // Finalize removes any backup created by CommitKeepBackup and cleans up empty staging dirs.

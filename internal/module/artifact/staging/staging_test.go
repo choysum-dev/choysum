@@ -589,3 +589,23 @@ func TestWriteFileAtomic_CreatesParents(t *testing.T) {
 		t.Fatalf("expected ok, got %q", string(got))
 	}
 }
+
+func TestAnomalousRuntimeAPICommitTarget(t *testing.T) {
+	cases := []struct {
+		target string
+		want   bool
+	}{
+		{filepath.Join("tmp", "choysum", "api", "base", "proto"), false},
+		{filepath.Join("/Users/me/.choysum/api/auth/proto"), false},
+		{filepath.Join("tmp", "choysum", "api"), true},
+		{filepath.Join("tmp", "choysum", "api", "auth"), true},
+		{filepath.Join("tmp", "choysum", "api", "auth", "proto", "extra"), true},
+		{filepath.Join("tmp", "choysum", "dist", "bundles"), false},
+		{filepath.Join("tmp", "choysum", "generated", "proto", "base"), false},
+	}
+	for _, tc := range cases {
+		if got := anomalousRuntimeAPICommitTarget(tc.target); got != tc.want {
+			t.Fatalf("anomalousRuntimeAPICommitTarget(%q)=%v, want %v", tc.target, got, tc.want)
+		}
+	}
+}

@@ -45,6 +45,9 @@ func buildRunDecision(distRoot string, configBundleMode string, logger *slog.Log
 	compileBundleMode, serveTargets, err := resolveServeTargets(distRoot, configBundleMode, logger, manifest, serviceNames)
 	if err != nil {
 		if !explicitTargets && isBootstrapFallbackError(err) {
+			if logger != nil {
+				logger.Info("bootstrap fallback after serve target resolve", "detail", err.Error())
+			}
 			return RunDecision{
 				RunMode:           RunModeBootstrap,
 				CompileBundleMode: compileBundleMode,
@@ -67,6 +70,9 @@ func buildRunDecision(distRoot string, configBundleMode string, logger *slog.Log
 
 	if err := ValidateDistForTargets(compileBundleMode, distRoot, serveTargets); err != nil {
 		if !explicitTargets && isBootstrapFallbackError(err) {
+			if logger != nil {
+				logger.Info("bootstrap fallback after dist validation", "detail", err.Error())
+			}
 			return RunDecision{
 				RunMode:           RunModeBootstrap,
 				CompileBundleMode: compileBundleMode,

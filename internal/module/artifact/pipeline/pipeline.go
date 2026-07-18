@@ -188,6 +188,9 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 	if _, ok := staging.OpIDFromContext(ctx); !ok {
 		ctx = staging.WithOpID(ctx, staging.NewOpID())
 	}
+	if cb.Logger != nil {
+		ctx = staging.WithLogger(ctx, cb.Logger)
+	}
 	logger := cb.Logger
 	normalizeLogAttrs := func(attrs []any) []any {
 		if len(attrs) == 0 {
