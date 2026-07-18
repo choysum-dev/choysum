@@ -6,4 +6,3 @@ import { createTranslate } from '@/core/service/i18n';
 /** Auth service terminology binder (module owner = auth). */
 const translate = createTranslate('auth');
 export const _t = translate._t;
-export const _lt = translate._lt;

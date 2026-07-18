@@ -5,12 +5,12 @@ import { ref, readonly } from 'vue';
 import { defineStore } from 'pinia';
 import { nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { isTextDescriptor, type TextDescriptor } from '@/core/service/i18n';
+import { isTermReference, type TermReference } from '@/core/service/i18n';
 import type { TextSource } from '../../i18n';
 
 export interface BreadcrumbItem {
   title: string;
-  titleText?: TextDescriptor;
+  titleText?: TermReference;
   path: string;
   clickable: boolean;
   timestamp: number;
@@ -200,7 +200,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
    * Resets the breadcrumb trail to the active menu root.
    */
   function normalizeTitle(source: TextSource): Pick<BreadcrumbItem, 'title' | 'titleText'> {
-    return isTextDescriptor(source)
+    return isTermReference(source)
       ? { title: source.src, titleText: { ...source } }
       : { title: String(source || ''), titleText: undefined };
   }

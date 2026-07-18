@@ -9,7 +9,7 @@ import { mount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createTextDescriptor } from '@/core/service/i18n';
+import { createTermReference } from '@/core/service/i18n';
 import { projectTerminologyMessages } from '../../i18n/terminology';
 
 const mocks = vi.hoisted(() => ({
@@ -24,11 +24,11 @@ vi.mock('../../composables/useBreadcrumb', () => ({
 import OBreadcrumb from './OBreadcrumb.vue';
 
 describe('OBreadcrumb terminology display', () => {
-  it('translates descriptors directly in the template and preserves plain strings', async () => {
+  it('translates term references directly in the template and preserves plain strings', async () => {
     mocks.breadcrumbs = [
       {
         title: 'Settings',
-        titleText: createTextDescriptor('base', 'Settings', { scope: 'base.route.settings' }),
+        titleText: createTermReference('base', 'Settings', { scope: 'base.route.settings' }),
         path: '/settings',
         clickable: false,
       },

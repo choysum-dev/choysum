@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  createTextDescriptorKey,
-  TEXT_DESCRIPTOR_NAMESPACE,
+  createTermReferenceKey,
+  TERM_REFERENCE_NAMESPACE,
 } from '@/core/service/i18n';
 
-type MessageRecord = Record<string, unknown>;
+// Use `any` values so the result is assignable to vue-i18n `LocaleMessage`
+// (`Record<string, unknown>` is not — it breaks createI18n overload resolution
+// and leaves `composer.locale` typed as a plain string).
+type MessageRecord = Record<string, any>;
 
 function asRecord(value: unknown): MessageRecord | undefined {
   return value && typeof value === 'object' && !Array.isArray(value)
@@ -20,7 +23,7 @@ function asRecord(value: unknown): MessageRecord | undefined {
 export function projectTerminologyMessages(messages: unknown): MessageRecord {
   const root = asRecord(messages) ?? {};
   const terms: Record<string, string> = {};
-  const existingTerms = asRecord(root[TEXT_DESCRIPTOR_NAMESPACE]);
+  const existingTerms = asRecord(root[TERM_REFERENCE_NAMESPACE]);
   if (existingTerms) {
     for (const [key, value] of Object.entries(existingTerms)) {
       if (typeof value === 'string') terms[key] = value;
@@ -28,7 +31,7 @@ export function projectTerminologyMessages(messages: unknown): MessageRecord {
   }
 
   for (const [module, scopesValue] of Object.entries(root)) {
-    if (module === TEXT_DESCRIPTOR_NAMESPACE) continue;
+    if (module === TERM_REFERENCE_NAMESPACE) continue;
     const scopes = asRecord(scopesValue);
     if (!scopes) continue;
     for (const [scope, sourcesValue] of Object.entries(scopes)) {
@@ -36,8 +39,8 @@ export function projectTerminologyMessages(messages: unknown): MessageRecord {
       if (!sources) continue;
       for (const [src, value] of Object.entries(sources)) {
         if (typeof value !== 'string' || value === '') continue;
-        const fullKey = createTextDescriptorKey(module, scope, src, 'literal');
-        const segment = fullKey.slice(TEXT_DESCRIPTOR_NAMESPACE.length + 1);
+        const fullKey = createTermReferenceKey(module, scope, src, 'literal');
+        const segment = fullKey.slice(TERM_REFERENCE_NAMESPACE.length + 1);
         terms[segment] = value;
       }
     }
@@ -45,6 +48,6 @@ export function projectTerminologyMessages(messages: unknown): MessageRecord {
 
   return {
     ...root,
-    [TEXT_DESCRIPTOR_NAMESPACE]: terms,
+    [TERM_REFERENCE_NAMESPACE]: terms,
   };
 }

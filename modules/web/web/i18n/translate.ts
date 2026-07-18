@@ -2,21 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Frontend terminology `_t` and reactive `_tr` bound to vue-i18n (§7.2).
+ * Frontend terminology `_t` bound to vue-i18n (§7.2).
  * Looks up module/scope/msgid in the active locale catalog.
  */
 
-import { computed, ref, type ComputedRef } from 'vue';
+import { ref } from 'vue';
+import type { PostTranslationHandler, VueMessageType } from 'vue-i18n';
 
 import { resolveI18nScope } from '../../../core/service/i18n/scope';
 import {
-  createTextDescriptor,
-  type TextDescriptor,
+  createTermReference,
+  type CreateTranslateOptions as CoreCreateTranslateOptions,
+  type CreateTranslateResult,
+  type TermReference,
+  type TranslateOutput,
   type TranslateOptions as CoreTranslateOptions,
 } from '../../../core/service/i18n/translate';
 
 export type TranslateOptions = CoreTranslateOptions;
-export type TextSource = string | TextDescriptor;
+export type CreateTranslateOptions<Output extends TranslateOutput = 'text'> =
+  CoreCreateTranslateOptions<Output>;
+export type TextSource = string | TermReference;
 
 export type ComposerLike = {
   t: (key: string, fallback: string) => unknown;
@@ -35,10 +41,12 @@ export function notifyComposerMessagesChanged(): void {
  * `createI18n` accepts one postTranslation handler. If another handler is
  * added later, it must be composed with this hook rather than replacing it.
  */
-export function trackComposerMessageRevision(translated: string): string {
+export const trackComposerMessageRevision: PostTranslationHandler<VueMessageType> = (
+  translated
+) => {
   void composerMessageRevision.value;
   return translated;
-}
+};
 
 export function getGlobalComposer(): ComposerLike | undefined {
   // Register catalog replacement/merge as a dependency for computed consumers.
@@ -51,25 +59,29 @@ export function getGlobalComposer(): ComposerLike | undefined {
 }
 
 /**
- * Translate a static text descriptor at the frontend display boundary.
+ * Translate a static term reference at the frontend display boundary.
  *
  * vue-i18n treats the second string argument as the default message, so a
  * separate `te` probe is unnecessary and would incorrectly bypass locale
  * fallback. Calling `t` also keeps the active locale reactive for Composer
  * consumers; the revision dependency covers runtime catalog merges.
+ *
+ * `composer` is intentionally `unknown` so callers can pass a real vue-i18n
+ * Composer without triggering excessively deep generic instantiation.
  */
 export function translateTerm(
-  composer: ComposerLike | undefined,
-  descriptor?: TextDescriptor,
+  composer: unknown,
+  reference?: TermReference,
   fallback = ''
 ): string {
   void composerMessageRevision.value;
-  const defaultText = descriptor?.src || fallback;
-  if (!descriptor || !composer || typeof composer.t !== 'function') {
+  const defaultText = reference?.src || fallback;
+  const bridge = composer as ComposerLike | null | undefined;
+  if (!reference || !bridge || typeof bridge.t !== 'function') {
     return defaultText;
   }
   try {
-    const translated = composer.t(descriptor.key, descriptor.src || fallback);
+    const translated = bridge.t(reference.key, reference.src || fallback);
     return typeof translated === 'string' && translated !== '' ? translated : defaultText;
   } catch {
     return defaultText;
@@ -98,7 +110,7 @@ function isTranslateOptions(value: unknown): value is TranslateOptions {
     !!value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
-    ('scope' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'kind' in (value as object))
+    ('scope' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'kind' in (value as object) || 'output' in (value as object))
   );
 }
 
@@ -115,41 +127,67 @@ function parseTranslateArgs(args: unknown[]): {
   return { opts: undefined, interpolation: args };
 }
 
-function translateDescriptor(
-  descriptor: TextDescriptor,
+function translateReference(
+  reference: TermReference,
   interpolation: unknown[]
 ): string {
-  return interpolate(translateTerm(getGlobalComposer(), descriptor, descriptor.src), interpolation);
+  return interpolate(translateTerm(getGlobalComposer(), reference, reference.src), interpolation);
 }
 
 /**
  * Bind frontend translation helpers to a terminology owner module.
  */
-export function createTranslate(module: string, defaults?: TranslateOptions): {
-  _t: (src: string, ...args: unknown[]) => string;
-  _tr: (src: string, ...args: unknown[]) => ComputedRef<string>;
-  _td: (src: string, opts?: TranslateOptions) => TextDescriptor;
-} {
+export function createTranslate(
+  module: string,
+  defaults: CreateTranslateOptions<'reference'> & { output: 'reference' }
+): CreateTranslateResult<'reference'>;
+export function createTranslate(
+  module: string,
+  defaults?: CreateTranslateOptions<'text'>
+): CreateTranslateResult<'text'>;
+export function createTranslate<Output extends TranslateOutput>(
+  module: string,
+  defaults?: CreateTranslateOptions<Output>
+): CreateTranslateResult<Output>;
+export function createTranslate<Output extends TranslateOutput = 'text'>(
+  module: string,
+  defaults?: CreateTranslateOptions<Output>
+): CreateTranslateResult<Output> {
   const mod = String(module || '').trim() || 'web';
+  const output: TranslateOutput = defaults?.output === 'reference' ? 'reference' : 'text';
   const defaultScope = resolveI18nScope(defaults);
+  const defaultKind = defaults?.kind;
+  const defaultReferences = new Map<string, TermReference>();
 
-  const resolveDescriptor = (src: string, opts?: TranslateOptions): TextDescriptor => {
+  const resolveReference = (src: string, opts?: TranslateOptions): TermReference => {
+    if (!opts && defaultScope) {
+      const cached = defaultReferences.get(src);
+      if (cached) {
+        return cached;
+      }
+    }
     const scope = resolveI18nScope(opts) || defaultScope;
-    return createTextDescriptor(mod, src, { ...opts, scope });
+    const reference = createTermReference(mod, src, {
+      ...opts,
+      scope,
+      kind: opts?.kind ?? defaultKind,
+    });
+    if (!opts && defaultScope) {
+      defaultReferences.set(src, reference);
+    }
+    return reference;
   };
 
-  const _t = (src: string, ...args: unknown[]): string => {
+  const _t = (src: string, ...args: unknown[]): string | TermReference => {
     const { opts, interpolation } = parseTranslateArgs(args);
-    return translateDescriptor(resolveDescriptor(src, opts), interpolation);
+    const callOutput = opts?.output ?? output;
+    if (callOutput === 'reference') {
+      return resolveReference(src, opts);
+    }
+    return translateReference(resolveReference(src, opts), interpolation);
   };
 
-  const _tr = (src: string, ...args: unknown[]): ComputedRef<string> => {
-    const { opts, interpolation } = parseTranslateArgs(args);
-    const descriptor = resolveDescriptor(src, opts);
-    return computed(() => translateDescriptor(descriptor, interpolation));
+  return {
+    _t: _t as CreateTranslateResult<Output>['_t'],
   };
-  const _td = (src: string, opts?: TranslateOptions): TextDescriptor =>
-    resolveDescriptor(src, opts);
-
-  return { _t, _tr, _td };
 }

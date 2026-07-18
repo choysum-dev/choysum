@@ -6,6 +6,7 @@ package backendtsparser
 import (
 	"encoding/json"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -16,8 +17,55 @@ import (
 
 type tsFileParser struct {
 	*parser.TsParser
-	runtimeScope scope.Scope
-	ownerModule  string
+	runtimeScope    scope.Scope
+	ownerModule     string
+	referenceOutput bool
+	referenceScope  string
+}
+
+var (
+	referenceFactoryPattern  = regexp.MustCompile(`(?s)\bconst\s*\{\s*_t\s*\}\s*=\s*createTranslate\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*')\s*,\s*\{([^}]*)\}\s*\)`)
+	referenceOutputPattern   = regexp.MustCompile(`\boutput\s*:\s*(['"])reference(['"])`)
+	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	referenceLocationPattern = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+)
+
+func parseFactoryStringOption(options string, pattern *regexp.Regexp) string {
+	match := pattern.FindStringSubmatch(options)
+	if len(match) != 2 {
+		return ""
+	}
+	raw := strings.TrimSpace(match[1])
+	if strings.HasPrefix(raw, "`") && strings.HasSuffix(raw, "`") {
+		return strings.TrimSuffix(strings.TrimPrefix(raw, "`"), "`")
+	}
+	parsed, err := parser.ParseJSStringLiteral(raw)
+	if err != nil {
+		return ""
+	}
+	return parsed
+}
+
+func (p *tsFileParser) detectReferenceFactory() {
+	match := referenceFactoryPattern.FindStringSubmatch(p.Content)
+	if len(match) != 3 || !referenceOutputPattern.MatchString(match[2]) {
+		return
+	}
+	p.referenceOutput = true
+	if scopeValue := parseFactoryStringOption(match[2], referenceScopePattern); strings.TrimSpace(scopeValue) != "" {
+		p.referenceScope = scopeValue
+		return
+	}
+	pathValue := strings.TrimSpace(parseFactoryStringOption(match[2], referencePathPattern))
+	locationValue := strings.TrimSpace(parseFactoryStringOption(match[2], referenceLocationPattern))
+	if pathValue == "" {
+		return
+	}
+	p.referenceScope = pathValue
+	if locationValue != "" {
+		p.referenceScope += "@" + locationValue
+	}
 }
 
 func getProtoTypeFromTsType(tsType string) string {
@@ -238,7 +286,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		}
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]
-		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule)
+		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule, p.referenceOutput, p.referenceScope)
 		if err != nil {
 			return nil, nil, nil, xfmt.Errorf("failed to resolve field %s: %w", field.Name, err)
 		}
@@ -326,6 +374,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 }
 
 func (p *tsFileParser) parse() (*parser.ParserResult, error) {
+	p.detectReferenceFactory()
 	modules_path := runtimeOptionsFromScope(p.runtimeScope).modulesPath
 	// Keep historical skip behavior for the metadata and onchange type entrypoints.
 	// modules/core/service/orm/metadata/field.ts

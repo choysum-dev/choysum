@@ -22,7 +22,7 @@ type ModuleResult struct {
 	PotPath    string
 }
 
-// ExtractModule scans a module tree for explicit `_t` / `_lt` / `_tr` literals
+// ExtractModule scans a module tree for explicit `_t` literals
 // and optionally writes pot.
 func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]string, writePot bool) (*ModuleResult, error) {
 	moduleRoot = filepath.Clean(moduleRoot)

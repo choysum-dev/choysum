@@ -10,15 +10,30 @@ import {
   notifyComposerMessagesChanged,
   trackComposerMessageRevision,
   translateTerm,
+  type ComposerLike,
 } from './translate';
 import { projectTerminologyMessages } from './terminology';
 import {
-  createTextDescriptor,
-  createTextDescriptorKey,
+  createTermReference,
+  createTermReferenceKey,
   withI18nScope,
 } from '@/core/service/i18n';
 
-function installI18n(locale = 'zh-CN') {
+/**
+ * Erase vue-i18n Composer generics. Passing `MessageRecord` into `createI18n`
+ * otherwise makes `.te()` / assignability hit TS2589 (excessively deep).
+ */
+type TestComposer = ComposerLike & {
+  te: (key: string, locale?: string) => boolean;
+  locale: { value: string };
+  mergeLocaleMessage: (locale: string, message: Record<string, any>) => void;
+};
+
+function asTestComposer(composer: unknown): TestComposer {
+  return composer as TestComposer;
+}
+
+function installI18n(locale = 'zh-CN'): TestComposer {
   const i18n = createI18n({
     legacy: false,
     locale,
@@ -27,10 +42,11 @@ function installI18n(locale = 'zh-CN') {
     messages: { en: {}, 'zh-CN': {} },
     postTranslation: trackComposerMessageRevision,
   });
+  const composer = asTestComposer(i18n.global);
   (globalThis as { window?: { $i18n?: unknown } }).window = {
-    $i18n: i18n.global,
+    $i18n: composer,
   };
-  return i18n.global;
+  return composer;
 }
 
 describe('createTranslate', () => {
@@ -68,8 +84,8 @@ describe('createTranslate', () => {
   });
 
   it('uses vue-i18n locale fallback without a te preflight', () => {
-    const descriptor = createTextDescriptor('base', 'Users', { scope: 'base.route.users' });
-    const composer = createI18n({
+    const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
+    const composer = asTestComposer(createI18n({
       legacy: false,
       locale: 'zh-CN',
       fallbackLocale: 'en',
@@ -81,24 +97,24 @@ describe('createTranslate', () => {
         }),
         'zh-CN': {},
       },
-    }).global;
+    }).global);
 
-    expect(composer.te(descriptor.key, 'zh-CN')).toBe(false);
-    expect(translateTerm(composer, descriptor, 'Legacy users')).toBe('People');
+    expect(composer.te(reference.key, 'zh-CN')).toBe(false);
+    expect(translateTerm(composer, reference, 'Legacy users')).toBe('People');
   });
 
-  it('safely handles missing descriptors, composers, and translations', () => {
-    const descriptor = createTextDescriptor('base', '', { scope: 'base.route.empty' });
-    expect(translateTerm(undefined, descriptor, 'Legacy title')).toBe('Legacy title');
-    expect(translateTerm({ t: () => '' }, descriptor, 'Legacy title')).toBe('Legacy title');
-    expect(translateTerm({ t: () => { throw new Error('unavailable'); } }, descriptor, 'Legacy title'))
+  it('safely handles missing references, composers, and translations', () => {
+    const reference = createTermReference('base', '', { scope: 'base.route.empty' });
+    expect(translateTerm(undefined, reference, 'Legacy title')).toBe('Legacy title');
+    expect(translateTerm({ t: () => '' }, reference, 'Legacy title')).toBe('Legacy title');
+    expect(translateTerm({ t: () => { throw new Error('unavailable'); } }, reference, 'Legacy title'))
       .toBe('Legacy title');
     expect(translateTerm(undefined, undefined, 'Plain title')).toBe('Plain title');
   });
 
   it('reacts to locale changes through the caller composer', () => {
-    const descriptor = createTextDescriptor('base', 'Settings', { scope: 'base.route.settings' });
-    const composer = createI18n({
+    const reference = createTermReference('base', 'Settings', { scope: 'base.route.settings' });
+    const composer = asTestComposer(createI18n({
       legacy: false,
       locale: 'en',
       missingWarn: false,
@@ -109,8 +125,8 @@ describe('createTranslate', () => {
           base: { 'base.route.settings': { Settings: '设置' } },
         }),
       },
-    }).global;
-    const title = computed(() => translateTerm(composer, descriptor, 'Legacy settings'));
+    }).global);
+    const title = computed(() => translateTerm(composer, reference, 'Legacy settings'));
 
     expect(title.value).toBe('Settings');
     composer.locale.value = 'zh-CN';
@@ -119,8 +135,8 @@ describe('createTranslate', () => {
 
   it('reacts when the Gateway catalog is merged after the consumer loads', async () => {
     const composer = installI18n();
-    const { _tr } = createTranslate('auth', { scope: 'web/pages/Login' });
-    const label = _tr('User Login');
+    const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
+    const label = computed(() => _t('User Login'));
 
     expect(label.value).toBe('User Login');
     composer.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
@@ -149,13 +165,29 @@ describe('createTranslate', () => {
     }));
     notifyComposerMessagesChanged();
 
-    const { _tr } = createTranslate('auth', { scope: 'web/pages/Login' });
-    expect(_tr('Welcome %s', 'Alice').value).toBe('欢迎 Alice');
-    expect(_tr('Welcome %s', { scope: 'web/pages/Admin' }, 'Alice').value)
+    const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
+    expect(computed(() => _t('Welcome %s', 'Alice')).value).toBe('欢迎 Alice');
+    expect(computed(() => _t('Welcome %s', { scope: 'web/pages/Admin' }, 'Alice')).value)
       .toBe('管理员欢迎 Alice');
   });
 
-  it('captures the descriptor before computed reevaluation', async () => {
+  it('applies call output before factory output', () => {
+    const reference = createTranslate('base')._t('Left to right', {
+      scope: 'base.Language.Direction.ltr',
+      output: 'reference',
+    });
+    expect(reference).toEqual(createTermReference('base', 'Left to right', {
+      scope: 'base.Language.Direction.ltr',
+    }));
+
+    const text = createTranslate('base', {
+      output: 'reference',
+      scope: 'base.Language.Direction.ltr',
+    })._t('Direction: %s', { output: 'text' }, 'LTR');
+    expect(text).toBe('Direction: LTR');
+  });
+
+  it('captures the term reference before computed reevaluation', async () => {
     const composer = installI18n();
     composer.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
       auth: {
@@ -169,8 +201,11 @@ describe('createTranslate', () => {
     }));
     notifyComposerMessagesChanged();
 
-    const { _tr } = createTranslate('auth');
-    const label = withI18nScope('scope.at.creation', () => _tr('Users'));
+    const { _t } = withI18nScope(
+      'scope.at.creation',
+      () => createTranslate('auth')
+    );
+    const label = computed(() => _t('Users'));
     expect(label.value).toBe('用户');
 
     withI18nScope('scope.during.reevaluation', () => {
@@ -180,20 +215,23 @@ describe('createTranslate', () => {
     expect(label.value).toBe('用户');
   });
 
-  it('creates deterministic Unicode-safe JSON descriptors', () => {
-    const { _td } = createTranslate('base');
-    const descriptor = _td('设置.菜单 🍀', { scope: 'base.menu.设置' });
-    const same = _td('设置.菜单 🍀', { scope: 'base.menu.设置' });
-    expect(descriptor.key).toBe(same.key);
-    expect(descriptor.key).toMatch(/^__terms\.[0-9a-f]+$/);
-    expect(descriptor.key.slice('__terms.'.length)).not.toContain('.');
-    expect(JSON.parse(JSON.stringify(descriptor))).toEqual(descriptor);
-    expect(_td('不同', { scope: descriptor.scope }).key).not.toBe(descriptor.key);
-    expect(_td(descriptor.src, { scope: 'base.menu.other' }).key).not.toBe(descriptor.key);
-    expect(createTranslate('other')._td(descriptor.src, { scope: descriptor.scope }).key)
-      .not.toBe(descriptor.key);
-    expect(createTextDescriptorKey(descriptor.module, descriptor.scope, descriptor.src, 'other'))
-      .not.toBe(descriptor.key);
+  it('creates deterministic Unicode-safe JSON term references', () => {
+    const { _t } = createTranslate('base', { output: 'reference' });
+    const reference = _t('设置.菜单 🍀', { scope: 'base.menu.设置' });
+    const same = _t('设置.菜单 🍀', { scope: 'base.menu.设置' });
+    expect(reference.key).toBe(same.key);
+    expect(reference.key).toMatch(/^__terms\.[0-9a-f]+$/);
+    expect(reference.key.slice('__terms.'.length)).not.toContain('.');
+    expect(JSON.parse(JSON.stringify(reference))).toEqual(reference);
+    expect(_t('不同', { scope: reference.scope }).key).not.toBe(reference.key);
+    expect(_t(reference.src, { scope: 'base.menu.other' }).key).not.toBe(reference.key);
+    expect(createTranslate('other', { output: 'reference' })._t(
+      reference.src,
+      { scope: reference.scope }
+    ).key)
+      .not.toBe(reference.key);
+    expect(createTermReferenceKey(reference.module, reference.scope, reference.src, 'other'))
+      .not.toBe(reference.key);
   });
 
   it('preserves legacy messages while projecting a flat reserved namespace', () => {
@@ -202,7 +240,7 @@ describe('createTranslate', () => {
       legacy: { title: 'Legacy' },
     };
     const projected = projectTerminologyMessages(nested);
-    const key = createTextDescriptorKey('web', 'scope.with.dots', 'Source.with.dots', 'literal');
+    const key = createTermReferenceKey('web', 'scope.with.dots', 'Source.with.dots', 'literal');
     const segment = key.slice('__terms.'.length);
     expect(projected.web).toBe(nested.web);
     expect(projected.legacy).toBe(nested.legacy);

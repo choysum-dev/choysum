@@ -8,16 +8,20 @@ export {
   formatScope,
   resolveRequestLang,
   createTermIdentity,
-  createTextDescriptor,
-  createTextDescriptorKey,
-  isTextDescriptor,
-  TEXT_DESCRIPTOR_NAMESPACE,
+  createTermReference,
+  createTermReferenceKey,
+  isTermReference,
+  TERM_REFERENCE_NAMESPACE,
 } from './translate';
 export type {
+  CreateTranslateOptions,
+  CreateTranslateResult,
+  DynamicTranslateFn,
+  ReferenceTranslateFn,
   TranslateFn,
-  LazyTranslate,
+  TranslateOutput,
   TermIdentity,
-  TextDescriptor,
+  TermReference,
   TranslateOptions,
 } from './translate';
 export type { ResolveI18nScopeOptions } from './scope';

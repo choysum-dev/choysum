@@ -5,12 +5,12 @@ import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _td } = createTranslate('base', { scope: 'web/route/routes' });
+const { _t } = createTranslate('base', { output: 'reference', scope: 'web/route/routes' });
 
 export const companyRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.company_list', {
     sequence: 10,
-    title: _td('Company List'),
+    title: _t('Company List'),
     path: 'base/companies',
     name: 'CompanyList',
     component: () => import('../pages/CompanyList.vue'),
@@ -19,7 +19,7 @@ export const companyRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.company_detail', {
     sequence: 20,
-    title: _td('Company Details'),
+    title: _t('Company Details'),
     path: 'base/companies/:id',
     name: 'CompanyDetail',
     component: () => import('../pages/Company.vue'),
@@ -29,7 +29,7 @@ export const companyRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.company_create', {
     sequence: 30,
-    title: _td('Create Company'),
+    title: _t('Create Company'),
     path: 'base/companies/new',
     name: 'CompanyCreate',
     component: () => import('../pages/Company.vue'),
@@ -42,7 +42,7 @@ export const companyRoutes: RouteRecordRaw[] = [
 export const addressRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.address_list', {
     sequence: 10,
-    title: _td('Address List'),
+    title: _t('Address List'),
     path: 'base/addresses',
     name: 'AddressList',
     component: () => import('../pages/AddressList.vue'),
@@ -51,7 +51,7 @@ export const addressRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.address_detail', {
     sequence: 20,
-    title: _td('Address Details'),
+    title: _t('Address Details'),
     path: 'base/addresses/:id',
     name: 'AddressDetail',
     component: () => import('../pages/Address.vue'),
@@ -61,7 +61,7 @@ export const addressRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.address_create', {
     sequence: 30,
-    title: _td('Create Address'),
+    title: _t('Create Address'),
     path: 'base/addresses/new',
     name: 'AddressCreate',
     component: () => import('../pages/Address.vue'),
@@ -74,7 +74,7 @@ export const addressRoutes: RouteRecordRaw[] = [
 export const bankRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.bank_list', {
     sequence: 10,
-    title: _td('Bank List'),
+    title: _t('Bank List'),
     path: 'base/banks',
     name: 'BankList',
     component: () => import('../pages/BankList.vue'),
@@ -83,7 +83,7 @@ export const bankRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.bank_detail', {
     sequence: 20,
-    title: _td('Bank Details'),
+    title: _t('Bank Details'),
     path: 'base/banks/:id',
     name: 'BankDetail',
     component: () => import('../pages/Bank.vue'),
@@ -93,7 +93,7 @@ export const bankRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.bank_create', {
     sequence: 30,
-    title: _td('Create Bank'),
+    title: _t('Create Bank'),
     path: 'base/banks/new',
     name: 'BankCreate',
     component: () => import('../pages/Bank.vue'),
@@ -106,7 +106,7 @@ export const bankRoutes: RouteRecordRaw[] = [
 export const cityRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.city_list', {
     sequence: 10,
-    title: _td('City List'),
+    title: _t('City List'),
     path: 'base/cities',
     name: 'CityList',
     component: () => import('../pages/CityList.vue'),
@@ -115,7 +115,7 @@ export const cityRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.city_detail', {
     sequence: 20,
-    title: _td('City Details'),
+    title: _t('City Details'),
     path: 'base/cities/:id',
     name: 'CityDetail',
     component: () => import('../pages/City.vue'),
@@ -125,7 +125,7 @@ export const cityRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.city_create', {
     sequence: 30,
-    title: _td('Create City'),
+    title: _t('Create City'),
     path: 'base/cities/new',
     name: 'CityCreate',
     component: () => import('../pages/City.vue'),
@@ -138,7 +138,7 @@ export const cityRoutes: RouteRecordRaw[] = [
 export const countryRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.country_list', {
     sequence: 10,
-    title: _td('Country List'),
+    title: _t('Country List'),
     path: 'base/countries',
     name: 'CountryList',
     component: () => import('../pages/CountryList.vue'),
@@ -147,7 +147,7 @@ export const countryRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.country_detail', {
     sequence: 20,
-    title: _td('Country Details'),
+    title: _t('Country Details'),
     path: 'base/countries/:id',
     name: 'CountryDetail',
     component: () => import('../pages/Country.vue'),
@@ -157,7 +157,7 @@ export const countryRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.country_create', {
     sequence: 30,
-    title: _td('Create Country'),
+    title: _t('Create Country'),
     path: 'base/countries/new',
     name: 'CountryCreate',
     component: () => import('../pages/Country.vue'),
@@ -170,7 +170,7 @@ export const countryRoutes: RouteRecordRaw[] = [
 export const currencyRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.currency_list', {
     sequence: 10,
-    title: _td('Currency List'),
+    title: _t('Currency List'),
     path: 'base/currencies',
     name: 'CurrencyList',
     component: () => import('../pages/CurrencyList.vue'),
@@ -179,7 +179,7 @@ export const currencyRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.currency_detail', {
     sequence: 20,
-    title: _td('Currency Details'),
+    title: _t('Currency Details'),
     path: 'base/currencies/:id',
     name: 'CurrencyDetail',
     component: () => import('../pages/Currency.vue'),
@@ -189,7 +189,7 @@ export const currencyRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.currency_create', {
     sequence: 30,
-    title: _td('Create Currency'),
+    title: _t('Create Currency'),
     path: 'base/currencies/new',
     name: 'CurrencyCreate',
     component: () => import('../pages/Currency.vue'),
@@ -202,7 +202,7 @@ export const currencyRoutes: RouteRecordRaw[] = [
 export const exchangeRateRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.exchange_rate_list', {
     sequence: 10,
-    title: _td('Exchange Rate List'),
+    title: _t('Exchange Rate List'),
     path: 'base/exchange-rates',
     name: 'ExchangeRateList',
     component: () => import('../pages/ExchangeRateList.vue'),
@@ -211,7 +211,7 @@ export const exchangeRateRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.exchange_rate_detail', {
     sequence: 20,
-    title: _td('Exchange Rate Details'),
+    title: _t('Exchange Rate Details'),
     path: 'base/exchange-rates/:id',
     name: 'ExchangeRateDetail',
     component: () => import('../pages/ExchangeRate.vue'),
@@ -221,7 +221,7 @@ export const exchangeRateRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.exchange_rate_create', {
     sequence: 30,
-    title: _td('Create Exchange Rate'),
+    title: _t('Create Exchange Rate'),
     path: 'base/exchange-rates/new',
     name: 'ExchangeRateCreate',
     component: () => import('../pages/ExchangeRate.vue'),
@@ -234,7 +234,7 @@ export const exchangeRateRoutes: RouteRecordRaw[] = [
 export const languageRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.language_list', {
     sequence: 10,
-    title: _td('Language List'),
+    title: _t('Language List'),
     path: 'base/languages',
     name: 'LanguageList',
     component: () => import('../pages/LanguageList.vue'),
@@ -243,7 +243,7 @@ export const languageRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.language_detail', {
     sequence: 20,
-    title: _td('Language Details'),
+    title: _t('Language Details'),
     path: 'base/languages/:id',
     name: 'LanguageDetail',
     component: () => import('../pages/Language.vue'),
@@ -253,7 +253,7 @@ export const languageRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.language_create', {
     sequence: 30,
-    title: _td('Create Language'),
+    title: _t('Create Language'),
     path: 'base/languages/new',
     name: 'LanguageCreate',
     component: () => import('../pages/Language.vue'),
@@ -263,7 +263,7 @@ export const languageRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.terminology_editor', {
     sequence: 40,
-    title: _td('Terminology Editor'),
+    title: _t('Terminology Editor'),
     path: 'base/terminology',
     name: 'TerminologyEditor',
     component: () => import('@/web/web/pages/TerminologyEditor.vue'),
@@ -276,7 +276,7 @@ export const languageRoutes: RouteRecordRaw[] = [
 export const localeRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.locale_list', {
     sequence: 10,
-    title: _td('Locale List'),
+    title: _t('Locale List'),
     path: 'base/locales',
     name: 'LocaleList',
     component: () => import('../pages/LocaleList.vue'),
@@ -285,7 +285,7 @@ export const localeRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.locale_detail', {
     sequence: 20,
-    title: _td('Locale Details'),
+    title: _t('Locale Details'),
     path: 'base/locales/:id',
     name: 'LocaleDetail',
     component: () => import('../pages/Locale.vue'),
@@ -295,7 +295,7 @@ export const localeRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.locale_create', {
     sequence: 30,
-    title: _td('Create Locale'),
+    title: _t('Create Locale'),
     path: 'base/locales/new',
     name: 'LocaleCreate',
     component: () => import('../pages/Locale.vue'),
@@ -308,7 +308,7 @@ export const localeRoutes: RouteRecordRaw[] = [
 export const sequenceRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.sequence_list', {
     sequence: 10,
-    title: _td('Sequence List'),
+    title: _t('Sequence List'),
     path: 'base/sequences',
     name: 'SequenceList',
     component: () => import('../pages/SequenceList.vue'),
@@ -317,7 +317,7 @@ export const sequenceRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.sequence_detail', {
     sequence: 20,
-    title: _td('Sequence Details'),
+    title: _t('Sequence Details'),
     path: 'base/sequences/:id',
     name: 'SequenceDetail',
     component: () => import('../pages/Sequence.vue'),
@@ -327,7 +327,7 @@ export const sequenceRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.sequence_create', {
     sequence: 30,
-    title: _td('Create Sequence'),
+    title: _t('Create Sequence'),
     path: 'base/sequences/new',
     name: 'SequenceCreate',
     component: () => import('../pages/Sequence.vue'),
@@ -340,7 +340,7 @@ export const sequenceRoutes: RouteRecordRaw[] = [
 export const sequenceIdempotencyRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.sequence_idempotency_list', {
     sequence: 10,
-    title: _td('Sequence Idempotency Record'),
+    title: _t('Sequence Idempotency Record'),
     path: 'base/sequence-idempotencies',
     name: 'SequenceIdempotencyList',
     component: () => import('../pages/SequenceIdempotencyList.vue'),
@@ -354,7 +354,7 @@ export const sequenceIdempotencyRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.sequence_idempotency_detail', {
     sequence: 20,
-    title: _td('Idempotency Record Details'),
+    title: _t('Idempotency Record Details'),
     path: 'base/sequence-idempotencies/:id',
     name: 'SequenceIdempotencyDetail',
     component: () => import('../pages/SequenceIdempotency.vue'),
@@ -369,7 +369,7 @@ export const sequenceIdempotencyRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.sequence_idempotency_create', {
     sequence: 30,
-    title: _td('Create Idempotency Record'),
+    title: _t('Create Idempotency Record'),
     path: 'base/sequence-idempotencies/new',
     name: 'SequenceIdempotencyCreate',
     component: () => import('../pages/SequenceIdempotency.vue'),
@@ -387,7 +387,7 @@ export const sequenceIdempotencyRoutes: RouteRecordRaw[] = [
 export const stateRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.state_list', {
     sequence: 10,
-    title: _td('State List'),
+    title: _t('State List'),
     path: 'base/states',
     name: 'StateList',
     component: () => import('../pages/StateList.vue'),
@@ -396,7 +396,7 @@ export const stateRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.state_detail', {
     sequence: 20,
-    title: _td('State Details'),
+    title: _t('State Details'),
     path: 'base/states/:id',
     name: 'StateDetail',
     component: () => import('../pages/State.vue'),
@@ -406,7 +406,7 @@ export const stateRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.state_create', {
     sequence: 30,
-    title: _td('Create State'),
+    title: _t('Create State'),
     path: 'base/states/new',
     name: 'StateCreate',
     component: () => import('../pages/State.vue'),
@@ -419,7 +419,7 @@ export const stateRoutes: RouteRecordRaw[] = [
 export const uomRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.uom_list', {
     sequence: 10,
-    title: _td('Unit of Measure List'),
+    title: _t('Unit of Measure List'),
     path: 'base/uoms',
     name: 'UoMList',
     component: () => import('../pages/UoMList.vue'),
@@ -428,7 +428,7 @@ export const uomRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.uom_detail', {
     sequence: 20,
-    title: _td('Unit of Measure Details'),
+    title: _t('Unit of Measure Details'),
     path: 'base/uoms/:id',
     name: 'UoMDetail',
     component: () => import('../pages/UoM.vue'),
@@ -438,7 +438,7 @@ export const uomRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.uom_create', {
     sequence: 30,
-    title: _td('Create Unit of Measure'),
+    title: _t('Create Unit of Measure'),
     path: 'base/uoms/new',
     name: 'UoMCreate',
     component: () => import('../pages/UoM.vue'),
@@ -451,7 +451,7 @@ export const uomRoutes: RouteRecordRaw[] = [
 export const uomCategoryRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.uom_category_list', {
     sequence: 10,
-    title: _td('Unit of Measure Category'),
+    title: _t('Unit of Measure Category'),
     path: 'base/uom-categories',
     name: 'UoMCategoryList',
     component: () => import('../pages/UoMCategoryList.vue'),
@@ -460,7 +460,7 @@ export const uomCategoryRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.uom_category_detail', {
     sequence: 20,
-    title: _td('Unit of Measure Category Details'),
+    title: _t('Unit of Measure Category Details'),
     path: 'base/uom-categories/:id',
     name: 'UoMCategoryDetail',
     component: () => import('../pages/UoMCategory.vue'),
@@ -470,7 +470,7 @@ export const uomCategoryRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('base.route.uom_category_create', {
     sequence: 30,
-    title: _td('Create Unit of Measure Category'),
+    title: _t('Create Unit of Measure Category'),
     path: 'base/uom-categories/new',
     name: 'UoMCategoryCreate',
     component: () => import('../pages/UoMCategory.vue'),

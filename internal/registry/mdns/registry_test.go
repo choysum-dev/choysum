@@ -7,7 +7,6 @@ import (
 	"errors"
 	"net"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
@@ -217,7 +216,7 @@ func TestMdnsRegistryRuntimeLifecycle(t *testing.T) {
 			return false
 		}
 		ep := findEndpoint(endpoints, "copilot-runtime-a", endpointA.Id)
-		return ep != nil && strings.HasSuffix(ep.Address.Addr, ":19091")
+		return ep != nil && ep.Address != nil && ep.Address.Addr == "127.0.0.1:19091"
 	})
 
 	waitForCondition(t, 5*time.Second, func() bool {
@@ -225,7 +224,10 @@ func TestMdnsRegistryRuntimeLifecycle(t *testing.T) {
 		if err != nil {
 			return false
 		}
-		return findEndpoint(services, "copilot-runtime-a", endpointA.Id) != nil && findEndpoint(services, "copilot-runtime-b", endpointB.Id) != nil
+		serviceA := findEndpoint(services, "copilot-runtime-a", endpointA.Id)
+		serviceB := findEndpoint(services, "copilot-runtime-b", endpointB.Id)
+		return serviceA != nil && serviceA.Address != nil && serviceA.Address.Addr == "127.0.0.1:19091" &&
+			serviceB != nil && serviceB.Address != nil && serviceB.Address.Addr == "127.0.0.1:19092"
 	})
 
 	if err := r.UnRegister(endpointA); err != nil {

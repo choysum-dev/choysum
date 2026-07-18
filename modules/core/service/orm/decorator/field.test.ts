@@ -50,7 +50,7 @@ test('Field decorator validates selection schema and uniqueness', () => {
       Status!: string;
     }
     return InvalidSelectionItemModel;
-  }).toThrow('must include a string or text descriptor label field');
+  }).toThrow('must include a string or term reference label field');
 
   expect(() => {
     class DuplicateSelectionValueModel extends BaseModel {
@@ -81,14 +81,14 @@ test('Field decorator validates selection schema and uniqueness', () => {
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {
-  const { _td } = createTranslate('demo');
-  const labelDescriptor = _td('B', { scope: 'demo.status.b' });
+  const { _t } = createTranslate('demo', { output: 'reference' });
+  const labelReference = _t('B', { scope: 'demo.status.b' });
   class AutoSelectionModel extends BaseModel {
     @Field({
       type: 'selection',
       selection: [
         { value: 'a', label: 'A' },
-        { value: 'b', label: labelDescriptor },
+        { value: 'b', label: labelReference },
       ],
     } as any)
     Status!: string;
@@ -125,7 +125,7 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
     {
       value: 'b',
       label: 'B',
-      labelText: labelDescriptor,
+      labelText: labelReference,
     },
   ]);
   expect(selectionMeta?.column).toEqual({});

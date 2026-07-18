@@ -9,35 +9,60 @@ import (
 	"testing"
 )
 
-func TestTextDescriptorKey(t *testing.T) {
+func TestTermReferenceKeyStabilityAndJSONRoundTrip(t *testing.T) {
 	identity := []string{"模块", "scope.with.dots", "用户 🍀", "literal"}
-	key := TextDescriptorKey(identity[0], identity[1], identity[2], identity[3])
-	if key != TextDescriptorKey(identity[0], identity[1], identity[2], identity[3]) {
+	const stableKey = "__terms.363ae6a8a1e59d9731353a73636f70652e776974682e646f747331313ae794a8e688b720f09f8d80373a6c69746572616c"
+	key := TermReferenceKey(identity[0], identity[1], identity[2], identity[3])
+	if key != stableKey {
+		t.Fatalf("key changed: got %q want %q", key, stableKey)
+	}
+	if key != TermReferenceKey(identity[0], identity[1], identity[2], identity[3]) {
 		t.Fatal("key is not deterministic")
 	}
-	if !strings.HasPrefix(key, TextDescriptorNamespace+".") ||
-		strings.Contains(strings.TrimPrefix(key, TextDescriptorNamespace+"."), ".") {
+	if !strings.HasPrefix(key, TermReferenceNamespace+".") ||
+		strings.Contains(strings.TrimPrefix(key, TermReferenceNamespace+"."), ".") {
 		t.Fatalf("key is not vue-i18n path safe: %q", key)
 	}
 	for index := range identity {
 		changed := append([]string(nil), identity...)
 		changed[index] += "!"
-		if TextDescriptorKey(changed[0], changed[1], changed[2], changed[3]) == key {
+		if TermReferenceKey(changed[0], changed[1], changed[2], changed[3]) == key {
 			t.Fatalf("identity component %d did not affect key", index)
 		}
 	}
 
-	descriptor := NewTextDescriptor(identity[0], identity[1], identity[2], identity[3])
-	raw, err := json.Marshal(descriptor)
+	reference := NewTermReference(identity[0], identity[1], identity[2], identity[3])
+	raw, err := json.Marshal(reference)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var roundtrip TextDescriptor
+	const stableJSON = `{"key":"__terms.363ae6a8a1e59d9731353a73636f70652e776974682e646f747331313ae794a8e688b720f09f8d80373a6c69746572616c","module":"模块","scope":"scope.with.dots","src":"用户 🍀","kind":"literal"}`
+	if string(raw) != stableJSON {
+		t.Fatalf("JSON shape changed: got %s want %s", raw, stableJSON)
+	}
+	var roundtrip TermReference
 	if err := json.Unmarshal(raw, &roundtrip); err != nil {
 		t.Fatal(err)
 	}
-	if roundtrip != descriptor {
-		t.Fatalf("JSON round-trip mismatch: got %+v want %+v", roundtrip, descriptor)
+	if roundtrip != reference {
+		t.Fatalf("JSON round-trip mismatch: got %+v want %+v", roundtrip, reference)
+	}
+
+	itemRaw, err := json.Marshal(IrFieldSelectionItem{
+		Value: "active", Label: "Active", LabelText: &reference,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(itemRaw), `"labelText":`) || strings.Contains(string(itemRaw), `"termReference":`) {
+		t.Fatalf("labelText wire property changed: %s", itemRaw)
+	}
+	var itemRoundtrip IrFieldSelectionItem
+	if err := json.Unmarshal(itemRaw, &itemRoundtrip); err != nil {
+		t.Fatal(err)
+	}
+	if itemRoundtrip.LabelText == nil || *itemRoundtrip.LabelText != reference {
+		t.Fatalf("selection JSON round-trip mismatch: got %+v", itemRoundtrip)
 	}
 }
 

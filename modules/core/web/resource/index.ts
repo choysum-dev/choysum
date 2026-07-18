@@ -5,11 +5,11 @@ import type { RouteRecordRaw } from 'vue-router';
 import type { MenuItem } from '../menu';
 import { asObjectRecord } from '../../utils/object';
 import type { ObjectRecord } from '../../utils/types';
-import { isTextDescriptor, type TextDescriptor } from '../../service/i18n';
+import { isTermReference, type TermReference } from '../../service/i18n';
 
 export type ResourceId = string;
 export type ResourceKind = 'route' | 'menu' | 'action';
-export type ResourceTitle = string | TextDescriptor;
+export type ResourceTitle = string | TermReference;
 
 export type ResourceRequire = {
   kind?: 'rpc';
@@ -51,7 +51,7 @@ export type ResourceDeclarationBase = {
   id: ResourceId;
   kind: ResourceKind;
   title?: string;
-  titleText?: TextDescriptor;
+  titleText?: TermReference;
   sequence?: number;
   requires: NormalizedResourceRequire[];
   defaultRoles: string[];
@@ -103,8 +103,8 @@ function normalizeTitle(value: unknown): string | undefined {
   return normalized || undefined;
 }
 
-function normalizeResourceTitle(value: unknown): { title?: string; titleText?: TextDescriptor } {
-  if (isTextDescriptor(value)) {
+function normalizeResourceTitle(value: unknown): { title?: string; titleText?: TermReference } {
+  if (isTermReference(value)) {
     const title = normalizeTitle(value.src);
     return title ? { title, titleText: { ...value } } : {};
   }

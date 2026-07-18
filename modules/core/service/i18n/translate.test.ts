@@ -3,8 +3,8 @@
 
 import {
   createTermIdentity,
-  createTextDescriptor,
-  createTextDescriptorKey,
+  createTermReference,
+  createTermReferenceKey,
   createTranslate,
 } from './translate';
 import { __resetI18nScopeStackForTests } from './scope';
@@ -76,6 +76,50 @@ test('i18n createTranslate: miss falls back to src', () => {
   });
 });
 
+test('i18n createTranslate: literal outputs infer precise return types', () => {
+  const defaultText: string = createTranslate('auth')._t('Users');
+  const text: string = createTranslate('auth', { output: 'text' })._t('Users');
+  const reference: import('./translate').TermReference =
+    createTranslate('auth', { output: 'reference', scope: 'auth.users' })._t('Users');
+
+  expect(defaultText).toBe('Users');
+  expect(text).toBe('Users');
+  expect(reference.src).toBe('Users');
+});
+
+test('i18n createTranslate: dynamic output retains the safe union return type', () => {
+  const output: import('./translate').TranslateOutput =
+    Math.random() > 0.5 ? 'text' : 'reference';
+  const value: string | import('./translate').TermReference =
+    createTranslate('auth', { output, scope: 'auth.users' })._t('Users');
+
+  expect(typeof value === 'string' ? value : value.src).toBe('Users');
+
+  const callOutput: import('./translate').TranslateOutput =
+    Math.random() > 0.5 ? 'text' : 'reference';
+  const callValue: string | import('./translate').TermReference =
+    createTranslate('auth')._t('Users', { scope: 'auth.users', output: callOutput });
+  expect(typeof callValue === 'string' ? callValue : callValue.src).toBe('Users');
+});
+
+test('i18n createTranslate: call output overrides factory output', () => {
+  const { _t } = createTranslate('base');
+  const reference: import('./translate').TermReference = _t('Left to right', {
+    scope: 'base.Language.Direction.ltr',
+    output: 'reference',
+  });
+  expect(reference.src).toBe('Left to right');
+
+  const fromReferenceFactory: string = createTranslate('base', {
+    output: 'reference',
+    scope: 'base.Language.Direction.ltr',
+  })._t('Direction: %s', { output: 'text' }, 'LTR');
+  expect(fromReferenceFactory).toBe('Direction: LTR');
+
+  // @ts-expect-error reference output does not accept interpolation arguments
+  _t('Left to right', { scope: 'base.Language.Direction.ltr', output: 'reference' }, 'unused');
+});
+
 test('i18n createTranslate: hit via bridge', () => {
   withResetI18nState(() => {
     setTestI18nBridge({
@@ -126,21 +170,21 @@ test('i18n term identity normalizes fields and defaults kind', () => {
   });
 });
 
-test('i18n text descriptor derives from literal canonical identity and key', () => {
+test('i18n term reference derives from literal canonical identity and key', () => {
   const identity = createTermIdentity(' auth ', 'Users', {
     scope: ' auth.menu.users ',
     kind: 'menu',
   });
-  const descriptor = createTextDescriptor(' auth ', 'Users', {
+  const reference = createTermReference(' auth ', 'Users', {
     scope: ' auth.menu.users ',
     kind: 'menu',
   });
 
   expect(identity.kind).toBe('menu');
-  expect(descriptor).toEqual({
+  expect(reference).toEqual({
     ...identity,
     kind: 'literal',
-    key: createTextDescriptorKey(
+    key: createTermReferenceKey(
       identity.module,
       identity.scope,
       identity.src,
@@ -158,7 +202,7 @@ test('i18n createTranslate: interpolation', () => {
   });
 });
 
-test('i18n createTranslate: _lt is lazy', () => {
+test('i18n createTranslate: explicit closure is lazy', () => {
   withResetI18nState(() => {
     let calls = 0;
     setTestI18nBridge({
@@ -168,15 +212,15 @@ test('i18n createTranslate: _lt is lazy', () => {
       },
     });
     setGlobalRequestContextProvider({ lang: 'zh_CN' });
-    const { _lt } = createTranslate('auth');
-    const lazy = _lt('Access Error');
+    const { _t } = createTranslate('auth');
+    const lazy = () => _t('Access Error');
     expect(calls).toBe(0);
-    expect(String(lazy)).toBe('访问错误');
+    expect(lazy()).toBe('访问错误');
     expect(calls).toBe(1);
   });
 });
 
-test('i18n createTranslate: _lt captures canonical identity once', () => {
+test('i18n createTranslate: closure can capture canonical factory defaults', () => {
   withResetI18nState(() => {
     const calls: string[][] = [];
     setTestI18nBridge({
@@ -187,19 +231,19 @@ test('i18n createTranslate: _lt captures canonical identity once', () => {
     });
     setGlobalRequestContextProvider({ lang: 'zh_CN' });
     const options = { scope: ' original ', kind: ' menu ' };
-    const { _lt } = createTranslate(' auth ');
-    const lazy = _lt('Users', options);
+    const { _t } = createTranslate(' auth ', options);
+    const lazy = () => _t('Users');
 
     options.scope = 'changed';
     options.kind = 'literal';
-    expect(String(lazy)).toBe('Users');
+    expect(lazy()).toBe('Users');
     expect(calls).toEqual([
       ['auth', 'zh_CN', 'original', 'Users', 'menu'],
     ]);
   });
 });
 
-test('i18n createTranslate: _td is serializable and does not translate', () => {
+test('i18n createTranslate: reference output is serializable and does not translate', () => {
   withResetI18nState(() => {
     let calls = 0;
     setTestI18nBridge({
@@ -208,29 +252,35 @@ test('i18n createTranslate: _td is serializable and does not translate', () => {
         return '用户';
       },
     });
-    const { _td } = createTranslate('auth');
-    const descriptor = _td('Users', { scope: 'auth.menu.users' });
+    const { _t } = createTranslate('auth', { output: 'reference' });
+    const reference = _t('Users', { scope: 'auth.menu.users' });
 
-    expect(descriptor).toEqual({
-      key: createTextDescriptorKey('auth', 'auth.menu.users', 'Users', 'literal'),
+    expect(reference).toEqual({
+      key: createTermReferenceKey('auth', 'auth.menu.users', 'Users', 'literal'),
       module: 'auth',
       scope: 'auth.menu.users',
       src: 'Users',
       kind: 'literal',
     });
-    expect(JSON.parse(JSON.stringify(descriptor))).toEqual(descriptor);
+    expect(JSON.parse(JSON.stringify(reference))).toEqual(reference);
     expect(calls).toBe(0);
   });
 });
 
-test('i18n descriptor keys encode the full identity deterministically', () => {
+test('i18n term reference keys preserve the fixed legacy identity encoding', () => {
   const identity = ['模块', 'scope.with.dots', '用户 🍀', 'literal'] as const;
-  const key = createTextDescriptorKey(...identity);
-  expect(createTextDescriptorKey(...identity)).toBe(key);
+  const key = createTermReferenceKey(...identity);
+  expect(key).toBe('__terms.363ae6a8a1e59d9731353a73636f70652e776974682e646f747331313ae794a8e688b720f09f8d80373a6c69746572616c');
+  expect(createTermReferenceKey(...identity)).toBe(key);
+  expect(createTermReference(identity[0], identity[2], {
+    scope: identity[1],
+    kind: identity[3],
+    output: 'reference',
+  }).key).toBe(key);
   expect(key).toMatch(/^__terms\.[0-9a-f]+$/);
   for (let index = 0; index < identity.length; index += 1) {
     const changed = [...identity] as [string, string, string, string];
     changed[index] += '!';
-    expect(createTextDescriptorKey(...changed)).not.toBe(key);
+    expect(createTermReferenceKey(...changed)).not.toBe(key);
   }
 });

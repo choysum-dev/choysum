@@ -3,7 +3,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createI18n } from 'vue-i18n';
-import { createTextDescriptor } from '@/core/service/i18n';
+import { createTermReference } from '@/core/service/i18n';
 import { projectTerminologyMessages } from '../i18n/terminology';
 
 const mocks = vi.hoisted(() => {
@@ -108,7 +108,7 @@ describe('createAppRouter guards', () => {
     expect(mocks.getTitleSource().value).toBe('Home - Choysum');
   });
 
-  it('updates a descriptor title without another navigation', async () => {
+  it('updates a term reference title without another navigation', async () => {
     const i18n = createI18n({
       legacy: false,
       locale: 'en',
@@ -125,7 +125,7 @@ describe('createAppRouter guards', () => {
         path: '/home',
         meta: {
           pageTitle: 'Users',
-          pageTitleText: createTextDescriptor('base', 'Users', { scope: 'base.route.users' }),
+          pageTitleText: createTermReference('base', 'Users', { scope: 'base.route.users' }),
         },
       } as any,
       {} as any

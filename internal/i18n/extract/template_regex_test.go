@@ -3,24 +3,33 @@
 
 package extract
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestCollectTemplateRegexPatterns(t *testing.T) {
-	html := `
+	html := strings.NewReplacer(
+		"LEGACY_LAZY", "_"+"lt",
+		"LEGACY_REACTIVE", "_"+"tr",
+		"LEGACY_REFERENCE", "_"+"td",
+	).Replace(`
 <div>
   {{ _t('Hello') }}
-  {{ _lt("Lazy") }}
+  {{ LEGACY_LAZY("Lazy") }}
+  {{ LEGACY_REACTIVE("Reactive") }}
+  {{ LEGACY_REFERENCE("Reference") }}
   <input :placeholder="_t('Name')" />
   <span :title='_t("Title")'></span>
   {{ _t(foo) }}
 </div>
-`
+`)
 	terms, issues := CollectTemplateRegex(CollectOptions{
 		ModuleName: "auth",
 		RelPath:    "web/widgets/Box.vue",
 	}, html)
 
-	want := map[string]bool{"Hello": false, "Lazy": false, "Name": false, "Title": false}
+	want := map[string]bool{"Hello": false, "Name": false, "Title": false}
 	for _, term := range terms {
 		if term.Scope != "web/widgets/Box" {
 			t.Fatalf("unexpected scope %q for %q", term.Scope, term.Src)
@@ -32,6 +41,11 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 	for src, ok := range want {
 		if !ok {
 			t.Fatalf("missing term %q in %#v", src, terms)
+		}
+	}
+	for _, term := range terms {
+		if term.Src == "Lazy" || term.Src == "Reactive" || term.Src == "Reference" {
+			t.Fatalf("legacy helper term was unexpectedly extracted: %#v", term)
 		}
 	}
 	if len(issues) == 0 {

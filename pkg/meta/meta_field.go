@@ -36,7 +36,7 @@ type IrFieldRelatedSpec struct {
 	Deps  []string `json:"deps,omitempty"`
 }
 
-type TextDescriptor struct {
+type TermReference struct {
 	Key    string `json:"key"`
 	Module string `json:"module"`
 	Scope  string `json:"scope"`
@@ -44,21 +44,21 @@ type TextDescriptor struct {
 	Kind   string `json:"kind"`
 }
 
-const TextDescriptorNamespace = "__terms"
+const TermReferenceNamespace = "__terms"
 
-func TextDescriptorKey(module, scope, src, kind string) string {
+func TermReferenceKey(module, scope, src, kind string) string {
 	values := []string{module, scope, src, kind}
 	var identity strings.Builder
 	for _, value := range values {
 		identity.WriteString(fmt.Sprintf("%d:", len([]byte(value))))
 		identity.WriteString(value)
 	}
-	return TextDescriptorNamespace + "." + hex.EncodeToString([]byte(identity.String()))
+	return TermReferenceNamespace + "." + hex.EncodeToString([]byte(identity.String()))
 }
 
-func NewTextDescriptor(module, scope, src, kind string) TextDescriptor {
-	return TextDescriptor{
-		Key:    TextDescriptorKey(module, scope, src, kind),
+func NewTermReference(module, scope, src, kind string) TermReference {
+	return TermReference{
+		Key:    TermReferenceKey(module, scope, src, kind),
 		Module: module,
 		Scope:  scope,
 		Src:    src,
@@ -67,9 +67,9 @@ func NewTextDescriptor(module, scope, src, kind string) TextDescriptor {
 }
 
 type IrFieldSelectionItem struct {
-	Value     string          `json:"value"`
-	Label     string          `json:"label"`
-	LabelText *TextDescriptor `json:"labelText,omitempty"`
+	Value     string         `json:"value"`
+	Label     string         `json:"label"`
+	LabelText *TermReference `json:"labelText,omitempty"`
 }
 
 type IrFieldStructuralSpec struct {
@@ -155,7 +155,8 @@ type IrField struct {
 	RelationModelParentField string `gorm:"type:varchar(255);" json:"relation_model_parent_field"`
 
 	// Selection stores the option list for selection fields as a JSON string.
-	// Storage format keeps English label fallback and optional serializable labelText.
+	// Storage format keeps the existing labelText wire name for database and API compatibility.
+	// Its value is a TermReference; renaming the property requires a separate migration.
 	// The parser writes it directly and the frontend consumes it without intermediate conversion.
 	Selection string `gorm:"type:text" json:"selection,omitempty"`
 

@@ -3,12 +3,12 @@
 
 import type { Component } from 'vue';
 import type { ObjectRecord } from '../../utils/types';
-import type { TextDescriptor } from '../../service/i18n';
+import type { TermReference } from '../../service/i18n';
 
 export interface MenuItem {
   id: string;
   title: string;
-  titleText?: TextDescriptor;
+  titleText?: TermReference;
   order?: number;
   icon?: Component;
   path?: string;

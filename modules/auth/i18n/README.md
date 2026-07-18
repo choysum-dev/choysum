@@ -3,7 +3,15 @@
 - `auth.pot` / `zh_CN.po` — packaged terms for auth service errors and Login UI.
 - CI gate: `choysum i18n status auth --lang zh_CN`.
 - Runtime: Go `auth.I18n` + Gateway; frontend and service runtimes each expose `createTranslate('auth')`.
-- Frontend Gateway catalogs are projected into vue-i18n's flat `__terms`
-  namespace. Serializable `_td` metadata carries the deterministic full-identity
-  key used by Composer `te`/`t`; English `src` remains the pre-load/missing-term
-  fallback. Service `_t`/`_lt` remain backed by the Go bridge.
+- `createTranslate('auth')` exposes only `_t`. Text output is the default and the
+  service implementation remains backed by the Go bridge. Frontend text output
+  uses vue-i18n and `computed(() => _t(...))` for reactive values.
+- `createTranslate('auth', { output: 'reference', scope: '...' })` returns
+  deterministic serializable term references without lookup. Gateway catalogs are
+  projected into vue-i18n's flat `__terms` namespace; English `src` remains the
+  pre-load/missing-term fallback.
+- `_t(..., { output: ... })` overrides the factory output. Reference calls
+  reject interpolation; text calls support it. Output is not part of term
+  identity and cannot change deterministic keys or catalog entries.
+- Only literal `_t` calls are extracted. Explicit closures provide any
+  process-local lazy behavior.

@@ -5,7 +5,7 @@ import Locale from '@/base/service/models/locale';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
 import { MetadataStorage } from '@/core/service/api/metadata';
-import { createTextDescriptor } from '@/core/service/i18n';
+import { createTermReference } from '@/core/service/i18n';
 
 import { companyCode8, uid } from './_helpers';
 
@@ -16,12 +16,12 @@ test('base.locale: CurrencySymbolPosition selection exposes localized labels wit
     {
       value: 'before',
       label: 'Before amount',
-      labelText: createTextDescriptor('base', 'Before amount', { scope: 'base.Locale.CurrencySymbolPosition.before' }),
+      labelText: createTermReference('base', 'Before amount', { scope: 'base.Locale.CurrencySymbolPosition.before' }),
     },
     {
       value: 'after',
       label: 'After amount',
-      labelText: createTextDescriptor('base', 'After amount', { scope: 'base.Locale.CurrencySymbolPosition.after' }),
+      labelText: createTermReference('base', 'After amount', { scope: 'base.Locale.CurrencySymbolPosition.after' }),
     },
   ]);
 });

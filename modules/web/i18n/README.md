@@ -8,28 +8,42 @@ Catalogs here are the **packaged terminology** for the `web` application.
 
 Runtime reads terms via Go `web.I18n` → host Gateway → frontend vue-i18n.
 
-`_td` returns a serializable descriptor containing `module`, `scope`, `src`,
-`kind`, and a deterministic `key`. The key is `__terms.<hex identity>` where the
+`createTranslate(module, options)` exposes only `_t`. Its shared options accept
+default `scope` / `path` / `location` and `output: 'text' | 'reference'`.
+Text output is the default and returns an immediate string. Reference output
+performs no lookup and returns serializable `module`, `scope`, `src`, `kind`,
+and deterministic `key` metadata. The key is `__terms.<hex identity>` where the
 hex segment encodes the UTF-8 byte-length-prefixed full identity
 `module/scope/src/kind`; it contains no dots and is identical in frontend,
 backend parser, and generated metadata.
 
+Each `_t` call may override the factory with `output: 'text' | 'reference'`;
+precedence is call output, then factory output, then text. Reference calls do
+not accept interpolation arguments, while text calls do. A dynamic output has
+the explicit safe return type `string | TermReference`, and the output choice
+is never included in term identity or key generation.
+
+Existing serialized metadata property names (`titleText`, `labelText`, and
+`pageTitleText`) intentionally remain unchanged. They are persisted or cross
+API boundaries, so renaming them requires a separate database/API migration;
+their values are now typed as `TermReference`.
+
 Before Gateway messages are merged, the legacy nested
 `module → scope → src → value` catalog is preserved and also projected into the
-flat vue-i18n `__terms` namespace. Vue templates display descriptors directly
-with `$t(descriptor.key, descriptor.src || fallback)` (or a plain-string branch
-when the descriptor is optional). TypeScript, h-render, and router consumers use
-the single `translateTerm(composer, descriptor, fallback)` adapter. The adapter
+flat vue-i18n `__terms` namespace. Vue templates display term references directly
+with `$t(reference.key, reference.src || fallback)` (or a plain-string branch
+when the reference is optional). TypeScript, h-render, and router consumers use
+the single `translateTerm(composer, reference, fallback)` adapter. The adapter
 relies on vue-i18n's default-message and locale-fallback behavior, so it does not
 preflight with `te`. Missing and not-yet-loaded catalogs therefore render the
-English source or legacy fallback. Backend `_t`/`_lt` continue to use the Go
-bridge; vue-i18n is frontend-only.
+English source or legacy fallback. Backend text-output `_t` continues to use the
+Go bridge; vue-i18n is frontend-only.
 
-Extraction is explicit and literal-only: `_t`, backend `_lt`, `_tr`, and `_td`
-calls with string-literal messages are written to POT. Static descriptor
-consumers retain English source text as their fallback.
-Frontend code has no `_lt`; backend `_lt` is reserved for static declarations that
-must resolve lazily at request/render time.
+Extraction is explicit and literal-only: only `_t` calls with string-literal
+messages are written to POT, including reference-output factories. Static term
+reference consumers retain English source text as their fallback. Vue
+reactivity uses `computed(() => _t(...))`. Process-local lazy needs use explicit
+closures such as `() => _t(...)`; no coercible lazy translation objects exist.
 
 Language switch (D9 / S6): default `location.reload`. Soft remount is experimental
 (`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.

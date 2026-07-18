@@ -7,7 +7,7 @@ import { createTranslate } from '@/core/service/i18n';
 import Locale from './locale';
 import { normalizeDirection } from './_normalizers';
 
-const { _td } = createTranslate('base');
+const { _t } = createTranslate('base', { output: 'reference' });
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -23,8 +23,8 @@ export default class Language extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'ltr', label: _td('Left to right', { scope: 'base.Language.Direction.ltr' }) },
-      { value: 'rtl', label: _td('Right to left', { scope: 'base.Language.Direction.rtl' }) },
+      { value: 'ltr', label: _t('Left to right', { scope: 'base.Language.Direction.ltr' }) },
+      { value: 'rtl', label: _t('Right to left', { scope: 'base.Language.Direction.rtl' }) },
     ],
     size: 8,
   })

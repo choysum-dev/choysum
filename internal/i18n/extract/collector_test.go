@@ -30,12 +30,17 @@ func TestFormatScopeAndResolveI18nScope(t *testing.T) {
 }
 
 func TestCollectScriptLiteralsAndScopes(t *testing.T) {
-	content := `
-const { _t, _lt, _tr } = createTranslate('auth')
+	content := strings.NewReplacer(
+		"LEGACY_LAZY", "_"+"lt",
+		"LEGACY_REACTIVE", "_"+"tr",
+		"LEGACY_REFERENCE", "_"+"td",
+	).Replace(`
+const { _t } = createTranslate('auth')
 
 const saveLabel = _t('Save')
-const lazyTitle = _lt('Access Error')
-const reactiveTitle = _tr('Reactive title')
+const ignoredLazy = LEGACY_LAZY('Access Error')
+const ignoredReactive = LEGACY_REACTIVE('Reactive title')
+const ignoredReference = LEGACY_REFERENCE('Reference title')
 
 function submitForm() {
   return _t('Submit')
@@ -47,7 +52,7 @@ withI18nScope('game.rescue', () => {
 
 _t('Manual', { scope: 'manual.scope' })
 _t(dynamicVar)
-`
+`)
 
 	terms, issues := CollectScript(CollectOptions{
 		ModuleName: "auth",
@@ -79,11 +84,10 @@ _t(dynamicVar)
 		t.Fatalf("missing withI18nScope scope in %#v", bySrc["Save"])
 	}
 
-	if got := bySrc["Access Error"]; len(got) != 1 || got[0].Scope != "web/pages/Login@lazyTitle" {
-		t.Fatalf("unexpected _lt term: %#v", got)
-	}
-	if got := bySrc["Reactive title"]; len(got) != 1 || got[0].Scope != "web/pages/Login@reactiveTitle" {
-		t.Fatalf("unexpected _tr term: %#v", got)
+	for _, ignored := range []string{"Access Error", "Reactive title", "Reference title"} {
+		if got := bySrc[ignored]; len(got) != 0 {
+			t.Fatalf("legacy helper %q was unexpectedly extracted: %#v", ignored, got)
+		}
 	}
 	if got := bySrc["Submit"]; len(got) != 1 || got[0].Scope != "web/pages/Login@submitForm" {
 		t.Fatalf("unexpected function scope: %#v", got)
@@ -106,8 +110,8 @@ _t(dynamicVar)
 
 func TestCollectScriptUsesCreateTranslateDefaultScope(t *testing.T) {
 	content := `
-const { _t, _tr: reactiveTranslate } = createTranslate('auth', { scope: 'web/pages/Login' })
-const title = reactiveTranslate('User Login')
+const { _t: translate } = createTranslate('auth', { path: 'web/pages/Login' })
+const title = translate('User Login')
 const override = _t('Override', { scope: 'manual.override' })
 `
 
@@ -131,11 +135,11 @@ const override = _t('Override', { scope: 'manual.override' })
 	}
 }
 
-func TestCollectScriptDescriptorUsesCreateTranslateDefaultScope(t *testing.T) {
+func TestCollectScriptReferenceUsesCreateTranslateDefaultScope(t *testing.T) {
 	content := `
-const { _td, _td: descriptor } = createTranslate('base', { scope: 'web/menu/menus' })
-const menuTitle = _td('Master Data')
-descriptor('Company Management')
+const { _t, _t: reference } = createTranslate('base', { output: 'reference', path: 'web/menu', location: 'menus' })
+const menuTitle = _t('Master Data')
+reference('Company Management')
 `
 
 	terms, issues := CollectScript(CollectOptions{
@@ -146,23 +150,23 @@ descriptor('Company Management')
 		t.Fatalf("unexpected issues: %#v", issues)
 	}
 	if len(terms) != 2 {
-		t.Fatalf("expected 2 descriptor terms, got %#v", terms)
+		t.Fatalf("expected 2 reference terms, got %#v", terms)
 	}
 	for _, term := range terms {
-		if term.Scope != "web/menu/menus" {
+		if term.Scope != "web/menu@menus" {
 			t.Fatalf("scope for %q = %q", term.Src, term.Scope)
 		}
 	}
 }
 
-func TestCollectScriptDescriptorRequiresLiteralSourceAndScope(t *testing.T) {
+func TestCollectScriptReferenceRequiresLiteralSourceAndScope(t *testing.T) {
 	content := `
-const { _td, _td: descriptor } = createTranslate('base')
-const valid = _td('Users', { scope: 'base.menu.users' })
-descriptor('Settings', { scope: 'base.menu.settings' })
-_td(dynamicSrc, { scope: 'base.menu.dynamic' })
-_td('Dynamic scope', { scope: dynamicScope })
-_td('Missing scope')
+const { _t, _t: reference } = createTranslate('base', { output: 'reference' })
+const valid = _t('Users', { scope: 'base.menu.users' })
+reference('Settings', { scope: 'base.menu.settings' })
+_t(dynamicSrc, { scope: 'base.menu.dynamic' })
+_t('Dynamic scope', { scope: dynamicScope })
+_t('Missing scope')
 `
 	terms, issues := CollectScript(CollectOptions{
 		ModuleName: "base",
@@ -170,13 +174,13 @@ _td('Missing scope')
 	}, content)
 
 	if len(terms) != 2 {
-		t.Fatalf("expected 2 literal descriptor terms, got %#v", terms)
+		t.Fatalf("expected 2 literal reference terms, got %#v", terms)
 	}
 	if terms[0].Module != "base" || terms[0].Scope != "base.menu.users" || terms[0].Src != "Users" || terms[0].Kind != KindLiteral {
-		t.Fatalf("unexpected first descriptor term: %#v", terms[0])
+		t.Fatalf("unexpected first reference term: %#v", terms[0])
 	}
 	if terms[1].Scope != "base.menu.settings" || terms[1].Src != "Settings" {
-		t.Fatalf("unexpected aliased descriptor term: %#v", terms[1])
+		t.Fatalf("unexpected aliased reference term: %#v", terms[1])
 	}
 
 	var msgidIssues, scopeIssues int
@@ -190,6 +194,48 @@ _td('Missing scope')
 	}
 	if msgidIssues != 1 || scopeIssues != 2 {
 		t.Fatalf("expected one msgid and two scope warnings, got %#v", issues)
+	}
+}
+
+func TestCollectScriptFactoryModeIsNotRecognized(t *testing.T) {
+	content := `
+const { _t } = createTranslate('base', { mode: 'reference' })
+const title = _t('Users')
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "base",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 1 || terms[0].Scope != "web/menu/menus@title" {
+		t.Fatalf("factory mode was unexpectedly recognized: %#v", terms)
+	}
+}
+
+func TestCollectScriptCallOutputOverridesFactoryOutput(t *testing.T) {
+	content := `
+const { _t: textDefault } = createTranslate('base')
+const { _t: referenceDefault } = createTranslate('base', { output: 'reference' })
+textDefault('Left to right', { scope: 'base.Language.Direction.ltr', output: 'reference' })
+referenceDefault('Interpolated %s', { output: 'text' }, 'value')
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "base",
+		RelPath:    "service/models/language.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 2 {
+		t.Fatalf("expected two terms, got %#v", terms)
+	}
+	if terms[0].Scope != "base.Language.Direction.ltr" || terms[0].Src != "Left to right" {
+		t.Fatalf("unexpected reference override term: %#v", terms[0])
+	}
+	if terms[1].Scope != "service/models/language" || terms[1].Src != "Interpolated %s" {
+		t.Fatalf("unexpected text override term: %#v", terms[1])
 	}
 }
 

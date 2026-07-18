@@ -8,5 +8,10 @@ export {
   trackComposerMessageRevision,
   translateTerm,
 } from './translate';
-export type { ComposerLike, TranslateOptions, TextSource } from './translate';
-export type { TextDescriptor } from '../../../core/service/i18n';
+export type {
+  ComposerLike,
+  CreateTranslateOptions,
+  TranslateOptions,
+  TextSource,
+} from './translate';
+export type { TermReference } from '../../../core/service/i18n';

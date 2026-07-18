@@ -381,6 +381,7 @@ func TestConsoleHandlerWarnShowsSourceAndRelativePath(t *testing.T) {
 }
 
 func TestConsoleHandlerColorFollowsTerminalAndNoColor(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
 	stubConsoleTerminalWriter(t, true)
 
 	buf := bytes.NewBuffer(nil)

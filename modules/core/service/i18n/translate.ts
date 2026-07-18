@@ -5,7 +5,16 @@ import { getContextLang } from '../runtime/context/scope';
 import { resolveI18nScope, withI18nScope, type ResolveI18nScopeOptions } from './scope';
 import { resolveRequestLang } from './request_lang';
 
-export type TranslateOptions = ResolveI18nScopeOptions & { kind?: string };
+export type TranslateOutput = 'text' | 'reference';
+export type TranslateOptions = ResolveI18nScopeOptions & {
+  kind?: string;
+  output?: TranslateOutput;
+};
+export type CreateTranslateOptions<Output extends TranslateOutput = 'text'> =
+  TranslateOptions & { output?: Output };
+type TermOptions = Omit<TranslateOptions, 'output'>;
+type ExplicitOutputOptions<Output extends TranslateOutput> =
+  TermOptions & { output: Output };
 
 export type TermIdentity = {
   module: string;
@@ -14,7 +23,7 @@ export type TermIdentity = {
   kind: string;
 };
 
-export type TextDescriptor = {
+export type TermReference = {
   key: string;
   module: string;
   scope: string;
@@ -22,7 +31,7 @@ export type TextDescriptor = {
   kind: 'literal';
 };
 
-export const TEXT_DESCRIPTOR_NAMESPACE = '__terms';
+export const TERM_REFERENCE_NAMESPACE = '__terms';
 
 /**
  * Build the canonical, runtime-independent identity shared by terminology
@@ -57,7 +66,7 @@ function utf8Hex(value: string): string {
  * identity is UTF-8 hex encoded. The resulting segment is JSON-safe and never
  * contains dots, so vue-i18n only parses the reserved namespace separator.
  */
-export function createTextDescriptorKey(
+export function createTermReferenceKey(
   module: string,
   scope: string,
   src: string,
@@ -67,7 +76,7 @@ export function createTextDescriptorKey(
   const identity = values
     .map(value => `${new TextEncoder().encode(value).length}:${value}`)
     .join('');
-  return `${TEXT_DESCRIPTOR_NAMESPACE}.${utf8Hex(identity)}`;
+  return `${TERM_REFERENCE_NAMESPACE}.${utf8Hex(identity)}`;
 }
 
 type ChoysumI18n = {
@@ -80,7 +89,7 @@ function getBridge(): ChoysumI18n | undefined {
 }
 
 function isTranslateOptions(value: unknown): value is TranslateOptions {
-  return !!value && typeof value === 'object' && !Array.isArray(value) && ('scope' in (value as object) || 'kind' in (value as object) || 'path' in (value as object) || 'location' in (value as object));
+  return !!value && typeof value === 'object' && !Array.isArray(value) && ('scope' in (value as object) || 'kind' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'output' in (value as object));
 }
 
 function interpolate(template: string, args: unknown[]): string {
@@ -120,39 +129,60 @@ function lookup(identity: TermIdentity): string {
   }
 }
 
+/**
+ * Call signatures for text-mode `_t`.
+ *
+ * Avoid a generic catch-all rest overload: TypeScript will prefer it for
+ * `output: 'reference'` plus interpolation and make `@ts-expect-error` unused.
+ * Keep reference calls arity-2 only; route interpolation through the text /
+ * options / primitive overloads below.
+ */
 export type TranslateFn = {
-  (src: string, ...args: unknown[]): string;
+  (src: string, opts: ExplicitOutputOptions<'reference'>): TermReference;
+  (src: string, opts: ExplicitOutputOptions<'text'>, ...args: unknown[]): string;
+  (src: string, opts: ExplicitOutputOptions<TranslateOutput>): string | TermReference;
+  (src: string, opts: TermOptions & { output?: 'text' }, ...args: unknown[]): string;
+  (src: string, arg1: string | number | boolean | null | undefined, ...args: unknown[]): string;
+  (src: string): string;
 };
 
-export type LazyTranslate = {
-  toString(): string;
-  valueOf(): string;
-  [Symbol.toPrimitive](): string;
+export type ReferenceTranslateFn = {
+  (src: string, opts: ExplicitOutputOptions<'text'>, ...args: unknown[]): string;
+  (src: string, opts: ExplicitOutputOptions<'reference'>): TermReference;
+  (src: string, opts: ExplicitOutputOptions<TranslateOutput>): string | TermReference;
+  (src: string, opts?: TermOptions & { output?: never }): TermReference;
 };
 
-export function isTextDescriptor(value: unknown): value is TextDescriptor {
+export type DynamicTranslateFn = {
+  (src: string, opts: ExplicitOutputOptions<'text'>, ...args: unknown[]): string;
+  (src: string, opts: ExplicitOutputOptions<'reference'>): TermReference;
+  (src: string, opts: ExplicitOutputOptions<TranslateOutput>): string | TermReference;
+  (src: string, opts?: TermOptions & { output?: never }): string | TermReference;
+};
+
+export function isTermReference(value: unknown): value is TermReference {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return false;
   }
-  const descriptor = value as Partial<TextDescriptor>;
+  const reference = value as Partial<TermReference>;
   return (
-    typeof descriptor.module === 'string' &&
-    typeof descriptor.scope === 'string' &&
-    typeof descriptor.src === 'string' &&
-    typeof descriptor.key === 'string' &&
-    descriptor.key === createTextDescriptorKey(descriptor.module, descriptor.scope, descriptor.src, descriptor.kind) &&
-    descriptor.kind === 'literal'
+    typeof reference.module === 'string' &&
+    typeof reference.scope === 'string' &&
+    typeof reference.src === 'string' &&
+    typeof reference.key === 'string' &&
+    reference.key === createTermReferenceKey(reference.module, reference.scope, reference.src, reference.kind) &&
+    reference.kind === 'literal'
   );
 }
 
-export function createTextDescriptor(module: string, src: string, opts?: TranslateOptions): TextDescriptor {
+export function createTermReference(module: string, src: string, opts?: TranslateOptions): TermReference {
   const identity = {
     ...createTermIdentity(module, src, opts),
     kind: 'literal' as const,
   };
   return {
     ...identity,
-    key: createTextDescriptorKey(
+    key: createTermReferenceKey(
       identity.module,
       identity.scope,
       identity.src,
@@ -161,45 +191,76 @@ export function createTextDescriptor(module: string, src: string, opts?: Transla
   };
 }
 
-/**
- * Bind `_t` / `_lt` to a module name (term owner module).
- */
-export function createTranslate(module: string): {
-  _t: TranslateFn;
-  _lt: (src: string, opts?: TranslateOptions) => LazyTranslate;
-  _td: (src: string, opts?: TranslateOptions) => TextDescriptor;
-} {
-  const mod = String(module || '').trim();
+export type CreateTranslateResult<Output extends TranslateOutput> = {
+  _t: [Output] extends ['reference']
+    ? ReferenceTranslateFn
+    : [Output] extends ['text']
+      ? TranslateFn
+      : DynamicTranslateFn;
+};
 
-  const _t: TranslateFn = (src: string, ...args: unknown[]): string => {
+export function createTranslate(
+  module: string,
+  defaults: CreateTranslateOptions<'reference'> & { output: 'reference' }
+): CreateTranslateResult<'reference'>;
+export function createTranslate(
+  module: string,
+  defaults?: CreateTranslateOptions<'text'>
+): CreateTranslateResult<'text'>;
+export function createTranslate<Output extends TranslateOutput>(
+  module: string,
+  defaults?: CreateTranslateOptions<Output>
+): CreateTranslateResult<Output>;
+/**
+ * Bind the sole terminology helper `_t` to an owner module.
+ *
+ * Text output (the default) translates immediately. Reference output performs
+ * no lookup and returns deterministic, serializable metadata.
+ */
+export function createTranslate<Output extends TranslateOutput = 'text'>(
+  module: string,
+  defaults?: CreateTranslateOptions<Output>
+): CreateTranslateResult<Output> {
+  const mod = String(module || '').trim();
+  const output: TranslateOutput = defaults?.output === 'reference' ? 'reference' : 'text';
+  const defaultScope = resolveI18nScope(defaults);
+  const defaultKind = defaults?.kind;
+  const defaultIdentities = new Map<string, TermIdentity>();
+
+  const resolveOptions = (opts?: TranslateOptions): TranslateOptions => {
+    const scope = resolveI18nScope(opts) || defaultScope;
+    return {
+      ...opts,
+      scope,
+      kind: opts?.kind ?? defaultKind,
+    };
+  };
+
+  const _t = (src: string, ...args: unknown[]): string | TermReference => {
     let opts: TranslateOptions | undefined;
     let interp: unknown[] = args;
     if (args.length > 0 && isTranslateOptions(args[0])) {
       opts = args[0] as TranslateOptions;
       interp = args.slice(1);
     }
-    const identity = createTermIdentity(mod, src, opts);
+    const callOutput = opts?.output ?? output;
+    if (callOutput === 'reference') {
+      return createTermReference(mod, src, resolveOptions(opts));
+    }
+    let identity: TermIdentity;
+    if (!opts && defaultScope) {
+      identity = defaultIdentities.get(src) ??
+        createTermIdentity(mod, src, resolveOptions());
+      defaultIdentities.set(src, identity);
+    } else {
+      identity = createTermIdentity(mod, src, resolveOptions(opts));
+    }
     const hit = lookup(identity);
     const base = hit || identity.src;
     return interpolate(base, interp);
   };
 
-  const _lt = (src: string, opts?: TranslateOptions): LazyTranslate => {
-    const identity = createTermIdentity(mod, src, opts);
-    const resolve = () => {
-      const hit = lookup(identity);
-      return hit || identity.src;
-    };
-    return {
-      toString: resolve,
-      valueOf: resolve,
-      [Symbol.toPrimitive]: resolve,
-    };
-  };
-
-  const _td = (src: string, opts?: TranslateOptions): TextDescriptor => createTextDescriptor(mod, src, opts);
-
-  return { _t, _lt, _td };
+  return { _t: _t as CreateTranslateResult<Output>['_t'] };
 }
 
 export { withI18nScope, resolveI18nScope, formatScope } from './scope';

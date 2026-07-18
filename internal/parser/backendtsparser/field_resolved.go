@@ -222,30 +222,54 @@ func resolveColumnType(fieldType string) string {
 	}
 }
 
-var textDescriptorCallPattern = regexp.MustCompile(`(?s)^_td\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)\s*,\s*\{\s*scope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)\s*\}\s*\)$`)
+var (
+	termReferenceCallPattern = regexp.MustCompile(`(?s)^_t\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)(?:\s*,\s*\{(.*?)\})?\s*\)$`)
+	callOutputPattern        = regexp.MustCompile(`\boutput\s*:\s*(['"])(text|reference)(['"])`)
+)
 
-func parseTextDescriptorCall(raw string, ownerModule string) (*meta.TextDescriptor, bool) {
-	match := textDescriptorCallPattern.FindStringSubmatch(strings.TrimSpace(raw))
+func parseTextCallLiteral(value string) (string, bool) {
+	if strings.HasPrefix(value, "`") && strings.HasSuffix(value, "`") {
+		return strings.TrimSuffix(strings.TrimPrefix(value, "`"), "`"), true
+	}
+	parsed, err := parser.ParseJSStringLiteral(value)
+	return parsed, err == nil
+}
+
+func parseTermReferenceCall(raw string, ownerModule string, defaultScope string, factoryReferenceOutput bool) (*meta.TermReference, bool) {
+	match := termReferenceCallPattern.FindStringSubmatch(strings.TrimSpace(raw))
 	if len(match) != 3 || strings.TrimSpace(ownerModule) == "" {
 		return nil, false
 	}
-	parseLiteral := func(value string) (string, bool) {
-		if strings.HasPrefix(value, "`") && strings.HasSuffix(value, "`") {
-			return strings.TrimSuffix(strings.TrimPrefix(value, "`"), "`"), true
-		}
-		parsed, err := parser.ParseJSStringLiteral(value)
-		return parsed, err == nil
+	referenceOutput := factoryReferenceOutput
+	if outputMatch := callOutputPattern.FindStringSubmatch(match[2]); len(outputMatch) == 4 && outputMatch[1] == outputMatch[3] {
+		referenceOutput = outputMatch[2] == "reference"
 	}
-	src, srcOK := parseLiteral(match[1])
-	scope, scopeOK := parseLiteral(match[2])
+	if !referenceOutput {
+		return nil, false
+	}
+	src, srcOK := parseTextCallLiteral(match[1])
+	scope := strings.TrimSpace(defaultScope)
+	scopeOK := scope != ""
+	if strings.TrimSpace(match[2]) != "" {
+		scope = strings.TrimSpace(parseFactoryStringOption(match[2], referenceScopePattern))
+		if scope == "" {
+			pathValue := strings.TrimSpace(parseFactoryStringOption(match[2], referencePathPattern))
+			locationValue := strings.TrimSpace(parseFactoryStringOption(match[2], referenceLocationPattern))
+			scope = pathValue
+			if scope != "" && locationValue != "" {
+				scope += "@" + locationValue
+			}
+		}
+		scopeOK = scope != ""
+	}
 	if !srcOK || !scopeOK || strings.TrimSpace(src) == "" || strings.TrimSpace(scope) == "" {
 		return nil, false
 	}
-	descriptor := meta.NewTextDescriptor(ownerModule, scope, src, "literal")
-	return &descriptor, true
+	reference := meta.NewTermReference(ownerModule, scope, src, "literal")
+	return &reference, true
 }
 
-func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic, ownerModule string) (*meta.IrFieldResolvedSpec, error) {
+func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic, ownerModule string, referenceOutput bool, referenceScope string) (*meta.IrFieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
 	}
@@ -311,10 +335,14 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
 			labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
 			label := labelRaw
-			var labelText *meta.TextDescriptor
-			if descriptor, ok := parseTextDescriptorCall(labelRaw, ownerModule); ok {
-				label = descriptor.Src
-				labelText = descriptor
+			var labelText *meta.TermReference
+			if reference, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, referenceOutput); ok {
+				label = reference.Src
+				labelText = reference
+			} else if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 3 {
+				if fallback, ok := parseTextCallLiteral(match[1]); ok {
+					label = fallback
+				}
 			}
 			if value == "" || label == "" {
 				continue

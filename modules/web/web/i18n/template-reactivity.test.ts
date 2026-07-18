@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { createI18n } from 'vue-i18n';
 import { defineComponent, nextTick } from 'vue';
 
-import { createTextDescriptor } from '@/core/service/i18n';
+import { createTermReference } from '@/core/service/i18n';
 import { projectTerminologyMessages } from './terminology';
 import {
   notifyComposerMessagesChanged,
@@ -16,10 +16,10 @@ import {
 
 describe('native template terminology reactivity', () => {
   it('updates current and dropdown app titles after an asynchronous catalog merge', async () => {
-    const activeTitle = createTextDescriptor('base', 'Settings', {
+    const activeTitle = createTermReference('base', 'Settings', {
       scope: 'base.menu.settings',
     });
-    const dropdownTitle = createTextDescriptor('base', 'Users', {
+    const dropdownTitle = createTermReference('base', 'Users', {
       scope: 'base.menu.users',
     });
     const component = defineComponent({

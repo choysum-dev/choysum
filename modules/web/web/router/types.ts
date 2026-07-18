@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { RouteLocationNormalized } from 'vue-router';
-import type { TextDescriptor } from '../../../core/service/i18n';
+import type { TermReference } from '../../../core/service/i18n';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -25,9 +25,9 @@ declare module 'vue-router' {
     pageTitle?: string | ((route: RouteLocationNormalized) => string);
 
     /**
-     * Serializable terminology descriptor for the static page title.
+     * Serializable term reference for the static page title.
      * pageTitle remains the English fallback for legacy consumers.
      */
-    pageTitleText?: TextDescriptor;
+    pageTitleText?: TermReference;
   }
 }

@@ -62,25 +62,25 @@ describe('resource declaration helpers', () => {
     expect((route as any).meta?.pageTitle).toBe('User Details - Dynamic Override');
   });
 
-  it('normalizes descriptor titles to English fallbacks plus metadata', () => {
-    const { _td } = createTranslate('auth');
-    const descriptor = _td('Users', { scope: 'auth.route.users' });
+  it('normalizes term reference titles to English fallbacks plus metadata', () => {
+    const { _t } = createTranslate('auth', { output: 'reference' });
+    const reference = _t('Users', { scope: 'auth.route.users' });
     const route = defineRoute('auth.route.users', {
       path: '/auth/users',
-      title: descriptor,
+      title: reference,
     } as any);
     const menu = defineMenu('auth.menu.users', {
       path: '/auth/users',
-      title: descriptor,
+      title: reference,
     });
 
     expect((route as any).meta.pageTitle).toBe('Users');
-    expect((route as any).meta.pageTitleText).toEqual(descriptor);
+    expect((route as any).meta.pageTitleText).toEqual(reference);
     expect(menu.title).toBe('Users');
-    expect(menu.titleText).toEqual(descriptor);
+    expect(menu.titleText).toEqual(reference);
     expect(getResourceDeclaration('auth.route.users')).toMatchObject({
       title: 'Users',
-      titleText: descriptor,
+      titleText: reference,
     });
   });
 

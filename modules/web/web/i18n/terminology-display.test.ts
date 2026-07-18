@@ -9,7 +9,7 @@ function source(relativePath: string): string {
 }
 
 describe('frontend terminology display contract', () => {
-  it('uses direct $t descriptor expressions in Vue templates', () => {
+  it('uses direct $t term reference expressions in Vue templates', () => {
     const header = source('../components/layout/OHeader.vue');
     const breadcrumb = source('../components/view/OBreadcrumb.vue');
 
@@ -18,7 +18,7 @@ describe('frontend terminology display contract', () => {
     expect(breadcrumb).toContain('$t(crumb.titleText.key, crumb.titleText.src || crumb.title)');
   });
 
-  it('keeps non-template descriptor consumers on translateTerm', () => {
+  it('keeps non-template term reference consumers on translateTerm', () => {
     for (const path of [
       '../composables/useMenu.ts',
       '../components/field/OSelectionField.vue',

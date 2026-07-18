@@ -17,8 +17,8 @@ import (
 
 func TestWebApiStoreGenerate(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
-	descriptorKey := meta.TextDescriptorKey("demo", "demo.status.allow", "Allow", "literal")
-	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + descriptorKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
+	referenceKey := meta.TermReferenceKey("demo", "demo.status.allow", "Allow", "literal")
+	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
 	runAs := "system"
@@ -119,8 +119,8 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if !strings.Contains(string(storeContent), "storageKind") || !strings.Contains(string(storeContent), "searchable") {
 		t.Fatalf("expected resolved contract keys in store content: %s", string(storeContent))
 	}
-	if !strings.Contains(string(storeContent), "labelText") || !strings.Contains(string(storeContent), descriptorKey) {
-		t.Fatalf("expected selection descriptor in generated store content: %s", string(storeContent))
+	if !strings.Contains(string(storeContent), "labelText") || !strings.Contains(string(storeContent), referenceKey) {
+		t.Fatalf("expected selection term reference in generated store content: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)

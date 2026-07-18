@@ -9,7 +9,7 @@ import routes from './routes';
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
 import { translateTerm, type ComposerLike } from '../i18n';
-import { isTextDescriptor } from '@/core/service/i18n';
+import { isTermReference } from '@/core/service/i18n';
 
 // Configure navigation progress feedback.
 NProgress.configure({ showSpinner: false });
@@ -49,10 +49,10 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
         : typeof pageTitle === 'string'
           ? pageTitle
           : '';
-      const descriptor = isTextDescriptor(route?.meta?.pageTitleText)
+      const reference = isTermReference(route?.meta?.pageTitleText)
         ? route.meta.pageTitleText
         : undefined;
-      const title = translateTerm(composer, descriptor, fallback);
+      const title = translateTerm(composer, reference, fallback);
       return title ? `${title} - ${appName}` : appName;
     })
   );

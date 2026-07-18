@@ -24,7 +24,7 @@ func newI18nCmd(envGetter func() scope.Scope) *cobra.Command {
 		Short: "Terminology extract, sync, and status tools",
 		Long: `Development tooling for terminology i18n (gettext PO catalogs).
 
-extract scans module source for explicit _t/_lt/_tr literals and writes modules/<m>/i18n/<m>.pot.
+extract scans module source for explicit _t literals and writes modules/<m>/i18n/<m>.pot.
 sync merges pot into language .po files (msgmerge semantics).
 status reports missing/fuzzy/orphan/pot-dirty findings for CI gates.
 Vue <template> extraction uses a temporary regex (S1-MVP); S1+ will use a full template AST.`,
@@ -41,7 +41,7 @@ func newI18nExtractCmd(envGetter func() scope.Scope) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "extract [module...]",
-		Short: "Extract explicit _t/_lt/_tr literals into module .pot catalogs",
+		Short: "Extract explicit _t literals into module .pot catalogs",
 		Annotations: map[string]string{
 			lightweightScopeAnnotation: "true",
 		},

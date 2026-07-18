@@ -172,10 +172,14 @@ func TestServerRegisterApplicationServicesBuildsWatchDirsAndScripts(t *testing.T
 	assertRegisteredBindings(t, srv, registration.Bindings, "registerApplicationServices() registered bindings")
 	assertRegisteredGRPCMethods(t, srv, map[string]struct{}{
 		"/auth.I18n/GetTranslations":  {},
+		"/auth.I18n/SearchTerms":      {},
+		"/auth.I18n/UpdateTerm":       {},
 		"/auth.TaskWorker/ExecuteJob": {},
 	}, "registerApplicationServices() registered grpc methods")
 	assertRegistrationGRPCMethods(t, registration, map[string]struct{}{
 		"/auth.I18n/GetTranslations":  {},
+		"/auth.I18n/SearchTerms":      {},
+		"/auth.I18n/UpdateTerm":       {},
 		"/auth.TaskWorker/ExecuteJob": {},
 	}, "registerApplicationServices() grpc methods")
 
