@@ -32,7 +32,9 @@ func WithTerminologyLookup(lookup LookupFunc) jsengine.JsEngineOption {
 		globalsObj := jse.Ctx.Globals()
 
 		choysumObj := globalsObj.Get("$choysum")
-		if choysumObj.IsUndefined() || choysumObj.IsNull() {
+		if !choysumObj.IsObject() {
+			// Get() returns an owned handle; free before replacing non-objects
+			// (undefined/null/primitives). Do not Free() Globals() itself.
 			choysumObj.Free()
 			choysumObj = jse.Ctx.Object()
 		}

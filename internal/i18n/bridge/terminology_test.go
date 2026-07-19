@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/i18n/bridge"
+	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 )
 
@@ -41,6 +42,37 @@ func TestWithTerminologyLookupSync(t *testing.T) {
 	}
 	if miss.String() != "" {
 		t.Fatalf("miss = %q, want empty", miss.String())
+	}
+}
+
+func TestWithTerminologyLookupReplacesNonObjectChoysum(t *testing.T) {
+	seedNonObject := func(jsEngine jsengine.JsEngine) error {
+		jse := jsEngine.(*quickjsengine.QuickjsEngine)
+		globals := jse.Ctx.Globals()
+		globals.Set("$choysum", jse.Ctx.String("not-an-object"))
+		return nil
+	}
+	lookup := func(module, lang, scope, src, kind string) (string, bool) {
+		if src == "Hello" {
+			return "你好", true
+		}
+		return "", false
+	}
+
+	engineIface, err := quickjsengine.NewFactory(seedNonObject, bridge.WithTerminologyLookup(lookup))()
+	if err != nil {
+		t.Fatalf("NewFactory: %v", err)
+	}
+	engine := engineIface.(*quickjsengine.QuickjsEngine)
+	t.Cleanup(func() { _ = engine.Close() })
+
+	hit := engine.Ctx.Eval(`$choysum.i18n.t('auth', 'zh_CN', 'a@b', 'Hello')`)
+	defer hit.Free()
+	if hit.IsException() {
+		t.Fatalf("Eval hit: %v", engine.Ctx.Exception())
+	}
+	if hit.String() != "你好" {
+		t.Fatalf("hit = %q, want 你好", hit.String())
 	}
 }
 
