@@ -282,10 +282,7 @@ func parsePatchBody(body []byte) ([]termItem, string, error) {
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, "", fmt.Errorf("invalid json")
 	}
-	lang := strings.TrimSpace(fmt.Sprintf("%v", raw["lang"]))
-	if lang == "<nil>" {
-		lang = ""
-	}
+	lang := jsonMapTrimmedString(raw, "lang")
 
 	if itemsRaw, ok := raw["items"]; ok && itemsRaw != nil {
 		encoded, err := json.Marshal(itemsRaw)
@@ -300,35 +297,34 @@ func parsePatchBody(body []byte) ([]termItem, string, error) {
 	}
 
 	item := termItem{
-		Application: strings.TrimSpace(fmt.Sprintf("%v", raw["application"])),
-		Module:      strings.TrimSpace(fmt.Sprintf("%v", raw["module"])),
-		Scope:       strings.TrimSpace(fmt.Sprintf("%v", raw["scope"])),
-		Src:         fmt.Sprintf("%v", raw["src"]),
-		Value:       fmt.Sprintf("%v", raw["value"]),
-		Kind:        strings.TrimSpace(fmt.Sprintf("%v", raw["kind"])),
-	}
-	if item.Application == "<nil>" {
-		item.Application = ""
-	}
-	if item.Module == "<nil>" {
-		item.Module = ""
-	}
-	if item.Scope == "<nil>" {
-		item.Scope = ""
-	}
-	if item.Src == "<nil>" {
-		item.Src = ""
-	}
-	if item.Value == "<nil>" {
-		item.Value = ""
-	}
-	if item.Kind == "<nil>" {
-		item.Kind = ""
+		Application: jsonMapTrimmedString(raw, "application"),
+		Module:      jsonMapTrimmedString(raw, "module"),
+		Scope:       jsonMapTrimmedString(raw, "scope"),
+		Src:         jsonMapString(raw, "src"),
+		Value:       jsonMapString(raw, "value"),
+		Kind:        jsonMapTrimmedString(raw, "kind"),
 	}
 	if item.Application == "" && item.Module == "" {
 		return nil, "", fmt.Errorf("items or term object required")
 	}
 	return []termItem{item}, lang, nil
+}
+
+// jsonMapString returns a string JSON field, or "" when missing/null/non-string.
+func jsonMapString(m map[string]any, key string) string {
+	v, ok := m[key]
+	if !ok || v == nil {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
+
+func jsonMapTrimmedString(m map[string]any, key string) string {
+	return strings.TrimSpace(jsonMapString(m, key))
 }
 
 func writeTermsRPCError(w http.ResponseWriter, err error) {

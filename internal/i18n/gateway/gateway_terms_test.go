@@ -290,6 +290,22 @@ func TestTermsPatchRoutesAndAllOrNothing(t *testing.T) {
 	}
 }
 
+func TestParsePatchBodyIgnoresNullFields(t *testing.T) {
+	items, lang, err := parsePatchBody([]byte(`{"lang":"zh_CN","application":"auth","module":"auth","scope":"a@t","src":"Hello","value":null}`))
+	if err != nil {
+		t.Fatalf("parsePatchBody: %v", err)
+	}
+	if lang != "zh_CN" || len(items) != 1 {
+		t.Fatalf("lang=%q items=%#v", lang, items)
+	}
+	if items[0].Value != "" {
+		t.Fatalf("null value should become empty string, got %q", items[0].Value)
+	}
+	if _, _, err := parsePatchBody([]byte(`{"lang":null}`)); err == nil {
+		t.Fatal("expected error when neither items nor term object present")
+	}
+}
+
 func TestTermsPatchRejectsUnknownAppBeforeWrite(t *testing.T) {
 	called := false
 	h := &handler{
