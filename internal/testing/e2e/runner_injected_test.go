@@ -16,7 +16,20 @@ import (
 	"time"
 )
 
+// setE2ETestGlobalPlaywrightRoot points CHOYSUM_NPM_GLOBAL_ROOT at a temp install that
+// satisfies e2e preflight without requiring a real global npm tree (CI-safe).
+func setE2ETestGlobalPlaywrightRoot(t *testing.T) {
+	t.Helper()
+	globalNodeModules := filepath.Join(t.TempDir(), "global-node_modules")
+	if err := os.MkdirAll(filepath.Join(globalNodeModules, "@playwright", "test"), 0o755); err != nil {
+		t.Fatalf("mkdir global playwright package: %v", err)
+	}
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalNodeModules)
+}
+
 func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
+	setE2ETestGlobalPlaywrightRoot(t)
+
 	oldInstall := installForE2EHook
 	oldApply := applyScenarioFixturesHook
 	oldSeed := seedModuleIndexHook
@@ -99,6 +112,8 @@ func TestRunOneScenarioWithHooksSuccess(t *testing.T) {
 }
 
 func TestRunOneScenarioWithHooksErrorPaths(t *testing.T) {
+	setE2ETestGlobalPlaywrightRoot(t)
+
 	oldInstall := installForE2EHook
 	oldApply := applyScenarioFixturesHook
 	oldSeed := seedModuleIndexHook
@@ -245,6 +260,8 @@ func TestRunModulePropagatesScenarioHookError(t *testing.T) {
 }
 
 func TestRunOneScenarioAdditionalBranches(t *testing.T) {
+	setE2ETestGlobalPlaywrightRoot(t)
+
 	t.Run("meta module installs task and auth", func(t *testing.T) {
 		oldInstall := installForE2EHook
 		oldApply := applyScenarioFixturesHook
