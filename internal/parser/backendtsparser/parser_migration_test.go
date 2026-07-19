@@ -506,6 +506,46 @@ export default class SelectionReferenceModel extends BaseModel {
 	}
 }
 
+func TestTsParser_DetectsReferenceFactoryWithAliasAndExtraBindings(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t: translate, locale } = createTranslate('demo', {
+  output: 'reference',
+  scope: 'demo.model.status',
+});
+
+@Model('AliasedReferenceModel')
+export default class AliasedReferenceModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: translate('Active') }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	item := spec.Structural.Selection[0]
+	if item.Label != "Active" || item.LabelText == nil {
+		t.Fatalf("aliased factory reference was not preserved: %+v", item)
+	}
+	if item.LabelText.Module != "demo" || item.LabelText.Scope != "demo.model.status" || item.LabelText.Src != "Active" {
+		t.Fatalf("unexpected term reference: %+v", item.LabelText)
+	}
+}
+
 func TestTsParser_SelectionCallReferenceOverridesTextFactory(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}

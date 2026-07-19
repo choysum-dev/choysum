@@ -182,7 +182,12 @@ func buildUiResources(module *meta.IrModule, decls *collectedUiDecls) ([]*meta.I
 
 		requires := mustJSON(decl.Requires)
 		defaultRoles := mustJSON(decl.DefaultRoles)
-		titleText := mustOptionalJSON(decl.TitleText)
+		// Check the pointer before boxing into any — a typed-nil *TermReference is
+		// not == nil inside mustOptionalJSON and would marshal to JSON "null".
+		var titleText []byte
+		if decl.TitleText != nil {
+			titleText = mustOptionalJSON(decl.TitleText)
+		}
 
 		v := &meta.IrUiResource{
 			Name:               id,

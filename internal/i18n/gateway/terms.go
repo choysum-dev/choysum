@@ -233,7 +233,9 @@ func (h *handler) serveTermsPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pre-validate all items (D7: all-or-nothing via validate-then-write).
+	// Pre-validate all items before any write (reject bad requests early).
+	// Multi-app patches are not distributed-transactional: each updateApp is an
+	// independent per-app RPC, so a later failure leaves earlier apps committed.
 	grouped := map[string][]termItem{}
 	for i, item := range items {
 		app := strings.TrimSpace(item.Application)

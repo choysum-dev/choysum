@@ -17,15 +17,14 @@ import (
 
 type tsFileParser struct {
 	*parser.TsParser
-	runtimeScope    scope.Scope
-	ownerModule     string
-	referenceOutput bool
-	referenceScope  string
+	runtimeScope      scope.Scope
+	ownerModule       string
+	referenceOutput   bool
+	referenceScope    string
+	translateBindings map[string]parser.TranslateBinding
 }
 
 var (
-	referenceFactoryPattern  = regexp.MustCompile(`(?s)\bconst\s*\{\s*_t\s*\}\s*=\s*createTranslate\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*')\s*,\s*\{([^}]*)\}\s*\)`)
-	referenceOutputPattern   = regexp.MustCompile(`\boutput\s*:\s*(['"])reference(['"])`)
 	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	referenceLocationPattern = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
@@ -48,23 +47,16 @@ func parseFactoryStringOption(options string, pattern *regexp.Regexp) string {
 }
 
 func (p *tsFileParser) detectReferenceFactory() {
-	match := referenceFactoryPattern.FindStringSubmatch(p.Content)
-	if len(match) != 3 || !referenceOutputPattern.MatchString(match[2]) {
+	// Reuse the shared destructuring parser so aliases and multi-property
+	// bindings (e.g. const { _t: t, locale } = createTranslate(...)) work.
+	p.translateBindings = parser.ParseTranslateBindings(p.Content)
+	for _, binding := range p.translateBindings {
+		if !binding.ReferenceOutput {
+			continue
+		}
+		p.referenceOutput = true
+		p.referenceScope = binding.DefaultScope
 		return
-	}
-	p.referenceOutput = true
-	if scopeValue := parseFactoryStringOption(match[2], referenceScopePattern); strings.TrimSpace(scopeValue) != "" {
-		p.referenceScope = scopeValue
-		return
-	}
-	pathValue := strings.TrimSpace(parseFactoryStringOption(match[2], referencePathPattern))
-	locationValue := strings.TrimSpace(parseFactoryStringOption(match[2], referenceLocationPattern))
-	if pathValue == "" {
-		return
-	}
-	p.referenceScope = pathValue
-	if locationValue != "" {
-		p.referenceScope += "@" + locationValue
 	}
 }
 
@@ -286,7 +278,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		}
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]
-		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule, p.referenceOutput, p.referenceScope)
+		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule, p.referenceOutput, p.referenceScope, p.translateBindings)
 		if err != nil {
 			return nil, nil, nil, xfmt.Errorf("failed to resolve field %s: %w", field.Name, err)
 		}

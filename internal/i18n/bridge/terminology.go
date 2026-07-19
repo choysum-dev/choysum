@@ -23,6 +23,9 @@ func WithTerminology(reg *store.Registry) jsengine.JsEngineOption {
 }
 
 // WithTerminologyLookup registers $choysum.i18n.t with a custom lookup (tests).
+//
+// Note: quickjs-go Value.Set consumes the property value (JS_SetProperty without
+// Dup). Do not Free() values after Set — that double-frees and crashes.
 func WithTerminologyLookup(lookup LookupFunc) jsengine.JsEngineOption {
 	return func(jsEngine jsengine.JsEngine) error {
 		jse := jsEngine.(*quickjsengine.QuickjsEngine)
@@ -30,6 +33,7 @@ func WithTerminologyLookup(lookup LookupFunc) jsengine.JsEngineOption {
 
 		choysumObj := globalsObj.Get("$choysum")
 		if choysumObj.IsUndefined() || choysumObj.IsNull() {
+			choysumObj.Free()
 			choysumObj = jse.Ctx.Object()
 		}
 
