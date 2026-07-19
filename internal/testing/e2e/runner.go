@@ -991,7 +991,7 @@ func mergeNodeOptionsImport(existingNODE_OPTIONS, hookPath string) string {
 		// Prefer file URL so spaces / special chars in paths are safe.
 		importValue = pathToFileURLString(hookPath)
 	}
-	parts := strings.Fields(strings.TrimSpace(existingNODE_OPTIONS))
+	parts := splitNodeOptions(strings.TrimSpace(existingNODE_OPTIONS))
 	out := make([]string, 0, len(parts)+2)
 	skipNext := false
 	for i, part := range parts {
@@ -1014,7 +1014,99 @@ func mergeNodeOptionsImport(existingNODE_OPTIONS, hookPath string) string {
 	if hookPath != "" {
 		out = append(out, importFlag, importValue)
 	}
-	return "NODE_OPTIONS=" + strings.Join(out, " ")
+	return "NODE_OPTIONS=" + joinNodeOptions(out)
+}
+
+// splitNodeOptions mirrors Node's NODE_OPTIONS tokenization: whitespace splits
+// arguments unless inside double quotes; backslash escapes the next character
+// inside quotes. Quotes themselves are not part of the token.
+func splitNodeOptions(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var (
+		parts      []string
+		cur        strings.Builder
+		inString   bool
+		hasToken   bool
+	)
+	flush := func() {
+		if !hasToken {
+			return
+		}
+		parts = append(parts, cur.String())
+		cur.Reset()
+		hasToken = false
+	}
+	for i := 0; i < len(raw); i++ {
+		c := raw[i]
+		if inString {
+			if c == '\\' {
+				if i+1 >= len(raw) {
+					cur.WriteByte(c)
+					hasToken = true
+					continue
+				}
+				i++
+				cur.WriteByte(raw[i])
+				hasToken = true
+				continue
+			}
+			if c == '"' {
+				inString = false
+				continue
+			}
+			cur.WriteByte(c)
+			hasToken = true
+			continue
+		}
+		if c == '"' {
+			inString = true
+			hasToken = true
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			flush()
+			continue
+		}
+		cur.WriteByte(c)
+		hasToken = true
+	}
+	flush()
+	return parts
+}
+
+func joinNodeOptions(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if needsNodeOptionsQuotes(part) {
+			out = append(out, `"`+escapeNodeOptionsQuoted(part)+`"`)
+			continue
+		}
+		out = append(out, part)
+	}
+	return strings.Join(out, " ")
+}
+
+func needsNodeOptionsQuotes(s string) bool {
+	return strings.ContainsAny(s, " \t\n\r\"\\")
+}
+
+func escapeNodeOptionsQuoted(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '\\' || c == '"' {
+			b.WriteByte('\\')
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
 }
 
 func pathToFileURLString(p string) string {

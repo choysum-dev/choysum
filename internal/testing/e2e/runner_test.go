@@ -821,6 +821,38 @@ func TestMergeNodeOptionsImport(t *testing.T) {
 	if !strings.Contains(replaced, "--trace-warnings") {
 		t.Fatalf("expected other flags preserved, got %q", replaced)
 	}
+
+	quoted := mergeNodeOptionsImport(`--require "./my path/preload.js" --trace-warnings`, hookPath)
+	if !strings.Contains(quoted, `--require "./my path/preload.js"`) {
+		t.Fatalf("expected quoted NODE_OPTIONS value preserved, got %q", quoted)
+	}
+	if !strings.Contains(quoted, "--trace-warnings") {
+		t.Fatalf("expected other flags preserved with quoted value, got %q", quoted)
+	}
+}
+
+func TestSplitJoinNodeOptionsRoundTrip(t *testing.T) {
+	raw := `--require "./my path/a.js" --trace-warnings --import=file:///tmp/x.mjs`
+	parts := splitNodeOptions(raw)
+	want := []string{`--require`, `./my path/a.js`, `--trace-warnings`, `--import=file:///tmp/x.mjs`}
+	if len(parts) != len(want) {
+		t.Fatalf("parts=%#v want %#v", parts, want)
+	}
+	for i := range want {
+		if parts[i] != want[i] {
+			t.Fatalf("parts[%d]=%q want %q (all %#v)", i, parts[i], want[i], parts)
+		}
+	}
+	joined := joinNodeOptions(parts)
+	roundTrip := splitNodeOptions(joined)
+	if len(roundTrip) != len(want) {
+		t.Fatalf("round-trip parts=%#v want %#v (joined=%q)", roundTrip, want, joined)
+	}
+	for i := range want {
+		if roundTrip[i] != want[i] {
+			t.Fatalf("round-trip[%d]=%q want %q", i, roundTrip[i], want[i])
+		}
+	}
 }
 
 func TestWriteE2EGlobalResolveHook(t *testing.T) {
