@@ -4,6 +4,7 @@
 package lifecycle
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"time"
@@ -108,7 +109,6 @@ func (m *moduleUninstaller) cleanModels() error {
 }
 
 func (m *moduleUninstaller) uninstall() error {
-	// validate module
 	prepareStarted := time.Now()
 	if err := m.validate(); err != nil {
 		return xfmt.Errorf("error validating module uninstallation: %w", err)
@@ -124,7 +124,29 @@ func (m *moduleUninstaller) uninstall() error {
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepPrepare, prepareStarted)
 
-	// clean models from database
+	txRoot := m.runtimeScope
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	ctx := txRoot.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	txHoldStarted := time.Now()
+	err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+		committed := *m
+		committed.runtimeScope = txScope
+		return committed.commitUninstall()
+	})
+	LogModuleCommitTxHold(m.runtimeScope.Logger(), "uninstall", "module_commit", txHoldStarted, err)
+	if err != nil {
+		return err
+	}
+
+	return m.finalizeUninstall()
+}
+
+func (m *moduleUninstaller) commitUninstall() error {
 	cleanupStarted := time.Now()
 	if err := m.cleanModels(); err != nil {
 		return xfmt.Errorf("error cleaning models: %w", err)
@@ -133,7 +155,10 @@ func (m *moduleUninstaller) uninstall() error {
 		return err
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpUninstall, m.module.Name, moduleStepCleanup, cleanupStarted)
+	return nil
+}
 
+func (m *moduleUninstaller) finalizeUninstall() error {
 	finalizeStarted := time.Now()
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)

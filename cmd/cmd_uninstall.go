@@ -43,36 +43,33 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 			ctx = logutil.WithStderrProgressLine(ctx)
 
-			// Create a transaction-bound module manager for the uninstall batch.
-			txRoot := env.WithContext(ctx)
-			currentModule := ""
-			if err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-				compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
-				if err != nil {
-					return xfmt.Errorf("Error creating compiler executor: %w", err)
-				}
-				if err := compilerExecutor.Start(); err != nil {
-					return xfmt.Errorf("Error starting compiler executor: %w", err)
-				}
-				defer compilerExecutor.Stop()
-
-				moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)
-				for _, name := range args {
-					currentModule = name
-					txScope.Logger().Debug("module uninstall started", "module", name)
-					if err := moduleLifecycle.Uninstall(tx.Context(), lifecycle.UninstallRequest{Name: name}); err != nil {
-						return xfmt.Errorf("error uninstalling module %s: %w", name, err)
-					}
-					txScope.Logger().Debug("module uninstalled", "module", name)
-
-				}
-				return nil
-			}); err != nil {
-				attrs := []any{"error", err}
-				attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("uninstall")...)
-				attrs = append(attrs, clioutput.CurrentOrRequestedAttr("module", "modules", currentModule, args)...)
-				env.Logger().Error("module uninstall failed", attrs...)
+			uninstallScope := env.WithContext(ctx)
+			compilerExecutor, err := jsexecutor.NewCompilerExecutor(uninstallScope)
+			if err != nil {
+				env.Logger().Error("module uninstall failed", "error", xfmt.Errorf("Error creating compiler executor: %w", err))
 				os.Exit(1)
+			}
+			if err := compilerExecutor.Start(); err != nil {
+				env.Logger().Error("module uninstall failed", "error", xfmt.Errorf("Error starting compiler executor: %w", err))
+				os.Exit(1)
+			}
+			defer compilerExecutor.Stop()
+
+			// Per-module short Commit lives inside lifecycle; do not wrap the
+			// whole batch in an outer Required (align with install / upgrade).
+			moduleLifecycle := lifecycle.NewService(uninstallScope, compilerExecutor)
+			currentModule := ""
+			for _, name := range args {
+				currentModule = name
+				uninstallScope.Logger().Debug("module uninstall started", "module", name)
+				if err := moduleLifecycle.Uninstall(ctx, lifecycle.UninstallRequest{Name: name}); err != nil {
+					attrs := []any{"error", xfmt.Errorf("error uninstalling module %s: %w", name, err)}
+					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("uninstall")...)
+					attrs = append(attrs, clioutput.CurrentOrRequestedAttr("module", "modules", currentModule, args)...)
+					env.Logger().Error("module uninstall failed", attrs...)
+					os.Exit(1)
+				}
+				uninstallScope.Logger().Debug("module uninstalled", "module", name)
 			}
 		},
 	}

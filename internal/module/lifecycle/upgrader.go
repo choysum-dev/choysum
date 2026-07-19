@@ -83,8 +83,7 @@ func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.
 		ctx, opid = ensureOpIDInContext(ctx)
 	}
 	logger := moduleOpLogger(runtimeScope.Logger(), opid, op, strings.TrimSpace(moduleName))
-	// Build/schema are the long segments held under today's outer install TX;
-	// emit at Info so Phase 0 timing is visible at the default log level.
+	// Build/schema are the long segments; emit at Info for TX-boundary timing.
 	level := slog.LevelDebug
 	switch strings.TrimSpace(step) {
 	case moduleStepBuild, moduleStepSchema:
@@ -143,25 +142,67 @@ func (m *moduleUpgrader) upgrade() error {
 	m.logUpgradeStep(target.Name, moduleStepPrepare, prepareStarted, "from_version", fromVersion, "to_version", target.Version)
 
 	var buildResult *module.BuildResult
+	persistLater := false
 	if installer.builder != nil {
-		buildStarted := time.Now()
 		if split, ok := installer.builder.(module.SplitBuilder); ok {
+			buildStarted := time.Now()
 			result, err := split.BuildWithoutPersist()
 			if err != nil {
 				return xfmt.Errorf("error building module %s: %w", target.Name, err)
 			}
-			if err := split.Persist(result); err != nil {
-				return xfmt.Errorf("error persisting module %s: %w", target.Name, err)
-			}
 			buildResult = result
+			persistLater = true
+			m.logUpgradeStep(target.Name, moduleStepBuild, buildStarted, "from_version", fromVersion, "to_version", target.Version)
+		}
+	}
+
+	txRoot := m.runtimeScope
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	ctx := txRoot.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	txHoldStarted := time.Now()
+	err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+		committed := installer.forCommitScope(txScope)
+		upgrader := *m
+		upgrader.runtimeScope = txScope
+		return upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
+	})
+	LogModuleCommitTxHold(m.runtimeScope.Logger(), "upgrade", "module_commit", txHoldStarted, err)
+	if err != nil {
+		return err
+	}
+
+	return m.finalizeUpgrade(installer.module, fromVersion, buildResult)
+}
+
+func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) error {
+	if installer == nil || installer.module == nil {
+		return xfmt.Errorf("upgrade commit installer is nil")
+	}
+	target := installer.module
+
+	if installer.builder != nil {
+		if persistLater {
+			if split, ok := installer.builder.(module.SplitBuilder); ok {
+				if err := split.Persist(buildResult); err != nil {
+					return xfmt.Errorf("error persisting module %s: %w", target.Name, err)
+				}
+			} else {
+				return xfmt.Errorf("builder does not support Persist for module %s", target.Name)
+			}
 		} else {
+			buildStarted := time.Now()
 			result, err := installer.builder.Build()
 			if err != nil {
 				return xfmt.Errorf("error building module %s: %w", target.Name, err)
 			}
 			buildResult = result
+			m.logUpgradeStep(target.Name, moduleStepBuild, buildStarted, "from_version", fromVersion, "to_version", target.Version)
 		}
-		m.logUpgradeStep(target.Name, moduleStepBuild, buildStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 
 	migrator := schema.NewMigrator(m.runtimeScope, target)
@@ -197,7 +238,13 @@ func (m *moduleUpgrader) upgrade() error {
 	if err := importModuleTerminology(m.runtimeScope, target, runtimeOptionsFromScope(m.runtimeScope).modulesPath); err != nil {
 		return err
 	}
+	return nil
+}
 
+func (m *moduleUpgrader) finalizeUpgrade(target *meta.IrModule, fromVersion string, buildResult *module.BuildResult) error {
+	if target == nil {
+		return xfmt.Errorf("upgrade finalize target is nil")
+	}
 	finalizeStarted := time.Now()
 	if runner := scripts.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, target); runner != nil {
 		if err := runner.RunPhase(m.runtimeScope.Context(), scripts.RunOptions{Phase: scripts.PhasePost, FromVersion: fromVersion, ToVersion: target.Version}); err != nil {
@@ -221,7 +268,6 @@ func (m *moduleUpgrader) upgrade() error {
 		}
 	}
 	m.logUpgradeStep(target.Name, moduleStepFinalize, finalizeStarted, "from_version", fromVersion, "to_version", target.Version)
-
 	return nil
 }
 
