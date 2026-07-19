@@ -1,5 +1,8 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
 
 #: service/models/_attachment_binding_codec.ts:291
 msgctxt "service/models/_attachment_binding_codec"
@@ -98,7 +101,9 @@ msgstr "payloadReceipt.payloadId 格式不受支持"
 
 #: service/models/_attachment_upload_codec.ts:118
 msgctxt "service/models/_attachment_upload_codec"
-msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
+msgid ""
+"payloadReceipt.payloadId must be an opaque handle, inline byte payload is "
+"forbidden"
 msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
 
 #: service/models/_attachment_upload_ops.ts:194
@@ -108,7 +113,8 @@ msgstr "未找到附件内容"
 
 #: service/models/_attachment_upload_ops.ts:240
 msgctxt "service/models/_attachment_upload_ops"
-msgid "FinalizeUpload businessRequestId does not match the existing upload session"
+msgid ""
+"FinalizeUpload businessRequestId does not match the existing upload session"
 msgstr "FinalizeUpload 的 businessRequestId 与现有上传会话不匹配"
 
 #: service/models/_attachment_upload_ops.ts:162
@@ -141,17 +147,20 @@ msgctxt "service/models/_attachment_upload_ops"
 msgid "Upload session not found"
 msgstr "未找到上传会话"
 
-#: service/models/_attachment_upload_ops.ts:309 service/models/_attachment_upload_ops.ts:391
+#: service/models/_attachment_upload_ops.ts:309
+#: service/models/_attachment_upload_ops.ts:391
 msgctxt "service/models/_attachment_upload_ops"
 msgid "checksum mismatch"
 msgstr "校验和不匹配"
 
-#: service/models/_attachment_upload_ops.ts:296 service/models/_attachment_upload_ops.ts:378
+#: service/models/_attachment_upload_ops.ts:296
+#: service/models/_attachment_upload_ops.ts:378
 msgctxt "service/models/_attachment_upload_ops"
 msgid "content type is not allowed"
 msgstr "不允许该内容类型"
 
-#: service/models/_attachment_upload_ops.ts:282 service/models/_attachment_upload_ops.ts:364
+#: service/models/_attachment_upload_ops.ts:282
+#: service/models/_attachment_upload_ops.ts:364
 msgctxt "service/models/_attachment_upload_ops"
 msgid "upload body exceeds maxUploadBytes"
 msgstr "上传正文超过 maxUploadBytes"
@@ -263,7 +272,9 @@ msgstr "当 operation=update 时 ownerRecordId 为必填项"
 
 #: service/models/_upload.ts:109
 msgctxt "service/models/_upload"
-msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
+msgid ""
+"payloadReceipt.payloadId must be an opaque handle, inline byte payload is "
+"forbidden"
 msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
 
 #: service/models/_upload.ts:220
@@ -275,113 +286,3 @@ msgstr "userId 与上传会话签发者不匹配"
 msgctxt "service/models/stored_content"
 msgid "Stored content not found"
 msgstr "未找到存储内容"
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_binding@DownloadDisposition.attachment"
-#~ msgid "attachment"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_binding@DownloadDisposition.inline"
-#~ msgid "inline"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_binding@Status.active"
-#~ msgid "active"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_binding@Status.unbound"
-#~ msgid "unbound"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_mutation_ledger@Action.bind"
-#~ msgid "bind"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_mutation_ledger@Action.unbind"
-#~ msgid "unbind"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_mutation_ledger@Status.failed"
-#~ msgid "failed"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_mutation_ledger@Status.succeeded"
-#~ msgid "succeeded"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_object@Status.active"
-#~ msgid "active"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_object@Status.deleted"
-#~ msgid "deleted"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/attachment_object@Status.staging"
-#~ msgid "staging"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/stored_content@Provider.db"
-#~ msgid "db"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/stored_content@Provider.s3"
-#~ msgid "s3"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/stored_content@Status.active"
-#~ msgid "active"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/stored_content@Status.deleted"
-#~ msgid "deleted"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@Operation.create"
-#~ msgid "create"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@Operation.update"
-#~ msgid "update"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@RequiredChecksumAlgorithm.sha256"
-#~ msgid "sha256"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@Status.expired"
-#~ msgid "expired"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@Status.finalized"
-#~ msgid "finalized"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@Status.prepared"
-#~ msgid "prepared"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/upload_session@Status.uploaded"
-#~ msgid "uploaded"
-#~ msgstr ""

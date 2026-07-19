@@ -19,4 +19,4 @@
 - Only literal `_t` calls are extracted. Explicit closures provide any
   process-local lazy behavior.
 - Selection field labels (Allow/Deny/…) stay plain English until a request-scoped
-  options API exists; obsolete `#~` selection entries in `zh_CN.po` are expected.
+  options API exists.

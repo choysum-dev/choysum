@@ -1,5 +1,8 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
 
 #: service/models/_normalization_bridge.ts:84
 msgctxt "service/models/_normalization_bridge"
@@ -26,7 +29,9 @@ msgctxt "service/models/partner_identifier"
 msgid "PartnerId + IdentifierType + Value must be unique"
 msgstr "PartnerId + IdentifierType + Value 必须唯一"
 
-#: service/models/partner_identifier.ts:147 service/models/partner_identifier.ts:66 service/models/partner_identifier.ts:92
+#: service/models/partner_identifier.ts:147
+#: service/models/partner_identifier.ts:66
+#: service/models/partner_identifier.ts:92
 msgctxt "service/models/partner_identifier"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
@@ -165,48 +170,3 @@ msgstr "失效时间"
 msgctxt "web/views/PartnerIdentifierFormView"
 msgid "Value"
 msgstr "标识值"
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@CountryId"
-#~ msgid "国家"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@IdentifierType"
-#~ msgid "类型"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@IsActive"
-#~ msgid "启用"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@IsPrimary"
-#~ msgid "主标识"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@IssuedBy"
-#~ msgid "签发机构"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@ValidFrom"
-#~ msgid "生效时间"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@ValidTo"
-#~ msgid "失效时间"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@Value"
-#~ msgid "标识值"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerIdentifierFormView@searchViewTitle"
-#~ msgid "选择国家"
-#~ msgstr ""

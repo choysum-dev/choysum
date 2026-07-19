@@ -1,17 +1,22 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
 
 #: service/models/_normalization_bridge.ts:55
 msgctxt "service/models/_normalization_bridge"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_normalization_bridge.ts:69 service/models/_normalization_bridge.ts:73
+#: service/models/_normalization_bridge.ts:69
+#: service/models/_normalization_bridge.ts:73
 msgctxt "service/models/_normalization_bridge"
 msgid "%s must be a non-negative integer"
 msgstr "%s 必须为非负整数"
 
-#: service/models/_normalization_bridge.ts:90 service/models/_normalization_bridge.ts:94
+#: service/models/_normalization_bridge.ts:90
+#: service/models/_normalization_bridge.ts:94
 msgctxt "service/models/_normalization_bridge"
 msgid "Sequence must be an integer"
 msgstr "Sequence 必须为整数"
@@ -43,7 +48,8 @@ msgstr "同一伙伴下每个 %s 类型只能有一个默认联系人"
 
 #: service/models/partner_contact.ts:132
 msgctxt "service/models/partner_contact"
-msgid "PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile"
+msgid ""
+"PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile"
 msgstr "联系人至少需要填写 Name、AddressId、Email、Phone 或 Mobile 之一"
 
 #: service/models/partner_contact.ts:104 service/models/partner_contact.ts:177
@@ -306,7 +312,8 @@ msgctxt "web/views/PartnerFormView"
 msgid "Mobile"
 msgstr "手机"
 
-#: web/views/PartnerFormView.vue:11 web/views/PartnerFormView.vue:88 web/views/PartnerFormView.vue:93 web/views/PartnerFormView.vue:98
+#: web/views/PartnerFormView.vue:11 web/views/PartnerFormView.vue:88
+#: web/views/PartnerFormView.vue:93 web/views/PartnerFormView.vue:98
 msgctxt "web/views/PartnerFormView"
 msgid "Name"
 msgstr "名称"
@@ -480,253 +487,3 @@ msgstr "供应商等级"
 msgctxt "web/views/PartnerListView"
 msgid "Updated At"
 msgstr "更新时间"
-
-#~ #. kind: menu
-#~ msgctxt "web/menu/menus@partner.menu.partner_list"
-#~ msgid "伙伴列表"
-#~ msgstr ""
-
-#~ #. kind: menu
-#~ msgctxt "web/menu/menus@partner.menu.root"
-#~ msgid "伙伴管理"
-#~ msgstr ""
-
-#~ #. kind: route
-#~ msgctxt "web/route/routes@partner.route.partner_create"
-#~ msgid "新建伙伴"
-#~ msgstr ""
-
-#~ #. kind: route
-#~ msgctxt "web/route/routes@partner.route.partner_detail"
-#~ msgid "伙伴详情"
-#~ msgstr ""
-
-#~ #. kind: route
-#~ msgctxt "web/route/routes@partner.route.partner_list"
-#~ msgid "伙伴列表"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@AddressId"
-#~ msgid "地址"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@AddressType"
-#~ msgid "地址类型"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@ContactRole"
-#~ msgid "角色"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@Email"
-#~ msgid "邮箱"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@IsActive"
-#~ msgid "启用"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@IsDefault"
-#~ msgid "默认"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@Mobile"
-#~ msgid "手机"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@Name"
-#~ msgid "姓名/名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@Phone"
-#~ msgid "电话"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@Sequence"
-#~ msgid "排序"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerContactFormView@searchViewTitle"
-#~ msgid "选择地址"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@Code"
-#~ msgid "编码"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@CompanyId"
-#~ msgid "所属公司"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@CountryId"
-#~ msgid "国家"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@CreatedAt"
-#~ msgid "创建时间"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@CurrencyId"
-#~ msgid "默认币种"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@CustomerRank"
-#~ msgid "客户等级"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@DefaultBillingAddressId"
-#~ msgid "默认开票地址"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@DefaultBillingAddressId.Name"
-#~ msgid "名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@DefaultContactId"
-#~ msgid "默认联系人"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@DefaultContactId.Name"
-#~ msgid "名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@DefaultShippingAddressId"
-#~ msgid "默认收货地址"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@DefaultShippingAddressId.Name"
-#~ msgid "名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@Email"
-#~ msgid "邮箱"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@IsActive"
-#~ msgid "启用"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@IsCompany"
-#~ msgid "组织主体"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@LanguageId"
-#~ msgid "默认语言"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@Mobile"
-#~ msgid "手机"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@Name"
-#~ msgid "名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@Phone"
-#~ msgid "电话"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@Reference"
-#~ msgid "外部参考"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@SupplierRank"
-#~ msgid "供应商等级"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@UpdatedAt"
-#~ msgid "更新时间"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
-#~ msgid "选择公司"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
-#~ msgid "选择国家"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
-#~ msgid "选择币种"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerFormView@searchViewTitle"
-#~ msgid "选择语言"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@Code"
-#~ msgid "编码"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@CompanyId"
-#~ msgid "所属公司"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@CustomerRank"
-#~ msgid "客户等级"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@IsActive"
-#~ msgid "启用"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@Name"
-#~ msgid "名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@SupplierRank"
-#~ msgid "供应商等级"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerListView@UpdatedAt"
-#~ msgid "更新时间"
-#~ msgstr ""
-
-#~ #. kind: action
-#~ msgctxt "web/views/PartnerListView@partner.action.partner_open_detail"
-#~ msgid "打开伙伴详情"
-#~ msgstr ""

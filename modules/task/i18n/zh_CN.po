@@ -1,5 +1,8 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
 
 #: service/models/_cron.ts:188
 msgctxt "service/models/_cron"
@@ -10,28 +13,3 @@ msgstr "无效的时区：%s"
 msgctxt "service/models/_cron"
 msgid "timezone is required"
 msgstr "时区为必填项"
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/job@Status.cancelled"
-#~ msgid "cancelled"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/job@Status.dispatching"
-#~ msgid "dispatching"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/job@Status.failed"
-#~ msgid "failed"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/job@Status.queued"
-#~ msgid "queued"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/job@Status.succeeded"
-#~ msgid "succeeded"
-#~ msgstr ""

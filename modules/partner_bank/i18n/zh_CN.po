@@ -1,5 +1,8 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_CN\n"
 
 #: service/models/_helpers.ts:37
 msgctxt "service/models/_helpers"
@@ -56,7 +59,8 @@ msgctxt "web/views/PartnerBankAccountFormView"
 msgid "Account Name"
 msgstr "账户名称"
 
-#: web/views/PartnerBankAccountFormView.vue:15 web/views/PartnerBankAccountFormView.vue:16
+#: web/views/PartnerBankAccountFormView.vue:15
+#: web/views/PartnerBankAccountFormView.vue:16
 msgctxt "web/views/PartnerBankAccountFormView"
 msgid "Account Number"
 msgstr "账号"
@@ -220,88 +224,3 @@ msgstr "类型"
 msgctxt "web/views/PartnerFormView"
 msgid "View Bank Account"
 msgstr "查看银行账户"
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/bank_account@AccountType.checking"
-#~ msgid "Checking"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/bank_account@AccountType.corporate"
-#~ msgid "Corporate"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/bank_account@AccountType.other"
-#~ msgid "Other"
-#~ msgstr ""
-
-#~ #. kind: selection_label
-#~ msgctxt "service/models/bank_account@AccountType.savings"
-#~ msgid "Savings"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@AccountName"
-#~ msgid "账户名称"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@AccountNo"
-#~ msgid "账号"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@AccountNoMasked"
-#~ msgid "账号"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@AccountType"
-#~ msgid "账户类型"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@AllowInbound"
-#~ msgid "允许入账"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@AllowOutbound"
-#~ msgid "允许出账"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@BankId"
-#~ msgid "银行"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@IBAN"
-#~ msgid "IBAN"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@IsActive"
-#~ msgid "启用"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@IsDefaultInbound"
-#~ msgid "默认入账"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@IsDefaultOutbound"
-#~ msgid "默认出账"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@RoutingCode"
-#~ msgid "路由码"
-#~ msgstr ""
-
-#~ #. kind: field_label
-#~ msgctxt "web/views/PartnerBankAccountFormView@searchViewTitle"
-#~ msgid "选择银行"
-#~ msgstr ""
