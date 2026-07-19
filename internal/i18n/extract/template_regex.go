@@ -15,9 +15,9 @@ import (
 // can replace it with a full Vue template AST walker.
 
 var (
-	// Matches {{ _t('...') }} / {{ _t(`...`) }} with optional whitespace.
-	// \x60 is backtick; Go raw strings cannot embed a literal backtick.
-	reTemplateMustache = regexp.MustCompile("\\{\\{\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+)\\s*(?:,|\\))")
+	// Matches a whole {{ ... }} interpolation so multiple _t() calls inside one
+	// block (e.g. ternaries) can each be extracted via collectTCalls.
+	reTemplateMustache = regexp.MustCompile(`\{\{\s*([\s\S]*?)\s*\}\}`)
 
 	// Attribute bindings capture the whole value so multiple _t() calls inside
 	// one binding (e.g. ternaries) can each be extracted.
@@ -83,12 +83,12 @@ func collectTemplateRegex(opts CollectOptions, templateHTML string, boundScope s
 	}
 
 	for _, m := range reTemplateMustache.FindAllStringSubmatchIndex(templateHTML, -1) {
-		// groups: 0 full, 1 _t, 2 msgid expr
-		if len(m) < 6 {
+		// groups: 0 full, 1 inner expression
+		if len(m) < 4 {
 			continue
 		}
-		msgid := templateHTML[m[4]:m[5]]
-		collect(msgid, m[0])
+		expr := templateHTML[m[2]:m[3]]
+		collectTCalls(expr, m[2])
 	}
 
 	for _, re := range []*regexp.Regexp{reTemplateAttrDouble, reTemplateAttrSingle} {
