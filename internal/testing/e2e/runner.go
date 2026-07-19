@@ -959,6 +959,13 @@ func resolvePlaywrightGlobalNodeModulesRoot(opts RunOptions) string {
 			return root
 		}
 	}
+	// Prefer an existing workspace install (CI packs root node_modules) before
+	// falling back to the process-global npm root.
+	for _, root := range localE2EModuleRoots(opts.WorkDir) {
+		if st, err := os.Stat(root); err == nil && st.IsDir() {
+			return root
+		}
+	}
 	return resolveGlobalNpmRoot()
 }
 

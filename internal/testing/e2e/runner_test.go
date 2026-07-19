@@ -743,6 +743,24 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	}
 }
 
+func TestResolvePlaywrightGlobalNodeModulesRootPrefersWorkDirInstall(t *testing.T) {
+	workDir := t.TempDir()
+	localRoot := filepath.Join(workDir, "node_modules")
+	if err := os.MkdirAll(localRoot, 0o755); err != nil {
+		t.Fatalf("mkdir local node_modules: %v", err)
+	}
+	globalRoot := filepath.Join(t.TempDir(), "global-node-modules")
+	if err := os.MkdirAll(globalRoot, 0o755); err != nil {
+		t.Fatalf("mkdir global node_modules: %v", err)
+	}
+	t.Setenv("CHOYSUM_NPM_GLOBAL_ROOT", globalRoot)
+
+	got := resolvePlaywrightGlobalNodeModulesRoot(RunOptions{WorkDir: workDir})
+	if got != localRoot {
+		t.Fatalf("resolvePlaywrightGlobalNodeModulesRoot() = %q, want local %q", got, localRoot)
+	}
+}
+
 func TestResolvePlaywrightCommandSearchesAcceptedPreflightRoots(t *testing.T) {
 	t.Run("finds playwright in modules node_modules bin", func(t *testing.T) {
 		workDir := t.TempDir()
