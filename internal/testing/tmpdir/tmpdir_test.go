@@ -393,3 +393,28 @@ func assertPkgLinksToCache(t *testing.T, choysumHome, tmpRoot string) {
 		t.Fatalf("pkg link target = %q, want %q", target, pkgCache)
 	}
 }
+
+func TestCopyAndRemoveMovesTree(t *testing.T) {
+	root := t.TempDir()
+	from := filepath.Join(root, "from")
+	to := filepath.Join(root, "to")
+	if err := os.MkdirAll(filepath.Join(from, "nested"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(from, "nested", "a.txt"), []byte("payload"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := copyAndRemove(from, to); err != nil {
+		t.Fatalf("copyAndRemove: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(to, "nested", "a.txt"))
+	if err != nil {
+		t.Fatalf("read destination: %v", err)
+	}
+	if string(raw) != "payload" {
+		t.Fatalf("content = %q, want payload", raw)
+	}
+	if _, err := os.Lstat(from); !os.IsNotExist(err) {
+		t.Fatalf("source should be removed, lstat err = %v", err)
+	}
+}

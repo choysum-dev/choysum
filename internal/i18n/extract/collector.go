@@ -227,7 +227,7 @@ func registerTranslateBindings(
 		return
 	case tsast.KindObjectBindingPattern:
 		pattern := nameNode.AsBindingPattern()
-		if pattern == nil || pattern.Elements.Nodes == nil {
+		if pattern == nil || pattern.Elements == nil || pattern.Elements.Nodes == nil {
 			return
 		}
 		for _, el := range pattern.Elements.Nodes {
@@ -498,7 +498,7 @@ func (c *scriptCollector) collectModelActionsTerms(node *tsast.Node, callExpr *t
 				continue
 			}
 			arr := init.AsArrayLiteralExpression()
-			if arr == nil || arr.Elements.Nodes == nil {
+			if arr == nil || arr.Elements == nil || arr.Elements.Nodes == nil {
 				continue
 			}
 			for _, el := range arr.Elements.Nodes {

@@ -54,6 +54,25 @@ func LangToLocale(lang string) string {
 	return strings.ReplaceAll(lang, "_", "-")
 }
 
+// maxLangCodeLen matches base.Language.Code (varchar 16).
+const maxLangCodeLen = 16
+
+// validLang reports whether lang is a safe terminology language code
+// (alphanumeric, underscore, hyphen; length ≤ Language.Code).
+func validLang(lang string) bool {
+	if lang == "" || len(lang) > maxLangCodeLen {
+		return false
+	}
+	for _, r := range lang {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 // frameworkModuleName is hosted in each real app's translation_term table (Scheme A).
 const frameworkModuleName = "core"
 

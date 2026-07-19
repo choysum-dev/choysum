@@ -43,6 +43,10 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if !validLang(lang) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid lang format"})
+		return
+	}
 	// moduleNames query param is rejected/ignored (§8.2.1 / D3): host fills it.
 	_ = r.URL.Query().Get("moduleNames")
 	clientHash := strings.TrimSpace(r.URL.Query().Get("hash"))

@@ -27,6 +27,45 @@ func TestCatalogHashStableAndOrdered(t *testing.T) {
 	}
 }
 
+func TestValidLang(t *testing.T) {
+	for _, lang := range []string{"zh_CN", "en-US", "en", "pt_BR"} {
+		if !validLang(lang) {
+			t.Fatalf("validLang(%q) = false, want true", lang)
+		}
+	}
+	for _, lang := range []string{
+		"",
+		"zh/CN",
+		"../evil",
+		"zh_CN\r\nX-Injected: 1",
+		"aaaaaaaaaaaaaaaaa", // 17 > maxLangCodeLen
+	} {
+		if validLang(lang) {
+			t.Fatalf("validLang(%q) = true, want false", lang)
+		}
+	}
+}
+
+func TestTranslationsRejectsInvalidLang(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		fetch: func(ctx context.Context, app, lang string, moduleNames []string) (*appTranslations, error) {
+			t.Fatal("fetch must not run for invalid lang")
+			return nil, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(translationsPath, h.serveTranslations)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/translations?lang=zh/CN", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d body=%s", rr.Code, http.StatusBadRequest, rr.Body.String())
+	}
+}
+
 func TestIfNoneMatchUsesWeakComparison(t *testing.T) {
 	current := `W/"i18n-abc123"`
 	for _, header := range []string{

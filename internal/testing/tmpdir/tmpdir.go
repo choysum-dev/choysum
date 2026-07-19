@@ -9,6 +9,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -274,6 +275,7 @@ func LinkCLITestingPkgCache(choysumHome, tmpRoot string) error {
 }
 
 // mergeDirInto moves entries from src into dst when the destination name is absent.
+// Falls back to copy+remove when os.Rename fails (e.g. EXDEV across filesystems).
 func mergeDirInto(src, dst string) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
@@ -288,10 +290,69 @@ func mergeDirInto(src, dst string) error {
 			return err
 		}
 		if err := os.Rename(from, to); err != nil {
-			return err
+			if err := copyAndRemove(from, to); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
+}
+
+// copyAndRemove copies from → to (file, directory, or symlink), then removes from.
+func copyAndRemove(from, to string) error {
+	if err := copyPath(from, to); err != nil {
+		return err
+	}
+	return os.RemoveAll(from)
+}
+
+func copyPath(from, to string) error {
+	info, err := os.Lstat(from)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(from)
+		if err != nil {
+			return err
+		}
+		return os.Symlink(target, to)
+	}
+	if info.IsDir() {
+		if err := os.MkdirAll(to, info.Mode().Perm()); err != nil {
+			return err
+		}
+		entries, err := os.ReadDir(from)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := copyPath(filepath.Join(from, entry.Name()), filepath.Join(to, entry.Name())); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return copyFile(from, to, info.Mode().Perm())
+}
+
+func copyFile(from, to string, perm os.FileMode) error {
+	in, err := os.Open(from)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(to, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Close()
 }
 
 // ResolveCLITestingRunHome returns the shared DefaultChoysumPath for one CLI

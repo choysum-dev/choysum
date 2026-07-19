@@ -38,6 +38,10 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "lang is required"})
 		return
 	}
+	if !validLang(lang) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid lang format"})
+		return
+	}
 	application := strings.TrimSpace(r.URL.Query().Get("application"))
 	if application == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "application is required"})

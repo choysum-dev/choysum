@@ -48,6 +48,10 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "lang is required"})
 		return
 	}
+	if !validLang(lang) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid lang format"})
+		return
+	}
 	application := strings.TrimSpace(r.URL.Query().Get("application"))
 	module := strings.TrimSpace(r.URL.Query().Get("module"))
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -198,6 +202,10 @@ func (h *handler) serveTermsPatch(w http.ResponseWriter, r *http.Request) {
 	}
 	if lang == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "lang is required"})
+		return
+	}
+	if !validLang(lang) {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid lang format"})
 		return
 	}
 	if len(items) == 0 {
