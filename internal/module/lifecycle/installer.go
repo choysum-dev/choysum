@@ -147,7 +147,10 @@ func (m *moduleInstaller) install() error {
 		return committed.commitInstall(buildResult, persistLater)
 	})
 	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
-	return err
+	if err != nil {
+		return err
+	}
+	return m.finalizeInstall(buildResult)
 }
 
 func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
@@ -244,6 +247,21 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		return err
 	}
 
+	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
+		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
+			return xfmt.Errorf("error disabling legacy module index schedule: %w", err)
+		}
+	}
+	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
+		if err := ensureDocumentAttachmentGCSchedule(m.runtimeScope); err != nil {
+			return xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (m *moduleInstaller) finalizeInstall(buildResult *module.BuildResult) error {
 	finalizeStarted := time.Now()
 	if hookRunner, err := hooks.NewRunner(m.runtimeScope, m.moduleManager.jsExecutor, m.module); err != nil {
 		return xfmt.Errorf("error preparing hooks for module %s: %w", m.module.Name, err)
@@ -258,16 +276,6 @@ func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persist
 		}
 		if err := hookRunner.RunPhase(m.runtimeScope.Context(), hooks.PhasePostInit, hooks.RunOptions{Scripts: hookScripts, ReuseExecutorScripts: m.moduleManager != nil && m.moduleManager.jsExecutor != nil}); err != nil {
 			return xfmt.Errorf("error running post_init hook for module %s: %w", m.module.Name, err)
-		}
-	}
-	if strings.EqualFold(strings.TrimSpace(m.module.Name), "meta") {
-		if err := disableLegacyModuleIndexDailySchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error disabling legacy module index schedule: %w", err)
-		}
-	}
-	if strings.EqualFold(strings.TrimSpace(m.module.Name), "document") {
-		if err := ensureDocumentAttachmentGCSchedule(m.runtimeScope); err != nil {
-			return xfmt.Errorf("error ensuring document attachment gc schedule: %w", err)
 		}
 	}
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepFinalize, finalizeStarted)
