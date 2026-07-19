@@ -42,20 +42,20 @@ describe('meta resource wiring', () => {
     const kanban = source('views/ModuleKanbanView.vue');
 
     expect(list).toContain("defineModelActions('meta.IrModuleIndex', {");
-    expect(list).toContain("entityTitle: '模块索引'");
+    expect(list).toContain("entityTitle: _tRef('Module Index')");
     expect(list).toContain(':action-ids="{ delete: moduleIndexActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
     expect(list).toContain('moduleSyncIndexAction');
     expect(list).toContain('usePermission');
 
     expect(log).toContain("defineModelActions('meta.ModuleManagementLog', {");
-    expect(log).toContain("entityTitle: '模块操作历史'");
+    expect(log).toContain("entityTitle: _tRef('Module Operation History')");
     expect(log).toContain(':action-ids="{ delete: moduleLogActions.delete }"');
     expect(log).toContain(':has-action="hasAction"');
     expect(log).toContain('usePermission');
 
     expect(detail).toContain("defineModelActions('meta.IrModuleIndex', {");
-    expect(detail).toContain("entityTitle: '模块索引'");
+    expect(detail).toContain("entityTitle: _tRef('Module Index')");
     expect(detail).toContain('edit: moduleIndexActions.edit');
     expect(detail).toContain('copy: moduleIndexActions.copy');
     expect(detail).toContain('delete: moduleIndexActions.delete');

@@ -17,6 +17,14 @@ export {
   withContext,
 } from './context';
 
+export {
+  createTranslate,
+  withI18nScope,
+  resolveI18nScope,
+  formatScope,
+  resolveRequestLang,
+} from '../i18n';
+
 export type { SelectResult, Entity, Selectable, Queryable } from './common';
 export type { Insertable, Updateable } from './input';
 export type { FieldPath, FieldPathType } from './field';

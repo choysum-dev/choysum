@@ -3,6 +3,9 @@
 
 import { raiseDomainError } from '@/core/service/error';
 import { NormalizationError, normalizeOptionalString, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
+
+const { _t } = createTranslate('partner');
 
 /**
  * Throw a partner-domain InvalidArgument error.
@@ -49,7 +52,7 @@ export function normalizeOptionalText(value: unknown, opts?: { upper?: boolean; 
 export function normalizeRequiredText(value: unknown, fieldName: string): string {
   return mapNormalizationToPartner(
     () => normalizeRequiredTextCore(value),
-    () => `${fieldName} is required`
+    () => _t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName)
   );
 }
 
@@ -63,11 +66,11 @@ export function normalizeNonNegativeInt(value: unknown, fieldName: string): numb
   if (value === undefined) return undefined;
   if (value === null) return 0;
   if (typeof value !== 'number' && typeof value !== 'string') {
-    fail(`${fieldName} must be a non-negative integer`);
+    fail(_t('%s must be a non-negative integer', { scope: 'service/models/_normalization_bridge' }, fieldName));
   }
   const num = Number(value);
   if (!Number.isFinite(num) || num < 0 || Math.floor(num) !== num) {
-    fail(`${fieldName} must be a non-negative integer`);
+    fail(_t('%s must be a non-negative integer', { scope: 'service/models/_normalization_bridge' }, fieldName));
   }
   return num;
 }
@@ -84,11 +87,11 @@ export function normalizeSequenceInt(value: unknown, defaultValue: number = 10):
     return defaultValue;
   }
   if (typeof value !== 'number' && typeof value !== 'string') {
-    fail('Sequence must be an integer');
+    fail(_t('Sequence must be an integer', { scope: 'service/models/_normalization_bridge' }));
   }
   const num = Number(value);
   if (!Number.isFinite(num) || Math.floor(num) !== num) {
-    fail('Sequence must be an integer');
+    fail(_t('Sequence must be an integer', { scope: 'service/models/_normalization_bridge' }));
   }
   return num;
 }

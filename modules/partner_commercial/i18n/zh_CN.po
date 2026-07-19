@@ -1,0 +1,172 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#: service/models/_normalization_bridge.ts:84
+msgctxt "service/models/_normalization_bridge"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/_normalization_bridge.ts:98
+msgctxt "service/models/_normalization_bridge"
+msgid "%s must be a valid datetime"
+msgstr "%s 必须是有效的日期时间"
+
+#: service/models/partner_identifier.ts:148
+msgctxt "service/models/partner_identifier"
+msgid "CompanyId is required"
+msgstr "CompanyId 为必填项"
+
+#: service/models/partner_identifier.ts:105
+msgctxt "service/models/partner_identifier"
+msgid "Only one primary identifier is allowed per PartnerId + IdentifierType"
+msgstr "同一 PartnerId + IdentifierType 下只能有一个主标识"
+
+#: service/models/partner_identifier.ts:79
+msgctxt "service/models/partner_identifier"
+msgid "PartnerId + IdentifierType + Value must be unique"
+msgstr "PartnerId + IdentifierType + Value 必须唯一"
+
+#: service/models/partner_identifier.ts:147 service/models/partner_identifier.ts:66 service/models/partner_identifier.ts:92
+msgctxt "service/models/partner_identifier"
+msgid "PartnerId is required"
+msgstr "PartnerId 为必填项"
+
+#: service/models/partner_identifier.ts:154
+msgctxt "service/models/partner_identifier"
+msgid "ValidFrom must be less than or equal to ValidTo"
+msgstr "ValidFrom 必须早于或等于 ValidTo"
+
+#: web/views/PartnerFormView.vue:6
+msgctxt "web/views/PartnerFormView"
+msgid "Add Identifier"
+msgstr "添加标识码"
+
+#: web/views/PartnerFormView.vue:34
+msgctxt "web/views/PartnerFormView"
+msgid "Copy Identifier"
+msgstr "复制标识码"
+
+#: web/views/PartnerFormView.vue:17
+msgctxt "web/views/PartnerFormView"
+msgid "Country"
+msgstr "国家"
+
+#: web/views/PartnerFormView.vue:34
+msgctxt "web/views/PartnerFormView"
+msgid "Create Identifier"
+msgstr "新建标识码"
+
+#: web/views/PartnerFormView.vue:22
+msgctxt "web/views/PartnerFormView"
+msgid "Delete"
+msgstr "删除"
+
+#: web/views/PartnerFormView.vue:34
+msgctxt "web/views/PartnerFormView"
+msgid "Delete Identifier"
+msgstr "删除标识码"
+
+#: web/views/PartnerFormView.vue:21
+msgctxt "web/views/PartnerFormView"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/views/PartnerFormView.vue:34 web/views/PartnerFormView.vue:6
+msgctxt "web/views/PartnerFormView"
+msgid "Edit Identifier"
+msgstr "编辑标识码"
+
+#: web/views/PartnerFormView.vue:34
+msgctxt "web/views/PartnerFormView"
+msgid "Identifier"
+msgstr "标识码"
+
+#: web/views/PartnerFormView.vue:3
+msgctxt "web/views/PartnerFormView"
+msgid "Identifiers and Commercial Extensions"
+msgstr "标识码与商业扩展"
+
+#: web/views/PartnerFormView.vue:13
+msgctxt "web/views/PartnerFormView"
+msgid "Inactive"
+msgstr "停用"
+
+#: web/views/PartnerFormView.vue:6
+msgctxt "web/views/PartnerFormView"
+msgid "New Identifier"
+msgstr "新增标识码"
+
+#: web/views/PartnerFormView.vue:12
+msgctxt "web/views/PartnerFormView"
+msgid "Primary"
+msgstr "主标识"
+
+#: web/views/PartnerFormView.vue:10
+msgctxt "web/views/PartnerFormView"
+msgid "Unnamed Type"
+msgstr "未命名类型"
+
+#: web/views/PartnerFormView.vue:18
+msgctxt "web/views/PartnerFormView"
+msgid "Valid From"
+msgstr "生效时间"
+
+#: web/views/PartnerFormView.vue:19
+msgctxt "web/views/PartnerFormView"
+msgid "Valid To"
+msgstr "失效时间"
+
+#: web/views/PartnerFormView.vue:16
+msgctxt "web/views/PartnerFormView"
+msgid "Value"
+msgstr "标识值"
+
+#: web/views/PartnerFormView.vue:6
+msgctxt "web/views/PartnerFormView"
+msgid "View Identifier"
+msgstr "查看标识码"
+
+#: web/views/PartnerIdentifierFormView.vue:36
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/PartnerIdentifierFormView.vue:15
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Country"
+msgstr "国家"
+
+#: web/views/PartnerIdentifierFormView.vue:18
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Issued By"
+msgstr "签发机构"
+
+#: web/views/PartnerIdentifierFormView.vue:33
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Primary"
+msgstr "主标识"
+
+#: web/views/PartnerIdentifierFormView.vue:15
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Select Country"
+msgstr "选择国家"
+
+#: web/views/PartnerIdentifierFormView.vue:6
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Type"
+msgstr "类型"
+
+#: web/views/PartnerIdentifierFormView.vue:24
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Valid From"
+msgstr "生效时间"
+
+#: web/views/PartnerIdentifierFormView.vue:27
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Valid To"
+msgstr "失效时间"
+
+#: web/views/PartnerIdentifierFormView.vue:9
+msgctxt "web/views/PartnerIdentifierFormView"
+msgid "Value"
+msgstr "标识值"

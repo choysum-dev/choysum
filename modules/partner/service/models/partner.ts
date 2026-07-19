@@ -4,8 +4,11 @@
 import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
 import PartnerContact from './partner_contact';
+
+const { _t } = createTranslate('partner');
 
 /**
  * Minimal contact shape used while deriving computed partner defaults.
@@ -185,7 +188,7 @@ export default class Partner extends BaseModel {
   private static async ensureUniqueCode(values: Record<string, any>, currentId?: string): Promise<void> {
     const companyId = normalizeRefId(values.CompanyId);
     const code = normalizeRequiredText(values.Code, 'Code').toUpperCase();
-    if (!companyId) fail('CompanyId is required');
+    if (!companyId) fail(_t('CompanyId is required', { scope: 'service/models/partner' }));
 
     const rows = await this.Search(
       {
@@ -197,7 +200,7 @@ export default class Partner extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (conflict) fail('Partner Code must be unique within the company');
+    if (conflict) fail(_t('Partner Code must be unique within the company', { scope: 'service/models/partner' }));
 
     values.CompanyId = companyId;
     values.Code = code;

@@ -12,12 +12,12 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="system-actions" :selected-items="selectedItems">
               <el-button v-if="createAction && canCreate" size="small" plain type="primary" @click="handleCreate">
                 <el-icon><Plus /></el-icon>
-                新建
+                {{ _t('New') }}
               </el-button>
 
               <el-button v-if="refreshAction && canRefresh" size="small" plain @click="handleRefresh">
                 <el-icon><Refresh /></el-icon>
-                刷新
+                {{ _t('Refresh') }}
               </el-button>
 
               <el-button
@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
                 @click="handleDelete"
               >
                 <el-icon><Delete /></el-icon>
-                删除 ({{ selectedItems.length }})
+                {{ _t('Delete (%s)', selectedItems.length) }}
               </el-button>
             </slot>
           </div>
@@ -82,14 +82,14 @@ SPDX-License-Identifier: Apache-2.0
               <span class="o-group-cell__label">{{ row.label }}</span>
               <span class="o-group-cell__count">({{ row.count ?? 0 }})</span>
             </div>
-            <div v-else-if="row?.kind === 'more'" class="o-more-cell">点击加载更多(剩余 {{ Math.max(0, Number(row.remain ?? 0)) }})</div>
+            <div v-else-if="row?.kind === 'more'" class="o-more-cell">{{ _t('Click to load more (%s remaining)', Math.max(0, Number(row.remain ?? 0))) }}</div>
             <span v-else></span>
           </template>
         </OVColumn>
         <slot />
         <template #empty>
           <slot name="empty">
-            <div class="ovtable__empty">暂无数据</div>
+            <div class="ovtable__empty">{{ _t('No data') }}</div>
           </slot>
         </template>
       </OVTable>
@@ -101,7 +101,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import type { RowEventHandlerParams } from 'element-plus';
 import { computed, onMounted, onBeforeUnmount, provide, ref, nextTick, watch, DefineComponent } from 'vue';
-import type { ComputedRef, Ref } from 'vue';
+import type { Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
@@ -127,18 +127,10 @@ import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAd
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { canShowAction, type ActionIdMap } from '@/web/web/components/view/actionVisibility';
+import { createTranslate } from '@/web/web/i18n';
+import type { SelectionExpose, RowEventPayload } from '@/web/web/components/view/listViewTypes';
 
-export interface SelectionExpose<T = any> {
-  selectedItems: Ref<T[]>;
-  selectedItem: ComputedRef<T | null>;
-}
-
-export type RowEventPayload<T> = {
-  row: ClientModel<T>;
-  rowIndex: number;
-  rowKey: RowEventHandlerParams['rowKey'];
-  event: MouseEvent | Event;
-};
+const { _t } = createTranslate('web', { scope: 'web/components/view/OListView' });
 
 const props = withDefaults(
   defineProps<{
@@ -412,7 +404,7 @@ async function loadData() {
   } catch (e: any) {
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'load', error: err });
-    ElMessage.error('列表加载失败');
+    ElMessage.error(_t('Failed to load list'));
   }
 }
 
@@ -487,7 +479,7 @@ async function handleRefresh() {
   controller
     .apply()
     .then(() => {
-      ElMessage.success('列表数据已刷新');
+      ElMessage.success(_t('List data refreshed'));
       const total = Number(((store.state as any).result?.total ?? 0) as any) || 0;
       emit('refresh-success', { items: (items.value as any) || [], total });
       return afterLayoutRecompute();
@@ -495,7 +487,7 @@ async function handleRefresh() {
     .catch(e => {
       const err = e instanceof Error ? e : new Error(String(e));
       emit('action-error', { action: 'refresh', error: err });
-      ElMessage.error('列表刷新数据失败');
+      ElMessage.error(_t('Failed to refresh list'));
     });
 }
 
@@ -514,9 +506,9 @@ async function handleDelete() {
   if (selectedItems.value.length === 0) return;
   const count = selectedItems.value.length;
   try {
-    await ElMessageBox.confirm(`确定要删除选中的 ${count} 条记录吗？此操作不可恢复。`, '确认删除', {
-      confirmButtonText: '确定删除',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(_t('Are you sure you want to delete the selected %s record(s)? This action cannot be undone.', count), _t('Confirm delete'), {
+      confirmButtonText: _t('Delete'),
+      cancelButtonText: _t('Cancel'),
       type: 'warning',
       confirmButtonClass: 'el-button--danger',
     });
@@ -535,12 +527,12 @@ async function handleDelete() {
 
     deleteLoading.value = true;
     if (ids.length === 0) {
-      ElMessage.warning('所选记录缺少有效 ID');
+      ElMessage.warning(_t('Selected records are missing valid IDs'));
       return;
     }
 
     await store.Delete(['Id', 'in', ids] as QueryCondition<T>);
-    ElMessage.success(`成功删除 ${ids.length} 条记录`);
+    ElMessage.success(_t('Successfully deleted %s record(s)', ids.length));
     selection.clear();
     selectedItems.value = [];
     await loadData();
@@ -549,7 +541,7 @@ async function handleDelete() {
     if (e !== 'cancel') {
       const err = e instanceof Error ? e : new Error(String(e));
       emit('action-error', { action: 'delete', error: err });
-      ElMessage.error('删除失败');
+      ElMessage.error(_t('Delete failed'));
     }
   } finally {
     deleteLoading.value = false;

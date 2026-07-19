@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <el-card class="login-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h3>User Login</h3>
+          <h3>{{ _t('User Login') }}</h3>
         </div>
       </template>
 
@@ -17,25 +17,25 @@ SPDX-License-Identifier: Apache-2.0
       </transition>
 
       <el-form ref="loginForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleLogin">
-        <el-form-item prop="username" label="Username">
-          <el-input v-model="form.username" placeholder="Enter username" :prefix-icon="User" autocomplete="username" />
+        <el-form-item prop="username" :label="_t('Username')">
+          <el-input v-model="form.username" :placeholder="_t('Enter username')" :prefix-icon="User" autocomplete="username" />
         </el-form-item>
 
-        <el-form-item prop="password" label="Password">
-          <el-input v-model="form.password" placeholder="Enter password" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
+        <el-form-item prop="password" :label="_t('Password')">
+          <el-input v-model="form.password" :placeholder="_t('Enter password')" :prefix-icon="Lock" type="password" autocomplete="current-password" show-password />
         </el-form-item>
 
         <div class="login-options">
-          <el-checkbox v-model="form.rememberMe">Remember me</el-checkbox>
+          <el-checkbox v-model="form.rememberMe">{{ _t('Remember me') }}</el-checkbox>
         </div>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button"> Log In </el-button>
+          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button">{{ _t('Log In') }}</el-button>
         </el-form-item>
 
         <div v-if="showRegisterLink" class="register-link">
-          Don't have an account?
-          <router-link to="/register">Register now</router-link>
+          {{ _t("Don't have an account?") }}
+          <router-link to="/register">{{ _t('Register now') }}</router-link>
         </div>
       </el-form>
     </el-card>
@@ -52,6 +52,10 @@ import OPage from '@/web/web/components/page/OPage.vue';
 import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 import type { FormRules } from 'element-plus';
+import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore, langToLocale } from '@/web/web/stores/i18nStore';
+
+const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
 /**
  * Form model for the login page.
@@ -74,22 +78,22 @@ const form = reactive<LoginFormData>({
   rememberMe: true,
 });
 
-const rules: FormRules<LoginFormData> = {
+const rules = computed<FormRules<LoginFormData>>(() => ({
   username: [
     {
       required: true,
-      message: 'Enter username',
+      message: _t('Enter username'),
       trigger: 'blur',
     },
   ],
   password: [
     {
       required: true,
-      message: 'Enter password',
+      message: _t('Enter password'),
       trigger: 'blur',
     },
   ],
-};
+}));
 
 const error = ref('');
 const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false);
@@ -134,12 +138,25 @@ async function handleLogin() {
 
     await authStore.login(form.username, form.password, '', '', form.rememberMe);
 
+    // Apply persisted User.Language when present (terminology lang → UI locale).
+    try {
+      await authStore.loadUser(true);
+      const preferredLang = String((authStore.currentUser as any)?.Language || '').trim();
+      if (preferredLang) {
+        const i18nStore = useI18nStore();
+        await i18nStore.setLocale(langToLocale(preferredLang));
+      }
+    } catch {
+      // Preference apply is best-effort; login already succeeded.
+    }
+
     handleRedirect();
   } catch (err) {
     if (err instanceof ChoysumError) {
+      // Show translated message; keep machine code on the error object for FE routing.
       error.value = err.message;
     } else {
-      error.value = 'Login failed. Please try again later.';
+      error.value = _t('Login failed. Please try again later.');
       console.error('Login flow failed:', err);
     }
   }

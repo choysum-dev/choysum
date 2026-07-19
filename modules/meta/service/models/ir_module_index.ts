@@ -6,7 +6,10 @@ import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import IrModule from './ir_module';
+
+const { _t } = createTranslate('meta');
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -582,7 +585,7 @@ export default class IrModuleIndex extends BaseModel {
     if (!force && !ifStale) return '';
     const originType = normalizeOriginType(params.originType);
     if (!originType) {
-      throw new Error('originType must be one of: local, registry, all');
+      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/ir_module_index' }));
     }
 
     if (ifStale && !force && isTruthyFlag(getBackendEnvText('CHOYSUM_E2E_SKIP_INDEX_STALE_SYNC', 'choysum_e2e_skip_index_stale_sync'))) {
@@ -656,7 +659,7 @@ export default class IrModuleIndex extends BaseModel {
     }
     const normalizedOriginType = normalizeOriginType(originType);
     if (!normalizedOriginType) {
-      throw new Error('originType must be one of: local, registry, all');
+      throw new Error(_t('originType must be one of: local, registry, all', { scope: 'service/models/ir_module_index' }));
     }
     return await syncIndex({ originType: normalizedOriginType, force: !!force });
   }

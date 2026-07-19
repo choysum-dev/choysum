@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
       <div class="o-header__nav">
         <!-- Menu toggle button area. -->
         <div class="o-header__menu-toggle-area">
-          <el-button class="o-header__menu-toggle" text @click="handleMenuToggle" :aria-label="isSidebarCollapsed ? '展开菜单' : '折叠菜单'">
+          <el-button class="o-header__menu-toggle" text @click="handleMenuToggle" :aria-label="isSidebarCollapsed ? expandMenuLabel : collapseMenuLabel">
             <el-icon :size="24">
               <component :is="menuToggleIcon" />
             </el-icon>
@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <!-- Logo section. -->
         <div class="o-header__logo">
-          <router-link to="/" class="o-header__logo-link" :aria-label="`${appName} - 首页`">
+          <router-link to="/" class="o-header__logo-link" :aria-label="homeAriaLabel(appName)">
             <img v-if="logoUrl" :src="logoUrl" :alt="appName" class="o-header__logo-img" />
           </router-link>
         </div>
@@ -31,9 +31,18 @@ SPDX-License-Identifier: Apache-2.0
               <el-icon v-if="menu.activeApp.value.icon" class="o-header__app-icon">
                 <component :is="menu.activeApp.value.icon" />
               </el-icon>
-              <span class="o-header__app-name">{{ menu.activeApp.value.title }}</span>
+              <span class="o-header__app-name">
+                {{
+                  menu.activeApp.value.titleText
+                    ? $t(
+                        menu.activeApp.value.titleText.key,
+                        menu.activeApp.value.titleText.src || menu.activeApp.value.title
+                      )
+                    : menu.activeApp.value.title
+                }}
+              </span>
             </template>
-            <span v-else class="o-header__app-name">选择应用</span>
+            <span v-else class="o-header__app-name">{{ selectAppLabel }}</span>
             <el-icon class="o-header__dropdown-arrow" size="1.5em">
               <component :is="isMobile ? '' : ArrowDropDownOutlined" />
             </el-icon>
@@ -45,7 +54,13 @@ SPDX-License-Identifier: Apache-2.0
                   <el-icon v-if="app.icon" class="o-header__app-option-icon">
                     <component :is="app.icon" />
                   </el-icon>
-                  <span>{{ app.title }}</span>
+                  <span>
+                    {{
+                      app.titleText
+                        ? $t(app.titleText.key, app.titleText.src || app.title)
+                        : app.title
+                    }}
+                  </span>
                 </div>
               </el-dropdown-item>
             </el-dropdown-menu>
@@ -66,7 +81,7 @@ SPDX-License-Identifier: Apache-2.0
             :max-height="400"
             popper-class="o-header__language-dropdown"
           >
-            <el-button text class="o-header__action-btn" aria-label="切换语言">
+            <el-button text class="o-header__action-btn" :aria-label="switchLanguageLabel">
               <el-icon :size="20">
                 <component :is="TranslateOutlined" />
               </el-icon>
@@ -90,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 
           <!-- Support dropdown using a dedicated popper class. -->
           <el-dropdown trigger="click" class="o-header__action-item" placement="bottom-end" popper-class="o-header__support-dropdown">
-            <el-button text class="o-header__action-btn" aria-label="获取帮助">
+            <el-button text class="o-header__action-btn" :aria-label="getHelpLabel">
               <el-icon :size="20">
                 <QuestionFilled />
               </el-icon>
@@ -98,13 +113,13 @@ SPDX-License-Identifier: Apache-2.0
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item>
-                  <span>帮助文档</span>
+                  <span>{{ _t('Help documentation') }}</span>
                 </el-dropdown-item>
                 <el-dropdown-item>
-                  <span>视频教程</span>
+                  <span>{{ _t('Video tutorials') }}</span>
                 </el-dropdown-item>
                 <el-dropdown-item>
-                  <span>联系支持</span>
+                  <span>{{ _t('Contact support') }}</span>
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -119,7 +134,7 @@ SPDX-License-Identifier: Apache-2.0
     <!-- App menu drawer used when the sidebar is hidden. -->
     <el-drawer
       v-model="appDrawerVisible"
-      title="应用导航"
+      :title="_t('App navigation')"
       :direction="drawerDirection"
       :size="280"
       :with-header="true"
@@ -152,6 +167,17 @@ import { ElButton, ElDrawer, ElIcon, ElHeader, ElDropdown, ElDropdownMenu, ElDro
 import { QuestionFilled } from '@element-plus/icons-vue';
 import { MenuOutlined, AppsOutlined, TranslateOutlined, ArrowDropDownOutlined } from '@vicons/material';
 import defaultLogo from '@/web/web/assets/logo.svg';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/layout/OHeader' });
+const expandMenuLabel = computed(() => _t('Expand menu'));
+const collapseMenuLabel = computed(() => _t('Collapse menu'));
+const selectAppLabel = computed(() => _t('Select an app'));
+const switchLanguageLabel = computed(() => _t('Switch language'));
+const getHelpLabel = computed(() => _t('Get help'));
+function homeAriaLabel(name: string) {
+  return _t('%s - Home', name);
+}
 
 // Fixed height constants.
 const HEADER_HEIGHT = 48;
@@ -202,16 +228,18 @@ const direction = useTextDirection();
 // Compute the drawer direction from the text direction.
 const drawerDirection = computed(() => (direction.value === 'rtl' ? 'rtl' : 'ltr'));
 
-// Supported locale list.
+// Supported locale list (active terminology locales, not the full format catalog).
 const localeOptions = computed(() =>
-  i18nStore.supportedLocales.map((code: SupportedLocale) => {
-    const locale = SUPPORTED_LOCALES[code];
-    return {
-      code,
-      name: locale.name,
-      textDirection: locale.textDirection,
-    };
-  })
+  i18nStore.activeLocaleCodes
+    .filter((code: string) => code in SUPPORTED_LOCALES)
+    .map((code: string) => {
+      const locale = SUPPORTED_LOCALES[code as SupportedLocale];
+      return {
+        code,
+        name: locale.name,
+        textDirection: locale.textDirection,
+      };
+    })
 );
 
 // Currently selected locale code.
@@ -239,7 +267,20 @@ function handleAppChange(appId: string) {
 }
 
 async function handleLanguageChange(locale: string) {
-  await i18nStore.setLocale(locale);
+  const ok = await i18nStore.setLocale(locale);
+  if (!ok) {
+    return;
+  }
+  try {
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const authStore = useAuthStore();
+    await authStore.persistLanguagePreference(i18nStore.terminologyLang);
+  } catch {
+    // Auth module may be unavailable; anonymous preference stays in i18nStore localStorage.
+  }
+  // D9/S6: default full reload; optional remount clears scoped stores only.
+  const { afterLocaleChange, softLocaleRemount } = await import('@/web/web/stores/i18nStore/locale_remount');
+  await afterLocaleChange({ remount: softLocaleRemount });
 }
 
 function handleDrawerMenuItemClick(item: MenuItem) {

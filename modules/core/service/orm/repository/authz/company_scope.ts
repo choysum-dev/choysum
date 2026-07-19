@@ -15,6 +15,7 @@ import type { RepositoryCompanyScopeFacts, RepositoryReqMethodMeta } from './aut
 import type { RepositoryEmitAuthzDecisionSummary, RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
 import { asObjectRecord } from '../../../../utils/object';
+import { _t } from '@/core/service/i18n_binder';
 
 type RepositoryCompanyScopeDeps = {
   meta: ModelMetadata;
@@ -79,10 +80,14 @@ export function validateRepositoryCompanyIdInScope(params: RepositoryCompanyScop
   const normalized = String(companyId).trim();
   if (!normalized) return;
   if (!companyIds.includes(normalized)) {
-    throw params.permissionDenied('company_scope_violation', 'company is not in ctx.enabledCompanyIds', {
-      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-      companyId: normalized,
-    });
+    throw params.permissionDenied(
+      'company_scope_violation',
+      _t('company is not in ctx.enabledCompanyIds', { scope: 'service/orm/repository/authz/company_scope' }),
+      {
+        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+        companyId: normalized,
+      }
+    );
   }
 }
 
@@ -94,16 +99,27 @@ export function repositoryCompanyScopedEnabled(params: RepositoryCompanyScopeDep
 
   const hasCompanyIdField = params.meta.fields instanceof Map && params.meta.fields.has('CompanyId');
   if (!hasCompanyIdField) {
-    throw params.permissionDenied('company_scope_missing_company_id_field', 'companyScoped model is missing CompanyId field', {
-      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-    });
+    throw params.permissionDenied(
+      'company_scope_missing_company_id_field',
+      _t('companyScoped model is missing CompanyId field', { scope: 'service/orm/repository/authz/company_scope' }),
+      {
+        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+      }
+    );
   }
 
   const ids = normalizeRepositoryCompanyIds(params.ctx);
   if (!ids.length) {
-    throw params.permissionDenied('company_scope_missing_ctx_company', 'missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation', {
-      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-    });
+    throw params.permissionDenied(
+      'company_scope_missing_ctx_company',
+      _t(
+        'missing ctx.enabledCompanyIds/activeCompanyId for company scoped operation',
+        { scope: 'service/orm/repository/authz/company_scope' }
+      ),
+      {
+        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+      }
+    );
   }
 
   return true;
@@ -153,9 +169,13 @@ export function applyRepositoryDefaultCompanyIdOnCreate(params: RepositoryCompan
 
   const companyId = normalizeRepositoryCompanyIdForWrite(params.ctx);
   if (!companyId) {
-    throw params.permissionDenied('company_scope_missing_default_company_id', 'missing ctx.activeCompanyId for company scoped create', {
-      model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
-    });
+    throw params.permissionDenied(
+      'company_scope_missing_default_company_id',
+      _t('missing ctx.activeCompanyId for company scoped create', { scope: 'service/orm/repository/authz/company_scope' }),
+      {
+        model: params.meta.fullModelName || params.meta.modelName || params.meta.name,
+      }
+    );
   }
 
   return { ...entity, CompanyId: companyId };

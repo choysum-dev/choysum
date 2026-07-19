@@ -1,0 +1,1332 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#: web/components/field/OBigintField.vue:255
+msgctxt "web/components/field/OBigintField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/OBigintField.vue:270
+msgctxt "web/components/field/OBigintField"
+msgid "Exceeds safe integer range"
+msgstr "超出安全整数范围"
+
+#: web/components/field/OBigintField.vue:267
+msgctxt "web/components/field/OBigintField"
+msgid "Must be a valid integer"
+msgstr "必须是有效整数"
+
+#: web/components/field/OBigintField.vue:260
+msgctxt "web/components/field/OBigintField"
+msgid "Must be an integer"
+msgstr "必须是整数"
+
+#: web/components/field/OBigintField.vue:269
+msgctxt "web/components/field/OBigintField"
+msgid "Must not be greater than %s"
+msgstr "不得大于 %s"
+
+#: web/components/field/OBigintField.vue:268
+msgctxt "web/components/field/OBigintField"
+msgid "Must not be less than %s"
+msgstr "不得小于 %s"
+
+#: web/components/field/OBinaryField.vue:72
+msgctxt "web/components/field/OBinaryField"
+msgid "Drop file here or click to upload"
+msgstr "拖放文件到此处，或点击上传"
+
+#: web/components/field/OBinaryField.vue:16
+msgctxt "web/components/field/OBinaryField"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/field/OBinaryField.vue:78
+msgctxt "web/components/field/OBinaryField"
+msgid "Replace file"
+msgstr "替换文件"
+
+#: web/components/field/OBinaryField.vue:71
+msgctxt "web/components/field/OBinaryField"
+msgid "Upload file"
+msgstr "上传文件"
+
+#: web/components/field/OBooleanField.vue:209
+msgctxt "web/components/field/OBooleanField"
+msgid "Clear"
+msgstr "清除"
+
+#: web/components/field/OCharField.vue:167
+msgctxt "web/components/field/OCharField"
+msgid "Length must equal %s"
+msgstr "长度必须等于 %s"
+
+#: web/components/field/OCharField.vue:169
+msgctxt "web/components/field/OCharField"
+msgid "Length must not exceed %s"
+msgstr "长度不得超过 %s"
+
+#: web/components/field/OCharField.vue:160
+msgctxt "web/components/field/OCharField"
+msgid "Value is required"
+msgstr "值为必填项"
+
+#: web/components/field/OCharField.vue:162
+msgctxt "web/components/field/OCharField"
+msgid "Value must be a string"
+msgstr "值必须为字符串"
+
+#: web/components/field/ODateField.vue:130
+msgctxt "web/components/field/ODateField"
+msgid "Invalid date"
+msgstr "日期无效"
+
+#: web/components/field/ODatetimeField.vue:147
+msgctxt "web/components/field/ODatetimeField"
+msgid "Invalid date time"
+msgstr "日期时间无效"
+
+#: web/components/field/ODecimalField.vue:424
+msgctxt "web/components/field/ODecimalField"
+msgid "Decimal places must not exceed %s"
+msgstr "小数位数不得超过 %s"
+
+#: web/components/field/ODecimalField.vue:423
+msgctxt "web/components/field/ODecimalField"
+msgid "Must be a valid number"
+msgstr "必须是有效数字"
+
+#: web/components/field/ODecimalField.vue:428
+msgctxt "web/components/field/ODecimalField"
+msgid "Must not be greater than %s"
+msgstr "不得大于 %s"
+
+#: web/components/field/ODecimalField.vue:427
+msgctxt "web/components/field/ODecimalField"
+msgid "Must not be less than %s"
+msgstr "不得小于 %s"
+
+#: web/components/field/ODecimalField.vue:426
+msgctxt "web/components/field/ODecimalField"
+msgid "Total digits must not exceed %s"
+msgstr "总位数不得超过 %s"
+
+#: web/components/field/OImageField.vue:72
+msgctxt "web/components/field/OImageField"
+msgid "Drop image here or click to upload"
+msgstr "拖放图片到此处，或点击上传"
+
+#: web/components/field/OImageField.vue:17
+msgctxt "web/components/field/OImageField"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/field/OImageField.vue:78
+msgctxt "web/components/field/OImageField"
+msgid "Replace image"
+msgstr "替换图片"
+
+#: web/components/field/OImageField.vue:71
+msgctxt "web/components/field/OImageField"
+msgid "Upload image"
+msgstr "上传图片"
+
+#: web/components/field/OIntField.vue:187
+msgctxt "web/components/field/OIntField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/OIntField.vue:190
+msgctxt "web/components/field/OIntField"
+msgid "Must be an integer"
+msgstr "必须是整数"
+
+#: web/components/field/OIntField.vue:193
+msgctxt "web/components/field/OIntField"
+msgid "Range %s ~ %s"
+msgstr "范围 %s ~ %s"
+
+#: web/components/field/OJsonobjectField.vue:132 web/components/field/OJsonobjectField.vue:163
+msgctxt "web/components/field/OJsonobjectField"
+msgid "Arrays are not allowed"
+msgstr "不允许数组"
+
+#: web/components/field/OJsonobjectField.vue:160 web/components/field/OJsonobjectField.vue:233
+msgctxt "web/components/field/OJsonobjectField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/OJsonobjectField.vue:76
+msgctxt "web/components/field/OJsonobjectField"
+msgid "Enter a JSON object"
+msgstr "请输入 JSON 对象"
+
+#: web/components/field/OJsonobjectField.vue:136
+msgctxt "web/components/field/OJsonobjectField"
+msgid "JSON parse failed"
+msgstr "JSON 解析失败"
+
+#: web/components/field/OJsonobjectField.vue:133 web/components/field/OJsonobjectField.vue:162
+msgctxt "web/components/field/OJsonobjectField"
+msgid "Must be an object"
+msgstr "必须是对象"
+
+#: web/components/field/OJsonobjectField.vue:240
+msgctxt "web/components/field/OJsonobjectField"
+msgid "Parse failed"
+msgstr "解析失败"
+
+#: web/components/field/OManyToManyField.vue:10 web/components/field/OManyToManyField.vue:28
+msgctxt "web/components/field/OManyToManyField"
+msgid "Actions"
+msgstr "操作"
+
+#: web/components/field/OManyToManyField.vue:18 web/components/field/OManyToManyField.vue:36
+msgctxt "web/components/field/OManyToManyField"
+msgid "Add row"
+msgstr "添加行"
+
+#: web/components/field/OManyToManyField.vue:61
+msgctxt "web/components/field/OManyToManyField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OManyToManyField.vue:12 web/components/field/OManyToManyField.vue:30
+msgctxt "web/components/field/OManyToManyField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/OManyToManyField.vue:62
+msgctxt "web/components/field/OManyToManyField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/OManyToManyField.vue:94
+msgctxt "web/components/field/OManyToManyField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/OManyToManyField.vue:224
+msgctxt "web/components/field/OManyToManyField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/OManyToManyRefField.vue:12 web/components/field/OManyToManyRefField.vue:32
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "Actions"
+msgstr "操作"
+
+#: web/components/field/OManyToManyRefField.vue:20 web/components/field/OManyToManyRefField.vue:40
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "Add row"
+msgstr "添加行"
+
+#: web/components/field/OManyToManyRefField.vue:67
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OManyToManyRefField.vue:14 web/components/field/OManyToManyRefField.vue:34
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/OManyToManyRefField.vue:68
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/OManyToManyRefField.vue:96
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/OManyToManyRefField.vue:363
+msgctxt "web/components/field/OManyToManyRefField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/OManyToManyRefTagsField.vue:49
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OManyToManyRefTagsField.vue:37
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "None"
+msgstr "无"
+
+#: web/components/field/OManyToManyRefTagsField.vue:50
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/OManyToManyRefTagsField.vue:104
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/OManyToManyRefTagsField.vue:16
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "Search more"
+msgstr "搜索更多"
+
+#: web/components/field/OManyToManyRefTagsField.vue:105
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/OManyToManyRefTagsField.vue:487
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/OManyToManyRefTagsField.vue:483
+msgctxt "web/components/field/OManyToManyRefTagsField"
+msgid "searchList is not configured; cannot open picker"
+msgstr "searchList 未配置，无法打开选择器"
+
+#: web/components/field/OManyToManyRefTreeField.vue:97
+msgctxt "web/components/field/OManyToManyRefTreeField"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/field/OManyToManyTagsField.vue:49
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OManyToManyTagsField.vue:37
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "None"
+msgstr "无"
+
+#: web/components/field/OManyToManyTagsField.vue:50
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/OManyToManyTagsField.vue:103
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/OManyToManyTagsField.vue:16
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "Search more"
+msgstr "搜索更多"
+
+#: web/components/field/OManyToManyTagsField.vue:104
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "Select related items"
+msgstr "选择关联项"
+
+#: web/components/field/OManyToManyTagsField.vue:486
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "relationStore is unresolved; cannot open picker"
+msgstr "relationStore 未解析，无法打开选择器"
+
+#: web/components/field/OManyToManyTagsField.vue:482
+msgctxt "web/components/field/OManyToManyTagsField"
+msgid "searchList is not configured; cannot open picker"
+msgstr "searchList 未配置，无法打开选择器"
+
+#: web/components/field/OManyToManyTreeField.vue:97
+msgctxt "web/components/field/OManyToManyTreeField"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/field/OManyToOneField.vue:25
+msgctxt "web/components/field/OManyToOneField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OManyToOneField.vue:26
+msgctxt "web/components/field/OManyToOneField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/OManyToOneField.vue:101
+msgctxt "web/components/field/OManyToOneField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/OManyToOneField.vue:7
+msgctxt "web/components/field/OManyToOneField"
+msgid "Search more"
+msgstr "搜索更多"
+
+#: web/components/field/OManyToOneField.vue:102
+msgctxt "web/components/field/OManyToOneField"
+msgid "Select record"
+msgstr "选择记录"
+
+#: web/components/field/OManyToOneRefField.vue:25
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OManyToOneRefField.vue:26
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "OK"
+msgstr "确定"
+
+#: web/components/field/OManyToOneRefField.vue:101
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/OManyToOneRefField.vue:7
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "Search more"
+msgstr "搜索更多"
+
+#: web/components/field/OManyToOneRefField.vue:102
+msgctxt "web/components/field/OManyToOneRefField"
+msgid "Select record"
+msgstr "选择记录"
+
+#: web/components/field/ONumberField.vue:174
+msgctxt "web/components/field/ONumberField"
+msgid "Value is required"
+msgstr "值为必填项"
+
+#: web/components/field/ONumberField.vue:176
+msgctxt "web/components/field/ONumberField"
+msgid "Value must be a number"
+msgstr "值必须为数字"
+
+#: web/components/field/ONumberField.vue:177
+msgctxt "web/components/field/ONumberField"
+msgid "Value must be at least %s"
+msgstr "值不得小于 %s"
+
+#: web/components/field/ONumberField.vue:178
+msgctxt "web/components/field/ONumberField"
+msgid "Value must be at most %s"
+msgstr "值不得大于 %s"
+
+#: web/components/field/OOneToManyField.vue:9
+msgctxt "web/components/field/OOneToManyField"
+msgid "Actions"
+msgstr "操作"
+
+#: web/components/field/OOneToManyField.vue:17
+msgctxt "web/components/field/OOneToManyField"
+msgid "Add row"
+msgstr "添加行"
+
+#: web/components/field/OOneToManyField.vue:11
+msgctxt "web/components/field/OOneToManyField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/OOneToManyKanbanField.vue:294
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Are you sure you want to delete this record? This action cannot be undone."
+msgstr "确定要删除此记录吗？此操作无法撤销。"
+
+#: web/components/field/OOneToManyKanbanField.vue:299 web/components/field/OOneToManyKanbanField.vue:66
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OOneToManyKanbanField.vue:295
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Confirm delete"
+msgstr "确认删除"
+
+#: web/components/field/OOneToManyKanbanField.vue:20 web/components/field/OOneToManyKanbanField.vue:298
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/field/OOneToManyKanbanField.vue:19
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/components/field/OOneToManyKanbanField.vue:118
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Edit record"
+msgstr "编辑记录"
+
+#: web/components/field/OOneToManyKanbanField.vue:115
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "New"
+msgstr "新建"
+
+#: web/components/field/OOneToManyKanbanField.vue:117
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "New record"
+msgstr "新建记录"
+
+#: web/components/field/OOneToManyKanbanField.vue:116
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/field/OOneToManyKanbanField.vue:62
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Provide a child record editor via the formView prop."
+msgstr "请通过 formView 属性提供子记录编辑器。"
+
+#: web/components/field/OOneToManyKanbanField.vue:67
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/field/OOneToManyKanbanField.vue:234
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "Untitled"
+msgstr "未命名"
+
+#: web/components/field/OOneToManyKanbanField.vue:119
+msgctxt "web/components/field/OOneToManyKanbanField"
+msgid "View record"
+msgstr "查看记录"
+
+#: web/components/field/OSelectionField.vue:339
+msgctxt "web/components/field/OSelectionField"
+msgid "Invalid option value: %s"
+msgstr "无效的选项值：%s"
+
+#: web/components/field/OSelectionField.vue:78
+msgctxt "web/components/field/OSelectionField"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/field/OSelectionField.vue:336
+msgctxt "web/components/field/OSelectionField"
+msgid "Value must be a string"
+msgstr "值必须为字符串"
+
+#: web/components/field/OTextField.vue:167
+msgctxt "web/components/field/OTextField"
+msgid "Cannot be empty"
+msgstr "不能为空"
+
+#: web/components/field/OTextField.vue:172
+msgctxt "web/components/field/OTextField"
+msgid "Length must not exceed %s"
+msgstr "长度不得超过 %s"
+
+#: web/components/field/OTextField.vue:169
+msgctxt "web/components/field/OTextField"
+msgid "Must be a string"
+msgstr "必须为字符串"
+
+#: web/components/field/OTimeField.vue:129
+msgctxt "web/components/field/OTimeField"
+msgid "Invalid time value"
+msgstr "时间无效"
+
+#: web/components/field/OVarCharField.vue:176
+msgctxt "web/components/field/OVarCharField"
+msgid "Length must not exceed %s"
+msgstr "长度不得超过 %s"
+
+#: web/components/field/OVarCharField.vue:171
+msgctxt "web/components/field/OVarCharField"
+msgid "Value is required"
+msgstr "值为必填项"
+
+#: web/components/field/OVarCharField.vue:173
+msgctxt "web/components/field/OVarCharField"
+msgid "Value must be a string"
+msgstr "值必须为字符串"
+
+#: web/components/layout/OFooter.vue:16
+msgctxt "web/components/layout/OFooter"
+msgid "Contact us"
+msgstr "联系我们"
+
+#: web/components/layout/OFooter.vue:14
+msgctxt "web/components/layout/OFooter"
+msgid "Privacy policy"
+msgstr "隐私政策"
+
+#: web/components/layout/OFooter.vue:15
+msgctxt "web/components/layout/OFooter"
+msgid "Terms of use"
+msgstr "使用条款"
+
+#: web/components/layout/OFooter.vue:14
+msgctxt "web/components/layout/OFooter"
+msgid "View privacy policy"
+msgstr "查看隐私政策"
+
+#: web/components/layout/OFooter.vue:15
+msgctxt "web/components/layout/OFooter"
+msgid "View terms of use"
+msgstr "查看使用条款"
+
+#: web/components/layout/OHeader.vue:21
+msgctxt "web/components/layout/OHeader"
+msgid "%s - Home"
+msgstr "%s - 首页"
+
+#: web/components/layout/OHeader.vue:118
+msgctxt "web/components/layout/OHeader"
+msgid "App navigation"
+msgstr "应用导航"
+
+#: web/components/layout/OHeader.vue:16
+msgctxt "web/components/layout/OHeader"
+msgid "Collapse menu"
+msgstr "折叠菜单"
+
+#: web/components/layout/OHeader.vue:105
+msgctxt "web/components/layout/OHeader"
+msgid "Contact support"
+msgstr "联系支持"
+
+#: web/components/layout/OHeader.vue:15
+msgctxt "web/components/layout/OHeader"
+msgid "Expand menu"
+msgstr "展开菜单"
+
+#: web/components/layout/OHeader.vue:19
+msgctxt "web/components/layout/OHeader"
+msgid "Get help"
+msgstr "获取帮助"
+
+#: web/components/layout/OHeader.vue:99
+msgctxt "web/components/layout/OHeader"
+msgid "Help documentation"
+msgstr "帮助文档"
+
+#: web/components/layout/OHeader.vue:17
+msgctxt "web/components/layout/OHeader"
+msgid "Select an app"
+msgstr "选择应用"
+
+#: web/components/layout/OHeader.vue:18
+msgctxt "web/components/layout/OHeader"
+msgid "Switch language"
+msgstr "切换语言"
+
+#: web/components/layout/OHeader.vue:102
+msgctxt "web/components/layout/OHeader"
+msgid "Video tutorials"
+msgstr "视频教程"
+
+#: web/components/layout/OSidebar.vue:2
+msgctxt "web/components/layout/OSidebar"
+msgid "Main navigation"
+msgstr "主导航"
+
+#: web/components/page/OPage.vue:32
+msgctxt "web/components/page/OPage"
+msgid "Page loading"
+msgstr "页面加载中"
+
+#: web/components/view/OChartView.vue:58
+msgctxt "web/components/view/OChartView"
+msgid "Ascending"
+msgstr "升序"
+
+#: web/components/view/OChartView.vue:597
+msgctxt "web/components/view/OChartView"
+msgid "Chart refresh failed"
+msgstr "图表刷新失败"
+
+#: web/components/view/OChartView.vue:61
+msgctxt "web/components/view/OChartView"
+msgid "Descending"
+msgstr "降序"
+
+#: web/components/view/OChartView.vue:71
+msgctxt "web/components/view/OChartView"
+msgid "Load failed"
+msgstr "加载失败"
+
+#: web/components/view/OChartView.vue:70
+msgctxt "web/components/view/OChartView"
+msgid "Loading..."
+msgstr "加载中…"
+
+#: web/components/view/OChartView.vue:35
+msgctxt "web/components/view/OChartView"
+msgid "Metric"
+msgstr "指标"
+
+#: web/components/view/OChartView.vue:37
+msgctxt "web/components/view/OChartView"
+msgid "Metric selection"
+msgstr "指标选择"
+
+#: web/components/view/OChartView.vue:10
+msgctxt "web/components/view/OChartView"
+msgid "New"
+msgstr "新建"
+
+#: web/components/view/OChartView.vue:69
+msgctxt "web/components/view/OChartView"
+msgid "No data or grouping not configured"
+msgstr "暂无数据或未配置分组"
+
+#: web/components/view/OChartView.vue:55
+msgctxt "web/components/view/OChartView"
+msgid "Original order"
+msgstr "原始顺序"
+
+#: web/components/view/OChartView.vue:14
+msgctxt "web/components/view/OChartView"
+msgid "Refresh"
+msgstr "刷新"
+
+#: web/components/view/OChartView.vue:49
+msgctxt "web/components/view/OChartView"
+msgid "Stack"
+msgstr "堆叠"
+
+#: web/components/view/OFormView.vue:573
+msgctxt "web/components/view/OFormView"
+msgid "Are you sure you want to delete the current record? This action cannot be undone."
+msgstr "确定要删除当前记录吗？此操作无法撤销。"
+
+#: web/components/view/OFormView.vue:37 web/components/view/OFormView.vue:51 web/components/view/OFormView.vue:575
+msgctxt "web/components/view/OFormView"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/view/OFormView.vue:573
+msgctxt "web/components/view/OFormView"
+msgid "Confirm delete"
+msgstr "确认删除"
+
+#: web/components/view/OFormView.vue:23
+msgctxt "web/components/view/OFormView"
+msgid "Copy"
+msgstr "复制"
+
+#: web/components/view/OFormView.vue:441 web/components/view/OFormView.vue:490
+msgctxt "web/components/view/OFormView"
+msgid "Created successfully"
+msgstr "创建成功"
+
+#: web/components/view/OFormView.vue:27 web/components/view/OFormView.vue:574
+msgctxt "web/components/view/OFormView"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/view/OFormView.vue:619
+msgctxt "web/components/view/OFormView"
+msgid "Delete failed"
+msgstr "删除失败"
+
+#: web/components/view/OFormView.vue:28
+msgctxt "web/components/view/OFormView"
+msgid "Details"
+msgstr "详情"
+
+#: web/components/view/OFormView.vue:15
+msgctxt "web/components/view/OFormView"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/components/view/OFormView.vue:11
+msgctxt "web/components/view/OFormView"
+msgid "New"
+msgstr "新建"
+
+#: web/components/view/OFormView.vue:511
+msgctxt "web/components/view/OFormView"
+msgid "Operation failed"
+msgstr "操作失败"
+
+#: web/components/view/OFormView.vue:313 web/components/view/OFormView.vue:322
+msgctxt "web/components/view/OFormView"
+msgid "Please fix the errors in the form first"
+msgstr "请先修正表单中的错误"
+
+#: web/components/view/OFormView.vue:586
+msgctxt "web/components/view/OFormView"
+msgid "Record deleted"
+msgstr "记录已删除"
+
+#: web/components/view/OFormView.vue:19
+msgctxt "web/components/view/OFormView"
+msgid "Refresh"
+msgstr "刷新"
+
+#: web/components/view/OFormView.vue:553
+msgctxt "web/components/view/OFormView"
+msgid "Refresh failed"
+msgstr "刷新失败"
+
+#: web/components/view/OFormView.vue:550
+msgctxt "web/components/view/OFormView"
+msgid "Refreshed"
+msgstr "已刷新"
+
+#: web/components/view/OFormView.vue:41 web/components/view/OFormView.vue:55
+msgctxt "web/components/view/OFormView"
+msgid "Reset"
+msgstr "重置"
+
+#: web/components/view/OFormView.vue:178
+msgctxt "web/components/view/OFormView"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/view/OFormView.vue:441 web/components/view/OFormView.vue:490
+msgctxt "web/components/view/OFormView"
+msgid "Saved successfully"
+msgstr "保存成功"
+
+#: web/components/view/OFormView.vue:178
+msgctxt "web/components/view/OFormView"
+msgid "Saving..."
+msgstr "保存中..."
+
+#: web/components/view/OKanbanView.vue:130
+msgctxt "web/components/view/OKanbanView"
+msgid "All"
+msgstr "全部"
+
+#: web/components/view/OKanbanView.vue:296
+msgctxt "web/components/view/OKanbanView"
+msgid "Kanban refresh failed"
+msgstr "看板刷新失败"
+
+#: web/components/view/OKanbanView.vue:75
+msgctxt "web/components/view/OKanbanView"
+msgid "Load more (%s remaining)"
+msgstr "加载更多（剩余 %s 条）"
+
+#: web/components/view/OKanbanView.vue:251
+msgctxt "web/components/view/OKanbanView"
+msgid "Move failed; refreshed to recover"
+msgstr "移动失败，已刷新以恢复"
+
+#: web/components/view/OKanbanView.vue:10
+msgctxt "web/components/view/OKanbanView"
+msgid "New"
+msgstr "新建"
+
+#: web/components/view/OKanbanView.vue:91
+msgctxt "web/components/view/OKanbanView"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/view/OKanbanView.vue:78
+msgctxt "web/components/view/OKanbanView"
+msgid "No data in this column"
+msgstr "此列暂无数据"
+
+#: web/components/view/OKanbanView.vue:15
+msgctxt "web/components/view/OKanbanView"
+msgid "Refresh"
+msgstr "刷新"
+
+#: web/components/view/OListView.vue:421
+msgctxt "web/components/view/OListView"
+msgid "Are you sure you want to delete the selected %s record(s)? This action cannot be undone."
+msgstr "确定要删除选中的 %s 条记录吗？此操作无法撤销。"
+
+#: web/components/view/OListView.vue:423
+msgctxt "web/components/view/OListView"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/view/OListView.vue:54
+msgctxt "web/components/view/OListView"
+msgid "Click to load more (%s remaining)"
+msgstr "点击加载更多（剩余 %s 条）"
+
+#: web/components/view/OListView.vue:421
+msgctxt "web/components/view/OListView"
+msgid "Confirm delete"
+msgstr "确认删除"
+
+#: web/components/view/OListView.vue:422
+msgctxt "web/components/view/OListView"
+msgid "Delete"
+msgstr "删除"
+
+#: web/components/view/OListView.vue:20
+msgctxt "web/components/view/OListView"
+msgid "Delete (%s)"
+msgstr "删除（%s）"
+
+#: web/components/view/OListView.vue:456
+msgctxt "web/components/view/OListView"
+msgid "Delete failed"
+msgstr "删除失败"
+
+#: web/components/view/OListView.vue:319
+msgctxt "web/components/view/OListView"
+msgid "Failed to load list"
+msgstr "列表加载失败"
+
+#: web/components/view/OListView.vue:402
+msgctxt "web/components/view/OListView"
+msgid "Failed to refresh list"
+msgstr "列表刷新失败"
+
+#: web/components/view/OListView.vue:394
+msgctxt "web/components/view/OListView"
+msgid "List data refreshed"
+msgstr "列表数据已刷新"
+
+#: web/components/view/OListView.vue:10
+msgctxt "web/components/view/OListView"
+msgid "New"
+msgstr "新建"
+
+#: web/components/view/OListView.vue:61
+msgctxt "web/components/view/OListView"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/components/view/OListView.vue:15
+msgctxt "web/components/view/OListView"
+msgid "Refresh"
+msgstr "刷新"
+
+#: web/components/view/OListView.vue:442
+msgctxt "web/components/view/OListView"
+msgid "Selected records are missing valid IDs"
+msgstr "所选记录缺少有效 ID"
+
+#: web/components/view/OListView.vue:447
+msgctxt "web/components/view/OListView"
+msgid "Successfully deleted %s record(s)"
+msgstr "已成功删除 %s 条记录"
+
+#: web/components/view/OPagination.vue:60
+msgctxt "web/components/view/OPagination"
+msgid "%s - %s of %s"
+msgstr "第 %s - %s 条，共 %s 条"
+
+#: web/components/view/OPagination.vue:17
+msgctxt "web/components/view/OPagination"
+msgid "of %s"
+msgstr "共 %s 条"
+
+#: web/components/view/OSearchView.vue:32
+msgctxt "web/components/view/OSearchView"
+msgid "Search..."
+msgstr "搜索…"
+
+#: web/components/view/search/OSearch.vue:40
+msgctxt "web/components/view/search/OSearch"
+msgid "Custom filter…"
+msgstr "自定义筛选…"
+
+#: web/components/view/search/OSearch.vue:58
+msgctxt "web/components/view/search/OSearch"
+msgid "Custom group by"
+msgstr "自定义分组"
+
+#: web/components/view/search/OSearch.vue:28
+msgctxt "web/components/view/search/OSearch"
+msgid "Day"
+msgstr "日"
+
+#: web/components/view/search/OSearch.vue:64
+msgctxt "web/components/view/search/OSearch"
+msgid "Edit filter"
+msgstr "编辑过滤器"
+
+#: web/components/view/search/OSearch.vue:28
+msgctxt "web/components/view/search/OSearch"
+msgid "Filters"
+msgstr "筛选"
+
+#: web/components/view/search/OSearch.vue:44
+msgctxt "web/components/view/search/OSearch"
+msgid "Group by"
+msgstr "分组"
+
+#: web/components/view/search/OSearch.vue:10
+msgctxt "web/components/view/search/OSearch"
+msgid "Group: %s"
+msgstr "分组：%s"
+
+#: web/components/view/search/OSearch.vue:26
+msgctxt "web/components/view/search/OSearch"
+msgid "Month"
+msgstr "月"
+
+#: web/components/view/search/OSearch.vue:64
+msgctxt "web/components/view/search/OSearch"
+msgid "New filter"
+msgstr "新建过滤器"
+
+#: web/components/view/search/OSearch.vue:54
+msgctxt "web/components/view/search/OSearch"
+msgid "Not set"
+msgstr "未设置"
+
+#: web/components/view/search/OSearch.vue:23
+msgctxt "web/components/view/search/OSearch"
+msgid "Open search menu"
+msgstr "打开搜索菜单"
+
+#: web/components/view/search/OSearch.vue:25
+msgctxt "web/components/view/search/OSearch"
+msgid "Quarter"
+msgstr "季度"
+
+#: web/components/view/search/OSearch.vue:5
+msgctxt "web/components/view/search/OSearch"
+msgid "Run search"
+msgstr "执行搜索"
+
+#: web/components/view/search/OSearch.vue:4
+msgctxt "web/components/view/search/OSearch"
+msgid "Search"
+msgstr "搜索"
+
+#: web/components/view/search/OSearch.vue:92
+msgctxt "web/components/view/search/OSearch"
+msgid "Search..."
+msgstr "搜索…"
+
+#: web/components/view/search/OSearch.vue:60
+msgctxt "web/components/view/search/OSearch"
+msgid "Select field or date granularity"
+msgstr "选择字段或日期粒度"
+
+#: web/components/view/search/OSearch.vue:27
+msgctxt "web/components/view/search/OSearch"
+msgid "Week"
+msgstr "周"
+
+#: web/components/view/search/OSearch.vue:24
+msgctxt "web/components/view/search/OSearch"
+msgid "Year"
+msgstr "年"
+
+#: web/components/view/search/OSearchFilter.vue:91
+msgctxt "web/components/view/search/OSearchFilter"
+msgid "(empty)"
+msgstr "（空）"
+
+#: web/components/view/search/OSearchFilter.vue:97
+msgctxt "web/components/view/search/OSearchFilter"
+msgid "(incomplete)"
+msgstr "（不完整）"
+
+#: web/components/view/search/OSearchFilter.vue:12
+msgctxt "web/components/view/search/OSearchFilter"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/view/search/OSearchFilter.vue:8
+msgctxt "web/components/view/search/OSearchFilter"
+msgid "Preview (%s):"
+msgstr "预览（%s）："
+
+#: web/components/view/search/OSearchFilter.vue:13
+msgctxt "web/components/view/search/OSearchFilter"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/view/search/OSearchFilterGroup.vue:12
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Add condition"
+msgstr "添加条件"
+
+#: web/components/view/search/OSearchFilterGroup.vue:13
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Add group"
+msgstr "添加分组"
+
+#: web/components/view/search/OSearchFilterGroup.vue:158
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Enter JSON"
+msgstr "输入 JSON"
+
+#: web/components/view/search/OSearchFilterGroup.vue:28
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Field"
+msgstr "字段"
+
+#: web/components/view/search/OSearchFilterGroup.vue:5
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Group relation"
+msgstr "分组关系"
+
+#: web/components/view/search/OSearchFilterGroup.vue:39
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Operator"
+msgstr "运算符"
+
+#: web/components/view/search/OSearchFilterGroup.vue:48
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/view/search/OSearchFilterGroup.vue:14
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Remove group"
+msgstr "移除分组"
+
+#: web/components/view/search/OSearchFilterGroup.vue:46
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Select a field"
+msgstr "选择字段"
+
+#: web/components/view/search/OSearchFilterGroup.vue:150
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Select a record"
+msgstr "选择记录"
+
+#: web/components/view/search/OSearchFilterGroup.vue:152
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Select date"
+msgstr "选择日期"
+
+#: web/components/view/search/OSearchFilterGroup.vue:154
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Select date and time"
+msgstr "选择日期和时间"
+
+#: web/components/view/search/OSearchFilterGroup.vue:156
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Select time"
+msgstr "选择时间"
+
+#: web/components/view/search/OSearchFilterGroup.vue:160
+msgctxt "web/components/view/search/OSearchFilterGroup"
+msgid "Value"
+msgstr "值"
+
+#: web/components/vtable/OVTable.vue:12
+msgctxt "web/components/vtable/OVTable"
+msgid "No data"
+msgstr "暂无数据"
+
+#: web/composables/search/useGroupingOptions.ts:18 web/composables/search/useGroupingOptions.ts:80
+msgctxt "web/composables/search/useGroupingOptions"
+msgid "Day"
+msgstr "日"
+
+#: web/composables/search/useGroupingOptions.ts:16 web/composables/search/useGroupingOptions.ts:78
+msgctxt "web/composables/search/useGroupingOptions"
+msgid "Month"
+msgstr "月"
+
+#: web/composables/search/useGroupingOptions.ts:15 web/composables/search/useGroupingOptions.ts:77
+msgctxt "web/composables/search/useGroupingOptions"
+msgid "Quarter"
+msgstr "季度"
+
+#: web/composables/search/useGroupingOptions.ts:17 web/composables/search/useGroupingOptions.ts:79
+msgctxt "web/composables/search/useGroupingOptions"
+msgid "Week"
+msgstr "周"
+
+#: web/composables/search/useGroupingOptions.ts:14 web/composables/search/useGroupingOptions.ts:76
+msgctxt "web/composables/search/useGroupingOptions"
+msgid "Year"
+msgstr "年"
+
+#: web/composables/search/useSearch.ts:41 web/composables/search/useSearch.ts:52
+msgctxt "web/composables/search/useSearch"
+msgid "(empty)"
+msgstr "（空）"
+
+#: web/composables/search/useSearch.ts:55 web/composables/search/useSearch.ts:66
+msgctxt "web/composables/search/useSearch"
+msgid "Not configured"
+msgstr "未配置"
+
+#: web/composables/useMenu.ts:211
+msgctxt "web/composables/useMenu"
+msgid "No menus available"
+msgstr "暂无可用菜单"
+
+#: web/composables/useOnchangeAggregation.ts:146
+msgctxt "web/composables/useOnchangeAggregation"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/composables/useOnchangeAggregation.ts:145
+msgctxt "web/composables/useOnchangeAggregation"
+msgid "Continue"
+msgstr "继续"
+
+#: web/composables/useOnchangeAggregation.ts:144
+msgctxt "web/composables/useOnchangeAggregation"
+msgid "Notice"
+msgstr "提示"
+
+#: web/composables/useOnchangeAggregation.ts:152
+msgctxt "web/composables/useOnchangeAggregation"
+msgid "Operation cancelled"
+msgstr "操作已取消"
+
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "Home"
+msgstr "首页"
+
+#: web/pages/ErrorView.vue:97
+msgctxt "web/pages/ErrorView"
+msgid "Access denied"
+msgstr "权限不足"
+
+#: web/pages/ErrorView.vue:110
+msgctxt "web/pages/ErrorView"
+msgid "An internal error occurred. Try again later or contact support."
+msgstr "系统发生了内部错误，请稍后重试或联系技术支持。"
+
+#: web/pages/ErrorView.vue:112 web/pages/ErrorView.vue:125 web/pages/ErrorView.vue:86
+msgctxt "web/pages/ErrorView"
+msgid "Back to home"
+msgstr "返回首页"
+
+#: web/pages/ErrorView.vue:123
+msgctxt "web/pages/ErrorView"
+msgid "Check that the URL is correct, or the page may have been moved or deleted."
+msgstr "请检查 URL 是否正确，或者该页面可能已被移动或删除。"
+
+#: web/pages/ErrorView.vue:101
+msgctxt "web/pages/ErrorView"
+msgid "Confirm you have access to this resource, or contact an administrator."
+msgstr "请确认您拥有访问此资源的权限，或联系系统管理员获取帮助。"
+
+#: web/pages/ErrorView.vue:94
+msgctxt "web/pages/ErrorView"
+msgid "Contact administrator"
+msgstr "联系管理员"
+
+#: web/pages/ErrorView.vue:126 web/pages/ErrorView.vue:90
+msgctxt "web/pages/ErrorView"
+msgid "Go back"
+msgstr "返回上一页"
+
+#: web/pages/ErrorView.vue:119
+msgctxt "web/pages/ErrorView"
+msgid "Page not found"
+msgstr "页面未找到"
+
+#: web/pages/ErrorView.vue:114
+msgctxt "web/pages/ErrorView"
+msgid "Report a problem"
+msgstr "报告问题"
+
+#: web/pages/ErrorView.vue:113
+msgctxt "web/pages/ErrorView"
+msgid "Retry"
+msgstr "重试"
+
+#: web/pages/ErrorView.vue:106
+msgctxt "web/pages/ErrorView"
+msgid "Server error"
+msgstr "服务器错误"
+
+#: web/pages/ErrorView.vue:120
+msgctxt "web/pages/ErrorView"
+msgid "The page you requested does not exist"
+msgstr "您访问的页面不存在"
+
+#: web/pages/ErrorView.vue:107
+msgctxt "web/pages/ErrorView"
+msgid "The server encountered an error"
+msgstr "服务器遇到了一个错误"
+
+#: web/pages/ErrorView.vue:82
+msgctxt "web/pages/ErrorView"
+msgid "You are missing the required permission"
+msgstr "您缺少所需访问权限"
+
+#: web/pages/ErrorView.vue:80
+msgctxt "web/pages/ErrorView"
+msgid "You are missing the required role"
+msgstr "您缺少所需角色权限"
+
+#: web/pages/ErrorView.vue:78
+msgctxt "web/pages/ErrorView"
+msgid "You do not have permission to access this page"
+msgstr "您没有权限访问此页面"
+
+#: web/query/utils/filter/operators.ts:29 web/query/utils/filter/operators.ts:68
+msgctxt "web/query/utils/filter/operators"
+msgid "Ancestors (parent_of)"
+msgstr "祖先（parent_of）"
+
+#: web/query/utils/filter/operators.ts:20 web/query/utils/filter/operators.ts:50
+msgctxt "web/query/utils/filter/operators"
+msgid "Contains"
+msgstr "包含"
+
+#: web/query/utils/filter/operators.ts:28 web/query/utils/filter/operators.ts:66
+msgctxt "web/query/utils/filter/operators"
+msgid "Descendants (child_of)"
+msgstr "后代（child_of）"
+
+#: web/query/utils/filter/operators.ts:21 web/query/utils/filter/operators.ts:52
+msgctxt "web/query/utils/filter/operators"
+msgid "Does not contain"
+msgstr "不包含"
+
+#: web/query/utils/filter/operators.ts:16 web/query/utils/filter/operators.ts:42
+msgctxt "web/query/utils/filter/operators"
+msgid "Equals"
+msgstr "等于"
+
+#: web/query/utils/filter/operators.ts:22 web/query/utils/filter/operators.ts:54
+msgctxt "web/query/utils/filter/operators"
+msgid "Greater than"
+msgstr "大于"
+
+#: web/query/utils/filter/operators.ts:23 web/query/utils/filter/operators.ts:56
+msgctxt "web/query/utils/filter/operators"
+msgid "Greater than or equal"
+msgstr "大于等于"
+
+#: web/query/utils/filter/operators.ts:18 web/query/utils/filter/operators.ts:46
+msgctxt "web/query/utils/filter/operators"
+msgid "In"
+msgstr "属于"
+
+#: web/query/utils/filter/operators.ts:26 web/query/utils/filter/operators.ts:62
+msgctxt "web/query/utils/filter/operators"
+msgid "Is"
+msgstr "是"
+
+#: web/query/utils/filter/operators.ts:27 web/query/utils/filter/operators.ts:64
+msgctxt "web/query/utils/filter/operators"
+msgid "Is not"
+msgstr "不是"
+
+#: web/query/utils/filter/operators.ts:24 web/query/utils/filter/operators.ts:58
+msgctxt "web/query/utils/filter/operators"
+msgid "Less than"
+msgstr "小于"
+
+#: web/query/utils/filter/operators.ts:25 web/query/utils/filter/operators.ts:60
+msgctxt "web/query/utils/filter/operators"
+msgid "Less than or equal"
+msgstr "小于等于"
+
+#: web/query/utils/filter/operators.ts:17 web/query/utils/filter/operators.ts:44
+msgctxt "web/query/utils/filter/operators"
+msgid "Not equals"
+msgstr "不等于"
+
+#: web/query/utils/filter/operators.ts:19 web/query/utils/filter/operators.ts:48
+msgctxt "web/query/utils/filter/operators"
+msgid "Not in"
+msgstr "不属于"
+
+#: web/router/routes.ts:33
+msgctxt "web/route/routes"
+msgid "Home"
+msgstr "首页"
+
+#: web/stores/breadcrumbStore/index.ts:13
+msgctxt "web/stores/breadcrumbStore"
+msgid "Details"
+msgstr "详情"
+
+#: web/stores/breadcrumbStore/index.ts:12
+msgctxt "web/stores/breadcrumbStore"
+msgid "Page"
+msgstr "页面"

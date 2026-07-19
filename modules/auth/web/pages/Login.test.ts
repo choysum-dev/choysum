@@ -39,6 +39,16 @@ vi.mock('pinia', () => {
   };
 });
 
+// The mounted lifecycle tests do not exercise post-login locale switching.
+// Keep the i18n store boundary isolated so its Pinia definition is not loaded
+// through this test's intentionally minimal pinia mock.
+vi.mock('@/web/web/stores/i18nStore', () => {
+  return {
+    useI18nStore: () => ({ setLocale: vi.fn(async () => true) }),
+    langToLocale: (lang: string) => lang,
+  };
+});
+
 // Mock OPage wrapper.
 vi.mock('@/web/web/components/page/OPage.vue', () => {
   return {

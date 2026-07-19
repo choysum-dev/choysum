@@ -17,6 +17,8 @@ import (
 
 func TestWebApiStoreGenerate(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
+	referenceKey := meta.TermReferenceKey("demo", "demo.status.allow", "Allow", "literal")
+	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
 	runAs := "system"
@@ -39,7 +41,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		RelationJoinModel:        "PartnerTag",
 		RelationJoinField:        "PartnerId",
 		RelationInverseJoinField: "TagId",
-		Selection:                "['allow','deny']",
+		Selection:                selectionJSON,
 		Round:                    &round,
 	}
 	resolvedSpec := &meta.IrFieldResolvedSpec{
@@ -82,6 +84,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		t.Fatal("expected web api store generator constructor to return non-nil")
 	}
 	app := testApp()
+	if len(app.Models) > 1 && len(app.Models[1].Fields) > 0 {
+		app.Models[1].Fields[0].Selection = selectionJSON
+	}
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 1 {
 		companyField := app.Models[1].Fields[1]
 		if err := companyField.SetResolvedSpec(&meta.IrFieldResolvedSpec{
@@ -113,6 +118,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(storeContent), "storageKind") || !strings.Contains(string(storeContent), "searchable") {
 		t.Fatalf("expected resolved contract keys in store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), "labelText") || !strings.Contains(string(storeContent), referenceKey) {
+		t.Fatalf("expected selection term reference in generated store content: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)

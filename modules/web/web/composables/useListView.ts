@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref, computed } from 'vue';
-import type { SelectionExpose } from '@/web/web/components/view/OListView.vue';
+import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 
 /**
  * Creates the ListView ref and the object exposed through defineExpose.

@@ -74,3 +74,6 @@ tryon/
 .dev/
 /cert/
 **/tsconfig.json
+
+# E2E runner stages generated *_pb.ts here for Playwright transforms
+modules/**/e2e/.generated/

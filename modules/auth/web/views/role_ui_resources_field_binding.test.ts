@@ -15,7 +15,7 @@ describe('Role UiResources field binding', () => {
 
     expect(source).toContain('OManyToManyRefTreeField');
     expect(source).toContain('prop="AccessUiResourceIds"');
-    expect(source).toContain('label="Accessible UI Resources"');
+    expect(source).toContain(':label="_t(\'Accessible UI Resources\')"');
     expect(source).toContain(':lazy="false"');
     expect(source).toContain(':max-depth="0"');
     expect(source).toContain('children-field="Childs"');
@@ -32,11 +32,11 @@ describe('Role UiResources field binding', () => {
   it('keeps UiResources and rule tables in advanced manual mode', () => {
     const source = roleFormSource();
 
-    expect(source).toContain('label="Advanced Mode"');
-    expect(source).toContain('Record Rules (Manual Maintenance)');
-    expect(source).toContain('Field Rules (Manual Maintenance)');
-    expect(source).toContain('Method Access (Manual Maintenance)');
-    expect(source).toContain('UI Resource Details (Manual Maintenance)');
+    expect(source).toContain(':label="_t(\'Advanced Mode\')"');
+    expect(source).toContain("Record Rules (Manual Maintenance)");
+    expect(source).toContain("Field Rules (Manual Maintenance)");
+    expect(source).toContain("Method Access (Manual Maintenance)");
+    expect(source).toContain("UI Resource Details (Manual Maintenance)");
 
     expect(source).toContain('prop="UiResources"');
     expect(source).toContain('UiResources.Mode');

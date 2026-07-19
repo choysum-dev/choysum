@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         :model-value="fieldValue().value"
         @update:model-value="(v: any) => onUpdate(fieldValue, v)"
         :clearable="clearable"
-        :placeholder="placeholder"
+        :placeholder="effectivePlaceholder"
         :disabled="disabled"
         v-bind="selectProps"
         :style="{ width: width || '100%' }"
@@ -54,13 +54,21 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 // Added: narrowed aggregate type (count_distinct only)
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
+import type { TermReference } from '@/core/service/i18n';
+import { useI18n } from 'vue-i18n';
+import { translateTerm } from '@/web/web/i18n';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OSelectionField' });
 
 defineOptions({ name: 'OSelectionField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
-type MetaOption = { value: string; label: string };
+type MetaOption = { value: string; label: string; labelText?: TermReference };
 type EffectiveOption = { value: string; label: string; disabled: boolean };
+
+const composer = useI18n({ useScope: 'global' });
 
 const props = withDefaults(
   defineProps<{
@@ -96,7 +104,7 @@ const props = withDefaults(
     label: '',
     rules: () => [],
     clearable: true,
-    placeholder: '请选择...',
+    placeholder: '',
     disabled: false,
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
@@ -110,6 +118,8 @@ const props = withDefaults(
     showInlineError: false,
   }
 );
+
+const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
 
 // Binding
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
@@ -125,7 +135,11 @@ const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(nul
 const metaOptions = computed<MetaOption[]>(() => {
   const sel = binding.meta?.selection;
   if (!Array.isArray(sel) || sel.length === 0) return [];
-  return sel.map(item => ({ value: String(item.value), label: String(item.label) }));
+  return sel.map(item => ({
+    value: String(item.value),
+    label: translateTerm(composer, item.labelText, String(item.label)),
+    labelText: item.labelText,
+  }));
 });
 
 // 1.1) Normalize props.selection against metadata, keeping metadata labels and prop order
@@ -363,10 +377,10 @@ const internalRule = {
   type: 'string',
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) return cb();
-    if (typeof value !== 'string') return cb(new Error('Value must be a string'));
+    if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
     // Validate against the current visible options (global fallback)
     const ok = optionsFor().some(o => o.value === value);
-    if (!ok) return cb(new Error(`Invalid option value: ${value}`));
+    if (!ok) return cb(new Error(_t('Invalid option value: %s', value)));
     cb();
   },
 } as RuleItem;

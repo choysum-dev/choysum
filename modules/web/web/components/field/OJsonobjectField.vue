@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
       <OJsonCell
         :field-value="fieldValue"
         :options="bufferOptions"
-        :placeholder="placeholder"
+        :placeholder="effectivePlaceholder"
         :autosize="autosize"
         :nullable="nullable"
         :allow-array="allowArray"
@@ -48,6 +48,9 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OJsonobjectField' });
 
 defineOptions({ name: 'OJsonobjectField' });
 
@@ -94,7 +97,7 @@ const props = withDefaults(
     rules: () => [],
     nullable: true,
     allowArray: false,
-    placeholder: '请输入 JSON 对象',
+    placeholder: '',
     autosize: () => ({ minRows: 3, maxRows: 14 }),
     required: false,
     readonly: false,
@@ -109,6 +112,8 @@ const props = withDefaults(
     showInlineError: false,
   }
 );
+
+const effectivePlaceholder = computed(() => props.placeholder || _t('Enter a JSON object'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
@@ -164,11 +169,11 @@ function tryParse(raw: string): { ok: boolean; val?: any; err?: string } {
     if (v === null) return { ok: true, val: null };
     const isArr = Array.isArray(v);
     const isObj = typeof v === 'object' && !isArr;
-    if (isArr && !props.allowArray) return { ok: false, err: '不允许数组' };
-    if (!isArr && !isObj) return { ok: false, err: '必须为对象' };
+    if (isArr && !props.allowArray) return { ok: false, err: _t('Arrays are not allowed') };
+    if (!isArr && !isObj) return { ok: false, err: _t('Must be an object') };
     return { ok: true, val: v };
   } catch {
-    return { ok: false, err: 'JSON 解析失败' };
+    return { ok: false, err: _t('JSON parse failed') };
   }
 }
 
@@ -192,10 +197,10 @@ const internalRule = {
     }
     if (value == null) {
       if (props.nullable) return cb();
-      return cb(new Error('不能为空'));
+      return cb(new Error(_t('Cannot be empty')));
     }
-    if (typeof value !== 'object') return cb(new Error('必须为对象'));
-    if (Array.isArray(value) && !props.allowArray) return cb(new Error('不允许数组'));
+    if (typeof value !== 'object') return cb(new Error(_t('Must be an object')));
+    if (Array.isArray(value) && !props.allowArray) return cb(new Error(_t('Arrays are not allowed')));
     cb();
   },
 } as RuleItem;
@@ -265,14 +270,14 @@ const OJsonCell = defineComponent({
           parseError.value = null;
           return;
         } else {
-          parseError.value = '不能为空';
+          parseError.value = _t('Cannot be empty');
           buffer.onBlur();
           return;
         }
       }
       const parsed = tryParse(raw);
       if (!parsed.ok) {
-        parseError.value = parsed.err || '解析失败';
+        parseError.value = parsed.err || _t('Parse failed');
         buffer.onBlur();
         return;
       }

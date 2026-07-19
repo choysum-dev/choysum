@@ -16,9 +16,9 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #header-right>
       <el-button-group>
-        <el-tooltip content="List View" placement="top"> <el-button :icon="FormatListBulletedOutlined" @click="toList" /></el-tooltip>
-        <el-tooltip content="Kanban View" placement="top"><el-button :icon="GridViewSharp" @click="toKanban" type="primary" /></el-tooltip>
-        <el-tooltip content="Icon View" placement="top"><el-button :icon="BarChartOutlined" @click="toKanban" /></el-tooltip>
+        <el-tooltip :content="_t('List View')" placement="top"> <el-button :icon="FormatListBulletedOutlined" @click="toList" /></el-tooltip>
+        <el-tooltip :content="_t('Kanban View')" placement="top"><el-button :icon="GridViewSharp" @click="toKanban" type="primary" /></el-tooltip>
+        <el-tooltip :content="_t('Icon View')" placement="top"><el-button :icon="BarChartOutlined" @click="toKanban" /></el-tooltip>
       </el-button-group>
     </template>
 
@@ -44,15 +44,15 @@ SPDX-License-Identifier: Apache-2.0
       <div class="token-card" :class="{ revoked: record.Revoked }" @dblclick="openDetail(record)">
         <div class="top-row">
           <span class="token-type" :class="record.TokenType">{{ record.TokenType }}</span>
-          <OVarCharField :store="store" prop="UserId.Username" label="User" />
+          <OVarCharField :store="store" prop="UserId.Username" :label="_t('User')" />
         </div>
-        <div class="expires" :title="formatDate(record.ExpiresAt)">Expires: {{ formatDate(record.ExpiresAt) }}</div>
-        <div class="revoked-info" v-if="record.Revoked">Revoked At: {{ formatDate(record.RevokedAt) || '—' }}</div>
+        <div class="expires" :title="formatDate(record.ExpiresAt)">{{ _t('Expires') }}: {{ formatDate(record.ExpiresAt) }}</div>
+        <div class="revoked-info" v-if="record.Revoked">{{ _t('Revoked At') }}: {{ formatDate(record.RevokedAt) || '—' }}</div>
       </div>
     </template>
 
     <template #card-empty="{ lane }">
-      <div class="empty-lane">No tokens in this lane</div>
+      <div class="empty-lane">{{ _t('No tokens in this lane') }}</div>
     </template>
   </OKanbanView>
 </template>
@@ -68,8 +68,10 @@ import type { ClientModelProps } from '@/core/rpc/types';
 import OVirtualField from '@/web/web/components/field/OVirtualField.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenKanbanView' });
+const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
 
 const props = withDefaults(defineProps<{ store: WebModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
 const { store, showHeader } = props;
@@ -118,11 +120,11 @@ function onCardMove(e: { cardId: string; fromLane: string; toLane: string; index
 function laneLabel(lane: any): string {
   // Convert Revoked=true/false lanes into human-readable labels.
   const key = String(lane.key);
-  if (/Revoked=true/.test(key)) return 'Revoked';
-  if (/Revoked=false/.test(key)) return 'Not Revoked';
+  if (/Revoked=true/.test(key)) return _t('Revoked');
+  if (/Revoked=false/.test(key)) return _t('Not Revoked');
   // Fall back to the lane label when the key was not normalized.
-  if (lane.label === 'true') return 'Revoked';
-  if (lane.label === 'false') return 'Not Revoked';
+  if (lane.label === 'true') return _t('Revoked');
+  if (lane.label === 'false') return _t('Not Revoked');
   return String(lane.label || lane.key);
 }
 

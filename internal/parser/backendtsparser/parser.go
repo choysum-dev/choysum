@@ -16,8 +16,13 @@ type backendtsParser struct {
 
 func (p *backendtsParser) Parse(pathAlias map[string]string, path string, content string) (*parser.ParserResult, error) {
 	// use new parser to avoid concurrent access
+	ownerModule := ""
+	if p.module != nil {
+		ownerModule = p.module.Name
+	}
 	modelParser := &tsFileParser{
 		runtimeScope: p.runtimeScope,
+		ownerModule:  ownerModule,
 		TsParser: &parser.TsParser{
 			Path:      path,
 			Content:   content,

@@ -18,6 +18,8 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'Onchange',
     'ValidationEngine',
     'ValidationPipelineError',
+    'createTranslate',
+    'formatScope',
     'getActiveCompanyId',
     'getContextLang',
     'getContextTimezone',
@@ -28,8 +30,11 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'getReadonlyCtx',
     'getReqMeta',
     'getUserId',
+    'resolveI18nScope',
+    'resolveRequestLang',
     'resolveValidationSummary',
     'withContext',
+    'withI18nScope',
   ]);
 });
 

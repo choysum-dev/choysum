@@ -13,6 +13,9 @@ declare module '*.vue' {
   export type ViewMode = any;
   export type ViewContainer = any;
   export type SelectionExpose<T = any> = any;
+  export type RowEventPayload<T = any> = any;
+  export type ValueClickPayload<T = any> = any;
+  export type TagClickPayload<T = any> = any;
 }
 
 interface ImportMetaEnv {

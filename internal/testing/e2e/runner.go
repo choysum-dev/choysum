@@ -357,11 +357,9 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 		}
 	}
 	globalNodeModulesRoot := resolvePlaywrightGlobalNodeModulesRoot(opts)
-	cleanupGlobalLinks, err := ensureE2EGlobalModuleLinks(opts.WorkDir, globalNodeModulesRoot, missingRequiredNodeModules(requiredRuntimeModules, localE2EModuleRoots(opts.WorkDir)...))
-	if err != nil {
+	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredRuntimeModules, globalNodeModulesRoot); err != nil {
 		return err
 	}
-	defer cleanupGlobalLinks()
 
 	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, opts.WorkDir, opts.TmpPath, "e2e")
 	if err != nil {
@@ -412,6 +410,12 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	}
 	if err := os.MkdirAll(jwtKeysDir, 0o755); err != nil {
 		return xfmt.Errorf("create jwt keys dir: %w", err)
+	}
+	if err := os.MkdirAll(defaultChoysumPath, 0o755); err != nil {
+		return xfmt.Errorf("create default choysum path: %w", err)
+	}
+	if err := testingpathing.LinkCLITestingPkgCache(defaultChoysumPath, testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpPath)); err != nil {
+		return xfmt.Errorf("link e2e pkg cache: %w", err)
 	}
 
 	sqliteDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", dbPath)
@@ -574,9 +578,9 @@ compile:
 	writeE2EProgress(opts.Stderr, "# prepare runtime %s ok (%s)\n", opts.Module, time.Since(prepareStarted).Round(100*time.Millisecond))
 
 	// Run Playwright (no global setup; Go has already orchestrated env).
-	// Ensure the resolved npmPath is available to the Playwright runner.
+	// Resolve bare imports from the global npm root (not a local/empty node_modules).
 	opts2 := opts
-	opts2.NpmPath = npmPath
+	opts2.NpmPath = globalNodeModulesRoot
 	if err := runPlaywrightHook(ctx, opts2, specsDir, baseURL, runtimePath); err != nil {
 		return err
 	}
@@ -872,24 +876,19 @@ module.exports = {
 		return err
 	}
 	globalNodeModulesRoot := resolvePlaywrightGlobalNodeModulesRoot(opts)
-	repoModuleRoots := localE2EModuleRoots(opts.WorkDir)
-	runtimeModuleRoots := runtimeE2EModuleRoots(runtimePath)
-	localModuleRoots := append(append([]string{}, repoModuleRoots...), runtimeModuleRoots...)
-	missingRepoModules := missingRequiredNodeModules(requiredModules, repoModuleRoots...)
-	cleanupRepoLinks, err := ensureE2EGlobalModuleLinks(opts.WorkDir, globalNodeModulesRoot, missingRepoModules)
-	if err != nil {
-		return err
-	}
-	defer cleanupRepoLinks()
-	missingRuntimeModules := missingRequiredNodeModules(requiredModules, runtimeModuleRoots...)
-	cleanupRuntimeLinks, err := ensureE2ERuntimeGlobalModuleLinks(runtimePath, globalNodeModulesRoot, missingRuntimeModules)
-	if err != nil {
-		return err
-	}
-	defer cleanupRuntimeLinks()
 
-	moduleRoots := append(append([]string{}, localModuleRoots...), globalNodeModulesRoot)
-	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredModules, moduleRoots...); err != nil {
+	cleanupStagedPb, err := stageGeneratedPbIntoSpecsDir(specsDir, runtimePath)
+	if err != nil {
+		return err
+	}
+	defer cleanupStagedPb()
+
+	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredModules, globalNodeModulesRoot); err != nil {
+		return err
+	}
+
+	hookPath, err := writeE2EGlobalResolveHook(runDir)
+	if err != nil {
 		return err
 	}
 
@@ -900,15 +899,19 @@ module.exports = {
 	cmd.Env = append(os.Environ(),
 		"CHOYSUM_E2E_BASE_URL="+baseURL,
 		"CHOYSUM_E2E_RUNTIME_JSON="+runtimePath,
+		"CHOYSUM_E2E_GLOBAL_NODE_MODULES="+globalNodeModulesRoot,
 	)
 	// Disable Playwright's legacy TS ESM loader path to avoid DEP0205
 	// module.register() warnings on newer Node releases.
 	cmd.Env = append(cmd.Env, "PW_DISABLE_TS_ESM=1")
-	// Generated API files can live outside opts.WorkDir (e.g. under ~/.choysum/generated).
-	// Provide all known local/global node_modules roots for CJS fallback resolution.
-	nodePath := buildNodePathValues(append(append([]string{}, localModuleRoots...), globalNodeModulesRoot), strings.TrimSpace(os.Getenv("NODE_PATH")))
-	if nodePath != "" {
-		cmd.Env = append(cmd.Env, "NODE_PATH="+nodePath)
+	// Resolve bare imports from the global npm root (no temporary local node_modules mounts).
+	cmd.Env = append(cmd.Env, mergeNodeOptionsImport(os.Getenv("NODE_OPTIONS"), hookPath))
+	// CJS fallback for tools that still consult NODE_PATH.
+	if globalNodeModulesRoot != "" {
+		nodePath := buildNodePathValues([]string{globalNodeModulesRoot}, strings.TrimSpace(os.Getenv("NODE_PATH")))
+		if nodePath != "" {
+			cmd.Env = append(cmd.Env, "NODE_PATH="+nodePath)
+		}
 	}
 	if binDir != "" {
 		// Ensure any helper binaries under node_modules/.bin are discoverable.
@@ -936,7 +939,7 @@ func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
 		if moduleName == "" {
 			moduleName = "e2e"
 		}
-		moduleRoots := append(localE2EModuleRoots(opts.WorkDir), resolvePlaywrightGlobalNodeModulesRoot(opts))
+		moduleRoots := []string{resolvePlaywrightGlobalNodeModulesRoot(opts)}
 		if err := noderuntime.PreflightRequiredNodeModules("e2e", moduleName, []string{"@playwright/test"}, moduleRoots...); err != nil {
 			return "", "", err
 		}
@@ -947,8 +950,7 @@ func resolvePlaywrightCommand(opts RunOptions) (string, string, error) {
 }
 
 func preflightPlaywrightRuntimeDependency(opts RunOptions, moduleName string, requiredModules []string) error {
-	moduleRoots := append(localE2EModuleRoots(opts.WorkDir), resolvePlaywrightGlobalNodeModulesRoot(opts))
-	return noderuntime.PreflightRequiredNodeModules("e2e", moduleName, requiredModules, moduleRoots...)
+	return noderuntime.PreflightRequiredNodeModules("e2e", moduleName, requiredModules, resolvePlaywrightGlobalNodeModulesRoot(opts))
 }
 
 func resolvePlaywrightGlobalNodeModulesRoot(opts RunOptions) string {
@@ -957,7 +959,167 @@ func resolvePlaywrightGlobalNodeModulesRoot(opts RunOptions) string {
 			return root
 		}
 	}
+	// Prefer an existing workspace install (CI packs root node_modules) before
+	// falling back to the process-global npm root.
+	for _, root := range localE2EModuleRoots(opts.WorkDir) {
+		if st, err := os.Stat(root); err == nil && st.IsDir() {
+			return root
+		}
+	}
 	return resolveGlobalNpmRoot()
+}
+
+func writeE2EGlobalResolveHook(runDir string) (string, error) {
+	runDir = strings.TrimSpace(runDir)
+	if runDir == "" {
+		return "", xfmt.Errorf("write e2e global resolve hook: empty runDir")
+	}
+	hookPath := filepath.Join(runDir, "choysum-e2e-global-resolve.mjs")
+	if err := os.WriteFile(hookPath, []byte(e2eGlobalResolveHookSource), 0o644); err != nil {
+		return "", xfmt.Errorf("write e2e global resolve hook: %w", err)
+	}
+	return hookPath, nil
+}
+
+// mergeNodeOptionsImport appends --import <hookPath> to NODE_OPTIONS without dropping
+// any existing flags the caller already set.
+func mergeNodeOptionsImport(existingNODE_OPTIONS, hookPath string) string {
+	hookPath = strings.TrimSpace(hookPath)
+	importFlag := "--import"
+	importValue := hookPath
+	if hookPath != "" {
+		// Prefer file URL so spaces / special chars in paths are safe.
+		importValue = pathToFileURLString(hookPath)
+	}
+	parts := splitNodeOptions(strings.TrimSpace(existingNODE_OPTIONS))
+	out := make([]string, 0, len(parts)+2)
+	skipNext := false
+	for i, part := range parts {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if part == importFlag {
+			// Drop any previous --import for our hook slot; we append ours at the end.
+			if i+1 < len(parts) {
+				skipNext = true
+			}
+			continue
+		}
+		if strings.HasPrefix(part, importFlag+"=") {
+			continue
+		}
+		out = append(out, part)
+	}
+	if hookPath != "" {
+		out = append(out, importFlag, importValue)
+	}
+	return "NODE_OPTIONS=" + joinNodeOptions(out)
+}
+
+// splitNodeOptions mirrors Node's NODE_OPTIONS tokenization: whitespace splits
+// arguments unless inside double quotes; backslash escapes the next character
+// inside quotes. Quotes themselves are not part of the token.
+func splitNodeOptions(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var (
+		parts      []string
+		cur        strings.Builder
+		inString   bool
+		hasToken   bool
+	)
+	flush := func() {
+		if !hasToken {
+			return
+		}
+		parts = append(parts, cur.String())
+		cur.Reset()
+		hasToken = false
+	}
+	for i := 0; i < len(raw); i++ {
+		c := raw[i]
+		if inString {
+			if c == '\\' {
+				if i+1 >= len(raw) {
+					cur.WriteByte(c)
+					hasToken = true
+					continue
+				}
+				i++
+				cur.WriteByte(raw[i])
+				hasToken = true
+				continue
+			}
+			if c == '"' {
+				inString = false
+				continue
+			}
+			cur.WriteByte(c)
+			hasToken = true
+			continue
+		}
+		if c == '"' {
+			inString = true
+			hasToken = true
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '\n' || c == '\r' {
+			flush()
+			continue
+		}
+		cur.WriteByte(c)
+		hasToken = true
+	}
+	flush()
+	return parts
+}
+
+func joinNodeOptions(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if needsNodeOptionsQuotes(part) {
+			out = append(out, `"`+escapeNodeOptionsQuoted(part)+`"`)
+			continue
+		}
+		out = append(out, part)
+	}
+	return strings.Join(out, " ")
+}
+
+func needsNodeOptionsQuotes(s string) bool {
+	return strings.ContainsAny(s, " \t\n\r\"\\")
+}
+
+func escapeNodeOptionsQuoted(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '\\' || c == '"' {
+			b.WriteByte('\\')
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
+func pathToFileURLString(p string) string {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		abs = p
+	}
+	// Minimal file URL encoding for absolute paths (Unix + Windows).
+	u := filepath.ToSlash(abs)
+	if !strings.HasPrefix(u, "/") {
+		u = "/" + u
+	}
+	return "file://" + u
 }
 
 func localE2EModuleRoots(workDir string) []string {
@@ -965,63 +1127,81 @@ func localE2EModuleRoots(workDir string) []string {
 	if workDir == "" {
 		return nil
 	}
+	// Still consulted when locating the playwright binary under an existing
+	// local install; e2e no longer creates temporary mounts here.
 	return []string{
 		filepath.Join(workDir, "modules", "node_modules"),
 		filepath.Join(workDir, "node_modules"),
 	}
 }
 
-func runtimeE2EModuleRoots(runtimePath string) []string {
+// stageGeneratedPbIntoSpecsDir copies runDir/.choysum/generated/web/<app>/pb/*_pb.ts into
+// specsDir/.generated/<app>_pb.ts so Playwright transforms them under testDir.
+// Absolute file:// / symlink realpath imports of generated pb bypass that transform and
+// fail under PW_DISABLE_TS_ESM=1 when resolving @bufbuild/protobuf/codegenv2.
+func stageGeneratedPbIntoSpecsDir(specsDir, runtimePath string) (func(), error) {
+	noop := func() {}
+	specsDir = strings.TrimSpace(specsDir)
 	runtimePath = strings.TrimSpace(runtimePath)
-	if runtimePath == "" {
-		return nil
+	if specsDir == "" || runtimePath == "" {
+		return noop, nil
 	}
-	runDir := filepath.Dir(runtimePath)
-	return []string{
-		filepath.Join(runDir, ".choysum", "generated", "node_modules"),
-		filepath.Join(runDir, ".choysum", "node_modules"),
-	}
-}
-
-func moduleInstalledInRoots(moduleName string, moduleRoots ...string) bool {
-	return noderuntime.ModuleInstalledInRoots(moduleName, moduleRoots...)
-}
-
-func missingRequiredNodeModules(required []string, moduleRoots ...string) []string {
-	return noderuntime.MissingRequiredNodeModules(required, moduleRoots...)
-}
-
-func ensureE2EGlobalModuleLinks(workDir string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
-	workDir = strings.TrimSpace(workDir)
-	if workDir == "" {
-		return func() {}, nil
-	}
-	return ensureE2EGlobalModuleLinksAt(filepath.Join(workDir, "modules", "node_modules"), globalNodeModulesRoot, moduleNames)
-}
-
-func ensureE2ERuntimeGlobalModuleLinks(runtimePath string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
-	cleanups := make([]func(), 0, 2)
-	for _, localNodeModulesRoot := range runtimeE2EModuleRoots(runtimePath) {
-		cleanup, err := ensureE2EGlobalModuleLinksAt(localNodeModulesRoot, globalNodeModulesRoot, moduleNames)
-		if err != nil {
-			for i := len(cleanups) - 1; i >= 0; i-- {
-				cleanups[i]()
-			}
-			return nil, err
-		}
-		cleanups = append(cleanups, cleanup)
-	}
-	return func() {
-		for i := len(cleanups) - 1; i >= 0; i-- {
-			cleanups[i]()
-		}
-	}, nil
-}
-
-func ensureE2EGlobalModuleLinksAt(localNodeModulesRoot string, globalNodeModulesRoot string, moduleNames []string) (func(), error) {
-	cleanup, err := noderuntime.EnsureGlobalModuleLinksAt(localNodeModulesRoot, globalNodeModulesRoot, moduleNames)
+	generatedWeb := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web")
+	st, err := os.Stat(generatedWeb)
 	if err != nil {
-		return nil, xfmt.Errorf("playwright: %w", err)
+		if os.IsNotExist(err) {
+			return noop, nil
+		}
+		return nil, xfmt.Errorf("stat generated web dir: %w", err)
+	}
+	if !st.IsDir() {
+		return noop, nil
+	}
+
+	stageDir := filepath.Join(specsDir, ".generated")
+	if err := os.MkdirAll(stageDir, 0o755); err != nil {
+		return nil, xfmt.Errorf("create specs .generated dir: %w", err)
+	}
+
+	created := make([]string, 0)
+	cleanup := func() {
+		for _, link := range created {
+			_ = os.Remove(link)
+		}
+		_ = os.Remove(stageDir) // best-effort; keep if non-empty
+	}
+
+	entries, err := os.ReadDir(generatedWeb)
+	if err != nil {
+		cleanup()
+		return nil, xfmt.Errorf("read generated web dir: %w", err)
+	}
+	for _, appEntry := range entries {
+		if !appEntry.IsDir() {
+			continue
+		}
+		appName := strings.TrimSpace(appEntry.Name())
+		if appName == "" {
+			continue
+		}
+		pbFile := filepath.Join(generatedWeb, appName, "pb", appName+"_pb.ts")
+		if _, err := os.Stat(pbFile); err != nil {
+			continue
+		}
+		linkPath := filepath.Join(stageDir, appName+"_pb.ts")
+		_ = os.Remove(linkPath)
+		raw, err := os.ReadFile(pbFile)
+		if err != nil {
+			cleanup()
+			return nil, xfmt.Errorf("read %s: %w", pbFile, err)
+		}
+		// Copy (do not symlink): Node resolves package imports from the realpath,
+		// so a symlink back into generated/ would again miss specsDir node resolution.
+		if err := os.WriteFile(linkPath, raw, 0o644); err != nil {
+			cleanup()
+			return nil, xfmt.Errorf("stage %s: %w", linkPath, err)
+		}
+		created = append(created, linkPath)
 	}
 	return cleanup, nil
 }

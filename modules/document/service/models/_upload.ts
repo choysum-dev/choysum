@@ -8,11 +8,14 @@ import {
   normalizeChecksumSha256,
   normalizeContentType,
 } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext, PrepareUploadReq, AuthorizeUploadPutReq, CommitUploadPutReq } from '../contracts';
 import { requireText, requireUserId, requireCompanyId, normalizePrincipal } from './_normalizers';
 import type AttachmentUploadSession from './upload_session';
+
+const { _t } = createTranslate('document');
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -65,16 +68,31 @@ export type NormalizedCommitUploadPutReq = {
 
 function parseRequiredNonNegativeInt(value: unknown, fieldName: string): number {
   if (value === undefined || value === null) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
+      GrpcCode.InvalidArgument,
+      { field: fieldName }
+    );
   }
   const trimmed = typeof value === 'string' ? value.trim() : value;
   if (trimmed === '') {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('%s is required', { scope: 'service/models/_upload' }, fieldName),
+      GrpcCode.InvalidArgument,
+      { field: fieldName }
+    );
   }
 
   const num = Number(trimmed);
   if (!Number.isFinite(num) || num < 0) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} must be a non-negative integer`, GrpcCode.InvalidArgument, { field: fieldName });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('%s must be a non-negative integer', { scope: 'service/models/_upload' }, fieldName),
+      GrpcCode.InvalidArgument,
+      { field: fieldName }
+    );
   }
 
   return Math.trunc(num);
@@ -89,7 +107,9 @@ export function normalizePayloadReceiptID(payloadId: unknown): string {
   if (isDisallowedInlinePayloadID(id)) {
     throwDocumentError(
       DocumentErrCode.INVALID_ARGUMENT,
-      'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden',
+      _t('payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden', {
+        scope: 'service/models/_upload',
+      }),
       GrpcCode.InvalidArgument,
       { field: 'payloadReceipt.payloadId' }
     );
@@ -108,12 +128,21 @@ export function normalizePrepareUploadReq(req: PrepareUploadReq | undefined | nu
   const businessRequestId = requireText(req?.businessRequestId, 'businessRequestId');
 
   if (operation !== 'create' && operation !== 'update') {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'operation must be create or update', GrpcCode.InvalidArgument, { operation });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('operation must be create or update', { scope: 'service/models/_upload' }),
+      GrpcCode.InvalidArgument,
+      { operation }
+    );
   }
 
   const ownerRecordId = normalizeOptionalString(req?.ownerRecordId);
   if (operation === 'update' && !ownerRecordId) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'ownerRecordId is required when operation=update', GrpcCode.InvalidArgument);
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('ownerRecordId is required when operation=update', { scope: 'service/models/_upload' }),
+      GrpcCode.InvalidArgument
+    );
   }
 
   return {
@@ -175,17 +204,27 @@ export function assertUploadSessionPrincipal(session: AttachmentUploadSession, p
   const sessionId = requireText((session as any).Id, 'uploadId');
 
   if (principal.activeCompanyId !== sessionCompanyId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'activeCompanyId does not match upload session owner', GrpcCode.PermissionDenied, {
-      stage,
-      uploadId: sessionId,
-    });
+    throwDocumentError(
+      DocumentErrCode.PERMISSION_DENIED,
+      _t('activeCompanyId does not match upload session owner', { scope: 'service/models/_upload' }),
+      GrpcCode.PermissionDenied,
+      {
+        stage,
+        uploadId: sessionId,
+      }
+    );
   }
 
   if (principal.userId !== sessionUserId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'userId does not match upload session issuer', GrpcCode.PermissionDenied, {
-      stage,
-      uploadId: sessionId,
-    });
+    throwDocumentError(
+      DocumentErrCode.PERMISSION_DENIED,
+      _t('userId does not match upload session issuer', { scope: 'service/models/_upload' }),
+      GrpcCode.PermissionDenied,
+      {
+        stage,
+        uploadId: sessionId,
+      }
+    );
   }
 }
 
@@ -222,7 +261,7 @@ export function assertPrepareReplayConsistency(
   if (mismatches.length > 0) {
     throwDocumentError(
       DocumentErrCode.IDEMPOTENCY_KEY_REUSED,
-      'businessRequestId was already used with a different upload context',
+      _t('businessRequestId was already used with a different upload context', { scope: 'service/models/_upload' }),
       GrpcCode.FailedPrecondition,
       { businessRequestId: req.businessRequestId, mismatches: mismatches.join(',') }
     );

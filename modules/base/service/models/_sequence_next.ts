@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoysumError, GrpcCode, raiseDomainError } from '@/core/service/error';
+import { createTranslate } from '@/core/service/i18n';
 import { asBigInt, isExpiredAt, normalizeOptionalNonEmptyString, parsePositiveInt } from '@/core/service/utils/normalization';
 import { buildPaddedNumberItems, resolvePaddedNumberFormat } from '@/core/service/utils/format';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
@@ -9,6 +10,8 @@ import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
 import { buildSequenceIdempotencyPayload, buildSequenceNextResult } from './_sequence_next_payload';
 import type Sequence from './sequence';
 import type { SequenceNextItem, SequenceNextParams, SequenceNextResult } from './sequence';
+
+const { _t } = createTranslate('base');
 
 const IDEMPOTENCY_TTL_ENV_KEY = 'CHOYSUM_BASE_SEQUENCE_IDEMPOTENCY_TTL_DAYS';
 const DEFAULT_IDEMPOTENCY_TTL_DAYS = 7;
@@ -18,10 +21,10 @@ function normalizeCount(count: unknown): number {
   if (count == null) return 1;
   const n = mapNormalizationToBase(
     () => parsePositiveInt(count),
-    () => 'Count must be an integer >= 1'
+    () => _t('Count must be an integer >= 1', { scope: 'service/models/_sequence_next' })
   );
   if (n > 1000) {
-    raiseDomainError('base', 'InvalidArgument', 'Count must be within 1..1000');
+    raiseDomainError('base', 'InvalidArgument', _t('Count must be within 1..1000', { scope: 'service/models/_sequence_next' }));
   }
   return n;
 }
@@ -30,9 +33,9 @@ function normalizeIdempotencyKey(key: unknown): string | undefined {
   return mapNormalizationToBase(
     () => normalizeOptionalNonEmptyString(key, { maxLength: IDEMPOTENCY_KEY_MAX_LENGTH }),
     err => {
-      if (err.code === 'required') return 'IdempotencyKey must be non-empty';
-      if (err.code === 'string_too_long') return 'IdempotencyKey is too long';
-      return 'IdempotencyKey is invalid';
+      if (err.code === 'required') return _t('IdempotencyKey must be non-empty', { scope: 'service/models/_sequence_next' });
+      if (err.code === 'string_too_long') return _t('IdempotencyKey is too long', { scope: 'service/models/_sequence_next' });
+      return _t('IdempotencyKey is invalid', { scope: 'service/models/_sequence_next' });
     }
   );
 }
@@ -66,7 +69,11 @@ function buildItemsFromIdempotencyHit(seq: Sequence, hit: any, count: number): S
 
 function assertIdempotencyRequestMatch(hit: any, count: number, dryRun: boolean): void {
   if (Number(hit?.Count) !== count || Boolean(hit?.DryRun) !== dryRun) {
-    throw new ChoysumError({ domain: 'base', code: 'Conflict', message: 'IdempotencyKey conflict with different request' }).withGrpcCode(GrpcCode.Aborted);
+    throw new ChoysumError({
+      domain: 'base',
+      code: 'Conflict',
+      message: _t('IdempotencyKey conflict with different request', { scope: 'service/models/_sequence_next' }),
+    }).withGrpcCode(GrpcCode.Aborted);
   }
 }
 
@@ -106,7 +113,11 @@ async function resolveSequence(
   );
   if (global?.[0]) return global[0] as any;
 
-  throw new ChoysumError({ domain: 'base', code: 'NotFound', message: `Sequence not found for Code=${code}` }).withGrpcCode(GrpcCode.NotFound);
+  throw new ChoysumError({
+    domain: 'base',
+    code: 'NotFound',
+    message: _t('Sequence not found for Code=%s', { scope: 'service/models/_sequence_next' }, code),
+  }).withGrpcCode(GrpcCode.NotFound);
 }
 
 async function allocateRangeAtomic(
@@ -117,7 +128,7 @@ async function allocateRangeAtomic(
   for (let attempt = 0; attempt < 20; attempt++) {
     const current = attempt === 0 ? seq : ((await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any);
     if (!current) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Sequence not found' }).withGrpcCode(GrpcCode.NotFound);
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(GrpcCode.NotFound);
     }
     const currentNext = asBigInt((current as any).NextNumber);
     const rangeStart = currentNext;
@@ -136,7 +147,11 @@ async function allocateRangeAtomic(
     }
   }
 
-  throw new ChoysumError({ domain: 'base', code: 'Conflict', message: 'Sequence allocation conflicted; please retry' }).withGrpcCode(GrpcCode.Aborted);
+  throw new ChoysumError({
+    domain: 'base',
+    code: 'Conflict',
+    message: _t('Sequence allocation conflicted; please retry', { scope: 'service/models/_sequence_next' }),
+  }).withGrpcCode(GrpcCode.Aborted);
 }
 
 export async function nextSequence(
@@ -154,7 +169,9 @@ export async function nextSequence(
 
   const seq = await resolveSequence(model, params?.CompanyId, code);
   if (seq.IsActive !== true) {
-    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: 'Sequence is inactive' }).withGrpcCode(GrpcCode.FailedPrecondition);
+    throw new ChoysumError({ domain: 'base', code: 'FailedPrecondition', message: _t('Sequence is inactive', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(
+      GrpcCode.FailedPrecondition
+    );
   }
 
   const generatedAt = new Date().toISOString();
@@ -177,7 +194,7 @@ export async function nextSequence(
   if (dryRun) {
     const cur = (await model.Browse(seq.Id, ['Id', 'NextNumber'] as any)) as any;
     if (!cur) {
-      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: 'Sequence not found' }).withGrpcCode(GrpcCode.NotFound);
+      throw new ChoysumError({ domain: 'base', code: 'NotFound', message: _t('Sequence not found', { scope: 'service/models/_sequence_next' }) }).withGrpcCode(GrpcCode.NotFound);
     }
     const start = asBigInt(cur.NextNumber);
     const items = buildPaddedNumberItems(start, count, seq.Prefix, seq.Suffix, seq.Padding);

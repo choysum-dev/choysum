@@ -17,7 +17,7 @@ describe('partner_commercial resource wiring', () => {
     const form = source('views/PartnerFormView.vue');
 
     expect(form).toContain("defineModelActions('partner.PartnerIdentifier', {");
-    expect(form).toContain("entityTitle: '标识码'");
+    expect(form).toContain("entityTitle: _tRef('Identifier')");
     expect(form).toContain('<OOneToManyKanbanField');
     expect(form).toContain(':editable="canEditIdentifiers()"');
     expect(form).toContain(':form-view="PartnerIdentifierFormView"');

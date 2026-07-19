@@ -15,10 +15,10 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Code" label="Code" />
-    <OManyToOneField :store="store" prop="CountryId" label="Country"><OVarCharField :store="store" prop="CountryId.Name" label="Country" /></OManyToOneField>
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
+    <OManyToOneField :store="store" prop="CountryId" :label="_t('Country')"><OVarCharField :store="store" prop="CountryId.Name" :label="_t('Country')" /></OManyToOneField>
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -26,7 +26,8 @@ SPDX-License-Identifier: Apache-2.0
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type State from '@/base/service/models/state';
 import { useRouter } from 'vue-router';
-import OListView, { type RowEventPayload } from '@/web/web/components/view/OListView.vue';
+import OListView from '@/web/web/components/view/OListView.vue';
+import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
@@ -35,10 +36,13 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'StateListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/StateListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/StateListView' });
 const props = defineProps<{ store: WebModelStore<State> }>();
-const stateActions = defineModelActions('base.State', { entityTitle: 'State' });
+const stateActions = defineModelActions('base.State', { entityTitle: _tRef('State') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<State>) {

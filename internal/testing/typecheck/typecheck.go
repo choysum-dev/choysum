@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -39,6 +40,11 @@ type RunOptions struct {
 var errNoTypecheckInputs = errors.New("typecheck: no checkable ts inputs")
 
 var errTypecheckInputFound = errors.New("typecheck: input found")
+
+const (
+	typecheckVueTSCVersion     = "3.3.7"
+	typecheckTypeScriptVersion = "6.0.3"
+)
 
 func Run(ctx context.Context, opts RunOptions) error {
 	if ctx == nil {
@@ -185,7 +191,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	modulesRoot = filepath.Clean(modulesRoot)
 
-	tmpRoot := strings.TrimSpace(opts.TmpPath)
+	tmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpPath)
 	if tmpRoot == "" {
 		tmpRoot = os.TempDir()
 	}
@@ -234,6 +240,9 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	if err := noderuntime.PreflightRequiredNodeModules("typecheck", app, requiredModules, moduleRoots...); err != nil {
 		return formatTypecheckPreflightError(app, err, warnedMissingTypeAssets)
 	}
+	if err := validateTypecheckToolchainVersions(moduleRoots...); err != nil {
+		return err
+	}
 
 	npxPath, err := resolveNpxPath(opts.NpmPath)
 	if err != nil {
@@ -275,6 +284,8 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	}
 	if !opts.Keep {
 		defer cleanupTmpArtifacts()
+	} else {
+		fmt.Fprintf(opts.Stderr, "choysum test typecheck: kept artifacts dir: %s\n", tmpTsconfigDir)
 	}
 
 	include := []string{
@@ -463,13 +474,91 @@ func formatTypecheckPreflightError(app string, preflightErr error, warnedMissing
 	var b strings.Builder
 	fmt.Fprintf(&b, "typecheck preflight failed for %s. tests were not started.\n", app)
 	fmt.Fprintf(&b, "%s\n", noderuntime.FormatMissingModulesSummary(missingModules, 3))
-	fmt.Fprintf(&b, "install command:\n  npm install -g %s\n", strings.Join(missingModules, " "))
+	fmt.Fprintf(&b, "install command:\n  %s\n", typecheckInstallCommand(missingModules))
 	if warnedMissingTypeAssets {
 		fmt.Fprintf(&b, "recommended before retry:\n  go run . type-fetch %s\n", app)
 	}
 	fmt.Fprintf(&b, "retry:\n  go run . test typecheck %s", app)
 	b.WriteString("\n")
 	return errors.New(b.String())
+}
+
+func typecheckInstallCommand(missingModules []string) string {
+	packages := make([]string, 0, len(missingModules)+2)
+	for _, moduleName := range noderuntime.NormalizeStringList(missingModules) {
+		switch moduleName {
+		case "vue-tsc":
+			packages = append(packages, "vue-tsc@"+typecheckVueTSCVersion)
+		case "typescript":
+			packages = append(packages, "typescript@"+typecheckTypeScriptVersion)
+		default:
+			packages = append(packages, moduleName)
+		}
+	}
+
+	// vue-tsc currently requires the TypeScript 5/6 JavaScript API. Installing
+	// vue-tsc without an explicit TypeScript version can resolve TypeScript 7,
+	// which fails before project diagnostics with ERR_PACKAGE_PATH_NOT_EXPORTED.
+	if slices.Contains(packages, "vue-tsc@"+typecheckVueTSCVersion) &&
+		!slices.Contains(packages, "typescript@"+typecheckTypeScriptVersion) {
+		packages = append(packages, "typescript@"+typecheckTypeScriptVersion)
+	}
+	if slices.Contains(packages, "vue-tsc@"+typecheckVueTSCVersion) &&
+		!slices.Contains(packages, "@types/node") {
+		packages = append(packages, "@types/node")
+	}
+
+	return "npm install -g " + strings.Join(packages, " ")
+}
+
+func validateTypecheckToolchainVersions(moduleRoots ...string) error {
+	roots := noderuntime.NormalizeModuleRoots(moduleRoots...)
+	vueTSCVersion, vueTSCRoot := nodePackageVersion("vue-tsc", roots...)
+
+	typescriptRoots := make([]string, 0, len(roots)+1)
+	if vueTSCRoot != "" {
+		typescriptRoots = append(typescriptRoots, filepath.Join(vueTSCRoot, "vue-tsc", "node_modules"))
+	}
+	typescriptRoots = append(typescriptRoots, roots...)
+	typescriptVersion, _ := nodePackageVersion("typescript", typescriptRoots...)
+
+	var mismatches []string
+	if vueTSCVersion != "" && vueTSCVersion != typecheckVueTSCVersion {
+		mismatches = append(mismatches, fmt.Sprintf("vue-tsc=%s (required %s)", vueTSCVersion, typecheckVueTSCVersion))
+	}
+	// Pin typescript only when vue-tsc is present; the 5/6 API constraint is vue-tsc-specific.
+	if vueTSCVersion != "" && typescriptVersion != "" && typescriptVersion != typecheckTypeScriptVersion {
+		mismatches = append(mismatches, fmt.Sprintf("typescript=%s (required %s)", typescriptVersion, typecheckTypeScriptVersion))
+	}
+	if len(mismatches) == 0 {
+		return nil
+	}
+
+	return xfmt.Errorf(
+		"typecheck toolchain version mismatch: %s\ninstall command:\n  %s",
+		strings.Join(mismatches, ", "),
+		typecheckInstallCommand([]string{"vue-tsc"}),
+	)
+}
+
+func nodePackageVersion(moduleName string, moduleRoots ...string) (string, string) {
+	for _, root := range noderuntime.NormalizeModuleRoots(moduleRoots...) {
+		packageJSONPath := filepath.Join(root, filepath.FromSlash(moduleName), "package.json")
+		data, err := os.ReadFile(packageJSONPath)
+		if err != nil {
+			continue
+		}
+		var manifest struct {
+			Version string `json:"version"`
+		}
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			continue
+		}
+		if version := strings.TrimSpace(manifest.Version); version != "" {
+			return version, root
+		}
+	}
+	return "", ""
 }
 
 func missingTypeAssetModules(modulesRoot string, expectedModules []string) []string {

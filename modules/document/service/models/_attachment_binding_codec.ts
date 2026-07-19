@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, asRecord, normalizeOptionalNonNegativeInt, normalizeChecksumSha256 } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import {
   DownloadDisposition,
   BindReq,
@@ -18,6 +19,8 @@ import type AttachmentBinding from './attachment_binding';
 import type AttachmentContent from './attachment_object';
 import { requireText, normalizePrincipal } from './_normalizers';
 import { inlineMimeAllowed, mimeSuffix } from '@/core/service/utils/mime';
+
+const { _t } = createTranslate('document');
 
 // ---------------------------------------------------------------------------
 // Internal normalised-request shapes
@@ -85,16 +88,26 @@ export function normalizeBatchDescribeReq(req: BatchDescribeReq | undefined | nu
     return { attachmentBindingIds: [] };
   }
   if (!Array.isArray(rawIds)) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'attachmentBindingIds must be an array', GrpcCode.InvalidArgument, {
-      field: 'attachmentBindingIds',
-    });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('attachmentBindingIds must be an array', { scope: 'service/models/_attachment_binding_codec' }),
+      GrpcCode.InvalidArgument,
+      {
+        field: 'attachmentBindingIds',
+      }
+    );
   }
 
   const MAX_BATCH_SIZE = 200;
   if (rawIds.length > MAX_BATCH_SIZE) {
-    throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'attachmentBindingIds exceeds maximum batch size of ' + MAX_BATCH_SIZE, GrpcCode.InvalidArgument, {
-      field: 'attachmentBindingIds',
-    });
+    throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('attachmentBindingIds exceeds maximum batch size of %s', { scope: 'service/models/_attachment_binding_codec' }, MAX_BATCH_SIZE),
+      GrpcCode.InvalidArgument,
+      {
+        field: 'attachmentBindingIds',
+      }
+    );
   }
 
   const deduped: string[] = [];
@@ -137,9 +150,14 @@ export function normalizeDownloadDisposition(value: unknown): DownloadDispositio
   const disposition = normalizeOptionalString(value);
   if (disposition === undefined) return 'attachment';
   if (disposition === 'inline' || disposition === 'attachment') return disposition;
-  throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'downloadDisposition must be inline or attachment', GrpcCode.InvalidArgument, {
-    downloadDisposition: disposition,
-  });
+  throwDocumentError(
+    DocumentErrCode.INVALID_ARGUMENT,
+    _t('downloadDisposition must be inline or attachment', { scope: 'service/models/_attachment_binding_codec' }),
+    GrpcCode.InvalidArgument,
+    {
+      downloadDisposition: disposition,
+    }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -269,10 +287,15 @@ export function assertCompanyMatch(
   metadata: Record<string, unknown>
 ): void {
   if (actualCompanyId === expectedCompanyId) return;
-  throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'Attachment resource company scope mismatch', GrpcCode.PermissionDenied, {
-    stage,
-    ...metadata,
-    expectedCompanyId,
-    actualCompanyId,
-  });
+  throwDocumentError(
+    DocumentErrCode.PERMISSION_DENIED,
+    _t('Attachment resource company scope mismatch', { scope: 'service/models/_attachment_binding_codec' }),
+    GrpcCode.PermissionDenied,
+    {
+      stage,
+      ...metadata,
+      expectedCompanyId,
+      actualCompanyId,
+    }
+  );
 }

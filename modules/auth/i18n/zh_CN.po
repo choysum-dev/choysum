@@ -1,0 +1,1502 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#: service/models/_user_field_rule_eval.ts:136
+msgctxt "service/models/_user_field_rule_eval"
+msgid "Model does not exist"
+msgstr "模型不存在"
+
+#: service/models/_user_lifecycle_auth.ts:189 service/models/_user_lifecycle_auth.ts:279
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Account is disabled"
+msgstr "账户已禁用"
+
+#: service/models/_user_lifecycle_auth.ts:72
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Email is already registered"
+msgstr "邮箱已被注册"
+
+#: service/models/_user_lifecycle_auth.ts:265 service/models/_user_lifecycle_auth.ts:299
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Invalid token payload: missing user id"
+msgstr "无效的令牌载荷：缺少用户 ID"
+
+#: service/models/_user_lifecycle_auth.ts:110
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Registration failed: Main Company (Code=MAIN) was not found"
+msgstr "注册失败：未找到主公司（Code=MAIN）"
+
+#: service/models/_user_lifecycle_auth.ts:135
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
+msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
+
+#: service/models/_user_lifecycle_auth.ts:273
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "User not found"
+msgstr "用户不存在"
+
+#: service/models/_user_lifecycle_auth.ts:173 service/models/_user_lifecycle_auth.ts:180
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "User not found or password is incorrect"
+msgstr "用户不存在或密码错误"
+
+#: service/models/_user_lifecycle_auth.ts:88
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "User registration failed: missing user id"
+msgstr "用户注册失败：缺少用户 ID"
+
+#: service/models/_user_lifecycle_auth.ts:33
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Username and password are required"
+msgstr "用户名和密码不能为空"
+
+#: service/models/_user_lifecycle_auth.ts:60
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Username is already in use"
+msgstr "用户名已被占用"
+
+#: service/models/_user_lifecycle_auth.ts:53
+msgctxt "service/models/_user_lifecycle_auth"
+msgid "Username is required"
+msgstr "用户名不能为空"
+
+#: service/models/session.ts:75
+msgctxt "service/models/session"
+msgid "Failed to revoke session"
+msgstr "撤销会话失败"
+
+#: service/models/session.ts:104
+msgctxt "service/models/session"
+msgid "Failed to revoke user sessions"
+msgstr "撤销用户会话失败"
+
+#: service/models/token.ts:130 service/models/token.ts:179 service/models/token.ts:201 service/models/token.ts:227 service/models/token.ts:273 service/models/token.ts:83
+msgctxt "service/models/token"
+msgid "Auth service is disabled"
+msgstr "认证服务已禁用"
+
+#: service/models/token.ts:118
+msgctxt "service/models/token"
+msgid "Failed to create token pair"
+msgstr "创建令牌对失败"
+
+#: service/models/token.ts:167
+msgctxt "service/models/token"
+msgid "Failed to refresh tokens"
+msgstr "刷新令牌失败"
+
+#: service/models/token.ts:189
+msgctxt "service/models/token"
+msgid "Failed to revoke token"
+msgstr "撤销令牌失败"
+
+#: service/models/token.ts:261
+msgctxt "service/models/token"
+msgid "Failed to revoke user access tokens"
+msgstr "撤销用户访问令牌失败"
+
+#: service/models/token.ts:211
+msgctxt "service/models/token"
+msgid "Failed to revoke user tokens"
+msgstr "撤销用户令牌失败"
+
+#: service/models/token.ts:283
+msgctxt "service/models/token"
+msgid "Token validation failed"
+msgstr "令牌校验失败"
+
+#: service/models/token.ts:234
+msgctxt "service/models/token"
+msgid "userId is required"
+msgstr "userId 不能为空"
+
+#: service/models/user.ts:745
+msgctxt "service/models/user"
+msgid "Failed to compute field rule spec"
+msgstr "计算字段规则规格失败"
+
+#: service/models/user.ts:726
+msgctxt "service/models/user"
+msgid "Invalid model full name; expected \"<app>.<Model>\""
+msgstr "无效的模型全名；期望 \"<app>.<Model>\""
+
+#: service/models/user.ts:483
+msgctxt "service/models/user"
+msgid "Logout failed"
+msgstr "退出失败"
+
+#: service/models/user.ts:710
+msgctxt "service/models/user"
+msgid "Missing identity information (userId)"
+msgstr "缺少身份信息（userId）"
+
+#: service/models/user.ts:718
+msgctxt "service/models/user"
+msgid "Missing model name (model)"
+msgstr "缺少模型名称（model）"
+
+#: service/models/user.ts:455
+msgctxt "service/models/user"
+msgid "Switch company scope failed"
+msgstr "切换公司范围失败"
+
+#: service/models/user.ts:472
+msgctxt "service/models/user"
+msgid "Token is required"
+msgstr "令牌不能为空"
+
+#: service/models/user.ts:303
+msgctxt "service/models/user"
+msgid "Token refresh failed"
+msgstr "令牌刷新失败"
+
+#: service/models/user.ts:322
+msgctxt "service/models/user"
+msgid "User is not logged in"
+msgstr "用户未登录"
+
+#: service/models/user.ts:339
+msgctxt "service/models/user"
+msgid "activeCompanyId cannot be empty"
+msgstr "activeCompanyId 不能为空"
+
+#: service/models/user.ts:390
+msgctxt "service/models/user"
+msgid "activeCompanyId is outside the allowed company scope"
+msgstr "activeCompanyId 不在允许的公司范围内"
+
+#: service/models/user.ts:405
+msgctxt "service/models/user"
+msgid "activeCompanyId must be included in enabledCompanyIds"
+msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
+
+#: service/models/user.ts:374
+msgctxt "service/models/user"
+msgid "enabledCompanyIds contains an unauthorized company"
+msgstr "enabledCompanyIds 包含未授权的公司"
+
+#: service/models/user.ts:358
+msgctxt "service/models/user"
+msgid "enabledCompanyIds must be a string[] or omitted"
+msgstr "enabledCompanyIds 必须是 string[] 或省略"
+
+#: service/models/user.ts:266
+msgctxt "service/models/user@Login"
+msgid "Login failed: unable to create token pair"
+msgstr "登录失败：无法创建令牌对"
+
+#: service/models/user.ts:235
+msgctxt "service/models/user@Register"
+msgid "User registration failed"
+msgstr "用户注册失败"
+
+#: web/components/layout/OHeader.vue:5
+msgctxt "web/components/layout/OHeader"
+msgid "Log In"
+msgstr "登录"
+
+#: web/components/layout/OHeader.vue:24
+msgctxt "web/components/layout/OHeader"
+msgid "Log Out"
+msgstr "退出登录"
+
+#: web/components/layout/OHeader.vue:4
+msgctxt "web/components/layout/OHeader"
+msgid "Log in"
+msgstr "登录"
+
+#: web/components/layout/OHeader.vue:7
+msgctxt "web/components/layout/OHeader"
+msgid "Notifications"
+msgstr "通知"
+
+#: web/components/layout/OHeader.vue:18
+msgctxt "web/components/layout/OHeader"
+msgid "Profile"
+msgstr "个人资料"
+
+#: web/components/layout/OHeader.vue:21
+msgctxt "web/components/layout/OHeader"
+msgid "Settings"
+msgstr "设置"
+
+#: web/components/layout/OHeader.vue:12
+msgctxt "web/components/layout/OHeader"
+msgid "User menu"
+msgstr "用户菜单"
+
+#: web/components/layout/OSwitchCompany.vue:25
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Apply"
+msgstr "应用"
+
+#: web/components/layout/OSwitchCompany.vue:17
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Available Companies"
+msgstr "可用公司"
+
+#: web/components/layout/OSwitchCompany.vue:135
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Company"
+msgstr "公司"
+
+#: web/components/layout/OSwitchCompany.vue:11
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Current Company"
+msgstr "当前公司"
+
+#: web/components/layout/OSwitchCompany.vue:18
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Select available companies"
+msgstr "选择可用公司"
+
+#: web/components/layout/OSwitchCompany.vue:12
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Select company"
+msgstr "选择公司"
+
+#: web/components/layout/OSwitchCompany.vue:4
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Switch company"
+msgstr "切换公司"
+
+#: web/menu/menus.ts:18
+msgctxt "web/menu/menus"
+msgid "Access Control"
+msgstr "访问控制"
+
+#: web/menu/menus.ts:28
+msgctxt "web/menu/menus"
+msgid "Role List"
+msgstr "角色列表"
+
+#: web/menu/menus.ts:33
+msgctxt "web/menu/menus"
+msgid "Session List"
+msgstr "会话列表"
+
+#: web/menu/menus.ts:38
+msgctxt "web/menu/menus"
+msgid "Token List"
+msgstr "令牌列表"
+
+#: web/menu/menus.ts:23
+msgctxt "web/menu/menus"
+msgid "User List"
+msgstr "用户列表"
+
+#: web/pages/Login.vue:32
+msgctxt "web/pages/Login"
+msgid "Don't have an account?"
+msgstr "还没有账号？"
+
+#: web/pages/Login.vue:20 web/pages/Login.vue:48
+msgctxt "web/pages/Login"
+msgid "Enter password"
+msgstr "请输入密码"
+
+#: web/pages/Login.vue:16 web/pages/Login.vue:41
+msgctxt "web/pages/Login"
+msgid "Enter username"
+msgstr "请输入用户名"
+
+#: web/pages/Login.vue:28
+msgctxt "web/pages/Login"
+msgid "Log In"
+msgstr "登录"
+
+#: web/pages/Login.vue:115
+msgctxt "web/pages/Login"
+msgid "Login failed. Please try again later."
+msgstr "登录失败，请稍后重试。"
+
+#: web/pages/Login.vue:19
+msgctxt "web/pages/Login"
+msgid "Password"
+msgstr "密码"
+
+#: web/pages/Login.vue:33
+msgctxt "web/pages/Login"
+msgid "Register now"
+msgstr "立即注册"
+
+#: web/pages/Login.vue:24
+msgctxt "web/pages/Login"
+msgid "Remember me"
+msgstr "记住我"
+
+#: web/pages/Login.vue:6
+msgctxt "web/pages/Login"
+msgid "User Login"
+msgstr "用户登录"
+
+#: web/pages/Login.vue:15
+msgctxt "web/pages/Login"
+msgid "Username"
+msgstr "用户名"
+
+#: web/pages/Logout.vue:14 web/pages/Logout.vue:21
+msgctxt "web/pages/Logout"
+msgid "Back to Home"
+msgstr "返回首页"
+
+#: web/pages/Logout.vue:22
+msgctxt "web/pages/Logout"
+msgid "Back to Login"
+msgstr "返回登录"
+
+#: web/pages/Logout.vue:13
+msgctxt "web/pages/Logout"
+msgid "Log In Again"
+msgstr "重新登录"
+
+#: web/pages/Logout.vue:26
+msgctxt "web/pages/Logout"
+msgid "Please wait while your account is being signed out securely..."
+msgstr "请稍候，正在安全退出您的账户…"
+
+#: web/pages/Logout.vue:20
+msgctxt "web/pages/Logout"
+msgid "Retry"
+msgstr "重试"
+
+#: web/pages/Logout.vue:6
+msgctxt "web/pages/Logout"
+msgid "Sign Out"
+msgstr "退出登录"
+
+#: web/pages/Logout.vue:18
+msgctxt "web/pages/Logout"
+msgid "Sign-out Failed"
+msgstr "退出失败"
+
+#: web/pages/Logout.vue:11
+msgctxt "web/pages/Logout"
+msgid "Signed Out Successfully"
+msgstr "已成功退出"
+
+#: web/pages/Logout.vue:26
+msgctxt "web/pages/Logout"
+msgid "Signing Out"
+msgstr "正在退出"
+
+#: web/pages/Logout.vue:20
+msgctxt "web/pages/Logout"
+msgid "Thank you for using our service. Redirecting to the login page in %s seconds..."
+msgstr "感谢使用，将在 %s 秒后跳转到登录页…"
+
+#: web/pages/Logout.vue:50
+msgctxt "web/pages/Logout"
+msgid "Unknown error occurred during logout"
+msgstr "退出时发生未知错误"
+
+#: web/pages/Register.vue:46
+msgctxt "web/pages/Register"
+msgid "Already have an account?"
+msgstr "已有账号？"
+
+#: web/pages/Register.vue:26
+msgctxt "web/pages/Register"
+msgid "Confirm Password"
+msgstr "确认密码"
+
+#: web/pages/Register.vue:41 web/pages/Register.vue:6
+msgctxt "web/pages/Register"
+msgid "Create Account"
+msgstr "创建账户"
+
+#: web/pages/Register.vue:18
+msgctxt "web/pages/Register"
+msgid "Email"
+msgstr "邮箱"
+
+#: web/pages/Register.vue:54
+msgctxt "web/pages/Register"
+msgid "Enter a valid email address"
+msgstr "请输入有效的邮箱地址"
+
+#: web/pages/Register.vue:19 web/pages/Register.vue:52
+msgctxt "web/pages/Register"
+msgid "Enter email address"
+msgstr "请输入邮箱地址"
+
+#: web/pages/Register.vue:23 web/pages/Register.vue:65
+msgctxt "web/pages/Register"
+msgid "Enter password"
+msgstr "请输入密码"
+
+#: web/pages/Register.vue:15 web/pages/Register.vue:37
+msgctxt "web/pages/Register"
+msgid "Enter username"
+msgstr "请输入用户名"
+
+#: web/pages/Register.vue:106
+msgctxt "web/pages/Register"
+msgid "Enter your name"
+msgstr "请输入姓名"
+
+#: web/pages/Register.vue:32
+msgctxt "web/pages/Register"
+msgid "I have read and agree to"
+msgstr "我已阅读并同意"
+
+#: web/pages/Register.vue:47
+msgctxt "web/pages/Register"
+msgid "Log in now"
+msgstr "立即登录"
+
+#: web/pages/Register.vue:22
+msgctxt "web/pages/Register"
+msgid "Password"
+msgstr "密码"
+
+#: web/pages/Register.vue:67
+msgctxt "web/pages/Register"
+msgid "Password must be at least 6 characters"
+msgstr "密码至少 6 个字符"
+
+#: web/pages/Register.vue:84
+msgctxt "web/pages/Register"
+msgid "Passwords do not match"
+msgstr "两次输入的密码不一致"
+
+#: web/pages/Register.vue:35
+msgctxt "web/pages/Register"
+msgid "Privacy Policy"
+msgstr "隐私政策"
+
+#: web/pages/Register.vue:27 web/pages/Register.vue:82
+msgctxt "web/pages/Register"
+msgid "Re-enter password"
+msgstr "请再次输入密码"
+
+#: web/pages/Register.vue:131
+msgctxt "web/pages/Register"
+msgid "Registration failed. Please try again later."
+msgstr "注册失败，请稍后重试。"
+
+#: web/pages/Register.vue:33
+msgctxt "web/pages/Register"
+msgid "Terms of Service"
+msgstr "服务条款"
+
+#: web/pages/Register.vue:14
+msgctxt "web/pages/Register"
+msgid "Username"
+msgstr "用户名"
+
+#: web/pages/Register.vue:41
+msgctxt "web/pages/Register"
+msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
+msgstr "用户名只能包含字母、数字、下划线、连字符和点"
+
+#: web/pages/Register.vue:39
+msgctxt "web/pages/Register"
+msgid "Username must be at least 3 characters"
+msgstr "用户名至少 3 个字符"
+
+#: web/pages/Register.vue:95
+msgctxt "web/pages/Register"
+msgid "You must agree to the Terms of Service and Privacy Policy"
+msgstr "您必须同意服务条款和隐私政策"
+
+#: web/pages/Register.vue:34
+msgctxt "web/pages/Register"
+msgid "and"
+msgstr "和"
+
+#: web/route/routes.ts:95
+msgctxt "web/route/routes"
+msgid "Create Role"
+msgstr "新建角色"
+
+#: web/route/routes.ts:124
+msgctxt "web/route/routes"
+msgid "Create Session"
+msgstr "新建会话"
+
+#: web/route/routes.ts:155
+msgctxt "web/route/routes"
+msgid "Create Token"
+msgstr "新建令牌"
+
+#: web/route/routes.ts:64
+msgctxt "web/route/routes"
+msgid "Create User"
+msgstr "新建用户"
+
+#: web/route/routes.ts:16
+msgctxt "web/route/routes"
+msgid "Login"
+msgstr "登录"
+
+#: web/route/routes.ts:28
+msgctxt "web/route/routes"
+msgid "Logout"
+msgstr "退出登录"
+
+#: web/route/routes.ts:178
+msgctxt "web/route/routes"
+msgid "Register"
+msgstr "注册"
+
+#: web/route/routes.ts:85
+msgctxt "web/route/routes"
+msgid "Role Details"
+msgstr "角色详情"
+
+#: web/route/routes.ts:76
+msgctxt "web/route/routes"
+msgid "Role Management"
+msgstr "角色管理"
+
+#: web/route/routes.ts:114
+msgctxt "web/route/routes"
+msgid "Session Details"
+msgstr "会话详情"
+
+#: web/route/routes.ts:105
+msgctxt "web/route/routes"
+msgid "Session Management"
+msgstr "会话管理"
+
+#: web/route/routes.ts:165
+msgctxt "web/route/routes"
+msgid "Token Board"
+msgstr "令牌看板"
+
+#: web/route/routes.ts:145
+msgctxt "web/route/routes"
+msgid "Token Details"
+msgstr "令牌详情"
+
+#: web/route/routes.ts:136
+msgctxt "web/route/routes"
+msgid "Token Management"
+msgstr "令牌管理"
+
+#: web/route/routes.ts:54
+msgctxt "web/route/routes"
+msgid "User Details"
+msgstr "用户详情"
+
+#: web/route/routes.ts:45
+msgctxt "web/route/routes"
+msgid "User List"
+msgstr "用户列表"
+
+#: web/stores/auth/actions.ts:335
+msgctxt "web/stores/auth/actions"
+msgid "Cannot load user details: missing userId"
+msgstr "无法加载用户详情：缺少 userId"
+
+#: web/stores/auth/actions.ts:403
+msgctxt "web/stores/auth/actions"
+msgid "Failed to initialize auth"
+msgstr "初始化认证失败"
+
+#: web/stores/auth/actions.ts:73
+msgctxt "web/stores/auth/actions"
+msgid "Failed to load permission state"
+msgstr "加载权限状态失败"
+
+#: web/stores/auth/actions.ts:348
+msgctxt "web/stores/auth/actions"
+msgid "Failed to load user details"
+msgstr "加载用户详情失败"
+
+#: web/stores/auth/actions.ts:315
+msgctxt "web/stores/auth/actions"
+msgid "Failed to refresh token"
+msgstr "刷新令牌失败"
+
+#: web/stores/auth/actions.ts:119
+msgctxt "web/stores/auth/actions"
+msgid "Failed to switch company scope"
+msgstr "切换公司范围失败"
+
+#: web/stores/auth/actions.ts:185
+msgctxt "web/stores/auth/actions"
+msgid "Invalid login response"
+msgstr "登录响应无效"
+
+#: web/stores/auth/actions.ts:214
+msgctxt "web/stores/auth/actions"
+msgid "Login failed"
+msgstr "登录失败"
+
+#: web/stores/auth/actions.ts:247
+msgctxt "web/stores/auth/actions"
+msgid "Logout failed, but local state was cleared"
+msgstr "退出失败，但本地状态已清除"
+
+#: web/stores/auth/actions.ts:271
+msgctxt "web/stores/auth/actions"
+msgid "No refresh token is available"
+msgstr "没有可用的刷新令牌"
+
+#: web/stores/auth/actions.ts:86
+msgctxt "web/stores/auth/actions"
+msgid "Not authenticated; cannot switch company scope"
+msgstr "未登录，无法切换公司范围"
+
+#: web/stores/auth/actions.ts:283
+msgctxt "web/stores/auth/actions"
+msgid "RefreshTokens returned an invalid response"
+msgstr "刷新令牌返回了无效响应"
+
+#: web/stores/auth/actions.ts:145
+msgctxt "web/stores/auth/actions"
+msgid "Registration failed"
+msgstr "注册失败"
+
+#: web/stores/auth/actions.ts:236
+msgctxt "web/stores/auth/actions"
+msgid "Server-side logout failed, but local state was cleared"
+msgstr "服务端退出失败，但本地状态已清除"
+
+#: web/stores/auth/actions.ts:94
+msgctxt "web/stores/auth/actions"
+msgid "SwitchCompanyScope returned an invalid response"
+msgstr "切换公司范围返回了无效响应"
+
+#: web/views/RoleFormView.vue:56
+msgctxt "web/views/RoleFormView"
+msgid "Accessible UI Resources"
+msgstr "可访问的界面资源"
+
+#: web/views/RoleFormView.vue:16
+msgctxt "web/views/RoleFormView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/RoleFormView.vue:73
+msgctxt "web/views/RoleFormView"
+msgid "Advanced Mode"
+msgstr "高级模式"
+
+#: web/views/RoleFormView.vue:106
+msgctxt "web/views/RoleFormView"
+msgid "Application Scope"
+msgstr "应用范围"
+
+#: web/views/RoleFormView.vue:4
+msgctxt "web/views/RoleFormView"
+msgid "Basic Information"
+msgstr "基本信息"
+
+#: web/views/RoleFormView.vue:19
+msgctxt "web/views/RoleFormView"
+msgid "Built-in"
+msgstr "内置"
+
+#: web/views/RoleFormView.vue:13 web/views/RoleFormView.vue:52
+msgctxt "web/views/RoleFormView"
+msgid "Code"
+msgstr "编码"
+
+#: web/views/RoleFormView.vue:50
+msgctxt "web/views/RoleFormView"
+msgid "Copy Role"
+msgstr "复制角色"
+
+#: web/views/RoleFormView.vue:81
+msgctxt "web/views/RoleFormView"
+msgid "Create"
+msgstr "创建"
+
+#: web/views/RoleFormView.vue:50
+msgctxt "web/views/RoleFormView"
+msgid "Create Role"
+msgstr "新建角色"
+
+#: web/views/RoleFormView.vue:31
+msgctxt "web/views/RoleFormView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/RoleFormView.vue:82
+msgctxt "web/views/RoleFormView"
+msgid "Delete"
+msgstr "删除"
+
+#: web/views/RoleFormView.vue:50
+msgctxt "web/views/RoleFormView"
+msgid "Delete Role"
+msgstr "删除角色"
+
+#: web/views/RoleFormView.vue:22
+msgctxt "web/views/RoleFormView"
+msgid "Description"
+msgstr "描述"
+
+#: web/views/RoleFormView.vue:10
+msgctxt "web/views/RoleFormView"
+msgid "Display Name"
+msgstr "显示名称"
+
+#: web/views/RoleFormView.vue:50
+msgctxt "web/views/RoleFormView"
+msgid "Edit Role"
+msgstr "编辑角色"
+
+#: web/views/RoleFormView.vue:89
+msgctxt "web/views/RoleFormView"
+msgid "Field"
+msgstr "字段"
+
+#: web/views/RoleFormView.vue:86
+msgctxt "web/views/RoleFormView"
+msgid "Field Rules (Manual Maintenance)"
+msgstr "字段规则（手动维护）"
+
+#: web/views/RoleFormView.vue:78
+msgctxt "web/views/RoleFormView"
+msgid "Filter Condition"
+msgstr "过滤条件"
+
+#: web/views/RoleFormView.vue:46
+msgctxt "web/views/RoleFormView"
+msgid "Full Name"
+msgstr "全名"
+
+#: web/views/RoleFormView.vue:44
+msgctxt "web/views/RoleFormView"
+msgid "ID"
+msgstr "ID"
+
+#: web/views/RoleFormView.vue:49
+msgctxt "web/views/RoleFormView"
+msgid "Included Roles"
+msgstr "包含的角色"
+
+#: web/views/RoleFormView.vue:95
+msgctxt "web/views/RoleFormView"
+msgid "Method Access (Manual Maintenance)"
+msgstr "方法访问（手动维护）"
+
+#: web/views/RoleFormView.vue:105 web/views/RoleFormView.vue:99
+msgctxt "web/views/RoleFormView"
+msgid "Mode"
+msgstr "模式"
+
+#: web/views/RoleFormView.vue:77 web/views/RoleFormView.vue:88 web/views/RoleFormView.vue:97
+msgctxt "web/views/RoleFormView"
+msgid "Model"
+msgstr "模型"
+
+#: web/views/RoleFormView.vue:51 web/views/RoleFormView.vue:7
+msgctxt "web/views/RoleFormView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/RoleFormView.vue:79 web/views/RoleFormView.vue:90
+msgctxt "web/views/RoleFormView"
+msgid "Read"
+msgstr "读"
+
+#: web/views/RoleFormView.vue:75
+msgctxt "web/views/RoleFormView"
+msgid "Record Rules (Manual Maintenance)"
+msgstr "记录规则（手动维护）"
+
+#: web/views/RoleFormView.vue:40
+msgctxt "web/views/RoleFormView"
+msgid "Related Data"
+msgstr "关联数据"
+
+#: web/views/RoleFormView.vue:33
+msgctxt "web/views/RoleFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/RoleFormView.vue:50
+msgctxt "web/views/RoleFormView"
+msgid "Role"
+msgstr "角色"
+
+#: web/views/RoleFormView.vue:50
+msgctxt "web/views/RoleFormView"
+msgid "Select Role"
+msgstr "选择角色"
+
+#: web/views/RoleFormView.vue:43
+msgctxt "web/views/RoleFormView"
+msgid "Select User"
+msgstr "选择用户"
+
+#: web/views/RoleFormView.vue:98
+msgctxt "web/views/RoleFormView"
+msgid "Service"
+msgstr "服务"
+
+#: web/views/RoleFormView.vue:28
+msgctxt "web/views/RoleFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/RoleFormView.vue:107
+msgctxt "web/views/RoleFormView"
+msgid "UI Resource"
+msgstr "界面资源"
+
+#: web/views/RoleFormView.vue:55
+msgctxt "web/views/RoleFormView"
+msgid "UI Resource Access"
+msgstr "界面资源访问"
+
+#: web/views/RoleFormView.vue:103
+msgctxt "web/views/RoleFormView"
+msgid "UI Resource Details (Manual Maintenance)"
+msgstr "界面资源明细（手动维护）"
+
+#: web/views/RoleFormView.vue:34
+msgctxt "web/views/RoleFormView"
+msgid "Updated At"
+msgstr "更新时间"
+
+#: web/views/RoleFormView.vue:45
+msgctxt "web/views/RoleFormView"
+msgid "Username"
+msgstr "用户名"
+
+#: web/views/RoleFormView.vue:42
+msgctxt "web/views/RoleFormView"
+msgid "Users"
+msgstr "用户"
+
+#: web/views/RoleFormView.vue:80 web/views/RoleFormView.vue:91
+msgctxt "web/views/RoleFormView"
+msgid "Write"
+msgstr "写"
+
+#: web/views/RoleListView.vue:8
+msgctxt "web/views/RoleListView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/RoleListView.vue:9
+msgctxt "web/views/RoleListView"
+msgid "Built-in"
+msgstr "内置"
+
+#: web/views/RoleListView.vue:6
+msgctxt "web/views/RoleListView"
+msgid "Code"
+msgstr "编码"
+
+#: web/views/RoleListView.vue:34
+msgctxt "web/views/RoleListView"
+msgid "Copy Role"
+msgstr "复制角色"
+
+#: web/views/RoleListView.vue:34
+msgctxt "web/views/RoleListView"
+msgid "Create Role"
+msgstr "新建角色"
+
+#: web/views/RoleListView.vue:10
+msgctxt "web/views/RoleListView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/RoleListView.vue:34
+msgctxt "web/views/RoleListView"
+msgid "Delete Role"
+msgstr "删除角色"
+
+#: web/views/RoleListView.vue:7
+msgctxt "web/views/RoleListView"
+msgid "Description"
+msgstr "描述"
+
+#: web/views/RoleListView.vue:34
+msgctxt "web/views/RoleListView"
+msgid "Edit Role"
+msgstr "编辑角色"
+
+#: web/views/RoleListView.vue:5
+msgctxt "web/views/RoleListView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/RoleListView.vue:34
+msgctxt "web/views/RoleListView"
+msgid "Role"
+msgstr "角色"
+
+#: web/views/SessionFormView.vue:10
+msgctxt "web/views/SessionFormView"
+msgid "Access Token ID"
+msgstr "访问令牌 ID"
+
+#: web/views/SessionFormView.vue:40
+msgctxt "web/views/SessionFormView"
+msgid "Copy Session"
+msgstr "复制会话"
+
+#: web/views/SessionFormView.vue:40
+msgctxt "web/views/SessionFormView"
+msgid "Create Session"
+msgstr "新建会话"
+
+#: web/views/SessionFormView.vue:34
+msgctxt "web/views/SessionFormView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/SessionFormView.vue:40
+msgctxt "web/views/SessionFormView"
+msgid "Delete Session"
+msgstr "删除会话"
+
+#: web/views/SessionFormView.vue:13
+msgctxt "web/views/SessionFormView"
+msgid "Device Info"
+msgstr "设备信息"
+
+#: web/views/SessionFormView.vue:40
+msgctxt "web/views/SessionFormView"
+msgid "Edit Session"
+msgstr "编辑会话"
+
+#: web/views/SessionFormView.vue:19
+msgctxt "web/views/SessionFormView"
+msgid "Expires At"
+msgstr "过期时间"
+
+#: web/views/SessionFormView.vue:16
+msgctxt "web/views/SessionFormView"
+msgid "IP Address"
+msgstr "IP 地址"
+
+#: web/views/SessionFormView.vue:22
+msgctxt "web/views/SessionFormView"
+msgid "Last Activity"
+msgstr "最近活动"
+
+#: web/views/SessionFormView.vue:7
+msgctxt "web/views/SessionFormView"
+msgid "Select User"
+msgstr "选择用户"
+
+#: web/views/SessionFormView.vue:40
+msgctxt "web/views/SessionFormView"
+msgid "Session"
+msgstr "会话"
+
+#: web/views/SessionFormView.vue:4
+msgctxt "web/views/SessionFormView"
+msgid "Session Information"
+msgstr "会话信息"
+
+#: web/views/SessionFormView.vue:25
+msgctxt "web/views/SessionFormView"
+msgid "Status"
+msgstr "状态"
+
+#: web/views/SessionFormView.vue:31
+msgctxt "web/views/SessionFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/SessionFormView.vue:37
+msgctxt "web/views/SessionFormView"
+msgid "Updated At"
+msgstr "更新时间"
+
+#: web/views/SessionFormView.vue:7
+msgctxt "web/views/SessionFormView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/SessionListView.vue:33
+msgctxt "web/views/SessionListView"
+msgid "Copy Session"
+msgstr "复制会话"
+
+#: web/views/SessionListView.vue:33
+msgctxt "web/views/SessionListView"
+msgid "Create Session"
+msgstr "新建会话"
+
+#: web/views/SessionListView.vue:10
+msgctxt "web/views/SessionListView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/SessionListView.vue:33
+msgctxt "web/views/SessionListView"
+msgid "Delete Session"
+msgstr "删除会话"
+
+#: web/views/SessionListView.vue:33
+msgctxt "web/views/SessionListView"
+msgid "Edit Session"
+msgstr "编辑会话"
+
+#: web/views/SessionListView.vue:9
+msgctxt "web/views/SessionListView"
+msgid "Expires At"
+msgstr "过期时间"
+
+#: web/views/SessionListView.vue:6
+msgctxt "web/views/SessionListView"
+msgid "IP Address"
+msgstr "IP 地址"
+
+#: web/views/SessionListView.vue:8
+msgctxt "web/views/SessionListView"
+msgid "Last Activity"
+msgstr "最近活动"
+
+#: web/views/SessionListView.vue:33
+msgctxt "web/views/SessionListView"
+msgid "Session"
+msgstr "会话"
+
+#: web/views/SessionListView.vue:7
+msgctxt "web/views/SessionListView"
+msgid "Status"
+msgstr "状态"
+
+#: web/views/SessionListView.vue:5
+msgctxt "web/views/SessionListView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/TokenFormView.vue:43
+msgctxt "web/views/TokenFormView"
+msgid "Copy Token"
+msgstr "复制令牌"
+
+#: web/views/TokenFormView.vue:43
+msgctxt "web/views/TokenFormView"
+msgid "Create Token"
+msgstr "新建令牌"
+
+#: web/views/TokenFormView.vue:37
+msgctxt "web/views/TokenFormView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/TokenFormView.vue:43
+msgctxt "web/views/TokenFormView"
+msgid "Delete Token"
+msgstr "删除令牌"
+
+#: web/views/TokenFormView.vue:10
+msgctxt "web/views/TokenFormView"
+msgid "Display Name"
+msgstr "显示名称"
+
+#: web/views/TokenFormView.vue:43
+msgctxt "web/views/TokenFormView"
+msgid "Edit Token"
+msgstr "编辑令牌"
+
+#: web/views/TokenFormView.vue:19
+msgctxt "web/views/TokenFormView"
+msgid "Expires At"
+msgstr "过期时间"
+
+#: web/views/TokenFormView.vue:25
+msgctxt "web/views/TokenFormView"
+msgid "Revocation Reason"
+msgstr "撤销原因"
+
+#: web/views/TokenFormView.vue:22
+msgctxt "web/views/TokenFormView"
+msgid "Revoked"
+msgstr "已撤销"
+
+#: web/views/TokenFormView.vue:34
+msgctxt "web/views/TokenFormView"
+msgid "Revoked At"
+msgstr "撤销时间"
+
+#: web/views/TokenFormView.vue:7
+msgctxt "web/views/TokenFormView"
+msgid "Select User"
+msgstr "选择用户"
+
+#: web/views/TokenFormView.vue:31
+msgctxt "web/views/TokenFormView"
+msgid "System Information"
+msgstr "系统信息"
+
+#: web/views/TokenFormView.vue:43
+msgctxt "web/views/TokenFormView"
+msgid "Token"
+msgstr "令牌"
+
+#: web/views/TokenFormView.vue:16
+msgctxt "web/views/TokenFormView"
+msgid "Token ID"
+msgstr "令牌 ID"
+
+#: web/views/TokenFormView.vue:4
+msgctxt "web/views/TokenFormView"
+msgid "Token Information"
+msgstr "令牌信息"
+
+#: web/views/TokenFormView.vue:13
+msgctxt "web/views/TokenFormView"
+msgid "Type"
+msgstr "类型"
+
+#: web/views/TokenFormView.vue:40
+msgctxt "web/views/TokenFormView"
+msgid "Updated At"
+msgstr "更新时间"
+
+#: web/views/TokenFormView.vue:7
+msgctxt "web/views/TokenFormView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/TokenKanbanView.vue:35
+msgctxt "web/views/TokenKanbanView"
+msgid "Expires"
+msgstr "过期"
+
+#: web/views/TokenKanbanView.vue:7
+msgctxt "web/views/TokenKanbanView"
+msgid "Icon View"
+msgstr "图标视图"
+
+#: web/views/TokenKanbanView.vue:6
+msgctxt "web/views/TokenKanbanView"
+msgid "Kanban View"
+msgstr "看板视图"
+
+#: web/views/TokenKanbanView.vue:5
+msgctxt "web/views/TokenKanbanView"
+msgid "List View"
+msgstr "列表视图"
+
+#: web/views/TokenKanbanView.vue:41
+msgctxt "web/views/TokenKanbanView"
+msgid "No tokens in this lane"
+msgstr "此列暂无令牌"
+
+#: web/views/TokenKanbanView.vue:65 web/views/TokenKanbanView.vue:68
+msgctxt "web/views/TokenKanbanView"
+msgid "Not Revoked"
+msgstr "未撤销"
+
+#: web/views/TokenKanbanView.vue:64 web/views/TokenKanbanView.vue:67
+msgctxt "web/views/TokenKanbanView"
+msgid "Revoked"
+msgstr "已撤销"
+
+#: web/views/TokenKanbanView.vue:36
+msgctxt "web/views/TokenKanbanView"
+msgid "Revoked At"
+msgstr "撤销时间"
+
+#: web/views/TokenKanbanView.vue:33
+msgctxt "web/views/TokenKanbanView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/TokenListView.vue:36
+msgctxt "web/views/TokenListView"
+msgid "Copy Token"
+msgstr "复制令牌"
+
+#: web/views/TokenListView.vue:36
+msgctxt "web/views/TokenListView"
+msgid "Create Token"
+msgstr "新建令牌"
+
+#: web/views/TokenListView.vue:19
+msgctxt "web/views/TokenListView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/TokenListView.vue:36
+msgctxt "web/views/TokenListView"
+msgid "Delete Token"
+msgstr "删除令牌"
+
+#: web/views/TokenListView.vue:36
+msgctxt "web/views/TokenListView"
+msgid "Edit Token"
+msgstr "编辑令牌"
+
+#: web/views/TokenListView.vue:16
+msgctxt "web/views/TokenListView"
+msgid "Expires At"
+msgstr "过期时间"
+
+#: web/views/TokenListView.vue:7
+msgctxt "web/views/TokenListView"
+msgid "Icon View"
+msgstr "图标视图"
+
+#: web/views/TokenListView.vue:6
+msgctxt "web/views/TokenListView"
+msgid "Kanban View"
+msgstr "看板视图"
+
+#: web/views/TokenListView.vue:5
+msgctxt "web/views/TokenListView"
+msgid "List View"
+msgstr "列表视图"
+
+#: web/views/TokenListView.vue:17
+msgctxt "web/views/TokenListView"
+msgid "Revoked"
+msgstr "已撤销"
+
+#: web/views/TokenListView.vue:18
+msgctxt "web/views/TokenListView"
+msgid "Revoked At"
+msgstr "撤销时间"
+
+#: web/views/TokenListView.vue:36
+msgctxt "web/views/TokenListView"
+msgid "Token"
+msgstr "令牌"
+
+#: web/views/TokenListView.vue:15
+msgctxt "web/views/TokenListView"
+msgid "Type"
+msgstr "类型"
+
+#: web/views/TokenListView.vue:14
+msgctxt "web/views/TokenListView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/UserFormView.vue:58
+msgctxt "web/views/UserFormView"
+msgid "Accessible Companies"
+msgstr "可访问公司"
+
+#: web/views/UserFormView.vue:4
+msgctxt "web/views/UserFormView"
+msgid "Account Information"
+msgstr "账户信息"
+
+#: web/views/UserFormView.vue:19
+msgctxt "web/views/UserFormView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/UserFormView.vue:7
+msgctxt "web/views/UserFormView"
+msgid "Avatar"
+msgstr "头像"
+
+#: web/views/UserFormView.vue:37
+msgctxt "web/views/UserFormView"
+msgid "Company"
+msgstr "公司"
+
+#: web/views/UserFormView.vue:52
+msgctxt "web/views/UserFormView"
+msgid "Copy User"
+msgstr "复制用户"
+
+#: web/views/UserFormView.vue:52
+msgctxt "web/views/UserFormView"
+msgid "Create User"
+msgstr "新建用户"
+
+#: web/views/UserFormView.vue:49 web/views/UserFormView.vue:68 web/views/UserFormView.vue:77 web/views/UserFormView.vue:85
+msgctxt "web/views/UserFormView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/UserFormView.vue:52
+msgctxt "web/views/UserFormView"
+msgid "Delete User"
+msgstr "删除用户"
+
+#: web/views/UserFormView.vue:52
+msgctxt "web/views/UserFormView"
+msgid "Edit User"
+msgstr "编辑用户"
+
+#: web/views/UserFormView.vue:13
+msgctxt "web/views/UserFormView"
+msgid "Email"
+msgstr "邮箱"
+
+#: web/views/UserFormView.vue:22
+msgctxt "web/views/UserFormView"
+msgid "First Name"
+msgstr "名"
+
+#: web/views/UserFormView.vue:28
+msgctxt "web/views/UserFormView"
+msgid "Full Name"
+msgstr "全名"
+
+#: web/views/UserFormView.vue:66 web/views/UserFormView.vue:74 web/views/UserFormView.vue:83
+msgctxt "web/views/UserFormView"
+msgid "ID"
+msgstr "ID"
+
+#: web/views/UserFormView.vue:31
+msgctxt "web/views/UserFormView"
+msgid "Language"
+msgstr "语言"
+
+#: web/views/UserFormView.vue:76
+msgctxt "web/views/UserFormView"
+msgid "Last Activity"
+msgstr "最近活动"
+
+#: web/views/UserFormView.vue:46
+msgctxt "web/views/UserFormView"
+msgid "Last Login"
+msgstr "最近登录"
+
+#: web/views/UserFormView.vue:25
+msgctxt "web/views/UserFormView"
+msgid "Last Name"
+msgstr "姓"
+
+#: web/views/UserFormView.vue:67
+msgctxt "web/views/UserFormView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/UserFormView.vue:16
+msgctxt "web/views/UserFormView"
+msgid "Phone"
+msgstr "电话"
+
+#: web/views/UserFormView.vue:40
+msgctxt "web/views/UserFormView"
+msgid "Preferences"
+msgstr "偏好设置"
+
+#: web/views/UserFormView.vue:35
+msgctxt "web/views/UserFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/UserFormView.vue:64
+msgctxt "web/views/UserFormView"
+msgid "Roles"
+msgstr "角色"
+
+#: web/views/UserFormView.vue:58
+msgctxt "web/views/UserFormView"
+msgid "Select Company"
+msgstr "选择公司"
+
+#: web/views/UserFormView.vue:65
+msgctxt "web/views/UserFormView"
+msgid "Select Role"
+msgstr "选择角色"
+
+#: web/views/UserFormView.vue:72
+msgctxt "web/views/UserFormView"
+msgid "Sessions"
+msgstr "会话"
+
+#: web/views/UserFormView.vue:75
+msgctxt "web/views/UserFormView"
+msgid "Status"
+msgstr "状态"
+
+#: web/views/UserFormView.vue:34
+msgctxt "web/views/UserFormView"
+msgid "Timezone"
+msgstr "时区"
+
+#: web/views/UserFormView.vue:81
+msgctxt "web/views/UserFormView"
+msgid "Tokens"
+msgstr "令牌"
+
+#: web/views/UserFormView.vue:84
+msgctxt "web/views/UserFormView"
+msgid "Type"
+msgstr "类型"
+
+#: web/views/UserFormView.vue:52
+msgctxt "web/views/UserFormView"
+msgid "Updated At"
+msgstr "更新时间"
+
+#: web/views/UserFormView.vue:52
+msgctxt "web/views/UserFormView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/UserFormView.vue:10
+msgctxt "web/views/UserFormView"
+msgid "Username"
+msgstr "用户名"
+
+#: web/views/UserListView.vue:6
+msgctxt "web/views/UserListView"
+msgid "Avatar"
+msgstr "头像"
+
+#: web/views/UserListView.vue:8
+msgctxt "web/views/UserListView"
+msgid "Company"
+msgstr "公司"
+
+#: web/views/UserListView.vue:33
+msgctxt "web/views/UserListView"
+msgid "Copy User"
+msgstr "复制用户"
+
+#: web/views/UserListView.vue:33
+msgctxt "web/views/UserListView"
+msgid "Create User"
+msgstr "新建用户"
+
+#: web/views/UserListView.vue:12
+msgctxt "web/views/UserListView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/UserListView.vue:33
+msgctxt "web/views/UserListView"
+msgid "Delete User"
+msgstr "删除用户"
+
+#: web/views/UserListView.vue:33
+msgctxt "web/views/UserListView"
+msgid "Edit User"
+msgstr "编辑用户"
+
+#: web/views/UserListView.vue:9
+msgctxt "web/views/UserListView"
+msgid "Email"
+msgstr "邮箱"
+
+#: web/views/UserListView.vue:11
+msgctxt "web/views/UserListView"
+msgid "Full Name"
+msgstr "全名"
+
+#: web/views/UserListView.vue:10
+msgctxt "web/views/UserListView"
+msgid "Phone"
+msgstr "电话"
+
+#: web/views/UserListView.vue:33
+msgctxt "web/views/UserListView"
+msgid "User"
+msgstr "用户"
+
+#: web/views/UserListView.vue:7
+msgctxt "web/views/UserListView"
+msgid "Username"
+msgstr "用户名"
+
+#: web/views/UserSearchView.vue:4
+msgctxt "web/views/UserSearchView"
+msgid "Active"
+msgstr "启用"

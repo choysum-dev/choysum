@@ -31,6 +31,7 @@ import (
 	"github.com/choysum-dev/choysum/pkg/auth"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/grpc/client"
+	grpcloader "github.com/choysum-dev/choysum/pkg/grpc/loader"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/scripts/choysumtest"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -522,6 +523,11 @@ func RunOneAppBackendTests(
 			return false, err
 		}
 	}
+	// Proto registrations are process-global in production, but each unit-test
+	// application gets its own database, API assets, and gRPC harness. Without
+	// this reset, an earlier app can leave a method descriptor visible to a
+	// later app whose harness does not register that service.
+	grpcloader.ResetGlobalForTests()
 	prepareStarted := time.Now()
 	writeBackendProgress("# prepare runtime %s\n", app)
 
@@ -534,6 +540,8 @@ func RunOneAppBackendTests(
 	if testOpts.hasConfig {
 		distRoot := strings.TrimSpace(testOpts.distPath)
 		if distRoot != "" {
+			// Safe because makeTestScope isolates DistPath under a temp runRoot;
+			// APIRootFromDist is the sibling <runRoot>/api, not developer ~/.choysum/api.
 			apiRoot := filepath.Clean(config.APIRootFromDist(distRoot))
 			if apiRoot == "." || apiRoot == string(filepath.Separator) {
 				return false, xfmt.Errorf("invalid api root for backend tests: %s", apiRoot)
@@ -912,7 +920,7 @@ func unitTestDBTmpDir(ctx context.Context, modulesPath string, tmpRoot string, a
 	if workspaceRoot != "" {
 		workspaceRoot = filepath.Dir(workspaceRoot)
 	}
-	resolvedTmpRoot := strings.TrimSpace(tmpRoot)
+	resolvedTmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, tmpRoot)
 	if resolvedTmpRoot == "" {
 		resolvedTmpRoot = os.TempDir()
 	}
@@ -921,6 +929,26 @@ func unitTestDBTmpDir(ctx context.Context, modulesPath string, tmpRoot string, a
 		return "", err
 	}
 	return filepath.Join(testDBTmpDir, sanitizeUnitAppToken(app)), nil
+}
+
+// unitTestRunRoot returns a per-app temporary run directory for backend unit tests.
+// DistPath is placed at <runRoot>/dist so APIRootFromDist resolves to the sibling
+// <runRoot>/api — mirroring e2e runDir isolation and avoiding mutation of the
+// developer ~/.choysum/dist and ~/.choysum/api trees.
+func unitTestRunRoot(ctx context.Context, modulesPath string, tmpRoot string, app string) (string, error) {
+	workspaceRoot := strings.TrimSpace(modulesPath)
+	if workspaceRoot != "" {
+		workspaceRoot = filepath.Dir(workspaceRoot)
+	}
+	resolvedTmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, tmpRoot)
+	if resolvedTmpRoot == "" {
+		resolvedTmpRoot = os.TempDir()
+	}
+	unitTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, workspaceRoot, resolvedTmpRoot, "unit")
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(unitTmpDir, fmt.Sprintf("%s-%d", sanitizeUnitAppToken(app), time.Now().UnixNano())), nil
 }
 
 func sanitizeUnitAppToken(app string) string {
@@ -938,6 +966,19 @@ func cleanupSQLiteFiles(sqlitePath string) {
 	_ = os.Remove(sqlitePath + "-shm")
 }
 
+func joinCleanups(fns ...func()) func() {
+	return func() {
+		for i := len(fns) - 1; i >= 0; i-- {
+			if fns[i] != nil {
+				fns[i]()
+			}
+		}
+	}
+}
+
+// makeTestScope builds an isolated scope for one backend unit-test app.
+// It always overrides DistPath to a temp runRoot (sibling api via APIRootFromDist),
+// matching e2e runDir isolation so Install/RemoveAll never touch developer ~/.choysum assets.
 func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDialect string, dbFile string, dbDSN string, keep bool) (scope.Scope, func(), error) {
 	if baseScope == nil {
 		return nil, func() {}, xfmt.Errorf("invalid base scope")
@@ -954,16 +995,26 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 		ctx = context.Background()
 	}
 
-	dbCopy := baseDBOpts
+	tmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, baseOpts.tmpPath)
+	runRoot, err := unitTestRunRoot(ctx, baseOpts.modulesPath, tmpRoot, app)
+	if err != nil {
+		return nil, func() {}, xfmt.Errorf("resolve unit run root: %w", err)
+	}
+	isolatedDist := filepath.Join(runRoot, "dist")
+	if err := os.MkdirAll(isolatedDist, 0o755); err != nil {
+		return nil, func() {}, xfmt.Errorf("create isolated dist dir: %w", err)
+	}
 
-	cleanup := func() {}
+	dbCopy := baseDBOpts
+	var cleanupDB func()
 
 	switch strings.ToLower(strings.TrimSpace(dbDialect)) {
 	case "sqlite", "":
 		sqlitePath := strings.TrimSpace(dbFile)
 		if sqlitePath == "" {
-			tmpDir, err := unitTestDBTmpDir(ctx, baseOpts.modulesPath, baseOpts.tmpPath, app)
+			tmpDir, err := unitTestDBTmpDir(ctx, baseOpts.modulesPath, tmpRoot, app)
 			if err != nil {
+				_ = os.RemoveAll(runRoot)
 				return nil, func() {}, xfmt.Errorf("resolve tmp dir: %w", err)
 			}
 			_ = os.MkdirAll(tmpDir, 0o755)
@@ -972,7 +1023,7 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 		dbCopy.Dialect = "sqlite"
 		dbCopy.DSN = fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=10000&_journal_mode=WAL", sqlitePath)
 		if !keep {
-			cleanup = func() { cleanupSQLiteFiles(sqlitePath) }
+			cleanupDB = func() { cleanupSQLiteFiles(sqlitePath) }
 		}
 	case "postgres":
 		dsn := strings.TrimSpace(dbDSN)
@@ -980,11 +1031,13 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 			dsn = strings.TrimSpace(os.Getenv("CHOYSUM_TEST_POSTGRES_DSN"))
 		}
 		if dsn == "" {
+			_ = os.RemoveAll(runRoot)
 			return nil, func() {}, xfmt.Errorf("--db=postgres requires --db-dsn or env CHOYSUM_TEST_POSTGRES_DSN")
 		}
 
 		adminDSN, err := setPostgresDatabaseInDSN(dsn, "postgres")
 		if err != nil {
+			_ = os.RemoveAll(runRoot)
 			return nil, func() {}, xfmt.Errorf("invalid postgres dsn: %w", err)
 		}
 
@@ -992,11 +1045,13 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 		testDBName := makePostgresTestDBName(app)
 		testDSN, err := setPostgresDatabaseInDSN(dsn, testDBName)
 		if err != nil {
+			_ = os.RemoveAll(runRoot)
 			return nil, func() {}, xfmt.Errorf("invalid postgres dsn: %w", err)
 		}
 
 		adminDB, err := gorm.Open(postgres.Open(adminDSN), &gorm.Config{Logger: gormlogger.Default.LogMode(gormlogger.Silent)})
 		if err != nil {
+			_ = os.RemoveAll(runRoot)
 			return nil, func() {}, xfmt.Errorf("connect postgres (admin): %w", err)
 		}
 		sqlDB, _ := adminDB.DB()
@@ -1005,6 +1060,7 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 		}
 
 		if err := adminDB.WithContext(ctx).Exec(fmt.Sprintf("CREATE DATABASE %s", quotePostgresIdent(testDBName))).Error; err != nil {
+			_ = os.RemoveAll(runRoot)
 			return nil, func() {}, xfmt.Errorf("create postgres test database %s: %w", testDBName, err)
 		}
 		fmt.Fprintf(os.Stderr, "choysum test: created postgres test database %s (keep=%v)\n", testDBName, keep)
@@ -1012,20 +1068,36 @@ func makeTestScope(ctx context.Context, baseScope scope.Scope, app string, dbDia
 		dbCopy.Dialect = "postgres"
 		dbCopy.DSN = testDSN
 		if !keep {
-			cleanup = func() { _ = dropPostgresDatabase(ctx, adminDSN, testDBName) }
+			cleanupDB = func() { _ = dropPostgresDatabase(ctx, adminDSN, testDBName) }
 		}
 	default:
+		_ = os.RemoveAll(runRoot)
 		return nil, func() {}, xfmt.Errorf("unsupported --db %s (supported: sqlite, postgres)", dbDialect)
 	}
 
-	scopeInput := newTestRuntimeScopeInputFromScope(baseScope, dbCopy)
+	scopeInput := newTestRuntimeScopeInputFromScope(baseScope, dbCopy).withDistPath(isolatedDist)
+	if runHome := testingpathing.EffectiveCLITestRunHome(ctx); runHome != "" {
+		scopeInput = scopeInput.withDefaultChoysumPath(runHome)
+	}
 	testScope := scope.NewScope(baseScope.Context(), scopeInput, unitTestRuntimeLogger(baseScope.Logger()))
 	if testScope == nil {
-		cleanup()
+		if cleanupDB != nil {
+			cleanupDB()
+		}
+		_ = os.RemoveAll(runRoot)
 		return nil, func() {}, xfmt.Errorf("failed to initialize test scope")
 	}
 
-	return testScope, cleanup, nil
+	cleanupDist := func() {}
+	if !keep {
+		cleanupDist = func() { _ = os.RemoveAll(runRoot) }
+	} else {
+		fmt.Fprintf(os.Stderr, "choysum test: kept unit run dir: %s\n", runRoot)
+		if runHome := testingpathing.EffectiveCLITestRunHome(ctx); runHome != "" {
+			fmt.Fprintf(os.Stderr, "choysum test: kept unit shared home: %s\n", runHome)
+		}
+	}
+	return testScope, joinCleanups(cleanupDB, cleanupDist), nil
 }
 
 func makePostgresTestDBName(app string) string {

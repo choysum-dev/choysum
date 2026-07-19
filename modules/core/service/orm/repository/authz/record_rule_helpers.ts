@@ -8,6 +8,7 @@ import type { RepositoryPermissionDeniedFn } from './types';
 import type { BaseQueryCondition, ConditionEnvelope, RecordRuleOp } from '../types';
 import { asObjectRecord, isObjectRecord } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
+import { _t } from '@/core/service/i18n_binder';
 
 export type RepositoryRecordRuleDeps = {
   meta: ModelMetadata;
@@ -104,11 +105,15 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
     const model = (params.meta.fullModelName || params.meta.modelName || params.meta.name || 'Unknown') as string;
     const key = `${model}:${op}`;
     if (!allow.has(key)) {
-      throw params.permissionDenied('record_rule_entry_allowlist_miss', 'entry record rule allowlist miss', {
-        model,
-        op,
-        method,
-      });
+      throw params.permissionDenied(
+        'record_rule_entry_allowlist_miss',
+        _t('entry record rule allowlist miss', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+        {
+          model,
+          op,
+          method,
+        }
+      );
     }
     return { kind: 'true', reason: 'entry_record_rule_allowlist' };
   }
@@ -128,7 +133,11 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
       cache.set(key, env);
       return env;
     }
-    throw params.permissionDenied('record_rule_fetch_failed', 'failed to fetch record rule condition', { model, op });
+    throw params.permissionDenied(
+      'record_rule_fetch_failed',
+      _t('failed to fetch record rule condition', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+      { model, op }
+    );
   }
 
   const env = normalizeRepositoryRecordRuleEnvelope(result);
@@ -139,17 +148,25 @@ export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecord
 function getActiveCompanyIdForRepositoryRecordRuleToken(params: RepositoryRecordRuleDeps): string {
   const companyId = params.normalizeCompanyIdForWrite();
   if (companyId) return companyId;
-  throw params.permissionDenied('record_rule_missing_company_id', 'missing ctx.activeCompanyId for $companyId token', {
-    model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
-  });
+  throw params.permissionDenied(
+    'record_rule_missing_company_id',
+    _t('missing ctx.activeCompanyId for $companyId token', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+    {
+      model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
+    }
+  );
 }
 
 function getCompanyIdsForRepositoryRecordRuleToken(params: RepositoryRecordRuleDeps): string[] {
   const companyIds = params.normalizeCompanyIds();
   if (companyIds.length) return companyIds;
-  throw params.permissionDenied('record_rule_missing_company_ids', 'missing ctx.enabledCompanyIds for $companyIds token', {
-    model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
-  });
+  throw params.permissionDenied(
+    'record_rule_missing_company_ids',
+    _t('missing ctx.enabledCompanyIds for $companyIds token', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+    {
+      model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
+    }
+  );
 }
 
 export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRecordRuleDeps, condition: BaseQueryCondition): BaseQueryCondition {
@@ -180,9 +197,13 @@ export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRec
         const parsed = JSON.parse(normalized);
         return parsed === null ? [] : parsed;
       } catch {
-        throw params.permissionDenied('record_rule_invalid_condition_json', 'invalid JSON in record rule condition', {
-          model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
-        });
+        throw params.permissionDenied(
+          'record_rule_invalid_condition_json',
+          _t('invalid JSON in record rule condition', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+          {
+            model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
+          }
+        );
       }
     }
 
@@ -202,7 +223,13 @@ export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRec
     }
 
     const clippedPreview = preview.length > 400 ? `${preview.slice(0, 400)}…` : preview;
-    const message = `invalid record rule condition shape (type=${typeof got}, isArray=${Array.isArray(got)}, preview=${clippedPreview})`;
+    const message = _t(
+      'invalid record rule condition shape (type=%s, isArray=%s, preview=%s)',
+      { scope: 'service/orm/repository/authz/record_rule_helpers' },
+      typeof got,
+      Array.isArray(got),
+      clippedPreview
+    );
 
     throw params.permissionDenied('record_rule_invalid_condition', message, {
       model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
@@ -219,9 +246,13 @@ export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRec
       const normalized = value.trim();
       if (normalized === '$userId') {
         if (!userId) {
-          throw params.permissionDenied('record_rule_missing_user_id', 'missing identity.userId for $userId token', {
-            model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
-          });
+          throw params.permissionDenied(
+            'record_rule_missing_user_id',
+            _t('missing identity.userId for $userId token', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+            {
+              model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
+            }
+          );
         }
         return userId;
       }
@@ -229,10 +260,14 @@ export function replaceRepositoryRecordRuleConditionTokens(params: RepositoryRec
       if (normalized === '$companyIds') return companyIds();
 
       if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(normalized)) {
-        throw params.permissionDenied('record_rule_unknown_token', 'unknown token in record rule condition', {
-          model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
-          token: normalized,
-        });
+        throw params.permissionDenied(
+          'record_rule_unknown_token',
+          _t('unknown token in record rule condition', { scope: 'service/orm/repository/authz/record_rule_helpers' }),
+          {
+            model: params.meta.fullModelName || params.meta.modelName || params.meta.name || 'unknown_model',
+            token: normalized,
+          }
+        );
       }
       return value;
     }

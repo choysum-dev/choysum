@@ -8,6 +8,9 @@ import IrModule from './ir_module';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
+import { createTranslate, type TermReference } from '@/core/service/i18n';
+
+const { _t } = createTranslate('meta');
 
 export type UiResourceType = 'ROUTE' | 'MENU' | 'ACTION';
 
@@ -60,6 +63,9 @@ export default class IrUiResource extends BaseModel {
   @Field({ type: 'varchar', size: 255 })
   Title?: string;
 
+  @Field({ type: 'jsonobject' })
+  TitleText?: TermReference | null;
+
   @Field({ type: 'int', default: 0 })
   Sequence?: number;
 
@@ -93,7 +99,9 @@ export default class IrUiResource extends BaseModel {
     const parentRef = this.ParentId;
     const parentPath = parentRef ? String(parentRef.ParentPath || '') : '';
     if (parentPath && parentPath.includes(`${id}/`)) {
-      throw new Error(`Cycle detected: ${id} cannot be assigned under one of its descendants`);
+      throw new Error(
+        _t('Cycle detected: %s cannot be assigned under one of its descendants', { scope: 'service/models/ir_ui_resource' }, id)
+      );
     }
 
     return `${parentPath}${id}/`;
@@ -140,6 +148,7 @@ export default class IrUiResource extends BaseModel {
                 'Name', c.name,
                 'Type', c.type,
                 'Title', c.title,
+                'TitleText', json(c.title_text),
                 'Sequence', c.sequence,
                 'Requires', json(c.requires),
                 'Module', c.module,
@@ -162,6 +171,7 @@ export default class IrUiResource extends BaseModel {
                 'Name', r.name,
                 'Type', r.type,
                 'Title', r.title,
+                'TitleText', json(r.title_text),
                 'Sequence', r.sequence,
                 'Requires', json(r.requires),
                 'Module', r.module,
@@ -185,6 +195,7 @@ export default class IrUiResource extends BaseModel {
                 'Name', a.name,
                 'Type', a.type,
                 'Title', a.title,
+                'TitleText', json(a.title_text),
                 'Sequence', a.sequence,
                 'Requires', json(a.requires),
                 'Module', a.module,
@@ -219,6 +230,7 @@ export default class IrUiResource extends BaseModel {
               'Name', c.name,
               'Type', c.type,
               'Title', c.title,
+              'TitleText', c.title_text,
               'Sequence', c.sequence,
               'Requires', c.requires,
               'Module', c.module,
@@ -241,6 +253,7 @@ export default class IrUiResource extends BaseModel {
               'Name', r.name,
               'Type', r.type,
               'Title', r.title,
+              'TitleText', r.title_text,
               'Sequence', r.sequence,
               'Requires', r.requires,
               'Module', r.module,
@@ -264,6 +277,7 @@ export default class IrUiResource extends BaseModel {
               'Name', a.name,
               'Type', a.type,
               'Title', a.title,
+              'TitleText', a.title_text,
               'Sequence', a.sequence,
               'Requires', a.requires,
               'Module', a.module,

@@ -12,23 +12,23 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="bfv-card">
       <template #header>
-        <div class="bfv-card__header"><span>Basic Information</span></div>
+        <div class="bfv-card__header"><span>{{ _t('Basic Information') }}</span></div>
       </template>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Name" label="Name" :rules="[{ required: true, message: 'Required' }]" />
+          <OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Code" label="Code" :rules="[{ required: true, message: 'Required' }]" />
+          <OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OSelectionField
             :store="store"
             prop="Timezone"
-            label="Time Zone"
-            :rules="[{ required: true, message: 'Required' }]"
+            :label="_t('Time Zone')"
+            :rules="requiredRules"
             :selection="timezoneOptions"
-            placeholder="Select a time zone"
+            :placeholder="_t('Select a time zone')"
             :filterable="true"
             :allow-create="false"
           />
@@ -37,10 +37,10 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneField
             :store="store"
             prop="CurrencyId"
-            label="Base Currency"
-            :rules="[{ required: true, message: 'Required' }]"
+            :label="_t('Base Currency')"
+            :rules="requiredRules"
             :search-view="CurrencyListView"
-            search-view-title="Select Currency"
+            :search-view-title="_t('Select Currency')"
             @value-click="onCurrencyValueClick"
           />
         </el-col>
@@ -50,19 +50,19 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneField
             :store="store"
             prop="ParentId"
-            label="Parent Company"
+            :label="_t('Parent Company')"
             :search-view="CompanyListView"
-            search-view-title="Select Parent Company"
+            :search-view-title="_t('Select Parent Company')"
             @value-click="onParentCompanyValueClick"
           />
         </el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" label="Created At" />
+          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" label="Updated At" />
+          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
         </el-col>
       </el-row>
     </el-card>
@@ -70,6 +70,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import moment from 'moment-timezone';
@@ -83,14 +84,18 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/OManyToOneField.vue';
+import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import CompanyListView from './CompanyListView.vue';
 import CurrencyListView from './CurrencyListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CompanyFormView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/CompanyFormView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CompanyFormView' });
+const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
   defineProps<{
@@ -107,7 +112,7 @@ const props = withDefaults(
   }
 );
 
-const companyActions = defineModelActions('base.Company', { entityTitle: 'Company' });
+const companyActions = defineModelActions('base.Company', { entityTitle: _tRef('Company') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const { initialValues } = props;

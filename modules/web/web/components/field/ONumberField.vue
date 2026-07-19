@@ -34,6 +34,9 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
 import OFieldBase from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/ONumberField' });
 
 defineOptions({ name: 'ONumberField' });
 
@@ -193,11 +196,11 @@ const internalRule = {
   type: 'number',
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) {
-      return props.nullable ? cb() : cb(new Error('Value is required'));
+      return props.nullable ? cb() : cb(new Error(_t('Value is required')));
     }
-    if (typeof value !== 'number' || !Number.isFinite(value)) return cb(new Error('Value must be a number'));
-    if (props.min !== undefined && value < props.min) return cb(new Error(`Value must be at least ${props.min}`));
-    if (props.max !== undefined && value > props.max) return cb(new Error(`Value must be at most ${props.max}`));
+    if (typeof value !== 'number' || !Number.isFinite(value)) return cb(new Error(_t('Value must be a number')));
+    if (props.min !== undefined && value < props.min) return cb(new Error(_t('Value must be at least %s', props.min)));
+    if (props.max !== undefined && value > props.max) return cb(new Error(_t('Value must be at most %s', props.max)));
     cb();
   },
   trigger: 'blur',

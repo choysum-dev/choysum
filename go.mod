@@ -18,6 +18,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/improbable-eng/grpc-web v0.15.0
+	github.com/leonelquinteros/gotext v1.7.2
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/mwitkow/grpc-proxy v0.0.0-20250813121105-2866842de9a5
 	github.com/orandin/slog-gorm v1.4.0

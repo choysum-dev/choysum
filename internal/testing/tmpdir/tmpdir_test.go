@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -205,5 +206,250 @@ func TestNewTestingRunIDAndContextHelpers(t *testing.T) {
 	}
 	if got := TestingRunIDFromContext(context.Background()); got != "" {
 		t.Fatalf("TestingRunIDFromContext(background) = %q, want empty", got)
+	}
+}
+
+func TestCLITestTmpRootDefaultsUnderOSTemp(t *testing.T) {
+	t.Setenv(EnvCLITestTMP, "")
+	got, err := CLITestTmpRoot()
+	if err != nil {
+		t.Fatalf("CLITestTmpRoot() error = %v", err)
+	}
+	want := filepath.Join(os.TempDir(), defaultCLITestTmpDirName)
+	if filepath.Clean(got) != filepath.Clean(want) {
+		t.Fatalf("CLITestTmpRoot() = %q, want %q", got, want)
+	}
+	if st, err := os.Stat(got); err != nil || !st.IsDir() {
+		t.Fatalf("expected CLI test tmp root dir, stat err=%v", err)
+	}
+}
+
+func TestCLITestTmpRootHonorsEnvOverride(t *testing.T) {
+	override := filepath.Join(t.TempDir(), "custom-cli-test-tmp")
+	t.Setenv(EnvCLITestTMP, override)
+	got, err := CLITestTmpRoot()
+	if err != nil {
+		t.Fatalf("CLITestTmpRoot() error = %v", err)
+	}
+	if filepath.Clean(got) != filepath.Clean(override) {
+		t.Fatalf("CLITestTmpRoot() = %q, want %q", got, override)
+	}
+}
+
+func TestResolveCLITestingRunHomeUsesRunID(t *testing.T) {
+	workspaceRoot := filepath.Join(t.TempDir(), "repo")
+	tmpRoot := filepath.Join(t.TempDir(), "cli-tmp")
+	ctx := ContextWithTestingRunID(context.Background(), "runhome1")
+	got, err := ResolveCLITestingRunHome(ctx, workspaceRoot, tmpRoot)
+	if err != nil {
+		t.Fatalf("ResolveCLITestingRunHome() error = %v", err)
+	}
+	want, err := ResolveTestingTmpDirFromContext(ctx, workspaceRoot, tmpRoot, CLITestingRunHomeKind)
+	if err != nil {
+		t.Fatalf("ResolveTestingTmpDirFromContext(home) error = %v", err)
+	}
+	if filepath.Clean(got) != filepath.Clean(want) {
+		t.Fatalf("ResolveCLITestingRunHome() = %q, want %q", got, want)
+	}
+	if st, err := os.Stat(got); err != nil || !st.IsDir() {
+		t.Fatalf("expected run home dir, stat err=%v", err)
+	}
+	assertPkgLinksToCache(t, got, tmpRoot)
+}
+
+func TestBindCLITestRuntimePathsSetsContextOverrides(t *testing.T) {
+	cliTmp := filepath.Join(t.TempDir(), "bound-cli-tmp")
+	t.Setenv(EnvCLITestTMP, cliTmp)
+	workspaceRoot := filepath.Join(t.TempDir(), "repo")
+	ctx, testTmp, runHome, err := BindCLITestRuntimePaths(context.Background(), workspaceRoot)
+	if err != nil {
+		t.Fatalf("BindCLITestRuntimePaths() error = %v", err)
+	}
+	if filepath.Clean(testTmp) != filepath.Clean(cliTmp) {
+		t.Fatalf("testTmp = %q, want %q", testTmp, cliTmp)
+	}
+	if got := CLITestTmpRootFromContext(ctx); filepath.Clean(got) != filepath.Clean(cliTmp) {
+		t.Fatalf("CLITestTmpRootFromContext() = %q, want %q", got, cliTmp)
+	}
+	if got := EffectiveCLITestRunHome(ctx); filepath.Clean(got) != filepath.Clean(runHome) {
+		t.Fatalf("EffectiveCLITestRunHome() = %q, want %q", got, runHome)
+	}
+	if TestingRunIDFromContext(ctx) == "" {
+		t.Fatal("expected testing run-id on context")
+	}
+	if filepath.Base(runHome) != CLITestingRunHomeKind {
+		t.Fatalf("runHome base = %q, want %q", filepath.Base(runHome), CLITestingRunHomeKind)
+	}
+	if !strings.HasPrefix(filepath.Clean(runHome), filepath.Clean(cliTmp)+string(filepath.Separator)) {
+		t.Fatalf("runHome = %q, want under %q", runHome, cliTmp)
+	}
+	assertPkgLinksToCache(t, runHome, cliTmp)
+}
+
+func TestCLITestingPkgCachePersistsAcrossRunHomes(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on windows")
+	}
+	workspaceRoot := filepath.Join(t.TempDir(), "repo")
+	tmpRoot := filepath.Join(t.TempDir(), "cli-tmp")
+
+	home1, err := ResolveCLITestingRunHome(ContextWithTestingRunID(context.Background(), "run-a"), workspaceRoot, tmpRoot)
+	if err != nil {
+		t.Fatalf("ResolveCLITestingRunHome(run-a) error = %v", err)
+	}
+	home2, err := ResolveCLITestingRunHome(ContextWithTestingRunID(context.Background(), "run-b"), workspaceRoot, tmpRoot)
+	if err != nil {
+		t.Fatalf("ResolveCLITestingRunHome(run-b) error = %v", err)
+	}
+	if filepath.Clean(home1) == filepath.Clean(home2) {
+		t.Fatalf("expected distinct run homes, both %q", home1)
+	}
+
+	pkgCache, err := ResolveCLITestingPkgCache(tmpRoot)
+	if err != nil {
+		t.Fatalf("ResolveCLITestingPkgCache() error = %v", err)
+	}
+	marker := filepath.Join(pkgCache, "esm", "warm-marker.txt")
+	if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+		t.Fatalf("mkdir esm cache: %v", err)
+	}
+	if err := os.WriteFile(marker, []byte("warm"), 0o644); err != nil {
+		t.Fatalf("write marker: %v", err)
+	}
+
+	viaHome1 := filepath.Join(home1, "pkg", "esm", "warm-marker.txt")
+	viaHome2 := filepath.Join(home2, "pkg", "esm", "warm-marker.txt")
+	raw1, err := os.ReadFile(viaHome1)
+	if err != nil {
+		t.Fatalf("read via home1: %v", err)
+	}
+	raw2, err := os.ReadFile(viaHome2)
+	if err != nil {
+		t.Fatalf("read via home2: %v", err)
+	}
+	if string(raw1) != "warm" || string(raw2) != "warm" {
+		t.Fatalf("expected shared cache content, got home1=%q home2=%q", raw1, raw2)
+	}
+}
+
+func TestEnsureCLITestingPkgLinkMigratesExistingDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink semantics differ on windows")
+	}
+	home := filepath.Join(t.TempDir(), "home")
+	pkgCache := filepath.Join(t.TempDir(), "cache", "pkg")
+	legacy := filepath.Join(home, "pkg", "esm", "legacy.txt")
+	if err := os.MkdirAll(filepath.Dir(legacy), 0o755); err != nil {
+		t.Fatalf("mkdir legacy pkg: %v", err)
+	}
+	if err := os.WriteFile(legacy, []byte("keep"), 0o644); err != nil {
+		t.Fatalf("write legacy: %v", err)
+	}
+	if err := EnsureCLITestingPkgLink(home, pkgCache); err != nil {
+		t.Fatalf("EnsureCLITestingPkgLink() error = %v", err)
+	}
+	st, err := os.Lstat(filepath.Join(home, "pkg"))
+	if err != nil {
+		t.Fatalf("lstat home/pkg: %v", err)
+	}
+	if st.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("expected home/pkg to be a symlink after migration")
+	}
+	migrated := filepath.Join(pkgCache, "esm", "legacy.txt")
+	raw, err := os.ReadFile(migrated)
+	if err != nil {
+		t.Fatalf("read migrated file: %v", err)
+	}
+	if string(raw) != "keep" {
+		t.Fatalf("migrated content = %q, want keep", raw)
+	}
+}
+
+func assertPkgLinksToCache(t *testing.T, choysumHome, tmpRoot string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		return
+	}
+	pkgCache, err := ResolveCLITestingPkgCache(tmpRoot)
+	if err != nil {
+		t.Fatalf("ResolveCLITestingPkgCache() error = %v", err)
+	}
+	linkPath := filepath.Join(choysumHome, "pkg")
+	st, err := os.Lstat(linkPath)
+	if err != nil {
+		t.Fatalf("lstat %s: %v", linkPath, err)
+	}
+	if st.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected %s to be a symlink", linkPath)
+	}
+	target, err := os.Readlink(linkPath)
+	if err != nil {
+		t.Fatalf("readlink %s: %v", linkPath, err)
+	}
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(filepath.Dir(linkPath), target)
+	}
+	if filepath.Clean(target) != filepath.Clean(pkgCache) {
+		t.Fatalf("pkg link target = %q, want %q", target, pkgCache)
+	}
+}
+
+func TestCopyAndRemoveMovesTree(t *testing.T) {
+	root := t.TempDir()
+	from := filepath.Join(root, "from")
+	to := filepath.Join(root, "to")
+	if err := os.MkdirAll(filepath.Join(from, "nested"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(from, "nested", "a.txt"), []byte("payload"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := copyAndRemove(from, to); err != nil {
+		t.Fatalf("copyAndRemove: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(to, "nested", "a.txt"))
+	if err != nil {
+		t.Fatalf("read destination: %v", err)
+	}
+	if string(raw) != "payload" {
+		t.Fatalf("content = %q, want payload", raw)
+	}
+	if _, err := os.Lstat(from); !os.IsNotExist(err) {
+		t.Fatalf("source should be removed, lstat err = %v", err)
+	}
+}
+
+func TestMergeDirIntoRecursesExistingSubdirs(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "src")
+	dst := filepath.Join(root, "dst")
+	if err := os.MkdirAll(filepath.Join(src, "esm"), 0o755); err != nil {
+		t.Fatalf("mkdir src: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dst, "esm"), 0o755); err != nil {
+		t.Fatalf("mkdir dst: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "esm", "new.txt"), []byte("from-src"), 0o644); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "esm", "keep.txt"), []byte("from-dst"), 0o644); err != nil {
+		t.Fatalf("write dst: %v", err)
+	}
+	if err := mergeDirInto(src, dst); err != nil {
+		t.Fatalf("mergeDirInto: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dst, "esm", "new.txt"))
+	if err != nil {
+		t.Fatalf("read merged file: %v", err)
+	}
+	if string(raw) != "from-src" {
+		t.Fatalf("merged content = %q, want from-src", raw)
+	}
+	keep, err := os.ReadFile(filepath.Join(dst, "esm", "keep.txt"))
+	if err != nil {
+		t.Fatalf("read kept file: %v", err)
+	}
+	if string(keep) != "from-dst" {
+		t.Fatalf("kept content = %q, want from-dst", keep)
 	}
 }

@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <OSearch
     :store="store"
-    :placeholder="placeholder"
+    :placeholder="effectivePlaceholder"
     :current-keyword="keywordForChild"
     :current-applied-filters="appliedFiltersForChild"
     :current-applied-groups="appliedGroupsForChild"
@@ -23,6 +23,9 @@ import type { ConditionGroup, GroupBySpec, NamedFilter, NamedGrouping, QueryUpda
 import OSearch from '@/web/web/components/view/search/OSearch.vue';
 import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/query/utils/search/initialQueryState';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/OSearchView' });
 
 const props = withDefaults(
   defineProps<{
@@ -39,10 +42,11 @@ const props = withDefaults(
     initialEmit?: boolean; // Control whether the first-frame emit happens here.
   }>(),
   {
-    placeholder: '搜索...',
     initialEmit: true,
   }
 );
+
+const effectivePlaceholder = computed(() => props.placeholder ?? _t('Search...'));
 
 defineOptions({ name: 'OSearchView' });
 

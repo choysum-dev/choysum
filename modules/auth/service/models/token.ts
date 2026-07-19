@@ -3,7 +3,7 @@
 
 import { BaseModel, Model, Field, SqlCompute } from '@/core/service';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
-
+import { _t } from '../i18n';
 import User from './user';
 
 /**
@@ -80,7 +80,7 @@ export default class Token extends BaseModel {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
-        message: 'Auth service is disabled',
+        message: _t('Auth service is disabled', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.Unavailable);
     }
 
@@ -115,7 +115,7 @@ export default class Token extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_CREATION_FAILED,
-        message: 'Failed to create token pair',
+        message: _t('Failed to create token pair', { scope: 'service/models/token' }),
       }).withMetadata({ userId });
     }
   }
@@ -127,7 +127,7 @@ export default class Token extends BaseModel {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
-        message: 'Auth service is disabled',
+        message: _t('Auth service is disabled', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.Unavailable);
     }
 
@@ -164,7 +164,7 @@ export default class Token extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_REFRESH_FAILED,
-        message: 'Failed to refresh tokens',
+        message: _t('Failed to refresh tokens', { scope: 'service/models/token' }),
       });
     }
   }
@@ -176,7 +176,7 @@ export default class Token extends BaseModel {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
-        message: 'Auth service is disabled',
+        message: _t('Auth service is disabled', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.Unavailable);
     }
 
@@ -186,7 +186,7 @@ export default class Token extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_REVOCATION_FAILED,
-        message: 'Failed to revoke token',
+        message: _t('Failed to revoke token', { scope: 'service/models/token' }),
       }).withMetadata({ reason });
     }
   }
@@ -198,7 +198,7 @@ export default class Token extends BaseModel {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
-        message: 'Auth service is disabled',
+        message: _t('Auth service is disabled', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.Unavailable);
     }
 
@@ -208,7 +208,7 @@ export default class Token extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_REVOCATION_FAILED,
-        message: 'Failed to revoke user tokens',
+        message: _t('Failed to revoke user tokens', { scope: 'service/models/token' }),
       }).withMetadata({
         userId,
         exceptTokenId: exceptTokenId || '',
@@ -224,14 +224,14 @@ export default class Token extends BaseModel {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
-        message: 'Auth service is disabled',
+        message: _t('Auth service is disabled', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.Unavailable);
     }
 
     if (!userId) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: 'userId is required',
+        message: _t('userId is required', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
 
@@ -258,7 +258,7 @@ export default class Token extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_REVOCATION_FAILED,
-        message: 'Failed to revoke user access tokens',
+        message: _t('Failed to revoke user access tokens', { scope: 'service/models/token' }),
       }).withMetadata({ userId, reason });
     }
   }
@@ -270,7 +270,7 @@ export default class Token extends BaseModel {
     if (!$choysum.auth.enabled) {
       throw newAuthError({
         code: AuthErrCode.AUTH_SERVICE_DISABLED,
-        message: 'Auth service is disabled',
+        message: _t('Auth service is disabled', { scope: 'service/models/token' }),
       }).withGrpcCode(GrpcCode.Unavailable);
     }
 
@@ -280,7 +280,7 @@ export default class Token extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_VALIDATION_FAILED,
-        message: 'Token validation failed',
+        message: _t('Token validation failed', { scope: 'service/models/token' }),
       }).withMetadata({ tokenType });
     }
   }

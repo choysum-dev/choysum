@@ -15,15 +15,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" label="Name" />
-    <OVarCharField :store="store" prop="Symbol" label="Symbol" />
-    <OManyToOneField :store="store" prop="CategoryId" label="Category"
-      ><OVarCharField :store="store" prop="CategoryId.Name" label="Category"
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+    <OVarCharField :store="store" prop="Symbol" :label="_t('Symbol')" />
+    <OManyToOneField :store="store" prop="CategoryId" :label="_t('Category')"
+      ><OVarCharField :store="store" prop="CategoryId.Name" :label="_t('Category')"
     /></OManyToOneField>
-    <OBooleanField :store="store" prop="IsReference" label="Reference Unit" />
-    <ODecimalField :store="store" prop="Factor" label="Conversion Factor" />
-    <ODecimalField :store="store" prop="Rounding" label="Rounding" />
-    <OBooleanField :store="store" prop="IsActive" label="Active" />
+    <OBooleanField :store="store" prop="IsReference" :label="_t('Reference Unit')" />
+    <ODecimalField :store="store" prop="Factor" :label="_t('Conversion Factor')" />
+    <ODecimalField :store="store" prop="Rounding" :label="_t('Rounding')" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
   </OListView>
 </template>
 
@@ -31,7 +31,8 @@ SPDX-License-Identifier: Apache-2.0
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type UoM from '@/base/service/models/uom';
 import { useRouter } from 'vue-router';
-import OListView, { type RowEventPayload } from '@/web/web/components/view/OListView.vue';
+import OListView from '@/web/web/components/view/OListView.vue';
+import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
@@ -41,10 +42,13 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMListView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/UoMListView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/UoMListView' });
 const props = defineProps<{ store: WebModelStore<UoM> }>();
-const uomActions = defineModelActions('base.UoM', { entityTitle: 'Unit of Measure' });
+const uomActions = defineModelActions('base.UoM', { entityTitle: _tRef('Unit of Measure') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<UoM>) {

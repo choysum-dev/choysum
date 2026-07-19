@@ -6,12 +6,15 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { raiseDomainError } from '@/core/service/error';
+import { createTranslate } from '@/core/service/i18n';
 import Address from './address';
 import Country from './country';
 import Currency from './currency';
 import Language from './language';
 import Locale from './locale';
 import { fail, mapNormalizationToBase } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
@@ -48,7 +51,7 @@ export default class Company extends BaseModel {
   private static normalizeRequiredText(value: unknown, fieldName: string): string {
     return mapNormalizationToBase(
       () => normalizeRequiredTextCore(value),
-      () => `${fieldName} is required`
+      () => _t('%s is required', { scope: 'service/models/company' }, fieldName)
     );
   }
 
@@ -63,7 +66,7 @@ export default class Company extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) fail('Company Name must be unique');
+    if (nameConflict) fail(_t('Company Name must be unique', { scope: 'service/models/company' }));
 
     const byCode = await this.Search(
       {
@@ -72,7 +75,7 @@ export default class Company extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (codeConflict) fail('Company Code must be unique');
+    if (codeConflict) fail(_t('Company Code must be unique', { scope: 'service/models/company' }));
 
     values.Name = name;
     values.Code = code;
@@ -81,7 +84,7 @@ export default class Company extends BaseModel {
   private static normalizeCurrencyId(value: unknown): string {
     const id = normalizeRefId(value);
     if (!id) {
-      raiseDomainError('base', 'InvalidArgument', 'CurrencyId is required');
+      raiseDomainError('base', 'InvalidArgument', _t('CurrencyId is required', { scope: 'service/models/company' }));
     }
     return id;
   }
@@ -89,10 +92,10 @@ export default class Company extends BaseModel {
   private static normalizeTimezone(value: unknown): string {
     const timezone = String(value ?? '').trim();
     if (!timezone) {
-      raiseDomainError('base', 'InvalidArgument', 'Timezone is required');
+      raiseDomainError('base', 'InvalidArgument', _t('Timezone is required', { scope: 'service/models/company' }));
     }
     if (!isIanaTimezone(timezone)) {
-      raiseDomainError('base', 'InvalidArgument', `Invalid IANA timezone: ${timezone}`);
+      raiseDomainError('base', 'InvalidArgument', _t('Invalid IANA timezone: %s', { scope: 'service/models/company' }, timezone));
     }
     return timezone;
   }
@@ -102,7 +105,7 @@ export default class Company extends BaseModel {
     if (!parentId) return;
 
     if (parentId === targetId) {
-      raiseDomainError('base', 'InvalidArgument', 'ParentId cannot be self');
+      raiseDomainError('base', 'InvalidArgument', _t('ParentId cannot be self', { scope: 'service/models/company' }));
     }
 
     const found = await this.Search(
@@ -115,7 +118,7 @@ export default class Company extends BaseModel {
       { limit: 1, fields: ['Id'] as any } as any
     );
     if (found?.[0]) {
-      raiseDomainError('base', 'InvalidArgument', 'ParentId cannot be a descendant of the company');
+      raiseDomainError('base', 'InvalidArgument', _t('ParentId cannot be a descendant of the company', { scope: 'service/models/company' }));
     }
   }
 

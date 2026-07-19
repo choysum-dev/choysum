@@ -256,6 +256,24 @@ func TestBackendUtilityHelpers(t *testing.T) {
 		t.Fatalf("unitTestDBTmpDir() = %q, want %q", gotUnitTestDBDir, wantUnitTestDBDir)
 	}
 
+	unitTmpDir, err := testingpathing.ResolveTestingTmpDir(workspaceRoot, tmpRoot, "unit")
+	if err != nil {
+		t.Fatalf("ResolveTestingTmpDir(unit): %v", err)
+	}
+	gotUnitRunRoot, err := unitTestRunRoot(context.Background(), modulesPath, tmpRoot, "auth")
+	if err != nil {
+		t.Fatalf("unitTestRunRoot(): %v", err)
+	}
+	if filepath.Dir(gotUnitRunRoot) != unitTmpDir {
+		t.Fatalf("unitTestRunRoot() parent = %q, want %q", filepath.Dir(gotUnitRunRoot), unitTmpDir)
+	}
+	if !strings.HasPrefix(filepath.Base(gotUnitRunRoot), "auth-") {
+		t.Fatalf("unitTestRunRoot() base = %q, want auth-<nanos> prefix", filepath.Base(gotUnitRunRoot))
+	}
+	if apiRoot := config.APIRootFromDist(filepath.Join(gotUnitRunRoot, "dist")); apiRoot != filepath.Join(gotUnitRunRoot, "api") {
+		t.Fatalf("APIRootFromDist(isolated dist) = %q, want sibling api under run root", apiRoot)
+	}
+
 	quoted := quotePostgresIdent(`db"name`)
 	if quoted != `"db""name"` {
 		t.Fatalf("quotePostgresIdent returned %q", quoted)
@@ -498,11 +516,15 @@ func TestMakeTestScope(t *testing.T) {
 		return &testStubScope{ctx: ctx, cfg: cfg}
 	})
 
+	baseDistPath := filepath.Join(t.TempDir(), "dist")
+	if err := os.MkdirAll(baseDistPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll base DistPath: %v", err)
+	}
 	baseScope := &testStubScope{
 		ctx: context.Background(),
 		cfg: &config.Config{
 			ModulesPath: filepath.Join(t.TempDir(), "modules"),
-			DistPath:    filepath.Join(t.TempDir(), "dist"),
+			DistPath:    baseDistPath,
 			TmpPath:     filepath.Join(t.TempDir(), "tmp-root"),
 			Db:          &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
 			Server:      &config.ServerConfig{Environment: envName},
@@ -577,6 +599,28 @@ func TestMakeTestScope(t *testing.T) {
 		if _, err := os.Stat(filepath.Dir(sqlitePath)); err != nil {
 			t.Fatalf("expected sqlite temp dir to exist: %v", err)
 		}
+
+		childOpts := runtimeOptionsFromScope(childScope)
+		baseDist := strings.TrimSpace(baseOpts.distPath)
+		if childOpts.distPath == "" || childOpts.distPath == baseDist {
+			t.Fatalf("expected isolated DistPath, got %q (base %q)", childOpts.distPath, baseDist)
+		}
+		runRoot := filepath.Dir(childOpts.distPath)
+		if filepath.Base(childOpts.distPath) != "dist" {
+			t.Fatalf("expected DistPath to end with /dist, got %q", childOpts.distPath)
+		}
+		if st, err := os.Stat(childOpts.distPath); err != nil || !st.IsDir() {
+			t.Fatalf("expected isolated dist dir to exist: %v", err)
+		}
+		wantAPIRoot := filepath.Join(runRoot, "api")
+		if got := config.APIRootFromDist(childOpts.distPath); got != wantAPIRoot {
+			t.Fatalf("APIRootFromDist(isolated) = %q, want %q", got, wantAPIRoot)
+		}
+		marker := filepath.Join(childOpts.distPath, "marker.txt")
+		if err := os.WriteFile(marker, []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile marker: %v", err)
+		}
+
 		if err := os.WriteFile(sqlitePath, []byte("db"), 0o644); err != nil {
 			t.Fatalf("WriteFile sqlitePath: %v", err)
 		}
@@ -595,6 +639,99 @@ func TestMakeTestScope(t *testing.T) {
 		}
 		if _, err := os.Stat(sqlitePath + "-shm"); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("expected cleanup to remove sqlite shm path, stat err=%v", err)
+		}
+		if _, err := os.Stat(runRoot); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("expected cleanup to remove isolated run root, stat err=%v", err)
+		}
+		if _, err := os.Stat(baseDist); err != nil {
+			t.Fatalf("expected base DistPath to remain untouched, stat err=%v", err)
+		}
+	})
+
+	t.Run("keep retains isolated dist run root", func(t *testing.T) {
+		childScope, cleanup, err := makeTestScope(context.Background(), baseScope, "auth", "sqlite", "", "", true)
+		if err != nil {
+			t.Fatalf("makeTestScope returned error: %v", err)
+		}
+		childOpts := runtimeOptionsFromScope(childScope)
+		runRoot := filepath.Dir(childOpts.distPath)
+		marker := filepath.Join(childOpts.distPath, "keep-marker.txt")
+		if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+			t.Fatalf("WriteFile marker: %v", err)
+		}
+		cleanup()
+		if _, err := os.Stat(marker); err != nil {
+			t.Fatalf("expected keep to retain isolated dist marker, got %v", err)
+		}
+		if _, err := os.Stat(runRoot); err != nil {
+			t.Fatalf("expected keep to retain isolated run root, got %v", err)
+		}
+		_ = os.RemoveAll(runRoot)
+	})
+
+	t.Run("CLI bind uses shared home outside production choysum path", func(t *testing.T) {
+		cliTmp := filepath.Join(t.TempDir(), "cli-test-tmp")
+		t.Setenv(testingpathing.EnvCLITestTMP, cliTmp)
+		productionHome := filepath.Join(t.TempDir(), ".choysum")
+		baseWithHome := &testStubScope{
+			ctx: context.Background(),
+			cfg: &config.Config{
+				ModulesPath:        filepath.Join(t.TempDir(), "modules"),
+				DistPath:           filepath.Join(productionHome, "dist"),
+				TmpPath:            filepath.Join(productionHome, "tmp"),
+				DefaultChoysumPath: productionHome,
+				Db:                 &config.DbConfig{Dialect: "sqlite", DSN: "file:base.sqlite"},
+				Server:             &config.ServerConfig{Environment: envName},
+			},
+		}
+		ctx, testTmp, runHome, err := testingpathing.BindCLITestRuntimePaths(context.Background(), filepath.Dir(baseWithHome.cfg.ModulesPath))
+		if err != nil {
+			t.Fatalf("BindCLITestRuntimePaths: %v", err)
+		}
+		if filepath.Clean(testTmp) != filepath.Clean(cliTmp) {
+			t.Fatalf("testTmp = %q, want %q", testTmp, cliTmp)
+		}
+		childScope, cleanup, err := makeTestScope(ctx, baseWithHome, "auth", "sqlite", "", "", false)
+		if err != nil {
+			t.Fatalf("makeTestScope returned error: %v", err)
+		}
+		defer cleanup()
+
+		pathOpts, ok := scope.PathsRuntimeOptionsFromScope(childScope)
+		if !ok {
+			t.Fatal("expected paths runtime options on child scope")
+		}
+		if pathOpts.DefaultChoysumPath != runHome {
+			t.Fatalf("DefaultChoysumPath = %q, want shared run home %q", pathOpts.DefaultChoysumPath, runHome)
+		}
+		if pathOpts.DefaultChoysumPath == productionHome {
+			t.Fatalf("DefaultChoysumPath must not stay on production home %q", productionHome)
+		}
+		if !strings.HasPrefix(filepath.Clean(pathOpts.DistPath), filepath.Clean(cliTmp)+string(filepath.Separator)) {
+			t.Fatalf("DistPath = %q, want under CLI test tmp %q", pathOpts.DistPath, cliTmp)
+		}
+		if strings.HasPrefix(filepath.Clean(pathOpts.DistPath), filepath.Clean(productionHome)+string(filepath.Separator)) {
+			t.Fatalf("DistPath must not be under production home: %q", pathOpts.DistPath)
+		}
+		if filepath.Base(runHome) != testingpathing.CLITestingRunHomeKind {
+			t.Fatalf("run home base = %q, want %q", filepath.Base(runHome), testingpathing.CLITestingRunHomeKind)
+		}
+		pkgLink := filepath.Join(runHome, "pkg")
+		if st, err := os.Lstat(pkgLink); err != nil {
+			t.Fatalf("lstat home/pkg: %v", err)
+		} else if st.Mode()&os.ModeSymlink == 0 {
+			t.Fatal("expected home/pkg to be a symlink to the persistent CLI pkg cache")
+		}
+		pkgCache, err := testingpathing.ResolveCLITestingPkgCache(cliTmp)
+		if err != nil {
+			t.Fatalf("ResolveCLITestingPkgCache: %v", err)
+		}
+		target, err := os.Readlink(pkgLink)
+		if err != nil {
+			t.Fatalf("readlink home/pkg: %v", err)
+		}
+		if filepath.Clean(target) != filepath.Clean(pkgCache) {
+			t.Fatalf("home/pkg target = %q, want %q", target, pkgCache)
 		}
 	})
 

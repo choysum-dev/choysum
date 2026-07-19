@@ -6,6 +6,7 @@ package backendtsparser
 import (
 	"encoding/json"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -16,7 +17,47 @@ import (
 
 type tsFileParser struct {
 	*parser.TsParser
-	runtimeScope scope.Scope
+	runtimeScope      scope.Scope
+	ownerModule       string
+	referenceOutput   bool
+	referenceScope    string
+	translateBindings map[string]parser.TranslateBinding
+}
+
+var (
+	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+	referenceLocationPattern = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
+)
+
+func parseFactoryStringOption(options string, pattern *regexp.Regexp) string {
+	match := pattern.FindStringSubmatch(options)
+	if len(match) != 2 {
+		return ""
+	}
+	raw := strings.TrimSpace(match[1])
+	if strings.HasPrefix(raw, "`") && strings.HasSuffix(raw, "`") {
+		return strings.TrimSuffix(strings.TrimPrefix(raw, "`"), "`")
+	}
+	parsed, err := parser.ParseJSStringLiteral(raw)
+	if err != nil {
+		return ""
+	}
+	return parsed
+}
+
+func (p *tsFileParser) detectReferenceFactory() {
+	// Reuse the shared destructuring parser so aliases and multi-property
+	// bindings (e.g. const { _t: t, locale } = createTranslate(...)) work.
+	p.translateBindings = parser.ParseTranslateBindings(p.Content)
+	for _, binding := range p.translateBindings {
+		if !binding.ReferenceOutput {
+			continue
+		}
+		p.referenceOutput = true
+		p.referenceScope = binding.DefaultScope
+		return
+	}
 }
 
 func getProtoTypeFromTsType(tsType string) string {
@@ -237,7 +278,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		}
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]
-		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics)
+		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule, p.referenceOutput, p.referenceScope, p.translateBindings)
 		if err != nil {
 			return nil, nil, nil, xfmt.Errorf("failed to resolve field %s: %w", field.Name, err)
 		}
@@ -325,6 +366,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 }
 
 func (p *tsFileParser) parse() (*parser.ParserResult, error) {
+	p.detectReferenceFactory()
 	modules_path := runtimeOptionsFromScope(p.runtimeScope).modulesPath
 	// Keep historical skip behavior for the metadata and onchange type entrypoints.
 	// modules/core/service/orm/metadata/field.ts

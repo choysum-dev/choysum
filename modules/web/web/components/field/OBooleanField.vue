@@ -82,7 +82,10 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
 import { computed, defineComponent, h } from 'vue';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OBooleanField' });
 
 defineOptions({ name: 'OBooleanField' });
 
@@ -276,7 +279,7 @@ const OBooleanCell = defineComponent({
                   }
                 },
               },
-              () => '清空'
+              () => _t('Clear')
             )
           : null,
       ]);

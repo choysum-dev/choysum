@@ -137,6 +137,18 @@ func newTestScopeWithDB(t *testing.T) scope.Scope {
 	}
 }
 
+// isolatedChoysumHome returns a writable per-test DefaultChoysumPath under t.TempDir.
+// Real-module tests may keep ModulesPath pointed at the repo modules tree, but must
+// not use repoRoot/.choysum (that pollutes the workspace with pkg/esm and dist).
+func isolatedChoysumHome(t *testing.T) string {
+	t.Helper()
+	home := filepath.Join(t.TempDir(), ".choysum")
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		t.Fatalf("mkdir isolated choysum home: %v", err)
+	}
+	return home
+}
+
 func normalizeAbsImportPath(path string) string {
 	absPath := path
 	if resolved, err := filepath.Abs(path); err == nil {
@@ -932,9 +944,10 @@ func TestUpdateComponent_InjectsQuestionFilled_ForRealAuthOHeader(t *testing.T) 
 	}
 
 	modulesPath := filepath.Join(repoRoot, "modules")
+	choysumHome := isolatedChoysumHome(t)
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	testRuntimeScope.cfg.ModulesPath = modulesPath
-	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(repoRoot, ".choysum")
+	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
 	if err := testRuntimeScope.db.AutoMigrate(&meta.IrComponent{}); err != nil {
 		t.Fatalf("auto migrate components failed: %v", err)
 	}
@@ -1019,10 +1032,11 @@ func TestPrebuildUpdatePrebuildResult_RealAuthOHeaderContainsInjectedQuestionFil
 	}
 
 	modulesPath := filepath.Join(repoRoot, "modules")
+	choysumHome := isolatedChoysumHome(t)
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	testRuntimeScope.cfg.ModulesPath = modulesPath
-	testRuntimeScope.cfg.DistPath = filepath.Join(repoRoot, ".choysum", "dist")
-	testRuntimeScope.cfg.DefaultChoysumPath = filepath.Join(repoRoot, ".choysum")
+	testRuntimeScope.cfg.DistPath = filepath.Join(choysumHome, "dist")
+	testRuntimeScope.cfg.DefaultChoysumPath = choysumHome
 	testRuntimeScope.cfg.Server = &config.ServerConfig{WebBaseURL: "/web"}
 	testRuntimeScope.cfg.Compile = config.NewDefaultCompileConfig()
 	testRuntimeScope.cfg.FrontendEnv = map[string]any{}
@@ -2619,6 +2633,63 @@ func TestExtractUiResources_DuplicateEquivalentDeclsAreDeduped(t *testing.T) {
 	}
 	if resources[0].Name != "auth.action.session_create" {
 		t.Fatalf("unexpected deduped resource: %s", resources[0].Name)
+	}
+}
+
+func TestExtractUiResources_DuplicateModelActionsWithDifferentTitleTextScopesAreDeduped(t *testing.T) {
+	module := &meta.IrModule{Name: "base"}
+
+	listTitleText := &meta.TermReference{
+		Key:    "list-key",
+		Module: "base",
+		Scope:  "web/views/CountryListView",
+		Src:    "Create Country",
+		Kind:   "literal",
+	}
+	formTitleText := &meta.TermReference{
+		Key:    "form-key",
+		Module: "base",
+		Scope:  "web/views/CountryFormView",
+		Src:    "Create Country",
+		Kind:   "literal",
+	}
+
+	pr := &parser.ParserResult{UiResourceDecls: []*parser.UiResourceDecl{
+		{
+			ID:         "base.action.country_create",
+			Type:       parser.UiResourceTypeAction,
+			Title:      "Create Country",
+			TitleText:  listTitleText,
+			Requires:   []string{"rpc:/base.Country/Create"},
+			SourcePath: "/modules/base/web/views/CountryListView.vue",
+			SourceLine: 20,
+		},
+		{
+			ID:         "base.action.country_create",
+			Type:       parser.UiResourceTypeAction,
+			Title:      "Create Country",
+			TitleText:  formTitleText,
+			Requires:   []string{"rpc:/base.Country/Create"},
+			SourcePath: "/modules/base/web/views/CountryFormView.vue",
+			SourceLine: 26,
+		},
+	}}
+
+	resources, warnings, err := extractUiResources(module, []*parser.ParserResult{pr})
+	if err != nil {
+		t.Fatalf("expected scope-only TitleText duplicates to be deduped, got error: %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got %d", len(warnings))
+	}
+	if len(resources) != 1 {
+		t.Fatalf("expected 1 deduped resource, got %d", len(resources))
+	}
+	if resources[0].Name != "base.action.country_create" {
+		t.Fatalf("unexpected deduped resource: %s", resources[0].Name)
+	}
+	if len(resources[0].TitleText) == 0 {
+		t.Fatal("expected TitleText to be preserved on deduped resource")
 	}
 }
 

@@ -6,6 +6,7 @@ package backendtsparser
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/parser"
@@ -221,7 +222,68 @@ func resolveColumnType(fieldType string) string {
 	}
 }
 
-func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic) (*meta.IrFieldResolvedSpec, error) {
+var (
+	termReferenceCallPattern = regexp.MustCompile(`(?s)^([A-Za-z_$][\w$]*)\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)(?:\s*,\s*\{(.*?)\})?\s*\)$`)
+	callOutputPattern        = regexp.MustCompile(`\boutput\s*:\s*(['"])(text|reference)(['"])`)
+)
+
+func parseTextCallLiteral(value string) (string, bool) {
+	if strings.HasPrefix(value, "`") && strings.HasSuffix(value, "`") {
+		return strings.TrimSuffix(strings.TrimPrefix(value, "`"), "`"), true
+	}
+	parsed, err := parser.ParseJSStringLiteral(value)
+	return parsed, err == nil
+}
+
+func parseTermReferenceCall(raw string, ownerModule string, defaultScope string, factoryReferenceOutput bool, bindings map[string]parser.TranslateBinding) (*meta.TermReference, bool) {
+	match := termReferenceCallPattern.FindStringSubmatch(strings.TrimSpace(raw))
+	if len(match) != 4 || strings.TrimSpace(ownerModule) == "" {
+		return nil, false
+	}
+	callee := strings.TrimSpace(match[1])
+	if _, known := bindings[callee]; !known {
+		return nil, false
+	}
+	referenceOutput := factoryReferenceOutput
+	if binding, ok := bindings[callee]; ok && binding.ReferenceOutput {
+		referenceOutput = true
+	}
+	if outputMatch := callOutputPattern.FindStringSubmatch(match[3]); len(outputMatch) == 4 && outputMatch[1] == outputMatch[3] {
+		referenceOutput = outputMatch[2] == "reference"
+	}
+	if !referenceOutput {
+		return nil, false
+	}
+	src, srcOK := parseTextCallLiteral(match[2])
+	scope := strings.TrimSpace(defaultScope)
+	if binding, ok := bindings[callee]; ok && strings.TrimSpace(binding.DefaultScope) != "" && scope == "" {
+		scope = strings.TrimSpace(binding.DefaultScope)
+	}
+	scopeOK := scope != ""
+	if strings.TrimSpace(match[3]) != "" {
+		scope = strings.TrimSpace(parseFactoryStringOption(match[3], referenceScopePattern))
+		if scope == "" {
+			pathValue := strings.TrimSpace(parseFactoryStringOption(match[3], referencePathPattern))
+			locationValue := strings.TrimSpace(parseFactoryStringOption(match[3], referenceLocationPattern))
+			scope = pathValue
+			if scope != "" && locationValue != "" {
+				scope += "@" + locationValue
+			}
+		}
+		scopeOK = scope != ""
+	}
+	if !srcOK || !scopeOK || strings.TrimSpace(src) == "" || strings.TrimSpace(scope) == "" {
+		return nil, false
+	}
+	module := ownerModule
+	if binding, ok := bindings[callee]; ok && strings.TrimSpace(binding.Module) != "" {
+		module = strings.TrimSpace(binding.Module)
+	}
+	reference := meta.NewTermReference(module, scope, src, "literal")
+	return &reference, true
+}
+
+func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorBinding, inherited []meta.IrFieldDiagnostic, ownerModule string, referenceOutput bool, referenceScope string, translateBindings map[string]parser.TranslateBinding) (*meta.IrFieldResolvedSpec, error) {
 	if field == nil {
 		return nil, nil
 	}
@@ -285,11 +347,27 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 				continue
 			}
 			value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
-			label := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+			labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+			label := labelRaw
+			var labelText *meta.TermReference
+			if reference, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, referenceOutput, translateBindings); ok {
+				label = reference.Src
+				labelText = reference
+			} else if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
+				if _, known := translateBindings[strings.TrimSpace(match[1])]; known {
+					if fallback, ok := parseTextCallLiteral(match[2]); ok {
+						label = fallback
+					}
+				}
+			}
 			if value == "" || label == "" {
 				continue
 			}
-			spec.Structural.Selection = append(spec.Structural.Selection, map[string]string{"value": value, "label": label})
+			spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
+				Value:     value,
+				Label:     label,
+				LabelText: labelText,
+			})
 		}
 	}
 

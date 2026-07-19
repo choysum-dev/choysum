@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeDecimalDigits, normalizePositiveDecimalString } from '@/core/service/utils/normalization';
 import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
+
+const { _t } = createTranslate('base');
 import { convertCurrency } from './_currency_convert';
 
 export type CurrencyConvertRatePolicy = {
@@ -54,11 +57,17 @@ export default class Currency extends BaseModel {
     this.Code = normalizeCodeRequired(this.Code as string);
     (this as any).DecimalDigits = mapNormalizationToBase(
       () => normalizeDecimalDigits(this.DecimalDigits),
-      err => (err.code === 'required' ? 'DecimalDigits is required' : 'DecimalDigits must be a non-negative integer')
+      err =>
+        err.code === 'required'
+          ? _t('DecimalDigits is required', { scope: 'service/models/currency' })
+          : _t('DecimalDigits must be a non-negative integer', { scope: 'service/models/currency' })
     );
     (this as any).Rounding = mapNormalizationToBase(
       () => normalizePositiveDecimalString(this.Rounding),
-      err => (err.code === 'non_positive_decimal' ? 'Rounding must be greater than 0' : 'Rounding must be a valid decimal')
+      err =>
+        err.code === 'non_positive_decimal'
+          ? _t('Rounding must be greater than 0', { scope: 'service/models/currency' })
+          : _t('Rounding must be a valid decimal', { scope: 'service/models/currency' })
     );
   }
 

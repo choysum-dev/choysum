@@ -15,16 +15,16 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #header-right>
       <el-button-group>
-        <el-tooltip content="看板视图" placement="top">
+        <el-tooltip :content="_t('Board View')" placement="top">
           <el-button :icon="GridViewSharp" @click="toKanban" type="primary" />
         </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_list')" content="列表视图" placement="top">
+        <el-tooltip v-if="canRoute('meta.route.module_list')" :content="_t('List View')" placement="top">
           <el-button :icon="FormatListBulletedOutlined" @click="toList" />
         </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_history')" content="操作历史" placement="top">
+        <el-tooltip v-if="canRoute('meta.route.module_history')" :content="_t('Operation History')" placement="top">
           <el-button :icon="HistoryOutlined" @click="toHistory" />
         </el-tooltip>
-        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" content="同步索引" placement="top">
+        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" :content="_t('Sync Index')" placement="top">
           <el-button :icon="Refresh" :loading="syncLoading" @click="onSyncIndex" />
         </el-tooltip>
       </el-button-group>
@@ -51,18 +51,18 @@ SPDX-License-Identifier: Apache-2.0
           }}</el-tag>
         </div>
         <div class="module-card__meta">
-          <span class="version">本地：{{ record.LocalVersion || '—' }}</span>
-          <span class="category">仓库：{{ record.RegistryVersion || '—' }}</span>
+          <span class="version">{{ _t('Local:') }} {{ record.LocalVersion || '—' }}</span>
+          <span class="category">{{ _t('Registry:') }} {{ record.RegistryVersion || '—' }}</span>
         </div>
         <div class="module-card__meta">
-          <span class="version">展示：{{ record.Version || '—' }}</span>
-          <span class="category">已安装：{{ record.InstalledVersion || '—' }}</span>
+          <span class="version">{{ _t('Display:') }} {{ record.Version || '—' }}</span>
+          <span class="category">{{ _t('Installed:') }} {{ record.InstalledVersion || '—' }}</span>
         </div>
         <div class="module-card__meta">
-          <span class="app">来源：{{ record.OriginTypes || record.OriginType || 'local' }}</span>
-          <span class="updated">同步：{{ formatDate(record.LastSyncAt) || '—' }}</span>
+          <span class="app">{{ _t('Origin:') }} {{ record.OriginTypes || record.OriginType || 'local' }}</span>
+          <span class="updated">{{ _t('Synced:') }} {{ formatDate(record.LastSyncAt) || '—' }}</span>
         </div>
-        <div class="module-card__desc">{{ manifestSummary(record.ManifestJson) || '暂无描述' }}</div>
+        <div class="module-card__desc">{{ manifestSummary(record.ManifestJson) || _t('No description') }}</div>
         <div class="module-card__actions">
           <el-button
             size="small"
@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="!isInstalled(record.InstalledStatus) && hasAction(moduleInstallAction)"
             :disabled="record.Available === false"
           >
-            安装
+            {{ _t('Install') }}
           </el-button>
           <el-button
             v-if="isInstalled(record.InstalledStatus) && hasAction(moduleUpgradeAction)"
@@ -81,7 +81,7 @@ SPDX-License-Identifier: Apache-2.0
             plain
             @click.stop="onActionClick('upgrade', record)"
           >
-            升级
+            {{ _t('Upgrade') }}
           </el-button>
           <el-button
             v-if="isInstalled(record.InstalledStatus) && hasAction(moduleUninstallAction)"
@@ -90,14 +90,14 @@ SPDX-License-Identifier: Apache-2.0
             plain
             @click.stop="onActionClick('uninstall', record)"
           >
-            卸载
+            {{ _t('Uninstall') }}
           </el-button>
         </div>
       </div>
     </template>
 
     <template #card-empty>
-      <div class="module-card__empty">暂无模块</div>
+      <div class="module-card__empty">{{ _t('No modules') }}</div>
     </template>
   </OKanbanView>
 
@@ -109,11 +109,11 @@ SPDX-License-Identifier: Apache-2.0
     <div v-if="dialogStep === 'plan'" class="module-dialog">
       <el-skeleton v-if="planLoading" :rows="6" animated />
       <template v-else>
-        <el-alert v-if="plan?.blockers?.length" type="error" :closable="false" show-icon title="存在阻断项，需先处理后再继续" />
-        <el-alert v-else type="info" :closable="false" show-icon title="请确认本次操作影响范围" />
+        <el-alert v-if="plan?.blockers?.length" type="error" :closable="false" show-icon :title="_t('Resolve blockers before continuing')" />
+        <el-alert v-else type="info" :closable="false" show-icon :title="_t('Confirm the impact of this operation')" />
 
         <div class="module-dialog__section">
-          <div class="section-title">影响模块</div>
+          <div class="section-title">{{ _t('Affected Modules') }}</div>
           <ul class="section-list">
             <li v-for="item in plan?.affectedModules || []" :key="item.moduleName">
               <span class="item-name">{{ item.moduleName }}</span>
@@ -125,7 +125,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <div class="module-dialog__section" v-if="plan?.risks?.length">
-          <div class="section-title">风险提示</div>
+          <div class="section-title">{{ _t('Risks') }}</div>
           <ul class="section-list">
             <li v-for="risk in plan?.risks" :key="risk.code">
               <el-tag size="small" type="warning">{{ risk.code }}</el-tag>
@@ -135,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <div class="module-dialog__section" v-if="plan?.blockers?.length">
-          <div class="section-title">阻断原因</div>
+          <div class="section-title">{{ _t('Blockers') }}</div>
           <ul class="section-list">
             <li v-for="blocker in plan?.blockers" :key="blocker.code">
               <el-tag size="small" type="danger">{{ blocker.code }}</el-tag>
@@ -145,49 +145,49 @@ SPDX-License-Identifier: Apache-2.0
         </div>
 
         <div class="module-dialog__section" v-if="action === 'install'">
-          <el-checkbox v-model="withDemo">包含 demo 数据</el-checkbox>
+          <el-checkbox v-model="withDemo">{{ _t('Include demo data') }}</el-checkbox>
         </div>
       </template>
     </div>
 
     <div v-else class="module-dialog">
       <div class="module-dialog__section">
-        <el-alert type="info" :closable="false" show-icon title="任务执行中，请稍候" v-if="dialogStep === 'progress'" />
+        <el-alert type="info" :closable="false" show-icon :title="_t('Operation in progress, please wait')" v-if="dialogStep === 'progress'" />
         <el-alert v-else :type="resultAlertType" :closable="false" show-icon :title="resultTitle" />
       </div>
       <div class="module-dialog__section">
-        <div class="section-title">执行状态</div>
+        <div class="section-title">{{ _t('Execution Status') }}</div>
         <div class="status-row">
-          <span class="label">状态：</span>
+          <span class="label">{{ _t('Status:') }}</span>
           <el-tag size="small" :type="statusTagType(opStatus?.status)">{{ opStatus?.status || '—' }}</el-tag>
-          <span class="label">结果：</span>
+          <span class="label">{{ _t('Result:') }}</span>
           <el-tag size="small" :type="resultTagType(opStatus?.resultStatus)">{{ opStatus?.resultStatus || '—' }}</el-tag>
         </div>
         <div class="status-row" v-if="opStatus?.summary">
-          <span class="label">摘要：</span>
+          <span class="label">{{ _t('Summary:') }}</span>
           <span class="value">{{ formatSummary(opStatus?.summary) }}</span>
         </div>
         <div class="status-row" v-if="opStatus?.failureKind && opStatus?.failureKind !== 'NONE'">
-          <span class="label">失败类型：</span>
+          <span class="label">{{ _t('Failure Kind:') }}</span>
           <span class="value">{{ opStatus?.failureKind }}</span>
         </div>
         <div class="status-row" v-if="opStatus?.errorDomain || opStatus?.errorCode">
-          <span class="label">错误：</span>
+          <span class="label">{{ _t('Error:') }}</span>
           <span class="value">{{ opStatus?.errorDomain || '—' }} / {{ opStatus?.errorCode || '—' }}</span>
         </div>
         <div class="status-row" v-if="opStatus?.reload_triggered">
-          <span class="label">Reload：</span>
-          <span class="value">{{ opStatus?.reload_failed ? '触发失败' : '已触发' }}</span>
+          <span class="label">{{ _t('Reload:') }}</span>
+          <span class="value">{{ opStatus?.reload_failed ? _t('Trigger Failed') : _t('Triggered') }}</span>
         </div>
       </div>
       <div class="module-dialog__section" v-if="dialogStep === 'progress'">
         <el-divider />
-        <div class="progress-note">请勿刷新页面，系统将自动更新状态。</div>
+        <div class="progress-note">{{ _t('Do not refresh; status updates automatically.') }}</div>
       </div>
     </div>
 
     <template #footer>
-      <el-button @click="dialogVisible = false" :disabled="planLoading">取消</el-button>
+      <el-button @click="dialogVisible = false" :disabled="planLoading">{{ _t('Cancel') }}</el-button>
       <el-button
         v-if="dialogStep === 'plan'"
         type="primary"
@@ -195,15 +195,15 @@ SPDX-License-Identifier: Apache-2.0
         :disabled="!!plan?.blockers?.length"
         @click="submitOperation"
       >
-        确认执行
+        {{ _t('Confirm') }}
       </el-button>
-      <el-button v-else type="primary" @click="dialogVisible = false">完成</el-button>
+      <el-button v-else type="primary" @click="dialogVisible = false">{{ _t('Done') }}</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type IrModule from '@/meta/service/models/ir_module';
 import type IrModuleIndex from '@/meta/service/models/ir_module_index';
@@ -217,8 +217,12 @@ import { FormatListBulletedOutlined, GridViewSharp, HistoryOutlined } from '@vic
 import { Refresh } from '@element-plus/icons-vue';
 import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleKanbanView' });
+
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
+const { _t: _tRef } = createTranslate('meta', { output: 'reference', scope: 'web/views/ModuleKanbanView' });
 
 /**
  * Props consumed by the module kanban view and its backing stores.
@@ -235,19 +239,19 @@ const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 
 const router = useRouter();
 const moduleInstallAction = defineAction('meta.action.module_install', {
-  title: '安装模块',
+  title: _tRef('Install Module'),
   requires: [{ model: 'meta.IrModule', method: 'RequestInstall' }],
 });
 const moduleUpgradeAction = defineAction('meta.action.module_upgrade', {
-  title: '升级模块',
+  title: _tRef('Upgrade Module'),
   requires: [{ model: 'meta.IrModule', method: 'RequestUpgrade' }],
 });
 const moduleUninstallAction = defineAction('meta.action.module_uninstall', {
-  title: '卸载模块',
+  title: _tRef('Uninstall Module'),
   requires: [{ model: 'meta.IrModule', method: 'RequestUninstall' }],
 });
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
-  title: '同步模块索引',
+  title: _tRef('Sync Module Index'),
   requires: [{ model: 'meta.IrModuleIndex', method: 'RequestSync' }],
 });
 const { canRoute, hasAction } = usePermission();
@@ -320,7 +324,7 @@ const pollIntervalMs = ref(1000);
  * Builds the current dialog title from the selected module action.
  */
 const dialogTitle = computed(() => {
-  const actionLabel = action.value === 'install' ? '安装模块' : action.value === 'uninstall' ? '卸载模块' : '升级模块';
+  const actionLabel = action.value === 'install' ? _t('Install Module') : action.value === 'uninstall' ? _t('Uninstall Module') : _t('Upgrade Module');
   return `${actionLabel} · ${targetModule.value?.ModuleName || ''}`.trim();
 });
 
@@ -328,9 +332,9 @@ const dialogTitle = computed(() => {
  * Maps the latest operation snapshot to the dialog headline.
  */
 const resultTitle = computed(() => {
-  if (!opStatus.value) return '执行完成';
-  if (opStatus.value.resultStatus === 'FAILED') return '操作失败';
-  return opStatus.value.reload_failed ? '操作成功但重载失败' : '操作成功';
+  if (!opStatus.value) return _t('Completed');
+  if (opStatus.value.resultStatus === 'FAILED') return _t('Operation Failed');
+  return opStatus.value.reload_failed ? _t('Succeeded but reload failed') : _t('Operation Succeeded');
 });
 
 /**
@@ -371,17 +375,17 @@ function statusTagType(status?: string, available?: boolean) {
  * Maps raw status values to the labels shown on the module board.
  */
 function statusLabel(status?: string, available?: boolean) {
-  if (available === false) return '不可用';
+  if (available === false) return _t('Unavailable');
   const val = String(status || '').toLowerCase();
-  if (val === 'installed') return '已安装';
-  if (val === 'uninstalled') return '未安装';
-  if (val === 'disabled') return '已禁用';
-  if (val === 'broken') return '异常';
-  if (val === 'succeeded') return '成功';
-  if (val === 'failed') return '失败';
-  if (val === 'dispatching') return '执行中';
-  if (val === 'queued') return '排队中';
-  return status || '未知';
+  if (val === 'installed') return _t('Installed');
+  if (val === 'uninstalled') return _t('Not Installed');
+  if (val === 'disabled') return _t('Disabled');
+  if (val === 'broken') return _t('Broken');
+  if (val === 'succeeded') return _t('Succeeded');
+  if (val === 'failed') return _t('Failed');
+  if (val === 'dispatching') return _t('Dispatching');
+  if (val === 'queued') return _t('Queued');
+  return status || _t('Unknown');
 }
 
 /**
@@ -450,7 +454,7 @@ async function onActionClick(nextAction: ModuleAction, record: ClientModelProps<
       withDemo: nextAction === 'install' ? withDemo.value : false,
     })) as PlanOperationResp;
   } catch (error: any) {
-    ElMessage.error(error?.message || '获取计划失败');
+    ElMessage.error(error?.message || _t('Failed to load plan'));
     dialogVisible.value = false;
   } finally {
     planLoading.value = false;
@@ -481,7 +485,7 @@ async function submitOperation() {
       errorDomain: 'CLIENT',
       errorCode: 'REQUEST_FAILED',
     } as OpStatusResp;
-    ElMessage.error(error?.message || '操作请求失败');
+    ElMessage.error(error?.message || _t('Operation request failed'));
   }
 }
 
@@ -517,11 +521,11 @@ async function pollOpStatus(jobId: string) {
         message.includes('Load failed');
       if (isTransient) {
         if (!transientErrorNotified) {
-          ElMessage.warning('服务正在重启，状态查询会自动重试');
+          ElMessage.warning(_t('Service is restarting; status will retry automatically'));
           transientErrorNotified = true;
         }
       } else {
-        ElMessage.error(message || '获取状态失败');
+        ElMessage.error(message || _t('Failed to get status'));
       }
     }
 
@@ -531,7 +535,7 @@ async function pollOpStatus(jobId: string) {
         status: 'dispatching',
         resultStatus: undefined,
       } as OpStatusResp;
-      ElMessage.warning('任务仍在后台执行，可稍后刷新查看');
+      ElMessage.warning(_t('Job is still running in the background; refresh later'));
       return;
     }
 
@@ -591,9 +595,9 @@ async function onSyncIndex() {
   syncLoading.value = true;
   try {
     const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
-    ElMessage.success(jobId ? `已触发同步任务：all:${jobId}` : '已触发同步任务');
+    ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
-    ElMessage.warning(`同步失败：${error?.message || 'request failed'}`);
+    ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {
     syncLoading.value = false;
   }

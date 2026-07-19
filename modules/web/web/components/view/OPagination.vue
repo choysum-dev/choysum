@@ -6,7 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="o-pagination">
     <span class="o-pagination__text">
-      第
       <span class="o-pagination__editable-wrapper">
         <el-input-number
           v-if="editingStart"
@@ -48,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
           {{ paginationRange.end }}
         </span>
       </span>
-      行，共 {{ paginationRange.total }} 行
+      {{ _t('of %s', paginationRange.total) }}
     </span>
     <div class="o-pagination__controls">
       <el-button size="small" :disabled="!paginationRange.canGoPrev" @click="goToPrevPage">
@@ -67,6 +66,9 @@ import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue';
 import { ElInputNumber } from 'element-plus';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/OPagination' });
 
 const props = defineProps<{
   store: WebModelStore<T>;
@@ -117,7 +119,7 @@ const paginationRange = computed(() => {
     currentPage,
     pageSize,
     totalPages,
-    text: `第 ${start} - ${end} 行，共 ${total} 行`,
+    text: _t('%s - %s of %s', start, end, total),
     canGoPrev: currentPage > 1,
     canGoNext: currentPage < totalPages,
   };

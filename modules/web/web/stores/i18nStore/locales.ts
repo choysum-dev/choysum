@@ -5,7 +5,8 @@ import { LocaleConfig } from './types';
 
 /**
  * Supported locale mapping.
- * This table contains metadata only and does not include the actual locale assets.
+ * Format / Element / dayjs metadata only — not the terminology storage authority.
+ * Terminology comes from Gateway + modules/<module>/i18n/*.po (S4).
  */
 export const SUPPORTED_LOCALES: Record<string, LocaleConfig> = {
   // East Asian locales.

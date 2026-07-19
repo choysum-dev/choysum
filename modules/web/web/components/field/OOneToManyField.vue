@@ -32,15 +32,15 @@ SPDX-License-Identifier: Apache-2.0
           >
             <OVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
-            <OVColumn :label="'操作'" :width="60">
+            <OVColumn :label="_t('Actions')" :width="60">
               <template #default="{ $index }">
-                <el-button link type="danger" size="small" @click="onRemove($index)">删除</el-button>
+                <el-button link type="danger" size="small" @click="onRemove($index)">{{ _t('Delete') }}</el-button>
               </template>
             </OVColumn>
           </OVTable>
         </div>
         <div class="o-one-to-many-actions">
-          <el-button size="small" link type="primary" plain @click="handleAddItem">新增行</el-button>
+          <el-button size="small" link type="primary" plain @click="handleAddItem">{{ _t('Add row') }}</el-button>
         </div>
       </OViewScope>
     </template>
@@ -78,6 +78,9 @@ import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OOneToManyField' });
 
 defineOptions({ name: 'OOneToManyField', inheritAttrs: false });
 

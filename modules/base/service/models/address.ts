@@ -7,7 +7,10 @@ import City from './city';
 import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { fail, normalizeNullableString, requireRefId } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('Address')
 export default class Address extends BaseModel {
@@ -53,22 +56,22 @@ export default class Address extends BaseModel {
     const cityId = normalizeRefId(values.CityId);
     const zip = normalizeNullableString(values.Zip);
     const country = await this.getCountry(countryId);
-    if (!country?.Id) fail('Country not found');
+    if (!country?.Id) fail(_t('Country not found', { scope: 'service/models/address' }));
 
     if (country.StateRequired === true && !stateId) {
-      fail('StateId is required for this country');
+      fail(_t('StateId is required for this country', { scope: 'service/models/address' }));
     }
 
     if (country.ZipRequired === true && !zip) {
-      fail('Zip is required for this country');
+      fail(_t('Zip is required for this country', { scope: 'service/models/address' }));
     }
 
     if (stateId) {
       const state = await this.getState(stateId);
       const stateCountryId = normalizeRefId(state?.CountryId);
-      if (!state?.Id || !stateCountryId) fail('State not found');
+      if (!state?.Id || !stateCountryId) fail(_t('State not found', { scope: 'service/models/address' }));
       if (stateCountryId !== countryId) {
-        fail('State.CountryId must equal Address.CountryId');
+        fail(_t('State.CountryId must equal Address.CountryId', { scope: 'service/models/address' }));
       }
     }
 
@@ -76,12 +79,12 @@ export default class Address extends BaseModel {
       const city = await this.getCity(cityId);
       const cityCountryId = normalizeRefId(city?.CountryId);
       const cityStateId = normalizeRefId(city?.StateId);
-      if (!city?.Id || !cityCountryId) fail('City not found');
+      if (!city?.Id || !cityCountryId) fail(_t('City not found', { scope: 'service/models/address' }));
       if (cityCountryId !== countryId) {
-        fail('City.CountryId must equal Address.CountryId');
+        fail(_t('City.CountryId must equal Address.CountryId', { scope: 'service/models/address' }));
       }
       if (stateId && cityStateId && cityStateId !== stateId) {
-        fail('City.StateId must equal Address.StateId');
+        fail(_t('City.StateId must equal Address.StateId', { scope: 'service/models/address' }));
       }
     }
   }

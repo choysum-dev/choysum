@@ -188,6 +188,9 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 	if _, ok := staging.OpIDFromContext(ctx); !ok {
 		ctx = staging.WithOpID(ctx, staging.NewOpID())
 	}
+	if cb.Logger != nil {
+		ctx = staging.WithLogger(ctx, cb.Logger)
+	}
 	logger := cb.Logger
 	normalizeLogAttrs := func(attrs []any) []any {
 		if len(attrs) == 0 {
@@ -245,7 +248,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		if len(infoModules) > 0 {
 			attrs = append(attrs, "modules", infoModules)
 		}
-		logStep(slog.LevelDebug, "pipeline module stage started", attrs...)
+		logStep(slog.LevelInfo, "pipeline module stage started", attrs...)
 		return time.Now()
 	}
 	logModuleStageCompleted := func(started time.Time) {
@@ -257,12 +260,37 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			attrs = append(attrs, "modules", infoModules)
 		}
 		attrs = append(attrs, "duration", time.Since(started))
-		logStep(slog.LevelDebug, "pipeline module stage completed", attrs...)
+		logStep(slog.LevelInfo, "pipeline module stage completed", attrs...)
 	}
 
 	// generateModulesForApp stages and commits api outputs (proto/web/service/runtimeProto) for a single app.
 	// This is used during install so downstream module builds can resolve generated
 	// side-effect entry imports even if outputs were deleted before install starts.
+	//
+	// Commits keep backups until the full module loop succeeds (Finalize) or a later
+	// module Commit fails (Rollback), so mid-loop FS promote is reversible.
+	var pendingModuleGenCommits []*staging.DirStaging
+	rollbackPendingModuleGen := func() {
+		for i := len(pendingModuleGenCommits) - 1; i >= 0; i-- {
+			s := pendingModuleGenCommits[i]
+			started := time.Now()
+			if err := s.Rollback(); err != nil {
+				logStep(slog.LevelWarn, "pipeline module-gen rollback failed", "target", s.TargetDir, "duration", time.Since(started), "error", err)
+			} else {
+				logStep(slog.LevelWarn, "pipeline module-gen rolled back", "target", s.TargetDir, "duration", time.Since(started))
+			}
+		}
+		pendingModuleGenCommits = nil
+	}
+	finalizePendingModuleGen := func() {
+		for _, s := range pendingModuleGenCommits {
+			started := time.Now()
+			_ = s.Finalize()
+			logStep(slog.LevelDebug, "pipeline module-gen finalized", "target", s.TargetDir, "duration", time.Since(started))
+		}
+		pendingModuleGenCommits = nil
+	}
+
 	generateModulesForApp := func(app string) error {
 		app = strings.TrimSpace(app)
 		if app == "" {
@@ -359,14 +387,6 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			}
 			committed = nil
 		}
-		finalizeCommitted := func() {
-			for _, s := range committed {
-				started := time.Now()
-				_ = s.Finalize()
-				logStep(slog.LevelDebug, "pipeline finalized", "target", s.TargetDir, "duration", time.Since(started))
-			}
-			committed = nil
-		}
 
 		commitOne := func(label string, s *staging.DirStaging) error {
 			started := time.Now()
@@ -380,7 +400,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			return nil
 		}
 
-		// Commit proto/runtimeProto/web/service. If commit fails, roll back already-committed stages.
+		// Commit proto/runtimeProto/web/service. Keep backups until the module loop finishes.
 		if err := commitOne("proto", protoStage); err != nil {
 			_ = webStage.Abort()
 			_ = serviceStage.Abort()
@@ -403,7 +423,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		if err := commitOne("service", serviceStage); err != nil {
 			return err
 		}
-		finalizeCommitted()
+		pendingModuleGenCommits = append(pendingModuleGenCommits, committed...)
 		return nil
 	}
 
@@ -431,7 +451,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if len(infoApps) > 0 {
 				attrs = append(attrs, "apps", infoApps)
 			}
-			logStep(slog.LevelDebug, "pipeline app stage started", attrs...)
+			logStep(slog.LevelInfo, "pipeline app stage started", attrs...)
 			emitProgress(ProgressEvent{Stage: ProgressStageAppStageStarted, Total: appsCount})
 		}
 
@@ -683,7 +703,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				attrs = append(attrs, "apps", infoApps)
 			}
 			attrs = append(attrs, "duration", time.Since(appStageStarted))
-			logStep(slog.LevelDebug, "pipeline app stage completed", attrs...)
+			logStep(slog.LevelInfo, "pipeline app stage completed", attrs...)
 			emitProgress(ProgressEvent{Stage: ProgressStageAppStageCompleted, Total: appsCount, Duration: time.Since(appStageStarted)})
 		}
 
@@ -911,6 +931,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		totalModules := len(plan.ModuleOrder)
 		for index, name := range plan.ModuleOrder {
 			if err := checkCtx(); err != nil {
+				rollbackPendingModuleGen()
 				return err
 			}
 			var mod *meta.IrModule
@@ -941,6 +962,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallStarted, Current: index + 1, Total: totalModules, Module: moduleName})
 			installStarted := time.Now()
 			if err := cb.Install(mod); err != nil {
+				rollbackPendingModuleGen()
 				emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallFailed, Current: index + 1, Total: totalModules, Module: moduleName, Duration: time.Since(installStarted), Err: err})
 				if cb.OnInstallProgress != nil {
 					cb.OnInstallProgress(ModuleInstallProgress{
@@ -962,6 +984,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			app := strings.TrimSpace(mod.ApplicationStr)
 			if app != "" && !generated[app] {
 				if err := generateModulesForApp(app); err != nil {
+					rollbackPendingModuleGen()
 					emitProgress(ProgressEvent{Stage: ProgressStageModuleInstallFailed, Current: index + 1, Total: totalModules, Module: moduleName, Duration: installDuration, Err: err})
 					if cb.OnInstallProgress != nil {
 						cb.OnInstallProgress(ModuleInstallProgress{
@@ -989,6 +1012,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			}
 		}
 		logModuleStageCompleted(moduleStageStarted)
+		finalizePendingModuleGen()
 		return runAppStage()
 
 	case planner.OpUninstall:

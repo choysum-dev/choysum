@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grandcat/zeroconf"
 	"github.com/choysum-dev/choysum/pkg/registry"
+	"github.com/grandcat/zeroconf"
 	"github.com/rs/xid"
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/grpc/resolver"
@@ -24,9 +24,10 @@ var schemeName = "mdns"
 type mdnsRegistry struct {
 	sync.Mutex
 
-	name     string
-	zservers map[string][]*zeroconf.Server
-	builder  resolver.Builder
+	name      string
+	zservers  map[string][]*zeroconf.Server
+	endpoints map[string]*registry.Endpoint
+	builder   resolver.Builder
 }
 
 func getCurrentInterfaces(host string) ([]net.Interface, error) {
@@ -89,16 +90,19 @@ func (r *mdnsRegistry) Register(serviceName string, addr *resolver.Address) (*re
 	// for list services
 	ls, err := zeroconf.Register(fmt.Sprintf("%s:%s:%s", "choysum", serviceName, endpointId), "_services._choysum._tcp", "local.", portInt, nil, ifaces)
 	if err != nil {
+		s.Shutdown()
 		return nil, xfmt.Errorf("failed to register service: %w", err)
 	}
 
 	r.zservers[endpointId] = []*zeroconf.Server{s, ls}
 
-	return &registry.Endpoint{
+	endpoint := &registry.Endpoint{
 		Id:          endpointId,
 		ServiceName: serviceName,
 		Address:     addr,
-	}, nil
+	}
+	r.endpoints[endpointId] = endpoint
+	return endpoint, nil
 
 }
 
@@ -106,11 +110,22 @@ func (r *mdnsRegistry) UnRegister(endpoint *registry.Endpoint) error {
 	r.Lock()
 	defer r.Unlock()
 
+	if endpoint == nil {
+		return nil
+	}
 	endpointId := endpoint.Id
-	r.zservers[endpointId][0].Shutdown()
-	r.zservers[endpointId][1].Shutdown()
+	servers, ok := r.zservers[endpointId]
+	if !ok {
+		return nil
+	}
+	for _, server := range servers {
+		if server != nil {
+			server.Shutdown()
+		}
+	}
 
 	delete(r.zservers, endpointId)
+	delete(r.endpoints, endpointId)
 
 	return nil
 }
@@ -125,14 +140,18 @@ func (r *mdnsRegistry) UnRegisterAll() error {
 	}
 
 	r.zservers = make(map[string][]*zeroconf.Server)
+	r.endpoints = make(map[string]*registry.Endpoint)
 
 	return nil
 
 }
 
 func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, error) {
+	// Snapshot under the registry lock, then release before network browse so
+	// Register/UnRegister are not blocked on mDNS I/O.
 	r.Lock()
-	defer r.Unlock()
+	endpoints := r.localEndpointsLocked(serviceName)
+	r.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -142,17 +161,22 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 		return nil, xfmt.Errorf("failed to create zeroconf resolver: %w", err)
 	}
 
-	endpoints := []*registry.Endpoint{}
+	seen := endpointSet(endpoints)
+	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
+	done := make(chan struct{})
 	go func(results <-chan *zeroconf.ServiceEntry) {
+		defer close(done)
+		// Cancel when the browse channel closes so the outer <-ctx.Done() cannot hang.
+		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
+		defer t.Stop()
 		for {
 			select {
 			case entry, ok := <-results:
 				if !ok {
 					return
 				}
-				t.Stop()
 				if len(entry.AddrIPv4) == 0 {
 					entry.AddrIPv4 = []net.IP{net.ParseIP("127.0.0.1")}
 				}
@@ -164,11 +188,14 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 							Addr: fmt.Sprintf("%s:%d", ipv4.String(), entry.Port),
 						},
 					}
-					endpoints = append(endpoints, endpoint)
+					collectMu.Lock()
+					appendEndpointIfNew(&endpoints, seen, endpoint)
+					collectMu.Unlock()
 				}
 
-				t.Reset(time.Millisecond * 1) // wait 1ms for next entry
+				resetBrowseTimer(t, time.Millisecond*20) // wait briefly for next entry
 			case <-t.C:
+				// Stop browse; keep draining results until closed so the sender cannot block.
 				cancel()
 			}
 		}
@@ -176,17 +203,24 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 
 	err = zr.Browse(ctx, serviceName+"._choysum._tcp", "local.", entries)
 	if err != nil {
+		cancel()
+		<-done
 		return nil, xfmt.Errorf("failed to browse service: %w", err)
 	}
 
 	<-ctx.Done()
+	<-done
 
-	return endpoints, nil
+	collectMu.Lock()
+	out := append([]*registry.Endpoint(nil), endpoints...)
+	collectMu.Unlock()
+	return out, nil
 }
 
 func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 	r.Lock()
-	defer r.Unlock()
+	endpoints := r.localEndpointsLocked("")
+	r.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -196,23 +230,33 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 		return nil, xfmt.Errorf("failed to create zeroconf resolver: %w", err)
 	}
 
-	endpoints := []*registry.Endpoint{}
+	seen := endpointSet(endpoints)
+	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
+	done := make(chan struct{})
 	go func(results <-chan *zeroconf.ServiceEntry) {
+		defer close(done)
+		// Cancel when the browse channel closes so the outer <-ctx.Done() cannot hang.
+		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
+		defer t.Stop()
 		for {
 			select {
 			case entry, ok := <-results:
 				if !ok {
 					return
 				}
-				t.Stop()
 				if len(entry.AddrIPv4) == 0 {
 					entry.AddrIPv4 = []net.IP{net.ParseIP("127.0.0.1")}
 				}
 				// sr_name = fmt.Sprintf("%s:%s:%s", "choysum", name, instance)
-				svcName := strings.Split(entry.Instance, ":")[1]
-				endpointId := strings.Split(entry.Instance, ":")[2]
+				parts := strings.SplitN(entry.Instance, ":", 3)
+				if len(parts) != 3 || parts[0] != "choysum" {
+					resetBrowseTimer(t, time.Millisecond*20)
+					continue
+				}
+				svcName := parts[1]
+				endpointId := parts[2]
 
 				for _, ipv4 := range entry.AddrIPv4 {
 					endpoint := &registry.Endpoint{
@@ -222,11 +266,14 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 							Addr: fmt.Sprintf("%s:%d", ipv4.String(), entry.Port),
 						},
 					}
-					endpoints = append(endpoints, endpoint)
+					collectMu.Lock()
+					appendEndpointIfNew(&endpoints, seen, endpoint)
+					collectMu.Unlock()
 				}
 
-				t.Reset(time.Millisecond * 1) // wait 1ms for next entry
+				resetBrowseTimer(t, time.Millisecond*20) // wait briefly for next entry
 			case <-t.C:
+				// Stop browse; keep draining results until closed so the sender cannot block.
 				cancel()
 			}
 		}
@@ -234,13 +281,18 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 
 	err = zr.Browse(ctx, "_services._choysum._tcp", "local.", entries)
 	if err != nil {
+		cancel()
+		<-done
 		return nil, xfmt.Errorf("failed to browse service: %w", err)
 	}
 
 	<-ctx.Done()
+	<-done
 
-	return endpoints, nil
-
+	collectMu.Lock()
+	out := append([]*registry.Endpoint(nil), endpoints...)
+	collectMu.Unlock()
+	return out, nil
 }
 
 func (r *mdnsRegistry) Scheme() string {
@@ -251,10 +303,66 @@ func (r *mdnsRegistry) Resolver() resolver.Builder {
 	return r.builder
 }
 
+func (r *mdnsRegistry) localEndpointsLocked(serviceName string) []*registry.Endpoint {
+	endpoints := make([]*registry.Endpoint, 0, len(r.endpoints))
+	for _, endpoint := range r.endpoints {
+		if endpoint == nil || (serviceName != "" && endpoint.ServiceName != serviceName) {
+			continue
+		}
+		cloned := *endpoint
+		if endpoint.Address != nil {
+			address := *endpoint.Address
+			host, port, err := net.SplitHostPort(address.Addr)
+			if err == nil && (host == "" || host == "0.0.0.0" || host == "::") {
+				address.Addr = net.JoinHostPort("127.0.0.1", port)
+			}
+			cloned.Address = &address
+		}
+		endpoints = append(endpoints, &cloned)
+	}
+	return endpoints
+}
+
+func endpointSet(endpoints []*registry.Endpoint) map[string]struct{} {
+	seen := make(map[string]struct{}, len(endpoints))
+	for _, endpoint := range endpoints {
+		if endpoint != nil {
+			seen[endpoint.Id] = struct{}{}
+		}
+	}
+	return seen
+}
+
+func appendEndpointIfNew(endpoints *[]*registry.Endpoint, seen map[string]struct{}, endpoint *registry.Endpoint) {
+	if endpoint == nil {
+		return
+	}
+	if _, ok := seen[endpoint.Id]; ok {
+		return
+	}
+	seen[endpoint.Id] = struct{}{}
+	*endpoints = append(*endpoints, endpoint)
+}
+
+// resetBrowseTimer stops and drains t before Reset, matching Go's Timer.Reset contract.
+func resetBrowseTimer(t *time.Timer, d time.Duration) {
+	if t == nil {
+		return
+	}
+	if !t.Stop() {
+		select {
+		case <-t.C:
+		default:
+		}
+	}
+	t.Reset(d)
+}
+
 func NewMdnsRegistry() registry.Registry {
 	r := &mdnsRegistry{
-		name:     schemeName,
-		zservers: make(map[string][]*zeroconf.Server),
+		name:      schemeName,
+		zservers:  make(map[string][]*zeroconf.Server),
+		endpoints: make(map[string]*registry.Endpoint),
 	}
 	builder := NewMdnsBuilder(r)
 	r.builder = builder

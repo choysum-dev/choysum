@@ -133,11 +133,28 @@ func TestNewTestRuntimeScopeInputFromScopeCopiesRuntimeAndDBOptions(t *testing.T
 	if got := input.DistPath(); got != "/workspace/dist" {
 		t.Fatalf("DistPath() = %q, want /workspace/dist", got)
 	}
+	isolated := input.withDistPath("/tmp/unit-run/dist")
+	if got := isolated.DistPath(); got != "/tmp/unit-run/dist" {
+		t.Fatalf("withDistPath DistPath() = %q, want /tmp/unit-run/dist", got)
+	}
+	if got := input.DistPath(); got != "/workspace/dist" {
+		t.Fatalf("original DistPath() mutated = %q, want /workspace/dist", got)
+	}
+	if got := isolated.TmpPath(); got != "/workspace/tmp" {
+		t.Fatalf("withDistPath TmpPath() = %q, want /workspace/tmp", got)
+	}
 	if got := input.TmpPath(); got != "/workspace/tmp" {
 		t.Fatalf("TmpPath() = %q, want /workspace/tmp", got)
 	}
 	if got := input.DefaultChoysumPath(); got != "/workspace/.choysum" {
 		t.Fatalf("DefaultChoysumPath() = %q, want /workspace/.choysum", got)
+	}
+	withHome := input.withDefaultChoysumPath("/tmp/cli-run/home")
+	if got := withHome.DefaultChoysumPath(); got != "/tmp/cli-run/home" {
+		t.Fatalf("withDefaultChoysumPath DefaultChoysumPath() = %q, want /tmp/cli-run/home", got)
+	}
+	if got := input.DefaultChoysumPath(); got != "/workspace/.choysum" {
+		t.Fatalf("original DefaultChoysumPath() mutated = %q, want /workspace/.choysum", got)
 	}
 	if got := input.ConfigPath(); got != "/workspace/config.yaml" {
 		t.Fatalf("ConfigPath() = %q, want /workspace/config.yaml", got)

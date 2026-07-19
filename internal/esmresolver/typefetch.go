@@ -324,7 +324,7 @@ func fetchTypeDefinitionWithState(ctx context.Context, client *http.Client, upst
 	}
 
 	// Step 1: HEAD request to discover the types URL.
-	spec := pkg + "@" + version
+	spec := typeFetchDiscoverSpec(pkg, version)
 	discoverURL := fmt.Sprintf("%s/%s?dts", strings.TrimRight(upstream, "/"), spec)
 
 	var resp *http.Response
@@ -512,6 +512,11 @@ func fetchTypeRecursive(ctx context.Context, client *http.Client, typesDir, type
 	rewritten := rewriteTypeImportSpecifiers(string(content), cacheFile, typesDir, resolvedImports)
 	rewritten = rewriteLocalCachedBridgeSpecifiers(rewritten)
 	rewritten = rewriteTypeModuleAugmentationSpecifiers(rewritten)
+	// Promote single ambient declare-module wrappers (e.g. esm.sh CJS packages)
+	// into top-level modules so compilerOptions.paths targets are real modules.
+	if strings.TrimSpace(rootVersion) != "" {
+		rewritten = promoteAmbientModuleForPathsTarget(rewritten)
+	}
 	if rewritten != string(content) {
 		content = []byte(rewritten)
 		if err := writeTypeCacheFile(typesDir, cacheFile, content); err != nil {
@@ -1411,11 +1416,7 @@ func fetchTypesForModuleWithStateAndStats(ctx context.Context, client *http.Clie
 	}
 	sort.Strings(depNames)
 
-	type dependencyFetchTarget struct {
-		name    string
-		version string
-	}
-	targets := make([]dependencyFetchTarget, 0, len(depNames))
+	targets := make([]typeFetchDependencyTarget, 0, len(depNames))
 	for _, name := range depNames {
 		verRange := deps[name]
 		if strings.HasPrefix(verRange, "workspace:") || strings.HasPrefix(verRange, "file:") || strings.HasPrefix(verRange, "link:") {
@@ -1425,7 +1426,10 @@ func fetchTypesForModuleWithStateAndStats(ctx context.Context, client *http.Clie
 		if version == "" || version == "*" {
 			continue
 		}
-		targets = append(targets, dependencyFetchTarget{name: name, version: version})
+		targets = append(targets, typeFetchDependencyTarget{name: name, version: version})
+	}
+	if sourceImports, err := collectModuleSourceImportSpecifiers(moduleDir); err == nil {
+		targets = mergeTypeFetchTargets(targets, subpathTypeFetchTargets(deps, sourceImports))
 	}
 	if len(targets) == 0 {
 		return nil, stats, nil
@@ -1721,6 +1725,9 @@ func UpdateTsconfigPaths(tsconfigPath string, results []TypeFetchResult) error {
 
 	for _, r := range results {
 		if r.CachedPath == "" {
+			continue
+		}
+		if !isValidTsconfigPathsMappingKey(r.Package) {
 			continue
 		}
 		cachedPath := r.CachedPath

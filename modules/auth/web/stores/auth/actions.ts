@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isClient } from '@vueuse/core';
+import { createTranslate } from '@/web/web/i18n';
 import { hashPasswordClient, getCsrfTokenFromCookie, getDeviceInfo, withLoading } from './utils';
 import { newAuthError, wrapAuthError, AuthErrCode, isAuthError } from '../../error';
 import type { AuthState } from './state';
@@ -9,6 +10,8 @@ import type { AuthHelpers } from './helpers';
 import type { AuthOptions } from './options';
 import { authStorage } from './storage';
 import type { PermissionState } from '@/auth/web/permission';
+
+const { _t } = createTranslate('auth', { scope: 'web/stores/auth/actions' });
 
 /**
  * Build the auth store action set.
@@ -67,7 +70,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       state.permissionState.value = null;
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_LOADING_FAILED,
-        message: 'Failed to load permission state',
+        message: _t('Failed to load permission state'),
       });
     }
   }
@@ -80,7 +83,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       if (!state.tokens.value?.accessToken || !state.identity.value?.userId) {
         throw newAuthError({
           code: AuthErrCode.UNKNOWN,
-          message: 'Not authenticated; cannot switch company scope',
+          message: _t('Not authenticated; cannot switch company scope'),
         });
       }
 
@@ -88,7 +91,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       if (!resp || !resp.accessToken) {
         throw newAuthError({
           code: AuthErrCode.UNKNOWN,
-          message: 'SwitchCompanyScope returned an invalid response',
+          message: _t('SwitchCompanyScope returned an invalid response'),
         });
       }
 
@@ -113,7 +116,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
-        message: 'Failed to switch company scope',
+        message: _t('Failed to switch company scope'),
       });
     }
   }
@@ -139,7 +142,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.REGISTRATION_FAILED,
-        message: 'Registration failed',
+        message: _t('Registration failed'),
       });
     }
   }
@@ -179,7 +182,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       if (!response || !response.accessToken) {
         throw newAuthError({
           code: AuthErrCode.INVALID_CREDENTIALS,
-          message: 'Invalid login response',
+          message: _t('Invalid login response'),
         });
       }
 
@@ -208,7 +211,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.INVALID_CREDENTIALS,
-        message: 'Login failed',
+        message: _t('Login failed'),
       });
     }
   }
@@ -230,7 +233,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
           clearAuth();
           throw wrapAuthError(error, {
             code: AuthErrCode.LOGOUT_FAILED,
-            message: 'Server-side logout failed, but local state was cleared',
+            message: _t('Server-side logout failed, but local state was cleared'),
           });
         }
       }
@@ -241,7 +244,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       clearAuth();
       throw wrapAuthError(error, {
         code: AuthErrCode.LOGOUT_FAILED,
-        message: 'Logout failed, but local state was cleared',
+        message: _t('Logout failed, but local state was cleared'),
       });
     }
   }
@@ -265,7 +268,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       return await refreshInFlight;
     }
     if (!state.tokens.value?.refreshToken) {
-      throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: 'No refresh token is available' });
+      throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('No refresh token is available') });
     }
 
     state.refreshState.refreshing = true;
@@ -277,7 +280,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
 
         const response = await state.userStore.RefreshTokens(state.tokens.value!.refreshToken);
         if (!response || !response.accessToken) {
-          throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: 'RefreshTokens returned an invalid response' });
+          throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('RefreshTokens returned an invalid response') });
         }
 
         // Persist the refreshed token pair and identity.
@@ -309,7 +312,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
         clearAuth();
         throw wrapAuthError(error, {
           code: AuthErrCode.REFRESH_FAILED,
-          message: 'Failed to refresh token',
+          message: _t('Failed to refresh token'),
         });
       } finally {
         state.refreshState.refreshing = false;
@@ -329,7 +332,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       if (!userId) {
         throw newAuthError({
           code: AuthErrCode.USER_LOADING_FAILED,
-          message: 'Cannot load user details: missing userId',
+          message: _t('Cannot load user details: missing userId'),
         });
       }
 
@@ -342,7 +345,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_LOADING_FAILED,
-        message: 'Failed to load user details',
+        message: _t('Failed to load user details'),
       });
     }
   }
@@ -397,7 +400,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       state.initialized.value = true;
       throw wrapAuthError(error, {
         code: AuthErrCode.INITIALIZATION_FAILED,
-        message: 'Failed to initialize auth',
+        message: _t('Failed to initialize auth'),
       });
     }
   }
@@ -427,6 +430,28 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     await initInFlight;
   }
 
+  /**
+   * Persist terminology language preference for the logged-in user (User.Language).
+   * Anonymous callers no-op; FE still keeps locale in i18nStore localStorage.
+   */
+  async function persistLanguagePreference(lang: string): Promise<void> {
+    const terminologyLang = String(lang || '').trim();
+    if (!terminologyLang) {
+      return;
+    }
+    if (!state.isAuthenticated.value) {
+      return;
+    }
+    const userId = state.currentUser.value?.Id || state.identity.value?.userId || null;
+    if (!userId) {
+      return;
+    }
+    await state.userStore.UpdateById(userId, { Language: terminologyLang } as any, ['Id', 'Language'] as any);
+    if (state.currentUser.value) {
+      (state.currentUser.value as any).Language = terminologyLang;
+    }
+  }
+
   // Wrap public async actions with shared loading-state bookkeeping.
   const register = withLoading(registerImpl, state.loading);
   const login = withLoading(loginImpl, state.loading);
@@ -448,6 +473,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     switchCompanyScope,
     register,
     getCsrfToken,
+    persistLanguagePreference,
   };
 }
 

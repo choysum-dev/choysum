@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <el-card class="register-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h3>Create Account</h3>
+          <h3>{{ _t('Create Account') }}</h3>
         </div>
       </template>
       <transition name="fade">
@@ -16,22 +16,22 @@ SPDX-License-Identifier: Apache-2.0
       </transition>
 
       <el-form ref="registerForm" :model="form" :rules="rules" label-position="top" @keydown="handleKeyDown" @submit.prevent="handleRegister">
-        <el-form-item prop="username" label="Username">
-          <el-input v-model="form.username" placeholder="Enter username" :prefix-icon="User" autocomplete="username" />
+        <el-form-item prop="username" :label="_t('Username')">
+          <el-input v-model="form.username" :placeholder="_t('Enter username')" :prefix-icon="User" autocomplete="username" />
         </el-form-item>
 
-        <el-form-item prop="email" label="Email">
-          <el-input v-model="form.email" placeholder="Enter email address" :prefix-icon="Message" type="email" autocomplete="email" />
+        <el-form-item prop="email" :label="_t('Email')">
+          <el-input v-model="form.email" :placeholder="_t('Enter email address')" :prefix-icon="Message" type="email" autocomplete="email" />
         </el-form-item>
 
-        <el-form-item prop="password" label="Password">
-          <el-input v-model="form.password" placeholder="Enter password" :prefix-icon="Lock" type="password" autocomplete="new-password" show-password />
+        <el-form-item prop="password" :label="_t('Password')">
+          <el-input v-model="form.password" :placeholder="_t('Enter password')" :prefix-icon="Lock" type="password" autocomplete="new-password" show-password />
         </el-form-item>
 
-        <el-form-item prop="confirmPassword" label="Confirm Password">
+        <el-form-item prop="confirmPassword" :label="_t('Confirm Password')">
           <el-input
             v-model="form.confirmPassword"
-            placeholder="Re-enter password"
+            :placeholder="_t('Re-enter password')"
             :prefix-icon="Lock"
             type="password"
             autocomplete="new-password"
@@ -41,18 +41,22 @@ SPDX-License-Identifier: Apache-2.0
 
         <el-form-item prop="agreeTerms">
           <el-checkbox v-model="form.agreeTerms">
-            I have read and agree to <a href="#" target="_blank">Terms of Service</a> and
-            <a href="#" target="_blank">Privacy Policy</a>
+            {{ _t('I have read and agree to') }}
+            <a href="#" target="_blank">{{ _t('Terms of Service') }}</a>
+            {{ _t('and') }}
+            <a href="#" target="_blank">{{ _t('Privacy Policy') }}</a>
           </el-checkbox>
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button" :disabled="!form.agreeTerms"> Create Account </el-button>
+          <el-button type="primary" native-type="submit" :loading="loading" class="submit-button" :disabled="!form.agreeTerms">
+            {{ _t('Create Account') }}
+          </el-button>
         </el-form-item>
 
         <div class="login-link">
-          Already have an account?
-          <router-link to="/login">Log in now</router-link>
+          {{ _t('Already have an account?') }}
+          <router-link to="/login">{{ _t('Log in now') }}</router-link>
         </div>
       </el-form>
     </el-card>
@@ -60,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
@@ -68,6 +72,10 @@ import { ChoysumError } from '../error';
 import { ElForm, ElFormItem, ElInput, ElButton, ElAlert, ElCheckbox, ElCard } from 'element-plus';
 import { User, Lock, Message } from '@element-plus/icons-vue';
 import OPage from '@/web/web/components/page/OPage.vue';
+import type { FormRules } from 'element-plus';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('auth', { scope: 'web/pages/Register' });
 
 const router = useRouter();
 const route = useRoute();
@@ -91,11 +99,11 @@ const error = ref('');
  */
 const validateUsername = (rule: any, value: string, callback: any) => {
   if (!value) {
-    callback(new Error('Enter username'));
+    callback(new Error(_t('Enter username')));
   } else if (value.length < 3) {
-    callback(new Error('Username must be at least 3 characters'));
+    callback(new Error(_t('Username must be at least 3 characters')));
   } else if (!/^[a-zA-Z0-9_\-\.]+$/.test(value)) {
-    callback(new Error('Username can only contain letters, numbers, underscores, hyphens, and dots'));
+    callback(new Error(_t('Username can only contain letters, numbers, underscores, hyphens, and dots')));
   } else {
     callback();
   }
@@ -106,9 +114,9 @@ const validateUsername = (rule: any, value: string, callback: any) => {
  */
 const validateEmail = (rule: any, value: string, callback: any) => {
   if (!value) {
-    callback(new Error('Enter email address'));
+    callback(new Error(_t('Enter email address')));
   } else if (!/^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/.test(value)) {
-    callback(new Error('Enter a valid email address'));
+    callback(new Error(_t('Enter a valid email address')));
   } else {
     callback();
   }
@@ -119,9 +127,9 @@ const validateEmail = (rule: any, value: string, callback: any) => {
  */
 const validatePassword = (rule: any, value: string, callback: any) => {
   if (!value) {
-    callback(new Error('Enter password'));
+    callback(new Error(_t('Enter password')));
   } else if (value.length < 6) {
-    callback(new Error('Password must be at least 6 characters'));
+    callback(new Error(_t('Password must be at least 6 characters')));
   } else {
     // Revalidate the confirmation field after the password changes.
     if (form.confirmPassword) {
@@ -136,9 +144,9 @@ const validatePassword = (rule: any, value: string, callback: any) => {
  */
 const validateConfirmPassword = (rule: any, value: string, callback: any) => {
   if (!value) {
-    callback(new Error('Re-enter password'));
+    callback(new Error(_t('Re-enter password')));
   } else if (value !== form.password) {
-    callback(new Error('Passwords do not match'));
+    callback(new Error(_t('Passwords do not match')));
   } else {
     callback();
   }
@@ -149,20 +157,20 @@ const validateConfirmPassword = (rule: any, value: string, callback: any) => {
  */
 const validateAgreeTerms = (rule: any, value: boolean, callback: any) => {
   if (!value) {
-    callback(new Error('You must agree to the Terms of Service and Privacy Policy'));
+    callback(new Error(_t('You must agree to the Terms of Service and Privacy Policy')));
   } else {
     callback();
   }
 };
 
-const rules = {
+const rules = computed<FormRules>(() => ({
   username: [{ validator: validateUsername, trigger: 'blur' }],
   email: [{ validator: validateEmail, trigger: 'blur' }],
   password: [{ validator: validatePassword, trigger: 'blur' }],
   confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }],
-  fullName: [{ required: false, message: 'Enter your name', trigger: 'blur' }],
+  fullName: [{ required: false, message: _t('Enter your name'), trigger: 'blur' }],
   agreeTerms: [{ validator: validateAgreeTerms, trigger: 'change' }],
-};
+}));
 
 /**
  * Validate the registration form and create a new user session.
@@ -185,7 +193,7 @@ async function handleRegister() {
     if (err instanceof ChoysumError) {
       error.value = err.message;
     } else {
-      error.value = 'Registration failed. Please try again later.';
+      error.value = _t('Registration failed. Please try again later.');
       console.error('Registration flow failed:', err);
     }
   }

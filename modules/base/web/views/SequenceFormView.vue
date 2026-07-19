@@ -12,29 +12,30 @@ SPDX-License-Identifier: Apache-2.0
   >
     <el-card shadow="never" class="bfv-card">
       <template #header
-        ><div class="bfv-card__header"><span>Sequence Configuration</span></div></template
+        ><div class="bfv-card__header"><span>{{ _t('Sequence Configuration') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" label="Name" :rules="[{ required: true, message: 'Required' }]" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" label="Code" :rules="[{ required: true, message: 'Required' }]" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" /></el-col>
         <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField :store="store" prop="CompanyId" label="Company" :search-view="CompanyListView" search-view-title="Select Company"
+          ><OManyToOneField :store="store" prop="CompanyId" :label="_t('Company')" :search-view="CompanyListView" :search-view-title="_t('Select Company')"
         /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="6"><OVarCharField :store="store" prop="Prefix" label="Prefix" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OVarCharField :store="store" prop="Suffix" label="Suffix" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OIntField :store="store" prop="Padding" label="Padding Length" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="NextNumber" label="Next Number" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OVarCharField :store="store" prop="Prefix" :label="_t('Prefix')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OVarCharField :store="store" prop="Suffix" :label="_t('Suffix')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OIntField :store="store" prop="Padding" :label="_t('Padding Length')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="NextNumber" :label="_t('Next Number')" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsActive" label="Active" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsActive" :label="_t('Active')" /></el-col>
       </el-row>
     </el-card>
   </OFormView>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Sequence from '@/base/service/models/sequence';
@@ -49,13 +50,17 @@ import CompanyListView from './CompanyListView.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SequenceFormView', inheritAttrs: true });
+const { _t } = createTranslate('base', { scope: 'web/views/SequenceFormView' });
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/SequenceFormView' });
+const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<Sequence>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
-const sequenceActions = defineModelActions('base.Sequence', { entityTitle: 'Sequence' });
+const sequenceActions = defineModelActions('base.Sequence', { entityTitle: _tRef('Sequence') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 </script>

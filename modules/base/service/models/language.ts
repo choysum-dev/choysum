@@ -17,11 +17,13 @@ export default class Language extends BaseModel {
   @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
   IsActive: boolean;
 
+  // Selection labels stay English msgid until options are served by a request-scoped
+  // API that can text-_t with RequestContext.lang. Do not use output:'reference' here.
   @Field({
     type: 'selection',
     selection: [
-      { value: 'ltr', label: 'ltr' },
-      { value: 'rtl', label: 'rtl' },
+      { value: 'ltr', label: 'Left to right' },
+      { value: 'rtl', label: 'Right to left' },
     ],
     size: 8,
   })

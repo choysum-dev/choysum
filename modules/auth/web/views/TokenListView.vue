@@ -16,11 +16,11 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #header-right>
       <el-button-group>
-        <el-tooltip content="List View" placement="top"> <el-button :icon="FormatListBulletedOutlined" @click="toList" type="primary" /></el-tooltip>
-        <el-tooltip content="Kanban View" placement="top"
+        <el-tooltip :content="_t('List View')" placement="top"> <el-button :icon="FormatListBulletedOutlined" @click="toList" type="primary" /></el-tooltip>
+        <el-tooltip :content="_t('Kanban View')" placement="top"
           ><el-button v-action="['auth.action.token_edit', 'auth.action.token_copy']" :icon="GridViewSharp" @click="toKanban"
         /></el-tooltip>
-        <el-tooltip content="Icon View" placement="top"
+        <el-tooltip :content="_t('Icon View')" placement="top"
           ><el-button v-action.disable.and="['auth.action.token_edit', 'auth.action.token_delete']" :icon="BarChartOutlined" @click="toKanban"
         /></el-tooltip>
       </el-button-group>
@@ -29,12 +29,12 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField prop="UserId.Username" label="User" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="TokenType" label="Type" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ODateTimeField prop="ExpiresAt" label="Expires At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <OBooleanField :store="store" prop="Revoked" label="Revoked" widget="checkbox" />
-    <ODateTimeField prop="RevokedAt" label="Revoked At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="CreatedAt" label="Created At" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="UserId.Username" :label="_t('User')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="TokenType" :label="_t('Type')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ODateTimeField prop="ExpiresAt" :label="_t('Expires At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OBooleanField :store="store" prop="Revoked" :label="_t('Revoked')" widget="checkbox" />
+    <ODateTimeField prop="RevokedAt" :label="_t('Revoked At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 
@@ -47,15 +47,18 @@ import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import type { RowEventPayload } from '@/web/web/components/view/OListView.vue';
+import type { RowEventPayload } from '@/web/web/components/view/listViewTypes';
 import { ElButton, ElTooltip, ElButtonGroup } from 'element-plus';
 import { FormatListBulletedOutlined, GridViewSharp, BarChartOutlined } from '@vicons/material';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: true });
+const { _t } = createTranslate('auth', { scope: 'web/views/TokenListView' });
+const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/TokenListView' });
 
 const router = useRouter();
 
@@ -70,7 +73,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const tokenActions = defineModelActions('auth.Token', { entityTitle: 'Token' });
+const tokenActions = defineModelActions('auth.Token', { entityTitle: _tRef('Token') });
 const { hasAction } = usePermission();
 
 /**

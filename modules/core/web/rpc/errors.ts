@@ -3,6 +3,9 @@
 
 import { Code, ConnectError } from '@connectrpc/connect';
 import { ErrorInfoSchema, ChoysumError } from '../../error';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('core', { scope: 'web/rpc/errors' });
 
 export function normalizeTransportError(error: unknown): unknown {
   if (!(error instanceof ConnectError)) {
@@ -24,7 +27,7 @@ export function normalizeTransportError(error: unknown): unknown {
   const choysumError = new ChoysumError({
     domain: 'api',
     code: 'UNKNOWN',
-    message: error.message || 'Unknown API error',
+    message: error.message || _t('Unknown API error'),
   })
     .withGrpcCode(grpcCode)
     .withCause(error instanceof Error ? error : new Error(String(error)));

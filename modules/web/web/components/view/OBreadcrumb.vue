@@ -12,7 +12,11 @@ SPDX-License-Identifier: Apache-2.0
         :to="crumb.clickable ? crumb.path : undefined"
         @click="navigateTo(crumb, index)"
       >
-        {{ crumb.displayTitle }}
+        {{
+          crumb.titleText
+            ? $t(crumb.titleText.key, crumb.titleText.src || crumb.title)
+            : crumb.title
+        }}
       </ElBreadcrumbItem>
     </ElBreadcrumb>
   </div>

@@ -8,6 +8,7 @@ import {
   normalizeChecksumSha256,
   normalizeContentType,
 } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { toDate } from '@/core/service/utils/datetime';
 import { GrpcCode } from '../error';
 import { PrepareUploadResp, FinalizeUploadResp, UploadedPayloadRef, PrincipalContext } from '../contracts';
@@ -17,16 +18,28 @@ import type AttachmentUploadSession from './upload_session';
 import { requireText } from './_normalizers';
 import { isDisallowedInlinePayloadID, DEFAULT_MAX_UPLOAD_BYTES, EMPTY_SHA256 } from './_upload';
 
+const { _t } = createTranslate('document');
+
 // ---------------------------------------------------------------------------
 // Error helpers
 // ---------------------------------------------------------------------------
 
 export function throwUploadSessionExpired(uploadId: string): never {
-  throwDocumentError(DocumentErrCode.UPLOAD_SESSION_EXPIRED, 'Upload session has expired', GrpcCode.FailedPrecondition, { uploadId });
+  throwDocumentError(
+    DocumentErrCode.UPLOAD_SESSION_EXPIRED,
+    _t('Upload session has expired', { scope: 'service/models/_attachment_upload_codec' }),
+    GrpcCode.FailedPrecondition,
+    { uploadId }
+  );
 }
 
 export function throwUploadSessionFinalized(uploadId: string): never {
-  throwDocumentError(DocumentErrCode.UPLOAD_SESSION_FINALIZED, 'Upload session has already been finalized', GrpcCode.FailedPrecondition, { uploadId });
+  throwDocumentError(
+    DocumentErrCode.UPLOAD_SESSION_FINALIZED,
+    _t('Upload session has already been finalized', { scope: 'service/models/_attachment_upload_codec' }),
+    GrpcCode.FailedPrecondition,
+    { uploadId }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +116,9 @@ export function buildUploadedPayloadRefFromPayloadId(payloadId: string): Uploade
   if (isDisallowedInlinePayloadID(text)) {
     throwDocumentError(
       DocumentErrCode.INVALID_ARGUMENT,
-      'payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden',
+      _t('payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden', {
+        scope: 'service/models/_attachment_upload_codec',
+      }),
       GrpcCode.InvalidArgument,
       { field: 'payloadReceipt.payloadId' }
     );
@@ -117,9 +132,14 @@ export function buildUploadedPayloadRefFromPayloadId(payloadId: string): Uploade
     };
   }
 
-  throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, 'payloadReceipt.payloadId format is unsupported', GrpcCode.InvalidArgument, {
-    field: 'payloadReceipt.payloadId',
-  });
+  throwDocumentError(
+    DocumentErrCode.INVALID_ARGUMENT,
+    _t('payloadReceipt.payloadId format is unsupported', { scope: 'service/models/_attachment_upload_codec' }),
+    GrpcCode.InvalidArgument,
+    {
+      field: 'payloadReceipt.payloadId',
+    }
+  );
 }
 
 export function normalizeUploadedPayloadRef(raw: unknown): UploadedPayloadRef | undefined {

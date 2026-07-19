@@ -24,6 +24,9 @@ import { useI18nStore } from '@/web/web/stores';
 import OPage from '@/web/web/components/page/OPage.vue';
 import { ElButton, ElResult, ElIcon, ElDivider } from 'element-plus';
 import { WarningFilled, CircleCloseFilled, QuestionFilled } from '@element-plus/icons-vue';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/pages/ErrorView' });
 
 // Define local types.
 type ResultStatus = 'success' | 'warning' | 'info' | 'error' | '404' | '403' | '500';
@@ -77,55 +80,55 @@ const errorConfig = computed<ErrorConfig>(() => {
       const fromPath = route.query.from as string;
 
       // Build a reason-specific subtitle.
-      let subtitle = '您没有权限访问此页面';
+      let subtitle = _t('You do not have permission to access this page');
       if (reason === 'role') {
-        subtitle = '您缺少所需角色权限';
+        subtitle = _t('You are missing the required role');
       } else if (reason === 'permission') {
-        subtitle = '您缺少所需访问权限';
+        subtitle = _t('You are missing the required permission');
       }
 
       // Build custom action buttons.
-      const actions: ActionItem[] = [{ text: '返回首页', action: goHome, type: 'primary' }];
+      const actions: ActionItem[] = [{ text: _t('Back to home'), action: goHome, type: 'primary' }];
 
       // Add a return button when a source path is provided.
       if (fromPath) {
-        actions.push({ text: '返回上一页', action: () => goToPath(fromPath), type: 'default' });
+        actions.push({ text: _t('Go back'), action: () => goToPath(fromPath), type: 'default' });
       }
 
       // Add a contact administrator button.
-      actions.push({ text: '联系管理员', action: contactAdmin, type: 'default' });
+      actions.push({ text: _t('Contact administrator'), action: contactAdmin, type: 'default' });
 
       return {
-        title: '权限不足',
+        title: _t('Access denied'),
         subtitle,
         icon: WarningFilled,
         status: '403',
-        message: message || '请确认您拥有访问此资源的权限，或联系系统管理员获取帮助。',
+        message: message || _t('Confirm you have access to this resource, or contact an administrator.'),
         actions,
       };
     case '500':
       return {
-        title: '服务器错误',
-        subtitle: '服务器遇到了一个错误',
+        title: _t('Server error'),
+        subtitle: _t('The server encountered an error'),
         icon: CircleCloseFilled,
         status: '500',
-        message: (route.query.message as string) || '系统发生了内部错误，请稍后重试或联系技术支持。',
+        message: (route.query.message as string) || _t('An internal error occurred. Try again later or contact support.'),
         actions: [
-          { text: '返回首页', action: goHome, type: 'primary' },
-          { text: '重试', action: retry, type: 'default' },
-          { text: '报告问题', action: reportIssue, type: 'warning' },
+          { text: _t('Back to home'), action: goHome, type: 'primary' },
+          { text: _t('Retry'), action: retry, type: 'default' },
+          { text: _t('Report a problem'), action: reportIssue, type: 'warning' },
         ],
       };
     default: // 404
       return {
-        title: '页面未找到',
-        subtitle: '您访问的页面不存在',
+        title: _t('Page not found'),
+        subtitle: _t('The page you requested does not exist'),
         icon: QuestionFilled,
         status: '404',
-        message: '请检查URL是否正确，或者该页面可能已被移动或删除。',
+        message: _t('Check that the URL is correct, or the page may have been moved or deleted.'),
         actions: [
-          { text: '返回首页', action: goHome, type: 'primary' },
-          { text: '返回上一页', action: goBack, type: 'default' },
+          { text: _t('Back to home'), action: goHome, type: 'primary' },
+          { text: _t('Go back'), action: goBack, type: 'default' },
         ],
       };
   }

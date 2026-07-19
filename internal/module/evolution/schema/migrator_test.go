@@ -43,6 +43,36 @@ func TestMigratorMigrateOrdersSchemaBeforeForeignKeys(t *testing.T) {
 	}
 }
 
+func TestMigratorMigrateEnsuresTranslationTermTable(t *testing.T) {
+	runtimeScope := newSchemaTestScope(t)
+
+	authMigrator := &migrator{
+		runtimeScope:       runtimeScope,
+		module:             &meta.IrModule{Name: "auth", ApplicationStr: "auth"},
+		modelMigrator:      modelMigratorFunc(func() error { return nil }),
+		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
+	}
+	if err := authMigrator.Migrate(); err != nil {
+		t.Fatalf("Migrate(auth): %v", err)
+	}
+	if !runtimeScope.Session().Migrator().HasTable("auth_translation_term") {
+		t.Fatal("expected auth_translation_term after Migrate")
+	}
+
+	coreMigrator := &migrator{
+		runtimeScope:       runtimeScope,
+		module:             &meta.IrModule{Name: "base", ApplicationStr: "core"},
+		modelMigrator:      modelMigratorFunc(func() error { return nil }),
+		foreignKeyMigrator: foreignKeyMigratorFunc(func() error { return nil }),
+	}
+	if err := coreMigrator.Migrate(); err != nil {
+		t.Fatalf("Migrate(core): %v", err)
+	}
+	if runtimeScope.Session().Migrator().HasTable("core_translation_term") {
+		t.Fatal("expected no core_translation_term when application == core")
+	}
+}
+
 func TestMigratorMigrateWrapsErrors(t *testing.T) {
 	m := &migrator{
 		modelMigrator:      modelMigratorFunc(func() error { return errors.New("schema broken") }),

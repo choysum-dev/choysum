@@ -4,8 +4,18 @@
 import Locale from '@/base/service/models/locale';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
+import { MetadataStorage } from '@/core/service/api/metadata';
 
 import { companyCode8, uid } from './_helpers';
+
+test('base.locale: CurrencySymbolPosition selection keeps English msgid labels', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Locale).fields.get('CurrencySymbolPosition');
+
+  expect(field?.selection).toEqual([
+    { value: 'before', label: 'Before amount' },
+    { value: 'after', label: 'After amount' },
+  ]);
+});
 
 test('base.locale: CurrencySymbolPosition invalid is rejected', async () => {
   let error: unknown;

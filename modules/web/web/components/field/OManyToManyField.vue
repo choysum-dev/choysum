@@ -33,15 +33,15 @@ SPDX-License-Identifier: Apache-2.0
           >
             <OVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
             <slot />
-            <OVColumn :label="'操作'" :width="60">
+            <OVColumn :label="_t('Actions')" :width="60">
               <template #default="{ $index }">
-                <el-button link type="danger" size="small" @click="onRemove($index)"> 删除 </el-button>
+                <el-button link type="danger" size="small" @click="onRemove($index)">{{ _t('Delete') }}</el-button>
               </template>
             </OVColumn>
           </OVTable>
         </div>
         <div class="o-many-to-many-actions">
-          <el-button v-if="searchList" size="small" link type="primary" plain @click="openPicker"> 添加行 </el-button>
+          <el-button v-if="searchList" size="small" link type="primary" plain @click="openPicker">{{ _t('Add row') }}</el-button>
         </div>
       </OViewScope>
 
@@ -60,15 +60,15 @@ SPDX-License-Identifier: Apache-2.0
             >
               <OVColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'right', width: 50 }" />
               <slot />
-              <OVColumn :label="'操作'" :width="60">
+              <OVColumn :label="_t('Actions')" :width="60">
                 <template #default="{ $index }">
-                  <el-button link type="danger" size="small" @click="onRemove($index)"> 删除 </el-button>
+                  <el-button link type="danger" size="small" @click="onRemove($index)">{{ _t('Delete') }}</el-button>
                 </template>
               </OVColumn>
             </OVTable>
           </div>
           <div class="o-many-to-many-actions">
-            <el-button v-if="searchList" size="small" link type="primary" plain @click="openPicker"> 添加行 </el-button>
+            <el-button v-if="searchList" size="small" link type="primary" plain @click="openPicker">{{ _t('Add row') }}</el-button>
           </div>
         </OViewScope>
       </template>
@@ -95,7 +95,7 @@ SPDX-License-Identifier: Apache-2.0
     </template>
   </OFieldBase>
 
-  <el-dialog v-model="dialogVisible" :title="searchViewTitle" :width="searchViewWidth" append-to-body destroy-on-close>
+  <el-dialog v-model="dialogVisible" :title="effectiveSearchViewTitle" :width="searchViewWidth" append-to-body destroy-on-close>
     <OViewScope view-mode="display">
       <component
         v-if="searchList && relationStore"
@@ -111,8 +111,8 @@ SPDX-License-Identifier: Apache-2.0
     </OViewScope>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmAdd">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ _t('Cancel') }}</el-button>
+        <el-button type="primary" @click="confirmAdd">{{ _t('OK') }}</el-button>
       </span>
     </template>
   </el-dialog>
@@ -131,9 +131,12 @@ import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import OViewScope from '@/web/web/components/view/OViewScope.vue';
-import type { SelectionExpose } from '@/web/web/components/view/OListView.vue';
+import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OManyToManyField' });
 
 defineOptions({ name: 'OManyToManyField', inheritAttrs: false });
 
@@ -189,7 +192,7 @@ const props = withDefaults(
     minTableHeight: 120,
     maxTableHeight: 360,
     allowRowEdit: false,
-    searchViewTitle: '选择关联项',
+    searchViewTitle: '',
     searchViewWidth: '75%',
     targetModel: '',
 
@@ -207,6 +210,8 @@ const props = withDefaults(
     showInlineError: false,
   }
 );
+
+const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Select related items'));
 
 // Field binding.
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
@@ -336,7 +341,7 @@ const effectiveConditions = computed<QueryCondition<any> | []>(() => {
 // Picker actions.
 function openPicker() {
   if (!relationStore.value) {
-    ElMessage.warning('[OManyToManyField] relationStore 未解析，无法打开选择器');
+    ElMessage.warning(_t('relationStore is unresolved; cannot open picker'));
   } else {
     dialogVisible.value = true;
   }

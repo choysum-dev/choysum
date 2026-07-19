@@ -234,26 +234,26 @@ async function openModuleCard(page: Page, moduleName: string, opts?: { allowMiss
  */
 async function inferModuleStatusFromActions(card: Locator) {
   const hasInstall = await card
-    .getByRole('button', { name: '安装' })
+    .getByRole('button', { name: 'Install' })
     .first()
     .isVisible()
     .catch(() => false);
   if (hasInstall) {
-    return '未安装';
+    return 'Not Installed';
   }
 
   const hasUpgrade = await card
-    .getByRole('button', { name: '升级' })
+    .getByRole('button', { name: 'Upgrade' })
     .first()
     .isVisible()
     .catch(() => false);
   const hasUninstall = await card
-    .getByRole('button', { name: '卸载' })
+    .getByRole('button', { name: 'Uninstall' })
     .first()
     .isVisible()
     .catch(() => false);
   if (hasUpgrade || hasUninstall) {
-    return '已安装';
+    return 'Installed';
   }
 
   return '';
@@ -396,7 +396,7 @@ async function waitForOperationCompletion(page: Page) {
     throw new Error(`module operation finished with status ${completion}${resultSuffix}`);
   }
 
-  const doneButton = page.getByRole('button', { name: '完成' });
+  const doneButton = page.getByRole('button', { name: 'Done' });
   const doneVisible = await doneButton.isVisible().catch(() => false);
   if (doneVisible) {
     await doneButton.click();
@@ -421,8 +421,8 @@ async function waitForOperationFailure(page: Page) {
   const failedByStatus = completion === 'failed' || completion === 'cancelled' || statusText === 'failed' || statusText === 'cancelled';
   const failedByResult = /FAILED/i.test(resultText);
 
-  const summaryRow = dialog.locator('.status-row', { hasText: '摘要' });
-  const errorRow = dialog.locator('.status-row', { hasText: '错误' });
+  const summaryRow = dialog.locator('.status-row', { hasText: 'Summary' });
+  const errorRow = dialog.locator('.status-row', { hasText: 'Error' });
 
   if (!failedByStatus && !failedByResult) {
     if ((await summaryRow.count()) > 0) {
@@ -434,7 +434,7 @@ async function waitForOperationFailure(page: Page) {
     }
   }
 
-  const doneButton = page.getByRole('button', { name: '完成' });
+  const doneButton = page.getByRole('button', { name: 'Done' });
   const doneVisible = await doneButton.isVisible().catch(() => false);
   if (doneVisible) {
     await doneButton.click();
@@ -446,7 +446,7 @@ async function waitForOperationFailure(page: Page) {
  * Waits for the confirmation button to finish preflight loading and become clickable.
  */
 async function clickConfirmWhenReady(page: Page, timeout = 90000) {
-  const confirmBtn = page.getByRole('button', { name: '确认执行' });
+  const confirmBtn = page.getByRole('button', { name: 'Confirm' });
   await confirmBtn.waitFor({ state: 'visible', timeout });
   await expect(confirmBtn).not.toHaveClass(/is-loading/, { timeout });
   await expect(confirmBtn).toBeEnabled({ timeout });
@@ -489,7 +489,7 @@ async function closeOperationDialogIfPresent(page: Page) {
     return;
   }
 
-  const doneButton = page.getByRole('button', { name: '完成' });
+  const doneButton = page.getByRole('button', { name: 'Done' });
   const doneVisible = await doneButton.isVisible().catch(() => false);
   if (doneVisible) {
     await doneButton.click().catch(() => null);
@@ -514,7 +514,7 @@ async function hasExpectedModuleStatus(page: Page, moduleName: string, expectedS
  * Executes one module management action and waits for the board state to settle.
  */
 async function runActionOnce(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
-  const actionLabel = action === 'install' ? '安装' : action === 'upgrade' ? '升级' : '卸载';
+  const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
   const card = await openModuleCard(page, moduleName);
   await card.getByRole('button', { name: actionLabel }).click();
 
@@ -531,7 +531,7 @@ async function runActionOnce(page: Page, moduleName: string, action: 'install' |
     return;
   }
 
-  const expectedStatus = '已安装';
+  const expectedStatus = 'Installed';
   await waitForModuleStatus(page, moduleName, expectedStatus, 90000);
 }
 
@@ -565,17 +565,17 @@ async function snapshotModuleCards(page: Page): Promise<ModuleCardSnapshot[]> {
     ).trim();
 
     const hasInstall = await card
-      .getByRole('button', { name: '安装' })
+      .getByRole('button', { name: 'Install' })
       .first()
       .isVisible()
       .catch(() => false);
     const hasUpgrade = await card
-      .getByRole('button', { name: '升级' })
+      .getByRole('button', { name: 'Upgrade' })
       .first()
       .isVisible()
       .catch(() => false);
     const hasUninstall = await card
-      .getByRole('button', { name: '卸载' })
+      .getByRole('button', { name: 'Uninstall' })
       .first()
       .isVisible()
       .catch(() => false);
@@ -634,7 +634,7 @@ async function resolveActionTargetModule(page: Page, action: ModuleAction, prefe
  * Executes a module management action and retries on transient failures.
  */
 async function runAction(page: Page, moduleName: string | undefined, action: ModuleAction): Promise<string> {
-  const expectedStatus = action === 'uninstall' ? '未安装' : '已安装';
+  const expectedStatus = action === 'uninstall' ? 'Not Installed' : 'Installed';
   const maxAttempts = 3;
   let preferredName = String(moduleName || '').trim() || undefined;
   let activeName = preferredName || '';
@@ -676,7 +676,7 @@ async function runAction(page: Page, moduleName: string | undefined, action: Mod
  * Executes a module action and asserts that the result dialog reports failure.
  */
 async function runActionExpectFailure(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
-  const actionLabel = action === 'install' ? '安装' : action === 'upgrade' ? '升级' : '卸载';
+  const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
   const card = await openModuleCard(page, moduleName);
   const initialStatus = (await card.locator('.module-card__title .el-tag').innerText()).trim();
   await card.getByRole('button', { name: actionLabel }).click();
@@ -694,7 +694,7 @@ async function runActionExpectFailure(page: Page, moduleName: string, action: 'i
  * Executes a module action and asserts that only the reload stage fails while the action still applies.
  */
 async function runActionExpectReloadFailed(page: Page, moduleName: string, action: 'install' | 'upgrade' | 'uninstall') {
-  const actionLabel = action === 'install' ? '安装' : action === 'upgrade' ? '升级' : '卸载';
+  const actionLabel = action === 'install' ? 'Install' : action === 'upgrade' ? 'Upgrade' : 'Uninstall';
   const card = await openModuleCard(page, moduleName);
   await card.getByRole('button', { name: actionLabel }).click();
 
@@ -710,7 +710,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
     if ((await reloadRow.count()) === 0) {
       throw new Error('expected reload status row to be present in reload-failed flow');
     }
-    await expect(reloadRow).toHaveText(/触发失败/);
+    await expect(reloadRow).toHaveText(/Trigger Failed/);
 
     const resultTag = dialog.locator('.status-row .el-tag').nth(1);
     const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
@@ -718,7 +718,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
       throw new Error(`expected successful operation before reload failure, got result=${resultText}`);
     }
 
-    const doneButton = page.getByRole('button', { name: '完成' });
+    const doneButton = page.getByRole('button', { name: 'Done' });
     const doneVisible = await doneButton.isVisible().catch(() => false);
     if (doneVisible) {
       await doneButton.click();
@@ -726,7 +726,7 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
     }
   }
 
-  const expectedStatus = action === 'uninstall' ? '未安装' : '已安装';
+  const expectedStatus = action === 'uninstall' ? 'Not Installed' : 'Installed';
   if (completion === 'reloaded') {
     await waitForModuleStatus(page, moduleName, expectedStatus);
     return;
@@ -949,7 +949,7 @@ test('meta module management: kanban lazy sync does not block page', async ({ pa
   }
 
   // The manual sync toolbar button must remain reachable.
-  const syncButton = page.getByRole('button', { name: '同步' });
+  const syncButton = page.getByRole('button', { name: /Sync/i });
   if (await syncButton.isVisible().catch(() => false)) {
     await expect(syncButton).toBeEnabled({ timeout: 5000 });
   }
@@ -1001,7 +1001,7 @@ test('meta module management: kanban usable when registry sync fails', async ({ 
     await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
 
     // The manual sync button should still work for local-only refresh.
-    const syncButton = page.getByRole('button', { name: '同步' });
+    const syncButton = page.getByRole('button', { name: /Sync/i });
     if (await syncButton.isVisible().catch(() => false)) {
       await syncButton.click();
       await page.waitForTimeout(2000);

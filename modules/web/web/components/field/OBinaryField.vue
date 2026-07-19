@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
                 <el-button link type="primary" class="o-upload-action-btn" :disabled="uploadDisabled">{{ replaceButtonText }}</el-button>
               </el-upload>
               <el-button link type="danger" class="o-upload-action-btn" :disabled="uploadDisabled" @click="removeBinary(fieldValue, onFieldChange)"
-                >移除</el-button
+                >{{ _t('Remove') }}</el-button
               >
             </div>
           </div>
@@ -121,6 +121,10 @@ import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/compos
 import type { UploadFile, UploadRawFile, UploadProps } from 'element-plus';
 import { Document, UploadFilled } from '@element-plus/icons-vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
+import { createTranslate } from '@/web/web/i18n';
+import { computed } from 'vue';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OBinaryField' });
 
 defineOptions({ name: 'OBinaryField' });
 
@@ -165,8 +169,8 @@ const props = withDefaults(
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
     accept: '',
-    uploadText: '上传文件',
-    uploadDropText: '将文件拖拽到此处，或点击上传',
+    uploadText: '',
+    uploadDropText: '',
     uploadProps: () => ({ drag: true, showFileList: false }),
     renderMode: 'auto',
     showInlineError: false,
@@ -178,14 +182,14 @@ const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebM
 const toView = (raw: any): ViewType => raw;
 const fromView = (v: ViewType) => v as unknown as V;
 const accept = (props.accept || '').trim();
-const uploadButtonText = (props.uploadText || '上传文件').trim() || '上传文件';
-const uploadDropText = (props.uploadDropText || '将文件拖拽到此处，或点击上传').trim() || '将文件拖拽到此处，或点击上传';
+const uploadButtonText = computed(() => (props.uploadText || _t('Upload file')).trim() || _t('Upload file'));
+const uploadDropText = computed(() => (props.uploadDropText || _t('Drop file here or click to upload')).trim() || _t('Drop file here or click to upload'));
 const uploadConfig = (props.uploadProps || {}) as UploadPassthroughProps;
 const uploadMultiple = uploadConfig.multiple ?? false;
 const uploadDrag = uploadConfig.drag ?? true;
 const uploadShowFileList = uploadConfig.showFileList ?? false;
 const uploadDisabled = uploadConfig.disabled ?? false;
-const replaceButtonText = uploadMultiple ? uploadButtonText : '更换文件';
+const replaceButtonText = computed(() => (uploadMultiple ? uploadButtonText.value : _t('Replace file')));
 
 function normalizeText(value: unknown): string | undefined {
   const text = String(value ?? '').trim();

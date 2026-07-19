@@ -52,6 +52,7 @@ var systemAuthSkipMethods = []string{
 var internalAuthPreferredMethods = []string{
 	"task.Job/GetJob",
 	"*.TaskWorker/*",
+	"*.I18n/GetTranslations",
 	"meta.IrApplication/*",
 	"meta.IrField/*",
 	"meta.IrModel/*",

@@ -3,6 +3,9 @@
 
 import { raiseDomainError } from '@/core/service/error';
 import { NormalizationError, normalizeOptionalString, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
+
+const { _t } = createTranslate('partner_bank');
 
 /**
  * Throw a partner-bank-domain InvalidArgument error.
@@ -56,6 +59,6 @@ export function normalizeRequiredText(value: unknown, fieldName: string, opts?: 
       const normalized = normalizeRequiredTextCore(value);
       return opts?.upper ? normalized.toUpperCase() : normalized;
     },
-    () => `${fieldName} is required`
+    () => _t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName)
   );
 }

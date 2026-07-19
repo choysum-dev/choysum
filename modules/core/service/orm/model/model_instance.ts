@@ -15,6 +15,7 @@ import { collectModelUpstreamInverseFields, getModelRuntimeMetadata, recomputeMo
 import { getRuntimeErrorMessage, runWithValidationBypass } from './model_write_helpers';
 import type { ValidationBypassCapable } from './model_write_helpers';
 import type { UnknownRecord } from '../../../utils/types';
+import { _t } from '@/core/service/i18n_binder';
 
 type InstanceRepositoryLike = ValidationBypassCapable & {
   update(values: UnknownRecord, condition: unknown): Promise<Array<unknown>>;
@@ -85,7 +86,7 @@ export async function updateModelInstance<T extends BaseModel>(instance: T, opti
       fields: currentFields,
     });
     if (!currentEntities.length) {
-      throw new Error(`Record with Id ${instance.Id} no longer exists`);
+      throw new Error(_t('Record with Id %s no longer exists', { scope: 'service/orm/model/model_instance' }, instance.Id));
     }
     const currentUpdatedAt = currentEntities[0].UpdatedAt as Date | undefined;
 
@@ -188,7 +189,13 @@ export async function deleteModelInstance(instance: BaseModel, options?: DeleteO
   const result = await repository.delete(['Id', '=', instance.Id]);
 
   if (result.length === 0) {
-    throw new Error(`Delete failed: Record with Id ${instance.Id} not found or could not be deleted`);
+    throw new Error(
+      _t(
+        'Delete failed: Record with Id %s not found or could not be deleted',
+        { scope: 'service/orm/model/model_instance' },
+        instance.Id
+      )
+    );
   }
 
   try {
@@ -219,7 +226,7 @@ export async function loadModelInstance<T extends BaseModel>(instance: T, fields
   });
 
   if (!results.length) {
-    throw new Error(`Record with Id ${instance.Id} no longer exists`);
+    throw new Error(_t('Record with Id %s no longer exists', { scope: 'service/orm/model/model_instance' }, instance.Id));
   }
 
   EntityConverter.entityToModel(instance, results[0]);

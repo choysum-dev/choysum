@@ -37,6 +37,15 @@ func Global() *ProtoLoader {
 	return globalLoader
 }
 
+// ResetGlobalForTests clears process-wide proto registrations between isolated
+// test applications. Callers must ensure no engines are using the loader.
+func ResetGlobalForTests() {
+	l := Global()
+	l.cache = sync.Map{}
+	l.memoryFs = sync.Map{}
+	l.group = singleflight.Group{}
+}
+
 func New() *ProtoLoader { return &ProtoLoader{} }
 
 func (l *ProtoLoader) RegisterProto(path string, content string) {

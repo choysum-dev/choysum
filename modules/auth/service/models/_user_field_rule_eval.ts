@@ -4,6 +4,7 @@
 import { createServiceByModel } from '@/core/service/rpc';
 import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
+import { _t } from '../i18n';
 import RoleFieldRule from './role_field_rule';
 import type IrApplicationModel from '@/meta/service/models/ir_application';
 import type IrFieldModel from '@/meta/service/models/ir_field';
@@ -132,7 +133,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
   if (modelIds.length === 0) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
-      message: 'Model does not exist',
+      message: _t('Model does not exist', { scope: 'service/models/_user_field_rule_eval' }),
     })
       .withGrpcCode(GrpcCode.InvalidArgument)
       .withMetadata({ model: input.rawModel });

@@ -84,10 +84,16 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 			if ctx == nil {
 				ctx = context.Background()
 			}
+			workspaceRoot, _ := os.Getwd()
+			boundCtx, testTmp, _, err := testingpathing.BindCLITestRuntimePaths(ctx, workspaceRoot)
+			if err != nil {
+				return err
+			}
+			ctx = boundCtx
+			if keep {
+				fmt.Fprintf(os.Stderr, "choysum test e2e: kept CLI test tmp root: %s\n", testTmp)
+			}
 			if all {
-				if testingpathing.TestingRunIDFromContext(ctx) == "" {
-					ctx = testingpathing.ContextWithTestingRunID(ctx, testingpathing.NewTestingRunID())
-				}
 				mods, err := resolveE2EModules(runtimeOptions.ModulesPath)
 				if err != nil {
 					return err
@@ -98,7 +104,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 				for _, mod := range mods {
 					opts := pkge2e.RunOptions{
 						ModulesPath:     runtimeOptions.ModulesPath,
-						TmpPath:         runtimeOptions.TmpPath,
+						TmpPath:         testTmp,
 						Module:          mod,
 						Scenarios:       scenarios,
 						WithDemo:        withDemo,
@@ -122,7 +128,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 
 			opts := pkge2e.RunOptions{
 				ModulesPath:     runtimeOptions.ModulesPath,
-				TmpPath:         runtimeOptions.TmpPath,
+				TmpPath:         testTmp,
 				Module:          moduleName,
 				Scenarios:       scenarios,
 				WithDemo:        withDemo,
@@ -148,7 +154,7 @@ func newE2ECmd(envGetter func() scope.Scope, runtimeOptionsGetter func() clirunt
 
 	cmd.Flags().StringArrayVar(&scenarios, "scenario", nil, "Scenario name (repeatable). Default: default")
 	cmd.Flags().BoolVar(&withDemo, "with-demo", false, "Load demo data for the runtime dependency closure")
-	cmd.Flags().BoolVar(&keep, "keep", false, "keep temp DB/config/log for debugging")
+	cmd.Flags().BoolVar(&keep, "keep", false, "keep temp DB/config/log under the CLI test tmp root (CHOYSUM_TEST_TMP or <os.TempDir>/choysum-testing); prints absolute paths on stderr")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "Overall timeout for each scenario run (e.g. 5m). 0 means no timeout")
 	cmd.Flags().DurationVar(&startupTimeout, "startup-timeout", 3*time.Minute, "Timeout waiting for /readyz")
 	cmd.Flags().IntVar(&port, "port", 0, "Server port (default: auto pick)")

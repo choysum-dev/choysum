@@ -438,7 +438,7 @@ export default class NilFieldsModel extends BaseModel {
 	if statusSpec == nil {
 		t.Fatal("expected Status resolved spec")
 	}
-	if len(statusSpec.Structural.Selection) != 1 || statusSpec.Structural.Selection[0]["value"] != "active" || statusSpec.Structural.Selection[0]["label"] != "Active" {
+	if len(statusSpec.Structural.Selection) != 1 || statusSpec.Structural.Selection[0].Value != "active" || statusSpec.Structural.Selection[0].Label != "Active" {
 		t.Fatalf("unexpected selection entries: %+v", statusSpec.Structural.Selection)
 	}
 
@@ -451,6 +451,175 @@ export default class NilFieldsModel extends BaseModel {
 	}
 	if displaySpec.Structural.Related != nil {
 		t.Fatalf("expected related spec to be skipped when path is nil, got %+v", displaySpec.Structural.Related)
+	}
+}
+
+func TestTsParser_PreservesSelectionTermReferenceWithEnglishFallback(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('demo', {
+  output: 'reference',
+});
+
+@Model('SelectionReferenceModel')
+export default class SelectionReferenceModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: _t('Active', { scope: 'demo.model.status.active' }) },
+      { value: 'archived', label: _t('Archived', { scope: 'demo.model.status.archived', output: 'text' }) }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if len(spec.Structural.Selection) != 2 {
+		t.Fatalf("unexpected selection: %+v", spec.Structural.Selection)
+	}
+	first := spec.Structural.Selection[0]
+	if first.Value != "active" || first.Label != "Active" || first.LabelText == nil {
+		t.Fatalf("unexpected term reference selection: %+v", first)
+	}
+	if first.LabelText.Module != "demo" || first.LabelText.Scope != "demo.model.status.active" || first.LabelText.Src != "Active" || first.LabelText.Kind != "literal" {
+		t.Fatalf("unexpected term reference: %+v", first.LabelText)
+	}
+	if first.LabelText.Key != meta.TermReferenceKey("demo", "demo.model.status.active", "Active", "literal") {
+		t.Fatalf("unexpected term reference key: %q", first.LabelText.Key)
+	}
+	if spec.Structural.Selection[1].LabelText != nil {
+		t.Fatalf("text override unexpectedly gained term reference: %+v", spec.Structural.Selection[1])
+	}
+	if !strings.Contains(r.Model.Fields[0].Selection, `"label":"Active"`) || !strings.Contains(r.Model.Fields[0].Selection, `"labelText"`) {
+		t.Fatalf("selection JSON did not preserve fallback, labelText wire name, and reference: %s", r.Model.Fields[0].Selection)
+	}
+}
+
+func TestTsParser_DetectsReferenceFactoryWithAliasAndExtraBindings(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t: translate, locale } = createTranslate('demo', {
+  output: 'reference',
+  scope: 'demo.model.status',
+});
+
+@Model('AliasedReferenceModel')
+export default class AliasedReferenceModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: translate('Active') }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	item := spec.Structural.Selection[0]
+	if item.Label != "Active" || item.LabelText == nil {
+		t.Fatalf("aliased factory reference was not preserved: %+v", item)
+	}
+	if item.LabelText.Module != "demo" || item.LabelText.Scope != "demo.model.status" || item.LabelText.Src != "Active" {
+		t.Fatalf("unexpected term reference: %+v", item.LabelText)
+	}
+}
+
+func TestTsParser_SelectionCallReferenceOverridesTextFactory(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('base');
+
+@Model('Language')
+export default class Language extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      {
+        value: 'ltr',
+        label: _t('Left to right', {
+          scope: 'base.Language.Direction.ltr',
+          output: 'reference'
+        })
+      }
+    ]
+  })
+  public Direction: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/base/service/language.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	item := spec.Structural.Selection[0]
+	if item.Label != "Left to right" || item.LabelText == nil {
+		t.Fatalf("call reference output was not preserved: %+v", item)
+	}
+	if item.LabelText.Key != meta.TermReferenceKey("base", "base.Language.Direction.ltr", "Left to right", "literal") {
+		t.Fatalf("unexpected key: %q", item.LabelText.Key)
+	}
+}
+
+func TestTsParser_FactoryModeIsNotRecognized(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('demo', { mode: 'reference' });
+
+@Model('LegacyModeSelectionModel')
+export default class LegacyModeSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: _t('Active', { scope: 'demo.model.status.active' }) }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	item := spec.Structural.Selection[0]
+	if item.Label != "Active" || item.LabelText != nil {
+		t.Fatalf("legacy mode was unexpectedly recognized: %+v", item)
 	}
 }
 

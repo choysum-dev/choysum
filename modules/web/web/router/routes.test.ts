@@ -2,8 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
+import { createTranslate } from '@/web/web/i18n';
 import { menus } from '../menu/menus';
 import routes from './routes';
+
+const homeRouteTitle = createTranslate('web', { output: 'reference', scope: 'web/route/routes' })._t('Home');
+const homeMenuTitle = createTranslate('web', { output: 'reference', scope: 'web/menu/menus' })._t('Home');
 
 describe('web home resource declarations', () => {
   it('declares home as a protected route resource', () => {
@@ -12,7 +16,8 @@ describe('web home resource declarations', () => {
 
     expect(homeRoute).toBeTruthy();
     expect(homeRoute.meta?.resourceId).toBe('web.route.home');
-    expect(homeRoute.meta?.pageTitle).toBe('首页');
+    expect(homeRoute.meta?.pageTitle).toBe('Home');
+    expect(homeRoute.meta?.pageTitleText).toEqual(homeRouteTitle);
     expect(homeRoute.meta?.requiresAuth).toBe(true);
     expect(homeRoute.meta?.routeSequence).toBe(1);
   });
@@ -21,7 +26,8 @@ describe('web home resource declarations', () => {
     const homeMenu = menus[0] as any;
 
     expect(homeMenu.id).toBe('web.menu.home');
-    expect(homeMenu.title).toBe('首页');
+    expect(homeMenu.title).toBe('Home');
+    expect(homeMenu.titleText).toEqual(homeMenuTitle);
     expect(homeMenu.path).toBe('/home');
     expect(homeMenu.order).toBe(1);
     expect(homeMenu.meta?.resourceId).toBe('web.menu.home');

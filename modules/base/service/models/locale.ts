@@ -31,11 +31,13 @@ export default class Locale extends BaseModel {
   @Field({ type: 'int' })
   FirstDayOfWeek?: number;
 
+  // Selection labels stay English msgid until options are served by a request-scoped
+  // API that can text-_t with RequestContext.lang. Do not use output:'reference' here.
   @Field({
     type: 'selection',
     selection: [
-      { value: 'before', label: 'before' },
-      { value: 'after', label: 'after' },
+      { value: 'before', label: 'Before amount' },
+      { value: 'after', label: 'After amount' },
     ],
     size: 16, default: () => 'before',
   })

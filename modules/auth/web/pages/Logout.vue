@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <el-card class="logout-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <h3>Sign Out</h3>
+          <h3>{{ _t('Sign Out') }}</h3>
         </div>
       </template>
       <div class="logout-view">
@@ -17,24 +17,30 @@ SPDX-License-Identifier: Apache-2.0
             v-if="logoutSuccess"
             key="success"
             icon="success"
-            title="Signed Out Successfully"
-            :sub-title="`Thank you for using our service. Redirecting to the login page in ${countdown} seconds...`"
+            :title="_t('Signed Out Successfully')"
+            :sub-title="redirectSubtitle"
           >
             <template #extra>
-              <el-button type="primary" @click="navigateToLogin">Log In Again</el-button>
-              <el-button @click="navigateToHome">Back to Home</el-button>
+              <el-button type="primary" @click="navigateToLogin">{{ _t('Log In Again') }}</el-button>
+              <el-button @click="navigateToHome">{{ _t('Back to Home') }}</el-button>
             </template>
           </el-result>
 
-          <el-result v-else-if="error" key="error" icon="error" title="Sign-out Failed" :sub-title="error">
+          <el-result v-else-if="error" key="error" icon="error" :title="_t('Sign-out Failed')" :sub-title="error">
             <template #extra>
-              <el-button type="primary" @click="retryLogout">Retry</el-button>
-              <el-button @click="navigateToHome">Back to Home</el-button>
-              <el-button @click="navigateToLogin">Back to Login</el-button>
+              <el-button type="primary" @click="retryLogout">{{ _t('Retry') }}</el-button>
+              <el-button @click="navigateToHome">{{ _t('Back to Home') }}</el-button>
+              <el-button @click="navigateToLogin">{{ _t('Back to Login') }}</el-button>
             </template>
           </el-result>
 
-          <el-result v-else key="loading" icon="info" title="Signing Out" sub-title="Please wait while your account is being signed out securely..." />
+          <el-result
+            v-else
+            key="loading"
+            icon="info"
+            :title="_t('Signing Out')"
+            :sub-title="_t('Please wait while your account is being signed out securely...')"
+          />
         </transition>
       </div>
     </el-card>
@@ -42,13 +48,16 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
 import { ChoysumError } from '../error';
 import OPage from '@/web/web/components/page/OPage.vue';
 import { ElResult, ElButton, ElCard } from 'element-plus';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('auth', { scope: 'web/pages/Logout' });
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -57,6 +66,9 @@ const { loading } = storeToRefs(authStore);
 const logoutSuccess = ref(false);
 const error = ref('');
 const countdown = ref(5);
+const redirectSubtitle = computed(() =>
+  _t('Thank you for using our service. Redirecting to the login page in %s seconds...', countdown.value)
+);
 let autoRedirectTimer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(async () => {
@@ -84,7 +96,7 @@ async function performLogout() {
       }
     }, 1000);
   } catch (err) {
-    error.value = err instanceof ChoysumError ? err.message : err instanceof Error ? err.message : 'Unknown error occurred during logout';
+    error.value = err instanceof ChoysumError ? err.message : err instanceof Error ? err.message : _t('Unknown error occurred during logout');
     console.error('Logout failed:', err);
   }
 }

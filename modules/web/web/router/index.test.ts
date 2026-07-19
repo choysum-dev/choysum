@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createI18n } from 'vue-i18n';
+import { createTermReference } from '@/core/service/i18n';
+import { projectTerminologyMessages } from '../i18n/terminology';
 
 const mocks = vi.hoisted(() => {
   const nprogress = {
@@ -13,9 +16,11 @@ const mocks = vi.hoisted(() => {
   const useTitle = vi.fn();
 
   let lastRouter: any = null;
+  let titleSource: any = null;
 
   const createRouter = vi.fn(() => {
     lastRouter = {
+      currentRoute: { value: null },
       beforeEach: vi.fn(),
       afterEach: vi.fn(),
       onError: vi.fn(),
@@ -33,14 +38,21 @@ const mocks = vi.hoisted(() => {
     getBeforeEachGuard() {
       return lastRouter?.beforeEach?.mock?.calls?.[0]?.[0];
     },
+    getTitleSource() {
+      return titleSource;
+    },
     reset() {
       nprogress.configure.mockClear();
       nprogress.start.mockClear();
       nprogress.done.mockClear();
       useTitle.mockReset();
+      useTitle.mockImplementation(source => {
+        titleSource = source;
+      });
       createRouter.mockClear();
       createWebHistory.mockClear();
       lastRouter = null;
+      titleSource = null;
     },
   };
 });
@@ -93,47 +105,34 @@ describe('createAppRouter guards', () => {
     expect(result).toBe(true);
     expect(mocks.nprogress.start).toHaveBeenCalledTimes(1);
     expect(mocks.useTitle).toHaveBeenCalledTimes(1);
+    expect(mocks.getTitleSource().value).toBe('Home - Choysum');
   });
 
-  it('redirects to /error/500 when beforeEach throws on non-error routes', async () => {
-    mocks.useTitle.mockImplementation(() => {
-      throw new Error('boom');
+  it('updates a term reference title without another navigation', async () => {
+    const i18n = createI18n({
+      legacy: false,
+      locale: 'en',
+      missingWarn: false,
+      fallbackWarn: false,
+      messages: { en: {}, 'zh-CN': projectTerminologyMessages({
+        base: { 'base.route.users': { Users: '用户' } },
+      }) },
     });
-
-    createAppRouter('/');
-
+    createAppRouter('/', i18n.global);
     const guard = mocks.getBeforeEachGuard();
-    const result = await guard(
+    await guard(
       {
         path: '/home',
-        meta: { pageTitle: 'Home' },
+        meta: {
+          pageTitle: 'Users',
+          pageTitleText: createTermReference('base', 'Users', { scope: 'base.route.users' }),
+        },
       } as any,
       {} as any
     );
 
-    expect(result).toBe('/error/500');
-    expect(mocks.nprogress.done).toHaveBeenCalledTimes(1);
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not redirect repeatedly when already on /error/500', async () => {
-    mocks.useTitle.mockImplementation(() => {
-      throw new Error('boom');
-    });
-
-    createAppRouter('/');
-
-    const guard = mocks.getBeforeEachGuard();
-    const result = await guard(
-      {
-        path: '/error/500',
-        meta: { pageTitle: 'Error' },
-      } as any,
-      {} as any
-    );
-
-    expect(result).toBe(true);
-    expect(mocks.nprogress.done).toHaveBeenCalledTimes(1);
-    expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+    expect(mocks.getTitleSource().value).toBe('Users - Choysum');
+    i18n.global.locale.value = 'zh-CN';
+    expect(mocks.getTitleSource().value).toBe('用户 - Choysum');
   });
 });

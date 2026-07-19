@@ -4,8 +4,11 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { fail, normalizeOptionalText, normalizeSequenceInt } from './_normalization_bridge';
 import Partner from './partner';
+
+const { _t } = createTranslate('partner');
 
 /**
  * Supported partner contact address categories.
@@ -86,7 +89,7 @@ export default class PartnerContact extends BaseModel {
     const normalized = normalizeOptionalText(value, { lower: true });
     if (normalized == null) return normalized;
     if (!ADDRESS_TYPES.has(normalized)) {
-      fail('AddressType must be one of billing, shipping, office, registered, other');
+      fail(_t('AddressType must be one of billing, shipping, office, registered, other', { scope: 'service/models/partner_contact' }));
     }
     return normalized;
   }
@@ -98,7 +101,7 @@ export default class PartnerContact extends BaseModel {
     const isDefault = values.IsDefault === true;
     const addressId = normalizeRefId(values.AddressId);
 
-    if (!partnerId) fail('PartnerId is required');
+    if (!partnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_contact' }));
     if (!isDefault || !addressType) return;
     if (!addressId) return;
 
@@ -114,7 +117,7 @@ export default class PartnerContact extends BaseModel {
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
     if (conflict) {
-      fail(`Only one default ${addressType} contact is allowed for the same partner`);
+      fail(_t('Only one default %s contact is allowed for the same partner', { scope: 'service/models/partner_contact' }, addressType));
     }
   }
 
@@ -126,7 +129,7 @@ export default class PartnerContact extends BaseModel {
     const hasPhone = !!String(values.Phone || '').trim();
     const hasMobile = !!String(values.Mobile || '').trim();
     if (!hasName && !hasAddress && !hasEmail && !hasPhone && !hasMobile) {
-      fail('PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile');
+      fail(_t('PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile', { scope: 'service/models/partner_contact' }));
     }
   }
 
@@ -171,8 +174,8 @@ export default class PartnerContact extends BaseModel {
     const sequence = normalizeSequenceInt(values.Sequence);
     if (sequence !== undefined) values.Sequence = sequence;
 
-    if (!values.PartnerId) fail('PartnerId is required');
-    if (!values.CompanyId) fail('CompanyId is required');
+    if (!values.PartnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_contact' }));
+    if (!values.CompanyId) fail(_t('CompanyId is required', { scope: 'service/models/partner_contact' }));
 
     this.ensureRowHasValue(values);
     await this.ensureDefaultAddressUnique(values, currentId);

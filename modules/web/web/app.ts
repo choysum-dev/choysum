@@ -15,6 +15,13 @@ import { watch } from 'vue';
 import sourceMessages from './i18n/source';
 import { createAppRouter } from './router';
 import { registerGlobalDirectives } from './directives';
+import { setGlobalRequestContextProvider } from '@/core/rpc/context';
+import { createTerminologyCatalogMerger } from './stores/i18nStore/merge';
+import { projectTerminologyMessages } from './i18n/terminology';
+import {
+  notifyComposerMessagesChanged,
+  trackComposerMessageRevision,
+} from './i18n';
 
 // Import Element Plus.
 import ElementPlus from 'element-plus';
@@ -47,16 +54,31 @@ function setupApp(app: ChoysumWebApp): void {
   // Initialize the i18n store before creating the i18n instance.
   const i18nStore = useI18nStore();
 
+  // RequestContext: locale (format) + lang (terminology) — D12d.
+  setGlobalRequestContextProvider(() => ({
+    locale: i18nStore.currentLocale.code,
+    lang: i18nStore.terminologyLang,
+  }));
+
   // Internationalization.
   const i18n = createI18n<false, { [key: string]: any }>({
     legacy: false,
     locale: i18nStore.currentLocale.code,
     fallbackLocale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
     messages: {
       en: sourceMessages,
     },
+    postTranslation: trackComposerMessageRevision,
     datetimeFormats: i18nStore.getDateTimeFormats(),
     numberFormats: i18nStore.getNumberFormats(),
+  });
+  const mergeTerminologyCatalog = createTerminologyCatalogMerger({
+    merge: (locale, messages) => {
+      i18n.global.mergeLocaleMessage(locale, projectTerminologyMessages(messages));
+    },
+    notify: notifyComposerMessagesChanged,
   });
 
   // Expose i18n globally for non-component callers.
@@ -64,7 +86,7 @@ function setupApp(app: ChoysumWebApp): void {
     (window as any).$i18n = i18n.global;
   }
 
-  // React to locale changes.
+  // React to locale changes: Element + legacy source coexist + Gateway merge (S4-1).
   watch(
     () => i18nStore.currentLocale.code,
     async newLocale => {
@@ -73,29 +95,37 @@ function setupApp(app: ChoysumWebApp): void {
         app.config.globalProperties.$ELEMENT.locale = i18nStore.currentLocale.elementLocale;
       }
 
-      // Load locale messages lazily for non-English locales.
+      // Keep legacy handwritten source as a coexistence baseline until S4-2 PO migration.
       if (newLocale !== 'en') {
         try {
-          const messages = await i18nStore.loadVueI18nMessages(newLocale);
-          if (messages) {
-            i18n.global.setLocaleMessage(newLocale, messages);
-            i18n.global.locale.value = newLocale;
+          const legacy = await i18nStore.loadVueI18nMessages(newLocale);
+          if (legacy) {
+            i18n.global.mergeLocaleMessage(newLocale, legacy);
           }
         } catch (error) {
-          console.error(`Failed to load locale ${newLocale}`, error);
+          console.warn(`Failed to load legacy locale messages for ${newLocale}`, error);
         }
-      } else {
-        i18n.global.locale.value = 'en';
       }
+
+      i18n.global.locale.value = newLocale;
     },
     { immediate: true }
+  );
+
+  // Terminology Editor save → reloadTerminology updates lastTerminologyLoad without locale change.
+  watch(
+    () => i18nStore.lastTerminologyLoad,
+    terminology => {
+      mergeTerminologyCatalog(terminology, i18nStore.currentLocale.code);
+      // unchanged / gatewayError / empty / duplicate: keep the current catalog.
+    }
   );
 
   // Register i18n.
   app.usePlugin('i18n', i18n);
 
   // Router.
-  const router = createAppRouter(import.meta.env.BASE_URL);
+  const router = createAppRouter(import.meta.env.BASE_URL, i18n.global);
   app.usePlugin('router', router);
 
   // Menu plugin.

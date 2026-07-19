@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Xpath expr="//el-tabs[@data-slot='partner-detail-tab-panels']" position="inside">
-    <el-tab-pane label="银行账户" name="bank_accounts" data-region="partner-bank-tab">
+    <el-tab-pane :label="_t('Bank Accounts')" name="bank_accounts" data-region="partner-bank-tab">
       <div data-region="partner-bank-panel">
         <OOneToManyKanbanField
           :store="store"
@@ -14,30 +14,32 @@ SPDX-License-Identifier: Apache-2.0
           :default-record="defaultBankAccountRecord"
           :editable="canEditBankAccounts()"
           :removable="canEditBankAccounts()"
-          :add-button-text="'添加银行账户'"
+          :add-button-text="_t('Add Bank Account')"
           :form-view="PartnerBankAccountFormView"
-          :create-dialog-title="'新增银行账户'"
-          :edit-dialog-title="'编辑银行账户'"
-          :display-dialog-title="'查看银行账户'"
+          :create-dialog-title="_t('New Bank Account')"
+          :edit-dialog-title="_t('Edit Bank Account')"
+          :display-dialog-title="_t('View Bank Account')"
           data-region="partner-bank-section"
         >
           <template #card="{ item, editable, removable, edit, remove }">
             <div class="pbfv-bank-card">
               <div class="pbfv-bank-card__title-row">
-                <div class="pbfv-bank-card__title">{{ item?.AccountName || '未命名账户' }}</div>
+                <div class="pbfv-bank-card__title">{{ item?.AccountName || _t('Unnamed Account') }}</div>
                 <div class="pbfv-bank-card__flags">
-                  <el-tag v-if="item?.IsDefaultInbound" size="small" type="success">默认入账</el-tag>
-                  <el-tag v-if="item?.IsDefaultOutbound" size="small" type="warning">默认出账</el-tag>
-                  <el-tag v-if="item?.IsActive === false" size="small" type="info">停用</el-tag>
+                  <el-tag v-if="item?.IsDefaultInbound" size="small" type="success">{{ _t('Default Inbound') }}</el-tag>
+                  <el-tag v-if="item?.IsDefaultOutbound" size="small" type="warning">{{ _t('Default Outbound') }}</el-tag>
+                  <el-tag v-if="item?.IsActive === false" size="small" type="info">{{ _t('Inactive') }}</el-tag>
                 </div>
               </div>
-              <div class="pbfv-bank-card__meta">银行：{{ item?.BankNameSnapshot || '-' }}</div>
-              <div class="pbfv-bank-card__meta">类型：{{ getAccountTypeLabel(item?.AccountType) }}</div>
-              <div class="pbfv-bank-card__line">账号：{{ item?.AccountNoMasked || '-' }}</div>
-              <div class="pbfv-bank-card__meta">入账/出账：{{ item?.AllowInbound ? '是' : '否' }}/{{ item?.AllowOutbound ? '是' : '否' }}</div>
+              <div class="pbfv-bank-card__meta">{{ _t('Bank') }}: {{ item?.BankNameSnapshot || '-' }}</div>
+              <div class="pbfv-bank-card__meta">{{ _t('Type') }}: {{ getAccountTypeLabel(item?.AccountType) }}</div>
+              <div class="pbfv-bank-card__line">{{ _t('Account Number') }}: {{ item?.AccountNoMasked || '-' }}</div>
+              <div class="pbfv-bank-card__meta">
+                {{ _t('Inbound/Outbound') }}: {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
+              </div>
               <div v-if="editable || removable" class="pbfv-bank-card__actions">
-                <el-button v-if="editable" type="primary" text size="small" @click.stop="edit">编辑</el-button>
-                <el-button v-if="removable" type="danger" text size="small" @click.stop="remove">删除</el-button>
+                <el-button v-if="editable" type="primary" text size="small" @click.stop="edit">{{ _t('Edit') }}</el-button>
+                <el-button v-if="removable" type="danger" text size="small" @click.stop="remove">{{ _t('Delete') }}</el-button>
               </div>
             </div>
           </template>
@@ -58,6 +60,7 @@ import OOneToManyKanbanField from '@/web/web/components/field/OOneToManyKanbanFi
 import PartnerBankAccountFormView from '@/partner_bank/web/views/PartnerBankAccountFormView.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 /**
  * Extends the base partner form with partner bank account management UI.
@@ -79,18 +82,10 @@ export default defineComponent({
   setup(props, ctx) {
     const baseSetup = PartnerFormView?.setup?.(props, ctx) || {};
     const store = (baseSetup as { store: WebModelStore<Partner> }).store;
-    const bankAccountActions = defineModelActions('partner.BankAccount', { entityTitle: '银行账户' });
+    const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerFormView' });
+    const { _t: _tRef } = createTranslate('partner_bank', { output: 'reference', scope: 'web/views/PartnerFormView' });
+    const bankAccountActions = defineModelActions('partner.BankAccount', { entityTitle: _tRef('Bank Account') });
     const { hasAction } = usePermission();
-
-    /**
-     * Display labels for partner bank account categories.
-     */
-    const accountTypeLabels: Record<string, string> = {
-      checking: '活期账户',
-      savings: '储蓄账户',
-      corporate: '对公账户',
-      other: '其他',
-    };
 
     /**
      * Builds the default related bank account row.
@@ -116,13 +111,24 @@ export default defineComponent({
      * Maps a bank account type to its display label.
      */
     function getAccountTypeLabel(value?: string) {
-      if (!value) return '-';
-      return accountTypeLabels[value] || value;
+      switch (value) {
+        case 'checking':
+          return _t('Checking Account');
+        case 'savings':
+          return _t('Savings Account');
+        case 'corporate':
+          return _t('Corporate Account');
+        case 'other':
+          return _t('Other');
+        default:
+          return value || '-';
+      }
     }
 
     return {
       ...baseSetup,
       store,
+      _t,
       hasAction,
       bankAccountActions,
       PartnerBankAccountFormView,

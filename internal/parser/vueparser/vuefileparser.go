@@ -27,8 +27,8 @@ func (p *vueFileParser) parseScriptBlock(path string, scriptContent string, pars
 	if err != nil {
 		return xfmt.Errorf("failed to parse script block with tsgo: %w", err)
 	}
-	mergeImports(parserResult.Imports, ctx.imports)
-	mergeExports(parserResult.Exports, ctx.exports)
+	mergeImports(parserResult.Imports, ctx.Imports)
+	mergeExports(parserResult.Exports, ctx.Exports)
 
 	uiDecls, uiIssues := collectUiResourceDecls(path, scriptContent)
 	parserResult.UiResourceDecls = append(parserResult.UiResourceDecls, uiDecls...)

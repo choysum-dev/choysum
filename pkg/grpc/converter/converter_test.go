@@ -4,6 +4,7 @@
 package converter
 
 import (
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -402,11 +403,26 @@ func TestSetProtoHelpersAndConvertToProtoValue(t *testing.T) {
 	if _, err := ConvertToProtoValue("bad", fields.ByName("count")); err == nil || !strings.Contains(err.Error(), "cannot convert string to int32") {
 		t.Fatalf("expected int32 conversion error, got %v", err)
 	}
+	if _, err := ConvertToProtoValue(int64(math.MaxInt32)+1, fields.ByName("count")); err == nil || !strings.Contains(err.Error(), "out of int32 range") {
+		t.Fatalf("expected int32 range error, got %v", err)
+	}
+	if _, err := ConvertToProtoValue(float64(math.MaxInt32)+1, fields.ByName("count")); err == nil || !strings.Contains(err.Error(), "out of int32 range") {
+		t.Fatalf("expected float64->int32 range error, got %v", err)
+	}
 	if _, err := ConvertToProtoValue("bad", fields.ByName("big_count")); err == nil || !strings.Contains(err.Error(), "cannot convert string to int64") {
 		t.Fatalf("expected int64 conversion error, got %v", err)
 	}
 	if _, err := ConvertToProtoValue("bad", fields.ByName("small_count")); err == nil || !strings.Contains(err.Error(), "cannot convert string to uint32") {
 		t.Fatalf("expected uint32 conversion error, got %v", err)
+	}
+	if _, err := ConvertToProtoValue(-1, fields.ByName("small_count")); err == nil || !strings.Contains(err.Error(), "out of uint32 range") {
+		t.Fatalf("expected uint32 range error, got %v", err)
+	}
+	if _, err := ConvertToProtoValue(float64(math.MaxUint32)+1, fields.ByName("small_count")); err == nil || !strings.Contains(err.Error(), "out of uint32 range") {
+		t.Fatalf("expected float64->uint32 range error, got %v", err)
+	}
+	if _, err := ConvertToProtoValue(int64(math.MaxInt32)+1, fields.ByName("status")); err == nil || !strings.Contains(err.Error(), "out of enum range") {
+		t.Fatalf("expected enum range error, got %v", err)
 	}
 	if _, err := ConvertToProtoValue("bad", fields.ByName("score")); err == nil || !strings.Contains(err.Error(), "cannot convert string to float64") {
 		t.Fatalf("expected float64 conversion error, got %v", err)

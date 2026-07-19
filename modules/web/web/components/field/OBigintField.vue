@@ -48,6 +48,9 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField, AggProp } from '@/web/web/composables/useField';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OBigintField' });
 
 defineOptions({ name: 'OBigintField' });
 
@@ -289,22 +292,22 @@ const OBigintCell = defineComponent({
 function isValidValue(value: any): string | null {
   if (value == null || value === '') {
     if (props.nullable) return null;
-    return '不能为空';
+    return _t('Cannot be empty');
   }
   let bi: bigint | null = null;
   if (typeof value === 'string') bi = parseStrict(value);
   else if (typeof value === 'number') {
-    if (!Number.isInteger(value)) return '必须是整数';
+    if (!Number.isInteger(value)) return _t('Must be an integer');
     try {
       bi = BigInt(value);
     } catch {
       bi = null;
     }
   } else if (typeof value === 'bigint') bi = value;
-  if (bi == null) return '必须是有效整数';
-  if (bi < minBI.value) return `不能小于 ${minBI.value.toString()}`;
-  if (bi > maxBI.value) return `不能大于 ${maxBI.value.toString()}`;
-  if (props.wireFormat === 'number' && (bi > JS_MAX_SAFE || bi < JS_MIN_SAFE)) return '超出数值安全范围';
+  if (bi == null) return _t('Must be a valid integer');
+  if (bi < minBI.value) return _t('Must not be less than %s', minBI.value.toString());
+  if (bi > maxBI.value) return _t('Must not be greater than %s', maxBI.value.toString());
+  if (props.wireFormat === 'number' && (bi > JS_MAX_SAFE || bi < JS_MIN_SAFE)) return _t('Exceeds safe integer range');
   return null;
 }
 

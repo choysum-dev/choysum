@@ -7,14 +7,19 @@ import { useRouter } from 'vue-router';
 import { ElMenu, ElSubMenu, ElMenuItem, ElIcon, ElEmpty } from 'element-plus';
 import { QuestionFilled } from '@element-plus/icons-vue';
 import { BookmarkBorderOutlined } from '@vicons/material';
+import { useI18n } from 'vue-i18n';
 import { useMenuStore } from '../stores/menuStore';
 import type { MenuItem } from '@/core/web/menu';
+import { translateTerm, createTranslate } from '../i18n';
+
+const { _t: _tMenu } = createTranslate('web', { scope: 'web/composables/useMenu' });
 
 /**
  * Provides menu navigation helpers and render utilities backed by the menu store.
  */
 export function useMenu() {
   const router = useRouter();
+  const composer = useI18n({ useScope: 'global' });
 
   const menuStore = useMenuStore();
   const { activeMenu, activeApp } = storeToRefs(menuStore);
@@ -140,7 +145,10 @@ export function useMenu() {
               onClose: () => onSubMenuClose?.(item.id || ''),
             },
             {
-              title: () => [renderIcon(item.icon, useDefaultIcon, defaultIcon), h('span', {}, item.title)],
+              title: () => [
+                renderIcon(item.icon, useDefaultIcon, defaultIcon),
+                h('span', {}, translateTerm(composer, item.titleText, item.title)),
+              ],
               default: () => renderMenuItems(item.children || [], options),
             }
           );
@@ -155,7 +163,10 @@ export function useMenu() {
             onSelect: () => onItemSelect?.(item.id || '', item),
           },
           {
-            default: () => [renderIcon(item.icon, useDefaultIcon, defaultIcon), h('span', {}, item.title)],
+            default: () => [
+              renderIcon(item.icon, useDefaultIcon, defaultIcon),
+              h('span', {}, translateTerm(composer, item.titleText, item.title)),
+            ],
           }
         );
       });
@@ -197,7 +208,7 @@ export function useMenu() {
       onSubMenuClose,
       defaultIcon,
       useDefaultIcon = false,
-      emptyText = '无可用菜单',
+      emptyText = _tMenu('No menus available'),
       menuProps = {},
     } = options;
 

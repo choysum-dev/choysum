@@ -11,17 +11,66 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	bootstrappb "github.com/choysum-dev/choysum/internal/bootstrap/proto/bootstrappb"
+	"github.com/choysum-dev/choysum/internal/defaultscope"
 	modulestaging "github.com/choysum-dev/choysum/internal/module/artifact/staging"
+	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type bootstrapInstallTxRecord struct {
+	ID   int `gorm:"primaryKey"`
+	Name string
+}
+
+func TestCoordinatorInstallTransactionRollsBackOnFailure(t *testing.T) {
+	cfg := &config.Config{
+		Db: &config.DbConfig{
+			Dialect: "sqlite",
+			DSN:     filepath.Join(t.TempDir(), "bootstrap-install.db"),
+		},
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	runtimeScope := defaultscope.NewDefaultScope(
+		context.Background(),
+		scopetest.FactoryInputFromConfig(cfg),
+		logger,
+	)
+	if err := runtimeScope.Session().AutoMigrate(&bootstrapInstallTxRecord{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+
+	wantErr := errors.New("module generation failed")
+	c := &coordinator{runtimeScope: runtimeScope}
+	err := c.withInstallTransaction(context.Background(), func(txScope scope.Scope, txCtx context.Context) error {
+		if _, ok := scope.TransactionFromContext(txCtx); !ok {
+			return errors.New("install callback missing transaction context")
+		}
+		if err := txScope.Session().Create(&bootstrapInstallTxRecord{Name: "base"}).Error; err != nil {
+			return err
+		}
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("withInstallTransaction() error = %v, want %v", err, wantErr)
+	}
+
+	var count int64
+	if err := runtimeScope.Session().Model(&bootstrapInstallTxRecord{}).Count(&count).Error; err != nil {
+		t.Fatalf("count install records: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("install records after rollback = %d, want 0", count)
+	}
+}
 
 func TestCoordinatorStartInitializationSuccess(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0).UTC()

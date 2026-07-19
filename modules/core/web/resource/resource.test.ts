@@ -12,6 +12,7 @@ import {
   getResourceDeclarationFromMeta,
   listResourceDeclarations,
 } from './index';
+import { createTranslate } from '../../service/i18n';
 
 describe('resource declaration helpers', () => {
   beforeEach(() => {
@@ -59,6 +60,28 @@ describe('resource declaration helpers', () => {
     } as any);
 
     expect((route as any).meta?.pageTitle).toBe('User Details - Dynamic Override');
+  });
+
+  it('normalizes term reference titles to English fallbacks plus metadata', () => {
+    const { _t } = createTranslate('auth', { output: 'reference' });
+    const reference = _t('Users', { scope: 'auth.route.users' });
+    const route = defineRoute('auth.route.users', {
+      path: '/auth/users',
+      title: reference,
+    } as any);
+    const menu = defineMenu('auth.menu.users', {
+      path: '/auth/users',
+      title: reference,
+    });
+
+    expect((route as any).meta.pageTitle).toBe('Users');
+    expect((route as any).meta.pageTitleText).toEqual(reference);
+    expect(menu.title).toBe('Users');
+    expect(menu.titleText).toEqual(reference);
+    expect(getResourceDeclaration('auth.route.users')).toMatchObject({
+      title: 'Users',
+      titleText: reference,
+    });
   });
 
   it('defineRoute strips actions from returned route config', () => {
@@ -141,6 +164,33 @@ describe('resource declaration helpers', () => {
     expect(actions.edit).toBe('auth.action.user_role_edit');
     expect(actions.copy).toBe('auth.action.user_role_copy');
     expect(actions.delete).toBeUndefined();
+    expect(getResourceDeclaration('auth.action.user_role_create')).toMatchObject({
+      id: 'auth.action.user_role_create',
+      kind: 'action',
+      title: 'Create User Role',
+      requires: [],
+      defaultRoles: [],
+      override: false,
+    });
+    expect(getResourceDeclaration('auth.action.user_role_edit')).toMatchObject({
+      title: 'Edit User Role',
+    });
+  });
+
+  it('defineModelActions registers term reference titles for model actions', () => {
+    const { _t } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' });
+    const reference = _t('Country');
+    const actions = defineModelActions('base.Country', { entityTitle: reference });
+
+    expect(actions.create).toBe('base.action.country_create');
+    expect(getResourceDeclaration('base.action.country_create')).toMatchObject({
+      id: 'base.action.country_create',
+      kind: 'action',
+      title: 'Create Country',
+      titleText: createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' })._t('Create Country'),
+      requires: [],
+      defaultRoles: [],
+    });
   });
 
   it('defineModelActions returns empty map on invalid model id', () => {

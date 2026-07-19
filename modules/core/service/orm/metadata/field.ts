@@ -5,6 +5,7 @@ import BaseModel from '../model/model';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
 import type { ComputeRunAs } from './compute';
+import type { TermReference } from '../../i18n';
 
 type ObjectRecord = Record<string, unknown>;
 
@@ -167,7 +168,7 @@ type FlatDecimalFieldOptions<T extends BaseModel> = {
 
 type FlatSelectionFieldOptions<T extends BaseModel> = {
   type: 'selection';
-  selection: SelectionItem[];
+  selection: SelectionDeclarationItem[];
   size?: number;
 } & FlatCommonOptions &
   FlatNoRelationOption &
@@ -230,6 +231,12 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
 export interface SelectionItem {
   value: string;
   label: string;
+  labelText?: TermReference;
+}
+
+export interface SelectionDeclarationItem {
+  value: string;
+  label: string | TermReference;
 }
 
 /**

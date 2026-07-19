@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import Country from './country';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
+
+const { _t } = createTranslate('base');
 
 @Model('State')
 export default class State extends BaseModel {
@@ -39,7 +42,7 @@ export default class State extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) fail('State Name must be unique within Country');
+    if (nameConflict) fail(_t('State Name must be unique within Country', { scope: 'service/models/state' }));
 
     if (code) {
       const byCode = await this.Search(
@@ -52,7 +55,7 @@ export default class State extends BaseModel {
         { fields: ['Id'] as any, limit: 2 } as any
       );
       const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-      if (codeConflict) fail('State Code must be unique within Country');
+      if (codeConflict) fail(_t('State Code must be unique within Country', { scope: 'service/models/state' }));
     }
 
     values.Name = name;

@@ -136,7 +136,7 @@ func RunOneAppFrontendTests(
 		junitPath = filepath.ToSlash(junitPath)
 	}
 
-	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, tmpRoot, "frontend")
+	workspaceTmpDir, err := testingpathing.ResolveTestingTmpDirFromContext(ctx, repoRoot, testingpathing.EffectiveCLITestTmpRoot(ctx, tmpRoot), "frontend")
 	if err != nil {
 		return true, xfmt.Errorf("vitest: resolve tmp dir: %w", err)
 	}
@@ -149,6 +149,8 @@ func RunOneAppFrontendTests(
 	cleanup := func() { _ = os.Remove(configPath) }
 	if !keep {
 		defer cleanup()
+	} else {
+		fmt.Fprintf(os.Stderr, "choysum test: kept frontend vitest dir: %s\n", vitestTmpDir)
 	}
 
 	reportsDir := filepath.ToSlash(filepath.Join(coverageReportDir, "fe", app))

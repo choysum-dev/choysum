@@ -9,6 +9,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,4 +152,230 @@ func ResolveTestingTmpDirWithRunID(workspaceRoot string, tmpRoot string, kind st
 func ResolveTestingTmpDirFromContext(ctx context.Context, workspaceRoot string, tmpRoot string, kind string) (string, error) {
 	runID := TestingRunIDFromContext(ctx)
 	return ResolveTestingTmpDirWithRunID(workspaceRoot, tmpRoot, kind, runID)
+}
+
+const (
+	// EnvCLITestTMP overrides the CLI test temporary root.
+	EnvCLITestTMP = "CHOYSUM_TEST_TMP"
+	// defaultCLITestTmpDirName is the directory name under os.TempDir() used
+	// when CHOYSUM_TEST_TMP is unset.
+	defaultCLITestTmpDirName = "choysum-testing"
+	// CLITestingRunHomeKind is the testing kind for the shared DefaultChoysumPath
+	// of one CLI test invocation (per-run home; pkg is linked to the persistent cache).
+	CLITestingRunHomeKind = "home"
+	// CLITestingPkgCacheDirName is the stable pkg cache directory under the CLI
+	// test tmp root: <tmpRoot>/cache/pkg. It intentionally omits run-id so
+	// ESM/types downloads warm across CLI test invocations.
+	CLITestingPkgCacheDirName = "cache"
+	CLITestingPkgName         = "pkg"
+)
+
+// CLITestTmpRoot returns the temporary root for CLI test commands
+// (unit / e2e / typecheck). Prefer CHOYSUM_TEST_TMP; otherwise use
+// <os.TempDir()>/choysum-testing. This intentionally does not use the
+// production config TmpPath (~/.choysum/tmp).
+func CLITestTmpRoot() (string, error) {
+	root := strings.TrimSpace(os.Getenv(EnvCLITestTMP))
+	if root == "" {
+		root = filepath.Join(os.TempDir(), defaultCLITestTmpDirName)
+	}
+	normalized, err := normalizeTmpRoot(root)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(normalized, 0o755); err != nil {
+		return "", xfmt.Errorf("create CLI test tmp root: %w", err)
+	}
+	return normalized, nil
+}
+
+// ResolveCLITestingPkgCache returns the persistent pkg cache directory:
+// <tmpRoot>/cache/pkg. Callers should link <DefaultChoysumPath>/pkg here.
+func ResolveCLITestingPkgCache(tmpRoot string) (string, error) {
+	normalizedTmpRoot, err := normalizeTmpRoot(tmpRoot)
+	if err != nil {
+		return "", err
+	}
+	pkgCache := filepath.Join(normalizedTmpRoot, CLITestingPkgCacheDirName, CLITestingPkgName)
+	if err := os.MkdirAll(pkgCache, 0o755); err != nil {
+		return "", xfmt.Errorf("create CLI testing pkg cache: %w", err)
+	}
+	return pkgCache, nil
+}
+
+// EnsureCLITestingPkgLink makes choysumHome/pkg a symlink to pkgCache so per-run
+// homes share one durable ESM/types cache. pkgCache is created if missing.
+func EnsureCLITestingPkgLink(choysumHome, pkgCache string) error {
+	choysumHome = strings.TrimSpace(choysumHome)
+	pkgCache = strings.TrimSpace(pkgCache)
+	if choysumHome == "" || pkgCache == "" {
+		return nil
+	}
+	absCache, err := filepath.Abs(pkgCache)
+	if err != nil {
+		return xfmt.Errorf("abs pkg cache: %w", err)
+	}
+	if err := os.MkdirAll(absCache, 0o755); err != nil {
+		return xfmt.Errorf("create pkg cache: %w", err)
+	}
+	if err := os.MkdirAll(choysumHome, 0o755); err != nil {
+		return xfmt.Errorf("create choysum home: %w", err)
+	}
+
+	linkPath := filepath.Join(choysumHome, CLITestingPkgName)
+	if st, err := os.Lstat(linkPath); err == nil {
+		if st.Mode()&os.ModeSymlink != 0 {
+			target, readErr := os.Readlink(linkPath)
+			if readErr == nil {
+				if !filepath.IsAbs(target) {
+					target = filepath.Join(filepath.Dir(linkPath), target)
+				}
+				if filepath.Clean(target) == filepath.Clean(absCache) {
+					return nil
+				}
+			}
+			if err := os.Remove(linkPath); err != nil {
+				return xfmt.Errorf("replace pkg symlink: %w", err)
+			}
+		} else if st.IsDir() {
+			if err := mergeDirInto(linkPath, absCache); err != nil {
+				return xfmt.Errorf("migrate pkg dir into cache: %w", err)
+			}
+			if err := os.RemoveAll(linkPath); err != nil {
+				return xfmt.Errorf("replace pkg dir: %w", err)
+			}
+		} else {
+			if err := os.Remove(linkPath); err != nil {
+				return xfmt.Errorf("replace pkg path: %w", err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return xfmt.Errorf("stat pkg path: %w", err)
+	}
+
+	if err := os.Symlink(absCache, linkPath); err != nil {
+		return xfmt.Errorf("link %s -> %s: %w", linkPath, absCache, err)
+	}
+	return nil
+}
+
+// LinkCLITestingPkgCache resolves <tmpRoot>/cache/pkg and links it at choysumHome/pkg.
+// Empty choysumHome or tmpRoot is a no-op.
+func LinkCLITestingPkgCache(choysumHome, tmpRoot string) error {
+	choysumHome = strings.TrimSpace(choysumHome)
+	tmpRoot = strings.TrimSpace(tmpRoot)
+	if choysumHome == "" || tmpRoot == "" {
+		return nil
+	}
+	pkgCache, err := ResolveCLITestingPkgCache(tmpRoot)
+	if err != nil {
+		return err
+	}
+	return EnsureCLITestingPkgLink(choysumHome, pkgCache)
+}
+
+// mergeDirInto moves entries from src into dst when the destination name is absent.
+// Existing destination directories are merged recursively so nested cache trees
+// (e.g. esm/, types/) are not skipped wholesale. Falls back to copy+remove when
+// os.Rename fails (e.g. EXDEV across filesystems).
+func mergeDirInto(src, dst string) error {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		from := filepath.Join(src, entry.Name())
+		to := filepath.Join(dst, entry.Name())
+		st, err := os.Lstat(to)
+		if err == nil {
+			if entry.IsDir() && st.IsDir() {
+				if err := mergeDirInto(from, to); err != nil {
+					return err
+				}
+			}
+			continue
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+		if err := os.Rename(from, to); err != nil {
+			if err := copyAndRemove(from, to); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// copyAndRemove copies from → to (file, directory, or symlink), then removes from.
+func copyAndRemove(from, to string) error {
+	if err := copyPath(from, to); err != nil {
+		return err
+	}
+	return os.RemoveAll(from)
+}
+
+func copyPath(from, to string) error {
+	info, err := os.Lstat(from)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		target, err := os.Readlink(from)
+		if err != nil {
+			return err
+		}
+		return os.Symlink(target, to)
+	}
+	if info.IsDir() {
+		if err := os.MkdirAll(to, info.Mode().Perm()); err != nil {
+			return err
+		}
+		entries, err := os.ReadDir(from)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := copyPath(filepath.Join(from, entry.Name()), filepath.Join(to, entry.Name())); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return copyFile(from, to, info.Mode().Perm())
+}
+
+func copyFile(from, to string, perm os.FileMode) error {
+	in, err := os.Open(from)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.OpenFile(to, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, perm)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+// ResolveCLITestingRunHome returns the shared DefaultChoysumPath for one CLI
+// test run: <tmpRoot>/testing/<workspace>/<run-id>/home.
+// home/pkg is linked to the persistent <tmpRoot>/cache/pkg.
+func ResolveCLITestingRunHome(ctx context.Context, workspaceRoot string, tmpRoot string) (string, error) {
+	home, err := ResolveTestingTmpDirFromContext(ctx, workspaceRoot, tmpRoot, CLITestingRunHomeKind)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		return "", xfmt.Errorf("create CLI testing run home: %w", err)
+	}
+	if err := LinkCLITestingPkgCache(home, tmpRoot); err != nil {
+		return "", err
+	}
+	return home, nil
 }

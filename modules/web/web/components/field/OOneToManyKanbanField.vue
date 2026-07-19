@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="o-otm-kanban">
           <div v-if="showToolbar" class="o-otm-kanban__toolbar">
             <slot name="toolbar" :items="getItems()" :add="handleAddItem" :editable="editable">
-              <el-button v-if="editable && showToolbarAdd" size="small" link type="primary" plain @click="handleAddItem">{{ addButtonText }}</el-button>
+              <el-button v-if="editable && showToolbarAdd" size="small" link type="primary" plain @click="handleAddItem">{{ effectiveAddButtonText }}</el-button>
             </slot>
           </div>
 
@@ -47,19 +47,19 @@ SPDX-License-Identifier: Apache-2.0
                   <div class="o-otm-kanban__card-title">{{ resolveCardTitle(item) }}</div>
                   <div class="o-otm-kanban__card-meta" v-if="resolveCardSubtitle(item)">{{ resolveCardSubtitle(item) }}</div>
                   <div class="o-otm-kanban__card-actions" v-if="editable || removable" @click.stop>
-                    <el-button v-if="editable" size="small" link @click="handleEditItem(index)">编辑</el-button>
-                    <el-button v-if="removable" size="small" link type="danger" @click="handleRemoveItem(index)">删除</el-button>
+                    <el-button v-if="editable" size="small" link @click="handleEditItem(index)">{{ _t('Edit') }}</el-button>
+                    <el-button v-if="removable" size="small" link type="danger" @click="handleRemoveItem(index)">{{ _t('Delete') }}</el-button>
                   </div>
                 </slot>
               </div>
             </template>
 
             <div v-else class="o-otm-kanban__empty">
-              <slot name="empty">{{ emptyText }}</slot>
+              <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
 
             <div v-if="editable" class="o-otm-kanban__add-card" @click="handleAddItem">
-              <span>{{ addButtonText }}</span>
+              <span>{{ effectiveAddButtonText }}</span>
             </div>
           </div>
         </div>
@@ -94,7 +94,7 @@ SPDX-License-Identifier: Apache-2.0
             </template>
 
             <div v-else class="o-otm-kanban__empty">
-              <slot name="empty">{{ emptyText }}</slot>
+              <slot name="empty">{{ effectiveEmptyText }}</slot>
             </div>
           </div>
         </div>
@@ -118,12 +118,12 @@ SPDX-License-Identifier: Apache-2.0
       :submit-handler="dialogFormSubmitHandler"
       v-bind="formViewProps"
     />
-    <div v-else class="o-otm-kanban__dialog-hint">请通过 formView 属性提供子记录编辑组件。</div>
+    <div v-else class="o-otm-kanban__dialog-hint">{{ _t('Provide a child record editor via the formView prop.') }}</div>
 
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="handleDialogCancel">取消</el-button>
-        <el-button v-if="dialogMode !== 'display'" type="primary" @click="handleDialogSubmit">保存</el-button>
+        <el-button @click="handleDialogCancel">{{ _t('Cancel') }}</el-button>
+        <el-button v-if="dialogMode !== 'display'" type="primary" @click="handleDialogSubmit">{{ _t('Save') }}</el-button>
       </span>
     </template>
   </el-dialog>
@@ -145,9 +145,12 @@ import {
   type OFormSubmitOutcome,
   type OFormSubmitHandler,
   type OFormSubmitHandlerContext,
-} from '@/web/web/components/view/OFormView.vue';
+} from '@/web/web/components/view/formViewTypes';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OOneToManyKanbanField' });
 
 defineOptions({ name: 'OOneToManyKanbanField', inheritAttrs: false });
 
@@ -210,11 +213,11 @@ const props = withDefaults(
 
     cardTitleField: 'Name',
     cardSubtitleField: 'Email',
-    addButtonText: '新增',
+    addButtonText: '',
     showToolbarAdd: false,
     formView: undefined,
     formViewProps: () => ({}),
-    emptyText: '暂无数据',
+    emptyText: '',
 
     minCardWidth: 240,
     gap: 12,
@@ -226,9 +229,9 @@ const props = withDefaults(
     confirmOnRemove: true,
 
     dialogWidth: '760px',
-    createDialogTitle: '新增记录',
-    editDialogTitle: '编辑记录',
-    displayDialogTitle: '查看记录',
+    createDialogTitle: '',
+    editDialogTitle: '',
+    displayDialogTitle: '',
   }
 );
 
@@ -239,6 +242,12 @@ const emit = defineEmits<{
   (e: 'remove-request', payload: { index: number; item: any }): void;
   (e: 'save-request', payload: { mode: 'create' | 'edit'; index: number; item: any }): void;
 }>();
+
+const effectiveAddButtonText = computed(() => props.addButtonText || _t('New'));
+const effectiveEmptyText = computed(() => props.emptyText || _t('No data'));
+const effectiveCreateDialogTitle = computed(() => props.createDialogTitle || _t('New record'));
+const effectiveEditDialogTitle = computed(() => props.editDialogTitle || _t('Edit record'));
+const effectiveDisplayDialogTitle = computed(() => props.displayDialogTitle || _t('View record'));
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
@@ -262,9 +271,9 @@ const dialogRegisteredFormApis = new Map<string, OFormChildSubmitApi>();
 const activeDialogFormToken = ref<string | null>(null);
 const dialogFormMode = computed(() => (dialogMode.value === 'display' ? 'display' : 'create'));
 const dialogTitleText = computed(() => {
-  if (dialogMode.value === 'create') return props.createDialogTitle;
-  if (dialogMode.value === 'edit') return props.editDialogTitle;
-  return props.displayDialogTitle;
+  if (dialogMode.value === 'create') return effectiveCreateDialogTitle.value;
+  if (dialogMode.value === 'edit') return effectiveEditDialogTitle.value;
+  return effectiveDisplayDialogTitle.value;
 });
 
 provide(O_FORM_CHILD_SUBMIT_API_REGISTER_KEY, (registration: OFormChildSubmitApiRegistration) => {
@@ -353,7 +362,7 @@ function resolveCardTitle(item: any): string {
   const field = String(props.cardTitleField || '').trim();
   const value = field ? item?.[field] : undefined;
   if (value != null && String(value).trim()) return String(value).trim();
-  return String(item?.DisplayName || item?.Id || '未命名');
+  return String(item?.DisplayName || item?.Id || _t('Untitled'));
 }
 
 function resolveCardSubtitle(item: any): string {
@@ -413,9 +422,12 @@ async function handleRemoveItem(index: number) {
     return;
   }
 
-  await ElMessageBox.confirm('确定要删除该记录吗？此操作不可恢复。', '确认删除', {
-    confirmButtonText: '确定删除',
-    cancelButtonText: '取消',
+  await ElMessageBox.confirm(
+    _t('Are you sure you want to delete this record? This action cannot be undone.'),
+    _t('Confirm delete'),
+    {
+      confirmButtonText: _t('Delete'),
+      cancelButtonText: _t('Cancel'),
     type: 'warning',
     confirmButtonClass: 'el-button--danger',
   })

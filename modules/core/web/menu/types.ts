@@ -3,10 +3,12 @@
 
 import type { Component } from 'vue';
 import type { ObjectRecord } from '../../utils/types';
+import type { TermReference } from '../../service/i18n';
 
 export interface MenuItem {
   id: string;
   title: string;
+  titleText?: TermReference;
   order?: number;
   icon?: Component;
   path?: string;

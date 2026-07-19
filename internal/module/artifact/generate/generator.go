@@ -64,6 +64,7 @@ func (g *grpcGenerator) getApplication() (*meta.IrApplication, error) {
 		}).
 		Joins("JOIN meta_ir_module ON meta_ir_model.module_id = meta_ir_module.id ").
 		Where("meta_ir_module.application_id = ?", application.Id).
+		Where("meta_ir_model.abstract = ?", false).
 		Order("meta_ir_model.id ASC").
 		Find(&appModels); result.Error != nil {
 		return nil, result.Error

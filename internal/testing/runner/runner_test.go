@@ -886,7 +886,9 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 		t.Fatalf("WriteFile vue-tsc package.json: %v", err)
 	}
 
-	tmpRoot := filepath.Join(t.TempDir(), "tmp-root")
+	tmpRoot := filepath.Join(t.TempDir(), "legacy-tmp-root")
+	cliTmp := filepath.Join(t.TempDir(), "cli-test-tmp")
+	t.Setenv(testingpathing.EnvCLITestTMP, cliTmp)
 	binDir := t.TempDir()
 	npmPath := filepath.Join(binDir, "npm")
 	if err := os.WriteFile(npmPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
@@ -942,11 +944,11 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 		t.Fatalf("expected captured tsconfig path")
 	}
 
-	typecheckLegacyTmpDir, err := testingpathing.ResolveTestingTmpDir(repoRoot, tmpRoot, "typecheck")
+	typecheckTmpDir, err := testingpathing.ResolveTestingTmpDir(repoRoot, cliTmp, "typecheck")
 	if err != nil {
 		t.Fatalf("ResolveTestingTmpDir(typecheck): %v", err)
 	}
-	workspaceTestingRoot := filepath.Dir(typecheckLegacyTmpDir)
+	workspaceTestingRoot := filepath.Dir(typecheckTmpDir)
 	if filepath.Base(tsconfigPath) == "" {
 		t.Fatalf("expected non-empty tsconfig basename")
 	}
@@ -959,6 +961,9 @@ func TestRunWithDefaultsPropagatesTmpPathToTypecheck(t *testing.T) {
 	}
 	if !strings.HasPrefix(filepath.Clean(gotTmpDir), filepath.Clean(workspaceTestingRoot)+string(filepath.Separator)) {
 		t.Fatalf("typecheck tmp dir = %q, want prefix %q", gotTmpDir, workspaceTestingRoot)
+	}
+	if strings.HasPrefix(filepath.Clean(gotTmpDir), filepath.Clean(tmpRoot)+string(filepath.Separator)) {
+		t.Fatalf("typecheck tmp must not use production/legacy TmpPath %q, got %q", tmpRoot, gotTmpDir)
 	}
 	runID := filepath.Base(filepath.Dir(filepath.Dir(gotTmpDir)))
 	if strings.TrimSpace(runID) == "" || runID == "testing" || runID == filepath.Base(workspaceTestingRoot) {

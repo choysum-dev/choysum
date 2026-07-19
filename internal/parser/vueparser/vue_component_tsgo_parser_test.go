@@ -70,7 +70,7 @@ export default Vue.defineComponent({})
 	if err != nil {
 		t.Fatalf("parseTSGoCtx() error = %v", err)
 	}
-	callExprNode := findFirstNodeInSourceFile(ctx.source, tsast.KindCallExpression)
+	callExprNode := findFirstNodeInSourceFile(ctx.Source, tsast.KindCallExpression)
 	if callExprNode == nil {
 		t.Fatal("expected call expression node")
 	}

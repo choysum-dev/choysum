@@ -7,6 +7,7 @@ import type { Entity } from '../types';
 import { normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
+import { _t } from '@/core/service/i18n_binder';
 
 export type ValidationMode = 'create' | 'update' | 'preview';
 
@@ -43,7 +44,10 @@ export function validateIntFields(meta: ModelMetadata, vals: Entity) {
       try {
         assertSafeInt(values[fieldName], fieldName);
       } catch (error) {
-        const message = error instanceof Error ? error.message : `Field "${String(fieldName)}" is not a valid int`;
+        const message =
+          error instanceof Error
+            ? error.message
+            : _t('Field "%s" is not a valid int', { scope: 'service/orm/repository/validation/kernel' }, String(fieldName));
         throw new KernelValidationError('kernel_int_invalid', message, { field: String(fieldName) });
       }
     }
@@ -68,7 +72,13 @@ export function validateSelectionFields(meta: ModelMetadata, input: Entity): voi
     if (!validValues.has(inputValue)) {
       throw new KernelValidationError(
         'kernel_selection_invalid',
-        `Field "${fieldName}" has value "${inputValue}" outside the allowed selection values. Allowed values: ${Array.from(validValues).join(', ')}`,
+        _t(
+          'Field "%s" has value "%s" outside the allowed selection values. Allowed values: %s',
+          { scope: 'service/orm/repository/validation/kernel' },
+          fieldName,
+          inputValue,
+          Array.from(validValues).join(', ')
+        ),
         {
           field: String(fieldName),
           detail: {
@@ -105,9 +115,13 @@ export function validateRequiredFields(meta: ModelMetadata, input: Entity, mode:
     if (mode === 'create') {
       if (hasKey) {
         if (isNullish) {
-          throw new KernelValidationError('kernel_required_null', `Field "${fieldName}" cannot be null`, {
-            field: String(fieldName),
-          });
+          throw new KernelValidationError(
+            'kernel_required_null',
+            _t('Field "%s" cannot be null', { scope: 'service/orm/repository/validation/kernel' }, fieldName),
+            {
+              field: String(fieldName),
+            }
+          );
         }
         return;
       }
@@ -116,15 +130,23 @@ export function validateRequiredFields(meta: ModelMetadata, input: Entity, mode:
         return;
       }
 
-      throw new KernelValidationError('kernel_required_missing', `Field "${fieldName}" is required`, {
-        field: String(fieldName),
-      });
+      throw new KernelValidationError(
+        'kernel_required_missing',
+        _t('Field "%s" is required', { scope: 'service/orm/repository/validation/kernel' }, fieldName),
+        {
+          field: String(fieldName),
+        }
+      );
     }
 
     if (mode === 'update' && hasKey && isNullish) {
-      throw new KernelValidationError('kernel_required_null', `Field "${fieldName}" cannot be null`, {
-        field: String(fieldName),
-      });
+      throw new KernelValidationError(
+        'kernel_required_null',
+        _t('Field "%s" cannot be null', { scope: 'service/orm/repository/validation/kernel' }, fieldName),
+        {
+          field: String(fieldName),
+        }
+      );
     }
   });
 }
@@ -163,7 +185,11 @@ export function validateRelationShapeFields(meta: ModelMetadata, input: Entity):
 
     throw new KernelValidationError(
       'kernel_relation_shape_invalid',
-      `Field "${fieldName}" has an invalid reference shape and must be an Id or an object containing Id/id`,
+      _t(
+        'Field "%s" has an invalid reference shape and must be an Id or an object containing Id/id',
+        { scope: 'service/orm/repository/validation/kernel' },
+        fieldName
+      ),
       {
         field: String(fieldName),
       }
@@ -184,9 +210,17 @@ export function validateDecimalFields(meta: ModelMetadata, input: Entity): void 
 
     const normalized = normalizeDecimalByMeta(fieldMeta, value);
     if (!normalized) {
-      throw new KernelValidationError('kernel_decimal_invalid', `Field "${fieldName}" must be a valid decimal that satisfies the precision and scale limits`, {
-        field: String(fieldName),
-      });
+      throw new KernelValidationError(
+        'kernel_decimal_invalid',
+        _t(
+          'Field "%s" must be a valid decimal that satisfies the precision and scale limits',
+          { scope: 'service/orm/repository/validation/kernel' },
+          fieldName
+        ),
+        {
+          field: String(fieldName),
+        }
+      );
     }
   });
 }

@@ -1196,6 +1196,19 @@ func cloneDecorator(src *meta.IrDecorator) *meta.IrDecorator {
 }
 
 func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
+	buildResult, err := b.BuildWithoutPersist()
+	if err != nil {
+		return nil, err
+	}
+	if err := b.Persist(buildResult); err != nil {
+		return nil, err
+	}
+	return buildResult, nil
+}
+
+// BuildWithoutPersist compiles and validates the module without writing IrModule /
+// IrModel rows. Call Persist inside a short commit transaction afterward.
+func (b *ModuleBuilder) BuildWithoutPersist() (*module.BuildResult, error) {
 	// 1. prebuild for parse original model extends
 	prebuildResult, err := b.prebuild()
 	if err != nil {
@@ -1218,12 +1231,16 @@ func (b *ModuleBuilder) Build() (*module.BuildResult, error) {
 		return nil, xfmt.Errorf("error validating: %w", err)
 	}
 
-	// 5. persist build result
-	if err := b.persist(buildResult); err != nil {
-		return nil, xfmt.Errorf("error persisting build result: %w", err)
-	}
-
 	return buildResult, nil
+}
+
+// Persist writes the compiled build result (IrModule / IrModel) using the
+// builder's ambient session. Intended for a short Required commit window.
+func (b *ModuleBuilder) Persist(buildResult *module.BuildResult) error {
+	if err := b.persist(buildResult); err != nil {
+		return xfmt.Errorf("error persisting build result: %w", err)
+	}
+	return nil
 }
 
 // Bundle runs the build pipeline but does NOT validate/persist meta models.

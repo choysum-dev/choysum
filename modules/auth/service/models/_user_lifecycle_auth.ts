@@ -4,6 +4,7 @@
 import { withContext } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
+import { _t } from '../i18n';
 import type Company from '@/base/service/models/company';
 import Role from './role';
 import Session from './session';
@@ -29,7 +30,7 @@ export function validateAndHashRegistrationInput(userData: { Username?: string }
   if (!userData?.Username || !password) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
-      message: 'Username and password are required',
+      message: _t('Username and password are required', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
   return hashPassword(password);
@@ -49,14 +50,14 @@ export async function ensureRegistrationIdentityUnique(
   if (!username) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
-      message: 'Username is required',
+      message: _t('Username is required', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
   const existing = await deps.searchByUsername(username);
   if (existing.length > 0) {
     throw newAuthError({
       code: AuthErrCode.USERNAME_TAKEN,
-      message: 'Username is already in use',
+      message: _t('Username is already in use', { scope: 'service/models/_user_lifecycle_auth' }),
     })
       .withGrpcCode(GrpcCode.AlreadyExists)
       .withMetadata({ username: String(userData?.Username || '') });
@@ -68,7 +69,7 @@ export async function ensureRegistrationIdentityUnique(
     if (emailExists.length > 0) {
       throw newAuthError({
         code: AuthErrCode.EMAIL_TAKEN,
-        message: 'Email is already registered',
+        message: _t('Email is already registered', { scope: 'service/models/_user_lifecycle_auth' }),
       })
         .withGrpcCode(GrpcCode.AlreadyExists)
         .withMetadata({ email });
@@ -84,7 +85,7 @@ export function ensureCreatedUserIdOrThrow(createdUserId: any): string {
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.USER_CREATION_FAILED,
-      message: 'User registration failed: missing user id',
+      message: _t('User registration failed: missing user id', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.Internal);
   }
   return userId;
@@ -106,7 +107,7 @@ export async function provisionRegisteredUserBaseline(
     if (!mainCompanyId) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: 'Registration failed: Main Company (Code=MAIN) was not found',
+        message: _t('Registration failed: Main Company (Code=MAIN) was not found', { scope: 'service/models/_user_lifecycle_auth' }),
       }).withGrpcCode(GrpcCode.FailedPrecondition);
     }
 
@@ -131,7 +132,7 @@ export async function provisionRegisteredUserBaseline(
       if (!baseUserRoleId) {
         throw newAuthError({
           code: AuthErrCode.ROLE_NOT_FOUND,
-          message: 'Registration failed: base.user role is not initialized; load auth bootstrap data first',
+          message: _t('Registration failed: base.user role is not initialized; load auth bootstrap data first', { scope: 'service/models/_user_lifecycle_auth' }),
         })
           .withGrpcCode(GrpcCode.FailedPrecondition)
           .withMetadata({ roleCode: 'base.user', externalId: 'auth.role_base_user' });
@@ -169,14 +170,14 @@ export function validateLoginCandidateOrThrow(user: LoginUserLike | undefined, u
   if (!user) {
     throw newAuthError({
       code: AuthErrCode.USER_NOT_FOUND,
-      message: 'User not found or password is incorrect',
+      message: _t('User not found or password is incorrect', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.NotFound);
   }
 
   if (!verifyPassword(password, user.PasswordHash)) {
     throw newAuthError({
       code: AuthErrCode.INVALID_PASSWORD,
-      message: 'User not found or password is incorrect',
+      message: _t('User not found or password is incorrect', { scope: 'service/models/_user_lifecycle_auth' }),
     })
       .withGrpcCode(GrpcCode.Unauthenticated)
       .withMetadata({ username: usernameOrEmail });
@@ -185,7 +186,7 @@ export function validateLoginCandidateOrThrow(user: LoginUserLike | undefined, u
   if (!user.IsActive) {
     throw newAuthError({
       code: AuthErrCode.ACCOUNT_DISABLED,
-      message: 'Account is disabled',
+      message: _t('Account is disabled', { scope: 'service/models/_user_lifecycle_auth' }),
     })
       .withGrpcCode(GrpcCode.PermissionDenied)
       .withMetadata({ userId: user.Id, username: user.Username });
@@ -261,7 +262,7 @@ export async function refreshTokensWithLatestMetadata(
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
-      message: 'Invalid token payload: missing user id',
+      message: _t('Invalid token payload: missing user id', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
 
@@ -269,13 +270,13 @@ export async function refreshTokensWithLatestMetadata(
   if (!user) {
     throw newAuthError({
       code: AuthErrCode.USER_NOT_FOUND,
-      message: 'User not found',
+      message: _t('User not found', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.NotFound);
   }
   if (!user.IsActive) {
     throw newAuthError({
       code: AuthErrCode.ACCOUNT_DISABLED,
-      message: 'Account is disabled',
+      message: _t('Account is disabled', { scope: 'service/models/_user_lifecycle_auth' }),
     })
       .withGrpcCode(GrpcCode.PermissionDenied)
       .withMetadata({ userId: user.Id, username: user.Username });
@@ -295,7 +296,7 @@ export async function revokeLogoutArtifacts(token: string, allDevices: boolean):
   if (!userId) {
     throw newAuthError({
       code: AuthErrCode.VALIDATION_FAILED,
-      message: 'Invalid token payload: missing user id',
+      message: _t('Invalid token payload: missing user id', { scope: 'service/models/_user_lifecycle_auth' }),
     }).withGrpcCode(GrpcCode.InvalidArgument);
   }
 

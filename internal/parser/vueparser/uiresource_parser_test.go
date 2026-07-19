@@ -124,6 +124,41 @@ defineModelActions('auth.User', {
 	}
 }
 
+func TestCollectUiResourceDeclsParsesModelActionEntityTitleTermReference(t *testing.T) {
+	sourcePath := filepath.Join("modules", "base", "web", "views", "CountryListView.vue")
+	source := `
+import { createTranslate } from '@/web/web/i18n';
+import { defineModelActions } from '@/core/web/resource';
+
+const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' });
+const countryActions = defineModelActions('base.Country', { entityTitle: _tRef('Country') });
+`
+
+	decls, issues := collectUiResourceDecls(sourcePath, source)
+	if len(issues) > 0 {
+		t.Fatalf("collectUiResourceDecls() issues = %#v", issues)
+	}
+
+	declByID := make(map[string]*parser.UiResourceDecl, len(decls))
+	for _, decl := range decls {
+		declByID[decl.ID] = decl
+	}
+
+	createAction := declByID["base.action.country_create"]
+	if createAction == nil {
+		t.Fatalf("expected create action decl, got %#v", declByID)
+	}
+	if createAction.Title != "Create Country" {
+		t.Fatalf("unexpected synthesized title: %q", createAction.Title)
+	}
+	if createAction.TitleText == nil || createAction.TitleText.Src != "Create Country" {
+		t.Fatalf("unexpected titleText: %#v", createAction.TitleText)
+	}
+	if createAction.TitleText.Module != "base" || createAction.TitleText.Scope != "web/views/CountryListView" {
+		t.Fatalf("unexpected titleText metadata: %#v", createAction.TitleText)
+	}
+}
+
 func TestCollectUiResourceDeclsMetaResourceContractOverridesLegacyFields(t *testing.T) {
 	sourcePath := filepath.Join(t.TempDir(), "ui_resources_meta_contract.ts")
 	source := `
@@ -283,10 +318,10 @@ defineModelActions('auth.User', {
 }
 
 func TestUiResourceHelperFunctions(t *testing.T) {
-	if titles, err := parseStrictModelActionTitlesProperty(`titles: { create: 'Create', edit: "Edit" }`); err != nil || titles["create"] != "Create" || titles["edit"] != "Edit" {
+	if titles, _, err := parseStrictModelActionTitlesProperty(`titles: { create: 'Create', edit: "Edit" }`, "base", nil); err != nil || titles["create"] != "Create" || titles["edit"] != "Edit" {
 		t.Fatalf("parseStrictModelActionTitlesProperty() = %#v, %v", titles, err)
 	}
-	if _, err := parseStrictModelActionTitlesProperty(`titles: { create: foo }`); err == nil {
+	if _, _, err := parseStrictModelActionTitlesProperty(`titles: { create: foo }`, "base", nil); err == nil {
 		t.Fatal("expected parseStrictModelActionTitlesProperty() to reject non-literal value")
 	}
 

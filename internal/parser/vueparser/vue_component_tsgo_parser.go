@@ -27,7 +27,7 @@ func parseVueComponentWithTSGo(pathAlias map[string]string, path string, scriptC
 		return nil, err
 	}
 
-	for _, stmt := range ctx.source.Statements.Nodes {
+	for _, stmt := range ctx.Source.Statements.Nodes {
 		if stmt == nil || stmt.Kind != tsast.KindExportAssignment {
 			continue
 		}
@@ -87,7 +87,7 @@ func isDefineComponentCallWithOptions(ctx *tsParseCtx, expr *tsast.Node, allowNa
 		return false
 	}
 	if expr.Kind == tsast.KindIdentifier {
-		imp, ok := ctx.imports[expr.Text()]
+		imp, ok := ctx.Imports[expr.Text()]
 		if !ok {
 			return false
 		}
@@ -107,7 +107,7 @@ func isDefineComponentCallWithOptions(ctx *tsParseCtx, expr *tsast.Node, allowNa
 		if propertyAccess.Expression.Kind != tsast.KindIdentifier {
 			return false
 		}
-		imp, ok := ctx.imports[propertyAccess.Expression.Text()]
+		imp, ok := ctx.Imports[propertyAccess.Expression.Text()]
 		if !ok {
 			return false
 		}
@@ -126,10 +126,10 @@ func parseVueExtendsProperty(ctx *tsParseCtx, propertyNode *tsast.Node, valueNod
 	moduleSpecPath := ""
 	switch valueNode.Kind {
 	case tsast.KindIdentifier:
-		moduleSpecPath, referenceIdent = ctx.convertReferenceWithModuleSpec(valueNode.Text())
+		moduleSpecPath, referenceIdent = ctx.ConvertReferenceWithModuleSpec(valueNode.Text())
 	case tsast.KindPropertyAccessExpression:
 		pa := valueNode.AsPropertyAccessExpression()
-		moduleSpecPath, _ = ctx.convertReferenceWithModuleSpec(pa.Expression.Text())
+		moduleSpecPath, _ = ctx.ConvertReferenceWithModuleSpec(pa.Expression.Text())
 		referenceIdent = pa.Name().Text()
 	default:
 		return nil, ""
@@ -156,7 +156,7 @@ func parseVueComponentsProperties(ctx *tsParseCtx, valueNode *tsast.Node) []*par
 		var referenceText string
 		switch propertyNode.Kind {
 		case tsast.KindShorthandPropertyAssignment:
-			referenceText = strings.TrimSpace(ctx.nodeText(propertyNode.AsShorthandPropertyAssignment().Name()))
+			referenceText = strings.TrimSpace(ctx.NodeText(propertyNode.AsShorthandPropertyAssignment().Name()))
 			if referenceText == "" {
 				referenceText = propertyNode.AsShorthandPropertyAssignment().Name().Text()
 			}
@@ -173,7 +173,7 @@ func parseVueComponentsProperties(ctx *tsParseCtx, valueNode *tsast.Node) []*par
 		if referenceText == "" {
 			continue
 		}
-		moduleSpecPath, referenceIdent := ctx.convertReferenceWithModuleSpec(referenceText)
+		moduleSpecPath, referenceIdent := ctx.ConvertReferenceWithModuleSpec(referenceText)
 		components = append(components, buildTSGoPropertyNode(ctx, propertyNode, referenceIdent, moduleSpecPath))
 	}
 
@@ -186,11 +186,11 @@ func buildTSGoPropertyNode(ctx *tsParseCtx, node *tsast.Node, referenceIdent str
 	}
 
 	name, valueKind, valueText, valueStart, valueEnd := tsgoExtractPropertyStableInfo(ctx, node)
-	line, col := ctx.lineColumn(node.Pos())
+	line, col := ctx.LineColumn(node.Pos())
 	return &parser.PropertyNode{
 		ReferenceIdent: referenceIdent,
 		ModuleSpecPath: moduleSpecPath,
-		Text:           ctx.nodeText(node),
+		Text:           ctx.NodeText(node),
 		Start:          node.Pos(),
 		End:            node.End(),
 		Line:           line,
@@ -214,7 +214,7 @@ func tsgoExtractPropertyStableInfo(ctx *tsParseCtx, propertyNode *tsast.Node) (n
 		name = tsgoPropertyName(ctx, propertyAssign.Name())
 		if propertyAssign.Initializer != nil {
 			valueKind = propertyAssign.Initializer.Kind.String()
-			valueText = ctx.nodeText(propertyAssign.Initializer)
+			valueText = ctx.NodeText(propertyAssign.Initializer)
 			valueStart = propertyAssign.Initializer.Pos()
 			valueEnd = propertyAssign.Initializer.End()
 		}
@@ -233,7 +233,7 @@ func tsgoPropertyName(ctx *tsParseCtx, nameNode *tsast.Node) string {
 	if ctx == nil || nameNode == nil {
 		return ""
 	}
-	name := strings.TrimSpace(ctx.nodeText(nameNode))
+	name := strings.TrimSpace(ctx.NodeText(nameNode))
 	if name == "" {
 		name = strings.TrimSpace(nameNode.Text())
 	}

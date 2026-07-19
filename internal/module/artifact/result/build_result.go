@@ -16,6 +16,13 @@ type Builder interface {
 	Build() (*BuildResult, error)
 }
 
+// SplitBuilder compiles without writing metadata, then persists in a later step.
+type SplitBuilder interface {
+	Builder
+	BuildWithoutPersist() (*BuildResult, error)
+	Persist(result *BuildResult) error
+}
+
 type Bundler interface {
 	Bundle() (*BuildResult, error)
 }

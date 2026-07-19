@@ -145,8 +145,24 @@ func Run(ctx context.Context, opts RunOptions) error {
 		testingRunID = testingpathing.NewTestingRunID()
 		ctx = testingpathing.ContextWithTestingRunID(ctx, testingRunID)
 	}
+	workspaceRoot := strings.TrimSpace(opts.RepoRoot)
+	if workspaceRoot == "" {
+		workspaceRoot = filepath.Dir(strings.TrimSpace(opts.ModulesPath))
+	}
+	boundCtx, testTmp, runHome, err := testingpathing.BindCLITestRuntimePaths(ctx, workspaceRoot)
+	if err != nil {
+		return xfmt.Errorf("bind CLI test runtime paths: %w", err)
+	}
+	ctx = boundCtx
+	if opts.Keep {
+		fmt.Fprintf(opts.Stderr, "choysum test: kept CLI test tmp root: %s\n", testTmp)
+		fmt.Fprintf(opts.Stderr, "choysum test: kept CLI test shared home: %s\n", runHome)
+		if pkgCache, err := testingpathing.ResolveCLITestingPkgCache(testTmp); err == nil {
+			fmt.Fprintf(opts.Stderr, "choysum test: kept CLI test pkg cache: %s\n", pkgCache)
+		}
+	}
 	if opts.Coverage && strings.TrimSpace(opts.CoverageReportDir) == "" {
-		defaultReportDir, err := cov.ResolveCoverageReportDirWithRunID(opts.RepoRoot, runtimeOpts.tmpPath, testingRunID)
+		defaultReportDir, err := cov.ResolveCoverageReportDirWithRunID(opts.RepoRoot, testTmp, testingRunID)
 		if err != nil {
 			return xfmt.Errorf("resolve default coverage report dir: %w", err)
 		}

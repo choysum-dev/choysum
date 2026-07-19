@@ -64,8 +64,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 			ctx = logutil.WithStderrProgressLine(ctx)
 
-			coordinator := internalorigin.NewCoordinator(env)
-
 			// Create a transaction-bound module manager for each module install.
 			// Run each module install in its own transaction to avoid keeping a
 			// long-lived transaction open across multiple modules (which amplifies SQLite
@@ -99,45 +97,37 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					parsed.Version = compatibleVersion
 				}
 
+				rootInput := strings.TrimSpace(parsed.LocalName)
+				if parsed.Kind == internalorigin.InputKindRegistry {
+					rootInput = parsed.CanonicalRef()
+				}
 				moduleName := strings.TrimSpace(parsed.LocalName)
 				if parsed.Kind == internalorigin.InputKindRegistry {
-					resolved, fetchErr := coordinator.Fetch(ctx, parsed.CanonicalRef())
-					if fetchErr != nil {
-						env.Logger().Error("module source resolution failed", "input", input, "error", fetchErr)
-						os.Exit(1)
-					}
-					if resolved == nil || strings.TrimSpace(resolved.Name) == "" {
-						env.Logger().Error("module source invalid", "input", input, "reason", "resolved module is empty")
-						os.Exit(1)
-					}
-					moduleName = strings.TrimSpace(resolved.Name)
+					moduleName = strings.TrimSpace(parsed.ModuleName)
 				}
 
-				txRoot := env.WithContext(ctx)
-				if err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
-					compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
-					if err != nil {
-						return xfmt.Errorf("Error creating compiler executor: %w", err)
+				installScope := env.WithContext(ctx)
+				err = func() error {
+					compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
+					if startErr != nil {
+						return xfmt.Errorf("Error creating compiler executor: %w", startErr)
 					}
-					if err := compilerExecutor.Start(); err != nil {
-						return xfmt.Errorf("Error starting compiler executor: %w", err)
+					if startErr = compilerExecutor.Start(); startErr != nil {
+						return xfmt.Errorf("Error starting compiler executor: %w", startErr)
 					}
 					defer compilerExecutor.Stop()
 
-					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
-						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
-							return peekErr
-						}
+					installScope.Logger().Debug("module install started", "input", rootInput)
+					if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
+						Input:    rootInput,
+						WithDemo: withDemo,
+					}); installErr != nil {
+						return xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
 					}
-
-					txScope.Logger().Debug("module install started", "module", moduleName)
-					moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)
-					if err := moduleLifecycle.Install(tx.Context(), lifecycle.InstallRequest{Name: moduleName, WithDemo: withDemo}); err != nil {
-						return xfmt.Errorf("error installing module %s: %w", moduleName, err)
-					}
-					txScope.Logger().Debug("module installed", "module", moduleName)
+					installScope.Logger().Debug("module installed", "input", rootInput)
 					return nil
-				}); err != nil {
+				}()
+				if err != nil {
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						err = rewriteLocalInstallLookupError(moduleName, err)
 					}

@@ -7,6 +7,7 @@ import { FieldOptions, FieldMetadata, FieldType } from '../metadata/field';
 import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
+import { isTermReference, type TermReference } from '../../i18n';
 
 const scalarTypes = new Set<FieldType>([
   'char',
@@ -228,7 +229,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
       // 2) every selection item must contain value and label
       const values = new Set<string>();
-      const normalizedSelection: Array<{ value: string; label: string }> = [];
+      const normalizedSelection: Array<{ value: string; label: string; labelText?: TermReference }> = [];
       for (const item of selectionItems) {
         if (!item || typeof item !== 'object') {
           throw new Error(`@Field(${name}) each selection item must be an object`);
@@ -236,19 +237,23 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         if (!item.value || typeof item.value !== 'string') {
           throw new Error(`@Field(${name}) each selection item must include a string value field`);
         }
-        if (!item.label || typeof item.label !== 'string') {
-          throw new Error(`@Field(${name}) each selection item must include a string label field`);
+        if (!item.label || (typeof item.label !== 'string' && !isTermReference(item.label))) {
+          throw new Error(`@Field(${name}) each selection item must include a string or term reference label field`);
         }
 
         const value = item.value;
-        const label = item.label;
+        const label = typeof item.label === 'string' ? item.label : item.label.src;
 
         // 3) value must be unique
         if (values.has(value)) {
           throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
         }
         values.add(value);
-        normalizedSelection.push({ value, label });
+        normalizedSelection.push({
+          value,
+          label,
+          ...(isTermReference(item.label) ? { labelText: { ...item.label } } : {}),
+        });
       }
       validatedSelection = normalizedSelection;
     }

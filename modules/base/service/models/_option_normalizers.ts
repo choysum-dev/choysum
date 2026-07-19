@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeEnumValue } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { mapNormalizationToBase } from './_normalization_bridge';
+
+const { _t } = createTranslate('base');
 
 /**
  * Normalize a Direction (ltr/rtl) selection value.
@@ -13,7 +16,7 @@ export function normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undef
   if (value === null || value === '') return null;
   return mapNormalizationToBase(
     () => normalizeEnumValue(value, ['ltr', 'rtl'] as const, 'ltr'),
-    () => 'Direction must be ltr or rtl'
+    () => _t('Direction must be ltr or rtl', { scope: 'service/models/_option_normalizers' })
   );
 }
 
@@ -24,7 +27,7 @@ export function normalizeDirection(value: unknown): 'ltr' | 'rtl' | null | undef
 export function normalizeCurrencySymbolPosition(value: unknown): 'before' | 'after' {
   return mapNormalizationToBase(
     () => normalizeEnumValue(value, ['before', 'after'] as const, 'before'),
-    () => 'CurrencySymbolPosition must be before or after'
+    () => _t('CurrencySymbolPosition must be before or after', { scope: 'service/models/_option_normalizers' })
   );
 }
 
@@ -48,7 +51,7 @@ export function normalizeCurrencySymbolSpacing(value: unknown): boolean {
 export function normalizeRatePolicyMode(value: unknown): 'exact' | 'latest_before' {
   return mapNormalizationToBase(
     () => normalizeEnumValue(value, ['exact', 'latest_before'] as const, 'latest_before'),
-    () => 'RatePolicy.Mode must be exact or latest_before'
+    () => _t('RatePolicy.Mode must be exact or latest_before', { scope: 'service/models/_option_normalizers' })
   );
 }
 
@@ -59,6 +62,6 @@ export function normalizeRatePolicyMode(value: unknown): 'exact' | 'latest_befor
 export function normalizeRoundingMode(value: unknown): 'currency' | 'none' {
   return mapNormalizationToBase(
     () => normalizeEnumValue(value, ['currency', 'none'] as const, 'currency'),
-    () => 'Rounding.Mode must be currency or none'
+    () => _t('Rounding.Mode must be currency or none', { scope: 'service/models/_option_normalizers' })
   );
 }

@@ -6,6 +6,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -708,6 +709,95 @@ func TestNewTypeFetchCmd_Run_OfflineFetchesCompilerTypesFromTsconfig(t *testing.
 	}
 	if !strings.Contains(bridgeContent, `node@26.1.1.d.ts`) {
 		t.Fatalf("expected bridge file to reference cached @types/node file, got %q", bridgeContent)
+	}
+}
+
+func TestResolveTypeFetchToolingTypeTargets(t *testing.T) {
+	modulesPath := t.TempDir()
+	vitestPkgPath := filepath.Join(modulesPath, "node_modules", "vitest", "package.json")
+	if err := os.MkdirAll(filepath.Dir(vitestPkgPath), 0o755); err != nil {
+		t.Fatalf("mkdir vitest package dir: %v", err)
+	}
+	if err := os.WriteFile(vitestPkgPath, []byte(`{"name":"vitest","version":"3.2.4"}`), 0o644); err != nil {
+		t.Fatalf("write vitest package.json: %v", err)
+	}
+
+	targets := resolveTypeFetchToolingTypeTargets(modulesPath)
+	if len(targets) == 0 {
+		t.Fatal("expected tooling type targets")
+	}
+	index := make(map[string]typeFetchToolingTypeTarget, len(targets))
+	for _, target := range targets {
+		index[target.PackageName] = target
+	}
+	if got := index["vitest"]; got.Version != "3.2.4" {
+		t.Fatalf("vitest target = %+v, want version 3.2.4", got)
+	}
+	if got := index["@vue/test-utils"]; got.Version != "latest" {
+		t.Fatalf("@vue/test-utils target = %+v, want version latest", got)
+	}
+}
+
+func TestNewTypeFetchCmd_Run_OfflineFetchesIDEToolingTypes(t *testing.T) {
+	modulesPath := t.TempDir()
+	cfg := newCommandTestConfig(modulesPath)
+	writeCommandPackage(t, modulesPath, "app", `{}`)
+
+	tsconfigPath := filepath.Join(modulesPath, "tsconfig.json")
+	if err := os.WriteFile(tsconfigPath, []byte(`{"compilerOptions":{"paths":{"@/*":["./*"]}}}`), 0o644); err != nil {
+		t.Fatalf("write tsconfig: %v", err)
+	}
+
+	vitestPkgPath := filepath.Join(modulesPath, "node_modules", "vitest", "package.json")
+	if err := os.MkdirAll(filepath.Dir(vitestPkgPath), 0o755); err != nil {
+		t.Fatalf("mkdir vitest package dir: %v", err)
+	}
+	if err := os.WriteFile(vitestPkgPath, []byte(`{"name":"vitest","version":"3.2.4"}`), 0o644); err != nil {
+		t.Fatalf("write vitest package.json: %v", err)
+	}
+
+	typesDir := filepath.Join(cfg.DefaultChoysumPath, "pkg", "types")
+	vitestCache := filepath.Join(typesDir, "vitest@3.2.4.d.ts")
+	testUtilsCache := filepath.Join(typesDir, "@vue", "test-utils@latest.d.ts")
+	for _, cacheFile := range []string{vitestCache, testUtilsCache} {
+		if err := os.MkdirAll(filepath.Dir(cacheFile), 0o755); err != nil {
+			t.Fatalf("mkdir tooling cache dir: %v", err)
+		}
+		if err := os.WriteFile(cacheFile, []byte("export {};"), 0o644); err != nil {
+			t.Fatalf("write tooling cache file: %v", err)
+		}
+	}
+
+	cmd := newTypeFetchCmd(func() scope.Scope { return &commandTestScope{cfg: cfg} })
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"app", "--offline"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("type-fetch execute error: %v", err)
+	}
+
+	output := out.String()
+	if !strings.Contains(output, "IDE tooling types complete: targets=2 (cached=2, fetched=0, failed=0)") {
+		t.Fatalf("expected tooling types summary line, got %q", output)
+	}
+
+	tsconfigData, err := os.ReadFile(tsconfigPath)
+	if err != nil {
+		t.Fatalf("read modules tsconfig: %v", err)
+	}
+	var tsconfig map[string]any
+	if err := json.Unmarshal(tsconfigData, &tsconfig); err != nil {
+		t.Fatalf("parse modules tsconfig: %v", err)
+	}
+	compilerOptions, _ := tsconfig["compilerOptions"].(map[string]any)
+	paths, _ := compilerOptions["paths"].(map[string]any)
+	if paths["vitest"] == nil {
+		t.Fatalf("expected vitest path mapping, got %#v", paths)
+	}
+	if paths["@vue/test-utils"] == nil {
+		t.Fatalf("expected @vue/test-utils path mapping, got %#v", paths)
 	}
 }
 
@@ -1604,6 +1694,7 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		"run":        false,
 		"test":       false,
 		"type-fetch": false,
+		"i18n":       false,
 	}
 	for _, sub := range commander.rootCmd.Commands() {
 		if _, ok := wantCommands[sub.Name()]; ok {
@@ -1648,6 +1739,20 @@ func TestNewCommander_StructureAndPersistentPreRun(t *testing.T) {
 		}
 		if !shouldUseLightweightRuntimeScope(typeFetchCmd) {
 			t.Fatal("expected lightweight scope for type-fetch")
+		}
+
+		i18nExtractCmd, _, err := commander.rootCmd.Find([]string{"i18n", "extract"})
+		if err != nil {
+			t.Fatalf("find i18n extract subcommand: %v", err)
+		}
+		if i18nExtractCmd == nil {
+			t.Fatal("expected i18n extract subcommand")
+		}
+		if got := i18nExtractCmd.Annotations[lightweightScopeAnnotation]; got != "true" {
+			t.Fatalf("i18n extract annotation %q = %q, want %q", lightweightScopeAnnotation, got, "true")
+		}
+		if !shouldUseLightweightRuntimeScope(i18nExtractCmd) {
+			t.Fatal("expected lightweight scope for i18n extract")
 		}
 	})
 

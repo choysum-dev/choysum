@@ -21,12 +21,12 @@ SPDX-License-Identifier: Apache-2.0
 
     <div class="o-search-filter__footer">
       <div class="o-search-filter__preview">
-        <span class="label">预览 ({{ leafCount }} 条):</span>
+        <span class="label">{{ _t('Preview (%s):', leafCount) }}</span>
         <span class="expr">{{ preview }}</span>
       </div>
       <div class="o-search-filter__actions">
-        <el-button @click="$emit('cancel')">取消</el-button>
-        <el-button type="primary" @click="$emit('save')">保存</el-button>
+        <el-button @click="$emit('cancel')">{{ _t('Cancel') }}</el-button>
+        <el-button type="primary" @click="$emit('save')">{{ _t('Save') }}</el-button>
       </div>
     </div>
   </div>
@@ -40,6 +40,9 @@ import OSearchFilterGroup from './OSearchFilterGroup.vue';
 import { valueToPreview } from '@/web/web/query/utils/condition/like';
 import { getOperatorLabel } from '@/web/web/query/utils/filter/operators';
 import { useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearchFilter' });
 
 interface FieldOption {
   prop: string;
@@ -119,13 +122,13 @@ const { preview, leafCount } = (() => {
     const children: any[] = Array.isArray((g as any).children) ? (g as any).children : [];
     // Treat non-array children as empty.
     const inner = children.map(ch => (isGroupNode(ch) ? expGroup(ch as ConditionGroup) : expCond(ch as Condition))).filter(Boolean);
-    if (inner.length === 0) return '(空)';
+    if (inner.length === 0) return _t('(empty)');
     if (inner.length === 1) return inner[0]!;
     const joiner = g.logic === 'Or' ? 'OR' : 'AND';
     return `(${inner.join(` ${joiner} `)})`;
   }
   function expCond(c: Condition): string {
-    if (!c.field || !c.operator) return '(未完成)';
+    if (!c.field || !c.operator) return _t('(incomplete)');
     const op = String(c.operator);
     const label = getOperatorLabel(op); // Use the user-friendly operator label.
     const pv = toPreviewValue(c.field, c.value);

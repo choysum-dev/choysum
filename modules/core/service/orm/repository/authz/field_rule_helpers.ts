@@ -13,6 +13,7 @@ import type { RepositoryPermissionDeniedFn } from './types';
 import { getRuntimeEnvFlag } from '@/core/utils/env';
 import { asObjectRecord } from '../../../../utils/object';
 import type { ObjectRecord } from '../../../../utils/types';
+import { _t } from '@/core/service/i18n_binder';
 
 export type RepositoryFieldRuleSpec = {
   denyReadFields: string[];
@@ -138,7 +139,11 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
       cache.set(key, spec);
       return spec;
     }
-    throw params.permissionDenied('field_rule_fetch_failed', 'failed to fetch field rule spec', { model });
+    throw params.permissionDenied(
+      'field_rule_fetch_failed',
+      _t('failed to fetch field rule spec', { scope: 'service/orm/repository/authz/field_rule_helpers' }),
+      { model }
+    );
   }
 
   const spec = normalizeRepositoryFieldRuleSpec(result);
@@ -170,14 +175,18 @@ export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFi
 
   const method = typeof req?.method === 'string' ? req.method : '';
   const model = (params.meta.fullModelName || params.meta.modelName || params.meta.name || 'Unknown') as string;
-  throw params.permissionDenied('field_rule_readonly_violation', 'field rule readonly violation', {
-    model,
-    access: 'write',
-    field: deniedFields[0],
-    fields: deniedFields.join(','),
-    method,
-    reason: spec.reason || 'denied',
-  });
+  throw params.permissionDenied(
+    'field_rule_readonly_violation',
+    _t('field rule readonly violation', { scope: 'service/orm/repository/authz/field_rule_helpers' }),
+    {
+      model,
+      access: 'write',
+      field: deniedFields[0],
+      fields: deniedFields.join(','),
+      method,
+      reason: spec.reason || 'denied',
+    }
+  );
 }
 
 export type RepositoryFieldRuleSelectionDeps = Pick<RepositoryFieldRuleDeps, 'isControlPlaneMetaModel'>;

@@ -7,6 +7,7 @@ import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
+import { _t } from '../i18n';
 import Session from './session';
 import Role from './role';
 import RoleMethodAccess from './role_method_access';
@@ -105,7 +106,7 @@ export default class User extends BaseModel {
   Avatar?: string;
 
   /**
-   * Preferred language reserved for future localization support.
+   * Preferred terminology language (e.g. zh_CN). Written by FE language switch when logged in.
    */
   @Field({ type: 'varchar', size: 20 })
   Language: string;
@@ -231,7 +232,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_CREATION_FAILED,
-        message: 'User registration failed',
+        message: _t('User registration failed', { scope: 'service/models/user@Register' }),
       }).withMetadata({ username: String(userData.Username || '') });
     }
   }
@@ -262,7 +263,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_CREATION_FAILED,
-        message: 'Login failed: unable to create token pair',
+        message: _t('Login failed: unable to create token pair', { scope: 'service/models/user@Login' }),
       }).withMetadata({ userId: user.Id, username: user.Username });
     }
   }
@@ -299,7 +300,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_REFRESH_FAILED,
-        message: 'Token refresh failed',
+        message: _t('Token refresh failed', { scope: 'service/models/user' }),
       });
     }
   }
@@ -318,7 +319,7 @@ export default class User extends BaseModel {
     if (!userId) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: 'User is not logged in',
+        message: _t('User is not logged in', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.Unauthenticated);
     }
 
@@ -335,7 +336,7 @@ export default class User extends BaseModel {
       });
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: 'activeCompanyId cannot be empty',
+        message: _t('activeCompanyId cannot be empty', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
 
@@ -354,7 +355,7 @@ export default class User extends BaseModel {
           });
           throw newAuthError({
             code: AuthErrCode.VALIDATION_FAILED,
-            message: 'enabledCompanyIds must be a string[] or omitted',
+            message: _t('enabledCompanyIds must be a string[] or omitted', { scope: 'service/models/user' }),
           }).withGrpcCode(GrpcCode.InvalidArgument);
         }
 
@@ -370,7 +371,7 @@ export default class User extends BaseModel {
           });
           throw newAuthError({
             code: AuthErrCode.VALIDATION_FAILED,
-            message: 'enabledCompanyIds contains an unauthorized company',
+            message: _t('enabledCompanyIds contains an unauthorized company', { scope: 'service/models/user' }),
           })
             .withGrpcCode(GrpcCode.InvalidArgument)
             .withMetadata({ companyId: validated.companyId || '' });
@@ -386,7 +387,7 @@ export default class User extends BaseModel {
           });
           throw newAuthError({
             code: AuthErrCode.VALIDATION_FAILED,
-            message: 'activeCompanyId is outside the allowed company scope',
+            message: _t('activeCompanyId is outside the allowed company scope', { scope: 'service/models/user' }),
           })
             .withGrpcCode(GrpcCode.InvalidArgument)
             .withMetadata({ activeCompanyId: active });
@@ -401,7 +402,7 @@ export default class User extends BaseModel {
         });
         throw newAuthError({
           code: AuthErrCode.VALIDATION_FAILED,
-          message: 'activeCompanyId must be included in enabledCompanyIds',
+          message: _t('activeCompanyId must be included in enabledCompanyIds', { scope: 'service/models/user' }),
         }).withGrpcCode(GrpcCode.InvalidArgument);
       }
 
@@ -451,7 +452,7 @@ export default class User extends BaseModel {
       }
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
-        message: 'Switch company scope failed',
+        message: _t('Switch company scope failed', { scope: 'service/models/user' }),
       });
     }
   }
@@ -468,7 +469,7 @@ export default class User extends BaseModel {
     if (!token) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
-        message: 'Token is required',
+        message: _t('Token is required', { scope: 'service/models/user' }),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
 
@@ -479,7 +480,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.TOKEN_REVOCATION_FAILED,
-        message: 'Logout failed',
+        message: _t('Logout failed', { scope: 'service/models/user' }),
       }).withMetadata({
         allDevices: String(allDevices),
         deviceInfo: deviceInfo || '',
@@ -706,7 +707,7 @@ export default class User extends BaseModel {
       if (!userId) {
         throw newAuthError({
           code: AuthErrCode.VALIDATION_FAILED,
-          message: 'Missing identity information (userId)',
+          message: _t('Missing identity information (userId)', { scope: 'service/models/user' }),
         }).withGrpcCode(GrpcCode.Unauthenticated);
       }
 
@@ -714,7 +715,7 @@ export default class User extends BaseModel {
       if (!rawModel) {
         throw newAuthError({
           code: AuthErrCode.VALIDATION_FAILED,
-          message: 'Missing model name (model)',
+          message: _t('Missing model name (model)', { scope: 'service/models/user' }),
         }).withGrpcCode(GrpcCode.InvalidArgument);
       }
 
@@ -722,7 +723,7 @@ export default class User extends BaseModel {
       if (!parsedModel) {
         throw newAuthError({
           code: AuthErrCode.VALIDATION_FAILED,
-          message: 'Invalid model full name; expected "<app>.<Model>"',
+          message: _t('Invalid model full name; expected "<app>.<Model>"', { scope: 'service/models/user' }),
         })
           .withGrpcCode(GrpcCode.InvalidArgument)
           .withMetadata({ model: rawModel });
@@ -741,7 +742,7 @@ export default class User extends BaseModel {
     } catch (error) {
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
-        message: 'Failed to compute field rule spec',
+        message: _t('Failed to compute field rule spec', { scope: 'service/models/user' }),
       }).withMetadata({ model: String(model || '').trim() });
     }
   }

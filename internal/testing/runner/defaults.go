@@ -11,6 +11,7 @@ import (
 	pkgbackend "github.com/choysum-dev/choysum/internal/testing/backend"
 	pkgdiscovery "github.com/choysum-dev/choysum/internal/testing/discovery"
 	pkgfrontend "github.com/choysum-dev/choysum/internal/testing/frontend"
+	testingpathing "github.com/choysum-dev/choysum/internal/testing/tmpdir"
 	pkgtypecheck "github.com/choysum-dev/choysum/internal/testing/typecheck"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -45,11 +46,12 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 			if runtimeScope == nil || !runtimeOpts.hasConfig {
 				return xfmt.Errorf("typecheck: invalid scope")
 			}
+			tmpRoot := testingpathing.EffectiveCLITestTmpRoot(ctx, runtimeOpts.tmpPath)
 			typecheckOpts := pkgtypecheck.RunOptions{
 				ModulesPath: runtimeOpts.modulesPath,
 				NpmPath:     filepath.Join(runtimeOpts.modulesPath, "node_modules"),
 				RepoRoot:    repoRoot,
-				TmpPath:     runtimeOpts.tmpPath,
+				TmpPath:     tmpRoot,
 				Target:      app,
 				Keep:        opts.Keep,
 				Stdout:      stdout,
@@ -82,6 +84,7 @@ func RunWithDefaults(ctx context.Context, opts RunOptions) error {
 			if envOpts := runtimeOptionsFromScope(opts.Env); envOpts.hasConfig {
 				tmpRoot = envOpts.tmpPath
 			}
+			tmpRoot = testingpathing.EffectiveCLITestTmpRoot(ctx, tmpRoot)
 			return pkgfrontend.RunOneAppFrontendTests(
 				ctx,
 				repoRoot,

@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	documentgateway "github.com/choysum-dev/choysum/internal/document/gateway"
+	i18ngateway "github.com/choysum-dev/choysum/internal/i18n/gateway"
 	"google.golang.org/grpc/resolver"
 )
 
@@ -44,4 +45,5 @@ func (s *GRPCWebServer) initBaseRoutes() {
 	})
 
 	documentgateway.RegisterSkeletonHandlers(s.mux, s.runtimeScope)
+	i18ngateway.RegisterHandlers(s.mux, s.runtimeScope)
 }

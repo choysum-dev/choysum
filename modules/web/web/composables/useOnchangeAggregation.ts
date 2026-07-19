@@ -4,6 +4,9 @@
 import { ref, type Ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import type { OnchangeFlushPayload } from '@/web/web/composables/useOnchange';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t } = createTranslate('web', { scope: 'web/composables/useOnchangeAggregation' });
 
 /**
  * useOnchangeAggregation
@@ -138,15 +141,15 @@ export function useOnchangeAggregation(options?: { showMessages?: boolean }) {
     const blockingMsg = msgs.find((m: any) => m.blocking);
     if (blockingMsg) {
       try {
-        await ElMessageBox.confirm(blockingMsg.message, blockingMsg.title || '提示', {
-          confirmButtonText: '继续',
-          cancelButtonText: '取消',
+        await ElMessageBox.confirm(blockingMsg.message, blockingMsg.title || _t('Notice'), {
+          confirmButtonText: _t('Continue'),
+          cancelButtonText: _t('Cancel'),
           type: blockingMsg.level === 'error' ? 'error' : 'warning',
           distinguishCancelAndClose: true,
           closeOnClickModal: false,
         });
       } catch (action) {
-        if (action === 'cancel') ElMessage.info('已取消操作');
+        if (action === 'cancel') ElMessage.info(_t('Operation cancelled'));
       }
       return;
     }
