@@ -63,6 +63,16 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 	}
 }
 
+func TestOffsetToLineColUTF8(t *testing.T) {
+	// "你好_t" — each CJK ideograph is 3 bytes; column should count runes.
+	source := "你好_t('x')"
+	offset := len("你好") // byte offset at '_'
+	line, col := offsetToLineCol(source, offset)
+	if line != 1 || col != 3 {
+		t.Fatalf("offsetToLineCol = (%d,%d), want (1,3)", line, col)
+	}
+}
+
 func TestCollectTemplateRegexEscapedQuotesInMsgid(t *testing.T) {
 	html := `<div>{{ _t('a\', b') }}{{ _t("foo\", bar") }}</div>`
 	terms, issues := CollectTemplateRegex(CollectOptions{

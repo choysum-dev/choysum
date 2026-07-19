@@ -167,7 +167,7 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 	done := make(chan struct{})
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		defer close(done)
-		// Cancel when the browse channel closes so <-ctx.Done() cannot hang.
+		// Cancel when the browse channel closes so the outer <-ctx.Done() cannot hang.
 		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
 		defer t.Stop()
@@ -195,9 +195,8 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 
 				resetBrowseTimer(t, time.Millisecond*20) // wait briefly for next entry
 			case <-t.C:
+				// Stop browse; keep draining results until closed so the sender cannot block.
 				cancel()
-			case <-ctx.Done():
-				return
 			}
 		}
 	}(entries)
@@ -237,7 +236,7 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 	done := make(chan struct{})
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		defer close(done)
-		// Cancel when the browse channel closes so <-ctx.Done() cannot hang.
+		// Cancel when the browse channel closes so the outer <-ctx.Done() cannot hang.
 		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
 		defer t.Stop()
@@ -274,9 +273,8 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 
 				resetBrowseTimer(t, time.Millisecond*20) // wait briefly for next entry
 			case <-t.C:
+				// Stop browse; keep draining results until closed so the sender cannot block.
 				cancel()
-			case <-ctx.Done():
-				return
 			}
 		}
 	}(entries)

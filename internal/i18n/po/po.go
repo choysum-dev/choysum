@@ -175,8 +175,6 @@ func parseComment(cur *Entry, trimmed string) {
 				cur.Flags = append(cur.Flags, f)
 			}
 		}
-	case strings.HasPrefix(trimmed, "#~"):
-		cur.Obsolete = true
 	case strings.HasPrefix(trimmed, "#"):
 		cur.TranslatorComments = append(cur.TranslatorComments, strings.TrimSpace(strings.TrimPrefix(trimmed, "#")))
 	}

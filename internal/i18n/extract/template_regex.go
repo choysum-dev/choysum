@@ -128,8 +128,12 @@ func offsetToLineCol(source string, offset int) (int, int) {
 		offset = len(source)
 	}
 	line, col := 1, 1
-	for i := 0; i < offset; i++ {
-		if source[i] == '\n' {
+	// offset is a byte index (from regexp); col counts runes for UTF-8 sources.
+	for i, r := range source {
+		if i >= offset {
+			break
+		}
+		if r == '\n' {
 			line++
 			col = 1
 			continue
