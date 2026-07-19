@@ -9,6 +9,9 @@ import {
   normalizeRequiredText as normalizeRequiredTextCore,
 } from '@/core/service/utils/normalization';
 import { toDate as toDateCore } from '@/core/service/utils/datetime';
+import { createTranslate } from '@/core/service/i18n';
+
+const { _t } = createTranslate('partner_commercial');
 
 /**
  * Throw a partner-commercial-domain InvalidArgument error.
@@ -78,7 +81,7 @@ export function normalizeRequiredText(value: unknown, fieldName: string, opts?: 
       if (opts?.upper) normalized = normalized.toUpperCase();
       return normalized;
     },
-    () => `${fieldName} is required`
+    () => _t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName)
   );
 }
 
@@ -92,7 +95,7 @@ export function toDateOrUndefined(value: unknown, fieldName: string): Date | und
   if (value === undefined || value === null || value === '') return undefined;
   const result = toDateCore(value);
   if (result === undefined) {
-    fail(`${fieldName} must be a valid datetime`);
+    fail(_t('%s must be a valid datetime', { scope: 'service/models/_normalization_bridge' }, fieldName));
   }
   return result;
 }

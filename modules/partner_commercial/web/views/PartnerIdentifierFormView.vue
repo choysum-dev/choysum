@@ -17,10 +17,10 @@ SPDX-License-Identifier: Apache-2.0
     <div class="pcifv-grid">
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IdentifierType" label="类型" />
+          <OVarCharField :store="store" prop="IdentifierType" :label="_t('Type')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Value" label="标识值" />
+          <OVarCharField :store="store" prop="Value" :label="_t('Value')" />
         </el-col>
       </el-row>
 
@@ -29,32 +29,32 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneRefField
             :store="store"
             prop="CountryId"
-            label="国家"
+            :label="_t('Country')"
             :searchView="CountryListView"
-            search-view-title="选择国家"
+            :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IssuedBy" label="签发机构" />
+          <OVarCharField :store="store" prop="IssuedBy" :label="_t('Issued By')" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <ODateTimeField :store="store" prop="ValidFrom" label="生效时间" mode="datetime" />
+          <ODateTimeField :store="store" prop="ValidFrom" :label="_t('Valid From')" mode="datetime" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <ODateTimeField :store="store" prop="ValidTo" label="失效时间" mode="datetime" />
+          <ODateTimeField :store="store" prop="ValidTo" :label="_t('Valid To')" mode="datetime" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsPrimary" label="主标识" widget="switch" />
+          <OBooleanField :store="store" prop="IsPrimary" :label="_t('Primary')" widget="switch" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" label="启用" widget="switch" />
+          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
         </el-col>
       </el-row>
     </div>
@@ -74,8 +74,10 @@ import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/w
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import CountryListView from '@/base/web/views/CountryListView.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerIdentifierFormView', inheritAttrs: true });
+const { _t } = createTranslate('partner_commercial', { scope: 'web/views/PartnerIdentifierFormView' });
 
 /**
  * Props consumed by the partner identifier form view.

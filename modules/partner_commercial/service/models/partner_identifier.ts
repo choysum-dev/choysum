@@ -3,7 +3,10 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { createTranslate } from '@/core/service/i18n';
 import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
+
+const { _t } = createTranslate('partner_commercial');
 
 /**
  * Company-scoped commercial identifier row attached to a partner.
@@ -60,7 +63,7 @@ export default class PartnerIdentifier extends BaseModel {
     const identifierType = normalizeRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
     const identifierValue = normalizeRequiredText(values.Value, 'Value', { upper: true });
 
-    if (!partnerId) fail('PartnerId is required');
+    if (!partnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_identifier' }));
 
     const rows = await this.Search(
       {
@@ -73,7 +76,7 @@ export default class PartnerIdentifier extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (conflict) fail('PartnerId + IdentifierType + Value must be unique');
+    if (conflict) fail(_t('PartnerId + IdentifierType + Value must be unique', { scope: 'service/models/partner_identifier' }));
 
     values.PartnerId = partnerId;
     values.IdentifierType = identifierType;
@@ -86,7 +89,7 @@ export default class PartnerIdentifier extends BaseModel {
 
     const partnerId = normalizeOptionalRefId(values.PartnerId);
     const identifierType = normalizeRequiredText(values.IdentifierType, 'IdentifierType', { lower: true });
-    if (!partnerId) fail('PartnerId is required');
+    if (!partnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_identifier' }));
 
     const rows = await this.Search(
       {
@@ -99,7 +102,7 @@ export default class PartnerIdentifier extends BaseModel {
       { fields: ['Id'] as any, limit: 2 } as any
     );
     const conflict = (rows || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (conflict) fail('Only one primary identifier is allowed per PartnerId + IdentifierType');
+    if (conflict) fail(_t('Only one primary identifier is allowed per PartnerId + IdentifierType', { scope: 'service/models/partner_identifier' }));
   }
 
   /** Normalizes and validates identifier values before persistence. */
@@ -141,14 +144,14 @@ export default class PartnerIdentifier extends BaseModel {
       }
     }
 
-    if (!values.PartnerId) fail('PartnerId is required');
-    if (!values.CompanyId) fail('CompanyId is required');
+    if (!values.PartnerId) fail(_t('PartnerId is required', { scope: 'service/models/partner_identifier' }));
+    if (!values.CompanyId) fail(_t('CompanyId is required', { scope: 'service/models/partner_identifier' }));
 
     await this.ensureUniqueIdentifier(values, currentId);
     await this.ensureSinglePrimary(values, currentId);
 
     if (values.ValidFrom && values.ValidTo && values.ValidFrom.getTime() > values.ValidTo.getTime()) {
-      fail('ValidFrom must be less than or equal to ValidTo');
+      fail(_t('ValidFrom must be less than or equal to ValidTo', { scope: 'service/models/partner_identifier' }));
     }
   }
 
