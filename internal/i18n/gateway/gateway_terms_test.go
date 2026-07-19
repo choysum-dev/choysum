@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -420,5 +421,120 @@ func TestTranslationsAnonymousStillReadableTermsNot(t *testing.T) {
 	mux.ServeHTTP(te, httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=en_US&application=auth", nil))
 	if te.Code != http.StatusUnauthorized {
 		t.Fatalf("terms status=%d", te.Code)
+	}
+}
+
+func TestTermsListClampsLimitAndOffset(t *testing.T) {
+	var gotLimit, gotOffset int
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			gotLimit, gotOffset = limit, offset
+			return &searchTermsResult{Lang: lang, Total: 0, Limit: limit, Offset: offset}, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(termsPath, h.serveTerms)
+
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh_CN&application=auth&limit=0&offset=-3", nil)
+	req.Header.Set("Authorization", "Bearer tok")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if gotLimit != defaultTermsLimit || gotOffset != 0 {
+		t.Fatalf("limit=%d offset=%d", gotLimit, gotOffset)
+	}
+
+	req2 := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh_CN&application=auth&limit=999", nil)
+	req2.Header.Set("Authorization", "Bearer tok")
+	rr2 := httptest.NewRecorder()
+	mux.ServeHTTP(rr2, req2)
+	if rr2.Code != http.StatusOK || gotLimit != maxTermsLimit {
+		t.Fatalf("status=%d limit=%d body=%s", rr2.Code, gotLimit, rr2.Body.String())
+	}
+}
+
+func TestTermsListRejectsInvalidLangAndListModulesError(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return nil, errors.New("modules boom")
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(termsPath, h.serveTerms)
+
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh/CN&application=auth", nil)
+	req.Header.Set("Authorization", "Bearer tok")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("invalid lang status=%d", rr.Code)
+	}
+
+	req2 := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh_CN&application=auth", nil)
+	req2.Header.Set("Authorization", "Bearer tok")
+	rr2 := httptest.NewRecorder()
+	mux.ServeHTTP(rr2, req2)
+	if rr2.Code != http.StatusInternalServerError || !strings.Contains(rr2.Body.String(), "modules boom") {
+		t.Fatalf("status=%d body=%s", rr2.Code, rr2.Body.String())
+	}
+}
+
+func TestTermsPatchValidationBranches(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		update: func(ctx context.Context, accessToken, app, lang string, item termItem) (*termItem, string, error) {
+			t.Fatal("update should not run")
+			return nil, "", nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(termsPath, h.serveTerms)
+
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"missing lang", `{"items":[{"application":"auth","module":"auth","scope":"a","src":"s","value":"v"}]}`, "lang is required"},
+		{"bad lang", `{"lang":"zh/CN","items":[{"application":"auth","module":"auth","scope":"a","src":"s","value":"v"}]}`, "invalid lang"},
+		{"empty items", `{"lang":"zh_CN","items":[]}`, "items are required"},
+		{"missing app", `{"lang":"zh_CN","items":[{"module":"auth","scope":"a","src":"s","value":"v"}]}`, "application is required"},
+		{"missing fields", `{"lang":"zh_CN","items":[{"application":"auth","module":"","scope":"a","src":"s","value":"v"}]}`, "module, scope, and src"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPatch, "/web/i18n/terms", bytes.NewReader([]byte(tc.body)))
+			req.Header.Set("Authorization", "Bearer tok")
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+			if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), tc.want) {
+				t.Fatalf("status=%d body=%s want %q", rr.Code, rr.Body.String(), tc.want)
+			}
+		})
+	}
+}
+
+func TestTermsPatchListModulesError(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return nil, errors.New("catalog down")
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(termsPath, h.serveTerms)
+	body := `{"lang":"zh_CN","items":[{"application":"auth","module":"auth","scope":"a","src":"s","value":"v"}]}`
+	req := httptest.NewRequest(http.MethodPatch, "/web/i18n/terms", bytes.NewReader([]byte(body)))
+	req.Header.Set("Authorization", "Bearer tok")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusInternalServerError || !strings.Contains(rr.Body.String(), "catalog down") {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
 }

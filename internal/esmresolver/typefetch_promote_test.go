@@ -12,6 +12,23 @@ import (
 	"testing"
 )
 
+func TestFindMatchingBraceAndIsOnlyComments(t *testing.T) {
+	if findMatchingBrace("nope", 0) != -1 || findMatchingBrace("{", 0) != -1 {
+		t.Fatal("expected unmatched")
+	}
+	src := "{ a: '{', b: \"}\", d: /* } */ // }\n  e: 1 }"
+	end := findMatchingBrace(src, 0)
+	if end != len(src)-1 {
+		t.Fatalf("end=%d want %d src=%q", end, len(src)-1, src)
+	}
+	if !isOnlyComments("  // a\n /* b */ ") {
+		t.Fatal("comment-only should be true")
+	}
+	if isOnlyComments("/* unclosed") || isOnlyComments("code") {
+		t.Fatal("non-comment-only should be false")
+	}
+}
+
 func TestPromoteAmbientModuleForPathsTarget_ExportEquals(t *testing.T) {
 	content := `declare module 'https://esm.sh/fast-deep-equal@3.1.3/index.d.ts' {
     const equal: (a: any, b: any) => boolean;

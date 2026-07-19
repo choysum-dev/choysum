@@ -392,3 +392,49 @@ func TestCoreAppSearchAndUpdateRejected(t *testing.T) {
 		t.Fatalf("expected InvalidArgument for missing lang, got %v", err)
 	}
 }
+
+func TestNewMessageHelpersAndParseInt32ViaSearch(t *testing.T) {
+	rs := newTestScope(t)
+	seedTerm(t, rs, "auth", "web/a@title", "Hello", "你好")
+	store.RegistryFor(rs).RememberModuleApplication("auth", "auth")
+
+	for _, fn := range []func(string) (*dynamicpb.Message, error){
+		i18nservice.NewRequestMessage,
+		i18nservice.NewResponseMessage,
+		i18nservice.NewSearchRequestMessage,
+		i18nservice.NewSearchResponseMessage,
+		i18nservice.NewUpdateRequestMessage,
+		i18nservice.NewUpdateResponseMessage,
+	} {
+		msg, err := fn("auth")
+		if err != nil || msg == nil {
+			t.Fatalf("New*Message: err=%v msg=%v", err, msg)
+		}
+	}
+	svc := i18nservice.New("auth", rs)
+	out, err := invokeMethod(t, svc, i18nservice.MethodSearchTerms, map[string]any{
+		"lang":    "zh_CN",
+		"modules": stringListAny([]string{"auth"}),
+		"limit":   "2",
+		"offset":  float64(0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out["limit"] == nil {
+		t.Fatalf("expected limit in response: %#v", out)
+	}
+
+	out2, err := invokeMethod(t, svc, i18nservice.MethodSearchTerms, map[string]any{
+		"lang":   "zh_CN",
+		"limit":  int64(1),
+		"offset": "bogus",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, _ := out2["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("string-limit path items=%#v", out2)
+	}
+}

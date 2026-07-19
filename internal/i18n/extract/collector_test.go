@@ -255,6 +255,63 @@ defineModelActions('base.User', {
 	}
 }
 
+func TestCollectScriptPathLocationScopeOptions(t *testing.T) {
+	content := `
+const { _t } = createTranslate('auth')
+_t('ByPath', { path: 'custom/path', location: 'title' })
+_t('ByScope', { scope: 'explicit.scope' })
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/page.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("issues=%#v", issues)
+	}
+	bySrc := map[string]string{}
+	for _, term := range terms {
+		bySrc[term.Src] = term.Scope
+	}
+	if !strings.Contains(bySrc["ByPath"], "custom/path") {
+		t.Fatalf("ByPath scope=%q terms=%#v", bySrc["ByPath"], terms)
+	}
+	if bySrc["ByPath"] != "custom/path@title" {
+		t.Fatalf("ByPath want path@location, got %q", bySrc["ByPath"])
+	}
+	if bySrc["ByScope"] != "explicit.scope" {
+		t.Fatalf("ByScope=%q", bySrc["ByScope"])
+	}
+}
+
+func TestCollectScriptNamedClassMethodEnclosing(t *testing.T) {
+	content := `
+const { _t } = createTranslate('auth')
+class Page {
+  title() {
+    return _t('Welcome')
+  }
+}
+const save = () => _t('Save')
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/page.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("issues=%#v", issues)
+	}
+	if len(terms) < 2 {
+		t.Fatalf("expected class+arrow terms, got %#v", terms)
+	}
+	bySrc := map[string]string{}
+	for _, term := range terms {
+		bySrc[term.Src] = term.Scope
+	}
+	if bySrc["Welcome"] == "" || bySrc["Save"] == "" {
+		t.Fatalf("missing scopes: %#v", bySrc)
+	}
+}
+
 func TestCollectScriptFactoryModeIsNotRecognized(t *testing.T) {
 	content := `
 const { _t } = createTranslate('base', { mode: 'reference' })

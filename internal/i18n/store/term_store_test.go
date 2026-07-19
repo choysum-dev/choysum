@@ -269,3 +269,23 @@ func TestTermStoreSearchTermsAndUpsertOverride(t *testing.T) {
 		t.Fatal("expected validation error")
 	}
 }
+
+func TestEmptyTermHashAndApplication(t *testing.T) {
+	rs := newTestScope(t)
+	ts := store.NewTermStore(rs, "auth")
+	if ts.Application() != "auth" {
+		t.Fatalf("Application = %q", ts.Application())
+	}
+	hash := store.EmptyTermHash()
+	if hash == "" || hash != store.EmptyTermHash() {
+		t.Fatalf("EmptyTermHash unstable: %q", hash)
+	}
+	store.ResetSharedRegistryForTests()
+	reg := store.RegistryFor(rs)
+	if reg == nil {
+		t.Fatal("RegistryFor nil")
+	}
+	if _, ok := reg.ApplicationForModule(""); ok {
+		t.Fatal("empty module should miss")
+	}
+}

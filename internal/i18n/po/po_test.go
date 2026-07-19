@@ -108,3 +108,77 @@ msgstr "你好"
 		t.Fatalf("round-trip: %#v", again)
 	}
 }
+
+func TestEntryKeyKindHeaderAndSort(t *testing.T) {
+	e := Entry{Msgctxt: "a", Msgid: "Hello", ExtractedComments: []string{"kind: custom"}}
+	if e.Key() != "a\x00Hello\x00custom" {
+		t.Fatalf("Key = %q", e.Key())
+	}
+	if (Entry{Msgid: "", Msgctxt: ""}).Kind() != "literal" {
+		t.Fatal("default kind")
+	}
+	if (Entry{ExtractedComments: []string{"kind:"}}).Kind() != "literal" {
+		t.Fatal("empty kind after prefix")
+	}
+	if !IsHeader(Entry{Msgid: ""}) || IsHeader(Entry{Msgid: "x"}) || IsHeader(Entry{Msgid: "", Obsolete: true}) {
+		t.Fatal("IsHeader mismatch")
+	}
+
+	entries := []Entry{
+		{Msgctxt: "b", Msgid: "2", Obsolete: true},
+		{Msgctxt: "a", Msgid: "2"},
+		{Msgctxt: "a", Msgid: "1", ExtractedComments: []string{"kind: z"}},
+		{Msgctxt: "a", Msgid: "1", ExtractedComments: []string{"kind: a"}},
+	}
+	SortEntries(entries)
+	if entries[0].Msgid != "1" || entries[0].Kind() != "a" {
+		t.Fatalf("sort first = %+v", entries[0])
+	}
+	if entries[1].Kind() != "z" {
+		t.Fatalf("sort second kind = %q", entries[1].Kind())
+	}
+	if entries[2].Msgctxt != "a" || entries[2].Msgid != "2" {
+		t.Fatalf("sort third = %+v", entries[2])
+	}
+	if !entries[3].Obsolete {
+		t.Fatal("obsolete should sort last")
+	}
+}
+
+func TestParseCommentBranchesAndUnquoteFallback(t *testing.T) {
+	src := `# translator note
+#. extracted
+#: a.ts:1 b.ts:2
+#, fuzzy, python-format
+msgctxt "scope"
+msgid "Hello"
+msgstr "你好"
+`
+	entries, err := Parse(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("entries=%d", len(entries))
+	}
+	e := entries[0]
+	if len(e.TranslatorComments) != 1 || e.TranslatorComments[0] != "translator note" {
+		t.Fatalf("translator = %#v", e.TranslatorComments)
+	}
+	if len(e.ExtractedComments) != 1 || e.ExtractedComments[0] != "extracted" {
+		t.Fatalf("extracted = %#v", e.ExtractedComments)
+	}
+	if len(e.References) != 2 {
+		t.Fatalf("refs = %#v", e.References)
+	}
+	if len(e.Flags) != 2 || e.Flags[0] != "fuzzy" {
+		t.Fatalf("flags = %#v", e.Flags)
+	}
+
+	if got := unquotePo(`"broken`); got != `"broken` {
+		t.Fatalf("unquotePo broken = %q", got)
+	}
+	if got := unquotePo(`"ok"`); got != "ok" {
+		t.Fatalf("unquotePo ok = %q", got)
+	}
+}
