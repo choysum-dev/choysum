@@ -45,6 +45,21 @@ func TestPromoteAmbientModuleForPathsTarget_StripsAsyncOnDeclare(t *testing.T) {
 	}
 }
 
+func TestPromoteAmbientModuleForPathsTarget_IgnoresBlockCommentTextForMinIndent(t *testing.T) {
+	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
+/*
+Descriptive free text without a leading star.
+*/
+  function run(): void;
+  export { run };
+}
+`
+	got := promoteAmbientModuleForPathsTarget(content)
+	if !strings.Contains(got, "declare function run") {
+		t.Fatalf("expected top-level function to get declare despite block-comment text, got %q", got)
+	}
+}
+
 func TestPromoteAmbientModuleForPathsTarget_SkipsNestedDecls(t *testing.T) {
 	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
   namespace Helpers {

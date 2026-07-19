@@ -195,10 +195,12 @@ func isOnlyComments(s string) bool {
 
 func ensureDeclareOnTopLevelDecls(body string) string {
 	lines := strings.Split(body, "\n")
+	// Derive minIndent only from lines that are real top-level decls we may
+	// rewrite. Using every non-comment-looking line is fragile: free text inside
+	// block comments can pollute the floor and skip actual declarations.
 	minIndent := -1
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+		if !topLevelDeclStartPattern.MatchString(line) {
 			continue
 		}
 		indent := len(line) - len(strings.TrimLeft(line, " \t"))
