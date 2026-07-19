@@ -63,6 +63,28 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 	}
 }
 
+func TestCollectTemplateRegexEscapedQuotesInMsgid(t *testing.T) {
+	html := `<div>{{ _t('a\', b') }}{{ _t("foo\", bar") }}</div>`
+	terms, issues := CollectTemplateRegex(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/widgets/Box.vue",
+	}, html)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	want := map[string]bool{"a', b": false, `foo", bar`: false}
+	for _, term := range terms {
+		if _, ok := want[term.Src]; ok {
+			want[term.Src] = true
+		}
+	}
+	for src, ok := range want {
+		if !ok {
+			t.Fatalf("missing term %q in %#v", src, terms)
+		}
+	}
+}
+
 func TestCollectTemplateRegexMultipleTCallsInAttribute(t *testing.T) {
 	html := `<input :placeholder="isNew ? _t('Create') : _t('Edit')" />`
 	terms, _ := CollectTemplateRegex(CollectOptions{

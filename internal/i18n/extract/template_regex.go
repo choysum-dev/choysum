@@ -25,7 +25,9 @@ var (
 	reTemplateAttrSingle = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*'([^']*)'`)
 
 	// _t msgid argument inside an already-captured expression/attribute value.
-	reTemplateTCall = regexp.MustCompile("(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+)\\s*(?:,|\\))")
+	// Escape-aware quotes avoid treating \" / \' as the string terminator (which
+	// would truncate before a following comma that ends the _t call match).
+	reTemplateTCall = regexp.MustCompile("(_t)\\s*\\(\\s*('(?:[^'\\\\]|\\\\.)*'|\"(?:[^\"\\\\]|\\\\.)*\"|\\x60(?:[^\\x60\\\\]|\\\\.)*\\x60|[^\\s),]+)\\s*(?:,|\\))")
 )
 
 // CollectTemplateRegex extracts literal `_t` calls from Vue template HTML text.

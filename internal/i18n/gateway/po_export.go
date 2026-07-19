@@ -85,7 +85,8 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	if err := po.Write(w, entries); err != nil {
-		// Headers already sent; best-effort log via body append is avoided.
+		// Headers already sent; cannot change status — log for ops visibility.
+		h.logger().Error("failed to write PO export", "error", err, "application", application, "lang", lang)
 		return
 	}
 }
