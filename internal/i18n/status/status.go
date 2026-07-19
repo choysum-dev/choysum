@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/i18n/extract"
+	"github.com/choysum-dev/choysum/internal/i18n/langcode"
 	"github.com/choysum-dev/choysum/internal/i18n/po"
 )
 
@@ -65,6 +66,9 @@ func StatusReport(opts Options) (*Report, error) {
 	lang := strings.TrimSpace(opts.Lang)
 	if lang == "" {
 		return nil, fmt.Errorf("lang is required")
+	}
+	if !langcode.Valid(lang) {
+		return nil, fmt.Errorf("invalid lang format")
 	}
 	modulesPath := strings.TrimSpace(opts.ModulesPath)
 	if modulesPath == "" {

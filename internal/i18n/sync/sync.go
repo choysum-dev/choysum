@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/i18n/langcode"
 	"github.com/choysum-dev/choysum/internal/i18n/po"
 )
 
@@ -35,6 +36,9 @@ func SyncModulePo(moduleRoot, moduleName, langCode string) (*Result, error) {
 	langCode = strings.TrimSpace(langCode)
 	if langCode == "" {
 		return nil, fmt.Errorf("lang code is required")
+	}
+	if !langcode.Valid(langCode) {
+		return nil, fmt.Errorf("invalid lang format")
 	}
 
 	i18nDir := filepath.Join(moduleRoot, "i18n")

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/choysum-dev/choysum/internal/i18n/langcode"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -55,22 +56,12 @@ func LangToLocale(lang string) string {
 }
 
 // maxLangCodeLen matches base.Language.Code (varchar 16).
-const maxLangCodeLen = 16
+const maxLangCodeLen = langcode.MaxLen
 
 // validLang reports whether lang is a safe terminology language code
 // (alphanumeric, underscore, hyphen; length ≤ Language.Code).
 func validLang(lang string) bool {
-	if lang == "" || len(lang) > maxLangCodeLen {
-		return false
-	}
-	for _, r := range lang {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
-		default:
-			return false
-		}
-	}
-	return true
+	return langcode.Valid(lang)
 }
 
 // frameworkModuleName is hosted in each real app's translation_term table (Scheme A).

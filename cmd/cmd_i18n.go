@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/choysum-dev/choysum/internal/i18n/extract"
+	"github.com/choysum-dev/choysum/internal/i18n/langcode"
 	i18nstatus "github.com/choysum-dev/choysum/internal/i18n/status"
 	i18nsync "github.com/choysum-dev/choysum/internal/i18n/sync"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -119,6 +120,9 @@ and marks removed pot entries obsolete (#~) without deleting translation history
 			if strings.TrimSpace(lang) == "" {
 				return xfmt.Errorf("i18n sync: --lang is required")
 			}
+			if !langcode.Valid(strings.TrimSpace(lang)) {
+				return xfmt.Errorf("i18n sync: invalid lang format")
+			}
 			if all && len(args) > 0 {
 				return xfmt.Errorf("i18n sync: --all cannot be used with module arguments")
 			}
@@ -190,6 +194,9 @@ Default fail-on: missing, fuzzy, pot-dirty, no-po. Orphans are reported but do n
 		Args: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(lang) == "" {
 				return xfmt.Errorf("i18n status: --lang is required")
+			}
+			if !langcode.Valid(strings.TrimSpace(lang)) {
+				return xfmt.Errorf("i18n status: invalid lang format")
 			}
 			if all && len(args) > 0 {
 				return xfmt.Errorf("i18n status: --all cannot be used with module arguments")
