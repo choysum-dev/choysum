@@ -215,7 +215,11 @@ func Write(w io.Writer, entries []Entry) error {
 			prefix = "#~ "
 		}
 		for _, c := range e.TranslatorComments {
-			buf.WriteString("# ")
+			if e.Obsolete {
+				buf.WriteString("#~ # ")
+			} else {
+				buf.WriteString("# ")
+			}
 			buf.WriteString(c)
 			buf.WriteByte('\n')
 		}

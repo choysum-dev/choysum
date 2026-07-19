@@ -259,6 +259,10 @@ Default fail-on: missing, fuzzy, pot-dirty, no-po. Orphans are reported but do n
 }
 
 func resolveI18nModules(modulesPath string, all bool, args []string) ([]string, error) {
+	modulesPath = filepath.Clean(strings.TrimSpace(modulesPath))
+	if modulesPath == "" || modulesPath == "." {
+		return nil, xfmt.Errorf("i18n: modules path is empty")
+	}
 	if !all {
 		out := make([]string, 0, len(args))
 		for _, name := range args {
@@ -266,7 +270,14 @@ func resolveI18nModules(modulesPath string, all bool, args []string) ([]string, 
 			if name == "" {
 				continue
 			}
+			if name != filepath.Base(name) || name == "." || name == ".." {
+				return nil, xfmt.Errorf("i18n: invalid module name %q", name)
+			}
 			moduleRoot := filepath.Join(modulesPath, name)
+			rel, err := filepath.Rel(modulesPath, moduleRoot)
+			if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				return nil, xfmt.Errorf("i18n: invalid module name %q", name)
+			}
 			info, err := os.Stat(moduleRoot)
 			if err != nil || !info.IsDir() {
 				return nil, xfmt.Errorf("i18n: module %q not found under %s", name, modulesPath)

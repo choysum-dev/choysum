@@ -164,7 +164,9 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 	seen := endpointSet(endpoints)
 	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
+	done := make(chan struct{})
 	go func(results <-chan *zeroconf.ServiceEntry) {
+		defer close(done)
 		// Cancel when the browse channel closes so <-ctx.Done() cannot hang.
 		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
@@ -195,20 +197,26 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 				t.Reset(time.Millisecond * 20) // wait briefly for next entry
 			case <-t.C:
 				cancel()
+			case <-ctx.Done():
+				return
 			}
 		}
 	}(entries)
 
 	err = zr.Browse(ctx, serviceName+"._choysum._tcp", "local.", entries)
 	if err != nil {
+		cancel()
+		<-done
 		return nil, xfmt.Errorf("failed to browse service: %w", err)
 	}
 
 	<-ctx.Done()
+	<-done
 
 	collectMu.Lock()
-	defer collectMu.Unlock()
-	return endpoints, nil
+	out := append([]*registry.Endpoint(nil), endpoints...)
+	collectMu.Unlock()
+	return out, nil
 }
 
 func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
@@ -227,7 +235,9 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 	seen := endpointSet(endpoints)
 	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
+	done := make(chan struct{})
 	go func(results <-chan *zeroconf.ServiceEntry) {
+		defer close(done)
 		// Cancel when the browse channel closes so <-ctx.Done() cannot hang.
 		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
@@ -266,20 +276,26 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 				t.Reset(time.Millisecond * 20) // wait briefly for next entry
 			case <-t.C:
 				cancel()
+			case <-ctx.Done():
+				return
 			}
 		}
 	}(entries)
 
 	err = zr.Browse(ctx, "_services._choysum._tcp", "local.", entries)
 	if err != nil {
+		cancel()
+		<-done
 		return nil, xfmt.Errorf("failed to browse service: %w", err)
 	}
 
 	<-ctx.Done()
+	<-done
 
 	collectMu.Lock()
-	defer collectMu.Unlock()
-	return endpoints, nil
+	out := append([]*registry.Endpoint(nil), endpoints...)
+	collectMu.Unlock()
+	return out, nil
 }
 
 func (r *mdnsRegistry) Scheme() string {

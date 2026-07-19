@@ -105,7 +105,7 @@ func (m *ModuleManager) PrefetchInstallModules(ctx context.Context, input string
 		return nil, xfmt.Errorf("build install plan for prefetch: %w", err)
 	}
 
-	modules := make(map[string]*meta.IrModule, len(opPlan.ModuleOrder)+1)
+	modules := map[string]*meta.IrModule{}
 	storePrefetchedModule(modules, input, root)
 	storePrefetchedModule(modules, rootName, root)
 

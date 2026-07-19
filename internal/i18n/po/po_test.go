@@ -52,6 +52,26 @@ msgstr "再见"
 	}
 }
 
+func TestWriteObsoletePrefixesTranslatorComments(t *testing.T) {
+	var buf bytes.Buffer
+	if err := Write(&buf, []Entry{{
+		TranslatorComments: []string{"retired"},
+		Msgctxt:            "old",
+		Msgid:              "Gone",
+		Msgstr:             "没了",
+		Obsolete:           true,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	if !strings.Contains(got, "#~ # retired\n") {
+		t.Fatalf("expected obsolete translator comment prefix, got %q", got)
+	}
+	if strings.Contains(got, "\n# retired\n") {
+		t.Fatalf("translator comment must not be active when obsolete, got %q", got)
+	}
+}
+
 func TestParseAndWriteRoundTrip(t *testing.T) {
 	src := `#: a.ts:1
 msgctxt "scope"

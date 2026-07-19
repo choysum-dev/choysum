@@ -51,6 +51,25 @@ func TestSyncMissingProtosRestoresFromGenerated(t *testing.T) {
 	}
 }
 
+func TestSyncMissingProtosSkipsPathTraversalApps(t *testing.T) {
+	root := t.TempDir()
+	distRoot := filepath.Join(root, "dist")
+	if err := os.MkdirAll(distRoot, 0o755); err != nil {
+		t.Fatalf("mkdir dist: %v", err)
+	}
+
+	synced, err := SyncMissingProtos(distRoot, []string{"../etc", "foo/bar", `foo\bar`, "okapp"})
+	if err != nil {
+		t.Fatalf("SyncMissingProtos: %v", err)
+	}
+	if len(synced) != 1 || synced[0] != "okapp" {
+		t.Fatalf("synced=%v, want [okapp]", synced)
+	}
+	if _, err := os.Stat(filepath.Join(root, "etc")); !os.IsNotExist(err) {
+		t.Fatalf("traversal app should not create paths outside generated/api layout, err=%v", err)
+	}
+}
+
 func TestSyncMissingProtosCreatesEmptyDirWhenGeneratedMissing(t *testing.T) {
 	root := t.TempDir()
 	distRoot := filepath.Join(root, "dist")

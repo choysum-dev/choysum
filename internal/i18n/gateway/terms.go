@@ -73,6 +73,20 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if module != "" && application == "" {
+		for app, mods := range byApp {
+			for _, m := range mods {
+				if m == module {
+					application = app
+					break
+				}
+			}
+			if application != "" {
+				break
+			}
+		}
+	}
+
 	// D8: without q, application is required (no All-apps pagination).
 	if q == "" && application == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{

@@ -77,6 +77,14 @@ func (r *Registry) listHostApplications() []string {
 		r.mu.RUnlock()
 		return out
 	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.hostAppsCache != nil {
+		return append([]string(nil), r.hostAppsCache...)
+	}
+
 	seen := map[string]struct{}{}
 	for _, app := range r.moduleToApp {
 		app = strings.TrimSpace(app)
@@ -92,7 +100,6 @@ func (r *Registry) listHostApplications() []string {
 		}
 		seen[app] = struct{}{}
 	}
-	r.mu.RUnlock()
 
 	// Prefer in-memory hosts for hot Lookup paths. Fall back to IrModule only
 	// when the registry has not observed any host application yet.
@@ -117,13 +124,8 @@ func (r *Registry) listHostApplications() []string {
 		out = append(out, app)
 	}
 	sort.Strings(out)
-
-	r.mu.Lock()
-	if r.hostAppsCache == nil {
-		r.hostAppsCache = append([]string(nil), out...)
-	}
-	r.mu.Unlock()
-	return out
+	r.hostAppsCache = append([]string(nil), out...)
+	return append([]string(nil), out...)
 }
 
 // ApplicationForModule returns the ApplicationStr for a module name.
