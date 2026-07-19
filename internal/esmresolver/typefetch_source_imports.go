@@ -163,7 +163,7 @@ func collectSourceBareImportSpecifiers(content string, fileName string) []string
 
 func isBarePackageImportSpecifier(spec string) bool {
 	spec = strings.TrimSpace(spec)
-	if spec == "" {
+	if spec == "" || strings.Contains(spec, "..") {
 		return false
 	}
 	switch {

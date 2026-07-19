@@ -100,8 +100,9 @@ func createUniqueIndexSQL(dialect, tableName, indexName string) string {
 	case "postgres":
 		return fmt.Sprintf(`CREATE UNIQUE INDEX "%s" ON "%s" (%s)`, indexName, tableName, cols)
 	case "mysql":
-		// TEXT columns require a prefix length in MySQL unique indexes.
-		mysqlCols := "module, lang, scope, src(255), kind"
+		// InnoDB utf8mb4 unique keys are capped at 3072 bytes. Prefix long
+		// columns so the composite key stays under that limit.
+		mysqlCols := "module(64), lang, scope(255), src(255), kind"
 		return fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON `%s` (%s)", indexName, tableName, mysqlCols)
 	default: // sqlite and others
 		return fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON `%s` (%s)", indexName, tableName, cols)

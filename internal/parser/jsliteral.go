@@ -26,7 +26,11 @@ func ParseJSStringLiteral(text string) (string, error) {
 		return value, nil
 	}
 	if text[0] == '\'' {
-		value, err = strconv.Unquote("\"" + strings.ReplaceAll(text[1:len(text)-1], "\"", "\\\"") + "\"")
+		s := text[1 : len(text)-1]
+		// \' is valid in JS single-quoted strings but not in Go double-quoted literals.
+		s = strings.ReplaceAll(s, "\\'", "'")
+		s = strings.ReplaceAll(s, "\"", "\\\"")
+		value, err = strconv.Unquote("\"" + s + "\"")
 		if err == nil {
 			return value, nil
 		}

@@ -476,6 +476,9 @@ func (c *coordinator) withInstallTransaction(
 	ctx context.Context,
 	fn func(txScope scope.Scope, txCtx context.Context) error,
 ) error {
+	if c.runtimeScope == nil {
+		return fmt.Errorf("runtime scope is nil")
+	}
 	txRoot := c.runtimeScope.WithContext(ctx)
 	if txRoot == nil {
 		txRoot = c.runtimeScope

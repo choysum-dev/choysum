@@ -142,6 +142,8 @@ func TestIsBarePackageImportSpecifier(t *testing.T) {
 		{in: "vue", ok: true},
 		{in: "@scope/pkg", ok: true},
 		{in: "./local", ok: false},
+		{in: "../up", ok: false},
+		{in: "lodash/../evil", ok: false},
 		{in: "@/alias", ok: false},
 		{in: "~/components/Button", ok: false},
 		{in: "#internal", ok: false},

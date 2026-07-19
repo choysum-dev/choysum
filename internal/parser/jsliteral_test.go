@@ -12,6 +12,8 @@ func TestParseJSStringLiteralQuotesAndTemplates(t *testing.T) {
 	}{
 		{in: `"hello\nworld"`, want: "hello\nworld"},
 		{in: `'hello'`, want: "hello"},
+		{in: `'it\'s'`, want: "it's"},
+		{in: `'say "hi"'`, want: `say "hi"`},
 		{in: "`line\\nbreak`", want: "line\nbreak"},
 		{in: "`has\\`tick`", want: "has`tick"},
 		{in: "`plain`", want: "plain"},

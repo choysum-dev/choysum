@@ -109,7 +109,7 @@ func TestEnsureTranslationTermTableCreatesAuthTable(t *testing.T) {
 
 func TestCreateUniqueIndexSQLMySQLUsesSrcPrefix(t *testing.T) {
 	got := createUniqueIndexSQL("mysql", "auth_translation_term", "uq_auth_translation_term_key")
-	want := "CREATE UNIQUE INDEX `uq_auth_translation_term_key` ON `auth_translation_term` (module, lang, scope, src(255), kind)"
+	want := "CREATE UNIQUE INDEX `uq_auth_translation_term_key` ON `auth_translation_term` (module(64), lang, scope(255), src(255), kind)"
 	if got != want {
 		t.Fatalf("createUniqueIndexSQL(mysql) = %q, want %q", got, want)
 	}
