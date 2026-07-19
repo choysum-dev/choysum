@@ -269,19 +269,19 @@ func resolveI18nModules(modulesPath string, all bool, args []string) ([]string, 
 			moduleRoot := filepath.Join(modulesPath, name)
 			info, err := os.Stat(moduleRoot)
 			if err != nil || !info.IsDir() {
-				return nil, xfmt.Errorf("i18n extract: module %q not found under %s", name, modulesPath)
+				return nil, xfmt.Errorf("i18n: module %q not found under %s", name, modulesPath)
 			}
 			out = append(out, name)
 		}
 		if len(out) == 0 {
-			return nil, xfmt.Errorf("i18n extract: no modules specified")
+			return nil, xfmt.Errorf("i18n: no modules specified")
 		}
 		return out, nil
 	}
 
 	entries, err := os.ReadDir(modulesPath)
 	if err != nil {
-		return nil, xfmt.Errorf("i18n extract: read modules path: %w", err)
+		return nil, xfmt.Errorf("i18n: read modules path: %w", err)
 	}
 	var modules []string
 	for _, entry := range entries {

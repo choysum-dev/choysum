@@ -29,6 +29,27 @@ func TestFormatScopeAndResolveI18nScope(t *testing.T) {
 	}
 }
 
+func TestCollectScriptUnescapesTemplateLiteral(t *testing.T) {
+	content := `
+const { _t } = createTranslate('auth')
+_t(` + "`Line\\nTwo`" + `)
+`
+	terms, _ := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/pages/Login.ts",
+	}, content)
+	found := false
+	for _, term := range terms {
+		if term.Src == "Line\nTwo" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected unescaped template msgid, got %#v", terms)
+	}
+}
+
 func TestCollectScriptLiteralsAndScopes(t *testing.T) {
 	content := strings.NewReplacer(
 		"LEGACY_LAZY", "_"+"lt",

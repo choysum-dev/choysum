@@ -20,7 +20,8 @@ var ambientModuleFilePattern = regexp.MustCompile(`(?s)\A\s*(?:(?://[^\n]*\n)|(?
 
 var ambientModuleExportPattern = regexp.MustCompile(`(?m)^\s*export\b`)
 
-var topLevelDeclStartPattern = regexp.MustCompile(`^([ \t]*)((?:async\s+)?(?:function\*?|class|enum|namespace|const|let|var)\b)`)
+// Optional leading "async" is consumed but not kept: ambient decls cannot be async.
+var topLevelDeclStartPattern = regexp.MustCompile(`^([ \t]*)(?:async\s+)?((?:function\*?|class|enum|namespace|const|let|var)\b)`)
 
 // promoteAmbientModuleForPathsTarget rewrites a single ambient declare-module
 // wrapper that already exports something into a top-level .d.ts module suitable

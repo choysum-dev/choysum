@@ -30,6 +30,21 @@ func TestPromoteAmbientModuleForPathsTarget_ExportEquals(t *testing.T) {
 	}
 }
 
+func TestPromoteAmbientModuleForPathsTarget_StripsAsyncOnDeclare(t *testing.T) {
+	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
+  async function run(): Promise<void>;
+  export { run };
+}
+`
+	got := promoteAmbientModuleForPathsTarget(content)
+	if strings.Contains(got, "declare async") {
+		t.Fatalf("ambient declare must not keep async, got %q", got)
+	}
+	if !strings.Contains(got, "declare function run") {
+		t.Fatalf("expected declare function after stripping async, got %q", got)
+	}
+}
+
 func TestPromoteAmbientModuleForPathsTarget_SkipsAugmentationOnly(t *testing.T) {
 	content := `declare module 'https://esm.sh/pinia@3.0.4/dist/pinia.d.ts' {
   interface DefineStoreOptionsBase<S, Store> {

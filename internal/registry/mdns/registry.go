@@ -165,7 +165,10 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
 	go func(results <-chan *zeroconf.ServiceEntry) {
+		// Cancel when the browse channel closes so <-ctx.Done() cannot hang.
+		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
+		defer t.Stop()
 		for {
 			select {
 			case entry, ok := <-results:
@@ -225,7 +228,10 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
 	go func(results <-chan *zeroconf.ServiceEntry) {
+		// Cancel when the browse channel closes so <-ctx.Done() cannot hang.
+		defer cancel()
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
+		defer t.Stop()
 		for {
 			select {
 			case entry, ok := <-results:

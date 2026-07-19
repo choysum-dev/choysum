@@ -746,12 +746,6 @@ func stringLiteralValue(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) 
 		return "", false
 	}
 	text := strings.TrimSpace(ctx.NodeText(node))
-	if node.Kind == tsast.KindNoSubstitutionTemplateLiteral {
-		if len(text) >= 2 && text[0] == '`' && text[len(text)-1] == '`' {
-			return text[1 : len(text)-1], true
-		}
-		return "", false
-	}
 	v, err := parser.ParseJSStringLiteral(text)
 	if err != nil {
 		return "", false

@@ -52,7 +52,11 @@ func (s *TermStore) Application() string {
 // and before the cache install decision.
 var warmAfterLoadHook func(lang string)
 
+const warmLanguageMaxAttempts = 5
+
 // WarmLanguage loads all terms for lang from {app}_translation_term into cache.
+// Retries when a concurrent mutation bumps warmEpoch so a stale snapshot is not
+// discarded while leaving an incomplete cache.
 func (s *TermStore) WarmLanguage(lang string) error {
 	lang = strings.TrimSpace(lang)
 	if lang == "" || s.application == "" || s.application == "core" {
@@ -71,49 +75,52 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		return nil
 	}
 
-	s.mu.RLock()
-	epoch := s.warmEpoch[lang]
-	s.mu.RUnlock()
+	for attempt := 0; attempt < warmLanguageMaxAttempts; attempt++ {
+		s.mu.RLock()
+		epoch := s.warmEpoch[lang]
+		s.mu.RUnlock()
 
-	var rows []i18nmodels.TranslationTerm
-	if err := s.runtimeScope.Session().Table(tableName).
-		Where("lang = ?", lang).
-		Find(&rows).Error; err != nil {
-		return fmt.Errorf("warm %s lang=%s: %w", tableName, lang, err)
-	}
-
-	next := make(map[string]map[string]map[string]map[string]string)
-	for _, row := range rows {
-		kind := i18nmodels.NormalizeKind(row.Kind)
-		mod := row.Module
-		scp := row.Scope
-		src := row.Src
-		if next[mod] == nil {
-			next[mod] = make(map[string]map[string]map[string]string)
+		var rows []i18nmodels.TranslationTerm
+		if err := s.runtimeScope.Session().Table(tableName).
+			Where("lang = ?", lang).
+			Find(&rows).Error; err != nil {
+			return fmt.Errorf("warm %s lang=%s: %w", tableName, lang, err)
 		}
-		if next[mod][scp] == nil {
-			next[mod][scp] = make(map[string]map[string]string)
-		}
-		if next[mod][scp][kind] == nil {
-			next[mod][scp][kind] = make(map[string]string)
-		}
-		next[mod][scp][kind][src] = row.Value
-	}
 
-	hash := computeTermHash(rows)
-	if warmAfterLoadHook != nil {
-		warmAfterLoadHook(lang)
-	}
+		next := make(map[string]map[string]map[string]map[string]string)
+		for _, row := range rows {
+			kind := i18nmodels.NormalizeKind(row.Kind)
+			mod := row.Module
+			scp := row.Scope
+			src := row.Src
+			if next[mod] == nil {
+				next[mod] = make(map[string]map[string]map[string]string)
+			}
+			if next[mod][scp] == nil {
+				next[mod][scp] = make(map[string]map[string]string)
+			}
+			if next[mod][scp][kind] == nil {
+				next[mod][scp][kind] = make(map[string]string)
+			}
+			next[mod][scp][kind][src] = row.Value
+		}
 
-	s.mu.Lock()
-	if s.warmEpoch[lang] != epoch {
-		// A concurrent upsert/invalidation landed newer cache state; keep it.
+		hash := computeTermHash(rows)
+		if warmAfterLoadHook != nil {
+			warmAfterLoadHook(lang)
+		}
+
+		s.mu.Lock()
+		if s.warmEpoch[lang] != epoch {
+			// Concurrent upsert/invalidation advanced the cache; reload.
+			s.mu.Unlock()
+			continue
+		}
+		s.cache[lang] = next
+		s.termHash[lang] = hash
 		s.mu.Unlock()
 		return nil
 	}
-	s.cache[lang] = next
-	s.termHash[lang] = hash
-	s.mu.Unlock()
 	return nil
 }
 
