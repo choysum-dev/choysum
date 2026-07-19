@@ -6,6 +6,7 @@ package converter
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -548,18 +549,9 @@ func ConvertToProtoValue(v interface{}, field protoreflect.FieldDescriptor) (pro
 		}
 
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
-		var i32 int32
-		switch val := v.(type) {
-		case int:
-			i32 = int32(val)
-		case int32:
-			i32 = val
-		case int64:
-			i32 = int32(val)
-		case float64:
-			i32 = int32(val)
-		default:
-			return protoreflect.Value{}, xfmt.Errorf("cannot convert %T to int32", v)
+		i32, err := convertToInt32(v)
+		if err != nil {
+			return protoreflect.Value{}, err
 		}
 		return protoreflect.ValueOfInt32(i32), nil
 
@@ -580,18 +572,9 @@ func ConvertToProtoValue(v interface{}, field protoreflect.FieldDescriptor) (pro
 		return protoreflect.ValueOfInt64(i64), nil
 
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-		var u32 uint32
-		switch val := v.(type) {
-		case int:
-			u32 = uint32(val)
-		case uint:
-			u32 = uint32(val)
-		case uint32:
-			u32 = val
-		case float64:
-			u32 = uint32(val)
-		default:
-			return protoreflect.Value{}, xfmt.Errorf("cannot convert %T to uint32", v)
+		u32, err := convertToUint32(v)
+		if err != nil {
+			return protoreflect.Value{}, err
 		}
 		return protoreflect.ValueOfUint32(u32), nil
 
@@ -599,12 +582,18 @@ func ConvertToProtoValue(v interface{}, field protoreflect.FieldDescriptor) (pro
 		var u64 uint64
 		switch val := v.(type) {
 		case int:
+			if val < 0 {
+				return protoreflect.Value{}, xfmt.Errorf("int %d out of uint64 range", val)
+			}
 			u64 = uint64(val)
 		case uint:
 			u64 = uint64(val)
 		case uint64:
 			u64 = val
 		case float64:
+			if val < 0 {
+				return protoreflect.Value{}, xfmt.Errorf("float64 %v out of uint64 range", val)
+			}
 			u64 = uint64(val)
 		default:
 			return protoreflect.Value{}, xfmt.Errorf("cannot convert %T to uint64", v)
@@ -662,12 +651,12 @@ func ConvertToProtoValue(v interface{}, field protoreflect.FieldDescriptor) (pro
 	case protoreflect.EnumKind:
 		// Handle enum values, typically mapping integers or strings to enums
 		switch val := v.(type) {
-		case int:
-			return protoreflect.ValueOfEnum(protoreflect.EnumNumber(val)), nil
-		case int32:
-			return protoreflect.ValueOfEnum(protoreflect.EnumNumber(val)), nil
-		case int64:
-			return protoreflect.ValueOfEnum(protoreflect.EnumNumber(val)), nil
+		case int, int32, int64:
+			enumNumber, err := convertToEnumNumber(val)
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+			return protoreflect.ValueOfEnum(enumNumber), nil
 		case string:
 			// Map from enum name to enum value
 			enumType := field.Enum()
@@ -682,4 +671,71 @@ func ConvertToProtoValue(v interface{}, field protoreflect.FieldDescriptor) (pro
 
 	// If unable to handle, return error
 	return protoreflect.Value{}, xfmt.Errorf("cannot convert %T to %s", v, field.Kind())
+}
+
+func convertToInt32(v interface{}) (int32, error) {
+	switch val := v.(type) {
+	case int:
+		if val < math.MinInt32 || val > math.MaxInt32 {
+			return 0, xfmt.Errorf("int %d out of int32 range", val)
+		}
+		return int32(val), nil
+	case int32:
+		return val, nil
+	case int64:
+		if val < math.MinInt32 || val > math.MaxInt32 {
+			return 0, xfmt.Errorf("int64 %d out of int32 range", val)
+		}
+		return int32(val), nil
+	case float64:
+		if val < float64(math.MinInt32) || val > float64(math.MaxInt32) {
+			return 0, xfmt.Errorf("float64 %v out of int32 range", val)
+		}
+		return int32(val), nil
+	default:
+		return 0, xfmt.Errorf("cannot convert %T to int32", v)
+	}
+}
+
+func convertToUint32(v interface{}) (uint32, error) {
+	switch val := v.(type) {
+	case int:
+		if val < 0 || uint64(val) > math.MaxUint32 {
+			return 0, xfmt.Errorf("int %d out of uint32 range", val)
+		}
+		return uint32(val), nil
+	case uint:
+		if uint64(val) > math.MaxUint32 {
+			return 0, xfmt.Errorf("uint %d out of uint32 range", val)
+		}
+		return uint32(val), nil
+	case uint32:
+		return val, nil
+	case float64:
+		if val < 0 || val > float64(math.MaxUint32) {
+			return 0, xfmt.Errorf("float64 %v out of uint32 range", val)
+		}
+		return uint32(val), nil
+	default:
+		return 0, xfmt.Errorf("cannot convert %T to uint32", v)
+	}
+}
+
+func convertToEnumNumber(v interface{}) (protoreflect.EnumNumber, error) {
+	switch val := v.(type) {
+	case int:
+		if val < math.MinInt32 || val > math.MaxInt32 {
+			return 0, xfmt.Errorf("int %d out of enum range", val)
+		}
+		return protoreflect.EnumNumber(val), nil
+	case int32:
+		return protoreflect.EnumNumber(val), nil
+	case int64:
+		if val < math.MinInt32 || val > math.MaxInt32 {
+			return 0, xfmt.Errorf("int64 %d out of enum range", val)
+		}
+		return protoreflect.EnumNumber(val), nil
+	default:
+		return 0, xfmt.Errorf("cannot convert %T to enum", v)
+	}
 }
