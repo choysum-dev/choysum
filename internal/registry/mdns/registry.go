@@ -177,7 +177,6 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 				if !ok {
 					return
 				}
-				t.Stop()
 				if len(entry.AddrIPv4) == 0 {
 					entry.AddrIPv4 = []net.IP{net.ParseIP("127.0.0.1")}
 				}
@@ -194,7 +193,7 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 					collectMu.Unlock()
 				}
 
-				t.Reset(time.Millisecond * 20) // wait briefly for next entry
+				resetBrowseTimer(t, time.Millisecond*20) // wait briefly for next entry
 			case <-t.C:
 				cancel()
 			case <-ctx.Done():
@@ -248,13 +247,13 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 				if !ok {
 					return
 				}
-				t.Stop()
 				if len(entry.AddrIPv4) == 0 {
 					entry.AddrIPv4 = []net.IP{net.ParseIP("127.0.0.1")}
 				}
 				// sr_name = fmt.Sprintf("%s:%s:%s", "choysum", name, instance)
 				parts := strings.SplitN(entry.Instance, ":", 3)
 				if len(parts) != 3 || parts[0] != "choysum" {
+					resetBrowseTimer(t, time.Millisecond*20)
 					continue
 				}
 				svcName := parts[1]
@@ -273,7 +272,7 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 					collectMu.Unlock()
 				}
 
-				t.Reset(time.Millisecond * 20) // wait briefly for next entry
+				resetBrowseTimer(t, time.Millisecond*20) // wait briefly for next entry
 			case <-t.C:
 				cancel()
 			case <-ctx.Done():
@@ -345,6 +344,20 @@ func appendEndpointIfNew(endpoints *[]*registry.Endpoint, seen map[string]struct
 	}
 	seen[endpoint.Id] = struct{}{}
 	*endpoints = append(*endpoints, endpoint)
+}
+
+// resetBrowseTimer stops and drains t before Reset, matching Go's Timer.Reset contract.
+func resetBrowseTimer(t *time.Timer, d time.Duration) {
+	if t == nil {
+		return
+	}
+	if !t.Stop() {
+		select {
+		case <-t.C:
+		default:
+		}
+	}
+	t.Reset(d)
 }
 
 func NewMdnsRegistry() registry.Registry {

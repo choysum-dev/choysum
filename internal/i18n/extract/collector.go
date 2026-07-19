@@ -437,7 +437,7 @@ func (c *scriptCollector) collectModelActionsTerms(node *tsast.Node, callExpr *t
 		return
 	}
 	obj := options.AsObjectLiteralExpression()
-	if obj == nil || obj.Properties.Nodes == nil {
+	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
 		return
 	}
 
@@ -472,7 +472,7 @@ func (c *scriptCollector) collectModelActionsTerms(node *tsast.Node, callExpr *t
 				continue
 			}
 			titlesObj := init.AsObjectLiteralExpression()
-			if titlesObj == nil || titlesObj.Properties.Nodes == nil {
+			if titlesObj == nil || titlesObj.Properties == nil || titlesObj.Properties.Nodes == nil {
 				continue
 			}
 			for _, titleProp := range titlesObj.Properties.Nodes {
@@ -594,7 +594,7 @@ func parseReferenceScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool)
 		return "", false
 	}
 	obj := node.AsObjectLiteralExpression()
-	if obj == nil || obj.Properties.Nodes == nil {
+	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
 		return "", false
 	}
 	scope := ""
@@ -637,7 +637,7 @@ func parseCallOutput(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {
 		return "", false
 	}
 	obj := node.AsObjectLiteralExpression()
-	if obj == nil || obj.Properties.Nodes == nil {
+	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
 		return "", false
 	}
 	for _, prop := range obj.Properties.Nodes {
@@ -665,7 +665,7 @@ func parseTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope strin
 		return "", kind
 	}
 	obj := node.AsObjectLiteralExpression()
-	if obj == nil || obj.Properties.Nodes == nil {
+	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
 		return "", kind
 	}
 	for _, prop := range obj.Properties.Nodes {
@@ -705,7 +705,7 @@ func parseCreateTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope
 		return "", false
 	}
 	obj := node.AsObjectLiteralExpression()
-	if obj == nil || obj.Properties.Nodes == nil {
+	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
 		return "", false
 	}
 	for _, prop := range obj.Properties.Nodes {
