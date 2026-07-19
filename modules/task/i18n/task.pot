@@ -7,3 +7,13 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/models/_cron.ts:188
+msgctxt "service/models/_cron"
+msgid "invalid timezone: %s"
+msgstr ""
+
+#: service/models/_cron.ts:185
+msgctxt "service/models/_cron"
+msgid "timezone is required"
+msgstr ""
+

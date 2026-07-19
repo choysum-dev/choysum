@@ -1,6 +1,16 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/_cron.ts:188
+msgctxt "service/models/_cron"
+msgid "invalid timezone: %s"
+msgstr "无效的时区：%s"
+
+#: service/models/_cron.ts:185
+msgctxt "service/models/_cron"
+msgid "timezone is required"
+msgstr "时区为必填项"
+
 #~ #. kind: selection_label
 #~ msgctxt "service/models/job@Status.cancelled"
 #~ msgid "cancelled"

@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import moment from 'moment-timezone';
+import { createTranslate } from '@/core/service/i18n';
 import { isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
+
+const { _t } = createTranslate('task');
 
 /**
  * Parsed cron fields used while computing preview run times.
@@ -179,10 +182,10 @@ export function computeNextRunAt(schedule: { CronExpr?: string; Timezone?: strin
 export function normalizeTimezone(value?: string): string {
   const tz = (value ?? '').trim();
   if (!tz) {
-    throw new Error('timezone is required');
+    throw new Error(_t('timezone is required', { scope: 'service/models/_cron' }));
   }
   if (!isIanaTimezone(tz)) {
-    throw new Error(`invalid timezone: ${tz}`);
+    throw new Error(_t('invalid timezone: %s', { scope: 'service/models/_cron' }, tz));
   }
   return tz;
 }
