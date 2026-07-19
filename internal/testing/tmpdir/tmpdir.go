@@ -275,7 +275,9 @@ func LinkCLITestingPkgCache(choysumHome, tmpRoot string) error {
 }
 
 // mergeDirInto moves entries from src into dst when the destination name is absent.
-// Falls back to copy+remove when os.Rename fails (e.g. EXDEV across filesystems).
+// Existing destination directories are merged recursively so nested cache trees
+// (e.g. esm/, types/) are not skipped wholesale. Falls back to copy+remove when
+// os.Rename fails (e.g. EXDEV across filesystems).
 func mergeDirInto(src, dst string) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {
@@ -284,7 +286,13 @@ func mergeDirInto(src, dst string) error {
 	for _, entry := range entries {
 		from := filepath.Join(src, entry.Name())
 		to := filepath.Join(dst, entry.Name())
-		if _, err := os.Lstat(to); err == nil {
+		st, err := os.Lstat(to)
+		if err == nil {
+			if entry.IsDir() && st.IsDir() {
+				if err := mergeDirInto(from, to); err != nil {
+					return err
+				}
+			}
 			continue
 		} else if !os.IsNotExist(err) {
 			return err

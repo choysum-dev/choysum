@@ -15,6 +15,8 @@ func TestParseJSStringLiteralQuotesAndTemplates(t *testing.T) {
 		{in: "`line\\nbreak`", want: "line\nbreak"},
 		{in: "`has\\`tick`", want: "has`tick"},
 		{in: "`plain`", want: "plain"},
+		// CRLF line continuation inside a template literal.
+		{in: "`hi\\\r\nthere`", want: "hithere"},
 	}
 	for _, tt := range tests {
 		got, err := ParseJSStringLiteral(tt.in)

@@ -47,8 +47,13 @@ func unquoteJSTemplateLiteral(text string) (string, error) {
 			switch next {
 			case '`':
 				b.WriteByte('`')
-			case '\n', '\r':
+			case '\n':
 				// Line continuation: omit the escape and the newline.
+			case '\r':
+				// Line continuation: omit the escape and the newline (handle \r\n).
+				if i+2 < len(inner) && inner[i+2] == '\n' {
+					i++
+				}
 			default:
 				b.WriteByte('\\')
 				b.WriteByte(next)

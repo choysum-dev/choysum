@@ -20,6 +20,14 @@ func TestParseMsgstrWithTabSeparator(t *testing.T) {
 	}
 }
 
+func TestUnquotePoShortInput(t *testing.T) {
+	for _, in := range []string{"", `"`, `'`} {
+		if got := unquotePo(in); got != strings.TrimSpace(in) {
+			t.Fatalf("unquotePo(%q) = %q, want trimmed input", in, got)
+		}
+	}
+}
+
 func TestParseFlushesBeforeCommentWithoutBlankLine(t *testing.T) {
 	src := `msgctxt "a"
 msgid "Hello"

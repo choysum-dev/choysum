@@ -418,3 +418,38 @@ func TestCopyAndRemoveMovesTree(t *testing.T) {
 		t.Fatalf("source should be removed, lstat err = %v", err)
 	}
 }
+
+func TestMergeDirIntoRecursesExistingSubdirs(t *testing.T) {
+	root := t.TempDir()
+	src := filepath.Join(root, "src")
+	dst := filepath.Join(root, "dst")
+	if err := os.MkdirAll(filepath.Join(src, "esm"), 0o755); err != nil {
+		t.Fatalf("mkdir src: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dst, "esm"), 0o755); err != nil {
+		t.Fatalf("mkdir dst: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "esm", "new.txt"), []byte("from-src"), 0o644); err != nil {
+		t.Fatalf("write src: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dst, "esm", "keep.txt"), []byte("from-dst"), 0o644); err != nil {
+		t.Fatalf("write dst: %v", err)
+	}
+	if err := mergeDirInto(src, dst); err != nil {
+		t.Fatalf("mergeDirInto: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dst, "esm", "new.txt"))
+	if err != nil {
+		t.Fatalf("read merged file: %v", err)
+	}
+	if string(raw) != "from-src" {
+		t.Fatalf("merged content = %q, want from-src", raw)
+	}
+	keep, err := os.ReadFile(filepath.Join(dst, "esm", "keep.txt"))
+	if err != nil {
+		t.Fatalf("read kept file: %v", err)
+	}
+	if string(keep) != "from-dst" {
+		t.Fatalf("kept content = %q, want from-dst", keep)
+	}
+}

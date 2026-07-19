@@ -189,13 +189,13 @@ func parsePoKeyword(line, keyword string) string {
 
 func unquotePo(s string) string {
 	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
+	if len(s) < 2 {
+		return s
 	}
 	v, err := strconv.Unquote(s)
 	if err != nil {
 		// Fallback: strip surrounding quotes naively.
-		if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		if s[0] == '"' && s[len(s)-1] == '"' {
 			return s[1 : len(s)-1]
 		}
 		return s
