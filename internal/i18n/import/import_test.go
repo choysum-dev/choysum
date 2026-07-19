@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -470,5 +471,50 @@ msgstr "新的"
 			"rollback counts retired=%d new=%d literal=%d, want 1/0/1",
 			retiredAfterRollback, newAfterRollback, literalAfterRollback,
 		)
+	}
+}
+
+func TestImportModulePoSkipsCoreAndImportModuleI18nDir(t *testing.T) {
+	rs := newTestScope(t)
+	reg := store.NewRegistry(rs)
+
+	stats, err := i18nimport.ImportModulePo(rs, reg, "core", "auth", "zh_CN", []byte(`msgid "x"`))
+	if err != nil || stats == nil || stats.Upserted != 0 {
+		t.Fatalf("core skip stats=%#v err=%v", stats, err)
+	}
+
+	root := t.TempDir()
+	i18nDir := filepath.Join(root, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	poBody := []byte(`msgid ""
+msgstr ""
+
+msgctxt "a@b"
+msgid "Hello"
+msgstr "你好"
+`)
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), poBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "en.po"), poBody, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "readme.txt"), []byte("skip"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := i18nimport.ImportModuleI18nDir(rs, reg, "auth", "auth", root); err != nil {
+		t.Fatalf("ImportModuleI18nDir: %v", err)
+	}
+	var count int64
+	if err := rs.Session().Table("auth_translation_term").Count(&count).Error; err != nil {
+		t.Fatal(err)
+	}
+	if count < 2 {
+		t.Fatalf("expected terms from both po files, count=%d", count)
+	}
+	if err := i18nimport.ImportModuleI18nDir(rs, reg, "auth", "auth", filepath.Join(root, "missing")); err != nil {
+		t.Fatalf("missing i18n dir should no-op: %v", err)
 	}
 }

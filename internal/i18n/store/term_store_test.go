@@ -220,3 +220,52 @@ func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
 	}
 }
 
+
+func TestTermStoreSearchTermsAndUpsertOverride(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	table := rs.Session().Table("auth_translation_term")
+	for _, row := range []i18nmodels.TranslationTerm{
+		{Application: "auth", Module: "auth", Lang: "zh_CN", Scope: "a@one", Src: "Alpha", Value: "甲", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged},
+		{Application: "auth", Module: "auth", Lang: "zh_CN", Scope: "a@two", Src: "Beta", Value: "乙", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged},
+		{Application: "auth", Module: "web", Lang: "zh_CN", Scope: "w@x", Src: "Gamma", Value: "丙", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged},
+	} {
+		if err := table.Create(&row).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	ts := store.NewTermStore(rs, "auth")
+	items, total, err := ts.SearchTerms("zh_CN", nil, "Alpha", 10, 0)
+	if err != nil || total != 1 || len(items) != 1 || items[0].Src != "Alpha" {
+		t.Fatalf("q filter items=%#v total=%d err=%v", items, total, err)
+	}
+	items, total, err = ts.SearchTerms("zh_CN", []string{"web"}, "", 10, 0)
+	if err != nil || total != 1 || items[0].Module != "web" {
+		t.Fatalf("module filter items=%#v total=%d err=%v", items, total, err)
+	}
+	items, total, err = ts.SearchTerms("zh_CN", nil, "", 1, 1)
+	if err != nil || total != 3 || len(items) != 1 {
+		t.Fatalf("pagination items=%#v total=%d err=%v", items, total, err)
+	}
+	if _, _, err := ts.SearchTerms("", nil, "", 10, 0); err != nil {
+		t.Fatalf("empty lang should no-op: %v", err)
+	}
+
+	created, err := ts.UpsertOverride("auth", "zh_CN", "a@new", "Fresh", "", "新")
+	if err != nil {
+		t.Fatalf("UpsertOverride create: %v", err)
+	}
+	if created.Value != "新" || created.Source != i18nmodels.SourceOverride {
+		t.Fatalf("created = %#v", created)
+	}
+	val, ok := ts.Lookup("auth", "zh_CN", "a@new", "Fresh", "")
+	if !ok || val != "新" {
+		t.Fatalf("Lookup after create = %q ok=%v", val, ok)
+	}
+	if _, err := ts.UpsertOverride("", "zh_CN", "a", "s", "", "v"); err == nil {
+		t.Fatal("expected validation error")
+	}
+}

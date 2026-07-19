@@ -218,3 +218,40 @@ msgstr ""
 		t.Fatalf("expected no-po, got %#v", report.Issues)
 	}
 }
+
+func TestStatusReportValidationAndFormatText(t *testing.T) {
+	if _, err := status.StatusReport(status.Options{}); err == nil {
+		t.Fatal("expected lang required")
+	}
+	if _, err := status.StatusReport(status.Options{Lang: "bad lang!"}); err == nil {
+		t.Fatal("expected invalid lang")
+	}
+	if _, err := status.StatusReport(status.Options{Lang: "zh_CN"}); err == nil {
+		t.Fatal("expected modules path required")
+	}
+	if _, err := status.StatusReport(status.Options{Lang: "zh_CN", ModulesPath: t.TempDir()}); err == nil {
+		t.Fatal("expected modules required")
+	}
+	if status.ExitCode(nil) != 0 {
+		t.Fatal("nil report exit 0")
+	}
+
+	root := t.TempDir()
+	moduleRoot := filepath.Join(root, "demo")
+	if err := os.MkdirAll(moduleRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	report, err := status.StatusReport(status.Options{
+		ModulesPath:  root,
+		Modules:      []string{"demo"},
+		Lang:         "zh_CN",
+		SkipPotCheck: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := status.FormatText(report)
+	if text == "" {
+		t.Fatal("expected format text")
+	}
+}

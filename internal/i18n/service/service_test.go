@@ -356,3 +356,39 @@ func TestUpdateTermSetsOverrideAndCache(t *testing.T) {
 		t.Fatalf("expected PermissionDenied, got %v", err)
 	}
 }
+
+func TestCoreAppSearchAndUpdateRejected(t *testing.T) {
+	rs := newTestScope(t)
+	svc := i18nservice.New("core", rs)
+
+	out, err := invokeMethod(t, svc, i18nservice.MethodSearchTerms, map[string]any{
+		"lang":  "zh_CN",
+		"limit": 10,
+	})
+	if err != nil {
+		t.Fatalf("SearchTerms core: %v", err)
+	}
+	items, _ := out["items"].([]any)
+	if len(items) != 0 {
+		t.Fatalf("core search should be empty, got %#v", out)
+	}
+
+	_, err = invokeMethod(t, svc, i18nservice.MethodUpdateTerm, map[string]any{
+		"module": "auth",
+		"lang":   "zh_CN",
+		"scope":  "a@b",
+		"src":    "X",
+		"value":  "Y",
+	})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("expected FailedPrecondition, got %v", err)
+	}
+
+	authSvc := i18nservice.New("auth", rs)
+	_, err = invokeMethod(t, authSvc, i18nservice.MethodSearchTerms, map[string]any{
+		"limit": 10,
+	})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("expected InvalidArgument for missing lang, got %v", err)
+	}
+}
