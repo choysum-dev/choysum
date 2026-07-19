@@ -67,6 +67,8 @@ func newUninstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("uninstall")...)
 					attrs = append(attrs, clioutput.CurrentOrRequestedAttr("module", "modules", currentModule, args)...)
 					env.Logger().Error("module uninstall failed", attrs...)
+					// os.Exit skips deferred Stop(); mirror upgrade and stop explicitly.
+					_ = compilerExecutor.Stop()
 					os.Exit(1)
 				}
 				uninstallScope.Logger().Debug("module uninstalled", "module", name)
