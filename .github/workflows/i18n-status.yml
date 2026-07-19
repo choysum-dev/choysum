@@ -31,13 +31,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-embedded-assets:
+    name: i18n / prepare-embedded-assets
+    uses: ./.github/workflows/prepare-embedded-assets.yml
+    with:
+      run_ref: ${{ github.ref }}
+      artifact_name: i18n-embedded-assets
+      archive_path: .choysum/tmp/i18n-embedded-assets.tar.gz
+      retention_days: 1
+
   status:
     name: i18n / status
+    needs:
+      - prepare-embedded-assets
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Download and extract embedded assets
+        uses: ./.github/actions/download-extract-embedded-assets
+        with:
+          artifact-name: i18n-embedded-assets
+          archive-path: .choysum/tmp/i18n-embedded-assets.tar.gz
 
       - name: Setup Go
         uses: actions/setup-go@v5
