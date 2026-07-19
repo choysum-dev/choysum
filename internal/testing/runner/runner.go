@@ -157,6 +157,9 @@ func Run(ctx context.Context, opts RunOptions) error {
 	if opts.Keep {
 		fmt.Fprintf(opts.Stderr, "choysum test: kept CLI test tmp root: %s\n", testTmp)
 		fmt.Fprintf(opts.Stderr, "choysum test: kept CLI test shared home: %s\n", runHome)
+		if pkgCache, err := testingpathing.ResolveCLITestingPkgCache(testTmp); err == nil {
+			fmt.Fprintf(opts.Stderr, "choysum test: kept CLI test pkg cache: %s\n", pkgCache)
+		}
 	}
 	if opts.Coverage && strings.TrimSpace(opts.CoverageReportDir) == "" {
 		defaultReportDir, err := cov.ResolveCoverageReportDirWithRunID(opts.RepoRoot, testTmp, testingRunID)

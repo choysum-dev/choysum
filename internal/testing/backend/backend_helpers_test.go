@@ -716,6 +716,23 @@ func TestMakeTestScope(t *testing.T) {
 		if filepath.Base(runHome) != testingpathing.CLITestingRunHomeKind {
 			t.Fatalf("run home base = %q, want %q", filepath.Base(runHome), testingpathing.CLITestingRunHomeKind)
 		}
+		pkgLink := filepath.Join(runHome, "pkg")
+		if st, err := os.Lstat(pkgLink); err != nil {
+			t.Fatalf("lstat home/pkg: %v", err)
+		} else if st.Mode()&os.ModeSymlink == 0 {
+			t.Fatal("expected home/pkg to be a symlink to the persistent CLI pkg cache")
+		}
+		pkgCache, err := testingpathing.ResolveCLITestingPkgCache(cliTmp)
+		if err != nil {
+			t.Fatalf("ResolveCLITestingPkgCache: %v", err)
+		}
+		target, err := os.Readlink(pkgLink)
+		if err != nil {
+			t.Fatalf("readlink home/pkg: %v", err)
+		}
+		if filepath.Clean(target) != filepath.Clean(pkgCache) {
+			t.Fatalf("home/pkg target = %q, want %q", target, pkgCache)
+		}
 	})
 
 	t.Run("forces sourcemap on and minify off for unit scope", func(t *testing.T) {

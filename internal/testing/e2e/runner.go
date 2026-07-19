@@ -411,6 +411,12 @@ func runOneScenario(ctx context.Context, opts RunOptions, packages map[string]*s
 	if err := os.MkdirAll(jwtKeysDir, 0o755); err != nil {
 		return xfmt.Errorf("create jwt keys dir: %w", err)
 	}
+	if err := os.MkdirAll(defaultChoysumPath, 0o755); err != nil {
+		return xfmt.Errorf("create default choysum path: %w", err)
+	}
+	if err := testingpathing.LinkCLITestingPkgCache(defaultChoysumPath, testingpathing.EffectiveCLITestTmpRoot(ctx, opts.TmpPath)); err != nil {
+		return xfmt.Errorf("link e2e pkg cache: %w", err)
+	}
 
 	sqliteDSN := fmt.Sprintf("file:%s?mode=rwc&_fk=1&_busy_timeout=60000&_journal_mode=WAL", dbPath)
 	npmPath := opts.NpmPath
