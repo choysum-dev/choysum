@@ -15,13 +15,14 @@ import (
 // can replace it with a full Vue template AST walker.
 
 var (
-	// Matches {{ _t('...') }} with optional whitespace.
-	reTemplateMustache = regexp.MustCompile(`\{\{\s*(_t)\s*\(\s*(['"].*?['"]|[^\s),]+)\s*(?:,|\))`)
+	// Matches {{ _t('...') }} / {{ _t(`...`) }} with optional whitespace.
+	// \x60 is backtick; Go raw strings cannot embed a literal backtick.
+	reTemplateMustache = regexp.MustCompile("\\{\\{\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+)\\s*(?:,|\\))")
 
 	// Attribute bindings: :title="_t('...')" or :title='_t("...")' (Go regexp has no backrefs).
 	// Capture only the first msgid argument so options objects do not leak into ParseJSStringLiteral.
-	reTemplateAttrDouble = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*"\s*(_t)\s*\(\s*(['"].*?['"]|[^\s),]+).*?\s*"`)
-	reTemplateAttrSingle = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*'\s*(_t)\s*\(\s*(['"].*?['"]|[^\s),]+).*?\s*'`)
+	reTemplateAttrDouble = regexp.MustCompile("(?::|v-bind:)\\w[\\w-]*\\s*=\\s*\"\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+).*?\\s*\"")
+	reTemplateAttrSingle = regexp.MustCompile("(?::|v-bind:)\\w[\\w-]*\\s*=\\s*'\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+).*?\\s*'")
 )
 
 // CollectTemplateRegex extracts literal `_t` calls from Vue template HTML text.
@@ -96,7 +97,9 @@ func looksLikeNonLiteral(expr string) bool {
 	if expr == "" {
 		return false
 	}
-	if (expr[0] == '\'' && expr[len(expr)-1] == '\'') || (expr[0] == '"' && expr[len(expr)-1] == '"') {
+	if (expr[0] == '\'' && expr[len(expr)-1] == '\'') ||
+		(expr[0] == '"' && expr[len(expr)-1] == '"') ||
+		(expr[0] == '`' && expr[len(expr)-1] == '`') {
 		return false
 	}
 	return true

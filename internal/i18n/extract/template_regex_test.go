@@ -9,10 +9,13 @@ import (
 )
 
 func TestCollectTemplateRegexPatterns(t *testing.T) {
+	bt := "`"
 	html := strings.NewReplacer(
 		"LEGACY_LAZY", "_"+"lt",
 		"LEGACY_REACTIVE", "_"+"tr",
 		"LEGACY_REFERENCE", "_"+"td",
+		"BT(", bt, // open backtick placeholder for template literals
+		")BT", bt, // close backtick placeholder
 	).Replace(`
 <div>
   {{ _t('Hello') }}
@@ -22,6 +25,9 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
   <input :placeholder="_t('Name')" />
   <span :title='_t("Title")'></span>
   <button :aria-label="_t('Save', { scope: 'web/actions' })"></button>
+  {{ _t(BT(Welcome Back)BT) }}
+  <input :placeholder="_t(BT(Full Name)BT)" />
+  <span :title='_t(BT(Page Title)BT)'></span>
   {{ _t(foo) }}
 </div>
 `)
@@ -30,7 +36,10 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 		RelPath:    "web/widgets/Box.vue",
 	}, html)
 
-	want := map[string]bool{"Hello": false, "Name": false, "Title": false, "Save": false}
+	want := map[string]bool{
+		"Hello": false, "Name": false, "Title": false, "Save": false,
+		"Welcome Back": false, "Full Name": false, "Page Title": false,
+	}
 	for _, term := range terms {
 		if term.Scope != "web/widgets/Box" {
 			t.Fatalf("unexpected scope %q for %q", term.Scope, term.Src)
