@@ -517,3 +517,49 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/Login' })
 		}
 	}
 }
+
+func TestCollectScriptModelActionsAndOptionsEdges(t *testing.T) {
+	content := `
+const { _t } = createTranslate('auth')
+defineModelActions('m')
+defineModelActions('m', 'nope')
+defineModelActions('m', { entityTitle: 'Plain' })
+defineModelActions('m', { entityTitle: other('X') })
+defineModelActions('m', { entityTitle: _t() })
+defineModelActions('m', { entityTitle: _t(dyn) })
+defineModelActions('m', { titles: 1, exclude: 'copy' })
+defineModelActions('m', { titles: { create: 'x' } })
+defineModelActions('m', { entityTitle: _t('Widget', { path: 'web/views/A', location: 'title' }) })
+defineModelActions('m', { titles: { create: _t('OnlyCreate') } })
+defineModelActions('m', {})
+_t('A', 'string')
+_t('B', { output: 'bogus' })
+_t('C', { scope: dynVar })
+const t = createTranslate('auth')
+const n = 1
+`
+	terms, _ := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/page.ts",
+	}, content)
+	bySrc := map[string]string{}
+	for _, term := range terms {
+		bySrc[term.Src] = term.Scope
+	}
+	if bySrc["Widget"] == "" || !strings.Contains(bySrc["Widget"], "web/views/A") {
+		t.Fatalf("Widget scope missing: %#v", bySrc)
+	}
+	if bySrc["Create Widget"] == "" {
+		t.Fatalf("expected synthesized Create Widget: %#v", bySrc)
+	}
+	if bySrc["OnlyCreate"] == "" {
+		t.Fatalf("expected OnlyCreate override: %#v", bySrc)
+	}
+}
+
+func TestCollectScriptEmptyRelPath(t *testing.T) {
+	terms, _ := CollectScript(CollectOptions{ModuleName: "auth", RelPath: ""}, `_t('Hi')`)
+	if len(terms) != 1 {
+		t.Fatalf("terms=%#v", terms)
+	}
+}

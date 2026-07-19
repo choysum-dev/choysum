@@ -13,6 +13,7 @@ import (
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -328,6 +329,116 @@ func TestSearchTermsStatusAndWarmCoreNoop(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := store.NewTermStore(rs, "auth").WarmLanguage(""); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
+	rs := newTestScope(t)
+	if err := rs.Session().AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Create(&meta.IrModule{
+		Name: "auth", ApplicationStr: "auth", Status: meta.Installed,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Create(&meta.IrModule{
+		Name: "emptyapp", ApplicationStr: "", Status: meta.Installed,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	reg := store.NewRegistry(rs)
+	app, ok := reg.ApplicationForModule("auth")
+	if !ok || app != "auth" {
+		t.Fatalf("ApplicationForModule auth = %q ok=%v", app, ok)
+	}
+	// Cached path.
+	app2, ok := reg.ApplicationForModule("auth")
+	if !ok || app2 != "auth" {
+		t.Fatalf("cached = %q ok=%v", app2, ok)
+	}
+	if _, ok := reg.ApplicationForModule("missing"); ok {
+		t.Fatal("missing module")
+	}
+	if _, ok := reg.ApplicationForModule("emptyapp"); ok {
+		t.Fatal("empty ApplicationStr")
+	}
+
+	nilReg := store.NewRegistry(nil)
+	if _, ok := nilReg.ApplicationForModule("auth"); ok {
+		t.Fatal("nil scope")
+	}
+	reg.RememberModuleApplication("", "x")
+	reg.RememberModuleApplication("m", "")
+}
+
+func TestRegistryListHostApplicationsViaIrModule(t *testing.T) {
+	rs := newTestScope(t)
+	if err := rs.Session().AutoMigrate(&meta.IrModule{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range []meta.IrModule{
+		{Name: "auth", ApplicationStr: "auth", Status: meta.Installed},
+		{Name: "web", ApplicationStr: "web", Status: meta.Installed},
+		{Name: "core", ApplicationStr: "core", Status: meta.Installed},
+	} {
+		if err := rs.Session().Create(&row).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := store.NewRegistry(rs)
+	if _, ok := reg.Lookup("core", "zh_CN", "a", "x", ""); ok {
+		t.Fatal("unexpected hit")
+	}
+	// Second Lookup hits hostAppsCache.
+	if _, ok := reg.Lookup("core", "zh_CN", "a", "x", ""); ok {
+		t.Fatal("unexpected hit")
+	}
+}
+
+func TestTermStoreWarmMissingTableAndUpsertUpdate(t *testing.T) {
+	rs := newTestScope(t)
+	ts := store.NewTermStore(rs, "auth")
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatal(err)
+	}
+	if ts.TermHash("zh_CN") == "" {
+		t.Fatal("expected empty hash after warm without table")
+	}
+
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "a@t", Src: "Hello", Value: "旧",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	ts = store.NewTermStore(rs, "auth")
+	updated, err := ts.UpsertOverride("auth", "zh_CN", "a@t", "Hello", "", "新")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Value != "新" || updated.Source != i18nmodels.SourceOverride {
+		t.Fatalf("updated=%#v", updated)
+	}
+	val, ok := ts.Lookup("auth", "zh_CN", "a@t", "Hello", "")
+	if !ok || val != "新" {
+		t.Fatalf("lookup=%q ok=%v", val, ok)
+	}
+	if _, err := store.NewTermStore(rs, "core").UpsertOverride("core", "zh_CN", "a", "s", "", "v"); err == nil {
+		t.Fatal("core upsert should no-op or err")
+	}
+	items, _, err := ts.SearchTerms("zh_CN", []string{"", " "}, "", 0, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = items
+	if _, _, err := ts.SearchTerms("zh_CN", nil, "", 0, -1); err != nil {
 		t.Fatal(err)
 	}
 }

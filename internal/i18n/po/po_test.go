@@ -182,3 +182,77 @@ msgstr "你好"
 		t.Fatalf("unquotePo ok = %q", got)
 	}
 }
+
+func TestParseMultilinePluralAndWriteFlags(t *testing.T) {
+	src := `msgid ""
+"Hello "
+"World"
+msgstr ""
+"你好"
+"世界"
+
+msgid "One"
+msgstr[0] "singular"
+
+msgctxt "a"
+msgid "Alpha"
+msgstr "甲"
+msgctxt "b"
+msgid "Beta"
+msgstr "乙"
+`
+	entries, err := Parse(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundHello := false
+	for _, e := range entries {
+		if e.Msgid == "Hello World" && e.Msgstr == "你好世界" {
+			foundHello = true
+		}
+	}
+	if !foundHello {
+		t.Fatalf("multiline missing: %#v", entries)
+	}
+
+	if _, err := Parse(strings.NewReader("msgid \"x\"\nfoo bar\n")); err == nil {
+		t.Fatal("expected unsupported line error")
+	}
+	if got := unquotePo(`"\q"`); got != `\q` {
+		t.Fatalf("unquotePo fallback = %q", got)
+	}
+
+	var buf bytes.Buffer
+	if err := Write(&buf, []Entry{
+		{
+			TranslatorComments: []string{"note"},
+			ExtractedComments:  []string{"kind: literal"},
+			References:         []string{"a.ts:1"},
+			Flags:              []string{"fuzzy"},
+			Msgctxt:            "scope",
+			Msgid:              "Hello",
+			Msgstr:             "你好",
+		},
+		{
+			ExtractedComments: []string{"old"},
+			Msgid:             "Gone",
+			Msgstr:            "没了",
+			Obsolete:          true,
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "#, fuzzy") || !strings.Contains(out, "#~ #. old") {
+		t.Fatalf("write flags/comments: %q", out)
+	}
+
+	entries2 := []Entry{
+		{Msgctxt: "b", Msgid: "1"},
+		{Msgctxt: "a", Msgid: "1"},
+	}
+	SortEntries(entries2)
+	if entries2[0].Msgctxt != "a" {
+		t.Fatalf("msgctxt sort = %#v", entries2)
+	}
+}
