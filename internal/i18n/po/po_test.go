@@ -20,6 +20,30 @@ func TestParseMsgstrWithTabSeparator(t *testing.T) {
 	}
 }
 
+func TestParseFlushesBeforeCommentWithoutBlankLine(t *testing.T) {
+	src := `msgctxt "a"
+msgid "Hello"
+msgstr "你好"
+#. kind: literal
+msgctxt "b"
+msgid "Bye"
+msgstr "再见"
+`
+	entries, err := Parse(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("entries=%d %#v", len(entries), entries)
+	}
+	if entries[0].Msgid != "Hello" || len(entries[0].ExtractedComments) != 0 {
+		t.Fatalf("first entry should not absorb following kind comment: %+v", entries[0])
+	}
+	if entries[1].Msgid != "Bye" || entries[1].Kind() != "literal" {
+		t.Fatalf("second entry should own kind comment: %+v", entries[1])
+	}
+}
+
 func TestParseAndWriteRoundTrip(t *testing.T) {
 	src := `#: a.ts:1
 msgctxt "scope"

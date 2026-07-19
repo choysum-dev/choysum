@@ -103,6 +103,7 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		}
 
 		toCreate := make([]i18nmodels.TranslationTerm, 0)
+		toUpdate := make([]i18nmodels.TranslationTerm, 0)
 		for _, term := range terms {
 			kind := i18nmodels.NormalizeKind(term.kind)
 			key := termLookupKey(term.scope, term.src, kind)
@@ -118,9 +119,7 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 				if term.comments != "" {
 					existing.Comments = term.comments
 				}
-				if err := session.Table(tableName).Save(existing).Error; err != nil {
-					return fmt.Errorf("update term: %w", err)
-				}
+				toUpdate = append(toUpdate, *existing)
 				stats.Upserted++
 				continue
 			}
@@ -137,8 +136,19 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 				Comments:    term.comments,
 			})
 		}
+		const importBatchSize = 100
+		for i := 0; i < len(toUpdate); i += importBatchSize {
+			end := i + importBatchSize
+			if end > len(toUpdate) {
+				end = len(toUpdate)
+			}
+			batch := toUpdate[i:end]
+			if err := session.Table(tableName).Save(&batch).Error; err != nil {
+				return fmt.Errorf("update terms: %w", err)
+			}
+		}
 		if len(toCreate) > 0 {
-			if err := session.Table(tableName).CreateInBatches(toCreate, 100).Error; err != nil {
+			if err := session.Table(tableName).CreateInBatches(toCreate, importBatchSize).Error; err != nil {
 				return fmt.Errorf("create terms: %w", err)
 			}
 			stats.Upserted += len(toCreate)

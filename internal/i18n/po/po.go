@@ -85,10 +85,11 @@ func Parse(r io.Reader) ([]Entry, error) {
 		}
 
 		if strings.HasPrefix(trimmed, "#") {
-			if hasEntry && (state == "msgstr" || state == "msgid" || state == "msgctxt") {
-				// Comments after a started message belong to next entry — flush first.
-				// Actually in gettext, comments precede the entry. If we already have msgid,
-				// empty line usually separates. Treat mid-entry # as translator comment.
+			// Comments belong to the following entry. If the current entry is
+			// already complete (msgstr seen) and the file omits a blank line,
+			// flush before attaching the comment to the next entry.
+			if hasEntry && cur.Msgid != "" && state == "msgstr" {
+				flush()
 			}
 			parseComment(&cur, trimmed)
 			hasEntry = true
