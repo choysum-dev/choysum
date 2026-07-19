@@ -545,12 +545,6 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	c.store.markStageDetail(operationID, "resolving core module installation plan...")
 	spinnerTicker.SetMessage("document: preparing metadata tables")
 
-	prefetched, prefetchErr := lifecycle.PrefetchInstallModules(installCtx, c.runtimeScope, "document")
-	if prefetchErr != nil {
-		return c.classifyModuleInstallError(progress, installTimeout, prefetchErr)
-	}
-	installCtx = lifecycle.WithPrefetchedInstallModules(installCtx, prefetched.Modules)
-
 	executor, err := jsexecutor.NewCompilerExecutor(c.runtimeScope.WithContext(installCtx))
 	if err != nil {
 		return c.classifyModuleInstallError(progress, installTimeout, err)
@@ -560,8 +554,10 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	}
 	defer executor.Stop()
 
-	moduleLifecycle := lifecycle.NewService(c.runtimeScope.WithContext(installCtx), executor)
-	installErr := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false})
+	installErr := lifecycle.InstallModule(installCtx, c.runtimeScope.WithContext(installCtx), executor, lifecycle.InstallModuleRequest{
+		Input:    "document",
+		WithDemo: false,
+	})
 	if installErr != nil {
 		return c.classifyModuleInstallError(progress, installTimeout, installErr)
 	}

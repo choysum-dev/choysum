@@ -193,61 +193,71 @@ func (m *ModuleManager) ensureMetaTables() error {
 		// transaction and another operation uses its own lease/meta transaction.
 		txRoot := m.runtimeScope.WithContext(m.runtimeScope.Context())
 		migrateErr = txRoot.Transactor().RequiresNew(txRoot.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
-			migrator := txScope.Session().Migrator()
-
-			if migrator.HasTable(&meta.IrModule{}) && migrator.HasTable(&leasemodel.IrLockLease{}) {
-				return nil
-			}
-
-			logger := txScope.Logger()
-			startedAt := time.Now()
-			if logger != nil {
-				logger.Info("meta base table bootstrap started", "entity_count", len(m.entities))
-			}
-
-			const (
-				metaBootstrapHeartbeatThreshold = 5 * time.Second
-				metaBootstrapHeartbeatInterval  = 5 * time.Second
-			)
-			stopHeartbeat := func() {}
-			if logger != nil {
-				stopCh := make(chan struct{})
-				doneCh := make(chan struct{})
-				go func() {
-					defer close(doneCh)
-					ticker := time.NewTicker(metaBootstrapHeartbeatInterval)
-					defer ticker.Stop()
-					lastHeartbeatAt := startedAt
-					for {
-						select {
-						case <-stopCh:
-							return
-						case now := <-ticker.C:
-							elapsed := now.Sub(startedAt)
-							if elapsed >= metaBootstrapHeartbeatThreshold && now.Sub(lastHeartbeatAt) >= metaBootstrapHeartbeatInterval {
-								logger.Info("meta base table bootstrap heartbeat", "elapsed_ms", elapsed.Milliseconds())
-								lastHeartbeatAt = now
-							}
-						}
-					}
-				}()
-				stopHeartbeat = func() {
-					close(stopCh)
-					<-doneCh
-				}
-			}
-			defer stopHeartbeat()
-
-			if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
-				return xfmt.Errorf("auto migrate meta entities: %w", err)
-			}
-			if logger != nil {
-				logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
-			}
-			return nil
+			return m.bootstrapMetaTables(txScope)
 		})
+		if errors.Is(migrateErr, scope.ErrRequiresNewUnsupported) {
+			// Test scopes / adapters without RequiresNew still need meta bootstrap.
+			migrateErr = txRoot.Transactor().Required(txRoot.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
+				return m.bootstrapMetaTables(txScope)
+			})
+		}
 	})
 	return migrateErr
+}
+
+func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
+	migrator := txScope.Session().Migrator()
+
+	if migrator.HasTable(&meta.IrModule{}) && migrator.HasTable(&leasemodel.IrLockLease{}) {
+		return nil
+	}
+
+	logger := txScope.Logger()
+	startedAt := time.Now()
+	if logger != nil {
+		logger.Info("meta base table bootstrap started", "entity_count", len(m.entities))
+	}
+
+	const (
+		metaBootstrapHeartbeatThreshold = 5 * time.Second
+		metaBootstrapHeartbeatInterval  = 5 * time.Second
+	)
+	stopHeartbeat := func() {}
+	if logger != nil {
+		stopCh := make(chan struct{})
+		doneCh := make(chan struct{})
+		go func() {
+			defer close(doneCh)
+			ticker := time.NewTicker(metaBootstrapHeartbeatInterval)
+			defer ticker.Stop()
+			lastHeartbeatAt := startedAt
+			for {
+				select {
+				case <-stopCh:
+					return
+				case now := <-ticker.C:
+					elapsed := now.Sub(startedAt)
+					if elapsed >= metaBootstrapHeartbeatThreshold && now.Sub(lastHeartbeatAt) >= metaBootstrapHeartbeatInterval {
+						logger.Info("meta base table bootstrap heartbeat", "elapsed_ms", elapsed.Milliseconds())
+						lastHeartbeatAt = now
+					}
+				}
+			}
+		}()
+		stopHeartbeat = func() {
+			close(stopCh)
+			<-doneCh
+		}
+	}
+	defer stopHeartbeat()
+
+	if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
+		return xfmt.Errorf("auto migrate meta entities: %w", err)
+	}
+	if logger != nil {
+		logger.Info("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
+	}
+	return nil
 }
 
 func (m *ModuleManager) withModuleManagerLease(ctx context.Context, fn func() error) error {

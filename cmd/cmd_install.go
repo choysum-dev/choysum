@@ -101,22 +101,12 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				if parsed.Kind == internalorigin.InputKindRegistry {
 					rootInput = parsed.CanonicalRef()
 				}
-				prefetched, prefetchErr := lifecycle.PrefetchInstallModules(ctx, env, rootInput)
-				if prefetchErr != nil {
-					moduleName := strings.TrimSpace(parsed.LocalName)
-					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
-						prefetchErr = rewriteLocalInstallLookupError(moduleName, prefetchErr)
-					}
-					attrs := []any{"error", prefetchErr}
-					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("install")...)
-					attrs = append(attrs, clioutput.ModuleInstallFailureAttrs(input, moduleName)...)
-					env.Logger().Error("module install failed", attrs...)
-					os.Exit(1)
+				moduleName := strings.TrimSpace(parsed.LocalName)
+				if parsed.Kind == internalorigin.InputKindRegistry {
+					moduleName = strings.TrimSpace(parsed.ModuleName)
 				}
-				moduleName := prefetched.RootName
-				installCtx := lifecycle.WithPrefetchedInstallModules(ctx, prefetched.Modules)
 
-				installScope := env.WithContext(installCtx)
+				installScope := env.WithContext(ctx)
 				compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
 				if startErr != nil {
 					err = xfmt.Errorf("Error creating compiler executor: %w", startErr)
@@ -125,13 +115,15 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				} else {
 					func() {
 						defer compilerExecutor.Stop()
-						installScope.Logger().Debug("module install started", "module", moduleName)
-						moduleLifecycle := lifecycle.NewService(installScope, compilerExecutor)
-						if installErr := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: moduleName, WithDemo: withDemo}); installErr != nil {
-							err = xfmt.Errorf("error installing module %s: %w", moduleName, installErr)
+						installScope.Logger().Debug("module install started", "input", rootInput)
+						if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
+							Input:    rootInput,
+							WithDemo: withDemo,
+						}); installErr != nil {
+							err = xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
 							return
 						}
-						installScope.Logger().Debug("module installed", "module", moduleName)
+						installScope.Logger().Debug("module installed", "input", rootInput)
 					}()
 				}
 				if err != nil {
