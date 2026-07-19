@@ -192,7 +192,7 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 					collectMu.Unlock()
 				}
 
-				t.Reset(time.Millisecond * 1) // wait 1ms for next entry
+				t.Reset(time.Millisecond * 20) // wait briefly for next entry
 			case <-t.C:
 				cancel()
 			}
@@ -263,7 +263,7 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 					collectMu.Unlock()
 				}
 
-				t.Reset(time.Millisecond * 1) // wait 1ms for next entry
+				t.Reset(time.Millisecond * 20) // wait briefly for next entry
 			case <-t.C:
 				cancel()
 			}

@@ -62,3 +62,22 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 		t.Fatal("expected non-literal issue for _t(foo)")
 	}
 }
+
+func TestCollectTemplateRegexMultipleTCallsInAttribute(t *testing.T) {
+	html := `<input :placeholder="isNew ? _t('Create') : _t('Edit')" />`
+	terms, _ := CollectTemplateRegex(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/widgets/Box.vue",
+	}, html)
+	want := map[string]bool{"Create": false, "Edit": false}
+	for _, term := range terms {
+		if _, ok := want[term.Src]; ok {
+			want[term.Src] = true
+		}
+	}
+	for src, ok := range want {
+		if !ok {
+			t.Fatalf("missing term %q in %#v", src, terms)
+		}
+	}
+}

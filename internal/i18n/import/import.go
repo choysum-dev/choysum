@@ -20,6 +20,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/leonelquinteros/gotext"
+	"gorm.io/gorm"
 )
 
 // ImportStats summarizes one PO import.
@@ -193,12 +194,12 @@ func termLookupKey(scopeName, src, kind string) string {
 
 func purgeRetiredS7Terms(session *scope.Session, tableName, module string) (map[string]struct{}, int, error) {
 	var langs []string
-	query := session.Table(tableName).
+	baseQuery := session.Table(tableName).
 		Where("module = ? AND kind IN ?", module, retiredS7Kinds)
-	if err := query.Distinct("lang").Pluck("lang", &langs).Error; err != nil {
+	if err := baseQuery.Session(&gorm.Session{}).Distinct("lang").Pluck("lang", &langs).Error; err != nil {
 		return nil, 0, fmt.Errorf("list retired S7 term languages: %w", err)
 	}
-	result := query.Unscoped().Delete(&i18nmodels.TranslationTerm{})
+	result := baseQuery.Session(&gorm.Session{}).Unscoped().Delete(&i18nmodels.TranslationTerm{})
 	if result.Error != nil {
 		return nil, 0, fmt.Errorf("purge retired S7 terms: %w", result.Error)
 	}

@@ -19,10 +19,13 @@ var (
 	// \x60 is backtick; Go raw strings cannot embed a literal backtick.
 	reTemplateMustache = regexp.MustCompile("\\{\\{\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+)\\s*(?:,|\\))")
 
-	// Attribute bindings: :title="_t('...')" or :title='_t("...")' (Go regexp has no backrefs).
-	// Capture only the first msgid argument so options objects do not leak into ParseJSStringLiteral.
-	reTemplateAttrDouble = regexp.MustCompile("(?::|v-bind:)\\w[\\w-]*\\s*=\\s*\"\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+).*?\\s*\"")
-	reTemplateAttrSingle = regexp.MustCompile("(?::|v-bind:)\\w[\\w-]*\\s*=\\s*'\\s*(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+).*?\\s*'")
+	// Attribute bindings capture the whole value so multiple _t() calls inside
+	// one binding (e.g. ternaries) can each be extracted.
+	reTemplateAttrDouble = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*"([^"]*)"`)
+	reTemplateAttrSingle = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*'([^']*)'`)
+
+	// _t msgid argument inside an already-captured expression/attribute value.
+	reTemplateTCall = regexp.MustCompile("(_t)\\s*\\(\\s*(['\"\\x60].*?['\"\\x60]|[^\\s),]+)\\s*(?:,|\\))")
 )
 
 // CollectTemplateRegex extracts literal `_t` calls from Vue template HTML text.
@@ -69,6 +72,16 @@ func collectTemplateRegex(opts CollectOptions, templateHTML string, boundScope s
 		})
 	}
 
+	collectTCalls := func(fragment string, baseOffset int) {
+		for _, m := range reTemplateTCall.FindAllStringSubmatchIndex(fragment, -1) {
+			if len(m) < 6 {
+				continue
+			}
+			msgid := fragment[m[4]:m[5]]
+			collect(msgid, baseOffset+m[0])
+		}
+	}
+
 	for _, m := range reTemplateMustache.FindAllStringSubmatchIndex(templateHTML, -1) {
 		// groups: 0 full, 1 _t, 2 msgid expr
 		if len(m) < 6 {
@@ -80,12 +93,12 @@ func collectTemplateRegex(opts CollectOptions, templateHTML string, boundScope s
 
 	for _, re := range []*regexp.Regexp{reTemplateAttrDouble, reTemplateAttrSingle} {
 		for _, m := range re.FindAllStringSubmatchIndex(templateHTML, -1) {
-			// groups: 0 full, 1 _t, 2 msgid expr
-			if len(m) < 6 {
+			// groups: 0 full, 1 attr value
+			if len(m) < 4 {
 				continue
 			}
-			msgid := templateHTML[m[4]:m[5]]
-			collect(msgid, m[0])
+			value := templateHTML[m[2]:m[3]]
+			collectTCalls(value, m[2])
 		}
 	}
 
