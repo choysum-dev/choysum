@@ -117,10 +117,11 @@ and marks removed pot entries obsolete (#~) without deleting translation history
 			lightweightScopeAnnotation: "true",
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(lang) == "" {
+			lang = strings.TrimSpace(lang)
+			if lang == "" {
 				return xfmt.Errorf("i18n sync: --lang is required")
 			}
-			if !langcode.Valid(strings.TrimSpace(lang)) {
+			if !langcode.Valid(lang) {
 				return xfmt.Errorf("i18n sync: invalid lang format")
 			}
 			if all && len(args) > 0 {
@@ -192,10 +193,11 @@ Default fail-on: missing, fuzzy, pot-dirty, no-po. Orphans are reported but do n
 			lightweightScopeAnnotation: "true",
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(lang) == "" {
+			lang = strings.TrimSpace(lang)
+			if lang == "" {
 				return xfmt.Errorf("i18n status: --lang is required")
 			}
-			if !langcode.Valid(strings.TrimSpace(lang)) {
+			if !langcode.Valid(lang) {
 				return xfmt.Errorf("i18n status: invalid lang format")
 			}
 			if all && len(args) > 0 {
