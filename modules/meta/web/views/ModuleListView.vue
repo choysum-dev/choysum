@@ -16,32 +16,32 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template #header-right>
       <el-button-group>
-        <el-tooltip v-if="canRoute('meta.route.module_board')" content="看板视图" placement="top">
+        <el-tooltip v-if="canRoute('meta.route.module_board')" :content="_t('Board View')" placement="top">
           <el-button :icon="GridViewSharp" @click="toKanban" />
         </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_list')" content="列表视图" placement="top">
+        <el-tooltip v-if="canRoute('meta.route.module_list')" :content="_t('List View')" placement="top">
           <el-button :icon="FormatListBulletedOutlined" @click="toList" type="primary" />
         </el-tooltip>
-        <el-tooltip v-if="canRoute('meta.route.module_history')" content="操作历史" placement="top">
+        <el-tooltip v-if="canRoute('meta.route.module_history')" :content="_t('Operation History')" placement="top">
           <el-button :icon="HistoryOutlined" @click="toHistory" />
         </el-tooltip>
-        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" content="同步索引" placement="top">
+        <el-tooltip v-if="hasAction(moduleSyncIndexAction)" :content="_t('Sync Index')" placement="top">
           <el-button :icon="Refresh" :loading="syncLoading" @click="onSyncIndex" />
         </el-tooltip>
       </el-button-group>
     </template>
 
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="ModuleName" label="模块名" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="LocalVersion" label="本地版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="RegistryVersion" label="仓库版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Version" label="展示版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledStatus" label="安装状态" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledVersion" label="已装版本" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OBooleanField prop="Available" label="可用" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <OVarCharField prop="OriginTypes" label="来源" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="LocalPath" label="路径" :store="store" :vColumnProps="{ minWidth: 220 }" />
-    <ODateTimeField prop="LastSyncAt" label="同步时间" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="ModuleName" :label="_t('Module Name')" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <OVarCharField prop="LocalVersion" :label="_t('Local Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="RegistryVersion" :label="_t('Registry Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="InstalledStatus" :label="_t('Install Status')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="InstalledVersion" :label="_t('Installed Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OBooleanField prop="Available" :label="_t('Available')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <OVarCharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
+    <ODateTimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 
@@ -63,8 +63,12 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleListView', inheritAttrs: true });
+
+const { _t } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
+const { _t: _tRef } = createTranslate('meta', { output: 'reference', scope: 'web/views/ModuleListView' });
 
 const router = useRouter();
 
@@ -80,16 +84,11 @@ const props = withDefaults(
 
 const { store, showHeader } = props;
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
-  title: '同步模块索引',
+  title: _tRef('Sync Module Index'),
   requires: [{ model: 'meta.IrModuleIndex', method: 'RequestSync' }],
 });
 const moduleIndexActions = defineModelActions('meta.IrModuleIndex', {
-  entityTitle: '模块索引',
-  titles: {
-    edit: '编辑模块索引',
-    copy: '复制模块索引',
-    delete: '删除模块索引',
-  },
+  entityTitle: _tRef('Module Index'),
 });
 const { canRoute, hasAction } = usePermission();
 
@@ -100,9 +99,9 @@ async function onSyncIndex() {
   syncLoading.value = true;
   try {
     const jobId = await (store as any).RequestSync({ force: true, ifStale: false });
-    ElMessage.success(jobId ? `已触发同步任务：all:${jobId}` : '已触发同步任务');
+    ElMessage.success(jobId ? _t('Sync job triggered: all:%s', String(jobId)) : _t('Sync job triggered'));
   } catch (error: any) {
-    ElMessage.warning(`同步失败：${error?.message || 'request failed'}`);
+    ElMessage.warning(_t('Sync failed: %s', String(error?.message || 'request failed')));
   } finally {
     syncLoading.value = false;
   }

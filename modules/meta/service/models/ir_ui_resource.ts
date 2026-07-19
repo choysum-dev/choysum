@@ -8,7 +8,9 @@ import IrModule from './ir_module';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
-import type { TermReference } from '@/core/service/i18n';
+import { createTranslate, type TermReference } from '@/core/service/i18n';
+
+const { _t } = createTranslate('meta');
 
 export type UiResourceType = 'ROUTE' | 'MENU' | 'ACTION';
 
@@ -97,7 +99,9 @@ export default class IrUiResource extends BaseModel {
     const parentRef = this.ParentId;
     const parentPath = parentRef ? String(parentRef.ParentPath || '') : '';
     if (parentPath && parentPath.includes(`${id}/`)) {
-      throw new Error(`Cycle detected: ${id} cannot be assigned under one of its descendants`);
+      throw new Error(
+        _t('Cycle detected: %s cannot be assigned under one of its descendants', { scope: 'service/models/ir_ui_resource' }, id)
+      );
     }
 
     return `${parentPath}${id}/`;

@@ -5,12 +5,15 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
+import { createTranslate } from '@/core/service/i18n';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
 import IrModuleDependency from './ir_module_dependency';
 import IrUiResource from './ir_ui_resource';
 import ModuleManagementLog from './module_management_log';
+
+const { _t } = createTranslate('meta');
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 type FailureKind = 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
@@ -224,7 +227,7 @@ export default class IrModule extends BaseModel {
       risks.push({
         code: 'PLAN_REVISION_MISMATCH',
         level: 'WARN',
-        message: 'plan was regenerated from the latest module state',
+        message: _t('plan was regenerated from the latest module state', { scope: 'service/models/ir_module' }),
         params: { baseRevision },
       });
     }
@@ -233,7 +236,12 @@ export default class IrModule extends BaseModel {
     const current = existing?.[0];
 
     if ((action === 'uninstall' || action === 'upgrade') && !current) {
-      blockers.push({ code: 'MODULE_NOT_FOUND', level: 'BLOCKER', message: 'module not found', params: { moduleName } });
+      blockers.push({
+        code: 'MODULE_NOT_FOUND',
+        level: 'BLOCKER',
+        message: _t('module not found', { scope: 'service/models/ir_module' }),
+        params: { moduleName },
+      });
     }
 
     affectedModules.push({
@@ -259,7 +267,7 @@ export default class IrModule extends BaseModel {
 
   private static ensureModuleName(name?: string): string {
     const trimmed = String(name || '').trim();
-    if (!trimmed) throw new Error('moduleName cannot be empty');
+    if (!trimmed) throw new Error(_t('moduleName cannot be empty', { scope: 'service/models/ir_module' }));
     return trimmed;
   }
 
@@ -280,7 +288,7 @@ export default class IrModule extends BaseModel {
         LastErrorJson: {
           domain: 'meta.lock',
           code: 'LEASE_CONFLICT',
-          message: 'lease conflict',
+          message: _t('lease conflict', { scope: 'service/models/ir_module' }),
           details: { retry_after_ms: retryAfterMs },
         },
       });
@@ -291,7 +299,7 @@ export default class IrModule extends BaseModel {
 
   static async GetOpStatus(jobId: string): Promise<OpStatusResp> {
     const id = String(jobId || '').trim();
-    if (!id) throw new Error('jobId cannot be empty');
+    if (!id) throw new Error(_t('jobId cannot be empty', { scope: 'service/models/ir_module' }));
 
     const job = await Job.GetJob(id, [
       'Id',
