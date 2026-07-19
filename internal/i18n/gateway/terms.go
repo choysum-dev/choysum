@@ -107,6 +107,7 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 	type appSearchOutcome struct {
 		items  []termItem
 		denied bool
+		failed error
 	}
 	outcomes := make([]appSearchOutcome, len(apps))
 	g, gctx := errgroup.WithContext(r.Context())
@@ -123,7 +124,11 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 					outcomes[i] = appSearchOutcome{denied: true}
 					return nil
 				}
-				return err
+				// Degrade like serveTranslations: one offline app must not 502 the fan-out.
+				h.logger().Warn("i18n terms search: skipping failed application",
+					"application", app, "lang", lang, "error", err)
+				outcomes[i] = appSearchOutcome{failed: err}
+				return nil
 			}
 			if result != nil {
 				outcomes[i] = appSearchOutcome{items: result.Items}
@@ -131,23 +136,33 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
-		writeTermsRPCError(w, err)
-		return
-	}
+	_ = g.Wait()
 
 	var items []termItem
 	var denied bool
+	var firstFail error
 	for _, outcome := range outcomes {
 		if outcome.denied {
 			denied = true
 			continue
 		}
+		if outcome.failed != nil {
+			if firstFail == nil {
+				firstFail = outcome.failed
+			}
+			continue
+		}
 		items = append(items, outcome.items...)
 	}
-	if denied && len(items) == 0 {
-		writeJSON(w, http.StatusForbidden, map[string]any{"error": "terminology editor permission required"})
-		return
+	if len(items) == 0 {
+		if denied {
+			writeJSON(w, http.StatusForbidden, map[string]any{"error": "terminology editor permission required"})
+			return
+		}
+		if firstFail != nil {
+			writeTermsRPCError(w, firstFail)
+			return
+		}
 	}
 	truncated := len(items) >= limit
 	if len(items) > limit {

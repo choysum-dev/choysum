@@ -189,6 +189,52 @@ func TestTermsAllAppsSearchTruncated(t *testing.T) {
 	}
 }
 
+func TestTermsAllAppsSearchSkipsFailedApp(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{
+				"auth": {"auth"},
+				"web":  {"web"},
+			}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			if app == "web" {
+				return nil, status.Error(codes.Unavailable, "offline")
+			}
+			return &searchTermsResult{
+				Lang: lang,
+				Items: []termItem{{
+					Application: "auth",
+					Module:      "auth",
+					Scope:       "a@t",
+					Src:         "Hello",
+					Value:       "你好",
+					Kind:        "literal",
+					Status:      "translated",
+				}},
+				Total: 1,
+			}, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(termsPath, h.serveTerms)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh_CN&q=Hello", nil)
+	req.Header.Set("Authorization", "Bearer editor-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var out map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	items, _ := out["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected healthy app results only, got %#v", out)
+	}
+}
+
 func TestTermsPatchRoutesAndAllOrNothing(t *testing.T) {
 	var calls []string
 	h := &handler{
