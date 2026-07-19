@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, asRecord } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { DocumentErrCode, throwDocumentError } from '../error';
 import type { PrincipalContext } from '../contracts';
+
+const { _t } = createTranslate('document');
 
 /**
  * Require a non-empty trimmed string value; throws INVALID_ARGUMENT otherwise.
@@ -12,7 +15,12 @@ import type { PrincipalContext } from '../contracts';
 export function requireText(value: unknown, fieldName: string): string {
   const text = normalizeOptionalString(value);
   if (!text) {
-    throw throwDocumentError(DocumentErrCode.INVALID_ARGUMENT, `${fieldName} is required`, GrpcCode.InvalidArgument, { field: fieldName });
+    throw throwDocumentError(
+      DocumentErrCode.INVALID_ARGUMENT,
+      _t('%s is required', { scope: 'service/models/_normalizers' }, fieldName),
+      GrpcCode.InvalidArgument,
+      { field: fieldName }
+    );
   }
   return text;
 }
@@ -23,7 +31,11 @@ export function requireText(value: unknown, fieldName: string): string {
 export function requireUserId(rawUserId: unknown): string {
   const userId = normalizeOptionalString(rawUserId);
   if (!userId) {
-    throw throwDocumentError(DocumentErrCode.UNAUTHENTICATED, 'Authentication is required', GrpcCode.Unauthenticated);
+    throw throwDocumentError(
+      DocumentErrCode.UNAUTHENTICATED,
+      _t('Authentication is required', { scope: 'service/models/_normalizers' }),
+      GrpcCode.Unauthenticated
+    );
   }
   return userId;
 }
@@ -34,7 +46,12 @@ export function requireUserId(rawUserId: unknown): string {
 export function requireCompanyId(rawCompanyId: unknown, stage: string): string {
   const companyId = normalizeOptionalString(rawCompanyId);
   if (!companyId) {
-    throw throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'activeCompanyId is required for document operations', GrpcCode.PermissionDenied, { stage });
+    throw throwDocumentError(
+      DocumentErrCode.PERMISSION_DENIED,
+      _t('activeCompanyId is required for document operations', { scope: 'service/models/_normalizers' }),
+      GrpcCode.PermissionDenied,
+      { stage }
+    );
   }
   return companyId;
 }

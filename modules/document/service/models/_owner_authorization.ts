@@ -5,9 +5,12 @@ import { createServiceByModel } from '@/core/service/rpc/service_factory';
 import { normalizeConditionEnvelope, normalizeFieldRuleSpec, replaceConditionExprTokens } from '@/core/service/api/authz';
 import type { ConditionEnvelope, ConditionExpr, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { GrpcCode } from '../error';
 import { newDocumentError, DocumentErrCode } from '../error';
 import { observePermissionDenied } from './_owner_authorization_observability';
+
+const { _t } = createTranslate('document');
 
 type OwnerWriteOperation = 'create' | 'update';
 type OwnerPermissionStage =
@@ -69,7 +72,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
   const envelope = await fetchRecordRuleEnvelope(ownerModel, op, stage);
 
   if (envelope.kind === 'false') {
-    throw permissionDenied(stage, 'owner write is denied by record rule', {
+    throw permissionDenied(stage, _t('owner write is denied by record rule', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       fieldName,
       op,
@@ -80,7 +83,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
 
   const fieldRuleSpec = await fetchFieldRuleSpec(ownerModel, stage);
   if (isFieldDenied(fieldRuleSpec.denyWriteFields, fieldName)) {
-    throw permissionDenied(stage, 'owner field write is denied by field rule', {
+    throw permissionDenied(stage, _t('owner field write is denied by field rule', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       fieldName,
       access: 'write',
@@ -90,7 +93,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
 
   const ownerRecordId = normalizeOptionalText(input.ownerRecordId);
   if (operation === 'update' && !ownerRecordId) {
-    throw permissionDenied(stage, 'ownerRecordId is required for owner write check', {
+    throw permissionDenied(stage, _t('ownerRecordId is required for owner write check', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       fieldName,
       op,
@@ -102,7 +105,7 @@ export async function assertOwnerWriteAuthorization(input: OwnerWriteAuthorizati
     const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
     const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
-      throw permissionDenied(stage, 'owner write target is not allowed by record rule scope', {
+      throw permissionDenied(stage, _t('owner write target is not allowed by record rule scope', { scope: 'service/models/_owner_authorization' }), {
         ownerModel,
         ownerRecordId,
         fieldName,
@@ -128,7 +131,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
   const envelope = await fetchRecordRuleEnvelope(ownerModel, 'read', stage);
 
   if (envelope.kind === 'false') {
-    throw permissionDenied(stage, 'owner read is denied by record rule', {
+    throw permissionDenied(stage, _t('owner read is denied by record rule', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       ownerRecordId,
       fieldName,
@@ -140,7 +143,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
 
   const fieldRuleSpec = await fetchFieldRuleSpec(ownerModel, stage);
   if (isFieldDenied(fieldRuleSpec.denyReadFields, fieldName)) {
-    throw permissionDenied(stage, 'owner field read is denied by field rule', {
+    throw permissionDenied(stage, _t('owner field read is denied by field rule', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       fieldName,
       access: 'read',
@@ -152,7 +155,7 @@ export async function assertOwnerReadAuthorization(input: OwnerReadAuthorization
     const recordRuleExpr = replaceTokensForOwnerRecordRule(envelope.expr, stage, userId, companyId, companyIds);
     const ok = await probeOwnerRecord(ownerModel, ownerRecordId, recordRuleExpr);
     if (!ok) {
-      throw permissionDenied(stage, 'owner read target is not allowed by record rule scope', {
+      throw permissionDenied(stage, _t('owner read target is not allowed by record rule scope', { scope: 'service/models/_owner_authorization' }), {
         ownerModel,
         ownerRecordId,
         fieldName,
@@ -169,7 +172,7 @@ async function fetchRecordRuleEnvelope(ownerModel: string, op: RecordRuleOp, sta
     const raw = await authService.GetRecordRuleCondition(ownerModel, op);
     return normalizeConditionEnvelope(raw);
   } catch (err) {
-    throw permissionDenied(stage, 'failed to fetch owner record rule condition', {
+    throw permissionDenied(stage, _t('failed to fetch owner record rule condition', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       op,
       detail: errorMessage(err),
@@ -183,7 +186,7 @@ async function fetchFieldRuleSpec(ownerModel: string, stage: OwnerPermissionStag
     const raw = await authService.GetFieldRuleSpec(ownerModel);
     return normalizeFieldRuleSpec(raw);
   } catch (err) {
-    throw permissionDenied(stage, 'failed to fetch owner field rule spec', {
+    throw permissionDenied(stage, _t('failed to fetch owner field rule spec', { scope: 'service/models/_owner_authorization' }), {
       ownerModel,
       detail: errorMessage(err),
     });
@@ -194,7 +197,7 @@ function getAuthUserService(stage: OwnerPermissionStage): AuthUserServiceLike {
   try {
     return createServiceByModel(AUTH_USER_MODEL) as AuthUserServiceLike;
   } catch (err) {
-    throw permissionDenied(stage, 'auth service is unavailable for owner authorization check', {
+    throw permissionDenied(stage, _t('auth service is unavailable for owner authorization check', { scope: 'service/models/_owner_authorization' }), {
       model: AUTH_USER_MODEL,
       detail: errorMessage(err),
     });
@@ -238,7 +241,7 @@ function replaceTokensForOwnerRecordRule(
       strictUnknownToken: true,
     });
   } catch (err) {
-    throw permissionDenied(stage, 'owner record rule contains invalid token mapping', {
+    throw permissionDenied(stage, _t('owner record rule contains invalid token mapping', { scope: 'service/models/_owner_authorization' }), {
       detail: errorMessage(err),
     });
   }
@@ -284,7 +287,7 @@ function stringifyMetadata(metadata: Record<string, unknown>): Record<string, st
 function requireText(value: unknown, fieldName: string, stage: OwnerPermissionStage): string {
   const text = normalizeOptionalText(value);
   if (!text) {
-    throw permissionDenied(stage, `${fieldName} is required`, { field: fieldName });
+    throw permissionDenied(stage, _t('%s is required', { scope: 'service/models/_owner_authorization' }, fieldName), { field: fieldName });
   }
   return text;
 }

@@ -1,6 +1,281 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/_attachment_binding_codec.ts:291
+msgctxt "service/models/_attachment_binding_codec"
+msgid "Attachment resource company scope mismatch"
+msgstr "附件资源的公司范围不匹配"
+
+#: service/models/_attachment_binding_codec.ts:104
+msgctxt "service/models/_attachment_binding_codec"
+msgid "attachmentBindingIds exceeds maximum batch size of %s"
+msgstr "attachmentBindingIds 超出最大批量大小 %s"
+
+#: service/models/_attachment_binding_codec.ts:92
+msgctxt "service/models/_attachment_binding_codec"
+msgid "attachmentBindingIds must be an array"
+msgstr "attachmentBindingIds 必须是数组"
+
+#: service/models/_attachment_binding_codec.ts:154
+msgctxt "service/models/_attachment_binding_codec"
+msgid "downloadDisposition must be inline or attachment"
+msgstr "downloadDisposition 必须是 inline 或 attachment"
+
+#: service/models/_attachment_binding_ops.ts:292
+msgctxt "service/models/_attachment_binding_ops"
+msgid "Active attachment binding not found"
+msgstr "未找到有效的附件绑定"
+
+#: service/models/_attachment_binding_ops.ts:152
+msgctxt "service/models/_attachment_binding_ops"
+msgid "Active attachment content not found"
+msgstr "未找到有效的附件内容"
+
+#: service/models/_attachment_binding_ops.ts:124
+msgctxt "service/models/_attachment_binding_ops"
+msgid "Active attachment content not found in company scope"
+msgstr "在公司范围内未找到有效的附件内容"
+
+#: service/models/_attachment_binding_ops.ts:176
+msgctxt "service/models/_attachment_binding_ops"
+msgid "Active stored content not found"
+msgstr "未找到有效的存储内容"
+
+#: service/models/_attachment_binding_ops.ts:268
+msgctxt "service/models/_attachment_binding_ops"
+msgid "Attachment binding not found"
+msgstr "未找到附件绑定"
+
+#: service/models/_attachment_binding_ops.ts:352
+msgctxt "service/models/_attachment_binding_ops"
+msgid "bind mutationId exists but previous attempt did not succeed"
+msgstr "bind 的 mutationId 已存在，但先前尝试未成功"
+
+#: service/models/_attachment_binding_ops.ts:366
+msgctxt "service/models/_attachment_binding_ops"
+msgid "bind replay snapshot is invalid"
+msgstr "bind 回放快照无效"
+
+#: service/models/_attachment_binding_ops.ts:212
+msgctxt "service/models/_attachment_binding_ops"
+msgid "database execute bridge is unavailable"
+msgstr "数据库 execute 桥接不可用"
+
+#: service/models/_attachment_binding_ops.ts:97
+msgctxt "service/models/_attachment_binding_ops"
+msgid "principal activeCompanyId does not match runtime context"
+msgstr "principal 的 activeCompanyId 与运行时上下文不匹配"
+
+#: service/models/_attachment_binding_ops.ts:84
+msgctxt "service/models/_attachment_binding_ops"
+msgid "principal userId does not match runtime identity"
+msgstr "principal 的 userId 与运行时身份不匹配"
+
+#: service/models/_attachment_binding_ops.ts:381
+msgctxt "service/models/_attachment_binding_ops"
+msgid "unbind mutationId exists but previous attempt did not succeed"
+msgstr "unbind 的 mutationId 已存在，但先前尝试未成功"
+
+#: service/models/_attachment_binding_ops.ts:395
+msgctxt "service/models/_attachment_binding_ops"
+msgid "unbind replay snapshot is invalid"
+msgstr "unbind 回放快照无效"
+
+#: service/models/_attachment_upload_codec.ts:38
+msgctxt "service/models/_attachment_upload_codec"
+msgid "Upload session has already been finalized"
+msgstr "上传会话已完成"
+
+#: service/models/_attachment_upload_codec.ts:29
+msgctxt "service/models/_attachment_upload_codec"
+msgid "Upload session has expired"
+msgstr "上传会话已过期"
+
+#: service/models/_attachment_upload_codec.ts:136
+msgctxt "service/models/_attachment_upload_codec"
+msgid "payloadReceipt.payloadId format is unsupported"
+msgstr "payloadReceipt.payloadId 格式不受支持"
+
+#: service/models/_attachment_upload_codec.ts:118
+msgctxt "service/models/_attachment_upload_codec"
+msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
+msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
+
+#: service/models/_attachment_upload_ops.ts:194
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Attachment content not found"
+msgstr "未找到附件内容"
+
+#: service/models/_attachment_upload_ops.ts:240
+msgctxt "service/models/_attachment_upload_ops"
+msgid "FinalizeUpload businessRequestId does not match the existing upload session"
+msgstr "FinalizeUpload 的 businessRequestId 与现有上传会话不匹配"
+
+#: service/models/_attachment_upload_ops.ts:162
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Stored content company does not match upload session company"
+msgstr "存储内容的公司与上传会话的公司不匹配"
+
+#: service/models/_attachment_upload_ops.ts:176
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Stored content must be active before finalize"
+msgstr "完成前存储内容必须处于 active 状态"
+
+#: service/models/_attachment_upload_ops.ts:146
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Upload session is missing uploaded payload reference"
+msgstr "上传会话缺少已上传载荷引用"
+
+#: service/models/_attachment_upload_ops.ts:351
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Upload session must be prepared before commit"
+msgstr "提交前上传会话必须处于 prepared 状态"
+
+#: service/models/_attachment_upload_ops.ts:486
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Upload session must be uploaded before finalize"
+msgstr "完成前上传会话必须处于 uploaded 状态"
+
+#: service/models/_attachment_upload_ops.ts:114
+msgctxt "service/models/_attachment_upload_ops"
+msgid "Upload session not found"
+msgstr "未找到上传会话"
+
+#: service/models/_attachment_upload_ops.ts:309 service/models/_attachment_upload_ops.ts:391
+msgctxt "service/models/_attachment_upload_ops"
+msgid "checksum mismatch"
+msgstr "校验和不匹配"
+
+#: service/models/_attachment_upload_ops.ts:296 service/models/_attachment_upload_ops.ts:378
+msgctxt "service/models/_attachment_upload_ops"
+msgid "content type is not allowed"
+msgstr "不允许该内容类型"
+
+#: service/models/_attachment_upload_ops.ts:282 service/models/_attachment_upload_ops.ts:364
+msgctxt "service/models/_attachment_upload_ops"
+msgid "upload body exceeds maxUploadBytes"
+msgstr "上传正文超过 maxUploadBytes"
+
+#: service/models/_normalizers.ts:19
+msgctxt "service/models/_normalizers"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/_normalizers.ts:35
+msgctxt "service/models/_normalizers"
+msgid "Authentication is required"
+msgstr "需要身份认证"
+
+#: service/models/_normalizers.ts:50
+msgctxt "service/models/_normalizers"
+msgid "activeCompanyId is required for document operations"
+msgstr "文档操作需要 activeCompanyId"
+
+#: service/models/_owner_authorization.ts:290
+msgctxt "service/models/_owner_authorization"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/_owner_authorization.ts:200
+msgctxt "service/models/_owner_authorization"
+msgid "auth service is unavailable for owner authorization check"
+msgstr "所有者授权检查时认证服务不可用"
+
+#: service/models/_owner_authorization.ts:189
+msgctxt "service/models/_owner_authorization"
+msgid "failed to fetch owner field rule spec"
+msgstr "获取所有者字段规则规格失败"
+
+#: service/models/_owner_authorization.ts:175
+msgctxt "service/models/_owner_authorization"
+msgid "failed to fetch owner record rule condition"
+msgstr "获取所有者记录规则条件失败"
+
+#: service/models/_owner_authorization.ts:146
+msgctxt "service/models/_owner_authorization"
+msgid "owner field read is denied by field rule"
+msgstr "所有者字段读取被字段规则拒绝"
+
+#: service/models/_owner_authorization.ts:86
+msgctxt "service/models/_owner_authorization"
+msgid "owner field write is denied by field rule"
+msgstr "所有者字段写入被字段规则拒绝"
+
+#: service/models/_owner_authorization.ts:134
+msgctxt "service/models/_owner_authorization"
+msgid "owner read is denied by record rule"
+msgstr "所有者读取被记录规则拒绝"
+
+#: service/models/_owner_authorization.ts:158
+msgctxt "service/models/_owner_authorization"
+msgid "owner read target is not allowed by record rule scope"
+msgstr "所有者读取目标不在记录规则范围内"
+
+#: service/models/_owner_authorization.ts:244
+msgctxt "service/models/_owner_authorization"
+msgid "owner record rule contains invalid token mapping"
+msgstr "所有者记录规则包含无效的令牌映射"
+
+#: service/models/_owner_authorization.ts:75
+msgctxt "service/models/_owner_authorization"
+msgid "owner write is denied by record rule"
+msgstr "所有者写入被记录规则拒绝"
+
+#: service/models/_owner_authorization.ts:108
+msgctxt "service/models/_owner_authorization"
+msgid "owner write target is not allowed by record rule scope"
+msgstr "所有者写入目标不在记录规则范围内"
+
+#: service/models/_owner_authorization.ts:96
+msgctxt "service/models/_owner_authorization"
+msgid "ownerRecordId is required for owner write check"
+msgstr "所有者写入检查需要 ownerRecordId"
+
+#: service/models/_upload.ts:72 service/models/_upload.ts:81
+msgctxt "service/models/_upload"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/_upload.ts:91
+msgctxt "service/models/_upload"
+msgid "%s must be a non-negative integer"
+msgstr "%s 必须为非负整数"
+
+#: service/models/_upload.ts:208
+msgctxt "service/models/_upload"
+msgid "activeCompanyId does not match upload session owner"
+msgstr "activeCompanyId 与上传会话所有者不匹配"
+
+#: service/models/_upload.ts:263
+msgctxt "service/models/_upload"
+msgid "businessRequestId was already used with a different upload context"
+msgstr "businessRequestId 已在不同的上传上下文中使用过"
+
+#: service/models/_upload.ts:132
+msgctxt "service/models/_upload"
+msgid "operation must be create or update"
+msgstr "operation 必须是 create 或 update"
+
+#: service/models/_upload.ts:142
+msgctxt "service/models/_upload"
+msgid "ownerRecordId is required when operation=update"
+msgstr "当 operation=update 时 ownerRecordId 为必填项"
+
+#: service/models/_upload.ts:109
+msgctxt "service/models/_upload"
+msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
+msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
+
+#: service/models/_upload.ts:220
+msgctxt "service/models/_upload"
+msgid "userId does not match upload session issuer"
+msgstr "userId 与上传会话签发者不匹配"
+
+#: service/models/stored_content.ts:71
+msgctxt "service/models/stored_content"
+msgid "Stored content not found"
+msgstr "未找到存储内容"
+
 #~ #. kind: selection_label
 #~ msgctxt "service/models/attachment_binding@DownloadDisposition.attachment"
 #~ msgid "attachment"

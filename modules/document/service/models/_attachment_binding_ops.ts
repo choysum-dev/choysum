@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { toDate } from '@/core/service/utils/datetime';
 import {
   DownloadDisposition,
@@ -37,6 +38,8 @@ import {
   parseUnbindResp,
   assertCompanyMatch,
 } from './_attachment_binding_codec';
+
+const { _t } = createTranslate('document');
 
 // ---------------------------------------------------------------------------
 // Model ops contract — passed by the AttachmentBinding class when delegating.
@@ -77,18 +80,28 @@ function getStoredContentModel(): typeof StoredContent {
 function assertPrincipalParityWithRuntimeContext(ops: BindingModelOps, principal: PrincipalContext, stage: 'resolve_download_content'): void {
   const runtimeUserId = requireUserId(ops.userId);
   if (runtimeUserId !== principal.userId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal userId does not match runtime identity', GrpcCode.PermissionDenied, {
-      stage,
-      reason: 'issuer_mismatch',
-    });
+    throwDocumentError(
+      DocumentErrCode.PERMISSION_DENIED,
+      _t('principal userId does not match runtime identity', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.PermissionDenied,
+      {
+        stage,
+        reason: 'issuer_mismatch',
+      }
+    );
   }
 
   const runtimeCompanyId = requireCompanyId(ops.companyId, stage);
   if (runtimeCompanyId !== principal.activeCompanyId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'principal activeCompanyId does not match runtime context', GrpcCode.PermissionDenied, {
-      stage,
-      reason: 'company_mismatch',
-    });
+    throwDocumentError(
+      DocumentErrCode.PERMISSION_DENIED,
+      _t('principal activeCompanyId does not match runtime context', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.PermissionDenied,
+      {
+        stage,
+        reason: 'company_mismatch',
+      }
+    );
   }
 }
 
@@ -107,10 +120,15 @@ async function mustLoadActiveAttachmentContent(attachmentContentId: string, comp
 
   const record = rows[0] as AttachmentContent | undefined;
   if (!record) {
-    throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active attachment content not found in company scope', GrpcCode.NotFound, {
-      attachmentContentId,
-      companyId,
-    });
+    throwDocumentError(
+      DocumentErrCode.NOT_FOUND,
+      _t('Active attachment content not found in company scope', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.NotFound,
+      {
+        attachmentContentId,
+        companyId,
+      }
+    );
   }
 
   return record;
@@ -130,7 +148,12 @@ async function mustLoadActiveAttachmentContentById(attachmentContentId: string):
 
   const record = rows[0] as AttachmentContent | undefined;
   if (!record) {
-    throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active attachment content not found', GrpcCode.NotFound, { attachmentContentId });
+    throwDocumentError(
+      DocumentErrCode.NOT_FOUND,
+      _t('Active attachment content not found', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.NotFound,
+      { attachmentContentId }
+    );
   }
   return record;
 }
@@ -149,7 +172,12 @@ async function mustLoadActiveStoredContentById(storedContentId: string): Promise
 
   const record = rows[0] as StoredContent | undefined;
   if (!record) {
-    throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active stored content not found', GrpcCode.NotFound, { storedContentId });
+    throwDocumentError(
+      DocumentErrCode.NOT_FOUND,
+      _t('Active stored content not found', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.NotFound,
+      { storedContentId }
+    );
   }
   return record;
 }
@@ -180,9 +208,14 @@ async function hardDeleteBindingById(bindingId: string, companyId: string): Prom
   const db = (globalThis as any)?.$choysum?.db;
   const execute = typeof db?.execute === 'function' ? db.execute.bind(db) : undefined;
   if (!execute) {
-    throwDocumentError(DocumentErrCode.SKELETON_NOT_IMPLEMENTED, 'database execute bridge is unavailable', GrpcCode.Unimplemented, {
-      stage: 'binding_cleanup',
-    });
+    throwDocumentError(
+      DocumentErrCode.SKELETON_NOT_IMPLEMENTED,
+      _t('database execute bridge is unavailable', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.Unimplemented,
+      {
+        stage: 'binding_cleanup',
+      }
+    );
   }
 
   await execute('delete from document_attachment_binding where id = ? and company_id = ?', JSON.stringify([bindingId, companyId]));
@@ -231,7 +264,12 @@ async function mustLoadBinding(ops: BindingModelOps, bindingId: string, companyI
 
   const record = rows[0];
   if (!record) {
-    throwDocumentError(DocumentErrCode.NOT_FOUND, 'Attachment binding not found', GrpcCode.NotFound, { attachmentBindingId: bindingId, companyId });
+    throwDocumentError(
+      DocumentErrCode.NOT_FOUND,
+      _t('Attachment binding not found', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.NotFound,
+      { attachmentBindingId: bindingId, companyId }
+    );
   }
 
   return record as AttachmentBinding;
@@ -250,7 +288,12 @@ async function mustLoadActiveBindingById(ops: BindingModelOps, bindingId: string
 
   const record = rows[0];
   if (!record) {
-    throwDocumentError(DocumentErrCode.NOT_FOUND, 'Active attachment binding not found', GrpcCode.NotFound, { attachmentBindingId: bindingId });
+    throwDocumentError(
+      DocumentErrCode.NOT_FOUND,
+      _t('Active attachment binding not found', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.NotFound,
+      { attachmentBindingId: bindingId }
+    );
   }
   return record as AttachmentBinding;
 }
@@ -305,16 +348,26 @@ async function tryReplayBindMutation(mutationId: string, companyId: string): Pro
   if (!row) return null;
 
   if (row.Status !== 'succeeded') {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'bind mutationId exists but previous attempt did not succeed', GrpcCode.FailedPrecondition, {
-      mutationId,
-      action: 'bind',
-      status: String(row.Status || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('bind mutationId exists but previous attempt did not succeed', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        mutationId,
+        action: 'bind',
+        status: String(row.Status || ''),
+      }
+    );
   }
 
   const snapshot = parseBindResp(row.ResponseJson);
   if (!snapshot) {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'bind replay snapshot is invalid', GrpcCode.FailedPrecondition, { mutationId, action: 'bind' });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('bind replay snapshot is invalid', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.FailedPrecondition,
+      { mutationId, action: 'bind' }
+    );
   }
   return snapshot;
 }
@@ -324,19 +377,29 @@ async function tryReplayUnbindMutation(mutationId: string, companyId: string): P
   if (!row) return null;
 
   if (row.Status !== 'succeeded') {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'unbind mutationId exists but previous attempt did not succeed', GrpcCode.FailedPrecondition, {
-      mutationId,
-      action: 'unbind',
-      status: String(row.Status || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('unbind mutationId exists but previous attempt did not succeed', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        mutationId,
+        action: 'unbind',
+        status: String(row.Status || ''),
+      }
+    );
   }
 
   const snapshot = parseUnbindResp(row.ResponseJson);
   if (!snapshot) {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'unbind replay snapshot is invalid', GrpcCode.FailedPrecondition, {
-      mutationId,
-      action: 'unbind',
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('unbind replay snapshot is invalid', { scope: 'service/models/_attachment_binding_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        mutationId,
+        action: 'unbind',
+      }
+    );
   }
   return snapshot;
 }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizeOptionalString, normalizeOptionalNonNegativeInt, normalizeChecksumSha256, normalizeContentType } from '@/core/service/utils/normalization';
+import { createTranslate } from '@/core/service/i18n';
 import { parseISODate } from '@/core/service/utils/datetime';
 import { GrpcCode } from '../error';
 import {
@@ -48,6 +49,8 @@ import {
   buildPrepareUploadResp,
   buildFinalizeResp,
 } from './_attachment_upload_codec';
+
+const { _t } = createTranslate('document');
 
 // ---------------------------------------------------------------------------
 // Model ops contract
@@ -109,7 +112,7 @@ async function mustLoadUploadSession(uploadId: string): Promise<AttachmentUpload
   return mustLoadOne<AttachmentUploadSession>(
     (condition, opts) => AttachmentUploadSessionModel.Search(condition, opts as any),
     ['Id', '=', uploadId],
-    'Upload session not found',
+    _t('Upload session not found', { scope: 'service/models/_attachment_upload_ops' }),
     { uploadId }
   );
 }
@@ -139,10 +142,15 @@ async function markUploadSessionExpired(uploadId: string, session: AttachmentUpl
 
 async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPayloadRef | undefined, uploadId: string, companyId: string): Promise<string> {
   if (!uploadedPayloadRef) {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session is missing uploaded payload reference', GrpcCode.FailedPrecondition, {
-      stage: 'finalize',
-      uploadId,
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('Upload session is missing uploaded payload reference', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        stage: 'finalize',
+        uploadId,
+      }
+    );
   }
 
   const storedContentId = requireText(uploadedPayloadRef.storedContentId, 'storedContentId');
@@ -150,21 +158,31 @@ async function resolveStoredContentIdForFinalize(uploadedPayloadRef: UploadedPay
   const stored = await StoredContentModel.mustLoadByID(storedContentId);
   const normalizedCompanyID = requireText((stored as any)?.CompanyId, 'storedContent.companyId');
   if (normalizedCompanyID !== companyId) {
-    throwDocumentError(DocumentErrCode.PERMISSION_DENIED, 'Stored content company does not match upload session company', GrpcCode.PermissionDenied, {
-      stage: 'finalize',
-      uploadId,
-      storedContentId,
-    });
+    throwDocumentError(
+      DocumentErrCode.PERMISSION_DENIED,
+      _t('Stored content company does not match upload session company', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.PermissionDenied,
+      {
+        stage: 'finalize',
+        uploadId,
+        storedContentId,
+      }
+    );
   }
 
   const storedStatus = normalizeOptionalString((stored as any)?.Status);
   if (storedStatus !== 'active') {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Stored content must be active before finalize', GrpcCode.FailedPrecondition, {
-      stage: 'finalize',
-      uploadId,
-      storedContentId,
-      status: String(storedStatus || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('Stored content must be active before finalize', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        stage: 'finalize',
+        uploadId,
+        storedContentId,
+        status: String(storedStatus || ''),
+      }
+    );
   }
 
   return storedContentId;
@@ -174,7 +192,7 @@ async function mustLoadAttachmentContent(ops: UploadModelOps, attachmentContentI
   return mustLoadOne<AttachmentContent>(
     (condition, opts) => ops.Search(condition, opts as any) as Promise<AttachmentContent[]>,
     ['Id', '=', attachmentContentId],
-    'Attachment content not found',
+    _t('Attachment content not found', { scope: 'service/models/_attachment_upload_ops' }),
     { attachmentContentId }
   );
 }
@@ -220,7 +238,9 @@ export async function finalizeUpload(ops: UploadModelOps, req: FinalizeUploadReq
   if (session.BusinessRequestId !== businessRequestId) {
     throwDocumentError(
       DocumentErrCode.IDEMPOTENCY_KEY_REUSED,
-      'FinalizeUpload businessRequestId does not match the existing upload session',
+      _t('FinalizeUpload businessRequestId does not match the existing upload session', {
+        scope: 'service/models/_attachment_upload_ops',
+      }),
       GrpcCode.FailedPrecondition,
       { uploadId, businessRequestId, expectedBusinessRequestId: String(session.BusinessRequestId || '') }
     );
@@ -258,24 +278,39 @@ export async function authorizeUploadPut(ops: UploadModelOps, req: AuthorizeUplo
 
   const maxUploadBytes = normalizeOptionalNonNegativeInt(session.MaxUploadBytes) ?? DEFAULT_MAX_UPLOAD_BYTES;
   if ((normalized.requestMeta.contentLength ?? 0) > maxUploadBytes) {
-    throwDocumentError(DocumentErrCode.UPLOAD_TOO_LARGE, 'upload body exceeds maxUploadBytes', GrpcCode.InvalidArgument, {
-      uploadId: normalized.uploadId,
-      maxUploadBytes: String(maxUploadBytes),
-    });
+    throwDocumentError(
+      DocumentErrCode.UPLOAD_TOO_LARGE,
+      _t('upload body exceeds maxUploadBytes', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.InvalidArgument,
+      {
+        uploadId: normalized.uploadId,
+        maxUploadBytes: String(maxUploadBytes),
+      }
+    );
   }
 
   const allowedMimeTypes = normalizeAllowedMimeTypes(session.AllowedMimeTypes);
   const contentType = normalized.requestMeta.contentType ?? normalizeContentType(session.ProposedContentType);
   if (!isMimeTypeAllowed(contentType, allowedMimeTypes)) {
-    throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, {
-      uploadId: normalized.uploadId,
-      contentType: String(contentType || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.MIME_TYPE_NOT_ALLOWED,
+      _t('content type is not allowed', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.InvalidArgument,
+      {
+        uploadId: normalized.uploadId,
+        contentType: String(contentType || ''),
+      }
+    );
   }
 
   const expectedChecksumSha256 = normalizeChecksumSha256(session.ChecksumSha256);
   if (expectedChecksumSha256 && normalized.requestMeta.checksumSha256 && normalized.requestMeta.checksumSha256 !== expectedChecksumSha256) {
-    throwDocumentError(DocumentErrCode.CHECKSUM_MISMATCH, 'checksum mismatch', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId });
+    throwDocumentError(
+      DocumentErrCode.CHECKSUM_MISMATCH,
+      _t('checksum mismatch', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.FailedPrecondition,
+      { uploadId: normalized.uploadId }
+    );
   }
 
   return {
@@ -312,32 +347,52 @@ export async function commitUploadPut(ops: UploadModelOps, req: CommitUploadPutR
   }
 
   if (session.Status !== 'prepared') {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session must be prepared before commit', GrpcCode.FailedPrecondition, {
-      uploadId: normalized.uploadId,
-      status: String(session.Status || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('Upload session must be prepared before commit', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        uploadId: normalized.uploadId,
+        status: String(session.Status || ''),
+      }
+    );
   }
 
   const maxUploadBytes = normalizeOptionalNonNegativeInt(session.MaxUploadBytes) ?? DEFAULT_MAX_UPLOAD_BYTES;
   if (normalized.payloadReceipt.sizeBytes > maxUploadBytes) {
-    throwDocumentError(DocumentErrCode.UPLOAD_TOO_LARGE, 'upload body exceeds maxUploadBytes', GrpcCode.InvalidArgument, {
-      uploadId: normalized.uploadId,
-      maxUploadBytes: String(maxUploadBytes),
-    });
+    throwDocumentError(
+      DocumentErrCode.UPLOAD_TOO_LARGE,
+      _t('upload body exceeds maxUploadBytes', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.InvalidArgument,
+      {
+        uploadId: normalized.uploadId,
+        maxUploadBytes: String(maxUploadBytes),
+      }
+    );
   }
 
   const allowedMimeTypes = normalizeAllowedMimeTypes(session.AllowedMimeTypes);
   const contentType = normalized.payloadReceipt.contentType ?? normalizeContentType(session.ProposedContentType);
   if (!isMimeTypeAllowed(contentType, allowedMimeTypes)) {
-    throwDocumentError(DocumentErrCode.MIME_TYPE_NOT_ALLOWED, 'content type is not allowed', GrpcCode.InvalidArgument, {
-      uploadId: normalized.uploadId,
-      contentType: String(contentType || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.MIME_TYPE_NOT_ALLOWED,
+      _t('content type is not allowed', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.InvalidArgument,
+      {
+        uploadId: normalized.uploadId,
+        contentType: String(contentType || ''),
+      }
+    );
   }
 
   const expectedChecksumSha256 = normalizeChecksumSha256(session.ChecksumSha256);
   if (expectedChecksumSha256 && normalized.payloadReceipt.checksumSha256 !== expectedChecksumSha256) {
-    throwDocumentError(DocumentErrCode.CHECKSUM_MISMATCH, 'checksum mismatch', GrpcCode.FailedPrecondition, { uploadId: normalized.uploadId });
+    throwDocumentError(
+      DocumentErrCode.CHECKSUM_MISMATCH,
+      _t('checksum mismatch', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.FailedPrecondition,
+      { uploadId: normalized.uploadId }
+    );
   }
 
   const AttachmentUploadSessionModel = getAttachmentUploadSessionModel();
@@ -427,10 +482,15 @@ export async function finalizeUploadInternal(ops: UploadModelOps, uploadId: stri
   }
 
   if (session.Status !== 'uploaded') {
-    throwDocumentError(DocumentErrCode.FAILED_PRECONDITION, 'Upload session must be uploaded before finalize', GrpcCode.FailedPrecondition, {
-      uploadId: normalizedUploadId,
-      status: String(session.Status || ''),
-    });
+    throwDocumentError(
+      DocumentErrCode.FAILED_PRECONDITION,
+      _t('Upload session must be uploaded before finalize', { scope: 'service/models/_attachment_upload_ops' }),
+      GrpcCode.FailedPrecondition,
+      {
+        uploadId: normalizedUploadId,
+        status: String(session.Status || ''),
+      }
+    );
   }
 
   const sizeBytes = normalizeOptionalNonNegativeInt(session.UploadedSizeBytes) ?? 0;

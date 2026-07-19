@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { createTranslate } from '@/core/service/i18n';
 import { AttachmentBackend } from '../contracts';
 import { mustLoadOne } from './_query_loaders';
+
+const { _t } = createTranslate('document');
 
 /**
  * Lifecycle states for stored payload content.
@@ -63,8 +66,13 @@ export default class StoredContent extends BaseModel {
    * Loads a stored payload row or raises a document-domain not-found error.
    */
   public static async mustLoadByID(storedContentId: string): Promise<StoredContent> {
-    return mustLoadOne<StoredContent>((condition, opts) => this.Search(condition, opts as any), ['Id', '=', storedContentId], 'Stored content not found', {
-      storedContentId,
-    });
+    return mustLoadOne<StoredContent>(
+      (condition, opts) => this.Search(condition, opts as any),
+      ['Id', '=', storedContentId],
+      _t('Stored content not found', { scope: 'service/models/stored_content' }),
+      {
+        storedContentId,
+      }
+    );
   }
 }
