@@ -68,6 +68,28 @@ func TestTranslationTermTableName(t *testing.T) {
 	}
 }
 
+func TestValidApplicationIdentifier(t *testing.T) {
+	if !ValidApplicationIdentifier("auth") || !ValidApplicationIdentifier("partner_bank") {
+		t.Fatal("expected valid identifiers")
+	}
+	for _, bad := range []string{"", "auth-web", "auth;drop", `auth"`, "auth table"} {
+		if ValidApplicationIdentifier(bad) {
+			t.Fatalf("ValidApplicationIdentifier(%q) = true, want false", bad)
+		}
+	}
+}
+
+func TestEnsureTranslationTermTableRejectsUnsafeApplication(t *testing.T) {
+	rs := newTestScope(t)
+	err := EnsureTranslationTermTable(rs, `auth"; drop table users; --`)
+	if err == nil || !strings.Contains(err.Error(), "invalid application name") {
+		t.Fatalf("expected invalid application name error, got %v", err)
+	}
+	if rs.Session().Migrator().HasTable(`auth"; drop table users; --_translation_term`) {
+		t.Fatal("did not expect unsafe table to be created")
+	}
+}
+
 func TestEnsureTranslationTermTableSkipsCoreAndEmpty(t *testing.T) {
 	rs := newTestScope(t)
 

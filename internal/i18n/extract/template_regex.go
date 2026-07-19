@@ -112,6 +112,10 @@ func looksLikeNonLiteral(expr string) bool {
 	if expr == "" {
 		return false
 	}
+	// A quoted literal needs at least opening + closing quote characters.
+	if len(expr) < 2 {
+		return true
+	}
 	if (expr[0] == '\'' && expr[len(expr)-1] == '\'') ||
 		(expr[0] == '"' && expr[len(expr)-1] == '"') ||
 		(expr[0] == '`' && expr[len(expr)-1] == '`') {

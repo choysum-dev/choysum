@@ -52,6 +52,23 @@ type TranslationTerm struct {
 	Comments    string `gorm:"column:comments;type:text"`
 }
 
+// ValidApplicationIdentifier reports whether application is safe to use in
+// physical table/index names interpolated into DDL (alnum + underscore).
+func ValidApplicationIdentifier(application string) bool {
+	application = strings.TrimSpace(application)
+	if application == "" {
+		return false
+	}
+	for _, r := range application {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 // TranslationTermTableName returns {application}_translation_term.
 func TranslationTermTableName(application string) string {
 	return strings.TrimSpace(application) + "_translation_term"
@@ -63,6 +80,9 @@ func EnsureTranslationTermTable(runtimeScope scope.Scope, application string) er
 	application = strings.TrimSpace(application)
 	if application == "" || application == coreApplication {
 		return nil
+	}
+	if !ValidApplicationIdentifier(application) {
+		return fmt.Errorf("invalid application name: %q", application)
 	}
 	if runtimeScope == nil || runtimeScope.Session() == nil {
 		return nil
