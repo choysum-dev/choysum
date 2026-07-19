@@ -1496,3 +1496,7 @@ msgctxt "web/views/UserListView"
 msgid "Username"
 msgstr "用户名"
 
+#: web/views/UserSearchView.vue:4
+msgctxt "web/views/UserSearchView"
+msgid "Active"
+msgstr "启用"
