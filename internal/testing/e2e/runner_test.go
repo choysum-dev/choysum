@@ -669,20 +669,11 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	if err != nil {
 		t.Fatalf("collect required modules from specs: %v", err)
 	}
-	requiredSet := map[string]struct{}{}
-	for _, moduleName := range requiredFromSpecs {
-		requiredSet[moduleName] = struct{}{}
+	if !slices.Contains(requiredFromSpecs, "@playwright/test") {
+		t.Fatalf("expected specs to require @playwright/test, got %#v", requiredFromSpecs)
 	}
-	for _, moduleName := range runtimeGeneratedModules {
-		requiredSet[moduleName] = struct{}{}
-	}
-	requiredCombined := make([]string, 0, len(requiredSet))
-	for moduleName := range requiredSet {
-		requiredCombined = append(requiredCombined, moduleName)
-	}
-	runtimeMissing := missingRequiredNodeModules(requiredCombined, runtimeE2EModuleRoots(runtimePath)...)
-	if !slices.Contains(runtimeMissing, "@bufbuild/protobuf") {
-		t.Fatalf("expected runtime roots missing @bufbuild/protobuf before linking, got %#v", runtimeMissing)
+	if !slices.Contains(requiredFromSpecs, "@connectrpc/connect") {
+		t.Fatalf("expected specs to require @connectrpc/connect, got %#v", requiredFromSpecs)
 	}
 
 	err = runPlaywright(context.Background(), RunOptions{WorkDir: t.TempDir(), NpmPath: t.TempDir()}, specsDir, "http://127.0.0.1:9999", runtimePath)
@@ -694,7 +685,7 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	npmPath := filepath.Join(t.TempDir(), "node_modules")
 	binPath := filepath.Join(npmPath, ".bin", "playwright")
 	envPath := filepath.Join(t.TempDir(), "playwright-env.txt")
-	linkStatePath := filepath.Join(t.TempDir(), "playwright-link-state.txt")
+	hookStatePath := filepath.Join(t.TempDir(), "playwright-hook-state.txt")
 	if err := os.MkdirAll(filepath.Join(npmPath, "@playwright", "test"), 0o755); err != nil {
 		t.Fatalf("create global playwright package dir: %v", err)
 	}
@@ -704,7 +695,23 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(npmPath, "@bufbuild", "protobuf"), 0o755); err != nil {
 		t.Fatalf("create global protobuf package dir: %v", err)
 	}
-	writeExecFile(t, binPath, "#!/bin/sh\nrun_dir=${CHOYSUM_E2E_RUNTIME_JSON%/*}\npw=0\nconnect=0\nrepo_pb=0\nruntime_pb=0\nif [ -L \"$PWD/modules/node_modules/@playwright/test\" ]; then pw=1; fi\nif [ -L \"$PWD/modules/node_modules/@connectrpc/connect\" ]; then connect=1; fi\nif [ -L \"$PWD/modules/node_modules/@bufbuild/protobuf\" ]; then repo_pb=1; fi\nif [ -L \"$run_dir/.choysum/generated/node_modules/@bufbuild/protobuf\" ]; then runtime_pb=1; fi\nif [ \"$pw\" = \"1\" ] && [ \"$connect\" = \"1\" ] && [ \"$repo_pb\" = \"1\" ] && [ \"$runtime_pb\" = \"1\" ]; then printf '%s' \"linked pw=$pw connect=$connect repo_pb=$repo_pb runtime_pb=$runtime_pb run_dir=$run_dir runtime=$CHOYSUM_E2E_RUNTIME_JSON\" > \""+linkStatePath+"\"; else printf '%s' \"missing pw=$pw connect=$connect repo_pb=$repo_pb runtime_pb=$runtime_pb run_dir=$run_dir runtime=$CHOYSUM_E2E_RUNTIME_JSON\" > \""+linkStatePath+"\"; fi\nprintf '%s' \"$PW_DISABLE_TS_ESM\" > \""+envPath+"\"\nexit 0\n")
+	writeExecFile(t, binPath, "#!/bin/sh\n"+
+		"run_dir=${CHOYSUM_E2E_RUNTIME_JSON%/*}\n"+
+		"hook_ok=0\n"+
+		"global_ok=0\n"+
+		"repo_mount=0\n"+
+		"runtime_mount=0\n"+
+		"case \"$NODE_OPTIONS\" in *--import*choysum-e2e-global-resolve.mjs*) hook_ok=1 ;; esac\n"+
+		"if [ \"$CHOYSUM_E2E_GLOBAL_NODE_MODULES\" = \""+npmPath+"\" ]; then global_ok=1; fi\n"+
+		"if [ -e \"$PWD/modules/node_modules\" ]; then repo_mount=1; fi\n"+
+		"if [ -e \"$run_dir/.choysum/generated/node_modules\" ]; then runtime_mount=1; fi\n"+
+		"if [ \"$hook_ok\" = \"1\" ] && [ \"$global_ok\" = \"1\" ] && [ \"$repo_mount\" = \"0\" ] && [ \"$runtime_mount\" = \"0\" ]; then\n"+
+		"  printf '%s' \"ok hook=$hook_ok global=$global_ok repo_mount=$repo_mount runtime_mount=$runtime_mount run_dir=$run_dir\" > \""+hookStatePath+"\"\n"+
+		"else\n"+
+		"  printf '%s' \"bad hook=$hook_ok global=$global_ok repo_mount=$repo_mount runtime_mount=$runtime_mount node_options=$NODE_OPTIONS global_env=$CHOYSUM_E2E_GLOBAL_NODE_MODULES\" > \""+hookStatePath+"\"\n"+
+		"fi\n"+
+		"printf '%s' \"$PW_DISABLE_TS_ESM\" > \""+envPath+"\"\n"+
+		"exit 0\n")
 
 	err = runPlaywright(context.Background(), RunOptions{WorkDir: repoRoot, NpmPath: npmPath}, specsDir, "http://127.0.0.1:9999", runtimePath)
 	if err != nil {
@@ -717,24 +724,22 @@ func TestRunPlaywrightBranches(t *testing.T) {
 	if string(raw) != "1" {
 		t.Fatalf("expected PW_DISABLE_TS_ESM=1, got %q", string(raw))
 	}
-	rawLinkState, err := os.ReadFile(linkStatePath)
+	rawHookState, err := os.ReadFile(hookStatePath)
 	if err != nil {
-		t.Fatalf("read playwright link state file: %v", err)
+		t.Fatalf("read playwright hook state file: %v", err)
 	}
-	if !strings.HasPrefix(string(rawLinkState), "linked") {
-		t.Fatalf("expected temporary playwright/connect/protobuf package links, got %q", string(rawLinkState))
+	if !strings.HasPrefix(string(rawHookState), "ok") {
+		t.Fatalf("expected global resolve hook env without local mounts, got %q", string(rawHookState))
 	}
-	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@playwright", "test")); !os.IsNotExist(err) {
-		t.Fatalf("expected temporary playwright package link cleaned, got err=%v", err)
+	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules")); !os.IsNotExist(err) {
+		t.Fatalf("expected no modules/node_modules mount, lstat err=%v", err)
 	}
-	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@connectrpc", "connect")); !os.IsNotExist(err) {
-		t.Fatalf("expected temporary connect package link cleaned, got err=%v", err)
+	if _, err := os.Lstat(filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "node_modules")); !os.IsNotExist(err) {
+		t.Fatalf("expected no generated/node_modules mount, lstat err=%v", err)
 	}
-	if _, err := os.Lstat(filepath.Join(repoRoot, "modules", "node_modules", "@bufbuild", "protobuf")); !os.IsNotExist(err) {
-		t.Fatalf("expected temporary protobuf package link cleaned, got err=%v", err)
-	}
-	if _, err := os.Lstat(filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "node_modules", "@bufbuild", "protobuf")); !os.IsNotExist(err) {
-		t.Fatalf("expected temporary runtime protobuf package link cleaned, got err=%v", err)
+	hookFile := filepath.Join(filepath.Dir(runtimePath), "choysum-e2e-global-resolve.mjs")
+	if _, err := os.Stat(hookFile); err != nil {
+		t.Fatalf("expected resolve hook written to runDir, stat err=%v", err)
 	}
 }
 
@@ -778,41 +783,48 @@ func TestResolvePlaywrightCommandSearchesAcceptedPreflightRoots(t *testing.T) {
 	})
 }
 
-func TestEnsureE2EGlobalModuleLinksAtCleansUpOnSymlinkFailure(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("symlink permission semantics differ on windows")
+func TestMergeNodeOptionsImport(t *testing.T) {
+	hookPath := filepath.Join(t.TempDir(), "choysum-e2e-global-resolve.mjs")
+	got := mergeNodeOptionsImport("--trace-warnings", hookPath)
+	if !strings.HasPrefix(got, "NODE_OPTIONS=") {
+		t.Fatalf("expected NODE_OPTIONS prefix, got %q", got)
+	}
+	if !strings.Contains(got, "--trace-warnings") {
+		t.Fatalf("expected existing NODE_OPTIONS preserved, got %q", got)
+	}
+	if !strings.Contains(got, "--import") || !strings.Contains(got, "choysum-e2e-global-resolve.mjs") {
+		t.Fatalf("expected --import hook, got %q", got)
 	}
 
-	localRoot := filepath.Join(t.TempDir(), "local", "node_modules")
-	globalRoot := filepath.Join(t.TempDir(), "global", "node_modules")
-	if err := os.MkdirAll(filepath.Join(globalRoot, "left-pad"), 0o755); err != nil {
-		t.Fatalf("mkdir global left-pad: %v", err)
+	replaced := mergeNodeOptionsImport("--import /old/hook.mjs --trace-warnings", hookPath)
+	if strings.Contains(replaced, "/old/hook.mjs") {
+		t.Fatalf("expected previous --import replaced, got %q", replaced)
 	}
-	if err := os.MkdirAll(filepath.Join(globalRoot, "@scoped", "pkg"), 0o755); err != nil {
-		t.Fatalf("mkdir global @scoped/pkg: %v", err)
+	if !strings.Contains(replaced, "--trace-warnings") {
+		t.Fatalf("expected other flags preserved, got %q", replaced)
 	}
-	if err := os.MkdirAll(localRoot, 0o755); err != nil {
-		t.Fatalf("mkdir local node_modules root: %v", err)
-	}
+}
 
-	blockedScopeDir := filepath.Join(localRoot, "@scoped")
-	if err := os.MkdirAll(blockedScopeDir, 0o755); err != nil {
-		t.Fatalf("mkdir local @scoped dir: %v", err)
+func TestWriteE2EGlobalResolveHook(t *testing.T) {
+	runDir := t.TempDir()
+	hookPath, err := writeE2EGlobalResolveHook(runDir)
+	if err != nil {
+		t.Fatalf("writeE2EGlobalResolveHook error: %v", err)
 	}
-	if err := os.Chmod(blockedScopeDir, 0o555); err != nil {
-		t.Fatalf("chmod local @scoped dir readonly: %v", err)
+	want := filepath.Join(runDir, "choysum-e2e-global-resolve.mjs")
+	if hookPath != want {
+		t.Fatalf("hook path = %q, want %q", hookPath, want)
 	}
-	defer func() {
-		_ = os.Chmod(blockedScopeDir, 0o755)
-	}()
-
-	cleanup, err := ensureE2EGlobalModuleLinksAt(localRoot, globalRoot, []string{"left-pad", "@scoped/pkg"})
-	if err == nil {
-		cleanup()
-		t.Fatal("expected symlink failure for readonly scoped directory")
+	raw, err := os.ReadFile(hookPath)
+	if err != nil {
+		t.Fatalf("read hook file: %v", err)
 	}
-	if _, statErr := os.Lstat(filepath.Join(localRoot, "left-pad")); !os.IsNotExist(statErr) {
-		t.Fatalf("expected rollback to remove previously created left-pad link, lstat err=%v", statErr)
+	content := string(raw)
+	if !strings.Contains(content, "registerHooks") {
+		t.Fatalf("expected registerHooks in hook source, got %q", content)
+	}
+	if !strings.Contains(content, "CHOYSUM_E2E_GLOBAL_NODE_MODULES") {
+		t.Fatalf("expected CHOYSUM_E2E_GLOBAL_NODE_MODULES in hook source, got %q", content)
 	}
 }
 
