@@ -169,7 +169,12 @@ func (m *moduleUpgrader) upgrade() error {
 		committed := installer.forCommitScope(txScope)
 		upgrader := *m
 		upgrader.runtimeScope = txScope
-		return upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
+		result, commitErr := upgrader.commitUpgrade(committed, fromVersion, buildResult, persistLater)
+		if commitErr != nil {
+			return commitErr
+		}
+		buildResult = result
+		return nil
 	})
 	LogModuleCommitTxHold(m.runtimeScope.Logger(), "upgrade", "module_commit", txHoldStarted, err)
 	if err != nil {
@@ -179,9 +184,9 @@ func (m *moduleUpgrader) upgrade() error {
 	return m.finalizeUpgrade(installer.module, fromVersion, buildResult)
 }
 
-func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) error {
+func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion string, buildResult *module.BuildResult, persistLater bool) (*module.BuildResult, error) {
 	if installer == nil || installer.module == nil {
-		return xfmt.Errorf("upgrade commit installer is nil")
+		return nil, xfmt.Errorf("upgrade commit installer is nil")
 	}
 	target := installer.module
 
@@ -189,16 +194,16 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 		if persistLater {
 			if split, ok := installer.builder.(module.SplitBuilder); ok {
 				if err := split.Persist(buildResult); err != nil {
-					return xfmt.Errorf("error persisting module %s: %w", target.Name, err)
+					return nil, xfmt.Errorf("error persisting module %s: %w", target.Name, err)
 				}
 			} else {
-				return xfmt.Errorf("builder does not support Persist for module %s", target.Name)
+				return nil, xfmt.Errorf("builder does not support Persist for module %s", target.Name)
 			}
 		} else {
 			buildStarted := time.Now()
 			result, err := installer.builder.Build()
 			if err != nil {
-				return xfmt.Errorf("error building module %s: %w", target.Name, err)
+				return nil, xfmt.Errorf("error building module %s: %w", target.Name, err)
 			}
 			buildResult = result
 			m.logUpgradeStep(target.Name, moduleStepBuild, buildStarted, "from_version", fromVersion, "to_version", target.Version)
@@ -208,7 +213,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	migrator := schema.NewMigrator(m.runtimeScope, target)
 	schemaMigrationStarted := time.Now()
 	if err := migrator.Migrate(); err != nil {
-		return xfmt.Errorf("error migrating module %s: %w", target.Name, err)
+		return nil, xfmt.Errorf("error migrating module %s: %w", target.Name, err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepSchema, schemaMigrationStarted, "from_version", fromVersion, "to_version", target.Version)
 
@@ -219,7 +224,7 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	}
 	dataApplyStarted := time.Now()
 	if err := dataLoader.ApplyModule(applyCtx, target, dataloader.ApplyOptions{WithDemo: m.ctx != nil && m.ctx.withDemo}); err != nil {
-		return xfmt.Errorf("error applying data for module %s: %w", target.Name, err)
+		return nil, xfmt.Errorf("error applying data for module %s: %w", target.Name, err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepData, dataApplyStarted, "from_version", fromVersion, "to_version", target.Version)
 
@@ -227,18 +232,18 @@ func (m *moduleUpgrader) commitUpgrade(installer *moduleInstaller, fromVersion s
 	target.Status = meta.Installed
 	if len(target.Dependencies) > 0 {
 		if err := m.runtimeScope.Session().Model(target).Association("Dependencies").Replace(target.Dependencies); err != nil {
-			return xfmt.Errorf("error saving module dependencies: %w", err)
+			return nil, xfmt.Errorf("error saving module dependencies: %w", err)
 		}
 	}
 	if err := m.runtimeScope.Session().Save(target).Error; err != nil {
-		return xfmt.Errorf("error saving module: %w", err)
+		return nil, xfmt.Errorf("error saving module: %w", err)
 	}
 	m.logUpgradeStep(target.Name, moduleStepSave, persistModuleStarted, "from_version", fromVersion, "to_version", target.Version)
 
 	if err := importModuleTerminology(m.runtimeScope, target, runtimeOptionsFromScope(m.runtimeScope).modulesPath); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return buildResult, nil
 }
 
 func (m *moduleUpgrader) finalizeUpgrade(target *meta.IrModule, fromVersion string, buildResult *module.BuildResult) error {

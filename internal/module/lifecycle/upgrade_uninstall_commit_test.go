@@ -78,7 +78,7 @@ func TestModuleUpgraderCommitRollsBackOnFailure(t *testing.T) {
 		}
 		committed := *upgrader
 		committed.runtimeScope = txScope
-		if err := committed.commitUpgrade(installer, "1.0.0", nil, false); err != nil {
+		if _, err := committed.commitUpgrade(installer, "1.0.0", nil, false); err != nil {
 			return err
 		}
 		return wantErr
