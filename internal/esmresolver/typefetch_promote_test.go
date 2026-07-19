@@ -45,6 +45,33 @@ func TestPromoteAmbientModuleForPathsTarget_StripsAsyncOnDeclare(t *testing.T) {
 	}
 }
 
+func TestPromoteAmbientModuleForPathsTarget_SkipsNestedDecls(t *testing.T) {
+	content := `declare module 'https://esm.sh/example@1.0.0/index.d.ts' {
+  namespace Helpers {
+    function inner(): void;
+    const value: number;
+  }
+  class Box {
+    method(): void;
+  }
+  export { Helpers, Box };
+}
+`
+	got := promoteAmbientModuleForPathsTarget(content)
+	if strings.Contains(got, "declare function inner") {
+		t.Fatalf("nested function must not get declare, got %q", got)
+	}
+	if strings.Contains(got, "declare const value") {
+		t.Fatalf("nested const must not get declare, got %q", got)
+	}
+	if !strings.Contains(got, "declare namespace Helpers") {
+		t.Fatalf("expected top-level namespace to be declared, got %q", got)
+	}
+	if !strings.Contains(got, "declare class Box") {
+		t.Fatalf("expected top-level class to be declared, got %q", got)
+	}
+}
+
 func TestPromoteAmbientModuleForPathsTarget_SkipsAugmentationOnly(t *testing.T) {
 	content := `declare module 'https://esm.sh/pinia@3.0.4/dist/pinia.d.ts' {
   interface DefineStoreOptionsBase<S, Store> {

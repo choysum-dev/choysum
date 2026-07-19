@@ -195,9 +195,25 @@ func isOnlyComments(s string) bool {
 
 func ensureDeclareOnTopLevelDecls(body string) string {
 	lines := strings.Split(body, "\n")
+	minIndent := -1
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+			continue
+		}
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if minIndent == -1 || indent < minIndent {
+			minIndent = indent
+		}
+	}
+
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+			continue
+		}
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if minIndent >= 0 && indent != minIndent {
 			continue
 		}
 		if strings.HasPrefix(trimmed, "declare ") || strings.HasPrefix(trimmed, "export ") {
@@ -207,10 +223,10 @@ func ensureDeclareOnTopLevelDecls(body string) string {
 		if loc == nil {
 			continue
 		}
-		indent := line[loc[2]:loc[3]]
+		indentStr := line[loc[2]:loc[3]]
 		keyword := line[loc[4]:loc[5]]
 		rest := line[loc[5]:]
-		lines[i] = indent + "declare " + keyword + rest
+		lines[i] = indentStr + "declare " + keyword + rest
 	}
 	return strings.Join(lines, "\n")
 }
