@@ -548,7 +548,11 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	c.store.markStageDetail(operationID, "resolving core module installation plan...")
 	spinnerTicker.SetMessage("document: preparing metadata tables")
 
-	executor, err := jsexecutor.NewCompilerExecutor(c.runtimeScope.WithContext(installCtx))
+	installScope := c.runtimeScope.WithContext(installCtx)
+	if installScope == nil {
+		installScope = c.runtimeScope
+	}
+	executor, err := jsexecutor.NewCompilerExecutor(installScope)
 	if err != nil {
 		return c.classifyModuleInstallError(progress, installTimeout, err)
 	}
@@ -557,7 +561,7 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	}
 	defer executor.Stop()
 
-	installErr := lifecycle.InstallModule(installCtx, c.runtimeScope.WithContext(installCtx), executor, lifecycle.InstallModuleRequest{
+	installErr := lifecycle.InstallModule(installCtx, installScope, executor, lifecycle.InstallModuleRequest{
 		Input:    "document",
 		WithDemo: false,
 	})

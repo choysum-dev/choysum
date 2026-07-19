@@ -107,25 +107,26 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				}
 
 				installScope := env.WithContext(ctx)
-				compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
-				if startErr != nil {
-					err = xfmt.Errorf("Error creating compiler executor: %w", startErr)
-				} else if startErr = compilerExecutor.Start(); startErr != nil {
-					err = xfmt.Errorf("Error starting compiler executor: %w", startErr)
-				} else {
-					func() {
-						defer compilerExecutor.Stop()
-						installScope.Logger().Debug("module install started", "input", rootInput)
-						if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
-							Input:    rootInput,
-							WithDemo: withDemo,
-						}); installErr != nil {
-							err = xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
-							return
-						}
-						installScope.Logger().Debug("module installed", "input", rootInput)
-					}()
-				}
+				err = func() error {
+					compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
+					if startErr != nil {
+						return xfmt.Errorf("Error creating compiler executor: %w", startErr)
+					}
+					if startErr = compilerExecutor.Start(); startErr != nil {
+						return xfmt.Errorf("Error starting compiler executor: %w", startErr)
+					}
+					defer compilerExecutor.Stop()
+
+					installScope.Logger().Debug("module install started", "input", rootInput)
+					if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
+						Input:    rootInput,
+						WithDemo: withDemo,
+					}); installErr != nil {
+						return xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
+					}
+					installScope.Logger().Debug("module installed", "input", rootInput)
+					return nil
+				}()
 				if err != nil {
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						err = rewriteLocalInstallLookupError(moduleName, err)
