@@ -65,8 +65,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 			ctx = logutil.WithStderrProgressLine(ctx)
 
-			coordinator := internalorigin.NewCoordinator(env)
-
 			// Create a transaction-bound module manager for each module install.
 			// Run each module install in its own transaction to avoid keeping a
 			// long-lived transaction open across multiple modules (which amplifies SQLite
@@ -100,23 +98,28 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					parsed.Version = compatibleVersion
 				}
 
-				moduleName := strings.TrimSpace(parsed.LocalName)
+				rootInput := strings.TrimSpace(parsed.LocalName)
 				if parsed.Kind == internalorigin.InputKindRegistry {
-					resolved, fetchErr := coordinator.Fetch(ctx, parsed.CanonicalRef())
-					if fetchErr != nil {
-						env.Logger().Error("module source resolution failed", "input", input, "error", fetchErr)
-						os.Exit(1)
-					}
-					if resolved == nil || strings.TrimSpace(resolved.Name) == "" {
-						env.Logger().Error("module source invalid", "input", input, "reason", "resolved module is empty")
-						os.Exit(1)
-					}
-					moduleName = strings.TrimSpace(resolved.Name)
+					rootInput = parsed.CanonicalRef()
 				}
+				prefetched, prefetchErr := lifecycle.PrefetchInstallModules(ctx, env, rootInput)
+				if prefetchErr != nil {
+					moduleName := strings.TrimSpace(parsed.LocalName)
+					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
+						prefetchErr = rewriteLocalInstallLookupError(moduleName, prefetchErr)
+					}
+					attrs := []any{"error", prefetchErr}
+					attrs = append(attrs, clioutput.ModuleCommandFailureAttrs("install")...)
+					attrs = append(attrs, clioutput.ModuleInstallFailureAttrs(input, moduleName)...)
+					env.Logger().Error("module install failed", attrs...)
+					os.Exit(1)
+				}
+				moduleName := prefetched.RootName
+				installCtx := lifecycle.WithPrefetchedInstallModules(ctx, prefetched.Modules)
 
-				txRoot := env.WithContext(ctx)
+				txRoot := env.WithContext(installCtx)
 				txHoldStarted := time.Now()
-				err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+				err = txRoot.Transactor().Required(installCtx, func(txScope scope.Scope, tx scope.Transaction) error {
 					compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
 					if err != nil {
 						return xfmt.Errorf("Error creating compiler executor: %w", err)
@@ -125,12 +128,6 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 						return xfmt.Errorf("Error starting compiler executor: %w", err)
 					}
 					defer compilerExecutor.Stop()
-
-					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
-						if _, peekErr := coordinator.Peek(ctx, moduleName); peekErr != nil {
-							return peekErr
-						}
-					}
 
 					txScope.Logger().Debug("module install started", "module", moduleName)
 					moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)

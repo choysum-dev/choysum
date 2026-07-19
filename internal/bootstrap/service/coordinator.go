@@ -544,6 +544,12 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	c.store.markStageDetail(operationID, "resolving core module installation plan...")
 	spinnerTicker.SetMessage("document: preparing metadata tables")
 
+	prefetched, prefetchErr := lifecycle.PrefetchInstallModules(installCtx, c.runtimeScope, "document")
+	if prefetchErr != nil {
+		return c.classifyModuleInstallError(progress, installTimeout, prefetchErr)
+	}
+	installCtx = lifecycle.WithPrefetchedInstallModules(installCtx, prefetched.Modules)
+
 	installErr := c.withInstallTransaction(installCtx, func(txScope scope.Scope, txCtx context.Context) error {
 		executor, err := jsexecutor.NewCompilerExecutor(txScope)
 		if err != nil {
@@ -558,32 +564,35 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 		return moduleLifecycle.Install(txCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false})
 	})
 	if installErr != nil {
-		if progress != nil {
-			progress.Done("✗", "core module installation failed")
-		}
-		// Classify the error to produce an actionable message.
-		if errors.Is(installErr, context.DeadlineExceeded) {
-			return newBootstrapError(
-				bootstrapErrCodeModuleInstallTimeout,
-				"module installation timed out after "+installTimeout.String()+". "+
-					"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
-				installErr,
-			)
-		}
-		if isNetworkError(installErr) {
-			return newBootstrapError(
-				bootstrapErrCodeRuntimePrepare,
-				"unable to download required modules. "+
-					"Check your network connection or place the required module sources in ModulesPath.",
-				installErr,
-			)
-		}
-		return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", installErr)
+		return c.classifyModuleInstallError(progress, installTimeout, installErr)
 	}
 
 	c.store.markStageDetail(operationID, "core module installation completed")
 
 	return nil
+}
+
+func (c *coordinator) classifyModuleInstallError(progress *logger.ProgressLine, installTimeout time.Duration, installErr error) error {
+	if progress != nil {
+		progress.Done("✗", "core module installation failed")
+	}
+	if errors.Is(installErr, context.DeadlineExceeded) {
+		return newBootstrapError(
+			bootstrapErrCodeModuleInstallTimeout,
+			"module installation timed out after "+installTimeout.String()+". "+
+				"Check your network connection or place the required modules (document and its dependencies) in ModulesPath.",
+			installErr,
+		)
+	}
+	if isNetworkError(installErr) {
+		return newBootstrapError(
+			bootstrapErrCodeRuntimePrepare,
+			"unable to download required modules. "+
+				"Check your network connection or place the required module sources in ModulesPath.",
+			installErr,
+		)
+	}
+	return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to install required system components", installErr)
 }
 
 func (c *coordinator) rejectAlreadyInstalledAuthModule(ctx context.Context) error {

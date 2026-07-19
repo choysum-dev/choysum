@@ -358,19 +358,19 @@ func (m *ModuleManager) resolveInstallModuleFromOrigin(ctx context.Context, name
 		return nil, xfmt.Errorf("module name is empty")
 	}
 
-	coordinator := m.newOriginCoordinator()
-	module, err := coordinator.ResolveInstallModule(ctx, name)
-	if err != nil {
-		return nil, xfmt.Errorf("error resolving module %s from origin: %w", name, err)
-	}
-
-	if meta.IsCoreModule(module.Name) {
-		if err := m.migrateBaseModule(); err != nil {
-			return nil, err
+	if cache := PrefetchedInstallModulesFromContext(ctx); cache != nil {
+		if mod := lookupPrefetchedModule(cache, name); mod != nil {
+			if meta.IsCoreModule(mod.Name) {
+				if err := m.migrateBaseModule(); err != nil {
+					return nil, err
+				}
+			}
+			return mod, nil
 		}
+		return nil, xfmt.Errorf("module %s was not prefetched for install", name)
 	}
 
-	return module, nil
+	return m.fetchInstallModuleFromOrigin(ctx, name)
 }
 
 func (m *ModuleManager) Peek(ctx context.Context, name string) (*meta.IrModule, error) {
