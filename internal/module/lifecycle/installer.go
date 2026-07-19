@@ -107,9 +107,6 @@ func (m *moduleInstaller) assertDependenciesInstalled() error {
 
 func (m *moduleInstaller) install() error {
 	prepareStarted := time.Now()
-	if err := m.restoreModuleIfSoftDeleted(); err != nil {
-		return err
-	}
 
 	if m.checkModuleInstalled() {
 		m.runtimeScope.Logger().Debug("module operation skipped", "module", m.module.Name, "reason", "already_installed")
@@ -122,14 +119,77 @@ func (m *moduleInstaller) install() error {
 	logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepPrepare, prepareStarted)
 
 	var buildResult *module.BuildResult
+	persistLater := false
 	if m.builder != nil {
-		buildStarted := time.Now()
-		result, err := m.builder.Build()
-		if err != nil {
-			return xfmt.Errorf("error building module: %w", err)
+		if split, ok := m.builder.(module.SplitBuilder); ok {
+			buildStarted := time.Now()
+			result, err := split.BuildWithoutPersist()
+			if err != nil {
+				return xfmt.Errorf("error building module: %w", err)
+			}
+			buildResult = result
+			persistLater = true
+			logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepBuild, buildStarted)
 		}
-		buildResult = result
-		logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepBuild, buildStarted)
+	}
+
+	txRoot := m.runtimeScope
+	if txRoot == nil {
+		return xfmt.Errorf("scope is nil")
+	}
+	ctx := txRoot.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	txHoldStarted := time.Now()
+	err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+		committed := m.forCommitScope(txScope)
+		return committed.commitInstall(buildResult, persistLater)
+	})
+	LogInstallOuterTxHold(m.runtimeScope.Logger(), "module_commit", txHoldStarted, err)
+	return err
+}
+
+func (m *moduleInstaller) forCommitScope(txScope scope.Scope) *moduleInstaller {
+	committed := *m
+	committed.runtimeScope = txScope
+	entryPoint := ""
+	if m.module != nil {
+		entryPoint = m.module.ServiceEntryPoint
+	}
+	committed.builder = internalbackendbuilder.NewModuleBuilder(
+		txScope,
+		m.moduleManager.jsExecutor,
+		m.module,
+		entryPoint,
+		internalbackendbuilder.WithPublishDist(false),
+	)
+	return &committed
+}
+
+func (m *moduleInstaller) commitInstall(buildResult *module.BuildResult, persistLater bool) error {
+	if err := m.restoreModuleIfSoftDeleted(); err != nil {
+		return err
+	}
+
+	if m.builder != nil {
+		if persistLater {
+			if split, ok := m.builder.(module.SplitBuilder); ok {
+				if err := split.Persist(buildResult); err != nil {
+					return xfmt.Errorf("error persisting module: %w", err)
+				}
+			} else {
+				return xfmt.Errorf("builder does not support Persist for module %s", m.module.Name)
+			}
+		} else {
+			buildStarted := time.Now()
+			result, err := m.builder.Build()
+			if err != nil {
+				return xfmt.Errorf("error building module: %w", err)
+			}
+			buildResult = result
+			logModuleOperationStep(m.runtimeScope, m.ctx, plan.OpInstall, m.module.Name, moduleStepBuild, buildStarted)
+		}
 	}
 
 	initializeStarted := time.Now()

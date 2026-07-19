@@ -468,9 +468,10 @@ func (c *coordinator) moduleInstallTimeout() time.Duration {
 	return time.Duration(runtimeTimeoutSeconds) * time.Second
 }
 
-// withInstallTransaction keeps bootstrap module installation aligned with the
-// CLI install path: lifecycle database writes commit only after the pipeline
-// succeeds. Meta-table bootstrap may still commit independently via RequiresNew.
+// withInstallTransaction runs fn inside a Required transaction. Kept for
+// rollback tests and any caller that still needs an explicit ambient TX.
+// Production bootstrap install no longer wraps the full Install path here;
+// per-module commit transactions live in lifecycle.moduleInstaller.install.
 func (c *coordinator) withInstallTransaction(
 	ctx context.Context,
 	fn func(txScope scope.Scope, txCtx context.Context) error,
@@ -550,19 +551,17 @@ func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operatio
 	}
 	installCtx = lifecycle.WithPrefetchedInstallModules(installCtx, prefetched.Modules)
 
-	installErr := c.withInstallTransaction(installCtx, func(txScope scope.Scope, txCtx context.Context) error {
-		executor, err := jsexecutor.NewCompilerExecutor(txScope)
-		if err != nil {
-			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to prepare the module installer", err)
-		}
-		if err := executor.Start(); err != nil {
-			return newBootstrapError(bootstrapErrCodeRuntimePrepare, "failed to start the module installer", err)
-		}
-		defer executor.Stop()
+	executor, err := jsexecutor.NewCompilerExecutor(c.runtimeScope.WithContext(installCtx))
+	if err != nil {
+		return c.classifyModuleInstallError(progress, installTimeout, err)
+	}
+	if err := executor.Start(); err != nil {
+		return c.classifyModuleInstallError(progress, installTimeout, err)
+	}
+	defer executor.Stop()
 
-		moduleLifecycle := lifecycle.NewService(txScope, executor)
-		return moduleLifecycle.Install(txCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false})
-	})
+	moduleLifecycle := lifecycle.NewService(c.runtimeScope.WithContext(installCtx), executor)
+	installErr := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: "document", WithDemo: false})
 	if installErr != nil {
 		return c.classifyModuleInstallError(progress, installTimeout, installErr)
 	}

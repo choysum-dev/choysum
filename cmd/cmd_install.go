@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
-	"time"
 
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
@@ -117,27 +116,24 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				moduleName := prefetched.RootName
 				installCtx := lifecycle.WithPrefetchedInstallModules(ctx, prefetched.Modules)
 
-				txRoot := env.WithContext(installCtx)
-				txHoldStarted := time.Now()
-				err = txRoot.Transactor().Required(installCtx, func(txScope scope.Scope, tx scope.Transaction) error {
-					compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
-					if err != nil {
-						return xfmt.Errorf("Error creating compiler executor: %w", err)
-					}
-					if err := compilerExecutor.Start(); err != nil {
-						return xfmt.Errorf("Error starting compiler executor: %w", err)
-					}
-					defer compilerExecutor.Stop()
-
-					txScope.Logger().Debug("module install started", "module", moduleName)
-					moduleLifecycle := lifecycle.NewService(txScope, compilerExecutor)
-					if err := moduleLifecycle.Install(tx.Context(), lifecycle.InstallRequest{Name: moduleName, WithDemo: withDemo}); err != nil {
-						return xfmt.Errorf("error installing module %s: %w", moduleName, err)
-					}
-					txScope.Logger().Debug("module installed", "module", moduleName)
-					return nil
-				})
-				lifecycle.LogInstallOuterTxHold(env.Logger(), "cli", txHoldStarted, err)
+				installScope := env.WithContext(installCtx)
+				compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
+				if startErr != nil {
+					err = xfmt.Errorf("Error creating compiler executor: %w", startErr)
+				} else if startErr = compilerExecutor.Start(); startErr != nil {
+					err = xfmt.Errorf("Error starting compiler executor: %w", startErr)
+				} else {
+					func() {
+						defer compilerExecutor.Stop()
+						installScope.Logger().Debug("module install started", "module", moduleName)
+						moduleLifecycle := lifecycle.NewService(installScope, compilerExecutor)
+						if installErr := moduleLifecycle.Install(installCtx, lifecycle.InstallRequest{Name: moduleName, WithDemo: withDemo}); installErr != nil {
+							err = xfmt.Errorf("error installing module %s: %w", moduleName, installErr)
+							return
+						}
+						installScope.Logger().Debug("module installed", "module", moduleName)
+					}()
+				}
 				if err != nil {
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						err = rewriteLocalInstallLookupError(moduleName, err)

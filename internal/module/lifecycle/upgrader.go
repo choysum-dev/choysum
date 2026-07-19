@@ -145,11 +145,22 @@ func (m *moduleUpgrader) upgrade() error {
 	var buildResult *module.BuildResult
 	if installer.builder != nil {
 		buildStarted := time.Now()
-		result, err := installer.builder.Build()
-		if err != nil {
-			return xfmt.Errorf("error building module %s: %w", target.Name, err)
+		if split, ok := installer.builder.(module.SplitBuilder); ok {
+			result, err := split.BuildWithoutPersist()
+			if err != nil {
+				return xfmt.Errorf("error building module %s: %w", target.Name, err)
+			}
+			if err := split.Persist(result); err != nil {
+				return xfmt.Errorf("error persisting module %s: %w", target.Name, err)
+			}
+			buildResult = result
+		} else {
+			result, err := installer.builder.Build()
+			if err != nil {
+				return xfmt.Errorf("error building module %s: %w", target.Name, err)
+			}
+			buildResult = result
 		}
-		buildResult = result
 		m.logUpgradeStep(target.Name, moduleStepBuild, buildStarted, "from_version", fromVersion, "to_version", target.Version)
 	}
 
