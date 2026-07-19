@@ -17,7 +17,7 @@ describe('partner_bank resource wiring', () => {
     const form = source('views/PartnerFormView.vue');
 
     expect(form).toContain("defineModelActions('partner.BankAccount', {");
-    expect(form).toContain("entityTitle: '银行账户'");
+    expect(form).toContain("entityTitle: _tRef('Bank Account')");
     expect(form).toContain('<OOneToManyKanbanField');
     expect(form).toContain(':editable="canEditBankAccounts()"');
     expect(form).toContain(':form-view="PartnerBankAccountFormView"');

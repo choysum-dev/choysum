@@ -3,10 +3,13 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
+import { createTranslate } from '@/core/service/i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { maskAccountNo, normalizeAccountType } from './_helpers';
 import Bank from '@/base/service/models/bank';
+
+const { _t } = createTranslate('partner_bank');
 
 /**
  * Company-scoped partner bank account record.
@@ -118,7 +121,7 @@ export default class BankAccount extends BaseModel {
   ): Promise<void> {
     if (values[fieldName] !== true) return;
     const partnerId = normalizeRefId(values.PartnerId);
-    if (!partnerId) fail('PartnerId is required');
+    if (!partnerId) fail(_t('PartnerId is required', { scope: 'service/models/bank_account' }));
 
     const rows = await this.Search(
       {
@@ -133,8 +136,8 @@ export default class BankAccount extends BaseModel {
     if (conflict) {
       fail(
         fieldName === 'IsDefaultInbound'
-          ? 'Only one default inbound bank account is allowed for the same partner'
-          : 'Only one default outbound bank account is allowed for the same partner'
+          ? _t('Only one default inbound bank account is allowed for the same partner', { scope: 'service/models/bank_account' })
+          : _t('Only one default outbound bank account is allowed for the same partner', { scope: 'service/models/bank_account' })
       );
     }
   }
@@ -153,17 +156,17 @@ export default class BankAccount extends BaseModel {
     values.CurrencyId = normalizeRefId(values.CurrencyId);
     values.CountryId = normalizeRefId(values.CountryId);
 
-    if (!values.PartnerId) fail('PartnerId is required');
-    if (!values.CompanyId) fail('CompanyId is required');
-    if (!values.BankId) fail('BankId is required');
+    if (!values.PartnerId) fail(_t('PartnerId is required', { scope: 'service/models/bank_account' }));
+    if (!values.CompanyId) fail(_t('CompanyId is required', { scope: 'service/models/bank_account' }));
+    if (!values.BankId) fail(_t('BankId is required', { scope: 'service/models/bank_account' }));
     if (values.AllowInbound !== true && values.AllowOutbound !== true) {
-      fail('AllowInbound and AllowOutbound cannot both be false');
+      fail(_t('AllowInbound and AllowOutbound cannot both be false', { scope: 'service/models/bank_account' }));
     }
     if (values.IsDefaultInbound === true && values.AllowInbound !== true) {
-      fail('Default inbound account must allow inbound usage');
+      fail(_t('Default inbound account must allow inbound usage', { scope: 'service/models/bank_account' }));
     }
     if (values.IsDefaultOutbound === true && values.AllowOutbound !== true) {
-      fail('Default outbound account must allow outbound usage');
+      fail(_t('Default outbound account must allow outbound usage', { scope: 'service/models/bank_account' }));
     }
 
     const { last4, masked } = maskAccountNo(values.AccountNo);

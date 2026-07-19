@@ -21,57 +21,57 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneRefField
             :store="store"
             prop="BankId"
-            label="银行"
+            :label="_t('Bank')"
             :searchView="BankListView"
-            search-view-title="选择银行"
+            :search-view-title="_t('Select Bank')"
             @value-click="onBankValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="AccountName" label="账户名称" />
+          <OVarCharField :store="store" prop="AccountName" :label="_t('Account Name')" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="AccountNo" label="账号" :visible="formViewMode !== 'display'" />
-          <OVarCharField :store="store" prop="AccountNoMasked" label="账号" :visible="formViewMode === 'display'" :readonly="true" />
+          <OVarCharField :store="store" prop="AccountNo" :label="_t('Account Number')" :visible="formViewMode !== 'display'" />
+          <OVarCharField :store="store" prop="AccountNoMasked" :label="_t('Account Number')" :visible="formViewMode === 'display'" :readonly="true" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="AccountType" label="账户类型" :selection="accountTypeOptions" />
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IBAN" label="IBAN" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="RoutingCode" label="路由码" />
+          <OSelectionField :store="store" prop="AccountType" :label="_t('Account Type')" :selection="accountTypeOptions" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="AllowInbound" label="允许入账" widget="switch" />
+          <OVarCharField :store="store" prop="IBAN" :label="_t('IBAN')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="AllowOutbound" label="允许出账" widget="switch" />
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefaultInbound" label="默认入账" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefaultOutbound" label="默认出账" widget="switch" />
+          <OVarCharField :store="store" prop="RoutingCode" :label="_t('Routing Code')" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" label="启用" widget="switch" />
+          <OBooleanField :store="store" prop="AllowInbound" :label="_t('Allow Inbound')" widget="switch" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="AllowOutbound" :label="_t('Allow Outbound')" widget="switch" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsDefaultInbound" :label="_t('Default Inbound')" widget="switch" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsDefaultOutbound" :label="_t('Default Outbound')" widget="switch" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
         </el-col>
       </el-row>
     </div>
@@ -91,8 +91,10 @@ import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import BankListView from '@/base/web/views/BankListView.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerBankAccountFormView', inheritAttrs: true });
+const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerBankAccountFormView' });
 
 /**
  * Props consumed by the partner bank account form view.

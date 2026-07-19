@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fail, normalizeOptionalText } from './_normalization_bridge';
+import { createTranslate } from '@/core/service/i18n';
+
+const { _t } = createTranslate('partner_bank');
 
 /**
  * Supported partner bank account categories.
@@ -31,7 +34,7 @@ export function normalizeAccountType(value: unknown): string | null | undefined 
   const normalized = normalizeOptionalText(value);
   if (normalized == null) return normalized;
   if (!ACCOUNT_TYPES.has(normalized)) {
-    fail('AccountType must be one of checking, savings, corporate, other');
+    fail(_t('AccountType must be one of checking, savings, corporate, other', { scope: 'service/models/_helpers' }));
   }
   return normalized;
 }

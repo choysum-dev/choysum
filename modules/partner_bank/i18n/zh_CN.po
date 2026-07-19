@@ -1,6 +1,226 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/_helpers.ts:37
+msgctxt "service/models/_helpers"
+msgid "AccountType must be one of checking, savings, corporate, other"
+msgstr "AccountType 必须是 checking、savings、corporate 或 other"
+
+#: service/models/_normalization_bridge.ts:62
+msgctxt "service/models/_normalization_bridge"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/bank_account.ts:163
+msgctxt "service/models/bank_account"
+msgid "AllowInbound and AllowOutbound cannot both be false"
+msgstr "AllowInbound 与 AllowOutbound 不能同时为 false"
+
+#: service/models/bank_account.ts:161
+msgctxt "service/models/bank_account"
+msgid "BankId is required"
+msgstr "BankId 为必填项"
+
+#: service/models/bank_account.ts:160
+msgctxt "service/models/bank_account"
+msgid "CompanyId is required"
+msgstr "CompanyId 为必填项"
+
+#: service/models/bank_account.ts:166
+msgctxt "service/models/bank_account"
+msgid "Default inbound account must allow inbound usage"
+msgstr "默认入账账户必须允许入账"
+
+#: service/models/bank_account.ts:169
+msgctxt "service/models/bank_account"
+msgid "Default outbound account must allow outbound usage"
+msgstr "默认出账账户必须允许出账"
+
+#: service/models/bank_account.ts:139
+msgctxt "service/models/bank_account"
+msgid "Only one default inbound bank account is allowed for the same partner"
+msgstr "同一伙伴下只能有一个默认入账银行账户"
+
+#: service/models/bank_account.ts:140
+msgctxt "service/models/bank_account"
+msgid "Only one default outbound bank account is allowed for the same partner"
+msgstr "同一伙伴下只能有一个默认出账银行账户"
+
+#: service/models/bank_account.ts:124 service/models/bank_account.ts:159
+msgctxt "service/models/bank_account"
+msgid "PartnerId is required"
+msgstr "PartnerId 为必填项"
+
+#: web/views/PartnerBankAccountFormView.vue:9
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Account Name"
+msgstr "账户名称"
+
+#: web/views/PartnerBankAccountFormView.vue:15 web/views/PartnerBankAccountFormView.vue:16
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Account Number"
+msgstr "账号"
+
+#: web/views/PartnerBankAccountFormView.vue:19
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Account Type"
+msgstr "账户类型"
+
+#: web/views/PartnerBankAccountFormView.vue:52
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/PartnerBankAccountFormView.vue:34
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Allow Inbound"
+msgstr "允许入账"
+
+#: web/views/PartnerBankAccountFormView.vue:37
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Allow Outbound"
+msgstr "允许出账"
+
+#: web/views/PartnerBankAccountFormView.vue:6
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Bank"
+msgstr "银行"
+
+#: web/views/PartnerBankAccountFormView.vue:43
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Default Inbound"
+msgstr "默认入账"
+
+#: web/views/PartnerBankAccountFormView.vue:46
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Default Outbound"
+msgstr "默认出账"
+
+#: web/views/PartnerBankAccountFormView.vue:25
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "IBAN"
+msgstr "IBAN"
+
+#: web/views/PartnerBankAccountFormView.vue:28
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Routing Code"
+msgstr "路由码"
+
+#: web/views/PartnerBankAccountFormView.vue:6
+msgctxt "web/views/PartnerBankAccountFormView"
+msgid "Select Bank"
+msgstr "选择银行"
+
+#: web/views/PartnerFormView.vue:18
+msgctxt "web/views/PartnerFormView"
+msgid "Account Number"
+msgstr "账号"
+
+#: web/views/PartnerFormView.vue:5
+msgctxt "web/views/PartnerFormView"
+msgid "Add Bank Account"
+msgstr "添加银行账户"
+
+#: web/views/PartnerFormView.vue:16
+msgctxt "web/views/PartnerFormView"
+msgid "Bank"
+msgstr "银行"
+
+#: web/views/PartnerFormView.vue:36
+msgctxt "web/views/PartnerFormView"
+msgid "Bank Account"
+msgstr "银行账户"
+
+#: web/views/PartnerFormView.vue:3
+msgctxt "web/views/PartnerFormView"
+msgid "Bank Accounts"
+msgstr "银行账户"
+
+#: web/views/PartnerFormView.vue:65
+msgctxt "web/views/PartnerFormView"
+msgid "Checking Account"
+msgstr "活期账户"
+
+#: web/views/PartnerFormView.vue:36
+msgctxt "web/views/PartnerFormView"
+msgid "Copy Bank Account"
+msgstr "复制银行账户"
+
+#: web/views/PartnerFormView.vue:69
+msgctxt "web/views/PartnerFormView"
+msgid "Corporate Account"
+msgstr "对公账户"
+
+#: web/views/PartnerFormView.vue:36
+msgctxt "web/views/PartnerFormView"
+msgid "Create Bank Account"
+msgstr "新建银行账户"
+
+#: web/views/PartnerFormView.vue:11
+msgctxt "web/views/PartnerFormView"
+msgid "Default Inbound"
+msgstr "默认入账"
+
+#: web/views/PartnerFormView.vue:12
+msgctxt "web/views/PartnerFormView"
+msgid "Default Outbound"
+msgstr "默认出账"
+
+#: web/views/PartnerFormView.vue:24
+msgctxt "web/views/PartnerFormView"
+msgid "Delete"
+msgstr "删除"
+
+#: web/views/PartnerFormView.vue:36
+msgctxt "web/views/PartnerFormView"
+msgid "Delete Bank Account"
+msgstr "删除银行账户"
+
+#: web/views/PartnerFormView.vue:23
+msgctxt "web/views/PartnerFormView"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/views/PartnerFormView.vue:36 web/views/PartnerFormView.vue:5
+msgctxt "web/views/PartnerFormView"
+msgid "Edit Bank Account"
+msgstr "编辑银行账户"
+
+#: web/views/PartnerFormView.vue:13
+msgctxt "web/views/PartnerFormView"
+msgid "Inactive"
+msgstr "停用"
+
+#: web/views/PartnerFormView.vue:20
+msgctxt "web/views/PartnerFormView"
+msgid "Inbound/Outbound"
+msgstr "入账/出账"
+
+#: web/views/PartnerFormView.vue:5
+msgctxt "web/views/PartnerFormView"
+msgid "New Bank Account"
+msgstr "新增银行账户"
+
+#: web/views/PartnerFormView.vue:71
+msgctxt "web/views/PartnerFormView"
+msgid "Other"
+msgstr "其他"
+
+#: web/views/PartnerFormView.vue:67
+msgctxt "web/views/PartnerFormView"
+msgid "Savings Account"
+msgstr "储蓄账户"
+
+#: web/views/PartnerFormView.vue:17
+msgctxt "web/views/PartnerFormView"
+msgid "Type"
+msgstr "类型"
+
+#: web/views/PartnerFormView.vue:5
+msgctxt "web/views/PartnerFormView"
+msgid "View Bank Account"
+msgstr "查看银行账户"
+
 #~ #. kind: selection_label
 #~ msgctxt "service/models/bank_account@AccountType.checking"
 #~ msgid "Checking"
