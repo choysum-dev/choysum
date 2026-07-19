@@ -139,7 +139,11 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	stats.PurgedRetired = purged
 
 	if reg != nil {
-		reg.RememberModuleApplication(module, application)
+		// Framework module "core" is hosted in every real app table; never pin
+		// module→application to a single host (breaks multi-app GetTranslations).
+		if module != "core" {
+			reg.RememberModuleApplication(module, application)
+		}
 		ts := reg.StoreFor(application)
 		ts.InvalidateModule(module)
 		affectedLangs[lang] = struct{}{}

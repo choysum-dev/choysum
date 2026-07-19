@@ -134,6 +134,36 @@ func TestRegistryLookupViaModuleMapping(t *testing.T) {
 	}
 }
 
+func TestRegistryLookupFrameworkModuleInHostStore(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth",
+		Module:      "core",
+		Lang:        "zh_CN",
+		Scope:       "service/a@m",
+		Src:         "Denied",
+		Value:       "拒绝",
+		Kind:        i18nmodels.KindLiteral,
+		Source:      i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	reg := store.NewRegistry(rs)
+	reg.RememberModuleApplication("auth", "auth")
+	reg.RememberModuleApplication("core", "core") // IrModule sentinel; must not block host lookup
+	if err := reg.StoreFor("auth").WarmLanguage("zh_CN"); err != nil {
+		t.Fatalf("warm: %v", err)
+	}
+	val, ok := reg.Lookup("core", "zh_CN", "service/a@m", "Denied", "")
+	if !ok || val != "拒绝" {
+		t.Fatalf("framework Lookup = %q ok=%v", val, ok)
+	}
+}
+
 func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
 	rs := newTestScope(t)
 	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {

@@ -4,7 +4,6 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { createClient, type Interceptor, ConnectError, Code } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
@@ -36,31 +35,17 @@ function readRuntimeInfo(): RuntimeInfo {
   return JSON.parse(raw) as RuntimeInfo;
 }
 
-function resolveRepoRoot(specsDir: string): string {
-  const normalized = path.resolve(specsDir);
-  const marker = `${path.sep}modules${path.sep}`;
-  const idx = normalized.indexOf(marker);
-  if (idx > 0) return normalized.slice(0, idx);
-  return path.resolve(specsDir, '../../..');
-}
-
 async function loadAuthPbModule(): Promise<AuthPbModule> {
   const runtime = readRuntimeInfo();
-  const repoRoot = resolveRepoRoot(runtime.specsDir);
-  const candidates: string[] = [path.join(repoRoot, '.choysum', 'generated', 'web', 'auth', 'pb', 'auth_pb.ts')];
-
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (runtimePath) {
-    const runChoysumRoot = path.join(path.dirname(runtimePath), '.choysum');
-    candidates.push(path.join(runChoysumRoot, 'generated', 'web', 'auth', 'pb', 'auth_pb.ts'));
+  // E2E runner stages generated pb under specsDir/.generated so Playwright
+  // transforms it under testDir (absolute file:// imports bypass that and break
+  // @bufbuild/protobuf/codegenv2 under PW_DISABLE_TS_ESM=1).
+  const staged = path.join(runtime.specsDir, '.generated', 'auth_pb.ts');
+  if (!fs.existsSync(staged)) {
+    throw new Error(`Cannot find staged auth_pb.ts at ${staged} (e2e runner should link it)`);
   }
-
-  const moduleFile = candidates.find(file => fs.existsSync(file));
-  if (!moduleFile) {
-    throw new Error(`Cannot find auth_pb.ts. tried: ${candidates.join(', ')}`);
-  }
-  const req = createRequire(import.meta.url);
-  return req(moduleFile) as AuthPbModule;
+  const mod = await import('./.generated/auth_pb.ts');
+  return mod as AuthPbModule;
 }
 
 async function getAuthPbModule(): Promise<AuthPbModule> {

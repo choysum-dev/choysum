@@ -202,6 +202,18 @@ func TestGetTranslationsFiltersModulesAndHash(t *testing.T) {
 	if unchanged["terms_by_module"] != nil {
 		t.Fatalf("terms must be null/absent when unchanged: %#v", unchanged["terms_by_module"])
 	}
+
+	// Framework module "core" is hosted in the app table even when mapped to application=core.
+	seedTerm(t, rs, "core", "service/a@m", "Denied", "拒绝")
+	reg.RememberModuleApplication("core", "core")
+	withCore := invokeGetTranslations(t, svc, "zh_CN", []string{"auth", "core"}, "")
+	coreTerms, ok := withCore["terms_by_module"].(map[string]any)
+	if !ok {
+		t.Fatalf("terms_by_module type %#v", withCore["terms_by_module"])
+	}
+	if _, ok := coreTerms["core"]; !ok {
+		t.Fatalf("framework module terms missing: %#v", coreTerms)
+	}
 }
 
 func TestGetTranslationsEmptyAppStableHash(t *testing.T) {

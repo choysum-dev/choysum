@@ -888,6 +888,12 @@ module.exports = {
 	}
 	defer cleanupRuntimeLinks()
 
+	cleanupStagedPb, err := stageGeneratedPbIntoSpecsDir(specsDir, runtimePath)
+	if err != nil {
+		return err
+	}
+	defer cleanupStagedPb()
+
 	moduleRoots := append(append([]string{}, localModuleRoots...), globalNodeModulesRoot)
 	if err := noderuntime.PreflightRequiredNodeModules("e2e", strings.TrimSpace(opts.Module), requiredModules, moduleRoots...); err != nil {
 		return err
@@ -1022,6 +1028,77 @@ func ensureE2EGlobalModuleLinksAt(localNodeModulesRoot string, globalNodeModules
 	cleanup, err := noderuntime.EnsureGlobalModuleLinksAt(localNodeModulesRoot, globalNodeModulesRoot, moduleNames)
 	if err != nil {
 		return nil, xfmt.Errorf("playwright: %w", err)
+	}
+	return cleanup, nil
+}
+
+// stageGeneratedPbIntoSpecsDir copies runDir/.choysum/generated/web/<app>/pb/*_pb.ts into
+// specsDir/.generated/<app>_pb.ts so Playwright transforms them under testDir.
+// Absolute file:// / symlink realpath imports of generated pb bypass that transform and
+// fail under PW_DISABLE_TS_ESM=1 when resolving @bufbuild/protobuf/codegenv2.
+func stageGeneratedPbIntoSpecsDir(specsDir, runtimePath string) (func(), error) {
+	noop := func() {}
+	specsDir = strings.TrimSpace(specsDir)
+	runtimePath = strings.TrimSpace(runtimePath)
+	if specsDir == "" || runtimePath == "" {
+		return noop, nil
+	}
+	generatedWeb := filepath.Join(filepath.Dir(runtimePath), ".choysum", "generated", "web")
+	st, err := os.Stat(generatedWeb)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return noop, nil
+		}
+		return nil, xfmt.Errorf("stat generated web dir: %w", err)
+	}
+	if !st.IsDir() {
+		return noop, nil
+	}
+
+	stageDir := filepath.Join(specsDir, ".generated")
+	if err := os.MkdirAll(stageDir, 0o755); err != nil {
+		return nil, xfmt.Errorf("create specs .generated dir: %w", err)
+	}
+
+	created := make([]string, 0)
+	cleanup := func() {
+		for _, link := range created {
+			_ = os.Remove(link)
+		}
+		_ = os.Remove(stageDir) // best-effort; keep if non-empty
+	}
+
+	entries, err := os.ReadDir(generatedWeb)
+	if err != nil {
+		cleanup()
+		return nil, xfmt.Errorf("read generated web dir: %w", err)
+	}
+	for _, appEntry := range entries {
+		if !appEntry.IsDir() {
+			continue
+		}
+		appName := strings.TrimSpace(appEntry.Name())
+		if appName == "" {
+			continue
+		}
+		pbFile := filepath.Join(generatedWeb, appName, "pb", appName+"_pb.ts")
+		if _, err := os.Stat(pbFile); err != nil {
+			continue
+		}
+		linkPath := filepath.Join(stageDir, appName+"_pb.ts")
+		_ = os.Remove(linkPath)
+		raw, err := os.ReadFile(pbFile)
+		if err != nil {
+			cleanup()
+			return nil, xfmt.Errorf("read %s: %w", pbFile, err)
+		}
+		// Copy (do not symlink): Node resolves package imports from the realpath,
+		// so a symlink back into generated/ would again miss specsDir node resolution.
+		if err := os.WriteFile(linkPath, raw, 0o644); err != nil {
+			cleanup()
+			return nil, xfmt.Errorf("stage %s: %w", linkPath, err)
+		}
+		created = append(created, linkPath)
 	}
 	return cleanup, nil
 }

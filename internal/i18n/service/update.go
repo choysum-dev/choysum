@@ -47,8 +47,11 @@ func (s *Service) handleUpdateTerm(reqMap map[string]any) (any, error) {
 		return nil, status.Error(codes.InvalidArgument, "src is required")
 	}
 
-	if app, ok := s.registry.ApplicationForModule(module); ok && app != "" && app != s.appName {
-		return nil, status.Error(codes.PermissionDenied, "module belongs to another application")
+	// Framework module is hosted in this application table (Scheme A).
+	if module != "core" {
+		if app, ok := s.registry.ApplicationForModule(module); ok && app != "" && app != s.appName {
+			return nil, status.Error(codes.PermissionDenied, "module belongs to another application")
+		}
 	}
 
 	ts := s.registry.StoreFor(s.appName)
@@ -56,7 +59,9 @@ func (s *Service) handleUpdateTerm(reqMap map[string]any) (any, error) {
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	s.registry.RememberModuleApplication(module, s.appName)
+	if module != "core" {
+		s.registry.RememberModuleApplication(module, s.appName)
+	}
 
 	return s.buildUpdateTermResp(item, ts.TermHash(lang))
 }

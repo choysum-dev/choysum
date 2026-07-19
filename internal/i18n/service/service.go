@@ -241,6 +241,12 @@ func (s *Service) filterOwnedModules(moduleNames []string) []string {
 		if _, ok := seen[name]; ok {
 			continue
 		}
+		// Framework module terms (Module=core) are hosted in this app's table.
+		if name == "core" {
+			seen[name] = struct{}{}
+			out = append(out, name)
+			continue
+		}
 		if app, ok := s.registry.ApplicationForModule(name); ok && app != "" && app != s.appName {
 			continue // belongs to another application
 		}

@@ -4,6 +4,7 @@
 package store
 
 import (
+	"sort"
 	"strings"
 	"sync"
 
@@ -42,12 +43,71 @@ func (r *Registry) StoreFor(application string) *TermStore {
 }
 
 // Lookup resolves the module's application, then looks up in that store's cache.
+// Framework module "core" is hosted in each real application's table (Scheme A);
+// Lookup probes host app stores until a hit (terms are identical across hosts).
 func (r *Registry) Lookup(module, lang, scopeKey, src, kind string) (string, bool) {
+	module = strings.TrimSpace(module)
+	if module == "core" {
+		return r.lookupFrameworkModule(module, lang, scopeKey, src, kind)
+	}
 	app, ok := r.ApplicationForModule(module)
 	if !ok || app == "" || app == "core" {
 		return "", false
 	}
 	return r.StoreFor(app).Lookup(module, lang, scopeKey, src, kind)
+}
+
+func (r *Registry) lookupFrameworkModule(module, lang, scopeKey, src, kind string) (string, bool) {
+	apps := r.listHostApplications()
+	for _, app := range apps {
+		if val, ok := r.StoreFor(app).Lookup(module, lang, scopeKey, src, kind); ok {
+			return val, true
+		}
+	}
+	return "", false
+}
+
+func (r *Registry) listHostApplications() []string {
+	seen := map[string]struct{}{}
+	r.mu.RLock()
+	for _, app := range r.moduleToApp {
+		app = strings.TrimSpace(app)
+		if app == "" || app == "core" {
+			continue
+		}
+		seen[app] = struct{}{}
+	}
+	for app := range r.stores {
+		app = strings.TrimSpace(app)
+		if app == "" || app == "core" {
+			continue
+		}
+		seen[app] = struct{}{}
+	}
+	r.mu.RUnlock()
+
+	if r.runtimeScope != nil && r.runtimeScope.Session() != nil {
+		session := r.runtimeScope.Session()
+		if session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
+			var modules []meta.IrModule
+			if err := session.Where("status = ?", meta.Installed).Find(&modules).Error; err == nil {
+				for _, mod := range modules {
+					app := strings.TrimSpace(mod.ApplicationStr)
+					if app == "" || app == "core" {
+						continue
+					}
+					seen[app] = struct{}{}
+				}
+			}
+		}
+	}
+
+	out := make([]string, 0, len(seen))
+	for app := range seen {
+		out = append(out, app)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // ApplicationForModule returns the ApplicationStr for a module name.

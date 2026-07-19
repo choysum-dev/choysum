@@ -4,7 +4,6 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { createClient, type Interceptor } from '@connectrpc/connect';
 import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { create } from '@bufbuild/protobuf';
@@ -48,20 +47,16 @@ function readRuntimeInfo(): RuntimeInfo {
 }
 
 /**
- * Loads the generated task protobuf module from the current run directory.
+ * Loads the generated task protobuf module staged under specsDir/.generated.
  */
 async function loadTaskPbModule(): Promise<TaskPbModule> {
-  const runtimePath = process.env.CHOYSUM_E2E_RUNTIME_JSON;
-  if (!runtimePath) {
-    throw new Error('CHOYSUM_E2E_RUNTIME_JSON env var not set');
+  const runtime = readRuntimeInfo();
+  const staged = path.join(runtime.specsDir, '.generated', 'task_pb.ts');
+  if (!fs.existsSync(staged)) {
+    throw new Error(`Cannot find staged task_pb.ts at ${staged} (e2e runner should link it)`);
   }
-
-  const moduleFile = path.join(path.dirname(runtimePath), '.choysum', 'generated', 'web', 'task', 'pb', 'task_pb.ts');
-  if (!fs.existsSync(moduleFile)) {
-    throw new Error(`Cannot find task_pb.ts at run dir path: ${moduleFile}`);
-  }
-  const req = createRequire(import.meta.url);
-  return req(moduleFile) as TaskPbModule;
+  const mod = await import('./.generated/task_pb.ts');
+  return mod as TaskPbModule;
 }
 
 /**
