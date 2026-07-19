@@ -79,6 +79,46 @@ func TestTermsUnknownApplication(t *testing.T) {
 	}
 }
 
+func TestTermsRejectsModuleOutsideApplication(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{
+				"auth": {"auth", "core"},
+				"web":  {"web", "core"},
+			}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			t.Fatal("search should not run for mismatched module")
+			return nil, nil
+		},
+		update: func(ctx context.Context, accessToken, app, lang string, item termItem) (*termItem, string, error) {
+			t.Fatal("update should not run for mismatched module")
+			return nil, "", nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(termsPath, h.serveTerms)
+
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/terms?lang=zh_CN&application=auth&module=web", nil)
+	req.Header.Set("Authorization", "Bearer editor-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "module does not belong to application") {
+		t.Fatalf("list status=%d body=%s", rr.Code, rr.Body.String())
+	}
+
+	body := `{"lang":"zh_CN","items":[
+		{"application":"auth","module":"web","scope":"a@t","src":"Hello","value":"您好"}
+	]}`
+	req2 := httptest.NewRequest(http.MethodPatch, "/web/i18n/terms", bytes.NewReader([]byte(body)))
+	req2.Header.Set("Authorization", "Bearer editor-token")
+	rr2 := httptest.NewRecorder()
+	mux.ServeHTTP(rr2, req2)
+	if rr2.Code != http.StatusBadRequest || !strings.Contains(rr2.Body.String(), "module does not belong to application") {
+		t.Fatalf("patch status=%d body=%s", rr2.Code, rr2.Body.String())
+	}
+}
+
 func TestTermsListSingleAppAndPermissionDenied(t *testing.T) {
 	var gotToken string
 	h := &handler{

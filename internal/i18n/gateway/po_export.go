@@ -61,6 +61,10 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 
 	modules := byApp[application]
 	if module != "" {
+		if !moduleBelongsToApp(modules, module) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module does not belong to application"})
+			return
+		}
 		modules = []string{module}
 	}
 

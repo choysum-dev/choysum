@@ -102,6 +102,10 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 		}
 		modules := byApp[application]
 		if module != "" {
+			if !moduleBelongsToApp(modules, module) {
+				writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module does not belong to application"})
+				return
+			}
 			modules = []string{module}
 		}
 		result, err := h.searchApp(r.Context(), accessToken, application, lang, modules, q, limit, offset)
@@ -243,12 +247,23 @@ func (h *handler) serveTermsPatch(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "application is required", "index": i})
 			return
 		}
-		if _, known := byApp[app]; !known {
+		modules, known := byApp[app]
+		if !known {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "unknown application", "application": app, "index": i})
 			return
 		}
-		if strings.TrimSpace(item.Module) == "" || strings.TrimSpace(item.Scope) == "" || strings.TrimSpace(item.Src) == "" {
+		module := strings.TrimSpace(item.Module)
+		if module == "" || strings.TrimSpace(item.Scope) == "" || strings.TrimSpace(item.Src) == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]any{"error": "module, scope, and src are required", "index": i})
+			return
+		}
+		if !moduleBelongsToApp(modules, module) {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"error":       "module does not belong to application",
+				"module":      module,
+				"application": app,
+				"index":       i,
+			})
 			return
 		}
 		grouped[app] = append(grouped[app], item)

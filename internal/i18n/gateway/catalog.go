@@ -76,6 +76,19 @@ func validLang(lang string) bool {
 // frameworkModuleName is hosted in each real app's translation_term table (Scheme A).
 const frameworkModuleName = "core"
 
+func moduleBelongsToApp(modules []string, module string) bool {
+	module = strings.TrimSpace(module)
+	if module == "" {
+		return false
+	}
+	for _, m := range modules {
+		if m == module {
+			return true
+		}
+	}
+	return false
+}
+
 // installedModulesByApp returns ApplicationStr → installed module names.
 // Application "core" is skipped (no core.I18n). Framework module "core" is
 // appended to every host app so GetTranslations returns Module=core terms.
