@@ -312,7 +312,11 @@ func resolveI18nModules(modulesPath string, all bool, args []string) ([]string, 
 		}
 		// Skip non-module dirs commonly present under modules/.
 		switch name {
-		case "node_modules", "dist":
+		case "node_modules", "dist", "build", "coverage", "tmp", ".git", ".choysum", ".turbo", ".vite", ".cache":
+			continue
+		}
+		// Real modules carry package.json (same filter as type-fetch --all).
+		if _, err := os.Stat(filepath.Join(modulesPath, name, "package.json")); err != nil {
 			continue
 		}
 		modules = append(modules, name)
