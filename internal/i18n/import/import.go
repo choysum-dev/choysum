@@ -74,7 +74,6 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 	if err := i18nmodels.EnsureTranslationTermTable(runtimeScope, application); err != nil {
 		return stats, err
 	}
-	session := runtimeScope.Session()
 	logger := runtimeScope.Logger()
 	if logger == nil {
 		logger = slog.Default()
@@ -84,65 +83,78 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 			"application", application, "module", module, "lang", lang, "count", rejectedNoCtxt)
 	}
 
-	var existingRows []i18nmodels.TranslationTerm
-	if err := session.Table(tableName).
-		Where("module = ? AND lang = ?", module, lang).
-		Find(&existingRows).Error; err != nil {
-		return stats, fmt.Errorf("list existing terms: %w", err)
-	}
-	existingByKey := make(map[string]*i18nmodels.TranslationTerm, len(existingRows))
-	for i := range existingRows {
-		row := &existingRows[i]
-		existingByKey[termLookupKey(row.Scope, row.Src, row.Kind)] = row
-	}
+	var affectedLangs map[string]struct{}
+	err := runtimeScope.Transactor().Required(runtimeScope.Context(), func(txScope scope.Scope, _ scope.Transaction) error {
+		session := txScope.Session()
+		if session == nil {
+			return fmt.Errorf("import po: missing transaction session")
+		}
 
-	toCreate := make([]i18nmodels.TranslationTerm, 0)
-	for _, term := range terms {
-		kind := i18nmodels.NormalizeKind(term.kind)
-		key := termLookupKey(term.scope, term.src, kind)
-		if existing, ok := existingByKey[key]; ok {
-			if existing.Source == i18nmodels.SourceOverride {
-				stats.SkippedOverride++
+		var existingRows []i18nmodels.TranslationTerm
+		if err := session.Table(tableName).
+			Where("module = ? AND lang = ?", module, lang).
+			Find(&existingRows).Error; err != nil {
+			return fmt.Errorf("list existing terms: %w", err)
+		}
+		existingByKey := make(map[string]*i18nmodels.TranslationTerm, len(existingRows))
+		for i := range existingRows {
+			row := &existingRows[i]
+			existingByKey[termLookupKey(row.Scope, row.Src, row.Kind)] = row
+		}
+
+		toCreate := make([]i18nmodels.TranslationTerm, 0)
+		for _, term := range terms {
+			kind := i18nmodels.NormalizeKind(term.kind)
+			key := termLookupKey(term.scope, term.src, kind)
+			if existing, ok := existingByKey[key]; ok {
+				if existing.Source == i18nmodels.SourceOverride {
+					stats.SkippedOverride++
+					continue
+				}
+				existing.Value = term.value
+				existing.Source = i18nmodels.SourcePackaged
+				existing.Application = application
+				existing.Kind = kind
+				if term.comments != "" {
+					existing.Comments = term.comments
+				}
+				if err := session.Table(tableName).Save(existing).Error; err != nil {
+					return fmt.Errorf("update term: %w", err)
+				}
+				stats.Upserted++
 				continue
 			}
-			existing.Value = term.value
-			existing.Source = i18nmodels.SourcePackaged
-			existing.Application = application
-			existing.Kind = kind
-			if term.comments != "" {
-				existing.Comments = term.comments
+
+			toCreate = append(toCreate, i18nmodels.TranslationTerm{
+				Application: application,
+				Module:      module,
+				Lang:        lang,
+				Scope:       term.scope,
+				Src:         term.src,
+				Value:       term.value,
+				Kind:        kind,
+				Source:      i18nmodels.SourcePackaged,
+				Comments:    term.comments,
+			})
+		}
+		if len(toCreate) > 0 {
+			if err := session.Table(tableName).CreateInBatches(toCreate, 100).Error; err != nil {
+				return fmt.Errorf("create terms: %w", err)
 			}
-			if err := session.Table(tableName).Save(existing).Error; err != nil {
-				return stats, fmt.Errorf("update term: %w", err)
-			}
-			stats.Upserted++
-			continue
+			stats.Upserted += len(toCreate)
 		}
 
-		toCreate = append(toCreate, i18nmodels.TranslationTerm{
-			Application: application,
-			Module:      module,
-			Lang:        lang,
-			Scope:       term.scope,
-			Src:         term.src,
-			Value:       term.value,
-			Kind:        kind,
-			Source:      i18nmodels.SourcePackaged,
-			Comments:    term.comments,
-		})
-	}
-	if len(toCreate) > 0 {
-		if err := session.Table(tableName).CreateInBatches(toCreate, 100).Error; err != nil {
-			return stats, fmt.Errorf("create terms: %w", err)
+		langs, purged, err := purgeRetiredS7Terms(session, tableName, module)
+		if err != nil {
+			return err
 		}
-		stats.Upserted += len(toCreate)
-	}
-
-	affectedLangs, purged, err := purgeRetiredS7Terms(session, tableName, module)
+		stats.PurgedRetired = purged
+		affectedLangs = langs
+		return nil
+	})
 	if err != nil {
 		return stats, err
 	}
-	stats.PurgedRetired = purged
 
 	if reg != nil {
 		// Framework module "core" is hosted in every real app table; never pin
@@ -152,6 +164,9 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		}
 		ts := reg.StoreFor(application)
 		ts.InvalidateModule(module)
+		if affectedLangs == nil {
+			affectedLangs = map[string]struct{}{}
+		}
 		affectedLangs[lang] = struct{}{}
 		for affectedLang := range affectedLangs {
 			if err := ts.WarmLanguage(affectedLang); err != nil {

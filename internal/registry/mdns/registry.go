@@ -147,8 +147,11 @@ func (r *mdnsRegistry) UnRegisterAll() error {
 }
 
 func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, error) {
+	// Snapshot under the registry lock, then release before network browse so
+	// Register/UnRegister are not blocked on mDNS I/O.
 	r.Lock()
-	defer r.Unlock()
+	endpoints := r.localEndpointsLocked(serviceName)
+	r.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -158,8 +161,8 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 		return nil, xfmt.Errorf("failed to create zeroconf resolver: %w", err)
 	}
 
-	endpoints := r.localEndpointsLocked(serviceName)
 	seen := endpointSet(endpoints)
+	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
@@ -181,7 +184,9 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 							Addr: fmt.Sprintf("%s:%d", ipv4.String(), entry.Port),
 						},
 					}
+					collectMu.Lock()
 					appendEndpointIfNew(&endpoints, seen, endpoint)
+					collectMu.Unlock()
 				}
 
 				t.Reset(time.Millisecond * 1) // wait 1ms for next entry
@@ -198,12 +203,15 @@ func (r *mdnsRegistry) GetService(serviceName string) ([]*registry.Endpoint, err
 
 	<-ctx.Done()
 
+	collectMu.Lock()
+	defer collectMu.Unlock()
 	return endpoints, nil
 }
 
 func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 	r.Lock()
-	defer r.Unlock()
+	endpoints := r.localEndpointsLocked("")
+	r.Unlock()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -213,8 +221,8 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 		return nil, xfmt.Errorf("failed to create zeroconf resolver: %w", err)
 	}
 
-	endpoints := r.localEndpointsLocked("")
 	seen := endpointSet(endpoints)
+	var collectMu sync.Mutex
 	entries := make(chan *zeroconf.ServiceEntry)
 	go func(results <-chan *zeroconf.ServiceEntry) {
 		t := time.NewTimer(time.Millisecond * 100) // wait 100ms at first time
@@ -244,7 +252,9 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 							Addr: fmt.Sprintf("%s:%d", ipv4.String(), entry.Port),
 						},
 					}
+					collectMu.Lock()
 					appendEndpointIfNew(&endpoints, seen, endpoint)
+					collectMu.Unlock()
 				}
 
 				t.Reset(time.Millisecond * 1) // wait 1ms for next entry
@@ -261,8 +271,9 @@ func (r *mdnsRegistry) ListServices() ([]*registry.Endpoint, error) {
 
 	<-ctx.Done()
 
+	collectMu.Lock()
+	defer collectMu.Unlock()
 	return endpoints, nil
-
 }
 
 func (r *mdnsRegistry) Scheme() string {

@@ -219,3 +219,4 @@ func TestTermStoreExplicitKindAndTermsByModulesLiteralOnly(t *testing.T) {
 		t.Fatal("TermsByModules must omit explicit non-literal kinds")
 	}
 }
+

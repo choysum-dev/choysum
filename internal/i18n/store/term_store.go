@@ -27,6 +27,9 @@ type TermStore struct {
 	cache map[string]map[string]map[string]map[string]map[string]string
 	// lang → termHash
 	termHash map[string]string
+	// lang → epoch bumped by mutations so a concurrent WarmLanguage cannot
+	// overwrite a newer in-memory update with a stale DB snapshot.
+	warmEpoch map[string]uint64
 }
 
 // NewTermStore creates an empty store for the given application.
@@ -36,6 +39,7 @@ func NewTermStore(runtimeScope scope.Scope, application string) *TermStore {
 		application:  strings.TrimSpace(application),
 		cache:        make(map[string]map[string]map[string]map[string]map[string]string),
 		termHash:     make(map[string]string),
+		warmEpoch:    make(map[string]uint64),
 	}
 }
 
@@ -43,6 +47,10 @@ func NewTermStore(runtimeScope scope.Scope, application string) *TermStore {
 func (s *TermStore) Application() string {
 	return s.application
 }
+
+// warmAfterLoadHook is optional test plumbing invoked after DB rows are loaded
+// and before the cache install decision.
+var warmAfterLoadHook func(lang string)
 
 // WarmLanguage loads all terms for lang from {app}_translation_term into cache.
 func (s *TermStore) WarmLanguage(lang string) error {
@@ -62,6 +70,10 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		s.mu.Unlock()
 		return nil
 	}
+
+	s.mu.RLock()
+	epoch := s.warmEpoch[lang]
+	s.mu.RUnlock()
 
 	var rows []i18nmodels.TranslationTerm
 	if err := s.runtimeScope.Session().Table(tableName).
@@ -89,8 +101,16 @@ func (s *TermStore) WarmLanguage(lang string) error {
 	}
 
 	hash := computeTermHash(rows)
+	if warmAfterLoadHook != nil {
+		warmAfterLoadHook(lang)
+	}
 
 	s.mu.Lock()
+	if s.warmEpoch[lang] != epoch {
+		// A concurrent upsert/invalidation landed newer cache state; keep it.
+		s.mu.Unlock()
+		return nil
+	}
 	s.cache[lang] = next
 	s.termHash[lang] = hash
 	s.mu.Unlock()
@@ -101,6 +121,7 @@ func (s *TermStore) WarmLanguage(lang string) error {
 func (s *TermStore) EvictLanguage(lang string) {
 	lang = strings.TrimSpace(lang)
 	s.mu.Lock()
+	s.warmEpoch[lang]++
 	delete(s.cache, lang)
 	delete(s.termHash, lang)
 	s.mu.Unlock()
@@ -194,6 +215,7 @@ func (s *TermStore) InvalidateModule(module string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for lang, byMod := range s.cache {
+		s.warmEpoch[lang]++
 		delete(byMod, module)
 		s.termHash[lang] = bumpHash(s.termHash[lang])
 	}
@@ -343,6 +365,7 @@ func (s *TermStore) applyOverrideToCache(module, lang, scopeKey, src, kind, valu
 	kind = i18nmodels.NormalizeKind(kind)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.warmEpoch[lang]++
 	if s.cache[lang] == nil {
 		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
 	}
