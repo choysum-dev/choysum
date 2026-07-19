@@ -95,6 +95,49 @@ func TestPOExportAttachment(t *testing.T) {
 	}
 }
 
+func TestPOExportSetsTruncatedHeader(t *testing.T) {
+	oldMax := poExportMaxItems
+	poExportMaxItems = 2
+	t.Cleanup(func() { poExportMaxItems = oldMax })
+
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{"auth": {"auth"}}, nil
+		},
+		search: func(ctx context.Context, accessToken, app, lang string, modules []string, q string, limit, offset int) (*searchTermsResult, error) {
+			items := []termItem{
+				{Application: "auth", Module: "auth", Scope: "a@1", Src: "One", Value: "一", Kind: "literal", Status: "translated"},
+				{Application: "auth", Module: "auth", Scope: "a@2", Src: "Two", Value: "二", Kind: "literal", Status: "translated"},
+				{Application: "auth", Module: "auth", Scope: "a@3", Src: "Three", Value: "三", Kind: "literal", Status: "translated"},
+			}
+			if offset >= len(items) {
+				return &searchTermsResult{Lang: lang, Total: int64(len(items))}, nil
+			}
+			end := offset + limit
+			if end > len(items) {
+				end = len(items)
+			}
+			return &searchTermsResult{
+				Lang:  lang,
+				Total: int64(len(items)),
+				Items: items[offset:end],
+			}, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(poPath, h.servePO)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/po?lang=zh_CN&application=auth", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if got := rr.Header().Get("X-Choysum-PO-Truncated"); got != "1" {
+		t.Fatalf("X-Choysum-PO-Truncated=%q, want 1", got)
+	}
+}
+
 func TestBuildPOEntriesMarksFuzzy(t *testing.T) {
 	entries := buildPOEntries("zh_CN", []termItem{{
 		Scope:  "a@b",

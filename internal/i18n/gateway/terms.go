@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -100,30 +101,49 @@ func (h *handler) serveTermsList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// All-apps search with q: fan-out, limit capped, no pagination (D8).
+	// All-apps search with q: concurrent fan-out, limit capped, no pagination (D8).
 	limit = allAppsSearchLimit
 	apps := sortedAppNames(byApp)
-	var items []termItem
-	var denied bool
-	for _, app := range apps {
+	type appSearchOutcome struct {
+		items  []termItem
+		denied bool
+	}
+	outcomes := make([]appSearchOutcome, len(apps))
+	g, gctx := errgroup.WithContext(r.Context())
+	for i, app := range apps {
+		i, app := i, app
 		modules := byApp[app]
 		if module != "" {
 			modules = []string{module}
 		}
-		remaining := limit - len(items)
-		if remaining <= 0 {
-			break
-		}
-		result, err := h.searchApp(r.Context(), accessToken, app, lang, modules, q, remaining, 0)
-		if err != nil {
-			if status.Code(err) == codes.PermissionDenied {
-				denied = true
-				continue
+		g.Go(func() error {
+			result, err := h.searchApp(gctx, accessToken, app, lang, modules, q, limit, 0)
+			if err != nil {
+				if status.Code(err) == codes.PermissionDenied {
+					outcomes[i] = appSearchOutcome{denied: true}
+					return nil
+				}
+				return err
 			}
-			writeTermsRPCError(w, err)
-			return
+			if result != nil {
+				outcomes[i] = appSearchOutcome{items: result.Items}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		writeTermsRPCError(w, err)
+		return
+	}
+
+	var items []termItem
+	var denied bool
+	for _, outcome := range outcomes {
+		if outcome.denied {
+			denied = true
+			continue
 		}
-		items = append(items, result.Items...)
+		items = append(items, outcome.items...)
 	}
 	if denied && len(items) == 0 {
 		writeJSON(w, http.StatusForbidden, map[string]any{"error": "terminology editor permission required"})

@@ -158,6 +158,47 @@ func TestTranslationsRequiresLang(t *testing.T) {
 	}
 }
 
+func TestTranslationsSkipsFailedApp(t *testing.T) {
+	h := &handler{
+		listModules: func() (map[string][]string, error) {
+			return map[string][]string{
+				"auth": {"auth"},
+				"web":  {"web"},
+			}, nil
+		},
+		fetch: func(ctx context.Context, app, lang string, moduleNames []string) (*appTranslations, error) {
+			if app == "web" {
+				return nil, context.DeadlineExceeded
+			}
+			return &appTranslations{
+				Hash: "hash-auth",
+				Terms: map[string]map[string]map[string]string{
+					"auth": {"a@t": {"Hello": "你好"}},
+				},
+			}, nil
+		},
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc(translationsPath, h.serveTranslations)
+	req := httptest.NewRequest(http.MethodGet, "/web/i18n/translations?lang=zh_CN", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%s", rr.Code, rr.Body.String())
+	}
+	var out map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	messages, _ := out["messages"].(map[string]any)
+	if messages["auth"] == nil {
+		t.Fatalf("expected healthy app translations: %#v", out["messages"])
+	}
+	if messages["web"] != nil {
+		t.Fatalf("expected failed app omitted: %#v", out["messages"])
+	}
+}
+
 func TestTranslationsAnonymousGETReadable(t *testing.T) {
 	h := &handler{
 		listModules: func() (map[string][]string, error) {

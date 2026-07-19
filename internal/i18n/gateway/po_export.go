@@ -12,8 +12,10 @@ import (
 	"github.com/choysum-dev/choysum/internal/i18n/po"
 )
 
-const (
-	poPath           = "/web/i18n/po"
+const poPath = "/web/i18n/po"
+
+// Tunable for tests; production defaults keep PO downloads bounded.
+var (
 	poExportPageSize = 100
 	poExportMaxItems = 10000
 )
@@ -57,7 +59,7 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 		modules = []string{module}
 	}
 
-	items, err := h.collectAllTerms(r.Context(), accessToken, application, lang, modules)
+	items, truncated, err := h.collectAllTerms(r.Context(), accessToken, application, lang, modules)
 	if err != nil {
 		writeTermsRPCError(w, err)
 		return
@@ -67,6 +69,11 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%s-%s.po", application, lang)
 	w.Header().Set("Content-Type", "text/x-po; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	if truncated {
+		w.Header().Set("X-Choysum-PO-Truncated", "1")
+		h.logger().Warn("i18n po export truncated",
+			"application", application, "lang", lang, "limit", poExportMaxItems, "exported", len(items))
+	}
 	w.WriteHeader(http.StatusOK)
 	if err := po.Write(w, entries); err != nil {
 		// Headers already sent; best-effort log via body append is avoided.
@@ -74,12 +81,14 @@ func (h *handler) servePO(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang string, modules []string) ([]termItem, error) {
+func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang string, modules []string) ([]termItem, bool, error) {
 	var all []termItem
 	offset := 0
+	truncated := false
 	for {
 		remaining := poExportMaxItems - len(all)
 		if remaining <= 0 {
+			truncated = true
 			break
 		}
 		page := poExportPageSize
@@ -88,18 +97,24 @@ func (h *handler) collectAllTerms(ctx context.Context, accessToken, app, lang st
 		}
 		result, err := h.searchApp(ctx, accessToken, app, lang, modules, "", page, offset)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if result == nil || len(result.Items) == 0 {
 			break
 		}
 		all = append(all, result.Items...)
 		offset += len(result.Items)
+		if len(all) >= poExportMaxItems {
+			if result.Total > int64(len(all)) {
+				truncated = true
+			}
+			break
+		}
 		if int64(offset) >= result.Total || len(result.Items) < page {
 			break
 		}
 	}
-	return all, nil
+	return all, truncated, nil
 }
 
 func buildPOEntries(lang string, items []termItem) []po.Entry {

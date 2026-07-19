@@ -6,6 +6,7 @@ package i18ngateway
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -64,14 +65,23 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 
 	results := make([]appResult, len(apps))
 	g, gctx := errgroup.WithContext(r.Context())
-	var mu sync.Mutex
+	var (
+		mu        sync.Mutex
+		fetchErrs []error
+	)
 	for i, app := range apps {
 		i, app := i, app
 		modules := byApp[app]
 		g.Go(func() error {
 			trans, err := h.fetchApp(gctx, app, lang, modules)
 			if err != nil {
-				return err
+				// Degrade gracefully: one offline app must not 502 the whole catalog.
+				h.logger().Warn("i18n translations: skipping failed application",
+					"application", app, "lang", lang, "error", err)
+				mu.Lock()
+				fetchErrs = append(fetchErrs, err)
+				mu.Unlock()
+				return nil
 			}
 			mu.Lock()
 			results[i] = appResult{app: app, trans: trans}
@@ -79,8 +89,16 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{"error": err.Error()})
+	_ = g.Wait()
+
+	successCount := 0
+	for _, item := range results {
+		if item.trans != nil {
+			successCount++
+		}
+	}
+	if successCount == 0 && len(fetchErrs) > 0 {
+		writeJSON(w, http.StatusBadGateway, map[string]any{"error": fetchErrs[0].Error()})
 		return
 	}
 
@@ -132,6 +150,15 @@ func (h *handler) fetchApp(ctx context.Context, app, lang string, moduleNames []
 		return h.fetch(ctx, app, lang, moduleNames)
 	}
 	return fetchAppTranslations(ctx, h.runtimeScope, app, lang, moduleNames)
+}
+
+func (h *handler) logger() *slog.Logger {
+	if h != nil && h.runtimeScope != nil {
+		if logger := h.runtimeScope.Logger(); logger != nil {
+			return logger
+		}
+	}
+	return slog.Default()
 }
 
 func catalogETag(catalogHash string) string {

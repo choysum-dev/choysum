@@ -9,7 +9,6 @@ package i18nimport
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -21,7 +20,6 @@ import (
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/leonelquinteros/gotext"
-	"gorm.io/gorm"
 )
 
 // ImportStats summarizes one PO import.
@@ -86,14 +84,23 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 			"application", application, "module", module, "lang", lang, "count", rejectedNoCtxt)
 	}
 
+	var existingRows []i18nmodels.TranslationTerm
+	if err := session.Table(tableName).
+		Where("module = ? AND lang = ?", module, lang).
+		Find(&existingRows).Error; err != nil {
+		return stats, fmt.Errorf("list existing terms: %w", err)
+	}
+	existingByKey := make(map[string]*i18nmodels.TranslationTerm, len(existingRows))
+	for i := range existingRows {
+		row := &existingRows[i]
+		existingByKey[termLookupKey(row.Scope, row.Src, row.Kind)] = row
+	}
+
+	toCreate := make([]i18nmodels.TranslationTerm, 0)
 	for _, term := range terms {
 		kind := i18nmodels.NormalizeKind(term.kind)
-		var existing i18nmodels.TranslationTerm
-		err := session.Table(tableName).
-			Where("module = ? AND lang = ? AND scope = ? AND src = ? AND kind = ?",
-				module, lang, term.scope, term.src, kind).
-			Take(&existing).Error
-		if err == nil {
+		key := termLookupKey(term.scope, term.src, kind)
+		if existing, ok := existingByKey[key]; ok {
 			if existing.Source == i18nmodels.SourceOverride {
 				stats.SkippedOverride++
 				continue
@@ -105,17 +112,14 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 			if term.comments != "" {
 				existing.Comments = term.comments
 			}
-			if err := session.Table(tableName).Save(&existing).Error; err != nil {
+			if err := session.Table(tableName).Save(existing).Error; err != nil {
 				return stats, fmt.Errorf("update term: %w", err)
 			}
 			stats.Upserted++
 			continue
 		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return stats, fmt.Errorf("lookup term: %w", err)
-		}
 
-		row := i18nmodels.TranslationTerm{
+		toCreate = append(toCreate, i18nmodels.TranslationTerm{
 			Application: application,
 			Module:      module,
 			Lang:        lang,
@@ -125,11 +129,13 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 			Kind:        kind,
 			Source:      i18nmodels.SourcePackaged,
 			Comments:    term.comments,
+		})
+	}
+	if len(toCreate) > 0 {
+		if err := session.Table(tableName).CreateInBatches(toCreate, 100).Error; err != nil {
+			return stats, fmt.Errorf("create terms: %w", err)
 		}
-		if err := session.Table(tableName).Create(&row).Error; err != nil {
-			return stats, fmt.Errorf("create term: %w", err)
-		}
-		stats.Upserted++
+		stats.Upserted += len(toCreate)
 	}
 
 	affectedLangs, purged, err := purgeRetiredS7Terms(session, tableName, module)
@@ -154,6 +160,10 @@ func ImportModulePo(runtimeScope scope.Scope, reg *store.Registry, application, 
 		}
 	}
 	return stats, nil
+}
+
+func termLookupKey(scopeName, src, kind string) string {
+	return scopeName + "\x00" + src + "\x00" + kind
 }
 
 func purgeRetiredS7Terms(session *scope.Session, tableName, module string) (map[string]struct{}, int, error) {
