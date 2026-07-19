@@ -39,9 +39,13 @@ func ExtractModule(moduleRoot string, moduleName string, pathAlias map[string]st
 		}
 		name := d.Name()
 		if d.IsDir() {
-			switch name {
-			case "node_modules", "dist", ".git", "i18n", "test", "tests", "__tests__":
-				return filepath.SkipDir
+			// WalkDir visits moduleRoot first; do not SkipDir the module itself
+			// when its basename collides with skipped folder names (e.g. "test").
+			if path != moduleRoot {
+				switch name {
+				case "node_modules", "dist", ".git", "i18n", "test", "tests", "__tests__":
+					return filepath.SkipDir
+				}
 			}
 			return nil
 		}

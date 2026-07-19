@@ -138,6 +138,42 @@ func TestExtractModuleSkipsConventionalTestSources(t *testing.T) {
 	}
 }
 
+func TestExtractModuleDoesNotSkipModuleRootNamedTest(t *testing.T) {
+	moduleRoot := filepath.Join(t.TempDir(), "test")
+	path := filepath.Join(moduleRoot, "web", "pages", "Home.ts")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`_t('From test module')`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Nested skipped dir must still be ignored.
+	nested := filepath.Join(moduleRoot, "test", "helper.ts")
+	if err := os.MkdirAll(filepath.Dir(nested), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(nested, []byte(`_t('Nested test helper')`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := ExtractModule(moduleRoot, "test", nil, false)
+	if err != nil {
+		t.Fatalf("ExtractModule: %v", err)
+	}
+	found := false
+	for _, term := range result.Terms {
+		if term.Src == "From test module" {
+			found = true
+		}
+		if term.Src == "Nested test helper" {
+			t.Fatalf("nested test/ dir should still be skipped, got %#v", result.Terms)
+		}
+	}
+	if !found {
+		t.Fatalf("expected term from module named test, got %#v", result.Terms)
+	}
+}
+
 func TestWritePotRejectsMissingMsgctxt(t *testing.T) {
 	err := WritePot(os.Stderr, "auth", []PotEntry{{Msgid: "Save"}})
 	if err == nil {
