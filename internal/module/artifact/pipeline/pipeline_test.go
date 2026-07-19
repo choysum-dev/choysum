@@ -1454,6 +1454,85 @@ func TestExecuteInstallModuleCommitFailuresRollbackCommittedStages(t *testing.T)
 	}
 }
 
+func TestExecuteInstallLaterModuleFailureRollsBackEarlierModuleGen(t *testing.T) {
+	const opID = "pipeline-later-install-failure"
+	rootDir := t.TempDir()
+	modulesRoot := filepath.Join(rootDir, "modules")
+	distRoot := filepath.Join(rootDir, "dist")
+	stageDir := func(stage, app string) string {
+		return filepath.Join(modulesRoot, "api", stage, app)
+	}
+	for _, stage := range []string{"proto", "web", "service"} {
+		target := stageDir(stage, "crm")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatalf("MkdirAll(%s): %v", target, err)
+		}
+		if err := os.WriteFile(filepath.Join(target, "existing.txt"), []byte(stage+"-old"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s): %v", target, err)
+		}
+	}
+
+	installCalls := 0
+	wantErr := errors.New("second module commit failed")
+	err := Execute(staging.WithOpID(staging.WithTmpRoot(context.Background(), t.TempDir()), opID), planner.Plan{
+		Op:           planner.OpInstall,
+		ModuleOrder:  []string{"base", "extra"},
+		AffectedApps: []string{"crm"},
+	}, &meta.IrModule{Name: "base", ApplicationStr: "crm"}, Callbacks{
+		ResolveInstallModuleFromOrigin: func(ctx context.Context, name string) (*meta.IrModule, error) {
+			if name == "extra" {
+				return &meta.IrModule{Name: "extra"}, nil
+			}
+			return nil, errors.New("unexpected resolve: " + name)
+		},
+		Install: func(module *meta.IrModule) error {
+			installCalls++
+			if module.Name == "extra" {
+				return wantErr
+			}
+			return nil
+		},
+		AppTargets: func(appName string) (string, ModulesAppTargets, error) {
+			return filepath.Join(distRoot, "apps", appName), ModulesAppTargets{
+				ProtoDir:   stageDir("proto", appName),
+				WebDir:     stageDir("web", appName),
+				ServiceDir: stageDir("service", appName),
+			}, nil
+		},
+		GenerateApp: func(ctx context.Context, appName string, modulesStaging ModulesAppTargets, distAppStagingDir string) error {
+			if err := writeStageFile(modulesStaging.ProtoDir, "generated.txt", "proto-new"); err != nil {
+				return err
+			}
+			if err := writeStageFile(modulesStaging.WebDir, "generated.txt", "web-new"); err != nil {
+				return err
+			}
+			return writeStageFile(modulesStaging.ServiceDir, "generated.txt", "service-new")
+		},
+		BuildBackendApp: func(ctx context.Context, appName string, distAppStagingDir string) error {
+			return writeStageFile(distAppStagingDir, "index.js", "should-not-land")
+		},
+		DistManifestTarget: func() (string, error) {
+			return filepath.Join(distRoot, distmanifest.DistManifestFileName), nil
+		},
+		WriteDistManifest: func(ctx context.Context, distManifestStagingPath string) error {
+			return os.WriteFile(distManifestStagingPath, []byte(`{"apps":["crm"]}`), 0o644)
+		},
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Execute() error = %v, want %v", err, wantErr)
+	}
+	if installCalls != 2 {
+		t.Fatalf("installCalls = %d, want 2", installCalls)
+	}
+	for _, stage := range []string{"proto", "web", "service"} {
+		target := stageDir(stage, "crm")
+		assertFileContent(t, filepath.Join(target, "existing.txt"), stage+"-old")
+		assertPathNotExists(t, filepath.Join(target, "generated.txt"))
+	}
+	assertPathNotExists(t, filepath.Join(distRoot, "apps", "crm", "index.js"))
+	assertPathNotExists(t, filepath.Join(distRoot, distmanifest.DistManifestFileName))
+}
+
 func TestExecuteInstallModulePrepareFailuresAbortPreparedStages(t *testing.T) {
 	tests := []struct {
 		name             string
