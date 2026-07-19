@@ -329,6 +329,11 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Local:"
 msgstr ""
 
+#: web/views/ModuleKanbanView.vue:52
+msgctxt "web/views/ModuleKanbanView"
+msgid "No description"
+msgstr ""
+
 #: web/views/ModuleKanbanView.vue:68
 msgctxt "web/views/ModuleKanbanView"
 msgid "No modules"
@@ -452,6 +457,16 @@ msgstr ""
 #: web/views/ModuleKanbanView.vue:50
 msgctxt "web/views/ModuleKanbanView"
 msgid "Synced:"
+msgstr ""
+
+#: web/views/ModuleKanbanView.vue:148
+msgctxt "web/views/ModuleKanbanView"
+msgid "Trigger Failed"
+msgstr ""
+
+#: web/views/ModuleKanbanView.vue:148
+msgctxt "web/views/ModuleKanbanView"
+msgid "Triggered"
 msgstr ""
 
 #: web/views/ModuleKanbanView.vue:174

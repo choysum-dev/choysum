@@ -1,8 +1,5 @@
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Language: zh_CN\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
 #: service/models/_helpers.ts:37
 msgctxt "service/models/_helpers"
@@ -59,8 +56,7 @@ msgctxt "web/views/PartnerBankAccountFormView"
 msgid "Account Name"
 msgstr "账户名称"
 
-#: web/views/PartnerBankAccountFormView.vue:15
-#: web/views/PartnerBankAccountFormView.vue:16
+#: web/views/PartnerBankAccountFormView.vue:15 web/views/PartnerBankAccountFormView.vue:16
 msgctxt "web/views/PartnerBankAccountFormView"
 msgid "Account Number"
 msgstr "账号"
@@ -205,6 +201,11 @@ msgctxt "web/views/PartnerFormView"
 msgid "New Bank Account"
 msgstr "新增银行账户"
 
+#: web/views/PartnerFormView.vue:20
+msgctxt "web/views/PartnerFormView"
+msgid "No"
+msgstr "否"
+
 #: web/views/PartnerFormView.vue:71
 msgctxt "web/views/PartnerFormView"
 msgid "Other"
@@ -220,7 +221,17 @@ msgctxt "web/views/PartnerFormView"
 msgid "Type"
 msgstr "类型"
 
+#: web/views/PartnerFormView.vue:9
+msgctxt "web/views/PartnerFormView"
+msgid "Unnamed Account"
+msgstr "未命名账户"
+
 #: web/views/PartnerFormView.vue:5
 msgctxt "web/views/PartnerFormView"
 msgid "View Bank Account"
 msgstr "查看银行账户"
+
+#: web/views/PartnerFormView.vue:20
+msgctxt "web/views/PartnerFormView"
+msgid "Yes"
+msgstr "是"

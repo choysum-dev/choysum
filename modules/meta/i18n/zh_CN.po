@@ -1,8 +1,5 @@
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Language: zh_CN\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
 #: service/models/ir_module.ts:302
 msgctxt "service/models/ir_module"
@@ -324,6 +321,11 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Local:"
 msgstr "本地："
 
+#: web/views/ModuleKanbanView.vue:52
+msgctxt "web/views/ModuleKanbanView"
+msgid "No description"
+msgstr "暂无描述"
+
 #: web/views/ModuleKanbanView.vue:68
 msgctxt "web/views/ModuleKanbanView"
 msgid "No modules"
@@ -448,6 +450,16 @@ msgstr "已触发同步任务：all:%s"
 msgctxt "web/views/ModuleKanbanView"
 msgid "Synced:"
 msgstr "同步："
+
+#: web/views/ModuleKanbanView.vue:148
+msgctxt "web/views/ModuleKanbanView"
+msgid "Trigger Failed"
+msgstr "触发失败"
+
+#: web/views/ModuleKanbanView.vue:148
+msgctxt "web/views/ModuleKanbanView"
+msgid "Triggered"
+msgstr "已触发"
 
 #: web/views/ModuleKanbanView.vue:174
 msgctxt "web/views/ModuleKanbanView"

@@ -210,6 +210,11 @@ msgctxt "web/views/PartnerFormView"
 msgid "New Bank Account"
 msgstr ""
 
+#: web/views/PartnerFormView.vue:20
+msgctxt "web/views/PartnerFormView"
+msgid "No"
+msgstr ""
+
 #: web/views/PartnerFormView.vue:71
 msgctxt "web/views/PartnerFormView"
 msgid "Other"
@@ -225,8 +230,18 @@ msgctxt "web/views/PartnerFormView"
 msgid "Type"
 msgstr ""
 
+#: web/views/PartnerFormView.vue:9
+msgctxt "web/views/PartnerFormView"
+msgid "Unnamed Account"
+msgstr ""
+
 #: web/views/PartnerFormView.vue:5
 msgctxt "web/views/PartnerFormView"
 msgid "View Bank Account"
+msgstr ""
+
+#: web/views/PartnerFormView.vue:20
+msgctxt "web/views/PartnerFormView"
+msgid "Yes"
 msgstr ""
 

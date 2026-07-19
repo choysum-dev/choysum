@@ -420,6 +420,11 @@ msgctxt "web/views/PartnerFormView"
 msgid "Supplier Rank"
 msgstr ""
 
+#: web/views/PartnerFormView.vue:119
+msgctxt "web/views/PartnerFormView"
+msgid "Unnamed Contact"
+msgstr ""
+
 #: web/views/PartnerFormView.vue:31
 msgctxt "web/views/PartnerFormView"
 msgid "Updated At"

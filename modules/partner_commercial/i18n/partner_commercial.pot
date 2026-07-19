@@ -110,6 +110,11 @@ msgctxt "web/views/PartnerFormView"
 msgid "Primary"
 msgstr ""
 
+#: web/views/PartnerFormView.vue:10
+msgctxt "web/views/PartnerFormView"
+msgid "Unnamed Type"
+msgstr ""
+
 #: web/views/PartnerFormView.vue:18
 msgctxt "web/views/PartnerFormView"
 msgid "Valid From"
