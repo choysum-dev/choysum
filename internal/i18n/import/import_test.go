@@ -518,3 +518,69 @@ msgstr "你好"
 		t.Fatalf("missing i18n dir should no-op: %v", err)
 	}
 }
+
+func TestImportModulePoUpdatesExistingPackaged(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "a@t", Src: "Hello", Value: "旧",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+	reg := store.NewRegistry(rs)
+	stats, err := i18nimport.ImportModulePo(rs, reg, "auth", "auth", "zh_CN", []byte(`
+#, fuzzy
+msgctxt "a@t"
+msgid "Hello"
+msgstr "新值"
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.Upserted != 1 {
+		t.Fatalf("stats=%+v", stats)
+	}
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Hello").Take(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	if row.Value != "新值" || row.Source != i18nmodels.SourcePackaged {
+		t.Fatalf("row=%+v", row)
+	}
+	val, ok := reg.Lookup("auth", "zh_CN", "a@t", "Hello", "")
+	if !ok || val != "新值" {
+		t.Fatalf("cache = %q ok=%v", val, ok)
+	}
+}
+
+func TestDeleteModuleTermsNoops(t *testing.T) {
+	rs := newTestScope(t)
+	reg := store.NewRegistry(rs)
+	if err := i18nimport.DeleteModuleTerms(rs, reg, "core", "auth"); err != nil {
+		t.Fatal(err)
+	}
+	if err := i18nimport.DeleteModuleTerms(rs, reg, "", "auth"); err != nil {
+		t.Fatal(err)
+	}
+	if err := i18nimport.DeleteModuleTerms(rs, reg, "auth", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := i18nimport.DeleteModuleTerms(nil, reg, "auth", "auth"); err == nil {
+		t.Fatal("expected missing session error")
+	}
+	// No table yet — should no-op.
+	if err := i18nimport.DeleteModuleTerms(rs, reg, "auth", "auth"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestImportModulePoMissingSession(t *testing.T) {
+	reg := store.NewRegistry(nil)
+	if _, err := i18nimport.ImportModulePo(nil, reg, "auth", "auth", "zh_CN", []byte(`msgctxt "a" msgid "x" msgstr "y"`)); err == nil {
+		t.Fatal("expected missing session")
+	}
+}

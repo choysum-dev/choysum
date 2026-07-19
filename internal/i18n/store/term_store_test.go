@@ -289,3 +289,45 @@ func TestEmptyTermHashAndApplication(t *testing.T) {
 		t.Fatal("empty module should miss")
 	}
 }
+
+func TestSearchTermsStatusAndWarmCoreNoop(t *testing.T) {
+	rs := newTestScope(t)
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatal(err)
+	}
+	table := rs.Session().Table("auth_translation_term")
+	for _, row := range []i18nmodels.TranslationTerm{
+		{Application: "", Module: "auth", Lang: "zh_CN", Scope: "a@m", Src: "Missing", Value: "", Kind: i18nmodels.KindLiteral, Source: ""},
+		{Application: "auth", Module: "auth", Lang: "zh_CN", Scope: "a@f", Src: "Fuzzy", Value: "模糊", Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged, Comments: "fuzzy"},
+	} {
+		if err := table.Create(&row).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	ts := store.NewTermStore(rs, "auth")
+	items, total, err := ts.SearchTerms("zh_CN", []string{"auth"}, "", 10, 0)
+	if err != nil || total != 2 {
+		t.Fatalf("items=%#v total=%d err=%v", items, total, err)
+	}
+	bySrc := map[string]string{}
+	for _, item := range items {
+		bySrc[item.Src] = item.Status
+		if item.Src == "Missing" && item.Application != "auth" {
+			t.Fatalf("empty application row should fall back: %#v", item)
+		}
+		if item.Src == "Missing" && item.Source != i18nmodels.SourcePackaged {
+			t.Fatalf("empty source fallback: %#v", item)
+		}
+	}
+	if bySrc["Missing"] != "missing" || bySrc["Fuzzy"] != "fuzzy" {
+		t.Fatalf("status map=%#v", bySrc)
+	}
+
+	core := store.NewTermStore(rs, "core")
+	if err := core.WarmLanguage("zh_CN"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.NewTermStore(rs, "auth").WarmLanguage(""); err != nil {
+		t.Fatal(err)
+	}
+}

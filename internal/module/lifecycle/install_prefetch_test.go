@@ -121,3 +121,28 @@ func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 		t.Fatal("expected error for module missing from prefetch cache")
 	}
 }
+
+func TestPrefetchInstallContextHelpers(t *testing.T) {
+	if PrefetchedInstallModulesFromContext(nil) != nil {
+		t.Fatal("nil ctx")
+	}
+	if PrefetchedInstallModulesFromContext(context.Background()) != nil {
+		t.Fatal("empty ctx")
+	}
+	ctx := WithPrefetchedInstallModules(nil, nil)
+	if PrefetchedInstallModulesFromContext(ctx) != nil {
+		t.Fatal("empty modules")
+	}
+	ctx = WithPrefetchedInstallModules(context.Background(), map[string]*meta.IrModule{
+		"":     {Name: "skip"},
+		"auth": nil,
+		"web":  {Name: "web"},
+	})
+	got := PrefetchedInstallModulesFromContext(ctx)
+	if len(got) != 1 || got["web"] == nil || got["web"].Name != "web" {
+		t.Fatalf("got=%#v", got)
+	}
+	if _, err := PrefetchInstallModules(context.Background(), nil, "auth"); err == nil {
+		t.Fatal("nil scope")
+	}
+}

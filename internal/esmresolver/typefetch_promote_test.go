@@ -198,6 +198,11 @@ func TestTypeFetchDiscoverSpec(t *testing.T) {
 		{specifier: "echarts/core", version: "6.1.0", want: "echarts@6.1.0/core"},
 		{specifier: "@vue/test-utils", version: "2.4.11", want: "@vue/test-utils@2.4.11"},
 		{specifier: "@vue/test-utils/dist/vue-test-utils.esm-browser", version: "2.4.11", want: "@vue/test-utils@2.4.11/dist/vue-test-utils.esm-browser"},
+		{specifier: "", version: "1.0.0", want: ""},
+		{specifier: "echarts", version: "", want: "echarts"},
+		{specifier: "echarts/core", version: "", want: "echarts/core"},
+		{specifier: "not a package!!", version: "1.2.3", want: "not a package!!@1.2.3"},
+		{specifier: "not a package!!", version: "", want: "not a package!!"},
 	}
 	for _, tt := range tests {
 		got := typeFetchDiscoverSpec(tt.specifier, tt.version)

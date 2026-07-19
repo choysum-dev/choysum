@@ -574,8 +574,6 @@ func (c *scriptCollector) translateCallLiteral(node *tsast.Node) (src string, sc
 	if len(args.Nodes) > 1 {
 		if s, scopeOK := parseReferenceScope(c.ctx, args.Nodes[1]); scopeOK {
 			manualScope = s
-		} else if s, scopeOK := parseCallScope(c.ctx, args.Nodes[1]); scopeOK {
-			manualScope = s
 		}
 	}
 	if manualScope == "" && calleeName != "" {
@@ -583,10 +581,6 @@ func (c *scriptCollector) translateCallLiteral(node *tsast.Node) (src string, sc
 	}
 	scope = ResolveI18nScope(manualScope, c.scopeStack, c.scopePath, "")
 	return src, scope, true
-}
-
-func parseCallScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {
-	return parseReferenceScope(ctx, node)
 }
 
 func parseReferenceScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {

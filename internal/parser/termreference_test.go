@@ -4,6 +4,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/pkg/meta"
@@ -81,5 +82,59 @@ func TestCloneTermReferenceWithSrcNilEmpty(t *testing.T) {
 	base := NewTermReferenceFromParts("auth", "a@b", "Hello", "literal")
 	if CloneTermReferenceWithSrc(&base, "  ") != nil {
 		t.Fatal("empty src")
+	}
+}
+
+func TestParseCreateTranslateOptionsAndBalancedArgs(t *testing.T) {
+	scope, ref := parseCreateTranslateOptions(`output: "reference", path: "web/a", location: "title"`)
+	if !ref || scope != "web/a@title" {
+		t.Fatalf("path/location = %q ref=%v", scope, ref)
+	}
+	scope, ref = parseCreateTranslateOptions(`output: 'text', scope: 'explicit'`)
+	if ref || scope != "explicit" {
+		t.Fatalf("scope = %q ref=%v", scope, ref)
+	}
+	scope, ref = parseCreateTranslateOptions("")
+	if scope != "" || ref {
+		t.Fatal("empty options")
+	}
+	scope, ref = parseCreateTranslateOptions(`path: ` + "`web/b`" + `, location: ` + "`loc`")
+	if scope != "web/b@loc" {
+		t.Fatalf("backtick path = %q", scope)
+	}
+
+	if _, ok := parseBalancedCallArguments("foo(", -1); ok {
+		t.Fatal("bad index")
+	}
+	args, ok := parseBalancedCallArguments(`createTranslate('auth', { scope: "a)b" })`, strings.Index(`createTranslate('auth', { scope: "a)b" })`, "("))
+	if !ok || !strings.Contains(args, "auth") {
+		t.Fatalf("balanced args = %q ok=%v", args, ok)
+	}
+	if _, ok := parseBalancedCallArguments("createTranslate('unclosed'", strings.Index("createTranslate('unclosed'", "(")); ok {
+		t.Fatal("unclosed should fail")
+	}
+
+	bindings := ParseTranslateBindings(`
+const { _t: aliased } = createTranslate("auth", { output: "reference", path: "p", location: "l" });
+const { _t } = createTranslate('web');
+`)
+	if !bindings["aliased"].ReferenceOutput || bindings["aliased"].DefaultScope != "p@l" {
+		t.Fatalf("aliased = %#v", bindings["aliased"])
+	}
+	if bindings["_t"].Module != "web" {
+		t.Fatalf("_t = %#v", bindings["_t"])
+	}
+
+	title, refMeta, ok := ParseResourceTitleExpr(`_t('Hello', { path: 'web/x', location: 't' })`, "auth", map[string]TranslateBinding{
+		"_t": {Module: "auth", ReferenceOutput: true},
+	})
+	if !ok || title != "Hello" || refMeta == nil || refMeta.Scope != "web/x@t" {
+		t.Fatalf("title expr = %q %#v ok=%v", title, refMeta, ok)
+	}
+	if _, _, ok := ParseResourceTitleExpr("", "auth", nil); ok {
+		t.Fatal("empty expr")
+	}
+	if lit, ok := parseTextCallLiteral("`tick`"); !ok || lit != "tick" {
+		t.Fatalf("backtick literal = %q ok=%v", lit, ok)
 	}
 }

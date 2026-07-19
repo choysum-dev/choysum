@@ -149,6 +149,117 @@ func TestI18nExtractSyncStatusRunE(t *testing.T) {
 	}
 }
 
+func TestI18nCmdRunEErrorPathsAndStrictOrphan(t *testing.T) {
+	root := newI18nCmd(func() scope.Scope { return nil })
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetArgs([]string{"extract", "demo"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "scope is not initialized") {
+		t.Fatalf("nil scope: %v", err)
+	}
+
+	emptyCfg := newCommandTestConfig(t.TempDir())
+	emptyCfg.ModulesPath = ""
+	env := &commandTestScope{cfg: emptyCfg}
+	root = newI18nCmd(func() scope.Scope { return env })
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	root.SetArgs([]string{"extract", "demo"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "modules path is empty") {
+		t.Fatalf("empty modules path: %v", err)
+	}
+
+	modulesPath := t.TempDir()
+	mod := filepath.Join(modulesPath, "demo")
+	i18nDir := filepath.Join(mod, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mod, "package.json"), []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"paths":{}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "demo.pot"), []byte(`msgid ""
+msgstr ""
+
+msgctxt "a@t"
+msgid "Hello"
+msgstr ""
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`msgid ""
+msgstr ""
+
+#~ msgctxt "a@t"
+#~ msgid "Hello"
+#~ msgstr "你好"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := newCommandTestConfig(modulesPath)
+	env = &commandTestScope{cfg: cfg}
+	root = newI18nCmd(func() scope.Scope { return env })
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"status", "--lang", "zh_CN", "--skip-pot-check", "--strict-orphan", "demo"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "blocking issue") {
+		t.Fatalf("strict orphan: %v\n%s", err, out.String())
+	}
+
+	// --all discovery
+	root = newI18nCmd(func() scope.Scope { return env })
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	out.Reset()
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"extract", "--all"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("extract --all: %v\n%s", err, out.String())
+	}
+}
+
+func TestI18nExtractWarnsNonLiteral(t *testing.T) {
+	modulesPath := t.TempDir()
+	mod := filepath.Join(modulesPath, "demo")
+	srcDir := filepath.Join(mod, "web")
+	if err := os.MkdirAll(srcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mod, "package.json"), []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "tsconfig.json"), []byte(`{"compilerOptions":{"paths":{}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "hi.ts"), []byte("_t(dynamic)\n_t('Ok')\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := newCommandTestConfig(modulesPath)
+	env := &commandTestScope{cfg: cfg}
+	root := newI18nCmd(func() scope.Scope { return env })
+	root.SilenceErrors = true
+	root.SilenceUsage = true
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs([]string{"extract", "demo"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("extract: %v", err)
+	}
+	if !strings.Contains(out.String(), "warn[") || !strings.Contains(out.String(), "warning(s)") {
+		t.Fatalf("expected warnings in output: %s", out.String())
+	}
+}
+
 func findI18nSub(t *testing.T, root *cobra.Command, name string) *cobra.Command {
 	t.Helper()
 	for _, c := range root.Commands() {

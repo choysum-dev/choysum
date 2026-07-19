@@ -438,3 +438,66 @@ func TestNewMessageHelpersAndParseInt32ViaSearch(t *testing.T) {
 		t.Fatalf("string-limit path items=%#v", out2)
 	}
 }
+
+func TestGetTranslationsCoreAndInterceptor(t *testing.T) {
+	rs := newTestScope(t)
+	core := i18nservice.New("core", rs)
+	out := invokeGetTranslations(t, core, "zh_CN", []string{"core"}, store.EmptyTermHash())
+	if out["unchanged"] != true {
+		t.Fatalf("core unchanged: %#v", out)
+	}
+
+	seedTerm(t, rs, "auth", "web/a@title", "Hello", "你好")
+	store.RegistryFor(rs).RememberModuleApplication("auth", "auth")
+	svc := i18nservice.New("auth", rs)
+	desc, err := svc.ServiceDesc()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var handler func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error)
+	for _, m := range desc.Methods {
+		if m.MethodName == i18nservice.MethodGetTranslations {
+			handler = m.Handler
+			break
+		}
+	}
+	intercepted := false
+	resp, err := handler(nil, context.Background(), func(v any) error {
+		msg := v.(*dynamicpb.Message)
+		return converter.MapToMessage(map[string]any{
+			"lang":         "zh_CN",
+			"module_names": stringListAny([]string{"auth"}),
+			"hash":         "",
+		}, msg)
+	}, func(ctx context.Context, req any, info *grpc.UnaryServerInfo, h grpc.UnaryHandler) (any, error) {
+		intercepted = true
+		if info == nil || info.FullMethod == "" {
+			t.Fatal("missing UnaryServerInfo")
+		}
+		return h(ctx, req)
+	})
+	if err != nil || !intercepted {
+		t.Fatalf("interceptor path err=%v intercepted=%v", err, intercepted)
+	}
+	if _, ok := resp.(*dynamicpb.Message); !ok {
+		t.Fatalf("resp type %T", resp)
+	}
+}
+
+func TestSearchTermsClampsLimit(t *testing.T) {
+	rs := newTestScope(t)
+	seedTerm(t, rs, "auth", "web/a@title", "Hello", "你好")
+	store.RegistryFor(rs).RememberModuleApplication("auth", "auth")
+	svc := i18nservice.New("auth", rs)
+	out, err := invokeMethod(t, svc, i18nservice.MethodSearchTerms, map[string]any{
+		"lang":   "zh_CN",
+		"limit":  0,
+		"offset": -1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out["limit"] == nil {
+		t.Fatalf("clamp response: %#v", out)
+	}
+}

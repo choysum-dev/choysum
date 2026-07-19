@@ -255,6 +255,82 @@ defineModelActions('base.User', {
 	}
 }
 
+func TestCollectScriptReferenceAndKindAndWithI18nScope(t *testing.T) {
+	content := `
+const { _t: ref } = createTranslate('auth', { output: 'reference', scope: 'factory.scope' })
+const { _t } = createTranslate('auth')
+ref('NeedsScope')
+_t()
+_t('Kinded', { kind: 'custom' })
+withI18nScope('manual.box', () => {
+  _t('Boxed')
+})
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/page.ts",
+	}, content)
+	codes := map[string]int{}
+	for _, issue := range issues {
+		codes[issue.Code]++
+	}
+	if codes[IssueNonLiteralMsgid] < 1 {
+		t.Fatalf("expected missing-msgid warning, issues=%#v", issues)
+	}
+	// NeedsScope without args uses factory default scope — should extract.
+	bySrc := map[string]TermOccurrence{}
+	for _, term := range terms {
+		bySrc[term.Src] = term
+	}
+	if bySrc["NeedsScope"].Scope != "factory.scope" {
+		t.Fatalf("NeedsScope = %#v", bySrc["NeedsScope"])
+	}
+	if bySrc["Kinded"].Kind != "custom" {
+		t.Fatalf("Kinded = %#v", bySrc["Kinded"])
+	}
+	if bySrc["Boxed"].Scope != "manual.box" {
+		t.Fatalf("Boxed = %#v", bySrc["Boxed"])
+	}
+}
+
+func TestCollectScriptReferenceMissingScopeWarns(t *testing.T) {
+	content := `
+const { _t: ref } = createTranslate('auth', { output: 'reference' })
+ref('NoScope')
+ref('Bad', { scope: dynamicScope })
+`
+	_, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "a.ts",
+	}, content)
+	scopeWarns := 0
+	for _, issue := range issues {
+		if issue.Code == IssueNonLiteralScope {
+			scopeWarns++
+		}
+	}
+	if scopeWarns < 2 {
+		t.Fatalf("expected reference scope warnings, got %#v", issues)
+	}
+}
+
+func TestCollectScriptFactoryDefaultPathLocation(t *testing.T) {
+	content := `
+const { _t } = createTranslate('auth', { path: 'web/views/Page', location: 'title' })
+_t('FromFactory')
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/page.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("issues=%#v", issues)
+	}
+	if len(terms) != 1 || terms[0].Scope != "web/views/Page@title" {
+		t.Fatalf("terms=%#v", terms)
+	}
+}
+
 func TestCollectScriptPathLocationScopeOptions(t *testing.T) {
 	content := `
 const { _t } = createTranslate('auth')
