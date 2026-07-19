@@ -92,6 +92,26 @@ func TestSplitBarePackageSpecifier(t *testing.T) {
 	}
 }
 
+func TestIsBarePackageImportSpecifier(t *testing.T) {
+	tests := []struct {
+		in string
+		ok bool
+	}{
+		{in: "vue", ok: true},
+		{in: "@scope/pkg", ok: true},
+		{in: "./local", ok: false},
+		{in: "@/alias", ok: false},
+		{in: "~/components/Button", ok: false},
+		{in: "#internal", ok: false},
+		{in: "node:fs", ok: false},
+	}
+	for _, tt := range tests {
+		if got := isBarePackageImportSpecifier(tt.in); got != tt.ok {
+			t.Fatalf("isBarePackageImportSpecifier(%q) = %v, want %v", tt.in, got, tt.ok)
+		}
+	}
+}
+
 func TestTypeFetchDiscoverSpec(t *testing.T) {
 	tests := []struct {
 		specifier string

@@ -171,7 +171,7 @@ func isBarePackageImportSpecifier(spec string) bool {
 		return false
 	case strings.HasPrefix(spec, "node:"), strings.HasPrefix(spec, "data:"), strings.HasPrefix(spec, "http://"), strings.HasPrefix(spec, "https://"):
 		return false
-	case strings.HasPrefix(spec, "@/"), strings.HasPrefix(spec, "#"):
+	case strings.HasPrefix(spec, "@/"), strings.HasPrefix(spec, "~/"), strings.HasPrefix(spec, "#"):
 		return false
 	case isAssetLikeImportSpecifier(spec):
 		return false

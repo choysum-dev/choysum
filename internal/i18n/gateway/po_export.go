@@ -16,7 +16,8 @@ const poPath = "/web/i18n/po"
 
 // Tunable for tests; production defaults keep PO downloads bounded.
 var (
-	poExportPageSize = 100
+	// Keep in sync with i18nservice maxSearchLimit so export pages are not capped smaller.
+	poExportPageSize = 500
 	poExportMaxItems = 10000
 )
 

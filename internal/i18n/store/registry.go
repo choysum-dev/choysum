@@ -18,6 +18,8 @@ type Registry struct {
 	runtimeScope scope.Scope
 	stores       map[string]*TermStore
 	moduleToApp  map[string]string
+	// hostAppsCache is a sorted list of non-core host applications. nil means dirty.
+	hostAppsCache []string
 }
 
 // NewRegistry creates a registry bound to a runtime scope (shared DB).
@@ -39,6 +41,7 @@ func (r *Registry) StoreFor(application string) *TermStore {
 	}
 	s := NewTermStore(r.runtimeScope, application)
 	r.stores[application] = s
+	r.hostAppsCache = nil
 	return s
 }
 
@@ -68,8 +71,13 @@ func (r *Registry) lookupFrameworkModule(module, lang, scopeKey, src, kind strin
 }
 
 func (r *Registry) listHostApplications() []string {
-	seen := map[string]struct{}{}
 	r.mu.RLock()
+	if r.hostAppsCache != nil {
+		out := append([]string(nil), r.hostAppsCache...)
+		r.mu.RUnlock()
+		return out
+	}
+	seen := map[string]struct{}{}
 	for _, app := range r.moduleToApp {
 		app = strings.TrimSpace(app)
 		if app == "" || app == "core" {
@@ -86,7 +94,9 @@ func (r *Registry) listHostApplications() []string {
 	}
 	r.mu.RUnlock()
 
-	if r.runtimeScope != nil && r.runtimeScope.Session() != nil {
+	// Prefer in-memory hosts for hot Lookup paths. Fall back to IrModule only
+	// when the registry has not observed any host application yet.
+	if len(seen) == 0 && r.runtimeScope != nil && r.runtimeScope.Session() != nil {
 		session := r.runtimeScope.Session()
 		if session.Migrator().HasTable((&meta.IrModule{}).TableName()) {
 			var modules []meta.IrModule
@@ -107,6 +117,12 @@ func (r *Registry) listHostApplications() []string {
 		out = append(out, app)
 	}
 	sort.Strings(out)
+
+	r.mu.Lock()
+	if r.hostAppsCache == nil {
+		r.hostAppsCache = append([]string(nil), out...)
+	}
+	r.mu.Unlock()
 	return out
 }
 
@@ -144,6 +160,7 @@ func (r *Registry) RememberModuleApplication(module, application string) {
 	}
 	r.mu.Lock()
 	r.moduleToApp[module] = application
+	r.hostAppsCache = nil
 	r.mu.Unlock()
 }
 

@@ -19,8 +19,9 @@ var (
 	reTemplateMustache = regexp.MustCompile(`\{\{\s*(_t)\s*\(\s*(['"].*?['"]|[^\s),]+)\s*(?:,|\))`)
 
 	// Attribute bindings: :title="_t('...')" or :title='_t("...")' (Go regexp has no backrefs).
-	reTemplateAttrDouble = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*"\s*(_t)\s*\(\s*(.*?)\s*(?:,|\))\s*"`)
-	reTemplateAttrSingle = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*'\s*(_t)\s*\(\s*(.*?)\s*(?:,|\))\s*'`)
+	// Capture only the first msgid argument so options objects do not leak into ParseJSStringLiteral.
+	reTemplateAttrDouble = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*"\s*(_t)\s*\(\s*(['"].*?['"]|[^\s),]+).*?\s*"`)
+	reTemplateAttrSingle = regexp.MustCompile(`(?::|v-bind:)\w[\w-]*\s*=\s*'\s*(_t)\s*\(\s*(['"].*?['"]|[^\s),]+).*?\s*'`)
 )
 
 // CollectTemplateRegex extracts literal `_t` calls from Vue template HTML text.

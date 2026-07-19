@@ -9,6 +9,17 @@ import (
 	"testing"
 )
 
+func TestParseMsgstrWithTabSeparator(t *testing.T) {
+	src := "msgctxt \"scope\"\nmsgid \"Hello\"\nmsgstr\t\"你好\"\n"
+	entries, err := Parse(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Msgstr != "你好" {
+		t.Fatalf("entries=%#v", entries)
+	}
+}
+
 func TestParseAndWriteRoundTrip(t *testing.T) {
 	src := `#: a.ts:1
 msgctxt "scope"

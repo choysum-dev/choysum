@@ -16,7 +16,8 @@ import (
 
 const (
 	defaultSearchLimit = 50
-	maxSearchLimit     = 100
+	// maxSearchLimit bounds editor UI pages and gateway PO export page size.
+	maxSearchLimit = 500
 )
 
 func (s *Service) handleSearchTerms(reqMap map[string]any) (any, error) {

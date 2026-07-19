@@ -128,12 +128,12 @@ func Parse(r io.Reader) ([]Entry, error) {
 			hasEntry = true
 			state = "msgid"
 		case strings.HasPrefix(trimmed, "msgstr"):
-			// msgstr or msgstr[n]
-			rest := trimmed
-			if i := strings.Index(rest, " "); i >= 0 {
-				rest = strings.TrimSpace(rest[i:])
-			} else {
-				rest = ""
+			// msgstr or msgstr[n] — tolerate tabs/extra spaces after the keyword.
+			rest := strings.TrimPrefix(trimmed, "msgstr")
+			if strings.HasPrefix(rest, "[") {
+				if idx := strings.Index(rest, "]"); idx >= 0 {
+					rest = rest[idx+1:]
+				}
 			}
 			cur.Msgstr = unquotePo(rest)
 			hasEntry = true

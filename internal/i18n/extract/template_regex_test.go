@@ -21,6 +21,7 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
   {{ LEGACY_REFERENCE("Reference") }}
   <input :placeholder="_t('Name')" />
   <span :title='_t("Title")'></span>
+  <button :aria-label="_t('Save', { scope: 'web/actions' })"></button>
   {{ _t(foo) }}
 </div>
 `)
@@ -29,7 +30,7 @@ func TestCollectTemplateRegexPatterns(t *testing.T) {
 		RelPath:    "web/widgets/Box.vue",
 	}, html)
 
-	want := map[string]bool{"Hello": false, "Name": false, "Title": false}
+	want := map[string]bool{"Hello": false, "Name": false, "Title": false, "Save": false}
 	for _, term := range terms {
 		if term.Scope != "web/widgets/Box" {
 			t.Fatalf("unexpected scope %q for %q", term.Scope, term.Src)
