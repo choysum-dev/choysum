@@ -16,13 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField :store="store" prop="Name" label="名称" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField :store="store" prop="Code" label="编码" :vColumnProps="{ minWidth: 120 }" />
-    <OManyToOneRefField :store="store" prop="CompanyId" label="所属公司" :vColumnProps="{ minWidth: 180 }" />
-    <OIntField :store="store" prop="CustomerRank" label="客户等级" />
-    <OIntField :store="store" prop="SupplierRank" label="供应商等级" />
-    <OBooleanField :store="store" prop="IsActive" label="启用" />
-    <ODateTimeField :store="store" prop="UpdatedAt" label="更新时间" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField :store="store" prop="Name" :label="_t('Name')" :vColumnProps="{ minWidth: 180 }" />
+    <OVarCharField :store="store" prop="Code" :label="_t('Code')" :vColumnProps="{ minWidth: 120 }" />
+    <OManyToOneRefField :store="store" prop="CompanyId" :label="_t('Company')" :vColumnProps="{ minWidth: 180 }" />
+    <OIntField :store="store" prop="CustomerRank" :label="_t('Customer Rank')" />
+    <OIntField :store="store" prop="SupplierRank" :label="_t('Supplier Rank')" />
+    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 
@@ -42,8 +42,11 @@ import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineAction, defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerListView', inheritAttrs: true });
+const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
+const { _t: _tRef } = createTranslate('partner', { output: 'reference', scope: 'web/views/PartnerListView' });
 
 /**
  * Props consumed by the partner list view.
@@ -58,10 +61,10 @@ const router = useRouter();
  * Action descriptor used to open the partner detail page from the list.
  */
 const partnerOpenDetailAction = defineAction('partner.action.partner_open_detail', {
-  title: '打开伙伴详情',
+  title: _tRef('Open Partner Detail'),
   requires: [{ model: 'partner.Partner' }],
 });
-const partnerActions = defineModelActions('partner.Partner', { entityTitle: '伙伴' });
+const partnerActions = defineModelActions('partner.Partner', { entityTitle: _tRef('Partner') });
 const { hasAction } = usePermission();
 
 /**

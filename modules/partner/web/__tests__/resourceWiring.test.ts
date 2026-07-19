@@ -30,13 +30,13 @@ describe('partner resource wiring', () => {
 
     expect(list).toContain("defineAction('partner.action.partner_open_detail'");
     expect(list).toContain("defineModelActions('partner.Partner', {");
-    expect(list).toContain("entityTitle: '伙伴'");
+    expect(list).toContain("entityTitle: _tRef('Partner')");
     expect(list).toContain(':action-ids="{ create: partnerActions.create, delete: partnerActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
     expect(list).toContain('hasAction(partnerOpenDetailAction)');
 
     expect(form).toContain("defineModelActions('partner.Partner', {");
-    expect(form).toContain("entityTitle: '伙伴'");
+    expect(form).toContain("entityTitle: _tRef('Partner')");
     expect(form).toContain('create: partnerActions.create');
     expect(form).toContain('edit: partnerActions.edit');
     expect(form).toContain('copy: partnerActions.copy');

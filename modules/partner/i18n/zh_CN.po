@@ -1,6 +1,486 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/_normalization_bridge.ts:55
+msgctxt "service/models/_normalization_bridge"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/models/_normalization_bridge.ts:69 service/models/_normalization_bridge.ts:73
+msgctxt "service/models/_normalization_bridge"
+msgid "%s must be a non-negative integer"
+msgstr "%s 必须为非负整数"
+
+#: service/models/_normalization_bridge.ts:90 service/models/_normalization_bridge.ts:94
+msgctxt "service/models/_normalization_bridge"
+msgid "Sequence must be an integer"
+msgstr "Sequence 必须为整数"
+
+#: service/models/partner.ts:191
+msgctxt "service/models/partner"
+msgid "CompanyId is required"
+msgstr "CompanyId 为必填项"
+
+#: service/models/partner.ts:203
+msgctxt "service/models/partner"
+msgid "Partner Code must be unique within the company"
+msgstr "伙伴编码在同一公司内必须唯一"
+
+#: service/models/partner_contact.ts:92
+msgctxt "service/models/partner_contact"
+msgid "AddressType must be one of billing, shipping, office, registered, other"
+msgstr "AddressType 必须是 billing、shipping、office、registered 或 other"
+
+#: service/models/partner_contact.ts:178
+msgctxt "service/models/partner_contact"
+msgid "CompanyId is required"
+msgstr "CompanyId 为必填项"
+
+#: service/models/partner_contact.ts:120
+msgctxt "service/models/partner_contact"
+msgid "Only one default %s contact is allowed for the same partner"
+msgstr "同一伙伴下每个 %s 类型只能有一个默认联系人"
+
+#: service/models/partner_contact.ts:132
+msgctxt "service/models/partner_contact"
+msgid "PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile"
+msgstr "联系人至少需要填写 Name、AddressId、Email、Phone 或 Mobile 之一"
+
+#: service/models/partner_contact.ts:104 service/models/partner_contact.ts:177
+msgctxt "service/models/partner_contact"
+msgid "PartnerId is required"
+msgstr "PartnerId 为必填项"
+
+#: web/menu/menus.ts:21
+msgctxt "web/menu/menus"
+msgid "Partner List"
+msgstr "伙伴列表"
+
+#: web/menu/menus.ts:16
+msgctxt "web/menu/menus"
+msgid "Partner Management"
+msgstr "伙伴管理"
+
+#: web/route/routes.ts:41
+msgctxt "web/route/routes"
+msgid "New Partner"
+msgstr "新建伙伴"
+
+#: web/route/routes.ts:31
+msgctxt "web/route/routes"
+msgid "Partner Detail"
+msgstr "伙伴详情"
+
+#: web/route/routes.ts:16
+msgctxt "web/route/routes"
+msgid "Partner List"
+msgstr "伙伴列表"
+
+#: web/views/PartnerContactFormView.vue:45
+msgctxt "web/views/PartnerContactFormView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/PartnerContactFormView.vue:18
+msgctxt "web/views/PartnerContactFormView"
+msgid "Address"
+msgstr "地址"
+
+#: web/views/PartnerContactFormView.vue:15
+msgctxt "web/views/PartnerContactFormView"
+msgid "Address Type"
+msgstr "地址类型"
+
+#: web/views/PartnerContactFormView.vue:42
+msgctxt "web/views/PartnerContactFormView"
+msgid "Default"
+msgstr "默认"
+
+#: web/views/PartnerContactFormView.vue:24
+msgctxt "web/views/PartnerContactFormView"
+msgid "Email"
+msgstr "邮箱"
+
+#: web/views/PartnerContactFormView.vue:33
+msgctxt "web/views/PartnerContactFormView"
+msgid "Mobile"
+msgstr "手机"
+
+#: web/views/PartnerContactFormView.vue:6
+msgctxt "web/views/PartnerContactFormView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/PartnerContactFormView.vue:27
+msgctxt "web/views/PartnerContactFormView"
+msgid "Phone"
+msgstr "电话"
+
+#: web/views/PartnerContactFormView.vue:9
+msgctxt "web/views/PartnerContactFormView"
+msgid "Role"
+msgstr "角色"
+
+#: web/views/PartnerContactFormView.vue:18
+msgctxt "web/views/PartnerContactFormView"
+msgid "Select Address"
+msgstr "选择地址"
+
+#: web/views/PartnerContactFormView.vue:36
+msgctxt "web/views/PartnerContactFormView"
+msgid "Sequence"
+msgstr "排序"
+
+#: web/views/PartnerFormView.vue:25
+msgctxt "web/views/PartnerFormView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/PartnerFormView.vue:115
+msgctxt "web/views/PartnerFormView"
+msgid "Add Contact"
+msgstr "添加联系人"
+
+#: web/views/PartnerFormView.vue:126
+msgctxt "web/views/PartnerFormView"
+msgid "Address Type"
+msgstr "地址类型"
+
+#: web/views/PartnerFormView.vue:7
+msgctxt "web/views/PartnerFormView"
+msgid "Basic Information"
+msgstr "基础信息"
+
+#: web/views/PartnerFormView.vue:84
+msgctxt "web/views/PartnerFormView"
+msgid "Billing Address"
+msgstr "开票地址"
+
+#: web/views/PartnerFormView.vue:106
+msgctxt "web/views/PartnerFormView"
+msgid "Billing Contact"
+msgstr "财务联系人"
+
+#: web/views/PartnerFormView.vue:14
+msgctxt "web/views/PartnerFormView"
+msgid "Code"
+msgstr "编码"
+
+#: web/views/PartnerFormView.vue:38
+msgctxt "web/views/PartnerFormView"
+msgid "Commercial Basics"
+msgstr "商业基础"
+
+#: web/views/PartnerFormView.vue:17
+msgctxt "web/views/PartnerFormView"
+msgid "Company"
+msgstr "所属公司"
+
+#: web/views/PartnerFormView.vue:63
+msgctxt "web/views/PartnerFormView"
+msgid "Contact Details"
+msgstr "联系方式"
+
+#: web/views/PartnerFormView.vue:113
+msgctxt "web/views/PartnerFormView"
+msgid "Contacts and Addresses"
+msgstr "联系人与地址"
+
+#: web/views/PartnerFormView.vue:55
+msgctxt "web/views/PartnerFormView"
+msgid "Copy Partner"
+msgstr "复制伙伴"
+
+#: web/views/PartnerFormView.vue:56
+msgctxt "web/views/PartnerFormView"
+msgid "Country"
+msgstr "国家"
+
+#: web/views/PartnerFormView.vue:55
+msgctxt "web/views/PartnerFormView"
+msgid "Create Partner"
+msgstr "新建伙伴"
+
+#: web/views/PartnerFormView.vue:28
+msgctxt "web/views/PartnerFormView"
+msgid "Created At"
+msgstr "创建时间"
+
+#: web/views/PartnerFormView.vue:42
+msgctxt "web/views/PartnerFormView"
+msgid "Customer Rank"
+msgstr "客户等级"
+
+#: web/views/PartnerFormView.vue:121
+msgctxt "web/views/PartnerFormView"
+msgid "Default"
+msgstr "默认"
+
+#: web/views/PartnerFormView.vue:92
+msgctxt "web/views/PartnerFormView"
+msgid "Default Billing Address"
+msgstr "默认开票地址"
+
+#: web/views/PartnerFormView.vue:87
+msgctxt "web/views/PartnerFormView"
+msgid "Default Contact"
+msgstr "默认联系人"
+
+#: web/views/PartnerFormView.vue:51
+msgctxt "web/views/PartnerFormView"
+msgid "Default Currency"
+msgstr "默认币种"
+
+#: web/views/PartnerFormView.vue:83
+msgctxt "web/views/PartnerFormView"
+msgid "Default Entries"
+msgstr "默认入口"
+
+#: web/views/PartnerFormView.vue:48
+msgctxt "web/views/PartnerFormView"
+msgid "Default Language"
+msgstr "默认语言"
+
+#: web/views/PartnerFormView.vue:97
+msgctxt "web/views/PartnerFormView"
+msgid "Default Shipping Address"
+msgstr "默认收货地址"
+
+#: web/views/PartnerFormView.vue:131
+msgctxt "web/views/PartnerFormView"
+msgid "Delete"
+msgstr "删除"
+
+#: web/views/PartnerFormView.vue:55
+msgctxt "web/views/PartnerFormView"
+msgid "Delete Partner"
+msgstr "删除伙伴"
+
+#: web/views/PartnerFormView.vue:130
+msgctxt "web/views/PartnerFormView"
+msgid "Edit"
+msgstr "编辑"
+
+#: web/views/PartnerFormView.vue:115
+msgctxt "web/views/PartnerFormView"
+msgid "Edit Contact"
+msgstr "编辑联系人"
+
+#: web/views/PartnerFormView.vue:55
+msgctxt "web/views/PartnerFormView"
+msgid "Edit Partner"
+msgstr "编辑伙伴"
+
+#: web/views/PartnerFormView.vue:127 web/views/PartnerFormView.vue:67
+msgctxt "web/views/PartnerFormView"
+msgid "Email"
+msgstr "邮箱"
+
+#: web/views/PartnerFormView.vue:76
+msgctxt "web/views/PartnerFormView"
+msgid "External Reference"
+msgstr "外部参考"
+
+#: web/views/PartnerFormView.vue:114
+msgctxt "web/views/PartnerFormView"
+msgid "Finance Contact"
+msgstr "财务负责人"
+
+#: web/views/PartnerFormView.vue:104
+msgctxt "web/views/PartnerFormView"
+msgid "General Contact"
+msgstr "普通联系人"
+
+#: web/views/PartnerFormView.vue:122
+msgctxt "web/views/PartnerFormView"
+msgid "Inactive"
+msgstr "停用"
+
+#: web/views/PartnerFormView.vue:116
+msgctxt "web/views/PartnerFormView"
+msgid "Legal Contact"
+msgstr "法务联系人"
+
+#: web/views/PartnerFormView.vue:73
+msgctxt "web/views/PartnerFormView"
+msgid "Mobile"
+msgstr "手机"
+
+#: web/views/PartnerFormView.vue:11 web/views/PartnerFormView.vue:88 web/views/PartnerFormView.vue:93 web/views/PartnerFormView.vue:98
+msgctxt "web/views/PartnerFormView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/PartnerFormView.vue:115
+msgctxt "web/views/PartnerFormView"
+msgid "New Contact"
+msgstr "新增联系人"
+
+#: web/views/PartnerFormView.vue:88
+msgctxt "web/views/PartnerFormView"
+msgid "Office Address"
+msgstr "办公地址"
+
+#: web/views/PartnerFormView.vue:20
+msgctxt "web/views/PartnerFormView"
+msgid "Organization"
+msgstr "组织主体"
+
+#: web/views/PartnerFormView.vue:92
+msgctxt "web/views/PartnerFormView"
+msgid "Other"
+msgstr "其他"
+
+#: web/views/PartnerFormView.vue:55
+msgctxt "web/views/PartnerFormView"
+msgid "Partner"
+msgstr "伙伴"
+
+#: web/views/PartnerFormView.vue:128 web/views/PartnerFormView.vue:70
+msgctxt "web/views/PartnerFormView"
+msgid "Phone"
+msgstr "电话"
+
+#: web/views/PartnerFormView.vue:110
+msgctxt "web/views/PartnerFormView"
+msgid "Procurement Contact"
+msgstr "采购联系人"
+
+#: web/views/PartnerFormView.vue:90
+msgctxt "web/views/PartnerFormView"
+msgid "Registered Address"
+msgstr "注册地址"
+
+#: web/views/PartnerFormView.vue:108
+msgctxt "web/views/PartnerFormView"
+msgid "Related Data"
+msgstr "关联数据"
+
+#: web/views/PartnerFormView.vue:34
+msgctxt "web/views/PartnerFormView"
+msgid "Required"
+msgstr "必填"
+
+#: web/views/PartnerFormView.vue:125
+msgctxt "web/views/PartnerFormView"
+msgid "Role"
+msgstr "角色"
+
+#: web/views/PartnerFormView.vue:112
+msgctxt "web/views/PartnerFormView"
+msgid "Sales Contact"
+msgstr "销售联系人"
+
+#: web/views/PartnerFormView.vue:17
+msgctxt "web/views/PartnerFormView"
+msgid "Select Company"
+msgstr "选择公司"
+
+#: web/views/PartnerFormView.vue:56
+msgctxt "web/views/PartnerFormView"
+msgid "Select Country"
+msgstr "选择国家"
+
+#: web/views/PartnerFormView.vue:51
+msgctxt "web/views/PartnerFormView"
+msgid "Select Currency"
+msgstr "选择币种"
+
+#: web/views/PartnerFormView.vue:48
+msgctxt "web/views/PartnerFormView"
+msgid "Select Language"
+msgstr "选择语言"
+
+#: web/views/PartnerFormView.vue:86
+msgctxt "web/views/PartnerFormView"
+msgid "Shipping Address"
+msgstr "收货地址"
+
+#: web/views/PartnerFormView.vue:108
+msgctxt "web/views/PartnerFormView"
+msgid "Shipping Contact"
+msgstr "收货联系人"
+
+#: web/views/PartnerFormView.vue:45
+msgctxt "web/views/PartnerFormView"
+msgid "Supplier Rank"
+msgstr "供应商等级"
+
+#: web/views/PartnerFormView.vue:31
+msgctxt "web/views/PartnerFormView"
+msgid "Updated At"
+msgstr "更新时间"
+
+#: web/views/PartnerFormView.vue:115
+msgctxt "web/views/PartnerFormView"
+msgid "View Contact"
+msgstr "查看联系人"
+
+#: web/views/PartnerListView.vue:11
+msgctxt "web/views/PartnerListView"
+msgid "Active"
+msgstr "启用"
+
+#: web/views/PartnerListView.vue:7
+msgctxt "web/views/PartnerListView"
+msgid "Code"
+msgstr "编码"
+
+#: web/views/PartnerListView.vue:8
+msgctxt "web/views/PartnerListView"
+msgid "Company"
+msgstr "所属公司"
+
+#: web/views/PartnerListView.vue:39
+msgctxt "web/views/PartnerListView"
+msgid "Copy Partner"
+msgstr "复制伙伴"
+
+#: web/views/PartnerListView.vue:39
+msgctxt "web/views/PartnerListView"
+msgid "Create Partner"
+msgstr "新建伙伴"
+
+#: web/views/PartnerListView.vue:9
+msgctxt "web/views/PartnerListView"
+msgid "Customer Rank"
+msgstr "客户等级"
+
+#: web/views/PartnerListView.vue:39
+msgctxt "web/views/PartnerListView"
+msgid "Delete Partner"
+msgstr "删除伙伴"
+
+#: web/views/PartnerListView.vue:39
+msgctxt "web/views/PartnerListView"
+msgid "Edit Partner"
+msgstr "编辑伙伴"
+
+#: web/views/PartnerListView.vue:6
+msgctxt "web/views/PartnerListView"
+msgid "Name"
+msgstr "名称"
+
+#: web/views/PartnerListView.vue:36
+msgctxt "web/views/PartnerListView"
+msgid "Open Partner Detail"
+msgstr "打开伙伴详情"
+
+#: web/views/PartnerListView.vue:39
+msgctxt "web/views/PartnerListView"
+msgid "Partner"
+msgstr "伙伴"
+
+#: web/views/PartnerListView.vue:10
+msgctxt "web/views/PartnerListView"
+msgid "Supplier Rank"
+msgstr "供应商等级"
+
+#: web/views/PartnerListView.vue:12
+msgctxt "web/views/PartnerListView"
+msgid "Updated At"
+msgstr "更新时间"
+
 #~ #. kind: menu
 #~ msgctxt "web/menu/menus@partner.menu.partner_list"
 #~ msgid "伙伴列表"

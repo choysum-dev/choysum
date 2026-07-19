@@ -17,24 +17,24 @@ SPDX-License-Identifier: Apache-2.0
     <div class="pcfv-grid">
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Name" label="姓名/名称" />
+          <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="ContactRole" label="角色" :selection="contactRoleOptions" />
+          <OSelectionField :store="store" prop="ContactRole" :label="_t('Role')" :selection="contactRoleOptions" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="AddressType" label="地址类型" :selection="addressTypeOptions" />
+          <OSelectionField :store="store" prop="AddressType" :label="_t('Address Type')" :selection="addressTypeOptions" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
           <OManyToOneRefField
             :store="store"
             prop="AddressId"
-            label="地址"
+            :label="_t('Address')"
             :searchView="AddressListView"
-            search-view-title="选择地址"
+            :search-view-title="_t('Select Address')"
             @value-click="onAddressValueClick"
           />
         </el-col>
@@ -42,28 +42,28 @@ SPDX-License-Identifier: Apache-2.0
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Email" label="邮箱" />
+          <OVarCharField :store="store" prop="Email" :label="_t('Email')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Phone" label="电话" />
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Mobile" label="手机" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OIntField :store="store" prop="Sequence" label="排序" />
+          <OVarCharField :store="store" prop="Phone" :label="_t('Phone')" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefault" label="默认" widget="switch" />
+          <OVarCharField :store="store" prop="Mobile" :label="_t('Mobile')" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" label="启用" widget="switch" />
+          <OIntField :store="store" prop="Sequence" :label="_t('Sequence')" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsDefault" :label="_t('Default')" widget="switch" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
         </el-col>
       </el-row>
     </div>
@@ -84,8 +84,10 @@ import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/w
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OIntField from '@/web/web/components/field/OIntField.vue';
 import AddressListView from '@/base/web/views/AddressListView.vue';
+import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerContactFormView', inheritAttrs: true });
+const { _t } = createTranslate('partner', { scope: 'web/views/PartnerContactFormView' });
 
 /**
  * Props consumed by the partner contact form view.
