@@ -100,7 +100,9 @@ func createUniqueIndexSQL(dialect, tableName, indexName string) string {
 	case "postgres":
 		return fmt.Sprintf(`CREATE UNIQUE INDEX "%s" ON "%s" (%s)`, indexName, tableName, cols)
 	case "mysql":
-		return fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON `%s` (%s)", indexName, tableName, cols)
+		// TEXT columns require a prefix length in MySQL unique indexes.
+		mysqlCols := "module, lang, scope, src(255), kind"
+		return fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON `%s` (%s)", indexName, tableName, mysqlCols)
 	default: // sqlite and others
 		return fmt.Sprintf("CREATE UNIQUE INDEX `%s` ON `%s` (%s)", indexName, tableName, cols)
 	}

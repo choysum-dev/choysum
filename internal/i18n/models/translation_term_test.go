@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -103,6 +104,18 @@ func TestEnsureTranslationTermTableCreatesAuthTable(t *testing.T) {
 
 	if err := EnsureTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("EnsureTranslationTermTable(auth) second call: %v", err)
+	}
+}
+
+func TestCreateUniqueIndexSQLMySQLUsesSrcPrefix(t *testing.T) {
+	got := createUniqueIndexSQL("mysql", "auth_translation_term", "uq_auth_translation_term_key")
+	want := "CREATE UNIQUE INDEX `uq_auth_translation_term_key` ON `auth_translation_term` (module, lang, scope, src(255), kind)"
+	if got != want {
+		t.Fatalf("createUniqueIndexSQL(mysql) = %q, want %q", got, want)
+	}
+	sqlite := createUniqueIndexSQL("sqlite", "auth_translation_term", "uq_auth_translation_term_key")
+	if strings.Contains(sqlite, "src(255)") {
+		t.Fatalf("sqlite index must not use MySQL prefix length, got %q", sqlite)
 	}
 }
 

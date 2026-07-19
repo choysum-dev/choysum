@@ -526,7 +526,8 @@ func validateTypecheckToolchainVersions(moduleRoots ...string) error {
 	if vueTSCVersion != "" && vueTSCVersion != typecheckVueTSCVersion {
 		mismatches = append(mismatches, fmt.Sprintf("vue-tsc=%s (required %s)", vueTSCVersion, typecheckVueTSCVersion))
 	}
-	if typescriptVersion != "" && typescriptVersion != typecheckTypeScriptVersion {
+	// Pin typescript only when vue-tsc is present; the 5/6 API constraint is vue-tsc-specific.
+	if vueTSCVersion != "" && typescriptVersion != "" && typescriptVersion != typecheckTypeScriptVersion {
 		mismatches = append(mismatches, fmt.Sprintf("typescript=%s (required %s)", typescriptVersion, typecheckTypeScriptVersion))
 	}
 	if len(mismatches) == 0 {

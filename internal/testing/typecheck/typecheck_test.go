@@ -68,6 +68,24 @@ func TestValidateTypecheckToolchainVersions(t *testing.T) {
 			t.Fatalf("expected %q in error, got %v", want, err)
 		}
 	}
+
+	// Without vue-tsc, typescript version alone must not fail validation.
+	rootNoVue := t.TempDir()
+	writePackageAt := func(root, name, version string) {
+		t.Helper()
+		dir := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", name, err)
+		}
+		content := `{"version":"` + version + `"}`
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s package.json: %v", name, err)
+		}
+	}
+	writePackageAt(rootNoVue, "typescript", "7.0.2")
+	if err := validateTypecheckToolchainVersions(rootNoVue); err != nil {
+		t.Fatalf("typescript alone should not mismatch without vue-tsc, got %v", err)
+	}
 }
 
 func TestTypecheckApp_AllowsNpxWithoutGlobalVueTsc(t *testing.T) {

@@ -121,7 +121,7 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		s.mu.Unlock()
 		return nil
 	}
-	return nil
+	return fmt.Errorf("warm language %s failed after %d attempts due to concurrent updates", lang, warmLanguageMaxAttempts)
 }
 
 // EvictLanguage removes a language from the hot cache.

@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
@@ -103,5 +104,41 @@ func TestWarmLanguageRetriesAfterConcurrentOverride(t *testing.T) {
 	gotBye, okBye := ts.Lookup("auth", "zh_CN", "web/a@t", "Bye", "")
 	if !okBye || gotBye != "再见" {
 		t.Fatalf("Lookup Bye = %q ok=%v, want sibling key retained after retry", gotBye, okBye)
+	}
+}
+
+func TestWarmLanguageErrorsAfterExhaustedRetries(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "race.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &raceTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if err := i18nmodels.EnsureTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "web/a@t", Src: "Hello", Value: "你好",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	ts := NewTermStore(rs, "auth")
+	prev := warmAfterLoadHook
+	t.Cleanup(func() { warmAfterLoadHook = prev })
+	warmAfterLoadHook = func(lang string) {
+		ts.mu.Lock()
+		ts.warmEpoch[lang]++
+		ts.mu.Unlock()
+	}
+
+	err = ts.WarmLanguage("zh_CN")
+	if err == nil || !strings.Contains(err.Error(), "failed after") {
+		t.Fatalf("WarmLanguage error = %v, want exhausted retries", err)
 	}
 }
