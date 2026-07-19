@@ -63,7 +63,7 @@ jobs:
 
     - name: Setup Go (manual Go CodeQL build)
       if: matrix.language == 'go' && matrix.build-mode == 'manual'
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
         go-version-file: go.mod
         cache: true

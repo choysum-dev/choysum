@@ -150,14 +150,14 @@ jobs:
 
       - name: Setup Go
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Setup Node
         if: ${{ needs.discover-impact.outputs.docs_only != 'true' }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -230,7 +230,7 @@ jobs:
         run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -310,7 +310,7 @@ jobs:
         run: chmod +x .choysum/tmp/choysum
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
