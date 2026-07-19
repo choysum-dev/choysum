@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 
 	xfmt "golang.org/x/exp/errors/fmt"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -688,10 +689,14 @@ func convertToInt32(v interface{}) (int32, error) {
 		}
 		return int32(val), nil
 	case float64:
-		if val < float64(math.MinInt32) || val > float64(math.MaxInt32) {
+		// JSON numbers arrive as float64; re-parse with an explicit 32-bit width
+		// so narrowing cannot silently wrap (and so CodeQL sees a sized parse).
+		// Truncate toward zero first to preserve historic int32(float64) behavior.
+		parsed, err := strconv.ParseInt(strconv.FormatFloat(math.Trunc(val), 'f', 0, 64), 10, 32)
+		if err != nil {
 			return 0, xfmt.Errorf("float64 %v out of int32 range", val)
 		}
-		return int32(val), nil
+		return int32(parsed), nil
 	default:
 		return 0, xfmt.Errorf("cannot convert %T to int32", v)
 	}
@@ -700,22 +705,24 @@ func convertToInt32(v interface{}) (int32, error) {
 func convertToUint32(v interface{}) (uint32, error) {
 	switch val := v.(type) {
 	case int:
+		// Compare via uint64 so the MaxUint32 constant is portable on 32-bit int.
 		if val < 0 || uint64(val) > math.MaxUint32 {
 			return 0, xfmt.Errorf("int %d out of uint32 range", val)
 		}
 		return uint32(val), nil
 	case uint:
-		if uint64(val) > math.MaxUint32 {
+		if val > math.MaxUint32 {
 			return 0, xfmt.Errorf("uint %d out of uint32 range", val)
 		}
 		return uint32(val), nil
 	case uint32:
 		return val, nil
 	case float64:
-		if val < 0 || val > float64(math.MaxUint32) {
+		parsed, err := strconv.ParseUint(strconv.FormatFloat(math.Trunc(val), 'f', 0, 64), 10, 32)
+		if err != nil {
 			return 0, xfmt.Errorf("float64 %v out of uint32 range", val)
 		}
-		return uint32(val), nil
+		return uint32(parsed), nil
 	default:
 		return 0, xfmt.Errorf("cannot convert %T to uint32", v)
 	}
