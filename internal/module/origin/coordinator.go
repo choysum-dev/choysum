@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/module/origin/contract"
 	"github.com/choysum-dev/choysum/internal/module/origin/registry"
@@ -317,29 +318,30 @@ func (c *Coordinator) Fetch(ctx context.Context, input string) (*meta.IrModule, 
 		return nil, err
 	}
 
+	started := time.Now()
 	switch parsed.Kind {
 	case InputKindRegistry:
 		mod, err := c.resolveRegistry(ctx, parsed)
-		c.logResolveInstallOutcome(parsed, "registry", false, err)
+		c.logResolveInstallOutcome(parsed, "registry", false, started, err)
 		return mod, err
 	case InputKindLocal:
 		mod, localErr := c.resolveLocal(ctx, parsed)
 		if localErr == nil {
-			c.logResolveInstallOutcome(parsed, "local", false, nil)
+			c.logResolveInstallOutcome(parsed, "local", false, started, nil)
 			return mod, nil
 		}
 		// When the module is not found locally, fall back to registry resolution.
 		if isModuleNotFoundError(localErr) {
 			mod, registryErr := c.resolveRegistry(ctx, parsed)
 			if registryErr == nil {
-				c.logResolveInstallOutcome(parsed, "registry", true, nil)
+				c.logResolveInstallOutcome(parsed, "registry", true, started, nil)
 				return mod, nil
 			}
 			wrapped := xfmt.Errorf("module %s not found locally and registry fallback failed: %w", parsed.LocalName, registryErr)
-			c.logResolveInstallOutcome(parsed, "registry", true, wrapped)
+			c.logResolveInstallOutcome(parsed, "registry", true, started, wrapped)
 			return nil, wrapped
 		}
-		c.logResolveInstallOutcome(parsed, "local", false, localErr)
+		c.logResolveInstallOutcome(parsed, "local", false, started, localErr)
 		return nil, localErr
 	default:
 		return nil, xfmt.Errorf("unsupported origin input kind: %s", parsed.Kind)
@@ -439,7 +441,7 @@ func resolveInstallModuleName(parsed ParsedInput) string {
 	return ""
 }
 
-func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigin string, fallback bool, err error) {
+func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigin string, fallback bool, started time.Time, err error) {
 	if c == nil || c.runtimeScope == nil || c.runtimeScope.Logger() == nil {
 		return
 	}
@@ -448,6 +450,9 @@ func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigi
 		"input_kind", string(parsed.Kind),
 		"resolved_origin", strings.TrimSpace(resolvedOrigin),
 		"fallback", fallback,
+	}
+	if !started.IsZero() {
+		attrs = append(attrs, "duration_ms", time.Since(started).Milliseconds())
 	}
 	if err != nil {
 		attrs = append(attrs, "error", err.Error())
@@ -479,7 +484,10 @@ func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigi
 			"reason", "local_not_found",
 			"fallback_count", count,
 		}
-		c.runtimeScope.Logger().Debug("origin install resolve fallback", logAttrs...)
+		if !started.IsZero() {
+			logAttrs = append(logAttrs, "duration_ms", time.Since(started).Milliseconds())
+		}
+		c.runtimeScope.Logger().Info("origin install resolve fallback", logAttrs...)
 		if count > 1 && count%5 == 0 {
 			summaryAttrs := []any{
 				"fallback_count", count,
@@ -492,5 +500,5 @@ func (c *Coordinator) logResolveInstallOutcome(parsed ParsedInput, resolvedOrigi
 		}
 		return
 	}
-	c.runtimeScope.Logger().Debug("origin install resolve succeeded", attrs...)
+	c.runtimeScope.Logger().Info("origin install resolve succeeded", attrs...)
 }

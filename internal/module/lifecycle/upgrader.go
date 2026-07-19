@@ -83,7 +83,14 @@ func logModuleOperationStep(runtimeScope scope.Scope, opCtx *opContext, op plan.
 		ctx, opid = ensureOpIDInContext(ctx)
 	}
 	logger := moduleOpLogger(runtimeScope.Logger(), opid, op, strings.TrimSpace(moduleName))
-	logger.Log(ctx, slog.LevelDebug, moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, time.Since(started), extra...)...)
+	// Build/schema are the long segments held under today's outer install TX;
+	// emit at Info so Phase 0 timing is visible at the default log level.
+	level := slog.LevelDebug
+	switch strings.TrimSpace(step) {
+	case moduleStepBuild, moduleStepSchema:
+		level = slog.LevelInfo
+	}
+	logger.Log(ctx, level, moduleOperationStepMessage(op), moduleOperationStepInfoAttrs(step, time.Since(started), extra...)...)
 }
 
 func (m *moduleUpgrader) logUpgradeStep(moduleName string, step string, started time.Time, extra ...any) {

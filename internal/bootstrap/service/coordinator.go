@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"strings"
@@ -478,13 +479,20 @@ func (c *coordinator) withInstallTransaction(
 	if txRoot == nil {
 		txRoot = c.runtimeScope
 	}
-	return txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+	started := time.Now()
+	err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
 		txCtx := ctx
 		if tx != nil && tx.Context() != nil {
 			txCtx = tx.Context()
 		}
 		return fn(txScope, txCtx)
 	})
+	var logger *slog.Logger
+	if c.runtimeScope != nil {
+		logger = c.runtimeScope.Logger()
+	}
+	lifecycle.LogInstallOuterTxHold(logger, "bootstrap", started, err)
+	return err
 }
 
 func (c *coordinator) defaultInstallMinimalModules(ctx context.Context, operationID string) error {

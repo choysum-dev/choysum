@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"time"
 
 	clicompat "github.com/choysum-dev/choysum/internal/cli/compat"
 	clioutput "github.com/choysum-dev/choysum/internal/cli/output"
@@ -114,7 +115,8 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 				}
 
 				txRoot := env.WithContext(ctx)
-				if err := txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
+				txHoldStarted := time.Now()
+				err = txRoot.Transactor().Required(ctx, func(txScope scope.Scope, tx scope.Transaction) error {
 					compilerExecutor, err := jsexecutor.NewCompilerExecutor(txScope)
 					if err != nil {
 						return xfmt.Errorf("Error creating compiler executor: %w", err)
@@ -137,7 +139,9 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 					}
 					txScope.Logger().Debug("module installed", "module", moduleName)
 					return nil
-				}); err != nil {
+				})
+				lifecycle.LogInstallOuterTxHold(env.Logger(), "cli", txHoldStarted, err)
+				if err != nil {
 					if parsed.Kind == internalorigin.InputKindLocal && !meta.IsCoreModule(moduleName) {
 						err = rewriteLocalInstallLookupError(moduleName, err)
 					}

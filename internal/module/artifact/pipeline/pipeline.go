@@ -248,7 +248,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 		if len(infoModules) > 0 {
 			attrs = append(attrs, "modules", infoModules)
 		}
-		logStep(slog.LevelDebug, "pipeline module stage started", attrs...)
+		logStep(slog.LevelInfo, "pipeline module stage started", attrs...)
 		return time.Now()
 	}
 	logModuleStageCompleted := func(started time.Time) {
@@ -260,7 +260,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			attrs = append(attrs, "modules", infoModules)
 		}
 		attrs = append(attrs, "duration", time.Since(started))
-		logStep(slog.LevelDebug, "pipeline module stage completed", attrs...)
+		logStep(slog.LevelInfo, "pipeline module stage completed", attrs...)
 	}
 
 	// generateModulesForApp stages and commits api outputs (proto/web/service/runtimeProto) for a single app.
@@ -434,7 +434,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 			if len(infoApps) > 0 {
 				attrs = append(attrs, "apps", infoApps)
 			}
-			logStep(slog.LevelDebug, "pipeline app stage started", attrs...)
+			logStep(slog.LevelInfo, "pipeline app stage started", attrs...)
 			emitProgress(ProgressEvent{Stage: ProgressStageAppStageStarted, Total: appsCount})
 		}
 
@@ -686,7 +686,7 @@ func Execute(ctx context.Context, plan planner.Plan, root *meta.IrModule, cb Cal
 				attrs = append(attrs, "apps", infoApps)
 			}
 			attrs = append(attrs, "duration", time.Since(appStageStarted))
-			logStep(slog.LevelDebug, "pipeline app stage completed", attrs...)
+			logStep(slog.LevelInfo, "pipeline app stage completed", attrs...)
 			emitProgress(ProgressEvent{Stage: ProgressStageAppStageCompleted, Total: appsCount, Duration: time.Since(appStageStarted)})
 		}
 
