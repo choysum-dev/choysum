@@ -346,6 +346,16 @@ func TestParsePatchBodyIgnoresNullFields(t *testing.T) {
 	}
 }
 
+func TestParsePatchBodyEmptyItemsArray(t *testing.T) {
+	items, lang, err := parsePatchBody([]byte(`{"lang":"zh_CN","items":[]}`))
+	if err != nil {
+		t.Fatalf("parsePatchBody: %v", err)
+	}
+	if lang != "zh_CN" || items == nil || len(items) != 0 {
+		t.Fatalf("lang=%q items=%#v, want empty slice", lang, items)
+	}
+}
+
 func TestTermsPatchRejectsUnknownAppBeforeWrite(t *testing.T) {
 	called := false
 	h := &handler{

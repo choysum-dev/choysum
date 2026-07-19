@@ -309,53 +309,37 @@ func parsePatchBody(body []byte) ([]termItem, string, error) {
 		return nil, "", fmt.Errorf("empty body")
 	}
 
-	var raw map[string]any
-	if err := json.Unmarshal(body, &raw); err != nil {
+	var req struct {
+		Lang        string      `json:"lang"`
+		Items       *[]termItem `json:"items"`
+		Application string      `json:"application"`
+		Module      string      `json:"module"`
+		Scope       string      `json:"scope"`
+		Src         string      `json:"src"`
+		Value       string      `json:"value"`
+		Kind        string      `json:"kind"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
 		return nil, "", fmt.Errorf("invalid json")
 	}
-	lang := jsonMapTrimmedString(raw, "lang")
+	lang := strings.TrimSpace(req.Lang)
 
-	if itemsRaw, ok := raw["items"]; ok && itemsRaw != nil {
-		encoded, err := json.Marshal(itemsRaw)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid items")
-		}
-		var items []termItem
-		if err := json.Unmarshal(encoded, &items); err != nil {
-			return nil, "", fmt.Errorf("invalid items")
-		}
-		return items, lang, nil
+	if req.Items != nil {
+		return *req.Items, lang, nil
 	}
 
 	item := termItem{
-		Application: jsonMapTrimmedString(raw, "application"),
-		Module:      jsonMapTrimmedString(raw, "module"),
-		Scope:       jsonMapTrimmedString(raw, "scope"),
-		Src:         jsonMapString(raw, "src"),
-		Value:       jsonMapString(raw, "value"),
-		Kind:        jsonMapTrimmedString(raw, "kind"),
+		Application: strings.TrimSpace(req.Application),
+		Module:      strings.TrimSpace(req.Module),
+		Scope:       strings.TrimSpace(req.Scope),
+		Src:         req.Src,
+		Value:       req.Value,
+		Kind:        strings.TrimSpace(req.Kind),
 	}
 	if item.Application == "" && item.Module == "" {
 		return nil, "", fmt.Errorf("items or term object required")
 	}
 	return []termItem{item}, lang, nil
-}
-
-// jsonMapString returns a string JSON field, or "" when missing/null/non-string.
-func jsonMapString(m map[string]any, key string) string {
-	v, ok := m[key]
-	if !ok || v == nil {
-		return ""
-	}
-	s, ok := v.(string)
-	if !ok {
-		return ""
-	}
-	return s
-}
-
-func jsonMapTrimmedString(m map[string]any, key string) string {
-	return strings.TrimSpace(jsonMapString(m, key))
 }
 
 func writeTermsRPCError(w http.ResponseWriter, err error) {
