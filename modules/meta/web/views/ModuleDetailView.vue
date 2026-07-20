@@ -15,30 +15,30 @@ SPDX-License-Identifier: Apache-2.0
       </template>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="ModuleName" :label="_t('Module Name')" />
+          <OVarCharField :store="store" prop="ModuleName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="Version" :label="_t('Version')" />
+          <OVarCharField :store="store" prop="Version" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="InstalledStatus" :label="_t('Install Status')" />
+          <OVarCharField :store="store" prop="InstalledStatus" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="InstalledVersion" :label="_t('Installed Version')" />
+          <OVarCharField :store="store" prop="InstalledVersion" />
         </el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OBooleanField :store="store" prop="Available" :label="_t('Available')" />
+          <OBooleanField :store="store" prop="Available" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="OriginType" :label="_t('Origin Type')" />
+          <OVarCharField :store="store" prop="OriginType" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="OriginRef" :label="_t('Origin Ref')" />
+          <OVarCharField :store="store" prop="OriginRef" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="LocalPath" :label="_t('Local Path')" />
+          <OVarCharField :store="store" prop="LocalPath" />
         </el-col>
       </el-row>
     </el-card>
@@ -49,16 +49,16 @@ SPDX-License-Identifier: Apache-2.0
       </template>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="LastSyncAt" :label="_t('Last Synced At')" />
+          <ODateTimeField :store="store" prop="LastSyncAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="LastBatchSyncAt" :label="_t('Batch Synced At')" />
+          <ODateTimeField :store="store" prop="LastBatchSyncAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OVarCharField :store="store" prop="SyncRevision" :label="_t('Sync Revision')" />
+          <OVarCharField :store="store" prop="SyncRevision" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <OTextField :store="store" prop="LastErrorMessage" :label="_t('Error Message')" />
+          <OTextField :store="store" prop="LastErrorMessage" />
         </el-col>
       </el-row>
     </el-card>
@@ -80,10 +80,10 @@ SPDX-License-Identifier: Apache-2.0
       </template>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+          <ODateTimeField :store="store" prop="CreatedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+          <ODateTimeField :store="store" prop="UpdatedAt" />
         </el-col>
       </el-row>
     </el-card>

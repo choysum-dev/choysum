@@ -15,17 +15,17 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
     <OVarCharField prop="ModuleName" :label="_t('Module')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Action" :label="_t('Action')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <OVarCharField prop="Action" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <OVarCharField prop="ResultStatus" :label="_t('Result')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="OperatorUserId" :label="_t('Operator')" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="OperatorUserId" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <ODateTimeField prop="JobCreatedAt" :label="_t('Started At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="JobFinishedAt" :label="_t('Finished At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <OVarCharField prop="ErrorDomain" :label="_t('Error Domain')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="ErrorCode" :label="_t('Error Code')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OJsonobjectField prop="SummaryJson" :label="_t('Summary')" :store="store" :vColumnProps="{ minWidth: 220 }" />
-    <OJsonobjectField prop="LastErrorJson" :label="_t('Error Detail')" :store="store" :vColumnProps="{ minWidth: 220 }" />
+    <ODateTimeField prop="JobFinishedAt" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="ErrorDomain" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="ErrorCode" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OJsonobjectField prop="SummaryJson" :store="store" :vColumnProps="{ minWidth: 220 }" />
+    <OJsonobjectField prop="LastErrorJson" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <OIntField prop="Attempt" :label="_t('Attempts')" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <OIntField prop="MaxAttempts" :label="_t('Max Attempts')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <OIntField prop="MaxAttempts" :store="store" :vColumnProps="{ minWidth: 100 }" />
   </OListView>
 </template>
 

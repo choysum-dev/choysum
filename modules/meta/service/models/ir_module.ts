@@ -5,15 +5,13 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { getCtxValue, getUserId } from '@/core/service/api/context';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import IrApplication from './ir_application';
 import IrComponent from './ir_component';
 import IrModel from './ir_model';
 import IrModuleDependency from './ir_module_dependency';
 import IrUiResource from './ir_ui_resource';
 import ModuleManagementLog from './module_management_log';
-
-const { _t } = createTranslate('meta');
 
 type ModuleAction = 'install' | 'uninstall' | 'upgrade';
 type FailureKind = 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
@@ -118,73 +116,85 @@ async function upsertModuleLog(values: Partial<ModuleManagementLog>): Promise<vo
   autoMigrate: false,
 })
 export default class IrModule extends BaseModel {
-  @Field({ type: 'varchar', size: 255, unique: true, notNull: true })
+  @Field({ type: 'varchar', size: 255, unique: true, notNull: true, string: _lt('Name', { scope: 'meta.model.IrModule.fields' }) })
   Name!: string;
 
-  @Field({ type: 'varchar', size: 1024 })
+  @Field({ type: 'varchar', size: 1024, string: _lt('Short Description', { scope: 'meta.model.IrModule.fields' }) })
   ShortDesc?: string;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Version', { scope: 'meta.model.IrModule.fields' }) })
   Version?: string;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Tarball', { scope: 'meta.model.IrModule.fields' }) })
   Tarball?: string;
 
-  @Field({ type: 'text' })
+  @Field({ type: 'text', string: _lt('Summary', { scope: 'meta.model.IrModule.fields' }) })
   Summary?: string;
 
-  @Field({ type: 'text' })
+  @Field({ type: 'text', string: _lt('Description', { scope: 'meta.model.IrModule.fields' }) })
   Description?: string;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Application', { scope: 'meta.model.IrModule.fields' }) })
   ApplicationStr?: string;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('Entry Points', { scope: 'meta.model.IrModule.fields' }) })
   EntryPoints?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', size: 512 })
+  @Field({ type: 'varchar', size: 512, string: _lt('Web Entry Point', { scope: 'meta.model.IrModule.fields' }) })
   WebEntryPoint?: string;
 
-  @Field({ type: 'varchar', size: 512 })
+  @Field({ type: 'varchar', size: 512, string: _lt('Service Entry Point', { scope: 'meta.model.IrModule.fields' }) })
   ServiceEntryPoint?: string;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('Dependencies', { scope: 'meta.model.IrModule.fields' }) })
   DependsStr?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('External Dependencies', { scope: 'meta.model.IrModule.fields' }) })
   ExternalDependencies?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Author', { scope: 'meta.model.IrModule.fields' }) })
   Author?: string;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('License', { scope: 'meta.model.IrModule.fields' }) })
   License?: string;
 
-  @Field({ type: 'text' })
+  @Field({ type: 'text', string: _lt('Homepage', { scope: 'meta.model.IrModule.fields' }) })
   Homepage?: string;
 
-  @Field({ type: 'text' })
+  @Field({ type: 'text', string: _lt('Repository', { scope: 'meta.model.IrModule.fields' }) })
   Repository?: string;
 
-  @Field({ type: 'varchar', size: 512 })
+  @Field({ type: 'varchar', size: 512, string: _lt('Path', { scope: 'meta.model.IrModule.fields' }) })
   Path?: string;
 
-  @Field({ type: 'varchar', size: 64 })
+  @Field({ type: 'varchar', size: 64, string: _lt('Status', { scope: 'meta.model.IrModule.fields' }) })
   Status?: string;
 
-  @Field({ type: 'varchar', size: 255, index: true })
+  @Field({ type: 'varchar', size: 255, index: true, string: _lt('Category', { scope: 'meta.model.IrModule.fields' }) })
   Category?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication } })
+  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, string: _lt('Application', { scope: 'meta.model.IrModule.fields' }) })
   ApplicationId?: IrApplication;
 
-  @Field({ type: 'OneToMany', relation: { targetModel: () => IrModel, inverseField: 'ModuleId' } })
+  @Field({
+    type: 'OneToMany',
+    relation: { targetModel: () => IrModel, inverseField: 'ModuleId' },
+    string: _lt('Models', { scope: 'meta.model.IrModule.fields' }),
+  })
   Models?: IrModel[];
 
-  @Field({ type: 'OneToMany', relation: { targetModel: () => IrComponent, inverseField: 'ModuleId' } })
+  @Field({
+    type: 'OneToMany',
+    relation: { targetModel: () => IrComponent, inverseField: 'ModuleId' },
+    string: _lt('Components', { scope: 'meta.model.IrModule.fields' }),
+  })
   Components?: IrComponent[];
 
-  @Field({ type: 'OneToMany', relation: { targetModel: () => IrUiResource, inverseField: 'ModuleId' } })
+  @Field({
+    type: 'OneToMany',
+    relation: { targetModel: () => IrUiResource, inverseField: 'ModuleId' },
+    string: _lt('UI Resources', { scope: 'meta.model.IrModule.fields' }),
+  })
   UiResources?: IrUiResource[];
 
   @Field({
@@ -195,6 +205,7 @@ export default class IrModule extends BaseModel {
       joinField: 'ModuleId',
       inverseJoinField: 'DependModuleId',
     },
+    string: _lt('Dependencies', { scope: 'meta.model.IrModule.fields' }),
   })
   Dependencies?: IrModule[];
 
@@ -206,6 +217,7 @@ export default class IrModule extends BaseModel {
       joinField: 'DependModuleId',
       inverseJoinField: 'ModuleId',
     },
+    string: _lt('Dependents', { scope: 'meta.model.IrModule.fields' }),
   })
   Dependents?: IrModule[];
 
