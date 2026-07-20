@@ -202,16 +202,37 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 
 	// Pass through Selection when it is non-empty (strip legacy labelText wire keys).
+	// Prefer ResolvedSpec so _lt labels stay as msgid strings even if legacy
+	// field.Selection was overwritten with decorator source text.
 	// Dynamic selection fields omit the inline array (T3.1).
 	kind := strings.TrimSpace(field.SelectionKind)
-	if kind == "" && strings.TrimSpace(field.Selection) != "" {
+	selectionJSON := strings.TrimSpace(field.Selection)
+	if resolved, err := field.GetResolvedSpec(); err == nil && resolved != nil {
+		if k := strings.TrimSpace(resolved.Structural.SelectionKind); k != "" {
+			kind = k
+		}
+		if kind != "dynamic" && len(resolved.Structural.Selection) > 0 {
+			items := make([]map[string]any, 0, len(resolved.Structural.Selection))
+			for _, item := range resolved.Structural.Selection {
+				clean := map[string]any{
+					"value": item.Value,
+					"label": item.Label,
+				}
+				items = append(items, clean)
+			}
+			if encoded, err := json.Marshal(items); err == nil {
+				selectionJSON = string(encoded)
+			}
+		}
+	}
+	if kind == "" && selectionJSON != "" {
 		kind = "static"
 	}
 	if kind != "" {
 		metadata.SelectionKind = &kind
 	}
-	if kind != "dynamic" && field.Selection != "" {
-		stripped := stripSelectionLabelTextJSON(field.Selection)
+	if kind != "dynamic" && selectionJSON != "" {
+		stripped := stripSelectionLabelTextJSON(selectionJSON)
 		metadata.Selection = &stripped
 	}
 

@@ -1442,8 +1442,11 @@ func TestBackendPluginSetFieldMeta(t *testing.T) {
 		t.Fatalf("setFieldMeta() error = %v", err)
 	}
 	codeField := goodResult.Model.Fields[0]
-	if codeField.FieldType != "char" || codeField.Size != 16 || !codeField.IsReadonly || codeField.Selection == "" {
+	if codeField.FieldType != "char" || codeField.Size != 16 || !codeField.IsReadonly {
 		t.Fatalf("unexpected char field metadata: %#v", codeField)
+	}
+	if codeField.Selection != "" {
+		t.Fatalf("setFieldMeta must not overwrite selection from raw decorator JSON, got %q", codeField.Selection)
 	}
 	amountField := goodResult.Model.Fields[1]
 	if amountField.FieldType != "decimal" || amountField.Precision != 12 || amountField.Scale != 4 || amountField.ScaleField != "currencyScale" || !amountField.Indexed {

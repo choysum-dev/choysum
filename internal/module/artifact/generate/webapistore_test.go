@@ -167,6 +167,49 @@ func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
 	}
 }
 
+func TestConvertFieldToMetadata_PrefersResolvedSelectionOverBrokenLegacy(t *testing.T) {
+	referenceKey := meta.TermReferenceKey("base", "base.model.Language.fields", "Left to right", "literal")
+	field := &meta.IrField{
+		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-dir", Valid: true}},
+		Name:             "Direction",
+		FieldType:        "selection",
+		TsTypeAnnotation: "string",
+		SelectionKind:    "static",
+		// Legacy overwrite from raw decorator ObjectLiteral (source text).
+		Selection: `[{"value":"ltr","label":" _lt('Left to right', { scope: 'base.model.Language.fields' })"}]`,
+	}
+	if err := field.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Direction",
+		Structural: meta.IrFieldStructuralSpec{
+			SelectionKind: "static",
+			Selection: []meta.IrFieldSelectionItem{{
+				Value: "ltr",
+				Label: "Left to right",
+				LabelText: &meta.TermReference{
+					Key:    referenceKey,
+					Module: "base",
+					Scope:  "base.model.Language.fields",
+					Src:    "Left to right",
+					Kind:   "literal",
+				},
+			}},
+		},
+	}); err != nil {
+		t.Fatalf("set resolved spec: %v", err)
+	}
+
+	metadata := convertFieldToMetadata(field)
+	if metadata.Selection == nil {
+		t.Fatal("expected selection metadata")
+	}
+	if !strings.Contains(*metadata.Selection, `"label":"Left to right"`) {
+		t.Fatalf("expected msgid label from ResolvedSpec, got %s", *metadata.Selection)
+	}
+	if strings.Contains(*metadata.Selection, "_lt(") || strings.Contains(*metadata.Selection, "labelText") {
+		t.Fatalf("selection must not emit _lt source text or labelText: %s", *metadata.Selection)
+	}
+}
+
 func TestWebApiStoreGenerateEmptyApp(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), &meta.IrApplication{Name: "crm"})
