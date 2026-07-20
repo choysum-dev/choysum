@@ -187,14 +187,25 @@ describe('createTranslate', () => {
 
   it('rejects _lt interpolation at runtime', () => {
     const { _lt } = createTranslate('base', { scope: 'base.menu' });
-    expect(() => {
-      // @ts-expect-error _lt does not accept interpolation arguments
-      _lt('Users', undefined, 'unused');
-    }).toThrow('_lt does not accept interpolation arguments');
-    expect(() => {
-      // @ts-expect-error primitive second arg is interpolation, not options
-      _lt('Hello %s', 'world');
-    }).toThrow('_lt does not accept interpolation arguments');
+    // Widen past LazyTranslateFn so we can exercise the runtime guards.
+    const call = _lt as (src: string, ...args: unknown[]) => unknown;
+    expect(() => call('Users', undefined, 'unused')).toThrow(
+      '_lt does not accept interpolation arguments'
+    );
+    expect(() => call('Hello %s', 'world')).toThrow(
+      '_lt does not accept interpolation arguments'
+    );
+    expect(() => call('Hello', [1])).toThrow(
+      '_lt does not accept interpolation arguments'
+    );
+  });
+
+  it('caches factory-default _lt references', () => {
+    const { _lt } = createTranslate('web', { scope: 'web/menu/menus' });
+    const first = _lt('Home');
+    const second = _lt('Home');
+    expect(first).toBe(second);
+    expect(_lt('Home', { scope: 'web/menu/menus' })).not.toBe(first);
   });
 
   it('captures the term reference before computed reevaluation', async () => {

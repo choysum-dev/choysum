@@ -430,6 +430,41 @@ textDefault('Interpolated %s')
 	}
 }
 
+func TestCollectScriptIgnoresNonObjectCreateTranslateOptions(t *testing.T) {
+	content := `
+const { _lt } = createTranslate('auth', 'not-an-object')
+_lt('NeedsScope', { scope: 'auth.menu' })
+const { _lt: also } = createTranslate('auth', 42)
+also('Also', { scope: 'auth.other' })
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 2 {
+		t.Fatalf("expected two terms with call-level scopes, got %#v", terms)
+	}
+}
+
+func TestCollectScriptBareLtWithoutDestructure(t *testing.T) {
+	content := `
+_lt('Bare Title', { scope: 'auth.menu.root' })
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 1 || terms[0].Src != "Bare Title" || terms[0].Scope != "auth.menu.root" {
+		t.Fatalf("bare _lt = %#v issues=%#v", terms, issues)
+	}
+}
+
 func TestCollectScriptCreateTranslateMismatch(t *testing.T) {
 	content := `const { _t } = createTranslate('other')
 _t('Hi')

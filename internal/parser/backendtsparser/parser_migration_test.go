@@ -618,6 +618,69 @@ export default class LegacyModeSelectionModel extends BaseModel {
 	}
 }
 
+func TestParseTermReferenceCall_BindingDefaultScopeWhenParserScopeEmpty(t *testing.T) {
+	ref, ok := parseTermReferenceCall(`translate('Active')`, "demo", "", map[string]parser.TranslateBinding{
+		"translate": {
+			Module:          "other",
+			DefaultScope:    "demo.model.from_binding",
+			ReferenceOutput: true,
+		},
+	})
+	if !ok || ref == nil {
+		t.Fatalf("expected binding default scope: ok=%v ref=%#v", ok, ref)
+	}
+	if ref.Scope != "demo.model.from_binding" || ref.Module != "other" || ref.Src != "Active" {
+		t.Fatalf("unexpected reference: %+v", ref)
+	}
+
+	// Known `_t` binding must not produce a term reference.
+	if _, ok := parseTermReferenceCall(`_t('Archived', { scope: 'demo.x' })`, "demo", "demo.x", map[string]parser.TranslateBinding{
+		"_t": {Module: "demo", ReferenceOutput: false},
+	}); ok {
+		t.Fatal("text _t should not parse as term reference")
+	}
+}
+
+func TestTsParser_BareLtAndPathLocationSelectionLabels(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BareLtSelectionModel')
+export default class BareLtSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'a', label: _lt('Alpha', { scope: 'demo.model.alpha' }) },
+      { value: 'b', label: _lt('Beta', { path: 'demo/model', location: 'beta' }) },
+      { value: 'c', label: unknownHelper('Gamma', { scope: 'demo.model.gamma' }) }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 3 {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if spec.Structural.Selection[0].LabelText == nil || spec.Structural.Selection[0].LabelText.Scope != "demo.model.alpha" {
+		t.Fatalf("bare _lt scope label: %+v", spec.Structural.Selection[0])
+	}
+	if spec.Structural.Selection[1].LabelText == nil || spec.Structural.Selection[1].LabelText.Scope != "demo/model@beta" {
+		t.Fatalf("path@location label: %+v", spec.Structural.Selection[1])
+	}
+	if spec.Structural.Selection[2].LabelText != nil {
+		t.Fatalf("unknown helper should not produce LabelText: %+v", spec.Structural.Selection[2])
+	}
+}
+
 func TestTsParser_ParseModelResolvedSpecCoversRelationTypesAndMigrationDecisions(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}

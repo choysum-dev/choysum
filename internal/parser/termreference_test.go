@@ -106,6 +106,14 @@ func TestParseCreateTranslateOptionsAndBalancedArgs(t *testing.T) {
 	if scope != "web/b@loc" {
 		t.Fatalf("backtick path = %q", scope)
 	}
+	scope = parseCreateTranslateOptions(`location: "only"`)
+	if scope != "" {
+		t.Fatalf("location without path should be empty, got %q", scope)
+	}
+	scope = parseCreateTranslateOptions(`path: ""`)
+	if scope != "" {
+		t.Fatalf("empty path should be empty, got %q", scope)
+	}
 
 	if _, ok := parseBalancedCallArguments("foo(", -1); ok {
 		t.Fatal("bad index")
@@ -135,6 +143,17 @@ const { _t } = createTranslate('web');
 	}
 	if dual["_lt"].Module != "auth" || !dual["_lt"].ReferenceOutput || dual["_lt"].DefaultScope != "shared" {
 		t.Fatalf("dual _lt = %#v", dual["_lt"])
+	}
+
+	skipped := ParseTranslateBindings(`const { _t, unused, _lt: } = createTranslate('auth');`)
+	if _, ok := skipped["unused"]; ok {
+		t.Fatalf("non _t/_lt binding should be skipped: %#v", skipped)
+	}
+	if _, ok := skipped[""]; ok {
+		t.Fatalf("empty local alias should be skipped: %#v", skipped)
+	}
+	if skipped["_t"].Module != "auth" {
+		t.Fatalf("expected _t binding, got %#v", skipped)
 	}
 
 	title, refMeta, ok := ParseResourceTitleExpr(`_lt('Hello', { path: 'web/x', location: 't' })`, "auth", map[string]TranslateBinding{

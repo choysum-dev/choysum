@@ -87,14 +87,25 @@ test('i18n createTranslate: _t and _lt infer precise return types', () => {
 
 test('i18n createTranslate: _lt rejects interpolation at runtime', () => {
   const { _lt } = createTranslate('base', { scope: 'base.Language.Direction.ltr' });
-  expect(() => {
-    // @ts-expect-error _lt does not accept interpolation arguments
-    _lt('Left to right', undefined, 'unused');
-  }).toThrow('_lt does not accept interpolation arguments');
-  expect(() => {
-    // @ts-expect-error primitive second arg is interpolation, not options
-    _lt('Hello %s', 'world');
-  }).toThrow('_lt does not accept interpolation arguments');
+  // Widen past LazyTranslateFn so we can exercise the runtime guards.
+  const call = _lt as (src: string, ...args: unknown[]) => unknown;
+  expect(() => call('Left to right', undefined, 'unused')).toThrow(
+    '_lt does not accept interpolation arguments'
+  );
+  expect(() => call('Hello %s', 'world')).toThrow(
+    '_lt does not accept interpolation arguments'
+  );
+  expect(() => call('Hello', ['world'])).toThrow(
+    '_lt does not accept interpolation arguments'
+  );
+});
+
+test('i18n createTranslate: _lt caches factory-default references', () => {
+  const { _lt } = createTranslate('auth', { scope: 'auth.menu.users' });
+  const first = _lt('Users');
+  const second = _lt('Users');
+  expect(first).toBe(second);
+  expect(_lt('Users', { scope: 'auth.menu.users' })).not.toBe(first);
 });
 
 test('i18n createTranslate: hit via bridge', () => {
