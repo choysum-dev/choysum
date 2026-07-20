@@ -18,16 +18,15 @@ SPDX-License-Identifier: Apache-2.0
           </template>
           <el-row :gutter="12">
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" />
+              <OVarCharField :store="store" prop="Name" :rules="requiredRules" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" />
+              <OVarCharField :store="store" prop="Code" :rules="requiredRules" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
               <OManyToOneRefField
                 :store="store"
                 prop="CompanyId"
-                :label="_t('Company')"
                 :searchView="CompanyListView"
                 :search-view-title="_t('Select Company')"
                 :rules="requiredRules"
@@ -35,18 +34,18 @@ SPDX-License-Identifier: Apache-2.0
               />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OBooleanField :store="store" prop="IsCompany" :label="_t('Organization')" widget="switch" />
+              <OBooleanField :store="store" prop="IsCompany" widget="switch" />
             </el-col>
           </el-row>
           <el-row :gutter="12">
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
+              <OBooleanField :store="store" prop="IsActive" widget="switch" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+              <ODateTimeField :store="store" prop="CreatedAt" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+              <ODateTimeField :store="store" prop="UpdatedAt" />
             </el-col>
           </el-row>
         </el-card>
@@ -57,21 +56,21 @@ SPDX-License-Identifier: Apache-2.0
           </template>
           <el-row :gutter="12">
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OIntField :store="store" prop="CustomerRank" :label="_t('Customer Rank')" />
+              <OIntField :store="store" prop="CustomerRank" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OIntField :store="store" prop="SupplierRank" :label="_t('Supplier Rank')" />
+              <OIntField :store="store" prop="SupplierRank" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField :store="store" prop="LanguageId" :label="_t('Default Language')" :searchView="LanguageListView" :search-view-title="_t('Select Language')" />
+              <OManyToOneRefField :store="store" prop="LanguageId" :searchView="LanguageListView" :search-view-title="_t('Select Language')" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField :store="store" prop="CurrencyId" :label="_t('Default Currency')" :searchView="CurrencyListView" :search-view-title="_t('Select Currency')" />
+              <OManyToOneRefField :store="store" prop="CurrencyId" :searchView="CurrencyListView" :search-view-title="_t('Select Currency')" />
             </el-col>
           </el-row>
           <el-row :gutter="12">
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OManyToOneRefField :store="store" prop="CountryId" :label="_t('Country')" :searchView="CountryListView" :search-view-title="_t('Select Country')" />
+              <OManyToOneRefField :store="store" prop="CountryId" :searchView="CountryListView" :search-view-title="_t('Select Country')" />
             </el-col>
           </el-row>
         </el-card>
@@ -82,16 +81,16 @@ SPDX-License-Identifier: Apache-2.0
           </template>
           <el-row :gutter="12">
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Email" :label="_t('Email')" />
+              <OVarCharField :store="store" prop="Email" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Phone" :label="_t('Phone')" />
+              <OVarCharField :store="store" prop="Phone" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Mobile" :label="_t('Mobile')" />
+              <OVarCharField :store="store" prop="Mobile" />
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="6">
-              <OVarCharField :store="store" prop="Reference" :label="_t('External Reference')" />
+              <OVarCharField :store="store" prop="Reference" />
             </el-col>
           </el-row>
         </el-card>
@@ -102,30 +101,28 @@ SPDX-License-Identifier: Apache-2.0
           </template>
           <el-row :gutter="12">
             <el-col :xs="24" :sm="12" :md="8" :lg="8">
-              <OManyToOneField :store="store" prop="DefaultContactId" :label="_t('Default Contact')" :readonly="true" @value-click="onDefaultContactValueClick">
-                <OVarCharField :store="store" prop="DefaultContactId.Name" :label="_t('Name')" />
+              <OManyToOneField :store="store" prop="DefaultContactId" :readonly="true" @value-click="onDefaultContactValueClick">
+                <OVarCharField :store="store" prop="DefaultContactId.Name" />
               </OManyToOneField>
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="8">
               <OManyToOneField
                 :store="store"
                 prop="DefaultBillingAddressId"
-                :label="_t('Default Billing Address')"
                 :readonly="true"
                 @value-click="onDefaultBillingAddressValueClick"
               >
-                <OVarCharField :store="store" prop="DefaultBillingAddressId.Name" :label="_t('Name')" />
+                <OVarCharField :store="store" prop="DefaultBillingAddressId.Name" />
               </OManyToOneField>
             </el-col>
             <el-col :xs="24" :sm="12" :md="8" :lg="8">
               <OManyToOneField
                 :store="store"
                 prop="DefaultShippingAddressId"
-                :label="_t('Default Shipping Address')"
                 :readonly="true"
                 @value-click="onDefaultShippingAddressValueClick"
               >
-                <OVarCharField :store="store" prop="DefaultShippingAddressId.Name" :label="_t('Name')" />
+                <OVarCharField :store="store" prop="DefaultShippingAddressId.Name" />
               </OManyToOneField>
             </el-col>
           </el-row>

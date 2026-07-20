@@ -4,11 +4,9 @@
 import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
 import PartnerContact from './partner_contact';
-
-const { _t } = createTranslate('partner');
 
 /**
  * Minimal contact shape used while deriving computed partner defaults.
@@ -29,65 +27,149 @@ type PartnerContactLike = {
 @Model('Partner', { companyScoped: true })
 export default class Partner extends BaseModel {
   /** Partner display name. */
-  @Field({ type: 'varchar', size: 100, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    index: true,
+    string: _lt('Name', { scope: 'partner.model.Partner.fields' }),
+  })
   Name: string;
 
   /** Unique partner code within a company. */
-  @Field({ type: 'varchar', size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' })
+  @Field({
+    type: 'varchar',
+    size: 40,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_partner_company_code',
+    string: _lt('Code', { scope: 'partner.model.Partner.fields' }),
+  })
   Code: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true, uniqueIndex: 'uidx_partner_company_code' })
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    size: 20,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_partner_company_code',
+    string: _lt('Company', { scope: 'partner.model.Partner.fields' }),
+  })
   CompanyId: string;
 
   /** Whether the partner is active. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true })
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'partner.model.Partner.fields' }),
+  })
   IsActive: boolean;
 
   /** Whether the record represents an organization instead of an individual. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true })
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Organization', { scope: 'partner.model.Partner.fields' }),
+  })
   IsCompany: boolean;
 
   /** Customer classification rank. */
-  @Field({ type: 'int', notNull: true, default: () => 0, index: true })
+  @Field({
+    type: 'int',
+    notNull: true,
+    default: () => 0,
+    index: true,
+    string: _lt('Customer Rank', { scope: 'partner.model.Partner.fields' }),
+  })
   CustomerRank: number;
 
   /** Supplier classification rank. */
-  @Field({ type: 'int', notNull: true, default: () => 0, index: true })
+  @Field({
+    type: 'int',
+    notNull: true,
+    default: () => 0,
+    index: true,
+    string: _lt('Supplier Rank', { scope: 'partner.model.Partner.fields' }),
+  })
   SupplierRank: number;
 
   /** Default language reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Language' }, size: 20, index: true })
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Language' },
+    size: 20,
+    index: true,
+    string: _lt('Default Language', { scope: 'partner.model.Partner.fields' }),
+  })
   LanguageId?: string;
 
   /** Default currency reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, index: true })
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Currency' },
+    size: 20,
+    index: true,
+    string: _lt('Default Currency', { scope: 'partner.model.Partner.fields' }),
+  })
   CurrencyId?: string;
 
   /** Default country reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true })
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Country' },
+    size: 20,
+    index: true,
+    string: _lt('Country', { scope: 'partner.model.Partner.fields' }),
+  })
   CountryId?: string;
 
   /** External reference code. */
-  @Field({ type: 'varchar', size: 80, index: true })
+  @Field({
+    type: 'varchar',
+    size: 80,
+    index: true,
+    string: _lt('External Reference', { scope: 'partner.model.Partner.fields' }),
+  })
   Reference?: string;
 
   /** Primary email address. */
-  @Field({ type: 'varchar', size: 120, index: true })
+  @Field({
+    type: 'varchar',
+    size: 120,
+    index: true,
+    string: _lt('Email', { scope: 'partner.model.Partner.fields' }),
+  })
   Email?: string;
 
   /** Primary phone number. */
-  @Field({ type: 'varchar', size: 40, index: true })
+  @Field({
+    type: 'varchar',
+    size: 40,
+    index: true,
+    string: _lt('Phone', { scope: 'partner.model.Partner.fields' }),
+  })
   Phone?: string;
 
   /** Primary mobile number. */
-  @Field({ type: 'varchar', size: 40, index: true })
+  @Field({
+    type: 'varchar',
+    size: 40,
+    index: true,
+    string: _lt('Mobile', { scope: 'partner.model.Partner.fields' }),
+  })
   Mobile?: string;
 
   /** Related contact and address rows. */
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => PartnerContact, inverseField: 'PartnerId' },
+    string: _lt('Contacts and Addresses', { scope: 'partner.model.Partner.fields' }),
   })
   Contacts?: PartnerContact[];
 
@@ -96,6 +178,7 @@ export default class Partner extends BaseModel {
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
     indexed: true,
+    string: _lt('Default Contact', { scope: 'partner.model.Partner.fields' }),
   })
   readonly DefaultContactId?: PartnerContact;
 
@@ -111,6 +194,7 @@ export default class Partner extends BaseModel {
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
     indexed: true,
+    string: _lt('Default Billing Address', { scope: 'partner.model.Partner.fields' }),
   })
   readonly DefaultBillingAddressId?: PartnerContact;
 
@@ -126,6 +210,7 @@ export default class Partner extends BaseModel {
     type: 'ManyToOne',
     relation: { targetModel: () => PartnerContact },
     indexed: true,
+    string: _lt('Default Shipping Address', { scope: 'partner.model.Partner.fields' }),
   })
   readonly DefaultShippingAddressId?: PartnerContact;
 
@@ -137,11 +222,20 @@ export default class Partner extends BaseModel {
   }
 
   /** Display ordering hint. */
-  @Field({ type: 'int', notNull: true, default: () => 10, index: true })
+  @Field({
+    type: 'int',
+    notNull: true,
+    default: () => 10,
+    index: true,
+    string: _lt('Sequence', { scope: 'partner.model.Partner.fields' }),
+  })
   Sequence: number;
 
   /** Internal notes. */
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Notes', { scope: 'partner.model.Partner.fields' }),
+  })
   Notes?: string;
 
   /** Sorts active contacts by default flag, sequence, and identifier. */

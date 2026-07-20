@@ -17,10 +17,10 @@ SPDX-License-Identifier: Apache-2.0
     <div class="pcifv-grid">
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IdentifierType" :label="_t('Type')" />
+          <OVarCharField :store="store" prop="IdentifierType" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Value" :label="_t('Value')" />
+          <OVarCharField :store="store" prop="Value" />
         </el-col>
       </el-row>
 
@@ -29,32 +29,31 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneRefField
             :store="store"
             prop="CountryId"
-            :label="_t('Country')"
             :searchView="CountryListView"
             :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IssuedBy" :label="_t('Issued By')" />
+          <OVarCharField :store="store" prop="IssuedBy" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <ODateTimeField :store="store" prop="ValidFrom" :label="_t('Valid From')" mode="datetime" />
+          <ODateTimeField :store="store" prop="ValidFrom" mode="datetime" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <ODateTimeField :store="store" prop="ValidTo" :label="_t('Valid To')" mode="datetime" />
+          <ODateTimeField :store="store" prop="ValidTo" mode="datetime" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsPrimary" :label="_t('Primary')" widget="switch" />
+          <OBooleanField :store="store" prop="IsPrimary" widget="switch" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
+          <OBooleanField :store="store" prop="IsActive" widget="switch" />
         </el-col>
       </el-row>
     </div>

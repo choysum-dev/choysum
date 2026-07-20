@@ -17,22 +17,21 @@ SPDX-License-Identifier: Apache-2.0
     <div class="pcfv-grid">
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
+          <OVarCharField :store="store" prop="Name" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="ContactRole" :label="_t('Role')" :selection="contactRoleOptions" />
+          <OSelectionField :store="store" prop="ContactRole" :selection="contactRoleOptions" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="AddressType" :label="_t('Address Type')" :selection="addressTypeOptions" />
+          <OSelectionField :store="store" prop="AddressType" :selection="addressTypeOptions" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
           <OManyToOneRefField
             :store="store"
             prop="AddressId"
-            :label="_t('Address')"
             :searchView="AddressListView"
             :search-view-title="_t('Select Address')"
             @value-click="onAddressValueClick"
@@ -42,28 +41,28 @@ SPDX-License-Identifier: Apache-2.0
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Email" :label="_t('Email')" />
+          <OVarCharField :store="store" prop="Email" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Phone" :label="_t('Phone')" />
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="Mobile" :label="_t('Mobile')" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OIntField :store="store" prop="Sequence" :label="_t('Sequence')" />
+          <OVarCharField :store="store" prop="Phone" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefault" :label="_t('Default')" widget="switch" />
+          <OVarCharField :store="store" prop="Mobile" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
+          <OIntField :store="store" prop="Sequence" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsDefault" widget="switch" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsActive" widget="switch" />
         </el-col>
       </el-row>
     </div>

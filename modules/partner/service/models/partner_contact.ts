@@ -4,11 +4,9 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeSequenceInt } from './_normalization_bridge';
 import Partner from './partner';
-
-const { _t } = createTranslate('partner');
 
 /**
  * Supported partner contact address categories.
@@ -21,67 +19,151 @@ const ADDRESS_TYPES = new Set(['billing', 'shipping', 'office', 'registered', 'o
 @Model('PartnerContact', { companyScoped: true })
 export default class PartnerContact extends BaseModel {
   /** Owning partner relation. */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Partner, onDelete: 'CASCADE' }, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Partner, onDelete: 'CASCADE' },
+    notNull: true,
+    index: true,
+    string: _lt('Partner', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   PartnerId: Partner;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Company', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   CompanyId: string;
 
   /** Contact name. */
-  @Field({ type: 'varchar', size: 100, index: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    index: true,
+    string: _lt('Name', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Name?: string;
 
   /** Contact email address. */
-  @Field({ type: 'varchar', size: 120, index: true})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    index: true,
+    string: _lt('Email', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Email?: string;
 
   /** Contact phone number. */
-  @Field({ type: 'varchar', size: 40, index: true})
+  @Field({
+    type: 'varchar',
+    size: 40,
+    index: true,
+    string: _lt('Phone', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Phone?: string;
 
   /** Contact mobile number. */
-  @Field({ type: 'varchar', size: 40, index: true})
+  @Field({
+    type: 'varchar',
+    size: 40,
+    index: true,
+    string: _lt('Mobile', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Mobile?: string;
 
   /** Contact title. */
-  @Field({ type: 'varchar', size: 80, index: true})
+  @Field({
+    type: 'varchar',
+    size: 80,
+    index: true,
+    string: _lt('Title', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Title?: string;
 
   /** Contact department. */
-  @Field({ type: 'varchar', size: 80, index: true})
+  @Field({
+    type: 'varchar',
+    size: 80,
+    index: true,
+    string: _lt('Department', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Department?: string;
 
   /** Business role label for the contact. */
-  @Field({ type: 'varchar', size: 30, index: true})
+  @Field({
+    type: 'varchar',
+    size: 30,
+    index: true,
+    string: _lt('Role', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   ContactRole?: string;
 
   /** Linked address reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Address' }, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Address' },
+    size: 20,
+    index: true,
+    string: _lt('Address', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   AddressId?: string;
 
   /** Contact address category. */
-  @Field({ type: 'varchar', size: 20, index: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    index: true,
+    string: _lt('Address Type', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   AddressType?: string;
 
   /** Whether this row is the default contact for its category. */
-  @Field({ type: 'boolean', notNull: true, default: () => false, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    index: true,
+    string: _lt('Default', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   IsDefault: boolean;
 
   /** Whether this contact row is active. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   IsActive: boolean;
 
   /** Display ordering hint. */
-  @Field({ type: 'int', notNull: true, default: () => 10, index: true})
+  @Field({
+    type: 'int',
+    notNull: true,
+    default: () => 10,
+    index: true,
+    string: _lt('Sequence', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Sequence: number;
 
   /** Attention line used for address labels. */
-  @Field({ type: 'varchar', size: 100})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    string: _lt('Attention To', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   AttentionTo?: string;
 
   /** Internal notes. */
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Notes', { scope: 'partner.model.PartnerContact.fields' }),
+  })
   Notes?: string;
 
   /** Normalizes and validates the contact address category. */

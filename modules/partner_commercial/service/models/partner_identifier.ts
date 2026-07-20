@@ -3,10 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
-
-const { _t } = createTranslate('partner_commercial');
 
 /**
  * Company-scoped commercial identifier row attached to a partner.
@@ -14,47 +12,109 @@ const { _t } = createTranslate('partner_commercial');
 @Model('PartnerIdentifier', { application: 'partner', companyScoped: true })
 export default class PartnerIdentifier extends BaseModel {
   /** Owning partner reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'partner.Partner' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'partner.Partner' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Partner', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Company', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   CompanyId: string;
 
   /** Identifier category, normalized in lowercase. */
-  @Field({ type: 'varchar', size: 40, notNull: true, index: true, uniqueIndex: 'uidx_partner_identifier_partner_type_value'})
+  @Field({
+    type: 'varchar',
+    size: 40,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_partner_identifier_partner_type_value',
+    string: _lt('Type', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   IdentifierType: string;
 
   /** Identifier value, normalized in uppercase. */
-  @Field({ type: 'varchar', size: 120, notNull: true, index: true, uniqueIndex: 'uidx_partner_identifier_partner_type_value'})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_partner_identifier_partner_type_value',
+    string: _lt('Value', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   Value: string;
 
   /** Optional country reference associated with the identifier. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Country' },
+    size: 20,
+    index: true,
+    string: _lt('Country', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   CountryId?: string;
 
   /** Whether this is the primary identifier for its type. */
-  @Field({ type: 'boolean', notNull: true, default: () => false, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    index: true,
+    string: _lt('Primary', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   IsPrimary: boolean;
 
   /** Whether the identifier row is active. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   IsActive: boolean;
 
   /** Issuing authority for the identifier. */
-  @Field({ type: 'varchar', size: 120, index: true})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    index: true,
+    string: _lt('Issued By', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   IssuedBy?: string;
 
   /** Identifier validity start time. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Valid From', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   ValidFrom?: Date;
 
   /** Identifier validity end time. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Valid To', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   ValidTo?: Date;
 
   /** Internal notes. */
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Notes', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
+  })
   Notes?: string;
 
   /** Ensures the partner does not duplicate an identifier type and value pair. */

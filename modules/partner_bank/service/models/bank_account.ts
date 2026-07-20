@@ -3,13 +3,11 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import { fail, normalizeOptionalText, normalizeRequiredText } from './_normalization_bridge';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { maskAccountNo, normalizeAccountType } from './_helpers';
 import Bank from '@/base/service/models/bank';
-
-const { _t } = createTranslate('partner_bank');
 
 /**
  * Company-scoped partner bank account record.
@@ -17,88 +15,195 @@ const { _t } = createTranslate('partner_bank');
 @Model('BankAccount', { application: 'partner', companyScoped: true })
 export default class BankAccount extends BaseModel {
   /** Owning partner reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'partner.Partner' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'partner.Partner' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Partner', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   PartnerId: string;
 
   /** Owning company reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Company', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   CompanyId: string;
 
   /** Linked bank reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Bank' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Bank' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Bank', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   BankId: string;
 
   /** Bank account holder name. */
-  @Field({ type: 'varchar', size: 120, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    notNull: true,
+    index: true,
+    string: _lt('Account Name', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   AccountName: string;
 
   /** Raw bank account number. */
-  @Field({ type: 'varchar', size: 80, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 80,
+    notNull: true,
+    index: true,
+    string: _lt('Account Number', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   AccountNo: string;
 
   /** Bank account category. */
   @Field({
     type: 'selection',
     selection: [
-      { value: 'checking', label: 'Checking' },
-      { value: 'savings', label: 'Savings' },
-      { value: 'corporate', label: 'Corporate' },
-      { value: 'other', label: 'Other' },
+      { value: 'checking', label: _lt('Checking', { scope: 'partner_bank.model.BankAccount.fields' }) },
+      { value: 'savings', label: _lt('Savings', { scope: 'partner_bank.model.BankAccount.fields' }) },
+      { value: 'corporate', label: _lt('Corporate', { scope: 'partner_bank.model.BankAccount.fields' }) },
+      { value: 'other', label: _lt('Other', { scope: 'partner_bank.model.BankAccount.fields' }) },
     ],
-    size: 20, index: true,
+    size: 20,
+    index: true,
+    string: _lt('Account Type', { scope: 'partner_bank.model.BankAccount.fields' }),
   })
   AccountType?: string;
 
   /** International bank account number. */
-  @Field({ type: 'varchar', size: 50, index: true})
+  @Field({
+    type: 'varchar',
+    size: 50,
+    index: true,
+    string: _lt('IBAN', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   IBAN?: string;
 
   /** Local routing or clearing code. */
-  @Field({ type: 'varchar', size: 40, index: true})
+  @Field({
+    type: 'varchar',
+    size: 40,
+    index: true,
+    string: _lt('Routing Code', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   RoutingCode?: string;
 
   /** Branch name for the account. */
-  @Field({ type: 'varchar', size: 120, index: true})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    index: true,
+    string: _lt('Branch Name', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   BranchName?: string;
 
   /** Account currency reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Currency' }, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Currency' },
+    size: 20,
+    index: true,
+    string: _lt('Currency', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   CurrencyId?: string;
 
   /** Account country reference. */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Country' }, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Country' },
+    size: 20,
+    index: true,
+    string: _lt('Country', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   CountryId?: string;
 
   /** Whether inbound payments are allowed. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Allow Inbound', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   AllowInbound: boolean;
 
   /** Whether outbound payments are allowed. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Allow Outbound', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   AllowOutbound: boolean;
 
   /** Whether this is the default inbound account. */
-  @Field({ type: 'boolean', notNull: true, default: () => false, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    index: true,
+    string: _lt('Default Inbound', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   IsDefaultInbound: boolean;
 
   /** Whether this is the default outbound account. */
-  @Field({ type: 'boolean', notNull: true, default: () => false, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    index: true,
+    string: _lt('Default Outbound', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   IsDefaultOutbound: boolean;
 
   /** Whether the account is active. */
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   IsActive: boolean;
 
   /** Cached bank name used for display surfaces. */
-  @Field({ type: 'varchar', size: 120, index: true})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    index: true,
+    string: _lt('Bank Name', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   BankNameSnapshot?: string;
 
   /** Masked account number used for display surfaces. */
-  @Field({ type: 'varchar', size: 80, index: true})
+  @Field({
+    type: 'varchar',
+    size: 80,
+    index: true,
+    string: _lt('Account Number', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   AccountNoMasked?: string;
 
   /** Last four digits of the account number. */
-  @Field({ type: 'varchar', size: 4, index: true})
+  @Field({
+    type: 'varchar',
+    size: 4,
+    index: true,
+    string: _lt('Account Number Last 4', { scope: 'partner_bank.model.BankAccount.fields' }),
+  })
   AccountNoLast4?: string;
 
   /** Loads the linked bank name into the cached snapshot field. */

@@ -3,6 +3,7 @@
 
 import { Compute, Field, Model } from '@/core/service';
 import PartnerBase from '@/partner/service/models/partner';
+import { _lt } from '../i18n';
 import { pickDefaultBankAccountId } from './_helpers';
 import BankAccount from './bank_account';
 
@@ -15,6 +16,7 @@ export default class Partner extends PartnerBase {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => BankAccount, inverseField: 'PartnerId' },
+    string: _lt('Bank Accounts', { scope: 'partner_bank.model.Partner.fields' }),
   })
   BankAccounts?: BankAccount[];
 
@@ -23,6 +25,7 @@ export default class Partner extends PartnerBase {
     type: 'ManyToOne',
     relation: { targetModel: () => BankAccount },
     indexed: true,
+    string: _lt('Default Inbound Bank Account', { scope: 'partner_bank.model.Partner.fields' }),
   })
   readonly DefaultInboundBankAccountId?: BankAccount;
 
@@ -38,6 +41,7 @@ export default class Partner extends PartnerBase {
     type: 'ManyToOne',
     relation: { targetModel: () => BankAccount },
     indexed: true,
+    string: _lt('Default Outbound Bank Account', { scope: 'partner_bank.model.Partner.fields' }),
   })
   readonly DefaultOutboundBankAccountId?: BankAccount;
 
