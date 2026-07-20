@@ -534,6 +534,7 @@ func RunNycReport(ctx context.Context, repoRoot string, reportDir string, report
 
 	cmd := exec.CommandContext(ctx, npxPath, args...)
 	cmd.Dir = repoRoot
+	cmd.Env = noderuntime.SanitizeNpmChildEnv(os.Environ())
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -715,6 +716,7 @@ func RunNycCheckCoverageWithTmpRoot(ctx context.Context, repoRoot string, includ
 
 	cmd := exec.CommandContext(ctx, npxPath, args...)
 	cmd.Dir = repoRoot
+	cmd.Env = noderuntime.SanitizeNpmChildEnv(os.Environ())
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {

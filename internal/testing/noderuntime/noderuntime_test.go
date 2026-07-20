@@ -345,3 +345,48 @@ func writeExecFile(t *testing.T, path string, content string) {
 		t.Fatalf("write %s: %v", path, err)
 	}
 }
+
+func TestSanitizeNpmChildEnvDropsDevdir(t *testing.T) {
+	env := []string{
+		"PATH=/usr/bin",
+		"npm_config_devdir=/tmp/node-gyp",
+		"NPM_CONFIG_DEVDIR=/tmp/other",
+		"npm_config_registry=https://registry.npmjs.org/",
+	}
+	got := SanitizeNpmChildEnv(env)
+	want := []string{
+		"PATH=/usr/bin",
+		"npm_config_registry=https://registry.npmjs.org/",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("SanitizeNpmChildEnv() = %#v, want %#v", got, want)
+	}
+}
+
+func TestAppendNodeOptionMergesAndDedupes(t *testing.T) {
+	env := []string{"PATH=/usr/bin", "NODE_OPTIONS=--trace-warnings"}
+	got := AppendNodeOption(env, "--localstorage-file=/tmp/a.json")
+	found := false
+	for _, entry := range got {
+		if strings.HasPrefix(strings.ToUpper(entry), "NODE_OPTIONS=") {
+			found = true
+			value := entry[len("NODE_OPTIONS="):]
+			if !strings.Contains(value, "--trace-warnings") || !strings.Contains(value, "--localstorage-file=/tmp/a.json") {
+				t.Fatalf("unexpected NODE_OPTIONS value: %q", value)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected NODE_OPTIONS in env")
+	}
+
+	again := AppendNodeOption(got, "--localstorage-file=/tmp/b.json")
+	for _, entry := range again {
+		if strings.HasPrefix(strings.ToUpper(entry), "NODE_OPTIONS=") {
+			value := entry[len("NODE_OPTIONS="):]
+			if strings.Contains(value, "/tmp/b.json") {
+				t.Fatalf("expected existing --localstorage-file to be kept, got %q", value)
+			}
+		}
+	}
+}
