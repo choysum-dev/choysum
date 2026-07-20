@@ -8,14 +8,14 @@
   `modules/core/i18n/*.po` into that app's `{app}_translation_term` with
   `Module=core`. Upgrading `core` itself fans the same PO out to every host app.
   Gateway asks each `{app}.I18n` for module `core` alongside the app's own modules.
-- Service code imports `_t` from `modules/core/service/i18n_binder.ts`
+- Service code imports `_t` / `_lt` from `modules/core/service/i18n_binder.ts`
   (`createTranslate('core')`). Frontend fallbacks use
-  `createTranslate('core', …)` from `@/web/web/i18n`.
+  `createTranslate('core', …)` from `@/web/web/i18n` (same `{ _t, _lt }` shape).
 - Core owns the shared i18n **platform** under `service/i18n/`; keep that package
-  free of module-owned `_t('…')` literals so catalogs stay cross-cutting only.
+  free of module-owned `_t('…')` / `_lt('…')` literals so catalogs stay cross-cutting only.
 - Core has no domain menus/routes/views — Ir* chrome lives in `modules/meta`.
-- Only literal `_t` calls are extracted. Selection labels stay plain English
-  until a request-scoped options API exists.
+- Only literal `_t` / `_lt` calls are extracted. Selection labels stay plain English
+  until a request-scoped options API exists (do not use `_lt` for selection labels).
 - Keep `"application": "core"` in `package.json` as the D13 sentinel (skip DDL /
   I18n registration). Do not remove or empty it without relaxing
   `ValidatePackageJSON` and updating all skip checks.

@@ -46,8 +46,7 @@ import { createTranslate } from '@/web/web/i18n';
 const router = useRouter();
 
 defineOptions({ name: 'UserListView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/UserListView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/UserListView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserListView' });
 
 const props = withDefaults(
   defineProps<{
@@ -58,7 +57,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const userActions = defineModelActions('auth.User', { entityTitle: _tRef('User') });
+const userActions = defineModelActions('auth.User', { entityTitle: _lt('User') });
 const { hasAction } = usePermission();
 
 /**

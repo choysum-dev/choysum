@@ -107,8 +107,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleDetailView', inheritAttrs: true });
 
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleDetailView' });
-const { _t: _tRef } = createTranslate('meta', { output: 'reference', scope: 'web/views/ModuleDetailView' });
+const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleDetailView' });
 
 const props = withDefaults(
   defineProps<{
@@ -122,7 +121,7 @@ const props = withDefaults(
 
 const { store, recordId, viewMode, showHeader } = props;
 const moduleIndexActions = defineModelActions('meta.IrModuleIndex', {
-  entityTitle: _tRef('Module Index'),
+  entityTitle: _lt('Module Index'),
 });
 const { hasAction } = usePermission();
 </script>

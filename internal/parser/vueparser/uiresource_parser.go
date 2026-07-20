@@ -319,7 +319,7 @@ func (c *uiParseCtx) parseModelActionDisplayOptions(options *tsast.Node, line in
 			valueExpr := strings.TrimSpace(parsePropertyValueExpr(propertyText))
 			title, titleText, ok := parser.ParseResourceTitleExpr(valueExpr, c.ownerModule, c.bindings)
 			if !ok {
-				appendFatal(parser.UiResourceIssueCodeModelActionEntityTitleNotLiteral, "entityTitle must be a string literal or reference-output _t('literal'[, opts])")
+				appendFatal(parser.UiResourceIssueCodeModelActionEntityTitleNotLiteral, "entityTitle must be a string literal or _lt('literal'[, opts])")
 				break
 			}
 			entityTitle = title
@@ -389,7 +389,7 @@ func parseStrictModelActionTitlesProperty(propertyText string, ownerModule strin
 
 		value, titleText, ok := parser.ParseResourceTitleExpr(strings.TrimSpace(parts[1]), ownerModule, bindings)
 		if !ok {
-			return nil, nil, fmt.Errorf("property %q must be a string literal or reference-output _t('literal'[, opts])", key)
+			return nil, nil, fmt.Errorf("property %q must be a string literal or _lt('literal'[, opts])", key)
 		}
 		out[key] = value
 		if titleText != nil {

@@ -42,8 +42,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'RoleListView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/RoleListView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/RoleListView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleListView' });
 
 const router = useRouter();
 
@@ -58,7 +57,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const roleActions = defineModelActions('auth.Role', { entityTitle: _tRef('Role') });
+const roleActions = defineModelActions('auth.Role', { entityTitle: _lt('Role') });
 const { hasAction } = usePermission();
 
 /**

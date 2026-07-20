@@ -16,10 +16,8 @@ export {
 export type {
   CreateTranslateOptions,
   CreateTranslateResult,
-  DynamicTranslateFn,
-  ReferenceTranslateFn,
+  LazyTranslateFn,
   TranslateFn,
-  TranslateOutput,
   TermIdentity,
   TermReference,
   TranslateOptions,

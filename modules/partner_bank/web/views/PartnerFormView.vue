@@ -82,9 +82,8 @@ export default defineComponent({
   setup(props, ctx) {
     const baseSetup = PartnerFormView?.setup?.(props, ctx) || {};
     const store = (baseSetup as { store: WebModelStore<Partner> }).store;
-    const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerFormView' });
-    const { _t: _tRef } = createTranslate('partner_bank', { output: 'reference', scope: 'web/views/PartnerFormView' });
-    const bankAccountActions = defineModelActions('partner.BankAccount', { entityTitle: _tRef('Bank Account') });
+    const { _t, _lt } = createTranslate('partner_bank', { scope: 'web/views/PartnerFormView' });
+    const bankAccountActions = defineModelActions('partner.BankAccount', { entityTitle: _lt('Bank Account') });
     const { hasAction } = usePermission();
 
     /**

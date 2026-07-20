@@ -183,14 +183,13 @@ func (c *scriptCollector) tryRegisterCreateTranslate(call *tsast.Node, nameNode 
 
 	moduleArg := ""
 	defaultScope := ""
-	referenceOutput := false
 	args := callExpr.Arguments
 	if args != nil && len(args.Nodes) > 0 {
 		if lit, ok := stringLiteralValue(c.ctx, args.Nodes[0]); ok {
 			moduleArg = lit
 		}
 		if len(args.Nodes) > 1 {
-			defaultScope, referenceOutput = parseCreateTranslateOptions(c.ctx, args.Nodes[1])
+			defaultScope = parseCreateTranslateOptions(c.ctx, args.Nodes[1])
 		}
 	}
 	if moduleArg != "" && c.opts.ModuleName != "" && moduleArg != c.opts.ModuleName {
@@ -205,7 +204,7 @@ func (c *scriptCollector) tryRegisterCreateTranslate(call *tsast.Node, nameNode 
 		})
 	}
 
-	registerTranslateBindings(c.translateIdents, c.referenceIdents, c.translateDefaultScopes, defaultScope, referenceOutput, c.ctx, nameNode)
+	registerTranslateBindings(c.translateIdents, c.referenceIdents, c.translateDefaultScopes, defaultScope, c.ctx, nameNode)
 	return true
 }
 
@@ -214,7 +213,6 @@ func registerTranslateBindings(
 	referenceIdents map[string]bool,
 	defaultScopes map[string]string,
 	defaultScope string,
-	referenceOutput bool,
 	ctx *tsgoctx.ParseCtx,
 	nameNode *tsast.Node,
 ) {
@@ -244,10 +242,10 @@ func registerTranslateBindings(
 			if el.Name() != nil && el.Name().Kind == tsast.KindIdentifier {
 				localName = strings.TrimSpace(ctx.NodeText(el.Name()))
 			}
-			if propName == "_t" {
+			if propName == "_t" || propName == "_lt" {
 				if localName != "" {
 					idents[localName] = true
-					if referenceOutput {
+					if propName == "_lt" {
 						referenceIdents[localName] = true
 					}
 					if defaultScope != "" {
@@ -332,7 +330,7 @@ func (c *scriptCollector) isTranslateCallee(expr *tsast.Node) bool {
 }
 
 func isTranslateIdentifier(name string) bool {
-	return name == "_t"
+	return name == "_t" || name == "_lt"
 }
 
 func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast.CallExpression, pendingLocation string) {
@@ -369,12 +367,7 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 	if callExpr.Expression != nil && callExpr.Expression.Kind == tsast.KindIdentifier {
 		calleeName = strings.TrimSpace(c.ctx.NodeText(callExpr.Expression))
 	}
-	isReference := c.referenceIdents[calleeName]
-	if len(args.Nodes) > 1 {
-		if callOutput, ok := parseCallOutput(c.ctx, args.Nodes[1]); ok {
-			isReference = callOutput == "reference"
-		}
-	}
+	isReference := c.referenceIdents[calleeName] || calleeName == "_lt"
 	if isReference {
 		if len(args.Nodes) > 1 {
 			var scopeOK bool
@@ -383,7 +376,7 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 				c.issues = append(c.issues, ExtractIssue{
 					Severity:   IssueSeverityWarn,
 					Code:       IssueNonLiteralScope,
-					Message:    "reference-output _t scope must be a non-empty string literal; skipped",
+					Message:    "_lt scope must be a non-empty string literal; skipped",
 					SourcePath: c.opts.RelPath,
 					Line:       line,
 					Col:        col,
@@ -394,7 +387,7 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 			c.issues = append(c.issues, ExtractIssue{
 				Severity:   IssueSeverityWarn,
 				Code:       IssueNonLiteralScope,
-				Message:    "reference-output _t requires an explicit or factory-default literal scope; skipped",
+				Message:    "_lt requires an explicit or factory-default literal scope; skipped",
 				SourcePath: c.opts.RelPath,
 				Line:       line,
 				Col:        col,
@@ -426,8 +419,8 @@ func (c *scriptCollector) collectTranslateCall(node *tsast.Node, callExpr *tsast
 }
 
 // collectModelActionsTerms emits synthesized Create/Edit/Delete/Copy titles when
-// defineModelActions uses entityTitle: _t('Entity') (D19). TitleText at build time
-// uses those synthesized msgids under the same scope as the entity _t call.
+// defineModelActions uses entityTitle: _lt('Entity') (D19). TitleText at build time
+// uses those synthesized msgids under the same scope as the entity _lt call.
 func (c *scriptCollector) collectModelActionsTerms(node *tsast.Node, callExpr *tsast.CallExpression) {
 	if callExpr.Arguments == nil || len(callExpr.Arguments.Nodes) < 2 {
 		return
@@ -549,7 +542,7 @@ func (c *scriptCollector) collectModelActionsTerms(node *tsast.Node, callExpr *t
 	}
 }
 
-// translateCallLiteral returns msgid + resolved scope for a `_t('…')` / aliased call.
+// translateCallLiteral returns msgid + resolved scope for a `_t` / `_lt` / aliased call.
 func (c *scriptCollector) translateCallLiteral(node *tsast.Node) (src string, scope string, ok bool) {
 	if node == nil || node.Kind != tsast.KindCallExpression {
 		return "", "", false
@@ -626,31 +619,6 @@ func parseReferenceScope(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool)
 	return formatted, strings.TrimSpace(formatted) != ""
 }
 
-func parseCallOutput(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {
-	if node == nil || node.Kind != tsast.KindObjectLiteralExpression {
-		return "", false
-	}
-	obj := node.AsObjectLiteralExpression()
-	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
-		return "", false
-	}
-	for _, prop := range obj.Properties.Nodes {
-		if prop == nil || prop.Kind != tsast.KindPropertyAssignment {
-			continue
-		}
-		pa := prop.AsPropertyAssignment()
-		if pa == nil || pa.Name() == nil || strings.TrimSpace(ctx.NodeText(pa.Name())) != "output" {
-			continue
-		}
-		value, ok := stringLiteralValue(ctx, prop.Initializer())
-		if !ok || (value != "text" && value != "reference") {
-			return "", false
-		}
-		return value, true
-	}
-	return "", false
-}
-
 func parseTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope string, kind string) {
 	kind = KindLiteral
 	path := ""
@@ -692,15 +660,15 @@ func parseTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope strin
 	return scope, kind
 }
 
-func parseCreateTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope string, referenceOutput bool) {
+func parseCreateTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope string) {
 	path := ""
 	location := ""
 	if node == nil || node.Kind != tsast.KindObjectLiteralExpression {
-		return "", false
+		return ""
 	}
 	obj := node.AsObjectLiteralExpression()
 	if obj == nil || obj.Properties == nil || obj.Properties.Nodes == nil {
-		return "", false
+		return ""
 	}
 	for _, prop := range obj.Properties.Nodes {
 		if prop == nil || prop.Kind != tsast.KindPropertyAssignment {
@@ -722,14 +690,12 @@ func parseCreateTranslateOptions(ctx *tsgoctx.ParseCtx, node *tsast.Node) (scope
 			path = value
 		case "location":
 			location = value
-		case "output":
-			referenceOutput = value == "reference"
 		}
 	}
 	if strings.TrimSpace(scope) == "" {
 		scope = FormatScope(path, location)
 	}
-	return scope, referenceOutput
+	return scope
 }
 
 func stringLiteralValue(ctx *tsgoctx.ParseCtx, node *tsast.Node) (string, bool) {

@@ -78,8 +78,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'AddressFormView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/AddressFormView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/AddressFormView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressFormView' });
 
 const props = withDefaults(
   defineProps<{
@@ -92,7 +91,7 @@ const props = withDefaults(
   { showHeader: true, createAction: undefined }
 );
 
-const addressActions = defineModelActions('base.Address', { entityTitle: _tRef('Address') });
+const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const router = useRouter();

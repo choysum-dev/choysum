@@ -221,8 +221,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleKanbanView' });
 
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
-const { _t: _tRef } = createTranslate('meta', { output: 'reference', scope: 'web/views/ModuleKanbanView' });
+const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleKanbanView' });
 
 /**
  * Props consumed by the module kanban view and its backing stores.
@@ -239,19 +238,19 @@ const keywordFields = ['ModuleName', 'Version', 'OriginType', 'OriginRef'];
 
 const router = useRouter();
 const moduleInstallAction = defineAction('meta.action.module_install', {
-  title: _tRef('Install Module'),
+  title: _lt('Install Module'),
   requires: [{ model: 'meta.IrModule', method: 'RequestInstall' }],
 });
 const moduleUpgradeAction = defineAction('meta.action.module_upgrade', {
-  title: _tRef('Upgrade Module'),
+  title: _lt('Upgrade Module'),
   requires: [{ model: 'meta.IrModule', method: 'RequestUpgrade' }],
 });
 const moduleUninstallAction = defineAction('meta.action.module_uninstall', {
-  title: _tRef('Uninstall Module'),
+  title: _lt('Uninstall Module'),
   requires: [{ model: 'meta.IrModule', method: 'RequestUninstall' }],
 });
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
-  title: _tRef('Sync Module Index'),
+  title: _lt('Sync Module Index'),
   requires: [{ model: 'meta.IrModuleIndex', method: 'RequestSync' }],
 });
 const { canRoute, hasAction } = usePermission();

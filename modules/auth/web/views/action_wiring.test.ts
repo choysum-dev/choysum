@@ -16,14 +16,14 @@ describe('auth view action wiring', () => {
 
     expect(list).toContain("createTranslate('auth'");
     expect(list).toContain("defineModelActions('auth.User', {");
-    expect(list).toContain("entityTitle: _tRef('User')");
+    expect(list).toContain("entityTitle: _lt('User')");
     expect(list).toContain(':action-ids="{ create: userActions.create, delete: userActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
     expect(list).toContain('usePermission');
 
     expect(form).toContain("createTranslate('auth'");
     expect(form).toContain("defineModelActions('auth.User', {");
-    expect(form).toContain("entityTitle: _tRef('User')");
+    expect(form).toContain("entityTitle: _lt('User')");
     expect(form).toContain(':action-ids="{ create: userActions.create, edit: userActions.edit, copy: userActions.copy, delete: userActions.delete }"');
     expect(form).toContain(':has-action="hasAction"');
     expect(form).toContain('usePermission');
@@ -35,14 +35,14 @@ describe('auth view action wiring', () => {
 
     expect(list).toContain("createTranslate('auth'");
     expect(list).toContain("defineModelActions('auth.Role', {");
-    expect(list).toContain("entityTitle: _tRef('Role')");
+    expect(list).toContain("entityTitle: _lt('Role')");
     expect(list).toContain(':action-ids="{ create: roleActions.create, delete: roleActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
     expect(list).toContain('usePermission');
 
     expect(form).toContain("createTranslate('auth'");
     expect(form).toContain("defineModelActions('auth.Role', {");
-    expect(form).toContain("entityTitle: _tRef('Role')");
+    expect(form).toContain("entityTitle: _lt('Role')");
     expect(form).toContain(':action-ids="{ create: roleActions.create, edit: roleActions.edit, copy: roleActions.copy, delete: roleActions.delete }"');
     expect(form).toContain(':has-action="hasAction"');
     expect(form).toContain('prop="AccessUiResourceIds"');
@@ -62,14 +62,14 @@ describe('auth view action wiring', () => {
 
     expect(list).toContain("createTranslate('auth'");
     expect(list).toContain("defineModelActions('auth.Session', {");
-    expect(list).toContain("entityTitle: _tRef('Session')");
+    expect(list).toContain("entityTitle: _lt('Session')");
     expect(list).toContain(':action-ids="{ create: sessionActions.create, delete: sessionActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
     expect(list).toContain('usePermission');
 
     expect(form).toContain("createTranslate('auth'");
     expect(form).toContain("defineModelActions('auth.Session', {");
-    expect(form).toContain("entityTitle: _tRef('Session')");
+    expect(form).toContain("entityTitle: _lt('Session')");
     expect(form).toContain(
       ':action-ids="{ create: sessionActions.create, edit: sessionActions.edit, copy: sessionActions.copy, delete: sessionActions.delete }"'
     );
@@ -83,7 +83,7 @@ describe('auth view action wiring', () => {
 
     expect(list).toContain("createTranslate('auth'");
     expect(list).toContain("defineModelActions('auth.Token', {");
-    expect(list).toContain("entityTitle: _tRef('Token')");
+    expect(list).toContain("entityTitle: _lt('Token')");
     expect(list).toContain(':action-ids="{ create: tokenActions.create, delete: tokenActions.delete }"');
     expect(list).toContain(':has-action="hasAction"');
     expect(list).toContain("v-action=\"['auth.action.token_edit', 'auth.action.token_copy']\"");
@@ -92,7 +92,7 @@ describe('auth view action wiring', () => {
 
     expect(form).toContain("createTranslate('auth'");
     expect(form).toContain("defineModelActions('auth.Token', {");
-    expect(form).toContain("entityTitle: _tRef('Token')");
+    expect(form).toContain("entityTitle: _lt('Token')");
     expect(form).toContain(':action-ids="{ create: tokenActions.create, edit: tokenActions.edit, copy: tokenActions.copy, delete: tokenActions.delete }"');
     expect(form).toContain(':has-action="hasAction"');
     expect(form).toContain('usePermission');

@@ -66,8 +66,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ExchangeRateFormView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/ExchangeRateFormView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/ExchangeRateFormView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{
@@ -79,7 +78,7 @@ const props = withDefaults(
   }>(),
   { showHeader: true, createAction: undefined }
 );
-const exchangeRateActions = defineModelActions('base.ExchangeRate', { entityTitle: _tRef('Exchange Rate') });
+const exchangeRateActions = defineModelActions('base.ExchangeRate', { entityTitle: _lt('Exchange Rate') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const router = useRouter();

@@ -65,14 +65,13 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CityFormView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/CityFormView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CityFormView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/CityFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<City>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
-const cityActions = defineModelActions('base.City', { entityTitle: _tRef('City') });
+const cityActions = defineModelActions('base.City', { entityTitle: _lt('City') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const router = useRouter();

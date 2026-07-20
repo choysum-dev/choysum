@@ -89,8 +89,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenFormView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/TokenFormView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/TokenFormView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenFormView' });
 
 const props = withDefaults(
   defineProps<{
@@ -107,7 +106,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const tokenActions = defineModelActions('auth.Token', { entityTitle: _tRef('Token') });
+const tokenActions = defineModelActions('auth.Token', { entityTitle: _lt('Token') });
 const { hasAction } = usePermission();
 const router = useRouter();
 

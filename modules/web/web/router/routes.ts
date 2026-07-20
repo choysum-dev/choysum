@@ -6,7 +6,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('web', { output: 'reference', scope: 'web/route/routes' });
+const { _lt } = createTranslate('web', { scope: 'web/route/routes' });
 
 /**
  * Static route configuration for the web shell.
@@ -30,7 +30,7 @@ export const routes: RouteRecordRaw[] = [
     children: [
       defineRoute('web.route.home', {
         sequence: 1,
-        title: _t('Home'),
+        title: _lt('Home'),
         defaultRoles: ['base.user'],
         path: 'home',
         name: 'Home',

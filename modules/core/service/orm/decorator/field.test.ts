@@ -81,8 +81,8 @@ test('Field decorator validates selection schema and uniqueness', () => {
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {
-  const { _t } = createTranslate('demo', { output: 'reference' });
-  const labelReference = _t('B', { scope: 'demo.status.b' });
+  const { _lt } = createTranslate('demo');
+  const labelReference = _lt('B', { scope: 'demo.status.b' });
   class AutoSelectionModel extends BaseModel {
     @Field({
       type: 'selection',

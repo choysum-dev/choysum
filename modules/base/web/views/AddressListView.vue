@@ -42,10 +42,9 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/AddressListView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/AddressListView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressListView' });
 const props = defineProps<{ store: WebModelStore<Address> }>();
-const addressActions = defineModelActions('base.Address', { entityTitle: _tRef('Address') });
+const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Address>) {

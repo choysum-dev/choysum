@@ -32,7 +32,7 @@ export default class Locale extends BaseModel {
   FirstDayOfWeek?: number;
 
   // Selection labels stay English msgid until options are served by a request-scoped
-  // API that can text-_t with RequestContext.lang. Do not use output:'reference' here.
+  // API that can text-_t with RequestContext.lang. Do not use _lt here (D5).
   @Field({
     type: 'selection',
     selection: [

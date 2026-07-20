@@ -117,9 +117,8 @@ import type {
   OFormChildSubmitApiRegister,
 } from '@/web/web/components/view/formViewTypes';
 
-const { _t } = createTranslate('web', { scope: 'web/components/view/OFormView' });
-const { _t: _tRef } = createTranslate('web', { output: 'reference', scope: 'web/components/view/OFormView' });
-const detailsTitle = _tRef('Details');
+const { _t, _lt } = createTranslate('web', { scope: 'web/components/view/OFormView' });
+const detailsTitle = _lt('Details');
 
 const O_FORM_CHILD_SUBMIT_API_REGISTER_KEY = 'o-form-child-submit-api-register';
 const O_FORM_EMBEDDED_CONTEXT_KEY = 'o-form-embedded-context';
