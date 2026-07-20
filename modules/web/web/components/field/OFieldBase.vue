@@ -275,14 +275,24 @@ const props = withDefaults(
 
 const binding = props.binding;
 
-const resolvedLabel = computed(() =>
-  resolveFieldLabel({
+const resolvedLabel = computed(() => {
+  const prop = String(binding.prop || '');
+  const leaf = prop.split('.').filter(Boolean).pop() || prop;
+  const store = binding.store as
+    | {
+        getFieldMeta?: (name: string) => typeof binding.meta;
+        getFieldsGetTranslatedString?: (name: string) => string | undefined;
+      }
+    | undefined;
+  const effectiveMeta = store?.getFieldMeta?.(leaf) ?? binding.meta;
+  return resolveFieldLabel({
     label: props.label,
-    prop: String(binding.prop || ''),
-    meta: binding.meta,
+    prop,
+    meta: effectiveMeta,
+    fieldsGetTranslatedString: store?.getFieldsGetTranslatedString?.(leaf),
     composer: getGlobalComposer(),
-  })
-);
+  });
+});
 
 /* ===================== Render Mode Dispatch ===================== */
 // Inject a render mode override (for example, Kanban cards provide inline)

@@ -61,6 +61,7 @@ import { defaultModelValues, runModelOnchange } from './model_runtime_service_fa
 import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { updateModels, updateModelById } from './model_update_service_facade';
+import { fieldsGetModels, type FieldsGetFieldMeta } from './model_fields_get_facade';
 import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
@@ -403,6 +404,18 @@ class BaseModel {
    */
   static async DefaultGet<T extends BaseModel>(this: BaseModelCtor<T>, value: Partial<Insertable<T & BaseModel>>): Promise<Partial<Insertable<T & BaseModel>>> {
     return await defaultModelValues<T>(this as unknown as RuntimeModelCtor<T>, value);
+  }
+
+  /**
+   * Returns readable field presentation metadata for the current request language.
+   * Translates field titles and static selection labels; filters deny-read fields.
+   */
+  static async FieldsGet<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    fields?: string[],
+    attributes?: string[]
+  ): Promise<Record<string, FieldsGetFieldMeta>> {
+    return await fieldsGetModels(this as unknown as RuntimeModelCtor<T>, fields, attributes);
   }
 
   /**

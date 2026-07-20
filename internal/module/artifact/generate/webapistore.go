@@ -274,6 +274,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		"Delete":         true,
 		"DeleteById":     true,
 		"DefaultGet":     true,
+		"FieldsGet":      true,
 		"Onchange":       true,
 		"ReadGroup":      true,
 		"ReadGroupCount": true,

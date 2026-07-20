@@ -80,4 +80,34 @@ describe('OFieldBase label resolution', () => {
     });
     expect(wrapper.get('.form-item').attributes('data-label')).toBe('Custom Name');
   });
+
+  it('prefers FieldsGet overlay translated string via store helpers', () => {
+    const binding = makeBinding({ string: 'Access Token ID', stringText });
+    binding.store = {
+      getFieldMeta: (name: string) =>
+        name === 'AccessTokenId'
+          ? ({ type: 'varchar', typeAnnotation: 'string', id: '1', string: '访问令牌 ID' } as any)
+          : undefined,
+      getFieldsGetTranslatedString: (name: string) => (name === 'AccessTokenId' ? '访问令牌 ID' : undefined),
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          'el-form-item': {
+            props: ['label'],
+            template: '<div class="form-item" :data-label="label"><slot /></div>',
+          },
+        },
+      },
+    });
+    expect(wrapper.get('.form-item').attributes('data-label')).toBe('访问令牌 ID');
+  });
 });

@@ -137,4 +137,15 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   Delete: ClientModelService<typeof BaseModel.Delete<TModel>>;
   DeleteById: ClientModelService<typeof BaseModel.DeleteById<TModel>>;
   Onchange: ClientModelService<typeof BaseModel.Onchange<TModel>>;
+  FieldsGet: ClientModelService<typeof BaseModel.FieldsGet>;
+
+  /**
+   * Fetch (or reuse cached) FieldsGet presentation overlay for the active terminology lang.
+   */
+  ensureFieldsGet: (fields?: string[], attributes?: string[]) => Promise<Record<string, WebFieldMetadata>>;
+  /** Merge static fieldsMetadata with FieldsGet overlay for one field. */
+  getFieldMeta: (name: string) => WebFieldMetadata | undefined;
+  /** FieldsGet-translated title when overlay is present for the active lang. */
+  getFieldsGetTranslatedString: (name: string) => string | undefined;
+  clearFieldsGetCache: () => void;
 }
