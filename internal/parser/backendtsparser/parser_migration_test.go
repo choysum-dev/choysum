@@ -911,6 +911,113 @@ func TestParseTermReferenceCall_InlineScopeOverridesDefault(t *testing.T) {
 	}
 }
 
+func TestTsParser_StringTextTranslateFallsBackToMsgid(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('demo', { scope: 'demo.model.Widget.fields' });
+
+@Model('TextStringFallbackModel')
+export default class TextStringFallbackModel extends BaseModel {
+  @Field({ type: 'varchar', string: _t('Display Name') })
+  public Name: string
+
+  @Field({ type: 'varchar', string: "Quoted Title" })
+  public Title: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		byName[f.Name] = f
+	}
+	if byName["Name"].FieldString != "Display Name" || strings.TrimSpace(byName["Name"].StringText) != "" {
+		t.Fatalf("text _t string should fallback to msgid without StringText: %#v", byName["Name"])
+	}
+	if byName["Title"].FieldString != "Quoted Title" {
+		t.Fatalf("quoted string literal: %#v", byName["Title"])
+	}
+}
+
+func TestBuildFieldResolvedSpec_SelectionEdgeCases(t *testing.T) {
+	field := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{
+					"type":"selection",
+					"selection":[
+						"skip-me",
+						{"value":"","label":"_lt('Empty Value', { scope: 'demo.s' })"},
+						{"value":"ok","label":"\"Quoted Label\""},
+						{"value":"blank","label":""},
+						{"value":"keep","label":"Keep"}
+					]
+				}`,
+			}},
+		}},
+	}
+	bindings := map[string]parser.TranslateBinding{
+		"_lt": {Module: "demo", ReferenceOutput: true, DefaultScope: "demo.s"},
+	}
+	spec, err := buildFieldResolvedSpec(field, nil, nil, "demo", "demo.s", bindings)
+	if err != nil {
+		t.Fatalf("buildFieldResolvedSpec: %v", err)
+	}
+	if spec == nil || len(spec.Structural.Selection) != 2 {
+		t.Fatalf("expected 2 kept items, got %#v", spec)
+	}
+	if spec.Structural.Selection[0].Value != "ok" || spec.Structural.Selection[0].Label != "Quoted Label" {
+		t.Fatalf("quoted label item: %#v", spec.Structural.Selection[0])
+	}
+	if spec.Structural.Selection[1].Value != "keep" || spec.Structural.Selection[1].Label != "Keep" {
+		t.Fatalf("bare label item: %#v", spec.Structural.Selection[1])
+	}
+}
+
+func TestBuildFieldResolvedSpec_QuotedSelectionMethodAndEmptyLiteral(t *testing.T) {
+	okField := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"selection","selection":"\"StatusOptions\""}`,
+			}},
+		}},
+	}
+	spec, err := buildFieldResolvedSpec(okField, nil, nil, "demo", "demo.s", nil)
+	if err != nil {
+		t.Fatalf("quoted method: %v", err)
+	}
+	if spec.Structural.SelectionKind != "dynamic" || spec.Structural.SelectionMethod != "StatusOptions" {
+		t.Fatalf("unexpected method meta: %+v", spec.Structural)
+	}
+
+	emptyField := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"selection","selection":"\"\""}`,
+			}},
+		}},
+	}
+	_, err = buildFieldResolvedSpec(emptyField, nil, nil, "demo", "demo.s", nil)
+	if err == nil || !strings.Contains(err.Error(), "selection method name must be a non-empty string") {
+		t.Fatalf("expected empty quoted method error, got: %v", err)
+	}
+}
+
 func TestTsParser_ParseModelResolvedSpecCoversRelationTypesAndMigrationDecisions(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}

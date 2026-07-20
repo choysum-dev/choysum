@@ -22,3 +22,7 @@ ignore:
   - "**/*.spec.ts"
   - "**/*.test.ts"
   - ".dev/**"
+  # Vue SFC templates are not instrumented by Vitest coverage-v8. P6 i18n
+  # view diffs are mostly `:label="_t(...)"` removals; script setup is already
+  # exercised by lt_mount suites. Ignoring views keeps patch % honest for logic.
+  - "modules/**/web/views/**/*.vue"

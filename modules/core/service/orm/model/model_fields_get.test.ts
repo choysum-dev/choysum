@@ -434,3 +434,84 @@ test('FieldsGet throws when dynamic selection method is missing (T3.6)', async (
     resetTestState();
   }
 });
+
+@Model('FieldsGetEdgeWidget', { application: 'demo' })
+class FieldsGetEdgeWidget extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: function (this: typeof FieldsGetEdgeWidget) {
+      const { _lt } = createTranslate('demo', { scope: 'demo.model.FieldsGetEdgeWidget.fields' });
+      return [
+        null,
+        { value: '', label: _lt('Empty Value') },
+        { value: 'keep', label: _lt('Keep') },
+        { value: 'bare', label: 'BARE' },
+        { value: 'blank', label: '' },
+      ];
+    },
+  } as any)
+  Tag!: string;
+
+  @Field({
+    type: 'varchar',
+    string: createTranslate('demo', { scope: 'demo.model.FieldsGetEdgeWidget.fields' })._lt('Note'),
+  })
+  Note!: string;
+}
+
+test('FieldsGet selection normalizer skips junk and falls back when translate is empty (T3.7)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetEdgeWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetEdgeWidget.FieldsGet(['Tag', 'Note']);
+    expect(out.Tag?.selectionKind).toBe('dynamic');
+    expect(out.Tag?.selection).toEqual([
+      { value: 'keep', label: 'Keep' },
+      { value: 'bare', label: 'BARE' },
+    ]);
+    expect(out.Note?.string).toBe('Note');
+    expect(out.Note?.stringText?.src).toBe('Note');
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet deny-write throw leaves fields writable (T1.7)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => {
+      throw new Error('write-deny boom');
+    },
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['Code']);
+    expect(out.Code?.isReadonly).toBeUndefined();
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet attributes projection always keeps type and drops others (T1.8)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetColumnWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetColumnWidget.FieldsGet(['Amount'], ['notNull']);
+    expect(out.Amount).toEqual({ type: 'decimal', notNull: true });
+  } finally {
+    resetTestState();
+  }
+});
