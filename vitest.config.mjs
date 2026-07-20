@@ -18,13 +18,27 @@ import { fileURLToPath } from 'node:url'
 // and same-path multi-user (or sudo) runs do not collide on one cache directory.
 function resolveUserKey() {
   try {
-    return `uid:${os.userInfo().uid}`
+    const info = os.userInfo()
+    // Windows reports uid/gid as -1; prefer username there for per-user isolation.
+    if (typeof info.uid === 'number' && info.uid >= 0) {
+      return `uid:${info.uid}`
+    }
+    if (info.username) {
+      return `name:${info.username}`
+    }
   } catch {
-    return `name:${process.env.USER || process.env.USERNAME || 'unknown'}`
+    // os.userInfo() can throw in minimal containers without a passwd entry.
   }
+  return `name:${process.env.USER || process.env.USERNAME || 'unknown'}`
 }
 
-const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+function resolveProjectRoot() {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)))
+  // Windows paths are case-insensitive; normalize so the same checkout hashes stably.
+  return process.platform === 'win32' ? root.toLowerCase() : root
+}
+
+const projectRoot = resolveProjectRoot()
 const checkoutHash = crypto
   .createHash('sha256')
   .update(`${resolveUserKey()}:${projectRoot}`)
