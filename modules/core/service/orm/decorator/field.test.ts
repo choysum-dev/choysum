@@ -81,8 +81,8 @@ test('Field decorator validates selection schema and uniqueness', () => {
 });
 
 test('Field decorator normalizes string and stringText from term references', () => {
-  const { _t } = createTranslate('demo', { output: 'reference', scope: 'demo.model.Widget.fields' });
-  const nameReference = _t('Name');
+  const { _lt } = createTranslate('demo', { scope: 'demo.model.Widget.fields' });
+  const nameReference = _lt('Name');
 
   class StringFieldModel extends BaseModel {
     @Field({ type: 'varchar', size: 100, string: nameReference } as any)
@@ -110,8 +110,8 @@ test('Field decorator normalizes string and stringText from term references', ()
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {
-  const { _t } = createTranslate('demo', { output: 'reference' });
-  const labelReference = _t('B', { scope: 'demo.status.b' });
+  const { _lt } = createTranslate('demo');
+  const labelReference = _lt('B', { scope: 'demo.status.b' });
   class AutoSelectionModel extends BaseModel {
     @Field({
       type: 'selection',

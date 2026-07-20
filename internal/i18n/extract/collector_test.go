@@ -158,8 +158,8 @@ const override = _t('Override', { scope: 'manual.override' })
 
 func TestCollectScriptReferenceUsesCreateTranslateDefaultScope(t *testing.T) {
 	content := `
-const { _t, _t: reference } = createTranslate('base', { output: 'reference', path: 'web/menu', location: 'menus' })
-const menuTitle = _t('Master Data')
+const { _lt, _lt: reference } = createTranslate('base', { path: 'web/menu', location: 'menus' })
+const menuTitle = _lt('Master Data')
 reference('Company Management')
 `
 
@@ -182,12 +182,12 @@ reference('Company Management')
 
 func TestCollectScriptReferenceRequiresLiteralSourceAndScope(t *testing.T) {
 	content := `
-const { _t, _t: reference } = createTranslate('base', { output: 'reference' })
-const valid = _t('Users', { scope: 'base.menu.users' })
+const { _lt, _lt: reference } = createTranslate('base')
+const valid = _lt('Users', { scope: 'base.menu.users' })
 reference('Settings', { scope: 'base.menu.settings' })
-_t(dynamicSrc, { scope: 'base.menu.dynamic' })
-_t('Dynamic scope', { scope: dynamicScope })
-_t('Missing scope')
+_lt(dynamicSrc, { scope: 'base.menu.dynamic' })
+_lt('Dynamic scope', { scope: dynamicScope })
+_lt('Missing scope')
 `
 	terms, issues := CollectScript(CollectOptions{
 		ModuleName: "base",
@@ -220,12 +220,12 @@ _t('Missing scope')
 
 func TestCollectScriptSynthesizesModelActionTitles(t *testing.T) {
 	content := `
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' })
-defineModelActions('base.Country', { entityTitle: _tRef('Country') })
+const { _lt } = createTranslate('base', { scope: 'web/views/CountryListView' })
+defineModelActions('base.Country', { entityTitle: _lt('Country') })
 defineModelActions('base.User', {
-  entityTitle: _tRef('User'),
+  entityTitle: _lt('User'),
   exclude: ['copy'],
-  titles: { delete: _tRef('Deactivate User') },
+  titles: { delete: _lt('Deactivate User') },
 })
 `
 	terms, issues := CollectScript(CollectOptions{
@@ -257,7 +257,7 @@ defineModelActions('base.User', {
 
 func TestCollectScriptReferenceAndKindAndWithI18nScope(t *testing.T) {
 	content := `
-const { _t: ref } = createTranslate('auth', { output: 'reference', scope: 'factory.scope' })
+const { _lt: ref } = createTranslate('auth', { scope: 'factory.scope' })
 const { _t } = createTranslate('auth')
 ref('NeedsScope')
 _t()
@@ -295,7 +295,7 @@ withI18nScope('manual.box', () => {
 
 func TestCollectScriptReferenceMissingScopeWarns(t *testing.T) {
 	content := `
-const { _t: ref } = createTranslate('auth', { output: 'reference' })
+const { _lt: ref } = createTranslate('auth')
 ref('NoScope')
 ref('Bad', { scope: dynamicScope })
 `
@@ -408,13 +408,13 @@ const title = _t('Users')
 func TestCollectScriptFieldStringReference(t *testing.T) {
 	content := `
 import { Field, Model } from '@/core/service'
-const { _t } = createTranslate('auth', { output: 'reference', scope: 'auth.model.Session.fields' })
+const { _lt } = createTranslate('auth', { scope: 'auth.model.Session.fields' })
 
 @Model('Session')
 export default class Session {
   @Field({
     type: 'varchar',
-    string: _t('Access Token ID'),
+    string: _lt('Access Token ID'),
   })
   AccessTokenId: string
 }
@@ -438,12 +438,12 @@ export default class Session {
 	}
 }
 
-func TestCollectScriptCallOutputOverridesFactoryOutput(t *testing.T) {
+func TestCollectScriptSeparatesTextAndReferenceHelpers(t *testing.T) {
 	content := `
 const { _t: textDefault } = createTranslate('base')
-const { _t: referenceDefault } = createTranslate('base', { output: 'reference' })
-textDefault('Left to right', { scope: 'base.Language.Direction.ltr', output: 'reference' })
-referenceDefault('Interpolated %s', { output: 'text' }, 'value')
+const { _lt: referenceDefault } = createTranslate('base')
+referenceDefault('Left to right', { scope: 'base.Language.Direction.ltr' })
+textDefault('Interpolated %s')
 `
 	terms, issues := CollectScript(CollectOptions{
 		ModuleName: "base",
@@ -456,10 +456,45 @@ referenceDefault('Interpolated %s', { output: 'text' }, 'value')
 		t.Fatalf("expected two terms, got %#v", terms)
 	}
 	if terms[0].Scope != "base.Language.Direction.ltr" || terms[0].Src != "Left to right" {
-		t.Fatalf("unexpected reference override term: %#v", terms[0])
+		t.Fatalf("unexpected reference term: %#v", terms[0])
 	}
 	if terms[1].Scope != "service/models/language" || terms[1].Src != "Interpolated %s" {
-		t.Fatalf("unexpected text override term: %#v", terms[1])
+		t.Fatalf("unexpected text term: %#v", terms[1])
+	}
+}
+
+func TestCollectScriptIgnoresNonObjectCreateTranslateOptions(t *testing.T) {
+	content := `
+const { _lt } = createTranslate('auth', 'not-an-object')
+_lt('NeedsScope', { scope: 'auth.menu' })
+const { _lt: also } = createTranslate('auth', 42)
+also('Also', { scope: 'auth.other' })
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 2 {
+		t.Fatalf("expected two terms with call-level scopes, got %#v", terms)
+	}
+}
+
+func TestCollectScriptBareLtWithoutDestructure(t *testing.T) {
+	content := `
+_lt('Bare Title', { scope: 'auth.menu.root' })
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "web/menu/menus.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	if len(terms) != 1 || terms[0].Src != "Bare Title" || terms[0].Scope != "auth.menu.root" {
+		t.Fatalf("bare _lt = %#v issues=%#v", terms, issues)
 	}
 }
 

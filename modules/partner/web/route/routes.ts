@@ -5,7 +5,7 @@ import type { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('partner', { output: 'reference', scope: 'web/route/routes' });
+const { _lt } = createTranslate('partner', { scope: 'web/route/routes' });
 
 /**
  * Route table for the partner management pages.
@@ -13,7 +13,7 @@ const { _t } = createTranslate('partner', { output: 'reference', scope: 'web/rou
 export const partnerRoutes: RouteRecordRaw[] = [
   defineRoute('partner.route.partner_list', {
     sequence: 10,
-    title: _t('Partner List'),
+    title: _lt('Partner List'),
     path: 'partner/partners',
     name: 'PartnerList',
     component: () => import('../pages/PartnerList.vue'),
@@ -28,7 +28,7 @@ export const partnerRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('partner.route.partner_detail', {
     sequence: 20,
-    title: _t('Partner Detail'),
+    title: _lt('Partner Detail'),
     path: 'partner/partners/:id',
     name: 'PartnerDetail',
     component: () => import('../pages/Partner.vue'),
@@ -38,7 +38,7 @@ export const partnerRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('partner.route.partner_create', {
     sequence: 30,
-    title: _t('New Partner'),
+    title: _lt('New Partner'),
     path: 'partner/partners/new',
     name: 'PartnerCreate',
     component: () => import('../pages/Partner.vue'),

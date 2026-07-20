@@ -49,14 +49,13 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMFormView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/UoMFormView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/UoMFormView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<UoM>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
-const uomActions = defineModelActions('base.UoM', { entityTitle: _tRef('Unit of Measure') });
+const uomActions = defineModelActions('base.UoM', { entityTitle: _lt('Unit of Measure') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 </script>

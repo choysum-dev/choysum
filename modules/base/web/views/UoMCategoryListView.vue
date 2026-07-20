@@ -37,10 +37,9 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UoMCategoryListView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/UoMCategoryListView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/UoMCategoryListView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMCategoryListView' });
 const props = defineProps<{ store: WebModelStore<UoMCategory> }>();
-const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: _tRef('Unit of Measure Category') });
+const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: _lt('Unit of Measure Category') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<UoMCategory>) {

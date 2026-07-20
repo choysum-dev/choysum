@@ -41,8 +41,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SessionListView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/SessionListView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/SessionListView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/SessionListView' });
 
 const router = useRouter();
 
@@ -57,7 +56,7 @@ const props = withDefaults(
 );
 
 const { store, showHeader } = props;
-const sessionActions = defineModelActions('auth.Session', { entityTitle: _tRef('Session') });
+const sessionActions = defineModelActions('auth.Session', { entityTitle: _lt('Session') });
 const { hasAction } = usePermission();
 
 /**

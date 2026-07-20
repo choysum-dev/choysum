@@ -171,8 +171,7 @@ import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';
 
 defineOptions({ name: 'RoleFormView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/RoleFormView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
@@ -190,7 +189,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const roleActions = defineModelActions('auth.Role', { entityTitle: _tRef('Role') });
+const roleActions = defineModelActions('auth.Role', { entityTitle: _lt('Role') });
 const { hasAction } = usePermission();
 const composer = useI18n({ useScope: 'global' });
 

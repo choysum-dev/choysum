@@ -63,8 +63,8 @@ describe('resource declaration helpers', () => {
   });
 
   it('normalizes term reference titles to English fallbacks plus metadata', () => {
-    const { _t } = createTranslate('auth', { output: 'reference' });
-    const reference = _t('Users', { scope: 'auth.route.users' });
+    const { _lt } = createTranslate('auth');
+    const reference = _lt('Users', { scope: 'auth.route.users' });
     const route = defineRoute('auth.route.users', {
       path: '/auth/users',
       title: reference,
@@ -178,8 +178,8 @@ describe('resource declaration helpers', () => {
   });
 
   it('defineModelActions registers term reference titles for model actions', () => {
-    const { _t } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' });
-    const reference = _t('Country');
+    const { _lt } = createTranslate('base', { scope: 'web/views/CountryListView' });
+    const reference = _lt('Country');
     const actions = defineModelActions('base.Country', { entityTitle: reference });
 
     expect(actions.create).toBe('base.action.country_create');
@@ -187,7 +187,7 @@ describe('resource declaration helpers', () => {
       id: 'base.action.country_create',
       kind: 'action',
       title: 'Create Country',
-      titleText: createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' })._t('Create Country'),
+      titleText: createTranslate('base', { scope: 'web/views/CountryListView' })._lt('Create Country'),
       requires: [],
       defaultRoles: [],
     });

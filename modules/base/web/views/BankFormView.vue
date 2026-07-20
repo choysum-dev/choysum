@@ -59,14 +59,13 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'BankFormView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/BankFormView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/BankFormView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/BankFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{ store: WebModelStore<Bank>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
-const bankActions = defineModelActions('base.Bank', { entityTitle: _tRef('Bank') });
+const bankActions = defineModelActions('base.Bank', { entityTitle: _lt('Bank') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const router = useRouter();

@@ -3,7 +3,7 @@
 
 import { BaseModel, Model, Field } from '@/core/service';
 import { wrapAuthError, AuthErrCode } from '../error';
-import { _t } from '../i18n';
+import { _t, _lt } from '../i18n';
 import User from './user';
 
 /**
@@ -17,7 +17,7 @@ export default class Session extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => User, onDelete: 'CASCADE' },
-    string: _t('User', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('User', { scope: 'auth.model.Session.fields' }),
   })
   UserId: User;
 
@@ -28,7 +28,7 @@ export default class Session extends BaseModel {
     type: 'varchar',
     size: 36,
     index: true,
-    string: _t('Access Token ID', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('Access Token ID', { scope: 'auth.model.Session.fields' }),
   })
   AccessTokenId: string;
 
@@ -37,7 +37,7 @@ export default class Session extends BaseModel {
    */
   @Field({
     type: 'text',
-    string: _t('Device Info', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('Device Info', { scope: 'auth.model.Session.fields' }),
   })
   DeviceInfo: string;
 
@@ -47,7 +47,7 @@ export default class Session extends BaseModel {
   @Field({
     type: 'varchar',
     size: 45,
-    string: _t('IP Address', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('IP Address', { scope: 'auth.model.Session.fields' }),
   })
   IpAddress: string;
 
@@ -58,7 +58,7 @@ export default class Session extends BaseModel {
     type: 'datetime',
     notNull: true,
     index: true,
-    string: _t('Expires At', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('Expires At', { scope: 'auth.model.Session.fields' }),
   })
   ExpiresAt: Date;
 
@@ -68,7 +68,7 @@ export default class Session extends BaseModel {
   @Field({
     type: 'datetime',
     index: true,
-    string: _t('Last Activity', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('Last Activity', { scope: 'auth.model.Session.fields' }),
   })
   LastActivityAt: Date;
 
@@ -80,7 +80,7 @@ export default class Session extends BaseModel {
     size: 20,
     default: () => 'active',
     index: true,
-    string: _t('Status', { output: 'reference', scope: 'auth.model.Session.fields' }),
+    string: _lt('Status', { scope: 'auth.model.Session.fields' }),
   })
   Status: string;
 

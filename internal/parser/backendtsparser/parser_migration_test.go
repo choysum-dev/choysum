@@ -461,8 +461,7 @@ func TestTsParser_PreservesFieldStringTermReference(t *testing.T) {
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t } = createTranslate('demo', {
-  output: 'reference',
+const { _lt } = createTranslate('demo', {
   scope: 'demo.model.Widget.fields',
 });
 
@@ -471,7 +470,7 @@ export default class FieldStringModel extends BaseModel {
   @Field({
     type: 'varchar',
     size: 100,
-    string: _t('Name')
+    string: _lt('Name')
   })
   public Name: string
 
@@ -521,17 +520,15 @@ func TestTsParser_PreservesSelectionTermReferenceWithEnglishFallback(t *testing.
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t } = createTranslate('demo', {
-  output: 'reference',
-});
+const { _t, _lt } = createTranslate('demo');
 
 @Model('SelectionReferenceModel')
 export default class SelectionReferenceModel extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'active', label: _t('Active', { scope: 'demo.model.status.active' }) },
-      { value: 'archived', label: _t('Archived', { scope: 'demo.model.status.archived', output: 'text' }) }
+      { value: 'active', label: _lt('Active', { scope: 'demo.model.status.active' }) },
+      { value: 'archived', label: _t('Archived', { scope: 'demo.model.status.archived' }) }
     ]
   })
   public Status: string
@@ -573,9 +570,7 @@ func TestTsParser_DetectsReferenceFactoryWithAliasAndExtraBindings(t *testing.T)
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t: translate, locale } = createTranslate('demo', {
-  output: 'reference',
-  scope: 'demo.model.status',
+const { _lt: translate } = createTranslate('demo', { scope: 'demo.model.status',
 });
 
 @Model('AliasedReferenceModel')
@@ -613,7 +608,7 @@ func TestTsParser_SelectionCallReferenceOverridesTextFactory(t *testing.T) {
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t } = createTranslate('base');
+const { _lt } = createTranslate('base');
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -622,9 +617,8 @@ export default class Language extends BaseModel {
     selection: [
       {
         value: 'ltr',
-        label: _t('Left to right', {
-          scope: 'base.Language.Direction.ltr',
-          output: 'reference'
+        label: _lt('Left to right', {
+          scope: 'base.Language.Direction.ltr'
         })
       }
     ]
@@ -642,7 +636,7 @@ export default class Language extends BaseModel {
 	}
 	item := spec.Structural.Selection[0]
 	if item.Label != "Left to right" || item.LabelText == nil {
-		t.Fatalf("call reference output was not preserved: %+v", item)
+		t.Fatalf("_lt call was not preserved: %+v", item)
 	}
 	if item.LabelText.Key != meta.TermReferenceKey("base", "base.Language.Direction.ltr", "Left to right", "literal") {
 		t.Fatalf("unexpected key: %q", item.LabelText.Key)
@@ -680,6 +674,69 @@ export default class LegacyModeSelectionModel extends BaseModel {
 	item := spec.Structural.Selection[0]
 	if item.Label != "Active" || item.LabelText != nil {
 		t.Fatalf("legacy mode was unexpectedly recognized: %+v", item)
+	}
+}
+
+func TestParseTermReferenceCall_BindingDefaultScopeWhenParserScopeEmpty(t *testing.T) {
+	ref, ok := parseTermReferenceCall(`translate('Active')`, "demo", "", map[string]parser.TranslateBinding{
+		"translate": {
+			Module:          "other",
+			DefaultScope:    "demo.model.from_binding",
+			ReferenceOutput: true,
+		},
+	})
+	if !ok || ref == nil {
+		t.Fatalf("expected binding default scope: ok=%v ref=%#v", ok, ref)
+	}
+	if ref.Scope != "demo.model.from_binding" || ref.Module != "other" || ref.Src != "Active" {
+		t.Fatalf("unexpected reference: %+v", ref)
+	}
+
+	// Known `_t` binding must not produce a term reference.
+	if _, ok := parseTermReferenceCall(`_t('Archived', { scope: 'demo.x' })`, "demo", "demo.x", map[string]parser.TranslateBinding{
+		"_t": {Module: "demo", ReferenceOutput: false},
+	}); ok {
+		t.Fatal("text _t should not parse as term reference")
+	}
+}
+
+func TestTsParser_BareLtAndPathLocationSelectionLabels(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('BareLtSelectionModel')
+export default class BareLtSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'a', label: _lt('Alpha', { scope: 'demo.model.alpha' }) },
+      { value: 'b', label: _lt('Beta', { path: 'demo/model', location: 'beta' }) },
+      { value: 'c', label: unknownHelper('Gamma', { scope: 'demo.model.gamma' }) }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 3 {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if spec.Structural.Selection[0].LabelText == nil || spec.Structural.Selection[0].LabelText.Scope != "demo.model.alpha" {
+		t.Fatalf("bare _lt scope label: %+v", spec.Structural.Selection[0])
+	}
+	if spec.Structural.Selection[1].LabelText == nil || spec.Structural.Selection[1].LabelText.Scope != "demo/model@beta" {
+		t.Fatalf("path@location label: %+v", spec.Structural.Selection[1])
+	}
+	if spec.Structural.Selection[2].LabelText != nil {
+		t.Fatalf("unknown helper should not produce LabelText: %+v", spec.Structural.Selection[2])
 	}
 }
 

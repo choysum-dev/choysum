@@ -93,8 +93,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CompanyFormView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/CompanyFormView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CompanyFormView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/CompanyFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
@@ -112,7 +111,7 @@ const props = withDefaults(
   }
 );
 
-const companyActions = defineModelActions('base.Company', { entityTitle: _tRef('Company') });
+const companyActions = defineModelActions('base.Company', { entityTitle: _lt('Company') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const { initialValues } = props;

@@ -5,7 +5,7 @@ import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('auth', { output: 'reference', scope: 'web/route/routes' });
+const { _lt } = createTranslate('auth', { scope: 'web/route/routes' });
 
 /**
  * Auth-only routes that do not require the main application layout.
@@ -13,7 +13,7 @@ const { _t } = createTranslate('auth', { output: 'reference', scope: 'web/route/
 export const authRoutes: RouteRecordRaw[] = [
   // Login page.
   defineRoute('auth.route.login', {
-    title: _t('Login'),
+    title: _lt('Login'),
     path: 'login',
     name: 'login',
     component: () => import('../pages/Login.vue'),
@@ -25,7 +25,7 @@ export const authRoutes: RouteRecordRaw[] = [
 
   // Logout page.
   defineRoute('auth.route.logout', {
-    title: _t('Logout'),
+    title: _lt('Logout'),
     path: 'logout',
     name: 'logout',
     component: () => import('../pages/Logout.vue'),
@@ -42,7 +42,7 @@ export const authRoutes: RouteRecordRaw[] = [
 export const appRoutes: RouteRecordRaw[] = [
   defineRoute('auth.route.user_list', {
     sequence: 10,
-    title: _t('User List'),
+    title: _lt('User List'),
     path: 'auth/users',
     name: 'UserList',
     component: () => import('../pages/UserList.vue'),
@@ -51,7 +51,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.user_detail', {
     sequence: 20,
-    title: _t('User Details'),
+    title: _lt('User Details'),
     path: 'auth/users/:id',
     name: 'UserDetail',
     component: () => import('../pages/User.vue'),
@@ -61,7 +61,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.user_create', {
     sequence: 30,
-    title: _t('Create User'),
+    title: _lt('Create User'),
     path: 'auth/users/new',
     name: 'UserCreate',
     component: () => import('../pages/User.vue'),
@@ -73,7 +73,7 @@ export const appRoutes: RouteRecordRaw[] = [
   // Role routes.
   defineRoute('auth.route.role_list', {
     sequence: 10,
-    title: _t('Role Management'),
+    title: _lt('Role Management'),
     path: 'auth/roles',
     name: 'RoleList',
     component: () => import('../pages/RoleList.vue'),
@@ -82,7 +82,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.role_detail', {
     sequence: 20,
-    title: _t('Role Details'),
+    title: _lt('Role Details'),
     path: 'auth/roles/:id',
     name: 'RoleDetail',
     component: () => import('../pages/Role.vue'),
@@ -92,7 +92,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.role_create', {
     sequence: 30,
-    title: _t('Create Role'),
+    title: _lt('Create Role'),
     path: 'auth/roles/new',
     name: 'RoleCreate',
     component: () => import('../pages/Role.vue'),
@@ -102,7 +102,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.session_list', {
     sequence: 10,
-    title: _t('Session Management'),
+    title: _lt('Session Management'),
     path: 'auth/sessions',
     name: 'SessionList',
     component: () => import('../pages/SessionList.vue'),
@@ -111,7 +111,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.session_detail', {
     sequence: 20,
-    title: _t('Session Details'),
+    title: _lt('Session Details'),
     path: 'auth/sessions/:id',
     name: 'SessionDetail',
     component: () => import('../pages/Session.vue'),
@@ -121,7 +121,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.session_create', {
     sequence: 30,
-    title: _t('Create Session'),
+    title: _lt('Create Session'),
     path: 'auth/sessions/new',
     name: 'SessionCreate',
     component: () => import('../pages/Session.vue'),
@@ -133,7 +133,7 @@ export const appRoutes: RouteRecordRaw[] = [
   // Token routes.
   defineRoute('auth.route.token_list', {
     sequence: 10,
-    title: _t('Token Management'),
+    title: _lt('Token Management'),
     path: 'auth/tokens',
     name: 'TokenList',
     component: () => import('../pages/TokenList.vue'),
@@ -142,7 +142,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.token_detail', {
     sequence: 20,
-    title: _t('Token Details'),
+    title: _lt('Token Details'),
     path: 'auth/tokens/:id',
     name: 'TokenDetail',
     component: () => import('../pages/Token.vue'),
@@ -152,7 +152,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.token_create', {
     sequence: 30,
-    title: _t('Create Token'),
+    title: _lt('Create Token'),
     path: 'auth/tokens/new',
     name: 'TokenCreate',
     component: () => import('../pages/Token.vue'),
@@ -162,7 +162,7 @@ export const appRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('auth.route.token_kanban', {
     sequence: 40,
-    title: _t('Token Board'),
+    title: _lt('Token Board'),
     path: 'auth/tokens/kanban',
     name: 'TokenKanban',
     component: () => import('../pages/TokenKanban.vue'),
@@ -175,7 +175,7 @@ export const appRoutes: RouteRecordRaw[] = [
 if (import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false) {
   authRoutes.push(
     defineRoute('auth.route.register', {
-      title: _t('Register'),
+      title: _lt('Register'),
       path: 'register',
       name: 'register',
       component: () => import('../pages/Register.vue'),

@@ -13,7 +13,6 @@ import (
 
 var (
 	termReferenceCallPattern = regexp.MustCompile(`(?s)^([A-Za-z_$][\w$]*)\s*\(\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)(?:\s*,\s*\{(.*?)\})?\s*\)$`)
-	callOutputPattern        = regexp.MustCompile(`\boutput\s*:\s*(['"])(text|reference)(['"])`)
 	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	referenceLocationPattern = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
@@ -62,30 +61,28 @@ func parseFactoryStringOption(options string, pattern *regexp.Regexp) string {
 	return parsed
 }
 
-func parseCreateTranslateOptions(options string) (defaultScope string, referenceOutput bool) {
+func parseCreateTranslateOptions(options string) (defaultScope string) {
 	options = strings.TrimSpace(options)
 	if options == "" {
-		return "", false
-	}
-	if outputMatch := callOutputPattern.FindStringSubmatch(options); len(outputMatch) == 4 && outputMatch[1] == outputMatch[3] {
-		referenceOutput = outputMatch[2] == "reference"
+		return ""
 	}
 	if scopeValue := parseFactoryStringOption(options, referenceScopePattern); strings.TrimSpace(scopeValue) != "" {
-		return scopeValue, referenceOutput
+		return scopeValue
 	}
 	pathValue := strings.TrimSpace(parseFactoryStringOption(options, referencePathPattern))
 	locationValue := strings.TrimSpace(parseFactoryStringOption(options, referenceLocationPattern))
 	if pathValue == "" {
-		return "", referenceOutput
+		return ""
 	}
 	defaultScope = pathValue
 	if locationValue != "" {
 		defaultScope += "@" + locationValue
 	}
-	return defaultScope, referenceOutput
+	return defaultScope
 }
 
 // ParseTranslateBindings scans source for createTranslate destructuring bindings.
+// `_t` aliases are text helpers; `_lt` aliases are TermReference helpers.
 func ParseTranslateBindings(source string) map[string]TranslateBinding {
 	bindings := map[string]TranslateBinding{}
 	source = strings.TrimSpace(source)
@@ -118,26 +115,29 @@ func ParseTranslateBindings(source string) map[string]TranslateBinding {
 				options = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(options, "{"), "}"))
 			}
 		}
-		defaultScope, referenceOutput := parseCreateTranslateOptions(options)
+		defaultScope := parseCreateTranslateOptions(options)
 
 		for _, part := range strings.Split(destructure, ",") {
 			part = strings.TrimSpace(part)
 			if part == "" {
 				continue
 			}
+			propName := part
 			localName := part
 			if strings.Contains(part, ":") {
 				segments := strings.SplitN(part, ":", 2)
+				propName = strings.TrimSpace(segments[0])
 				localName = strings.TrimSpace(segments[1])
 			}
+			propName = strings.TrimSpace(propName)
 			localName = strings.TrimSpace(localName)
-			if localName == "" {
+			if localName == "" || (propName != "_t" && propName != "_lt") {
 				continue
 			}
 			bindings[localName] = TranslateBinding{
 				Module:          strings.TrimSpace(moduleName),
 				DefaultScope:    defaultScope,
-				ReferenceOutput: referenceOutput,
+				ReferenceOutput: propName == "_lt",
 			}
 		}
 	}
@@ -183,17 +183,15 @@ func parseBalancedCallArguments(source string, openParenIndex int) (string, bool
 	return "", false
 }
 
-// ParseTermReferenceCall parses `_t('literal'[, opts])` into a TermReference when scope resolves.
+// ParseTermReferenceCall parses `_lt('literal'[, opts])` (or an `_lt` alias) into a TermReference.
 func ParseTermReferenceCall(raw string, ownerModule string, binding TranslateBinding) (*meta.TermReference, bool) {
 	match := termReferenceCallPattern.FindStringSubmatch(strings.TrimSpace(raw))
 	if len(match) != 4 || strings.TrimSpace(ownerModule) == "" {
 		return nil, false
 	}
 
-	referenceOutput := binding.ReferenceOutput
-	if outputMatch := callOutputPattern.FindStringSubmatch(match[3]); len(outputMatch) == 4 && outputMatch[1] == outputMatch[3] {
-		referenceOutput = outputMatch[2] == "reference"
-	}
+	callee := strings.TrimSpace(match[1])
+	referenceOutput := binding.ReferenceOutput || callee == "_lt"
 	if !referenceOutput {
 		return nil, false
 	}
@@ -226,7 +224,7 @@ func ParseTermReferenceCall(raw string, ownerModule string, binding TranslateBin
 	return &reference, true
 }
 
-// ParseResourceTitleExpr parses a string literal or reference-output `_t(...)` expression.
+// ParseResourceTitleExpr parses a string literal or `_lt(...)` expression.
 func ParseResourceTitleExpr(raw string, ownerModule string, bindings map[string]TranslateBinding) (title string, titleText *meta.TermReference, ok bool) {
 	expr := strings.TrimSpace(raw)
 	if expr == "" {

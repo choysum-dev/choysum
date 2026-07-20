@@ -83,8 +83,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SessionFormView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/SessionFormView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/SessionFormView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/SessionFormView' });
 
 const props = withDefaults(
   defineProps<{
@@ -101,7 +100,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const sessionActions = defineModelActions('auth.Session', { entityTitle: _tRef('Session') });
+const sessionActions = defineModelActions('auth.Session', { entityTitle: _lt('Session') });
 const { hasAction } = usePermission();
 const router = useRouter();
 

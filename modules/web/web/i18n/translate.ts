@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Frontend terminology `_t` bound to vue-i18n (§7.2).
- * Looks up module/scope/msgid in the active locale catalog.
+ * Frontend terminology `_t` / `_lt` bound to vue-i18n (§7.2).
+ * `_t` looks up module/scope/msgid in the active locale catalog.
+ * `_lt` pins a serializable TermReference (no lookup).
  */
 
 import { ref } from 'vue';
@@ -14,14 +15,14 @@ import {
   createTermReference,
   type CreateTranslateOptions as CoreCreateTranslateOptions,
   type CreateTranslateResult,
+  type LazyTranslateFn,
   type TermReference,
-  type TranslateOutput,
+  type TranslateFn,
   type TranslateOptions as CoreTranslateOptions,
 } from '../../../core/service/i18n/translate';
 
 export type TranslateOptions = CoreTranslateOptions;
-export type CreateTranslateOptions<Output extends TranslateOutput = 'text'> =
-  CoreCreateTranslateOptions<Output>;
+export type CreateTranslateOptions = CoreCreateTranslateOptions;
 export type TextSource = string | TermReference;
 
 export type ComposerLike = {
@@ -110,7 +111,7 @@ function isTranslateOptions(value: unknown): value is TranslateOptions {
     !!value &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
-    ('scope' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'kind' in (value as object) || 'output' in (value as object))
+    ('scope' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'kind' in (value as object))
   );
 }
 
@@ -135,26 +136,14 @@ function translateReference(
 }
 
 /**
- * Bind frontend translation helpers to a terminology owner module.
+ * Bind frontend translation helpers `_t` (text) and `_lt` (TermReference)
+ * to a terminology owner module. Shape matches core `createTranslate`.
  */
 export function createTranslate(
   module: string,
-  defaults: CreateTranslateOptions<'reference'> & { output: 'reference' }
-): CreateTranslateResult<'reference'>;
-export function createTranslate(
-  module: string,
-  defaults?: CreateTranslateOptions<'text'>
-): CreateTranslateResult<'text'>;
-export function createTranslate<Output extends TranslateOutput>(
-  module: string,
-  defaults?: CreateTranslateOptions<Output>
-): CreateTranslateResult<Output>;
-export function createTranslate<Output extends TranslateOutput = 'text'>(
-  module: string,
-  defaults?: CreateTranslateOptions<Output>
-): CreateTranslateResult<Output> {
+  defaults?: CreateTranslateOptions
+): CreateTranslateResult {
   const mod = String(module || '').trim() || 'web';
-  const output: TranslateOutput = defaults?.output === 'reference' ? 'reference' : 'text';
   const defaultScope = resolveI18nScope(defaults);
   const defaultKind = defaults?.kind;
   const defaultReferences = new Map<string, TermReference>();
@@ -178,16 +167,24 @@ export function createTranslate<Output extends TranslateOutput = 'text'>(
     return reference;
   };
 
-  const _t = (src: string, ...args: unknown[]): string | TermReference => {
+  const _t = (src: string, ...args: unknown[]): string => {
     const { opts, interpolation } = parseTranslateArgs(args);
-    const callOutput = opts?.output ?? output;
-    if (callOutput === 'reference') {
-      return resolveReference(src, opts);
-    }
     return translateReference(resolveReference(src, opts), interpolation);
   };
 
+  const _lt = (src: string, opts?: TranslateOptions, ...rest: unknown[]): TermReference => {
+    // Accidental `_lt('… %s', 'x')` binds the primitive to `opts`, not `rest`.
+    if (
+      rest.length > 0 ||
+      (opts != null && (typeof opts !== 'object' || Array.isArray(opts)))
+    ) {
+      throw new Error('_lt does not accept interpolation arguments');
+    }
+    return resolveReference(src, opts);
+  };
+
   return {
-    _t: _t as CreateTranslateResult<Output>['_t'],
+    _t: _t as TranslateFn,
+    _lt: _lt as LazyTranslateFn,
   };
 }

@@ -11,3 +11,4 @@ import { createTranslate } from '@/core/service/i18n';
  */
 const translate = createTranslate('core');
 export const _t = translate._t;
+export const _lt = translate._lt;

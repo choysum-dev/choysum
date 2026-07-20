@@ -44,14 +44,13 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CompanyListView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/CompanyListView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CompanyListView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/CompanyListView' });
 
 const props = defineProps<{
   store: WebModelStore<Company>;
 }>();
 
-const companyActions = defineModelActions('base.Company', { entityTitle: _tRef('Company') });
+const companyActions = defineModelActions('base.Company', { entityTitle: _lt('Company') });
 const { hasAction } = usePermission();
 const router = useRouter();
 
