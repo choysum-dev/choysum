@@ -62,7 +62,23 @@ describe('web shell _lt bindings', () => {
     setActivePinia(createPinia());
     const wrapper = shallowMount(OFormView as any, {
       props: { store: fakeStore as any },
-      global: { plugins: [i18n], stubs: true },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          // Element Plus pieces used by the toolbar / form shell.
+          'el-button': true,
+          'el-icon': true,
+          OPage: true,
+          OBreadcrumb: true,
+        },
+        // v-loading overlay; Element Plus directive is not installed here.
+        directives: {
+          loading: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
     });
     expect(wrapper.exists()).toBe(true);
   });

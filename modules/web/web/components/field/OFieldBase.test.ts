@@ -33,6 +33,15 @@ const EditStub = defineComponent({
   },
 });
 
+const fieldBaseStubs = {
+  'el-form-item': {
+    props: ['label'],
+    template: '<div class="form-item" :data-label="label"><slot /></div>',
+  },
+  // Inline error icon; Element Plus is not registered in this unit suite.
+  'el-icon': true,
+};
+
 describe('OFieldBase label resolution', () => {
   const stringText = createTermReference('auth', 'Access Token ID', {
     scope: 'auth.model.Session.fields',
@@ -47,14 +56,7 @@ describe('OFieldBase label resolution', () => {
       slots: {
         edit: () => h(EditStub),
       },
-      global: {
-        stubs: {
-          'el-form-item': {
-            props: ['label'],
-            template: '<div class="form-item" :data-label="label"><slot /></div>',
-          },
-        },
-      },
+      global: { stubs: fieldBaseStubs },
     });
     expect(wrapper.get('.form-item').attributes('data-label')).toBe('Access Token ID');
   });
@@ -69,14 +71,7 @@ describe('OFieldBase label resolution', () => {
       slots: {
         edit: () => h(EditStub),
       },
-      global: {
-        stubs: {
-          'el-form-item': {
-            props: ['label'],
-            template: '<div class="form-item" :data-label="label"><slot /></div>',
-          },
-        },
-      },
+      global: { stubs: fieldBaseStubs },
     });
     expect(wrapper.get('.form-item').attributes('data-label')).toBe('Custom Name');
   });
@@ -99,14 +94,7 @@ describe('OFieldBase label resolution', () => {
       slots: {
         edit: () => h(EditStub),
       },
-      global: {
-        stubs: {
-          'el-form-item': {
-            props: ['label'],
-            template: '<div class="form-item" :data-label="label"><slot /></div>',
-          },
-        },
-      },
+      global: { stubs: fieldBaseStubs },
     });
     expect(wrapper.get('.form-item').attributes('data-label')).toBe('访问令牌 ID');
   });
@@ -135,6 +123,7 @@ describe('OFieldBase label resolution', () => {
       },
       global: {
         stubs: {
+          ...fieldBaseStubs,
           'el-form-item': {
             props: ['label'],
             template: '<div class="form-item"><slot /></div>',

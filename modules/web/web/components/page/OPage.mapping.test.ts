@@ -9,6 +9,12 @@ import { describe, expect, test } from 'vitest';
 import { mount } from '@vue/test-utils';
 import OPage from './OPage.vue';
 
+const pageStubs = {
+  OBreadcrumb: true,
+  // Loading spinner; Element Plus is not registered in this unit suite.
+  'el-icon': true,
+};
+
 describe('OPage component', () => {
   test('renders title with useId-based id and binds aria-labelledby', () => {
     const wrapper = mount(OPage, {
@@ -16,11 +22,7 @@ describe('OPage component', () => {
         title: 'Test Title',
         showBreadcrumb: false,
       },
-      global: {
-        stubs: {
-          OBreadcrumb: true,
-        },
-      },
+      global: { stubs: pageStubs },
     });
 
     const titleEl = wrapper.find('h1.o-page__title');
@@ -46,11 +48,7 @@ describe('OPage component', () => {
       slots: {
         header: '<div class="custom-header">Custom</div>',
       },
-      global: {
-        stubs: {
-          OBreadcrumb: true,
-        },
-      },
+      global: { stubs: pageStubs },
     });
 
     const region = wrapper.find('.o-page');
@@ -66,11 +64,7 @@ describe('OPage component', () => {
         loading: true,
         showBreadcrumb: false,
       },
-      global: {
-        stubs: {
-          OBreadcrumb: true,
-        },
-      },
+      global: { stubs: pageStubs },
     });
 
     const region = wrapper.find('.o-page');
@@ -83,11 +77,7 @@ describe('OPage component', () => {
         title: '',
         showBreadcrumb: false,
       },
-      global: {
-        stubs: {
-          OBreadcrumb: true,
-        },
-      },
+      global: { stubs: pageStubs },
     });
 
     const region = wrapper.find('.o-page');

@@ -1,11 +1,31 @@
+// @vitest-environment happy-dom
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createApp, defineComponent, h } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { useFilterEditorBindings } from './useFilterEditorBindings';
+
+/**
+ * Runs a composable inside a real setup() so onUnmounted (and friends) are valid.
+ */
+function runInSetup<T>(fn: () => T): T {
+  let result!: T;
+  const app = createApp(
+    defineComponent({
+      setup() {
+        result = fn();
+        return () => h('div');
+      },
+    }),
+  );
+  app.mount(document.createElement('div'));
+  app.unmount();
+  return result;
+}
 
 describe('useFilterEditorBindings static meta (T4.2)', () => {
   it('metaTypeOf reads only static fieldsMetadata.type', () => {
@@ -20,7 +40,7 @@ describe('useFilterEditorBindings static meta (T4.2)', () => {
       ensureFieldsGet,
     } as any;
 
-    const { metaTypeOf, getOperatorOptionsForField } = useFilterEditorBindings(store);
+    const { metaTypeOf, getOperatorOptionsForField } = runInSetup(() => useFilterEditorBindings(store));
     expect(metaTypeOf('Status')).toBe('selection');
     expect(metaTypeOf('Name')).toBe('varchar');
     expect(getOperatorOptionsForField('Status').length).toBeGreaterThan(0);

@@ -38,7 +38,18 @@ describe('partner_commercial view _lt setup coverage', () => {
   it('mounts PartnerFormView extension', () => {
     const wrapper = shallowMount(PartnerFormView, {
       props: { store: fakeStore as any },
-      global: { plugins: [i18n], stubs: true },
+      global: {
+        plugins: [i18n],
+        stubs: true,
+        // Options-API extensions return `_t` / `_lt` for the template; Vue warns on `_` prefixes.
+        config: {
+          warnHandler(msg) {
+            // createTranslate helpers are intentionally named `_t` / `_lt`.
+            if (/["_']_(?:t|lt)["_'].*should not start with/i.test(msg)) return;
+            console.warn(`[Vue warn]: ${msg}`);
+          },
+        },
+      },
     });
     expect(wrapper.exists()).toBe(true);
   });
