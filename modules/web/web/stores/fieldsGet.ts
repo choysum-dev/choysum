@@ -10,6 +10,20 @@
 import { shallowRef } from 'vue';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 
+/**
+ * Shared attribute list for field-component ensure calls (selection + ACL overlay).
+ * Keep identical across OFieldBase / OSelectionField so cache keys dedupe (P5).
+ */
+export const FIELD_PRESENTATION_FIELDS_GET_ATTRS = [
+  'type',
+  'string',
+  'stringText',
+  'selection',
+  'selectionKind',
+  'isReadonly',
+  'notNull',
+] as const;
+
 export type FieldsGetRpc = (
   fields?: string[],
   attributes?: string[]

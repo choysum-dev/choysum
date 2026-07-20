@@ -231,11 +231,12 @@ import { ElFormItem, ElTooltip, type FormItemProps } from 'element-plus';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
-import { computed, inject, watch } from 'vue';
+import { computed, inject, onMounted, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
 import { getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
+import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -275,23 +276,46 @@ const props = withDefaults(
 
 const binding = props.binding;
 
-const resolvedLabel = computed(() => {
+const leafFieldName = computed(() => {
   const prop = String(binding.prop || '');
-  const leaf = prop.split('.').filter(Boolean).pop() || prop;
-  const store = binding.store as
+  return prop.split('.').filter(Boolean).pop() || prop;
+});
+
+const modelStore = computed(() => {
+  return binding.store as
     | {
         getFieldMeta?: (name: string) => typeof binding.meta;
         getFieldsGetTranslatedString?: (name: string) => string | undefined;
+        ensureFieldsGet?: (fields?: string[], attributes?: string[]) => Promise<unknown>;
       }
     | undefined;
-  const effectiveMeta = store?.getFieldMeta?.(leaf) ?? binding.meta;
+});
+
+/** Effective meta: FieldsGet overlay over static binding.meta (D6 / P5). */
+const effectiveFieldMeta = computed(() => {
+  const leaf = leafFieldName.value;
+  return modelStore.value?.getFieldMeta?.(leaf) ?? binding.meta;
+});
+
+const resolvedLabel = computed(() => {
+  const prop = String(binding.prop || '');
+  const leaf = leafFieldName.value;
   return resolveFieldLabel({
     label: props.label,
     prop,
-    meta: effectiveMeta,
-    fieldsGetTranslatedString: store?.getFieldsGetTranslatedString?.(leaf),
+    meta: effectiveFieldMeta.value,
+    fieldsGetTranslatedString: modelStore.value?.getFieldsGetTranslatedString?.(leaf),
     composer: getGlobalComposer(),
   });
+});
+
+onMounted(() => {
+  // Edit mode: ensure ACL/presentation overlay so deny-write → isReadonly is visible (T5.3).
+  if (!binding.env.isEditMode) return;
+  const store = modelStore.value;
+  const leaf = leafFieldName.value;
+  if (!store?.ensureFieldsGet || !leaf) return;
+  void store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
 });
 
 /* ===================== Render Mode Dispatch ===================== */
@@ -469,9 +493,9 @@ const recordForRow = ((row: T) => {
   return () => c;
 }) as (row: T) => () => ComputedRef<T>;
 
-/* Metadata flags */
-const metaRequired = computed(() => binding.meta?.notNull === true);
-const metaReadonly = computed(() => binding.meta?.isReadonly === true);
+/* Metadata flags (effective meta includes FieldsGet ACL overlay) */
+const metaRequired = computed(() => effectiveFieldMeta.value?.notNull === true);
+const metaReadonly = computed(() => effectiveFieldMeta.value?.isReadonly === true);
 
 /* Evaluation helper */
 function evalFlag(flag: FieldStateExpr<T, V> | undefined, rec: T, v: V | undefined, def = false) {

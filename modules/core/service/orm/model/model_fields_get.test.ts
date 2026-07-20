@@ -161,6 +161,28 @@ test('FieldsGet omits deny-read fields (T1.4)', async () => {
   }
 });
 
+test('FieldsGet marks deny-write fields as isReadonly (T5.2)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => ({ denyWriteFields: ['Code'] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['Name', 'Code'], ['type', 'string', 'isReadonly']);
+    expect(out.Name?.isReadonly).toBeUndefined();
+    expect(out.Code).toEqual({ type: 'varchar', string: 'Code', isReadonly: true });
+
+    // Deny-write still forces isReadonly even when attributes omit it.
+    const projected = await FieldsGetWidget.FieldsGet(['Code'], ['type']);
+    expect(projected.Code).toEqual({ type: 'varchar', isReadonly: true });
+  } finally {
+    resetTestState();
+  }
+});
+
 @Model('FieldsGetDynamicWidget', { application: 'demo' })
 class FieldsGetDynamicWidget extends BaseModel {
   @Field({ type: 'selection', selection: 'StatusOptions' } as any)

@@ -55,6 +55,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { createTranslate } from '@/web/web/i18n';
+import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OSelectionField' });
 
@@ -64,9 +65,6 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 type MetaOption = { value: string; label: string };
 type EffectiveOption = { value: string; label: string; disabled: boolean };
-
-/** FieldsGet attributes used for selection option loading (D14). */
-const SELECTION_FIELDS_GET_ATTRS = ['type', 'selection', 'selectionKind', 'string', 'stringText'];
 
 const props = withDefaults(
   defineProps<{
@@ -188,7 +186,7 @@ onMounted(() => {
   if (!store?.ensureFieldsGet || !leaf) return;
 
   // First ensure happens on mount (D14) — not on visible-change.
-  const request = store.ensureFieldsGet([leaf], SELECTION_FIELDS_GET_ATTRS);
+  const request = store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
   if (binding.env.isEditMode) {
     optionsLoading.value = true;
     void request.finally(() => {

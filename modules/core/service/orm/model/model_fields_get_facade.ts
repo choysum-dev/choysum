@@ -90,6 +90,20 @@ async function resolveDenyReadFields(ModelCtor: ModelFieldsGetCtor): Promise<Set
   }
 }
 
+async function resolveDenyWriteFields(ModelCtor: ModelFieldsGetCtor): Promise<Set<string>> {
+  try {
+    const repo = getModelRepository(ModelCtor);
+    if (!repo || typeof repo.getDenyWriteFields !== 'function') {
+      return new Set();
+    }
+    const spec = await repo.getDenyWriteFields();
+    const deny = Array.isArray(spec?.denyWriteFields) ? spec.denyWriteFields : [];
+    return new Set(deny.map(name => String(name || '').trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
 function normalizeSelectionItems(raw: unknown): SelectionItem[] {
   if (!Array.isArray(raw)) return [];
   const out: SelectionItem[] = [];
@@ -183,8 +197,9 @@ function projectAttributes(meta: FieldsGetFieldMeta, attributes: string[] | unde
  * Build request-scoped field presentation metadata (translated titles / selection labels).
  *
  * - Filters deny-read fields (D11).
+ * - Deny-write fields remain visible with `isReadonly: true` (P5).
  * - Unknown `fields` names are omitted.
- * - `attributes` narrows keys but always keeps `type`.
+ * - `attributes` narrows keys but always keeps `type`; deny-write always forces `isReadonly`.
  */
 export async function fieldsGetModels(
   ModelCtor: ModelFieldsGetCtor,
@@ -198,6 +213,7 @@ export async function fieldsGetModels(
   }
 
   const denyRead = await resolveDenyReadFields(ModelCtor);
+  const denyWrite = await resolveDenyWriteFields(ModelCtor);
   const application = String(modelMeta.application || 'application').trim() || 'application';
   const modelName = String(modelMeta.modelName || modelMeta.name || ModelCtor.name || 'Model').trim();
   const fallbackScope = `${application}.model.${modelName}.fields`;
@@ -224,7 +240,11 @@ export async function fieldsGetModels(
   for (const name of names) {
     const field = allFields.get(name);
     if (!field) continue;
-    result[name] = projectAttributes(buildFieldMeta(ModelCtor, field, application, fallbackScope), attrList);
+    const meta = projectAttributes(buildFieldMeta(ModelCtor, field, application, fallbackScope), attrList);
+    if (denyWrite.has(name)) {
+      meta.isReadonly = true;
+    }
+    result[name] = meta;
   }
   return result;
 }

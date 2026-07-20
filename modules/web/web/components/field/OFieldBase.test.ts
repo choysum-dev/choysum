@@ -4,7 +4,7 @@
 
 import { mount } from '@vue/test-utils';
 import { computed, defineComponent, h, ref } from 'vue';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createTermReference } from '@/core/service/i18n';
 import type { UseField } from '@/web/web/composables/useField';
@@ -109,5 +109,42 @@ describe('OFieldBase label resolution', () => {
       },
     });
     expect(wrapper.get('.form-item').attributes('data-label')).toBe('访问令牌 ID');
+  });
+
+  it('honors FieldsGet isReadonly overlay and shows display slot (T5.3)', async () => {
+    const ensureFieldsGet = vi.fn(async () => ({}));
+    const binding = makeBinding({ string: 'Code' });
+    binding.meta = { type: 'varchar', typeAnnotation: 'string', id: '1', string: 'Code' } as any;
+    binding.store = {
+      getFieldMeta: (name: string) =>
+        name === 'AccessTokenId'
+          ? ({ type: 'varchar', typeAnnotation: 'string', id: '1', string: 'Code', isReadonly: true } as any)
+          : undefined,
+      getFieldsGetTranslatedString: () => undefined,
+      ensureFieldsGet,
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h('div', { class: 'edit-slot' }, 'edit'),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          'el-form-item': {
+            props: ['label'],
+            template: '<div class="form-item"><slot /></div>',
+          },
+        },
+      },
+    });
+
+    expect(ensureFieldsGet).toHaveBeenCalled();
+    expect(wrapper.find('.edit-slot').exists()).toBe(false);
+    expect(wrapper.find('.display-slot').exists()).toBe(true);
   });
 });

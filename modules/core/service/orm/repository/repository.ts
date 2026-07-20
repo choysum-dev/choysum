@@ -305,6 +305,15 @@ export class Repository {
     return { denyReadFields: spec.denyReadFields, reason: spec.reason };
   }
 
+  /**
+   * FieldsGet write-ACL surface: fields the current principal may not write.
+   * Same field-rule spec / cache as getDenyReadFields (P5 → isReadonly).
+   */
+  public async getDenyWriteFields(): Promise<{ denyWriteFields: string[]; reason?: string }> {
+    const spec = await getRepositoryFieldRuleSpec(this.createFieldRuleDeps());
+    return { denyWriteFields: spec.denyWriteFields, reason: spec.reason };
+  }
+
   private async assertFieldRuleWriteAllowed(payload: Entity): Promise<void> {
     await assertRepositoryFieldRuleWriteAllowed({
       ...this.createFieldRuleDeps(),
