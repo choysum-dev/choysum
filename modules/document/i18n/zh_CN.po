@@ -1,8 +1,265 @@
 msgid ""
-msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Language: zh_CN\n"
+msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
+
+#: service/models/attachment_binding.ts:81
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Attachment Content"
+msgstr "附件内容"
+
+#: service/models/attachment_binding.ts:148
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/attachment_binding.ts:91
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Display File Name"
+msgstr "显示文件名"
+
+#: service/models/attachment_binding.ts:107
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Download Disposition"
+msgstr "下载处置"
+
+#: service/models/attachment_binding.ts:68
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Field Name"
+msgstr "字段名"
+
+#: service/models/attachment_binding.ts:42
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Owner Model"
+msgstr "所属模型"
+
+#: service/models/attachment_binding.ts:55
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Owner Record"
+msgstr "所属记录"
+
+#: service/models/attachment_binding.ts:125
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Status"
+msgstr "状态"
+
+#: service/models/attachment_binding.ts:135
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Unbound At"
+msgstr "解绑时间"
+
+#: service/models/attachment_object.ts:77
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Checksum SHA-256"
+msgstr "SHA-256 校验和"
+
+#: service/models/attachment_object.ts:148
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/attachment_object.ts:108
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Image Format"
+msgstr "图片格式"
+
+#: service/models/attachment_object.ts:97
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Image Height"
+msgstr "图片高度"
+
+#: service/models/attachment_object.ts:87
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Image Width"
+msgstr "图片宽度"
+
+#: service/models/attachment_object.ts:65
+msgctxt "document.model.AttachmentContent.fields"
+msgid "MIME Type"
+msgstr "MIME 类型"
+
+#: service/models/attachment_object.ts:117
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Metadata"
+msgstr "元数据"
+
+#: service/models/attachment_object.ts:53
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Size Bytes"
+msgstr "字节大小"
+
+#: service/models/attachment_object.ts:135
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Status"
+msgstr "状态"
+
+#: service/models/attachment_object.ts:42
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Stored Content"
+msgstr "存储内容"
+
+#: service/models/attachment_mutation_ledger.ts:32
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Action"
+msgstr "动作"
+
+#: service/models/attachment_mutation_ledger.ts:103
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/attachment_mutation_ledger.ts:90
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Error Code"
+msgstr "错误码"
+
+#: service/models/attachment_mutation_ledger.ts:44
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Mutation"
+msgstr "变更"
+
+#: service/models/attachment_mutation_ledger.ts:53
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Request"
+msgstr "请求"
+
+#: service/models/attachment_mutation_ledger.ts:62
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Response"
+msgstr "响应"
+
+#: service/models/attachment_mutation_ledger.ts:79
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Status"
+msgstr "状态"
+
+#: service/models/upload_session.ts:204
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Allowed MIME Types"
+msgstr "允许的 MIME 类型"
+
+#: service/models/upload_session.ts:246
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Attachment Content"
+msgstr "附件内容"
+
+#: service/models/upload_session.ts:92
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Business Request"
+msgstr "业务请求"
+
+#: service/models/upload_session.ts:132
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Checksum SHA-256"
+msgstr "SHA-256 校验和"
+
+#: service/models/upload_session.ts:260
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/upload_session.ts:215
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Expires At"
+msgstr "过期时间"
+
+#: service/models/upload_session.ts:49
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Field Name"
+msgstr "字段名"
+
+#: service/models/upload_session.ts:79
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Issuer User"
+msgstr "签发用户"
+
+#: service/models/upload_session.ts:182
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Max Upload Bytes"
+msgstr "最大上传字节"
+
+#: service/models/upload_session.ts:65
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Operation"
+msgstr "操作"
+
+#: service/models/upload_session.ts:26
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Owner Model"
+msgstr "所属模型"
+
+#: service/models/upload_session.ts:37
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Owner Record"
+msgstr "所属记录"
+
+#: service/models/upload_session.ts:112
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Proposed Content Type"
+msgstr "拟议内容类型"
+
+#: service/models/upload_session.ts:102
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Proposed File Name"
+msgstr "拟议文件名"
+
+#: service/models/upload_session.ts:121
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Proposed Size Bytes"
+msgstr "拟议字节大小"
+
+#: service/models/upload_session.ts:195
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Required Checksum Algorithm"
+msgstr "要求的校验算法"
+
+#: service/models/upload_session.ts:234
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Status"
+msgstr "状态"
+
+#: service/models/upload_session.ts:152
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Checksum SHA-256"
+msgstr "已上传 SHA-256 校验和"
+
+#: service/models/upload_session.ts:162
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Content Type"
+msgstr "已上传内容类型"
+
+#: service/models/upload_session.ts:172
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Payload Ref"
+msgstr "已上传载荷引用"
+
+#: service/models/upload_session.ts:141
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Size Bytes"
+msgstr "已上传字节大小"
+
+#: service/models/stored_content.ts:51
+msgctxt "document.model.StoredContent.fields"
+msgid "Blob Data"
+msgstr "二进制数据"
+
+#: service/models/stored_content.ts:81
+msgctxt "document.model.StoredContent.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/stored_content.ts:41
+msgctxt "document.model.StoredContent.fields"
+msgid "Locator JSON"
+msgstr "定位器 JSON"
+
+#: service/models/stored_content.ts:31
+msgctxt "document.model.StoredContent.fields"
+msgid "Provider"
+msgstr "提供者"
+
+#: service/models/stored_content.ts:68
+msgctxt "document.model.StoredContent.fields"
+msgid "Status"
+msgstr "状态"
 
 #: service/models/_attachment_binding_codec.ts:291
 msgctxt "service/models/_attachment_binding_codec"
@@ -101,9 +358,7 @@ msgstr "payloadReceipt.payloadId 格式不受支持"
 
 #: service/models/_attachment_upload_codec.ts:118
 msgctxt "service/models/_attachment_upload_codec"
-msgid ""
-"payloadReceipt.payloadId must be an opaque handle, inline byte payload is "
-"forbidden"
+msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
 msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
 
 #: service/models/_attachment_upload_ops.ts:194
@@ -113,8 +368,7 @@ msgstr "未找到附件内容"
 
 #: service/models/_attachment_upload_ops.ts:240
 msgctxt "service/models/_attachment_upload_ops"
-msgid ""
-"FinalizeUpload businessRequestId does not match the existing upload session"
+msgid "FinalizeUpload businessRequestId does not match the existing upload session"
 msgstr "FinalizeUpload 的 businessRequestId 与现有上传会话不匹配"
 
 #: service/models/_attachment_upload_ops.ts:162
@@ -147,20 +401,17 @@ msgctxt "service/models/_attachment_upload_ops"
 msgid "Upload session not found"
 msgstr "未找到上传会话"
 
-#: service/models/_attachment_upload_ops.ts:309
-#: service/models/_attachment_upload_ops.ts:391
+#: service/models/_attachment_upload_ops.ts:309 service/models/_attachment_upload_ops.ts:391
 msgctxt "service/models/_attachment_upload_ops"
 msgid "checksum mismatch"
 msgstr "校验和不匹配"
 
-#: service/models/_attachment_upload_ops.ts:296
-#: service/models/_attachment_upload_ops.ts:378
+#: service/models/_attachment_upload_ops.ts:296 service/models/_attachment_upload_ops.ts:378
 msgctxt "service/models/_attachment_upload_ops"
 msgid "content type is not allowed"
 msgstr "不允许该内容类型"
 
-#: service/models/_attachment_upload_ops.ts:282
-#: service/models/_attachment_upload_ops.ts:364
+#: service/models/_attachment_upload_ops.ts:282 service/models/_attachment_upload_ops.ts:364
 msgctxt "service/models/_attachment_upload_ops"
 msgid "upload body exceeds maxUploadBytes"
 msgstr "上传正文超过 maxUploadBytes"
@@ -272,9 +523,7 @@ msgstr "当 operation=update 时 ownerRecordId 为必填项"
 
 #: service/models/_upload.ts:109
 msgctxt "service/models/_upload"
-msgid ""
-"payloadReceipt.payloadId must be an opaque handle, inline byte payload is "
-"forbidden"
+msgid "payloadReceipt.payloadId must be an opaque handle, inline byte payload is forbidden"
 msgstr "payloadReceipt.payloadId 必须是不透明句柄，禁止内联字节载荷"
 
 #: service/models/_upload.ts:220
@@ -282,7 +531,7 @@ msgctxt "service/models/_upload"
 msgid "userId does not match upload session issuer"
 msgstr "userId 与上传会话签发者不匹配"
 
-#: service/models/stored_content.ts:71
+#: service/models/stored_content.ts:91
 msgctxt "service/models/stored_content"
 msgid "Stored content not found"
 msgstr "未找到存储内容"

@@ -6,6 +6,7 @@ import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/
 import type { FieldSelection } from '@/core/service/api/selection';
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
+import { _lt } from '../i18n';
 import Job from './job';
 import { clampLimit } from './_helpers';
 import { computeNextRunAt, normalizeTimezone, applyNextRunPreview } from './_cron';
@@ -55,55 +56,120 @@ function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Sch
 @Model('Schedule', { application: 'task', companyScoped: false })
 export default class Schedule extends BaseModel {
   /** Whether the schedule is active. */
-  @Field({ type: 'boolean', default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'task.model.Schedule.fields' }),
+  })
   Active: boolean;
 
   /** Display name of the schedule. */
-  @Field({ type: 'varchar', size: 200, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 200,
+    index: true,
+    notNull: true,
+    string: _lt('Name', { scope: 'task.model.Schedule.fields' }),
+  })
   Name: string;
 
   /** Target application that owns triggered jobs. */
-  @Field({ type: 'varchar', size: 100, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    index: true,
+    notNull: true,
+    string: _lt('Target App', { scope: 'task.model.Schedule.fields' }),
+  })
   TargetApp: string;
 
   /** Fully-qualified method invoked by triggered jobs. */
-  @Field({ type: 'varchar', size: 255, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 255,
+    index: true,
+    notNull: true,
+    string: _lt('Full Method', { scope: 'task.model.Schedule.fields' }),
+  })
   FullMethod: string;
 
   /** Payload template applied to triggered jobs. */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Payload Template', { scope: 'task.model.Schedule.fields' }),
+  })
   PayloadTemplateJson: Record<string, any>;
 
   /** User who owns the schedule configuration. */
-  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    index: true,
+    notNull: true,
+    string: _lt('Scheduler User', { scope: 'task.model.Schedule.fields' }),
+  })
   SchedulerUserId: string;
 
   /** User recorded as the trigger actor. */
-  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    index: true,
+    notNull: true,
+    string: _lt('Triggered By User', { scope: 'task.model.Schedule.fields' }),
+  })
   TriggeredByUserId: string;
 
   /** Five-field cron expression. */
-  @Field({ type: 'varchar', size: 100, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    index: true,
+    notNull: true,
+    string: _lt('Cron Expression', { scope: 'task.model.Schedule.fields' }),
+  })
   CronExpr: string;
 
   /** IANA timezone used to evaluate the cron expression. */
-  @Field({ type: 'varchar', size: 100, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    string: _lt('Timezone', { scope: 'task.model.Schedule.fields' }),
+  })
   Timezone: string;
 
   /** Timeout budget applied to triggered jobs. */
-  @Field({ type: 'int', default: () => 0})
+  @Field({
+    type: 'int',
+    default: () => 0,
+    string: _lt('Timeout Ms', { scope: 'task.model.Schedule.fields' }),
+  })
   TimeoutMs: number;
 
   /** Next computed run time preview. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Next Run At', { scope: 'task.model.Schedule.fields' }),
+  })
   NextRunAt: Date;
 
   /** Time when the schedule last ran. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Last Run At', { scope: 'task.model.Schedule.fields' }),
+  })
   LastRunAt: Date;
 
   /** Time when the schedule last triggered a job. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Last Triggered At', { scope: 'task.model.Schedule.fields' }),
+  })
   LastTriggeredAt: Date;
 
   /** Creates a persisted schedule with an initial next-run preview. */
