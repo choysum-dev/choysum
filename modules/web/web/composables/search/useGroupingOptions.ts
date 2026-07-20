@@ -2,10 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, nextTick, ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { createTranslate } from '@/web/web/i18n';
+import type { WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
+import { createTranslate, getGlobalComposer } from '@/web/web/i18n';
+import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 
-type FieldMeta = { type?: string; relation?: string };
+type FieldMeta = Pick<WebFieldMetadata, 'type' | 'string' | 'stringText'> & { relation?: string; id?: string };
+
+function labelForField(store: WebModelStore<any>, prop: string, meta: FieldMeta | undefined): string {
+  return resolveFieldLabel({
+    prop,
+    meta,
+    composer: getGlobalComposer(),
+    fieldsGetTranslatedString: store.getFieldsGetTranslatedString?.(prop),
+  });
+}
 
 export function useGroupingOptions(store: WebModelStore<any>) {
   const { _t } = createTranslate('web', { scope: 'web/composables/search/useGroupingOptions' });
@@ -20,7 +30,11 @@ export function useGroupingOptions(store: WebModelStore<any>) {
 
   const allFields = computed(() => {
     const md = store.fieldsMetadata ?? ({} as Record<string, FieldMeta>);
-    return Object.entries(md).map(([prop, meta]: any) => ({ prop, label: prop, meta }));
+    return Object.entries(md).map(([prop, meta]: any) => ({
+      prop,
+      label: labelForField(store, prop, meta),
+      meta,
+    }));
   });
 
   function isTemporalField(prop?: string) {

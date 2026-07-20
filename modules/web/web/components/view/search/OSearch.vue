@@ -174,7 +174,8 @@ import { parseGbString, formatGroupItemForDisplay } from '@/web/web/query/utils/
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
 import { useGroupingOptions } from '@/web/web/composables/search/useGroupingOptions';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { createTranslate } from '@/web/web/i18n';
+import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
+import { createTranslate, getGlobalComposer } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
 
@@ -296,9 +297,10 @@ function onToggleDefaultFilter(it: FilterMenuItem) {
   });
 }
 
-/* Available fields sorted by WebFieldMetadata.id, then by label. */
+/* Available fields sorted by WebFieldMetadata.id, then by label (D6 / T4.1). */
 const availableFields = computed(() => {
   const md = store.fieldsMetadata as Record<string, any>;
+  const composer = getGlobalComposer();
   const items = Object.entries(md)
     .filter(([k, m]: any) => {
       if (k === 'DeletedAt') return false;
@@ -308,7 +310,16 @@ const availableFields = computed(() => {
       const lowerType = String(m?.type ?? '').toLowerCase();
       return lowerType === 'manytoone' || lowerType === 'manytooneref';
     })
-    .map(([k, m]: any) => ({ prop: k, label: k, id: m?.id })) as Array<{ prop: string; label: string; id?: string }>;
+    .map(([k, m]: any) => ({
+      prop: k,
+      label: resolveFieldLabel({
+        prop: k,
+        meta: m,
+        composer,
+        fieldsGetTranslatedString: store.getFieldsGetTranslatedString?.(k),
+      }),
+      id: m?.id,
+    })) as Array<{ prop: string; label: string; id?: string }>;
 
   items.sort((a, b) => {
     const idA = a.id ?? '';
