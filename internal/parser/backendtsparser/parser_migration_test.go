@@ -513,7 +513,7 @@ export default class FieldStringModel extends BaseModel {
 	}
 }
 
-func TestTsParser_PreservesSelectionTermReferenceWithEnglishFallback(t *testing.T) {
+func TestTsParser_RejectsSelectionTermReferenceLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
@@ -534,36 +534,13 @@ export default class SelectionReferenceModel extends BaseModel {
   public Status: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
-	}
-	if len(spec.Structural.Selection) != 2 {
-		t.Fatalf("unexpected selection: %+v", spec.Structural.Selection)
-	}
-	first := spec.Structural.Selection[0]
-	if first.Value != "active" || first.Label != "Active" || first.LabelText == nil {
-		t.Fatalf("unexpected term reference selection: %+v", first)
-	}
-	if first.LabelText.Module != "demo" || first.LabelText.Scope != "demo.model.status.active" || first.LabelText.Src != "Active" || first.LabelText.Kind != "literal" {
-		t.Fatalf("unexpected term reference: %+v", first.LabelText)
-	}
-	if first.LabelText.Key != meta.TermReferenceKey("demo", "demo.model.status.active", "Active", "literal") {
-		t.Fatalf("unexpected term reference key: %q", first.LabelText.Key)
-	}
-	if spec.Structural.Selection[1].LabelText != nil {
-		t.Fatalf("text override unexpectedly gained term reference: %+v", spec.Structural.Selection[1])
-	}
-	if !strings.Contains(r.Model.Fields[0].Selection, `"label":"Active"`) || !strings.Contains(r.Model.Fields[0].Selection, `"labelText"`) {
-		t.Fatalf("selection JSON did not preserve fallback, labelText wire name, and reference: %s", r.Model.Fields[0].Selection)
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected selection TermReference label rejection, got: %v", err)
 	}
 }
 
-func TestTsParser_DetectsReferenceFactoryWithAliasAndExtraBindings(t *testing.T) {
+func TestTsParser_RejectsAliasedSelectionReferenceLabel(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
@@ -584,24 +561,13 @@ export default class AliasedReferenceModel extends BaseModel {
   public Status: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
-	}
-	item := spec.Structural.Selection[0]
-	if item.Label != "Active" || item.LabelText == nil {
-		t.Fatalf("aliased factory reference was not preserved: %+v", item)
-	}
-	if item.LabelText.Module != "demo" || item.LabelText.Scope != "demo.model.status" || item.LabelText.Src != "Active" {
-		t.Fatalf("unexpected term reference: %+v", item.LabelText)
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected aliased selection reference rejection, got: %v", err)
 	}
 }
 
-func TestTsParser_SelectionCallReferenceOverridesTextFactory(t *testing.T) {
+func TestTsParser_RejectsSelectionLtCallLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}
 	p := NewTsParser(runtimeScope, module)
@@ -626,20 +592,45 @@ export default class Language extends BaseModel {
   public Direction: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/base/service/language.ts", content)
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/base/service/language.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected _lt selection label rejection, got: %v", err)
+	}
+}
+
+func TestTsParser_AcceptsPlainStringSelectionLabels(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PlainSelectionModel')
+export default class PlainSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: 'Active' },
+      { value: 'archived', label: 'Archived' }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
 	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
 	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 2 {
 		t.Fatalf("get resolved spec: %v, %#v", err, spec)
 	}
-	item := spec.Structural.Selection[0]
-	if item.Label != "Left to right" || item.LabelText == nil {
-		t.Fatalf("_lt call was not preserved: %+v", item)
+	if spec.Structural.Selection[0].Label != "Active" || spec.Structural.Selection[0].LabelText != nil {
+		t.Fatalf("unexpected selection item: %+v", spec.Structural.Selection[0])
 	}
-	if item.LabelText.Key != meta.TermReferenceKey("base", "base.Language.Direction.ltr", "Left to right", "literal") {
-		t.Fatalf("unexpected key: %q", item.LabelText.Key)
+	if strings.Contains(r.Model.Fields[0].Selection, "labelText") {
+		t.Fatalf("selection JSON must not contain labelText: %s", r.Model.Fields[0].Selection)
 	}
 }
 
@@ -663,17 +654,9 @@ export default class LegacyModeSelectionModel extends BaseModel {
   public Status: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
-	}
-	item := spec.Structural.Selection[0]
-	if item.Label != "Active" || item.LabelText != nil {
-		t.Fatalf("legacy mode was unexpectedly recognized: %+v", item)
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected translate-call selection label rejection, got: %v", err)
 	}
 }
 
@@ -721,22 +704,9 @@ export default class BareLtSelectionModel extends BaseModel {
   public Status: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 3 {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
-	}
-	if spec.Structural.Selection[0].LabelText == nil || spec.Structural.Selection[0].LabelText.Scope != "demo.model.alpha" {
-		t.Fatalf("bare _lt scope label: %+v", spec.Structural.Selection[0])
-	}
-	if spec.Structural.Selection[1].LabelText == nil || spec.Structural.Selection[1].LabelText.Scope != "demo/model@beta" {
-		t.Fatalf("path@location label: %+v", spec.Structural.Selection[1])
-	}
-	if spec.Structural.Selection[2].LabelText != nil {
-		t.Fatalf("unknown helper should not produce LabelText: %+v", spec.Structural.Selection[2])
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected bare _lt selection label rejection, got: %v", err)
 	}
 }
 

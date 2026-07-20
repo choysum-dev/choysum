@@ -249,9 +249,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
       }
 
-      // 2) every selection item must contain value and label
+      // 2) every selection item must contain value and a plain string label (no TermReference / labelText)
       const values = new Set<string>();
-      const normalizedSelection: Array<{ value: string; label: string; labelText?: TermReference }> = [];
+      const normalizedSelection: Array<{ value: string; label: string }> = [];
       for (const item of selectionItems) {
         if (!item || typeof item !== 'object') {
           throw new Error(`@Field(${name}) each selection item must be an object`);
@@ -259,12 +259,21 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         if (!item.value || typeof item.value !== 'string') {
           throw new Error(`@Field(${name}) each selection item must include a string value field`);
         }
-        if (!item.label || (typeof item.label !== 'string' && !isTermReference(item.label))) {
-          throw new Error(`@Field(${name}) each selection item must include a string or term reference label field`);
+        if ((item as { labelText?: unknown }).labelText != null) {
+          throw new Error(`@Field(${name}) selection labelText is forbidden; use a string label and FieldsGet for translations`);
+        }
+        if (isTermReference(item.label)) {
+          throw new Error(`@Field(${name}) selection label must be a string literal (TermReference / _lt is forbidden)`);
+        }
+        if (!item.label || typeof item.label !== 'string') {
+          throw new Error(`@Field(${name}) each selection item must include a string label field`);
+        }
+        const label = item.label.trim();
+        if (!label) {
+          throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
         }
 
         const value = item.value;
-        const label = typeof item.label === 'string' ? item.label : item.label.src;
 
         // 3) value must be unique
         if (values.has(value)) {
@@ -274,7 +283,6 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         normalizedSelection.push({
           value,
           label,
-          ...(isTermReference(item.label) ? { labelText: { ...item.label } } : {}),
         });
       }
       validatedSelection = normalizedSelection;

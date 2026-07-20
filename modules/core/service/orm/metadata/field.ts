@@ -233,12 +233,12 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
 export interface SelectionItem {
   value: string;
   label: string;
-  labelText?: TermReference;
 }
 
 export interface SelectionDeclarationItem {
   value: string;
-  label: string | TermReference;
+  /** English msgid only; TermReference / labelText are forbidden (D5·D15). */
+  label: string;
 }
 
 /**

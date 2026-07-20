@@ -7,6 +7,7 @@
  * Cache key: lang + sorted(fields) + sorted(attributes). No draft (D9).
  */
 
+import { shallowRef } from 'vue';
 import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 
 export type FieldsGetRpc = (
@@ -63,16 +64,24 @@ export function createFieldsGetHelpers(
   const inflight = new Map<string, Promise<Record<string, WebFieldMetadata>>>();
   /** Per-lang overlay written after successful ensures (for getFieldMeta). */
   const overlayByLang = new Map<string, Record<string, WebFieldMetadata>>();
+  /** Bumped so Vue computeds that call getFieldMeta / getFieldsGetTranslatedString re-run. */
+  const overlayVersion = shallowRef(0);
+
+  const bumpOverlay = () => {
+    overlayVersion.value += 1;
+  };
 
   const clearFieldsGetCache = () => {
     responseCache.clear();
     inflight.clear();
     overlayByLang.clear();
+    bumpOverlay();
   };
 
   const mergeOverlay = (lang: string, slice: Record<string, WebFieldMetadata>) => {
     const prev = overlayByLang.get(lang) || {};
     overlayByLang.set(lang, { ...prev, ...slice });
+    bumpOverlay();
   };
 
   const ensureFieldsGet = async (
@@ -106,6 +115,7 @@ export function createFieldsGetHelpers(
   };
 
   const getFieldMeta = (name: string): WebFieldMetadata | undefined => {
+    void overlayVersion.value;
     const fieldName = String(name || '').trim();
     if (!fieldName) return undefined;
     const staticMeta = host.fieldsMetadata?.[fieldName];
@@ -118,6 +128,7 @@ export function createFieldsGetHelpers(
   };
 
   const getFieldsGetTranslatedString = (name: string): string | undefined => {
+    void overlayVersion.value;
     const fieldName = String(name || '').trim();
     if (!fieldName) return undefined;
     const lang = resolveLang(options?.getLang);

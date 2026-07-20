@@ -10,7 +10,7 @@ import type { ClientModelService } from '@/core/rpc';
 import type { TermReference } from '@/core/service/i18n';
 
 // Selection dropdown option.
-export type SelectionItem = { value: string; label: string; labelText?: TermReference };
+export type SelectionItem = { value: string; label: string };
 
 /**
  * Web / client field metadata (codegen static table + FieldsGet overlay).

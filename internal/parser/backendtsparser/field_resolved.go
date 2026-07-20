@@ -363,25 +363,22 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			}
 			value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
 			labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+			if _, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
+				return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (TermReference / _lt is forbidden)", field.Name)
+			}
+			if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
+				return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (translate calls are forbidden)", field.Name)
+			}
 			label := labelRaw
-			var labelText *meta.TermReference
-			if reference, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
-				label = reference.Src
-				labelText = reference
-			} else if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
-				if _, known := translateBindings[strings.TrimSpace(match[1])]; known {
-					if fallback, ok := parseTextCallLiteral(match[2]); ok {
-						label = fallback
-					}
-				}
+			if literal, err := parser.ParseJSStringLiteral(labelRaw); err == nil {
+				label = strings.TrimSpace(literal)
 			}
 			if value == "" || label == "" {
 				continue
 			}
 			spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
-				Value:     value,
-				Label:     label,
-				LabelText: labelText,
+				Value: value,
+				Label: label,
 			})
 		}
 	}

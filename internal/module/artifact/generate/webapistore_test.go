@@ -130,8 +130,11 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if !strings.Contains(string(storeContent), "storageKind") || !strings.Contains(string(storeContent), "searchable") {
 		t.Fatalf("expected resolved contract keys in store content: %s", string(storeContent))
 	}
-	if !strings.Contains(string(storeContent), "labelText") || !strings.Contains(string(storeContent), referenceKey) {
-		t.Fatalf("expected selection term reference in generated store content: %s", string(storeContent))
+	if strings.Contains(string(storeContent), "labelText") {
+		t.Fatalf("generated store must not emit selection labelText: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), `"label":"Allow"`) {
+		t.Fatalf("expected selection label msgid in generated store content: %s", string(storeContent))
 	}
 	if !strings.Contains(string(storeContent), `string: "Amount"`) || !strings.Contains(string(storeContent), "stringText:") || !strings.Contains(string(storeContent), stringKey) {
 		t.Fatalf("expected field string/stringText in generated store content: %s", string(storeContent))

@@ -69,12 +69,7 @@ function translateSelectionLabels(
     if (!item || typeof item !== 'object') continue;
     const value = String(item.value || '').trim();
     if (!value) continue;
-    let label = '';
-    if (item.labelText && isTermReference(item.labelText)) {
-      label = translateTermReference(item.labelText);
-    } else {
-      label = translateSrc(fallbackModule, String(item.label || ''), fallbackScope);
-    }
+    const label = translateSrc(fallbackModule, String(item.label || ''), fallbackScope);
     out.push({ value, label: label || String(item.label || value) });
   }
   return out.length ? out : undefined;

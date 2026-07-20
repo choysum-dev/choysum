@@ -50,7 +50,7 @@ test('Field decorator validates selection schema and uniqueness', () => {
       Status!: string;
     }
     return InvalidSelectionItemModel;
-  }).toThrow('must include a string or term reference label field');
+  }).toThrow('must include a string label field');
 
   expect(() => {
     class DuplicateSelectionValueModel extends BaseModel {
@@ -110,14 +110,12 @@ test('Field decorator normalizes string and stringText from term references', ()
 });
 
 test('Field decorator auto-fills selection and ref columns metadata', () => {
-  const { _lt } = createTranslate('demo');
-  const labelReference = _lt('B', { scope: 'demo.status.b' });
   class AutoSelectionModel extends BaseModel {
     @Field({
       type: 'selection',
       selection: [
         { value: 'a', label: 'A' },
-        { value: 'b', label: labelReference },
+        { value: 'b', label: 'B' },
       ],
     } as any)
     Status!: string;
@@ -151,11 +149,7 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
 
   expect(selectionMeta?.selection).toEqual([
     { value: 'a', label: 'A' },
-    {
-      value: 'b',
-      label: 'B',
-      labelText: labelReference,
-    },
+    { value: 'b', label: 'B' },
   ]);
   expect(selectionMeta?.column).toEqual({});
 
@@ -167,6 +161,33 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
 
   expect(m2mRefMeta?.relation?.targetModel).toBeDefined();
   expect(m2mRefMeta?.column).toEqual({});
+});
+
+test('Field decorator rejects selection TermReference label and labelText (T2.1)', () => {
+  const { _lt } = createTranslate('demo');
+  const labelReference = _lt('B', { scope: 'demo.status.b' });
+
+  expect(() => {
+    class TermLabelModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: 'b', label: labelReference }],
+      } as any)
+      Status!: string;
+    }
+    return TermLabelModel;
+  }).toThrow('selection label must be a string literal');
+
+  expect(() => {
+    class LabelTextModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: 'a', label: 'A', labelText: labelReference }],
+      } as any)
+      Status!: string;
+    }
+    return LabelTextModel;
+  }).toThrow('selection labelText is forbidden');
 });
 
 test('Field decorator validates ref/relation/compute/decimal constraints', () => {

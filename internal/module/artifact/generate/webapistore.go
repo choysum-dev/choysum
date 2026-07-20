@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -198,9 +199,10 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 		metadata.RelationInverseJoinField = &s
 	}
 
-	// Pass through Selection when it is non-empty.
+	// Pass through Selection when it is non-empty (strip legacy labelText wire keys).
 	if field.Selection != "" {
-		metadata.Selection = &field.Selection
+		stripped := stripSelectionLabelTextJSON(field.Selection)
+		metadata.Selection = &stripped
 	}
 
 	if s := strings.TrimSpace(field.FieldString); s != "" {
@@ -217,6 +219,38 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 
 	return metadata
+}
+
+// stripSelectionLabelTextJSON removes legacy selection labelText keys from IR JSON
+// before emitting static web store metadata (D5·D15 hard cut).
+func stripSelectionLabelTextJSON(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return raw
+	}
+	var items []map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &items); err != nil {
+		return raw
+	}
+	out := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		clean := make(map[string]any, len(item))
+		for k, v := range item {
+			if k == "labelText" {
+				continue
+			}
+			clean[k] = v
+		}
+		out = append(out, clean)
+	}
+	encoded, err := json.Marshal(out)
+	if err != nil {
+		return raw
+	}
+	return string(encoded)
 }
 
 // RelationFieldInfo describes a relationship field.
