@@ -3,11 +3,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { getFieldMetadataView, type FieldMetadata } from './modelStore';
+import { getFieldMetadataView, type WebFieldMetadata } from './modelStore';
 
 describe('getFieldMetadataView', () => {
   it('exposes resolved contract keys when present', () => {
-    const meta: FieldMetadata = {
+    const meta: WebFieldMetadata = {
       id: 'f1',
       type: 'ManyToOne',
       typeAnnotation: 'Company',
@@ -38,7 +38,7 @@ describe('getFieldMetadataView', () => {
   });
 
   it('marks relation only by declared relation field types', () => {
-    const meta: FieldMetadata = {
+    const meta: WebFieldMetadata = {
       id: 'f2',
       type: 'ManyToMany',
       typeAnnotation: 'Tag[]',
@@ -52,7 +52,7 @@ describe('getFieldMetadataView', () => {
   });
 
   it('does not infer relation from relationModel alone without relation type', () => {
-    const meta: FieldMetadata = {
+    const meta: WebFieldMetadata = {
       id: 'f3',
       type: 'String',
       typeAnnotation: 'string',

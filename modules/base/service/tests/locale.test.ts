@@ -8,13 +8,14 @@ import { MetadataStorage } from '@/core/service/api/metadata';
 
 import { companyCode8, uid } from './_helpers';
 
-test('base.locale: CurrencySymbolPosition selection keeps English msgid labels', () => {
+test('base.locale: CurrencySymbolPosition selection uses _lt msgid labels', () => {
   const field = MetadataStorage.instance.getModelMetadata(Locale).fields.get('CurrencySymbolPosition');
+  const selection = field?.selection as Array<{ value: string; label: string; labelText?: { src?: string; scope?: string } }> | undefined;
 
-  expect(field?.selection).toEqual([
-    { value: 'before', label: 'Before amount' },
-    { value: 'after', label: 'After amount' },
-  ]);
+  expect(selection?.map(item => item.value)).toEqual(['before', 'after']);
+  expect(selection?.map(item => item.label)).toEqual(['Before amount', 'After amount']);
+  expect(selection?.every(item => item.labelText?.src === item.label)).toBe(true);
+  expect(selection?.every(item => item.labelText?.scope === 'base.model.Locale.fields')).toBe(true);
 });
 
 test('base.locale: CurrencySymbolPosition invalid is rejected', async () => {

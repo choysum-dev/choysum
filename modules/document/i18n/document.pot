@@ -7,6 +7,266 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/models/attachment_binding.ts:81
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Attachment Content"
+msgstr ""
+
+#: service/models/attachment_binding.ts:148
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/attachment_binding.ts:91
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Display File Name"
+msgstr ""
+
+#: service/models/attachment_binding.ts:107
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Download Disposition"
+msgstr ""
+
+#: service/models/attachment_binding.ts:68
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Field Name"
+msgstr ""
+
+#: service/models/attachment_binding.ts:42
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Owner Model"
+msgstr ""
+
+#: service/models/attachment_binding.ts:55
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Owner Record"
+msgstr ""
+
+#: service/models/attachment_binding.ts:125
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/attachment_binding.ts:135
+msgctxt "document.model.AttachmentBinding.fields"
+msgid "Unbound At"
+msgstr ""
+
+#: service/models/attachment_object.ts:77
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Checksum SHA-256"
+msgstr ""
+
+#: service/models/attachment_object.ts:148
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/attachment_object.ts:108
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Image Format"
+msgstr ""
+
+#: service/models/attachment_object.ts:97
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Image Height"
+msgstr ""
+
+#: service/models/attachment_object.ts:87
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Image Width"
+msgstr ""
+
+#: service/models/attachment_object.ts:65
+msgctxt "document.model.AttachmentContent.fields"
+msgid "MIME Type"
+msgstr ""
+
+#: service/models/attachment_object.ts:117
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Metadata"
+msgstr ""
+
+#: service/models/attachment_object.ts:53
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Size Bytes"
+msgstr ""
+
+#: service/models/attachment_object.ts:135
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/attachment_object.ts:42
+msgctxt "document.model.AttachmentContent.fields"
+msgid "Stored Content"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:32
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Action"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:103
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:90
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Error Code"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:44
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Mutation"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:53
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Request"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:62
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Response"
+msgstr ""
+
+#: service/models/attachment_mutation_ledger.ts:79
+msgctxt "document.model.AttachmentMutationLedger.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/upload_session.ts:204
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Allowed MIME Types"
+msgstr ""
+
+#: service/models/upload_session.ts:246
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Attachment Content"
+msgstr ""
+
+#: service/models/upload_session.ts:92
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Business Request"
+msgstr ""
+
+#: service/models/upload_session.ts:132
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Checksum SHA-256"
+msgstr ""
+
+#: service/models/upload_session.ts:260
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/upload_session.ts:215
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Expires At"
+msgstr ""
+
+#: service/models/upload_session.ts:49
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Field Name"
+msgstr ""
+
+#: service/models/upload_session.ts:79
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Issuer User"
+msgstr ""
+
+#: service/models/upload_session.ts:182
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Max Upload Bytes"
+msgstr ""
+
+#: service/models/upload_session.ts:65
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Operation"
+msgstr ""
+
+#: service/models/upload_session.ts:26
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Owner Model"
+msgstr ""
+
+#: service/models/upload_session.ts:37
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Owner Record"
+msgstr ""
+
+#: service/models/upload_session.ts:112
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Proposed Content Type"
+msgstr ""
+
+#: service/models/upload_session.ts:102
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Proposed File Name"
+msgstr ""
+
+#: service/models/upload_session.ts:121
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Proposed Size Bytes"
+msgstr ""
+
+#: service/models/upload_session.ts:195
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Required Checksum Algorithm"
+msgstr ""
+
+#: service/models/upload_session.ts:234
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/upload_session.ts:152
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Checksum SHA-256"
+msgstr ""
+
+#: service/models/upload_session.ts:162
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Content Type"
+msgstr ""
+
+#: service/models/upload_session.ts:172
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Payload Ref"
+msgstr ""
+
+#: service/models/upload_session.ts:141
+msgctxt "document.model.AttachmentUploadSession.fields"
+msgid "Uploaded Size Bytes"
+msgstr ""
+
+#: service/models/stored_content.ts:51
+msgctxt "document.model.StoredContent.fields"
+msgid "Blob Data"
+msgstr ""
+
+#: service/models/stored_content.ts:81
+msgctxt "document.model.StoredContent.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/stored_content.ts:41
+msgctxt "document.model.StoredContent.fields"
+msgid "Locator JSON"
+msgstr ""
+
+#: service/models/stored_content.ts:31
+msgctxt "document.model.StoredContent.fields"
+msgid "Provider"
+msgstr ""
+
+#: service/models/stored_content.ts:68
+msgctxt "document.model.StoredContent.fields"
+msgid "Status"
+msgstr ""
+
 #: service/models/_attachment_binding_codec.ts:291
 msgctxt "service/models/_attachment_binding_codec"
 msgid "Attachment resource company scope mismatch"
@@ -281,7 +541,7 @@ msgctxt "service/models/_upload"
 msgid "userId does not match upload session issuer"
 msgstr ""
 
-#: service/models/stored_content.ts:71
+#: service/models/stored_content.ts:91
 msgctxt "service/models/stored_content"
 msgid "Stored content not found"
 msgstr ""

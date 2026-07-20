@@ -76,6 +76,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="(ch as any).field && requiresValue((ch as any).operator)"
             :is="resolveOField(metaTypeOf((ch as any).field))"
             class="w-value"
+            :store="store"
             :binding="bindingForCondition(ch as any)"
             v-bind="extraPropsFor((ch as any).field)"
             :label="''"
@@ -97,7 +98,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
 import { computed } from 'vue';
 import { useStandaloneField } from '@/web/web/composables/useField';
-import type { FieldMetadata } from '@/web/web/stores/modelStore';
+import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
 import { createTranslate } from '@/web/web/i18n';
@@ -119,6 +120,7 @@ import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OBinaryField from '@/web/web/components/field/OBinaryField.vue';
 import OImageField from '@/web/web/components/field/OImageField.vue';
+import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 
 defineOptions({ name: 'OSearchFilterGroup' });
 
@@ -214,6 +216,8 @@ function resolveOField(t: string) {
       return OBinaryField;
     case 'image':
       return OImageField;
+    case 'selection':
+      return OSelectionField;
     default:
       return OVarCharField;
   }
@@ -251,6 +255,8 @@ function valuePlaceholder(t: string) {
       return _t('Select time');
     case 'jsonobject':
       return _t('Enter JSON');
+    case 'selection':
+      return _t('Please select...');
     default:
       return _t('Value');
   }
@@ -264,19 +270,27 @@ function bindingForCondition(ch: CondLike) {
     set: v => onUpdateCondition(id, { value: v }),
   });
 
-  const t = metaTypeOf(ch.field || '');
-  const meta = { type: t as any } as Partial<FieldMetadata>;
+  const fieldName = ch.field || '';
+  const t = metaTypeOf(fieldName);
+  const staticMeta = ((store as any)?.fieldsMetadata?.[fieldName] || {}) as Partial<WebFieldMetadata>;
+  const meta = {
+    ...staticMeta,
+    type: (staticMeta.type || t) as any,
+  } as Partial<WebFieldMetadata>;
 
   const binding = useStandaloneField({
     value: vRef,
     meta,
-    prop: ch.field || 'value',
+    prop: fieldName || 'value',
     env: { isForm: true, isEditMode: true, viewMode: 'edit' },
     record: {},
   }) as any;
 
+  // Filter standalone bindings must reach model store so OSelectionField can ensureFieldsGet (T4.4).
+  binding.store = store;
+
   if (t === 'manytoone') {
-    binding.relationStore = relationStoreOf(ch.field || '');
+    binding.relationStore = relationStoreOf(fieldName);
   }
   return binding;
 }

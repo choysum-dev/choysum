@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { _lt } from '../i18n';
 
 /**
  * Test-only probe model for auth permission chain tests.
@@ -18,12 +19,25 @@ export default class CompanyScopedResource extends BaseModel {
   /**
    * Company scope for the row. Null means the row is shared across companies.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Company', { scope: 'auth.model.CompanyScopedResource.fields' }),
+  })
   CompanyId?: string;
 
   /**
    * Human-readable name used by the auth company-scope test fixtures.
    */
-  @Field({ type: 'varchar', size: 200, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 200,
+    notNull: true,
+    index: true,
+    string: _lt('Name', { scope: 'auth.model.CompanyScopedResource.fields' }),
+  })
   Name: string;
 }

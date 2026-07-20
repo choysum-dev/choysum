@@ -7,6 +7,7 @@ import { computed, reactive } from 'vue';
 import type {{.Model.Name}} from '{{ConvertPathNoExt .Model.Path}}';
 import type { IStoreScopeManager } from '@/web/web/stores/storeScopeManager/types';
 import type { WebModelStore, PlanCacheEntry } from '@/web/web/stores/modelStore';
+import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import { createEmptyQueryState } from '@/web/web/query/state';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import { clearFieldsByStore } from '@/web/web/query/utils/registry/field';
@@ -14,7 +15,7 @@ import { clearMetricsByStore } from '@/web/web/query/utils/registry/metric';
 import { registerStoreFactory, createStoreByModel } from '@/web/web/stores/registry';
 import { webApiService } from '@/core/web/client';
 import { {{.Model.Name}}Service } from '../service';
-
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 /**
  * API client for the {{.Model.Name}} model.
  */
@@ -51,6 +52,9 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.RelationJoinModel}}relationJoinModel: '{{$field.RelationJoinModel}}',{{- end}}
     {{- if $field.RelationJoinField}}relationJoinField: '{{$field.RelationJoinField}}',{{- end}}
     {{- if $field.RelationInverseJoinField}}relationInverseJoinField: '{{$field.RelationInverseJoinField}}',{{- end}}
+    {{- if $field.String}}string: {{$field.String}},{{- end}}
+    {{- if $field.StringText}}stringText: {{$field.StringText}},{{- end}}
+    {{- if $field.SelectionKind}}selectionKind: '{{$field.SelectionKind}}',{{- end}}
     {{- if $field.Selection}}selection: {{$field.Selection}},{{- end}}
   },
 {{- end}}
@@ -100,8 +104,25 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
       state.planCache.clear();
     }
 
+    const fieldsGetHelpers = createFieldsGetHelpers(
+      {
+        fieldsMetadata: {{.Model.Name}}FieldsMetadata as any,
+        FieldsGet: {{.Model.Name}}Api.FieldsGet as any,
+      },
+      {
+        getLang: () => {
+          try {
+            return String(useI18nStore().terminologyLang || '').trim() || 'en_US';
+          } catch {
+            return 'en_US';
+          }
+        },
+      }
+    );
+
     function destroy() {
       (store as any)._destroyed = true;
+      fieldsGetHelpers.clearFieldsGetCache();
       {{.Model.Name | ToLowerCase}}StoreRegistry.delete(storeId);
       clearFieldsByStore(storeId);
       clearMetricsByStore(storeId);
@@ -118,6 +139,10 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
       get lastError() { return lastError.value; },
       destroy,
       fieldsMetadata: {{.Model.Name}}FieldsMetadata,
+      ensureFieldsGet: fieldsGetHelpers.ensureFieldsGet,
+      getFieldMeta: fieldsGetHelpers.getFieldMeta,
+      getFieldsGetTranslatedString: fieldsGetHelpers.getFieldsGetTranslatedString,
+      clearFieldsGetCache: fieldsGetHelpers.clearFieldsGetCache,
       setContext: {{.Model.Name}}Api.setContext,
       getContext: {{.Model.Name}}Api.getContext,
       withContext: {{.Model.Name}}Api.withContext,

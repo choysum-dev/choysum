@@ -16,13 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" :vColumnProps="{ minWidth: 120 }" />
-    <OManyToOneRefField :store="store" prop="CompanyId" :label="_t('Company')" :vColumnProps="{ minWidth: 180 }" />
-    <OIntField :store="store" prop="CustomerRank" :label="_t('Customer Rank')" />
-    <OIntField :store="store" prop="SupplierRank" :label="_t('Supplier Rank')" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
-    <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField :store="store" prop="Name" :vColumnProps="{ minWidth: 180 }" />
+    <OVarCharField :store="store" prop="Code" :vColumnProps="{ minWidth: 120 }" />
+    <OManyToOneRefField :store="store" prop="CompanyId" :vColumnProps="{ minWidth: 180 }" />
+    <OIntField :store="store" prop="CustomerRank" />
+    <OIntField :store="store" prop="SupplierRank" />
+    <OBooleanField :store="store" prop="IsActive" />
+    <ODateTimeField :store="store" prop="UpdatedAt" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 

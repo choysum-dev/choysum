@@ -15,13 +15,13 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
-    <OSelectionField :store="store" prop="Direction" :label="_t('Direction')" />
-    <OManyToOneField :store="store" prop="DefaultLocaleId" :label="_t('Default Locale')"
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Code" />
+    <OSelectionField :store="store" prop="Direction" />
+    <OManyToOneField :store="store" prop="DefaultLocaleId"
       ><OVarCharField :store="store" prop="DefaultLocaleId.Name" :label="_t('Locale')"
     /></OManyToOneField>
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
 

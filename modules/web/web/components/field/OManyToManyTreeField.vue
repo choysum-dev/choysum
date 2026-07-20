@@ -151,7 +151,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     targetModel: '',

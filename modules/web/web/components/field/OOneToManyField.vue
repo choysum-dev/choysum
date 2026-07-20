@@ -118,7 +118,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     showIndex: true,

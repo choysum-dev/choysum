@@ -8,13 +8,14 @@ import { MetadataStorage } from '@/core/service/api/metadata';
 
 import { companyCode8, uid } from './_helpers';
 
-test('base.language: Direction selection keeps English msgid labels', () => {
+test('base.language: Direction selection uses _lt msgid labels', () => {
   const field = MetadataStorage.instance.getModelMetadata(Language).fields.get('Direction');
+  const selection = field?.selection as Array<{ value: string; label: string; labelText?: { src?: string; scope?: string } }> | undefined;
 
-  expect(field?.selection).toEqual([
-    { value: 'ltr', label: 'Left to right' },
-    { value: 'rtl', label: 'Right to left' },
-  ]);
+  expect(selection?.map(item => item.value)).toEqual(['ltr', 'rtl']);
+  expect(selection?.map(item => item.label)).toEqual(['Left to right', 'Right to left']);
+  expect(selection?.every(item => item.labelText?.src === item.label)).toBe(true);
+  expect(selection?.every(item => item.labelText?.scope === 'base.model.Language.fields')).toBe(true);
 });
 
 test('base.language: Direction invalid is rejected', async () => {

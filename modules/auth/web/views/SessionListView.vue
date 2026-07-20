@@ -16,12 +16,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="UserId.Username" :label="_t('User')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="IpAddress" :label="_t('IP Address')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Status" :label="_t('Status')" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ODateTimeField prop="LastActivityAt" :label="_t('Last Activity')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="ExpiresAt" :label="_t('Expires At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="UserId.Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="IpAddress" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="Status" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ODateTimeField prop="LastActivityAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ODateTimeField prop="ExpiresAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 

@@ -3,7 +3,7 @@
 
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata';
-import { FieldOptions, FieldMetadata, FieldType } from '../metadata/field';
+import { FieldOptions, FieldMetadata, FieldType, type SelectionItem, type SelectionDeclaration } from '../metadata/field';
 import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
@@ -32,9 +32,11 @@ const relationTypes = new Set<FieldType>(['ManyToOne', 'OneToMany', 'ManyToMany'
 
 type FieldDecoratorOptionBag = {
   type?: FieldType;
+  string?: unknown;
   select?: unknown;
   column?: unknown;
-  selection?: Array<{ value?: unknown; label?: unknown }>;
+  /** Static array | method name | callable (see SelectionDeclaration). */
+  selection?: SelectionDeclaration;
   targetModel?: unknown;
   relation?: unknown;
   related?: unknown;
@@ -53,6 +55,27 @@ type FieldDecoratorOptionBag = {
   default?: unknown;
   round?: unknown;
 };
+
+function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw new Error(`@Field(${name}) string must be a non-empty string or term reference`);
+    }
+    return { string: trimmed };
+  }
+  if (isTermReference(value)) {
+    const src = typeof value.src === 'string' ? value.src.trim() : '';
+    if (!src) {
+      throw new Error(`@Field(${name}) string term reference requires a non-empty src`);
+    }
+    return { string: src, stringText: { ...value } };
+  }
+  throw new Error(`@Field(${name}) string must be a string or term reference`);
+}
 
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
   const record = asObjectRecord(value);
@@ -81,6 +104,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     }
 
     let validatedSelection: FieldMetadata['selection'];
+    let selectionKind: FieldMetadata['selectionKind'];
+    let selectionMethod: FieldMetadata['selectionMethod'];
+    let selectionCallable: FieldMetadata['selectionCallable'];
     let normalizedColumn: ObjectRecord | undefined;
 
     const isRelation = relationTypes.has(type);
@@ -218,44 +244,73 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     const hasColumn = normalizedColumn !== undefined;
 
-    // Selection-specific validation
+    // Selection-specific validation (static array | method name | callable)
     if (type === 'selection') {
-      const selectionItems = optionBag.selection;
+      const selectionRaw = optionBag.selection;
 
-      // 1) selection must be a non-empty array
-      if (!Array.isArray(selectionItems) || selectionItems.length === 0) {
-        throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
+      if (typeof selectionRaw === 'function') {
+        selectionKind = 'dynamic';
+        selectionCallable = selectionRaw as FieldMetadata['selectionCallable'];
+      } else if (typeof selectionRaw === 'string') {
+        const method = selectionRaw.trim();
+        if (!method) {
+          throw new Error(`@Field(${name}) selection method name must be a non-empty string`);
+        }
+        selectionKind = 'dynamic';
+        selectionMethod = method;
+      } else if (Array.isArray(selectionRaw)) {
+        if (selectionRaw.length === 0) {
+          throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
+        }
+
+        const values = new Set<string>();
+        const normalizedSelection: SelectionItem[] = [];
+        for (const item of selectionRaw) {
+          if (!item || typeof item !== 'object') {
+            throw new Error(`@Field(${name}) each selection item must be an object`);
+          }
+          if (!item.value || typeof item.value !== 'string') {
+            throw new Error(`@Field(${name}) each selection item must include a string value field`);
+          }
+          if ((item as { labelText?: unknown }).labelText != null) {
+            throw new Error(
+              `@Field(${name}) selection labelText is forbidden; use label: _lt('…') when the option should translate`
+            );
+          }
+
+          const value = item.value;
+          if (values.has(value)) {
+            throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
+          }
+          values.add(value);
+
+          const labelRaw = (item as { label?: unknown }).label;
+          if (isTermReference(labelRaw)) {
+            const src = String(labelRaw.src || '').trim();
+            if (!src) {
+              throw new Error(`@Field(${name}) each selection item _lt label must include a non-empty src`);
+            }
+            normalizedSelection.push({ value, label: src, labelText: labelRaw });
+            continue;
+          }
+          if (!labelRaw || typeof labelRaw !== 'string') {
+            throw new Error(
+              `@Field(${name}) each selection item label must be a string or TermReference from _lt(...)`
+            );
+          }
+          const label = labelRaw.trim();
+          if (!label) {
+            throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
+          }
+          normalizedSelection.push({ value, label });
+        }
+        validatedSelection = normalizedSelection;
+        selectionKind = 'static';
+      } else {
+        throw new Error(
+          `@Field(${name}) selection must be a non-empty array, method name string, or () => SelectionItem[] callable`
+        );
       }
-
-      // 2) every selection item must contain value and label
-      const values = new Set<string>();
-      const normalizedSelection: Array<{ value: string; label: string; labelText?: TermReference }> = [];
-      for (const item of selectionItems) {
-        if (!item || typeof item !== 'object') {
-          throw new Error(`@Field(${name}) each selection item must be an object`);
-        }
-        if (!item.value || typeof item.value !== 'string') {
-          throw new Error(`@Field(${name}) each selection item must include a string value field`);
-        }
-        if (!item.label || (typeof item.label !== 'string' && !isTermReference(item.label))) {
-          throw new Error(`@Field(${name}) each selection item must include a string or term reference label field`);
-        }
-
-        const value = item.value;
-        const label = typeof item.label === 'string' ? item.label : item.label.src;
-
-        // 3) value must be unique
-        if (values.has(value)) {
-          throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
-        }
-        values.add(value);
-        normalizedSelection.push({
-          value,
-          label,
-          ...(isTermReference(item.label) ? { labelText: { ...item.label } } : {}),
-        });
-      }
-      validatedSelection = normalizedSelection;
     }
 
     // ManyToOneRef default physical column: char(20) + index when no explicit storage hints are provided.
@@ -346,9 +401,16 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     const meta: FieldMetadata = { name, type };
 
+    const fieldString = normalizeFieldString(name, optionBag.string);
+    if (fieldString.string !== undefined) meta.string = fieldString.string;
+    if (fieldString.stringText !== undefined) meta.stringText = fieldString.stringText;
+
     // Persist selection metadata before final storage/relation defaults.
     if (type === 'selection') {
-      meta.selection = validatedSelection;
+      if (selectionKind) meta.selectionKind = selectionKind;
+      if (validatedSelection) meta.selection = validatedSelection;
+      if (selectionMethod) meta.selectionMethod = selectionMethod;
+      if (selectionCallable) meta.selectionCallable = selectionCallable;
     }
 
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];

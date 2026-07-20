@@ -345,3 +345,113 @@ func writeExecFile(t *testing.T, path string, content string) {
 		t.Fatalf("write %s: %v", path, err)
 	}
 }
+
+func TestSanitizeNpmChildEnvDropsDevdir(t *testing.T) {
+	env := []string{
+		"PATH=/usr/bin",
+		"npm_config_devdir=/tmp/node-gyp",
+		"NPM_CONFIG_DEVDIR=/tmp/other",
+		"npm_config_registry=https://registry.npmjs.org/",
+	}
+	got := SanitizeNpmChildEnv(env)
+	want := []string{
+		"PATH=/usr/bin",
+		"npm_config_registry=https://registry.npmjs.org/",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("SanitizeNpmChildEnv() = %#v, want %#v", got, want)
+	}
+}
+
+func TestAppendNodeOptionMergesAndDedupes(t *testing.T) {
+	env := []string{"PATH=/usr/bin", "NODE_OPTIONS=--trace-warnings"}
+	got := AppendNodeOption(env, "--localstorage-file=/tmp/a.json")
+	found := false
+	for _, entry := range got {
+		if strings.HasPrefix(strings.ToUpper(entry), "NODE_OPTIONS=") {
+			found = true
+			value := entry[len("NODE_OPTIONS="):]
+			if !strings.Contains(value, "--trace-warnings") || !strings.Contains(value, "--localstorage-file=/tmp/a.json") {
+				t.Fatalf("unexpected NODE_OPTIONS value: %q", value)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected NODE_OPTIONS in env")
+	}
+
+	again := AppendNodeOption(got, "--localstorage-file=/tmp/b.json")
+	for _, entry := range again {
+		if strings.HasPrefix(strings.ToUpper(entry), "NODE_OPTIONS=") {
+			value := entry[len("NODE_OPTIONS="):]
+			if strings.Contains(value, "/tmp/b.json") {
+				t.Fatalf("expected existing --localstorage-file to be kept, got %q", value)
+			}
+		}
+	}
+}
+
+func TestUnsetEnvKeysEdgeCases(t *testing.T) {
+	base := []string{"PATH=/usr/bin", "npm_config_devdir=/tmp", "MALFORMED", "NPM_CONFIG_FOO=1"}
+
+	if got := UnsetEnvKeys(nil, "PATH"); got != nil {
+		t.Fatalf("nil env: got %#v", got)
+	}
+	if got := UnsetEnvKeys(base); !reflect.DeepEqual(got, base) {
+		t.Fatalf("no keys: got %#v", got)
+	}
+	if got := UnsetEnvKeys(base, "  ", ""); !reflect.DeepEqual(got, base) {
+		t.Fatalf("blank keys: got %#v", got)
+	}
+
+	got := UnsetEnvKeys(base, "npm_config_devdir", "NPM_CONFIG_DEVDIR")
+	want := []string{"PATH=/usr/bin", "MALFORMED", "NPM_CONFIG_FOO=1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("UnsetEnvKeys() = %#v, want %#v", got, want)
+	}
+}
+
+func TestAppendNodeOptionEdgeCases(t *testing.T) {
+	env := []string{"PATH=/usr/bin"}
+
+	if got := AppendNodeOption(env, ""); !reflect.DeepEqual(got, env) {
+		t.Fatal("empty option must be no-op")
+	}
+
+	got := AppendNodeOption(env, "--trace-warnings")
+	joined := strings.Join(got, "|")
+	if !strings.Contains(joined, "NODE_OPTIONS=--trace-warnings") {
+		t.Fatalf("expected new NODE_OPTIONS, got %#v", got)
+	}
+
+	withOpt := []string{"NODE_OPTIONS=--trace-warnings"}
+	if dup := AppendNodeOption(withOpt, "--trace-warnings"); !reflect.DeepEqual(dup, withOpt) {
+		t.Fatalf("exact duplicate must be no-op, got %#v", dup)
+	}
+
+	prefixed := []string{"NODE_OPTIONS=--import=tsx"}
+	if changed := AppendNodeOption(prefixed, "--import=tsx/esm"); !reflect.DeepEqual(changed, prefixed) {
+		t.Fatalf("prefix duplicate must be no-op, got %#v", changed)
+	}
+
+	mixedCase := []string{"node_options=--foo"}
+	merged := AppendNodeOption(mixedCase, "--bar")
+	found := false
+	for _, entry := range merged {
+		eq := strings.IndexByte(entry, '=')
+		if eq <= 0 {
+			continue
+		}
+		if !strings.EqualFold(entry[:eq], "NODE_OPTIONS") {
+			continue
+		}
+		found = true
+		value := entry[eq+1:]
+		if !strings.Contains(value, "--foo") || !strings.Contains(value, "--bar") {
+			t.Fatalf("case-insensitive NODE_OPTIONS merge failed: %#v", merged)
+		}
+	}
+	if !found {
+		t.Fatalf("expected NODE_OPTIONS entry, got %#v", merged)
+	}
+}

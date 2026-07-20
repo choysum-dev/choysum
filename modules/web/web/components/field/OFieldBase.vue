@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     v-show="visibleForm"
     class="o-field-base"
     v-bind="formItemProps"
-    :label="label"
+    :label="resolvedLabel"
     :prop="String(binding.prop)"
     :rules="effectiveRules"
     :required="requiredForm"
@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
   <OVColumn
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
-    :label="label"
+    :label="resolvedLabel"
     :vColumnProps="vColumnProps"
     v-slot="{ row, $index }"
   >
@@ -231,9 +231,12 @@ import { ElFormItem, ElTooltip, type FormItemProps } from 'element-plus';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
-import { computed, inject, watch } from 'vue';
+import { computed, inject, onMounted, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
+import { getGlobalComposer } from '@/web/web/i18n/translate';
+import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
+import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -258,7 +261,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
@@ -271,7 +273,52 @@ const props = withDefaults(
     showInlineError: false,
   }
 );
-/* ===================== Render Mode Resolution ===================== */
+
+const binding = props.binding;
+
+const leafFieldName = computed(() => {
+  const prop = String(binding.prop || '');
+  return prop.split('.').filter(Boolean).pop() || prop;
+});
+
+const modelStore = computed(() => {
+  return binding.store as
+    | {
+        getFieldMeta?: (name: string) => typeof binding.meta;
+        getFieldsGetTranslatedString?: (name: string) => string | undefined;
+        ensureFieldsGet?: (fields?: string[], attributes?: string[]) => Promise<unknown>;
+      }
+    | undefined;
+});
+
+/** Effective meta: FieldsGet overlay over static binding.meta (D6 / P5). */
+const effectiveFieldMeta = computed(() => {
+  const leaf = leafFieldName.value;
+  return modelStore.value?.getFieldMeta?.(leaf) ?? binding.meta;
+});
+
+const resolvedLabel = computed(() => {
+  const prop = String(binding.prop || '');
+  const leaf = leafFieldName.value;
+  return resolveFieldLabel({
+    label: props.label,
+    prop,
+    meta: effectiveFieldMeta.value,
+    fieldsGetTranslatedString: modelStore.value?.getFieldsGetTranslatedString?.(leaf),
+    composer: getGlobalComposer(),
+  });
+});
+
+onMounted(() => {
+  // Edit mode: ensure ACL/presentation overlay so deny-write → isReadonly is visible (T5.3).
+  if (!binding.env.isEditMode) return;
+  const store = modelStore.value;
+  const leaf = leafFieldName.value;
+  if (!store?.ensureFieldsGet || !leaf) return;
+  void store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+});
+
+/* ===================== Render Mode Dispatch ===================== */
 // Inject a render mode override (for example, Kanban cards provide inline)
 const injectedRenderOverride = inject<'inline' | 'form' | 'table' | 'auto' | null>('o-field-render-override', null);
 const effectiveRenderMode = computed(() => {
@@ -288,8 +335,6 @@ const visibleInline = computed(() => visibleForm.value); // Reuse visibleForm as
 const readonlyInline = computed(() => readonlyForm.value);
 const requiredInline = computed(() => requiredForm.value);
 const effectiveEditInline = computed(() => binding.env.isEditMode && visibleInline.value && !readonlyInline.value);
-
-const binding = props.binding;
 
 // Unwrap row records to the actual business record (row-level detection, not snapshot-level QueryKind):
 // - Legacy grouped-tree detail row: { type:'record', record:{...} }
@@ -448,9 +493,9 @@ const recordForRow = ((row: T) => {
   return () => c;
 }) as (row: T) => () => ComputedRef<T>;
 
-/* Metadata flags */
-const metaRequired = computed(() => binding.meta?.notNull === true);
-const metaReadonly = computed(() => binding.meta?.isReadonly === true);
+/* Metadata flags (effective meta includes FieldsGet ACL overlay) */
+const metaRequired = computed(() => effectiveFieldMeta.value?.notNull === true);
+const metaReadonly = computed(() => effectiveFieldMeta.value?.isReadonly === true);
 
 /* Evaluation helper */
 function evalFlag(flag: FieldStateExpr<T, V> | undefined, rec: T, v: V | undefined, def = false) {

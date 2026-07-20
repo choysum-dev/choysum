@@ -228,52 +228,58 @@ describe('loginImpl', () => {
   });
 
   it('catches initInFlight failure and still proceeds to login', async () => {
-    // Arrange: expired tokens so initAuth refreshes, but RefreshTokens fails.
-    mockState.tokens.value = {
-      accessToken: 'stale-access',
-      refreshToken: 'stale-refresh',
-      expiresAt: Date.now() - 1000,
-    };
-    mockState.isAccessTokenValid.value = false;
-    mockState.shouldRefreshToken.value = true;
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      // Arrange: expired tokens so initAuth refreshes, but RefreshTokens fails.
+      mockState.tokens.value = {
+        accessToken: 'stale-access',
+        refreshToken: 'stale-refresh',
+        expiresAt: Date.now() - 1000,
+      };
+      mockState.isAccessTokenValid.value = false;
+      mockState.shouldRefreshToken.value = true;
 
-    // Deferred promise that will reject.
-    let rejectRefresh: (reason: unknown) => void;
-    const refreshDeferred = new Promise((_resolve, reject) => {
-      rejectRefresh = reject;
-    });
-    mockState.userStore.RefreshTokens.mockReturnValue(refreshDeferred);
+      // Deferred promise that will reject.
+      let rejectRefresh: (reason: unknown) => void;
+      const refreshDeferred = new Promise((_resolve, reject) => {
+        rejectRefresh = reject;
+      });
+      mockState.userStore.RefreshTokens.mockReturnValue(refreshDeferred);
 
-    const loginResponse = {
-      accessToken: 'new-access',
-      refreshToken: 'new-refresh',
-      expiresAt: Date.now() + 3600_000,
-    };
-    mockState.userStore.Login.mockResolvedValue(loginResponse);
+      const loginResponse = {
+        accessToken: 'new-access',
+        refreshToken: 'new-refresh',
+        expiresAt: Date.now() + 3600_000,
+      };
+      mockState.userStore.Login.mockResolvedValue(loginResponse);
 
-    const { defineAuthActions } = await import('./actions');
-    const actions = defineAuthActions(mockState as any, mockHelpers as any);
+      const { defineAuthActions } = await import('./actions');
+      const actions = defineAuthActions(mockState as any, mockHelpers as any);
 
-    // Start initAuth without awaiting.
-    const initPromise = actions.ensureAuthReady();
-    await Promise.resolve();
+      // Start initAuth without awaiting.
+      const initPromise = actions.ensureAuthReady();
+      await Promise.resolve();
 
-    // Act: call login while initInFlight is active.
-    const loginPromise = actions.login('admin', 'secret');
-    await Promise.resolve();
+      // Act: call login while initInFlight is active.
+      const loginPromise = actions.login('admin', 'secret');
+      await Promise.resolve();
 
-    // initAuth fails — initAuth handles it silently (no re-throw).
-    rejectRefresh!(new Error('token signature is invalid'));
+      // initAuth fails — initAuth handles it silently (no re-throw).
+      rejectRefresh!(new Error('token signature is invalid'));
 
-    // initAuth resolves successfully (failure is handled internally).
-    await initPromise;
-    await loginPromise;
+      // initAuth resolves successfully (failure is handled internally).
+      await initPromise;
+      await loginPromise;
 
-    // Assert: login still completed — Login RPC was called.
-    expect(mockState.userStore.Login).toHaveBeenCalled();
-    // clearAuth was called (both from initAuth's catch and loginImpl).
-    expect(mockHelpers.resetAuthState).toHaveBeenCalled();
-    // initAuth marked initialization as complete despite the failure.
-    expect(mockState.initialized.value).toBe(true);
+      // Assert: login still completed — Login RPC was called.
+      expect(mockState.userStore.Login).toHaveBeenCalled();
+      // clearAuth was called (both from initAuth's catch and loginImpl).
+      expect(mockHelpers.resetAuthState).toHaveBeenCalled();
+      // initAuth marked initialization as complete despite the failure.
+      expect(mockState.initialized.value).toBe(true);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

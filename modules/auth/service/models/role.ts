@@ -5,6 +5,7 @@ import { BaseModel, Model, Field, SqlCompute } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition, SearchOptions } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import User from './user';
 import UserRole from './user_role';
 import RoleInheritance from './role_inheritance';
@@ -32,6 +33,7 @@ export default class Role extends BaseModel {
   @Field({
     type: 'varchar',
     size: 36,
+    string: _lt('Display Name', { scope: 'auth.model.Role.fields' }),
   })
   public readonly DisplayName!: string;
 
@@ -43,37 +45,68 @@ export default class Role extends BaseModel {
   /**
    * Human-readable role name.
    */
-  @Field({ type: 'varchar', size: 100, unique: true, notNull: true })
+  @Field({
+    type: 'varchar',
+    size: 100,
+    unique: true,
+    notNull: true,
+    string: _lt('Name', { scope: 'auth.model.Role.fields' }),
+  })
   Name: string;
 
   /**
    * Stable programmatic role code.
    */
-  @Field({ type: 'varchar', size: 50, unique: true, notNull: true })
+  @Field({
+    type: 'varchar',
+    size: 50,
+    unique: true,
+    notNull: true,
+    string: _lt('Code', { scope: 'auth.model.Role.fields' }),
+  })
   Code: string;
 
   /**
    * Free-form description shown in management surfaces.
    */
-  @Field({ type: 'varchar', size: 255, index: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    index: true,
+    string: _lt('Description', { scope: 'auth.model.Role.fields' }),
+  })
   Description: string;
 
   /**
    * Whether the role can still be assigned and evaluated.
    */
-  @Field({ type: 'boolean', default: () => true, index: true })
+  @Field({
+    type: 'boolean',
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'auth.model.Role.fields' }),
+  })
   IsActive: boolean;
 
   /**
    * Whether the role is part of the built-in system baseline.
    */
-  @Field({ type: 'boolean', default: () => false, index: true })
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    index: true,
+    string: _lt('Built-in', { scope: 'auth.model.Role.fields' }),
+  })
   IsSystem: boolean;
 
   /**
    * UI-tree editor projection that only carries allow/resource-level UI resource Ids.
    */
-  @Field({ type: 'ManyToManyRef', relation: { targetModel: 'meta.IrUiResource' } })
+  @Field({
+    type: 'ManyToManyRef',
+    relation: { targetModel: 'meta.IrUiResource' },
+    string: _lt('Accessible UI Resources', { scope: 'auth.model.Role.fields' }),
+  })
   AccessUiResourceIds: string[];
 
   /**
@@ -87,6 +120,7 @@ export default class Role extends BaseModel {
       joinField: 'RoleId',
       inverseJoinField: 'UserId',
     },
+    string: _lt('Users', { scope: 'auth.model.Role.fields' }),
   })
   Users: User[];
 
@@ -101,6 +135,7 @@ export default class Role extends BaseModel {
       joinField: 'ParentRoleId',
       inverseJoinField: 'ChildRoleId',
     },
+    string: _lt('Included Roles', { scope: 'auth.model.Role.fields' }),
   })
   ImpliedRoles: Role[];
 
@@ -115,6 +150,7 @@ export default class Role extends BaseModel {
       joinField: 'ChildRoleId',
       inverseJoinField: 'ParentRoleId',
     },
+    string: _lt('Implied By Roles', { scope: 'auth.model.Role.fields' }),
   })
   ImpliedByRoles: Role[];
 
@@ -124,6 +160,7 @@ export default class Role extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => RoleRecordRule, inverseField: 'RoleId' },
+    string: _lt('Record Rules', { scope: 'auth.model.Role.fields' }),
   })
   RecordRules: RoleRecordRule[];
 
@@ -133,6 +170,7 @@ export default class Role extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => RoleMethodAccess, inverseField: 'RoleId' },
+    string: _lt('Method Accesses', { scope: 'auth.model.Role.fields' }),
   })
   MethodAccesses: RoleMethodAccess[];
 
@@ -142,6 +180,7 @@ export default class Role extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => RoleFieldRule, inverseField: 'RoleId' },
+    string: _lt('Field Rules', { scope: 'auth.model.Role.fields' }),
   })
   FieldRules: RoleFieldRule[];
 
@@ -151,6 +190,7 @@ export default class Role extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => RoleUiResource, inverseField: 'RoleId' },
+    string: _lt('UI Resources', { scope: 'auth.model.Role.fields' }),
   })
   UiResources: RoleUiResource[];
 

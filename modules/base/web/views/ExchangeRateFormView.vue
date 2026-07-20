@@ -19,7 +19,6 @@ SPDX-License-Identifier: Apache-2.0
           ><OManyToOneField
             :store="store"
             prop="CurrencyId"
-            :label="_t('Currency')"
             :search-view="CurrencyListView"
             :search-view-title="_t('Select Currency')"
             @value-click="onCurrencyValueClick"
@@ -28,16 +27,15 @@ SPDX-License-Identifier: Apache-2.0
           ><OManyToOneField
             :store="store"
             prop="CompanyId"
-            :label="_t('Company')"
             :search-view="CompanyListView"
             :search-view-title="_t('Select Company')"
             @value-click="onCompanyValueClick"
         /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><ODateField :store="store" prop="Date" :label="_t('Date')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><ODateField :store="store" prop="Date" /></el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
-          ><ODecimalField :store="store" prop="Rate" :label="_t('Exchange Rate')" :rules="requiredRules"
+          ><ODecimalField :store="store" prop="Rate" :rules="requiredRules"
         /></el-col>
       </el-row>
     </el-card>

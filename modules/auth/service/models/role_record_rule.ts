@@ -5,6 +5,7 @@ import { BaseModel, Model, Field } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import Role from './role';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
@@ -18,13 +19,24 @@ export default class RoleRecordRule extends BaseModel {
   /**
    * Role that owns this record-rule entry.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Role', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   RoleId: Role;
 
   /**
    * Application-level scope when the rule targets an entire application.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrApplication' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Application', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   IrApplicationId: string | null;
 
   /**
@@ -41,37 +53,58 @@ export default class RoleRecordRule extends BaseModel {
         OR (ir_model_id IS NULL AND ir_application_id IS NOT NULL)
         OR (ir_model_id IS NULL AND ir_application_id IS NULL)
       )`,
+    string: _lt('Model', { scope: 'auth.model.RoleRecordRule.fields' }),
   })
   IrModelId: string | null;
 
   /**
    * Condition envelope applied to matching records.
    */
-  @Field({ type: 'jsonobject', notNull: false})
+  @Field({
+    type: 'jsonobject',
+    notNull: false,
+    string: _lt('Filter Condition', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   Condition: QueryCondition<any>;
 
   /**
    * Whether reads are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', default: () => false})
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Read', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   PermRead: boolean;
 
   /**
    * Whether writes are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', default: () => false})
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Write', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   PermWrite: boolean;
 
   /**
    * Whether creates are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', default: () => false})
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Create', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   PermCreate: boolean;
 
   /**
    * Whether deletes are allowed when this rule matches.
    */
-  @Field({ type: 'boolean', default: () => false})
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Delete', { scope: 'auth.model.RoleRecordRule.fields' }),
+  })
   PermDelete: boolean;
 
   /**

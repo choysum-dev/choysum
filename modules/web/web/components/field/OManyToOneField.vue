@@ -160,7 +160,6 @@ const props = withDefaults(
     valueClickable?: boolean | 'auto';
   }>(),
   {
-    label: '',
     rules: () => [],
     clearable: true,
     placeholder: '',

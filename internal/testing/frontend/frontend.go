@@ -225,7 +225,13 @@ func RunOneAppFrontendTests(
 	c := exec.CommandContext(ctx, "npx", args...)
 	c.Dir = repoRoot
 	nodePathValue := buildNodePath(repoRoot, globalNodeModulesRoot)
-	c.Env = noderuntime.ReplaceOrAppendEnv(os.Environ(), "NODE_PATH", nodePathValue)
+	env := noderuntime.SanitizeNpmChildEnv(os.Environ())
+	env = noderuntime.ReplaceOrAppendEnv(env, "NODE_PATH", nodePathValue)
+	// Node 22+ emits ExperimentalWarning when code touches localStorage without
+	// --localstorage-file (common with Pinia persist under Vitest environment:node).
+	localStorageFile := filepath.Join(vitestTmpDir, "localstorage.json")
+	env = noderuntime.AppendNodeOption(env, "--localstorage-file="+localStorageFile)
+	c.Env = env
 	c.Stdout = os.Stderr
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {

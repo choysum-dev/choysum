@@ -7,32 +7,62 @@ import City from './city';
 import Country from './country';
 import State from './state';
 import { normalizeRefId } from '@/core/service/utils/normalization';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import { fail, normalizeNullableString, requireRefId } from './_normalizers';
-
-const { _t } = createTranslate('base');
 
 @Model('Address')
 export default class Address extends BaseModel {
-  @Field({ type: 'varchar', size: 120})
+  @Field({
+    type: 'varchar',
+    size: 120,
+    string: _lt('Label', { scope: 'base.model.Address.fields' }),
+  })
   Label?: string;
 
-  @Field({ type: 'varchar', size: 255})
+  @Field({
+    type: 'varchar',
+    size: 255,
+    string: _lt('Address Line 1', { scope: 'base.model.Address.fields' }),
+  })
   Street1?: string;
 
-  @Field({ type: 'varchar', size: 255})
+  @Field({
+    type: 'varchar',
+    size: 255,
+    string: _lt('Address Line 2', { scope: 'base.model.Address.fields' }),
+  })
   Street2?: string;
 
-  @Field({ type: 'varchar', size: 32})
+  @Field({
+    type: 'varchar',
+    size: 32,
+    string: _lt('ZIP', { scope: 'base.model.Address.fields' }),
+  })
   Zip?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Country }, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Country },
+    notNull: true,
+    index: true,
+    string: _lt('Country', { scope: 'base.model.Address.fields' }),
+  })
   CountryId: Country;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => State }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => State },
+    index: true,
+    string: _lt('State/Province', { scope: 'base.model.Address.fields' }),
+  })
   StateId?: State;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => City }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => City },
+    index: true,
+    string: _lt('City', { scope: 'base.model.Address.fields' }),
+  })
   CityId?: City;
 
   private static async getCountry(countryId: string): Promise<any> {

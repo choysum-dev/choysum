@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OManyToOneField :store="store" prop="CurrencyId" :label="_t('Currency')"
-      ><OVarCharField :store="store" prop="CurrencyId.Name" :label="_t('Currency')"
+    <OManyToOneField :store="store" prop="CurrencyId"
+      ><OVarCharField :store="store" prop="CurrencyId.Name"
     /></OManyToOneField>
-    <OManyToOneField :store="store" prop="CompanyId" :label="_t('Company')"><OVarCharField :store="store" prop="CompanyId.Name" :label="_t('Company')" /></OManyToOneField>
-    <ODateField :store="store" prop="Date" :label="_t('Date')" />
-    <ODecimalField :store="store" prop="Rate" :label="_t('Exchange Rate')" />
+    <OManyToOneField :store="store" prop="CompanyId"><OVarCharField :store="store" prop="CompanyId.Name" /></OManyToOneField>
+    <ODateField :store="store" prop="Date" />
+    <ODecimalField :store="store" prop="Rate" />
   </OListView>
 </template>
 

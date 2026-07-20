@@ -15,15 +15,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OManyToOneField :store="store" prop="SequenceId" :label="_t('Sequence')"
-      ><OVarCharField :store="store" prop="SequenceId.Name" :label="_t('Sequence')"
+    <OManyToOneField :store="store" prop="SequenceId"
+      ><OVarCharField :store="store" prop="SequenceId.Name"
     /></OManyToOneField>
-    <OVarCharField :store="store" prop="IdempotencyKey" :label="_t('Idempotency Key')" />
-    <OIntField :store="store" prop="Count" :label="_t('Count')" />
-    <OBooleanField :store="store" prop="DryRun" :label="_t('Dry Run')" />
-    <OBigintField :store="store" prop="RangeStart" :label="_t('Start')" />
-    <OBigintField :store="store" prop="RangeEnd" :label="_t('End')" />
-    <ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" />
+    <OVarCharField :store="store" prop="IdempotencyKey" />
+    <OIntField :store="store" prop="Count" />
+    <OBooleanField :store="store" prop="DryRun" />
+    <OBigintField :store="store" prop="RangeStart" />
+    <OBigintField :store="store" prop="RangeEnd" />
+    <ODateTimeField :store="store" prop="ExpiresAt" />
   </OListView>
 </template>
 

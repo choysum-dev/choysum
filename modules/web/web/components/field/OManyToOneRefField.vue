@@ -160,7 +160,6 @@ const props = withDefaults(
     targetModel?: string;
   }>(),
   {
-    label: '',
     rules: () => [],
     clearable: true,
     placeholder: '',

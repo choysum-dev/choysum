@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
-    <OVarCharField :store="store" prop="DateFormat" :label="_t('Date Format')" />
-    <OVarCharField :store="store" prop="TimeFormat" :label="_t('Time Format')" />
-    <OSelectionField :store="store" prop="CurrencySymbolPosition" :label="_t('Currency Symbol Position')" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Code" />
+    <OVarCharField :store="store" prop="DateFormat" />
+    <OVarCharField :store="store" prop="TimeFormat" />
+    <OSelectionField :store="store" prop="CurrencySymbolPosition" />
+    <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
 

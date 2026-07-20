@@ -18,6 +18,7 @@ import (
 func TestWebApiStoreGenerate(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	referenceKey := meta.TermReferenceKey("demo", "demo.status.allow", "Allow", "literal")
+	stringKey := meta.TermReferenceKey("demo", "demo.model.Partner.fields", "Amount", "literal")
 	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
@@ -42,6 +43,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		RelationJoinField:        "PartnerId",
 		RelationInverseJoinField: "TagId",
 		Selection:                selectionJSON,
+		SelectionKind:            "static",
+		FieldString:              "Amount",
+		StringText:               `{"key":"` + stringKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Amount","kind":"literal"}`,
 		Round:                    &round,
 	}
 	resolvedSpec := &meta.IrFieldResolvedSpec{
@@ -62,6 +66,12 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	metadata := convertFieldToMetadata(field)
 	if metadata.Id == nil || *metadata.Id != "field-1" || metadata.Round == nil || *metadata.Round != round || metadata.Selection == nil {
 		t.Fatalf("unexpected field metadata: %#v", metadata)
+	}
+	if metadata.String == nil || *metadata.String != `"Amount"` {
+		t.Fatalf("expected quoted string msgid, got %#v", metadata.String)
+	}
+	if metadata.StringText == nil || !strings.Contains(*metadata.StringText, stringKey) {
+		t.Fatalf("expected stringText JSON with key, got %#v", metadata.StringText)
 	}
 	if metadata.StorageKind == nil || *metadata.StorageKind != "column" || metadata.ComputedKind == nil || *metadata.ComputedKind != "runtime" {
 		t.Fatalf("expected resolved contract fields, got %#v", metadata)
@@ -86,6 +96,8 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	app := testApp()
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 0 {
 		app.Models[1].Fields[0].Selection = selectionJSON
+		app.Models[1].Fields[0].FieldString = "Amount"
+		app.Models[1].Fields[0].StringText = `{"key":"` + stringKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Amount","kind":"literal"}`
 	}
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 1 {
 		companyField := app.Models[1].Fields[1]
@@ -119,11 +131,116 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if !strings.Contains(string(storeContent), "storageKind") || !strings.Contains(string(storeContent), "searchable") {
 		t.Fatalf("expected resolved contract keys in store content: %s", string(storeContent))
 	}
-	if !strings.Contains(string(storeContent), "labelText") || !strings.Contains(string(storeContent), referenceKey) {
-		t.Fatalf("expected selection term reference in generated store content: %s", string(storeContent))
+	if strings.Contains(string(storeContent), "labelText") {
+		t.Fatalf("generated store must not emit selection labelText: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), `"label":"Allow"`) {
+		t.Fatalf("expected selection label msgid in generated store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), "selectionKind: 'static'") {
+		t.Fatalf("expected selectionKind static in generated store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), `string: "Amount"`) || !strings.Contains(string(storeContent), "stringText:") || !strings.Contains(string(storeContent), stringKey) {
+		t.Fatalf("expected field string/stringText in generated store content: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)
+	}
+}
+
+func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
+	field := &meta.IrField{
+		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
+		Name:            "Status",
+		FieldType:       "selection",
+		TsTypeAnnotation: "string",
+		SelectionKind:   "dynamic",
+		SelectionMethod: "StatusOptions",
+		Selection:       `[{"value":"should","label":"NotEmit"}]`,
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.SelectionKind == nil || *metadata.SelectionKind != "dynamic" {
+		t.Fatalf("expected selectionKind dynamic, got %#v", metadata.SelectionKind)
+	}
+	if metadata.Selection != nil {
+		t.Fatalf("dynamic selection must omit inline selection array, got %#v", metadata.Selection)
+	}
+}
+
+func TestConvertFieldToMetadata_PrefersResolvedSelectionOverBrokenLegacy(t *testing.T) {
+	referenceKey := meta.TermReferenceKey("base", "base.model.Language.fields", "Left to right", "literal")
+	field := &meta.IrField{
+		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-dir", Valid: true}},
+		Name:             "Direction",
+		FieldType:        "selection",
+		TsTypeAnnotation: "string",
+		SelectionKind:    "static",
+		// Legacy overwrite from raw decorator ObjectLiteral (source text).
+		Selection: `[{"value":"ltr","label":" _lt('Left to right', { scope: 'base.model.Language.fields' })"}]`,
+	}
+	if err := field.SetResolvedSpec(&meta.IrFieldResolvedSpec{
+		FieldName: "Direction",
+		Structural: meta.IrFieldStructuralSpec{
+			SelectionKind: "static",
+			Selection: []meta.IrFieldSelectionItem{{
+				Value: "ltr",
+				Label: "Left to right",
+				LabelText: &meta.TermReference{
+					Key:    referenceKey,
+					Module: "base",
+					Scope:  "base.model.Language.fields",
+					Src:    "Left to right",
+					Kind:   "literal",
+				},
+			}},
+		},
+	}); err != nil {
+		t.Fatalf("set resolved spec: %v", err)
+	}
+
+	metadata := convertFieldToMetadata(field)
+	if metadata.Selection == nil {
+		t.Fatal("expected selection metadata")
+	}
+	if !strings.Contains(*metadata.Selection, `"label":"Left to right"`) {
+		t.Fatalf("expected msgid label from ResolvedSpec, got %s", *metadata.Selection)
+	}
+	if strings.Contains(*metadata.Selection, "_lt(") || strings.Contains(*metadata.Selection, "labelText") {
+		t.Fatalf("selection must not emit _lt source text or labelText: %s", *metadata.Selection)
+	}
+}
+
+func TestConvertFieldToMetadata_InfersStaticKindAndStripsLabelText(t *testing.T) {
+	field := &meta.IrField{
+		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-kind", Valid: true}},
+		Name:             "Status",
+		FieldType:        "selection",
+		TsTypeAnnotation: "string",
+		// No SelectionKind — should infer static when JSON array is present.
+		Selection: `[{"value":"a","label":"A","labelText":{"src":"A"}},null,{"value":"b","label":"B"}]`,
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.SelectionKind == nil || *metadata.SelectionKind != "static" {
+		t.Fatalf("expected inferred static kind, got %#v", metadata.SelectionKind)
+	}
+	if metadata.Selection == nil || strings.Contains(*metadata.Selection, "labelText") {
+		t.Fatalf("expected stripped selection without labelText: %#v", metadata.Selection)
+	}
+	if !strings.Contains(*metadata.Selection, `"label":"A"`) || !strings.Contains(*metadata.Selection, `"label":"B"`) {
+		t.Fatalf("expected both labels kept: %s", *metadata.Selection)
+	}
+}
+
+func TestStripSelectionLabelTextJSON_InvalidOrEmpty(t *testing.T) {
+	if got := stripSelectionLabelTextJSON(""); got != "" {
+		t.Fatalf("empty input: %q", got)
+	}
+	if got := stripSelectionLabelTextJSON("   "); got != "   " {
+		t.Fatalf("whitespace input should pass through: %q", got)
+	}
+	raw := `not-json`;
+	if got := stripSelectionLabelTextJSON(raw); got != raw {
+		t.Fatalf("invalid json should pass through: %q", got)
 	}
 }
 

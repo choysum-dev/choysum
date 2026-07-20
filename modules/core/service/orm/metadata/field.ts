@@ -83,6 +83,8 @@ export type FieldRelationOption<TJoin extends BaseModel = BaseModel, TTarget ext
  * Flat @Field authoring contract (PR-1).
  */
 type FlatCommonOptions = {
+  /** Field title msgid (English) or TermReference from reference `_t(...)`. */
+  string?: string | TermReference;
   related?: FieldRelatedOption;
   required?: boolean;
   indexed?: boolean;
@@ -168,7 +170,11 @@ type FlatDecimalFieldOptions<T extends BaseModel> = {
 
 type FlatSelectionFieldOptions<T extends BaseModel> = {
   type: 'selection';
-  selection: SelectionDeclarationItem[];
+  /**
+   * Static option list, static method name, or RequestContext-only callable (P3).
+   * Callables must not read draft / row values (D9).
+   */
+  selection: SelectionDeclaration;
   size?: number;
 } & FlatCommonOptions &
   FlatNoRelationOption &
@@ -226,18 +232,33 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   | FlatManyToManyFieldOptions<T, TJoin, TTarget>;
 
 /**
- * One selectable option for a selection field.
+ * One selectable option for a selection field (ORM / runtime).
+ * `labelText` is BE-only (from author `_lt`); codegen strips it from FE wire.
  */
 export interface SelectionItem {
   value: string;
+  /** Msgid or pass-through literal. */
   label: string;
+  /** Present when authored with `_lt`; FieldsGet translates via `_t`. */
   labelText?: TermReference;
 }
 
 export interface SelectionDeclarationItem {
   value: string;
+  /**
+   * `_lt('…')` → translate via FieldsGet; bare string → pass through (no `_t`).
+   * Explicit `labelText` property is forbidden — use `_lt` on `label`.
+   */
   label: string | TermReference;
 }
+
+/** Authoring forms for `@Field({ type: 'selection', selection })` (P3). */
+export type SelectionDeclaration =
+  | SelectionDeclarationItem[]
+  | string
+  | ((this: unknown) => SelectionDeclarationItem[]);
+
+export type SelectionKind = 'static' | 'dynamic';
 
 /**
  * All supported field kinds.
@@ -410,9 +431,23 @@ type RuntimeRelationMetadata = {
 export interface FieldMetadata {
   name: string;
   type: FieldType;
+  /** Field title msgid (English fallback). */
+  string?: string;
+  /** Field title TermReference when authored with reference `_t(...)`. */
+  stringText?: TermReference;
   column?: ColumnOptions<BaseModel, unknown>;
   relation?: RuntimeRelationMetadata;
-  selection?: readonly SelectionItem[]; // Selection options list
+  /** Static options (English msgid labels). Omitted for dynamic selection. */
+  selection?: readonly SelectionItem[];
+  /** `dynamic` when selection is a method name or callable (P3). */
+  selectionKind?: SelectionKind;
+  /** Static method name on the model ctor when selection is a string. */
+  selectionMethod?: string;
+  /**
+   * Runtime-only callable for dynamic selection.
+   * Invoked by FieldsGet with RequestContext only (no draft).
+   */
+  selectionCallable?: (this: unknown) => SelectionItem[];
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
 }

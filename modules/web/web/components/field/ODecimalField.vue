@@ -91,7 +91,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     roundingMode: Decimal.ROUND_HALF_UP,
     nullable: true,

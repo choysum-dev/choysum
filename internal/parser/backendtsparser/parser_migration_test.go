@@ -5,6 +5,7 @@ package backendtsparser
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"path/filepath"
 	"strings"
@@ -454,7 +455,66 @@ export default class NilFieldsModel extends BaseModel {
 	}
 }
 
-func TestTsParser_PreservesSelectionTermReferenceWithEnglishFallback(t *testing.T) {
+func TestTsParser_PreservesFieldStringTermReference(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _lt } = createTranslate('demo', {
+  scope: 'demo.model.Widget.fields',
+});
+
+@Model('FieldStringModel')
+export default class FieldStringModel extends BaseModel {
+  @Field({
+    type: 'varchar',
+    size: 100,
+    string: _lt('Name')
+  })
+  public Name: string
+
+  @Field({
+    type: 'varchar',
+    size: 40,
+    string: 'Code'
+  })
+  public Code: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		byName[field.Name] = field
+	}
+	nameField := byName["Name"]
+	if nameField == nil {
+		t.Fatal("expected Name field")
+	}
+	spec, err := nameField.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if spec.Structural.String != "Name" || spec.Structural.StringText == nil {
+		t.Fatalf("unexpected string metadata: %+v", spec.Structural)
+	}
+	if spec.Structural.StringText.Module != "demo" || spec.Structural.StringText.Scope != "demo.model.Widget.fields" || spec.Structural.StringText.Src != "Name" {
+		t.Fatalf("unexpected stringText: %+v", spec.Structural.StringText)
+	}
+	if nameField.FieldString != "Name" || !strings.Contains(nameField.StringText, `"src":"Name"`) {
+		t.Fatalf("IrField did not persist string/stringText: string=%q stringText=%s", nameField.FieldString, nameField.StringText)
+	}
+	codeField := byName["Code"]
+	if codeField == nil || codeField.FieldString != "Code" || strings.TrimSpace(codeField.StringText) != "" {
+		t.Fatalf("unexpected Code field string metadata: %#v", codeField)
+	}
+}
+
+func TestTsParser_RejectsSelectionTextTranslateLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
@@ -475,36 +535,13 @@ export default class SelectionReferenceModel extends BaseModel {
   public Status: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
-	}
-	if len(spec.Structural.Selection) != 2 {
-		t.Fatalf("unexpected selection: %+v", spec.Structural.Selection)
-	}
-	first := spec.Structural.Selection[0]
-	if first.Value != "active" || first.Label != "Active" || first.LabelText == nil {
-		t.Fatalf("unexpected term reference selection: %+v", first)
-	}
-	if first.LabelText.Module != "demo" || first.LabelText.Scope != "demo.model.status.active" || first.LabelText.Src != "Active" || first.LabelText.Kind != "literal" {
-		t.Fatalf("unexpected term reference: %+v", first.LabelText)
-	}
-	if first.LabelText.Key != meta.TermReferenceKey("demo", "demo.model.status.active", "Active", "literal") {
-		t.Fatalf("unexpected term reference key: %q", first.LabelText.Key)
-	}
-	if spec.Structural.Selection[1].LabelText != nil {
-		t.Fatalf("text override unexpectedly gained term reference: %+v", spec.Structural.Selection[1])
-	}
-	if !strings.Contains(r.Model.Fields[0].Selection, `"label":"Active"`) || !strings.Contains(r.Model.Fields[0].Selection, `"labelText"`) {
-		t.Fatalf("selection JSON did not preserve fallback, labelText wire name, and reference: %s", r.Model.Fields[0].Selection)
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected selection text _t label rejection, got: %v", err)
 	}
 }
 
-func TestTsParser_DetectsReferenceFactoryWithAliasAndExtraBindings(t *testing.T) {
+func TestTsParser_AcceptsAliasedSelectionReferenceLabel(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
@@ -527,22 +564,21 @@ export default class AliasedReferenceModel extends BaseModel {
 `
 	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
 	if err != nil {
-		t.Fatalf("parse failed: %v", err)
+		t.Fatalf("Parse() error = %v", err)
 	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	if len(r.Model.Fields) != 1 {
+		t.Fatalf("expected 1 field, got %d", len(r.Model.Fields))
 	}
-	item := spec.Structural.Selection[0]
-	if item.Label != "Active" || item.LabelText == nil {
-		t.Fatalf("aliased factory reference was not preserved: %+v", item)
+	var items []meta.IrFieldSelectionItem
+	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
+		t.Fatalf("unmarshal selection: %v", err)
 	}
-	if item.LabelText.Module != "demo" || item.LabelText.Scope != "demo.model.status" || item.LabelText.Src != "Active" {
-		t.Fatalf("unexpected term reference: %+v", item.LabelText)
+	if len(items) != 1 || items[0].Label != "Active" || items[0].LabelText == nil || items[0].LabelText.Src != "Active" {
+		t.Fatalf("unexpected selection items: %#v", items)
 	}
 }
 
-func TestTsParser_SelectionCallReferenceOverridesTextFactory(t *testing.T) {
+func TestTsParser_AcceptsSelectionLtCallLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}
 	p := NewTsParser(runtimeScope, module)
@@ -569,18 +605,124 @@ export default class Language extends BaseModel {
 `
 	r, err := p.Parse(map[string]string{}, "/virtual/modules/base/service/language.ts", content)
 	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	var items []meta.IrFieldSelectionItem
+	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
+		t.Fatalf("unmarshal selection: %v", err)
+	}
+	if len(items) != 1 || items[0].Label != "Left to right" {
+		t.Fatalf("unexpected label: %#v", items)
+	}
+	if items[0].LabelText == nil || items[0].LabelText.Src != "Left to right" {
+		t.Fatalf("expected LabelText TermReference, got %#v", items[0].LabelText)
+	}
+	if items[0].LabelText.Scope != "base.Language.Direction.ltr" {
+		t.Fatalf("unexpected LabelText scope: %#v", items[0].LabelText)
+	}
+}
+
+func TestTsParser_AcceptsPlainStringSelectionLabels(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('PlainSelectionModel')
+export default class PlainSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'active', label: 'Active' },
+      { value: 'archived', label: 'Archived' }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
 		t.Fatalf("parse failed: %v", err)
 	}
 	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 2 {
 		t.Fatalf("get resolved spec: %v, %#v", err, spec)
 	}
-	item := spec.Structural.Selection[0]
-	if item.Label != "Left to right" || item.LabelText == nil {
-		t.Fatalf("_lt call was not preserved: %+v", item)
+	if spec.Structural.Selection[0].Label != "Active" || spec.Structural.Selection[0].LabelText != nil {
+		t.Fatalf("unexpected selection item: %+v", spec.Structural.Selection[0])
 	}
-	if item.LabelText.Key != meta.TermReferenceKey("base", "base.Language.Direction.ltr", "Left to right", "literal") {
-		t.Fatalf("unexpected key: %q", item.LabelText.Key)
+	if spec.Structural.SelectionKind != "static" {
+		t.Fatalf("expected static selectionKind, got %q", spec.Structural.SelectionKind)
+	}
+	if strings.Contains(r.Model.Fields[0].Selection, "labelText") {
+		t.Fatalf("selection JSON must not contain labelText: %s", r.Model.Fields[0].Selection)
+	}
+}
+
+func TestTsParser_DynamicSelectionMethodNameAndCallable(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DynamicSelectionModel')
+export default class DynamicSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: 'StatusOptions'
+  })
+  public Status: string
+
+  @Field({
+    type: 'selection',
+    selection: () => [{ value: 'a', label: 'A' }]
+  })
+  public Mode: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		byName[field.Name] = field
+	}
+	status := byName["Status"]
+	if status == nil {
+		t.Fatal("expected Status field")
+	}
+	statusSpec, err := status.GetResolvedSpec()
+	if err != nil || statusSpec == nil {
+		t.Fatalf("status spec: %v %#v", err, statusSpec)
+	}
+	if statusSpec.Structural.SelectionKind != "dynamic" || statusSpec.Structural.SelectionMethod != "StatusOptions" {
+		t.Fatalf("unexpected Status dynamic meta: %+v", statusSpec.Structural)
+	}
+	if len(statusSpec.Structural.Selection) != 0 || strings.TrimSpace(status.Selection) != "" {
+		t.Fatalf("dynamic Status must not inline selection: spec=%+v field=%q", statusSpec.Structural.Selection, status.Selection)
+	}
+	if status.SelectionKind != "dynamic" || status.SelectionMethod != "StatusOptions" {
+		t.Fatalf("legacy field columns: kind=%q method=%q", status.SelectionKind, status.SelectionMethod)
+	}
+
+	mode := byName["Mode"]
+	if mode == nil {
+		t.Fatal("expected Mode field")
+	}
+	modeSpec, err := mode.GetResolvedSpec()
+	if err != nil || modeSpec == nil {
+		t.Fatalf("mode spec: %v %#v", err, modeSpec)
+	}
+	if modeSpec.Structural.SelectionKind != "dynamic" || modeSpec.Structural.SelectionMethod != "" {
+		t.Fatalf("unexpected Mode dynamic meta: %+v", modeSpec.Structural)
+	}
+	if len(modeSpec.Structural.Selection) != 0 {
+		t.Fatalf("callable Mode must not inline selection: %+v", modeSpec.Structural.Selection)
 	}
 }
 
@@ -604,17 +746,9 @@ export default class LegacyModeSelectionModel extends BaseModel {
   public Status: string
 }
 `
-	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err != nil {
-		t.Fatalf("parse failed: %v", err)
-	}
-	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
-	}
-	item := spec.Structural.Selection[0]
-	if item.Label != "Active" || item.LabelText != nil {
-		t.Fatalf("legacy mode was unexpectedly recognized: %+v", item)
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
+		t.Fatalf("expected translate-call selection label rejection, got: %v", err)
 	}
 }
 
@@ -656,7 +790,7 @@ export default class BareLtSelectionModel extends BaseModel {
     selection: [
       { value: 'a', label: _lt('Alpha', { scope: 'demo.model.alpha' }) },
       { value: 'b', label: _lt('Beta', { path: 'demo/model', location: 'beta' }) },
-      { value: 'c', label: unknownHelper('Gamma', { scope: 'demo.model.gamma' }) }
+      { value: 'c', label: 'Gamma' }
     ]
   })
   public Status: string
@@ -664,20 +798,223 @@ export default class BareLtSelectionModel extends BaseModel {
 `
 	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
 	if err != nil {
-		t.Fatalf("parse failed: %v", err)
+		t.Fatalf("Parse() error = %v", err)
+	}
+	var items []meta.IrFieldSelectionItem
+	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
+		t.Fatalf("unmarshal selection: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %#v", items)
+	}
+	if items[0].LabelText == nil || items[0].Label != "Alpha" {
+		t.Fatalf("item0: %#v", items[0])
+	}
+	if items[1].LabelText == nil || items[1].Label != "Beta" {
+		t.Fatalf("item1: %#v", items[1])
+	}
+	if items[2].LabelText != nil || items[2].Label != "Gamma" {
+		t.Fatalf("bare string must not get LabelText: %#v", items[2])
+	}
+}
+
+func TestTsParser_SkipsSelectionLtLabelWithEmptySrc(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _lt } = createTranslate('demo', { scope: 'demo.model.status' });
+
+@Model('EmptyLtSrcModel')
+export default class EmptyLtSrcModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'skip', label: _lt('') },
+      { value: 'keep', label: 'OK' }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
 	}
 	spec, err := r.Model.Fields[0].GetResolvedSpec()
-	if err != nil || spec == nil || len(spec.Structural.Selection) != 3 {
-		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+		t.Fatalf("resolved spec: err=%v spec=%#v", err, spec)
 	}
-	if spec.Structural.Selection[0].LabelText == nil || spec.Structural.Selection[0].LabelText.Scope != "demo.model.alpha" {
-		t.Fatalf("bare _lt scope label: %+v", spec.Structural.Selection[0])
+	if spec.Structural.Selection[0].Value != "keep" || spec.Structural.Selection[0].Label != "OK" {
+		t.Fatalf("unexpected selection: %+v", spec.Structural.Selection)
 	}
-	if spec.Structural.Selection[1].LabelText == nil || spec.Structural.Selection[1].LabelText.Scope != "demo/model@beta" {
-		t.Fatalf("path@location label: %+v", spec.Structural.Selection[1])
+}
+
+func TestTsParser_RejectsEmptySelectionMethodName(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('EmptyMethodModel')
+export default class EmptyMethodModel extends BaseModel {
+  @Field({ type: 'selection', selection: '   ' })
+  public Status: string
+}
+`
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "selection method name must be a non-empty string") {
+		t.Fatalf("expected empty method error, got: %v", err)
 	}
-	if spec.Structural.Selection[2].LabelText != nil {
-		t.Fatalf("unknown helper should not produce LabelText: %+v", spec.Structural.Selection[2])
+}
+
+func TestBuildFieldResolvedSpec_RejectsInvalidSelectionType(t *testing.T) {
+	field := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"selection","selection":123}`,
+			}},
+		}},
+	}
+	_, err := buildFieldResolvedSpec(field, nil, nil, "demo", "demo.scope", nil)
+	if err == nil || !strings.Contains(err.Error(), "selection must be an array, method name string, or callable") {
+		t.Fatalf("expected invalid selection type error, got: %v", err)
+	}
+}
+
+func TestParseTermReferenceCall_EmptyOwnerModuleAndBacktickLiteral(t *testing.T) {
+	if ref, ok := parseTermReferenceCall(`_lt('X', { scope: 's' })`, "", "s", nil); ok || ref != nil {
+		t.Fatalf("empty ownerModule must fail: ok=%v ref=%#v", ok, ref)
+	}
+	ref, ok := parseTermReferenceCall("_lt(`Back tick`, { scope: 'demo.scope' })", "demo", "demo.scope", nil)
+	if !ok || ref == nil || ref.Src != "Back tick" {
+		t.Fatalf("backtick literal: ok=%v ref=%#v", ok, ref)
+	}
+}
+
+func TestParseTermReferenceCall_InlineScopeOverridesDefault(t *testing.T) {
+	ref, ok := parseTermReferenceCall(
+		`_lt('Active', { scope: 'inline.scope' })`,
+		"demo",
+		"default.scope",
+		nil,
+	)
+	if !ok || ref == nil || ref.Scope != "inline.scope" {
+		t.Fatalf("expected inline scope override, got %+v ok=%v", ref, ok)
+	}
+}
+
+func TestTsParser_StringTextTranslateFallsBackToMsgid(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('demo', { scope: 'demo.model.Widget.fields' });
+
+@Model('TextStringFallbackModel')
+export default class TextStringFallbackModel extends BaseModel {
+  @Field({ type: 'varchar', string: _t('Display Name') })
+  public Name: string
+
+  @Field({ type: 'varchar', string: "Quoted Title" })
+  public Title: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		byName[f.Name] = f
+	}
+	if byName["Name"].FieldString != "Display Name" || strings.TrimSpace(byName["Name"].StringText) != "" {
+		t.Fatalf("text _t string should fallback to msgid without StringText: %#v", byName["Name"])
+	}
+	if byName["Title"].FieldString != "Quoted Title" {
+		t.Fatalf("quoted string literal: %#v", byName["Title"])
+	}
+}
+
+func TestBuildFieldResolvedSpec_SelectionEdgeCases(t *testing.T) {
+	field := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type: "ObjectLiteral",
+				Value: `{
+					"type":"selection",
+					"selection":[
+						"skip-me",
+						{"value":"","label":"_lt('Empty Value', { scope: 'demo.s' })"},
+						{"value":"ok","label":"\"Quoted Label\""},
+						{"value":"blank","label":""},
+						{"value":"keep","label":"Keep"}
+					]
+				}`,
+			}},
+		}},
+	}
+	bindings := map[string]parser.TranslateBinding{
+		"_lt": {Module: "demo", ReferenceOutput: true, DefaultScope: "demo.s"},
+	}
+	spec, err := buildFieldResolvedSpec(field, nil, nil, "demo", "demo.s", bindings)
+	if err != nil {
+		t.Fatalf("buildFieldResolvedSpec: %v", err)
+	}
+	if spec == nil || len(spec.Structural.Selection) != 2 {
+		t.Fatalf("expected 2 kept items, got %#v", spec)
+	}
+	if spec.Structural.Selection[0].Value != "ok" || spec.Structural.Selection[0].Label != "Quoted Label" {
+		t.Fatalf("quoted label item: %#v", spec.Structural.Selection[0])
+	}
+	if spec.Structural.Selection[1].Value != "keep" || spec.Structural.Selection[1].Label != "Keep" {
+		t.Fatalf("bare label item: %#v", spec.Structural.Selection[1])
+	}
+}
+
+func TestBuildFieldResolvedSpec_QuotedSelectionMethodAndEmptyLiteral(t *testing.T) {
+	okField := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"selection","selection":"\"StatusOptions\""}`,
+			}},
+		}},
+	}
+	spec, err := buildFieldResolvedSpec(okField, nil, nil, "demo", "demo.s", nil)
+	if err != nil {
+		t.Fatalf("quoted method: %v", err)
+	}
+	if spec.Structural.SelectionKind != "dynamic" || spec.Structural.SelectionMethod != "StatusOptions" {
+		t.Fatalf("unexpected method meta: %+v", spec.Structural)
+	}
+
+	emptyField := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"selection","selection":"\"\""}`,
+			}},
+		}},
+	}
+	_, err = buildFieldResolvedSpec(emptyField, nil, nil, "demo", "demo.s", nil)
+	if err == nil || !strings.Contains(err.Error(), "selection method name must be a non-empty string") {
+		t.Fatalf("expected empty quoted method error, got: %v", err)
 	}
 }
 

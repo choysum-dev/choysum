@@ -8,9 +8,8 @@ import IrModule from './ir_module';
 import IrUiResourceRouteAction from './ir_ui_resource_route_action';
 import { normalizeOptionalString, normalizeStringArray, readRefId } from '@/core/service/utils/normalization';
 import { normalizePagination, paginateAndWrap } from '@/core/service/utils/pagination';
-import { createTranslate, type TermReference } from '@/core/service/i18n';
-
-const { _t } = createTranslate('meta');
+import { type TermReference } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 
 export type UiResourceType = 'ROUTE' | 'MENU' | 'ACTION';
 
@@ -54,37 +53,44 @@ type IrUiResourceComputeDeps = IrUiResource & Record<'ParentId.ParentPath', unkn
   autoMigrate: false,
 })
 export default class IrUiResource extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true, unique: true, index: true })
+  @Field({ type: 'varchar', size: 255, notNull: true, unique: true, index: true, string: _lt('Name', { scope: 'meta.model.IrUiResource.fields' }) })
   Name!: string;
 
-  @Field({ type: 'varchar', size: 16, notNull: true })
+  @Field({ type: 'varchar', size: 16, notNull: true, string: _lt('Type', { scope: 'meta.model.IrUiResource.fields' }) })
   Type!: UiResourceType;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Title', { scope: 'meta.model.IrUiResource.fields' }) })
   Title?: string;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('Title Text', { scope: 'meta.model.IrUiResource.fields' }) })
   TitleText?: TermReference | null;
 
-  @Field({ type: 'int', default: 0 })
+  @Field({ type: 'int', default: 0, string: _lt('Sequence', { scope: 'meta.model.IrUiResource.fields' }) })
   Sequence?: number;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('Requires', { scope: 'meta.model.IrUiResource.fields' }) })
   Requires?: string[] | null;
 
-  @Field({ type: 'varchar', size: 255, index: true })
+  @Field({ type: 'varchar', size: 255, index: true, string: _lt('Module', { scope: 'meta.model.IrUiResource.fields' }) })
   Module?: string;
 
-  @Field({ type: 'varchar', size: 1024, index: true })
+  @Field({ type: 'varchar', size: 1024, index: true, string: _lt('Path', { scope: 'meta.model.IrUiResource.fields' }) })
   Path?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrUiResource }, notNull: false, index: true })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => IrUiResource },
+    notNull: false,
+    index: true,
+    string: _lt('Parent', { scope: 'meta.model.IrUiResource.fields' }),
+  })
   ParentId?: IrUiResource;
 
   @Field({
     type: 'varchar',
     size: 1000,
     indexed: true,
+    string: _lt('Parent Path', { scope: 'meta.model.IrUiResource.fields' }),
   })
   readonly ParentPath?: string | null;
 
@@ -107,21 +113,34 @@ export default class IrUiResource extends BaseModel {
     return `${parentPath}${id}/`;
   }
 
-  @Field({ type: 'varchar', size: 512 })
+  @Field({ type: 'varchar', size: 512, string: _lt('UI Path', { scope: 'meta.model.IrUiResource.fields' }) })
   UiPath?: string;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('Default Roles', { scope: 'meta.model.IrUiResource.fields' }) })
   DefaultRoles?: string[] | null;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrApplication }, notNull: false, index: true })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => IrApplication },
+    notNull: false,
+    index: true,
+    string: _lt('Application', { scope: 'meta.model.IrUiResource.fields' }),
+  })
   IrApplicationId?: IrApplication;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => IrModule }, notNull: false, index: true })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => IrModule },
+    notNull: false,
+    index: true,
+    string: _lt('Module', { scope: 'meta.model.IrUiResource.fields' }),
+  })
   ModuleId?: IrModule;
 
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => IrUiResource },
+    string: _lt('Children', { scope: 'meta.model.IrUiResource.fields' }),
   })
   readonly Childs?: IrUiResource[];
 

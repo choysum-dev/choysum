@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -59,6 +61,13 @@ type FieldMetadata struct {
 
 	// Selection is forwarded when available.
 	Selection *string `json:"selection,omitempty"`
+	// SelectionKind is "static" or "dynamic" (P3).
+	SelectionKind *string `json:"selectionKind,omitempty"`
+
+	// String is a JS string literal expression (already quoted) for the field title msgid.
+	String *string `json:"string,omitempty"`
+	// StringText is a JSON object literal for the field title TermReference.
+	StringText *string `json:"stringText,omitempty"`
 
 	// ScaleField points to the dynamic decimal scale source.
 	ScaleField *string `json:"scaleField,omitempty"`
@@ -192,9 +201,47 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 		metadata.RelationInverseJoinField = &s
 	}
 
-	// Pass through Selection when it is non-empty.
-	if field.Selection != "" {
-		metadata.Selection = &field.Selection
+	// Pass through Selection when it is non-empty (strip legacy labelText wire keys).
+	// Prefer ResolvedSpec so _lt labels stay as msgid strings even if legacy
+	// field.Selection was overwritten with decorator source text.
+	// Dynamic selection fields omit the inline array (T3.1).
+	kind := strings.TrimSpace(field.SelectionKind)
+	selectionJSON := strings.TrimSpace(field.Selection)
+	if resolved, err := field.GetResolvedSpec(); err == nil && resolved != nil {
+		if k := strings.TrimSpace(resolved.Structural.SelectionKind); k != "" {
+			kind = k
+		}
+		if kind != "dynamic" && len(resolved.Structural.Selection) > 0 {
+			items := make([]map[string]any, 0, len(resolved.Structural.Selection))
+			for _, item := range resolved.Structural.Selection {
+				clean := map[string]any{
+					"value": item.Value,
+					"label": item.Label,
+				}
+				items = append(items, clean)
+			}
+			if encoded, err := json.Marshal(items); err == nil {
+				selectionJSON = string(encoded)
+			}
+		}
+	}
+	if kind == "" && selectionJSON != "" {
+		kind = "static"
+	}
+	if kind != "" {
+		metadata.SelectionKind = &kind
+	}
+	if kind != "dynamic" && selectionJSON != "" {
+		stripped := stripSelectionLabelTextJSON(selectionJSON)
+		metadata.Selection = &stripped
+	}
+
+	if s := strings.TrimSpace(field.FieldString); s != "" {
+		quoted := strconv.Quote(s)
+		metadata.String = &quoted
+	}
+	if strings.TrimSpace(field.StringText) != "" {
+		metadata.StringText = &field.StringText
 	}
 
 	// Pass through Round only when it is set.
@@ -203,6 +250,38 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 
 	return metadata
+}
+
+// stripSelectionLabelTextJSON removes legacy selection labelText keys from IR JSON
+// before emitting static web store metadata (D5·D15 hard cut).
+func stripSelectionLabelTextJSON(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return raw
+	}
+	var items []map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &items); err != nil {
+		return raw
+	}
+	out := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		clean := make(map[string]any, len(item))
+		for k, v := range item {
+			if k == "labelText" {
+				continue
+			}
+			clean[k] = v
+		}
+		out = append(out, clean)
+	}
+	encoded, err := json.Marshal(out)
+	if err != nil {
+		return raw
+	}
+	return string(encoded)
 }
 
 // RelationFieldInfo describes a relationship field.
@@ -260,6 +339,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		"Delete":         true,
 		"DeleteById":     true,
 		"DefaultGet":     true,
+		"FieldsGet":      true,
 		"Onchange":       true,
 		"ReadGroup":      true,
 		"ReadGroupCount": true,

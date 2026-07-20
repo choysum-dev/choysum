@@ -50,7 +50,7 @@ test('Field decorator validates selection schema and uniqueness', () => {
       Status!: string;
     }
     return InvalidSelectionItemModel;
-  }).toThrow('must include a string or term reference label field');
+  }).toThrow('must be a string or TermReference from _lt');
 
   expect(() => {
     class DuplicateSelectionValueModel extends BaseModel {
@@ -80,15 +80,42 @@ test('Field decorator validates selection schema and uniqueness', () => {
   }).toThrow('column/select syntax is forbidden');
 });
 
+test('Field decorator normalizes string and stringText from term references', () => {
+  const { _lt } = createTranslate('demo', { scope: 'demo.model.Widget.fields' });
+  const nameReference = _lt('Name');
+
+  class StringFieldModel extends BaseModel {
+    @Field({ type: 'varchar', size: 100, string: nameReference } as any)
+    Name!: string;
+
+    @Field({ type: 'varchar', size: 100, string: 'Code' } as any)
+    Code!: string;
+  }
+
+  const nameMeta = MetadataStorage.instance.getModelMetadata(StringFieldModel as any).fields.get('Name') as any;
+  const codeMeta = MetadataStorage.instance.getModelMetadata(StringFieldModel as any).fields.get('Code') as any;
+
+  expect(nameMeta?.string).toBe('Name');
+  expect(nameMeta?.stringText).toEqual(nameReference);
+  expect(codeMeta?.string).toBe('Code');
+  expect(codeMeta?.stringText).toBeUndefined();
+
+  expect(() => {
+    class EmptyStringModel extends BaseModel {
+      @Field({ type: 'varchar', string: '   ' } as any)
+      Name!: string;
+    }
+    return EmptyStringModel;
+  }).toThrow('string must be a non-empty string or term reference');
+});
+
 test('Field decorator auto-fills selection and ref columns metadata', () => {
-  const { _lt } = createTranslate('demo');
-  const labelReference = _lt('B', { scope: 'demo.status.b' });
   class AutoSelectionModel extends BaseModel {
     @Field({
       type: 'selection',
       selection: [
         { value: 'a', label: 'A' },
-        { value: 'b', label: labelReference },
+        { value: 'b', label: 'B' },
       ],
     } as any)
     Status!: string;
@@ -122,12 +149,9 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
 
   expect(selectionMeta?.selection).toEqual([
     { value: 'a', label: 'A' },
-    {
-      value: 'b',
-      label: 'B',
-      labelText: labelReference,
-    },
+    { value: 'b', label: 'B' },
   ]);
+  expect(selectionMeta?.selectionKind).toBe('static');
   expect(selectionMeta?.column).toEqual({});
 
   expect(binaryMeta?.column).toEqual({});
@@ -138,6 +162,107 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
 
   expect(m2mRefMeta?.relation?.targetModel).toBeDefined();
   expect(m2mRefMeta?.column).toEqual({});
+});
+
+test('Field decorator accepts selection _lt labels and rejects explicit labelText (T2.1)', () => {
+  const { _lt } = createTranslate('demo', { scope: 'demo.status' });
+  const labelReference = _lt('B');
+
+  class TermLabelModel extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'b', label: labelReference }],
+    } as any)
+    Status!: string;
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(TermLabelModel as any).fields.get('Status') as any;
+  expect(meta?.selection).toEqual([{ value: 'b', label: 'B', labelText: labelReference }]);
+
+  expect(() => {
+    class LabelTextModel extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: 'a', label: 'A', labelText: labelReference }],
+      } as any)
+      Status!: string;
+    }
+    return LabelTextModel;
+  }).toThrow('selection labelText is forbidden');
+});
+
+test('Field decorator accepts dynamic selection method name and callable (P3)', () => {
+  class MethodSelectionModel extends BaseModel {
+    @Field({ type: 'selection', selection: 'StatusOptions' } as any)
+    Status!: string;
+
+    static StatusOptions() {
+      return [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: 'B' },
+      ];
+    }
+  }
+
+  const methodMeta = MetadataStorage.instance.getModelMetadata(MethodSelectionModel as any).fields.get('Status') as any;
+  expect(methodMeta?.selectionKind).toBe('dynamic');
+  expect(methodMeta?.selectionMethod).toBe('StatusOptions');
+  expect(methodMeta?.selection).toBeUndefined();
+
+  class CallableSelectionModel extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: function (this: typeof CallableSelectionModel) {
+        return [{ value: 'x', label: 'X' }];
+      },
+    } as any)
+    Mode!: string;
+  }
+
+  const callableMeta = MetadataStorage.instance.getModelMetadata(CallableSelectionModel as any).fields.get('Mode') as any;
+  expect(callableMeta?.selectionKind).toBe('dynamic');
+  expect(typeof callableMeta?.selectionCallable).toBe('function');
+  expect(callableMeta?.selection).toBeUndefined();
+});
+
+test('Field decorator rejects invalid dynamic selection method name (T2.2)', () => {
+  expect(() => {
+    class M extends BaseModel {
+      @Field({ type: 'selection', selection: '   ' } as any)
+      Status!: string;
+    }
+    return M;
+  }).toThrow('selection method name must be a non-empty string');
+});
+
+test('Field decorator rejects non-array non-callable selection declaration (T2.3)', () => {
+  expect(() => {
+    class M extends BaseModel {
+      @Field({ type: 'selection', selection: 42 as any } as any)
+      Status!: string;
+    }
+    return M;
+  }).toThrow('selection must be a non-empty array, method name string, or () => SelectionItem[] callable');
+});
+
+test('Field decorator rejects _lt label with empty src and whitespace-only label (T2.4)', () => {
+  const emptySrcRef = createTranslate('demo', { scope: 'demo.status' })._lt('   ');
+
+  expect(() => {
+    class EmptyLtSrcModel extends BaseModel {
+      @Field({ type: 'selection', selection: [{ value: 'a', label: emptySrcRef }] } as any)
+      Status!: string;
+    }
+    return EmptyLtSrcModel;
+  }).toThrow('each selection item _lt label must include a non-empty src');
+
+  expect(() => {
+    class WhitespaceLabelModel extends BaseModel {
+      @Field({ type: 'selection', selection: [{ value: 'a', label: '   ' }] } as any)
+      Status!: string;
+    }
+    return WhitespaceLabelModel;
+  }).toThrow('each selection item must include a non-empty string label');
 });
 
 test('Field decorator validates ref/relation/compute/decimal constraints', () => {

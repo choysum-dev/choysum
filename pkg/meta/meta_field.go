@@ -75,8 +75,12 @@ type IrFieldSelectionItem struct {
 type IrFieldStructuralSpec struct {
 	Name            string                         `json:"name"`
 	FieldType       string                         `json:"fieldType"`
+	String          string                         `json:"string,omitempty"`
+	StringText      *TermReference                 `json:"stringText,omitempty"`
 	Relation        map[string]any                 `json:"relation,omitempty"`
 	Selection       []IrFieldSelectionItem         `json:"selection,omitempty"`
+	SelectionKind   string                         `json:"selectionKind,omitempty"`
+	SelectionMethod string                         `json:"selectionMethod,omitempty"`
 	Related         *IrFieldRelatedSpec            `json:"related,omitempty"`
 	StorageHints    *IrFieldStructuralStorageHints `json:"storageHints,omitempty"`
 	ColumnType      string                         `json:"columnType,omitempty"`
@@ -159,6 +163,15 @@ type IrField struct {
 	// Its value is a TermReference; renaming the property requires a separate migration.
 	// The parser writes it directly and the frontend consumes it without intermediate conversion.
 	Selection string `gorm:"type:text" json:"selection,omitempty"`
+	// SelectionKind is "static" or "dynamic" (P3). Dynamic fields omit inline Selection.
+	SelectionKind string `gorm:"type:varchar(32)" json:"selection_kind,omitempty"`
+	// SelectionMethod is the static model method name for dynamic selection when authored as a string.
+	SelectionMethod string `gorm:"type:varchar(255)" json:"selection_method,omitempty"`
+
+	// FieldString is the field title msgid (English fallback). JSON wire name remains "string".
+	FieldString string `gorm:"type:varchar(512)" json:"string,omitempty"`
+	// StringText stores the field title TermReference as JSON when authored with reference `_t(...)`.
+	StringText string `gorm:"type:text" json:"string_text,omitempty"`
 
 	ReferenceIdent string `gorm:"type:varchar" json:"reference_ident"`
 	ModuleSpecPath string `gorm:"type:varchar" json:"module_spec_path"`

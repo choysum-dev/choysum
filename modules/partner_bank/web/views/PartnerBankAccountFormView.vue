@@ -21,57 +21,56 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneRefField
             :store="store"
             prop="BankId"
-            :label="_t('Bank')"
             :searchView="BankListView"
             :search-view-title="_t('Select Bank')"
             @value-click="onBankValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="AccountName" :label="_t('Account Name')" />
+          <OVarCharField :store="store" prop="AccountName" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="AccountNo" :label="_t('Account Number')" :visible="formViewMode !== 'display'" />
-          <OVarCharField :store="store" prop="AccountNoMasked" :label="_t('Account Number')" :visible="formViewMode === 'display'" :readonly="true" />
+          <OVarCharField :store="store" prop="AccountNo" :visible="formViewMode !== 'display'" />
+          <OVarCharField :store="store" prop="AccountNoMasked" :visible="formViewMode === 'display'" :readonly="true" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OSelectionField :store="store" prop="AccountType" :label="_t('Account Type')" :selection="accountTypeOptions" />
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="IBAN" :label="_t('IBAN')" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OVarCharField :store="store" prop="RoutingCode" :label="_t('Routing Code')" />
+          <OSelectionField :store="store" prop="AccountType" :selection="accountTypeOptions" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="AllowInbound" :label="_t('Allow Inbound')" widget="switch" />
+          <OVarCharField :store="store" prop="IBAN" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="AllowOutbound" :label="_t('Allow Outbound')" widget="switch" />
-        </el-col>
-      </el-row>
-
-      <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefaultInbound" :label="_t('Default Inbound')" widget="switch" />
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsDefaultOutbound" :label="_t('Default Outbound')" widget="switch" />
+          <OVarCharField :store="store" prop="RoutingCode" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="12" :lg="12">
-          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
+          <OBooleanField :store="store" prop="AllowInbound" widget="switch" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="AllowOutbound" widget="switch" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsDefaultInbound" widget="switch" />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsDefaultOutbound" widget="switch" />
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="12" :lg="12">
+          <OBooleanField :store="store" prop="IsActive" widget="switch" />
         </el-col>
       </el-row>
     </div>

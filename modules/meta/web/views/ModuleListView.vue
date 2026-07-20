@@ -32,13 +32,13 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="ModuleName" :label="_t('Module Name')" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="LocalVersion" :label="_t('Local Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="RegistryVersion" :label="_t('Registry Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <OVarCharField prop="LocalVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="RegistryVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
     <OVarCharField prop="Version" :label="_t('Display Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledStatus" :label="_t('Install Status')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="InstalledVersion" :label="_t('Installed Version')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OBooleanField prop="Available" :label="_t('Available')" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <OVarCharField prop="InstalledStatus" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="InstalledVersion" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OBooleanField prop="Available" :store="store" :vColumnProps="{ minWidth: 100 }" />
     <OVarCharField prop="OriginTypes" :label="_t('Origin')" :store="store" :vColumnProps="{ minWidth: 140 }" />
     <OVarCharField prop="LocalPath" :label="_t('Path')" :store="store" :vColumnProps="{ minWidth: 220 }" />
     <ODateTimeField prop="LastSyncAt" :label="_t('Synced At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />

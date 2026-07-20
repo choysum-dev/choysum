@@ -203,6 +203,75 @@ func ReplaceOrAppendEnv(env []string, key string, value string) []string {
 	return updatedEnv
 }
 
+// UnsetEnvKeys returns a copy of env without the given keys (case-insensitive).
+func UnsetEnvKeys(env []string, keys ...string) []string {
+	if len(env) == 0 || len(keys) == 0 {
+		return env
+	}
+	drop := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		drop[strings.ToLower(key)] = struct{}{}
+	}
+	if len(drop) == 0 {
+		return env
+	}
+	out := make([]string, 0, len(env))
+	for _, entry := range env {
+		eq := strings.IndexByte(entry, '=')
+		if eq <= 0 {
+			out = append(out, entry)
+			continue
+		}
+		if _, skip := drop[strings.ToLower(entry[:eq])]; skip {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+// SanitizeNpmChildEnv strips host env vars that npm treats as config but are not
+// valid npm keys. Cursor/agent sandboxes inject npm_config_devdir for node-gyp;
+// npm then prints: Unknown env config "devdir".
+func SanitizeNpmChildEnv(env []string) []string {
+	return UnsetEnvKeys(env, "npm_config_devdir", "NPM_CONFIG_DEVDIR")
+}
+
+// AppendNodeOption merges a Node CLI flag into NODE_OPTIONS (space-separated).
+// If the option (or option=value prefix) is already present, env is unchanged.
+func AppendNodeOption(env []string, option string) []string {
+	option = strings.TrimSpace(option)
+	if option == "" {
+		return env
+	}
+	existing := ""
+	for _, entry := range env {
+		if len(entry) > len("NODE_OPTIONS=") && strings.EqualFold(entry[:len("NODE_OPTIONS")], "NODE_OPTIONS") && entry[len("NODE_OPTIONS")] == '=' {
+			existing = entry[len("NODE_OPTIONS="):]
+			break
+		}
+	}
+	parts := strings.Fields(existing)
+	for _, part := range parts {
+		if part == option || strings.HasPrefix(option, part+"=") || strings.HasPrefix(part, option+"=") {
+			return env
+		}
+		// Match --localstorage-file=/path regardless of path value.
+		if i := strings.IndexByte(option, '='); i > 0 {
+			prefix := option[: i+1]
+			if strings.HasPrefix(part, prefix) {
+				return env
+			}
+		}
+	}
+	merged := strings.TrimSpace(strings.Join(append(parts, option), " "))
+	return ReplaceOrAppendEnv(env, "NODE_OPTIONS", merged)
+}
+
 func ResolveGlobalNpmRoot() (string, error) {
 	if override := strings.TrimSpace(os.Getenv("CHOYSUM_NPM_GLOBAL_ROOT")); override != "" {
 		return override, nil

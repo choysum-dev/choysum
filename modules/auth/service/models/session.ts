@@ -3,7 +3,7 @@
 
 import { BaseModel, Model, Field } from '@/core/service';
 import { wrapAuthError, AuthErrCode } from '../error';
-import { _t } from '../i18n';
+import { _t, _lt } from '../i18n';
 import User from './user';
 
 /**
@@ -14,49 +14,83 @@ export default class Session extends BaseModel {
   /**
    * User that owns the session.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => User, onDelete: 'CASCADE' } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => User, onDelete: 'CASCADE' },
+    string: _lt('User', { scope: 'auth.model.Session.fields' }),
+  })
   UserId: User;
 
   /**
    * Access token identifier bound to the session. This is the token JTI, not a bearer secret.
    */
-  @Field({ type: 'varchar', size: 36, index: true})
+  @Field({
+    type: 'varchar',
+    size: 36,
+    index: true,
+    string: _lt('Access Token ID', { scope: 'auth.model.Session.fields' }),
+  })
   AccessTokenId: string;
 
   /**
    * Device fingerprint or other client metadata captured at login.
    */
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Device Info', { scope: 'auth.model.Session.fields' }),
+  })
   DeviceInfo: string;
 
   /**
    * Client IP address recorded for the session.
    */
-  @Field({ type: 'varchar', size: 45})
+  @Field({
+    type: 'varchar',
+    size: 45,
+    string: _lt('IP Address', { scope: 'auth.model.Session.fields' }),
+  })
   IpAddress: string;
 
   /**
    * Session expiration timestamp.
    */
-  @Field({ type: 'datetime', notNull: true, index: true})
+  @Field({
+    type: 'datetime',
+    notNull: true,
+    index: true,
+    string: _lt('Expires At', { scope: 'auth.model.Session.fields' }),
+  })
   ExpiresAt: Date;
 
   /**
    * Last observed activity time for the session.
    */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Last Activity', { scope: 'auth.model.Session.fields' }),
+  })
   LastActivityAt: Date;
 
   /**
    * Session lifecycle state such as active, expired, or revoked.
    */
-  @Field({ type: 'varchar', size: 20, default: () => 'active', index: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    default: () => 'active',
+    index: true,
+    string: _lt('Status', { scope: 'auth.model.Session.fields' }),
+  })
   Status: string;
 
   /**
    * Arbitrary session metadata captured by the auth flow.
    */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Metadata', { scope: 'auth.model.Session.fields' }),
+  })
   Metadata: Record<string, any>;
 
   /**

@@ -16,13 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
-    <OManyToOneField :store="store" prop="ParentId" :label="_t('Parent Company')">
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Code" />
+    <OManyToOneField :store="store" prop="ParentId">
       <OVarCharField :store="store" prop="ParentId.Name" :label="_t('Name')" />
     </OManyToOneField>
-    <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
-    <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+    <ODateTimeField :store="store" prop="CreatedAt" />
+    <ODateTimeField :store="store" prop="UpdatedAt" />
   </OListView>
 </template>
 

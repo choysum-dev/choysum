@@ -14,7 +14,7 @@
 
 import { ref, watch, nextTick, provide, inject, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { getFieldMetadataView, isRelationFieldType, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, isRelationFieldType, type WebModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
 import type { RelationType } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
@@ -66,7 +66,7 @@ export interface CreateOnchangeOptions {
 
 /* ============================= Helper functions ============================= */
 
-export function looksLikeRelation(meta: FieldMetadata | undefined): boolean {
+export function looksLikeRelation(meta: WebFieldMetadata | undefined): boolean {
   if (!meta) return false;
   return isRelationFieldType(meta.type);
 }
@@ -91,13 +91,13 @@ type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string }>
 const diffFieldsMetaCache = new WeakMap<
   WebModelStore<any>,
   {
-    source: Record<string, FieldMetadata | undefined>;
+    source: Record<string, WebFieldMetadata | undefined>;
     normalized: DiffFieldsMeta;
   }
 >();
 
 export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
-  const raw = ((store as any).fieldsMetadata || {}) as Record<string, FieldMetadata | undefined>;
+  const raw = ((store as any).fieldsMetadata || {}) as Record<string, WebFieldMetadata | undefined>;
   const cached = diffFieldsMetaCache.get(store);
   if (cached && cached.source === raw) {
     return cached.normalized;
@@ -105,7 +105,7 @@ export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
 
   const normalized: DiffFieldsMeta = {};
   for (const [fieldName, meta] of Object.entries(raw)) {
-    const typed = meta as FieldMetadata | undefined;
+    const typed = meta as WebFieldMetadata | undefined;
     const view = getFieldMetadataView(typed);
     normalized[fieldName] = {
       type: typed?.type,
@@ -119,7 +119,7 @@ export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
 
 export function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
   const rel = new Set<string>();
-  const fields: Record<string, FieldMetadata | undefined> = store.fieldsMetadata || {};
+  const fields: Record<string, WebFieldMetadata | undefined> = store.fieldsMetadata || {};
   for (const [fieldName, meta] of Object.entries(fields)) {
     if (looksLikeRelation(meta)) rel.add(fieldName);
   }
@@ -226,11 +226,11 @@ export function collectAncestorCollectionRoots(leafPath: string): string[] {
 }
 
 // Slim reference-like values only for the currently changed fields.
-export function slimRelationRefsForChanged(draft: any, changed: string[], fieldsMeta?: Record<string, FieldMetadata | undefined>): any {
+export function slimRelationRefsForChanged(draft: any, changed: string[], fieldsMeta?: Record<string, WebFieldMetadata | undefined>): any {
   if (!draft || !changed?.length) return draft;
 
   const out = deepClone(draft);
-  const lowerType = (meta?: FieldMetadata) => (typeof meta?.type === 'string' ? meta.type.toLowerCase() : '');
+  const lowerType = (meta?: WebFieldMetadata) => (typeof meta?.type === 'string' ? meta.type.toLowerCase() : '');
   const metaMap = fieldsMeta || {};
 
   const isRefLike = (v: any) => {

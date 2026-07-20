@@ -858,16 +858,10 @@ func (p *BackendPlugin) setFieldMeta(parserResults []*parser.ParserResult) error
 				ftype, _ := options["type"].(string)
 				field.FieldType = ftype
 
-				// Extract the selection option.
-				if sel, ok := options["selection"]; ok {
-					// The parsed JSON value is already a []interface{}.
-					// Serialize it directly to JSON for database storage.
-					selBytes, err := json.Marshal(sel)
-					if err != nil {
-						return fmt.Errorf("model %s field %s: failed to marshal selection: %v", model.Name, field.Name, err)
-					}
-					field.Selection = string(selBytes)
-				}
+				// Selection must stay on the TsParser-resolved field.Selection
+				// (msgid labels + optional labelText). Do not overwrite from the
+				// raw decorator ObjectLiteral — call expressions like _lt(...)
+				// are stored as source text there and break web store codegen.
 
 				// Mark fields with select expressions as read-only.
 				if _, ok := options["select"]; ok {

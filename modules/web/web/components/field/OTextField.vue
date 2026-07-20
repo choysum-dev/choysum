@@ -101,7 +101,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     nullable: true,
     trimOnBlur: 'none',

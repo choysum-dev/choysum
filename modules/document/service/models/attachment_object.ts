@@ -13,6 +13,7 @@ import {
   CommitUploadPutReq,
   CommitUploadPutResp,
 } from '../contracts';
+import { _lt } from '../i18n';
 import {
   prepareUpload,
   finalizeUpload,
@@ -33,51 +34,88 @@ export default class AttachmentContent extends BaseModel {
    * Stored payload row that backs the attachment content.
    */
   @Field({
-    type: 'ManyToOneRef', relation: { targetModel: 'document.StoredContent' },
-    size: 20, notNull: true, index: true,
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'document.StoredContent' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Stored Content', { scope: 'document.model.AttachmentContent.fields' }),
   })
   StoredContentId: string;
 
   /**
    * Persisted payload size in bytes.
    */
-  @Field({ type: 'bigint', notNull: true, index: 'idx_document_object_checksum_size_company'})
+  @Field({
+    type: 'bigint',
+    notNull: true,
+    index: 'idx_document_object_checksum_size_company',
+    string: _lt('Size Bytes', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   SizeBytes: number;
 
   /**
    * Persisted MIME type for the payload.
    */
-  @Field({ type: 'varchar', size: 255, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    index: true,
+    string: _lt('MIME Type', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   MimeType: string;
 
   /**
    * SHA-256 checksum for the payload bytes.
    */
-  @Field({ type: 'char', size: 64, notNull: true, index: 'idx_document_object_checksum_size_company'})
+  @Field({
+    type: 'char',
+    size: 64,
+    notNull: true,
+    index: 'idx_document_object_checksum_size_company',
+    string: _lt('Checksum SHA-256', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   ChecksumSha256: string;
 
   /**
    * Persisted image width when the payload is an image.
    */
-  @Field({ type: 'int', index: true})
+  @Field({
+    type: 'int',
+    index: true,
+    string: _lt('Image Width', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   ImageWidth?: number;
 
   /**
    * Persisted image height when the payload is an image.
    */
-  @Field({ type: 'int', index: true})
+  @Field({
+    type: 'int',
+    index: true,
+    string: _lt('Image Height', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   ImageHeight?: number;
 
   /**
    * Persisted image format when the payload is an image.
    */
-  @Field({ type: 'varchar', size: 32, index: true})
+  @Field({
+    type: 'varchar',
+    size: 32,
+    index: true,
+    string: _lt('Image Format', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   ImageFormat?: string;
 
   /**
    * Provider-specific metadata retained alongside the payload.
    */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Metadata', { scope: 'document.model.AttachmentContent.fields' }),
+  })
   MetadataJson?: Record<string, unknown>;
 
   /**
@@ -90,7 +128,11 @@ export default class AttachmentContent extends BaseModel {
       { value: 'active', label: 'active' },
       { value: 'deleted', label: 'deleted' },
     ],
-    size: 16, notNull: true, default: () => 'staging', index: true,
+    size: 16,
+    notNull: true,
+    default: () => 'staging',
+    index: true,
+    string: _lt('Status', { scope: 'document.model.AttachmentContent.fields' }),
   })
   Status: AttachmentContentStatus;
 
@@ -98,10 +140,12 @@ export default class AttachmentContent extends BaseModel {
    * Company that owns the attachment content.
    */
   @Field({
-    type: 'ManyToOneRef', relation: { targetModel: 'base.Company' },
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
     size: 20,
-      notNull: true,
-      index: 'idx_document_object_checksum_size_company',
+    notNull: true,
+    index: 'idx_document_object_checksum_size_company',
+    string: _lt('Company', { scope: 'document.model.AttachmentContent.fields' }),
   })
   CompanyId: string;
 

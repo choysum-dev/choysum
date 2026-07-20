@@ -171,7 +171,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     required: false,
     readonly: false,

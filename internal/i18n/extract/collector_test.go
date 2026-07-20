@@ -405,6 +405,39 @@ const title = _t('Users')
 	}
 }
 
+func TestCollectScriptFieldStringReference(t *testing.T) {
+	content := `
+import { Field, Model } from '@/core/service'
+const { _lt } = createTranslate('auth', { scope: 'auth.model.Session.fields' })
+
+@Model('Session')
+export default class Session {
+  @Field({
+    type: 'varchar',
+    string: _lt('Access Token ID'),
+  })
+  AccessTokenId: string
+}
+`
+	terms, issues := CollectScript(CollectOptions{
+		ModuleName: "auth",
+		RelPath:    "service/models/session.ts",
+	}, content)
+	if len(issues) != 0 {
+		t.Fatalf("unexpected issues: %#v", issues)
+	}
+	found := false
+	for _, term := range terms {
+		if term.Src == "Access Token ID" && term.Scope == "auth.model.Session.fields" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected @Field.string term in pot candidates, got %#v", terms)
+	}
+}
+
 func TestCollectScriptSeparatesTextAndReferenceHelpers(t *testing.T) {
 	content := `
 const { _t: textDefault } = createTranslate('base')

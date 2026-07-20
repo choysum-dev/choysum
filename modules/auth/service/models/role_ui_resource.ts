@@ -5,6 +5,7 @@ import { BaseModel, Model, Field } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import Role from './role';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
@@ -23,7 +24,11 @@ export default class RoleUiResource extends BaseModel {
   /**
    * Role that owns this UI permission override.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Role', { scope: 'auth.model.RoleUiResource.fields' }),
+  })
   RoleId: Role;
 
   /**
@@ -32,19 +37,27 @@ export default class RoleUiResource extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'allow', label: 'Allow' },
-      { value: 'deny', label: 'Deny' },
+      { value: 'allow', label: _lt('Allow', { scope: 'auth.model.RoleUiResource.fields' }) },
+      { value: 'deny', label: _lt('Deny', { scope: 'auth.model.RoleUiResource.fields' }) },
     ],
     default: () => 'allow',
     size: 16,
     index: true,
+    string: _lt('Mode', { scope: 'auth.model.RoleUiResource.fields' }),
   })
   Mode: RoleUiResourceMode;
 
   /**
    * Application-level scope. Mutually exclusive with IrUiResourceId.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true })
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrApplication' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Application Scope', { scope: 'auth.model.RoleUiResource.fields' }),
+  })
   IrApplicationId: string | null;
 
   /**
@@ -61,6 +74,7 @@ export default class RoleUiResource extends BaseModel {
         OR (ir_ui_resource_id IS NULL AND ir_application_id IS NOT NULL)
         OR (ir_ui_resource_id IS NULL AND ir_application_id IS NULL)
     )`,
+    string: _lt('UI Resource', { scope: 'auth.model.RoleUiResource.fields' }),
   })
   IrUiResourceId: string | null;
 

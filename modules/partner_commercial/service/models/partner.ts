@@ -3,6 +3,7 @@
 
 import { Field, Model } from '@/core/service';
 import PartnerBase from '@/partner/service/models/partner';
+import { _lt } from '../i18n';
 import PartnerIdentifier from './partner_identifier';
 
 /**
@@ -14,6 +15,7 @@ export default class Partner extends PartnerBase {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => PartnerIdentifier, inverseField: 'PartnerId' },
+    string: _lt('Identifiers', { scope: 'partner_commercial.model.Partner.fields' }),
   })
   PartnerIdentifiers?: PartnerIdentifier[];
 }

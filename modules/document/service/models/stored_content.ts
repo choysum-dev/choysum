@@ -2,11 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { AttachmentBackend } from '../contracts';
+import { _t, _lt } from '../i18n';
 import { mustLoadOne } from './_query_loaders';
-
-const { _t } = createTranslate('document');
 
 /**
  * Lifecycle states for stored payload content.
@@ -27,20 +25,31 @@ export default class StoredContent extends BaseModel {
       { value: 'db', label: 'db' },
       { value: 's3', label: 's3' },
     ],
-    size: 16, notNull: true, index: true,
+    size: 16,
+    notNull: true,
+    index: true,
+    string: _lt('Provider', { scope: 'document.model.StoredContent.fields' }),
   })
   Provider: AttachmentBackend;
 
   /**
    * Backend-specific locator metadata for external payload stores.
    */
-  @Field({ type: 'jsonobject', notNull: false})
+  @Field({
+    type: 'jsonobject',
+    notNull: false,
+    string: _lt('Locator JSON', { scope: 'document.model.StoredContent.fields' }),
+  })
   LocatorJson?: Record<string, unknown>;
 
   /**
    * Inline blob storage used when the provider is database-backed.
    */
-  @Field({ type: 'binary', notNull: false})
+  @Field({
+    type: 'binary',
+    notNull: false,
+    string: _lt('Blob Data', { scope: 'document.model.StoredContent.fields' }),
+  })
   BlobData?: string;
 
   /**
@@ -52,14 +61,25 @@ export default class StoredContent extends BaseModel {
       { value: 'active', label: 'active' },
       { value: 'deleted', label: 'deleted' },
     ],
-    size: 16, notNull: true, default: () => 'active', index: true,
+    size: 16,
+    notNull: true,
+    default: () => 'active',
+    index: true,
+    string: _lt('Status', { scope: 'document.model.StoredContent.fields' }),
   })
   Status: StoredContentStatus;
 
   /**
    * Company that owns the stored payload.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, size: 20, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    size: 20,
+    notNull: true,
+    index: true,
+    string: _lt('Company', { scope: 'document.model.StoredContent.fields' }),
+  })
   CompanyId: string;
 
   /**

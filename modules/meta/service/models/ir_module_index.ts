@@ -6,10 +6,8 @@ import { sql } from 'kysely';
 import Job from '@/task/service/models/job';
 import { getBackendEnvText, isTruthyFlag } from '@/core/service/runtime/env/backend_env';
 import { normalizeFields, normalizeLimit, normalizeOffset } from '@/core/service/utils/normalization';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import IrModule from './ir_module';
-
-const { _t } = createTranslate('meta');
 
 type ModuleOriginType = 'local' | 'registry';
 type ModuleSyncOriginType = ModuleOriginType | 'all';
@@ -359,42 +357,43 @@ async function findRunningJobId(fullMethod: string, requestedOrigin: ModuleSyncO
   autoMigrate: false,
 })
 export default class IrModuleIndex extends BaseModel {
-  @Field({ type: 'varchar', size: 255, notNull: true })
+  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Module Name', { scope: 'meta.model.IrModuleIndex.fields' }) })
   ModuleName!: string;
 
-  @Field({ type: 'varchar', size: 32, notNull: true })
+  @Field({ type: 'varchar', size: 32, notNull: true, string: _lt('Origin Type', { scope: 'meta.model.IrModuleIndex.fields' }) })
   OriginType!: ModuleOriginType;
 
-  @Field({ type: 'varchar', size: 255, notNull: true })
+  @Field({ type: 'varchar', size: 255, notNull: true, string: _lt('Origin Ref', { scope: 'meta.model.IrModuleIndex.fields' }) })
   OriginRef!: string;
 
-  @Field({ type: 'boolean', notNull: true })
+  @Field({ type: 'boolean', notNull: true, string: _lt('Available', { scope: 'meta.model.IrModuleIndex.fields' }) })
   Available!: boolean;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Version', { scope: 'meta.model.IrModuleIndex.fields' }) })
   Version?: string;
 
-  @Field({ type: 'jsonobject' })
+  @Field({ type: 'jsonobject', string: _lt('Manifest JSON', { scope: 'meta.model.IrModuleIndex.fields' }) })
   ManifestJson?: Record<string, unknown> | null;
 
-  @Field({ type: 'varchar', size: 512 })
+  @Field({ type: 'varchar', size: 512, string: _lt('Local Path', { scope: 'meta.model.IrModuleIndex.fields' }) })
   LocalPath?: string;
 
-  @Field({ type: 'datetime' })
+  @Field({ type: 'datetime', string: _lt('Last Synced At', { scope: 'meta.model.IrModuleIndex.fields' }) })
   LastSyncAt!: Date;
 
-  @Field({ type: 'datetime' })
+  @Field({ type: 'datetime', string: _lt('Batch Synced At', { scope: 'meta.model.IrModuleIndex.fields' }) })
   LastBatchSyncAt!: Date;
 
-  @Field({ type: 'varchar', size: 255 })
+  @Field({ type: 'varchar', size: 255, string: _lt('Sync Revision', { scope: 'meta.model.IrModuleIndex.fields' }) })
   SyncRevision?: string;
 
-  @Field({ type: 'text' })
+  @Field({ type: 'text', string: _lt('Error Message', { scope: 'meta.model.IrModuleIndex.fields' }) })
   LastErrorMessage?: string;
 
   @Field({
     type: 'varchar',
     size: 64,
+    string: _lt('Origin Types', { scope: 'meta.model.IrModuleIndex.fields' }),
   })
   OriginTypes?: string;
 
@@ -406,6 +405,7 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
+    string: _lt('Local Version', { scope: 'meta.model.IrModuleIndex.fields' }),
   })
   LocalVersion?: string;
 
@@ -417,6 +417,7 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
+    string: _lt('Registry Version', { scope: 'meta.model.IrModuleIndex.fields' }),
   })
   RegistryVersion?: string;
 
@@ -428,6 +429,7 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 64,
+    string: _lt('Install Status', { scope: 'meta.model.IrModuleIndex.fields' }),
   })
   InstalledStatus?: string;
 
@@ -444,6 +446,7 @@ export default class IrModuleIndex extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
+    string: _lt('Installed Version', { scope: 'meta.model.IrModuleIndex.fields' }),
   })
   InstalledVersion?: string;
 

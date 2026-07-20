@@ -10,10 +10,13 @@ import type { ClientModelService } from '@/core/rpc';
 import type { TermReference } from '@/core/service/i18n';
 
 // Selection dropdown option.
-export type SelectionItem = { value: string; label: string; labelText?: TermReference };
+export type SelectionItem = { value: string; label: string };
 
-// Field metadata.
-export type FieldMetadata = {
+/**
+ * Web / client field metadata (codegen static table + FieldsGet overlay).
+ * Distinct from ORM `FieldMetadata` in core.
+ */
+export type WebFieldMetadata = {
   id: string;
   type: string;
   typeAnnotation: string;
@@ -34,7 +37,13 @@ export type FieldMetadata = {
   round?: string;
   isReadonly?: boolean;
   indexed?: boolean;
+  /** Field title msgid (English) or FieldsGet-translated title. */
+  string?: string;
+  /** Field title TermReference for Gateway / translateTerm. */
+  stringText?: TermReference;
   selection?: readonly SelectionItem[];
+  /** Present for dynamic selection fields (P3); static may omit or be 'static'. */
+  selectionKind?: 'static' | 'dynamic';
   relationModel?: string;
   relationFilter?: string;
   relationModelParentField?: string;
@@ -50,7 +59,7 @@ export function isRelationFieldType(type: string | undefined): boolean {
   return RELATION_FIELD_TYPES.has(String(type || '').toLowerCase());
 }
 
-export function getFieldMetadataView(meta: FieldMetadata | undefined) {
+export function getFieldMetadataView(meta: WebFieldMetadata | undefined) {
   const type = typeof meta?.type === 'string' ? meta.type : '';
 
   const relationModel = meta?.relationModel;
@@ -95,7 +104,7 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   readonly application?: string;
   // Model name, for example Role.
   readonly modelName?: string;
-  readonly fieldsMetadata: Record<string, FieldMetadata>;
+  readonly fieldsMetadata: Record<string, WebFieldMetadata>;
 
   state: {
     // Unified query state.
@@ -130,4 +139,15 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   Delete: ClientModelService<typeof BaseModel.Delete<TModel>>;
   DeleteById: ClientModelService<typeof BaseModel.DeleteById<TModel>>;
   Onchange: ClientModelService<typeof BaseModel.Onchange<TModel>>;
+  FieldsGet: ClientModelService<typeof BaseModel.FieldsGet>;
+
+  /**
+   * Fetch (or reuse cached) FieldsGet presentation overlay for the active terminology lang.
+   */
+  ensureFieldsGet: (fields?: string[], attributes?: string[]) => Promise<Record<string, WebFieldMetadata>>;
+  /** Merge static fieldsMetadata with FieldsGet overlay for one field. */
+  getFieldMeta: (name: string) => WebFieldMetadata | undefined;
+  /** FieldsGet-translated title when overlay is present for the active lang. */
+  getFieldsGetTranslatedString: (name: string) => string | undefined;
+  clearFieldsGetCache: () => void;
 }

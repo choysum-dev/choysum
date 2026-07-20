@@ -16,13 +16,13 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OImageField prop="Avatar" :label="_t('Avatar')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Username" :label="_t('Username')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OManyToOneRefField :store="store" prop="CompanyId" :label="_t('Company')" />
-    <OVarCharField prop="Email" :label="_t('Email')" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <OVarCharField prop="Phone" :label="_t('Phone')" :store="store" />
-    <OVarCharField prop="FullName" :label="_t('Full Name')" :store="store" />
-    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OImageField prop="Avatar" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OManyToOneRefField :store="store" prop="CompanyId" />
+    <OVarCharField prop="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <OVarCharField prop="Phone" :store="store" />
+    <OVarCharField prop="FullName" :store="store" />
+    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 

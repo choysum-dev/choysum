@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { raiseDomainError } from '@/core/service/error';
-import { createTranslate } from '@/core/service/i18n';
+import { _t, _lt } from '../i18n';
 import Address from './address';
 import Country from './country';
 import Currency from './currency';
@@ -14,38 +14,91 @@ import Language from './language';
 import Locale from './locale';
 import { fail, mapNormalizationToBase } from './_normalizers';
 
-const { _t } = createTranslate('base');
-
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
-  @Field({ type: 'varchar', size: 100, unique: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    unique: true,
+    notNull: true,
+    string: _lt('Name', { scope: 'base.model.Company.fields' }),
+  })
   Name: string;
 
-  @Field({ type: 'varchar', size: 40, unique: true, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 40,
+    unique: true,
+    notNull: true,
+    index: true,
+    string: _lt('Code', { scope: 'base.model.Company.fields' }),
+  })
   Code: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Company },
+    index: true,
+    string: _lt('Parent Company', { scope: 'base.model.Company.fields' }),
+  })
   ParentId?: Company;
 
-  @Field({ type: 'varchar', size: 64, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 64,
+    notNull: true,
+    string: _lt('Time Zone', { scope: 'base.model.Company.fields' }),
+  })
   Timezone: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Currency }, notNull: true, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Currency },
+    notNull: true,
+    index: true,
+    string: _lt('Base Currency', { scope: 'base.model.Company.fields' }),
+  })
   CurrencyId: Currency;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'base.model.Company.fields' }),
+  })
   IsActive: boolean;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Language }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Language },
+    index: true,
+    string: _lt('Language', { scope: 'base.model.Company.fields' }),
+  })
   LanguageId?: Language;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Locale }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Locale },
+    index: true,
+    string: _lt('Locale', { scope: 'base.model.Company.fields' }),
+  })
   LocaleId?: Locale;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Country }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Country },
+    index: true,
+    string: _lt('Country', { scope: 'base.model.Company.fields' }),
+  })
   CountryId?: Country;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Address }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Address },
+    index: true,
+    string: _lt('Address', { scope: 'base.model.Company.fields' }),
+  })
   AddressId?: Address;
 
   private static normalizeRequiredText(value: unknown, fieldName: string): string {

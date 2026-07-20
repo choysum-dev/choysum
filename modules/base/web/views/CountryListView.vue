@@ -15,15 +15,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
-    <OVarCharField :store="store" prop="PhonePrefix" :label="_t('Dialing Code')" />
-    <OManyToOneField :store="store" prop="DefaultCurrencyId" :label="_t('Default Currency')"
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Code" />
+    <OVarCharField :store="store" prop="PhonePrefix" />
+    <OManyToOneField :store="store" prop="DefaultCurrencyId"
       ><OVarCharField :store="store" prop="DefaultCurrencyId.Name" :label="_t('Currency')"
     /></OManyToOneField>
-    <OBooleanField :store="store" prop="ZipRequired" :label="_t('ZIP Required')" />
-    <OBooleanField :store="store" prop="StateRequired" :label="_t('State/Province Required')" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <OBooleanField :store="store" prop="ZipRequired" />
+    <OBooleanField :store="store" prop="StateRequired" />
+    <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
 

@@ -29,12 +29,12 @@ SPDX-License-Identifier: Apache-2.0
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <OVarCharField prop="UserId.Username" :label="_t('User')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="TokenType" :label="_t('Type')" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ODateTimeField prop="ExpiresAt" :label="_t('Expires At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <OBooleanField :store="store" prop="Revoked" :label="_t('Revoked')" widget="checkbox" />
-    <ODateTimeField prop="RevokedAt" :label="_t('Revoked At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="UserId.Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="TokenType" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ODateTimeField prop="ExpiresAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OBooleanField :store="store" prop="Revoked" widget="checkbox" />
+    <ODateTimeField prop="RevokedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 

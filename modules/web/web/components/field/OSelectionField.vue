@@ -28,7 +28,8 @@ SPDX-License-Identifier: Apache-2.0
         @update:model-value="(v: any) => onUpdate(fieldValue, v)"
         :clearable="clearable"
         :placeholder="effectivePlaceholder"
-        :disabled="disabled"
+        :disabled="disabled || optionsLoading"
+        :loading="optionsLoading"
         v-bind="selectProps"
         :style="{ width: width || '100%' }"
       >
@@ -43,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V extends string = FieldPathType<T, P>">
-import { computed, inject, ref, type Ref } from 'vue';
+import { computed, inject, onMounted, ref, type Ref } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -52,12 +53,9 @@ import type { WritableComputedRef } from 'vue';
 import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
-// Added: narrowed aggregate type (count_distinct only)
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
-import type { TermReference } from '@/core/service/i18n';
-import { useI18n } from 'vue-i18n';
-import { translateTerm } from '@/web/web/i18n';
 import { createTranslate } from '@/web/web/i18n';
+import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/OSelectionField' });
 
@@ -65,10 +63,8 @@ defineOptions({ name: 'OSelectionField', inheritAttrs: false });
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
-type MetaOption = { value: string; label: string; labelText?: TermReference };
+type MetaOption = { value: string; label: string };
 type EffectiveOption = { value: string; label: string; disabled: boolean };
-
-const composer = useI18n({ useScope: 'global' });
 
 const props = withDefaults(
   defineProps<{
@@ -92,16 +88,13 @@ const props = withDefaults(
     readonly?: FieldStateExpr<T, V>;
     visible?: FieldStateExpr<T, V>;
     cellVisible?: FieldStateExpr<T, V>;
-    // Added: only allow count_distinct
     agg?: NarrowAggProp<NonNumericAggFns>;
-    // Initial candidate values
+    /** Optional value whitelist / order filter. */
     selection?: string[];
-    // Added: render mode and inline error support
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     clearable: true,
     placeholder: '',
@@ -121,34 +114,43 @@ const props = withDefaults(
 
 const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
 
-// Binding
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-// View mapping
 const toView = (raw: any): string | null => (raw == null ? null : String(raw));
 const fromView = (v: string | null) => (v ?? null) as unknown as V;
 
-// Inject accumulated onchange results from OFormView
 const lastOnchangeResult = inject<Ref<any | null>>('lastOnchangeResult', ref(null));
 
-// 1) Static metadata options (full set used for label mapping)
+const optionsLoading = ref(false);
+
+const baseField = computed(() => String(binding.prop));
+const pathSegs = computed(() => baseField.value.split('.').filter(Boolean));
+const leafKey = computed(() => pathSegs.value[pathSegs.value.length - 1] || '');
+const parentChain = computed(() => pathSegs.value.slice(0, pathSegs.value.length - 1));
+
+const modelStore = computed(() => (binding.store || props.store) as WebModelStore<T> | undefined);
+
+/**
+ * Effective selection dictionary: FieldsGet overlay over static msgid labels.
+ * Option labels are plain strings only — D5/D15 hard cut (no selection term refs on FE).
+ */
 const metaOptions = computed<MetaOption[]>(() => {
-  const sel = binding.meta?.selection;
+  const leaf = leafKey.value;
+  const store = modelStore.value;
+  const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
+  const sel = meta?.selection;
   if (!Array.isArray(sel) || sel.length === 0) return [];
   return sel.map(item => ({
     value: String(item.value),
-    label: translateTerm(composer, item.labelText, String(item.label)),
-    labelText: item.labelText,
+    label: String(item.label ?? item.value),
   }));
 });
 
-// 1.1) Normalize props.selection against metadata, keeping metadata labels and prop order
 const propOptions = computed<MetaOption[]>(() => {
   const input = props.selection;
   const meta = metaOptions.value;
   if (!Array.isArray(input) || input.length === 0) return [];
 
-  // Allow props.selection on fields without metadata selection (for example, Timezone)
   if (meta.length === 0) {
     const out: MetaOption[] = [];
     const seen = new Set<string>();
@@ -163,7 +165,6 @@ const propOptions = computed<MetaOption[]>(() => {
 
   const metaMap = new Map(meta.map(i => [i.value, i.label]));
   const out: MetaOption[] = [];
-
   for (const valRaw of input) {
     const val = valRaw != null ? String(valRaw) : '';
     if (!val) continue;
@@ -171,27 +172,34 @@ const propOptions = computed<MetaOption[]>(() => {
       out.push({ value: val, label: metaMap.get(val)! });
     }
   }
-
   return out;
 });
 
-// 1.2) Initial baseline options: prefer filtered props.selection, otherwise metadata selection
 const baseOptions = computed<MetaOption[]>(() => {
   if (propOptions.value.length > 0) return propOptions.value;
   return metaOptions.value;
 });
 
-// 2) Split the field path, matching OManyToOneField behavior
-const baseField = computed(() => String(binding.prop));
-const pathSegs = computed(() => baseField.value.split('.').filter(Boolean));
-const leafKey = computed(() => pathSegs.value[pathSegs.value.length - 1]);
-const parentChain = computed(() => pathSegs.value.slice(0, pathSegs.value.length - 1));
+onMounted(() => {
+  const store = modelStore.value;
+  const leaf = leafKey.value;
+  if (!store?.ensureFieldsGet || !leaf) return;
 
-// Root record used to build selector paths
-// rootRecord is injected from the form via binding.recordRef, not read from store.state
+  // First ensure happens on mount (D14) — not on visible-change.
+  const request = store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+  if (binding.env.isEditMode) {
+    optionsLoading.value = true;
+    void request.finally(() => {
+      optionsLoading.value = false;
+    });
+  } else {
+    // Display / readonly: background ensure once; store cache dedupes multi-cell mounts.
+    void request;
+  }
+});
+
 const rootRecord = computed<any>(() => binding.recordRef().value as any);
 
-// Helper: normalize row references
 function normalizeRowRef(rowRef: any): any | null {
   try {
     if (!rowRef) return null;
@@ -295,14 +303,12 @@ function buildLastLevelKeys(row: any): string[] {
   return out;
 }
 
-// 3) Extract selection filters from onchange results
 function pickOnchangeSelection(rowRef?: any): { values: string[]; disabled?: string[] } | null {
   const raw = lastOnchangeResult.value?.selection || [];
   if (!Array.isArray(raw) || !raw.length) return null;
 
   const chain = parentChain.value;
 
-  // Form case: match the field name directly
   if (!chain.length) {
     const key = baseField.value;
     const m = raw.find((s: any) => s && s.field === key);
@@ -313,7 +319,6 @@ function pickOnchangeSelection(rowRef?: any): { values: string[]; disabled?: str
     };
   }
 
-  // Child-table case: match using row context
   const row = normalizeRowRef(rowRef);
   if (!row) return null;
 
@@ -328,14 +333,13 @@ function pickOnchangeSelection(rowRef?: any): { values: string[]; disabled?: str
   };
 }
 
-// 4) Compute effective options with row context
-// Fix: when onchange.selection exists, use metaOptions as the label dictionary and fully override
-// the initial list; otherwise fall back to baseOptions (props.selection or metadata).
+/**
+ * options = FieldsGet.selection ∩ onchange.selection/disabled ∩ props.selection
+ */
 function optionsFor(rowRef?: any): EffectiveOption[] {
   const meta = metaOptions.value;
   const base = baseOptions.value;
 
-  // Without metadata selection, use the initial baseline options directly (for example, props.selection).
   if (!meta.length) {
     return base.map(i => ({ value: i.value, label: i.label, disabled: false }));
   }
@@ -345,40 +349,32 @@ function optionsFor(rowRef?: any): EffectiveOption[] {
   const filt = pickOnchangeSelection(rowRef);
   if (filt && Array.isArray(filt.values) && filt.values.length > 0) {
     const disabledSet = new Set(filt.disabled || []);
-    // Override: map labels from metadata only, without restricting by props.selection
     return filt.values.filter(v => metaMap.has(v)).map(v => ({ value: v, label: metaMap.get(v)!, disabled: disabledSet.has(v) }));
   }
 
-  // Without an override, render from the initial baseline (props.selection -> metadata)
   return base.map(i => ({ value: i.value, label: i.label, disabled: false }));
 }
 
-// 5) Display text resolved with row context
 function displayLabelFor(rowRef: any | undefined, value: string | null): string {
   if (value == null) return '';
-  // Prefer the metadata label dictionary so props.selection limits do not hide labels
   const meta = metaOptions.value;
   if (meta && meta.length) {
     const hit = meta.find(o => o.value === String(value));
     if (hit) return hit.label;
   }
-  // Fallback: look up the value in the currently visible options (for example, after onchange.selection)
   const opt = optionsFor(rowRef).find(o => o.value === String(value));
   return opt?.label || String(value);
 }
 
-// 6) Update
 function onUpdate(getter: () => WritableComputedRef<string | null>, v: string | null) {
   getter().value = (v ?? null) as any;
 }
 
-// 7) Rules and validation
 const internalRule = {
   type: 'string',
   validator: (_r: unknown, value: unknown, cb: (error?: Error) => void) => {
     if (value == null) return cb();
     if (typeof value !== 'string') return cb(new Error(_t('Value must be a string')));
-    // Validate against the current visible options (global fallback)
     const ok = optionsFor().some(o => o.value === value);
     if (!ok) return cb(new Error(_t('Invalid option value: %s', value)));
     cb();

@@ -2,29 +2,49 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
+import { _t, _lt } from '../i18n';
 import Country from './country';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
 
-const { _t } = createTranslate('base');
-
 @Model('State')
 export default class State extends BaseModel {
-  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_state_country_name'})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_state_country_name',
+    string: _lt('Name', { scope: 'base.model.State.fields' }),
+  })
   Name: string;
 
-  @Field({ type: 'varchar', size: 16, index: true, uniqueIndex: 'uidx_base_state_country_code'})
+  @Field({
+    type: 'varchar',
+    size: 16,
+    index: true,
+    uniqueIndex: 'uidx_base_state_country_code',
+    string: _lt('Code', { scope: 'base.model.State.fields' }),
+  })
   Code?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
-    notNull: true, index: true, uniqueIndex: 'uidx_base_state_country_name uidx_base_state_country_code',
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_state_country_name uidx_base_state_country_code',
+    string: _lt('Country', { scope: 'base.model.State.fields' }),
   })
   CountryId: Country;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'base.model.State.fields' }),
+  })
   IsActive: boolean;
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {

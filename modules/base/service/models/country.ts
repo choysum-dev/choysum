@@ -2,37 +2,76 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
+import { _t, _lt } from '../i18n';
 import Currency from './currency';
 import { fail, normalizeCodeRequired } from './_normalizers';
 
-const { _t } = createTranslate('base');
-
 @Model('Country')
 export default class Country extends BaseModel {
-  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    index: true,
+    string: _lt('Name', { scope: 'base.model.Country.fields' }),
+  })
   Name: string;
 
-  @Field({ type: 'varchar', size: 8, notNull: true, unique: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 8,
+    notNull: true,
+    unique: true,
+    index: true,
+    string: _lt('Code', { scope: 'base.model.Country.fields' }),
+  })
   Code: string;
 
-  @Field({ type: 'varchar', size: 16})
+  @Field({
+    type: 'varchar',
+    size: 16,
+    string: _lt('Dialing Code', { scope: 'base.model.Country.fields' }),
+  })
   PhonePrefix?: string;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Currency }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Currency },
+    index: true,
+    string: _lt('Default Currency', { scope: 'base.model.Country.fields' }),
+  })
   DefaultCurrencyId?: Currency;
 
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _lt('Address Format', { scope: 'base.model.Country.fields' }),
+  })
   AddressFormat?: string;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    string: _lt('ZIP Required', { scope: 'base.model.Country.fields' }),
+  })
   ZipRequired: boolean;
 
-  @Field({ type: 'boolean', notNull: true, default: () => false})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    string: _lt('State/Province Required', { scope: 'base.model.Country.fields' }),
+  })
   StateRequired: boolean;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'base.model.Country.fields' }),
+  })
   IsActive: boolean;
 
   private validateAddressFormat(value: any): string | null {

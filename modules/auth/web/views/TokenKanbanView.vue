@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
       <div class="token-card" :class="{ revoked: record.Revoked }" @dblclick="openDetail(record)">
         <div class="top-row">
           <span class="token-type" :class="record.TokenType">{{ record.TokenType }}</span>
-          <OVarCharField :store="store" prop="UserId.Username" :label="_t('User')" />
+          <OVarCharField :store="store" prop="UserId.Username" />
         </div>
         <div class="expires" :title="formatDate(record.ExpiresAt)">{{ _t('Expires') }}: {{ formatDate(record.ExpiresAt) }}</div>
         <div class="revoked-info" v-if="record.Revoked">{{ _t('Revoked At') }}: {{ formatDate(record.RevokedAt) || '—' }}</div>

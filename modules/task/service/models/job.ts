@@ -7,6 +7,7 @@ import type { SearchOptions, QueryCondition, OrderBy } from '@/core/service/api/
 import { normalizeOffset } from '@/core/service/utils/normalization';
 import { toDate } from '@/core/service/utils/datetime';
 import { getBackendEnvPositiveInt } from '@/core/service/runtime/env/backend_env';
+import { _lt } from '../i18n';
 import { clampLimit } from './_helpers';
 import { sanitizePayload } from './_payload';
 
@@ -63,23 +64,50 @@ function buildJobCondition(params: ListJobsParams): QueryCondition<Job> | [] {
 @Model('Job', { application: 'task', companyScoped: false })
 export default class Job extends BaseModel {
   /** Target application that owns the job. */
-  @Field({ type: 'varchar', size: 100, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    index: true,
+    notNull: true,
+    string: _lt('Target App', { scope: 'task.model.Job.fields' }),
+  })
   TargetApp: string;
 
   /** Fully-qualified method invoked by the job. */
-  @Field({ type: 'varchar', size: 255, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 255,
+    index: true,
+    notNull: true,
+    string: _lt('Full Method', { scope: 'task.model.Job.fields' }),
+  })
   FullMethod: string;
 
   /** Sanitized job payload. */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Payload', { scope: 'task.model.Job.fields' }),
+  })
   PayloadJson: Record<string, any>;
 
   /** User who scheduled the job. */
-  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    index: true,
+    notNull: true,
+    string: _lt('Scheduler User', { scope: 'task.model.Job.fields' }),
+  })
   SchedulerUserId: string;
 
   /** User who triggered the job. */
-  @Field({ type: 'varchar', size: 20, index: true, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    index: true,
+    notNull: true,
+    string: _lt('Triggered By User', { scope: 'task.model.Job.fields' }),
+  })
   TriggeredByUserId: string;
 
   /** Current queue status. */
@@ -92,60 +120,115 @@ export default class Job extends BaseModel {
       { value: 'failed', label: 'failed' },
       { value: 'cancelled', label: 'cancelled' },
     ],
-    size: 20, index: true, notNull: true, default: () => 'queued',
+    size: 20,
+    index: true,
+    notNull: true,
+    default: () => 'queued',
+    string: _lt('Status', { scope: 'task.model.Job.fields' }),
   })
   Status: JobStatus;
 
   /** Earliest time the job may run. */
-  @Field({ type: 'datetime', index: true, notNull: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    notNull: true,
+    string: _lt('Run After', { scope: 'task.model.Job.fields' }),
+  })
   RunAfter: Date;
 
   /** Current attempt count. */
-  @Field({ type: 'int', default: () => 0})
+  @Field({
+    type: 'int',
+    default: () => 0,
+    string: _lt('Attempt', { scope: 'task.model.Job.fields' }),
+  })
   Attempt: number;
 
   /** Maximum attempt count before the job stops retrying. */
-  @Field({ type: 'int', default: () => 1})
+  @Field({
+    type: 'int',
+    default: () => 1,
+    string: _lt('Max Attempts', { scope: 'task.model.Job.fields' }),
+  })
   MaxAttempts: number;
 
   /** Per-job timeout budget in milliseconds. */
-  @Field({ type: 'int', default: () => 0})
+  @Field({
+    type: 'int',
+    default: () => 0,
+    string: _lt('Timeout Ms', { scope: 'task.model.Job.fields' }),
+  })
   TimeoutMs: number;
 
   /** Time when cancellation was requested. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Cancel Requested At', { scope: 'task.model.Job.fields' }),
+  })
   CancelRequestedAt: Date;
 
   /** Time when the job was cancelled. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Cancelled At', { scope: 'task.model.Job.fields' }),
+  })
   CancelledAt: Date;
 
   /** Time when the job finished. */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Finished At', { scope: 'task.model.Job.fields' }),
+  })
   FinishedAt: Date;
 
   /** Last execution error payload. */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Last Error', { scope: 'task.model.Job.fields' }),
+  })
   LastErrorJson: Record<string, any>;
 
   /** Hash of the last execution error payload. */
-  @Field({ type: 'varchar', size: 128})
+  @Field({
+    type: 'varchar',
+    size: 128,
+    string: _lt('Last Error Hash', { scope: 'task.model.Job.fields' }),
+  })
   LastErrorHash: string;
 
   /** Whether the last error payload was truncated. */
-  @Field({ type: 'boolean', default: () => false})
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Last Error Truncated', { scope: 'task.model.Job.fields' }),
+  })
   LastErrorTruncated: boolean;
 
   /** Last execution result payload. */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Result', { scope: 'task.model.Job.fields' }),
+  })
   ResultJson: Record<string, any>;
 
   /** Hash of the last execution result payload. */
-  @Field({ type: 'varchar', size: 128})
+  @Field({
+    type: 'varchar',
+    size: 128,
+    string: _lt('Result Hash', { scope: 'task.model.Job.fields' }),
+  })
   ResultHash: string;
 
   /** Whether the last result payload was truncated. */
-  @Field({ type: 'boolean', default: () => false})
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Result Truncated', { scope: 'task.model.Job.fields' }),
+  })
   ResultTruncated: boolean;
 
   /** Creates a queued job with sanitized payload data. */

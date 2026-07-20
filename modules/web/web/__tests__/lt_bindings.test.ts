@@ -6,12 +6,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createTranslate } from '@/web/web/i18n';
-import { shallowMount } from '@vue/test-utils';
+import { config, shallowMount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
 import { createPinia, setActivePinia } from 'pinia';
 import { menus } from '../menu/menus';
 import { routes } from '../router/routes';
 import OFormView from '../components/view/OFormView.vue';
+
+config.global.renderStubDefaultSlot = true;
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
@@ -62,7 +64,23 @@ describe('web shell _lt bindings', () => {
     setActivePinia(createPinia());
     const wrapper = shallowMount(OFormView as any, {
       props: { store: fakeStore as any },
-      global: { plugins: [i18n], stubs: true },
+      global: {
+        plugins: [i18n],
+        stubs: {
+          // Element Plus pieces used by the toolbar / form shell.
+          'el-button': true,
+          'el-icon': true,
+          OPage: true,
+          OBreadcrumb: true,
+        },
+        // v-loading overlay; Element Plus directive is not installed here.
+        directives: {
+          loading: {
+            mounted() {},
+            updated() {},
+          },
+        },
+      },
     });
     expect(wrapper.exists()).toBe(true);
   });

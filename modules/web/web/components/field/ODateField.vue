@@ -80,7 +80,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     displayFormat: 'YYYY-MM-DD',
     valueFormat: 'YYYY-MM-DD[T]00:00:00[Z]',

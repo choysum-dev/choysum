@@ -5,6 +5,7 @@ import { BaseModel, Model, Field } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import User from './user';
 import Role from './role';
 import { invalidateAllAuthzCaches, invalidateAuthzCachesForUsers } from './_request_cache_invalidation';
@@ -18,19 +19,34 @@ export default class UserRole extends BaseModel {
   /**
    * User that receives the role assignment.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => User } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => User },
+    string: _lt('User', { scope: 'auth.model.UserRole.fields' }),
+  })
   UserId: User;
 
   /**
    * Role granted to the user.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Role', { scope: 'auth.model.UserRole.fields' }),
+  })
   RoleId: Role;
 
   /**
    * Company scope for the assignment when the grant is company-specific.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Company', { scope: 'auth.model.UserRole.fields' }),
+  })
   CompanyId?: string;
 
   /**

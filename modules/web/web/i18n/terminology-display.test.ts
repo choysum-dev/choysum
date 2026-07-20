@@ -21,11 +21,17 @@ describe('frontend terminology display contract', () => {
   it('keeps non-template term reference consumers on translateTerm', () => {
     for (const path of [
       '../composables/useMenu.ts',
-      '../components/field/OSelectionField.vue',
+      '../composables/resolveFieldLabel.ts',
       '../router/index.ts',
     ]) {
       expect(source(path)).toContain('translateTerm(');
     }
+  });
+
+  it('does not translate selection options via translateTerm (D5)', () => {
+    const selection = source('../components/field/OSelectionField.vue');
+    expect(selection).not.toContain('translateTerm(');
+    expect(selection).not.toMatch(/\blabelText\b/);
   });
 
   it('does not reintroduce object-specific terminology wrappers', () => {

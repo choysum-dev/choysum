@@ -363,6 +363,7 @@ func TypecheckApp(ctx context.Context, opts RunOptions, app string) error {
 	fmt.Fprintf(opts.Stderr, "# typecheck %s\n", app)
 	c := exec.CommandContext(ctx, npxPath, "--no-install", "vue-tsc", "-p", tmpTsconfigPath, "--noEmit")
 	c.Dir = repoRoot
+	c.Env = noderuntime.SanitizeNpmChildEnv(os.Environ())
 	out, err := c.CombinedOutput()
 	if len(out) > 0 {
 		_, _ = opts.Stderr.Write(out)

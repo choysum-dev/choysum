@@ -7,38 +7,891 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/ir_module.ts:302
+#: service/models/ir_application.ts:28
+msgctxt "meta.model.IrApplication.fields"
+msgid "Modules"
+msgstr ""
+
+#: service/models/ir_application.ts:13
+msgctxt "meta.model.IrApplication.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_application.ts:19
+msgctxt "meta.model.IrApplication.fields"
+msgid "Proto Directory"
+msgstr ""
+
+#: service/models/ir_application.ts:22
+msgctxt "meta.model.IrApplication.fields"
+msgid "Proto File"
+msgstr ""
+
+#: service/models/ir_application.ts:16
+msgctxt "meta.model.IrApplication.fields"
+msgid "Revision"
+msgstr ""
+
+#: service/models/ir_argument.ts:25
+msgctxt "meta.model.IrArgument.fields"
+msgid "Decorator"
+msgstr ""
+
+#: service/models/ir_argument.ts:22
+msgctxt "meta.model.IrArgument.fields"
+msgid "Module Spec Path"
+msgstr ""
+
+#: service/models/ir_argument.ts:19
+msgctxt "meta.model.IrArgument.fields"
+msgid "Reference Ident"
+msgstr ""
+
+#: service/models/ir_argument.ts:13
+msgctxt "meta.model.IrArgument.fields"
+msgid "Type"
+msgstr ""
+
+#: service/models/ir_argument.ts:16
+msgctxt "meta.model.IrArgument.fields"
+msgid "Value"
+msgstr ""
+
+#: service/models/ir_component.ts:22
+msgctxt "meta.model.IrComponent.fields"
+msgid "Extends"
+msgstr ""
+
+#: service/models/ir_component.ts:25
+msgctxt "meta.model.IrComponent.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/ir_component.ts:13
+msgctxt "meta.model.IrComponent.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_component.ts:16
+msgctxt "meta.model.IrComponent.fields"
+msgid "Path"
+msgstr ""
+
+#: service/models/ir_component.ts:19
+msgctxt "meta.model.IrComponent.fields"
+msgid "Raw Extends"
+msgstr ""
+
+#: service/models/ir_decorator.ts:41
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Arguments"
+msgstr ""
+
+#: service/models/ir_decorator.ts:35
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Component"
+msgstr ""
+
+#: service/models/ir_decorator.ts:32
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Field"
+msgstr ""
+
+#: service/models/ir_decorator.ts:26
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/ir_decorator.ts:20
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Module Spec Path"
+msgstr ""
+
+#: service/models/ir_decorator.ts:17
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_decorator.ts:23
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Reference Ident"
+msgstr ""
+
+#: service/models/ir_decorator.ts:29
+msgctxt "meta.model.IrDecorator.fields"
+msgid "Service"
+msgstr ""
+
+#: service/models/ir_field.ts:69
+msgctxt "meta.model.IrField.fields"
+msgid "Accessibility Modifier"
+msgstr ""
+
+#: service/models/ir_field.ts:105
+msgctxt "meta.model.IrField.fields"
+msgid "Decorators"
+msgstr ""
+
+#: service/models/ir_field.ts:27
+msgctxt "meta.model.IrField.fields"
+msgid "Field Type"
+msgstr ""
+
+#: service/models/ir_field.ts:78
+msgctxt "meta.model.IrField.fields"
+msgid "Indexed"
+msgstr ""
+
+#: service/models/ir_field.ts:99
+msgctxt "meta.model.IrField.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/ir_field.ts:66
+msgctxt "meta.model.IrField.fields"
+msgid "Module Spec Path"
+msgstr ""
+
+#: service/models/ir_field.ts:15
+msgctxt "meta.model.IrField.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_field.ts:24
+msgctxt "meta.model.IrField.fields"
+msgid "Origin Model Path"
+msgstr ""
+
+#: service/models/ir_field.ts:87
+msgctxt "meta.model.IrField.fields"
+msgid "Precision"
+msgstr ""
+
+#: service/models/ir_field.ts:75
+msgctxt "meta.model.IrField.fields"
+msgid "Readonly"
+msgstr ""
+
+#: service/models/ir_field.ts:63
+msgctxt "meta.model.IrField.fields"
+msgid "Reference Ident"
+msgstr ""
+
+#: service/models/ir_field.ts:30
+msgctxt "meta.model.IrField.fields"
+msgid "Relation"
+msgstr ""
+
+#: service/models/ir_field.ts:36
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Filter"
+msgstr ""
+
+#: service/models/ir_field.ts:39
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Inverse Field"
+msgstr ""
+
+#: service/models/ir_field.ts:48
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Inverse Join Field"
+msgstr ""
+
+#: service/models/ir_field.ts:45
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Join Field"
+msgstr ""
+
+#: service/models/ir_field.ts:42
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Join Model"
+msgstr ""
+
+#: service/models/ir_field.ts:33
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Model"
+msgstr ""
+
+#: service/models/ir_field.ts:51
+msgctxt "meta.model.IrField.fields"
+msgid "Relation Model Parent Field"
+msgstr ""
+
+#: service/models/ir_field.ts:81
+msgctxt "meta.model.IrField.fields"
+msgid "Required"
+msgstr ""
+
+#: service/models/ir_field.ts:96
+msgctxt "meta.model.IrField.fields"
+msgid "Round"
+msgstr ""
+
+#: service/models/ir_field.ts:90
+msgctxt "meta.model.IrField.fields"
+msgid "Scale"
+msgstr ""
+
+#: service/models/ir_field.ts:93
+msgctxt "meta.model.IrField.fields"
+msgid "Scale Field"
+msgstr ""
+
+#: service/models/ir_field.ts:54
+msgctxt "meta.model.IrField.fields"
+msgid "Selection"
+msgstr ""
+
+#: service/models/ir_field.ts:84
+msgctxt "meta.model.IrField.fields"
+msgid "Size"
+msgstr ""
+
+#: service/models/ir_field.ts:72
+msgctxt "meta.model.IrField.fields"
+msgid "Static"
+msgstr ""
+
+#: service/models/ir_field.ts:18
+msgctxt "meta.model.IrField.fields"
+msgid "TS Type Annotation"
+msgstr ""
+
+#: service/models/ir_field.ts:21
+msgctxt "meta.model.IrField.fields"
+msgid "TS Type Reference"
+msgstr ""
+
+#: service/models/ir_field.ts:57
+msgctxt "meta.model.IrField.fields"
+msgid "Title"
+msgstr ""
+
+#: service/models/ir_field.ts:60
+msgctxt "meta.model.IrField.fields"
+msgid "Title Text"
+msgstr ""
+
+#: service/models/ir_model.ts:55
+msgctxt "meta.model.IrModel.fields"
+msgid "Abstract"
+msgstr ""
+
+#: service/models/ir_model.ts:46
+msgctxt "meta.model.IrModel.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/ir_model.ts:58
+msgctxt "meta.model.IrModel.fields"
+msgid "Auto Migrate"
+msgstr ""
+
+#: service/models/ir_model.ts:49
+msgctxt "meta.model.IrModel.fields"
+msgid "Class Name"
+msgstr ""
+
+#: service/models/ir_model.ts:70
+msgctxt "meta.model.IrModel.fields"
+msgid "Company Scoped"
+msgstr ""
+
+#: service/models/ir_model.ts:79
+msgctxt "meta.model.IrModel.fields"
+msgid "Decorators"
+msgstr ""
+
+#: service/models/ir_model.ts:67
+msgctxt "meta.model.IrModel.fields"
+msgid "Extends"
+msgstr ""
+
+#: service/models/ir_model.ts:93
+msgctxt "meta.model.IrModel.fields"
+msgid "Fields"
+msgstr ""
+
+#: service/models/ir_model.ts:73
+msgctxt "meta.model.IrModel.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/ir_model.ts:40
+msgctxt "meta.model.IrModel.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_model.ts:43
+msgctxt "meta.model.IrModel.fields"
+msgid "Path"
+msgstr ""
+
+#: service/models/ir_model.ts:64
+msgctxt "meta.model.IrModel.fields"
+msgid "Raw Extends"
+msgstr ""
+
+#: service/models/ir_model.ts:61
+msgctxt "meta.model.IrModel.fields"
+msgid "Readonly"
+msgstr ""
+
+#: service/models/ir_model.ts:86
+msgctxt "meta.model.IrModel.fields"
+msgid "Services"
+msgstr ""
+
+#: service/models/ir_model.ts:52
+msgctxt "meta.model.IrModel.fields"
+msgid "Table Name"
+msgstr ""
+
+#: service/models/ir_module.ts:137
+#: service/models/ir_module.ts:176
+msgctxt "meta.model.IrModule.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/ir_module.ts:155
+msgctxt "meta.model.IrModule.fields"
+msgid "Author"
+msgstr ""
+
+#: service/models/ir_module.ts:173
+msgctxt "meta.model.IrModule.fields"
+msgid "Category"
+msgstr ""
+
+#: service/models/ir_module.ts:189
+msgctxt "meta.model.IrModule.fields"
+msgid "Components"
+msgstr ""
+
+#: service/models/ir_module.ts:149
+#: service/models/ir_module.ts:208
+msgctxt "meta.model.IrModule.fields"
+msgid "Dependencies"
+msgstr ""
+
+#: service/models/ir_module.ts:220
+msgctxt "meta.model.IrModule.fields"
+msgid "Dependents"
+msgstr ""
+
+#: service/models/ir_module.ts:134
+msgctxt "meta.model.IrModule.fields"
+msgid "Description"
+msgstr ""
+
+#: service/models/ir_module.ts:140
+msgctxt "meta.model.IrModule.fields"
+msgid "Entry Points"
+msgstr ""
+
+#: service/models/ir_module.ts:152
+msgctxt "meta.model.IrModule.fields"
+msgid "External Dependencies"
+msgstr ""
+
+#: service/models/ir_module.ts:161
+msgctxt "meta.model.IrModule.fields"
+msgid "Homepage"
+msgstr ""
+
+#: service/models/ir_module.ts:158
+msgctxt "meta.model.IrModule.fields"
+msgid "License"
+msgstr ""
+
+#: service/models/ir_module.ts:182
+msgctxt "meta.model.IrModule.fields"
+msgid "Models"
+msgstr ""
+
+#: service/models/ir_module.ts:119
+msgctxt "meta.model.IrModule.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_module.ts:167
+msgctxt "meta.model.IrModule.fields"
+msgid "Path"
+msgstr ""
+
+#: service/models/ir_module.ts:164
+msgctxt "meta.model.IrModule.fields"
+msgid "Repository"
+msgstr ""
+
+#: service/models/ir_module.ts:146
+msgctxt "meta.model.IrModule.fields"
+msgid "Service Entry Point"
+msgstr ""
+
+#: service/models/ir_module.ts:122
+msgctxt "meta.model.IrModule.fields"
+msgid "Short Description"
+msgstr ""
+
+#: service/models/ir_module.ts:170
+msgctxt "meta.model.IrModule.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/ir_module.ts:131
+msgctxt "meta.model.IrModule.fields"
+msgid "Summary"
+msgstr ""
+
+#: service/models/ir_module.ts:128
+msgctxt "meta.model.IrModule.fields"
+msgid "Tarball"
+msgstr ""
+
+#: service/models/ir_module.ts:196
+msgctxt "meta.model.IrModule.fields"
+msgid "UI Resources"
+msgstr ""
+
+#: service/models/ir_module.ts:125
+msgctxt "meta.model.IrModule.fields"
+msgid "Version"
+msgstr ""
+
+#: service/models/ir_module.ts:143
+msgctxt "meta.model.IrModule.fields"
+msgid "Web Entry Point"
+msgstr ""
+
+#: service/models/ir_module_dependency.ts:19
+msgctxt "meta.model.IrModuleDependency.fields"
+msgid "Dependent Module"
+msgstr ""
+
+#: service/models/ir_module_dependency.ts:13
+msgctxt "meta.model.IrModuleDependency.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/ir_module_index.ts:369
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Available"
+msgstr ""
+
+#: service/models/ir_module_index.ts:384
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Batch Synced At"
+msgstr ""
+
+#: service/models/ir_module_index.ts:390
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Error Message"
+msgstr ""
+
+#: service/models/ir_module_index.ts:432
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Install Status"
+msgstr ""
+
+#: service/models/ir_module_index.ts:449
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Installed Version"
+msgstr ""
+
+#: service/models/ir_module_index.ts:381
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Last Synced At"
+msgstr ""
+
+#: service/models/ir_module_index.ts:378
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Local Path"
+msgstr ""
+
+#: service/models/ir_module_index.ts:408
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Local Version"
+msgstr ""
+
+#: service/models/ir_module_index.ts:375
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Manifest JSON"
+msgstr ""
+
+#: service/models/ir_module_index.ts:360
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Module Name"
+msgstr ""
+
+#: service/models/ir_module_index.ts:366
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Origin Ref"
+msgstr ""
+
+#: service/models/ir_module_index.ts:363
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Origin Type"
+msgstr ""
+
+#: service/models/ir_module_index.ts:396
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Origin Types"
+msgstr ""
+
+#: service/models/ir_module_index.ts:420
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Registry Version"
+msgstr ""
+
+#: service/models/ir_module_index.ts:387
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Sync Revision"
+msgstr ""
+
+#: service/models/ir_module_index.ts:372
+msgctxt "meta.model.IrModuleIndex.fields"
+msgid "Version"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:25
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Checksum"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:37
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Error"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:34
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Finished At"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:43
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Job"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:13
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Module Name"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:19
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Phase"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:22
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Script"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:31
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Started At"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:28
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:40
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Trace ID"
+msgstr ""
+
+#: service/models/ir_module_migration_history.ts:16
+msgctxt "meta.model.IrModuleMigrationHistory.fields"
+msgid "Version"
+msgstr ""
+
+#: service/models/ir_parameter.ts:13
+msgctxt "meta.model.IrParameter.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_parameter.ts:19
+msgctxt "meta.model.IrParameter.fields"
+msgid "Protobuf Type"
+msgstr ""
+
+#: service/models/ir_parameter.ts:22
+msgctxt "meta.model.IrParameter.fields"
+msgid "Service"
+msgstr ""
+
+#: service/models/ir_parameter.ts:16
+msgctxt "meta.model.IrParameter.fields"
+msgid "TS Type Annotation"
+msgstr ""
+
+#: service/models/ir_service.ts:23
+msgctxt "meta.model.IrService.fields"
+msgid "Accessibility Modifier"
+msgstr ""
+
+#: service/models/ir_service.ts:55
+msgctxt "meta.model.IrService.fields"
+msgid "Decorators"
+msgstr ""
+
+#: service/models/ir_service.ts:35
+msgctxt "meta.model.IrService.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/ir_service.ts:17
+msgctxt "meta.model.IrService.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_service.ts:20
+msgctxt "meta.model.IrService.fields"
+msgid "Origin Model Path"
+msgstr ""
+
+#: service/models/ir_service.ts:48
+msgctxt "meta.model.IrService.fields"
+msgid "Parameters"
+msgstr ""
+
+#: service/models/ir_service.ts:29
+msgctxt "meta.model.IrService.fields"
+msgid "Protobuf Type"
+msgstr ""
+
+#: service/models/ir_service.ts:32
+msgctxt "meta.model.IrService.fields"
+msgid "Static"
+msgstr ""
+
+#: service/models/ir_service.ts:26
+msgctxt "meta.model.IrService.fields"
+msgid "TS Type Annotation"
+msgstr ""
+
+#: service/models/ir_service.ts:41
+msgctxt "meta.model.IrService.fields"
+msgid "Type Parameters"
+msgstr ""
+
+#: service/models/ir_type_parameter.ts:16
+msgctxt "meta.model.IrTypeParameter.fields"
+msgid "Module Spec Path"
+msgstr ""
+
+#: service/models/ir_type_parameter.ts:13
+msgctxt "meta.model.IrTypeParameter.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_type_parameter.ts:19
+msgctxt "meta.model.IrTypeParameter.fields"
+msgid "Reference Ident"
+msgstr ""
+
+#: service/models/ir_type_parameter.ts:22
+msgctxt "meta.model.IrTypeParameter.fields"
+msgid "Service"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:127
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:143
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Children"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:119
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Default Roles"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:136
+#: service/models/ir_ui_resource.ts:74
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:56
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:85
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Parent"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:93
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Parent Path"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:77
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Path"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:71
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Requires"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:68
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Sequence"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:62
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Title"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:65
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Title Text"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:59
+msgctxt "meta.model.IrUiResource.fields"
+msgid "Type"
+msgstr ""
+
+#: service/models/ir_ui_resource.ts:116
+msgctxt "meta.model.IrUiResource.fields"
+msgid "UI Path"
+msgstr ""
+
+#: service/models/ir_ui_resource_menu_route.ts:18
+msgctxt "meta.model.IrUiResourceMenuRoute.fields"
+msgid "Menu"
+msgstr ""
+
+#: service/models/ir_ui_resource_menu_route.ts:28
+msgctxt "meta.model.IrUiResourceMenuRoute.fields"
+msgid "Route"
+msgstr ""
+
+#: service/models/ir_ui_resource_route_action.ts:27
+msgctxt "meta.model.IrUiResourceRouteAction.fields"
+msgid "Action"
+msgstr ""
+
+#: service/models/ir_ui_resource_route_action.ts:18
+msgctxt "meta.model.IrUiResourceRouteAction.fields"
+msgid "Route"
+msgstr ""
+
+#: service/models/module_management_log.ts:19
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Action"
+msgstr ""
+
+#: service/models/module_management_log.ts:49
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Attempt"
+msgstr ""
+
+#: service/models/module_management_log.ts:37
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Error Code"
+msgstr ""
+
+#: service/models/module_management_log.ts:43
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Error Detail"
+msgstr ""
+
+#: service/models/module_management_log.ts:34
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Error Domain"
+msgstr ""
+
+#: service/models/module_management_log.ts:13
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Job"
+msgstr ""
+
+#: service/models/module_management_log.ts:28
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Job Created At"
+msgstr ""
+
+#: service/models/module_management_log.ts:31
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Job Finished At"
+msgstr ""
+
+#: service/models/module_management_log.ts:52
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Max Attempts"
+msgstr ""
+
+#: service/models/module_management_log.ts:16
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Module Name"
+msgstr ""
+
+#: service/models/module_management_log.ts:22
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Operator"
+msgstr ""
+
+#: service/models/module_management_log.ts:25
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Result Status"
+msgstr ""
+
+#: service/models/module_management_log.ts:46
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Server Instance"
+msgstr ""
+
+#: service/models/module_management_log.ts:40
+msgctxt "meta.model.ModuleManagementLog.fields"
+msgid "Summary"
+msgstr ""
+
+#: service/models/ir_module.ts:314
 msgctxt "service/models/ir_module"
 msgid "jobId cannot be empty"
 msgstr ""
 
-#: service/models/ir_module.ts:291
+#: service/models/ir_module.ts:303
 msgctxt "service/models/ir_module"
 msgid "lease conflict"
 msgstr ""
 
-#: service/models/ir_module.ts:242
+#: service/models/ir_module.ts:254
 msgctxt "service/models/ir_module"
 msgid "module not found"
 msgstr ""
 
-#: service/models/ir_module.ts:270
+#: service/models/ir_module.ts:282
 msgctxt "service/models/ir_module"
 msgid "moduleName cannot be empty"
 msgstr ""
 
-#: service/models/ir_module.ts:230
+#: service/models/ir_module.ts:242
 msgctxt "service/models/ir_module"
 msgid "plan was regenerated from the latest module state"
 msgstr ""
 
-#: service/models/ir_module_index.ts:588
-#: service/models/ir_module_index.ts:662
+#: service/models/ir_module_index.ts:591
+#: service/models/ir_module_index.ts:665
 msgctxt "service/models/ir_module_index"
 msgid "originType must be one of: local, registry, all"
 msgstr ""
 
-#: service/models/ir_ui_resource.ts:102
+#: service/models/ir_ui_resource.ts:108
 msgctxt "service/models/ir_ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
 msgstr ""
@@ -83,89 +936,34 @@ msgctxt "web/route/routes"
 msgid "Operation History"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:23
-msgctxt "web/views/ModuleDetailView"
-msgid "Available"
-msgstr ""
-
 #: web/views/ModuleDetailView.vue:5
 msgctxt "web/views/ModuleDetailView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:46
-msgctxt "web/views/ModuleDetailView"
-msgid "Batch Synced At"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:32
+#: web/views/ModuleDetailView.vue:31
 msgctxt "web/views/ModuleDetailView"
 msgid "Copy Module Index"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:32
+#: web/views/ModuleDetailView.vue:31
 msgctxt "web/views/ModuleDetailView"
 msgid "Create Module Index"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:74
-msgctxt "web/views/ModuleDetailView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:32
+#: web/views/ModuleDetailView.vue:31
 msgctxt "web/views/ModuleDetailView"
 msgid "Delete Module Index"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:32
+#: web/views/ModuleDetailView.vue:31
 msgctxt "web/views/ModuleDetailView"
 msgid "Edit Module Index"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:52
-msgctxt "web/views/ModuleDetailView"
-msgid "Error Message"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:15
-msgctxt "web/views/ModuleDetailView"
-msgid "Install Status"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:18
-msgctxt "web/views/ModuleDetailView"
-msgid "Installed Version"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:43
-msgctxt "web/views/ModuleDetailView"
-msgid "Last Synced At"
-msgstr ""
-
 #: web/views/ModuleDetailView.vue:32
 msgctxt "web/views/ModuleDetailView"
-msgid "Local Path"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:33
-msgctxt "web/views/ModuleDetailView"
 msgid "Module Index"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:9
-msgctxt "web/views/ModuleDetailView"
-msgid "Module Name"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:29
-msgctxt "web/views/ModuleDetailView"
-msgid "Origin Ref"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:26
-msgctxt "web/views/ModuleDetailView"
-msgid "Origin Type"
 msgstr ""
 
 #: web/views/ModuleDetailView.vue:39
@@ -173,24 +971,9 @@ msgctxt "web/views/ModuleDetailView"
 msgid "Sync Information"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:49
-msgctxt "web/views/ModuleDetailView"
-msgid "Sync Revision"
-msgstr ""
-
 #: web/views/ModuleDetailView.vue:70
 msgctxt "web/views/ModuleDetailView"
 msgid "Timestamps"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:77
-msgctxt "web/views/ModuleDetailView"
-msgid "Updated At"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:12
-msgctxt "web/views/ModuleDetailView"
-msgid "Version"
 msgstr ""
 
 #: web/views/ModuleKanbanView.vue:84
@@ -208,7 +991,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Board View"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:179
+#: web/views/ModuleKanbanView.vue:178
 msgctxt "web/views/ModuleKanbanView"
 msgid "Broken"
 msgstr ""
@@ -218,7 +1001,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Cancel"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:131
+#: web/views/ModuleKanbanView.vue:130
 msgctxt "web/views/ModuleKanbanView"
 msgid "Completed"
 msgstr ""
@@ -233,12 +1016,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Confirm the impact of this operation"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:178
+#: web/views/ModuleKanbanView.vue:177
 msgctxt "web/views/ModuleKanbanView"
 msgid "Disabled"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:182
+#: web/views/ModuleKanbanView.vue:181
 msgctxt "web/views/ModuleKanbanView"
 msgid "Dispatching"
 msgstr ""
@@ -268,17 +1051,17 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Execution Status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:181
+#: web/views/ModuleKanbanView.vue:180
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:324
+#: web/views/ModuleKanbanView.vue:323
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:253
+#: web/views/ModuleKanbanView.vue:252
 msgctxt "web/views/ModuleKanbanView"
 msgid "Failed to load plan"
 msgstr ""
@@ -298,13 +1081,13 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:123
-#: web/views/ModuleKanbanView.vue:38
+#: web/views/ModuleKanbanView.vue:122
+#: web/views/ModuleKanbanView.vue:37
 msgctxt "web/views/ModuleKanbanView"
 msgid "Install Module"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:176
+#: web/views/ModuleKanbanView.vue:175
 msgctxt "web/views/ModuleKanbanView"
 msgid "Installed"
 msgstr ""
@@ -314,7 +1097,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Installed:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:334
+#: web/views/ModuleKanbanView.vue:333
 msgctxt "web/views/ModuleKanbanView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
@@ -339,12 +1122,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "No modules"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:177
+#: web/views/ModuleKanbanView.vue:176
 msgctxt "web/views/ModuleKanbanView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:132
+#: web/views/ModuleKanbanView.vue:131
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Failed"
 msgstr ""
@@ -354,7 +1137,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Operation History"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:133
+#: web/views/ModuleKanbanView.vue:132
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation Succeeded"
 msgstr ""
@@ -364,7 +1147,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Operation in progress, please wait"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:284
+#: web/views/ModuleKanbanView.vue:283
 msgctxt "web/views/ModuleKanbanView"
 msgid "Operation request failed"
 msgstr ""
@@ -374,7 +1157,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Origin:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:183
+#: web/views/ModuleKanbanView.vue:182
 msgctxt "web/views/ModuleKanbanView"
 msgid "Queued"
 msgstr ""
@@ -404,7 +1187,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Risks"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:320
+#: web/views/ModuleKanbanView.vue:319
 msgctxt "web/views/ModuleKanbanView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
@@ -414,12 +1197,12 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Status:"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:180
+#: web/views/ModuleKanbanView.vue:179
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:133
+#: web/views/ModuleKanbanView.vue:132
 msgctxt "web/views/ModuleKanbanView"
 msgid "Succeeded but reload failed"
 msgstr ""
@@ -434,22 +1217,22 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Index"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:50
+#: web/views/ModuleKanbanView.vue:49
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync Module Index"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:396
+#: web/views/ModuleKanbanView.vue:395
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:394
+#: web/views/ModuleKanbanView.vue:393
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:394
+#: web/views/ModuleKanbanView.vue:393
 msgctxt "web/views/ModuleKanbanView"
 msgid "Sync job triggered: all:%s"
 msgstr ""
@@ -469,7 +1252,7 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Triggered"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:174
+#: web/views/ModuleKanbanView.vue:173
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unavailable"
 msgstr ""
@@ -479,13 +1262,13 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:123
-#: web/views/ModuleKanbanView.vue:46
+#: web/views/ModuleKanbanView.vue:122
+#: web/views/ModuleKanbanView.vue:45
 msgctxt "web/views/ModuleKanbanView"
 msgid "Uninstall Module"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:184
+#: web/views/ModuleKanbanView.vue:183
 msgctxt "web/views/ModuleKanbanView"
 msgid "Unknown"
 msgstr ""
@@ -495,15 +1278,10 @@ msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:123
-#: web/views/ModuleKanbanView.vue:42
+#: web/views/ModuleKanbanView.vue:122
+#: web/views/ModuleKanbanView.vue:41
 msgctxt "web/views/ModuleKanbanView"
 msgid "Upgrade Module"
-msgstr ""
-
-#: web/views/ModuleListView.vue:27
-msgctxt "web/views/ModuleListView"
-msgid "Available"
 msgstr ""
 
 #: web/views/ModuleListView.vue:5
@@ -511,17 +1289,17 @@ msgctxt "web/views/ModuleListView"
 msgid "Board View"
 msgstr ""
 
-#: web/views/ModuleListView.vue:43
+#: web/views/ModuleListView.vue:42
 msgctxt "web/views/ModuleListView"
 msgid "Copy Module Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:43
+#: web/views/ModuleListView.vue:42
 msgctxt "web/views/ModuleListView"
 msgid "Create Module Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:43
+#: web/views/ModuleListView.vue:42
 msgctxt "web/views/ModuleListView"
 msgid "Delete Module Index"
 msgstr ""
@@ -531,19 +1309,9 @@ msgctxt "web/views/ModuleListView"
 msgid "Display Version"
 msgstr ""
 
-#: web/views/ModuleListView.vue:43
+#: web/views/ModuleListView.vue:42
 msgctxt "web/views/ModuleListView"
 msgid "Edit Module Index"
-msgstr ""
-
-#: web/views/ModuleListView.vue:25
-msgctxt "web/views/ModuleListView"
-msgid "Install Status"
-msgstr ""
-
-#: web/views/ModuleListView.vue:26
-msgctxt "web/views/ModuleListView"
-msgid "Installed Version"
 msgstr ""
 
 #: web/views/ModuleListView.vue:8
@@ -551,19 +1319,9 @@ msgctxt "web/views/ModuleListView"
 msgid "List View"
 msgstr ""
 
-#: web/views/ModuleListView.vue:22
-msgctxt "web/views/ModuleListView"
-msgid "Local Version"
-msgstr ""
-
-#: web/views/ModuleListView.vue:44
+#: web/views/ModuleListView.vue:43
 msgctxt "web/views/ModuleListView"
 msgid "Module Index"
-msgstr ""
-
-#: web/views/ModuleListView.vue:21
-msgctxt "web/views/ModuleListView"
-msgid "Module Name"
 msgstr ""
 
 #: web/views/ModuleListView.vue:11
@@ -581,32 +1339,27 @@ msgctxt "web/views/ModuleListView"
 msgid "Path"
 msgstr ""
 
-#: web/views/ModuleListView.vue:23
-msgctxt "web/views/ModuleListView"
-msgid "Registry Version"
-msgstr ""
-
 #: web/views/ModuleListView.vue:14
 msgctxt "web/views/ModuleListView"
 msgid "Sync Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:40
+#: web/views/ModuleListView.vue:39
 msgctxt "web/views/ModuleListView"
 msgid "Sync Module Index"
 msgstr ""
 
-#: web/views/ModuleListView.vue:57
+#: web/views/ModuleListView.vue:56
 msgctxt "web/views/ModuleListView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleListView.vue:55
+#: web/views/ModuleListView.vue:54
 msgctxt "web/views/ModuleListView"
 msgid "Sync job triggered"
 msgstr ""
 
-#: web/views/ModuleListView.vue:55
+#: web/views/ModuleListView.vue:54
 msgctxt "web/views/ModuleListView"
 msgid "Sync job triggered: all:%s"
 msgstr ""
@@ -616,59 +1369,29 @@ msgctxt "web/views/ModuleListView"
 msgid "Synced At"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:5
-msgctxt "web/views/ModuleLogListView"
-msgid "Action"
-msgstr ""
-
 #: web/views/ModuleLogListView.vue:14
 msgctxt "web/views/ModuleLogListView"
 msgid "Attempts"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:32
+#: web/views/ModuleLogListView.vue:31
 msgctxt "web/views/ModuleLogListView"
 msgid "Copy Module Operation History"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:32
+#: web/views/ModuleLogListView.vue:31
 msgctxt "web/views/ModuleLogListView"
 msgid "Create Module Operation History"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:32
+#: web/views/ModuleLogListView.vue:31
 msgctxt "web/views/ModuleLogListView"
 msgid "Delete Module Operation History"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:32
+#: web/views/ModuleLogListView.vue:31
 msgctxt "web/views/ModuleLogListView"
 msgid "Edit Module Operation History"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:11
-msgctxt "web/views/ModuleLogListView"
-msgid "Error Code"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:13
-msgctxt "web/views/ModuleLogListView"
-msgid "Error Detail"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:10
-msgctxt "web/views/ModuleLogListView"
-msgid "Error Domain"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:9
-msgctxt "web/views/ModuleLogListView"
-msgid "Finished At"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:15
-msgctxt "web/views/ModuleLogListView"
-msgid "Max Attempts"
 msgstr ""
 
 #: web/views/ModuleLogListView.vue:4
@@ -676,14 +1399,9 @@ msgctxt "web/views/ModuleLogListView"
 msgid "Module"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:33
+#: web/views/ModuleLogListView.vue:32
 msgctxt "web/views/ModuleLogListView"
 msgid "Module Operation History"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:7
-msgctxt "web/views/ModuleLogListView"
-msgid "Operator"
 msgstr ""
 
 #: web/views/ModuleLogListView.vue:6
@@ -694,10 +1412,5 @@ msgstr ""
 #: web/views/ModuleLogListView.vue:8
 msgctxt "web/views/ModuleLogListView"
 msgid "Started At"
-msgstr ""
-
-#: web/views/ModuleLogListView.vue:12
-msgctxt "web/views/ModuleLogListView"
-msgid "Summary"
 msgstr ""
 

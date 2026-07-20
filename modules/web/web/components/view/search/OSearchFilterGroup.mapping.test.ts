@@ -20,4 +20,18 @@ describe('OSearchFilterGroup field resolver mapping', () => {
     expect(s).toContain("case 'image':");
     expect(s).toContain('return OImageField;');
   });
+
+  test('maps selection metadata type to OSelectionField (T4.3)', () => {
+    const s = source();
+    expect(s).toContain("import OSelectionField from '@/web/web/components/field/OSelectionField.vue';");
+    expect(s).toContain("case 'selection':");
+    expect(s).toContain('return OSelectionField;');
+  });
+
+  test('filter value binding reaches model store and forces empty label (T4.4)', () => {
+    const s = source();
+    expect(s).toContain('binding.store = store');
+    expect(s).toContain(':store="store"');
+    expect(s).toContain(`:label="''"`);
+  });
 });

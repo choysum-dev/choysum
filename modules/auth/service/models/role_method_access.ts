@@ -5,6 +5,7 @@ import { BaseModel, Model, Field } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import Role from './role';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
@@ -18,19 +19,37 @@ export default class RoleMethodAccess extends BaseModel {
   /**
    * Role that owns this method-access entry.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Role', { scope: 'auth.model.RoleMethodAccess.fields' }),
+  })
   RoleId: Role;
 
   /**
    * Application-level scope when the entry targets an entire application.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrApplication' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Application', { scope: 'auth.model.RoleMethodAccess.fields' }),
+  })
   IrApplicationId: string | null;
 
   /**
    * Model-level scope when the entry targets an entire model.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrModel' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Model', { scope: 'auth.model.RoleMethodAccess.fields' }),
+  })
   IrModelId: string | null;
 
   /**
@@ -48,6 +67,7 @@ export default class RoleMethodAccess extends BaseModel {
         OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NOT NULL)
         OR (ir_service_id IS NULL AND ir_model_id IS NULL AND ir_application_id IS NULL)
       )`,
+    string: _lt('Service', { scope: 'auth.model.RoleMethodAccess.fields' }),
   })
   IrServiceId: string | null;
 
@@ -57,10 +77,11 @@ export default class RoleMethodAccess extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'allow', label: 'Allow' },
-      { value: 'deny', label: 'Deny' },
+      { value: 'allow', label: _lt('Allow', { scope: 'auth.model.RoleMethodAccess.fields' }) },
+      { value: 'deny', label: _lt('Deny', { scope: 'auth.model.RoleMethodAccess.fields' }) },
     ],
     default: () => 'deny',
+    string: _lt('Mode', { scope: 'auth.model.RoleMethodAccess.fields' }),
   })
   Mode: 'allow' | 'deny';
 
@@ -70,10 +91,13 @@ export default class RoleMethodAccess extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'manual', label: 'Manual' },
-      { value: 'ui', label: 'UI' },
+      { value: 'manual', label: _lt('Manual', { scope: 'auth.model.RoleMethodAccess.fields' }) },
+      { value: 'ui', label: _lt('UI', { scope: 'auth.model.RoleMethodAccess.fields' }) },
     ],
-    default: () => 'manual', size: 16, index: true,
+    default: () => 'manual',
+    size: 16,
+    index: true,
+    string: _lt('Source', { scope: 'auth.model.RoleMethodAccess.fields' }),
   })
   Source: 'manual' | 'ui';
 

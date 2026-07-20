@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, vi } from 'vitest';
-import { shallowMount } from '@vue/test-utils';
+import { config, shallowMount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
-import PartnerListView from '../views/PartnerListView.vue';
-import PartnerFormView from '../views/PartnerFormView.vue';
+
+config.global.renderStubDefaultSlot = true;
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -35,20 +35,19 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
-describe('partner view _lt setup coverage', () => {
-  it('mounts PartnerListView', () => {
-    const wrapper = shallowMount(PartnerListView, {
-      props: { store: fakeStore as any },
-      global: { plugins: [i18n], stubs: true },
-    });
-    expect(wrapper.exists()).toBe(true);
-  });
+const viewModules = import.meta.glob('../views/*View.vue', { eager: true }) as Record<
+  string,
+  { default: object }
+>;
 
-  it('mounts PartnerFormView', () => {
-    const wrapper = shallowMount(PartnerFormView, {
-      props: { store: fakeStore as any },
-      global: { plugins: [i18n], stubs: true },
+describe('partner view _lt setup coverage', () => {
+  for (const [path, mod] of Object.entries(viewModules)) {
+    it(`mounts ${path} so createTranslate/_lt run`, () => {
+      const wrapper = shallowMount(mod.default as any, {
+        props: { store: fakeStore as any },
+        global: { plugins: [i18n], stubs: true },
+      });
+      expect(wrapper.exists()).toBe(true);
     });
-    expect(wrapper.exists()).toBe(true);
-  });
+  }
 });
