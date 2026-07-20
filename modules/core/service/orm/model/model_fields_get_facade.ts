@@ -69,15 +69,13 @@ function translateSelectionLabels(
     const value = String(item.value || '').trim();
     if (!value) continue;
 
-    // TermReference (_lt) → translate; bare string → pass through (D5 revised).
+    // labelText (_lt) → translate; bare string label → pass through (D5 revised).
+    // Authors put _lt on declaration label; decorator / normalizeSelectionItems
+    // already materialize msgid on `label` and TermReference on `labelText`.
     let label = '';
     if (item.labelText && isTermReference(item.labelText)) {
       label = translateTermReference(item.labelText);
       if (!label) label = String(item.labelText.src || item.label || value);
-    } else if (isTermReference(item.label as unknown)) {
-      const ref = item.label as unknown as TermReference;
-      label = translateTermReference(ref);
-      if (!label) label = String(ref.src || value);
     } else {
       label = String(item.label || '').trim() || value;
     }
