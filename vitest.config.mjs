@@ -14,10 +14,22 @@ import { fileURLToPath } from 'node:url'
 // Do not add broad test.include here: bare discovery across the monorepo is not
 // a supported runner entrypoint (use choysum test --fe instead).
 //
-// Hash the checkout path so shared /tmp hosts and parallel worktrees do not
-// collide on a single cache directory.
+// Hash checkout path + user identity so shared /tmp hosts, parallel worktrees,
+// and same-path multi-user (or sudo) runs do not collide on one cache directory.
+function resolveUserKey() {
+  try {
+    return `uid:${os.userInfo().uid}`
+  } catch {
+    return `name:${process.env.USER || process.env.USERNAME || 'unknown'}`
+  }
+}
+
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
-const checkoutHash = crypto.createHash('sha256').update(projectRoot).digest('hex').slice(0, 12)
+const checkoutHash = crypto
+  .createHash('sha256')
+  .update(`${resolveUserKey()}:${projectRoot}`)
+  .digest('hex')
+  .slice(0, 12)
 
 export default {
   cacheDir: path.join(os.tmpdir(), `choysum-vite-${checkoutHash}`),
