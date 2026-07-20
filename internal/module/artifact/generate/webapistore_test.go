@@ -210,6 +210,40 @@ func TestConvertFieldToMetadata_PrefersResolvedSelectionOverBrokenLegacy(t *test
 	}
 }
 
+func TestConvertFieldToMetadata_InfersStaticKindAndStripsLabelText(t *testing.T) {
+	field := &meta.IrField{
+		BaseModel:        meta.BaseModel{Id: sql.NullString{String: "field-kind", Valid: true}},
+		Name:             "Status",
+		FieldType:        "selection",
+		TsTypeAnnotation: "string",
+		// No SelectionKind — should infer static when JSON array is present.
+		Selection: `[{"value":"a","label":"A","labelText":{"src":"A"}},null,{"value":"b","label":"B"}]`,
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.SelectionKind == nil || *metadata.SelectionKind != "static" {
+		t.Fatalf("expected inferred static kind, got %#v", metadata.SelectionKind)
+	}
+	if metadata.Selection == nil || strings.Contains(*metadata.Selection, "labelText") {
+		t.Fatalf("expected stripped selection without labelText: %#v", metadata.Selection)
+	}
+	if !strings.Contains(*metadata.Selection, `"label":"A"`) || !strings.Contains(*metadata.Selection, `"label":"B"`) {
+		t.Fatalf("expected both labels kept: %s", *metadata.Selection)
+	}
+}
+
+func TestStripSelectionLabelTextJSON_InvalidOrEmpty(t *testing.T) {
+	if got := stripSelectionLabelTextJSON(""); got != "" {
+		t.Fatalf("empty input: %q", got)
+	}
+	if got := stripSelectionLabelTextJSON("   "); got != "   " {
+		t.Fatalf("whitespace input should pass through: %q", got)
+	}
+	raw := `not-json`;
+	if got := stripSelectionLabelTextJSON(raw); got != raw {
+		t.Fatalf("invalid json should pass through: %q", got)
+	}
+}
+
 func TestWebApiStoreGenerateEmptyApp(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: t.TempDir()}).generate(context.Background(), &meta.IrApplication{Name: "crm"})

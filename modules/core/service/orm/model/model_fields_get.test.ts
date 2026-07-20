@@ -515,3 +515,65 @@ test('FieldsGet attributes projection always keeps type and drops others (T1.8)'
     resetTestState();
   }
 });
+
+@Model('FieldsGetEmptySelectionWidget', { application: 'demo' })
+class FieldsGetEmptySelectionWidget extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: function () {
+      return [];
+    },
+  } as any)
+  Empty!: string;
+
+  @Field({
+    type: 'selection',
+    selection: function () {
+      const { _lt } = createTranslate('demo', {
+        scope: 'demo.model.FieldsGetEmptySelectionWidget.fields',
+      });
+      return [{ value: 'x', label: _lt('X') }];
+    },
+  } as any)
+  Mixed!: string;
+}
+
+@Model('FieldsGetNoAppWidget', { application: ' ' } as any)
+class FieldsGetNoAppWidget extends BaseModel {
+  @Field({ type: 'varchar', size: 20, string: 'Plain' })
+  Plain!: string;
+}
+
+test('FieldsGet omits empty dynamic selection and falls back when translate is empty (T3.8)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetEmptySelectionWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetEmptySelectionWidget.FieldsGet(['Empty', 'Mixed']);
+    expect(out.Empty?.selection).toBeUndefined();
+    expect(out.Empty?.selectionKind).toBe('dynamic');
+    expect(out.Mixed?.selection).toEqual([{ value: 'x', label: 'X' }]);
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet still translates bare string titles when application is blank (T1.9)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: (_m, _l, _s, src) => src });
+  RepositoryFactory.setRepository(FieldsGetNoAppWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetNoAppWidget.FieldsGet(['Plain']);
+    expect(out.Plain?.string).toBe('Plain');
+  } finally {
+    resetTestState();
+  }
+});

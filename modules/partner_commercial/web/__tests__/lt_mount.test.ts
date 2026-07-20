@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, vi } from 'vitest';
-import { shallowMount } from '@vue/test-utils';
+import { config, shallowMount } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
-import PartnerFormView from '../views/PartnerFormView.vue';
+
+config.global.renderStubDefaultSlot = true;
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -34,23 +35,29 @@ const i18n = createI18n({
   messages: { en: {} },
 });
 
+const viewModules = import.meta.glob('../views/*View.vue', { eager: true }) as Record<
+  string,
+  { default: object }
+>;
+
 describe('partner_commercial view _lt setup coverage', () => {
-  it('mounts PartnerFormView extension', () => {
-    const wrapper = shallowMount(PartnerFormView, {
-      props: { store: fakeStore as any },
-      global: {
-        plugins: [i18n],
-        stubs: true,
-        // Options-API extensions return `_t` / `_lt` for the template; Vue warns on `_` prefixes.
-        config: {
-          warnHandler(msg) {
-            // createTranslate helpers are intentionally named `_t` / `_lt`.
-            if (/["_']_(?:t|lt)["_'].*should not start with/i.test(msg)) return;
-            console.warn(`[Vue warn]: ${msg}`);
+  for (const [path, mod] of Object.entries(viewModules)) {
+    it(`mounts ${path} so createTranslate/_lt run`, () => {
+      const wrapper = shallowMount(mod.default as any, {
+        props: { store: fakeStore as any },
+        global: {
+          plugins: [i18n],
+          stubs: true,
+          // Options-API extensions return `_t` / `_lt` for the template; Vue warns on `_` prefixes.
+          config: {
+            warnHandler(msg) {
+              if (/["_']_(?:t|lt)["_'].*should not start with/i.test(msg)) return;
+              console.warn(`[Vue warn]: ${msg}`);
+            },
           },
         },
-      },
+      });
+      expect(wrapper.exists()).toBe(true);
     });
-    expect(wrapper.exists()).toBe(true);
-  });
+  }
 });
