@@ -7,6 +7,448 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+#: service/models/company_scoped_resource.ts:28
+msgctxt "auth.model.CompanyScopedResource.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/company_scoped_resource.ts:40
+msgctxt "auth.model.CompanyScopedResource.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/role.ts:108
+msgctxt "auth.model.Role.fields"
+msgid "Accessible UI Resources"
+msgstr ""
+
+#: service/models/role.ts:87
+msgctxt "auth.model.Role.fields"
+msgid "Active"
+msgstr ""
+
+#: service/models/role.ts:98
+msgctxt "auth.model.Role.fields"
+msgid "Built-in"
+msgstr ""
+
+#: service/models/role.ts:65
+msgctxt "auth.model.Role.fields"
+msgid "Code"
+msgstr ""
+
+#: service/models/role.ts:76
+msgctxt "auth.model.Role.fields"
+msgid "Description"
+msgstr ""
+
+#: service/models/role.ts:36
+msgctxt "auth.model.Role.fields"
+msgid "Display Name"
+msgstr ""
+
+#: service/models/role.ts:183
+msgctxt "auth.model.Role.fields"
+msgid "Field Rules"
+msgstr ""
+
+#: service/models/role.ts:153
+msgctxt "auth.model.Role.fields"
+msgid "Implied By Roles"
+msgstr ""
+
+#: service/models/role.ts:138
+msgctxt "auth.model.Role.fields"
+msgid "Included Roles"
+msgstr ""
+
+#: service/models/role.ts:173
+msgctxt "auth.model.Role.fields"
+msgid "Method Accesses"
+msgstr ""
+
+#: service/models/role.ts:53
+msgctxt "auth.model.Role.fields"
+msgid "Name"
+msgstr ""
+
+#: service/models/role.ts:163
+msgctxt "auth.model.Role.fields"
+msgid "Record Rules"
+msgstr ""
+
+#: service/models/role.ts:193
+msgctxt "auth.model.Role.fields"
+msgid "UI Resources"
+msgstr ""
+
+#: service/models/role.ts:123
+msgctxt "auth.model.Role.fields"
+msgid "Users"
+msgstr ""
+
+#: service/models/role_field_rule.ts:84
+#: service/models/role_field_rule.ts:98
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Allow"
+msgstr ""
+
+#: service/models/role_field_rule.ts:39
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/role_field_rule.ts:85
+#: service/models/role_field_rule.ts:99
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Deny"
+msgstr ""
+
+#: service/models/role_field_rule.ts:74
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Field"
+msgstr ""
+
+#: service/models/role_field_rule.ts:52
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/role_field_rule.ts:88
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Read"
+msgstr ""
+
+#: service/models/role_field_rule.ts:26
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Role"
+msgstr ""
+
+#: service/models/role_field_rule.ts:102
+msgctxt "auth.model.RoleFieldRule.fields"
+msgid "Write"
+msgstr ""
+
+#: service/models/role_inheritance.ts:34
+msgctxt "auth.model.RoleInheritance.fields"
+msgid "Child Role"
+msgstr ""
+
+#: service/models/role_inheritance.ts:24
+msgctxt "auth.model.RoleInheritance.fields"
+msgid "Parent Role"
+msgstr ""
+
+#: service/models/role_method_access.ts:80
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Allow"
+msgstr ""
+
+#: service/models/role_method_access.ts:38
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/role_method_access.ts:81
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Deny"
+msgstr ""
+
+#: service/models/role_method_access.ts:94
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Manual"
+msgstr ""
+
+#: service/models/role_method_access.ts:84
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Mode"
+msgstr ""
+
+#: service/models/role_method_access.ts:51
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/role_method_access.ts:25
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Role"
+msgstr ""
+
+#: service/models/role_method_access.ts:70
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Service"
+msgstr ""
+
+#: service/models/role_method_access.ts:100
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "Source"
+msgstr ""
+
+#: service/models/role_method_access.ts:95
+msgctxt "auth.model.RoleMethodAccess.fields"
+msgid "UI"
+msgstr ""
+
+#: service/models/role_record_rule.ts:38
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Application"
+msgstr ""
+
+#: service/models/role_record_rule.ts:96
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Create"
+msgstr ""
+
+#: service/models/role_record_rule.ts:106
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Delete"
+msgstr ""
+
+#: service/models/role_record_rule.ts:66
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Filter Condition"
+msgstr ""
+
+#: service/models/role_record_rule.ts:56
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Model"
+msgstr ""
+
+#: service/models/role_record_rule.ts:76
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Read"
+msgstr ""
+
+#: service/models/role_record_rule.ts:25
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Role"
+msgstr ""
+
+#: service/models/role_record_rule.ts:86
+msgctxt "auth.model.RoleRecordRule.fields"
+msgid "Write"
+msgstr ""
+
+#: service/models/role_ui_resource.ts:40
+msgctxt "auth.model.RoleUiResource.fields"
+msgid "Allow"
+msgstr ""
+
+#: service/models/role_ui_resource.ts:59
+msgctxt "auth.model.RoleUiResource.fields"
+msgid "Application Scope"
+msgstr ""
+
+#: service/models/role_ui_resource.ts:41
+msgctxt "auth.model.RoleUiResource.fields"
+msgid "Deny"
+msgstr ""
+
+#: service/models/role_ui_resource.ts:46
+msgctxt "auth.model.RoleUiResource.fields"
+msgid "Mode"
+msgstr ""
+
+#: service/models/role_ui_resource.ts:30
+msgctxt "auth.model.RoleUiResource.fields"
+msgid "Role"
+msgstr ""
+
+#: service/models/role_ui_resource.ts:77
+msgctxt "auth.model.RoleUiResource.fields"
+msgid "UI Resource"
+msgstr ""
+
+#: service/models/session.ts:31
+msgctxt "auth.model.Session.fields"
+msgid "Access Token ID"
+msgstr ""
+
+#: service/models/session.ts:40
+msgctxt "auth.model.Session.fields"
+msgid "Device Info"
+msgstr ""
+
+#: service/models/session.ts:61
+msgctxt "auth.model.Session.fields"
+msgid "Expires At"
+msgstr ""
+
+#: service/models/session.ts:50
+msgctxt "auth.model.Session.fields"
+msgid "IP Address"
+msgstr ""
+
+#: service/models/session.ts:71
+msgctxt "auth.model.Session.fields"
+msgid "Last Activity"
+msgstr ""
+
+#: service/models/session.ts:92
+msgctxt "auth.model.Session.fields"
+msgid "Metadata"
+msgstr ""
+
+#: service/models/session.ts:83
+msgctxt "auth.model.Session.fields"
+msgid "Status"
+msgstr ""
+
+#: service/models/session.ts:20
+msgctxt "auth.model.Session.fields"
+msgid "User"
+msgstr ""
+
+#: service/models/token.ts:20
+msgctxt "auth.model.Token.fields"
+msgid "Display Name"
+msgstr ""
+
+#: service/models/token.ts:70
+msgctxt "auth.model.Token.fields"
+msgid "Expires At"
+msgstr ""
+
+#: service/models/token.ts:110
+msgctxt "auth.model.Token.fields"
+msgid "Metadata"
+msgstr ""
+
+#: service/models/token.ts:101
+msgctxt "auth.model.Token.fields"
+msgid "Revocation Reason"
+msgstr ""
+
+#: service/models/token.ts:81
+msgctxt "auth.model.Token.fields"
+msgid "Revoked"
+msgstr ""
+
+#: service/models/token.ts:91
+msgctxt "auth.model.Token.fields"
+msgid "Revoked At"
+msgstr ""
+
+#: service/models/token.ts:47
+msgctxt "auth.model.Token.fields"
+msgid "Token ID"
+msgstr ""
+
+#: service/models/token.ts:59
+msgctxt "auth.model.Token.fields"
+msgid "Type"
+msgstr ""
+
+#: service/models/token.ts:35
+msgctxt "auth.model.Token.fields"
+msgid "User"
+msgstr ""
+
+#: service/models/user.ts:215
+msgctxt "auth.model.User.fields"
+msgid "Accessible Companies"
+msgstr ""
+
+#: service/models/user.ts:226
+msgctxt "auth.model.User.fields"
+msgid "Active"
+msgstr ""
+
+#: service/models/user.ts:140
+msgctxt "auth.model.User.fields"
+msgid "Avatar"
+msgstr ""
+
+#: service/models/user.ts:205
+msgctxt "auth.model.User.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/user.ts:69
+msgctxt "auth.model.User.fields"
+msgid "Email"
+msgstr ""
+
+#: service/models/user.ts:102
+msgctxt "auth.model.User.fields"
+msgid "First Name"
+msgstr ""
+
+#: service/models/user.ts:123
+msgctxt "auth.model.User.fields"
+msgid "Full Name"
+msgstr ""
+
+#: service/models/user.ts:150
+msgctxt "auth.model.User.fields"
+msgid "Language"
+msgstr ""
+
+#: service/models/user.ts:236
+msgctxt "auth.model.User.fields"
+msgid "Last Login"
+msgstr ""
+
+#: service/models/user.ts:113
+msgctxt "auth.model.User.fields"
+msgid "Last Name"
+msgstr ""
+
+#: service/models/user.ts:91
+msgctxt "auth.model.User.fields"
+msgid "Password Hash"
+msgstr ""
+
+#: service/models/user.ts:80
+msgctxt "auth.model.User.fields"
+msgid "Phone"
+msgstr ""
+
+#: service/models/user.ts:170
+msgctxt "auth.model.User.fields"
+msgid "Preferences"
+msgstr ""
+
+#: service/models/user.ts:271
+msgctxt "auth.model.User.fields"
+msgid "Roles"
+msgstr ""
+
+#: service/models/user.ts:246
+msgctxt "auth.model.User.fields"
+msgid "Sessions"
+msgstr ""
+
+#: service/models/user.ts:160
+msgctxt "auth.model.User.fields"
+msgid "Timezone"
+msgstr ""
+
+#: service/models/user.ts:256
+msgctxt "auth.model.User.fields"
+msgid "Tokens"
+msgstr ""
+
+#: service/models/user.ts:58
+msgctxt "auth.model.User.fields"
+msgid "Username"
+msgstr ""
+
+#: service/models/user_role.ts:48
+msgctxt "auth.model.UserRole.fields"
+msgid "Company"
+msgstr ""
+
+#: service/models/user_role.ts:35
+msgctxt "auth.model.UserRole.fields"
+msgid "Role"
+msgstr ""
+
+#: service/models/user_role.ts:25
+msgctxt "auth.model.UserRole.fields"
+msgid "User"
+msgstr ""
+
 #: service/models/_user_field_rule_eval.ts:136
 msgctxt "service/models/_user_field_rule_eval"
 msgid "Model does not exist"
@@ -70,137 +512,137 @@ msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
 
-#: service/models/session.ts:75
+#: service/models/session.ts:109
 msgctxt "service/models/session"
 msgid "Failed to revoke session"
 msgstr ""
 
-#: service/models/session.ts:104
+#: service/models/session.ts:138
 msgctxt "service/models/session"
 msgid "Failed to revoke user sessions"
 msgstr ""
 
-#: service/models/token.ts:130
-#: service/models/token.ts:179
-#: service/models/token.ts:201
-#: service/models/token.ts:227
-#: service/models/token.ts:273
-#: service/models/token.ts:83
+#: service/models/token.ts:121
+#: service/models/token.ts:168
+#: service/models/token.ts:217
+#: service/models/token.ts:239
+#: service/models/token.ts:265
+#: service/models/token.ts:311
 msgctxt "service/models/token"
 msgid "Auth service is disabled"
 msgstr ""
 
-#: service/models/token.ts:118
+#: service/models/token.ts:156
 msgctxt "service/models/token"
 msgid "Failed to create token pair"
 msgstr ""
 
-#: service/models/token.ts:167
+#: service/models/token.ts:205
 msgctxt "service/models/token"
 msgid "Failed to refresh tokens"
 msgstr ""
 
-#: service/models/token.ts:189
+#: service/models/token.ts:227
 msgctxt "service/models/token"
 msgid "Failed to revoke token"
 msgstr ""
 
-#: service/models/token.ts:261
+#: service/models/token.ts:299
 msgctxt "service/models/token"
 msgid "Failed to revoke user access tokens"
 msgstr ""
 
-#: service/models/token.ts:211
+#: service/models/token.ts:249
 msgctxt "service/models/token"
 msgid "Failed to revoke user tokens"
 msgstr ""
 
-#: service/models/token.ts:283
+#: service/models/token.ts:321
 msgctxt "service/models/token"
 msgid "Token validation failed"
 msgstr ""
 
-#: service/models/token.ts:234
+#: service/models/token.ts:272
 msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user.ts:745
+#: service/models/user.ts:813
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user.ts:726
+#: service/models/user.ts:794
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user.ts:483
+#: service/models/user.ts:551
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user.ts:710
+#: service/models/user.ts:778
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user.ts:718
+#: service/models/user.ts:786
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user.ts:455
+#: service/models/user.ts:523
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user.ts:472
+#: service/models/user.ts:540
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr ""
 
-#: service/models/user.ts:303
+#: service/models/user.ts:371
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user.ts:322
+#: service/models/user.ts:390
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user.ts:339
+#: service/models/user.ts:407
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user.ts:390
+#: service/models/user.ts:458
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user.ts:405
+#: service/models/user.ts:473
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user.ts:374
+#: service/models/user.ts:442
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user.ts:358
+#: service/models/user.ts:426
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user.ts:266
+#: service/models/user.ts:334
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user.ts:235
+#: service/models/user.ts:303
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -688,19 +1130,9 @@ msgctxt "web/views/RoleFormView"
 msgid "Accessible UI Resources"
 msgstr ""
 
-#: web/views/RoleFormView.vue:16
-msgctxt "web/views/RoleFormView"
-msgid "Active"
-msgstr ""
-
 #: web/views/RoleFormView.vue:73
 msgctxt "web/views/RoleFormView"
 msgid "Advanced Mode"
-msgstr ""
-
-#: web/views/RoleFormView.vue:106
-msgctxt "web/views/RoleFormView"
-msgid "Application Scope"
 msgstr ""
 
 #: web/views/RoleFormView.vue:4
@@ -708,85 +1140,29 @@ msgctxt "web/views/RoleFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/RoleFormView.vue:19
-msgctxt "web/views/RoleFormView"
-msgid "Built-in"
-msgstr ""
-
-#: web/views/RoleFormView.vue:13
-#: web/views/RoleFormView.vue:52
-msgctxt "web/views/RoleFormView"
-msgid "Code"
-msgstr ""
-
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:49
 msgctxt "web/views/RoleFormView"
 msgid "Copy Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:81
-msgctxt "web/views/RoleFormView"
-msgid "Create"
-msgstr ""
-
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:49
 msgctxt "web/views/RoleFormView"
 msgid "Create Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:31
-msgctxt "web/views/RoleFormView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/RoleFormView.vue:82
-msgctxt "web/views/RoleFormView"
-msgid "Delete"
-msgstr ""
-
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:49
 msgctxt "web/views/RoleFormView"
 msgid "Delete Role"
 msgstr ""
 
-#: web/views/RoleFormView.vue:22
-msgctxt "web/views/RoleFormView"
-msgid "Description"
-msgstr ""
-
-#: web/views/RoleFormView.vue:10
-msgctxt "web/views/RoleFormView"
-msgid "Display Name"
-msgstr ""
-
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:49
 msgctxt "web/views/RoleFormView"
 msgid "Edit Role"
-msgstr ""
-
-#: web/views/RoleFormView.vue:89
-msgctxt "web/views/RoleFormView"
-msgid "Field"
 msgstr ""
 
 #: web/views/RoleFormView.vue:86
 msgctxt "web/views/RoleFormView"
 msgid "Field Rules (Manual Maintenance)"
-msgstr ""
-
-#: web/views/RoleFormView.vue:78
-msgctxt "web/views/RoleFormView"
-msgid "Filter Condition"
-msgstr ""
-
-#: web/views/RoleFormView.vue:46
-msgctxt "web/views/RoleFormView"
-msgid "Full Name"
-msgstr ""
-
-#: web/views/RoleFormView.vue:44
-msgctxt "web/views/RoleFormView"
-msgid "ID"
 msgstr ""
 
 #: web/views/RoleFormView.vue:49
@@ -799,31 +1175,6 @@ msgctxt "web/views/RoleFormView"
 msgid "Method Access (Manual Maintenance)"
 msgstr ""
 
-#: web/views/RoleFormView.vue:105
-#: web/views/RoleFormView.vue:99
-msgctxt "web/views/RoleFormView"
-msgid "Mode"
-msgstr ""
-
-#: web/views/RoleFormView.vue:77
-#: web/views/RoleFormView.vue:88
-#: web/views/RoleFormView.vue:97
-msgctxt "web/views/RoleFormView"
-msgid "Model"
-msgstr ""
-
-#: web/views/RoleFormView.vue:51
-#: web/views/RoleFormView.vue:7
-msgctxt "web/views/RoleFormView"
-msgid "Name"
-msgstr ""
-
-#: web/views/RoleFormView.vue:79
-#: web/views/RoleFormView.vue:90
-msgctxt "web/views/RoleFormView"
-msgid "Read"
-msgstr ""
-
 #: web/views/RoleFormView.vue:75
 msgctxt "web/views/RoleFormView"
 msgid "Record Rules (Manual Maintenance)"
@@ -834,12 +1185,12 @@ msgctxt "web/views/RoleFormView"
 msgid "Related Data"
 msgstr ""
 
-#: web/views/RoleFormView.vue:33
+#: web/views/RoleFormView.vue:32
 msgctxt "web/views/RoleFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/RoleFormView.vue:50
+#: web/views/RoleFormView.vue:49
 msgctxt "web/views/RoleFormView"
 msgid "Role"
 msgstr ""
@@ -854,19 +1205,9 @@ msgctxt "web/views/RoleFormView"
 msgid "Select User"
 msgstr ""
 
-#: web/views/RoleFormView.vue:98
-msgctxt "web/views/RoleFormView"
-msgid "Service"
-msgstr ""
-
 #: web/views/RoleFormView.vue:28
 msgctxt "web/views/RoleFormView"
 msgid "System Information"
-msgstr ""
-
-#: web/views/RoleFormView.vue:107
-msgctxt "web/views/RoleFormView"
-msgid "UI Resource"
 msgstr ""
 
 #: web/views/RoleFormView.vue:55
@@ -879,130 +1220,54 @@ msgctxt "web/views/RoleFormView"
 msgid "UI Resource Details (Manual Maintenance)"
 msgstr ""
 
-#: web/views/RoleFormView.vue:34
-msgctxt "web/views/RoleFormView"
-msgid "Updated At"
-msgstr ""
-
-#: web/views/RoleFormView.vue:45
-msgctxt "web/views/RoleFormView"
-msgid "Username"
-msgstr ""
-
 #: web/views/RoleFormView.vue:42
 msgctxt "web/views/RoleFormView"
 msgid "Users"
 msgstr ""
 
-#: web/views/RoleFormView.vue:80
-#: web/views/RoleFormView.vue:91
-msgctxt "web/views/RoleFormView"
-msgid "Write"
-msgstr ""
-
-#: web/views/RoleListView.vue:8
-msgctxt "web/views/RoleListView"
-msgid "Active"
-msgstr ""
-
-#: web/views/RoleListView.vue:9
-msgctxt "web/views/RoleListView"
-msgid "Built-in"
-msgstr ""
-
-#: web/views/RoleListView.vue:6
-msgctxt "web/views/RoleListView"
-msgid "Code"
-msgstr ""
-
-#: web/views/RoleListView.vue:34
+#: web/views/RoleListView.vue:33
 msgctxt "web/views/RoleListView"
 msgid "Copy Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:34
+#: web/views/RoleListView.vue:33
 msgctxt "web/views/RoleListView"
 msgid "Create Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:10
-msgctxt "web/views/RoleListView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/RoleListView.vue:34
+#: web/views/RoleListView.vue:33
 msgctxt "web/views/RoleListView"
 msgid "Delete Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:7
-msgctxt "web/views/RoleListView"
-msgid "Description"
-msgstr ""
-
-#: web/views/RoleListView.vue:34
+#: web/views/RoleListView.vue:33
 msgctxt "web/views/RoleListView"
 msgid "Edit Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:5
-msgctxt "web/views/RoleListView"
-msgid "Name"
-msgstr ""
-
-#: web/views/RoleListView.vue:34
+#: web/views/RoleListView.vue:33
 msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr ""
 
-#: web/views/SessionFormView.vue:10
-msgctxt "web/views/SessionFormView"
-msgid "Access Token ID"
-msgstr ""
-
-#: web/views/SessionFormView.vue:40
+#: web/views/SessionFormView.vue:39
 msgctxt "web/views/SessionFormView"
 msgid "Copy Session"
 msgstr ""
 
-#: web/views/SessionFormView.vue:40
+#: web/views/SessionFormView.vue:39
 msgctxt "web/views/SessionFormView"
 msgid "Create Session"
 msgstr ""
 
-#: web/views/SessionFormView.vue:34
-msgctxt "web/views/SessionFormView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/SessionFormView.vue:40
+#: web/views/SessionFormView.vue:39
 msgctxt "web/views/SessionFormView"
 msgid "Delete Session"
 msgstr ""
 
-#: web/views/SessionFormView.vue:13
-msgctxt "web/views/SessionFormView"
-msgid "Device Info"
-msgstr ""
-
-#: web/views/SessionFormView.vue:40
+#: web/views/SessionFormView.vue:39
 msgctxt "web/views/SessionFormView"
 msgid "Edit Session"
-msgstr ""
-
-#: web/views/SessionFormView.vue:19
-msgctxt "web/views/SessionFormView"
-msgid "Expires At"
-msgstr ""
-
-#: web/views/SessionFormView.vue:16
-msgctxt "web/views/SessionFormView"
-msgid "IP Address"
-msgstr ""
-
-#: web/views/SessionFormView.vue:22
-msgctxt "web/views/SessionFormView"
-msgid "Last Activity"
 msgstr ""
 
 #: web/views/SessionFormView.vue:7
@@ -1010,7 +1275,7 @@ msgctxt "web/views/SessionFormView"
 msgid "Select User"
 msgstr ""
 
-#: web/views/SessionFormView.vue:40
+#: web/views/SessionFormView.vue:39
 msgctxt "web/views/SessionFormView"
 msgid "Session"
 msgstr ""
@@ -1020,129 +1285,54 @@ msgctxt "web/views/SessionFormView"
 msgid "Session Information"
 msgstr ""
 
-#: web/views/SessionFormView.vue:25
-msgctxt "web/views/SessionFormView"
-msgid "Status"
-msgstr ""
-
 #: web/views/SessionFormView.vue:31
 msgctxt "web/views/SessionFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/SessionFormView.vue:37
-msgctxt "web/views/SessionFormView"
-msgid "Updated At"
-msgstr ""
-
-#: web/views/SessionFormView.vue:7
-msgctxt "web/views/SessionFormView"
-msgid "User"
-msgstr ""
-
-#: web/views/SessionListView.vue:33
+#: web/views/SessionListView.vue:32
 msgctxt "web/views/SessionListView"
 msgid "Copy Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:33
+#: web/views/SessionListView.vue:32
 msgctxt "web/views/SessionListView"
 msgid "Create Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:10
-msgctxt "web/views/SessionListView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/SessionListView.vue:33
+#: web/views/SessionListView.vue:32
 msgctxt "web/views/SessionListView"
 msgid "Delete Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:33
+#: web/views/SessionListView.vue:32
 msgctxt "web/views/SessionListView"
 msgid "Edit Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:9
-msgctxt "web/views/SessionListView"
-msgid "Expires At"
-msgstr ""
-
-#: web/views/SessionListView.vue:6
-msgctxt "web/views/SessionListView"
-msgid "IP Address"
-msgstr ""
-
-#: web/views/SessionListView.vue:8
-msgctxt "web/views/SessionListView"
-msgid "Last Activity"
-msgstr ""
-
-#: web/views/SessionListView.vue:33
+#: web/views/SessionListView.vue:32
 msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:7
-msgctxt "web/views/SessionListView"
-msgid "Status"
-msgstr ""
-
-#: web/views/SessionListView.vue:5
-msgctxt "web/views/SessionListView"
-msgid "User"
-msgstr ""
-
-#: web/views/TokenFormView.vue:43
+#: web/views/TokenFormView.vue:42
 msgctxt "web/views/TokenFormView"
 msgid "Copy Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:43
+#: web/views/TokenFormView.vue:42
 msgctxt "web/views/TokenFormView"
 msgid "Create Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:37
-msgctxt "web/views/TokenFormView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/TokenFormView.vue:43
+#: web/views/TokenFormView.vue:42
 msgctxt "web/views/TokenFormView"
 msgid "Delete Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:10
-msgctxt "web/views/TokenFormView"
-msgid "Display Name"
-msgstr ""
-
-#: web/views/TokenFormView.vue:43
+#: web/views/TokenFormView.vue:42
 msgctxt "web/views/TokenFormView"
 msgid "Edit Token"
-msgstr ""
-
-#: web/views/TokenFormView.vue:19
-msgctxt "web/views/TokenFormView"
-msgid "Expires At"
-msgstr ""
-
-#: web/views/TokenFormView.vue:25
-msgctxt "web/views/TokenFormView"
-msgid "Revocation Reason"
-msgstr ""
-
-#: web/views/TokenFormView.vue:22
-msgctxt "web/views/TokenFormView"
-msgid "Revoked"
-msgstr ""
-
-#: web/views/TokenFormView.vue:34
-msgctxt "web/views/TokenFormView"
-msgid "Revoked At"
 msgstr ""
 
 #: web/views/TokenFormView.vue:7
@@ -1155,34 +1345,14 @@ msgctxt "web/views/TokenFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/TokenFormView.vue:43
+#: web/views/TokenFormView.vue:42
 msgctxt "web/views/TokenFormView"
 msgid "Token"
-msgstr ""
-
-#: web/views/TokenFormView.vue:16
-msgctxt "web/views/TokenFormView"
-msgid "Token ID"
 msgstr ""
 
 #: web/views/TokenFormView.vue:4
 msgctxt "web/views/TokenFormView"
 msgid "Token Information"
-msgstr ""
-
-#: web/views/TokenFormView.vue:13
-msgctxt "web/views/TokenFormView"
-msgid "Type"
-msgstr ""
-
-#: web/views/TokenFormView.vue:40
-msgctxt "web/views/TokenFormView"
-msgid "Updated At"
-msgstr ""
-
-#: web/views/TokenFormView.vue:7
-msgctxt "web/views/TokenFormView"
-msgid "User"
 msgstr ""
 
 #: web/views/TokenKanbanView.vue:35
@@ -1227,39 +1397,24 @@ msgctxt "web/views/TokenKanbanView"
 msgid "Revoked At"
 msgstr ""
 
-#: web/views/TokenKanbanView.vue:33
-msgctxt "web/views/TokenKanbanView"
-msgid "User"
-msgstr ""
-
-#: web/views/TokenListView.vue:36
+#: web/views/TokenListView.vue:35
 msgctxt "web/views/TokenListView"
 msgid "Copy Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:36
+#: web/views/TokenListView.vue:35
 msgctxt "web/views/TokenListView"
 msgid "Create Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:19
-msgctxt "web/views/TokenListView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/TokenListView.vue:36
+#: web/views/TokenListView.vue:35
 msgctxt "web/views/TokenListView"
 msgid "Delete Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:36
+#: web/views/TokenListView.vue:35
 msgctxt "web/views/TokenListView"
 msgid "Edit Token"
-msgstr ""
-
-#: web/views/TokenListView.vue:16
-msgctxt "web/views/TokenListView"
-msgid "Expires At"
 msgstr ""
 
 #: web/views/TokenListView.vue:7
@@ -1277,29 +1432,9 @@ msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenListView.vue:17
-msgctxt "web/views/TokenListView"
-msgid "Revoked"
-msgstr ""
-
-#: web/views/TokenListView.vue:18
-msgctxt "web/views/TokenListView"
-msgid "Revoked At"
-msgstr ""
-
-#: web/views/TokenListView.vue:36
+#: web/views/TokenListView.vue:35
 msgctxt "web/views/TokenListView"
 msgid "Token"
-msgstr ""
-
-#: web/views/TokenListView.vue:15
-msgctxt "web/views/TokenListView"
-msgid "Type"
-msgstr ""
-
-#: web/views/TokenListView.vue:14
-msgctxt "web/views/TokenListView"
-msgid "User"
 msgstr ""
 
 #: web/views/UserFormView.vue:58
@@ -1312,107 +1447,27 @@ msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr ""
 
-#: web/views/UserFormView.vue:19
-msgctxt "web/views/UserFormView"
-msgid "Active"
-msgstr ""
-
-#: web/views/UserFormView.vue:7
-msgctxt "web/views/UserFormView"
-msgid "Avatar"
-msgstr ""
-
-#: web/views/UserFormView.vue:37
-msgctxt "web/views/UserFormView"
-msgid "Company"
-msgstr ""
-
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:51
 msgctxt "web/views/UserFormView"
 msgid "Copy User"
 msgstr ""
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:51
 msgctxt "web/views/UserFormView"
 msgid "Create User"
 msgstr ""
 
-#: web/views/UserFormView.vue:49
-#: web/views/UserFormView.vue:68
-#: web/views/UserFormView.vue:77
-#: web/views/UserFormView.vue:85
-msgctxt "web/views/UserFormView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:51
 msgctxt "web/views/UserFormView"
 msgid "Delete User"
 msgstr ""
 
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:51
 msgctxt "web/views/UserFormView"
 msgid "Edit User"
 msgstr ""
 
-#: web/views/UserFormView.vue:13
-msgctxt "web/views/UserFormView"
-msgid "Email"
-msgstr ""
-
-#: web/views/UserFormView.vue:22
-msgctxt "web/views/UserFormView"
-msgid "First Name"
-msgstr ""
-
-#: web/views/UserFormView.vue:28
-msgctxt "web/views/UserFormView"
-msgid "Full Name"
-msgstr ""
-
-#: web/views/UserFormView.vue:66
-#: web/views/UserFormView.vue:74
-#: web/views/UserFormView.vue:83
-msgctxt "web/views/UserFormView"
-msgid "ID"
-msgstr ""
-
-#: web/views/UserFormView.vue:31
-msgctxt "web/views/UserFormView"
-msgid "Language"
-msgstr ""
-
-#: web/views/UserFormView.vue:76
-msgctxt "web/views/UserFormView"
-msgid "Last Activity"
-msgstr ""
-
-#: web/views/UserFormView.vue:46
-msgctxt "web/views/UserFormView"
-msgid "Last Login"
-msgstr ""
-
-#: web/views/UserFormView.vue:25
-msgctxt "web/views/UserFormView"
-msgid "Last Name"
-msgstr ""
-
-#: web/views/UserFormView.vue:67
-msgctxt "web/views/UserFormView"
-msgid "Name"
-msgstr ""
-
-#: web/views/UserFormView.vue:16
-msgctxt "web/views/UserFormView"
-msgid "Phone"
-msgstr ""
-
-#: web/views/UserFormView.vue:40
-msgctxt "web/views/UserFormView"
-msgid "Preferences"
-msgstr ""
-
-#: web/views/UserFormView.vue:35
+#: web/views/UserFormView.vue:34
 msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr ""
@@ -1437,99 +1492,39 @@ msgctxt "web/views/UserFormView"
 msgid "Sessions"
 msgstr ""
 
-#: web/views/UserFormView.vue:75
-msgctxt "web/views/UserFormView"
-msgid "Status"
-msgstr ""
-
-#: web/views/UserFormView.vue:34
-msgctxt "web/views/UserFormView"
-msgid "Timezone"
-msgstr ""
-
 #: web/views/UserFormView.vue:81
 msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr ""
 
-#: web/views/UserFormView.vue:84
-msgctxt "web/views/UserFormView"
-msgid "Type"
-msgstr ""
-
-#: web/views/UserFormView.vue:52
-msgctxt "web/views/UserFormView"
-msgid "Updated At"
-msgstr ""
-
-#: web/views/UserFormView.vue:52
+#: web/views/UserFormView.vue:51
 msgctxt "web/views/UserFormView"
 msgid "User"
 msgstr ""
 
-#: web/views/UserFormView.vue:10
-msgctxt "web/views/UserFormView"
-msgid "Username"
-msgstr ""
-
-#: web/views/UserListView.vue:6
-msgctxt "web/views/UserListView"
-msgid "Avatar"
-msgstr ""
-
-#: web/views/UserListView.vue:8
-msgctxt "web/views/UserListView"
-msgid "Company"
-msgstr ""
-
-#: web/views/UserListView.vue:33
+#: web/views/UserListView.vue:32
 msgctxt "web/views/UserListView"
 msgid "Copy User"
 msgstr ""
 
-#: web/views/UserListView.vue:33
+#: web/views/UserListView.vue:32
 msgctxt "web/views/UserListView"
 msgid "Create User"
 msgstr ""
 
-#: web/views/UserListView.vue:12
-msgctxt "web/views/UserListView"
-msgid "Created At"
-msgstr ""
-
-#: web/views/UserListView.vue:33
+#: web/views/UserListView.vue:32
 msgctxt "web/views/UserListView"
 msgid "Delete User"
 msgstr ""
 
-#: web/views/UserListView.vue:33
+#: web/views/UserListView.vue:32
 msgctxt "web/views/UserListView"
 msgid "Edit User"
 msgstr ""
 
-#: web/views/UserListView.vue:9
-msgctxt "web/views/UserListView"
-msgid "Email"
-msgstr ""
-
-#: web/views/UserListView.vue:11
-msgctxt "web/views/UserListView"
-msgid "Full Name"
-msgstr ""
-
-#: web/views/UserListView.vue:10
-msgctxt "web/views/UserListView"
-msgid "Phone"
-msgstr ""
-
-#: web/views/UserListView.vue:33
+#: web/views/UserListView.vue:32
 msgctxt "web/views/UserListView"
 msgid "User"
-msgstr ""
-
-#: web/views/UserListView.vue:7
-msgctxt "web/views/UserListView"
-msgid "Username"
 msgstr ""
 
 #: web/views/UserSearchView.vue:4

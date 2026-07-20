@@ -19,29 +19,28 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneField
             :store="store"
             prop="UserId"
-            :label="_t('User')"
             :search-view="UserListView"
             :search-view-title="_t('Select User')"
             @value-click="onUserValueClick"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="DisplayName" :label="_t('Display Name')" />
+          <OVarCharField :store="store" prop="DisplayName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="TokenType" :label="_t('Type')" />
+          <OVarCharField :store="store" prop="TokenType" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="TokenId" :label="_t('Token ID')" />
+          <OVarCharField :store="store" prop="TokenId" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" />
+          <ODateTimeField :store="store" prop="ExpiresAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="Revoked" :label="_t('Revoked')" widget="checkbox" />
+          <OBooleanField :store="store" prop="Revoked" widget="checkbox" />
         </el-col>
         <el-col :span="24">
-          <OVarCharField :store="store" prop="RevocationReason" :label="_t('Revocation Reason')" />
+          <OVarCharField :store="store" prop="RevocationReason" />
         </el-col>
       </el-row>
     </el-card>
@@ -52,13 +51,13 @@ SPDX-License-Identifier: Apache-2.0
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="RevokedAt" :label="_t('Revoked At')" />
+          <ODateTimeField :store="store" prop="RevokedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+          <ODateTimeField :store="store" prop="CreatedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+          <ODateTimeField :store="store" prop="UpdatedAt" />
         </el-col>
       </el-row>
     </el-card>

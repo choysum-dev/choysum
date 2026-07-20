@@ -16,52 +16,52 @@ SPDX-License-Identifier: Apache-2.0
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OImageField :store="store" prop="Avatar" :label="_t('Avatar')" />
+          <OImageField :store="store" prop="Avatar" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Username" :label="_t('Username')" :rules="requiredRules" />
+          <OVarCharField :store="store" prop="Username" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Email" :label="_t('Email')" />
+          <OVarCharField :store="store" prop="Email" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Phone" :label="_t('Phone')" />
+          <OVarCharField :store="store" prop="Phone" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="switch" />
+          <OBooleanField :store="store" prop="IsActive" widget="switch" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="FirstName" :label="_t('First Name')" />
+          <OVarCharField :store="store" prop="FirstName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="LastName" :label="_t('Last Name')" />
+          <OVarCharField :store="store" prop="LastName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="FullName" :label="_t('Full Name')" />
+          <OVarCharField :store="store" prop="FullName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Language" :label="_t('Language')" />
+          <OVarCharField :store="store" prop="Language" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Timezone" :label="_t('Timezone')" />
+          <OVarCharField :store="store" prop="Timezone" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OManyToOneRefField :store="store" prop="CompanyId" :label="_t('Company')" @value-click="onCompanyValueClick" />
+          <OManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OJsonobjectField :store="store" prop="Preferences" :label="_t('Preferences')" :pretty="true" />
+          <OJsonobjectField :store="store" prop="Preferences" :pretty="true" />
         </el-col>
       </el-row>
 
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="LastLogin" :label="_t('Last Login')" />
+          <ODateTimeField :store="store" prop="LastLogin" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+          <ODateTimeField :store="store" prop="CreatedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+          <ODateTimeField :store="store" prop="UpdatedAt" />
         </el-col>
       </el-row>
 
@@ -83,26 +83,26 @@ SPDX-License-Identifier: Apache-2.0
     <el-tabs model-value="roles" type="card" class="ufv-tabs">
       <el-tab-pane :label="_t('Roles')" name="roles">
         <OManyToManyField :store="store" prop="Roles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
-          <OCharField :store="store" prop="Roles.Id" :label="_t('ID')" />
-          <OVarCharField :store="store" prop="Roles.Name" :label="_t('Name')" />
-          <ODateTimeField :store="store" prop="Roles.CreatedAt" :label="_t('Created At')" />
+          <OCharField :store="store" prop="Roles.Id" />
+          <OVarCharField :store="store" prop="Roles.Name" />
+          <ODateTimeField :store="store" prop="Roles.CreatedAt" />
         </OManyToManyField>
       </el-tab-pane>
 
       <el-tab-pane :label="_t('Sessions')" name="sessions">
         <OOneToManyField :store="store" prop="Sessions" label="">
-          <OCharField :store="store" prop="Sessions.Id" :label="_t('ID')" />
-          <OVarCharField :store="store" prop="Sessions.Status" :label="_t('Status')" />
-          <ODateTimeField :store="store" prop="Sessions.LastActivityAt" :label="_t('Last Activity')" />
-          <ODateTimeField :store="store" prop="Sessions.CreatedAt" :label="_t('Created At')" />
+          <OCharField :store="store" prop="Sessions.Id" />
+          <OVarCharField :store="store" prop="Sessions.Status" />
+          <ODateTimeField :store="store" prop="Sessions.LastActivityAt" />
+          <ODateTimeField :store="store" prop="Sessions.CreatedAt" />
         </OOneToManyField>
       </el-tab-pane>
 
       <el-tab-pane :label="_t('Tokens')" name="tokens">
         <OOneToManyField :store="store" prop="Tokens" label="">
-          <OCharField :store="store" prop="Tokens.Id" :label="_t('ID')" />
-          <OVarCharField :store="store" prop="Tokens.TokenType" :label="_t('Type')" />
-          <ODateTimeField :store="store" prop="Tokens.CreatedAt" :label="_t('Created At')" />
+          <OCharField :store="store" prop="Tokens.Id" />
+          <OVarCharField :store="store" prop="Tokens.TokenType" />
+          <ODateTimeField :store="store" prop="Tokens.CreatedAt" />
         </OOneToManyField>
       </el-tab-pane>
     </el-tabs>

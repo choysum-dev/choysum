@@ -16,22 +16,22 @@ SPDX-License-Identifier: Apache-2.0
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" />
+          <OVarCharField :store="store" prop="Name" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="DisplayName" :label="_t('Display Name')" />
+          <OVarCharField :store="store" prop="DisplayName" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" />
+          <OVarCharField :store="store" prop="Code" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="checkbox" />
+          <OBooleanField :store="store" prop="IsActive" widget="checkbox" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OBooleanField :store="store" prop="IsSystem" :label="_t('Built-in')" widget="checkbox" />
+          <OBooleanField :store="store" prop="IsSystem" widget="checkbox" />
         </el-col>
         <el-col :span="24">
-          <OVarCharField :store="store" prop="Description" :label="_t('Description')" />
+          <OVarCharField :store="store" prop="Description" />
         </el-col>
       </el-row>
     </el-card>
@@ -42,10 +42,10 @@ SPDX-License-Identifier: Apache-2.0
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+          <ODateTimeField :store="store" prop="CreatedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+          <ODateTimeField :store="store" prop="UpdatedAt" />
         </el-col>
       </el-row>
     </el-card>
@@ -57,15 +57,15 @@ SPDX-License-Identifier: Apache-2.0
       <el-tabs v-model="activeTab" type="card" class="rfv-tabs">
         <el-tab-pane :label="_t('Users')" name="users">
           <OManyToManyField :store="store" prop="Users" label="" :search-list="UserListView" :search-view-title="_t('Select User')">
-            <OCharField :store="store" prop="Users.Id" :label="_t('ID')" />
-            <OVarCharField :store="store" prop="Users.Username" :label="_t('Username')" />
-            <OVarCharField :store="store" prop="Users.FullName" :label="_t('Full Name')" />
+            <OCharField :store="store" prop="Users.Id" />
+            <OVarCharField :store="store" prop="Users.Username" />
+            <OVarCharField :store="store" prop="Users.FullName" />
           </OManyToManyField>
         </el-tab-pane>
         <el-tab-pane :label="_t('Included Roles')" name="implied_roles">
           <OManyToManyField :store="store" prop="ImpliedRoles" label="" :search-list="RoleListView" :search-view-title="_t('Select Role')">
-            <OVarCharField :store="store" prop="ImpliedRoles.Name" :label="_t('Name')" />
-            <OVarCharField :store="store" prop="ImpliedRoles.Code" :label="_t('Code')" />
+            <OVarCharField :store="store" prop="ImpliedRoles.Name" />
+            <OVarCharField :store="store" prop="ImpliedRoles.Code" />
           </OManyToManyField>
         </el-tab-pane>
         <el-tab-pane :label="_t('UI Resource Access')" name="ui_permissions">
@@ -101,37 +101,37 @@ SPDX-License-Identifier: Apache-2.0
           <el-collapse v-model="advancedPanels" class="rfv-advanced" accordion>
             <el-collapse-item name="record_rules" :title="_t('Record Rules (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="RecordRules" label="">
-                <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" :label="_t('Model')" />
-                <OJsonobjectField :store="store" prop="RecordRules.Condition" :label="_t('Filter Condition')" :allow-array="true" />
-                <OBooleanField :store="store" prop="RecordRules.PermRead" :label="_t('Read')" />
-                <OBooleanField :store="store" prop="RecordRules.PermWrite" :label="_t('Write')" />
-                <OBooleanField :store="store" prop="RecordRules.PermCreate" :label="_t('Create')" />
-                <OBooleanField :store="store" prop="RecordRules.PermDelete" :label="_t('Delete')" />
+                <OManyToOneRefField :store="store" prop="RecordRules.IrModelId" />
+                <OJsonobjectField :store="store" prop="RecordRules.Condition" :allow-array="true" />
+                <OBooleanField :store="store" prop="RecordRules.PermRead" />
+                <OBooleanField :store="store" prop="RecordRules.PermWrite" />
+                <OBooleanField :store="store" prop="RecordRules.PermCreate" />
+                <OBooleanField :store="store" prop="RecordRules.PermDelete" />
               </OOneToManyField>
             </el-collapse-item>
 
             <el-collapse-item name="field_rules" :title="_t('Field Rules (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="FieldRules" label="">
-                <OManyToOneRefField :store="store" prop="FieldRules.IrModelId" :label="_t('Model')" />
-                <OManyToOneRefField :store="store" prop="FieldRules.IrFieldId" :label="_t('Field')" />
-                <OSelectionField :store="store" prop="FieldRules.PermRead" :label="_t('Read')" />
-                <OSelectionField :store="store" prop="FieldRules.PermWrite" :label="_t('Write')" />
+                <OManyToOneRefField :store="store" prop="FieldRules.IrModelId" />
+                <OManyToOneRefField :store="store" prop="FieldRules.IrFieldId" />
+                <OSelectionField :store="store" prop="FieldRules.PermRead" />
+                <OSelectionField :store="store" prop="FieldRules.PermWrite" />
               </OOneToManyField>
             </el-collapse-item>
 
             <el-collapse-item name="method_accesses" :title="_t('Method Access (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="MethodAccesses" label="">
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrModelId" :label="_t('Model')" />
-                <OManyToOneRefField :store="store" prop="MethodAccesses.IrServiceId" :label="_t('Service')" />
-                <OSelectionField :store="store" prop="MethodAccesses.Mode" :label="_t('Mode')" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.IrModelId" />
+                <OManyToOneRefField :store="store" prop="MethodAccesses.IrServiceId" />
+                <OSelectionField :store="store" prop="MethodAccesses.Mode" />
               </OOneToManyField>
             </el-collapse-item>
 
             <el-collapse-item name="ui_resources" :title="_t('UI Resource Details (Manual Maintenance)')">
               <OOneToManyField :store="store" prop="UiResources" label="">
-                <OSelectionField :store="store" prop="UiResources.Mode" :label="_t('Mode')" />
-                <OManyToOneRefField :store="store" prop="UiResources.IrApplicationId" :label="_t('Application Scope')" />
-                <OManyToOneRefField :store="store" prop="UiResources.IrUiResourceId" :label="_t('UI Resource')" />
+                <OSelectionField :store="store" prop="UiResources.Mode" />
+                <OManyToOneRefField :store="store" prop="UiResources.IrApplicationId" />
+                <OManyToOneRefField :store="store" prop="UiResources.IrUiResourceId" />
               </OOneToManyField>
             </el-collapse-item>
           </el-collapse>

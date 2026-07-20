@@ -16,12 +16,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField prop="Name" :label="_t('Name')" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <OVarCharField prop="Code" :label="_t('Code')" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <OVarCharField prop="Description" :label="_t('Description')" :store="store" :vColumnProps="{ minWidth: 200 }" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" widget="checkbox" />
-    <OBooleanField :store="store" prop="IsSystem" :label="_t('Built-in')" widget="checkbox" />
-    <ODateTimeField prop="CreatedAt" :label="_t('Created At')" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <OVarCharField prop="Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <OVarCharField prop="Code" :store="store" :vColumnProps="{ minWidth: 120 }" />
+    <OVarCharField prop="Description" :store="store" :vColumnProps="{ minWidth: 200 }" />
+    <OBooleanField :store="store" prop="IsActive" widget="checkbox" />
+    <OBooleanField :store="store" prop="IsSystem" widget="checkbox" />
+    <ODateTimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
   </OListView>
 </template>
 

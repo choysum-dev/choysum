@@ -7,7 +7,7 @@ import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
-import { _t } from '../i18n';
+import { _t, _lt } from '../i18n';
 import Session from './session';
 import Role from './role';
 import RoleMethodAccess from './role_method_access';
@@ -50,37 +50,68 @@ export default class User extends BaseModel {
   /**
    * Unique username used for sign-in.
    */
-  @Field({ type: 'varchar', size: 100, unique: true, notNull: true })
+  @Field({
+    type: 'varchar',
+    size: 100,
+    unique: true,
+    notNull: true,
+    string: _lt('Username', { scope: 'auth.model.User.fields' }),
+  })
   Username: string;
 
   /**
    * Primary email address for the user.
    */
-  @Field({ type: 'varchar', size: 100, unique: true })
+  @Field({
+    type: 'varchar',
+    size: 100,
+    unique: true,
+    string: _lt('Email', { scope: 'auth.model.User.fields' }),
+  })
   readonly Email: string;
 
   /**
    * Optional phone number for the user.
    */
-  @Field({ type: 'varchar', size: 20, unique: true })
+  @Field({
+    type: 'varchar',
+    size: 20,
+    unique: true,
+    string: _lt('Phone', { scope: 'auth.model.User.fields' }),
+  })
   Phone: string;
 
   /**
    * Stored password hash for local authentication.
    */
-  @Field({ type: 'varchar', size: 255, notNull: true })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    notNull: true,
+    string: _lt('Password Hash', { scope: 'auth.model.User.fields' }),
+  })
   PasswordHash: string;
 
   /**
    * Given name used in profile and display contexts.
    */
-  @Field({ type: 'varchar', size: 100, index: true })
+  @Field({
+    type: 'varchar',
+    size: 100,
+    index: true,
+    string: _lt('First Name', { scope: 'auth.model.User.fields' }),
+  })
   FirstName: string;
 
   /**
    * Family name used in profile and display contexts.
    */
-  @Field({ type: 'varchar', size: 100, index: true })
+  @Field({
+    type: 'varchar',
+    size: 100,
+    index: true,
+    string: _lt('Last Name', { scope: 'auth.model.User.fields' }),
+  })
   LastName: string;
 
   /**
@@ -89,6 +120,7 @@ export default class User extends BaseModel {
   @Field({
     type: 'varchar',
     size: 200,
+    string: _lt('Full Name', { scope: 'auth.model.User.fields' }),
   })
   FullName: string;
 
@@ -102,25 +134,41 @@ export default class User extends BaseModel {
   /**
    * Optional avatar image for the user profile.
    */
-  @Field({ type: 'image', index: true })
+  @Field({
+    type: 'image',
+    index: true,
+    string: _lt('Avatar', { scope: 'auth.model.User.fields' }),
+  })
   Avatar?: string;
 
   /**
    * Preferred terminology language (e.g. zh_CN). Written by FE language switch when logged in.
    */
-  @Field({ type: 'varchar', size: 20 })
+  @Field({
+    type: 'varchar',
+    size: 20,
+    string: _lt('Language', { scope: 'auth.model.User.fields' }),
+  })
   Language: string;
 
   /**
    * Preferred timezone reserved for future localization support.
    */
-  @Field({ type: 'varchar', size: 40 })
+  @Field({
+    type: 'varchar',
+    size: 40,
+    string: _lt('Timezone', { scope: 'auth.model.User.fields' }),
+  })
   Timezone: string;
 
   /**
    * User-specific UI and company-scope preferences.
    */
-  @Field({ type: 'jsonobject', default: () => {} })
+  @Field({
+    type: 'jsonobject',
+    default: () => {},
+    string: _lt('Preferences', { scope: 'auth.model.User.fields' }),
+  })
   Preferences: {
     // Company scope preferences (P3).
     activeCompanyId?: string;
@@ -151,25 +199,42 @@ export default class User extends BaseModel {
   /**
    * Primary company assigned by the base company module.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'base.Company' } })
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    string: _lt('Company', { scope: 'auth.model.User.fields' }),
+  })
   CompanyId: string;
 
   /**
    * Additional company ids available to the user in multi-company mode.
    */
-  @Field({ type: 'ManyToManyRef', relation: { targetModel: 'base.Company' } })
+  @Field({
+    type: 'ManyToManyRef',
+    relation: { targetModel: 'base.Company' },
+    string: _lt('Accessible Companies', { scope: 'auth.model.User.fields' }),
+  })
   CompanyIds: string[];
 
   /**
    * Whether the account is currently active.
    */
-  @Field({ type: 'boolean', default: () => true, index: true })
+  @Field({
+    type: 'boolean',
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'auth.model.User.fields' }),
+  })
   IsActive: boolean;
 
   /**
    * Timestamp of the most recent successful login.
    */
-  @Field({ type: 'datetime', index: true })
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Last Login', { scope: 'auth.model.User.fields' }),
+  })
   LastLogin: Date;
 
   /**
@@ -178,6 +243,7 @@ export default class User extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => Session, inverseField: 'UserId' },
+    string: _lt('Sessions', { scope: 'auth.model.User.fields' }),
   })
   Sessions: Session[];
 
@@ -187,6 +253,7 @@ export default class User extends BaseModel {
   @Field({
     type: 'OneToMany',
     relation: { targetModel: () => Token, inverseField: 'UserId' },
+    string: _lt('Tokens', { scope: 'auth.model.User.fields' }),
   })
   Tokens: Token[];
 
@@ -201,6 +268,7 @@ export default class User extends BaseModel {
       joinField: 'UserId',
       inverseJoinField: 'RoleId',
     },
+    string: _lt('Roles', { scope: 'auth.model.User.fields' }),
   })
   Roles: Role[];
 

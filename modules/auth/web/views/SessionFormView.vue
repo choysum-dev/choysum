@@ -19,7 +19,6 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneField
             :store="store"
             prop="UserId"
-            :label="_t('User')"
             :search-view="UserListView"
             :search-view-title="_t('Select User')"
             @value-click="onUserValueClick"
@@ -52,10 +51,10 @@ SPDX-License-Identifier: Apache-2.0
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+          <ODateTimeField :store="store" prop="CreatedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+          <ODateTimeField :store="store" prop="UpdatedAt" />
         </el-col>
       </el-row>
     </el-card>

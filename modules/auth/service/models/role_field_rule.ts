@@ -6,6 +6,7 @@ import { Onchange } from '@/core/service/api/onchange';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import Role from './role';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
@@ -19,19 +20,37 @@ export default class RoleFieldRule extends BaseModel {
   /**
    * Role that owns this field-rule entry.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Role', { scope: 'auth.model.RoleFieldRule.fields' }),
+  })
   RoleId: Role;
 
   /**
    * Application-level scope when the rule applies to an entire application.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrApplication' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrApplication' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Application', { scope: 'auth.model.RoleFieldRule.fields' }),
+  })
   IrApplicationId?: string;
 
   /**
    * Model-level scope when the rule applies to an entire model.
    */
-  @Field({ type: 'ManyToOneRef', relation: { targetModel: 'meta.IrModel' }, notNull: false, size: 20, index: true})
+  @Field({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'meta.IrModel' },
+    notNull: false,
+    size: 20,
+    index: true,
+    string: _lt('Model', { scope: 'auth.model.RoleFieldRule.fields' }),
+  })
   IrModelId?: string;
 
   /**
@@ -52,6 +71,7 @@ export default class RoleFieldRule extends BaseModel {
         )
         AND (perm_read IS NOT NULL OR perm_write IS NOT NULL)
       )`,
+    string: _lt('Field', { scope: 'auth.model.RoleFieldRule.fields' }),
   })
   IrFieldId?: string;
 
@@ -61,10 +81,11 @@ export default class RoleFieldRule extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'allow', label: 'Allow' },
-      { value: 'deny', label: 'Deny' },
+      { value: 'allow', label: _lt('Allow', { scope: 'auth.model.RoleFieldRule.fields' }) },
+      { value: 'deny', label: _lt('Deny', { scope: 'auth.model.RoleFieldRule.fields' }) },
     ],
     notNull: false,
+    string: _lt('Read', { scope: 'auth.model.RoleFieldRule.fields' }),
   })
   PermRead?: 'allow' | 'deny';
 
@@ -74,10 +95,11 @@ export default class RoleFieldRule extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'allow', label: 'Allow' },
-      { value: 'deny', label: 'Deny' },
+      { value: 'allow', label: _lt('Allow', { scope: 'auth.model.RoleFieldRule.fields' }) },
+      { value: 'deny', label: _lt('Deny', { scope: 'auth.model.RoleFieldRule.fields' }) },
     ],
     notNull: false,
+    string: _lt('Write', { scope: 'auth.model.RoleFieldRule.fields' }),
   })
   PermWrite?: 'allow' | 'deny';
 

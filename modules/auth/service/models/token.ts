@@ -3,7 +3,7 @@
 
 import { BaseModel, Model, Field, SqlCompute } from '@/core/service';
 import { newAuthError, wrapAuthError, GrpcCode, AuthErrCode } from '../error';
-import { _t } from '../i18n';
+import { _t, _lt } from '../i18n';
 import User from './user';
 
 /**
@@ -17,6 +17,7 @@ export default class Token extends BaseModel {
   @Field({
     type: 'varchar',
     size: 36,
+    string: _lt('Display Name', { scope: 'auth.model.Token.fields' }),
   })
   public readonly DisplayName!: string;
 
@@ -28,49 +29,86 @@ export default class Token extends BaseModel {
   /**
    * User that owns the token row.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => User, onDelete: 'CASCADE' } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => User, onDelete: 'CASCADE' },
+    string: _lt('User', { scope: 'auth.model.Token.fields' }),
+  })
   UserId: User;
 
   /**
    * Stable token identifier embedded in the signed token payload.
    */
-  @Field({ type: 'varchar', size: 36, notNull: true, unique: true })
+  @Field({
+    type: 'varchar',
+    size: 36,
+    notNull: true,
+    unique: true,
+    string: _lt('Token ID', { scope: 'auth.model.Token.fields' }),
+  })
   TokenId: string;
 
   /**
    * Token category such as access or refresh.
    */
-  @Field({ type: 'varchar', size: 10, notNull: true, index: true })
+  @Field({
+    type: 'varchar',
+    size: 10,
+    notNull: true,
+    index: true,
+    string: _lt('Type', { scope: 'auth.model.Token.fields' }),
+  })
   TokenType: string;
 
   /**
    * Token expiration timestamp.
    */
-  @Field({ type: 'datetime', notNull: true, index: true })
+  @Field({
+    type: 'datetime',
+    notNull: true,
+    index: true,
+    string: _lt('Expires At', { scope: 'auth.model.Token.fields' }),
+  })
   ExpiresAt: Date;
 
   /**
    * Whether the token has been revoked.
    */
-  @Field({ type: 'boolean', default: () => false, index: true })
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    index: true,
+    string: _lt('Revoked', { scope: 'auth.model.Token.fields' }),
+  })
   Revoked: boolean;
 
   /**
    * Time when the token was revoked.
    */
-  @Field({ type: 'datetime', index: true })
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Revoked At', { scope: 'auth.model.Token.fields' }),
+  })
   RevokedAt: Date;
 
   /**
    * Human-readable explanation for the revocation.
    */
-  @Field({ type: 'varchar', size: 255 })
+  @Field({
+    type: 'varchar',
+    size: 255,
+    string: _lt('Revocation Reason', { scope: 'auth.model.Token.fields' }),
+  })
   RevocationReason: string;
 
   /**
    * Additional token metadata stored alongside the persisted token row.
    */
-  @Field({ type: 'jsonobject' })
+  @Field({
+    type: 'jsonobject',
+    string: _lt('Metadata', { scope: 'auth.model.Token.fields' }),
+  })
   Metadata: Record<string, any>;
 
   /**

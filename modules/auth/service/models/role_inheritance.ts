@@ -5,6 +5,7 @@ import { BaseModel, Model, Field } from '@/core/service';
 import type { Insertable, Updateable } from '@/core/service/api/input';
 import type { FieldSelection } from '@/core/service/api/selection';
 import type { QueryCondition } from '@/core/service/api/query';
+import { _lt } from '../i18n';
 import Role from './role';
 import { invalidateAllAuthzCaches } from './_request_cache_invalidation';
 
@@ -17,13 +18,21 @@ export default class RoleInheritance extends BaseModel {
   /**
    * Parent role that contributes permissions to the child role.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Parent Role', { scope: 'auth.model.RoleInheritance.fields' }),
+  })
   ParentRoleId: Role;
 
   /**
    * Child role that inherits permissions from ParentRoleId.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Role } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Role },
+    string: _lt('Child Role', { scope: 'auth.model.RoleInheritance.fields' }),
+  })
   ChildRoleId: Role;
 
   /**
