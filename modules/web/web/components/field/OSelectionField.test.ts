@@ -217,4 +217,102 @@ describe('OSelectionField FieldsGet wiring (P2)', () => {
     expect(opts[0]!.attributes('data-value')).toBe('archived');
     expect(opts[0]!.attributes('data-label')).toBe('归档');
   });
+
+  it('dynamic selectionKind loads options via ensureFieldsGet on mount (T3.5)', async () => {
+    const dynamicMeta: WebFieldMetadata = {
+      id: '2',
+      type: 'selection',
+      typeAnnotation: 'string',
+      selectionKind: 'dynamic',
+    };
+    const FieldsGet = vi.fn(async () => ({
+      Status: {
+        ...dynamicMeta,
+        selectionKind: 'dynamic' as const,
+        selection: [
+          { value: 'active', label: '启用' },
+          { value: 'archived', label: '归档' },
+        ],
+      },
+    }));
+    const helpers = createFieldsGetHelpers(
+      { fieldsMetadata: { Status: dynamicMeta }, FieldsGet },
+      { getLang: () => 'zh_CN' }
+    );
+    const store = { fieldsMetadata: { Status: dynamicMeta }, FieldsGet, ...helpers };
+
+    const wrapper = mount(OSelectionField as any, {
+      props: {
+        binding: makeBinding({ meta: dynamicMeta, store, isEditMode: true }),
+        renderMode: 'form',
+      },
+      global: {
+        stubs: {
+          OFieldBase: {
+            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: null })" :record="{}" /></div>`,
+          },
+          'el-select': { template: `<div class="sel"><slot /></div>` },
+          'el-option': {
+            props: ['label', 'value'],
+            template: `<div class="opt" :data-label="label" :data-value="value" />`,
+          },
+        },
+      },
+    });
+
+    await flushPromises();
+    await nextTick();
+    expect(FieldsGet).toHaveBeenCalled();
+    const opts = wrapper.findAll('.opt');
+    expect(opts.length).toBe(2);
+    expect(opts[0]!.attributes('data-label')).toBe('启用');
+  });
+
+  it('onchange selection narrows FieldsGet baseline options (T3.6)', async () => {
+    const FieldsGet = vi.fn(async () => ({
+      Status: {
+        ...staticMeta,
+        selection: [
+          { value: 'active', label: '启用' },
+          { value: 'archived', label: '归档' },
+          { value: 'draft', label: '草稿' },
+        ],
+      },
+    }));
+    const helpers = createFieldsGetHelpers(
+      { fieldsMetadata: { Status: staticMeta }, FieldsGet },
+      { getLang: () => 'zh_CN' }
+    );
+    const store = { fieldsMetadata: { Status: staticMeta }, FieldsGet, ...helpers };
+    const lastOnchangeResult = ref({
+      selection: [{ field: 'Status', selection: ['archived', 'draft'], disabled: ['draft'] }],
+    });
+
+    const wrapper = mount(OSelectionField as any, {
+      props: {
+        binding: makeBinding({ meta: staticMeta, store, isEditMode: true }),
+        renderMode: 'form',
+      },
+      global: {
+        provide: { lastOnchangeResult },
+        stubs: {
+          OFieldBase: {
+            template: `<div class="ob"><slot name="edit" :fieldValue="() => ({ value: null })" :record="{}" /></div>`,
+          },
+          'el-select': { template: `<div class="sel"><slot /></div>` },
+          'el-option': {
+            props: ['label', 'value', 'disabled'],
+            template: `<div class="opt" :data-label="label" :data-value="value" :data-disabled="disabled ? '1' : '0'" />`,
+          },
+        },
+      },
+    });
+
+    await flushPromises();
+    await nextTick();
+    const opts = wrapper.findAll('.opt');
+    expect(opts.map(o => o.attributes('data-value'))).toEqual(['archived', 'draft']);
+    expect(opts[0]!.attributes('data-label')).toBe('归档');
+    expect(opts[1]!.attributes('data-disabled')).toBe('1');
+  });
 });

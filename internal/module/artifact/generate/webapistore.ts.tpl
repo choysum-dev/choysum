@@ -54,6 +54,7 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.RelationInverseJoinField}}relationInverseJoinField: '{{$field.RelationInverseJoinField}}',{{- end}}
     {{- if $field.String}}string: {{$field.String}},{{- end}}
     {{- if $field.StringText}}stringText: {{$field.StringText}},{{- end}}
+    {{- if $field.SelectionKind}}selectionKind: '{{$field.SelectionKind}}',{{- end}}
     {{- if $field.Selection}}selection: {{$field.Selection}},{{- end}}
   },
 {{- end}}

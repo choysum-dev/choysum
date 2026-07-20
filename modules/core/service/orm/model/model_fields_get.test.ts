@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createTranslate } from '../../i18n';
-import { setGlobalRequestContextProvider, clearGlobalRequestContextProvider } from '../../../rpc/context';
+import {
+  setGlobalRequestContextProvider,
+  clearGlobalRequestContextProvider,
+  getCurrentRequestContext,
+} from '../../../rpc/context';
 import { Field } from '../decorator/field';
 import { Model } from '../decorator/model';
 import { RepositoryFactory } from '../repository/repository_factory';
@@ -152,6 +156,89 @@ test('FieldsGet omits deny-read fields (T1.4)', async () => {
     expect(out.SecretNote).toBeUndefined();
     expect(out.Name).toBeDefined();
     expect(out.Code).toBeDefined();
+  } finally {
+    resetTestState();
+  }
+});
+
+@Model('FieldsGetDynamicWidget', { application: 'demo' })
+class FieldsGetDynamicWidget extends BaseModel {
+  @Field({ type: 'selection', selection: 'StatusOptions' } as any)
+  Status!: string;
+
+  @Field({
+    type: 'selection',
+    selection: function (this: typeof FieldsGetDynamicWidget) {
+      // RequestContext-only: no draft / row args (T3.3).
+      expect(arguments.length).toBe(0);
+      return [{ value: 'x', label: 'X-Ray' }];
+    },
+  } as any)
+  Mode!: string;
+
+  static StatusOptions() {
+    expect(arguments.length).toBe(0);
+    const companyId = String(getCurrentRequestContext().companyId || '').trim();
+    if (companyId === 'c2') {
+      return [
+        { value: 'active', label: 'Active' },
+        { value: 'hold', label: 'On Hold' },
+      ];
+    }
+    return [
+      { value: 'active', label: 'Active' },
+      { value: 'archived', label: 'Archived' },
+    ];
+  }
+}
+
+test('FieldsGet evaluates method selection and translates labels (T3.2)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  setTestI18nBridge({
+    t: (_m, lang, _s, src) => {
+      if (lang !== 'zh_CN') return '';
+      if (src === 'Active') return '启用';
+      if (src === 'Archived') return '归档';
+      if (src === 'X-Ray') return 'X光';
+      return '';
+    },
+  });
+  RepositoryFactory.setRepository(FieldsGetDynamicWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetDynamicWidget.FieldsGet(['Status', 'Mode']);
+    expect(out.Status?.selectionKind).toBe('dynamic');
+    expect(out.Status?.selection).toEqual([
+      { value: 'active', label: '启用' },
+      { value: 'archived', label: '归档' },
+    ]);
+    expect(out.Mode?.selectionKind).toBe('dynamic');
+    expect(out.Mode?.selection).toEqual([{ value: 'x', label: 'X光' }]);
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet dynamic callable ignores draft; company context can change options (T3.3 / T3.4)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US', companyId: 'c1' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetDynamicWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const first = await FieldsGetDynamicWidget.FieldsGet(['Status', 'Mode'], ['selection', 'selectionKind', 'type']);
+    expect(first.Status?.selection?.map(s => s.value)).toEqual(['active', 'archived']);
+    expect(first.Mode?.selection).toEqual([{ value: 'x', label: 'X-Ray' }]);
+
+    // Draft is not an API input (D9); only RequestContext (e.g. company) can change options.
+    setGlobalRequestContextProvider({ lang: 'en_US', companyId: 'c2' });
+    const second = await FieldsGetDynamicWidget.FieldsGet(['Status'], ['selection', 'selectionKind', 'type']);
+    expect(second.Status?.selection?.map(s => s.value)).toEqual(['active', 'hold']);
   } finally {
     resetTestState();
   }

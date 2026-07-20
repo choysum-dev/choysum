@@ -43,6 +43,7 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		RelationJoinField:        "PartnerId",
 		RelationInverseJoinField: "TagId",
 		Selection:                selectionJSON,
+		SelectionKind:            "static",
 		FieldString:              "Amount",
 		StringText:               `{"key":"` + stringKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Amount","kind":"literal"}`,
 		Round:                    &round,
@@ -136,11 +137,33 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if !strings.Contains(string(storeContent), `"label":"Allow"`) {
 		t.Fatalf("expected selection label msgid in generated store content: %s", string(storeContent))
 	}
+	if !strings.Contains(string(storeContent), "selectionKind: 'static'") {
+		t.Fatalf("expected selectionKind static in generated store content: %s", string(storeContent))
+	}
 	if !strings.Contains(string(storeContent), `string: "Amount"`) || !strings.Contains(string(storeContent), "stringText:") || !strings.Contains(string(storeContent), stringKey) {
 		t.Fatalf("expected field string/stringText in generated store content: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)
+	}
+}
+
+func TestWebApiStoreGenerate_DynamicSelectionOmitsInlineArray(t *testing.T) {
+	field := &meta.IrField{
+		BaseModel:       meta.BaseModel{Id: sql.NullString{String: "field-dyn", Valid: true}},
+		Name:            "Status",
+		FieldType:       "selection",
+		TsTypeAnnotation: "string",
+		SelectionKind:   "dynamic",
+		SelectionMethod: "StatusOptions",
+		Selection:       `[{"value":"should","label":"NotEmit"}]`,
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.SelectionKind == nil || *metadata.SelectionKind != "dynamic" {
+		t.Fatalf("expected selectionKind dynamic, got %#v", metadata.SelectionKind)
+	}
+	if metadata.Selection != nil {
+		t.Fatalf("dynamic selection must omit inline selection array, got %#v", metadata.Selection)
 	}
 }
 

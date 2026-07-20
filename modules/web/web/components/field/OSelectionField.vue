@@ -66,7 +66,7 @@ type MetaOption = { value: string; label: string };
 type EffectiveOption = { value: string; label: string; disabled: boolean };
 
 /** FieldsGet attributes used for selection option loading (D14). */
-const SELECTION_FIELDS_GET_ATTRS = ['type', 'selection', 'string', 'stringText'];
+const SELECTION_FIELDS_GET_ATTRS = ['type', 'selection', 'selectionKind', 'string', 'stringText'];
 
 const props = withDefaults(
   defineProps<{

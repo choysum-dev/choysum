@@ -103,6 +103,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     }
 
     let validatedSelection: FieldMetadata['selection'];
+    let selectionKind: FieldMetadata['selectionKind'];
+    let selectionMethod: FieldMetadata['selectionMethod'];
+    let selectionCallable: FieldMetadata['selectionCallable'];
     let normalizedColumn: ObjectRecord | undefined;
 
     const isRelation = relationTypes.has(type);
@@ -240,52 +243,62 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     const hasColumn = normalizedColumn !== undefined;
 
-    // Selection-specific validation
+    // Selection-specific validation (static array | method name | callable)
     if (type === 'selection') {
-      const selectionItems = optionBag.selection;
+      const selectionRaw = optionBag.selection;
 
-      // 1) selection must be a non-empty array
-      if (!Array.isArray(selectionItems) || selectionItems.length === 0) {
-        throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
+      if (typeof selectionRaw === 'function') {
+        selectionKind = 'dynamic';
+        selectionCallable = selectionRaw as FieldMetadata['selectionCallable'];
+      } else if (typeof selectionRaw === 'string') {
+        const method = selectionRaw.trim();
+        if (!method) {
+          throw new Error(`@Field(${name}) selection method name must be a non-empty string`);
+        }
+        selectionKind = 'dynamic';
+        selectionMethod = method;
+      } else if (Array.isArray(selectionRaw)) {
+        if (selectionRaw.length === 0) {
+          throw new Error(`@Field(${name}) selection type requires a non-empty selection array`);
+        }
+
+        const values = new Set<string>();
+        const normalizedSelection: Array<{ value: string; label: string }> = [];
+        for (const item of selectionRaw) {
+          if (!item || typeof item !== 'object') {
+            throw new Error(`@Field(${name}) each selection item must be an object`);
+          }
+          if (!item.value || typeof item.value !== 'string') {
+            throw new Error(`@Field(${name}) each selection item must include a string value field`);
+          }
+          if ((item as { labelText?: unknown }).labelText != null) {
+            throw new Error(`@Field(${name}) selection labelText is forbidden; use a string label and FieldsGet for translations`);
+          }
+          if (isTermReference(item.label)) {
+            throw new Error(`@Field(${name}) selection label must be a string literal (TermReference / _lt is forbidden)`);
+          }
+          if (!item.label || typeof item.label !== 'string') {
+            throw new Error(`@Field(${name}) each selection item must include a string label field`);
+          }
+          const label = item.label.trim();
+          if (!label) {
+            throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
+          }
+
+          const value = item.value;
+          if (values.has(value)) {
+            throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
+          }
+          values.add(value);
+          normalizedSelection.push({ value, label });
+        }
+        validatedSelection = normalizedSelection;
+        selectionKind = 'static';
+      } else {
+        throw new Error(
+          `@Field(${name}) selection must be a non-empty array, method name string, or () => SelectionItem[] callable`
+        );
       }
-
-      // 2) every selection item must contain value and a plain string label (no TermReference / labelText)
-      const values = new Set<string>();
-      const normalizedSelection: Array<{ value: string; label: string }> = [];
-      for (const item of selectionItems) {
-        if (!item || typeof item !== 'object') {
-          throw new Error(`@Field(${name}) each selection item must be an object`);
-        }
-        if (!item.value || typeof item.value !== 'string') {
-          throw new Error(`@Field(${name}) each selection item must include a string value field`);
-        }
-        if ((item as { labelText?: unknown }).labelText != null) {
-          throw new Error(`@Field(${name}) selection labelText is forbidden; use a string label and FieldsGet for translations`);
-        }
-        if (isTermReference(item.label)) {
-          throw new Error(`@Field(${name}) selection label must be a string literal (TermReference / _lt is forbidden)`);
-        }
-        if (!item.label || typeof item.label !== 'string') {
-          throw new Error(`@Field(${name}) each selection item must include a string label field`);
-        }
-        const label = item.label.trim();
-        if (!label) {
-          throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
-        }
-
-        const value = item.value;
-
-        // 3) value must be unique
-        if (values.has(value)) {
-          throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
-        }
-        values.add(value);
-        normalizedSelection.push({
-          value,
-          label,
-        });
-      }
-      validatedSelection = normalizedSelection;
     }
 
     // ManyToOneRef default physical column: char(20) + index when no explicit storage hints are provided.
@@ -382,7 +395,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     // Persist selection metadata before final storage/relation defaults.
     if (type === 'selection') {
-      meta.selection = validatedSelection;
+      if (selectionKind) meta.selectionKind = selectionKind;
+      if (validatedSelection) meta.selection = validatedSelection;
+      if (selectionMethod) meta.selectionMethod = selectionMethod;
+      if (selectionCallable) meta.selectionCallable = selectionCallable;
     }
 
     if (optionBag.relation) meta.relation = optionBag.relation as FieldMetadata['relation'];

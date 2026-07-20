@@ -151,6 +151,7 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
     { value: 'a', label: 'A' },
     { value: 'b', label: 'B' },
   ]);
+  expect(selectionMeta?.selectionKind).toBe('static');
   expect(selectionMeta?.column).toEqual({});
 
   expect(binaryMeta?.column).toEqual({});
@@ -188,6 +189,40 @@ test('Field decorator rejects selection TermReference label and labelText (T2.1)
     }
     return LabelTextModel;
   }).toThrow('selection labelText is forbidden');
+});
+
+test('Field decorator accepts dynamic selection method name and callable (P3)', () => {
+  class MethodSelectionModel extends BaseModel {
+    @Field({ type: 'selection', selection: 'StatusOptions' } as any)
+    Status!: string;
+
+    static StatusOptions() {
+      return [
+        { value: 'a', label: 'A' },
+        { value: 'b', label: 'B' },
+      ];
+    }
+  }
+
+  const methodMeta = MetadataStorage.instance.getModelMetadata(MethodSelectionModel as any).fields.get('Status') as any;
+  expect(methodMeta?.selectionKind).toBe('dynamic');
+  expect(methodMeta?.selectionMethod).toBe('StatusOptions');
+  expect(methodMeta?.selection).toBeUndefined();
+
+  class CallableSelectionModel extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: function (this: typeof CallableSelectionModel) {
+        return [{ value: 'x', label: 'X' }];
+      },
+    } as any)
+    Mode!: string;
+  }
+
+  const callableMeta = MetadataStorage.instance.getModelMetadata(CallableSelectionModel as any).fields.get('Mode') as any;
+  expect(callableMeta?.selectionKind).toBe('dynamic');
+  expect(typeof callableMeta?.selectionCallable).toBe('function');
+  expect(callableMeta?.selection).toBeUndefined();
 });
 
 test('Field decorator validates ref/relation/compute/decimal constraints', () => {

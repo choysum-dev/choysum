@@ -170,7 +170,11 @@ type FlatDecimalFieldOptions<T extends BaseModel> = {
 
 type FlatSelectionFieldOptions<T extends BaseModel> = {
   type: 'selection';
-  selection: SelectionDeclarationItem[];
+  /**
+   * Static option list, static method name, or RequestContext-only callable (P3).
+   * Callables must not read draft / row values (D9).
+   */
+  selection: SelectionDeclaration;
   size?: number;
 } & FlatCommonOptions &
   FlatNoRelationOption &
@@ -240,6 +244,14 @@ export interface SelectionDeclarationItem {
   /** English msgid only; TermReference / labelText are forbidden (D5·D15). */
   label: string;
 }
+
+/** Authoring forms for `@Field({ type: 'selection', selection })` (P3). */
+export type SelectionDeclaration =
+  | SelectionDeclarationItem[]
+  | string
+  | ((this: unknown) => SelectionDeclarationItem[]);
+
+export type SelectionKind = 'static' | 'dynamic';
 
 /**
  * All supported field kinds.
@@ -418,7 +430,17 @@ export interface FieldMetadata {
   stringText?: TermReference;
   column?: ColumnOptions<BaseModel, unknown>;
   relation?: RuntimeRelationMetadata;
-  selection?: readonly SelectionItem[]; // Selection options list
+  /** Static options (English msgid labels). Omitted for dynamic selection. */
+  selection?: readonly SelectionItem[];
+  /** `dynamic` when selection is a method name or callable (P3). */
+  selectionKind?: SelectionKind;
+  /** Static method name on the model ctor when selection is a string. */
+  selectionMethod?: string;
+  /**
+   * Runtime-only callable for dynamic selection.
+   * Invoked by FieldsGet with RequestContext only (no draft).
+   */
+  selectionCallable?: (this: unknown) => SelectionItem[];
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
 }

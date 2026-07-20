@@ -61,6 +61,8 @@ type FieldMetadata struct {
 
 	// Selection is forwarded when available.
 	Selection *string `json:"selection,omitempty"`
+	// SelectionKind is "static" or "dynamic" (P3).
+	SelectionKind *string `json:"selectionKind,omitempty"`
 
 	// String is a JS string literal expression (already quoted) for the field title msgid.
 	String *string `json:"string,omitempty"`
@@ -200,7 +202,15 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	}
 
 	// Pass through Selection when it is non-empty (strip legacy labelText wire keys).
-	if field.Selection != "" {
+	// Dynamic selection fields omit the inline array (T3.1).
+	kind := strings.TrimSpace(field.SelectionKind)
+	if kind == "" && strings.TrimSpace(field.Selection) != "" {
+		kind = "static"
+	}
+	if kind != "" {
+		metadata.SelectionKind = &kind
+	}
+	if kind != "dynamic" && field.Selection != "" {
 		stripped := stripSelectionLabelTextJSON(field.Selection)
 		metadata.Selection = &stripped
 	}

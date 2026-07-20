@@ -13,6 +13,7 @@ export type FieldsGetFieldMeta = {
   type: string;
   string?: string;
   stringText?: TermReference;
+  selectionKind?: 'static' | 'dynamic';
   selection?: Array<{ value: string; label: string }>;
   notNull?: boolean;
   size?: number;
@@ -89,7 +90,41 @@ async function resolveDenyReadFields(ModelCtor: ModelFieldsGetCtor): Promise<Set
   }
 }
 
+function normalizeSelectionItems(raw: unknown): SelectionItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SelectionItem[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const value = String((item as SelectionItem).value || '').trim();
+    const label = String((item as SelectionItem).label || '').trim();
+    if (!value || !label || seen.has(value)) continue;
+    seen.add(value);
+    out.push({ value, label });
+  }
+  return out;
+}
+
+/**
+ * Resolve dynamic selection via method name or callable.
+ * Callables receive `this = ModelCtor` and must not use draft (D9 / T3.3).
+ */
+function evaluateDynamicSelection(ModelCtor: ModelFieldsGetCtor, field: FieldMetadata): SelectionItem[] {
+  if (typeof field.selectionCallable === 'function') {
+    return normalizeSelectionItems(field.selectionCallable.call(ModelCtor));
+  }
+  const methodName = String(field.selectionMethod || '').trim();
+  if (!methodName) return [];
+  const owner = ModelCtor as unknown as Record<string, unknown>;
+  const fn = owner[methodName];
+  if (typeof fn !== 'function') {
+    throw new Error(`FieldsGet: selection method ${ModelCtor.name}.${methodName} is not a function`);
+  }
+  return normalizeSelectionItems((fn as (this: unknown) => unknown).call(ModelCtor));
+}
+
 function buildFieldMeta(
+  ModelCtor: ModelFieldsGetCtor,
   field: FieldMetadata,
   fallbackModule: string,
   fallbackScope: string
@@ -108,10 +143,15 @@ function buildFieldMeta(
     meta.stringText = { ...field.stringText };
   }
 
-  // P1: static selection only. Callable / dynamic evaluation is P3.
-  const selection = translateSelectionLabels(field.selection, fallbackModule, fallbackScope);
-  if (selection) {
-    meta.selection = selection;
+  if (field.selectionKind === 'dynamic' || field.selectionCallable || field.selectionMethod) {
+    meta.selectionKind = 'dynamic';
+    const evaluated = evaluateDynamicSelection(ModelCtor, field);
+    const selection = translateSelectionLabels(evaluated, fallbackModule, fallbackScope);
+    if (selection) meta.selection = selection;
+  } else if (field.selection) {
+    meta.selectionKind = 'static';
+    const selection = translateSelectionLabels(field.selection, fallbackModule, fallbackScope);
+    if (selection) meta.selection = selection;
   }
 
   const column = field.column as { notNull?: boolean; size?: number; precision?: number; scale?: number; index?: boolean | string } | undefined;
@@ -184,7 +224,7 @@ export async function fieldsGetModels(
   for (const name of names) {
     const field = allFields.get(name);
     if (!field) continue;
-    result[name] = projectAttributes(buildFieldMeta(field, application, fallbackScope), attrList);
+    result[name] = projectAttributes(buildFieldMeta(ModelCtor, field, application, fallbackScope), attrList);
   }
   return result;
 }

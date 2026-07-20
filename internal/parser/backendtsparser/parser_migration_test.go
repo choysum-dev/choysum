@@ -629,8 +629,76 @@ export default class PlainSelectionModel extends BaseModel {
 	if spec.Structural.Selection[0].Label != "Active" || spec.Structural.Selection[0].LabelText != nil {
 		t.Fatalf("unexpected selection item: %+v", spec.Structural.Selection[0])
 	}
+	if spec.Structural.SelectionKind != "static" {
+		t.Fatalf("expected static selectionKind, got %q", spec.Structural.SelectionKind)
+	}
 	if strings.Contains(r.Model.Fields[0].Selection, "labelText") {
 		t.Fatalf("selection JSON must not contain labelText: %s", r.Model.Fields[0].Selection)
+	}
+}
+
+func TestTsParser_DynamicSelectionMethodNameAndCallable(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('DynamicSelectionModel')
+export default class DynamicSelectionModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: 'StatusOptions'
+  })
+  public Status: string
+
+  @Field({
+    type: 'selection',
+    selection: () => [{ value: 'a', label: 'A' }]
+  })
+  public Mode: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		byName[field.Name] = field
+	}
+	status := byName["Status"]
+	if status == nil {
+		t.Fatal("expected Status field")
+	}
+	statusSpec, err := status.GetResolvedSpec()
+	if err != nil || statusSpec == nil {
+		t.Fatalf("status spec: %v %#v", err, statusSpec)
+	}
+	if statusSpec.Structural.SelectionKind != "dynamic" || statusSpec.Structural.SelectionMethod != "StatusOptions" {
+		t.Fatalf("unexpected Status dynamic meta: %+v", statusSpec.Structural)
+	}
+	if len(statusSpec.Structural.Selection) != 0 || strings.TrimSpace(status.Selection) != "" {
+		t.Fatalf("dynamic Status must not inline selection: spec=%+v field=%q", statusSpec.Structural.Selection, status.Selection)
+	}
+	if status.SelectionKind != "dynamic" || status.SelectionMethod != "StatusOptions" {
+		t.Fatalf("legacy field columns: kind=%q method=%q", status.SelectionKind, status.SelectionMethod)
+	}
+
+	mode := byName["Mode"]
+	if mode == nil {
+		t.Fatal("expected Mode field")
+	}
+	modeSpec, err := mode.GetResolvedSpec()
+	if err != nil || modeSpec == nil {
+		t.Fatalf("mode spec: %v %#v", err, modeSpec)
+	}
+	if modeSpec.Structural.SelectionKind != "dynamic" || modeSpec.Structural.SelectionMethod != "" {
+		t.Fatalf("unexpected Mode dynamic meta: %+v", modeSpec.Structural)
+	}
+	if len(modeSpec.Structural.Selection) != 0 {
+		t.Fatalf("callable Mode must not inline selection: %+v", modeSpec.Structural.Selection)
 	}
 }
 

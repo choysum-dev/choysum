@@ -352,34 +352,61 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		}
 	}
 
-	if selection, ok := options["selection"].([]any); ok {
-		for _, item := range selection {
-			entry, ok := item.(map[string]any)
-			if !ok {
-				continue
+	if selectionRaw, hasSelection := options["selection"]; hasSelection && selectionRaw != nil {
+		switch selection := selectionRaw.(type) {
+		case []any:
+			for _, item := range selection {
+				entry, ok := item.(map[string]any)
+				if !ok {
+					continue
+				}
+				if entry["value"] == nil || entry["label"] == nil {
+					continue
+				}
+				value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
+				labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
+				if _, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
+					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (TermReference / _lt is forbidden)", field.Name)
+				}
+				if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
+					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (translate calls are forbidden)", field.Name)
+				}
+				label := labelRaw
+				if literal, err := parser.ParseJSStringLiteral(labelRaw); err == nil {
+					label = strings.TrimSpace(literal)
+				}
+				if value == "" || label == "" {
+					continue
+				}
+				spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
+					Value: value,
+					Label: label,
+				})
 			}
-			if entry["value"] == nil || entry["label"] == nil {
-				continue
+			if len(spec.Structural.Selection) > 0 {
+				spec.Structural.SelectionKind = "static"
 			}
-			value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
-			labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
-			if _, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
-				return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (TermReference / _lt is forbidden)", field.Name)
+		case string:
+			trimmed := strings.TrimSpace(selection)
+			if trimmed == "" {
+				return nil, fmt.Errorf("@Field(%s) selection method name must be a non-empty string", field.Name)
 			}
-			if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
-				return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (translate calls are forbidden)", field.Name)
+			methodName := trimmed
+			if literal, err := parser.ParseJSStringLiteral(trimmed); err == nil {
+				methodName = strings.TrimSpace(literal)
 			}
-			label := labelRaw
-			if literal, err := parser.ParseJSStringLiteral(labelRaw); err == nil {
-				label = strings.TrimSpace(literal)
+			if methodName == "" {
+				return nil, fmt.Errorf("@Field(%s) selection method name must be a non-empty string", field.Name)
 			}
-			if value == "" || label == "" {
-				continue
+			// Arrow / function source text from ObjectLiteral encoding → dynamic without method name.
+			if strings.Contains(methodName, "=>") || strings.HasPrefix(methodName, "function") {
+				spec.Structural.SelectionKind = "dynamic"
+			} else {
+				spec.Structural.SelectionKind = "dynamic"
+				spec.Structural.SelectionMethod = methodName
 			}
-			spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
-				Value: value,
-				Label: label,
-			})
+		default:
+			return nil, fmt.Errorf("@Field(%s) selection must be an array, method name string, or callable", field.Name)
 		}
 	}
 
@@ -622,7 +649,11 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 		if b, err := json.Marshal(spec.Structural.Selection); err == nil {
 			field.Selection = string(b)
 		}
+	} else {
+		field.Selection = ""
 	}
+	field.SelectionKind = strings.TrimSpace(spec.Structural.SelectionKind)
+	field.SelectionMethod = strings.TrimSpace(spec.Structural.SelectionMethod)
 
 	if strings.TrimSpace(spec.Structural.String) != "" {
 		field.FieldString = strings.TrimSpace(spec.Structural.String)
