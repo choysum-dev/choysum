@@ -45,8 +45,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerListView', inheritAttrs: true });
-const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
-const { _t: _tRef } = createTranslate('partner', { output: 'reference', scope: 'web/views/PartnerListView' });
+const { _t, _lt } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
 
 /**
  * Props consumed by the partner list view.
@@ -61,10 +60,10 @@ const router = useRouter();
  * Action descriptor used to open the partner detail page from the list.
  */
 const partnerOpenDetailAction = defineAction('partner.action.partner_open_detail', {
-  title: _tRef('Open Partner Detail'),
+  title: _lt('Open Partner Detail'),
   requires: [{ model: 'partner.Partner' }],
 });
-const partnerActions = defineModelActions('partner.Partner', { entityTitle: _tRef('Partner') });
+const partnerActions = defineModelActions('partner.Partner', { entityTitle: _lt('Partner') });
 const { hasAction } = usePermission();
 
 /**

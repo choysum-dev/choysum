@@ -5,7 +5,7 @@ import { RouteRecordRaw } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('meta', { output: 'reference', scope: 'web/route/routes' });
+const { _lt } = createTranslate('meta', { scope: 'web/route/routes' });
 
 /**
  * Route table for the meta module management surfaces.
@@ -13,7 +13,7 @@ const { _t } = createTranslate('meta', { output: 'reference', scope: 'web/route/
 export const metaRoutes: RouteRecordRaw[] = [
   defineRoute('meta.route.module_board', {
     sequence: 10,
-    title: _t('Module Management'),
+    title: _lt('Module Management'),
     path: 'meta/modules',
     name: 'MetaModuleList',
     component: () => import('../pages/ModuleList.vue'),
@@ -23,7 +23,7 @@ export const metaRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('meta.route.module_list', {
     sequence: 20,
-    title: _t('Module List'),
+    title: _lt('Module List'),
     path: 'meta/modules/list',
     name: 'MetaModuleListTable',
     component: () => import('../pages/ModuleListTable.vue'),
@@ -33,7 +33,7 @@ export const metaRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('meta.route.module_history', {
     sequence: 30,
-    title: _t('Operation History'),
+    title: _lt('Operation History'),
     path: 'meta/modules/history',
     name: 'MetaModuleHistory',
     component: () => import('../pages/ModuleHistory.vue'),
@@ -43,7 +43,7 @@ export const metaRoutes: RouteRecordRaw[] = [
   }),
   defineRoute('meta.route.module_detail', {
     sequence: 40,
-    title: _t('Module Detail'),
+    title: _lt('Module Detail'),
     path: 'meta/modules/:id',
     name: 'MetaModuleDetail',
     component: () => import('../pages/ModuleDetail.vue'),

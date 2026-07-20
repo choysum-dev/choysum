@@ -278,7 +278,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		}
 		binding := behaviorBindings[field.Name]
 		diagnostics := behaviorDiagnostics[field.Name]
-		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule, p.referenceOutput, p.referenceScope, p.translateBindings)
+		resolvedSpec, err := buildFieldResolvedSpec(field, binding, diagnostics, p.ownerModule, p.referenceScope, p.translateBindings)
 		if err != nil {
 			return nil, nil, nil, xfmt.Errorf("failed to resolve field %s: %w", field.Name, err)
 		}

@@ -141,8 +141,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'UserFormView', inheritAttrs: true });
-const { _t } = createTranslate('auth', { scope: 'web/views/UserFormView' });
-const { _t: _tRef } = createTranslate('auth', { output: 'reference', scope: 'web/views/UserFormView' });
+const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
@@ -160,7 +159,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, viewMode, showHeader, createAction } = props;
-const userActions = defineModelActions('auth.User', { entityTitle: _tRef('User') });
+const userActions = defineModelActions('auth.User', { entityTitle: _lt('User') });
 const { hasAction } = usePermission();
 
 const router = useRouter();

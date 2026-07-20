@@ -46,8 +46,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleLogListView', inheritAttrs: true });
 
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleLogListView' });
-const { _t: _tRef } = createTranslate('meta', { output: 'reference', scope: 'web/views/ModuleLogListView' });
+const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleLogListView' });
 
 const props = withDefaults(
   defineProps<{
@@ -61,7 +60,7 @@ const props = withDefaults(
 
 const { store, showHeader } = props;
 const moduleLogActions = defineModelActions('meta.ModuleManagementLog', {
-  entityTitle: _tRef('Module Operation History'),
+  entityTitle: _lt('Module Operation History'),
 });
 const { hasAction } = usePermission();
 

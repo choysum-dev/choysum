@@ -8,9 +8,9 @@ import { useRouter } from 'vue-router';
 import { isTermReference, type TermReference } from '@/core/service/i18n';
 import { createTranslate, type TextSource } from '../../i18n';
 
-const { _t: _tRef } = createTranslate('web', { output: 'reference', scope: 'web/stores/breadcrumbStore' });
-const pageFallback = _tRef('Page');
-const detailsFallback = _tRef('Details');
+const { _lt } = createTranslate('web', { scope: 'web/stores/breadcrumbStore' });
+const pageFallback = _lt('Page');
+const detailsFallback = _lt('Details');
 
 export interface BreadcrumbItem {
   title: string;

@@ -44,10 +44,9 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'CountryListView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/CountryListView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/CountryListView' });
 const props = defineProps<{ store: WebModelStore<Country> }>();
-const countryActions = defineModelActions('base.Country', { entityTitle: _tRef('Country') });
+const countryActions = defineModelActions('base.Country', { entityTitle: _lt('Country') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Country>) {

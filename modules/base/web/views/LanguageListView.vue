@@ -43,10 +43,9 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'LanguageListView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/LanguageListView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/LanguageListView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageListView' });
 const props = defineProps<{ store: WebModelStore<Language> }>();
-const languageActions = defineModelActions('base.Language', { entityTitle: _tRef('Language') });
+const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Language>) {

@@ -78,9 +78,8 @@ export default defineComponent({
   setup(props, ctx) {
     const baseSetup = PartnerFormView?.setup?.(props, ctx) || {};
     const store = (baseSetup as any)?.store as any;
-    const { _t } = createTranslate('partner_commercial', { scope: 'web/views/PartnerFormView' });
-    const { _t: _tRef } = createTranslate('partner_commercial', { output: 'reference', scope: 'web/views/PartnerFormView' });
-    const partnerIdentifierActions = defineModelActions('partner.PartnerIdentifier', { entityTitle: _tRef('Identifier') });
+    const { _t, _lt } = createTranslate('partner_commercial', { scope: 'web/views/PartnerFormView' });
+    const partnerIdentifierActions = defineModelActions('partner.PartnerIdentifier', { entityTitle: _lt('Identifier') });
     const { hasAction } = usePermission();
 
     /**

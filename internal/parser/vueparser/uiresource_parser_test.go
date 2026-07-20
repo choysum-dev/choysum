@@ -130,8 +130,8 @@ func TestCollectUiResourceDeclsParsesModelActionEntityTitleTermReference(t *test
 import { createTranslate } from '@/web/web/i18n';
 import { defineModelActions } from '@/core/web/resource';
 
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' });
-const countryActions = defineModelActions('base.Country', { entityTitle: _tRef('Country') });
+const { _lt } = createTranslate('base', { scope: 'web/views/CountryListView' });
+const countryActions = defineModelActions('base.Country', { entityTitle: _lt('Country') });
 `
 
 	decls, issues := collectUiResourceDecls(sourcePath, source)

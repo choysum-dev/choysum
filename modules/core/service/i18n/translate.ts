@@ -5,16 +5,11 @@ import { getContextLang } from '../runtime/context/scope';
 import { resolveI18nScope, withI18nScope, type ResolveI18nScopeOptions } from './scope';
 import { resolveRequestLang } from './request_lang';
 
-export type TranslateOutput = 'text' | 'reference';
 export type TranslateOptions = ResolveI18nScopeOptions & {
   kind?: string;
-  output?: TranslateOutput;
 };
-export type CreateTranslateOptions<Output extends TranslateOutput = 'text'> =
-  TranslateOptions & { output?: Output };
-type TermOptions = Omit<TranslateOptions, 'output'>;
-type ExplicitOutputOptions<Output extends TranslateOutput> =
-  TermOptions & { output: Output };
+export type CreateTranslateOptions = TranslateOptions;
+type TermOptions = TranslateOptions;
 
 export type TermIdentity = {
   module: string;
@@ -89,7 +84,7 @@ function getBridge(): ChoysumI18n | undefined {
 }
 
 function isTranslateOptions(value: unknown): value is TranslateOptions {
-  return !!value && typeof value === 'object' && !Array.isArray(value) && ('scope' in (value as object) || 'kind' in (value as object) || 'path' in (value as object) || 'location' in (value as object) || 'output' in (value as object));
+  return !!value && typeof value === 'object' && !Array.isArray(value) && ('scope' in (value as object) || 'kind' in (value as object) || 'path' in (value as object) || 'location' in (value as object));
 }
 
 function interpolate(template: string, args: unknown[]): string {
@@ -130,34 +125,19 @@ function lookup(identity: TermIdentity): string {
 }
 
 /**
- * Call signatures for text-mode `_t`.
- *
- * Avoid a generic catch-all rest overload: TypeScript will prefer it for
- * `output: 'reference'` plus interpolation and make `@ts-expect-error` unused.
- * Keep reference calls arity-2 only; route interpolation through the text /
- * options / primitive overloads below.
+ * Immediate text translation helper.
  */
 export type TranslateFn = {
-  (src: string, opts: ExplicitOutputOptions<'reference'>): TermReference;
-  (src: string, opts: ExplicitOutputOptions<'text'>, ...args: unknown[]): string;
-  (src: string, opts: ExplicitOutputOptions<TranslateOutput>): string | TermReference;
-  (src: string, opts: TermOptions & { output?: 'text' }, ...args: unknown[]): string;
+  (src: string, opts: TermOptions, ...args: unknown[]): string;
   (src: string, arg1: string | number | boolean | null | undefined, ...args: unknown[]): string;
   (src: string): string;
 };
 
-export type ReferenceTranslateFn = {
-  (src: string, opts: ExplicitOutputOptions<'text'>, ...args: unknown[]): string;
-  (src: string, opts: ExplicitOutputOptions<'reference'>): TermReference;
-  (src: string, opts: ExplicitOutputOptions<TranslateOutput>): string | TermReference;
-  (src: string, opts?: TermOptions & { output?: never }): TermReference;
-};
-
-export type DynamicTranslateFn = {
-  (src: string, opts: ExplicitOutputOptions<'text'>, ...args: unknown[]): string;
-  (src: string, opts: ExplicitOutputOptions<'reference'>): TermReference;
-  (src: string, opts: ExplicitOutputOptions<TranslateOutput>): string | TermReference;
-  (src: string, opts?: TermOptions & { output?: never }): string | TermReference;
+/**
+ * Pin a serializable term reference (no lookup, no interpolation).
+ */
+export type LazyTranslateFn = {
+  (src: string, opts?: TermOptions): TermReference;
 };
 
 export function isTermReference(value: unknown): value is TermReference {
@@ -191,41 +171,26 @@ export function createTermReference(module: string, src: string, opts?: Translat
   };
 }
 
-export type CreateTranslateResult<Output extends TranslateOutput> = {
-  _t: [Output] extends ['reference']
-    ? ReferenceTranslateFn
-    : [Output] extends ['text']
-      ? TranslateFn
-      : DynamicTranslateFn;
+export type CreateTranslateResult = {
+  _t: TranslateFn;
+  _lt: LazyTranslateFn;
 };
 
-export function createTranslate(
-  module: string,
-  defaults: CreateTranslateOptions<'reference'> & { output: 'reference' }
-): CreateTranslateResult<'reference'>;
-export function createTranslate(
-  module: string,
-  defaults?: CreateTranslateOptions<'text'>
-): CreateTranslateResult<'text'>;
-export function createTranslate<Output extends TranslateOutput>(
-  module: string,
-  defaults?: CreateTranslateOptions<Output>
-): CreateTranslateResult<Output>;
 /**
- * Bind the sole terminology helper `_t` to an owner module.
+ * Bind terminology helpers `_t` (text) and `_lt` (TermReference) to an owner module.
  *
- * Text output (the default) translates immediately. Reference output performs
- * no lookup and returns deterministic, serializable metadata.
+ * `_t` translates immediately. `_lt` performs no lookup and returns deterministic,
+ * serializable metadata for static wire (menu / route / field titles).
  */
-export function createTranslate<Output extends TranslateOutput = 'text'>(
+export function createTranslate(
   module: string,
-  defaults?: CreateTranslateOptions<Output>
-): CreateTranslateResult<Output> {
+  defaults?: CreateTranslateOptions
+): CreateTranslateResult {
   const mod = String(module || '').trim();
-  const output: TranslateOutput = defaults?.output === 'reference' ? 'reference' : 'text';
   const defaultScope = resolveI18nScope(defaults);
   const defaultKind = defaults?.kind;
   const defaultIdentities = new Map<string, TermIdentity>();
+  const defaultReferences = new Map<string, TermReference>();
 
   const resolveOptions = (opts?: TranslateOptions): TranslateOptions => {
     const scope = resolveI18nScope(opts) || defaultScope;
@@ -236,16 +201,12 @@ export function createTranslate<Output extends TranslateOutput = 'text'>(
     };
   };
 
-  const _t = (src: string, ...args: unknown[]): string | TermReference => {
+  const _t = (src: string, ...args: unknown[]): string => {
     let opts: TranslateOptions | undefined;
     let interp: unknown[] = args;
     if (args.length > 0 && isTranslateOptions(args[0])) {
       opts = args[0] as TranslateOptions;
       interp = args.slice(1);
-    }
-    const callOutput = opts?.output ?? output;
-    if (callOutput === 'reference') {
-      return createTermReference(mod, src, resolveOptions(opts));
     }
     let identity: TermIdentity;
     if (!opts && defaultScope) {
@@ -260,7 +221,27 @@ export function createTranslate<Output extends TranslateOutput = 'text'>(
     return interpolate(base, interp);
   };
 
-  return { _t: _t as CreateTranslateResult<Output>['_t'] };
+  const _lt = (src: string, opts?: TermOptions, ...rest: unknown[]): TermReference => {
+    if (rest.length > 0) {
+      throw new Error('_lt does not accept interpolation arguments');
+    }
+    if (!opts && defaultScope) {
+      const cached = defaultReferences.get(src);
+      if (cached) {
+        return cached;
+      }
+    }
+    const reference = createTermReference(mod, src, resolveOptions(opts));
+    if (!opts && defaultScope) {
+      defaultReferences.set(src, reference);
+    }
+    return reference;
+  };
+
+  return {
+    _t: _t as TranslateFn,
+    _lt: _lt as LazyTranslateFn,
+  };
 }
 
 export { withI18nScope, resolveI18nScope, formatScope } from './scope';

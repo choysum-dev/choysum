@@ -214,8 +214,7 @@ import { ElButton, ElTag } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'PartnerFormView', inheritAttrs: true });
-const { _t } = createTranslate('partner', { scope: 'web/views/PartnerFormView' });
-const { _t: _tRef } = createTranslate('partner', { output: 'reference', scope: 'web/views/PartnerFormView' });
+const { _t, _lt } = createTranslate('partner', { scope: 'web/views/PartnerFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 /**
@@ -237,7 +236,7 @@ const props = withDefaults(
 );
 
 const { store, recordId, initialValues, viewMode, showHeader, createAction } = props;
-const partnerActions = defineModelActions('partner.Partner', { entityTitle: _tRef('Partner') });
+const partnerActions = defineModelActions('partner.Partner', { entityTitle: _lt('Partner') });
 const { hasAction } = usePermission();
 const router = useRouter();
 const activeTab = ref('contacts');

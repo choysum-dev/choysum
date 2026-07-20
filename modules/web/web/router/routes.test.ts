@@ -6,8 +6,8 @@ import { createTranslate } from '@/web/web/i18n';
 import { menus } from '../menu/menus';
 import routes from './routes';
 
-const homeRouteTitle = createTranslate('web', { output: 'reference', scope: 'web/route/routes' })._t('Home');
-const homeMenuTitle = createTranslate('web', { output: 'reference', scope: 'web/menu/menus' })._t('Home');
+const homeRouteTitle = createTranslate('web', { scope: 'web/route/routes' })._lt('Home');
+const homeMenuTitle = createTranslate('web', { scope: 'web/menu/menus' })._lt('Home');
 
 describe('web home resource declarations', () => {
   it('declares home as a protected route resource', () => {

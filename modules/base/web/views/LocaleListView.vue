@@ -41,10 +41,9 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'LocaleListView', inheritAttrs: true });
-const { _t } = createTranslate('base', { scope: 'web/views/LocaleListView' });
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/LocaleListView' });
+const { _t, _lt } = createTranslate('base', { scope: 'web/views/LocaleListView' });
 const props = defineProps<{ store: WebModelStore<Locale> }>();
-const localeActions = defineModelActions('base.Locale', { entityTitle: _tRef('Locale') });
+const localeActions = defineModelActions('base.Locale', { entityTitle: _lt('Locale') });
 const { hasAction } = usePermission();
 const router = useRouter();
 function onRowClick(payload: RowEventPayload<Locale>) {

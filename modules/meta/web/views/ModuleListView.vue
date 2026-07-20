@@ -67,8 +67,7 @@ import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ModuleListView', inheritAttrs: true });
 
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
-const { _t: _tRef } = createTranslate('meta', { output: 'reference', scope: 'web/views/ModuleListView' });
+const { _t, _lt } = createTranslate('meta', { scope: 'web/views/ModuleListView' });
 
 const router = useRouter();
 
@@ -84,11 +83,11 @@ const props = withDefaults(
 
 const { store, showHeader } = props;
 const moduleSyncIndexAction = defineAction('meta.action.module_sync_index', {
-  title: _tRef('Sync Module Index'),
+  title: _lt('Sync Module Index'),
   requires: [{ model: 'meta.IrModuleIndex', method: 'RequestSync' }],
 });
 const moduleIndexActions = defineModelActions('meta.IrModuleIndex', {
-  entityTitle: _tRef('Module Index'),
+  entityTitle: _lt('Module Index'),
 });
 const { canRoute, hasAction } = usePermission();
 

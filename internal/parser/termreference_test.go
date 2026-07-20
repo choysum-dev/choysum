@@ -12,14 +12,14 @@ import (
 
 func TestParseResourceTitleExprTermReferenceBinding(t *testing.T) {
 	source := `
-const { _t: _tRef } = createTranslate('base', { output: 'reference', scope: 'web/views/CountryListView' });
+const { _lt } = createTranslate('base', { scope: 'web/views/CountryListView' });
 `
 	bindings := ParseTranslateBindings(source)
-	if len(bindings) != 1 || !bindings["_tRef"].ReferenceOutput {
+	if len(bindings) != 1 || !bindings["_lt"].ReferenceOutput {
 		t.Fatalf("unexpected bindings: %#v", bindings)
 	}
 
-	title, titleText, ok := ParseResourceTitleExpr("_tRef('Country')", "base", bindings)
+	title, titleText, ok := ParseResourceTitleExpr("_lt('Country')", "base", bindings)
 	if !ok || title != "Country" || titleText == nil || titleText.Src != "Country" {
 		t.Fatalf("ParseResourceTitleExpr() = (%q, %#v, %v)", title, titleText, ok)
 	}
@@ -51,20 +51,24 @@ func TestDeriveOwnerModuleFromSourcePath(t *testing.T) {
 
 func TestParseTermReferenceCall(t *testing.T) {
 	binding := TranslateBinding{Module: "auth", DefaultScope: "web/page", ReferenceOutput: true}
-	ref, ok := ParseTermReferenceCall(`_t('Hello')`, "auth", binding)
+	ref, ok := ParseTermReferenceCall(`_lt('Hello')`, "auth", binding)
 	if !ok || ref == nil || ref.Src != "Hello" || ref.Scope != "web/page" {
 		t.Fatalf("basic = %#v ok=%v", ref, ok)
 	}
-	ref, ok = ParseTermReferenceCall(`_t('Hi', { scope: 'explicit@loc' })`, "auth", binding)
+	ref, ok = ParseTermReferenceCall(`_lt('Hi', { scope: 'explicit@loc' })`, "auth", binding)
 	if !ok || ref.Scope != "explicit@loc" {
 		t.Fatalf("explicit scope = %#v ok=%v", ref, ok)
 	}
-	ref, ok = ParseTermReferenceCall(`_t('Hi', { path: 'web/a', location: 'title' })`, "auth", binding)
+	ref, ok = ParseTermReferenceCall(`_lt('Hi', { path: 'web/a', location: 'title' })`, "auth", binding)
 	if !ok || ref.Scope != "web/a@title" {
 		t.Fatalf("path@location = %#v ok=%v", ref, ok)
 	}
 	if _, ok := ParseTermReferenceCall(`_t('Hi')`, "auth", TranslateBinding{ReferenceOutput: false}); ok {
-		t.Fatal("non-reference output should fail")
+		t.Fatal("text _t should fail")
+	}
+	ref, ok = ParseTermReferenceCall(`_lt('Bare')`, "auth", TranslateBinding{Module: "auth", DefaultScope: "web/page"})
+	if !ok || ref == nil || ref.Src != "Bare" {
+		t.Fatalf("bare _lt without ReferenceOutput binding = %#v ok=%v", ref, ok)
 	}
 }
 
@@ -86,19 +90,19 @@ func TestCloneTermReferenceWithSrcNilEmpty(t *testing.T) {
 }
 
 func TestParseCreateTranslateOptionsAndBalancedArgs(t *testing.T) {
-	scope, ref := parseCreateTranslateOptions(`output: "reference", path: "web/a", location: "title"`)
-	if !ref || scope != "web/a@title" {
-		t.Fatalf("path/location = %q ref=%v", scope, ref)
+	scope := parseCreateTranslateOptions(`path: "web/a", location: "title"`)
+	if scope != "web/a@title" {
+		t.Fatalf("path/location = %q", scope)
 	}
-	scope, ref = parseCreateTranslateOptions(`output: 'text', scope: 'explicit'`)
-	if ref || scope != "explicit" {
-		t.Fatalf("scope = %q ref=%v", scope, ref)
+	scope = parseCreateTranslateOptions(`scope: 'explicit'`)
+	if scope != "explicit" {
+		t.Fatalf("scope = %q", scope)
 	}
-	scope, ref = parseCreateTranslateOptions("")
-	if scope != "" || ref {
+	scope = parseCreateTranslateOptions("")
+	if scope != "" {
 		t.Fatal("empty options")
 	}
-	scope, ref = parseCreateTranslateOptions(`path: ` + "`web/b`" + `, location: ` + "`loc`")
+	scope = parseCreateTranslateOptions(`path: ` + "`web/b`" + `, location: ` + "`loc`")
 	if scope != "web/b@loc" {
 		t.Fatalf("backtick path = %q", scope)
 	}
@@ -115,18 +119,26 @@ func TestParseCreateTranslateOptionsAndBalancedArgs(t *testing.T) {
 	}
 
 	bindings := ParseTranslateBindings(`
-const { _t: aliased } = createTranslate("auth", { output: "reference", path: "p", location: "l" });
+const { _lt: aliased } = createTranslate("auth", { path: "p", location: "l" });
 const { _t } = createTranslate('web');
 `)
 	if !bindings["aliased"].ReferenceOutput || bindings["aliased"].DefaultScope != "p@l" {
 		t.Fatalf("aliased = %#v", bindings["aliased"])
 	}
-	if bindings["_t"].Module != "web" {
+	if bindings["_t"].Module != "web" || bindings["_t"].ReferenceOutput {
 		t.Fatalf("_t = %#v", bindings["_t"])
 	}
 
-	title, refMeta, ok := ParseResourceTitleExpr(`_t('Hello', { path: 'web/x', location: 't' })`, "auth", map[string]TranslateBinding{
-		"_t": {Module: "auth", ReferenceOutput: true},
+	dual := ParseTranslateBindings(`const { _t, _lt } = createTranslate('auth', { scope: 'shared' });`)
+	if dual["_t"].Module != "auth" || dual["_t"].ReferenceOutput {
+		t.Fatalf("dual _t = %#v", dual["_t"])
+	}
+	if dual["_lt"].Module != "auth" || !dual["_lt"].ReferenceOutput || dual["_lt"].DefaultScope != "shared" {
+		t.Fatalf("dual _lt = %#v", dual["_lt"])
+	}
+
+	title, refMeta, ok := ParseResourceTitleExpr(`_lt('Hello', { path: 'web/x', location: 't' })`, "auth", map[string]TranslateBinding{
+		"_lt": {Module: "auth", ReferenceOutput: true},
 	})
 	if !ok || title != "Hello" || refMeta == nil || refMeta.Scope != "web/x@t" {
 		t.Fatalf("title expr = %q %#v ok=%v", title, refMeta, ok)

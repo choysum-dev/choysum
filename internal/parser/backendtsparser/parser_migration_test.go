@@ -461,17 +461,15 @@ func TestTsParser_PreservesSelectionTermReferenceWithEnglishFallback(t *testing.
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t } = createTranslate('demo', {
-  output: 'reference',
-});
+const { _t, _lt } = createTranslate('demo');
 
 @Model('SelectionReferenceModel')
 export default class SelectionReferenceModel extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'active', label: _t('Active', { scope: 'demo.model.status.active' }) },
-      { value: 'archived', label: _t('Archived', { scope: 'demo.model.status.archived', output: 'text' }) }
+      { value: 'active', label: _lt('Active', { scope: 'demo.model.status.active' }) },
+      { value: 'archived', label: _t('Archived', { scope: 'demo.model.status.archived' }) }
     ]
   })
   public Status: string
@@ -513,9 +511,7 @@ func TestTsParser_DetectsReferenceFactoryWithAliasAndExtraBindings(t *testing.T)
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t: translate, locale } = createTranslate('demo', {
-  output: 'reference',
-  scope: 'demo.model.status',
+const { _lt: translate } = createTranslate('demo', { scope: 'demo.model.status',
 });
 
 @Model('AliasedReferenceModel')
@@ -553,7 +549,7 @@ func TestTsParser_SelectionCallReferenceOverridesTextFactory(t *testing.T) {
 	content := `
 import { Model, Field } from '../../core/service';
 import BaseModel from './base';
-const { _t } = createTranslate('base');
+const { _lt } = createTranslate('base');
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -562,9 +558,8 @@ export default class Language extends BaseModel {
     selection: [
       {
         value: 'ltr',
-        label: _t('Left to right', {
-          scope: 'base.Language.Direction.ltr',
-          output: 'reference'
+        label: _lt('Left to right', {
+          scope: 'base.Language.Direction.ltr'
         })
       }
     ]
@@ -582,7 +577,7 @@ export default class Language extends BaseModel {
 	}
 	item := spec.Structural.Selection[0]
 	if item.Label != "Left to right" || item.LabelText == nil {
-		t.Fatalf("call reference output was not preserved: %+v", item)
+		t.Fatalf("_lt call was not preserved: %+v", item)
 	}
 	if item.LabelText.Key != meta.TermReferenceKey("base", "base.Language.Direction.ltr", "Left to right", "literal") {
 		t.Fatalf("unexpected key: %q", item.LabelText.Key)

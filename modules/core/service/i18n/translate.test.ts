@@ -76,48 +76,21 @@ test('i18n createTranslate: miss falls back to src', () => {
   });
 });
 
-test('i18n createTranslate: literal outputs infer precise return types', () => {
-  const defaultText: string = createTranslate('auth')._t('Users');
-  const text: string = createTranslate('auth', { output: 'text' })._t('Users');
+test('i18n createTranslate: _t and _lt infer precise return types', () => {
+  const text: string = createTranslate('auth')._t('Users');
   const reference: import('./translate').TermReference =
-    createTranslate('auth', { output: 'reference', scope: 'auth.users' })._t('Users');
+    createTranslate('auth', { scope: 'auth.users' })._lt('Users');
 
-  expect(defaultText).toBe('Users');
   expect(text).toBe('Users');
   expect(reference.src).toBe('Users');
 });
 
-test('i18n createTranslate: dynamic output retains the safe union return type', () => {
-  const output: import('./translate').TranslateOutput =
-    Math.random() > 0.5 ? 'text' : 'reference';
-  const value: string | import('./translate').TermReference =
-    createTranslate('auth', { output, scope: 'auth.users' })._t('Users');
-
-  expect(typeof value === 'string' ? value : value.src).toBe('Users');
-
-  const callOutput: import('./translate').TranslateOutput =
-    Math.random() > 0.5 ? 'text' : 'reference';
-  const callValue: string | import('./translate').TermReference =
-    createTranslate('auth')._t('Users', { scope: 'auth.users', output: callOutput });
-  expect(typeof callValue === 'string' ? callValue : callValue.src).toBe('Users');
-});
-
-test('i18n createTranslate: call output overrides factory output', () => {
-  const { _t } = createTranslate('base');
-  const reference: import('./translate').TermReference = _t('Left to right', {
-    scope: 'base.Language.Direction.ltr',
-    output: 'reference',
-  });
-  expect(reference.src).toBe('Left to right');
-
-  const fromReferenceFactory: string = createTranslate('base', {
-    output: 'reference',
-    scope: 'base.Language.Direction.ltr',
-  })._t('Direction: %s', { output: 'text' }, 'LTR');
-  expect(fromReferenceFactory).toBe('Direction: LTR');
-
-  // @ts-expect-error reference output does not accept interpolation arguments
-  _t('Left to right', { scope: 'base.Language.Direction.ltr', output: 'reference' }, 'unused');
+test('i18n createTranslate: _lt rejects interpolation at runtime', () => {
+  const { _lt } = createTranslate('base', { scope: 'base.Language.Direction.ltr' });
+  expect(() => {
+    // @ts-expect-error _lt does not accept interpolation arguments
+    _lt('Left to right', undefined, 'unused');
+  }).toThrow('_lt does not accept interpolation arguments');
 });
 
 test('i18n createTranslate: hit via bridge', () => {
@@ -243,7 +216,7 @@ test('i18n createTranslate: closure can capture canonical factory defaults', () 
   });
 });
 
-test('i18n createTranslate: reference output is serializable and does not translate', () => {
+test('i18n createTranslate: _lt is serializable and does not translate', () => {
   withResetI18nState(() => {
     let calls = 0;
     setTestI18nBridge({
@@ -252,8 +225,8 @@ test('i18n createTranslate: reference output is serializable and does not transl
         return '用户';
       },
     });
-    const { _t } = createTranslate('auth', { output: 'reference' });
-    const reference = _t('Users', { scope: 'auth.menu.users' });
+    const { _lt } = createTranslate('auth');
+    const reference = _lt('Users', { scope: 'auth.menu.users' });
 
     expect(reference).toEqual({
       key: createTermReferenceKey('auth', 'auth.menu.users', 'Users', 'literal'),
@@ -275,7 +248,6 @@ test('i18n term reference keys preserve the fixed legacy identity encoding', () 
   expect(createTermReference(identity[0], identity[2], {
     scope: identity[1],
     kind: identity[3],
-    output: 'reference',
   }).key).toBe(key);
   expect(key).toMatch(/^__terms\.[0-9a-f]+$/);
   for (let index = 0; index < identity.length; index += 1) {

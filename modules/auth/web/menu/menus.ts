@@ -6,7 +6,7 @@ import { UserFilled } from '@element-plus/icons-vue';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('auth', { output: 'reference', scope: 'web/menu/menus' });
+const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
 
 /**
  * Auth module menu definitions.
@@ -15,27 +15,27 @@ const { _t } = createTranslate('auth', { output: 'reference', scope: 'web/menu/m
  */
 export const authMenus: MenuItem[] = [
   defineMenu('auth.menu.root', {
-    title: _t('Access Control'),
+    title: _lt('Access Control'),
     icon: UserFilled,
     sequence: 100,
     children: [
       defineMenu('auth.menu.user_list', {
-        title: _t('User List'),
+        title: _lt('User List'),
         path: '/auth/users',
         sequence: 10,
       }),
       defineMenu('auth.menu.role_list', {
-        title: _t('Role List'),
+        title: _lt('Role List'),
         path: '/auth/roles',
         sequence: 30,
       }),
       defineMenu('auth.menu.session_list', {
-        title: _t('Session List'),
+        title: _lt('Session List'),
         path: '/auth/sessions',
         sequence: 40,
       }),
       defineMenu('auth.menu.token_list', {
-        title: _t('Token List'),
+        title: _lt('Token List'),
         path: '/auth/tokens',
         sequence: 50,
       }),

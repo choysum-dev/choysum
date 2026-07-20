@@ -171,20 +171,26 @@ describe('createTranslate', () => {
       .toBe('管理员欢迎 Alice');
   });
 
-  it('applies call output before factory output', () => {
-    const reference = createTranslate('base')._t('Left to right', {
+  it('separates _t text lookup from _lt term references', () => {
+    const reference = createTranslate('base')._lt('Left to right', {
       scope: 'base.Language.Direction.ltr',
-      output: 'reference',
     });
     expect(reference).toEqual(createTermReference('base', 'Left to right', {
       scope: 'base.Language.Direction.ltr',
     }));
 
     const text = createTranslate('base', {
-      output: 'reference',
       scope: 'base.Language.Direction.ltr',
-    })._t('Direction: %s', { output: 'text' }, 'LTR');
+    })._t('Direction: %s', 'LTR');
     expect(text).toBe('Direction: LTR');
+  });
+
+  it('rejects _lt interpolation at runtime', () => {
+    const { _lt } = createTranslate('base', { scope: 'base.menu' });
+    expect(() => {
+      // @ts-expect-error _lt does not accept interpolation arguments
+      _lt('Users', undefined, 'unused');
+    }).toThrow('_lt does not accept interpolation arguments');
   });
 
   it('captures the term reference before computed reevaluation', async () => {
@@ -216,16 +222,16 @@ describe('createTranslate', () => {
   });
 
   it('creates deterministic Unicode-safe JSON term references', () => {
-    const { _t } = createTranslate('base', { output: 'reference' });
-    const reference = _t('设置.菜单 🍀', { scope: 'base.menu.设置' });
-    const same = _t('设置.菜单 🍀', { scope: 'base.menu.设置' });
+    const { _lt } = createTranslate('base');
+    const reference = _lt('设置.菜单 🍀', { scope: 'base.menu.设置' });
+    const same = _lt('设置.菜单 🍀', { scope: 'base.menu.设置' });
     expect(reference.key).toBe(same.key);
     expect(reference.key).toMatch(/^__terms\.[0-9a-f]+$/);
     expect(reference.key.slice('__terms.'.length)).not.toContain('.');
     expect(JSON.parse(JSON.stringify(reference))).toEqual(reference);
-    expect(_t('不同', { scope: reference.scope }).key).not.toBe(reference.key);
-    expect(_t(reference.src, { scope: 'base.menu.other' }).key).not.toBe(reference.key);
-    expect(createTranslate('other', { output: 'reference' })._t(
+    expect(_lt('不同', { scope: reference.scope }).key).not.toBe(reference.key);
+    expect(_lt(reference.src, { scope: 'base.menu.other' }).key).not.toBe(reference.key);
+    expect(createTranslate('other')._lt(
       reference.src,
       { scope: reference.scope }
     ).key)

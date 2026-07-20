@@ -6,28 +6,28 @@ import { Setting } from '@element-plus/icons-vue';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _t } = createTranslate('meta', { output: 'reference', scope: 'web/menu/menus' });
+const { _lt } = createTranslate('meta', { scope: 'web/menu/menus' });
 
 export const metaMenus: MenuItem[] = [
   defineMenu('meta.menu.root', {
-    title: _t('Module Management'),
+    title: _lt('Module Management'),
     icon: Setting,
     sequence: 60,
     children: [
       defineMenu('meta.menu.module_board', {
-        title: _t('Module Board'),
+        title: _lt('Module Board'),
         path: '/meta/modules',
         sequence: 10,
         requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
       }),
       defineMenu('meta.menu.module_list', {
-        title: _t('Module List'),
+        title: _lt('Module List'),
         path: '/meta/modules/list',
         sequence: 20,
         requires: [{ model: 'meta.IrModuleIndex' }, { model: 'meta.IrModule' }],
       }),
       defineMenu('meta.menu.module_history', {
-        title: _t('Operation History'),
+        title: _lt('Operation History'),
         path: '/meta/modules/history',
         sequence: 30,
         requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.IrModule' }, { model: 'meta.IrModuleIndex' }],
