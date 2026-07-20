@@ -3,7 +3,7 @@
 
 import BaseModel from '../model/model';
 import { MetadataStorage } from '../metadata';
-import { FieldOptions, FieldMetadata, FieldType } from '../metadata/field';
+import { FieldOptions, FieldMetadata, FieldType, type SelectionItem, type SelectionDeclaration } from '../metadata/field';
 import type { ModelCtor } from '../metadata/field';
 import { asObjectRecord } from '../../../utils/object';
 import type { ObjectRecord } from '../../../utils/types';
@@ -35,7 +35,8 @@ type FieldDecoratorOptionBag = {
   string?: unknown;
   select?: unknown;
   column?: unknown;
-  selection?: Array<{ value?: unknown; label?: unknown }>;
+  /** Static array | method name | callable (see SelectionDeclaration). */
+  selection?: SelectionDeclaration;
   targetModel?: unknown;
   relation?: unknown;
   related?: unknown;
@@ -263,7 +264,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
         }
 
         const values = new Set<string>();
-        const normalizedSelection: Array<{ value: string; label: string }> = [];
+        const normalizedSelection: SelectionItem[] = [];
         for (const item of selectionRaw) {
           if (!item || typeof item !== 'object') {
             throw new Error(`@Field(${name}) each selection item must be an object`);
@@ -272,17 +273,9 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
             throw new Error(`@Field(${name}) each selection item must include a string value field`);
           }
           if ((item as { labelText?: unknown }).labelText != null) {
-            throw new Error(`@Field(${name}) selection labelText is forbidden; use a string label and FieldsGet for translations`);
-          }
-          if (isTermReference(item.label)) {
-            throw new Error(`@Field(${name}) selection label must be a string literal (TermReference / _lt is forbidden)`);
-          }
-          if (!item.label || typeof item.label !== 'string') {
-            throw new Error(`@Field(${name}) each selection item must include a string label field`);
-          }
-          const label = item.label.trim();
-          if (!label) {
-            throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
+            throw new Error(
+              `@Field(${name}) selection labelText is forbidden; use label: _lt('…') when the option should translate`
+            );
           }
 
           const value = item.value;
@@ -290,6 +283,25 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
             throw new Error(`@Field(${name}) duplicate selection value: ${value}`);
           }
           values.add(value);
+
+          const labelRaw = (item as { label?: unknown }).label;
+          if (isTermReference(labelRaw)) {
+            const src = String(labelRaw.src || '').trim();
+            if (!src) {
+              throw new Error(`@Field(${name}) each selection item _lt label must include a non-empty src`);
+            }
+            normalizedSelection.push({ value, label: src, labelText: labelRaw });
+            continue;
+          }
+          if (!labelRaw || typeof labelRaw !== 'string') {
+            throw new Error(
+              `@Field(${name}) each selection item label must be a string or TermReference from _lt(...)`
+            );
+          }
+          const label = labelRaw.trim();
+          if (!label) {
+            throw new Error(`@Field(${name}) each selection item must include a non-empty string label`);
+          }
           normalizedSelection.push({ value, label });
         }
         validatedSelection = normalizedSelection;

@@ -365,11 +365,20 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 				}
 				value := strings.TrimSpace(fmt.Sprintf("%v", entry["value"]))
 				labelRaw := strings.TrimSpace(fmt.Sprintf("%v", entry["label"]))
-				if _, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
-					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (TermReference / _lt is forbidden)", field.Name)
+				if reference, ok := parseTermReferenceCall(labelRaw, ownerModule, referenceScope, translateBindings); ok {
+					src := strings.TrimSpace(reference.Src)
+					if value == "" || src == "" {
+						continue
+					}
+					spec.Structural.Selection = append(spec.Structural.Selection, meta.IrFieldSelectionItem{
+						Value:     value,
+						Label:     src,
+						LabelText: reference,
+					})
+					continue
 				}
 				if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
-					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must be a string literal (translate calls are forbidden)", field.Name)
+					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must not use text _t(...); use _lt(...) or a bare string", field.Name)
 				}
 				label := labelRaw
 				if literal, err := parser.ParseJSStringLiteral(labelRaw); err == nil {

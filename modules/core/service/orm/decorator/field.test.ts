@@ -50,7 +50,7 @@ test('Field decorator validates selection schema and uniqueness', () => {
       Status!: string;
     }
     return InvalidSelectionItemModel;
-  }).toThrow('must include a string label field');
+  }).toThrow('must be a string or TermReference from _lt');
 
   expect(() => {
     class DuplicateSelectionValueModel extends BaseModel {
@@ -164,20 +164,20 @@ test('Field decorator auto-fills selection and ref columns metadata', () => {
   expect(m2mRefMeta?.column).toEqual({});
 });
 
-test('Field decorator rejects selection TermReference label and labelText (T2.1)', () => {
-  const { _lt } = createTranslate('demo');
-  const labelReference = _lt('B', { scope: 'demo.status.b' });
+test('Field decorator accepts selection _lt labels and rejects explicit labelText (T2.1)', () => {
+  const { _lt } = createTranslate('demo', { scope: 'demo.status' });
+  const labelReference = _lt('B');
 
-  expect(() => {
-    class TermLabelModel extends BaseModel {
-      @Field({
-        type: 'selection',
-        selection: [{ value: 'b', label: labelReference }],
-      } as any)
-      Status!: string;
-    }
-    return TermLabelModel;
-  }).toThrow('selection label must be a string literal');
+  class TermLabelModel extends BaseModel {
+    @Field({
+      type: 'selection',
+      selection: [{ value: 'b', label: labelReference }],
+    } as any)
+    Status!: string;
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(TermLabelModel as any).fields.get('Status') as any;
+  expect(meta?.selection).toEqual([{ value: 'b', label: 'B', labelText: labelReference }]);
 
   expect(() => {
     class LabelTextModel extends BaseModel {

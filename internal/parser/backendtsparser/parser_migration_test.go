@@ -5,6 +5,7 @@ package backendtsparser
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"path/filepath"
 	"strings"
@@ -513,7 +514,7 @@ export default class FieldStringModel extends BaseModel {
 	}
 }
 
-func TestTsParser_RejectsSelectionTermReferenceLabels(t *testing.T) {
+func TestTsParser_RejectsSelectionTextTranslateLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
@@ -536,11 +537,11 @@ export default class SelectionReferenceModel extends BaseModel {
 `
 	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
 	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
-		t.Fatalf("expected selection TermReference label rejection, got: %v", err)
+		t.Fatalf("expected selection text _t label rejection, got: %v", err)
 	}
 }
 
-func TestTsParser_RejectsAliasedSelectionReferenceLabel(t *testing.T) {
+func TestTsParser_AcceptsAliasedSelectionReferenceLabel(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
 	p := NewTsParser(runtimeScope, module)
@@ -561,13 +562,23 @@ export default class AliasedReferenceModel extends BaseModel {
   public Status: string
 }
 `
-	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
-		t.Fatalf("expected aliased selection reference rejection, got: %v", err)
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if len(r.Model.Fields) != 1 {
+		t.Fatalf("expected 1 field, got %d", len(r.Model.Fields))
+	}
+	var items []meta.IrFieldSelectionItem
+	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
+		t.Fatalf("unmarshal selection: %v", err)
+	}
+	if len(items) != 1 || items[0].Label != "Active" || items[0].LabelText == nil || items[0].LabelText.Src != "Active" {
+		t.Fatalf("unexpected selection items: %#v", items)
 	}
 }
 
-func TestTsParser_RejectsSelectionLtCallLabels(t *testing.T) {
+func TestTsParser_AcceptsSelectionLtCallLabels(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "base", Path: "/virtual/modules/base", ApplicationStr: "base"}
 	p := NewTsParser(runtimeScope, module)
@@ -592,9 +603,22 @@ export default class Language extends BaseModel {
   public Direction: string
 }
 `
-	_, err := p.Parse(map[string]string{}, "/virtual/modules/base/service/language.ts", content)
-	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
-		t.Fatalf("expected _lt selection label rejection, got: %v", err)
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/base/service/language.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	var items []meta.IrFieldSelectionItem
+	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
+		t.Fatalf("unmarshal selection: %v", err)
+	}
+	if len(items) != 1 || items[0].Label != "Left to right" {
+		t.Fatalf("unexpected label: %#v", items)
+	}
+	if items[0].LabelText == nil || items[0].LabelText.Src != "Left to right" {
+		t.Fatalf("expected LabelText TermReference, got %#v", items[0].LabelText)
+	}
+	if items[0].LabelText.Scope != "base.Language.Direction.ltr" {
+		t.Fatalf("unexpected LabelText scope: %#v", items[0].LabelText)
 	}
 }
 
@@ -766,15 +790,31 @@ export default class BareLtSelectionModel extends BaseModel {
     selection: [
       { value: 'a', label: _lt('Alpha', { scope: 'demo.model.alpha' }) },
       { value: 'b', label: _lt('Beta', { path: 'demo/model', location: 'beta' }) },
-      { value: 'c', label: unknownHelper('Gamma', { scope: 'demo.model.gamma' }) }
+      { value: 'c', label: 'Gamma' }
     ]
   })
   public Status: string
 }
 `
-	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
-	if err == nil || !strings.Contains(err.Error(), "FIELD_SELECTION_LABELTEXT_FORBIDDEN") {
-		t.Fatalf("expected bare _lt selection label rejection, got: %v", err)
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	var items []meta.IrFieldSelectionItem
+	if err := json.Unmarshal([]byte(r.Model.Fields[0].Selection), &items); err != nil {
+		t.Fatalf("unmarshal selection: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %#v", items)
+	}
+	if items[0].LabelText == nil || items[0].Label != "Alpha" {
+		t.Fatalf("item0: %#v", items[0])
+	}
+	if items[1].LabelText == nil || items[1].Label != "Beta" {
+		t.Fatalf("item1: %#v", items[1])
+	}
+	if items[2].LabelText != nil || items[2].Label != "Gamma" {
+		t.Fatalf("bare string must not get LabelText: %#v", items[2])
 	}
 }
 

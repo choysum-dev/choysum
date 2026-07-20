@@ -52,8 +52,15 @@ class FieldsGetWidget extends BaseModel {
   @Field({
     type: 'selection',
     selection: [
-      { value: 'active', label: 'Active' },
-      { value: 'archived', label: 'Archived' },
+      {
+        value: 'active',
+        label: createTranslate('demo', { scope: 'demo.model.Widget.fields' })._lt('Active'),
+      },
+      {
+        value: 'archived',
+        label: createTranslate('demo', { scope: 'demo.model.Widget.fields' })._lt('Archived'),
+      },
+      { value: 'raw', label: 'RAW_TOKEN' },
     ],
   })
   Status!: string;
@@ -114,7 +121,7 @@ test('FieldsGet narrows fields and attributes and always keeps type (T1.2)', asy
   }
 });
 
-test('FieldsGet translates static selection labels without labelText (T1.3)', async () => {
+test('FieldsGet translates _lt selection labels and passes bare strings through (T1.3)', async () => {
   resetTestState();
   setGlobalRequestContextProvider({ lang: 'zh_CN' });
   setTestI18nBridge({
@@ -122,6 +129,7 @@ test('FieldsGet translates static selection labels without labelText (T1.3)', as
       if (lang !== 'zh_CN') return '';
       if (src === 'Active') return '启用';
       if (src === 'Archived') return '归档';
+      if (src === 'RAW_TOKEN') return '不应出现';
       return '';
     },
   });
@@ -134,6 +142,7 @@ test('FieldsGet translates static selection labels without labelText (T1.3)', as
     expect(out.Status?.selection).toEqual([
       { value: 'active', label: '启用' },
       { value: 'archived', label: '归档' },
+      { value: 'raw', label: 'RAW_TOKEN' },
     ]);
     for (const item of out.Status?.selection || []) {
       expect((item as any).labelText).toBeUndefined();
@@ -193,23 +202,25 @@ class FieldsGetDynamicWidget extends BaseModel {
     selection: function (this: typeof FieldsGetDynamicWidget) {
       // RequestContext-only: no draft / row args (T3.3).
       expect(arguments.length).toBe(0);
-      return [{ value: 'x', label: 'X-Ray' }];
+      const { _lt } = createTranslate('demo', { scope: 'demo.model.FieldsGetDynamicWidget.fields' });
+      return [{ value: 'x', label: _lt('X-Ray') }];
     },
   } as any)
   Mode!: string;
 
   static StatusOptions() {
     expect(arguments.length).toBe(0);
+    const { _lt } = createTranslate('demo', { scope: 'demo.model.FieldsGetDynamicWidget.fields' });
     const companyId = String(getCurrentRequestContext().companyId || '').trim();
     if (companyId === 'c2') {
       return [
-        { value: 'active', label: 'Active' },
-        { value: 'hold', label: 'On Hold' },
+        { value: 'active', label: _lt('Active') },
+        { value: 'hold', label: _lt('On Hold') },
       ];
     }
     return [
-      { value: 'active', label: 'Active' },
-      { value: 'archived', label: 'Archived' },
+      { value: 'active', label: _lt('Active') },
+      { value: 'archived', label: _lt('Archived') },
     ];
   }
 }

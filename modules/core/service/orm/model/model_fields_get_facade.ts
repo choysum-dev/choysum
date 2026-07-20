@@ -60,9 +60,7 @@ function translateFieldString(
 }
 
 function translateSelectionLabels(
-  items: readonly SelectionItem[] | undefined,
-  fallbackModule: string,
-  fallbackScope: string
+  items: readonly SelectionItem[] | undefined
 ): Array<{ value: string; label: string }> | undefined {
   if (!Array.isArray(items) || items.length === 0) return undefined;
   const out: Array<{ value: string; label: string }> = [];
@@ -70,8 +68,20 @@ function translateSelectionLabels(
     if (!item || typeof item !== 'object') continue;
     const value = String(item.value || '').trim();
     if (!value) continue;
-    const label = translateSrc(fallbackModule, String(item.label || ''), fallbackScope);
-    out.push({ value, label: label || String(item.label || value) });
+
+    // TermReference (_lt) → translate; bare string → pass through (D5 revised).
+    let label = '';
+    if (item.labelText && isTermReference(item.labelText)) {
+      label = translateTermReference(item.labelText);
+      if (!label) label = String(item.labelText.src || item.label || value);
+    } else if (isTermReference(item.label as unknown)) {
+      const ref = item.label as unknown as TermReference;
+      label = translateTermReference(ref);
+      if (!label) label = String(ref.src || value);
+    } else {
+      label = String(item.label || '').trim() || value;
+    }
+    out.push({ value, label });
   }
   return out.length ? out : undefined;
 }
@@ -111,9 +121,21 @@ function normalizeSelectionItems(raw: unknown): SelectionItem[] {
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue;
     const value = String((item as SelectionItem).value || '').trim();
-    const label = String((item as SelectionItem).label || '').trim();
-    if (!value || !label || seen.has(value)) continue;
+    if (!value || seen.has(value)) continue;
+
+    const labelRaw = (item as { label?: unknown }).label;
+    if (isTermReference(labelRaw)) {
+      const src = String(labelRaw.src || '').trim();
+      if (!src) continue;
+      seen.add(value);
+      out.push({ value, label: src, labelText: labelRaw });
+      continue;
+    }
+
+    const label = String(labelRaw || '').trim();
+    if (!label) continue;
     seen.add(value);
+    // Explicit labelText on returned objects is ignored; authors must put _lt on label.
     out.push({ value, label });
   }
   return out;
@@ -160,11 +182,11 @@ function buildFieldMeta(
   if (field.selectionKind === 'dynamic' || field.selectionCallable || field.selectionMethod) {
     meta.selectionKind = 'dynamic';
     const evaluated = evaluateDynamicSelection(ModelCtor, field);
-    const selection = translateSelectionLabels(evaluated, fallbackModule, fallbackScope);
+    const selection = translateSelectionLabels(evaluated);
     if (selection) meta.selection = selection;
   } else if (field.selection) {
     meta.selectionKind = 'static';
-    const selection = translateSelectionLabels(field.selection, fallbackModule, fallbackScope);
+    const selection = translateSelectionLabels(field.selection);
     if (selection) meta.selection = selection;
   }
 

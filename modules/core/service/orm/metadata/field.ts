@@ -232,17 +232,24 @@ export type FlatFieldOptions<T extends BaseModel = BaseModel, TJoin extends Base
   | FlatManyToManyFieldOptions<T, TJoin, TTarget>;
 
 /**
- * One selectable option for a selection field.
+ * One selectable option for a selection field (ORM / runtime).
+ * `labelText` is BE-only (from author `_lt`); codegen strips it from FE wire.
  */
 export interface SelectionItem {
   value: string;
+  /** Msgid or pass-through literal. */
   label: string;
+  /** Present when authored with `_lt`; FieldsGet translates via `_t`. */
+  labelText?: TermReference;
 }
 
 export interface SelectionDeclarationItem {
   value: string;
-  /** English msgid only; TermReference / labelText are forbidden (D5·D15). */
-  label: string;
+  /**
+   * `_lt('…')` → translate via FieldsGet; bare string → pass through (no `_t`).
+   * Explicit `labelText` property is forbidden — use `_lt` on `label`.
+   */
+  label: string | TermReference;
 }
 
 /** Authoring forms for `@Field({ type: 'selection', selection })` (P3). */
