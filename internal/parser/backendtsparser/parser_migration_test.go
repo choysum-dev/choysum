@@ -818,6 +818,99 @@ export default class BareLtSelectionModel extends BaseModel {
 	}
 }
 
+func TestTsParser_SkipsSelectionLtLabelWithEmptySrc(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _lt } = createTranslate('demo', { scope: 'demo.model.status' });
+
+@Model('EmptyLtSrcModel')
+export default class EmptyLtSrcModel extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'skip', label: _lt('') },
+      { value: 'keep', label: 'OK' }
+    ]
+  })
+  public Status: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	spec, err := r.Model.Fields[0].GetResolvedSpec()
+	if err != nil || spec == nil || len(spec.Structural.Selection) != 1 {
+		t.Fatalf("resolved spec: err=%v spec=%#v", err, spec)
+	}
+	if spec.Structural.Selection[0].Value != "keep" || spec.Structural.Selection[0].Label != "OK" {
+		t.Fatalf("unexpected selection: %+v", spec.Structural.Selection)
+	}
+}
+
+func TestTsParser_RejectsEmptySelectionMethodName(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('EmptyMethodModel')
+export default class EmptyMethodModel extends BaseModel {
+  @Field({ type: 'selection', selection: '   ' })
+  public Status: string
+}
+`
+	_, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err == nil || !strings.Contains(err.Error(), "selection method name must be a non-empty string") {
+		t.Fatalf("expected empty method error, got: %v", err)
+	}
+}
+
+func TestBuildFieldResolvedSpec_RejectsInvalidSelectionType(t *testing.T) {
+	field := &meta.IrField{
+		Name: "Status",
+		Decorators: []*meta.IrDecorator{{
+			Name: "Field",
+			Arguments: []*meta.IrArgument{{
+				Type:  "ObjectLiteral",
+				Value: `{"type":"selection","selection":123}`,
+			}},
+		}},
+	}
+	_, err := buildFieldResolvedSpec(field, nil, nil, "demo", "demo.scope", nil)
+	if err == nil || !strings.Contains(err.Error(), "selection must be an array, method name string, or callable") {
+		t.Fatalf("expected invalid selection type error, got: %v", err)
+	}
+}
+
+func TestParseTermReferenceCall_EmptyOwnerModuleAndBacktickLiteral(t *testing.T) {
+	if ref, ok := parseTermReferenceCall(`_lt('X', { scope: 's' })`, "", "s", nil); ok || ref != nil {
+		t.Fatalf("empty ownerModule must fail: ok=%v ref=%#v", ok, ref)
+	}
+	ref, ok := parseTermReferenceCall("_lt(`Back tick`, { scope: 'demo.scope' })", "demo", "demo.scope", nil)
+	if !ok || ref == nil || ref.Src != "Back tick" {
+		t.Fatalf("backtick literal: ok=%v ref=%#v", ok, ref)
+	}
+}
+
+func TestParseTermReferenceCall_InlineScopeOverridesDefault(t *testing.T) {
+	ref, ok := parseTermReferenceCall(
+		`_lt('Active', { scope: 'inline.scope' })`,
+		"demo",
+		"default.scope",
+		nil,
+	)
+	if !ok || ref == nil || ref.Scope != "inline.scope" {
+		t.Fatalf("expected inline scope override, got %+v ok=%v", ref, ok)
+	}
+}
+
 func TestTsParser_ParseModelResolvedSpecCoversRelationTypesAndMigrationDecisions(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}

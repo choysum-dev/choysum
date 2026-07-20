@@ -390,3 +390,68 @@ func TestAppendNodeOptionMergesAndDedupes(t *testing.T) {
 		}
 	}
 }
+
+func TestUnsetEnvKeysEdgeCases(t *testing.T) {
+	base := []string{"PATH=/usr/bin", "npm_config_devdir=/tmp", "MALFORMED", "NPM_CONFIG_FOO=1"}
+
+	if got := UnsetEnvKeys(nil, "PATH"); got != nil {
+		t.Fatalf("nil env: got %#v", got)
+	}
+	if got := UnsetEnvKeys(base); !reflect.DeepEqual(got, base) {
+		t.Fatalf("no keys: got %#v", got)
+	}
+	if got := UnsetEnvKeys(base, "  ", ""); !reflect.DeepEqual(got, base) {
+		t.Fatalf("blank keys: got %#v", got)
+	}
+
+	got := UnsetEnvKeys(base, "npm_config_devdir", "NPM_CONFIG_DEVDIR")
+	want := []string{"PATH=/usr/bin", "MALFORMED", "NPM_CONFIG_FOO=1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("UnsetEnvKeys() = %#v, want %#v", got, want)
+	}
+}
+
+func TestAppendNodeOptionEdgeCases(t *testing.T) {
+	env := []string{"PATH=/usr/bin"}
+
+	if got := AppendNodeOption(env, ""); !reflect.DeepEqual(got, env) {
+		t.Fatal("empty option must be no-op")
+	}
+
+	got := AppendNodeOption(env, "--trace-warnings")
+	joined := strings.Join(got, "|")
+	if !strings.Contains(joined, "NODE_OPTIONS=--trace-warnings") {
+		t.Fatalf("expected new NODE_OPTIONS, got %#v", got)
+	}
+
+	withOpt := []string{"NODE_OPTIONS=--trace-warnings"}
+	if dup := AppendNodeOption(withOpt, "--trace-warnings"); !reflect.DeepEqual(dup, withOpt) {
+		t.Fatalf("exact duplicate must be no-op, got %#v", dup)
+	}
+
+	prefixed := []string{"NODE_OPTIONS=--import=tsx"}
+	if changed := AppendNodeOption(prefixed, "--import=tsx/esm"); !reflect.DeepEqual(changed, prefixed) {
+		t.Fatalf("prefix duplicate must be no-op, got %#v", changed)
+	}
+
+	mixedCase := []string{"node_options=--foo"}
+	merged := AppendNodeOption(mixedCase, "--bar")
+	found := false
+	for _, entry := range merged {
+		eq := strings.IndexByte(entry, '=')
+		if eq <= 0 {
+			continue
+		}
+		if !strings.EqualFold(entry[:eq], "NODE_OPTIONS") {
+			continue
+		}
+		found = true
+		value := entry[eq+1:]
+		if !strings.Contains(value, "--foo") || !strings.Contains(value, "--bar") {
+			t.Fatalf("case-insensitive NODE_OPTIONS merge failed: %#v", merged)
+		}
+	}
+	if !found {
+		t.Fatalf("expected NODE_OPTIONS entry, got %#v", merged)
+	}
+}

@@ -225,6 +225,46 @@ test('Field decorator accepts dynamic selection method name and callable (P3)', 
   expect(callableMeta?.selection).toBeUndefined();
 });
 
+test('Field decorator rejects invalid dynamic selection method name (T2.2)', () => {
+  expect(() => {
+    class M extends BaseModel {
+      @Field({ type: 'selection', selection: '   ' } as any)
+      Status!: string;
+    }
+    return M;
+  }).toThrow('selection method name must be a non-empty string');
+});
+
+test('Field decorator rejects non-array non-callable selection declaration (T2.3)', () => {
+  expect(() => {
+    class M extends BaseModel {
+      @Field({ type: 'selection', selection: 42 as any } as any)
+      Status!: string;
+    }
+    return M;
+  }).toThrow('selection must be a non-empty array, method name string, or () => SelectionItem[] callable');
+});
+
+test('Field decorator rejects _lt label with empty src and whitespace-only label (T2.4)', () => {
+  const emptySrcRef = createTranslate('demo', { scope: 'demo.status' })._lt('   ');
+
+  expect(() => {
+    class EmptyLtSrcModel extends BaseModel {
+      @Field({ type: 'selection', selection: [{ value: 'a', label: emptySrcRef }] } as any)
+      Status!: string;
+    }
+    return EmptyLtSrcModel;
+  }).toThrow('each selection item _lt label must include a non-empty src');
+
+  expect(() => {
+    class WhitespaceLabelModel extends BaseModel {
+      @Field({ type: 'selection', selection: [{ value: 'a', label: '   ' }] } as any)
+      Status!: string;
+    }
+    return WhitespaceLabelModel;
+  }).toThrow('each selection item must include a non-empty string label');
+});
+
 test('Field decorator validates ref/relation/compute/decimal constraints', () => {
   expect(() => {
     class MissingRefTargetModel extends BaseModel {

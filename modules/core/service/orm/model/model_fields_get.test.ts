@@ -276,3 +276,161 @@ test('FieldsGet dynamic callable ignores draft; company context can change optio
     resetTestState();
   }
 });
+
+test('FieldsGet falls back to msgid when _lt translation is empty (T1.3b)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetWidget.FieldsGet(['Status']);
+    expect(out.Status?.selection).toEqual([
+      { value: 'active', label: 'Active' },
+      { value: 'archived', label: 'Archived' },
+      { value: 'raw', label: 'RAW_TOKEN' },
+    ]);
+  } finally {
+    resetTestState();
+  }
+});
+
+test('FieldsGet tolerates broken deny-read/write repository hooks (T1.5)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+
+  try {
+    RepositoryFactory.setRepository(FieldsGetWidget as any, {} as any);
+    expect(await FieldsGetWidget.FieldsGet(['SecretNote'])).toHaveProperty('SecretNote');
+
+    RepositoryFactory.setRepository(FieldsGetWidget as any, {
+      getDenyReadFields: async () => {
+        throw new Error('boom');
+      },
+      getDenyWriteFields: async () => ({ denyWriteFields: 'not-an-array' as any }),
+    } as any);
+    const out = await FieldsGetWidget.FieldsGet(['Name', 'Code']);
+    expect(out.Name).toBeDefined();
+    expect(out.Code).toBeDefined();
+    expect(out.Code?.isReadonly).toBeUndefined();
+  } finally {
+    resetTestState();
+  }
+});
+
+@Model('FieldsGetColumnWidget', { application: 'demo' })
+class FieldsGetColumnWidget extends BaseModel {
+  @Field({
+    type: 'decimal',
+    precision: 12,
+    scale: 4,
+    notNull: true,
+    indexed: true,
+    string: 'Amount',
+  } as any)
+  Amount!: string;
+}
+
+test('FieldsGet projects column hints onto metadata (T1.6)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetColumnWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetColumnWidget.FieldsGet(['Amount']);
+    expect(out.Amount).toMatchObject({
+      type: 'decimal',
+      string: 'Amount',
+      notNull: true,
+      precision: 12,
+      scale: 4,
+      indexed: true,
+    });
+  } finally {
+    resetTestState();
+  }
+});
+
+@Model('FieldsGetDynamicLtWidget', { application: 'demo' })
+class FieldsGetDynamicLtWidget extends BaseModel {
+  @Field({
+    type: 'selection',
+    selection: function (this: typeof FieldsGetDynamicLtWidget) {
+      const { _lt } = createTranslate('demo', {
+        scope: 'demo.model.FieldsGetDynamicLtWidget.fields',
+      });
+      return [
+        { value: 'a', label: _lt('Alpha') },
+        { value: 'a', label: _lt('Dup') },
+        { value: '', label: _lt('Ignored') },
+        null,
+        { value: 'b', label: '' },
+        { value: 'c', label: _lt('Charlie') },
+      ];
+    },
+  } as any)
+  Tag!: string;
+}
+
+test('FieldsGet normalizes dynamic callable _lt labels and filters junk (T3.5)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'zh_CN' });
+  setTestI18nBridge({
+    t: (_m, lang, _s, src) => {
+      if (lang !== 'zh_CN') return '';
+      if (src === 'Alpha') return '甲';
+      if (src === 'Charlie') return '丙';
+      return '';
+    },
+  });
+  RepositoryFactory.setRepository(FieldsGetDynamicLtWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetDynamicLtWidget.FieldsGet(['Tag']);
+    expect(out.Tag?.selectionKind).toBe('dynamic');
+    expect(out.Tag?.selection).toEqual([
+      { value: 'a', label: '甲' },
+      { value: 'c', label: '丙' },
+    ]);
+  } finally {
+    resetTestState();
+  }
+});
+
+@Model('FieldsGetBadMethodWidget', { application: 'demo' })
+class FieldsGetBadMethodWidget extends BaseModel {
+  @Field({ type: 'selection', selection: 'NoSuchMethod' } as any)
+  Status!: string;
+}
+
+test('FieldsGet throws when dynamic selection method is missing (T3.6)', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  setTestI18nBridge({ t: () => '' });
+  RepositoryFactory.setRepository(FieldsGetBadMethodWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+  } as any);
+
+  try {
+    let error: unknown;
+    try {
+      await FieldsGetBadMethodWidget.FieldsGet(['Status']);
+    } catch (err) {
+      error = err;
+    }
+    expect(error instanceof Error).toBe(true);
+    expect(String((error as Error).message)).toContain(
+      'FieldsGet: selection method FieldsGetBadMethodWidget.NoSuchMethod is not a function'
+    );
+  } finally {
+    resetTestState();
+  }
+});

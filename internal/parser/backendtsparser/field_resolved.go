@@ -378,6 +378,13 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 					continue
 				}
 				if match := termReferenceCallPattern.FindStringSubmatch(labelRaw); len(match) == 4 {
+					callee := strings.TrimSpace(match[1])
+					binding, known := translateBindings[callee]
+					isLt := callee == "_lt" || (known && binding.ReferenceOutput)
+					if isLt {
+						// Empty/invalid _lt(...) — skip option rather than treat as text _t.
+						continue
+					}
 					return nil, fmt.Errorf("FIELD_SELECTION_LABELTEXT_FORBIDDEN: @Field(%s) selection label must not use text _t(...); use _lt(...) or a bare string", field.Name)
 				}
 				label := labelRaw
