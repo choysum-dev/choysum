@@ -22,11 +22,11 @@ import {
   detectStructuralChangedRelations,
   looksLikeRelation,
 } from './useOnchange';
-import type { WebModelStore, FieldMetadata } from '@/web/web/stores/modelStore';
+import type { WebModelStore, WebFieldMetadata } from '@/web/web/stores/modelStore';
 
 // --------------- minimal store stub ---------------
 
-function stubStore(overrides?: Partial<Record<string, FieldMetadata>>): WebModelStore<any> {
+function stubStore(overrides?: Partial<Record<string, WebFieldMetadata>>): WebModelStore<any> {
   return {
     fieldsMetadata: overrides ?? {},
   } as unknown as WebModelStore<any>;
@@ -88,9 +88,9 @@ describe('buildDiffFieldsMeta', () => {
 
   it('returns normalized metadata for relation fields', () => {
     const s = stubStore({
-      lines: { id: '1', type: 'oneToMany', typeAnnotation: 'Line[]' } as FieldMetadata,
-      partner: { id: '2', type: 'manyToOne', typeAnnotation: 'Partner' } as FieldMetadata,
-      name: { id: '3', type: 'string', typeAnnotation: 'string' } as FieldMetadata,
+      lines: { id: '1', type: 'oneToMany', typeAnnotation: 'Line[]' } as WebFieldMetadata,
+      partner: { id: '2', type: 'manyToOne', typeAnnotation: 'Partner' } as WebFieldMetadata,
+      name: { id: '3', type: 'string', typeAnnotation: 'string' } as WebFieldMetadata,
     });
     const meta = buildDiffFieldsMeta(s);
     expect(meta.lines?.relation).toBe('OneToMany');
@@ -100,7 +100,7 @@ describe('buildDiffFieldsMeta', () => {
   });
 
   it('caches result and returns same normalized object on repeated calls', () => {
-    const s = stubStore({ x: { id: 'a', type: 'integer', typeAnnotation: 'number' } as FieldMetadata });
+    const s = stubStore({ x: { id: 'a', type: 'integer', typeAnnotation: 'number' } as WebFieldMetadata });
     const a = buildDiffFieldsMeta(s);
     const b = buildDiffFieldsMeta(s);
     // Same identity when source reference unchanged
@@ -117,9 +117,9 @@ describe('buildRelationFieldSet', () => {
 
   it('collects only relation field names', () => {
     const s = stubStore({
-      orders: { id: 'o', type: 'oneToMany', typeAnnotation: '' } as FieldMetadata,
-      title: { id: 't', type: 'string', typeAnnotation: '' } as FieldMetadata,
-      tags: { id: 'g', type: 'manyToMany', typeAnnotation: '' } as FieldMetadata,
+      orders: { id: 'o', type: 'oneToMany', typeAnnotation: '' } as WebFieldMetadata,
+      title: { id: 't', type: 'string', typeAnnotation: '' } as WebFieldMetadata,
+      tags: { id: 'g', type: 'manyToMany', typeAnnotation: '' } as WebFieldMetadata,
     });
     const set = buildRelationFieldSet(s);
     expect(set.has('orders')).toBe(true);
@@ -362,7 +362,7 @@ describe('toSelectorPath', () => {
 
 describe('relationAwareMinimize', () => {
   const relStore = stubStore({
-    Lines: { id: 'L', type: 'oneToMany', typeAnnotation: '' } as FieldMetadata,
+    Lines: { id: 'L', type: 'oneToMany', typeAnnotation: '' } as WebFieldMetadata,
   });
 
   it('returns empty for empty paths', () => {
@@ -394,10 +394,10 @@ describe('relationAwareMinimize', () => {
 // --------------- slimRelationRefsForChanged ---------------
 
 describe('slimRelationRefsForChanged', () => {
-  const refMeta: Record<string, FieldMetadata> = {
-    partner: { id: 'p', type: 'manyToOneRef', typeAnnotation: '' } as FieldMetadata,
-    tags: { id: 't', type: 'manyToManyRef', typeAnnotation: '' } as FieldMetadata,
-    name: { id: 'n', type: 'string', typeAnnotation: '' } as FieldMetadata,
+  const refMeta: Record<string, WebFieldMetadata> = {
+    partner: { id: 'p', type: 'manyToOneRef', typeAnnotation: '' } as WebFieldMetadata,
+    tags: { id: 't', type: 'manyToManyRef', typeAnnotation: '' } as WebFieldMetadata,
+    name: { id: 'n', type: 'string', typeAnnotation: '' } as WebFieldMetadata,
   };
 
   it('returns draft unchanged when changed is empty', () => {
@@ -434,9 +434,9 @@ describe('slimRelationRefsForChanged', () => {
 
 describe('detectStructuralChangedRelations', () => {
   const o2mStore = stubStore({
-    Lines: { id: 'L', type: 'oneToMany', typeAnnotation: '' } as FieldMetadata,
-    Items: { id: 'I', type: 'manyToMany', typeAnnotation: '' } as FieldMetadata,
-    Name: { id: 'N', type: 'string', typeAnnotation: '' } as FieldMetadata,
+    Lines: { id: 'L', type: 'oneToMany', typeAnnotation: '' } as WebFieldMetadata,
+    Items: { id: 'I', type: 'manyToMany', typeAnnotation: '' } as WebFieldMetadata,
+    Name: { id: 'N', type: 'string', typeAnnotation: '' } as WebFieldMetadata,
   });
 
   it('returns empty when collapsed is empty', () => {

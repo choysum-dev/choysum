@@ -75,6 +75,8 @@ type IrFieldSelectionItem struct {
 type IrFieldStructuralSpec struct {
 	Name            string                         `json:"name"`
 	FieldType       string                         `json:"fieldType"`
+	String          string                         `json:"string,omitempty"`
+	StringText      *TermReference                 `json:"stringText,omitempty"`
 	Relation        map[string]any                 `json:"relation,omitempty"`
 	Selection       []IrFieldSelectionItem         `json:"selection,omitempty"`
 	Related         *IrFieldRelatedSpec            `json:"related,omitempty"`
@@ -159,6 +161,11 @@ type IrField struct {
 	// Its value is a TermReference; renaming the property requires a separate migration.
 	// The parser writes it directly and the frontend consumes it without intermediate conversion.
 	Selection string `gorm:"type:text" json:"selection,omitempty"`
+
+	// FieldString is the field title msgid (English fallback). JSON wire name remains "string".
+	FieldString string `gorm:"type:varchar(512)" json:"string,omitempty"`
+	// StringText stores the field title TermReference as JSON when authored with reference `_t(...)`.
+	StringText string `gorm:"type:text" json:"string_text,omitempty"`
 
 	ReferenceIdent string `gorm:"type:varchar" json:"reference_ident"`
 	ModuleSpecPath string `gorm:"type:varchar" json:"module_spec_path"`

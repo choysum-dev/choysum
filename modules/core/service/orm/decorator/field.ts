@@ -32,6 +32,7 @@ const relationTypes = new Set<FieldType>(['ManyToOne', 'OneToMany', 'ManyToMany'
 
 type FieldDecoratorOptionBag = {
   type?: FieldType;
+  string?: unknown;
   select?: unknown;
   column?: unknown;
   selection?: Array<{ value?: unknown; label?: unknown }>;
@@ -53,6 +54,27 @@ type FieldDecoratorOptionBag = {
   default?: unknown;
   round?: unknown;
 };
+
+function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw new Error(`@Field(${name}) string must be a non-empty string or term reference`);
+    }
+    return { string: trimmed };
+  }
+  if (isTermReference(value)) {
+    const src = typeof value.src === 'string' ? value.src.trim() : '';
+    if (!src) {
+      throw new Error(`@Field(${name}) string term reference requires a non-empty src`);
+    }
+    return { string: src, stringText: { ...value } };
+  }
+  throw new Error(`@Field(${name}) string must be a string or term reference`);
+}
 
 function toFieldDecoratorOptionBag(value: unknown): FieldDecoratorOptionBag {
   const record = asObjectRecord(value);
@@ -345,6 +367,10 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     const autoColumnManyToOne = type === 'ManyToOne' && !normalizedColumn;
 
     const meta: FieldMetadata = { name, type };
+
+    const fieldString = normalizeFieldString(name, optionBag.string);
+    if (fieldString.string !== undefined) meta.string = fieldString.string;
+    if (fieldString.stringText !== undefined) meta.stringText = fieldString.stringText;
 
     // Persist selection metadata before final storage/relation defaults.
     if (type === 'selection') {

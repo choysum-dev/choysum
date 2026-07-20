@@ -105,7 +105,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     wireFormat: 'string',
     min: undefined,

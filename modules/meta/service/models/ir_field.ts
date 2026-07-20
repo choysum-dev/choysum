@@ -53,6 +53,12 @@ export default class IrField extends BaseModel {
   @Field({ type: 'text' })
   Selection?: string;
 
+  @Field({ type: 'varchar', size: 512 })
+  FieldString?: string;
+
+  @Field({ type: 'text' })
+  StringText?: string;
+
   @Field({ type: 'varchar' })
   ReferenceIdent?: string;
 

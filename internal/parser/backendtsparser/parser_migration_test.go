@@ -454,6 +454,66 @@ export default class NilFieldsModel extends BaseModel {
 	}
 }
 
+func TestTsParser_PreservesFieldStringTermReference(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}
+	p := NewTsParser(runtimeScope, module)
+	content := `
+import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+const { _t } = createTranslate('demo', {
+  output: 'reference',
+  scope: 'demo.model.Widget.fields',
+});
+
+@Model('FieldStringModel')
+export default class FieldStringModel extends BaseModel {
+  @Field({
+    type: 'varchar',
+    size: 100,
+    string: _t('Name')
+  })
+  public Name: string
+
+  @Field({
+    type: 'varchar',
+    size: 40,
+    string: 'Code'
+  })
+  public Code: string
+}
+`
+	r, err := p.Parse(map[string]string{}, "/virtual/modules/demo/service/model.ts", content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	byName := map[string]*meta.IrField{}
+	for _, field := range r.Model.Fields {
+		byName[field.Name] = field
+	}
+	nameField := byName["Name"]
+	if nameField == nil {
+		t.Fatal("expected Name field")
+	}
+	spec, err := nameField.GetResolvedSpec()
+	if err != nil || spec == nil {
+		t.Fatalf("get resolved spec: %v, %#v", err, spec)
+	}
+	if spec.Structural.String != "Name" || spec.Structural.StringText == nil {
+		t.Fatalf("unexpected string metadata: %+v", spec.Structural)
+	}
+	if spec.Structural.StringText.Module != "demo" || spec.Structural.StringText.Scope != "demo.model.Widget.fields" || spec.Structural.StringText.Src != "Name" {
+		t.Fatalf("unexpected stringText: %+v", spec.Structural.StringText)
+	}
+	if nameField.FieldString != "Name" || !strings.Contains(nameField.StringText, `"src":"Name"`) {
+		t.Fatalf("IrField did not persist string/stringText: string=%q stringText=%s", nameField.FieldString, nameField.StringText)
+	}
+	codeField := byName["Code"]
+	if codeField == nil || codeField.FieldString != "Code" || strings.TrimSpace(codeField.StringText) != "" {
+		t.Fatalf("unexpected Code field string metadata: %#v", codeField)
+	}
+}
+
 func TestTsParser_PreservesSelectionTermReferenceWithEnglishFallback(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Name: "demo", Path: "/virtual/modules/demo", ApplicationStr: "demo"}

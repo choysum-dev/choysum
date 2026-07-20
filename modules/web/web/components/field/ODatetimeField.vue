@@ -86,7 +86,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     displayFormat: 'YYYY-MM-DD HH:mm:ss',
     valueFormat: 'YYYY-MM-DD[T]HH:mm:ss.SSSZ',

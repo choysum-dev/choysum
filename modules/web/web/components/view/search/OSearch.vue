@@ -296,7 +296,7 @@ function onToggleDefaultFilter(it: FilterMenuItem) {
   });
 }
 
-/* Available fields sorted by FieldMetadata.id, then by label. */
+/* Available fields sorted by WebFieldMetadata.id, then by label. */
 const availableFields = computed(() => {
   const md = store.fieldsMetadata as Record<string, any>;
   const items = Object.entries(md)

@@ -194,7 +194,6 @@ const props = withDefaults(
     targetModel?: string;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     showIndex: true,

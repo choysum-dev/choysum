@@ -10,7 +10,7 @@
 
 import { computed, inject, onMounted, onUnmounted, ref, watch, watchEffect, type ComputedRef, type Ref, type WritableComputedRef } from 'vue';
 import { createStoreByModel, getStoreFactoryRegistryVersion } from '@/web/web/stores/registry';
-import { getFieldMetadataView, type WebModelStore, type FieldMetadata } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, type WebModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { registerFieldPath, unregisterFieldPath } from '@/web/web/query/utils/registry/field';
 import { registerMetric, unregisterMetric } from '@/web/web/query/utils/registry/metric';
 import type { MetricSpec } from '@/web/web/query/utils/registry/metric';
@@ -55,7 +55,7 @@ const setByPath = (obj: any, path: string, v: any) => {
 export interface UseField<T = any, V = any> {
   env: FieldEnv;
   prop: string;
-  meta: FieldMetadata | undefined;
+  meta: WebFieldMetadata | undefined;
 
   // Field references.
   fieldRef(): WritableComputedRef<V>;
@@ -178,17 +178,17 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
   // Resolve metadata chains and relation stores, retrying when factories register late.
   const segs = String(prop).split('.').filter(Boolean);
   const relationScope = new ComponentScopeManager();
-  const leafMetaRef = ref<FieldMetadata | undefined>(undefined);
+  const leafMetaRef = ref<WebFieldMetadata | undefined>(undefined);
   const relationStoreRef = ref<WebModelStore<any> | undefined>(undefined);
   const storeFactoryRegistryVersion = getStoreFactoryRegistryVersion();
 
   const resolveLeafMetaAndRelationStore = () => {
     let owningStore: WebModelStore<any> | undefined = store;
-    let leafMeta: FieldMetadata | undefined;
+    let leafMeta: WebFieldMetadata | undefined;
 
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i]!;
-      const meta = (owningStore?.fieldsMetadata as any)?.[seg] as FieldMetadata | undefined;
+      const meta = (owningStore?.fieldsMetadata as any)?.[seg] as WebFieldMetadata | undefined;
       const view = getFieldMetadataView(meta);
       leafMeta = meta;
       const isLeaf = i === segs.length - 1;
@@ -484,7 +484,7 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
  */
 export function useStandaloneField<V, T = any>(opts: {
   value: Ref<V>;
-  meta?: Partial<FieldMetadata>;
+  meta?: Partial<WebFieldMetadata>;
   prop?: string;
   env?: Partial<FieldEnv>;
   record?: T;
@@ -593,7 +593,7 @@ export function useStandaloneField<V, T = any>(opts: {
   return {
     env,
     prop,
-    meta: (opts.meta as FieldMetadata | undefined) ?? undefined,
+    meta: (opts.meta as WebFieldMetadata | undefined) ?? undefined,
     fieldRef,
     fieldRefOf,
     recordRef,

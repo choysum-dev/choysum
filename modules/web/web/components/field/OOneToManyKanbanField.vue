@@ -200,7 +200,6 @@ const props = withDefaults(
     displayDialogTitle?: string;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     defaultRecord: () => ({}),

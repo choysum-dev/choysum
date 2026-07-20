@@ -80,6 +80,35 @@ test('Field decorator validates selection schema and uniqueness', () => {
   }).toThrow('column/select syntax is forbidden');
 });
 
+test('Field decorator normalizes string and stringText from term references', () => {
+  const { _t } = createTranslate('demo', { output: 'reference', scope: 'demo.model.Widget.fields' });
+  const nameReference = _t('Name');
+
+  class StringFieldModel extends BaseModel {
+    @Field({ type: 'varchar', size: 100, string: nameReference } as any)
+    Name!: string;
+
+    @Field({ type: 'varchar', size: 100, string: 'Code' } as any)
+    Code!: string;
+  }
+
+  const nameMeta = MetadataStorage.instance.getModelMetadata(StringFieldModel as any).fields.get('Name') as any;
+  const codeMeta = MetadataStorage.instance.getModelMetadata(StringFieldModel as any).fields.get('Code') as any;
+
+  expect(nameMeta?.string).toBe('Name');
+  expect(nameMeta?.stringText).toEqual(nameReference);
+  expect(codeMeta?.string).toBe('Code');
+  expect(codeMeta?.stringText).toBeUndefined();
+
+  expect(() => {
+    class EmptyStringModel extends BaseModel {
+      @Field({ type: 'varchar', string: '   ' } as any)
+      Name!: string;
+    }
+    return EmptyStringModel;
+  }).toThrow('string must be a non-empty string or term reference');
+});
+
 test('Field decorator auto-fills selection and ref columns metadata', () => {
   const { _t } = createTranslate('demo', { output: 'reference' });
   const labelReference = _t('B', { scope: 'demo.status.b' });

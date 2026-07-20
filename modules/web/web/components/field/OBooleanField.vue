@@ -137,7 +137,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     widget: 'switch',
     nullable: false,

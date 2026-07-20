@@ -12,8 +12,11 @@ import type { TermReference } from '@/core/service/i18n';
 // Selection dropdown option.
 export type SelectionItem = { value: string; label: string; labelText?: TermReference };
 
-// Field metadata.
-export type FieldMetadata = {
+/**
+ * Web / client field metadata (codegen static table + FieldsGet overlay).
+ * Distinct from ORM `FieldMetadata` in core.
+ */
+export type WebFieldMetadata = {
   id: string;
   type: string;
   typeAnnotation: string;
@@ -34,6 +37,10 @@ export type FieldMetadata = {
   round?: string;
   isReadonly?: boolean;
   indexed?: boolean;
+  /** Field title msgid (English) or FieldsGet-translated title. */
+  string?: string;
+  /** Field title TermReference for Gateway / translateTerm. */
+  stringText?: TermReference;
   selection?: readonly SelectionItem[];
   relationModel?: string;
   relationFilter?: string;
@@ -50,7 +57,7 @@ export function isRelationFieldType(type: string | undefined): boolean {
   return RELATION_FIELD_TYPES.has(String(type || '').toLowerCase());
 }
 
-export function getFieldMetadataView(meta: FieldMetadata | undefined) {
+export function getFieldMetadataView(meta: WebFieldMetadata | undefined) {
   const type = typeof meta?.type === 'string' ? meta.type : '';
 
   const relationModel = meta?.relationModel;
@@ -95,7 +102,7 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   readonly application?: string;
   // Model name, for example Role.
   readonly modelName?: string;
-  readonly fieldsMetadata: Record<string, FieldMetadata>;
+  readonly fieldsMetadata: Record<string, WebFieldMetadata>;
 
   state: {
     // Unified query state.

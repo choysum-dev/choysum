@@ -97,7 +97,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
 import { computed } from 'vue';
 import { useStandaloneField } from '@/web/web/composables/useField';
-import type { FieldMetadata } from '@/web/web/stores/modelStore';
+import type { WebFieldMetadata } from '@/web/web/stores/modelStore';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
 import { createTranslate } from '@/web/web/i18n';
@@ -265,7 +265,7 @@ function bindingForCondition(ch: CondLike) {
   });
 
   const t = metaTypeOf(ch.field || '');
-  const meta = { type: t as any } as Partial<FieldMetadata>;
+  const meta = { type: t as any } as Partial<WebFieldMetadata>;
 
   const binding = useStandaloneField({
     value: vRef,

@@ -93,7 +93,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     nullable: true,
     allowArray: false,

@@ -26,22 +26,22 @@ SPDX-License-Identifier: Apache-2.0
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="AccessTokenId" :label="_t('Access Token ID')" />
+          <OVarCharField :store="store" prop="AccessTokenId" />
         </el-col>
         <el-col :span="24">
-          <OTextField :store="store" prop="DeviceInfo" :label="_t('Device Info')" />
+          <OTextField :store="store" prop="DeviceInfo" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="IpAddress" :label="_t('IP Address')" />
+          <OVarCharField :store="store" prop="IpAddress" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" />
+          <ODateTimeField :store="store" prop="ExpiresAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="LastActivityAt" :label="_t('Last Activity')" />
+          <ODateTimeField :store="store" prop="LastActivityAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Status" :label="_t('Status')" />
+          <OVarCharField :store="store" prop="Status" />
         </el-col>
       </el-row>
     </el-card>

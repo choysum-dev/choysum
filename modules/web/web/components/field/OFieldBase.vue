@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     v-show="visibleForm"
     class="o-field-base"
     v-bind="formItemProps"
-    :label="label"
+    :label="resolvedLabel"
     :prop="String(binding.prop)"
     :rules="effectiveRules"
     :required="requiredForm"
@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
   <OVColumn
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
-    :label="label"
+    :label="resolvedLabel"
     :vColumnProps="vColumnProps"
     v-slot="{ row, $index }"
   >
@@ -234,6 +234,8 @@ import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
+import { getGlobalComposer } from '@/web/web/i18n/translate';
+import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -258,7 +260,6 @@ const props = withDefaults(
     showInlineError?: boolean;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
@@ -271,7 +272,19 @@ const props = withDefaults(
     showInlineError: false,
   }
 );
-/* ===================== Render Mode Resolution ===================== */
+
+const binding = props.binding;
+
+const resolvedLabel = computed(() =>
+  resolveFieldLabel({
+    label: props.label,
+    prop: String(binding.prop || ''),
+    meta: binding.meta,
+    composer: getGlobalComposer(),
+  })
+);
+
+/* ===================== Render Mode Dispatch ===================== */
 // Inject a render mode override (for example, Kanban cards provide inline)
 const injectedRenderOverride = inject<'inline' | 'form' | 'table' | 'auto' | null>('o-field-render-override', null);
 const effectiveRenderMode = computed(() => {
@@ -288,8 +301,6 @@ const visibleInline = computed(() => visibleForm.value); // Reuse visibleForm as
 const readonlyInline = computed(() => readonlyForm.value);
 const requiredInline = computed(() => requiredForm.value);
 const effectiveEditInline = computed(() => binding.env.isEditMode && visibleInline.value && !readonlyInline.value);
-
-const binding = props.binding;
 
 // Unwrap row records to the actual business record (row-level detection, not snapshot-level QueryKind):
 // - Legacy grouped-tree detail row: { type:'record', record:{...} }

@@ -21,6 +21,7 @@ describe('frontend terminology display contract', () => {
   it('keeps non-template term reference consumers on translateTerm', () => {
     for (const path of [
       '../composables/useMenu.ts',
+      '../composables/resolveFieldLabel.ts',
       '../components/field/OSelectionField.vue',
       '../router/index.ts',
     ]) {

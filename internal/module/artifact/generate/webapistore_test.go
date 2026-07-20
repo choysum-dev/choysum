@@ -18,6 +18,7 @@ import (
 func TestWebApiStoreGenerate(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	referenceKey := meta.TermReferenceKey("demo", "demo.status.allow", "Allow", "literal")
+	stringKey := meta.TermReferenceKey("demo", "demo.model.Partner.fields", "Amount", "literal")
 	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
@@ -42,6 +43,8 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		RelationJoinField:        "PartnerId",
 		RelationInverseJoinField: "TagId",
 		Selection:                selectionJSON,
+		FieldString:              "Amount",
+		StringText:               `{"key":"` + stringKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Amount","kind":"literal"}`,
 		Round:                    &round,
 	}
 	resolvedSpec := &meta.IrFieldResolvedSpec{
@@ -62,6 +65,12 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	metadata := convertFieldToMetadata(field)
 	if metadata.Id == nil || *metadata.Id != "field-1" || metadata.Round == nil || *metadata.Round != round || metadata.Selection == nil {
 		t.Fatalf("unexpected field metadata: %#v", metadata)
+	}
+	if metadata.String == nil || *metadata.String != `"Amount"` {
+		t.Fatalf("expected quoted string msgid, got %#v", metadata.String)
+	}
+	if metadata.StringText == nil || !strings.Contains(*metadata.StringText, stringKey) {
+		t.Fatalf("expected stringText JSON with key, got %#v", metadata.StringText)
 	}
 	if metadata.StorageKind == nil || *metadata.StorageKind != "column" || metadata.ComputedKind == nil || *metadata.ComputedKind != "runtime" {
 		t.Fatalf("expected resolved contract fields, got %#v", metadata)
@@ -86,6 +95,8 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	app := testApp()
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 0 {
 		app.Models[1].Fields[0].Selection = selectionJSON
+		app.Models[1].Fields[0].FieldString = "Amount"
+		app.Models[1].Fields[0].StringText = `{"key":"` + stringKey + `","module":"demo","scope":"demo.model.Partner.fields","src":"Amount","kind":"literal"}`
 	}
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 1 {
 		companyField := app.Models[1].Fields[1]
@@ -121,6 +132,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	}
 	if !strings.Contains(string(storeContent), "labelText") || !strings.Contains(string(storeContent), referenceKey) {
 		t.Fatalf("expected selection term reference in generated store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), `string: "Amount"`) || !strings.Contains(string(storeContent), "stringText:") || !strings.Contains(string(storeContent), stringKey) {
+		t.Fatalf("expected field string/stringText in generated store content: %s", string(storeContent))
 	}
 	if _, err := os.Stat(filepath.Join(webStoreDir, "stores", "index.ts")); err != nil {
 		t.Fatalf("expected stores/index.ts: %v", err)

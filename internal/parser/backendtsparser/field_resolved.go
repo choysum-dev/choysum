@@ -337,6 +337,27 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		spec.Structural.Relation = relation
 	}
 
+	if stringRaw, hasString := options["string"]; hasString && stringRaw != nil {
+		raw := strings.TrimSpace(fmt.Sprintf("%v", stringRaw))
+		if raw != "" {
+			if reference, ok := parseTermReferenceCall(raw, ownerModule, referenceScope, referenceOutput, translateBindings); ok {
+				spec.Structural.String = reference.Src
+				spec.Structural.StringText = reference
+			} else if match := termReferenceCallPattern.FindStringSubmatch(raw); len(match) == 4 {
+				if _, known := translateBindings[strings.TrimSpace(match[1])]; known {
+					if fallback, ok := parseTextCallLiteral(match[2]); ok {
+						spec.Structural.String = fallback
+					}
+				}
+			} else if literal, err := parser.ParseJSStringLiteral(raw); err == nil && strings.TrimSpace(literal) != "" {
+				spec.Structural.String = strings.TrimSpace(literal)
+			} else if !strings.ContainsAny(raw, "(){}[]") {
+				// Plain identifier-free string already unquoted by ObjectLiteral encoding.
+				spec.Structural.String = raw
+			}
+		}
+	}
+
 	if selection, ok := options["selection"].([]any); ok {
 		for _, item := range selection {
 			entry, ok := item.(map[string]any)
@@ -609,6 +630,15 @@ func applyResolvedSpecToLegacyField(field *meta.IrField, spec *meta.IrFieldResol
 	if len(spec.Structural.Selection) > 0 {
 		if b, err := json.Marshal(spec.Structural.Selection); err == nil {
 			field.Selection = string(b)
+		}
+	}
+
+	if strings.TrimSpace(spec.Structural.String) != "" {
+		field.FieldString = strings.TrimSpace(spec.Structural.String)
+	}
+	if spec.Structural.StringText != nil {
+		if b, err := json.Marshal(spec.Structural.StringText); err == nil {
+			field.StringText = string(b)
 		}
 	}
 

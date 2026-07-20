@@ -14,43 +14,74 @@ export default class Session extends BaseModel {
   /**
    * User that owns the session.
    */
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => User, onDelete: 'CASCADE' } })
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => User, onDelete: 'CASCADE' },
+    string: _t('User', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   UserId: User;
 
   /**
    * Access token identifier bound to the session. This is the token JTI, not a bearer secret.
    */
-  @Field({ type: 'varchar', size: 36, index: true})
+  @Field({
+    type: 'varchar',
+    size: 36,
+    index: true,
+    string: _t('Access Token ID', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   AccessTokenId: string;
 
   /**
    * Device fingerprint or other client metadata captured at login.
    */
-  @Field({ type: 'text' })
+  @Field({
+    type: 'text',
+    string: _t('Device Info', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   DeviceInfo: string;
 
   /**
    * Client IP address recorded for the session.
    */
-  @Field({ type: 'varchar', size: 45})
+  @Field({
+    type: 'varchar',
+    size: 45,
+    string: _t('IP Address', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   IpAddress: string;
 
   /**
    * Session expiration timestamp.
    */
-  @Field({ type: 'datetime', notNull: true, index: true})
+  @Field({
+    type: 'datetime',
+    notNull: true,
+    index: true,
+    string: _t('Expires At', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   ExpiresAt: Date;
 
   /**
    * Last observed activity time for the session.
    */
-  @Field({ type: 'datetime', index: true})
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _t('Last Activity', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   LastActivityAt: Date;
 
   /**
    * Session lifecycle state such as active, expired, or revoked.
    */
-  @Field({ type: 'varchar', size: 20, default: () => 'active', index: true})
+  @Field({
+    type: 'varchar',
+    size: 20,
+    default: () => 'active',
+    index: true,
+    string: _t('Status', { output: 'reference', scope: 'auth.model.Session.fields' }),
+  })
   Status: string;
 
   /**

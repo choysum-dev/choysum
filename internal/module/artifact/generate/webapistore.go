@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -59,6 +60,11 @@ type FieldMetadata struct {
 
 	// Selection is forwarded when available.
 	Selection *string `json:"selection,omitempty"`
+
+	// String is a JS string literal expression (already quoted) for the field title msgid.
+	String *string `json:"string,omitempty"`
+	// StringText is a JSON object literal for the field title TermReference.
+	StringText *string `json:"stringText,omitempty"`
 
 	// ScaleField points to the dynamic decimal scale source.
 	ScaleField *string `json:"scaleField,omitempty"`
@@ -195,6 +201,14 @@ func convertFieldToMetadata(field *meta.IrField) FieldMetadata {
 	// Pass through Selection when it is non-empty.
 	if field.Selection != "" {
 		metadata.Selection = &field.Selection
+	}
+
+	if s := strings.TrimSpace(field.FieldString); s != "" {
+		quoted := strconv.Quote(s)
+		metadata.String = &quoted
+	}
+	if strings.TrimSpace(field.StringText) != "" {
+		metadata.StringText = &field.StringText
 	}
 
 	// Pass through Round only when it is set.

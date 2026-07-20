@@ -188,7 +188,6 @@ const props = withDefaults(
     selectProps?: Partial<InstanceType<typeof ElSelectV2>['$props']>;
   }>(),
   {
-    label: '',
     rules: () => [],
     formItemProps: () => ({}),
     required: false,
