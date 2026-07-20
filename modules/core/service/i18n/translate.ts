@@ -222,7 +222,11 @@ export function createTranslate(
   };
 
   const _lt = (src: string, opts?: TermOptions, ...rest: unknown[]): TermReference => {
-    if (rest.length > 0) {
+    // Accidental `_lt('… %s', 'x')` binds the primitive to `opts`, not `rest`.
+    if (
+      rest.length > 0 ||
+      (opts != null && (typeof opts !== 'object' || Array.isArray(opts)))
+    ) {
       throw new Error('_lt does not accept interpolation arguments');
     }
     if (!opts && defaultScope) {

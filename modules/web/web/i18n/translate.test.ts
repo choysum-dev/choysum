@@ -191,6 +191,10 @@ describe('createTranslate', () => {
       // @ts-expect-error _lt does not accept interpolation arguments
       _lt('Users', undefined, 'unused');
     }).toThrow('_lt does not accept interpolation arguments');
+    expect(() => {
+      // @ts-expect-error primitive second arg is interpolation, not options
+      _lt('Hello %s', 'world');
+    }).toThrow('_lt does not accept interpolation arguments');
   });
 
   it('captures the term reference before computed reevaluation', async () => {
