@@ -98,6 +98,18 @@ function buildMockAuthStore(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function mountLogin(Login: unknown) {
+  return mount(Login as any, {
+    global: {
+      stubs: {
+        // vue-router composables are mocked; template still needs RouterLink.
+        RouterLink: { name: 'RouterLink', template: '<a><slot /></a>', props: ['to'] },
+        'router-link': { name: 'RouterLink', template: '<a><slot /></a>', props: ['to'] },
+      },
+    },
+  });
+}
+
 describe('Login.vue onMounted', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -110,7 +122,7 @@ describe('Login.vue onMounted', () => {
     mockAuthStore = buildMockAuthStore();
 
     const { default: Login } = await import('../pages/Login.vue');
-    mount(Login);
+    mountLogin(Login);
 
     expect(mockAuthStore.ensureAuthReady).toHaveBeenCalledTimes(1);
   });
@@ -121,7 +133,7 @@ describe('Login.vue onMounted', () => {
     });
 
     const { default: Login } = await import('../pages/Login.vue');
-    mount(Login);
+    mountLogin(Login);
 
     expect(mockAuthStore.ensureAuthReady).toHaveBeenCalledTimes(1);
     // Wait for the async onMounted to complete.
@@ -142,7 +154,7 @@ describe('Login.vue onMounted', () => {
     });
 
     const { default: Login } = await import('../pages/Login.vue');
-    mount(Login);
+    mountLogin(Login);
 
     // Simulate the user clicking "Register now" — route changes.
     mockRoutePath = '/register';
@@ -166,7 +178,7 @@ describe('Login.vue onMounted', () => {
     });
 
     const { default: Login } = await import('../pages/Login.vue');
-    mount(Login);
+    mountLogin(Login);
 
     expect(mockAuthStore.ensureAuthReady).toHaveBeenCalledTimes(1);
     // ensureAuthReady threw, but the error was caught.

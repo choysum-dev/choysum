@@ -31,7 +31,7 @@ const { _t } = createTranslate('auth', { scope: 'web/views/UserSearchView' });
 // Seed the initial group only once, then let store.queryState drive subsequent changes.
 const defaultGroups = ['IsActive'] as GroupBySpec<User>[];
 
-const props = defineProps<{ store: WebModelStore<User>; test: string }>();
+const props = defineProps<{ store: WebModelStore<User> }>();
 const { store } = props;
 
 defineOptions({ name: 'UserSearchView' });

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 let mockAuthStore: any;
 let capturedTokenProvider: any = null;
@@ -90,6 +90,12 @@ describe('setupTokenProvider refreshToken', () => {
     vi.clearAllMocks();
     // Reset module cache so app.ts re-evaluates with fresh mocks.
     vi.resetModules();
+    // setupApp logs configuration via console.debug; keep suite output quiet.
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('uses console.warn (not console.error) when token refresh fails', async () => {
@@ -122,9 +128,6 @@ describe('setupTokenProvider refreshToken', () => {
     // No console.error for the refresh failure path.
     const refreshErrorCalls = errorSpy.mock.calls.filter(args => typeof args[0] === 'string' && args[0].includes('Token refresh failed'));
     expect(refreshErrorCalls).toHaveLength(0);
-
-    warnSpy.mockRestore();
-    errorSpy.mockRestore();
   });
 
   it('returns false when token refresh fails', async () => {
@@ -150,7 +153,5 @@ describe('setupTokenProvider refreshToken', () => {
     // Assert: returns false on failure.
     expect(result).toBe(false);
     expect(warnSpy).toHaveBeenCalled();
-
-    warnSpy.mockRestore();
   });
 });

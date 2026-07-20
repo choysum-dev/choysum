@@ -43,7 +43,17 @@ describe('auth view _lt setup coverage', () => {
     it(`mounts ${path} so createTranslate/_lt run`, () => {
       const wrapper = shallowMount(mod.default as any, {
         props: { store: fakeStore as any },
-        global: { plugins: [i18n], stubs: true },
+        global: {
+          plugins: [i18n],
+          stubs: true,
+          // Views may use v-action; coverage mounts do not install the real directive.
+          directives: {
+            action: {
+              mounted() {},
+              updated() {},
+            },
+          },
+        },
       });
       expect(wrapper.exists()).toBe(true);
     });
