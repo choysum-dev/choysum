@@ -15,14 +15,14 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Label" :label="_t('Label')" />
-    <OVarCharField :store="store" prop="Street1" :label="_t('Address Line 1')" />
-    <OVarCharField :store="store" prop="Zip" :label="_t('ZIP')" />
-    <OManyToOneField :store="store" prop="CountryId" :label="_t('Country')"><OVarCharField :store="store" prop="CountryId.Name" :label="_t('Country')" /></OManyToOneField>
-    <OManyToOneField :store="store" prop="StateId" :label="_t('State/Province')"
-      ><OVarCharField :store="store" prop="StateId.Name" :label="_t('State/Province')"
+    <OVarCharField :store="store" prop="Label" />
+    <OVarCharField :store="store" prop="Street1" />
+    <OVarCharField :store="store" prop="Zip" />
+    <OManyToOneField :store="store" prop="CountryId"><OVarCharField :store="store" prop="CountryId.Name" /></OManyToOneField>
+    <OManyToOneField :store="store" prop="StateId"
+      ><OVarCharField :store="store" prop="StateId.Name"
     /></OManyToOneField>
-    <OManyToOneField :store="store" prop="CityId" :label="_t('City')"><OVarCharField :store="store" prop="CityId.Name" :label="_t('City')" /></OManyToOneField>
+    <OManyToOneField :store="store" prop="CityId"><OVarCharField :store="store" prop="CityId.Name" /></OManyToOneField>
   </OListView>
 </template>
 

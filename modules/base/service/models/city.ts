@@ -2,34 +2,59 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
+import { normalizeRefId } from '@/core/service/utils/normalization';
+import { _t, _lt } from '../i18n';
 import Country from './country';
 import State from './state';
-import { normalizeRefId } from '@/core/service/utils/normalization';
 import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
-
-const { _t } = createTranslate('base');
 
 @Model('City')
 export default class City extends BaseModel {
-  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_city_country_state_name'})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_city_country_state_name',
+    string: _lt('Name', { scope: 'base.model.City.fields' }),
+  })
   Name: string;
 
-  @Field({ type: 'varchar', size: 16, index: true})
+  @Field({
+    type: 'varchar',
+    size: 16,
+    index: true,
+    string: _lt('Code', { scope: 'base.model.City.fields' }),
+  })
   Code?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Country },
-    notNull: true, index: true, uniqueIndex: 'uidx_base_city_country_state_name',
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_city_country_state_name',
+    string: _lt('Country', { scope: 'base.model.City.fields' }),
   })
   CountryId: Country;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => State }, index: true, uniqueIndex: 'uidx_base_city_country_state_name'})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => State },
+    index: true,
+    uniqueIndex: 'uidx_base_city_country_state_name',
+    string: _lt('State/Province', { scope: 'base.model.City.fields' }),
+  })
   StateId?: State;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'base.model.City.fields' }),
+  })
   IsActive: boolean;
 
   private static async ensureStateCountryConsistency(countryId: string, stateId: string | null): Promise<void> {

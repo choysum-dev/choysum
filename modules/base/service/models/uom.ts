@@ -2,39 +2,73 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
+import { _t, _lt } from '../i18n';
 import UoMCategory from './uom_category';
 import { fail, mapNormalizationToBase, normalizeName, requireRefId } from './_normalizers';
 
-const { _t } = createTranslate('base');
-
 @Model('UoM')
 export default class UoM extends BaseModel {
-  @Field({ type: 'varchar', size: 100, notNull: true, index: true, uniqueIndex: 'uidx_base_uom_category_name'})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_uom_category_name',
+    string: _lt('Name', { scope: 'base.model.UoM.fields' }),
+  })
   Name: string;
 
-  @Field({ type: 'varchar', size: 24})
+  @Field({
+    type: 'varchar',
+    size: 24,
+    string: _lt('Symbol', { scope: 'base.model.UoM.fields' }),
+  })
   Symbol?: string;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => UoMCategory },
-    notNull: true, index: true, uniqueIndex: 'uidx_base_uom_category_name',
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_uom_category_name',
+    string: _lt('Category', { scope: 'base.model.UoM.fields' }),
   })
   CategoryId: UoMCategory;
 
-  @Field({ type: 'boolean', notNull: true, default: () => false})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    string: _lt('Reference Unit', { scope: 'base.model.UoM.fields' }),
+  })
   IsReference: boolean;
 
-  @Field({ type: 'decimal', notNull: true, precision: 38, scale: 18})
+  @Field({
+    type: 'decimal',
+    notNull: true,
+    precision: 38,
+    scale: 18,
+    string: _lt('Conversion Factor', { scope: 'base.model.UoM.fields' }),
+  })
   Factor: any;
 
-  @Field({ type: 'decimal', precision: 38, scale: 18})
+  @Field({
+    type: 'decimal',
+    precision: 38,
+    scale: 18,
+    string: _lt('Rounding', { scope: 'base.model.UoM.fields' }),
+  })
   Rounding?: any;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'base.model.UoM.fields' }),
+  })
   IsActive: boolean;
 
   private static async ensureNameUnique(categoryId: string, name: string, currentId?: string): Promise<void> {

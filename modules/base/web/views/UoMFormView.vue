@@ -15,17 +15,17 @@ SPDX-License-Identifier: Apache-2.0
         ><div class="bfv-card__header"><span>{{ _t('Unit of Measure Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Symbol" :label="_t('Symbol')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Symbol" /></el-col>
         <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField :store="store" prop="CategoryId" :label="_t('Category')" :search-view="UoMCategoryListView" :search-view-title="_t('Select Category')"
+          ><OManyToOneField :store="store" prop="CategoryId" :search-view="UoMCategoryListView" :search-view-title="_t('Select Category')"
         /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsReference" :label="_t('Reference Unit')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><ODecimalField :store="store" prop="Factor" :label="_t('Conversion Factor')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><ODecimalField :store="store" prop="Rounding" :label="_t('Rounding')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsActive" :label="_t('Active')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsReference" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><ODecimalField :store="store" prop="Factor" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><ODecimalField :store="store" prop="Rounding" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="IsActive" /></el-col>
       </el-row>
     </el-card>
   </OFormView>

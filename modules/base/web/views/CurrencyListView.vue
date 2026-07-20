@@ -15,12 +15,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
-    <OVarCharField :store="store" prop="Symbol" :label="_t('Symbol')" />
-    <OIntField :store="store" prop="DecimalDigits" :label="_t('Decimal Digits')" />
-    <ODecimalField :store="store" prop="Rounding" :label="_t('Rounding Precision')" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Code" />
+    <OVarCharField :store="store" prop="Symbol" />
+    <OIntField :store="store" prop="DecimalDigits" />
+    <ODecimalField :store="store" prop="Rounding" />
+    <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
 

@@ -15,16 +15,15 @@ SPDX-License-Identifier: Apache-2.0
         ><div class="bfv-card__header"><span>{{ _t('City Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :label="_t('Code')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" :label="_t('Active')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="CountryId"
-            :label="_t('Country')"
             :search-view="CountryListView"
             :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
@@ -33,7 +32,6 @@ SPDX-License-Identifier: Apache-2.0
           ><OManyToOneField
             :store="store"
             prop="StateId"
-            :label="_t('State/Province')"
             :search-view="StateListView"
             :search-view-title="_t('Select State/Province')"
             @value-click="onStateValueClick"

@@ -15,14 +15,14 @@ SPDX-License-Identifier: Apache-2.0
         ><div class="bfv-card__header"><span>{{ _t('Currency Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Symbol" :label="_t('Symbol')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Symbol" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OIntField :store="store" prop="DecimalDigits" :label="_t('Decimal Digits')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><ODecimalField :store="store" prop="Rounding" :label="_t('Rounding Precision')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" :label="_t('Active')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OIntField :store="store" prop="DecimalDigits" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><ODecimalField :store="store" prop="Rounding" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
       </el-row>
     </el-card>
   </OFormView>

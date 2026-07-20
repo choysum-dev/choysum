@@ -15,13 +15,12 @@ SPDX-License-Identifier: Apache-2.0
         ><div class="bfv-card__header"><span>{{ _t('Address Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Label" :label="_t('Label')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Zip" :label="_t('ZIP')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Label" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Zip" /></el-col>
         <el-col :xs="24" :sm="12" :md="8">
           <OManyToOneField
             :store="store"
             prop="CountryId"
-            :label="_t('Country')"
             :search-view="CountryListView"
             :search-view-title="_t('Select Country')"
             @value-click="onCountryValueClick"
@@ -29,15 +28,14 @@ SPDX-License-Identifier: Apache-2.0
         </el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street1" :label="_t('Address Line 1')" /></el-col>
-        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street2" :label="_t('Address Line 2')" /></el-col>
+        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street1" /></el-col>
+        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="Street2" /></el-col>
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
           ><OManyToOneField
             :store="store"
             prop="StateId"
-            :label="_t('State/Province')"
             :search-view="StateListView"
             :search-view-title="_t('Select State/Province')"
             @value-click="onStateValueClick"
@@ -46,7 +44,6 @@ SPDX-License-Identifier: Apache-2.0
           ><OManyToOneField
             :store="store"
             prop="CityId"
-            :label="_t('City')"
             :search-view="CityListView"
             :search-view-title="_t('Select City')"
             @value-click="onCityValueClick"

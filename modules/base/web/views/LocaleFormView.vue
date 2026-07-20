@@ -15,22 +15,22 @@ SPDX-License-Identifier: Apache-2.0
         ><div class="bfv-card__header"><span>{{ _t('Locale Information') }}</span></div></template
       >
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" :label="_t('Active')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Name" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Code" :rules="requiredRules" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="DecimalSeparator" :label="_t('Decimal Separator')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="ThousandSeparator" :label="_t('Thousands Separator')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OIntField :store="store" prop="FirstDayOfWeek" :label="_t('First Day of Week')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="DecimalSeparator" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="ThousandSeparator" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OIntField :store="store" prop="FirstDayOfWeek" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="DateFormat" :label="_t('Date Format')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="TimeFormat" :label="_t('Time Format')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OSelectionField :store="store" prop="CurrencySymbolPosition" :label="_t('Currency Symbol Position')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="DateFormat" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="TimeFormat" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OSelectionField :store="store" prop="CurrencySymbolPosition" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="CurrencySymbolSpacing" :label="_t('Symbol Spacing')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="CurrencySymbolSpacing" /></el-col>
       </el-row>
     </el-card>
   </OFormView>

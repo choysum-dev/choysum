@@ -21,28 +21,28 @@ SPDX-License-Identifier: Apache-2.0
       >
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField :store="store" prop="SequenceId" :label="_t('Sequence')" :search-view="SequenceListView" :search-view-title="_t('Select Sequence')"
+          ><OManyToOneField :store="store" prop="SequenceId" :search-view="SequenceListView" :search-view-title="_t('Select Sequence')"
         /></el-col>
         <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField :store="store" prop="CompanyId" :label="_t('Company')" :search-view="CompanyListView" :search-view-title="_t('Select Company')"
+          ><OManyToOneField :store="store" prop="CompanyId" :search-view="CompanyListView" :search-view-title="_t('Select Company')"
         /></el-col>
-        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="IdempotencyKey" :label="_t('Idempotency Key')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="IdempotencyKey" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="6"><OIntField :store="store" prop="Count" :label="_t('Count')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="DryRun" :label="_t('Dry Run')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="RangeStart" :label="_t('Start')" /></el-col>
-        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="RangeEnd" :label="_t('End')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OIntField :store="store" prop="Count" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBooleanField :store="store" prop="DryRun" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="RangeStart" /></el-col>
+        <el-col :xs="24" :sm="12" :md="6"><OBigintField :store="store" prop="RangeEnd" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="CodeSnapshot" :label="_t('Code Snapshot')" /></el-col>
-        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="RequestHash" :label="_t('Request Hash')" /></el-col>
+        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="CodeSnapshot" /></el-col>
+        <el-col :xs="24" :sm="12"><OVarCharField :store="store" prop="RequestHash" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24"><OJsonobjectField :store="store" prop="FormatSnapshot" :label="_t('Format Snapshot')" /></el-col>
+        <el-col :xs="24"><OJsonobjectField :store="store" prop="FormatSnapshot" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"><ODateTimeField :store="store" prop="ExpiresAt" :label="_t('Expires At')" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><ODateTimeField :store="store" prop="ExpiresAt" /></el-col>
       </el-row>
     </el-card>
   </OFormView>

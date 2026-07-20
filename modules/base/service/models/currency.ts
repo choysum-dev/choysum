@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeDecimalDigits, normalizePositiveDecimalString } from '@/core/service/utils/normalization';
+import { _t, _lt } from '../i18n';
 import { mapNormalizationToBase, normalizeCodeRequired } from './_normalizers';
-
-const { _t } = createTranslate('base');
 import { convertCurrency } from './_currency_convert';
 
 export type CurrencyConvertRatePolicy = {
@@ -34,22 +32,56 @@ export type CurrencyConvertResult = { Amount: any; RateUsed?: any; Warnings?: st
 
 @Model('Currency')
 export default class Currency extends BaseModel {
-  @Field({ type: 'varchar', size: 100, notNull: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    index: true,
+    string: _lt('Name', { scope: 'base.model.Currency.fields' }),
+  })
   Name: string;
 
-  @Field({ type: 'varchar', size: 8, notNull: true, unique: true, index: true})
+  @Field({
+    type: 'varchar',
+    size: 8,
+    notNull: true,
+    unique: true,
+    index: true,
+    string: _lt('Code', { scope: 'base.model.Currency.fields' }),
+  })
   Code: string;
 
-  @Field({ type: 'varchar', size: 16})
+  @Field({
+    type: 'varchar',
+    size: 16,
+    string: _lt('Symbol', { scope: 'base.model.Currency.fields' }),
+  })
   Symbol?: string;
 
-  @Field({ type: 'int', notNull: true, default: () => 2})
+  @Field({
+    type: 'int',
+    notNull: true,
+    default: () => 2,
+    string: _lt('Decimal Digits', { scope: 'base.model.Currency.fields' }),
+  })
   DecimalDigits: number;
 
-  @Field({ type: 'decimal', notNull: true, precision: 38, scale: 18})
+  @Field({
+    type: 'decimal',
+    notNull: true,
+    precision: 38,
+    scale: 18,
+    string: _lt('Rounding Precision', { scope: 'base.model.Currency.fields' }),
+  })
   Rounding: any;
 
-  @Field({ type: 'boolean', notNull: true, default: () => true, index: true})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => true,
+    index: true,
+    string: _lt('Active', { scope: 'base.model.Currency.fields' }),
+  })
   IsActive: boolean;
 
   @Constraint<Currency>(['Code', 'DecimalDigits', 'Rounding'])

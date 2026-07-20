@@ -2,37 +2,59 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
+import { _t, _lt } from '../i18n';
 import Company from './company';
 import Currency from './currency';
 import { fail, mapNormalizationToBase, requireRefId } from './_normalizers';
-
-const { _t } = createTranslate('base');
 
 @Model('ExchangeRate', { companyScoped: true })
 export default class ExchangeRate extends BaseModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Currency },
-    notNull: true, index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
+    string: _lt('Currency', { scope: 'base.model.ExchangeRate.fields' }),
   })
   CurrencyId: Currency;
 
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Company },
+    index: true,
+    string: _lt('Company', { scope: 'base.model.ExchangeRate.fields' }),
+  })
   CompanyId?: Company;
 
   @Field({
     type: 'varchar',
-    size: 20, notNull: true, default: () => '__GLOBAL__', index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
+    size: 20,
+    notNull: true,
+    default: () => '__GLOBAL__',
+    index: true,
+    uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
   })
   CompanyScopeKey: string;
 
-  @Field({ type: 'date', notNull: true, index: true, uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date'})
+  @Field({
+    type: 'date',
+    notNull: true,
+    index: true,
+    uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
+    string: _lt('Date', { scope: 'base.model.ExchangeRate.fields' }),
+  })
   Date: any;
 
-  @Field({ type: 'decimal', notNull: true, precision: 38, scale: 18})
+  @Field({
+    type: 'decimal',
+    notNull: true,
+    precision: 38,
+    scale: 18,
+    string: _lt('Exchange Rate', { scope: 'base.model.ExchangeRate.fields' }),
+  })
   Rate: any;
 
   private static coerceDateKey(value: any): string {

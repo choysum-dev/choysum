@@ -15,14 +15,14 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Code" :label="_t('Code')" />
-    <OManyToOneField :store="store" prop="CompanyId" :label="_t('Company')"><OVarCharField :store="store" prop="CompanyId.Name" :label="_t('Company')" /></OManyToOneField>
-    <OVarCharField :store="store" prop="Prefix" :label="_t('Prefix')" />
-    <OVarCharField :store="store" prop="Suffix" :label="_t('Suffix')" />
-    <OIntField :store="store" prop="Padding" :label="_t('Padding Length')" />
-    <OBigintField :store="store" prop="NextNumber" :label="_t('Next Number')" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Code" />
+    <OManyToOneField :store="store" prop="CompanyId"><OVarCharField :store="store" prop="CompanyId.Name" /></OManyToOneField>
+    <OVarCharField :store="store" prop="Prefix" />
+    <OVarCharField :store="store" prop="Suffix" />
+    <OIntField :store="store" prop="Padding" />
+    <OBigintField :store="store" prop="NextNumber" />
+    <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
 

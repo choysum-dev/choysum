@@ -16,16 +16,15 @@ SPDX-License-Identifier: Apache-2.0
       </template>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Name" :label="_t('Name')" :rules="requiredRules" />
+          <OVarCharField :store="store" prop="Name" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Code" :label="_t('Code')" :rules="requiredRules" />
+          <OVarCharField :store="store" prop="Code" :rules="requiredRules" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OSelectionField
             :store="store"
             prop="Timezone"
-            :label="_t('Time Zone')"
             :rules="requiredRules"
             :selection="timezoneOptions"
             :placeholder="_t('Select a time zone')"
@@ -37,7 +36,6 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneField
             :store="store"
             prop="CurrencyId"
-            :label="_t('Base Currency')"
             :rules="requiredRules"
             :search-view="CurrencyListView"
             :search-view-title="_t('Select Currency')"
@@ -50,7 +48,6 @@ SPDX-License-Identifier: Apache-2.0
           <OManyToOneField
             :store="store"
             prop="ParentId"
-            :label="_t('Parent Company')"
             :search-view="CompanyListView"
             :search-view-title="_t('Select Parent Company')"
             @value-click="onParentCompanyValueClick"
@@ -59,10 +56,10 @@ SPDX-License-Identifier: Apache-2.0
       </el-row>
       <el-row :gutter="12">
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="CreatedAt" :label="_t('Created At')" />
+          <ODateTimeField :store="store" prop="CreatedAt" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <ODateTimeField :store="store" prop="UpdatedAt" :label="_t('Updated At')" />
+          <ODateTimeField :store="store" prop="UpdatedAt" />
         </el-col>
       </el-row>
     </el-card>

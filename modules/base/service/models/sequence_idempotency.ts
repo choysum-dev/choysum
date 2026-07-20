@@ -2,53 +2,101 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { createTranslate } from '@/core/service/i18n';
 import { Constraint } from '@/core/service/api/constraint';
 import { raiseDomainError } from '@/core/service/error';
 import { normalizeRefId, parseBigInt, parsePositiveInt } from '@/core/service/utils/normalization';
+import { _t, _lt } from '../i18n';
 import Company from './company';
 import Sequence from './sequence';
 import { mapNormalizationToBase } from './_normalizers';
 
-const { _t } = createTranslate('base');
-
 @Model('SequenceIdempotency', { companyScoped: true })
 export default class SequenceIdempotency extends BaseModel {
-  @Field({ type: 'ManyToOne', relation: { targetModel: () => Company }, index: true})
+  @Field({
+    type: 'ManyToOne',
+    relation: { targetModel: () => Company },
+    index: true,
+    string: _lt('Company', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   CompanyId?: Company;
 
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Sequence },
-    notNull: true, uniqueIndex: 'uidx_base_sequence_idem_seq_key', index: true,
+    notNull: true,
+    uniqueIndex: 'uidx_base_sequence_idem_seq_key',
+    index: true,
+    string: _lt('Sequence', { scope: 'base.model.SequenceIdempotency.fields' }),
   })
   SequenceId: Sequence;
 
-  @Field({ type: 'varchar', size: 100, notNull: true})
+  @Field({
+    type: 'varchar',
+    size: 100,
+    notNull: true,
+    string: _lt('Code Snapshot', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   CodeSnapshot: string;
 
-  @Field({ type: 'jsonobject', notNull: true})
+  @Field({
+    type: 'jsonobject',
+    notNull: true,
+    string: _lt('Format Snapshot', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   FormatSnapshot: Record<string, any>;
 
-  @Field({ type: 'varchar', size: 200, notNull: true, uniqueIndex: 'uidx_base_sequence_idem_seq_key', index: true})
+  @Field({
+    type: 'varchar',
+    size: 200,
+    notNull: true,
+    uniqueIndex: 'uidx_base_sequence_idem_seq_key',
+    index: true,
+    string: _lt('Idempotency Key', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   IdempotencyKey: string;
 
-  @Field({ type: 'int', notNull: true})
+  @Field({
+    type: 'int',
+    notNull: true,
+    string: _lt('Count', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   Count: number;
 
-  @Field({ type: 'boolean', notNull: true, default: () => false})
+  @Field({
+    type: 'boolean',
+    notNull: true,
+    default: () => false,
+    string: _lt('Dry Run', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   DryRun: boolean;
 
-  @Field({ type: 'bigint', notNull: true})
+  @Field({
+    type: 'bigint',
+    notNull: true,
+    string: _lt('Start', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   RangeStart: bigint;
 
-  @Field({ type: 'bigint', notNull: true})
+  @Field({
+    type: 'bigint',
+    notNull: true,
+    string: _lt('End', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   RangeEnd: bigint;
 
-  @Field({ type: 'varchar', size: 128})
+  @Field({
+    type: 'varchar',
+    size: 128,
+    string: _lt('Request Hash', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   RequestHash?: string;
 
-  @Field({ type: 'datetime', notNull: true, index: true})
+  @Field({
+    type: 'datetime',
+    notNull: true,
+    index: true,
+    string: _lt('Expires At', { scope: 'base.model.SequenceIdempotency.fields' }),
+  })
   ExpiresAt: Date;
 
   private static async validateWriteEntity(values: Record<string, any>): Promise<void> {

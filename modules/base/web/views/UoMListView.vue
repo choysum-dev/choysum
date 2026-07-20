@@ -15,15 +15,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <OVColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <OVColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <OVarCharField :store="store" prop="Name" :label="_t('Name')" />
-    <OVarCharField :store="store" prop="Symbol" :label="_t('Symbol')" />
-    <OManyToOneField :store="store" prop="CategoryId" :label="_t('Category')"
-      ><OVarCharField :store="store" prop="CategoryId.Name" :label="_t('Category')"
+    <OVarCharField :store="store" prop="Name" />
+    <OVarCharField :store="store" prop="Symbol" />
+    <OManyToOneField :store="store" prop="CategoryId"
+      ><OVarCharField :store="store" prop="CategoryId.Name"
     /></OManyToOneField>
-    <OBooleanField :store="store" prop="IsReference" :label="_t('Reference Unit')" />
-    <ODecimalField :store="store" prop="Factor" :label="_t('Conversion Factor')" />
-    <ODecimalField :store="store" prop="Rounding" :label="_t('Rounding')" />
-    <OBooleanField :store="store" prop="IsActive" :label="_t('Active')" />
+    <OBooleanField :store="store" prop="IsReference" />
+    <ODecimalField :store="store" prop="Factor" />
+    <ODecimalField :store="store" prop="Rounding" />
+    <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
 

@@ -1,6 +1,496 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
+#: service/models/address.ts:25
+msgctxt "base.model.Address.fields"
+msgid "Address Line 1"
+msgstr "地址行 1"
+
+#: service/models/address.ts:32
+msgctxt "base.model.Address.fields"
+msgid "Address Line 2"
+msgstr "地址行 2"
+
+#: service/models/address.ts:64
+msgctxt "base.model.Address.fields"
+msgid "City"
+msgstr "城市"
+
+#: service/models/address.ts:48
+msgctxt "base.model.Address.fields"
+msgid "Country"
+msgstr "国家/地区"
+
+#: service/models/address.ts:18
+msgctxt "base.model.Address.fields"
+msgid "Label"
+msgstr "标签"
+
+#: service/models/address.ts:56
+msgctxt "base.model.Address.fields"
+msgid "State/Province"
+msgstr "州/省"
+
+#: service/models/address.ts:39
+msgctxt "base.model.Address.fields"
+msgid "ZIP"
+msgstr "邮政编码"
+
+#: service/models/bank.ts:51
+msgctxt "base.model.Bank.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/bank.ts:59
+msgctxt "base.model.Bank.fields"
+msgid "Address"
+msgstr "地址"
+
+#: service/models/bank.ts:42
+msgctxt "base.model.Bank.fields"
+msgid "BIC"
+msgstr "银行识别码（BIC）"
+
+#: service/models/bank.ts:26
+msgctxt "base.model.Bank.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/bank.ts:34
+msgctxt "base.model.Bank.fields"
+msgid "Country"
+msgstr "国家/地区"
+
+#: service/models/bank.ts:18
+msgctxt "base.model.Bank.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/city.ts:56
+msgctxt "base.model.City.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/city.ts:28
+msgctxt "base.model.City.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/city.ts:38
+msgctxt "base.model.City.fields"
+msgid "Country"
+msgstr "国家/地区"
+
+#: service/models/city.ts:20
+msgctxt "base.model.City.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/city.ts:47
+msgctxt "base.model.City.fields"
+msgid "State/Province"
+msgstr "州/省"
+
+#: service/models/company.ts:68
+msgctxt "base.model.Company.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/company.ts:100
+msgctxt "base.model.Company.fields"
+msgid "Address"
+msgstr "地址"
+
+#: service/models/company.ts:59
+msgctxt "base.model.Company.fields"
+msgid "Base Currency"
+msgstr "本位币"
+
+#: service/models/company.ts:34
+msgctxt "base.model.Company.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/company.ts:92
+msgctxt "base.model.Company.fields"
+msgid "Country"
+msgstr "国家/地区"
+
+#: service/models/company.ts:76
+msgctxt "base.model.Company.fields"
+msgid "Language"
+msgstr "语言"
+
+#: service/models/company.ts:84
+msgctxt "base.model.Company.fields"
+msgid "Locale"
+msgstr "区域设置"
+
+#: service/models/company.ts:24
+msgctxt "base.model.Company.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/company.ts:42
+msgctxt "base.model.Company.fields"
+msgid "Parent Company"
+msgstr "上级公司"
+
+#: service/models/company.ts:50
+msgctxt "base.model.Company.fields"
+msgid "Time Zone"
+msgstr "时区"
+
+#: service/models/country.ts:73
+msgctxt "base.model.Country.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/country.ts:48
+msgctxt "base.model.Country.fields"
+msgid "Address Format"
+msgstr "地址格式"
+
+#: service/models/country.ts:27
+msgctxt "base.model.Country.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/country.ts:42
+msgctxt "base.model.Country.fields"
+msgid "Default Currency"
+msgstr "默认币种"
+
+#: service/models/country.ts:34
+msgctxt "base.model.Country.fields"
+msgid "Dialing Code"
+msgstr "国际区号"
+
+#: service/models/country.ts:17
+msgctxt "base.model.Country.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/country.ts:64
+msgctxt "base.model.Country.fields"
+msgid "State/Province Required"
+msgstr "州/省必填"
+
+#: service/models/country.ts:56
+msgctxt "base.model.Country.fields"
+msgid "ZIP Required"
+msgstr "邮政编码必填"
+
+#: service/models/currency.ts:83
+msgctxt "base.model.Currency.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/currency.ts:50
+msgctxt "base.model.Currency.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/currency.ts:65
+msgctxt "base.model.Currency.fields"
+msgid "Decimal Digits"
+msgstr "小数位数"
+
+#: service/models/currency.ts:40
+msgctxt "base.model.Currency.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/currency.ts:74
+msgctxt "base.model.Currency.fields"
+msgid "Rounding Precision"
+msgstr "舍入精度"
+
+#: service/models/currency.ts:57
+msgctxt "base.model.Currency.fields"
+msgid "Symbol"
+msgstr "符号"
+
+#: service/models/exchange_rate.ts:28
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/exchange_rate.ts:20
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Currency"
+msgstr "币种"
+
+#: service/models/exchange_rate.ts:47
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Date"
+msgstr "日期"
+
+#: service/models/exchange_rate.ts:56
+msgctxt "base.model.ExchangeRate.fields"
+msgid "Exchange Rate"
+msgstr "汇率"
+
+#: service/models/language.ts:36
+msgctxt "base.model.Language.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/language.ts:27
+msgctxt "base.model.Language.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/language.ts:55
+msgctxt "base.model.Language.fields"
+msgid "Default Locale"
+msgstr "默认区域设置"
+
+#: service/models/language.ts:47
+msgctxt "base.model.Language.fields"
+msgid "Direction"
+msgstr "文字方向"
+
+#: service/models/language.ts:43
+msgctxt "base.model.Language.fields"
+msgid "Left to right"
+msgstr "从左到右"
+
+#: service/models/language.ts:17
+msgctxt "base.model.Language.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/language.ts:44
+msgctxt "base.model.Language.fields"
+msgid "Right to left"
+msgstr "从右到左"
+
+#: service/models/locale.ts:35
+msgctxt "base.model.Locale.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/locale.ts:77
+msgctxt "base.model.Locale.fields"
+msgid "After amount"
+msgstr "金额后"
+
+#: service/models/locale.ts:76
+msgctxt "base.model.Locale.fields"
+msgid "Before amount"
+msgstr "金额前"
+
+#: service/models/locale.ts:26
+msgctxt "base.model.Locale.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/locale.ts:81
+msgctxt "base.model.Locale.fields"
+msgid "Currency Symbol Position"
+msgstr "货币符号位置"
+
+#: service/models/locale.ts:56
+msgctxt "base.model.Locale.fields"
+msgid "Date Format"
+msgstr "日期格式"
+
+#: service/models/locale.ts:42
+msgctxt "base.model.Locale.fields"
+msgid "Decimal Separator"
+msgstr "小数分隔符"
+
+#: service/models/locale.ts:69
+msgctxt "base.model.Locale.fields"
+msgid "First Day of Week"
+msgstr "每周第一天"
+
+#: service/models/locale.ts:16
+msgctxt "base.model.Locale.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/locale.ts:88
+msgctxt "base.model.Locale.fields"
+msgid "Symbol Spacing"
+msgstr "符号间距"
+
+#: service/models/locale.ts:49
+msgctxt "base.model.Locale.fields"
+msgid "Thousands Separator"
+msgstr "千位分隔符"
+
+#: service/models/locale.ts:63
+msgctxt "base.model.Locale.fields"
+msgid "Time Format"
+msgstr "时间格式"
+
+#: service/models/sequence.ts:107
+msgctxt "base.model.Sequence.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/sequence.ts:50
+msgctxt "base.model.Sequence.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/sequence.ts:58
+msgctxt "base.model.Sequence.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/sequence.ts:40
+msgctxt "base.model.Sequence.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/sequence.ts:98
+msgctxt "base.model.Sequence.fields"
+msgid "Next Number"
+msgstr "下一个编号"
+
+#: service/models/sequence.ts:90
+msgctxt "base.model.Sequence.fields"
+msgid "Padding Length"
+msgstr "补零长度"
+
+#: service/models/sequence.ts:75
+msgctxt "base.model.Sequence.fields"
+msgid "Prefix"
+msgstr "前缀"
+
+#: service/models/sequence.ts:82
+msgctxt "base.model.Sequence.fields"
+msgid "Suffix"
+msgstr "后缀"
+
+#: service/models/sequence_idempotency.ts:37
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Code Snapshot"
+msgstr "编码快照"
+
+#: service/models/sequence_idempotency.ts:19
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Company"
+msgstr "公司"
+
+#: service/models/sequence_idempotency.ts:61
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Count"
+msgstr "数量"
+
+#: service/models/sequence_idempotency.ts:69
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Dry Run"
+msgstr "试运行"
+
+#: service/models/sequence_idempotency.ts:83
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "End"
+msgstr "结束值"
+
+#: service/models/sequence_idempotency.ts:98
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Expires At"
+msgstr "过期时间"
+
+#: service/models/sequence_idempotency.ts:44
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Format Snapshot"
+msgstr "格式快照"
+
+#: service/models/sequence_idempotency.ts:54
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Idempotency Key"
+msgstr "幂等键"
+
+#: service/models/sequence_idempotency.ts:90
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Request Hash"
+msgstr "请求哈希"
+
+#: service/models/sequence_idempotency.ts:29
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Sequence"
+msgstr "序列"
+
+#: service/models/sequence_idempotency.ts:76
+msgctxt "base.model.SequenceIdempotency.fields"
+msgid "Start"
+msgstr "起始值"
+
+#: service/models/state.ts:46
+msgctxt "base.model.State.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/state.ts:27
+msgctxt "base.model.State.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/state.ts:37
+msgctxt "base.model.State.fields"
+msgid "Country"
+msgstr "国家/地区"
+
+#: service/models/state.ts:18
+msgctxt "base.model.State.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/uom.ts:70
+msgctxt "base.model.UoM.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/uom.ts:36
+msgctxt "base.model.UoM.fields"
+msgid "Category"
+msgstr "类别"
+
+#: service/models/uom.ts:53
+msgctxt "base.model.UoM.fields"
+msgid "Conversion Factor"
+msgstr "换算系数"
+
+#: service/models/uom.ts:19
+msgctxt "base.model.UoM.fields"
+msgid "Name"
+msgstr "名称"
+
+#: service/models/uom.ts:44
+msgctxt "base.model.UoM.fields"
+msgid "Reference Unit"
+msgstr "基准单位"
+
+#: service/models/uom.ts:61
+msgctxt "base.model.UoM.fields"
+msgid "Rounding"
+msgstr "舍入精度"
+
+#: service/models/uom.ts:26
+msgctxt "base.model.UoM.fields"
+msgid "Symbol"
+msgstr "符号"
+
+#: service/models/uom_category.ts:34
+msgctxt "base.model.UoMCategory.fields"
+msgid "Active"
+msgstr "启用"
+
+#: service/models/uom_category.ts:25
+msgctxt "base.model.UoMCategory.fields"
+msgid "Code"
+msgstr "编码"
+
+#: service/models/uom_category.ts:16
+msgctxt "base.model.UoMCategory.fields"
+msgid "Name"
+msgstr "名称"
+
 #: service/models/_currency_convert.ts:101 service/models/_currency_convert.ts:98
 msgctxt "service/models/_currency_convert"
 msgid "Company not found"
@@ -146,312 +636,312 @@ msgctxt "service/models/_sequence_next"
 msgid "Sequence not found for Code=%s"
 msgstr "未找到 Code=%s 的序列"
 
-#: service/models/address.ts:82
+#: service/models/address.ts:112
 msgctxt "service/models/address"
 msgid "City not found"
 msgstr "未找到城市"
 
-#: service/models/address.ts:84
+#: service/models/address.ts:114
 msgctxt "service/models/address"
 msgid "City.CountryId must equal Address.CountryId"
 msgstr "City.CountryId 必须与 Address.CountryId 相同"
 
-#: service/models/address.ts:87
+#: service/models/address.ts:117
 msgctxt "service/models/address"
 msgid "City.StateId must equal Address.StateId"
 msgstr "City.StateId 必须与 Address.StateId 相同"
 
-#: service/models/address.ts:59
+#: service/models/address.ts:89
 msgctxt "service/models/address"
 msgid "Country not found"
 msgstr "未找到国家/地区"
 
-#: service/models/address.ts:72
+#: service/models/address.ts:102
 msgctxt "service/models/address"
 msgid "State not found"
 msgstr "未找到州/省"
 
-#: service/models/address.ts:74
+#: service/models/address.ts:104
 msgctxt "service/models/address"
 msgid "State.CountryId must equal Address.CountryId"
 msgstr "State.CountryId 必须与 Address.CountryId 相同"
 
-#: service/models/address.ts:62
+#: service/models/address.ts:92
 msgctxt "service/models/address"
 msgid "StateId is required for this country"
 msgstr "此国家/地区要求填写 StateId"
 
-#: service/models/address.ts:66
+#: service/models/address.ts:96
 msgctxt "service/models/address"
 msgid "Zip is required for this country"
 msgstr "此国家/地区要求填写邮政编码"
 
-#: service/models/city.ts:59
+#: service/models/city.ts:84
 msgctxt "service/models/city"
 msgid "City Name must be unique within Country + State"
 msgstr "城市名称在同一国家/地区和州/省内必须唯一"
 
-#: service/models/city.ts:40
+#: service/models/city.ts:65
 msgctxt "service/models/city"
 msgid "State not found"
 msgstr "未找到州/省"
 
-#: service/models/city.ts:41
+#: service/models/city.ts:66
 msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr "State.CountryId 必须与 City.CountryId 相同"
 
-#: service/models/company.ts:54
+#: service/models/company.ts:107
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/company.ts:78
+#: service/models/company.ts:131
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/company.ts:69
+#: service/models/company.ts:122
 msgctxt "service/models/company"
 msgid "Company Name must be unique"
 msgstr "公司名称必须唯一"
 
-#: service/models/company.ts:87
+#: service/models/company.ts:140
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/company.ts:98
+#: service/models/company.ts:151
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/company.ts:121
+#: service/models/company.ts:174
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr "ParentId 不能是该公司的下级公司"
 
-#: service/models/company.ts:108
+#: service/models/company.ts:161
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr "ParentId 不能指向自身"
 
-#: service/models/company.ts:95
+#: service/models/company.ts:148
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
 
-#: service/models/country.ts:49
+#: service/models/country.ts:88
 msgctxt "service/models/country"
 msgid "AddressFormat contains unsupported token: %s"
 msgstr "AddressFormat 包含不支持的标记：%s"
 
-#: service/models/currency.ts:62
+#: service/models/currency.ts:94
 msgctxt "service/models/currency"
 msgid "DecimalDigits is required"
 msgstr "DecimalDigits 为必填项"
 
-#: service/models/currency.ts:63
+#: service/models/currency.ts:95
 msgctxt "service/models/currency"
 msgid "DecimalDigits must be a non-negative integer"
 msgstr "DecimalDigits 必须为非负整数"
 
-#: service/models/currency.ts:70
+#: service/models/currency.ts:102
 msgctxt "service/models/currency"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/currency.ts:69
+#: service/models/currency.ts:101
 msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: service/models/exchange_rate.ts:41 service/models/exchange_rate.ts:49
+#: service/models/exchange_rate.ts:63 service/models/exchange_rate.ts:71
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
 msgstr "日期无效"
 
-#: service/models/exchange_rate.ts:48
+#: service/models/exchange_rate.ts:70
 msgctxt "service/models/exchange_rate"
 msgid "Date is required"
 msgstr "日期为必填项"
 
-#: service/models/exchange_rate.ts:50
+#: service/models/exchange_rate.ts:72
 msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr "日期格式必须为 YYYY-MM-DD"
 
-#: service/models/exchange_rate.ts:77
+#: service/models/exchange_rate.ts:99
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr "ExchangeRate 在相同 CompanyId、CurrencyId 和 Date 下必须唯一"
 
-#: service/models/exchange_rate.ts:87
+#: service/models/exchange_rate.ts:109
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr "Rate 必须为有效的小数"
 
-#: service/models/exchange_rate.ts:86
+#: service/models/exchange_rate.ts:108
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
 
-#: service/models/sequence_idempotency.ts:81
+#: service/models/sequence_idempotency.ts:129
 msgctxt "service/models/sequence_idempotency"
 msgid "CompanyId must match Sequence.CompanyId"
 msgstr "CompanyId 必须与 Sequence.CompanyId 相同"
 
-#: service/models/sequence_idempotency.ts:62
+#: service/models/sequence_idempotency.ts:110
 msgctxt "service/models/sequence_idempotency"
 msgid "Count must be an integer >= 1"
 msgstr "Count 必须为大于或等于 1 的整数"
 
-#: service/models/sequence_idempotency.ts:70
+#: service/models/sequence_idempotency.ts:118
 msgctxt "service/models/sequence_idempotency"
 msgid "RangeEnd must be a valid integer"
 msgstr "RangeEnd 必须为有效的整数"
 
-#: service/models/sequence_idempotency.ts:74
+#: service/models/sequence_idempotency.ts:122
 msgctxt "service/models/sequence_idempotency"
 msgid "RangeEnd must equal RangeStart + Count - 1"
 msgstr "RangeEnd 必须等于 RangeStart + Count - 1"
 
-#: service/models/sequence_idempotency.ts:66
+#: service/models/sequence_idempotency.ts:114
 msgctxt "service/models/sequence_idempotency"
 msgid "RangeStart must be a valid integer"
 msgstr "RangeStart 必须为有效的整数"
 
-#: service/models/sequence_idempotency.ts:57
+#: service/models/sequence_idempotency.ts:105
 msgctxt "service/models/sequence_idempotency"
 msgid "SequenceId is required"
 msgstr "SequenceId 为必填项"
 
-#: service/models/state.ts:58
+#: service/models/state.ts:78
 msgctxt "service/models/state"
 msgid "State Code must be unique within Country"
 msgstr "州/省编码在同一国家/地区内必须唯一"
 
-#: service/models/state.ts:45
+#: service/models/state.ts:65
 msgctxt "service/models/state"
 msgid "State Name must be unique within Country"
 msgstr "州/省名称在同一国家/地区内必须唯一"
 
-#: service/models/uom.ts:68
+#: service/models/uom.ts:102
 msgctxt "service/models/uom"
 msgid "Each UoM category can only have one reference unit"
 msgstr "每个计量单位类别只能有一个基准单位"
 
-#: service/models/uom.ts:74
+#: service/models/uom.ts:108
 msgctxt "service/models/uom"
 msgid "Each UoM category must have one reference unit"
 msgstr "每个计量单位类别必须有一个基准单位"
 
-#: service/models/uom.ts:88
+#: service/models/uom.ts:122
 msgctxt "service/models/uom"
 msgid "Factor must be a valid decimal"
 msgstr "Factor 必须为有效的小数"
 
-#: service/models/uom.ts:87
+#: service/models/uom.ts:121
 msgctxt "service/models/uom"
 msgid "Factor must be greater than 0"
 msgstr "Factor 必须大于 0"
 
-#: service/models/uom.ts:91
+#: service/models/uom.ts:125
 msgctxt "service/models/uom"
 msgid "Reference UoM must have Factor = 1"
 msgstr "基准计量单位的 Factor 必须等于 1"
 
-#: service/models/uom.ts:100
+#: service/models/uom.ts:134
 msgctxt "service/models/uom"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/uom.ts:99
+#: service/models/uom.ts:133
 msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: service/models/uom.ts:51
+#: service/models/uom.ts:85
 msgctxt "service/models/uom"
 msgid "UoM Name must be unique within Category"
 msgstr "计量单位名称在同一类别内必须唯一"
 
-#: web/menu/menus.ts:17
+#: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "Address Management"
 msgstr "地址管理"
 
-#: web/menu/menus.ts:18
+#: web/menu/menus.ts:19
 msgctxt "web/menu/menus"
 msgid "Bank Management"
 msgstr "银行管理"
 
-#: web/menu/menus.ts:21
+#: web/menu/menus.ts:22
 msgctxt "web/menu/menus"
 msgid "City Management"
 msgstr "城市管理"
 
-#: web/menu/menus.ts:16
+#: web/menu/menus.ts:17
 msgctxt "web/menu/menus"
 msgid "Company Management"
 msgstr "公司管理"
 
-#: web/menu/menus.ts:19
+#: web/menu/menus.ts:20
 msgctxt "web/menu/menus"
 msgid "Country Management"
 msgstr "国家/地区管理"
 
-#: web/menu/menus.ts:22
+#: web/menu/menus.ts:23
 msgctxt "web/menu/menus"
 msgid "Currency Management"
 msgstr "币种管理"
 
-#: web/menu/menus.ts:23
+#: web/menu/menus.ts:24
 msgctxt "web/menu/menus"
 msgid "Exchange Rate Management"
 msgstr "汇率管理"
 
-#: web/menu/menus.ts:24
+#: web/menu/menus.ts:25
 msgctxt "web/menu/menus"
 msgid "Language Management"
 msgstr "语言管理"
 
-#: web/menu/menus.ts:33
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Locale Management"
 msgstr "区域设置管理"
 
-#: web/menu/menus.ts:12
+#: web/menu/menus.ts:13
 msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr "基础数据"
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
 
-#: web/menu/menus.ts:34
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr "序列管理"
 
-#: web/menu/menus.ts:20
+#: web/menu/menus.ts:21
 msgctxt "web/menu/menus"
 msgid "State Management"
 msgstr "州/省管理"
 
-#: web/menu/menus.ts:26
+#: web/menu/menus.ts:27
 msgctxt "web/menu/menus"
 msgid "Terminology Editor"
 msgstr "术语编辑器"
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:38
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr "计量单位"
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
@@ -671,7 +1161,7 @@ msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr "计量单位列表"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:36
 msgctxt "web/views/AddressFormView"
 msgid "Address"
 msgstr "地址"
@@ -681,50 +1171,25 @@ msgctxt "web/views/AddressFormView"
 msgid "Address Information"
 msgstr "地址信息"
 
-#: web/views/AddressFormView.vue:13
-msgctxt "web/views/AddressFormView"
-msgid "Address Line 1"
-msgstr "地址行 1"
-
-#: web/views/AddressFormView.vue:14
-msgctxt "web/views/AddressFormView"
-msgid "Address Line 2"
-msgstr "地址行 2"
-
-#: web/views/AddressFormView.vue:18
-msgctxt "web/views/AddressFormView"
-msgid "City"
-msgstr "城市"
-
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:36
 msgctxt "web/views/AddressFormView"
 msgid "Copy Address"
 msgstr "复制地址"
 
-#: web/views/AddressFormView.vue:9
-msgctxt "web/views/AddressFormView"
-msgid "Country"
-msgstr "国家/地区"
-
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:36
 msgctxt "web/views/AddressFormView"
 msgid "Create Address"
 msgstr "新建地址"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:36
 msgctxt "web/views/AddressFormView"
 msgid "Delete Address"
 msgstr "删除地址"
 
-#: web/views/AddressFormView.vue:37
+#: web/views/AddressFormView.vue:36
 msgctxt "web/views/AddressFormView"
 msgid "Edit Address"
 msgstr "编辑地址"
-
-#: web/views/AddressFormView.vue:6
-msgctxt "web/views/AddressFormView"
-msgid "Label"
-msgstr "标签"
 
 #: web/views/AddressFormView.vue:18
 msgctxt "web/views/AddressFormView"
@@ -741,40 +1206,15 @@ msgctxt "web/views/AddressFormView"
 msgid "Select State/Province"
 msgstr "选择州/省"
 
-#: web/views/AddressFormView.vue:17
-msgctxt "web/views/AddressFormView"
-msgid "State/Province"
-msgstr "州/省"
-
-#: web/views/AddressFormView.vue:7
-msgctxt "web/views/AddressFormView"
-msgid "ZIP"
-msgstr "邮政编码"
-
 #: web/views/AddressListView.vue:19
 msgctxt "web/views/AddressListView"
 msgid "Address"
 msgstr "地址"
 
-#: web/views/AddressListView.vue:6
-msgctxt "web/views/AddressListView"
-msgid "Address Line 1"
-msgstr "地址行 1"
-
-#: web/views/AddressListView.vue:10
-msgctxt "web/views/AddressListView"
-msgid "City"
-msgstr "城市"
-
 #: web/views/AddressListView.vue:19
 msgctxt "web/views/AddressListView"
 msgid "Copy Address"
 msgstr "复制地址"
-
-#: web/views/AddressListView.vue:8
-msgctxt "web/views/AddressListView"
-msgid "Country"
-msgstr "国家/地区"
 
 #: web/views/AddressListView.vue:19
 msgctxt "web/views/AddressListView"
@@ -791,37 +1231,7 @@ msgctxt "web/views/AddressListView"
 msgid "Edit Address"
 msgstr "编辑地址"
 
-#: web/views/AddressListView.vue:5
-msgctxt "web/views/AddressListView"
-msgid "Label"
-msgstr "标签"
-
-#: web/views/AddressListView.vue:9
-msgctxt "web/views/AddressListView"
-msgid "State/Province"
-msgstr "州/省"
-
-#: web/views/AddressListView.vue:7
-msgctxt "web/views/AddressListView"
-msgid "ZIP"
-msgstr "邮政编码"
-
-#: web/views/BankFormView.vue:13
-msgctxt "web/views/BankFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/BankFormView.vue:12
-msgctxt "web/views/BankFormView"
-msgid "Address"
-msgstr "地址"
-
-#: web/views/BankFormView.vue:8
-msgctxt "web/views/BankFormView"
-msgid "BIC"
-msgstr "银行识别码（BIC）"
-
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:28
 msgctxt "web/views/BankFormView"
 msgid "Bank"
 msgstr "银行"
@@ -831,42 +1241,27 @@ msgctxt "web/views/BankFormView"
 msgid "Bank Information"
 msgstr "银行信息"
 
-#: web/views/BankFormView.vue:7
-msgctxt "web/views/BankFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:28
 msgctxt "web/views/BankFormView"
 msgid "Copy Bank"
 msgstr "复制银行"
 
-#: web/views/BankFormView.vue:11
-msgctxt "web/views/BankFormView"
-msgid "Country"
-msgstr "国家/地区"
-
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:28
 msgctxt "web/views/BankFormView"
 msgid "Create Bank"
 msgstr "新建银行"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:28
 msgctxt "web/views/BankFormView"
 msgid "Delete Bank"
 msgstr "删除银行"
 
-#: web/views/BankFormView.vue:29
+#: web/views/BankFormView.vue:28
 msgctxt "web/views/BankFormView"
 msgid "Edit Bank"
 msgstr "编辑银行"
 
-#: web/views/BankFormView.vue:6
-msgctxt "web/views/BankFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/BankFormView.vue:24
+#: web/views/BankFormView.vue:23
 msgctxt "web/views/BankFormView"
 msgid "Required"
 msgstr "必填"
@@ -881,35 +1276,15 @@ msgctxt "web/views/BankFormView"
 msgid "Select Country"
 msgstr "选择国家/地区"
 
-#: web/views/BankListView.vue:9
-msgctxt "web/views/BankListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/BankListView.vue:7
-msgctxt "web/views/BankListView"
-msgid "BIC"
-msgstr "银行识别码（BIC）"
-
 #: web/views/BankListView.vue:20
 msgctxt "web/views/BankListView"
 msgid "Bank"
 msgstr "银行"
 
-#: web/views/BankListView.vue:6
-msgctxt "web/views/BankListView"
-msgid "Code"
-msgstr "编码"
-
 #: web/views/BankListView.vue:20
 msgctxt "web/views/BankListView"
 msgid "Copy Bank"
 msgstr "复制银行"
-
-#: web/views/BankListView.vue:8
-msgctxt "web/views/BankListView"
-msgid "Country"
-msgstr "国家/地区"
 
 #: web/views/BankListView.vue:20
 msgctxt "web/views/BankListView"
@@ -926,17 +1301,7 @@ msgctxt "web/views/BankListView"
 msgid "Edit Bank"
 msgstr "编辑银行"
 
-#: web/views/BankListView.vue:5
-msgctxt "web/views/BankListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CityFormView.vue:8
-msgctxt "web/views/CityFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:29
 msgctxt "web/views/CityFormView"
 msgid "City"
 msgstr "城市"
@@ -946,42 +1311,27 @@ msgctxt "web/views/CityFormView"
 msgid "City Information"
 msgstr "城市信息"
 
-#: web/views/CityFormView.vue:7
-msgctxt "web/views/CityFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:29
 msgctxt "web/views/CityFormView"
 msgid "Copy City"
 msgstr "复制城市"
 
-#: web/views/CityFormView.vue:11
-msgctxt "web/views/CityFormView"
-msgid "Country"
-msgstr "国家/地区"
-
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:29
 msgctxt "web/views/CityFormView"
 msgid "Create City"
 msgstr "新建城市"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:29
 msgctxt "web/views/CityFormView"
 msgid "Delete City"
 msgstr "删除城市"
 
-#: web/views/CityFormView.vue:30
+#: web/views/CityFormView.vue:29
 msgctxt "web/views/CityFormView"
 msgid "Edit City"
 msgstr "编辑城市"
 
-#: web/views/CityFormView.vue:6
-msgctxt "web/views/CityFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CityFormView.vue:25
+#: web/views/CityFormView.vue:24
 msgctxt "web/views/CityFormView"
 msgid "Required"
 msgstr "必填"
@@ -996,35 +1346,15 @@ msgctxt "web/views/CityFormView"
 msgid "Select State/Province"
 msgstr "选择州/省"
 
-#: web/views/CityFormView.vue:12
-msgctxt "web/views/CityFormView"
-msgid "State/Province"
-msgstr "州/省"
-
-#: web/views/CityListView.vue:9
-msgctxt "web/views/CityListView"
-msgid "Active"
-msgstr "启用"
-
 #: web/views/CityListView.vue:20
 msgctxt "web/views/CityListView"
 msgid "City"
 msgstr "城市"
 
-#: web/views/CityListView.vue:6
-msgctxt "web/views/CityListView"
-msgid "Code"
-msgstr "编码"
-
 #: web/views/CityListView.vue:20
 msgctxt "web/views/CityListView"
 msgid "Copy City"
 msgstr "复制城市"
-
-#: web/views/CityListView.vue:7
-msgctxt "web/views/CityListView"
-msgid "Country"
-msgstr "国家/地区"
 
 #: web/views/CityListView.vue:20
 msgctxt "web/views/CityListView"
@@ -1041,72 +1371,37 @@ msgctxt "web/views/CityListView"
 msgid "Edit City"
 msgstr "编辑城市"
 
-#: web/views/CityListView.vue:5
-msgctxt "web/views/CityListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CityListView.vue:8
-msgctxt "web/views/CityListView"
-msgid "State/Province"
-msgstr "州/省"
-
-#: web/views/CompanyFormView.vue:18
-msgctxt "web/views/CompanyFormView"
-msgid "Base Currency"
-msgstr "本位币"
-
 #: web/views/CompanyFormView.vue:5
 msgctxt "web/views/CompanyFormView"
 msgid "Basic Information"
 msgstr "基本信息"
 
-#: web/views/CompanyFormView.vue:12
-msgctxt "web/views/CompanyFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/CompanyFormView.vue:44
+#: web/views/CompanyFormView.vue:43
 msgctxt "web/views/CompanyFormView"
 msgid "Company"
 msgstr "公司"
 
-#: web/views/CompanyFormView.vue:44
+#: web/views/CompanyFormView.vue:43
 msgctxt "web/views/CompanyFormView"
 msgid "Copy Company"
 msgstr "复制公司"
 
-#: web/views/CompanyFormView.vue:44
+#: web/views/CompanyFormView.vue:43
 msgctxt "web/views/CompanyFormView"
 msgid "Create Company"
 msgstr "新建公司"
 
-#: web/views/CompanyFormView.vue:28
-msgctxt "web/views/CompanyFormView"
-msgid "Created At"
-msgstr "创建时间"
-
-#: web/views/CompanyFormView.vue:44
+#: web/views/CompanyFormView.vue:43
 msgctxt "web/views/CompanyFormView"
 msgid "Delete Company"
 msgstr "删除公司"
 
-#: web/views/CompanyFormView.vue:44
+#: web/views/CompanyFormView.vue:43
 msgctxt "web/views/CompanyFormView"
 msgid "Edit Company"
 msgstr "编辑公司"
 
-#: web/views/CompanyFormView.vue:9
-msgctxt "web/views/CompanyFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CompanyFormView.vue:23
-msgctxt "web/views/CompanyFormView"
-msgid "Parent Company"
-msgstr "上级公司"
-
-#: web/views/CompanyFormView.vue:27
+#: web/views/CompanyFormView.vue:26
 msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr "必填"
@@ -1126,21 +1421,6 @@ msgctxt "web/views/CompanyFormView"
 msgid "Select a time zone"
 msgstr "选择时区"
 
-#: web/views/CompanyFormView.vue:15
-msgctxt "web/views/CompanyFormView"
-msgid "Time Zone"
-msgstr "时区"
-
-#: web/views/CompanyFormView.vue:31
-msgctxt "web/views/CompanyFormView"
-msgid "Updated At"
-msgstr "更新时间"
-
-#: web/views/CompanyListView.vue:7
-msgctxt "web/views/CompanyListView"
-msgid "Code"
-msgstr "编码"
-
 #: web/views/CompanyListView.vue:25
 msgctxt "web/views/CompanyListView"
 msgid "Company"
@@ -1156,11 +1436,6 @@ msgctxt "web/views/CompanyListView"
 msgid "Create Company"
 msgstr "新建公司"
 
-#: web/views/CompanyListView.vue:11
-msgctxt "web/views/CompanyListView"
-msgid "Created At"
-msgstr "创建时间"
-
 #: web/views/CompanyListView.vue:25
 msgctxt "web/views/CompanyListView"
 msgid "Delete Company"
@@ -1171,42 +1446,17 @@ msgctxt "web/views/CompanyListView"
 msgid "Edit Company"
 msgstr "编辑公司"
 
-#: web/views/CompanyListView.vue:6 web/views/CompanyListView.vue:9
+#: web/views/CompanyListView.vue:9
 msgctxt "web/views/CompanyListView"
 msgid "Name"
 msgstr "名称"
 
-#: web/views/CompanyListView.vue:8
-msgctxt "web/views/CompanyListView"
-msgid "Parent Company"
-msgstr "上级公司"
-
-#: web/views/CompanyListView.vue:12
-msgctxt "web/views/CompanyListView"
-msgid "Updated At"
-msgstr "更新时间"
-
-#: web/views/CountryFormView.vue:16
-msgctxt "web/views/CountryFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/CountryFormView.vue:17
-msgctxt "web/views/CountryFormView"
-msgid "Address Format"
-msgstr "地址格式"
-
-#: web/views/CountryFormView.vue:7
-msgctxt "web/views/CountryFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:25
 msgctxt "web/views/CountryFormView"
 msgid "Copy Country"
 msgstr "复制国家/地区"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:25
 msgctxt "web/views/CountryFormView"
 msgid "Country"
 msgstr "国家/地区"
@@ -1216,37 +1466,22 @@ msgctxt "web/views/CountryFormView"
 msgid "Country Information"
 msgstr "国家/地区信息"
 
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:25
 msgctxt "web/views/CountryFormView"
 msgid "Create Country"
 msgstr "新建国家/地区"
 
-#: web/views/CountryFormView.vue:11
-msgctxt "web/views/CountryFormView"
-msgid "Default Currency"
-msgstr "默认币种"
-
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:25
 msgctxt "web/views/CountryFormView"
 msgid "Delete Country"
 msgstr "删除国家/地区"
 
-#: web/views/CountryFormView.vue:8
-msgctxt "web/views/CountryFormView"
-msgid "Dialing Code"
-msgstr "国际区号"
-
-#: web/views/CountryFormView.vue:26
+#: web/views/CountryFormView.vue:25
 msgctxt "web/views/CountryFormView"
 msgid "Edit Country"
 msgstr "编辑国家/地区"
 
-#: web/views/CountryFormView.vue:6
-msgctxt "web/views/CountryFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CountryFormView.vue:21
+#: web/views/CountryFormView.vue:20
 msgctxt "web/views/CountryFormView"
 msgid "Required"
 msgstr "必填"
@@ -1255,26 +1490,6 @@ msgstr "必填"
 msgctxt "web/views/CountryFormView"
 msgid "Select Currency"
 msgstr "选择币种"
-
-#: web/views/CountryFormView.vue:13
-msgctxt "web/views/CountryFormView"
-msgid "State/Province Required"
-msgstr "州/省必填"
-
-#: web/views/CountryFormView.vue:12
-msgctxt "web/views/CountryFormView"
-msgid "ZIP Required"
-msgstr "邮政编码必填"
-
-#: web/views/CountryListView.vue:11
-msgctxt "web/views/CountryListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/CountryListView.vue:6
-msgctxt "web/views/CountryListView"
-msgid "Code"
-msgstr "编码"
 
 #: web/views/CountryListView.vue:20
 msgctxt "web/views/CountryListView"
@@ -1296,62 +1511,27 @@ msgctxt "web/views/CountryListView"
 msgid "Currency"
 msgstr "币种"
 
-#: web/views/CountryListView.vue:8
-msgctxt "web/views/CountryListView"
-msgid "Default Currency"
-msgstr "默认币种"
-
 #: web/views/CountryListView.vue:20
 msgctxt "web/views/CountryListView"
 msgid "Delete Country"
 msgstr "删除国家/地区"
-
-#: web/views/CountryListView.vue:7
-msgctxt "web/views/CountryListView"
-msgid "Dialing Code"
-msgstr "国际区号"
 
 #: web/views/CountryListView.vue:20
 msgctxt "web/views/CountryListView"
 msgid "Edit Country"
 msgstr "编辑国家/地区"
 
-#: web/views/CountryListView.vue:5
-msgctxt "web/views/CountryListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CountryListView.vue:10
-msgctxt "web/views/CountryListView"
-msgid "State/Province Required"
-msgstr "州/省必填"
-
-#: web/views/CountryListView.vue:9
-msgctxt "web/views/CountryListView"
-msgid "ZIP Required"
-msgstr "邮政编码必填"
-
-#: web/views/CurrencyFormView.vue:13
-msgctxt "web/views/CurrencyFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/CurrencyFormView.vue:7
-msgctxt "web/views/CurrencyFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:24
 msgctxt "web/views/CurrencyFormView"
 msgid "Copy Currency"
 msgstr "复制币种"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:24
 msgctxt "web/views/CurrencyFormView"
 msgid "Create Currency"
 msgstr "新建币种"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:24
 msgctxt "web/views/CurrencyFormView"
 msgid "Currency"
 msgstr "币种"
@@ -1361,50 +1541,20 @@ msgctxt "web/views/CurrencyFormView"
 msgid "Currency Information"
 msgstr "币种信息"
 
-#: web/views/CurrencyFormView.vue:11
-msgctxt "web/views/CurrencyFormView"
-msgid "Decimal Digits"
-msgstr "小数位数"
-
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:24
 msgctxt "web/views/CurrencyFormView"
 msgid "Delete Currency"
 msgstr "删除币种"
 
-#: web/views/CurrencyFormView.vue:25
+#: web/views/CurrencyFormView.vue:24
 msgctxt "web/views/CurrencyFormView"
 msgid "Edit Currency"
 msgstr "编辑币种"
 
-#: web/views/CurrencyFormView.vue:6
-msgctxt "web/views/CurrencyFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CurrencyFormView.vue:20
+#: web/views/CurrencyFormView.vue:19
 msgctxt "web/views/CurrencyFormView"
 msgid "Required"
 msgstr "必填"
-
-#: web/views/CurrencyFormView.vue:12
-msgctxt "web/views/CurrencyFormView"
-msgid "Rounding Precision"
-msgstr "舍入精度"
-
-#: web/views/CurrencyFormView.vue:8
-msgctxt "web/views/CurrencyFormView"
-msgid "Symbol"
-msgstr "符号"
-
-#: web/views/CurrencyListView.vue:10
-msgctxt "web/views/CurrencyListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/CurrencyListView.vue:6
-msgctxt "web/views/CurrencyListView"
-msgid "Code"
-msgstr "编码"
 
 #: web/views/CurrencyListView.vue:21
 msgctxt "web/views/CurrencyListView"
@@ -1421,11 +1571,6 @@ msgctxt "web/views/CurrencyListView"
 msgid "Currency"
 msgstr "币种"
 
-#: web/views/CurrencyListView.vue:8
-msgctxt "web/views/CurrencyListView"
-msgid "Decimal Digits"
-msgstr "小数位数"
-
 #: web/views/CurrencyListView.vue:21
 msgctxt "web/views/CurrencyListView"
 msgid "Delete Currency"
@@ -1436,57 +1581,27 @@ msgctxt "web/views/CurrencyListView"
 msgid "Edit Currency"
 msgstr "编辑币种"
 
-#: web/views/CurrencyListView.vue:5
-msgctxt "web/views/CurrencyListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/CurrencyListView.vue:9
-msgctxt "web/views/CurrencyListView"
-msgid "Rounding Precision"
-msgstr "舍入精度"
-
-#: web/views/CurrencyListView.vue:7
-msgctxt "web/views/CurrencyListView"
-msgid "Symbol"
-msgstr "符号"
-
-#: web/views/ExchangeRateFormView.vue:7
-msgctxt "web/views/ExchangeRateFormView"
-msgid "Company"
-msgstr "公司"
-
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:35
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Copy Exchange Rate"
 msgstr "复制汇率"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:35
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
 
-#: web/views/ExchangeRateFormView.vue:6
-msgctxt "web/views/ExchangeRateFormView"
-msgid "Currency"
-msgstr "币种"
-
-#: web/views/ExchangeRateFormView.vue:8
-msgctxt "web/views/ExchangeRateFormView"
-msgid "Date"
-msgstr "日期"
-
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:35
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Delete Exchange Rate"
 msgstr "删除汇率"
 
-#: web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:35
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Edit Exchange Rate"
 msgstr "编辑汇率"
 
-#: web/views/ExchangeRateFormView.vue:11 web/views/ExchangeRateFormView.vue:36
+#: web/views/ExchangeRateFormView.vue:35
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Exchange Rate"
 msgstr "汇率"
@@ -1496,7 +1611,7 @@ msgctxt "web/views/ExchangeRateFormView"
 msgid "Exchange Rate Information"
 msgstr "汇率信息"
 
-#: web/views/ExchangeRateFormView.vue:25
+#: web/views/ExchangeRateFormView.vue:24
 msgctxt "web/views/ExchangeRateFormView"
 msgid "Required"
 msgstr "必填"
@@ -1511,11 +1626,6 @@ msgctxt "web/views/ExchangeRateFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/ExchangeRateListView.vue:6
-msgctxt "web/views/ExchangeRateListView"
-msgid "Company"
-msgstr "公司"
-
 #: web/views/ExchangeRateListView.vue:21
 msgctxt "web/views/ExchangeRateListView"
 msgid "Copy Exchange Rate"
@@ -1525,16 +1635,6 @@ msgstr "复制汇率"
 msgctxt "web/views/ExchangeRateListView"
 msgid "Create Exchange Rate"
 msgstr "新建汇率"
-
-#: web/views/ExchangeRateListView.vue:5
-msgctxt "web/views/ExchangeRateListView"
-msgid "Currency"
-msgstr "币种"
-
-#: web/views/ExchangeRateListView.vue:7
-msgctxt "web/views/ExchangeRateListView"
-msgid "Date"
-msgstr "日期"
 
 #: web/views/ExchangeRateListView.vue:21
 msgctxt "web/views/ExchangeRateListView"
@@ -1546,52 +1646,32 @@ msgctxt "web/views/ExchangeRateListView"
 msgid "Edit Exchange Rate"
 msgstr "编辑汇率"
 
-#: web/views/ExchangeRateListView.vue:21 web/views/ExchangeRateListView.vue:8
+#: web/views/ExchangeRateListView.vue:21
 msgctxt "web/views/ExchangeRateListView"
 msgid "Exchange Rate"
 msgstr "汇率"
 
-#: web/views/LanguageFormView.vue:12
-msgctxt "web/views/LanguageFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/LanguageFormView.vue:7
-msgctxt "web/views/LanguageFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:25
 msgctxt "web/views/LanguageFormView"
 msgid "Copy Language"
 msgstr "复制语言"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:25
 msgctxt "web/views/LanguageFormView"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/views/LanguageFormView.vue:11
-msgctxt "web/views/LanguageFormView"
-msgid "Default Locale"
-msgstr "默认区域设置"
-
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:25
 msgctxt "web/views/LanguageFormView"
 msgid "Delete Language"
 msgstr "删除语言"
 
-#: web/views/LanguageFormView.vue:8
-msgctxt "web/views/LanguageFormView"
-msgid "Direction"
-msgstr "文字方向"
-
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:25
 msgctxt "web/views/LanguageFormView"
 msgid "Edit Language"
 msgstr "编辑语言"
 
-#: web/views/LanguageFormView.vue:26
+#: web/views/LanguageFormView.vue:25
 msgctxt "web/views/LanguageFormView"
 msgid "Language"
 msgstr "语言"
@@ -1601,12 +1681,7 @@ msgctxt "web/views/LanguageFormView"
 msgid "Language Information"
 msgstr "语言信息"
 
-#: web/views/LanguageFormView.vue:6
-msgctxt "web/views/LanguageFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/LanguageFormView.vue:21
+#: web/views/LanguageFormView.vue:20
 msgctxt "web/views/LanguageFormView"
 msgid "Required"
 msgstr "必填"
@@ -1615,16 +1690,6 @@ msgstr "必填"
 msgctxt "web/views/LanguageFormView"
 msgid "Select Locale"
 msgstr "选择区域设置"
-
-#: web/views/LanguageListView.vue:9
-msgctxt "web/views/LanguageListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/LanguageListView.vue:6
-msgctxt "web/views/LanguageListView"
-msgid "Code"
-msgstr "编码"
 
 #: web/views/LanguageListView.vue:21
 msgctxt "web/views/LanguageListView"
@@ -1636,20 +1701,10 @@ msgctxt "web/views/LanguageListView"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/views/LanguageListView.vue:8
-msgctxt "web/views/LanguageListView"
-msgid "Default Locale"
-msgstr "默认区域设置"
-
 #: web/views/LanguageListView.vue:21
 msgctxt "web/views/LanguageListView"
 msgid "Delete Language"
 msgstr "删除语言"
-
-#: web/views/LanguageListView.vue:7
-msgctxt "web/views/LanguageListView"
-msgid "Direction"
-msgstr "文字方向"
 
 #: web/views/LanguageListView.vue:21
 msgctxt "web/views/LanguageListView"
@@ -1666,62 +1721,27 @@ msgctxt "web/views/LanguageListView"
 msgid "Locale"
 msgstr "区域设置"
 
-#: web/views/LanguageListView.vue:5
-msgctxt "web/views/LanguageListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/LocaleFormView.vue:8
-msgctxt "web/views/LocaleFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/LocaleFormView.vue:7
-msgctxt "web/views/LocaleFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/LocaleFormView.vue:25
+#: web/views/LocaleFormView.vue:24
 msgctxt "web/views/LocaleFormView"
 msgid "Copy Locale"
 msgstr "复制区域设置"
 
-#: web/views/LocaleFormView.vue:25
+#: web/views/LocaleFormView.vue:24
 msgctxt "web/views/LocaleFormView"
 msgid "Create Locale"
 msgstr "新建区域设置"
 
-#: web/views/LocaleFormView.vue:18
-msgctxt "web/views/LocaleFormView"
-msgid "Currency Symbol Position"
-msgstr "货币符号位置"
-
-#: web/views/LocaleFormView.vue:16
-msgctxt "web/views/LocaleFormView"
-msgid "Date Format"
-msgstr "日期格式"
-
-#: web/views/LocaleFormView.vue:11
-msgctxt "web/views/LocaleFormView"
-msgid "Decimal Separator"
-msgstr "小数分隔符"
-
-#: web/views/LocaleFormView.vue:25
+#: web/views/LocaleFormView.vue:24
 msgctxt "web/views/LocaleFormView"
 msgid "Delete Locale"
 msgstr "删除区域设置"
 
-#: web/views/LocaleFormView.vue:25
+#: web/views/LocaleFormView.vue:24
 msgctxt "web/views/LocaleFormView"
 msgid "Edit Locale"
 msgstr "编辑区域设置"
 
-#: web/views/LocaleFormView.vue:13
-msgctxt "web/views/LocaleFormView"
-msgid "First Day of Week"
-msgstr "每周第一天"
-
-#: web/views/LocaleFormView.vue:25
+#: web/views/LocaleFormView.vue:24
 msgctxt "web/views/LocaleFormView"
 msgid "Locale"
 msgstr "区域设置"
@@ -1731,40 +1751,10 @@ msgctxt "web/views/LocaleFormView"
 msgid "Locale Information"
 msgstr "区域设置信息"
 
-#: web/views/LocaleFormView.vue:6
-msgctxt "web/views/LocaleFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/LocaleFormView.vue:20
+#: web/views/LocaleFormView.vue:19
 msgctxt "web/views/LocaleFormView"
 msgid "Required"
 msgstr "必填"
-
-#: web/views/LocaleFormView.vue:21
-msgctxt "web/views/LocaleFormView"
-msgid "Symbol Spacing"
-msgstr "符号间距"
-
-#: web/views/LocaleFormView.vue:12
-msgctxt "web/views/LocaleFormView"
-msgid "Thousands Separator"
-msgstr "千位分隔符"
-
-#: web/views/LocaleFormView.vue:17
-msgctxt "web/views/LocaleFormView"
-msgid "Time Format"
-msgstr "时间格式"
-
-#: web/views/LocaleListView.vue:10
-msgctxt "web/views/LocaleListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/LocaleListView.vue:6
-msgctxt "web/views/LocaleListView"
-msgid "Code"
-msgstr "编码"
 
 #: web/views/LocaleListView.vue:20
 msgctxt "web/views/LocaleListView"
@@ -1775,16 +1765,6 @@ msgstr "复制区域设置"
 msgctxt "web/views/LocaleListView"
 msgid "Create Locale"
 msgstr "新建区域设置"
-
-#: web/views/LocaleListView.vue:9
-msgctxt "web/views/LocaleListView"
-msgid "Currency Symbol Position"
-msgstr "货币符号位置"
-
-#: web/views/LocaleListView.vue:7
-msgctxt "web/views/LocaleListView"
-msgid "Date Format"
-msgstr "日期格式"
 
 #: web/views/LocaleListView.vue:20
 msgctxt "web/views/LocaleListView"
@@ -1801,72 +1781,27 @@ msgctxt "web/views/LocaleListView"
 msgid "Locale"
 msgstr "区域设置"
 
-#: web/views/LocaleListView.vue:5
-msgctxt "web/views/LocaleListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/LocaleListView.vue:8
-msgctxt "web/views/LocaleListView"
-msgid "Time Format"
-msgstr "时间格式"
-
-#: web/views/SequenceFormView.vue:17
-msgctxt "web/views/SequenceFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/SequenceFormView.vue:7
-msgctxt "web/views/SequenceFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/SequenceFormView.vue:8
-msgctxt "web/views/SequenceFormView"
-msgid "Company"
-msgstr "公司"
-
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:26
 msgctxt "web/views/SequenceFormView"
 msgid "Copy Sequence"
 msgstr "复制序列"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:26
 msgctxt "web/views/SequenceFormView"
 msgid "Create Sequence"
 msgstr "新建序列"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:26
 msgctxt "web/views/SequenceFormView"
 msgid "Delete Sequence"
 msgstr "删除序列"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:26
 msgctxt "web/views/SequenceFormView"
 msgid "Edit Sequence"
 msgstr "编辑序列"
 
-#: web/views/SequenceFormView.vue:6
-msgctxt "web/views/SequenceFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/SequenceFormView.vue:14
-msgctxt "web/views/SequenceFormView"
-msgid "Next Number"
-msgstr "下一个编号"
-
-#: web/views/SequenceFormView.vue:13
-msgctxt "web/views/SequenceFormView"
-msgid "Padding Length"
-msgstr "补零长度"
-
-#: web/views/SequenceFormView.vue:11
-msgctxt "web/views/SequenceFormView"
-msgid "Prefix"
-msgstr "前缀"
-
-#: web/views/SequenceFormView.vue:22
+#: web/views/SequenceFormView.vue:21
 msgctxt "web/views/SequenceFormView"
 msgid "Required"
 msgstr "必填"
@@ -1876,7 +1811,7 @@ msgctxt "web/views/SequenceFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/SequenceFormView.vue:27
+#: web/views/SequenceFormView.vue:26
 msgctxt "web/views/SequenceFormView"
 msgid "Sequence"
 msgstr "序列"
@@ -1886,75 +1821,25 @@ msgctxt "web/views/SequenceFormView"
 msgid "Sequence Configuration"
 msgstr "序列配置"
 
-#: web/views/SequenceFormView.vue:12
-msgctxt "web/views/SequenceFormView"
-msgid "Suffix"
-msgstr "后缀"
-
-#: web/views/SequenceIdempotencyFormView.vue:22
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Code Snapshot"
-msgstr "编码快照"
-
-#: web/views/SequenceIdempotencyFormView.vue:12
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Company"
-msgstr "公司"
-
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:33
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Copy Sequence Idempotency Record"
 msgstr "复制序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:16
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Count"
-msgstr "数量"
-
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:33
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Create Sequence Idempotency Record"
 msgstr "创建序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:33
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Delete Sequence Idempotency Record"
 msgstr "删除序列幂等记录"
 
-#: web/views/SequenceIdempotencyFormView.vue:17
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Dry Run"
-msgstr "试运行"
-
-#: web/views/SequenceIdempotencyFormView.vue:34
+#: web/views/SequenceIdempotencyFormView.vue:33
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Edit Sequence Idempotency Record"
 msgstr "编辑序列幂等记录"
-
-#: web/views/SequenceIdempotencyFormView.vue:19
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "End"
-msgstr "结束值"
-
-#: web/views/SequenceIdempotencyFormView.vue:29
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Expires At"
-msgstr "过期时间"
-
-#: web/views/SequenceIdempotencyFormView.vue:26
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Format Snapshot"
-msgstr "格式快照"
-
-#: web/views/SequenceIdempotencyFormView.vue:13
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Idempotency Key"
-msgstr "幂等键"
-
-#: web/views/SequenceIdempotencyFormView.vue:23
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Request Hash"
-msgstr "请求哈希"
 
 #: web/views/SequenceIdempotencyFormView.vue:12
 msgctxt "web/views/SequenceIdempotencyFormView"
@@ -1966,30 +1851,15 @@ msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Select Sequence"
 msgstr "选择序列"
 
-#: web/views/SequenceIdempotencyFormView.vue:11
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Sequence"
-msgstr "序列"
-
-#: web/views/SequenceIdempotencyFormView.vue:34 web/views/SequenceIdempotencyFormView.vue:9
+#: web/views/SequenceIdempotencyFormView.vue:33 web/views/SequenceIdempotencyFormView.vue:9
 msgctxt "web/views/SequenceIdempotencyFormView"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
-
-#: web/views/SequenceIdempotencyFormView.vue:18
-msgctxt "web/views/SequenceIdempotencyFormView"
-msgid "Start"
-msgstr "起始值"
 
 #: web/views/SequenceIdempotencyListView.vue:23
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Copy Sequence Idempotency Record"
 msgstr "复制序列幂等记录"
-
-#: web/views/SequenceIdempotencyListView.vue:7
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "Count"
-msgstr "数量"
 
 #: web/views/SequenceIdempotencyListView.vue:23
 msgctxt "web/views/SequenceIdempotencyListView"
@@ -2001,60 +1871,15 @@ msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Delete Sequence Idempotency Record"
 msgstr "删除序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:8
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "Dry Run"
-msgstr "试运行"
-
 #: web/views/SequenceIdempotencyListView.vue:23
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Edit Sequence Idempotency Record"
 msgstr "编辑序列幂等记录"
 
-#: web/views/SequenceIdempotencyListView.vue:10
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "End"
-msgstr "结束值"
-
-#: web/views/SequenceIdempotencyListView.vue:11
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "Expires At"
-msgstr "过期时间"
-
-#: web/views/SequenceIdempotencyListView.vue:6
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "Idempotency Key"
-msgstr "幂等键"
-
-#: web/views/SequenceIdempotencyListView.vue:5
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "Sequence"
-msgstr "序列"
-
 #: web/views/SequenceIdempotencyListView.vue:23
 msgctxt "web/views/SequenceIdempotencyListView"
 msgid "Sequence Idempotency Record"
 msgstr "序列幂等记录"
-
-#: web/views/SequenceIdempotencyListView.vue:9
-msgctxt "web/views/SequenceIdempotencyListView"
-msgid "Start"
-msgstr "起始值"
-
-#: web/views/SequenceListView.vue:12
-msgctxt "web/views/SequenceListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/SequenceListView.vue:6
-msgctxt "web/views/SequenceListView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/SequenceListView.vue:7
-msgctxt "web/views/SequenceListView"
-msgid "Company"
-msgstr "公司"
 
 #: web/views/SequenceListView.vue:22
 msgctxt "web/views/SequenceListView"
@@ -2076,77 +1901,32 @@ msgctxt "web/views/SequenceListView"
 msgid "Edit Sequence"
 msgstr "编辑序列"
 
-#: web/views/SequenceListView.vue:5
-msgctxt "web/views/SequenceListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/SequenceListView.vue:11
-msgctxt "web/views/SequenceListView"
-msgid "Next Number"
-msgstr "下一个编号"
-
-#: web/views/SequenceListView.vue:10
-msgctxt "web/views/SequenceListView"
-msgid "Padding Length"
-msgstr "补零长度"
-
-#: web/views/SequenceListView.vue:8
-msgctxt "web/views/SequenceListView"
-msgid "Prefix"
-msgstr "前缀"
-
 #: web/views/SequenceListView.vue:22
 msgctxt "web/views/SequenceListView"
 msgid "Sequence"
 msgstr "序列"
 
-#: web/views/SequenceListView.vue:9
-msgctxt "web/views/SequenceListView"
-msgid "Suffix"
-msgstr "后缀"
-
-#: web/views/StateFormView.vue:11
-msgctxt "web/views/StateFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/StateFormView.vue:7
-msgctxt "web/views/StateFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:24
 msgctxt "web/views/StateFormView"
 msgid "Copy State"
 msgstr "复制州/省"
 
-#: web/views/StateFormView.vue:8
-msgctxt "web/views/StateFormView"
-msgid "Country"
-msgstr "国家/地区"
-
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:24
 msgctxt "web/views/StateFormView"
 msgid "Create State"
 msgstr "新建州/省"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:24
 msgctxt "web/views/StateFormView"
 msgid "Delete State"
 msgstr "删除州/省"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:24
 msgctxt "web/views/StateFormView"
 msgid "Edit State"
 msgstr "编辑州/省"
 
-#: web/views/StateFormView.vue:6
-msgctxt "web/views/StateFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/StateFormView.vue:20
+#: web/views/StateFormView.vue:19
 msgctxt "web/views/StateFormView"
 msgid "Required"
 msgstr "必填"
@@ -2156,7 +1936,7 @@ msgctxt "web/views/StateFormView"
 msgid "Select Country"
 msgstr "选择国家/地区"
 
-#: web/views/StateFormView.vue:25
+#: web/views/StateFormView.vue:24
 msgctxt "web/views/StateFormView"
 msgid "State"
 msgstr "州/省"
@@ -2166,25 +1946,10 @@ msgctxt "web/views/StateFormView"
 msgid "State/Province Information"
 msgstr "州/省信息"
 
-#: web/views/StateListView.vue:8
-msgctxt "web/views/StateListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/StateListView.vue:6
-msgctxt "web/views/StateListView"
-msgid "Code"
-msgstr "编码"
-
 #: web/views/StateListView.vue:20
 msgctxt "web/views/StateListView"
 msgid "Copy State"
 msgstr "复制州/省"
-
-#: web/views/StateListView.vue:7
-msgctxt "web/views/StateListView"
-msgid "Country"
-msgstr "国家/地区"
 
 #: web/views/StateListView.vue:20
 msgctxt "web/views/StateListView"
@@ -2201,70 +1966,40 @@ msgctxt "web/views/StateListView"
 msgid "Edit State"
 msgstr "编辑州/省"
 
-#: web/views/StateListView.vue:5
-msgctxt "web/views/StateListView"
-msgid "Name"
-msgstr "名称"
-
 #: web/views/StateListView.vue:20
 msgctxt "web/views/StateListView"
 msgid "State"
 msgstr "州/省"
 
-#: web/views/UoMCategoryFormView.vue:8
-msgctxt "web/views/UoMCategoryFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/UoMCategoryFormView.vue:7
-msgctxt "web/views/UoMCategoryFormView"
-msgid "Code"
-msgstr "编码"
-
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:28
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Copy Unit of Measure Category"
 msgstr "复制计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:28
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Create Unit of Measure Category"
 msgstr "新建计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:28
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Delete Unit of Measure Category"
 msgstr "删除计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:29
+#: web/views/UoMCategoryFormView.vue:28
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Edit Unit of Measure Category"
 msgstr "编辑计量单位类别"
 
-#: web/views/UoMCategoryFormView.vue:6
-msgctxt "web/views/UoMCategoryFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/UoMCategoryFormView.vue:18
+#: web/views/UoMCategoryFormView.vue:17
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/UoMCategoryFormView.vue:29 web/views/UoMCategoryFormView.vue:4
+#: web/views/UoMCategoryFormView.vue:28 web/views/UoMCategoryFormView.vue:4
 msgctxt "web/views/UoMCategoryFormView"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
-
-#: web/views/UoMCategoryListView.vue:7
-msgctxt "web/views/UoMCategoryListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/UoMCategoryListView.vue:6
-msgctxt "web/views/UoMCategoryListView"
-msgid "Code"
-msgstr "编码"
 
 #: web/views/UoMCategoryListView.vue:19
 msgctxt "web/views/UoMCategoryListView"
@@ -2286,82 +2021,42 @@ msgctxt "web/views/UoMCategoryListView"
 msgid "Edit Unit of Measure Category"
 msgstr "编辑计量单位类别"
 
-#: web/views/UoMCategoryListView.vue:5
-msgctxt "web/views/UoMCategoryListView"
-msgid "Name"
-msgstr "名称"
-
 #: web/views/UoMCategoryListView.vue:19
 msgctxt "web/views/UoMCategoryListView"
 msgid "Unit of Measure Category"
 msgstr "计量单位类别"
 
-#: web/views/UoMFormView.vue:14
-msgctxt "web/views/UoMFormView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/UoMFormView.vue:8
-msgctxt "web/views/UoMFormView"
-msgid "Category"
-msgstr "类别"
-
-#: web/views/UoMFormView.vue:12
-msgctxt "web/views/UoMFormView"
-msgid "Conversion Factor"
-msgstr "换算系数"
-
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:25
 msgctxt "web/views/UoMFormView"
 msgid "Copy Unit of Measure"
 msgstr "复制计量单位"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:25
 msgctxt "web/views/UoMFormView"
 msgid "Create Unit of Measure"
 msgstr "新建计量单位"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:25
 msgctxt "web/views/UoMFormView"
 msgid "Delete Unit of Measure"
 msgstr "删除计量单位"
 
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:25
 msgctxt "web/views/UoMFormView"
 msgid "Edit Unit of Measure"
 msgstr "编辑计量单位"
 
-#: web/views/UoMFormView.vue:6
-msgctxt "web/views/UoMFormView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/UoMFormView.vue:11
-msgctxt "web/views/UoMFormView"
-msgid "Reference Unit"
-msgstr "基准单位"
-
-#: web/views/UoMFormView.vue:21
+#: web/views/UoMFormView.vue:20
 msgctxt "web/views/UoMFormView"
 msgid "Required"
 msgstr "必填"
-
-#: web/views/UoMFormView.vue:13
-msgctxt "web/views/UoMFormView"
-msgid "Rounding"
-msgstr "舍入精度"
 
 #: web/views/UoMFormView.vue:8
 msgctxt "web/views/UoMFormView"
 msgid "Select Category"
 msgstr "选择类别"
 
-#: web/views/UoMFormView.vue:7
-msgctxt "web/views/UoMFormView"
-msgid "Symbol"
-msgstr "符号"
-
-#: web/views/UoMFormView.vue:26
+#: web/views/UoMFormView.vue:25
 msgctxt "web/views/UoMFormView"
 msgid "Unit of Measure"
 msgstr "计量单位"
@@ -2371,21 +2066,6 @@ msgctxt "web/views/UoMFormView"
 msgid "Unit of Measure Information"
 msgstr "计量单位信息"
 
-#: web/views/UoMListView.vue:11
-msgctxt "web/views/UoMListView"
-msgid "Active"
-msgstr "启用"
-
-#: web/views/UoMListView.vue:7
-msgctxt "web/views/UoMListView"
-msgid "Category"
-msgstr "类别"
-
-#: web/views/UoMListView.vue:9
-msgctxt "web/views/UoMListView"
-msgid "Conversion Factor"
-msgstr "换算系数"
-
 #: web/views/UoMListView.vue:21
 msgctxt "web/views/UoMListView"
 msgid "Copy Unit of Measure"
@@ -2406,27 +2086,671 @@ msgctxt "web/views/UoMListView"
 msgid "Edit Unit of Measure"
 msgstr "编辑计量单位"
 
-#: web/views/UoMListView.vue:5
-msgctxt "web/views/UoMListView"
-msgid "Name"
-msgstr "名称"
-
-#: web/views/UoMListView.vue:8
-msgctxt "web/views/UoMListView"
-msgid "Reference Unit"
-msgstr "基准单位"
-
-#: web/views/UoMListView.vue:10
-msgctxt "web/views/UoMListView"
-msgid "Rounding"
-msgstr "舍入精度"
-
-#: web/views/UoMListView.vue:6
-msgctxt "web/views/UoMListView"
-msgid "Symbol"
-msgstr "符号"
-
 #: web/views/UoMListView.vue:21
 msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "Address Line 1"
+#~ msgstr "地址行 1"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "Address Line 2"
+#~ msgstr "地址行 2"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "City"
+#~ msgstr "城市"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "Label"
+#~ msgstr "标签"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "State/Province"
+#~ msgstr "州/省"
+
+#~ msgctxt "web/views/AddressFormView"
+#~ msgid "ZIP"
+#~ msgstr "邮政编码"
+
+#~ msgctxt "web/views/AddressListView"
+#~ msgid "Address Line 1"
+#~ msgstr "地址行 1"
+
+#~ msgctxt "web/views/AddressListView"
+#~ msgid "City"
+#~ msgstr "城市"
+
+#~ msgctxt "web/views/AddressListView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/AddressListView"
+#~ msgid "Label"
+#~ msgstr "标签"
+
+#~ msgctxt "web/views/AddressListView"
+#~ msgid "State/Province"
+#~ msgstr "州/省"
+
+#~ msgctxt "web/views/AddressListView"
+#~ msgid "ZIP"
+#~ msgstr "邮政编码"
+
+#~ msgctxt "web/views/BankFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/BankFormView"
+#~ msgid "Address"
+#~ msgstr "地址"
+
+#~ msgctxt "web/views/BankFormView"
+#~ msgid "BIC"
+#~ msgstr "银行识别码（BIC）"
+
+#~ msgctxt "web/views/BankFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/BankFormView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/BankFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/BankListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/BankListView"
+#~ msgid "BIC"
+#~ msgstr "银行识别码（BIC）"
+
+#~ msgctxt "web/views/BankListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/BankListView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/BankListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CityFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/CityFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CityFormView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/CityFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CityFormView"
+#~ msgid "State/Province"
+#~ msgstr "州/省"
+
+#~ msgctxt "web/views/CityListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/CityListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CityListView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/CityListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CityListView"
+#~ msgid "State/Province"
+#~ msgstr "州/省"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Base Currency"
+#~ msgstr "本位币"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Created At"
+#~ msgstr "创建时间"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Parent Company"
+#~ msgstr "上级公司"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Time Zone"
+#~ msgstr "时区"
+
+#~ msgctxt "web/views/CompanyFormView"
+#~ msgid "Updated At"
+#~ msgstr "更新时间"
+
+#~ msgctxt "web/views/CompanyListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CompanyListView"
+#~ msgid "Created At"
+#~ msgstr "创建时间"
+
+#~ msgctxt "web/views/CompanyListView"
+#~ msgid "Parent Company"
+#~ msgstr "上级公司"
+
+#~ msgctxt "web/views/CompanyListView"
+#~ msgid "Updated At"
+#~ msgstr "更新时间"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "Address Format"
+#~ msgstr "地址格式"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "Default Currency"
+#~ msgstr "默认币种"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "Dialing Code"
+#~ msgstr "国际区号"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "State/Province Required"
+#~ msgstr "州/省必填"
+
+#~ msgctxt "web/views/CountryFormView"
+#~ msgid "ZIP Required"
+#~ msgstr "邮政编码必填"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "Default Currency"
+#~ msgstr "默认币种"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "Dialing Code"
+#~ msgstr "国际区号"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "State/Province Required"
+#~ msgstr "州/省必填"
+
+#~ msgctxt "web/views/CountryListView"
+#~ msgid "ZIP Required"
+#~ msgstr "邮政编码必填"
+
+#~ msgctxt "web/views/CurrencyFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/CurrencyFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CurrencyFormView"
+#~ msgid "Decimal Digits"
+#~ msgstr "小数位数"
+
+#~ msgctxt "web/views/CurrencyFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CurrencyFormView"
+#~ msgid "Rounding Precision"
+#~ msgstr "舍入精度"
+
+#~ msgctxt "web/views/CurrencyFormView"
+#~ msgid "Symbol"
+#~ msgstr "符号"
+
+#~ msgctxt "web/views/CurrencyListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/CurrencyListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/CurrencyListView"
+#~ msgid "Decimal Digits"
+#~ msgstr "小数位数"
+
+#~ msgctxt "web/views/CurrencyListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/CurrencyListView"
+#~ msgid "Rounding Precision"
+#~ msgstr "舍入精度"
+
+#~ msgctxt "web/views/CurrencyListView"
+#~ msgid "Symbol"
+#~ msgstr "符号"
+
+#~ msgctxt "web/views/ExchangeRateFormView"
+#~ msgid "Company"
+#~ msgstr "公司"
+
+#~ msgctxt "web/views/ExchangeRateFormView"
+#~ msgid "Currency"
+#~ msgstr "币种"
+
+#~ msgctxt "web/views/ExchangeRateFormView"
+#~ msgid "Date"
+#~ msgstr "日期"
+
+#~ msgctxt "web/views/ExchangeRateListView"
+#~ msgid "Company"
+#~ msgstr "公司"
+
+#~ msgctxt "web/views/ExchangeRateListView"
+#~ msgid "Currency"
+#~ msgstr "币种"
+
+#~ msgctxt "web/views/ExchangeRateListView"
+#~ msgid "Date"
+#~ msgstr "日期"
+
+#~ msgctxt "web/views/LanguageFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/LanguageFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/LanguageFormView"
+#~ msgid "Default Locale"
+#~ msgstr "默认区域设置"
+
+#~ msgctxt "web/views/LanguageFormView"
+#~ msgid "Direction"
+#~ msgstr "文字方向"
+
+#~ msgctxt "web/views/LanguageFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/LanguageListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/LanguageListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/LanguageListView"
+#~ msgid "Default Locale"
+#~ msgstr "默认区域设置"
+
+#~ msgctxt "web/views/LanguageListView"
+#~ msgid "Direction"
+#~ msgstr "文字方向"
+
+#~ msgctxt "web/views/LanguageListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Currency Symbol Position"
+#~ msgstr "货币符号位置"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Date Format"
+#~ msgstr "日期格式"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Decimal Separator"
+#~ msgstr "小数分隔符"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "First Day of Week"
+#~ msgstr "每周第一天"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Symbol Spacing"
+#~ msgstr "符号间距"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Thousands Separator"
+#~ msgstr "千位分隔符"
+
+#~ msgctxt "web/views/LocaleFormView"
+#~ msgid "Time Format"
+#~ msgstr "时间格式"
+
+#~ msgctxt "web/views/LocaleListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/LocaleListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/LocaleListView"
+#~ msgid "Currency Symbol Position"
+#~ msgstr "货币符号位置"
+
+#~ msgctxt "web/views/LocaleListView"
+#~ msgid "Date Format"
+#~ msgstr "日期格式"
+
+#~ msgctxt "web/views/LocaleListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/LocaleListView"
+#~ msgid "Time Format"
+#~ msgstr "时间格式"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Company"
+#~ msgstr "公司"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Next Number"
+#~ msgstr "下一个编号"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Padding Length"
+#~ msgstr "补零长度"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Prefix"
+#~ msgstr "前缀"
+
+#~ msgctxt "web/views/SequenceFormView"
+#~ msgid "Suffix"
+#~ msgstr "后缀"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Code Snapshot"
+#~ msgstr "编码快照"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Company"
+#~ msgstr "公司"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Count"
+#~ msgstr "数量"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Dry Run"
+#~ msgstr "试运行"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "End"
+#~ msgstr "结束值"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Expires At"
+#~ msgstr "过期时间"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Format Snapshot"
+#~ msgstr "格式快照"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Idempotency Key"
+#~ msgstr "幂等键"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Request Hash"
+#~ msgstr "请求哈希"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Sequence"
+#~ msgstr "序列"
+
+#~ msgctxt "web/views/SequenceIdempotencyFormView"
+#~ msgid "Start"
+#~ msgstr "起始值"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "Count"
+#~ msgstr "数量"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "Dry Run"
+#~ msgstr "试运行"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "End"
+#~ msgstr "结束值"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "Expires At"
+#~ msgstr "过期时间"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "Idempotency Key"
+#~ msgstr "幂等键"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "Sequence"
+#~ msgstr "序列"
+
+#~ msgctxt "web/views/SequenceIdempotencyListView"
+#~ msgid "Start"
+#~ msgstr "起始值"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Company"
+#~ msgstr "公司"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Next Number"
+#~ msgstr "下一个编号"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Padding Length"
+#~ msgstr "补零长度"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Prefix"
+#~ msgstr "前缀"
+
+#~ msgctxt "web/views/SequenceListView"
+#~ msgid "Suffix"
+#~ msgstr "后缀"
+
+#~ msgctxt "web/views/StateFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/StateFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/StateFormView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/StateFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/StateListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/StateListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/StateListView"
+#~ msgid "Country"
+#~ msgstr "国家/地区"
+
+#~ msgctxt "web/views/StateListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/UoMCategoryFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/UoMCategoryFormView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/UoMCategoryFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/UoMCategoryListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/UoMCategoryListView"
+#~ msgid "Code"
+#~ msgstr "编码"
+
+#~ msgctxt "web/views/UoMCategoryListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Category"
+#~ msgstr "类别"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Conversion Factor"
+#~ msgstr "换算系数"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Reference Unit"
+#~ msgstr "基准单位"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Rounding"
+#~ msgstr "舍入精度"
+
+#~ msgctxt "web/views/UoMFormView"
+#~ msgid "Symbol"
+#~ msgstr "符号"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Active"
+#~ msgstr "启用"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Category"
+#~ msgstr "类别"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Conversion Factor"
+#~ msgstr "换算系数"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Name"
+#~ msgstr "名称"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Reference Unit"
+#~ msgstr "基准单位"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Rounding"
+#~ msgstr "舍入精度"
+
+#~ msgctxt "web/views/UoMListView"
+#~ msgid "Symbol"
+#~ msgstr "符号"
