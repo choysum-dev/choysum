@@ -26,7 +26,6 @@ SPDX-License-Identifier: Apache-2.0
             :store="store"
             prop="Timezone"
             :rules="requiredRules"
-            :selection="timezoneOptions"
             :placeholder="_t('Select a time zone')"
             :filterable="true"
             :allow-create="false"
@@ -70,7 +69,6 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import moment from 'moment-timezone';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type Company from '@/base/service/models/company';
 import type Currency from '@/base/service/models/currency';
@@ -112,7 +110,6 @@ const companyActions = defineModelActions('base.Company', { entityTitle: _lt('Co
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
 const { initialValues } = props;
-const timezoneOptions = moment.tz.names();
 const router = useRouter();
 
 function onParentCompanyValueClick(payload: ManyToOneValueClickPayload<Company>) {

@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeRequiredText as normalizeRequiredTextCore } from '@/core/service/utils/normalization';
-import { isIanaTimezone } from '@/core/service/utils/datetime';
+import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { raiseDomainError } from '@/core/service/error';
 import { _t, _lt } from '../i18n';
 import Address from './address';
@@ -44,7 +44,8 @@ export default class Company extends BaseModel {
   ParentId?: Company;
 
   @Field({
-    type: 'varchar',
+    type: 'selection',
+    selection: 'TimezoneOptions',
     size: 64,
     notNull: true,
     string: _lt('Time Zone', { scope: 'base.model.Company.fields' }),
@@ -151,6 +152,13 @@ export default class Company extends BaseModel {
       raiseDomainError('base', 'InvalidArgument', _t('Invalid IANA timezone: %s', { scope: 'service/models/company' }, timezone));
     }
     return timezone;
+  }
+
+  /**
+   * Dynamic IANA timezone options for FieldsGet / OSelectionField.
+   */
+  static TimezoneOptions() {
+    return listIanaTimezoneSelection();
   }
 
   private static async validateParentUpdate(targetId: string, parentIdRaw: any): Promise<void> {

@@ -43,7 +43,13 @@ SPDX-License-Identifier: Apache-2.0
           <OVarCharField :store="store" prop="Language" />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
-          <OVarCharField :store="store" prop="Timezone" />
+          <OSelectionField
+            :store="store"
+            prop="Timezone"
+            :placeholder="_t('Select a time zone')"
+            :filterable="true"
+            :allow-create="false"
+          />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
           <OManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
@@ -124,6 +130,7 @@ import OFormView from '@/web/web/components/view/OFormView.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OCharField from '@/web/web/components/field/OCharField.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
+import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OImageField from '@/web/web/components/field/OImageField.vue';
 import ODateTimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OOneToManyField from '@/web/web/components/field/OOneToManyField.vue';

@@ -15,6 +15,8 @@ import Token from './token';
 import UserRole from './user_role';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
 import { uniqStrings } from '@/core/service/utils/normalization';
+import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
+import { Constraint } from '@/core/service/api/constraint';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from './_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_user_authz_shared';
 import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_user_method_access';
@@ -152,11 +154,12 @@ export default class User extends BaseModel {
   Language: string;
 
   /**
-   * Preferred timezone reserved for future localization support.
+   * Preferred IANA timezone for localization and display.
    */
   @Field({
-    type: 'varchar',
-    size: 40,
+    type: 'selection',
+    selection: 'TimezoneOptions',
+    size: 64,
     string: _lt('Timezone', { scope: 'auth.model.User.fields' }),
   })
   Timezone: string;
@@ -271,6 +274,32 @@ export default class User extends BaseModel {
     string: _lt('Roles', { scope: 'auth.model.User.fields' }),
   })
   Roles: Role[];
+
+  /**
+   * Dynamic IANA timezone options for FieldsGet / OSelectionField.
+   */
+  static TimezoneOptions() {
+    return listIanaTimezoneSelection();
+  }
+
+  /**
+   * Empty timezone is allowed; non-empty values must be valid IANA ids.
+   */
+  @Constraint<User>(['Timezone'])
+  validateTimezoneConstraint(): void {
+    const timezone = String((this as any).Timezone ?? '').trim();
+    if (!timezone) {
+      (this as any).Timezone = '';
+      return;
+    }
+    if (!isIanaTimezone(timezone)) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Invalid IANA timezone: %s', { scope: 'service/models/user' }, timezone),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    (this as any).Timezone = timezone;
+  }
 
   /**
    * Register a new local user and provision the default auth baseline.

@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { normalizeOffset } from '@/core/service/utils/normalization';
-import { toDate } from '@/core/service/utils/datetime';
+import { toDate, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { _lt } from '../i18n';
 import Job from './job';
 import { clampLimit } from './_helpers';
@@ -133,7 +133,8 @@ export default class Schedule extends BaseModel {
 
   /** IANA timezone used to evaluate the cron expression. */
   @Field({
-    type: 'varchar',
+    type: 'selection',
+    selection: 'TimezoneOptions',
     size: 100,
     notNull: true,
     string: _lt('Timezone', { scope: 'task.model.Schedule.fields' }),
@@ -171,6 +172,13 @@ export default class Schedule extends BaseModel {
     string: _lt('Last Triggered At', { scope: 'task.model.Schedule.fields' }),
   })
   LastTriggeredAt: Date;
+
+  /**
+   * Dynamic IANA timezone options for FieldsGet / OSelectionField.
+   */
+  static TimezoneOptions() {
+    return listIanaTimezoneSelection();
+  }
 
   /** Creates a persisted schedule with an initial next-run preview. */
   static async CreateSchedule(

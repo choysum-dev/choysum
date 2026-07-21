@@ -52,6 +52,15 @@ export function isIanaTimezone(tz?: string): boolean {
 }
 
 /**
+ * Lists IANA timezone identifiers as FieldsGet / selection items.
+ *
+ * Labels are bare technical codes (value === label); do not wrap in `_lt`.
+ */
+export function listIanaTimezoneSelection(): Array<{ value: string; label: string }> {
+  return moment.tz.names().map(name => ({ value: name, label: name }));
+}
+
+/**
  * Parses a fixed UTC offset string into minutes.
  *
  * Accepts forms like `+08:00`, `+8`, `-05:00`, `UTC`, `GMT`, `Z`.
