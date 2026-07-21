@@ -52,6 +52,41 @@ test('base.company: invalid timezone is rejected', async () => {
   });
 });
 
+test('base.company: empty timezone is rejected', async () => {
+  const currency = await Currency.Create(
+    {
+      Name: uid('CurrencyEmptyTz'),
+      Code: currencyCode3(),
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  await expectRepoValidationFailed('create', async () => {
+    await Company.Create(
+      {
+        Name: uid('CompanyEmptyTz'),
+        Code: companyCode8(),
+        Timezone: '   ',
+        CurrencyId: currency.Id,
+        IsActive: true,
+      } as any,
+      ['Id'] as any
+    );
+  });
+});
+
+test('base.company: Timezone FieldsGet exposes dynamic IANA selection', async () => {
+  const meta = await Company.FieldsGet(['Timezone'], ['type', 'selectionKind', 'selection']);
+  expect(meta.Timezone?.type).toBe('selection');
+  expect(meta.Timezone?.selectionKind).toBe('dynamic');
+  const selection = meta.Timezone?.selection || [];
+  expect(selection.length).toBeGreaterThan(100);
+  expect(selection.some((item: { value?: string }) => item.value === 'UTC')).toBe(true);
+});
+
 test('base.company: missing CurrencyId is rejected', async () => {
   await expectRepoValidationFailed('create', async () => {
     await Company.Create(

@@ -106,3 +106,48 @@ test('task.Schedule create/update/trigger basics', async () => {
   expect(Boolean(reloaded.LastTriggeredAt)).toBe(true);
   expect(Boolean(reloaded.LastRunAt)).toBe(true);
 });
+
+test('task.Schedule Timezone FieldsGet exposes dynamic IANA selection', async () => {
+  resetRequestContext();
+  const meta = await Schedule.FieldsGet(['Timezone'], ['type', 'selectionKind', 'selection']);
+  expect(meta.Timezone?.type).toBe('selection');
+  expect(meta.Timezone?.selectionKind).toBe('dynamic');
+  const selection = meta.Timezone?.selection || [];
+  expect(selection.length).toBeGreaterThan(100);
+  expect(selection.some((item: { value?: string }) => item.value === 'UTC')).toBe(true);
+});
+
+test('task.Schedule validateTimezoneConstraint normalizes and rejects invalid values', () => {
+  resetRequestContext();
+  const host = Object.assign(Object.create(Schedule.prototype), { Timezone: '  UTC  ' }) as Schedule;
+  host.validateTimezoneConstraint();
+  expect(host.Timezone).toBe('UTC');
+
+  const invalid = Object.assign(Object.create(Schedule.prototype), { Timezone: 'Not/A_Zone' }) as Schedule;
+  expect(() => invalid.validateTimezoneConstraint()).toThrow('invalid timezone');
+});
+
+test('task.Schedule UpdateById runs timezone constraint', async () => {
+  resetRequestContext();
+  const schedule = await Schedule.CreateSchedule(
+    'tz_constraint_schedule',
+    'auth',
+    'auth.User/Login',
+    { email: 'tz@b.com' },
+    'admin',
+    'admin',
+    '0 0 * * *',
+    'UTC'
+  );
+
+  const updated = await (Schedule as any).UpdateById(schedule.Id, { Timezone: '  Asia/Shanghai  ' }, ['Id', 'Timezone']);
+  expect(updated.Timezone).toBe('Asia/Shanghai');
+
+  let error: unknown;
+  try {
+    await (Schedule as any).UpdateById(schedule.Id, { Timezone: 'Not/A_Zone' }, ['Id']);
+  } catch (err) {
+    error = err;
+  }
+  expect(Boolean(error)).toBe(true);
+});
