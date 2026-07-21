@@ -94,7 +94,10 @@ test('listIanaTimezoneSelection returns IANA ids as bare selection items', () =>
 });
 
 test('listIanaTimezoneSelection caches the mapped array', () => {
-  expect(listIanaTimezoneSelection()).toBe(listIanaTimezoneSelection());
+  const items = listIanaTimezoneSelection();
+  expect(items).toBe(listIanaTimezoneSelection());
+  expect(Object.isFrozen(items)).toBe(true);
+  expect(Object.isFrozen(items[0])).toBe(true);
 });
 
 // ---------------------------------------------------------------------------

@@ -61,7 +61,9 @@ let cachedIanaTimezoneSelection: Array<{ value: string; label: string }> | null 
  */
 export function listIanaTimezoneSelection(): Array<{ value: string; label: string }> {
   if (!cachedIanaTimezoneSelection) {
-    cachedIanaTimezoneSelection = moment.tz.names().map(name => ({ value: name, label: name }));
+    cachedIanaTimezoneSelection = Object.freeze(
+      moment.tz.names().map(name => Object.freeze({ value: name, label: name }))
+    ) as Array<{ value: string; label: string }>;
   }
   return cachedIanaTimezoneSelection;
 }
