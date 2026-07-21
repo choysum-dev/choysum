@@ -134,7 +134,7 @@ export default class Schedule extends BaseModel {
   /** IANA timezone used to evaluate the cron expression. */
   @Field({
     type: 'selection',
-    selection: 'TimezoneOptions',
+    selection: () => listIanaTimezoneSelection(),
     size: 100,
     notNull: true,
     string: _lt('Timezone', { scope: 'task.model.Schedule.fields' }),
@@ -172,13 +172,6 @@ export default class Schedule extends BaseModel {
     string: _lt('Last Triggered At', { scope: 'task.model.Schedule.fields' }),
   })
   LastTriggeredAt: Date;
-
-  /**
-   * Dynamic IANA timezone options for FieldsGet / OSelectionField.
-   */
-  static TimezoneOptions() {
-    return listIanaTimezoneSelection();
-  }
 
   /** Creates a persisted schedule with an initial next-run preview. */
   static async CreateSchedule(

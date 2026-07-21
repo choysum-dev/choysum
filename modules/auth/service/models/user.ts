@@ -158,7 +158,7 @@ export default class User extends BaseModel {
    */
   @Field({
     type: 'selection',
-    selection: 'TimezoneOptions',
+    selection: () => listIanaTimezoneSelection(),
     size: 64,
     string: _lt('Timezone', { scope: 'auth.model.User.fields' }),
   })
@@ -274,13 +274,6 @@ export default class User extends BaseModel {
     string: _lt('Roles', { scope: 'auth.model.User.fields' }),
   })
   Roles: Role[];
-
-  /**
-   * Dynamic IANA timezone options for FieldsGet / OSelectionField.
-   */
-  static TimezoneOptions() {
-    return listIanaTimezoneSelection();
-  }
 
   /**
    * Empty timezone is allowed; non-empty values must be valid IANA ids.

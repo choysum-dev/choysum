@@ -45,7 +45,7 @@ export default class Company extends BaseModel {
 
   @Field({
     type: 'selection',
-    selection: 'TimezoneOptions',
+    selection: () => listIanaTimezoneSelection(),
     size: 64,
     notNull: true,
     string: _lt('Time Zone', { scope: 'base.model.Company.fields' }),
@@ -152,13 +152,6 @@ export default class Company extends BaseModel {
       raiseDomainError('base', 'InvalidArgument', _t('Invalid IANA timezone: %s', { scope: 'service/models/company' }, timezone));
     }
     return timezone;
-  }
-
-  /**
-   * Dynamic IANA timezone options for FieldsGet / OSelectionField.
-   */
-  static TimezoneOptions() {
-    return listIanaTimezoneSelection();
   }
 
   private static async validateParentUpdate(targetId: string, parentIdRaw: any): Promise<void> {
