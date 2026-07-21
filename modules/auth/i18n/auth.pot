@@ -344,92 +344,92 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/user.ts:215
+#: service/models/user.ts:218
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user.ts:226
+#: service/models/user.ts:229
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/user.ts:140
+#: service/models/user.ts:142
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr ""
 
-#: service/models/user.ts:205
+#: service/models/user.ts:208
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user.ts:69
+#: service/models/user.ts:71
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/user.ts:102
+#: service/models/user.ts:104
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr ""
 
-#: service/models/user.ts:123
+#: service/models/user.ts:125
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr ""
 
-#: service/models/user.ts:150
+#: service/models/user.ts:152
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user.ts:236
+#: service/models/user.ts:239
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
 
-#: service/models/user.ts:113
+#: service/models/user.ts:115
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user.ts:91
+#: service/models/user.ts:93
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr ""
 
-#: service/models/user.ts:80
+#: service/models/user.ts:82
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/user.ts:170
+#: service/models/user.ts:173
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr ""
 
-#: service/models/user.ts:271
+#: service/models/user.ts:274
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user.ts:246
+#: service/models/user.ts:249
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
 
-#: service/models/user.ts:160
+#: service/models/user.ts:163
 msgctxt "auth.model.User.fields"
 msgid "Timezone"
 msgstr ""
 
-#: service/models/user.ts:256
+#: service/models/user.ts:259
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
 
-#: service/models/user.ts:58
+#: service/models/user.ts:60
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
@@ -567,82 +567,87 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user.ts:813
+#: service/models/user.ts:835
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user.ts:794
+#: service/models/user.ts:291
+msgctxt "service/models/user"
+msgid "Invalid IANA timezone: %s"
+msgstr ""
+
+#: service/models/user.ts:816
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user.ts:551
+#: service/models/user.ts:573
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user.ts:778
+#: service/models/user.ts:800
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user.ts:786
+#: service/models/user.ts:808
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user.ts:523
+#: service/models/user.ts:545
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user.ts:540
+#: service/models/user.ts:562
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr ""
 
-#: service/models/user.ts:371
+#: service/models/user.ts:393
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user.ts:390
+#: service/models/user.ts:412
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user.ts:407
+#: service/models/user.ts:429
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user.ts:458
+#: service/models/user.ts:480
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user.ts:473
+#: service/models/user.ts:495
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user.ts:442
+#: service/models/user.ts:464
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user.ts:426
+#: service/models/user.ts:448
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user.ts:334
+#: service/models/user.ts:356
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user.ts:303
+#: service/models/user.ts:325
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -1447,27 +1452,27 @@ msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr ""
 
-#: web/views/UserFormView.vue:51
+#: web/views/UserFormView.vue:52
 msgctxt "web/views/UserFormView"
 msgid "Copy User"
 msgstr ""
 
-#: web/views/UserFormView.vue:51
+#: web/views/UserFormView.vue:52
 msgctxt "web/views/UserFormView"
 msgid "Create User"
 msgstr ""
 
-#: web/views/UserFormView.vue:51
+#: web/views/UserFormView.vue:52
 msgctxt "web/views/UserFormView"
 msgid "Delete User"
 msgstr ""
 
-#: web/views/UserFormView.vue:51
+#: web/views/UserFormView.vue:52
 msgctxt "web/views/UserFormView"
 msgid "Edit User"
 msgstr ""
 
-#: web/views/UserFormView.vue:34
+#: web/views/UserFormView.vue:35
 msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr ""
@@ -1487,6 +1492,11 @@ msgctxt "web/views/UserFormView"
 msgid "Select Role"
 msgstr ""
 
+#: web/views/UserFormView.vue:34
+msgctxt "web/views/UserFormView"
+msgid "Select a time zone"
+msgstr ""
+
 #: web/views/UserFormView.vue:72
 msgctxt "web/views/UserFormView"
 msgid "Sessions"
@@ -1497,7 +1507,7 @@ msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr ""
 
-#: web/views/UserFormView.vue:51
+#: web/views/UserFormView.vue:52
 msgctxt "web/views/UserFormView"
 msgid "User"
 msgstr ""
