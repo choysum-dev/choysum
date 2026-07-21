@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { Constraint } from '@/core/service/api/constraint';
 import type { QueryCondition, SearchOptions, OrderBy } from '@/core/service/api/query';
 import type { FieldSelection } from '@/core/service/api/selection';
 import { normalizeOffset } from '@/core/service/utils/normalization';
@@ -172,6 +173,12 @@ export default class Schedule extends BaseModel {
     string: _lt('Last Triggered At', { scope: 'task.model.Schedule.fields' }),
   })
   LastTriggeredAt: Date;
+
+  /** Validate and normalize Timezone on generic Create / UpdateById paths. */
+  @Constraint<Schedule>(['Timezone'])
+  validateTimezoneConstraint(): void {
+    this.Timezone = normalizeTimezone(this.Timezone);
+  }
 
   /** Creates a persisted schedule with an initial next-run preview. */
   static async CreateSchedule(

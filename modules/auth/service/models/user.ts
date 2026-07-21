@@ -280,9 +280,9 @@ export default class User extends BaseModel {
    */
   @Constraint<User>(['Timezone'])
   validateTimezoneConstraint(): void {
-    const timezone = String((this as any).Timezone ?? '').trim();
+    const timezone = String(this.Timezone ?? '').trim();
     if (!timezone) {
-      (this as any).Timezone = '';
+      this.Timezone = '';
       return;
     }
     if (!isIanaTimezone(timezone)) {
@@ -291,7 +291,7 @@ export default class User extends BaseModel {
         message: _t('Invalid IANA timezone: %s', { scope: 'service/models/user' }, timezone),
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
-    (this as any).Timezone = timezone;
+    this.Timezone = timezone;
   }
 
   /**

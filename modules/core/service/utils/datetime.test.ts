@@ -93,6 +93,10 @@ test('listIanaTimezoneSelection returns IANA ids as bare selection items', () =>
   expect(items.some(item => item.value === 'Asia/Shanghai')).toBe(true);
 });
 
+test('listIanaTimezoneSelection caches the mapped array', () => {
+  expect(listIanaTimezoneSelection()).toBe(listIanaTimezoneSelection());
+});
+
 // ---------------------------------------------------------------------------
 // parseTimezoneOffsetMinutes
 // ---------------------------------------------------------------------------

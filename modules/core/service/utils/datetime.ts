@@ -51,13 +51,19 @@ export function isIanaTimezone(tz?: string): boolean {
   return Boolean(moment.tz.zone(tz));
 }
 
+let cachedIanaTimezoneSelection: Array<{ value: string; label: string }> | null = null;
+
 /**
  * Lists IANA timezone identifiers as FieldsGet / selection items.
  *
  * Labels are bare technical codes (value === label); do not wrap in `_lt`.
+ * The mapped list is cached for the process lifetime (moment-timezone names are static).
  */
 export function listIanaTimezoneSelection(): Array<{ value: string; label: string }> {
-  return moment.tz.names().map(name => ({ value: name, label: name }));
+  if (!cachedIanaTimezoneSelection) {
+    cachedIanaTimezoneSelection = moment.tz.names().map(name => ({ value: name, label: name }));
+  }
+  return cachedIanaTimezoneSelection;
 }
 
 /**

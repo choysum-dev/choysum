@@ -47,8 +47,7 @@ SPDX-License-Identifier: Apache-2.0
             :store="store"
             prop="Timezone"
             :placeholder="_t('Select a time zone')"
-            :filterable="true"
-            :allow-create="false"
+            :select-props="{ filterable: true, allowCreate: false }"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
