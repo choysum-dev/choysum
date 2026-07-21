@@ -162,7 +162,7 @@ export default class User extends BaseModel {
     size: 64,
     string: _lt('Timezone', { scope: 'auth.model.User.fields' }),
   })
-  Timezone: string;
+  Timezone: string | null;
 
   /**
    * User-specific UI and company-scope preferences.
@@ -276,15 +276,16 @@ export default class User extends BaseModel {
   Roles: Role[];
 
   /**
-   * Empty timezone is allowed; non-empty values must be valid IANA ids.
+   * Cleared / blank timezone is stored as null; non-empty values must be valid IANA ids.
    */
   @Constraint<User>(['Timezone'])
   validateTimezoneConstraint(): void {
-    const timezone = String(this.Timezone ?? '').trim();
-    if (!timezone) {
-      this.Timezone = '';
+    const raw = this.Timezone;
+    if (raw == null || !String(raw).trim()) {
+      this.Timezone = null;
       return;
     }
+    const timezone = String(raw).trim();
     if (!isIanaTimezone(timezone)) {
       throw newAuthError({
         code: AuthErrCode.VALIDATION_FAILED,
@@ -369,7 +370,7 @@ export default class User extends BaseModel {
 
     return {
       language: user.Language,
-      timezone: user.Timezone,
+      timezone: user.Timezone || undefined,
       allowedCompanyIds: companyScope.allowedCompanyIds,
       activeCompanyId: companyScope.activeCompanyId,
       enabledCompanyIds: companyScope.enabledCompanyIds,
