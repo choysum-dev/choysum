@@ -15,6 +15,8 @@ import Token from './token';
 import UserRole from './user_role';
 import { parseModelFullName, parseServiceFullName } from '@/core/service/utils/model_parsing';
 import { uniqStrings } from '@/core/service/utils/normalization';
+import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
+import { Constraint } from '@/core/service/api/constraint';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from './_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_user_authz_shared';
 import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_user_method_access';
@@ -152,14 +154,15 @@ export default class User extends BaseModel {
   Language: string;
 
   /**
-   * Preferred timezone reserved for future localization support.
+   * Preferred IANA timezone for localization and display.
    */
   @Field({
-    type: 'varchar',
-    size: 40,
+    type: 'selection',
+    selection: () => listIanaTimezoneSelection(),
+    size: 64,
     string: _lt('Timezone', { scope: 'auth.model.User.fields' }),
   })
-  Timezone: string;
+  Timezone: string | null;
 
   /**
    * User-specific UI and company-scope preferences.
@@ -273,6 +276,26 @@ export default class User extends BaseModel {
   Roles: Role[];
 
   /**
+   * Cleared / blank timezone is stored as null; non-empty values must be valid IANA ids.
+   */
+  @Constraint<User>(['Timezone'])
+  validateTimezoneConstraint(): void {
+    const raw = this.Timezone;
+    if (raw == null || !String(raw).trim()) {
+      this.Timezone = null;
+      return;
+    }
+    const timezone = String(raw).trim();
+    if (!isIanaTimezone(timezone)) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Invalid IANA timezone: %s', { scope: 'service/models/user' }, timezone),
+      }).withGrpcCode(GrpcCode.InvalidArgument);
+    }
+    this.Timezone = timezone;
+  }
+
+  /**
    * Register a new local user and provision the default auth baseline.
    */
   static async Register(userData: Partial<Insertable<User>>, password: string): Promise<string> {
@@ -347,7 +370,7 @@ export default class User extends BaseModel {
 
     return {
       language: user.Language,
-      timezone: user.Timezone,
+      timezone: user.Timezone || undefined,
       allowedCompanyIds: companyScope.allowedCompanyIds,
       activeCompanyId: companyScope.activeCompanyId,
       enabledCompanyIds: companyScope.enabledCompanyIds,

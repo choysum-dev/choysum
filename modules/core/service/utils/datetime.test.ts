@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { parseISODate, toDate, isIanaTimezone, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
+import { parseISODate, toDate, isIanaTimezone, listIanaTimezoneSelection, parseTimezoneOffsetMinutes } from '@/core/service/utils/datetime';
 
 // ---------------------------------------------------------------------------
 // parseISODate
@@ -79,6 +79,25 @@ test('isIanaTimezone validates known zones', () => {
   expect(isIanaTimezone('')).toBe(false);
   expect(isIanaTimezone()).toBe(false);
   expect(isIanaTimezone('Not/A_Zone')).toBe(false);
+});
+
+// ---------------------------------------------------------------------------
+// listIanaTimezoneSelection
+// ---------------------------------------------------------------------------
+
+test('listIanaTimezoneSelection returns IANA ids as bare selection items', () => {
+  const items = listIanaTimezoneSelection();
+  expect(items.length).toBeGreaterThan(100);
+  expect(items.every(item => item.value && item.value === item.label)).toBe(true);
+  expect(items.some(item => item.value === 'UTC')).toBe(true);
+  expect(items.some(item => item.value === 'Asia/Shanghai')).toBe(true);
+});
+
+test('listIanaTimezoneSelection caches the mapped array', () => {
+  const items = listIanaTimezoneSelection();
+  expect(items).toBe(listIanaTimezoneSelection());
+  expect(Object.isFrozen(items)).toBe(true);
+  expect(Object.isFrozen(items[0])).toBe(true);
 });
 
 // ---------------------------------------------------------------------------
