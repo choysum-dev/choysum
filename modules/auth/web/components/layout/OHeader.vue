@@ -19,15 +19,9 @@ SPDX-License-Identifier: Apache-2.0
       </el-button>
       <template #dropdown>
         <el-dropdown-menu>
-          <el-dropdown-item>
-            <span @click="openPreferences">{{ _t('Profile') }}</span>
-          </el-dropdown-item>
-          <el-dropdown-item>
-            <span @click="openPreferences">{{ _t('Settings') }}</span>
-          </el-dropdown-item>
-          <el-dropdown-item divided>
-            <span @click="handleLogout">{{ _t('Log Out') }}</span>
-          </el-dropdown-item>
+          <el-dropdown-item @click="openPreferences">{{ _t('Profile') }}</el-dropdown-item>
+          <el-dropdown-item @click="openPreferences">{{ _t('Settings') }}</el-dropdown-item>
+          <el-dropdown-item divided @click="handleLogout">{{ _t('Log Out') }}</el-dropdown-item>
         </el-dropdown-menu>
       </template>
     </el-dropdown>

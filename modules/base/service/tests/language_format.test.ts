@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Language from '@/base/service/models/language';
-import { applyGrouping, formatNumberWithLanguage, parseGrouping } from '@/base/service/models/_language_format';
+import {
+  applyGrouping,
+  formatDateWithLanguage,
+  formatNumberWithLanguage,
+  parseGrouping,
+} from '@/base/service/models/_language_format';
 import { companyCode8, uid } from './_helpers';
 
 test('base.language.format: parseGrouping accepts string and array forms', () => {
@@ -107,4 +112,15 @@ test('base.language: Format date uses DateFormat / TimeFormat', async () => {
     Kind: 'datetime',
   });
   expect(formatted).toBe('02/01/2026 15:04');
+});
+
+test('base.language.format: ISO date-only strings stay on the calendar day', () => {
+  // new Date('2026-07-22') is UTC midnight; local getters in US timezones would
+  // otherwise render 2026-07-21. Date-only inputs must stay on 2026-07-22.
+  expect(
+    formatDateWithLanguage('2026-07-22', { DateFormat: 'YYYY-MM-DD' }, 'date')
+  ).toBe('2026-07-22');
+  expect(
+    formatDateWithLanguage('2026-07-22', { DateFormat: 'MM/DD/YYYY' }, 'date')
+  ).toBe('07/22/2026');
 });

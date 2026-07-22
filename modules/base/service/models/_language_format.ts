@@ -114,9 +114,35 @@ export function formatNumberWithLanguage(
   return `${sign}${intPart}${decimalSep}${fracPart || ''}`;
 }
 
+/**
+ * Parse a date/time input for Language formatting.
+ * ISO date-only strings (YYYY-MM-DD) are treated as local calendar dates so
+ * UTC-midnight parsing does not shift the day in negative-offset timezones.
+ */
+export function parseLanguageDateInput(value: Date | string | number): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  if (typeof value === 'number') {
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const text = String(value ?? '').trim();
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (dateOnly) {
+    const y = Number(dateOnly[1]);
+    const m = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    const d = new Date(y, m, day);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function formatDateWithLanguage(value: Date | string | number, fields: LanguageFormatFields, kind: 'date' | 'time' | 'datetime' = 'date'): string {
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) {
+  const d = parseLanguageDateInput(value);
+  if (!d) {
     return String(value);
   }
   const pad = (n: number) => String(n).padStart(2, '0');
