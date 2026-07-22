@@ -266,6 +266,11 @@ func TestHandleTsFileProcessesEntryPointAndPublishesParserResult(t *testing.T) {
 	if !strings.Contains(content, "import './boot';") || !strings.Contains(content, ".mount('#app')") || !strings.Contains(content, "import ") {
 		t.Fatalf("unexpected transformed content: %q", content)
 	}
+	bootIdx := strings.Index(content, "import './boot';")
+	bodyIdx := strings.Index(content, "console.log('start')")
+	if bootIdx < 0 || bodyIdx < 0 || bootIdx < bodyIdx {
+		t.Fatalf("expected non-store entrypoint imports appended after original body, got %q", content)
+	}
 
 	select {
 	case parsed := <-plugin.ParserResultChan:
@@ -542,5 +547,42 @@ func TestWebPluginPrioritizedEntryPointImports(t *testing.T) {
 	plugin.EntryPointImports = nil
 	if got := plugin.prioritizedEntryPointImports(); got != nil {
 		t.Fatalf("prioritizedEntryPointImports(nil) = %#v, want nil", got)
+	}
+}
+
+func TestInjectEntryPointContent_PrependsOnlyStoreImportsBeforeAppReexport(t *testing.T) {
+	plugin := newPluginForTest(t, fakeParser{})
+	plugin.EntryPointImports = []string{
+		"/repo/generated/web/base/stores/index.ts",
+		"/repo/modules/base/web/index.ts",
+	}
+	parserResult := &parser.ParserResult{
+		Exports: map[string]*parser.Export{
+			"default": {ModuleSpecPath: "./app", ReferenceIdent: "default"},
+		},
+	}
+
+	content, changed, err := plugin.injectEntryPointContent(
+		"/repo/modules/web/web/index.ts",
+		"export { default } from './app';\n",
+		parserResult,
+	)
+	if err != nil {
+		t.Fatalf("injectEntryPointContent: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected content to change")
+	}
+
+	storeIdx := strings.Index(content, "import '/repo/generated/web/base/stores/index.ts';")
+	moduleIdx := strings.Index(content, "import '/repo/modules/base/web/index.ts';")
+	reexportIdx := strings.Index(content, "export { default } from './app';")
+	mountIdx := strings.Index(content, ".mount('#app')")
+	if storeIdx < 0 || moduleIdx < 0 || reexportIdx < 0 || mountIdx < 0 {
+		t.Fatalf("missing expected fragments: %q", content)
+	}
+	// stores first (factory registration), then app, then other module entries, then mount
+	if !(storeIdx < reexportIdx && reexportIdx < moduleIdx && moduleIdx < mountIdx) {
+		t.Fatalf("expected stores → app reexport → module entry → mount, got %q", content)
 	}
 }

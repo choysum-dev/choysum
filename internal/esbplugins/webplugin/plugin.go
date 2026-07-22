@@ -219,11 +219,28 @@ func (p *WebPlugin) injectEntryPointContent(path string, content string, parserR
 	changed := false
 
 	if !strings.Contains(content, entryPointImportsMarker) {
-		imports := []string{entryPointImportsMarker}
-		for _, importPath := range p.prioritizedEntryPointImports() {
-			imports = append(imports, fmt.Sprintf("import '%s';", importPath))
+		stores, others := p.splitEntryPointImports()
+		var b strings.Builder
+		b.WriteString(entryPointImportsMarker)
+		b.WriteByte('\n')
+		// Only store side-effect imports are prepended. Module web entrypoints stay
+		// after the app re-export: putting them first creates a circular graph where
+		// `createApp` from core/web/application is still undefined when app.ts runs.
+		for _, importPath := range stores {
+			b.WriteString("import '")
+			b.WriteString(importPath)
+			b.WriteString("';\n")
 		}
-		content += "\n" + strings.Join(imports, "\n")
+		b.WriteString(content)
+		if len(content) > 0 && !strings.HasSuffix(content, "\n") && len(others) > 0 {
+			b.WriteByte('\n')
+		}
+		for _, importPath := range others {
+			b.WriteString("import '")
+			b.WriteString(importPath)
+			b.WriteString("';\n")
+		}
+		content = b.String()
 		changed = true
 	}
 
@@ -240,40 +257,42 @@ func (p *WebPlugin) injectEntryPointContent(path string, content string, parserR
 	return content, changed, nil
 }
 
-func (p *WebPlugin) prioritizedEntryPointImports() []string {
+func isStoreEntryPointImport(importPath string) bool {
+	normalized := strings.ReplaceAll(strings.TrimSpace(importPath), "\\", "/")
+	if normalized == "" {
+		return false
+	}
+	if strings.Contains(normalized, "/api/web/") && strings.Contains(normalized, "/stores/") {
+		return true
+	}
+	normalized = strings.TrimSuffix(normalized, ".ts")
+	return strings.HasSuffix(normalized, "/stores/index")
+}
+
+func (p *WebPlugin) splitEntryPointImports() (stores, others []string) {
 	if len(p.EntryPointImports) == 0 {
-		return nil
+		return nil, nil
 	}
-
-	isStoreImport := func(importPath string) bool {
-		normalized := strings.ReplaceAll(strings.TrimSpace(importPath), "\\", "/")
-		if normalized == "" {
-			return false
-		}
-		if strings.Contains(normalized, "/api/web/") && strings.Contains(normalized, "/stores/") {
-			return true
-		}
-		normalized = strings.TrimSuffix(normalized, ".ts")
-		return strings.HasSuffix(normalized, "/stores/index")
-	}
-
-	// Split imports into store-factory registration imports and everything else.
-	// The store imports should run first so createStoreByModel calls during app
-	// bootstrap can resolve factories deterministically.
-	stores := make([]string, 0, len(p.EntryPointImports))
-	others := make([]string, 0, len(p.EntryPointImports))
+	stores = make([]string, 0, len(p.EntryPointImports))
+	others = make([]string, 0, len(p.EntryPointImports))
 	for _, importPath := range p.EntryPointImports {
-		if isStoreImport(importPath) {
+		if isStoreEntryPointImport(importPath) {
 			stores = append(stores, importPath)
 			continue
 		}
 		others = append(others, importPath)
 	}
+	return stores, others
+}
 
+func (p *WebPlugin) prioritizedEntryPointImports() []string {
+	stores, others := p.splitEntryPointImports()
+	if len(stores) == 0 && len(others) == 0 {
+		return nil
+	}
 	// Keep original relative order within each bucket, then concatenate:
-	// stores first, other app entry imports after. This avoids reordering side
-	// effects more than necessary while still fixing factory registration timing.
-	ordered := make([]string, 0, len(p.EntryPointImports))
+	// stores first, other app entry imports after.
+	ordered := make([]string, 0, len(stores)+len(others))
 	ordered = append(ordered, stores...)
 	ordered = append(ordered, others...)
 	return ordered

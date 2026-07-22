@@ -44,8 +44,11 @@ vi.mock('pinia', () => {
 // through this test's intentionally minimal pinia mock.
 vi.mock('@/web/web/stores/i18nStore', () => {
   return {
-    useI18nStore: () => ({ setLocale: vi.fn(async () => true) }),
-    langToLocale: (lang: string) => lang,
+    useI18nStore: () => ({
+      setUiKey: vi.fn(async () => true),
+      setDisplayOverrides: vi.fn(),
+    }),
+    langToUiKey: (lang: string) => lang,
   };
 });
 

@@ -9,7 +9,6 @@ export { default as Country } from './country';
 export { default as Currency } from './currency';
 export { default as ExchangeRate } from './exchange_rate';
 export { default as Language } from './language';
-export { default as Locale } from './locale';
 export { default as Sequence } from './sequence';
 export { default as SequenceIdempotency } from './sequence_idempotency';
 export { default as State } from './state';

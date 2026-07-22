@@ -4,8 +4,8 @@
 import { LocaleConfig } from './types';
 
 /**
- * Supported locale mapping.
- * Format / Element / dayjs metadata only — not the terminology storage authority.
+ * Supported UI-key catalog: Element / dayjs package names, direction, and soft format fallbacks.
+ * Runtime number/date authority is Language (+ optional Preferences.display); catalog is not SSOT.
  * Terminology comes from Gateway + modules/<module>/i18n/*.po (S4).
  */
 export const SUPPORTED_LOCALES: Record<string, LocaleConfig> = {

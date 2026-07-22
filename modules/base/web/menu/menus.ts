@@ -31,7 +31,6 @@ export const baseMenus: MenuItem[] = [
         defaultRoles: ['terminology.editor'],
         requires: [{ model: 'web.I18n', method: 'SearchTerms' }],
       }),
-      defineMenu('base.menu.locale', { title: _lt('Locale Management'), icon: School, path: '/base/locales', sequence: 100 }),
       defineMenu('base.menu.sequence', { title: _lt('Sequence Management'), icon: School, path: '/base/sequences', sequence: 110 }),
       defineMenu('base.menu.sequence_idempotency', { title: _lt('Sequence Idempotency Record'), icon: School, path: '/base/sequence-idempotencies', sequence: 120 }),
       defineMenu('base.menu.uom_category', { title: _lt('Unit of Measure Category'), icon: School, path: '/base/uom-categories', sequence: 130 }),

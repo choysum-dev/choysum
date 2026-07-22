@@ -40,6 +40,15 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     // Drop the cached permission snapshot.
     state.permissionState.value = null;
 
+    // Clear Preferences.display format overrides (guest sessions use Language/catalog only).
+    try {
+      void import('@/web/web/stores/i18nStore').then(({ useI18nStore }) => {
+        useI18nStore().setDisplayOverrides(null);
+      });
+    } catch {
+      // Best-effort.
+    }
+
     // Clear persisted auth storage in the browser.
     if (isClient) {
       authStorage.clearAuthStorage();
@@ -339,8 +348,20 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       if (!forceRefresh && state.currentUser.value) return true;
 
       // Fetch the current user profile from the backend store.
-      const user = await state.userStore.Browse(userId, ['Id', 'Username', 'Email', 'Language', 'Timezone']);
+      const user = await state.userStore.Browse(userId, ['Id', 'Username', 'Email', 'Language', 'Timezone', 'Preferences']);
       state.currentUser.value = user;
+      // Align FE UI key with User.Language (covers initAuth refresh paths; Login also applies this).
+      try {
+        const { useI18nStore, langToUiKey } = await import('@/web/web/stores/i18nStore');
+        const i18nStore = useI18nStore();
+        const preferredLang = String((user as any)?.Language || '').trim();
+        if (preferredLang) {
+          await i18nStore.setUiKey(langToUiKey(preferredLang));
+        }
+        i18nStore.setDisplayOverrides((user as any)?.Preferences?.display ?? null);
+      } catch {
+        // Best-effort; auth must not fail because of i18n wiring.
+      }
       return true;
     } catch (error) {
       throw wrapAuthError(error, {
@@ -450,6 +471,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     if (state.currentUser.value) {
       (state.currentUser.value as any).Language = terminologyLang;
     }
+    // Sync JWT metadata.language after preference write.
+    await refreshTokenImpl(true);
   }
 
   // Wrap public async actions with shared loading-state bookkeeping.

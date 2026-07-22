@@ -51,7 +51,7 @@ export type AfterLocaleChangeOptions = {
 };
 
 /**
- * Run after a successful setLocale.
+ * Run after a successful setUiKey.
  * Default strategy is location.reload (D9 / S6 freeze).
  */
 export async function afterLocaleChange(options?: AfterLocaleChangeOptions): Promise<void> {

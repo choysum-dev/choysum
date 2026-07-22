@@ -273,38 +273,6 @@ export const languageRoutes: RouteRecordRaw[] = [
   }),
 ];
 
-export const localeRoutes: RouteRecordRaw[] = [
-  defineRoute('base.route.locale_list', {
-    sequence: 10,
-    title: _lt('Locale List'),
-    path: 'base/locales',
-    name: 'LocaleList',
-    component: () => import('../pages/LocaleList.vue'),
-    actions: ['base.action.locale_create', 'base.action.locale_edit', 'base.action.locale_delete', 'base.action.locale_copy'],
-    meta: { requiresAuth: true },
-  }),
-  defineRoute('base.route.locale_detail', {
-    sequence: 20,
-    title: _lt('Locale Details'),
-    path: 'base/locales/:id',
-    name: 'LocaleDetail',
-    component: () => import('../pages/Locale.vue'),
-    props: route => ({ recordId: route.params.id, viewMode: 'display' }),
-    actions: ['base.action.locale_create', 'base.action.locale_edit', 'base.action.locale_delete', 'base.action.locale_copy'],
-    meta: { requiresAuth: true },
-  }),
-  defineRoute('base.route.locale_create', {
-    sequence: 30,
-    title: _lt('Create Locale'),
-    path: 'base/locales/new',
-    name: 'LocaleCreate',
-    component: () => import('../pages/Locale.vue'),
-    props: { viewMode: 'create' },
-    actions: ['base.action.locale_create', 'base.action.locale_edit', 'base.action.locale_delete', 'base.action.locale_copy'],
-    meta: { requiresAuth: true },
-  }),
-];
-
 export const sequenceRoutes: RouteRecordRaw[] = [
   defineRoute('base.route.sequence_list', {
     sequence: 10,
@@ -489,7 +457,6 @@ export const baseRoutes: RouteRecordRaw[] = [
   ...currencyRoutes,
   ...exchangeRateRoutes,
   ...languageRoutes,
-  ...localeRoutes,
   ...sequenceRoutes,
   ...sequenceIdempotencyRoutes,
   ...stateRoutes,

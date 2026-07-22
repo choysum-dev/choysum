@@ -233,16 +233,16 @@ func TestGenerateTsExportsMapPreservesDotDirectories(t *testing.T) {
 	plugin := &BasePlugin{}
 	results := []*parser.ParserResult{
 		{
-			Path: "/Users/demo/.choysum/modules/base/service/models/locale.ts",
+			Path: "/Users/demo/.choysum/modules/base/service/models/language.ts",
 			Exports: map[string]*parser.Export{
-				"default": {ReferenceIdent: "Locale", ModuleSpecPath: "/Users/demo/.choysum/modules/base/service/models/locale"},
+				"default": {ReferenceIdent: "Language", ModuleSpecPath: "/Users/demo/.choysum/modules/base/service/models/language"},
 			},
 		},
 	}
 
 	plugin.generateTsExportsMap(results)
 
-	if _, ok := plugin.TsExports["/Users/demo/.choysum/modules/base/service/models/locale"]; !ok {
+	if _, ok := plugin.TsExports["/Users/demo/.choysum/modules/base/service/models/language"]; !ok {
 		t.Fatalf("expected ts export map key to preserve dot directories, got %#v", plugin.TsExports)
 	}
 	if _, badKey := plugin.TsExports["/Users/demo/"]; badKey {

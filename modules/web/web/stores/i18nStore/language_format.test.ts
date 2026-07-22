@@ -1,0 +1,79 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { describe, expect, it } from 'vitest';
+
+import { SUPPORTED_LOCALES } from './locales';
+import {
+  formatNumberFromConfig,
+  formatFixedDecimalString,
+  parseGrouping,
+  resolveFormatConfig,
+} from './language_format';
+import { formatDateTime, formatNumber } from './utils';
+
+describe('language_format (P2)', () => {
+  it('T2.2: formatNumber uses Language separators and Grouping, not catalog hardcoding', () => {
+    const language = {
+      DecimalSeparator: ',',
+      ThousandSeparator: '.',
+      Grouping: '[3,0]',
+      DateFormat: 'DD/MM/YYYY',
+      TimeFormat: 'HH:mm',
+    };
+    const catalog = SUPPORTED_LOCALES['zh-CN'];
+    const resolved = resolveFormatConfig(catalog.numberFormat, catalog.dateTimeFormat, language, null);
+
+    expect(formatNumber(1234567.89, 'zh-CN', resolved.numberFormat, { digits: 2 })).toBe('1.234.567,89');
+    expect(formatNumberFromConfig(1234567.89, resolved.numberFormat, { digits: 2 })).toBe('1.234.567,89');
+    // Catalog alone would use ',' thousands — Language overlay wins.
+    expect(catalog.numberFormat?.thousandsSeparator).toBe(',');
+    expect(resolved.numberFormat.thousandsSeparator).toBe('.');
+  });
+
+  it('T2.3: Preferences.display.dateFormat overrides Language; unset keeps Language', () => {
+    const language = {
+      DateFormat: 'YYYY-MM-DD',
+      TimeFormat: 'HH:mm:ss',
+    };
+    const withOverride = resolveFormatConfig(null, null, language, { dateFormat: 'DD.MM.YYYY' });
+    expect(withOverride.dateTimeFormat.shortDate).toBe('DD.MM.YYYY');
+    expect(withOverride.dateTimeFormat.shortTime).toBe('HH:mm:ss');
+
+    const without = resolveFormatConfig(null, null, language, null);
+    expect(without.dateTimeFormat.shortDate).toBe('YYYY-MM-DD');
+
+    const date = new Date(2026, 0, 2, 15, 4, 5);
+    expect(formatDateTime(date, withOverride.dateTimeFormat, { type: 'date' })).toBe('02.01.2026');
+    expect(formatDateTime(date, without.dateTimeFormat, { type: 'date' })).toBe('2026-01-02');
+  });
+
+  it('T2.4: catalog still exposes Element/dayjs package names; missing format falls back safely', () => {
+    const zh = SUPPORTED_LOCALES['zh-CN'];
+    expect(zh.elementLocaleCode).toBe('zh-cn');
+    expect(zh.dayjsLocaleCode).toBe('zh-cn');
+
+    const sparse = SUPPORTED_LOCALES.el;
+    expect(sparse.elementLocaleCode).toBe('el');
+    expect(sparse.numberFormat).toBeUndefined();
+
+    const resolved = resolveFormatConfig(sparse.numberFormat, sparse.dateTimeFormat, null, null);
+    expect(() => formatNumber(1234.5, 'el', resolved.numberFormat, { digits: 1 })).not.toThrow();
+    expect(formatNumber(1234.5, 'el', resolved.numberFormat, { digits: 1 })).toBe('1,234.5');
+  });
+
+  it('parseGrouping accepts Odoo-style [3,0]', () => {
+    expect(parseGrouping('[3,0]')).toEqual([3, 0]);
+    expect(parseGrouping([3, 2, 0])).toEqual([3, 2, 0]);
+  });
+
+  it('formats fixed decimal strings without Number conversion', () => {
+    expect(
+      formatFixedDecimalString('1234567.890000000000000000', {
+        thousandsSeparator: '.',
+        decimalSeparator: ',',
+        grouping: [3, 0],
+      })
+    ).toBe('1.234.567,890000000000000000');
+  });
+});

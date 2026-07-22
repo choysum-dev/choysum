@@ -74,6 +74,13 @@ func TestNewDefaultAuthConfig(t *testing.T) {
 	if getRecordRule == nil || !getRecordRule.SkipMethodAccess || !getRecordRule.SkipCompanyFilter || !getRecordRule.SkipFieldRule {
 		t.Fatalf("unexpected GetRecordRuleCondition policy: %#v", getRecordRule)
 	}
+	getActiveLanguages := cfg.GrpcEntryPolicy["base.Language/GetActiveLanguages"]
+	if getActiveLanguages == nil || !getActiveLanguages.SkipAuthentication || !getActiveLanguages.SkipMethodAccess || !getActiveLanguages.SkipCompanyFilter || !getActiveLanguages.SkipFieldRule {
+		t.Fatalf("unexpected GetActiveLanguages policy: %#v", getActiveLanguages)
+	}
+	if len(getActiveLanguages.RecordRuleAllow) == 0 || getActiveLanguages.RecordRuleAllow[0].Model != "base.Language" {
+		t.Fatalf("unexpected GetActiveLanguages record rule allow: %#v", getActiveLanguages.RecordRuleAllow)
+	}
 	bootstrapInitialize := cfg.GrpcEntryPolicy["bootstrap.Workspace/Initialize"]
 	if bootstrapInitialize == nil || !bootstrapInitialize.SkipAuthentication {
 		t.Fatalf("unexpected bootstrap initialize policy: %#v", bootstrapInitialize)

@@ -34,12 +34,13 @@ export interface LocaleConfig {
     decimalDigits: number;
   };
 
-  // Currency format configuration.
+  // Currency format configuration (catalog fallback; Language may override position/spacing).
   currencyFormat?: {
     symbol: string;
     position: 'before' | 'after';
     code: string;
     decimalDigits: number;
+    spacing?: boolean;
   };
 
   // Date and time format configuration.

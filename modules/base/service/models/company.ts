@@ -11,7 +11,6 @@ import Address from './address';
 import Country from './country';
 import Currency from './currency';
 import Language from './language';
-import Locale from './locale';
 import { fail, mapNormalizationToBase } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
@@ -77,14 +76,6 @@ export default class Company extends BaseModel {
     string: _lt('Language', { scope: 'base.model.Company.fields' }),
   })
   LanguageId?: Language;
-
-  @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => Locale },
-    index: true,
-    string: _lt('Locale', { scope: 'base.model.Company.fields' }),
-  })
-  LocaleId?: Locale;
 
   @Field({
     type: 'ManyToOne',

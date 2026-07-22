@@ -6,23 +6,39 @@ import { ref, computed, shallowRef } from 'vue';
 import { isClient } from '@vueuse/core';
 import dayjs from 'dayjs';
 import { SUPPORTED_LOCALES } from './locales';
-import { DEFAULT_ACTIVE_LOCALES } from './active_locales';
+import { DEFAULT_ACTIVE_UI_KEYS } from './active_ui_keys';
 import { SupportedLocale, DateTimeFormatType } from './types';
-import { detectBestLocale, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
+import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
 import { loadElementLocale, loadDayjsLocale, loadVueI18nMessages } from './loader';
-import { localeToLang } from './lang';
+import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
 import { afterLocaleChange } from './locale_remount';
+import { createStoreByModel } from '@/web/web/stores/registry';
+import {
+  resolveFormatConfig,
+  type DisplayFormatOverrides,
+  type LanguageFormatOverlay,
+} from './language_format';
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
-export { localeToLang, langToLocale } from './lang';
+export { uiKeyToLang, langToUiKey } from './lang';
 export { fetchWebTranslations } from './terminology_loader';
 export { fetchTerms, patchTerms, downloadTerminologyPo } from './terms_api';
 
 export { componentHintFromScope } from './component_hint';
 export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './locale_remount';
+export {
+  resolveFormatConfig,
+  formatNumberFromConfig,
+  formatFixedDecimalString,
+  formatCurrencyFromConfig,
+  parseGrouping,
+  applyGrouping,
+  type DisplayFormatOverrides,
+  type LanguageFormatOverlay,
+} from './language_format';
 
 export type { TerminologyLoadResult } from './terminology_loader';
 export type { TermItem, TermsListResponse } from './terms_api';
@@ -51,31 +67,57 @@ export const useI18nStore = defineStore(
     // Last Gateway load result (consumed by app.ts for mergeLocaleMessage).
     const lastTerminologyLoad = shallowRef<TerminologyLoadResult | null>(null);
 
-    // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_LOCALES).
-    const activeLocaleCodes = ref<string[]>([...DEFAULT_ACTIVE_LOCALES]);
+    // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
+    const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
+
+    // Format overlays keyed by POSIX Language.Code (from GetActiveLanguages).
+    const languageFormatByCode = ref<Record<string, LanguageFormatOverlay>>({});
+
+    // Sparse Preferences.display overrides (dateFormat / timeFormat / currency).
+    const displayOverrides = ref<DisplayFormatOverrides | null>(null);
 
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
-      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
-        localeCode.value = detectBestLocale();
-      }
+      const code =
+        localeCode.value && localeCode.value in SUPPORTED_LOCALES
+          ? localeCode.value
+          : detectBestUiKey(activeUiKeys.value);
 
-      const code = localeCode.value;
       const config = SUPPORTED_LOCALES[code];
+      const language = languageFormatByCode.value[uiKeyToLang(code)] || null;
+      const resolved = resolveFormatConfig(
+        config.numberFormat,
+        config.dateTimeFormat,
+        language,
+        displayOverrides.value
+      );
 
       return {
         code,
         ...config,
+        numberFormat: resolved.numberFormat,
+        dateTimeFormat: resolved.dateTimeFormat,
+        currencyFormat: {
+          ...(config.currencyFormat || {
+            symbol: '$',
+            position: 'before' as const,
+            code: 'USD',
+            decimalDigits: 2,
+          }),
+          ...(resolved.currencyCodeOverride ? { code: resolved.currencyCodeOverride } : {}),
+          ...(resolved.currencySymbolPosition ? { position: resolved.currencySymbolPosition } : {}),
+          ...(resolved.currencySymbolSpacing != null ? { spacing: resolved.currencySymbolSpacing } : {}),
+        },
         elementLocale: loadedLocales.value[code] || null,
       };
     });
 
-    const terminologyLang = computed(() => localeToLang(currentLocale.value.code));
+    const terminologyLang = computed(() => uiKeyToLang(currentLocale.value.code));
 
     /**
      * Set the application locale (format UI + Gateway terminology).
      */
-    async function setLocale(locale: string) {
+    async function setUiKey(locale: string) {
       // Check whether the locale is supported for format metadata.
       if (!(locale in SUPPORTED_LOCALES)) {
         console.warn(`Locale ${locale} is not supported`);
@@ -101,7 +143,7 @@ export const useI18nStore = defineStore(
         }
 
         // Load terminology from host Gateway (S4-1); failures fall back to msgid.
-        const lang = localeToLang(locale);
+        const lang = uiKeyToLang(locale);
         const prevHash = terminologyHashByLang.value[lang] || '';
         try {
           const res = await fetchWebTranslations(lang, prevHash || undefined);
@@ -133,6 +175,15 @@ export const useI18nStore = defineStore(
         // Update the active locale.
         localeCode.value = locale as SupportedLocale;
 
+        // Refresh Language format overlays when switching UI key (P2 runtime authority).
+        if (isClient) {
+          try {
+            await loadActiveUiKeysFromServer();
+          } catch {
+            // Best-effort; catalog fallbacks remain.
+          }
+        }
+
         // Configure the dayjs locale.
         const dayjsLocaleCode = SUPPORTED_LOCALES[locale as SupportedLocale].dayjsLocaleCode;
         dayjs.locale(dayjsLocaleCode);
@@ -154,11 +205,11 @@ export const useI18nStore = defineStore(
     /**
      * Restrict the language switcher to active terminology locales.
      */
-    function setActiveLocales(codes: string[]) {
+    function setActiveUiKeys(codes: string[]) {
       const next = codes
         .map(c => String(c || '').trim())
         .filter(c => c && c in SUPPORTED_LOCALES);
-      activeLocaleCodes.value = next.length > 0 ? next : [...DEFAULT_ACTIVE_LOCALES];
+      activeUiKeys.value = next.length > 0 ? next : [...DEFAULT_ACTIVE_UI_KEYS];
     }
 
     /**
@@ -186,7 +237,36 @@ export const useI18nStore = defineStore(
      * Wrapped currency formatter.
      */
     function wrappedFormatCurrency(value: number, currencyCode?: string) {
-      return formatCurrency(value, currentLocale.value.code, currentLocale.value.currencyFormat, currencyCode);
+      const loc = currentLocale.value;
+      return formatCurrency(
+        value,
+        loc.code,
+        {
+          ...loc.currencyFormat,
+          thousandsSeparator: loc.numberFormat?.thousandsSeparator,
+          decimalSeparator: loc.numberFormat?.decimalSeparator,
+          grouping: loc.numberFormat?.grouping,
+        },
+        currencyCode
+      );
+    }
+
+    /**
+     * Apply sparse Preferences.display overrides (or clear with null).
+     */
+    function setDisplayOverrides(overrides: DisplayFormatOverrides | null | undefined) {
+      if (!overrides || typeof overrides !== 'object') {
+        displayOverrides.value = null;
+        return;
+      }
+      displayOverrides.value = {
+        ...(overrides.dateFormat ? { dateFormat: String(overrides.dateFormat) } : {}),
+        ...(overrides.timeFormat ? { timeFormat: String(overrides.timeFormat) } : {}),
+        ...(overrides.currency ? { currency: String(overrides.currency) } : {}),
+      };
+      if (!displayOverrides.value.dateFormat && !displayOverrides.value.timeFormat && !displayOverrides.value.currency) {
+        displayOverrides.value = null;
+      }
     }
 
     /**
@@ -212,7 +292,7 @@ export const useI18nStore = defineStore(
       if (!targetLocale || !(targetLocale in SUPPORTED_LOCALES)) {
         return null;
       }
-      const lang = localeToLang(targetLocale);
+      const lang = uiKeyToLang(targetLocale);
       // Force catalog refresh: omit client hash so Gateway always returns messages.
       try {
         const res = await fetchWebTranslations(lang, undefined);
@@ -247,15 +327,70 @@ export const useI18nStore = defineStore(
     }
 
     /**
+     * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
+     * Also caches format overlays for number/date runtime (P2).
+     * Failures keep DEFAULT_ACTIVE_UI_KEYS and catalog format fallbacks.
+     */
+    async function loadActiveUiKeysFromServer() {
+      try {
+        const languageStore = createStoreByModel('base.Language');
+        const rows = await (languageStore as any).GetActiveLanguages();
+        const formats: Record<string, LanguageFormatOverlay> = {};
+        const keys = (rows || [])
+          .map((row: any) => {
+            const posix = String(row?.Code || row?.code || '').trim();
+            if (posix) {
+              const thousand = row.ThousandSeparator ?? row.thousandSeparator;
+              const decimal = row.DecimalSeparator ?? row.decimalSeparator;
+              const grouping = row.Grouping ?? row.grouping;
+              const dateFormat = row.DateFormat ?? row.dateFormat;
+              const timeFormat = row.TimeFormat ?? row.timeFormat;
+              const firstDay = row.FirstDayOfWeek ?? row.firstDayOfWeek;
+              const symbolPos = row.CurrencySymbolPosition ?? row.currencySymbolPosition;
+              const symbolSpacing = row.CurrencySymbolSpacing ?? row.currencySymbolSpacing;
+              formats[posix] = {
+                DecimalSeparator: decimal != null ? String(decimal) : undefined,
+                ThousandSeparator: thousand != null ? String(thousand) : undefined,
+                Grouping: grouping != null ? String(grouping) : undefined,
+                DateFormat: dateFormat != null ? String(dateFormat) : undefined,
+                TimeFormat: timeFormat != null ? String(timeFormat) : undefined,
+                FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
+                CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
+                CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
+              };
+            }
+            return langToUiKey(posix);
+          })
+          .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+        languageFormatByCode.value = formats;
+        setActiveUiKeys(keys);
+      } catch (error) {
+        console.warn('Failed to load active languages; using defaults', error);
+        languageFormatByCode.value = {};
+        setActiveUiKeys([...DEFAULT_ACTIVE_UI_KEYS]);
+      }
+    }
+
+    /**
      * Initialize locale resources.
      */
     async function initialize() {
       if (isInitialized.value) {
         return;
       }
-      // Detect only when localeCode is missing or invalid.
-      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
-        localeCode.value = detectBestLocale();
+
+      if (isClient) {
+        await loadActiveUiKeysFromServer();
+      }
+
+      // Detect only when localeCode is missing or invalid for the active set.
+      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES) || !activeUiKeys.value.includes(localeCode.value)) {
+        // Honor manual localStorage session: only auto-detect when unset/invalid.
+        if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
+          localeCode.value = detectBestUiKey(activeUiKeys.value);
+        } else if (!activeUiKeys.value.includes(localeCode.value)) {
+          localeCode.value = detectBestUiKey(activeUiKeys.value);
+        }
       }
 
       // During SSR, preload only the default locale.
@@ -266,7 +401,7 @@ export const useI18nStore = defineStore(
       }
 
       // Load the current locale resources on the client.
-      await setLocale(localeCode.value);
+      await setUiKey(localeCode.value);
 
       // Sync the document direction during client initialization.
       if (isClient) {
@@ -287,13 +422,15 @@ export const useI18nStore = defineStore(
       terminologyLang,
       terminologyHashByLang,
       lastTerminologyLoad,
-      activeLocaleCodes,
+      activeUiKeys,
       // Locale support information.
       supportedLocales: Object.keys(SUPPORTED_LOCALES) as SupportedLocale[],
 
       // Locale management methods.
-      setLocale,
-      setActiveLocales,
+      setUiKey,
+      setActiveUiKeys,
+      setDisplayOverrides,
+      loadActiveUiKeysFromServer,
       reloadTerminology,
 
       // Formatting helpers.

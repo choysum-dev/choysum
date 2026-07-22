@@ -344,92 +344,92 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/user.ts:218
+#: service/models/user.ts:219
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user.ts:229
+#: service/models/user.ts:230
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/user.ts:142
+#: service/models/user.ts:143
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr ""
 
-#: service/models/user.ts:208
+#: service/models/user.ts:209
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user.ts:71
+#: service/models/user.ts:72
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/user.ts:104
+#: service/models/user.ts:105
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr ""
 
-#: service/models/user.ts:125
+#: service/models/user.ts:126
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr ""
 
-#: service/models/user.ts:152
+#: service/models/user.ts:153
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user.ts:239
+#: service/models/user.ts:240
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
 
-#: service/models/user.ts:115
+#: service/models/user.ts:116
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user.ts:93
+#: service/models/user.ts:94
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr ""
 
-#: service/models/user.ts:82
+#: service/models/user.ts:83
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/user.ts:173
+#: service/models/user.ts:174
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr ""
 
-#: service/models/user.ts:274
+#: service/models/user.ts:275
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user.ts:249
+#: service/models/user.ts:250
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
 
-#: service/models/user.ts:163
+#: service/models/user.ts:164
 msgctxt "auth.model.User.fields"
 msgid "Timezone"
 msgstr ""
 
-#: service/models/user.ts:259
+#: service/models/user.ts:260
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
 
-#: service/models/user.ts:60
+#: service/models/user.ts:61
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
@@ -567,87 +567,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user.ts:835
+#: service/models/user.ts:866
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user.ts:291
+#: service/models/user.ts:293
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user.ts:816
+#: service/models/user.ts:847
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user.ts:573
+#: service/models/user.ts:322
+msgctxt "service/models/user"
+msgid "Invalid or inactive language: %s"
+msgstr ""
+
+#: service/models/user.ts:604
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user.ts:800
+#: service/models/user.ts:831
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user.ts:808
+#: service/models/user.ts:839
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user.ts:545
+#: service/models/user.ts:576
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user.ts:562
+#: service/models/user.ts:593
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr ""
 
-#: service/models/user.ts:393
+#: service/models/user.ts:424
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user.ts:412
+#: service/models/user.ts:443
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user.ts:429
+#: service/models/user.ts:460
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user.ts:480
+#: service/models/user.ts:511
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user.ts:495
+#: service/models/user.ts:526
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user.ts:464
+#: service/models/user.ts:495
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user.ts:448
+#: service/models/user.ts:479
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user.ts:356
+#: service/models/user.ts:387
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user.ts:325
+#: service/models/user.ts:356
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -722,6 +727,62 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Switch company"
 msgstr ""
 
+#: web/components/preferences/OPreferencesDialog.vue:30
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:144
+#: web/components/preferences/OPreferencesDialog.vue:153
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Cannot update preferences: missing user id"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:2
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Edit Profile"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:176
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Failed to update preferences"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:11
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Language"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:173
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Preferences updated"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:20
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Select timezone"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:24
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Suggested from your browser"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:19
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Timezone"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:31
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Update preferences"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:16
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Using current session language"
+msgstr ""
+
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "Access Control"
@@ -769,7 +830,7 @@ msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr ""
 
-#: web/pages/Login.vue:115
+#: web/pages/Login.vue:116
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr ""
@@ -1055,77 +1116,77 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
 
-#: web/stores/auth/actions.ts:335
+#: web/stores/auth/actions.ts:344
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr ""
 
-#: web/stores/auth/actions.ts:403
+#: web/stores/auth/actions.ts:424
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""
 
-#: web/stores/auth/actions.ts:73
+#: web/stores/auth/actions.ts:82
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:348
+#: web/stores/auth/actions.ts:369
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr ""
 
-#: web/stores/auth/actions.ts:315
+#: web/stores/auth/actions.ts:324
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr ""
 
-#: web/stores/auth/actions.ts:119
+#: web/stores/auth/actions.ts:128
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:185
+#: web/stores/auth/actions.ts:194
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:214
+#: web/stores/auth/actions.ts:223
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:247
+#: web/stores/auth/actions.ts:256
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:271
+#: web/stores/auth/actions.ts:280
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr ""
 
-#: web/stores/auth/actions.ts:86
+#: web/stores/auth/actions.ts:95
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:283
+#: web/stores/auth/actions.ts:292
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:145
+#: web/stores/auth/actions.ts:154
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:236
+#: web/stores/auth/actions.ts:245
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:94
+#: web/stores/auth/actions.ts:103
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""

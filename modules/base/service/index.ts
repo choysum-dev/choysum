@@ -13,5 +13,4 @@ export { default as SequenceIdempotency } from './models/sequence_idempotency';
 export { default as UoMCategory } from './models/uom_category';
 export { default as UoM } from './models/uom';
 export { default as Language } from './models/language';
-export { default as Locale } from './models/locale';
 export { default as Bank } from './models/bank';
