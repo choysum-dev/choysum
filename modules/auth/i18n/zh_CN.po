@@ -711,12 +711,12 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
-#: web/components/preferences/OPreferencesDialog.vue:24
+#: web/components/preferences/OPreferencesDialog.vue:30
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/preferences/OPreferencesDialog.vue
+#: web/components/preferences/OPreferencesDialog.vue:144 web/components/preferences/OPreferencesDialog.vue:153
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
@@ -726,7 +726,7 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Edit Profile"
 msgstr "编辑个人资料"
 
-#: web/components/preferences/OPreferencesDialog.vue:119
+#: web/components/preferences/OPreferencesDialog.vue:176
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
@@ -736,32 +736,32 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Language"
 msgstr "语言"
 
-#: web/components/preferences/OPreferencesDialog.vue:116
+#: web/components/preferences/OPreferencesDialog.vue:173
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
 
-#: web/components/preferences/OPreferencesDialog.vue:17
+#: web/components/preferences/OPreferencesDialog.vue:20
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Select timezone"
 msgstr "选择时区"
 
-#: web/components/preferences/OPreferencesDialog.vue
+#: web/components/preferences/OPreferencesDialog.vue:24
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Suggested from your browser"
 msgstr "根据浏览器建议"
 
-#: web/components/preferences/OPreferencesDialog.vue:16
+#: web/components/preferences/OPreferencesDialog.vue:19
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Timezone"
 msgstr "时区"
 
-#: web/components/preferences/OPreferencesDialog.vue:25
+#: web/components/preferences/OPreferencesDialog.vue:31
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Update preferences"
 msgstr "更新偏好设置"
 
-#: web/components/preferences/OPreferencesDialog.vue
+#: web/components/preferences/OPreferencesDialog.vue:16
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"

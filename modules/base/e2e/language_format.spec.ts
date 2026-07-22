@@ -75,9 +75,22 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
   expect(beforeText).toMatch(/1,234,567/);
 
   // Admin UI: open Chinese (Simplified) language and change separators + Grouping.
+  // Prefer .o-field-display-text (same as exchange-rate list) — getByText can miss VTable cells.
+  const languageSearch = page.waitForResponse(
+    r =>
+      r.url().includes('/base.Language/') &&
+      (r.url().includes('Search') || r.url().includes('Browse')) &&
+      r.request().method() === 'POST' &&
+      r.status() === 200,
+    { timeout: 45_000 }
+  );
   await page.goto(`${baseURL}/web/base/languages`, { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText(/Chinese \(Simplified\)|zh_CN|简体/i).first()).toBeVisible({ timeout: 30_000 });
-  await page.getByText(/Chinese \(Simplified\)|简体/i).first().click();
+  await languageSearch.catch(() => undefined);
+  const languageNameCell = page
+    .locator('.o-field-display-text', { hasText: /Chinese \(Simplified\)|简体|zh_CN/i })
+    .first();
+  await expect(languageNameCell).toBeVisible({ timeout: 45_000 });
+  await languageNameCell.click();
   await expect(page).toHaveURL(/\/web\/base\/languages\/[^/]+/, { timeout: 20_000 });
 
   // Wait until form finished loading (avoids initializeForm resetting edit mode after a premature Edit click).

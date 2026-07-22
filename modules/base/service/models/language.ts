@@ -249,13 +249,14 @@ export default class Language extends BaseModel {
     }
 
     // Language.Code is immutable after create; root en_US cannot be deactivated.
-    if (this.Id && this.Code != null) {
+    // Load prev Code from DB so partial updates (IsActive-only) still enforce en_US.
+    if (this.Id) {
       const existingRows = await Language.Search(['Id', '=', this.Id] as any, { fields: ['Code'], limit: 1 } as any);
       if (!existingRows?.length) {
         return;
       }
       const prev = String((existingRows[0] as any)?.Code || '');
-      if (prev && prev !== String(this.Code)) {
+      if (this.Code != null && prev && prev !== String(this.Code)) {
         raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
       }
       if (prev === 'en_US' && this.IsActive === false) {

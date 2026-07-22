@@ -158,7 +158,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useCssVar, useTextDirection } from '@vueuse/core';
 import { useLayoutStore } from '@/web/web/stores';
 import { useI18nStore, SUPPORTED_LOCALES, type SupportedLocale } from '@/web/web/stores/i18nStore';
@@ -182,19 +182,23 @@ function homeAriaLabel(name: string) {
 
 // Guest vs logged-in: language globe is guest-only (Preferences owns logged-in language).
 const isAuthenticated = ref(false);
+let stopAuthSubscribe: (() => void) | undefined;
 onMounted(async () => {
   try {
     const { useAuthStore } = await import('@/auth/web/stores/auth');
     const authStore = useAuthStore();
     isAuthenticated.value = !!authStore.isAuthenticated;
     // Keep in sync without hard-coupling setup to auth.
-    const stop = (authStore as any).$subscribe?.(() => {
+    stopAuthSubscribe = (authStore as any).$subscribe?.(() => {
       isAuthenticated.value = !!authStore.isAuthenticated;
     });
-    void stop;
   } catch {
     isAuthenticated.value = false;
   }
+});
+onUnmounted(() => {
+  stopAuthSubscribe?.();
+  stopAuthSubscribe = undefined;
 });
 
 

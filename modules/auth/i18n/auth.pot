@@ -727,9 +727,15 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Switch company"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:24
+#: web/components/preferences/OPreferencesDialog.vue:30
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cancel"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:144
+#: web/components/preferences/OPreferencesDialog.vue:153
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Cannot update preferences: missing user id"
 msgstr ""
 
 #: web/components/preferences/OPreferencesDialog.vue:2
@@ -737,7 +743,7 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Edit Profile"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:119
+#: web/components/preferences/OPreferencesDialog.vue:176
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
@@ -747,24 +753,34 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Language"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:116
+#: web/components/preferences/OPreferencesDialog.vue:173
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:17
+#: web/components/preferences/OPreferencesDialog.vue:20
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Select timezone"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:16
+#: web/components/preferences/OPreferencesDialog.vue:24
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Suggested from your browser"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:19
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Timezone"
 msgstr ""
 
-#: web/components/preferences/OPreferencesDialog.vue:25
+#: web/components/preferences/OPreferencesDialog.vue:31
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Update preferences"
+msgstr ""
+
+#: web/components/preferences/OPreferencesDialog.vue:16
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Using current session language"
 msgstr ""
 
 #: web/menu/menus.ts:18

@@ -191,3 +191,34 @@ test('base.language: GetActiveLanguages returns only active rows', async () => {
   expect(rows.some(r => r.Code === `i_${suffix}`.slice(0, 16))).toBe(false);
   expect(rows.some(r => r.Code === `a_${suffix}`.slice(0, 16))).toBe(true);
 });
+
+test('base.language: partial IsActive=false still blocks deactivating en_US', async () => {
+  const enRows = await Language.Search(['Code', '=', 'en_US'] as any, { fields: ['Id', 'Code', 'IsActive'], limit: 1 } as any);
+  expect(enRows?.length).toBe(1);
+  const enId = String((enRows[0] as any).Id);
+
+  // Ensure another active language exists so "last active" is not the failure mode.
+  await Language.Create(
+    {
+      Name: uid('LangKeepActive'),
+      Code: `k_${companyCode8()}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  let error: unknown;
+  try {
+    await Language.UpdateById(enId, { IsActive: false } as any, ['Id', 'IsActive'] as any);
+  } catch (err) {
+    error = err;
+  }
+
+  expect(error instanceof ChoysumError).toBe(true);
+  const oe = error as ChoysumError;
+  expect(String(oe.message || '')).toMatch(/en_US|root language/i);
+
+  const after = await Language.Browse(enId, ['Id', 'IsActive'] as any);
+  expect(Boolean((after as any).IsActive)).toBe(true);
+});

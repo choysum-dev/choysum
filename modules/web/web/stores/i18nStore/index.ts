@@ -78,11 +78,11 @@ export const useI18nStore = defineStore(
 
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
-      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
-        localeCode.value = detectBestUiKey();
-      }
+      const code =
+        localeCode.value && localeCode.value in SUPPORTED_LOCALES
+          ? localeCode.value
+          : detectBestUiKey(activeUiKeys.value);
 
-      const code = localeCode.value;
       const config = SUPPORTED_LOCALES[code];
       const language = languageFormatByCode.value[uiKeyToLang(code)] || null;
       const resolved = resolveFormatConfig(
