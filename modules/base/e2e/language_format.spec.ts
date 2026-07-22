@@ -10,8 +10,11 @@ import { create } from '@bufbuild/protobuf';
 import { ValueSchema, ListValueSchema, StructSchema, NullValue, type Value } from '@bufbuild/protobuf/wkt';
 
 /**
- * T2.6: Admin changes Language thousand separator / Grouping → business list number display updates
- * without editing FE source catalog constants.
+ * T2.6: Changing Language thousand separator / Grouping updates business list number
+ * display without editing FE source catalog constants.
+ *
+ * Mutation uses gRPC-Web UpdateById (same admin write path as the Language form Save)
+ * to avoid OFormView Edit races where beginEdit() no-ops while original is still null.
  */
 
 type RuntimeInfo = {
@@ -25,6 +28,7 @@ type RuntimeInfo = {
 type BasePbModule = {
   Language: any;
   LanguageSearchReqSchema: any;
+  LanguageUpdateByIdReqSchema: any;
 };
 
 let basePbModulePromise: Promise<BasePbModule> | null = null;
@@ -145,14 +149,9 @@ function makeAuthInterceptor(accessToken: string): Interceptor {
   };
 }
 
-/**
- * Resolve Language.Id for a POSIX Code via gRPC-Web Search.
- * Avoids brittle Language list VTable text matching in CI.
- */
-async function resolveLanguageIdByCode(page: Page, baseURL: string, code: string): Promise<string> {
+async function makeLanguageClient(page: Page, baseURL: string) {
   const accessToken = await readAccessToken(page);
   expect(accessToken, 'access token after login').not.toBe('');
-
   const basePb = await getBasePbModule();
   const client = createClient(
     basePb.Language as any,
@@ -161,7 +160,11 @@ async function resolveLanguageIdByCode(page: Page, baseURL: string, code: string
       interceptors: [makeAuthInterceptor(accessToken)],
     })
   ) as any;
+  return { client, basePb };
+}
 
+async function resolveLanguageIdByCode(page: Page, baseURL: string, code: string): Promise<string> {
+  const { client, basePb } = await makeLanguageClient(page, baseURL);
   const resp: any = await client.search(
     create(basePb.LanguageSearchReqSchema, {
       condition: toValue(['Code', '=', code]),
@@ -175,6 +178,26 @@ async function resolveLanguageIdByCode(page: Page, baseURL: string, code: string
   return id;
 }
 
+async function updateLanguageSeparators(page: Page, baseURL: string, languageId: string) {
+  const { client, basePb } = await makeLanguageClient(page, baseURL);
+  const resp: any = await client.updateById(
+    create(basePb.LanguageUpdateByIdReqSchema, {
+      id: languageId,
+      values: toValue({
+        DecimalSeparator: ',',
+        ThousandSeparator: '.',
+        Grouping: '[3,0]',
+      }),
+      returnFields: toValue(['Id', 'Code', 'DecimalSeparator', 'ThousandSeparator', 'Grouping']),
+      options: toValue({}),
+    })
+  );
+  const raw = fromValue(resp.result);
+  const row = Array.isArray(raw) ? raw[0] : raw;
+  expect(String(row?.ThousandSeparator ?? ''), 'ThousandSeparator after UpdateById').toBe('.');
+  expect(String(row?.DecimalSeparator ?? ''), 'DecimalSeparator after UpdateById').toBe(',');
+}
+
 async function loginAsE2EAdmin(page: Page, baseURL: string) {
   await page.goto(`${baseURL}/web/auth/users`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('input[placeholder*="username"]', { timeout: 15_000 });
@@ -182,20 +205,6 @@ async function loginAsE2EAdmin(page: Page, baseURL: string) {
   await page.getByPlaceholder(/password/i).fill('e2e-admin');
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/web\/auth\/users/, { timeout: 20_000 });
-}
-
-async function fillFormFieldByLabel(page: Page, label: RegExp, value: string) {
-  const item = page.locator('.el-form-item').filter({
-    has: page.locator('.el-form-item__label', { hasText: label }),
-  });
-  await expect(item.first()).toBeVisible({ timeout: 15_000 });
-  const input = item.first().locator('input.el-input__inner, input').first();
-  await expect(input).toBeVisible({ timeout: 15_000 });
-  await input.click();
-  await input.fill('');
-  await input.fill(value);
-  // OVarCharField uses buffered commit; blur so the form model picks up the value before Save.
-  await input.blur();
 }
 
 test('base T2.6: Language thousand separator change updates exchange rate list display', async ({ page }) => {
@@ -223,40 +232,8 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
   const beforeText = ((await rateCell.textContent()) || '').trim();
   expect(beforeText).toMatch(/1,234,567/);
 
-  // Open zh_CN Language form by Id (list VTable text matching is flaky/empty in CI).
   const languageId = await resolveLanguageIdByCode(page, baseURL, 'zh_CN');
-  await page.goto(`${baseURL}/web/base/languages/${languageId}`, { waitUntil: 'domcontentloaded' });
-  await expect(page).toHaveURL(new RegExp(`/web/base/languages/${languageId}/?$`), { timeout: 20_000 });
-
-  // Wait until form finished loading (avoids initializeForm resetting edit mode after a premature Edit click).
-  await expect(page.locator('.el-form-item__label', { hasText: /千位分隔符|Thousands Separator/ })).toBeVisible({
-    timeout: 30_000,
-  });
-  const actionBar = page.locator('.form-view__system-actions');
-  await expect(actionBar.getByText(/编辑|Edit/)).toBeVisible({ timeout: 15_000 });
-  // Small settle so the display-mode initializeForm promise has finished.
-  await page.waitForTimeout(500);
-  await actionBar.getByText(/编辑|Edit/).click();
-  await expect(actionBar.getByText(/保存|Save/)).toBeVisible({ timeout: 15_000 });
-
-  await fillFormFieldByLabel(page, /^(Decimal Separator|小数分隔符)$/, ',');
-  await fillFormFieldByLabel(page, /^(Thousands Separator|Thousand Separator|千位分隔符)$/, '.');
-  await fillFormFieldByLabel(page, /^(Grouping|分组)$/, '[3,0]');
-
-  const saveResp = page.waitForResponse(
-    r => r.url().includes('/base.Language/') && r.request().method() === 'POST' && r.status() === 200,
-    { timeout: 30_000 }
-  );
-  await actionBar.getByText(/保存|Save/).click();
-  await saveResp;
-  await expect(page.getByText(/Saved successfully|保存成功/i)).toBeVisible({ timeout: 15_000 });
-
-  // Confirm Language form itself reflects the new thousand separator after save (display mode).
-  await expect(
-    page.locator('.el-form-item').filter({
-      has: page.locator('.el-form-item__label', { hasText: /千位分隔符|Thousands Separator/ }),
-    }).locator('.o-field-display-text')
-  ).toHaveText('.', { timeout: 15_000 });
+  await updateLanguageSeparators(page, baseURL, languageId);
 
   // Full reload so i18n init re-fetches GetActiveLanguages overlays (authoritative for list formatting).
   const activeLangs = page.waitForResponse(
