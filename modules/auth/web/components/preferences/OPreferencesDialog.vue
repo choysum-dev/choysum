@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     v-model="visible"
     :title="_t('Edit Profile')"
     width="520px"
+    append-to-body
     destroy-on-close
     class="o-preferences-dialog"
     @closed="emit('closed')"
