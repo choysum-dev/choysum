@@ -179,21 +179,35 @@ async function ensureCompanies(): Promise<void> {
     const map = new Map(out.map(r => [r.Id, r] as const));
     companies.value = ids.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
   } catch {
-    // Fail soft by falling back to raw ids.
+    // Allow a later popover open (or metadata change) to retry the fetch.
+    fetchedSig.value = '';
     companies.value = ids.map(id => ({ Id: id, DisplayName: '' }));
   }
 }
 
+// Prefetch labels for the header trigger; do not wait until the popover opens.
+watch(
+  allowedCompanyIds,
+  () => {
+    void ensureCompanies();
+  },
+  { immediate: true }
+);
+
 const companyNameById = computed(() => {
   const m = new Map<string, string>();
-  for (const c of companies.value) m.set(String(c.Id), String(c.DisplayName || c.Id));
+  for (const c of companies.value) {
+    const name = String(c.DisplayName || '').trim();
+    if (name) m.set(String(c.Id), name);
+  }
   return m;
 });
 
 const currentCompanyLabel = computed(() => {
   const id = currentActiveCompanyId.value;
   if (!id) return _t('Company');
-  return companyNameById.value.get(id) ?? id;
+  // Prefer DisplayName; avoid flashing the raw company id while labels are still loading.
+  return companyNameById.value.get(id) ?? (companies.value.length ? id : _t('Company'));
 });
 
 const isDirty = computed(() => {
