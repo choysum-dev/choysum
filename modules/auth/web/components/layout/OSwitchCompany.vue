@@ -191,6 +191,8 @@ watch(
 
 const companies = ref<CompanyRow[]>([]);
 const fetchedSig = ref('');
+/** True after a company-label fetch finishes (success or fail-soft). */
+const labelsReady = ref(false);
 
 /**
  * Seed select options from allowed ids immediately so el-select does not drop draft values
@@ -208,8 +210,13 @@ async function ensureCompanies(): Promise<void> {
   const ids = allowedCompanyIds.value;
   seedCompanyOptions(ids);
   const sig = ids.slice().sort().join(',');
-  if (!sig || sig === fetchedSig.value) return;
+  if (!sig) {
+    labelsReady.value = false;
+    return;
+  }
+  if (sig === fetchedSig.value) return;
   fetchedSig.value = sig;
+  labelsReady.value = false;
 
   try {
     const companyStore = getGlobalCompanyStore();
@@ -221,10 +228,12 @@ async function ensureCompanies(): Promise<void> {
     // Preserve the permission-derived company ordering in the selector.
     const map = new Map(out.map(r => [r.Id, r] as const));
     companies.value = ids.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
+    labelsReady.value = true;
   } catch {
     // Allow a later popover open (or metadata change) to retry the fetch.
     fetchedSig.value = '';
     seedCompanyOptions(ids);
+    labelsReady.value = true;
   }
 }
 
@@ -298,10 +307,9 @@ const currentCompanyLabel = computed(() => {
   if (!id) return _t('Company');
   const name = companyNameById.value.get(id);
   if (name) return name;
-  // seedCompanyOptions fills companies before labels arrive; wait for a loaded name
-  // before falling back to the raw id so the header does not flash the id.
-  const hasLoadedNames = companies.value.some(c => !!String(c.DisplayName || '').trim());
-  return hasLoadedNames ? id : _t('Company');
+  // Wait until the label fetch settles before falling back to the raw id.
+  // Do not use fetchedSig here: it is set before Search completes and would flash the id.
+  return labelsReady.value ? id : _t('Company');
 });
 
 /** Normalize enabled scope the same way drafts do (active is always included). */
