@@ -1,0 +1,41 @@
+# PR-Agent repo configuration.
+# Loaded from the default branch; keep this file minimal and project-specific.
+# See: https://docs.pr-agent.ai/usage-guide/configuration_options/
+
+[pr_description]
+enable_pr_diagram = false
+extra_instructions = """\
+- Write the PR title and description in English.
+- Prefer a conventional-commit style title when possible (feat/fix/refactor/docs/test/chore with optional scope).
+- Clearly separate Go core changes (outside modules/) from TypeScript module changes (modules/).
+- Call out any new source files that need SPDX headers, and any license-boundary impact.
+- Mention test coverage: Go tests, TypeScript/unit/e2e as relevant to the change.
+"""
+
+[pr_reviewer]
+require_security_review = true
+extra_instructions = """\
+Choysum is a TypeScript-first ERP framework with a Go core engine and compile-time IMD module extensions.
+
+Focus the review on:
+- Correctness and edge cases in Go core, TypeScript domain services, Vue UI, ORM/query, and gRPC boundaries.
+- License and package boundaries: core outside modules/ is LGPL-3.0-or-later; files under modules/ are Apache-2.0. Flag missing SPDX headers on new source files, and any copying/vendoring of core code into modules/.
+- Module isolation and IMD overrides: prefer extension/override over forking core behavior; avoid breaking compile-time model merging assumptions.
+- API/schema compatibility for public gRPC/.proto contracts and persisted data/ORM migrations.
+- Security for an ERP system: authz, session/token handling, injection, secrets, and unsafe deserialization.
+- Test impact: missing or weakened coverage for changed behavior, especially CLI test-semantics contracts under cmd/ and internal/testing/.
+
+Ignore pure formatting/style nits that gofmt or the existing linters would catch.
+Prefer high-signal findings over exhaustive commentary.
+"""
+
+[pr_code_suggestions]
+focus_only_on_problems = true
+extra_instructions = """\
+- Suggest concrete, minimal fixes only for real bugs, security issues, regressions, or clear maintainability problems.
+- Respect project boundaries: do not suggest moving core framework code into modules/, or the reverse.
+- For new files, remind about the correct SPDX header (LGPL-3.0-or-later outside modules/, Apache-2.0 under modules/).
+- Prefer idiomatic Go and TypeScript that match surrounding code; avoid large refactors unrelated to the PR.
+- Do not suggest adding Node.js runtime dependencies for business-layer TypeScript that is meant to run on the Go-embedded engine.
+- Keep suggestions short and actionable; skip nitpicks already covered by formatters/linters.
+"""
