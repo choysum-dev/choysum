@@ -336,92 +336,92 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr "用户"
 
-#: service/models/user.ts:218
+#: service/models/user.ts:219
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr "可访问公司"
 
-#: service/models/user.ts:229
+#: service/models/user.ts:230
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/user.ts:142
+#: service/models/user.ts:143
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr "头像"
 
-#: service/models/user.ts:208
+#: service/models/user.ts:209
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/user.ts:71
+#: service/models/user.ts:72
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/user.ts:104
+#: service/models/user.ts:105
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr "名"
 
-#: service/models/user.ts:125
+#: service/models/user.ts:126
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr "全名"
 
-#: service/models/user.ts:152
+#: service/models/user.ts:153
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/user.ts:239
+#: service/models/user.ts:240
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr "最近登录"
 
-#: service/models/user.ts:115
+#: service/models/user.ts:116
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr "姓"
 
-#: service/models/user.ts:93
+#: service/models/user.ts:94
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr "密码哈希"
 
-#: service/models/user.ts:82
+#: service/models/user.ts:83
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/user.ts:173
+#: service/models/user.ts:174
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: service/models/user.ts:274
+#: service/models/user.ts:275
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr "角色"
 
-#: service/models/user.ts:249
+#: service/models/user.ts:250
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr "会话"
 
-#: service/models/user.ts:163
+#: service/models/user.ts:164
 msgctxt "auth.model.User.fields"
 msgid "Timezone"
 msgstr "时区"
 
-#: service/models/user.ts:259
+#: service/models/user.ts:260
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr "令牌"
 
-#: service/models/user.ts:60
+#: service/models/user.ts:61
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr "用户名"
@@ -551,87 +551,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr "userId 不能为空"
 
-#: service/models/user.ts:835
+#: service/models/user.ts:866
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
 
-#: service/models/user.ts:291
+#: service/models/user.ts:293
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user.ts:816
+#: service/models/user.ts:847
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
 
-#: service/models/user.ts:573
+#: service/models/user.ts:322
+msgctxt "service/models/user"
+msgid "Invalid or inactive language: %s"
+msgstr "无效或未启用的语言：%s"
+
+#: service/models/user.ts:604
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user.ts:800
+#: service/models/user.ts:831
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user.ts:808
+#: service/models/user.ts:839
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user.ts:545
+#: service/models/user.ts:576
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
 
-#: service/models/user.ts:562
+#: service/models/user.ts:593
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr "令牌不能为空"
 
-#: service/models/user.ts:393
+#: service/models/user.ts:424
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user.ts:412
+#: service/models/user.ts:443
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user.ts:429
+#: service/models/user.ts:460
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr "activeCompanyId 不能为空"
 
-#: service/models/user.ts:480
+#: service/models/user.ts:511
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr "activeCompanyId 不在允许的公司范围内"
 
-#: service/models/user.ts:495
+#: service/models/user.ts:526
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr "activeCompanyId 必须包含在 enabledCompanyIds 中"
 
-#: service/models/user.ts:464
+#: service/models/user.ts:495
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr "enabledCompanyIds 包含未授权的公司"
 
-#: service/models/user.ts:448
+#: service/models/user.ts:479
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
 
-#: service/models/user.ts:356
+#: service/models/user.ts:387
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr "登录失败：无法创建令牌对"
 
-#: service/models/user.ts:325
+#: service/models/user.ts:356
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr "用户注册失败"
@@ -706,6 +711,46 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
+#: web/components/preferences/OPreferencesDialog.vue:24
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/preferences/OPreferencesDialog.vue:2
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Edit Profile"
+msgstr "编辑个人资料"
+
+#: web/components/preferences/OPreferencesDialog.vue:119
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Failed to update preferences"
+msgstr "更新偏好设置失败"
+
+#: web/components/preferences/OPreferencesDialog.vue:11
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Language"
+msgstr "语言"
+
+#: web/components/preferences/OPreferencesDialog.vue:116
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Preferences updated"
+msgstr "偏好设置已更新"
+
+#: web/components/preferences/OPreferencesDialog.vue:17
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Select timezone"
+msgstr "选择时区"
+
+#: web/components/preferences/OPreferencesDialog.vue:16
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Timezone"
+msgstr "时区"
+
+#: web/components/preferences/OPreferencesDialog.vue:25
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Update preferences"
+msgstr "更新偏好设置"
+
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "Access Control"
@@ -751,7 +796,7 @@ msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
 
-#: web/pages/Login.vue:115
+#: web/pages/Login.vue:116
 msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
@@ -1031,77 +1076,77 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/stores/auth/actions.ts:335
+#: web/stores/auth/actions.ts:344
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr "无法加载用户详情：缺少 userId"
 
-#: web/stores/auth/actions.ts:403
+#: web/stores/auth/actions.ts:424
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr "初始化认证失败"
 
-#: web/stores/auth/actions.ts:73
+#: web/stores/auth/actions.ts:82
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr "加载权限状态失败"
 
-#: web/stores/auth/actions.ts:348
+#: web/stores/auth/actions.ts:369
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr "加载用户详情失败"
 
-#: web/stores/auth/actions.ts:315
+#: web/stores/auth/actions.ts:324
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr "刷新令牌失败"
 
-#: web/stores/auth/actions.ts:119
+#: web/stores/auth/actions.ts:128
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr "切换公司范围失败"
 
-#: web/stores/auth/actions.ts:185
+#: web/stores/auth/actions.ts:194
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr "登录响应无效"
 
-#: web/stores/auth/actions.ts:214
+#: web/stores/auth/actions.ts:223
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr "登录失败"
 
-#: web/stores/auth/actions.ts:247
+#: web/stores/auth/actions.ts:256
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr "退出失败，但本地状态已清除"
 
-#: web/stores/auth/actions.ts:271
+#: web/stores/auth/actions.ts:280
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr "没有可用的刷新令牌"
 
-#: web/stores/auth/actions.ts:86
+#: web/stores/auth/actions.ts:95
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr "未登录，无法切换公司范围"
 
-#: web/stores/auth/actions.ts:283
+#: web/stores/auth/actions.ts:292
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr "刷新令牌返回了无效响应"
 
-#: web/stores/auth/actions.ts:145
+#: web/stores/auth/actions.ts:154
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr "注册失败"
 
-#: web/stores/auth/actions.ts:236
+#: web/stores/auth/actions.ts:245
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr "服务端退出失败，但本地状态已清除"
 
-#: web/stores/auth/actions.ts:94
+#: web/stores/auth/actions.ts:103
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr "切换公司范围返回了无效响应"
@@ -1515,351 +1560,3 @@ msgstr "用户"
 msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Application Scope"
-#~ msgstr "应用范围"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Built-in"
-#~ msgstr "内置"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Code"
-#~ msgstr "编码"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Create"
-#~ msgstr "创建"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Delete"
-#~ msgstr "删除"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Description"
-#~ msgstr "描述"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Display Name"
-#~ msgstr "显示名称"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Field"
-#~ msgstr "字段"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Filter Condition"
-#~ msgstr "过滤条件"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Full Name"
-#~ msgstr "全名"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "ID"
-#~ msgstr "ID"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Mode"
-#~ msgstr "模式"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Model"
-#~ msgstr "模型"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Name"
-#~ msgstr "名称"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Read"
-#~ msgstr "读"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Service"
-#~ msgstr "服务"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "UI Resource"
-#~ msgstr "界面资源"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Updated At"
-#~ msgstr "更新时间"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Username"
-#~ msgstr "用户名"
-
-#~ msgctxt "web/views/RoleFormView"
-#~ msgid "Write"
-#~ msgstr "写"
-
-#~ msgctxt "web/views/RoleListView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/RoleListView"
-#~ msgid "Built-in"
-#~ msgstr "内置"
-
-#~ msgctxt "web/views/RoleListView"
-#~ msgid "Code"
-#~ msgstr "编码"
-
-#~ msgctxt "web/views/RoleListView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/RoleListView"
-#~ msgid "Description"
-#~ msgstr "描述"
-
-#~ msgctxt "web/views/RoleListView"
-#~ msgid "Name"
-#~ msgstr "名称"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Access Token ID"
-#~ msgstr "访问令牌 ID"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Device Info"
-#~ msgstr "设备信息"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Expires At"
-#~ msgstr "过期时间"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "IP Address"
-#~ msgstr "IP 地址"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Last Activity"
-#~ msgstr "最近活动"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Status"
-#~ msgstr "状态"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "Updated At"
-#~ msgstr "更新时间"
-
-#~ msgctxt "web/views/SessionFormView"
-#~ msgid "User"
-#~ msgstr "用户"
-
-#~ msgctxt "web/views/SessionListView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/SessionListView"
-#~ msgid "Expires At"
-#~ msgstr "过期时间"
-
-#~ msgctxt "web/views/SessionListView"
-#~ msgid "IP Address"
-#~ msgstr "IP 地址"
-
-#~ msgctxt "web/views/SessionListView"
-#~ msgid "Last Activity"
-#~ msgstr "最近活动"
-
-#~ msgctxt "web/views/SessionListView"
-#~ msgid "Status"
-#~ msgstr "状态"
-
-#~ msgctxt "web/views/SessionListView"
-#~ msgid "User"
-#~ msgstr "用户"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Display Name"
-#~ msgstr "显示名称"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Expires At"
-#~ msgstr "过期时间"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Revocation Reason"
-#~ msgstr "撤销原因"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Revoked"
-#~ msgstr "已撤销"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Revoked At"
-#~ msgstr "撤销时间"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Token ID"
-#~ msgstr "令牌 ID"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Type"
-#~ msgstr "类型"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "Updated At"
-#~ msgstr "更新时间"
-
-#~ msgctxt "web/views/TokenFormView"
-#~ msgid "User"
-#~ msgstr "用户"
-
-#~ msgctxt "web/views/TokenKanbanView"
-#~ msgid "User"
-#~ msgstr "用户"
-
-#~ msgctxt "web/views/TokenListView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/TokenListView"
-#~ msgid "Expires At"
-#~ msgstr "过期时间"
-
-#~ msgctxt "web/views/TokenListView"
-#~ msgid "Revoked"
-#~ msgstr "已撤销"
-
-#~ msgctxt "web/views/TokenListView"
-#~ msgid "Revoked At"
-#~ msgstr "撤销时间"
-
-#~ msgctxt "web/views/TokenListView"
-#~ msgid "Type"
-#~ msgstr "类型"
-
-#~ msgctxt "web/views/TokenListView"
-#~ msgid "User"
-#~ msgstr "用户"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Avatar"
-#~ msgstr "头像"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Company"
-#~ msgstr "公司"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Email"
-#~ msgstr "邮箱"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "First Name"
-#~ msgstr "名"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Full Name"
-#~ msgstr "全名"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "ID"
-#~ msgstr "ID"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Language"
-#~ msgstr "语言"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Last Activity"
-#~ msgstr "最近活动"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Last Login"
-#~ msgstr "最近登录"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Last Name"
-#~ msgstr "姓"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Name"
-#~ msgstr "名称"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Phone"
-#~ msgstr "电话"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Preferences"
-#~ msgstr "偏好设置"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Status"
-#~ msgstr "状态"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Timezone"
-#~ msgstr "时区"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Type"
-#~ msgstr "类型"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Updated At"
-#~ msgstr "更新时间"
-
-#~ msgctxt "web/views/UserFormView"
-#~ msgid "Username"
-#~ msgstr "用户名"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Avatar"
-#~ msgstr "头像"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Company"
-#~ msgstr "公司"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Email"
-#~ msgstr "邮箱"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Full Name"
-#~ msgstr "全名"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Phone"
-#~ msgstr "电话"
-
-#~ msgctxt "web/views/UserListView"
-#~ msgid "Username"
-#~ msgstr "用户名"

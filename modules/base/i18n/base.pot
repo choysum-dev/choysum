@@ -102,7 +102,7 @@ msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/company.ts:100
+#: service/models/company.ts:92
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr ""
@@ -112,12 +112,12 @@ msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr ""
 
-#: service/models/company.ts:34
+#: service/models/company.ts:33
 msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/company.ts:92
+#: service/models/company.ts:84
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr ""
@@ -127,17 +127,12 @@ msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/company.ts:84
-msgctxt "base.model.Company.fields"
-msgid "Locale"
-msgstr ""
-
-#: service/models/company.ts:24
+#: service/models/company.ts:23
 msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/company.ts:42
+#: service/models/company.ts:41
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr ""
@@ -237,98 +232,83 @@ msgctxt "base.model.ExchangeRate.fields"
 msgid "Exchange Rate"
 msgstr ""
 
-#: service/models/language.ts:36
+#: service/models/language.ts:68
 msgctxt "base.model.Language.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/language.ts:27
+#: service/models/language.ts:129
+msgctxt "base.model.Language.fields"
+msgid "After amount"
+msgstr ""
+
+#: service/models/language.ts:128
+msgctxt "base.model.Language.fields"
+msgid "Before amount"
+msgstr ""
+
+#: service/models/language.ts:59
 msgctxt "base.model.Language.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/language.ts:55
+#: service/models/language.ts:133
 msgctxt "base.model.Language.fields"
-msgid "Default Locale"
+msgid "Currency Symbol Position"
 msgstr ""
 
-#: service/models/language.ts:47
+#: service/models/language.ts:108
+msgctxt "base.model.Language.fields"
+msgid "Date Format"
+msgstr ""
+
+#: service/models/language.ts:86
+msgctxt "base.model.Language.fields"
+msgid "Decimal Separator"
+msgstr ""
+
+#: service/models/language.ts:79
 msgctxt "base.model.Language.fields"
 msgid "Direction"
 msgstr ""
 
-#: service/models/language.ts:43
+#: service/models/language.ts:121
+msgctxt "base.model.Language.fields"
+msgid "First Day of Week"
+msgstr ""
+
+#: service/models/language.ts:101
+msgctxt "base.model.Language.fields"
+msgid "Grouping"
+msgstr ""
+
+#: service/models/language.ts:75
 msgctxt "base.model.Language.fields"
 msgid "Left to right"
 msgstr ""
 
-#: service/models/language.ts:17
+#: service/models/language.ts:49
 msgctxt "base.model.Language.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/language.ts:44
+#: service/models/language.ts:76
 msgctxt "base.model.Language.fields"
 msgid "Right to left"
 msgstr ""
 
-#: service/models/locale.ts:35
-msgctxt "base.model.Locale.fields"
-msgid "Active"
-msgstr ""
-
-#: service/models/locale.ts:77
-msgctxt "base.model.Locale.fields"
-msgid "After amount"
-msgstr ""
-
-#: service/models/locale.ts:76
-msgctxt "base.model.Locale.fields"
-msgid "Before amount"
-msgstr ""
-
-#: service/models/locale.ts:26
-msgctxt "base.model.Locale.fields"
-msgid "Code"
-msgstr ""
-
-#: service/models/locale.ts:81
-msgctxt "base.model.Locale.fields"
-msgid "Currency Symbol Position"
-msgstr ""
-
-#: service/models/locale.ts:56
-msgctxt "base.model.Locale.fields"
-msgid "Date Format"
-msgstr ""
-
-#: service/models/locale.ts:42
-msgctxt "base.model.Locale.fields"
-msgid "Decimal Separator"
-msgstr ""
-
-#: service/models/locale.ts:69
-msgctxt "base.model.Locale.fields"
-msgid "First Day of Week"
-msgstr ""
-
-#: service/models/locale.ts:16
-msgctxt "base.model.Locale.fields"
-msgid "Name"
-msgstr ""
-
-#: service/models/locale.ts:88
-msgctxt "base.model.Locale.fields"
+#: service/models/language.ts:140
+msgctxt "base.model.Language.fields"
 msgid "Symbol Spacing"
 msgstr ""
 
-#: service/models/locale.ts:49
-msgctxt "base.model.Locale.fields"
+#: service/models/language.ts:93
+msgctxt "base.model.Language.fields"
 msgid "Thousands Separator"
 msgstr ""
 
-#: service/models/locale.ts:63
-msgctxt "base.model.Locale.fields"
+#: service/models/language.ts:115
+msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr ""
 
@@ -700,42 +680,42 @@ msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr ""
 
-#: service/models/company.ts:107
+#: service/models/company.ts:99
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/company.ts:131
+#: service/models/company.ts:123
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr ""
 
-#: service/models/company.ts:122
+#: service/models/company.ts:114
 msgctxt "service/models/company"
 msgid "Company Name must be unique"
 msgstr ""
 
-#: service/models/company.ts:140
+#: service/models/company.ts:132
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr ""
 
-#: service/models/company.ts:151
+#: service/models/company.ts:143
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/company.ts:174
+#: service/models/company.ts:166
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr ""
 
-#: service/models/company.ts:161
+#: service/models/company.ts:153
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr ""
 
-#: service/models/company.ts:148
+#: service/models/company.ts:140
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr ""
@@ -794,6 +774,31 @@ msgstr ""
 #: service/models/exchange_rate.ts:108
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
+msgstr ""
+
+#: service/models/language.ts:246
+msgctxt "service/models/language"
+msgid "At least one language must stay active"
+msgstr ""
+
+#: service/models/language.ts:189
+msgctxt "service/models/language"
+msgid "Code or LanguageId is required"
+msgstr ""
+
+#: service/models/language.ts:259
+msgctxt "service/models/language"
+msgid "Language code cannot be changed"
+msgstr ""
+
+#: service/models/language.ts:210
+msgctxt "service/models/language"
+msgid "Language not found"
+msgstr ""
+
+#: service/models/language.ts:262
+msgctxt "service/models/language"
+msgid "The root language en_US cannot be deactivated"
 msgstr ""
 
 #: service/models/sequence_idempotency.ts:129
@@ -916,22 +921,17 @@ msgctxt "web/menu/menus"
 msgid "Language Management"
 msgstr ""
 
-#: web/menu/menus.ts:34
-msgctxt "web/menu/menus"
-msgid "Locale Management"
-msgstr ""
-
 #: web/menu/menus.ts:13
 msgctxt "web/menu/menus"
 msgid "Master Data"
 msgstr ""
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:35
 msgctxt "web/menu/menus"
 msgid "Sequence Idempotency Record"
 msgstr ""
 
-#: web/menu/menus.ts:35
+#: web/menu/menus.ts:34
 msgctxt "web/menu/menus"
 msgid "Sequence Management"
 msgstr ""
@@ -946,12 +946,12 @@ msgctxt "web/menu/menus"
 msgid "Terminology Editor"
 msgstr ""
 
-#: web/menu/menus.ts:38
+#: web/menu/menus.ts:37
 msgctxt "web/menu/menus"
 msgid "Unit of Measure"
 msgstr ""
 
-#: web/menu/menus.ts:37
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Unit of Measure Category"
 msgstr ""
@@ -1041,7 +1041,7 @@ msgctxt "web/route/routes"
 msgid "Create Exchange Rate"
 msgstr ""
 
-#: web/route/routes.ts:372
+#: web/route/routes.ts:340
 msgctxt "web/route/routes"
 msgid "Create Idempotency Record"
 msgstr ""
@@ -1053,25 +1053,20 @@ msgstr ""
 
 #: web/route/routes.ts:298
 msgctxt "web/route/routes"
-msgid "Create Locale"
-msgstr ""
-
-#: web/route/routes.ts:330
-msgctxt "web/route/routes"
 msgid "Create Sequence"
 msgstr ""
 
-#: web/route/routes.ts:409
+#: web/route/routes.ts:377
 msgctxt "web/route/routes"
 msgid "Create State"
 msgstr ""
 
-#: web/route/routes.ts:441
+#: web/route/routes.ts:409
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure"
 msgstr ""
 
-#: web/route/routes.ts:473
+#: web/route/routes.ts:441
 msgctxt "web/route/routes"
 msgid "Create Unit of Measure Category"
 msgstr ""
@@ -1096,7 +1091,7 @@ msgctxt "web/route/routes"
 msgid "Exchange Rate List"
 msgstr ""
 
-#: web/route/routes.ts:357
+#: web/route/routes.ts:325
 msgctxt "web/route/routes"
 msgid "Idempotency Record Details"
 msgstr ""
@@ -1113,35 +1108,25 @@ msgstr ""
 
 #: web/route/routes.ts:288
 msgctxt "web/route/routes"
-msgid "Locale Details"
-msgstr ""
-
-#: web/route/routes.ts:279
-msgctxt "web/route/routes"
-msgid "Locale List"
-msgstr ""
-
-#: web/route/routes.ts:320
-msgctxt "web/route/routes"
 msgid "Sequence Details"
-msgstr ""
-
-#: web/route/routes.ts:343
-msgctxt "web/route/routes"
-msgid "Sequence Idempotency Record"
 msgstr ""
 
 #: web/route/routes.ts:311
 msgctxt "web/route/routes"
+msgid "Sequence Idempotency Record"
+msgstr ""
+
+#: web/route/routes.ts:279
+msgctxt "web/route/routes"
 msgid "Sequence List"
 msgstr ""
 
-#: web/route/routes.ts:399
+#: web/route/routes.ts:367
 msgctxt "web/route/routes"
 msgid "State Details"
 msgstr ""
 
-#: web/route/routes.ts:390
+#: web/route/routes.ts:358
 msgctxt "web/route/routes"
 msgid "State List"
 msgstr ""
@@ -1151,22 +1136,22 @@ msgctxt "web/route/routes"
 msgid "Terminology Editor"
 msgstr ""
 
-#: web/route/routes.ts:454
+#: web/route/routes.ts:422
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category"
 msgstr ""
 
-#: web/route/routes.ts:463
+#: web/route/routes.ts:431
 msgctxt "web/route/routes"
 msgid "Unit of Measure Category Details"
 msgstr ""
 
-#: web/route/routes.ts:431
+#: web/route/routes.ts:399
 msgctxt "web/route/routes"
 msgid "Unit of Measure Details"
 msgstr ""
 
-#: web/route/routes.ts:422
+#: web/route/routes.ts:390
 msgctxt "web/route/routes"
 msgid "Unit of Measure List"
 msgstr ""
@@ -1386,32 +1371,32 @@ msgctxt "web/views/CompanyFormView"
 msgid "Basic Information"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:42
 msgctxt "web/views/CompanyFormView"
 msgid "Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:42
 msgctxt "web/views/CompanyFormView"
 msgid "Copy Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:42
 msgctxt "web/views/CompanyFormView"
 msgid "Create Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:42
 msgctxt "web/views/CompanyFormView"
 msgid "Delete Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:43
+#: web/views/CompanyFormView.vue:42
 msgctxt "web/views/CompanyFormView"
 msgid "Edit Company"
 msgstr ""
 
-#: web/views/CompanyFormView.vue:26
+#: web/views/CompanyFormView.vue:25
 msgctxt "web/views/CompanyFormView"
 msgid "Required"
 msgstr ""
@@ -1681,6 +1666,11 @@ msgctxt "web/views/LanguageFormView"
 msgid "Edit Language"
 msgstr ""
 
+#: web/views/LanguageFormView.vue:15
+msgctxt "web/views/LanguageFormView"
+msgid "Format"
+msgstr ""
+
 #: web/views/LanguageFormView.vue:25
 msgctxt "web/views/LanguageFormView"
 msgid "Language"
@@ -1696,99 +1686,29 @@ msgctxt "web/views/LanguageFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:11
-msgctxt "web/views/LanguageFormView"
-msgid "Select Locale"
-msgstr ""
-
-#: web/views/LanguageListView.vue:21
+#: web/views/LanguageListView.vue:20
 msgctxt "web/views/LanguageListView"
 msgid "Copy Language"
 msgstr ""
 
-#: web/views/LanguageListView.vue:21
+#: web/views/LanguageListView.vue:20
 msgctxt "web/views/LanguageListView"
 msgid "Create Language"
 msgstr ""
 
-#: web/views/LanguageListView.vue:21
+#: web/views/LanguageListView.vue:20
 msgctxt "web/views/LanguageListView"
 msgid "Delete Language"
 msgstr ""
 
-#: web/views/LanguageListView.vue:21
+#: web/views/LanguageListView.vue:20
 msgctxt "web/views/LanguageListView"
 msgid "Edit Language"
 msgstr ""
 
-#: web/views/LanguageListView.vue:21
+#: web/views/LanguageListView.vue:20
 msgctxt "web/views/LanguageListView"
 msgid "Language"
-msgstr ""
-
-#: web/views/LanguageListView.vue:8
-msgctxt "web/views/LanguageListView"
-msgid "Locale"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:24
-msgctxt "web/views/LocaleFormView"
-msgid "Copy Locale"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:24
-msgctxt "web/views/LocaleFormView"
-msgid "Create Locale"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:24
-msgctxt "web/views/LocaleFormView"
-msgid "Delete Locale"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:24
-msgctxt "web/views/LocaleFormView"
-msgid "Edit Locale"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:24
-msgctxt "web/views/LocaleFormView"
-msgid "Locale"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:4
-msgctxt "web/views/LocaleFormView"
-msgid "Locale Information"
-msgstr ""
-
-#: web/views/LocaleFormView.vue:19
-msgctxt "web/views/LocaleFormView"
-msgid "Required"
-msgstr ""
-
-#: web/views/LocaleListView.vue:20
-msgctxt "web/views/LocaleListView"
-msgid "Copy Locale"
-msgstr ""
-
-#: web/views/LocaleListView.vue:20
-msgctxt "web/views/LocaleListView"
-msgid "Create Locale"
-msgstr ""
-
-#: web/views/LocaleListView.vue:20
-msgctxt "web/views/LocaleListView"
-msgid "Delete Locale"
-msgstr ""
-
-#: web/views/LocaleListView.vue:20
-msgctxt "web/views/LocaleListView"
-msgid "Edit Locale"
-msgstr ""
-
-#: web/views/LocaleListView.vue:20
-msgctxt "web/views/LocaleListView"
-msgid "Locale"
 msgstr ""
 
 #: web/views/SequenceFormView.vue:26
