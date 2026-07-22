@@ -116,6 +116,29 @@ export function resolveFormatConfig(
   };
 }
 
+/**
+ * Format an already-quantized decimal string (e.g. Decimal.toFixed(scale)) with Language separators.
+ * Prefer this over Number() for high-scale fields to avoid float noise.
+ */
+export function formatFixedDecimalString(
+  fixed: string,
+  config: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[] }
+): string {
+  const text = String(fixed ?? '').trim();
+  if (!text) {
+    return '';
+  }
+  const decimalSep = config.decimalSeparator ?? '.';
+  const thousandSep = config.thousandsSeparator ?? ',';
+  const grouping = config.grouping?.length ? config.grouping : [3, 0];
+  const negative = text.startsWith('-');
+  const body = negative ? text.slice(1) : text;
+  const [intRaw, fracPart] = body.split('.');
+  const intPart = applyGrouping(intRaw || '0', grouping, thousandSep);
+  const out = fracPart != null ? `${intPart}${decimalSep}${fracPart}` : intPart;
+  return negative ? `-${out}` : out;
+}
+
 export function formatNumberFromConfig(
   value: number,
   config: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[]; decimalDigits?: number },
@@ -125,19 +148,10 @@ export function formatNumberFromConfig(
     return String(value);
   }
   const digits = options?.digits ?? config.decimalDigits ?? 2;
-  const decimalSep = config.decimalSeparator ?? '.';
-  const thousandSep = config.thousandsSeparator ?? ',';
-  const grouping = config.grouping?.length ? config.grouping : [3, 0];
-
   const sign = value < 0 ? '-' : '';
   const abs = Math.abs(value);
   const fixed = abs.toFixed(digits);
-  const [intPartRaw, fracPart] = fixed.split('.');
-  const intPart = applyGrouping(intPartRaw || '0', grouping, thousandSep);
-  if (digits <= 0) {
-    return `${sign}${intPart}`;
-  }
-  return `${sign}${intPart}${decimalSep}${fracPart || ''}`;
+  return formatFixedDecimalString(`${sign}${fixed}`, config);
 }
 
 /**

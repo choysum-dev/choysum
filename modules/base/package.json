@@ -30,7 +30,17 @@
     ],
     "demo": [
       "demo/demo.json"
-    ]
+    ],
+    "e2e": {
+      "specs": "e2e",
+      "scenarios": {
+        "default": {
+          "fixtures": [
+            "e2e/fixtures/language_format.json"
+          ]
+        }
+      }
+    }
   },
   "publishConfig": {
     "access": "public"

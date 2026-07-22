@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { SUPPORTED_LOCALES } from './locales';
 import {
   formatNumberFromConfig,
+  formatFixedDecimalString,
   parseGrouping,
   resolveFormatConfig,
 } from './language_format';
@@ -64,5 +65,15 @@ describe('language_format (P2)', () => {
   it('parseGrouping accepts Odoo-style [3,0]', () => {
     expect(parseGrouping('[3,0]')).toEqual([3, 0]);
     expect(parseGrouping([3, 2, 0])).toEqual([3, 2, 0]);
+  });
+
+  it('formats fixed decimal strings without Number conversion', () => {
+    expect(
+      formatFixedDecimalString('1234567.890000000000000000', {
+        thousandsSeparator: '.',
+        decimalSeparator: ',',
+        grouping: [3, 0],
+      })
+    ).toBe('1.234.567,890000000000000000');
   });
 });

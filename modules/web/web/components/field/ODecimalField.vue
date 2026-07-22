@@ -46,8 +46,10 @@ import OFieldBase, { type FieldStateExpr } from './OFieldBase.vue';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Decimal, { isDecimal, toDecimalRounding, type DecimalRound } from '@/core/utils/decimal';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore, formatFixedDecimalString } from '@/web/web/stores/i18nStore';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ODecimalField' });
+
 
 defineOptions({ name: 'ODecimalField' });
 
@@ -276,7 +278,7 @@ const fromView = (v: ViewType) => {
   return (d ?? null) as unknown as V;
 };
 
-// Display mode: round by dynamic scale and keep fixed decimal places
+// Display mode: round by dynamic scale, then apply Language separators/grouping.
 function toDisplayText(v: any, getScale?: () => number) {
   if (v == null || v === '') return '';
   const d = asDecimal(v);
@@ -284,7 +286,16 @@ function toDisplayText(v: any, getScale?: () => number) {
   const scale = typeof getScale === 'function' ? getScale() : (metaScale.value ?? props.scale ?? 6);
   try {
     const q = d.toDecimalPlaces(scale, effectiveRound.value);
-    return q.toFixed(scale);
+    const fixed = q.toFixed(scale);
+    try {
+      const numberFormat = useI18nStore().currentLocale?.numberFormat;
+      if (numberFormat) {
+        return formatFixedDecimalString(fixed, numberFormat);
+      }
+    } catch {
+      // Pinia / i18n may be unavailable in isolated mounts; fall back to plain fixed.
+    }
+    return fixed;
   } catch {
     return d.toString();
   }

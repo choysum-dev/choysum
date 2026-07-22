@@ -9,6 +9,8 @@ SPDX-License-Identifier: Apache-2.0
     :action-ids="{ create: languageActions.create, edit: languageActions.edit, copy: languageActions.copy, delete: languageActions.delete }"
     :has-action="hasAction"
     v-on="$attrs"
+    @update-success="onLanguageSaved"
+    @create-success="onLanguageSaved"
   >
     <el-card shadow="never" class="bfv-card">
       <template #header
@@ -60,6 +62,7 @@ import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
@@ -71,6 +74,15 @@ const props = withDefaults(
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
 const { store, recordId, viewMode, showHeader, createAction } = props;
+
+/** Refresh FE format overlays so list/number displays pick up Language field changes. */
+async function onLanguageSaved() {
+  try {
+    await useI18nStore().loadActiveUiKeysFromServer();
+  } catch {
+    // Best-effort; next full page init will reload formats.
+  }
+}
 </script>
 
 <style scoped>

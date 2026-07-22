@@ -1,0 +1,16 @@
+{
+  "records": [
+    {
+      "module": "base",
+      "external_id": "e2e_exchange_rate_format",
+      "model": "base.ExchangeRate",
+      "values": {
+        "CurrencyId": { "ref": "base.currency_cny" },
+        "CompanyId": null,
+        "CompanyScopeKey": "__GLOBAL__",
+        "Date": "2026-07-22",
+        "Rate": "1234567.89"
+      }
+    }
+  ]
+}

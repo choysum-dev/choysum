@@ -32,6 +32,7 @@ export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from '
 export {
   resolveFormatConfig,
   formatNumberFromConfig,
+  formatFixedDecimalString,
   formatCurrencyFromConfig,
   parseGrouping,
   applyGrouping,
@@ -173,6 +174,15 @@ export const useI18nStore = defineStore(
 
         // Update the active locale.
         localeCode.value = locale as SupportedLocale;
+
+        // Refresh Language format overlays when switching UI key (P2 runtime authority).
+        if (isClient) {
+          try {
+            await loadActiveUiKeysFromServer();
+          } catch {
+            // Best-effort; catalog fallbacks remain.
+          }
+        }
 
         // Configure the dayjs locale.
         const dayjsLocaleCode = SUPPORTED_LOCALES[locale as SupportedLocale].dayjsLocaleCode;
@@ -328,23 +338,25 @@ export const useI18nStore = defineStore(
         const formats: Record<string, LanguageFormatOverlay> = {};
         const keys = (rows || [])
           .map((row: any) => {
-            const posix = String(row?.Code || '').trim();
+            const posix = String(row?.Code || row?.code || '').trim();
             if (posix) {
+              const thousand = row.ThousandSeparator ?? row.thousandSeparator;
+              const decimal = row.DecimalSeparator ?? row.decimalSeparator;
+              const grouping = row.Grouping ?? row.grouping;
+              const dateFormat = row.DateFormat ?? row.dateFormat;
+              const timeFormat = row.TimeFormat ?? row.timeFormat;
+              const firstDay = row.FirstDayOfWeek ?? row.firstDayOfWeek;
+              const symbolPos = row.CurrencySymbolPosition ?? row.currencySymbolPosition;
+              const symbolSpacing = row.CurrencySymbolSpacing ?? row.currencySymbolSpacing;
               formats[posix] = {
-                DecimalSeparator: row.DecimalSeparator != null ? String(row.DecimalSeparator) : undefined,
-                ThousandSeparator: row.ThousandSeparator != null ? String(row.ThousandSeparator) : undefined,
-                Grouping: row.Grouping != null ? String(row.Grouping) : undefined,
-                DateFormat: row.DateFormat != null ? String(row.DateFormat) : undefined,
-                TimeFormat: row.TimeFormat != null ? String(row.TimeFormat) : undefined,
-                FirstDayOfWeek: row.FirstDayOfWeek != null ? Number(row.FirstDayOfWeek) : undefined,
-                CurrencySymbolPosition:
-                  row.CurrencySymbolPosition === 'after'
-                    ? 'after'
-                    : row.CurrencySymbolPosition === 'before'
-                      ? 'before'
-                      : undefined,
-                CurrencySymbolSpacing:
-                  row.CurrencySymbolSpacing != null ? Boolean(row.CurrencySymbolSpacing) : undefined,
+                DecimalSeparator: decimal != null ? String(decimal) : undefined,
+                ThousandSeparator: thousand != null ? String(thousand) : undefined,
+                Grouping: grouping != null ? String(grouping) : undefined,
+                DateFormat: dateFormat != null ? String(dateFormat) : undefined,
+                TimeFormat: timeFormat != null ? String(timeFormat) : undefined,
+                FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
+                CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
+                CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
               };
             }
             return langToUiKey(posix);
