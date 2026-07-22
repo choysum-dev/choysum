@@ -20,10 +20,26 @@ SPDX-License-Identifier: Apache-2.0
         <el-col :xs="24" :sm="12" :md="8"><OSelectionField :store="store" prop="Direction" /></el-col>
       </el-row>
       <el-row :gutter="12">
-        <el-col :xs="24" :sm="12" :md="8"
-          ><OManyToOneField :store="store" prop="DefaultLocaleId" :search-view="LocaleListView" :search-view-title="_t('Select Locale')"
-        /></el-col>
         <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="IsActive" /></el-col>
+      </el-row>
+    </el-card>
+    <el-card shadow="never" class="bfv-card">
+      <template #header
+        ><div class="bfv-card__header"><span>{{ _t('Format') }}</span></div></template
+      >
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="DecimalSeparator" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="ThousandSeparator" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="Grouping" /></el-col>
+      </el-row>
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="DateFormat" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OVarCharField :store="store" prop="TimeFormat" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OIntField :store="store" prop="FirstDayOfWeek" /></el-col>
+      </el-row>
+      <el-row :gutter="12">
+        <el-col :xs="24" :sm="12" :md="8"><OSelectionField :store="store" prop="CurrencySymbolPosition" /></el-col>
+        <el-col :xs="24" :sm="12" :md="8"><OBooleanField :store="store" prop="CurrencySymbolSpacing" /></el-col>
       </el-row>
     </el-card>
   </OFormView>
@@ -39,8 +55,7 @@ import OFormView from '@/web/web/components/view/OFormView.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
-import LocaleListView from './LocaleListView.vue';
+import OIntField from '@/web/web/components/field/OIntField.vue';
 import type { ViewMode } from '@/web/web/components/view/OViewScope.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';

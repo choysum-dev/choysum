@@ -15,31 +15,40 @@
     },
     {
       "module": "base",
-      "external_id": "locale_default",
-      "model": "base.Locale",
+      "external_id": "language_en_us",
+      "model": "base.Language",
       "values": {
-        "Name": "Chinese (China)",
-        "Code": "zh-CN",
+        "Name": "English (US)",
+        "Code": "en_US",
         "IsActive": true,
+        "Direction": "ltr",
         "DecimalSeparator": ".",
         "ThousandSeparator": ",",
-        "DateFormat": "YYYY-MM-DD",
+        "Grouping": "[3,0]",
+        "DateFormat": "MM/DD/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": 0,
         "CurrencySymbolPosition": "before",
         "CurrencySymbolSpacing": false
       }
     },
     {
       "module": "base",
-      "external_id": "language_zh",
+      "external_id": "language_zh_cn",
       "model": "base.Language",
       "values": {
-        "Name": "Chinese",
-        "Code": "zh",
+        "Name": "Chinese (Simplified)",
+        "Code": "zh_CN",
         "IsActive": true,
         "Direction": "ltr",
-        "DefaultLocaleId": { "ref": "base.locale_default" }
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": 1,
+        "CurrencySymbolPosition": "before",
+        "CurrencySymbolSpacing": false
       }
     },
     {
@@ -52,8 +61,7 @@
         "Timezone": "Asia/Shanghai",
         "CurrencyId": { "ref": "base.currency_cny" },
         "IsActive": true,
-        "LanguageId": { "ref": "base.language_zh" },
-        "LocaleId": { "ref": "base.locale_default" }
+        "LanguageId": { "ref": "base.language_zh_cn" }
       }
     }
   ]

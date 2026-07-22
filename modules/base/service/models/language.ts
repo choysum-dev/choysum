@@ -4,8 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _lt } from '../i18n';
-import Locale from './locale';
-import { normalizeDirection } from './_normalizers';
+import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing, normalizeDirection } from './_normalizers';
 
 @Model('Language')
 export default class Language extends BaseModel {
@@ -49,17 +48,76 @@ export default class Language extends BaseModel {
   Direction?: 'ltr' | 'rtl';
 
   @Field({
-    type: 'ManyToOne',
-    relation: { targetModel: () => Locale },
-    index: true,
-    string: _lt('Default Locale', { scope: 'base.model.Language.fields' }),
+    type: 'varchar',
+    size: 8,
+    string: _lt('Decimal Separator', { scope: 'base.model.Language.fields' }),
   })
-  DefaultLocaleId?: Locale;
+  DecimalSeparator?: string;
 
-  @Constraint<Language>(['Direction'])
+  @Field({
+    type: 'varchar',
+    size: 8,
+    string: _lt('Thousands Separator', { scope: 'base.model.Language.fields' }),
+  })
+  ThousandSeparator?: string;
+
+  @Field({
+    type: 'varchar',
+    size: 32,
+    default: () => '[3,0]',
+    string: _lt('Grouping', { scope: 'base.model.Language.fields' }),
+  })
+  Grouping?: string;
+
+  @Field({
+    type: 'varchar',
+    size: 32,
+    string: _lt('Date Format', { scope: 'base.model.Language.fields' }),
+  })
+  DateFormat?: string;
+
+  @Field({
+    type: 'varchar',
+    size: 32,
+    string: _lt('Time Format', { scope: 'base.model.Language.fields' }),
+  })
+  TimeFormat?: string;
+
+  @Field({
+    type: 'int',
+    string: _lt('First Day of Week', { scope: 'base.model.Language.fields' }),
+  })
+  FirstDayOfWeek?: number;
+
+  @Field({
+    type: 'selection',
+    selection: [
+      { value: 'before', label: _lt('Before amount', { scope: 'base.model.Language.fields' }) },
+      { value: 'after', label: _lt('After amount', { scope: 'base.model.Language.fields' }) },
+    ],
+    size: 16,
+    default: () => 'before',
+    string: _lt('Currency Symbol Position', { scope: 'base.model.Language.fields' }),
+  })
+  CurrencySymbolPosition?: 'before' | 'after';
+
+  @Field({
+    type: 'boolean',
+    default: () => false,
+    string: _lt('Symbol Spacing', { scope: 'base.model.Language.fields' }),
+  })
+  CurrencySymbolSpacing?: boolean;
+
+  @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing'])
   validateLanguageConstraint(): void {
     if (this.Direction != null) {
       this.Direction = normalizeDirection(this.Direction) as any;
+    }
+    if (this.CurrencySymbolPosition !== undefined) {
+      (this as any).CurrencySymbolPosition = normalizeCurrencySymbolPosition(this.CurrencySymbolPosition);
+    }
+    if (this.CurrencySymbolSpacing !== undefined) {
+      (this as any).CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(this.CurrencySymbolSpacing);
     }
   }
 }

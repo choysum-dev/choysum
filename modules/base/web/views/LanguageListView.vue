@@ -18,9 +18,8 @@ SPDX-License-Identifier: Apache-2.0
     <OVarCharField :store="store" prop="Name" />
     <OVarCharField :store="store" prop="Code" />
     <OSelectionField :store="store" prop="Direction" />
-    <OManyToOneField :store="store" prop="DefaultLocaleId"
-      ><OVarCharField :store="store" prop="DefaultLocaleId.Name" :label="_t('Locale')"
-    /></OManyToOneField>
+    <OVarCharField :store="store" prop="DecimalSeparator" />
+    <OVarCharField :store="store" prop="ThousandSeparator" />
     <OBooleanField :store="store" prop="IsActive" />
   </OListView>
 </template>
@@ -35,7 +34,6 @@ import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import OVarCharField from '@/web/web/components/field/OVarCharField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
 import OBooleanField from '@/web/web/components/field/OBooleanField.vue';
-import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
 import OSearchView from '@/web/web/components/view/OSearchView.vue';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { defineModelActions } from '@/core/web/resource';

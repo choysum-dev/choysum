@@ -10,8 +10,7 @@
         "Timezone": "Asia/Shanghai",
         "CurrencyId": { "ref": "base.currency_cny" },
         "IsActive": true,
-        "LanguageId": { "ref": "base.language_zh" },
-        "LocaleId": { "ref": "base.locale_default" },
+        "LanguageId": { "ref": "base.language_zh_cn" },
         "ParentId": { "ref": "base.company_main" }
       }
     },
