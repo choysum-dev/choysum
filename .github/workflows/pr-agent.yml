@@ -25,13 +25,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_AI_STUDIO.GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # Specify the Gemini model to replace the default OpenAI configuration
-          config.model: "gemini/gemini-3.5-flash"
-          config.fallback_models: '["gemini/gemini-2.5-pro", "gemini/gemini-2.5-flash"]'
+          config.model: "gemini/gemini-3.6-flash"
+          config.fallback_models: '["gemini/gemini-2.5-pro"]'
           # Increase token limit to properly process large diffs
           config.max_model_tokens: "1000000"
-          # Disable mermaid diagrams since Gemini sometimes fails to generate valid syntax
-          pr_description.enable_pr_diagram: "false"
           # Optional: Enable automatic review, describe, and improve on PR events
+          # Project-specific review/describe/improve instructions live in .pr_agent.toml
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "true"
           github_action_config.auto_improve: "true"
