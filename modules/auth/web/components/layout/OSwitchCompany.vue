@@ -287,8 +287,12 @@ const companyNameById = computed(() => {
 const currentCompanyLabel = computed(() => {
   const id = currentActiveCompanyId.value;
   if (!id) return _t('Company');
-  // Prefer DisplayName; avoid flashing the raw company id while labels are still loading.
-  return companyNameById.value.get(id) ?? (companies.value.length ? id : _t('Company'));
+  const name = companyNameById.value.get(id);
+  if (name) return name;
+  // seedCompanyOptions fills companies before labels arrive; wait for a loaded name
+  // before falling back to the raw id so the header does not flash the id.
+  const hasLoadedNames = companies.value.some(c => !!String(c.DisplayName || '').trim());
+  return hasLoadedNames ? id : _t('Company');
 });
 
 /** Normalize enabled scope the same way drafts do (active is always included). */
