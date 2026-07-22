@@ -6,18 +6,19 @@ import { ref, computed, shallowRef } from 'vue';
 import { isClient } from '@vueuse/core';
 import dayjs from 'dayjs';
 import { SUPPORTED_LOCALES } from './locales';
-import { DEFAULT_ACTIVE_LOCALES } from './active_locales';
+import { DEFAULT_ACTIVE_UI_KEYS } from './active_ui_keys';
 import { SupportedLocale, DateTimeFormatType } from './types';
-import { detectBestLocale, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
+import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
 import { loadElementLocale, loadDayjsLocale, loadVueI18nMessages } from './loader';
-import { localeToLang } from './lang';
+import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
 import { afterLocaleChange } from './locale_remount';
+import { createStoreByModel } from '@/web/web/stores/registry';
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
-export { localeToLang, langToLocale } from './lang';
+export { uiKeyToLang, langToUiKey } from './lang';
 export { fetchWebTranslations } from './terminology_loader';
 export { fetchTerms, patchTerms, downloadTerminologyPo } from './terms_api';
 
@@ -51,13 +52,13 @@ export const useI18nStore = defineStore(
     // Last Gateway load result (consumed by app.ts for mergeLocaleMessage).
     const lastTerminologyLoad = shallowRef<TerminologyLoadResult | null>(null);
 
-    // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_LOCALES).
-    const activeLocaleCodes = ref<string[]>([...DEFAULT_ACTIVE_LOCALES]);
+    // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
+    const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
 
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
       if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
-        localeCode.value = detectBestLocale();
+        localeCode.value = detectBestUiKey();
       }
 
       const code = localeCode.value;
@@ -70,12 +71,12 @@ export const useI18nStore = defineStore(
       };
     });
 
-    const terminologyLang = computed(() => localeToLang(currentLocale.value.code));
+    const terminologyLang = computed(() => uiKeyToLang(currentLocale.value.code));
 
     /**
      * Set the application locale (format UI + Gateway terminology).
      */
-    async function setLocale(locale: string) {
+    async function setUiKey(locale: string) {
       // Check whether the locale is supported for format metadata.
       if (!(locale in SUPPORTED_LOCALES)) {
         console.warn(`Locale ${locale} is not supported`);
@@ -101,7 +102,7 @@ export const useI18nStore = defineStore(
         }
 
         // Load terminology from host Gateway (S4-1); failures fall back to msgid.
-        const lang = localeToLang(locale);
+        const lang = uiKeyToLang(locale);
         const prevHash = terminologyHashByLang.value[lang] || '';
         try {
           const res = await fetchWebTranslations(lang, prevHash || undefined);
@@ -154,11 +155,11 @@ export const useI18nStore = defineStore(
     /**
      * Restrict the language switcher to active terminology locales.
      */
-    function setActiveLocales(codes: string[]) {
+    function setActiveUiKeys(codes: string[]) {
       const next = codes
         .map(c => String(c || '').trim())
         .filter(c => c && c in SUPPORTED_LOCALES);
-      activeLocaleCodes.value = next.length > 0 ? next : [...DEFAULT_ACTIVE_LOCALES];
+      activeUiKeys.value = next.length > 0 ? next : [...DEFAULT_ACTIVE_UI_KEYS];
     }
 
     /**
@@ -212,7 +213,7 @@ export const useI18nStore = defineStore(
       if (!targetLocale || !(targetLocale in SUPPORTED_LOCALES)) {
         return null;
       }
-      const lang = localeToLang(targetLocale);
+      const lang = uiKeyToLang(targetLocale);
       // Force catalog refresh: omit client hash so Gateway always returns messages.
       try {
         const res = await fetchWebTranslations(lang, undefined);
@@ -247,15 +248,43 @@ export const useI18nStore = defineStore(
     }
 
     /**
+     * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
+     * Failures keep DEFAULT_ACTIVE_UI_KEYS.
+     */
+    async function loadActiveUiKeysFromServer() {
+      try {
+        const languageStore = createStoreByModel('base.Language');
+        const rows = await (languageStore as any).GetActiveLanguages();
+        const keys = (rows || [])
+          .map((row: any) => langToUiKey(String(row?.Code || '')))
+          .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+        setActiveUiKeys(keys);
+      } catch (error) {
+        console.warn('Failed to load active languages; using defaults', error);
+        setActiveUiKeys([...DEFAULT_ACTIVE_UI_KEYS]);
+      }
+    }
+
+    /**
      * Initialize locale resources.
      */
     async function initialize() {
       if (isInitialized.value) {
         return;
       }
-      // Detect only when localeCode is missing or invalid.
-      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
-        localeCode.value = detectBestLocale();
+
+      if (isClient) {
+        await loadActiveUiKeysFromServer();
+      }
+
+      // Detect only when localeCode is missing or invalid for the active set.
+      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES) || !activeUiKeys.value.includes(localeCode.value)) {
+        // Honor manual localStorage session: only auto-detect when unset/invalid.
+        if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
+          localeCode.value = detectBestUiKey(activeUiKeys.value);
+        } else if (!activeUiKeys.value.includes(localeCode.value)) {
+          localeCode.value = detectBestUiKey(activeUiKeys.value);
+        }
       }
 
       // During SSR, preload only the default locale.
@@ -266,7 +295,7 @@ export const useI18nStore = defineStore(
       }
 
       // Load the current locale resources on the client.
-      await setLocale(localeCode.value);
+      await setUiKey(localeCode.value);
 
       // Sync the document direction during client initialization.
       if (isClient) {
@@ -287,13 +316,14 @@ export const useI18nStore = defineStore(
       terminologyLang,
       terminologyHashByLang,
       lastTerminologyLoad,
-      activeLocaleCodes,
+      activeUiKeys,
       // Locale support information.
       supportedLocales: Object.keys(SUPPORTED_LOCALES) as SupportedLocale[],
 
       // Locale management methods.
-      setLocale,
-      setActiveLocales,
+      setUiKey,
+      setActiveUiKeys,
+      loadActiveUiKeysFromServer,
       reloadTerminology,
 
       // Formatting helpers.

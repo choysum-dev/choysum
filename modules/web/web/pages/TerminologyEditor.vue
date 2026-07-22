@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <div class="terminology-editor">
       <div class="terminology-editor__filters">
         <el-select v-model="lang" placeholder="Language" style="width: 140px" @change="onFilterChange">
-          <el-option v-for="code in localeOptions" :key="code" :label="code" :value="localeToLang(code)" />
+          <el-option v-for="code in localeOptions" :key="code" :label="code" :value="uiKeyToLang(code)" />
         </el-select>
         <el-select
           v-model="application"
@@ -108,7 +108,7 @@ import { ElMessage } from 'element-plus';
 import OPage from '@/web/web/components/page/OPage.vue';
 import {
   useI18nStore,
-  localeToLang,
+  uiKeyToLang,
   fetchTerms,
   patchTerms,
   downloadTerminologyPo,
@@ -135,8 +135,8 @@ const moduleFilter = ref('');
 const application = ref('web');
 const lang = ref(i18nStore.terminologyLang || 'en_US');
 
-const localeOptions = computed(() => i18nStore.activeLocaleCodes?.length
-  ? i18nStore.activeLocaleCodes
+const localeOptions = computed(() => i18nStore.activeUiKeys?.length
+  ? i18nStore.activeUiKeys
   : i18nStore.supportedLocales);
 
 const applicationOptions = ['auth', 'web', 'base', 'meta', 'partner'];

@@ -53,7 +53,7 @@ import { ElForm, ElFormItem, ElInput, ElButton, ElCheckbox, ElAlert, ElCard } fr
 import { User, Lock } from '@element-plus/icons-vue';
 import type { FormRules } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
-import { useI18nStore, langToLocale } from '@/web/web/stores/i18nStore';
+import { useI18nStore, langToUiKey } from '@/web/web/stores/i18nStore';
 
 const { _t } = createTranslate('auth', { scope: 'web/pages/Login' });
 
@@ -144,7 +144,7 @@ async function handleLogin() {
       const preferredLang = String((authStore.currentUser as any)?.Language || '').trim();
       if (preferredLang) {
         const i18nStore = useI18nStore();
-        await i18nStore.setLocale(langToLocale(preferredLang));
+        await i18nStore.setUiKey(langToUiKey(preferredLang));
       }
     } catch {
       // Preference apply is best-effort; login already succeeded.

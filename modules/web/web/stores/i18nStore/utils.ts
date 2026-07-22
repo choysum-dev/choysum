@@ -15,33 +15,37 @@ type DayjsWithRelativeTime = Dayjs & {
 };
 
 /**
- * Detect the best matching system locale.
+ * Detect the best matching system UI key.
+ * When `allowedKeys` is provided (active Language ∩ catalog), prefer that set.
  */
-export function detectBestLocale(): SupportedLocale {
+export function detectBestUiKey(allowedKeys?: readonly string[]): SupportedLocale {
   // Return the default locale on the server.
   if (!isClient) {
     return 'en';
   }
 
+  const catalog = allowedKeys?.length
+    ? allowedKeys.filter(code => code in SUPPORTED_LOCALES)
+    : Object.keys(SUPPORTED_LOCALES);
   const preferredLanguages = usePreferredLanguages();
 
   // Try matching the user's preferred language list.
   for (const lang of preferredLanguages.value) {
     // Exact match.
-    if (lang in SUPPORTED_LOCALES) {
+    if (catalog.includes(lang)) {
       return lang as SupportedLocale;
     }
 
     // Match the base language part, for example 'zh-TW' against 'zh-CN'.
     const mainLang = lang.split('-')[0];
-    const matchedLang = Object.keys(SUPPORTED_LOCALES).find(supported => supported.startsWith(mainLang));
+    const matchedLang = catalog.find(supported => supported.startsWith(mainLang));
 
     if (matchedLang) {
       return matchedLang as SupportedLocale;
     }
   }
 
-  return 'en';
+  return (catalog.includes('en') ? 'en' : catalog[0] || 'en') as SupportedLocale;
 }
 
 /**

@@ -20,10 +20,10 @@ SPDX-License-Identifier: Apache-2.0
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item>
-            <span @click="handleProfileClick">{{ _t('Profile') }}</span>
+            <span @click="openPreferences">{{ _t('Profile') }}</span>
           </el-dropdown-item>
           <el-dropdown-item>
-            <span @click="handleSettingsClick">{{ _t('Settings') }}</span>
+            <span @click="openPreferences">{{ _t('Settings') }}</span>
           </el-dropdown-item>
           <el-dropdown-item divided>
             <span @click="handleLogout">{{ _t('Log Out') }}</span>
@@ -31,11 +31,12 @@ SPDX-License-Identifier: Apache-2.0
         </el-dropdown-menu>
       </template>
     </el-dropdown>
+    <OPreferencesDialog v-if="isAuthenticated" v-model="preferencesVisible" />
   </Xpath>
 </template>
 
 <script lang="ts" _name="OHeader">
-import { defineComponent, computed } from 'vue';
+import { defineComponent, computed, ref } from 'vue';
 import { Xpath } from '@/core/web';
 import OHeader from '@/web/web/components/layout/OHeader.vue';
 import { Bell, User } from '@element-plus/icons-vue';
@@ -43,6 +44,7 @@ import { ElDivider, ElButton, ElDropdown, ElDropdownMenu, ElDropdownItem } from 
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import OSwitchCompany from './OSwitchCompany.vue';
+import OPreferencesDialog from '../preferences/OPreferencesDialog.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 /**
@@ -60,6 +62,7 @@ export default defineComponent({
     ElDropdownMenu,
     ElDropdownItem,
     OSwitchCompany,
+    OPreferencesDialog,
   },
   setup(props, ctx) {
     const baseSetup = OHeader?.setup?.(props, ctx) || {};
@@ -67,38 +70,21 @@ export default defineComponent({
     const router = useRouter();
     const authStore = useAuthStore();
     const isAuthenticated = computed(() => authStore.isAuthenticated);
+    const preferencesVisible = ref(false);
 
-    /**
-     * Navigate to the login page.
-     */
     function handleLogin() {
       router.push({ name: 'login' });
     }
 
-    /**
-     * Ask the parent layout to open notifications.
-     */
     function handleNotificationClick() {
       ctx.emit('show-notifications');
     }
 
-    /**
-     * Ask the parent layout to open the profile panel.
-     */
-    function handleProfileClick() {
-      ctx.emit('show-profile');
+    /** Profile and Settings open the same Preferences dialog (L13 / L18). */
+    function openPreferences() {
+      preferencesVisible.value = true;
     }
 
-    /**
-     * Ask the parent layout to open settings.
-     */
-    function handleSettingsClick() {
-      ctx.emit('show-settings');
-    }
-
-    /**
-     * Navigate to the logout page.
-     */
     function handleLogout() {
       router.push({ name: 'logout' });
     }
@@ -107,10 +93,10 @@ export default defineComponent({
       ...baseSetup,
       _t,
       isAuthenticated,
+      preferencesVisible,
       handleLogin,
       handleNotificationClick,
-      handleProfileClick,
-      handleSettingsClick,
+      openPreferences,
       handleLogout,
     };
   },
@@ -118,27 +104,10 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.o-header__action-btn {
-  position: relative;
-  height: 36px;
-  width: 36px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--el-text-color-regular);
-  border-radius: var(--el-border-radius-base);
-  cursor: pointer;
-
-  &:hover {
-    color: var(--el-color-primary);
-    background-color: var(--el-color-primary-light-9);
+.o-header {
+  &__action-divider {
+    height: 20px;
+    margin: 0 4px;
   }
-}
-
-.o-header__action-divider {
-  margin: 0 8px;
-  height: 24px;
-  align-self: center;
 }
 </style>

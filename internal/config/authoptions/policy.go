@@ -95,5 +95,14 @@ func defaultGrpcEntryPolicy() map[string]*EntryMethodConfig {
 			},
 			SkipFieldRule: true,
 		},
+		"base.Language/GetActiveLanguages": {
+			SkipAuthentication: true,
+			SkipMethodAccess:   true,
+			SkipCompanyFilter:  true,
+			RecordRuleAllow: []EntryRecordRuleAllow{
+				{Model: "base.Language", Ops: []string{"read"}},
+			},
+			SkipFieldRule: true,
+		},
 	}
 }

@@ -163,3 +163,31 @@ test('base.language: Create with format fields succeeds', async () => {
   expect(String((created as any).Grouping)).toBe('[3,0]');
   expect(Number((created as any).FirstDayOfWeek)).toBe(1);
 });
+
+test('base.language: GetActiveLanguages returns only active rows', async () => {
+  const suffix = companyCode8();
+  await Language.Create(
+    {
+      Name: uid('LangActive'),
+      Code: `a_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+  await Language.Create(
+    {
+      Name: uid('LangInactive'),
+      Code: `i_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id'] as any
+  );
+
+  const rows = await Language.GetActiveLanguages();
+  expect(Array.isArray(rows)).toBe(true);
+  expect(rows.every(r => r.Code && r.Name)).toBe(true);
+  expect(rows.some(r => r.Code === `i_${suffix}`.slice(0, 16))).toBe(false);
+  expect(rows.some(r => r.Code === `a_${suffix}`.slice(0, 16))).toBe(true);
+});

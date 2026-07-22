@@ -72,8 +72,9 @@ SPDX-License-Identifier: Apache-2.0
       <div class="o-header__actions">
         <!-- Secondary actions. -->
         <div class="o-header__actions-secondary">
-          <!-- Language switch dropdown. -->
+          <!-- Language switch dropdown (guest only; logged-in users use Preferences). -->
           <el-dropdown
+            v-if="!isAuthenticated"
             trigger="click"
             @command="handleLanguageChange"
             class="o-header__action-item"
@@ -179,6 +180,24 @@ function homeAriaLabel(name: string) {
   return _t('%s - Home', name);
 }
 
+// Guest vs logged-in: language globe is guest-only (Preferences owns logged-in language).
+const isAuthenticated = ref(false);
+onMounted(async () => {
+  try {
+    const { useAuthStore } = await import('@/auth/web/stores/auth');
+    const authStore = useAuthStore();
+    isAuthenticated.value = !!authStore.isAuthenticated;
+    // Keep in sync without hard-coupling setup to auth.
+    const stop = (authStore as any).$subscribe?.(() => {
+      isAuthenticated.value = !!authStore.isAuthenticated;
+    });
+    void stop;
+  } catch {
+    isAuthenticated.value = false;
+  }
+});
+
+
 // Fixed height constants.
 const HEADER_HEIGHT = 48;
 const HEADER_HEIGHT_MOBILE = 40;
@@ -230,7 +249,7 @@ const drawerDirection = computed(() => (direction.value === 'rtl' ? 'rtl' : 'ltr
 
 // Supported locale list (active terminology locales, not the full format catalog).
 const localeOptions = computed(() =>
-  i18nStore.activeLocaleCodes
+  i18nStore.activeUiKeys
     .filter((code: string) => code in SUPPORTED_LOCALES)
     .map((code: string) => {
       const locale = SUPPORTED_LOCALES[code as SupportedLocale];
@@ -267,18 +286,11 @@ function handleAppChange(appId: string) {
 }
 
 async function handleLanguageChange(locale: string) {
-  const ok = await i18nStore.setLocale(locale);
+  const ok = await i18nStore.setUiKey(locale);
   if (!ok) {
     return;
   }
-  try {
-    const { useAuthStore } = await import('@/auth/web/stores/auth');
-    const authStore = useAuthStore();
-    await authStore.persistLanguagePreference(i18nStore.terminologyLang);
-  } catch {
-    // Auth module may be unavailable; anonymous preference stays in i18nStore localStorage.
-  }
-  // D9/S6: default full reload; optional remount clears scoped stores only.
+  // Guest path only: session UI key stays in i18nStore localStorage. Do not write User.Language here.
   const { afterLocaleChange, softLocaleRemount } = await import('@/web/web/stores/i18nStore/locale_remount');
   await afterLocaleChange({ remount: softLocaleRemount });
 }

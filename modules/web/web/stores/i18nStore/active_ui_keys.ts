@@ -5,4 +5,4 @@
  * Default locales shown in the language switcher until Language.IsActive is loaded.
  * SUPPORTED_LOCALES remains the format/Element catalog; terminology UI is not that full list.
  */
-export const DEFAULT_ACTIVE_LOCALES = ['en', 'zh-CN'] as const;
+export const DEFAULT_ACTIVE_UI_KEYS = ['en', 'zh-CN'] as const;

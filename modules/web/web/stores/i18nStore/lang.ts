@@ -28,7 +28,7 @@ const LANG_TO_LOCALE: Record<string, string> = Object.fromEntries(
 );
 
 /** Convert UI locale code to terminology lang (e.g. zh-CN → zh_CN). */
-export function localeToLang(locale: string): string {
+export function uiKeyToLang(locale: string): string {
   const code = String(locale || '').trim();
   if (!code) {
     return 'en_US';
@@ -43,7 +43,7 @@ export function localeToLang(locale: string): string {
 }
 
 /** Convert terminology lang to UI locale (e.g. zh_CN → zh-CN). */
-export function langToLocale(lang: string): string {
+export function langToUiKey(lang: string): string {
   const code = String(lang || '').trim();
   if (!code) {
     return 'en';

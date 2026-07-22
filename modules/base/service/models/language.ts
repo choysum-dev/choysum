@@ -3,7 +3,8 @@
 
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
-import { _lt } from '../i18n';
+import { raiseDomainError } from '@/core/service/error';
+import { _t, _lt } from '../i18n';
 import { normalizeCurrencySymbolPosition, normalizeCurrencySymbolSpacing, normalizeDirection } from './_normalizers';
 
 @Model('Language')
@@ -108,8 +109,24 @@ export default class Language extends BaseModel {
   })
   CurrencySymbolSpacing?: boolean;
 
-  @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing'])
-  validateLanguageConstraint(): void {
+  /**
+   * Active languages for Preferences / guest switcher (POSIX Code projection).
+   * gRPC: base.Language/GetActiveLanguages
+   */
+  public static async GetActiveLanguages(): Promise<Array<{ Code: string; Name: string; Direction?: 'ltr' | 'rtl' }>> {
+    const rows = await this.Search(['IsActive', '=', true] as any, {
+      fields: ['Code', 'Name', 'Direction'] as any,
+      order: 'Name ASC',
+    } as any);
+    return (rows || []).map((row: any) => ({
+      Code: String(row.Code || ''),
+      Name: String(row.Name || ''),
+      Direction: row.Direction === 'rtl' ? 'rtl' : row.Direction === 'ltr' ? 'ltr' : undefined,
+    }));
+  }
+
+  @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])
+  async validateLanguageConstraint(): Promise<void> {
     if (this.Direction != null) {
       this.Direction = normalizeDirection(this.Direction) as any;
     }
@@ -118,6 +135,40 @@ export default class Language extends BaseModel {
     }
     if (this.CurrencySymbolSpacing !== undefined) {
       (this as any).CurrencySymbolSpacing = normalizeCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+    }
+
+    // Refuse deactivating the last active language (update path only).
+    if (this.IsActive === false && this.Id) {
+      const existingRows = await Language.Search(['Id', '=', this.Id] as any, { fields: ['Id'], limit: 1 } as any);
+      if (existingRows?.length) {
+        const others = await Language.Search(
+          {
+            And: [
+              ['IsActive', '=', true],
+              ['Id', '!=', this.Id],
+            ],
+          } as any,
+          { fields: ['Id'], limit: 1 } as any
+        );
+        if (!others?.length) {
+          raiseDomainError('base', 'InvalidArgument', _t('At least one language must stay active', { scope: 'service/models/language' }));
+        }
+      }
+    }
+
+    // Language.Code is immutable after create; root en_US cannot be deactivated.
+    if (this.Id && this.Code != null) {
+      const existingRows = await Language.Search(['Id', '=', this.Id] as any, { fields: ['Code'], limit: 1 } as any);
+      if (!existingRows?.length) {
+        return;
+      }
+      const prev = String((existingRows[0] as any)?.Code || '');
+      if (prev && prev !== String(this.Code)) {
+        raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
+      }
+      if (prev === 'en_US' && this.IsActive === false) {
+        raiseDomainError('base', 'InvalidArgument', _t('The root language en_US cannot be deactivated', { scope: 'service/models/language' }));
+      }
     }
   }
 }

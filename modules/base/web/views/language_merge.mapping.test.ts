@@ -49,5 +49,18 @@ describe('base language merge seeds and wiring (P0)', () => {
     expect(company).not.toMatch(/LocaleId|from ['"].*locale['"]/);
     expect(language).not.toMatch(/DefaultLocaleId|from ['"].*locale['"]/);
     expect(language).toMatch(/Grouping/);
+    expect(language).toMatch(/GetActiveLanguages/);
+  });
+
+  it('FE adapter symbols use UiKey names (no Locale product aliases)', () => {
+    const index = read('../../../web/web/stores/i18nStore/index.ts');
+    const lang = read('../../../web/web/stores/i18nStore/lang.ts');
+    const utils = read('../../../web/web/stores/i18nStore/utils.ts');
+    expect(lang).toMatch(/langToUiKey|uiKeyToLang/);
+    expect(utils).toMatch(/detectBestUiKey/);
+    expect(index).toMatch(/setActiveUiKeys|setUiKey|DEFAULT_ACTIVE_UI_KEYS/);
+    expect(`${index}\n${lang}\n${utils}`).not.toMatch(
+      /\blangToLocale\b|\blocaleToLang\b|\bdetectBestLocale\b|\bsetActiveLocales\b|\bDEFAULT_ACTIVE_LOCALES\b|\bsetLocale\b/
+    );
   });
 });

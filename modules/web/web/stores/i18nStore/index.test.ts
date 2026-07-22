@@ -3,19 +3,19 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { localeToLang, langToLocale } from './lang';
+import { uiKeyToLang, langToUiKey } from './lang';
 import { createTerminologyCatalogMerger, shouldMergeTerminology } from './merge';
 
-describe('localeToLang / langToLocale', () => {
+describe('uiKeyToLang / langToUiKey', () => {
   it('maps zh-CN ↔ zh_CN and en ↔ en_US', () => {
-    expect(localeToLang('zh-CN')).toBe('zh_CN');
-    expect(langToLocale('zh_CN')).toBe('zh-CN');
-    expect(localeToLang('en')).toBe('en_US');
-    expect(langToLocale('en_US')).toBe('en');
+    expect(uiKeyToLang('zh-CN')).toBe('zh_CN');
+    expect(langToUiKey('zh_CN')).toBe('zh-CN');
+    expect(uiKeyToLang('en')).toBe('en_US');
+    expect(langToUiKey('en_US')).toBe('en');
   });
 
   it('does not treat locale as lang (D12d)', () => {
-    expect(localeToLang('zh-CN')).not.toBe('zh-CN');
+    expect(uiKeyToLang('zh-CN')).not.toBe('zh-CN');
   });
 });
 

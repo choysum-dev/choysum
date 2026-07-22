@@ -341,6 +341,16 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
       // Fetch the current user profile from the backend store.
       const user = await state.userStore.Browse(userId, ['Id', 'Username', 'Email', 'Language', 'Timezone']);
       state.currentUser.value = user;
+      // Align FE UI key with User.Language (covers initAuth refresh paths; Login also applies this).
+      try {
+        const preferredLang = String((user as any)?.Language || '').trim();
+        if (preferredLang) {
+          const { useI18nStore, langToUiKey } = await import('@/web/web/stores/i18nStore');
+          await useI18nStore().setUiKey(langToUiKey(preferredLang));
+        }
+      } catch {
+        // Best-effort; auth must not fail because of i18n wiring.
+      }
       return true;
     } catch (error) {
       throw wrapAuthError(error, {
@@ -450,6 +460,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers) {
     if (state.currentUser.value) {
       (state.currentUser.value as any).Language = terminologyLang;
     }
+    // Sync JWT metadata.language after preference write.
+    await refreshTokenImpl(true);
   }
 
   // Wrap public async actions with shared loading-state bookkeeping.
