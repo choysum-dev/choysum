@@ -325,20 +325,19 @@ const selectOptions = computed<SelectOption[]>(() => {
   const map = new Map<string, SelectOption>();
   const picked = new Set(selectedIds.value);
 
-  // Keep selected options when the panel closes so tag labels remain stable.
-  if (!dropdownVisible.value) {
-    for (const id of selectedIds.value) {
-      const rec = hydratedCache.value[id] || { Id: id };
-      map.set(id, { value: id, label: resolveTagLabel(rec, id), record: rec });
-    }
+  // Selected values must always remain in options so el-select-v2 can render tags.
+  // Hiding them only while the dropdown is open leaves model-value without matching
+  // options and can crash the renderer on the next selection.
+  for (const id of selectedIds.value) {
+    const rec = hydratedCache.value[id] || { Id: id };
+    map.set(id, { value: id, label: resolveTagLabel(rec, id), record: rec });
   }
 
-  // Filter selected items explicitly when the panel opens.
   for (const rec of searchRows.value) {
     const id = extractId(rec);
     if (!id) continue;
     const key = String(id);
-    if (dropdownVisible.value && picked.has(key)) continue;
+    if (picked.has(key)) continue;
     map.set(key, { value: key, label: resolveTagLabel(rec, key), record: rec });
   }
   return Array.from(map.values());

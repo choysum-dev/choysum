@@ -55,13 +55,15 @@ describe('OManyToManyTagsField mapping/contract', () => {
     expect(s).toContain("operator: 'ilike'");
   });
 
-  it('hides already selected options when dropdown is visible', () => {
+  it('keeps selected options in the options list for el-select-v2 tag rendering', () => {
     const s = source();
 
     expect(s).toContain('@visible-change="onDropdownVisibleChange"');
     expect(s).toContain('const dropdownVisible = ref(false);');
-    expect(s).toContain('if (!dropdownVisible.value) {');
-    expect(s).toContain('if (dropdownVisible.value && picked.has(key)) continue;');
+    expect(s).toContain('Selected values must always remain in options so el-select-v2 can render tags.');
+    expect(s).toContain('if (picked.has(key)) continue;');
+    expect(s).not.toContain('if (!dropdownVisible.value) {');
+    expect(s).not.toContain('if (dropdownVisible.value && picked.has(key)) continue;');
   });
 
   it('clears input keyword after selecting an option', () => {

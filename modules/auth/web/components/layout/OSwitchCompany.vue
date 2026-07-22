@@ -25,6 +25,7 @@ SPDX-License-Identifier: Apache-2.0
           <el-select
             v-model="draftActiveCompanyId"
             filterable
+            :teleported="false"
             class="o-switch-company__select"
             :placeholder="_t('Select company')"
             data-testid="company-active-select"
@@ -40,13 +41,20 @@ SPDX-License-Identifier: Apache-2.0
             filterable
             collapse-tags
             collapse-tags-tooltip
+            :teleported="false"
             class="o-switch-company__select"
             :placeholder="_t('Select available companies')"
             data-testid="company-enabled-select"
+            @change="onEnabledChange"
+            @remove-tag="onRemoveEnabledTag"
           >
             <el-option v-for="c in companies" :key="c.Id" :label="c.DisplayName || c.Id" :value="c.Id" />
           </el-select>
         </el-form-item>
+
+        <div v-if="applyDisabledReason" class="o-switch-company__hint" data-testid="company-switch-hint">
+          {{ applyDisabledReason }}
+        </div>
 
         <div class="o-switch-company__actions">
           <el-button type="primary" size="small" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
@@ -59,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { ElPopover, ElButton, ElForm, ElFormItem, ElSelect, ElOption } from 'element-plus';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
@@ -89,11 +97,15 @@ const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId
 const currentEnabledCompanyIds = computed(() =>
   Array.isArray(meta.value?.enabledCompanyIds) ? meta.value.enabledCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean) : ([] as string[])
 );
+/** Latest allowlist from User.CompanyId/CompanyIds (may be newer than JWT metadata). */
+const liveAllowedCompanyIds = ref<string[]>([]);
 const allowedCompanyIds = computed(() => {
   const xs = Array.isArray(meta.value?.allowedCompanyIds) ? meta.value.allowedCompanyIds : [];
   const ids = xs.map((x: any) => String(x ?? '').trim()).filter(Boolean);
-  // Keep the current active and enabled companies visible even if metadata lags.
-  const merged = new Set<string>([...ids, ...currentEnabledCompanyIds.value, currentActiveCompanyId.value].filter(Boolean));
+  // Keep the current active/enabled companies and any freshly loaded user allowlist visible.
+  const merged = new Set<string>(
+    [...ids, ...liveAllowedCompanyIds.value, ...currentEnabledCompanyIds.value, currentActiveCompanyId.value].filter(Boolean)
+  );
   return Array.from(merged);
 });
 
@@ -123,20 +135,41 @@ watch(
   ([active, enabled]) => {
     draftActiveCompanyId.value = active;
     draftEnabledCompanyIds.value = uniq(enabled);
-    if (draftActiveCompanyId.value && !draftEnabledCompanyIds.value.includes(draftActiveCompanyId.value)) {
-      draftEnabledCompanyIds.value = uniq([draftActiveCompanyId.value, ...draftEnabledCompanyIds.value]);
-    }
+    ensureActiveInEnabled();
   },
   { immediate: true }
 );
 
+/**
+ * Ensure active ∈ enabled when syncing scope drafts (server rule).
+ */
+function ensureActiveInEnabled(): void {
+  const active = draftActiveCompanyId.value;
+  if (!active) return;
+  if (!draftEnabledCompanyIds.value.includes(active)) {
+    draftEnabledCompanyIds.value = uniq([active, ...draftEnabledCompanyIds.value]);
+  }
+}
+
+/**
+ * Keep the current company in available companies after select changes (incl. backspace).
+ */
+function onEnabledChange(): void {
+  ensureActiveInEnabled();
+}
+
+/**
+ * Current company cannot leave the available set (server: active ∈ enabled).
+ */
+function onRemoveEnabledTag(id: string): void {
+  if (String(id) !== draftActiveCompanyId.value) return;
+  void nextTick(() => ensureActiveInEnabled());
+}
+
 watch(
   draftActiveCompanyId,
-  active => {
-    if (!active) return;
-    if (!draftEnabledCompanyIds.value.includes(active)) {
-      draftEnabledCompanyIds.value = uniq([active, ...draftEnabledCompanyIds.value]);
-    }
+  () => {
+    ensureActiveInEnabled();
   },
   { flush: 'sync' }
 );
@@ -149,9 +182,7 @@ watch(
     if (draftActiveCompanyId.value && !allowed.includes(draftActiveCompanyId.value)) {
       draftActiveCompanyId.value = allowed[0];
     }
-    if (draftActiveCompanyId.value && !draftEnabledCompanyIds.value.includes(draftActiveCompanyId.value)) {
-      draftEnabledCompanyIds.value = uniq([draftActiveCompanyId.value, ...draftEnabledCompanyIds.value]);
-    }
+    ensureActiveInEnabled();
   },
   { flush: 'sync' }
 );
@@ -160,10 +191,20 @@ const companies = ref<CompanyRow[]>([]);
 const fetchedSig = ref('');
 
 /**
+ * Seed select options from allowed ids immediately so el-select does not drop draft values
+ * while DisplayName rows are still loading.
+ */
+function seedCompanyOptions(ids: string[]): void {
+  const prev = new Map(companies.value.map(c => [c.Id, c] as const));
+  companies.value = ids.map(id => prev.get(id) ?? { Id: id, DisplayName: '' });
+}
+
+/**
  * Load company labels for the currently allowed company set.
  */
 async function ensureCompanies(): Promise<void> {
   const ids = allowedCompanyIds.value;
+  seedCompanyOptions(ids);
   const sig = ids.slice().sort().join(',');
   if (!sig || sig === fetchedSig.value) return;
   fetchedSig.value = sig;
@@ -181,18 +222,58 @@ async function ensureCompanies(): Promise<void> {
   } catch {
     // Allow a later popover open (or metadata change) to retry the fetch.
     fetchedSig.value = '';
-    companies.value = ids.map(id => ({ Id: id, DisplayName: '' }));
+    seedCompanyOptions(ids);
   }
 }
 
 // Prefetch labels for the header trigger; do not wait until the popover opens.
 watch(
   allowedCompanyIds,
-  () => {
+  ids => {
+    seedCompanyOptions(ids);
     void ensureCompanies();
   },
   { immediate: true }
 );
+
+/**
+ * Load the current user's CompanyId/CompanyIds so the switcher does not stay stuck
+ * on stale JWT allowedCompanyIds after the user record was edited.
+ */
+async function syncAllowedCompaniesFromUser(): Promise<void> {
+  const userId = String((authStore.identity as any)?.userId || '').trim();
+  if (!userId) return;
+  try {
+    const userStore = createStoreByModel('auth.User');
+    const user = (await userStore.Browse(userId, ['Id', 'CompanyId', 'CompanyIds'] as any)) as any;
+    liveAllowedCompanyIds.value = uniq([
+      String(user?.CompanyId ?? '').trim(),
+      ...(Array.isArray(user?.CompanyIds) ? user.CompanyIds.map((x: any) => String(x ?? '').trim()) : []),
+    ]);
+  } catch {
+    // Fail soft: keep metadata-derived allowlist.
+  }
+}
+
+/**
+ * Re-sync drafts each time the panel opens.
+ * Refresh token metadata and reload User.CompanyIds so the allowlist matches the DB.
+ */
+watch(visible, async isOpen => {
+  if (!isOpen) return;
+  try {
+    await authStore.refreshToken(true);
+  } catch {
+    // Fail soft: keep the existing token metadata when refresh is unavailable.
+  }
+  await syncAllowedCompaniesFromUser();
+  draftActiveCompanyId.value = currentActiveCompanyId.value;
+  draftEnabledCompanyIds.value = uniq(currentEnabledCompanyIds.value);
+  ensureActiveInEnabled();
+  // Force a company-label refetch after the allowlist may have changed.
+  fetchedSig.value = '';
+  await ensureCompanies();
+});
 
 const companyNameById = computed(() => {
   const m = new Map<string, string>();
@@ -210,9 +291,17 @@ const currentCompanyLabel = computed(() => {
   return companyNameById.value.get(id) ?? (companies.value.length ? id : _t('Company'));
 });
 
+/** Normalize enabled scope the same way drafts do (active is always included). */
+const effectiveCurrentEnabledCompanyIds = computed(() => {
+  const active = currentActiveCompanyId.value;
+  const enabled = uniq(currentEnabledCompanyIds.value);
+  if (active && !enabled.includes(active)) return uniq([active, ...enabled]);
+  return enabled;
+});
+
 const isDirty = computed(() => {
   if (draftActiveCompanyId.value !== currentActiveCompanyId.value) return true;
-  if (!setEq(draftEnabledCompanyIds.value, currentEnabledCompanyIds.value)) return true;
+  if (!setEq(draftEnabledCompanyIds.value, effectiveCurrentEnabledCompanyIds.value)) return true;
   return false;
 });
 
@@ -222,6 +311,19 @@ const canApply = computed(() => {
   if (!draftEnabledCompanyIds.value.includes(active)) return false;
   if (!isDirty.value) return false;
   return true;
+});
+
+const applyDisabledReason = computed(() => {
+  if (canApply.value) return '';
+  const active = draftActiveCompanyId.value;
+  if (!active) return _t('Select a current company');
+  if (!draftEnabledCompanyIds.value.includes(active)) {
+    return _t('Available companies must include the current company');
+  }
+  if (companies.value.length < 2) {
+    return _t('Only one company is available; nothing to apply');
+  }
+  return _t('No changes to apply');
 });
 
 /**
@@ -259,7 +361,21 @@ async function apply(): Promise<void> {
   justify-content: flex-end;
 }
 
+.o-switch-company__hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--el-text-color-secondary);
+}
+
 .o-switch-company__select {
   width: 100%;
+}
+</style>
+
+<style lang="scss">
+/* Teleported popover: keep non-teleported select dropdowns visible and interactive. */
+.o-switch-company__popover {
+  overflow: visible;
 }
 </style>
