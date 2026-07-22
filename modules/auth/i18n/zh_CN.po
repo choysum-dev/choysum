@@ -716,6 +716,11 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
+#: web/components/preferences/OPreferencesDialog.vue
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Cannot update preferences: missing user id"
+msgstr "无法更新偏好设置：缺少用户 ID"
+
 #: web/components/preferences/OPreferencesDialog.vue:2
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Edit Profile"
@@ -741,6 +746,11 @@ msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Select timezone"
 msgstr "选择时区"
 
+#: web/components/preferences/OPreferencesDialog.vue
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Suggested from your browser"
+msgstr "根据浏览器建议"
+
 #: web/components/preferences/OPreferencesDialog.vue:16
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Timezone"
@@ -750,6 +760,11 @@ msgstr "时区"
 msgctxt "web/components/preferences/OPreferencesDialog"
 msgid "Update preferences"
 msgstr "更新偏好设置"
+
+#: web/components/preferences/OPreferencesDialog.vue
+msgctxt "web/components/preferences/OPreferencesDialog"
+msgid "Using current session language"
+msgstr "当前使用会话语言"
 
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"

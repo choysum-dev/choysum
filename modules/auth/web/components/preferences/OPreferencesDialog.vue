@@ -24,17 +24,23 @@ SPDX-License-Identifier: Apache-2.0
         <el-select v-model="languageCode" filterable style="width: 100%">
           <el-option v-for="opt in languageOptions" :key="opt.Code" :label="opt.Name" :value="opt.Code" />
         </el-select>
+        <div v-if="languageFromSession" class="o-preferences-dialog__hint">
+          {{ _t('Using current session language') }}
+        </div>
       </el-form-item>
       <el-form-item :label="_t('Timezone')">
         <el-select v-model="timezone" filterable clearable style="width: 100%" :placeholder="_t('Select timezone')">
           <el-option v-for="tz in timezoneOptions" :key="tz.value" :label="tz.label" :value="tz.value" />
         </el-select>
+        <div v-if="timezoneFromBrowser" class="o-preferences-dialog__hint">
+          {{ _t('Suggested from your browser') }}
+        </div>
       </el-form-item>
     </el-form>
 
     <template #footer>
       <el-button @click="visible = false">{{ _t('Cancel') }}</el-button>
-      <el-button type="primary" :loading="saving" @click="handleSave">{{ _t('Update preferences') }}</el-button>
+      <el-button type="primary" :loading="saving" native-type="button" @click="handleSave">{{ _t('Update preferences') }}</el-button>
     </template>
   </el-dialog>
 </template>
@@ -46,6 +52,11 @@ import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import {
+  detectBrowserTimezone,
+  resolvePreferenceLanguage,
+  resolvePreferenceTimezone,
+} from './preferences_defaults';
 
 defineOptions({ name: 'OPreferencesDialog' });
 
@@ -72,6 +83,8 @@ const displayName = computed(() => {
 
 const languageCode = ref('');
 const timezone = ref<string | null>(null);
+const languageFromSession = ref(false);
+const timezoneFromBrowser = ref(false);
 const languageOptions = ref<Array<{ Code: string; Name: string }>>([]);
 const timezoneOptions = ref<Array<{ value: string; label: string }>>([]);
 const saving = ref(false);
@@ -107,36 +120,86 @@ async function loadTimezoneOptions() {
   timezoneOptions.value = [];
 }
 
-function syncFromUser() {
-  const u = currentUser.value;
-  languageCode.value = String(u?.Language || i18nStore.terminologyLang || 'en_US');
-  timezone.value = u?.Timezone ? String(u.Timezone) : null;
+function syncLanguageFromUser() {
+  const resolved = resolvePreferenceLanguage(currentUser.value?.Language, i18nStore.terminologyLang);
+  languageCode.value = resolved.code;
+  languageFromSession.value = resolved.fromSession;
+}
+
+function applyTimezoneFromUserOrBrowser() {
+  const allowed = timezoneOptions.value.map(opt => opt.value);
+  const resolved = resolvePreferenceTimezone(currentUser.value?.Timezone, detectBrowserTimezone(), allowed);
+  timezone.value = resolved.timezone;
+  timezoneFromBrowser.value = resolved.fromBrowser;
+  // Ensure a suggested IANA id remains selectable even if FieldsGet returned nothing.
+  if (resolved.fromBrowser && resolved.timezone && !allowed.includes(resolved.timezone)) {
+    timezoneOptions.value = [{ value: resolved.timezone, label: resolved.timezone }, ...timezoneOptions.value];
+  }
+}
+
+async function openAndLoad() {
+  // Prefer a fresh Browse so User.Id / Language / Timezone are present for save.
+  if (authStore.isAuthenticated) {
+    try {
+      await authStore.loadUser(true);
+    } catch {
+      // Fall back to whatever is already in auth state / identity.
+    }
+  }
+  syncLanguageFromUser();
+  await Promise.all([loadLanguageOptions(), loadTimezoneOptions()]);
+  applyTimezoneFromUserOrBrowser();
 }
 
 watch(
   () => props.modelValue,
   async open => {
     if (!open) return;
-    syncFromUser();
-    await Promise.all([loadLanguageOptions(), loadTimezoneOptions()]);
+    await openAndLoad();
   }
 );
 
-onMounted(() => {
-  if (props.modelValue) {
-    syncFromUser();
-    void loadLanguageOptions();
-    void loadTimezoneOptions();
+watch(languageCode, code => {
+  if (!languageFromSession.value) return;
+  const saved = String(currentUser.value?.Language || '').trim();
+  if (code !== saved && code !== String(i18nStore.terminologyLang || '').trim()) {
+    languageFromSession.value = false;
   }
 });
 
+watch(timezone, value => {
+  if (!timezoneFromBrowser.value) return;
+  const browserTz = detectBrowserTimezone();
+  if (value !== browserTz) {
+    timezoneFromBrowser.value = false;
+  }
+});
+
+onMounted(() => {
+  if (props.modelValue) {
+    void openAndLoad();
+  }
+});
+
+function resolveUserId(): string {
+  return String(currentUser.value?.Id || authStore.identity?.userId || '').trim();
+}
+
 async function handleSave() {
-  const userId = currentUser.value?.Id;
+  let userId = resolveUserId();
   if (!userId) {
+    ElMessage.error(_t('Cannot update preferences: missing user id'));
     return;
   }
   saving.value = true;
   try {
+    if (!currentUser.value?.Id) {
+      await authStore.loadUser(true);
+      userId = resolveUserId();
+      if (!userId) {
+        throw new Error(_t('Cannot update preferences: missing user id'));
+      }
+    }
     const nextLang = String(languageCode.value || '').trim();
     const nextTz = timezone.value ? String(timezone.value).trim() : null;
     await userStore.UpdateById(
@@ -175,5 +238,11 @@ async function handleSave() {
 .o-preferences-dialog__email {
   color: var(--el-text-color-secondary);
   font-size: 13px;
+}
+.o-preferences-dialog__hint {
+  margin-top: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.4;
 }
 </style>
