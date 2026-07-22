@@ -91,6 +91,8 @@ function getGlobalCompanyStore(): any {
 }
 
 const visible = ref(false);
+/** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
+let panelOpenGeneration = 0;
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
@@ -161,8 +163,8 @@ function onEnabledChange(): void {
 /**
  * Current company cannot leave the available set (server: active ∈ enabled).
  */
-function onRemoveEnabledTag(id: string): void {
-  if (String(id) !== draftActiveCompanyId.value) return;
+function onRemoveEnabledTag(id: unknown): void {
+  if (String(id ?? '') !== draftActiveCompanyId.value) return;
   void nextTick(() => ensureActiveInEnabled());
 }
 
@@ -256,21 +258,28 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
 }
 
 /**
- * Re-sync drafts each time the panel opens.
- * Refresh token metadata and reload User.CompanyIds so the allowlist matches the DB.
+ * Re-sync drafts each time the panel opens, then refresh the allowlist in the background.
+ * Do not reset drafts after the async refresh — that races with user selection and keeps Apply disabled.
  */
 watch(visible, async isOpen => {
   if (!isOpen) return;
+  const openGen = ++panelOpenGeneration;
+  draftActiveCompanyId.value = currentActiveCompanyId.value;
+  draftEnabledCompanyIds.value = uniq(currentEnabledCompanyIds.value);
+  ensureActiveInEnabled();
+  void ensureCompanies();
+
   try {
     await authStore.refreshToken(true);
   } catch {
     // Fail soft: keep the existing token metadata when refresh is unavailable.
   }
+  if (openGen !== panelOpenGeneration || !visible.value) return;
+
   await syncAllowedCompaniesFromUser();
-  draftActiveCompanyId.value = currentActiveCompanyId.value;
-  draftEnabledCompanyIds.value = uniq(currentEnabledCompanyIds.value);
-  ensureActiveInEnabled();
-  // Force a company-label refetch after the allowlist may have changed.
+  if (openGen !== panelOpenGeneration || !visible.value) return;
+
+  // Expand labels for any newly discovered allowed companies without clobbering drafts.
   fetchedSig.value = '';
   await ensureCompanies();
 });
