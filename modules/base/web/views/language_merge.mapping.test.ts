@@ -50,15 +50,19 @@ describe('base language merge seeds and wiring (P0)', () => {
     expect(language).not.toMatch(/DefaultLocaleId|from ['"].*locale['"]/);
     expect(language).toMatch(/Grouping/);
     expect(language).toMatch(/GetActiveLanguages/);
+    expect(language).toMatch(/Format\(/);
+    expect(language).toMatch(/_language_format/);
   });
 
   it('FE adapter symbols use UiKey names (no Locale product aliases)', () => {
     const index = read('../../../web/web/stores/i18nStore/index.ts');
     const lang = read('../../../web/web/stores/i18nStore/lang.ts');
     const utils = read('../../../web/web/stores/i18nStore/utils.ts');
+    const format = read('../../../web/web/stores/i18nStore/language_format.ts');
     expect(lang).toMatch(/langToUiKey|uiKeyToLang/);
     expect(utils).toMatch(/detectBestUiKey/);
-    expect(index).toMatch(/setActiveUiKeys|setUiKey|DEFAULT_ACTIVE_UI_KEYS/);
+    expect(index).toMatch(/setActiveUiKeys|setUiKey|DEFAULT_ACTIVE_UI_KEYS|setDisplayOverrides|resolveFormatConfig/);
+    expect(format).toMatch(/resolveFormatConfig|formatNumberFromConfig|parseGrouping/);
     expect(`${index}\n${lang}\n${utils}`).not.toMatch(
       /\blangToLocale\b|\blocaleToLang\b|\bdetectBestLocale\b|\bsetActiveLocales\b|\bDEFAULT_ACTIVE_LOCALES\b|\bsetLocale\b/
     );

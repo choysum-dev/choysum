@@ -142,10 +142,11 @@ async function handleLogin() {
     try {
       await authStore.loadUser(true);
       const preferredLang = String((authStore.currentUser as any)?.Language || '').trim();
+      const i18nStore = useI18nStore();
       if (preferredLang) {
-        const i18nStore = useI18nStore();
         await i18nStore.setUiKey(langToUiKey(preferredLang));
       }
+      i18nStore.setDisplayOverrides((authStore.currentUser as any)?.Preferences?.display ?? null);
     } catch {
       // Preference apply is best-effort; login already succeeded.
     }

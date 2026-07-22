@@ -151,6 +151,7 @@ async function handleSave() {
     if (nextLang) {
       await i18nStore.setUiKey(langToUiKey(nextLang));
     }
+    i18nStore.setDisplayOverrides((authStore.currentUser as any)?.Preferences?.display ?? null);
     await authStore.refreshToken(true);
     await afterLocaleChange({ remount: softLocaleRemount });
     ElMessage.success(_t('Preferences updated'));

@@ -14,6 +14,11 @@ import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminology_loader';
 import { afterLocaleChange } from './locale_remount';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import {
+  resolveFormatConfig,
+  type DisplayFormatOverrides,
+  type LanguageFormatOverlay,
+} from './language_format';
 
 // Re-export types for external consumers.
 export * from './types';
@@ -24,6 +29,15 @@ export { fetchTerms, patchTerms, downloadTerminologyPo } from './terms_api';
 
 export { componentHintFromScope } from './component_hint';
 export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './locale_remount';
+export {
+  resolveFormatConfig,
+  formatNumberFromConfig,
+  formatCurrencyFromConfig,
+  parseGrouping,
+  applyGrouping,
+  type DisplayFormatOverrides,
+  type LanguageFormatOverlay,
+} from './language_format';
 
 export type { TerminologyLoadResult } from './terminology_loader';
 export type { TermItem, TermsListResponse } from './terms_api';
@@ -55,6 +69,12 @@ export const useI18nStore = defineStore(
     // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
     const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
 
+    // Format overlays keyed by POSIX Language.Code (from GetActiveLanguages).
+    const languageFormatByCode = ref<Record<string, LanguageFormatOverlay>>({});
+
+    // Sparse Preferences.display overrides (dateFormat / timeFormat / currency).
+    const displayOverrides = ref<DisplayFormatOverrides | null>(null);
+
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
       if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
@@ -63,10 +83,30 @@ export const useI18nStore = defineStore(
 
       const code = localeCode.value;
       const config = SUPPORTED_LOCALES[code];
+      const language = languageFormatByCode.value[uiKeyToLang(code)] || null;
+      const resolved = resolveFormatConfig(
+        config.numberFormat,
+        config.dateTimeFormat,
+        language,
+        displayOverrides.value
+      );
 
       return {
         code,
         ...config,
+        numberFormat: resolved.numberFormat,
+        dateTimeFormat: resolved.dateTimeFormat,
+        currencyFormat: {
+          ...(config.currencyFormat || {
+            symbol: '$',
+            position: 'before' as const,
+            code: 'USD',
+            decimalDigits: 2,
+          }),
+          ...(resolved.currencyCodeOverride ? { code: resolved.currencyCodeOverride } : {}),
+          ...(resolved.currencySymbolPosition ? { position: resolved.currencySymbolPosition } : {}),
+          ...(resolved.currencySymbolSpacing != null ? { spacing: resolved.currencySymbolSpacing } : {}),
+        },
         elementLocale: loadedLocales.value[code] || null,
       };
     });
@@ -187,7 +227,36 @@ export const useI18nStore = defineStore(
      * Wrapped currency formatter.
      */
     function wrappedFormatCurrency(value: number, currencyCode?: string) {
-      return formatCurrency(value, currentLocale.value.code, currentLocale.value.currencyFormat, currencyCode);
+      const loc = currentLocale.value;
+      return formatCurrency(
+        value,
+        loc.code,
+        {
+          ...loc.currencyFormat,
+          thousandsSeparator: loc.numberFormat?.thousandsSeparator,
+          decimalSeparator: loc.numberFormat?.decimalSeparator,
+          grouping: loc.numberFormat?.grouping,
+        },
+        currencyCode
+      );
+    }
+
+    /**
+     * Apply sparse Preferences.display overrides (or clear with null).
+     */
+    function setDisplayOverrides(overrides: DisplayFormatOverrides | null | undefined) {
+      if (!overrides || typeof overrides !== 'object') {
+        displayOverrides.value = null;
+        return;
+      }
+      displayOverrides.value = {
+        ...(overrides.dateFormat ? { dateFormat: String(overrides.dateFormat) } : {}),
+        ...(overrides.timeFormat ? { timeFormat: String(overrides.timeFormat) } : {}),
+        ...(overrides.currency ? { currency: String(overrides.currency) } : {}),
+      };
+      if (!displayOverrides.value.dateFormat && !displayOverrides.value.timeFormat && !displayOverrides.value.currency) {
+        displayOverrides.value = null;
+      }
     }
 
     /**
@@ -249,18 +318,43 @@ export const useI18nStore = defineStore(
 
     /**
      * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
-     * Failures keep DEFAULT_ACTIVE_UI_KEYS.
+     * Also caches format overlays for number/date runtime (P2).
+     * Failures keep DEFAULT_ACTIVE_UI_KEYS and catalog format fallbacks.
      */
     async function loadActiveUiKeysFromServer() {
       try {
         const languageStore = createStoreByModel('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
+        const formats: Record<string, LanguageFormatOverlay> = {};
         const keys = (rows || [])
-          .map((row: any) => langToUiKey(String(row?.Code || '')))
+          .map((row: any) => {
+            const posix = String(row?.Code || '').trim();
+            if (posix) {
+              formats[posix] = {
+                DecimalSeparator: row.DecimalSeparator != null ? String(row.DecimalSeparator) : undefined,
+                ThousandSeparator: row.ThousandSeparator != null ? String(row.ThousandSeparator) : undefined,
+                Grouping: row.Grouping != null ? String(row.Grouping) : undefined,
+                DateFormat: row.DateFormat != null ? String(row.DateFormat) : undefined,
+                TimeFormat: row.TimeFormat != null ? String(row.TimeFormat) : undefined,
+                FirstDayOfWeek: row.FirstDayOfWeek != null ? Number(row.FirstDayOfWeek) : undefined,
+                CurrencySymbolPosition:
+                  row.CurrencySymbolPosition === 'after'
+                    ? 'after'
+                    : row.CurrencySymbolPosition === 'before'
+                      ? 'before'
+                      : undefined,
+                CurrencySymbolSpacing:
+                  row.CurrencySymbolSpacing != null ? Boolean(row.CurrencySymbolSpacing) : undefined,
+              };
+            }
+            return langToUiKey(posix);
+          })
           .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+        languageFormatByCode.value = formats;
         setActiveUiKeys(keys);
       } catch (error) {
         console.warn('Failed to load active languages; using defaults', error);
+        languageFormatByCode.value = {};
         setActiveUiKeys([...DEFAULT_ACTIVE_UI_KEYS]);
       }
     }
@@ -323,6 +417,7 @@ export const useI18nStore = defineStore(
       // Locale management methods.
       setUiKey,
       setActiveUiKeys,
+      setDisplayOverrides,
       loadActiveUiKeysFromServer,
       reloadTerminology,
 

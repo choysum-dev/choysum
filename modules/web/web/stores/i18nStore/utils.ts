@@ -6,6 +6,7 @@ import dayjs, { type Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { SUPPORTED_LOCALES } from './locales';
 import { DateTimeFormatType, SupportedLocale } from './types';
+import { formatCurrencyFromConfig, formatNumberFromConfig } from './language_format';
 
 // Enable the relative time plugin.
 dayjs.extend(relativeTime);
@@ -127,8 +128,12 @@ export function formatDateTime(
 
 /**
  * Format numbers.
+ * Prefer Language-driven separators/grouping when present; otherwise Intl (catalog incomplete).
  */
 export function formatNumber(value: number, locale: string, config: any, options?: { digits?: number }) {
+  if (config && (config.thousandsSeparator != null || config.decimalSeparator != null || config.grouping)) {
+    return formatNumberFromConfig(value, config, options);
+  }
   try {
     const digits = options?.digits ?? config?.decimalDigits ?? 2;
 
@@ -143,8 +148,12 @@ export function formatNumber(value: number, locale: string, config: any, options
 
 /**
  * Format currency values.
+ * Prefer Language-driven separators + symbol placement when separators are present.
  */
 export function formatCurrency(value: number, locale: string, config: any, currencyCode?: string) {
+  if (config && (config.thousandsSeparator != null || config.decimalSeparator != null || config.grouping)) {
+    return formatCurrencyFromConfig(value, config, currencyCode);
+  }
   try {
     const code = currencyCode || config?.code || 'USD';
 
