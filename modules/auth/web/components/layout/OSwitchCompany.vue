@@ -221,18 +221,22 @@ async function ensureCompanies(): Promise<void> {
   try {
     const companyStore = getGlobalCompanyStore();
     const rows = (await companyStore.Search(['Id', 'in', ids] as any, { fields: ['Id', 'DisplayName'], limit: 1000 } as any)) as any[];
+    // A newer ensureCompanies call owns fetchedSig; drop this stale response.
+    if (fetchedSig.value !== sig) return;
+
     const out: CompanyRow[] = (rows || [])
       .map(r => ({ Id: String((r as any)?.Id ?? '').trim(), DisplayName: String((r as any)?.DisplayName ?? '').trim() }))
       .filter(r => !!r.Id);
 
-    // Preserve the permission-derived company ordering in the selector.
+    // Preserve the current allowlist ordering; use latest ids in case the set grew mid-flight.
     const map = new Map(out.map(r => [r.Id, r] as const));
-    companies.value = ids.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
+    companies.value = allowedCompanyIds.value.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
     labelsReady.value = true;
   } catch {
+    if (fetchedSig.value !== sig) return;
     // Allow a later popover open (or metadata change) to retry the fetch.
     fetchedSig.value = '';
-    seedCompanyOptions(ids);
+    seedCompanyOptions(allowedCompanyIds.value);
     labelsReady.value = true;
   }
 }
