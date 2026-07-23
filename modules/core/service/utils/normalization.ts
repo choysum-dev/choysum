@@ -570,6 +570,137 @@ export function normalizeRequiredText(value: unknown): string {
 }
 
 /**
+ * Normalize an optional text field while preserving null vs undefined.
+ *
+ * - undefined → undefined (field omitted — skip in partial updates)
+ * - null / empty / whitespace → null (explicitly cleared)
+ * - otherwise → trimmed, optionally case-coerced string
+ */
+export function normalizeOptionalText(value: unknown, opts?: { upper?: boolean; lower?: boolean }): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const base = normalizeOptionalString(value, opts);
+  return base === undefined ? null : base;
+}
+
+/**
+ * Normalize an optional relation reference while preserving null vs undefined.
+ *
+ * - undefined → undefined
+ * - null → null
+ * - otherwise → {@link normalizeRefId} result
+ */
+export function normalizeOptionalRefId(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return normalizeRefId(value);
+}
+
+function isTranslatedLangMap(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Normalize an optional translated field: scalar string, null, or `{ lang: string }` map.
+ *
+ * Per-lang empty strings are preserved (data-i18n D12). Undefined lang entries are skipped.
+ */
+export function normalizeOptionalTranslatedText(
+  value: unknown,
+  opts?: { upper?: boolean; lower?: boolean }
+): string | null | undefined | Record<string, string> {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (isTranslatedLangMap(value)) {
+    const out: Record<string, string> = {};
+    for (const [lang, raw] of Object.entries(value)) {
+      const key = String(lang || '').trim();
+      if (!key) continue;
+      const normalized = normalizeOptionalText(raw, opts);
+      if (normalized === undefined) continue;
+      out[key] = normalized === null ? '' : normalized;
+    }
+    return out;
+  }
+  return normalizeOptionalText(value, opts);
+}
+
+/**
+ * Normalize a required translated field: scalar string or `{ lang: string }` map.
+ *
+ * Empty maps / all-empty values raise {@link NormalizationError} `required`.
+ * Per-lang empty strings are allowed (data-i18n D12).
+ */
+export function normalizeRequiredTranslatedText(value: unknown): string | Record<string, string> {
+  if (isTranslatedLangMap(value)) {
+    const out: Record<string, string> = {};
+    for (const [lang, raw] of Object.entries(value)) {
+      const key = String(lang || '').trim();
+      if (!key) continue;
+      const normalized = normalizeOptionalText(raw);
+      out[key] = normalized === undefined || normalized === null ? '' : normalized;
+    }
+    if (!Object.values(out).some(v => String(v || '').trim())) {
+      raiseNormalizationError('required');
+    }
+    return out;
+  }
+  return normalizeRequiredText(value);
+}
+
+/** True when a scalar or lang-map translated value has any non-empty text. */
+export function translatedTextHasValue(value: unknown): boolean {
+  if (value == null) return false;
+  if (typeof value === 'string') return !!value.trim();
+  if (isTranslatedLangMap(value)) {
+    return Object.values(value).some(v => typeof v === 'string' && !!v.trim());
+  }
+  return false;
+}
+
+/**
+ * Normalize a non-negative integer field.
+ *
+ * - undefined → undefined
+ * - null → 0
+ * - otherwise → integer >= 0, or {@link NormalizationError} `invalid_integer`
+ */
+export function normalizeNonNegativeInt(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return 0;
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    raiseNormalizationError('invalid_integer');
+  }
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0 || Math.floor(num) !== num) {
+    raiseNormalizationError('invalid_integer');
+  }
+  return num;
+}
+
+/**
+ * Normalize a display-sequence integer.
+ *
+ * - undefined → undefined
+ * - null / empty string → {@link defaultValue} (default 10)
+ * - otherwise → integer (negatives allowed), or {@link NormalizationError} `invalid_integer`
+ */
+export function normalizeSequenceInt(value: unknown, defaultValue: number = 10): number | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || (typeof value === 'string' && value.trim() === '')) {
+    return defaultValue;
+  }
+  if (typeof value !== 'number' && typeof value !== 'string') {
+    raiseNormalizationError('invalid_integer');
+  }
+  const num = Number(value);
+  if (!Number.isFinite(num) || Math.floor(num) !== num) {
+    raiseNormalizationError('invalid_integer');
+  }
+  return num;
+}
+
+/**
  * Parse positive integer (>= 1).
  */
 export function parsePositiveInt(value: unknown): number {

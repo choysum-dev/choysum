@@ -53,6 +53,7 @@ type FieldMetadata struct {
 	Round                    *string `json:"round,omitempty"`
 	IsReadonly               *bool   `json:"isReadonly,omitempty"`
 	Indexed                  *bool   `json:"indexed,omitempty"`
+	Translate                *bool   `json:"translate,omitempty"`
 
 	RelationInverseField     *string `json:"relationInverseField,omitempty"`
 	RelationJoinModel        *string `json:"relationJoinModel,omitempty"`
@@ -126,6 +127,15 @@ func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
 		metadata.RunAs = toStringPtr(*resolved.Resolved.RunAs.Value)
 	} else if resolved.Behavior.Compute != nil {
 		metadata.RunAs = toStringPtr(resolved.Behavior.Compute.RunAs)
+	}
+
+	if resolved.Structural.Translate != nil && *resolved.Structural.Translate {
+		t := true
+		metadata.Translate = &t
+		if metadata.Size == nil && resolved.Structural.StorageHints != nil && resolved.Structural.StorageHints.Size != nil && *resolved.Structural.StorageHints.Size > 0 {
+			size := *resolved.Structural.StorageHints.Size
+			metadata.Size = &size
+		}
 	}
 }
 
@@ -339,8 +349,10 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		"Delete":         true,
 		"DeleteById":     true,
 		"DefaultGet":     true,
-		"FieldsGet":      true,
-		"Onchange":       true,
+		"FieldsGet":                true,
+		"GetFieldTranslations":     true,
+		"UpdateFieldTranslations":  true,
+		"Onchange":                 true,
 		"ReadGroup":      true,
 		"ReadGroupCount": true,
 	}

@@ -5,7 +5,7 @@ import { BaseModel, Compute, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, normalizeRequiredText, normalizeNonNegativeInt } from './_normalization_bridge';
+import { fail, normalizeOptionalText, normalizeRequiredText, normalizeRequiredTranslatedText, normalizeNonNegativeInt } from './_normalization_bridge';
 import PartnerContact from './partner_contact';
 
 /**
@@ -31,7 +31,8 @@ export default class Partner extends BaseModel {
     type: 'varchar',
     size: 100,
     notNull: true,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'partner.model.Partner.fields' }),
   })
   Name: string;
@@ -234,6 +235,8 @@ export default class Partner extends BaseModel {
   /** Internal notes. */
   @Field({
     type: 'text',
+    translate: true,
+    index: 'trigram',
     string: _lt('Notes', { scope: 'partner.model.Partner.fields' }),
   })
   Notes?: string;
@@ -302,7 +305,7 @@ export default class Partner extends BaseModel {
 
   /** Normalizes and validates partner values before persistence. */
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    values.Name = normalizeRequiredText(values.Name, 'Name');
+    values.Name = normalizeRequiredTranslatedText(values.Name, 'Name');
     values.Code = normalizeRequiredText(values.Code, 'Code').toUpperCase();
     values.CompanyId = normalizeRefId(values.CompanyId);
     values.Reference = normalizeOptionalText(values.Reference, { upper: true });

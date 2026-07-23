@@ -11,8 +11,14 @@ import { countryCode8, uid } from './_helpers';
 Object.defineProperty(Country, 'validateConstraintCurrentName', {
   value: function validateConstraintCurrentName(self: Country, ctx: any) {
     if (ctx.mode !== 'update') return;
-    if (ctx.current?.Name === 'country_before_update' && self.Name === 'country_after_blocked') {
-      throw new Error(`blocked rename from ${ctx.current?.Name} to ${self.Name}`);
+    // Update validation loads current with prefetch_langs so translate merges keep sibling keys.
+    const currentNameRaw = ctx.current?.Name;
+    const currentName =
+      currentNameRaw && typeof currentNameRaw === 'object'
+        ? String((currentNameRaw as Record<string, unknown>).en_US ?? '')
+        : String(currentNameRaw ?? '');
+    if (currentName === 'country_before_update' && self.Name === 'country_after_blocked') {
+      throw new Error(`blocked rename from ${currentName} to ${self.Name}`);
     }
   },
   configurable: true,

@@ -4,13 +4,21 @@
 import { Code, type Interceptor } from '@connectrpc/connect';
 import { getTokenProvider } from '../providers';
 
-export function createAuthInterceptor(): Interceptor | undefined {
-  const tokenProvider = getTokenProvider();
-  if (!tokenProvider) {
-    return undefined;
-  }
-
+/**
+ * Attach Authorization on every request.
+ *
+ * Providers are resolved lazily so clients created before auth module setup
+ * (e.g. base.Language/GetActiveLanguages during i18n init) still pick up tokens
+ * after setTokenProvider runs. Eager capture + clientCache would otherwise leave
+ * Language Search/FieldsGet permanently unauthenticated.
+ */
+export function createAuthInterceptor(): Interceptor {
   return next => async req => {
+    const tokenProvider = getTokenProvider();
+    if (!tokenProvider) {
+      return next(req);
+    }
+
     try {
       const need = await tokenProvider.shouldRefreshToken?.();
       if (need) {

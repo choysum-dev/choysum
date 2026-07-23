@@ -8,6 +8,9 @@ import {
   mapNormalizationToPartner,
   normalizeOptionalText,
   normalizeRequiredText,
+  normalizeRequiredTranslatedText,
+  normalizeOptionalTranslatedText,
+  translatedTextHasValue,
   normalizeNonNegativeInt,
   normalizeSequenceInt,
 } from '@/partner/service/models/_normalization_bridge';
@@ -292,4 +295,32 @@ test('partner._normalization_bridge: normalizeSequenceInt throws for Infinity', 
   }
   expect(err instanceof ChoysumError).toBe(true);
   expect((err as ChoysumError).message).toBe('Sequence must be an integer');
+});
+
+test('partner._normalization_bridge: normalizeRequiredTranslatedText accepts lang maps', () => {
+  expect(normalizeRequiredTranslatedText({ en_US: ' Acme ', zh_CN: '' }, 'Name')).toEqual({
+    en_US: 'Acme',
+    zh_CN: '',
+  });
+  expect(normalizeRequiredTranslatedText(' Solo ', 'Name')).toBe('Solo');
+});
+
+test('partner._normalization_bridge: normalizeRequiredTranslatedText rejects empty maps', () => {
+  let err: unknown;
+  try {
+    normalizeRequiredTranslatedText({ en_US: '  ', zh_CN: '' }, 'Name');
+  } catch (e) {
+    err = e;
+  }
+  expect(err instanceof ChoysumError).toBe(true);
+  expect((err as ChoysumError).message).toBe('Name is required');
+});
+
+test('partner._normalization_bridge: normalizeOptionalTranslatedText and translatedTextHasValue', () => {
+  expect(normalizeOptionalTranslatedText(undefined)).toBeUndefined();
+  expect(normalizeOptionalTranslatedText({ en_US: ' A ', zh_CN: '  ' })).toEqual({ en_US: 'A', zh_CN: '' });
+  expect(normalizeOptionalTranslatedText({ en_US: 'A', zh_CN: '' })).toEqual({ en_US: 'A', zh_CN: '' });
+  expect(translatedTextHasValue('x')).toBe(true);
+  expect(translatedTextHasValue({ en_US: '', zh_CN: '甲' })).toBe(true);
+  expect(translatedTextHasValue({ en_US: '', zh_CN: '' })).toBe(false);
 });

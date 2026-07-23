@@ -18,20 +18,34 @@ SPDX-License-Identifier: Apache-2.0
     :error="serverError"
   >
     <template v-if="preserveModeSlotForm">
-      <div v-show="effectiveEditForm">
-        <slot
-          name="edit"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          :readonly="false"
-          :required="requiredForm"
-          :visible="visibleForm"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :onFieldChange="onchangeHandlers.onChange"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
+      <div v-show="effectiveEditForm" class="o-field-base__edit-wrap">
+        <div class="o-field-base__edit-control">
+          <slot
+            name="edit"
+            :fieldValue="valueForm"
+            :record="recordForm"
+            :readonly="false"
+            :required="requiredForm"
+            :visible="visibleForm"
+            :inputName="inputName"
+            :inputId="inputIdForm"
+            :onFieldChange="onchangeHandlers.onChange"
+            :triggerOnchange="onchangeHandlers.trigger"
+            :onchangeRunning="onchangeHandlers.running?.value"
+          />
+        </div>
+        <el-tooltip v-if="showTranslateAction" :content="translateAriaLabel" placement="top" :show-after="200">
+          <el-button
+            class="o-field-base__translate-btn"
+            text
+            :aria-label="translateAriaLabel"
+            @click="translationsOpen = true"
+          >
+            <el-icon :size="16">
+              <component :is="TranslateOutlined" />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
       </div>
       <div v-show="!effectiveEditForm">
         <slot
@@ -51,19 +65,35 @@ SPDX-License-Identifier: Apache-2.0
     </template>
     <template v-else>
       <template v-if="effectiveEditForm">
-        <slot
-          name="edit"
-          :fieldValue="valueForm"
-          :record="recordForm"
-          :readonly="false"
-          :required="requiredForm"
-          :visible="visibleForm"
-          :inputName="inputName"
-          :inputId="inputIdForm"
-          :onFieldChange="onchangeHandlers.onChange"
-          :triggerOnchange="onchangeHandlers.trigger"
-          :onchangeRunning="onchangeHandlers.running?.value"
-        />
+        <div class="o-field-base__edit-wrap">
+          <div class="o-field-base__edit-control">
+            <slot
+              name="edit"
+              :fieldValue="valueForm"
+              :record="recordForm"
+              :readonly="false"
+              :required="requiredForm"
+              :visible="visibleForm"
+              :inputName="inputName"
+              :inputId="inputIdForm"
+              :onFieldChange="onchangeHandlers.onChange"
+              :triggerOnchange="onchangeHandlers.trigger"
+              :onchangeRunning="onchangeHandlers.running?.value"
+            />
+          </div>
+          <el-tooltip v-if="showTranslateAction" :content="translateAriaLabel" placement="top" :show-after="200">
+            <el-button
+              class="o-field-base__translate-btn"
+              text
+              :aria-label="translateAriaLabel"
+              @click="translationsOpen = true"
+            >
+              <el-icon :size="16">
+                <component :is="TranslateOutlined" />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
       </template>
       <template v-else>
         <slot
@@ -81,6 +111,17 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
     </template>
+    <OFieldTranslationsDialog
+      v-if="showTranslateAction && translationRecordId"
+      v-model="translationsOpen"
+      :store="binding.store as any"
+      :record-id="translationRecordId"
+      :field-name="leafFieldName"
+      :field-label="resolvedLabel"
+      :max-length="translationMaxLength"
+      :draft-value="translationDraftValue"
+      @saved="onTranslationsSaved"
+    />
   </el-form-item>
 
   <!-- TABLE mode -->
@@ -227,21 +268,25 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, V = unknown, View = V">
 import type { RuleItem } from 'async-validator';
 import type { BaseModel } from '@/core/rpc';
-import { ElFormItem, ElTooltip, type FormItemProps } from 'element-plus';
+import { ElButton, ElFormItem, ElIcon, ElTooltip, type FormItemProps } from 'element-plus';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
-import { computed, inject, onMounted, watch } from 'vue';
+import { computed, inject, onMounted, ref, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
-import { getGlobalComposer } from '@/web/web/i18n/translate';
+import { TranslateOutlined } from '@vicons/material';
+import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
+import OFieldTranslationsDialog from './OFieldTranslationsDialog.vue';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
 
 defineOptions({ name: 'OFieldBase' });
+
+const { _t } = createTranslate('web', { scope: 'web/components/field/OFieldBase' });
 
 const props = withDefaults(
   defineProps<{
@@ -317,6 +362,59 @@ onMounted(() => {
   if (!store?.ensureFieldsGet || !leaf) return;
   void store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
 });
+
+const translationsOpen = ref(false);
+
+const translationRecordId = computed(() => {
+  try {
+    const record = binding.recordRef?.()?.value as { Id?: unknown } | undefined;
+    const id = String(record?.Id ?? '').trim();
+    return id || '';
+  } catch {
+    return '';
+  }
+});
+
+const showTranslateAction = computed(() => {
+  if (effectiveRenderMode.value !== 'form') return false;
+  if (!binding.env.isEditMode) return false;
+  if (!translationRecordId.value) return false;
+  const meta = effectiveFieldMeta.value as { translate?: boolean } | undefined;
+  return meta?.translate === true;
+});
+
+const translationMaxLength = computed(() => {
+  const meta = effectiveFieldMeta.value as { size?: number } | undefined;
+  const size = meta?.size;
+  return typeof size === 'number' && Number.isInteger(size) && size > 0 ? size : undefined;
+});
+
+const translateAriaLabel = computed(() => {
+  const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
+  return label ? _t('Translate: %s', label) : _t('Translate field');
+});
+
+/** Current form draft (current UI lang unwrap); seeded into the translations dialog on open. */
+const translationDraftValue = computed(() => {
+  try {
+    const fieldRef = valueForm() as WritableComputedRef<View> | undefined;
+    const v = fieldRef?.value;
+    return v == null ? '' : String(v);
+  } catch {
+    return '';
+  }
+});
+
+function onTranslationsSaved(nextValue: string | null) {
+  try {
+    const fieldRef = valueForm() as WritableComputedRef<View>;
+    if (fieldRef) {
+      fieldRef.value = nextValue as View;
+    }
+  } catch {
+    // Ignore draft write failures; Browse already refreshed server state.
+  }
+}
 
 /* ===================== Render Mode Dispatch ===================== */
 // Inject a render mode override (for example, Kanban cards provide inline)
@@ -616,5 +714,27 @@ defineSlots<{
 }
 .o-inline-err-icon {
   color: var(--el-color-error);
+}
+
+.o-field-base__edit-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+.o-field-base__edit-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.o-field-base__translate-btn {
+  flex: 0 0 auto;
+  height: 24px;
+  width: 24px;
+  padding: 0;
+  color: var(--el-text-color-secondary);
+}
+.o-field-base__translate-btn:hover,
+.o-field-base__translate-btn:focus {
+  color: var(--el-color-primary);
 }
 </style>

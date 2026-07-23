@@ -7,6 +7,7 @@ import { DEC_SCALE_ALIAS_PREFIX, buildHiddenScaleAlias } from '../hidden_scale_a
 import { asBigdecimal, isBigdecimalEnvelope, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { asObjectRecord, hasOwnKey } from '../../../../utils/object';
 import type { UnknownRecord } from '../../../../utils/types';
+import { decodeTranslatedFieldValue, encodeTranslatedMapForDb, isTranslatedLangMap } from './translated_field_codec';
 
 type DecimalMetaLike = {
   column?: UnknownRecord;
@@ -181,6 +182,27 @@ export function encodeForDb(meta: ModelMetadata, input: Entity): Entity {
       continue;
     }
 
+    if (fm?.translate && fm.column) {
+      if (v == null) {
+        out[k] = null;
+      } else if (isTranslatedLangMap(v)) {
+        out[k] = encodeTranslatedMapForDb(v as Record<string, string>);
+      } else if (typeof v === 'string') {
+        // Already JSON from a prior encode, or raw JSON string — persist as-is if object-shaped.
+        const trimmed = v.trim();
+        if (trimmed.startsWith('{')) {
+          out[k] = v;
+        } else {
+          throw new Error(
+            `Translated field "${k}" must be prepared as a lang map before encodeForDb; got a bare string`
+          );
+        }
+      } else {
+        throw new Error(`Translated field "${k}" expects a lang map object or null for DB encode`);
+      }
+      continue;
+    }
+
     if (fm?.type === 'jsonobject' && fm.column) {
       if (v == null) {
         out[k] = null;
@@ -217,6 +239,11 @@ export function decodeFromDb(meta: ModelMetadata, row: Entity): Entity {
   meta.fields.forEach((f, k) => {
     const t = f.type;
     const cur = out[k];
+
+    if (f.translate) {
+      out[k] = decodeTranslatedFieldValue(cur);
+      return;
+    }
 
     if (t === 'jsonobject') {
       out[k] = parseJsonObjectFieldValue(cur);

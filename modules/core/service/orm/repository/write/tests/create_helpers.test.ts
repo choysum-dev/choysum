@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ensureRepositoryCreateAllowed, prepareRepositoryCreateEntities } from '../create_helpers';
+import { withContext } from '../../../../runtime/context';
 
 test('repository create write helpers return record-rule envelope when create is allowed', async () => {
   const calls: Array<Record<string, any>> = [];
@@ -118,6 +119,7 @@ test('repository create write helpers prepare entities with generated ids, defau
   const calls: Array<Record<string, any>> = [];
   const entities = await prepareRepositoryCreateEntities(
     {
+      meta: { fields: new Map() } as any,
       async assertFieldRuleWriteAllowed(payload) {
         calls.push({ method: 'fieldRule', payload });
       },
@@ -157,10 +159,40 @@ test('repository create write helpers prepare entities with generated ids, defau
   ]);
 });
 
+test('repository create write helpers prepare translated fields before encode', async () => {
+  const encodedInputs: any[] = [];
+  const entities = await withContext({ lang: 'zh_CN' }, () =>
+    prepareRepositoryCreateEntities(
+      {
+        meta: {
+          fields: new Map([['Name', { translate: true, column: { name: 'Name' }, storageHints: { size: 100 } }]]),
+        } as any,
+        async assertFieldRuleWriteAllowed() {},
+        generateId() {
+          return 'id_1';
+        },
+        applyDefaultCompanyIdOnCreate(entity) {
+          return entity;
+        },
+        async validateFields() {},
+        encodeForDb(input) {
+          encodedInputs.push(input);
+          return { ...input, Encoded: true } as any;
+        },
+      },
+      [{ Name: '你好' } as any]
+    )
+  );
+
+  expect(encodedInputs[0].Name).toEqual({ zh_CN: '你好', en_US: '你好' });
+  expect(entities[0]).toEqual({ Id: 'id_1', Name: { zh_CN: '你好', en_US: '你好' }, Encoded: true });
+});
+
 test('repository create write helpers return empty prepared entities for empty input', async () => {
   const calls: Array<Record<string, any>> = [];
   const entities = await prepareRepositoryCreateEntities(
     {
+      meta: { fields: new Map() } as any,
       async assertFieldRuleWriteAllowed(payload) {
         calls.push({ method: 'fieldRule', payload });
       },
@@ -191,6 +223,7 @@ test('repository create write helpers treat undefined input as empty payload lis
   const calls: Array<Record<string, any>> = [];
   const entities = await prepareRepositoryCreateEntities(
     {
+      meta: { fields: new Map() } as any,
       async assertFieldRuleWriteAllowed(payload) {
         calls.push({ method: 'fieldRule', payload });
       },

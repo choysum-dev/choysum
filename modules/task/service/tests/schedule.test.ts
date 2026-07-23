@@ -3,6 +3,8 @@
 
 import Job from '@/task/service/models/job';
 import Schedule from '@/task/service/models/schedule';
+import { MetadataStorage } from '@/core/service/api/metadata';
+import { withContext } from '@/core/service/api/context';
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
 const FR_CACHE_KEY = Symbol.for('choysum.fieldrule.cache');
@@ -150,4 +152,43 @@ test('task.Schedule UpdateById runs timezone constraint', async () => {
     error = err;
   }
   expect(Boolean(error)).toBe(true);
+});
+
+test('task.Schedule Name translate metadata is enabled', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Schedule).fields.get('Name');
+  expect(field?.translate).toBe(true);
+  expect(field?.column?.index).toBe('trigram');
+  expect(field?.storageHints?.size).toBe(200);
+});
+
+test('task.Schedule Name bilingual write/read unwraps by lang', async () => {
+  resetRequestContext();
+  const enName = `sched_en_${Date.now()}`;
+  const zhName = `sched_zh_${Date.now()}`;
+
+  const created = await Schedule.Create(
+    {
+      Active: true,
+      Name: { en_US: enName, zh_CN: zhName } as any,
+      TargetApp: 'auth',
+      FullMethod: 'auth.User/Login',
+      PayloadTemplateJson: {},
+      SchedulerUserId: 'admin',
+      TriggeredByUserId: 'admin',
+      CronExpr: '0 0 * * *',
+      Timezone: 'UTC',
+      TimeoutMs: 30_000,
+    } as any,
+    ['Id', 'Name'] as any
+  );
+  expect(String((created as any).Name)).toBe(enName);
+
+  const id = String((created as any).Id);
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () => Schedule.Browse(id, ['Id', 'Name'] as any));
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
+
+  const hit = await withContext({ lang: 'zh_CN' }, () =>
+    Schedule.Search(['Name', 'ilike', zhName] as any, { fields: ['Id', 'Name'], limit: 5 } as any)
+  );
+  expect(hit?.some((r: any) => String(r.Id) === id)).toBe(true);
 });

@@ -86,13 +86,43 @@ test('partner_contact: ensureRowHasValue throws when all fields are empty', () =
   expect((err as ChoysumError).message).toBe('PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile');
 });
 
-test('partner_contact: ensureRowHasValue throws when all fields are missing', () => {
-  let err: unknown;
+test('partner_contact: ensureRowHasValue passes when Name is a translated map', () => {
+  expect(() => (PartnerContact as any).ensureRowHasValue({ Name: { en_US: '', zh_CN: '甲' } })).not.toThrow();
+});
+
+test('partner_contact: validateEntity Browse catch skips persisted backfill', async () => {
+  const originalBrowse = (PartnerContact as any).Browse;
+  (PartnerContact as any).Browse = async () => {
+    throw new Error('missing row');
+  };
   try {
-    (PartnerContact as any).ensureRowHasValue({});
-  } catch (e) {
-    err = e;
+    let err: unknown;
+    try {
+      await (PartnerContact as any).validateEntity(
+        {
+          CompanyId: 'co-1',
+          Name: 'Solo',
+        },
+        'missing-id'
+      );
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as any)?.message || err)).toMatch(/PartnerId is required/);
+  } finally {
+    (PartnerContact as any).Browse = originalBrowse;
   }
-  expect(err instanceof ChoysumError).toBe(true);
-  expect((err as ChoysumError).message).toBe('PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile');
+});
+
+test('partner_contact: validateEntity trims Title/Department lang maps', async () => {
+  const values: Record<string, any> = {
+    PartnerId: 'p-1',
+    CompanyId: 'c-1',
+    Name: 'Jane',
+    Title: { en_US: ' VP ', zh_CN: ' 经理 ' },
+    Department: { en_US: ' Sales ' },
+  };
+  await (PartnerContact as any).validateEntity(values, undefined);
+  expect(values.Title).toEqual({ en_US: 'VP', zh_CN: '经理' });
+  expect(values.Department).toEqual({ en_US: 'Sales' });
 });

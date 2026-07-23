@@ -301,7 +301,7 @@ func scheduleEntryFromModel(schedule Schedule) taskcontract.ScheduleEntry {
 	return taskcontract.ScheduleEntry{
 		ID:                  schedule.Id,
 		Active:              schedule.Active,
-		Name:                schedule.Name,
+		Name:                DecodeTranslatedScheduleName(schedule.Name),
 		TargetApp:           schedule.TargetApp,
 		FullMethod:          schedule.FullMethod,
 		PayloadTemplateJSON: cloneJSON(schedule.PayloadTemplate),
@@ -322,7 +322,7 @@ func scheduleEntryToModel(entry taskcontract.ScheduleEntry) *Schedule {
 	return &Schedule{
 		Id:                entry.ID,
 		Active:            entry.Active,
-		Name:              entry.Name,
+		Name:              EncodeTranslatedScheduleName(entry.Name),
 		TargetApp:         entry.TargetApp,
 		FullMethod:        entry.FullMethod,
 		PayloadTemplate:   datatypes.JSON(entry.PayloadTemplateJSON),

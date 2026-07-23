@@ -7,7 +7,7 @@ import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import Country from './country';
 import State from './state';
-import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
+import { fail, normalizeCodeOptional, normalizeRequiredTranslatedText, requireRefId } from './_normalizers';
 
 @Model('City')
 export default class City extends BaseModel {
@@ -15,8 +15,8 @@ export default class City extends BaseModel {
     type: 'varchar',
     size: 100,
     notNull: true,
-    index: true,
-    uniqueIndex: 'uidx_base_city_country_state_name',
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.City.fields' }),
   })
   Name: string;
@@ -25,6 +25,7 @@ export default class City extends BaseModel {
     type: 'varchar',
     size: 16,
     index: true,
+    uniqueIndex: 'uidx_base_city_country_state_code',
     string: _lt('Code', { scope: 'base.model.City.fields' }),
   })
   Code?: string;
@@ -34,7 +35,7 @@ export default class City extends BaseModel {
     relation: { targetModel: () => Country },
     notNull: true,
     index: true,
-    uniqueIndex: 'uidx_base_city_country_state_name',
+    uniqueIndex: 'uidx_base_city_country_state_code',
     string: _lt('Country', { scope: 'base.model.City.fields' }),
   })
   CountryId: Country;
@@ -43,7 +44,7 @@ export default class City extends BaseModel {
     type: 'ManyToOne',
     relation: { targetModel: () => State },
     index: true,
-    uniqueIndex: 'uidx_base_city_country_state_name',
+    uniqueIndex: 'uidx_base_city_country_state_code',
     string: _lt('State/Province', { scope: 'base.model.City.fields' }),
   })
   StateId?: State;
@@ -69,19 +70,21 @@ export default class City extends BaseModel {
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
     const countryId = requireRefId(values.CountryId, 'CountryId');
     const stateId = normalizeRefId(values.StateId) ?? null;
-    const name = normalizeName(values.Name);
+    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
     const code = normalizeCodeOptional(values.Code);
     await City.ensureStateCountryConsistency(countryId, stateId);
 
-    const stateCond = stateId ? (['StateId', '=', stateId] as any) : (['StateId', 'is', null] as any);
-    const byName = await this.Search(
-      {
-        And: [['CountryId', '=', countryId], stateCond, ['Name', '=', name]],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
-    );
-    const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) fail(_t('City Name must be unique within Country + State', { scope: 'service/models/city' }));
+    if (code) {
+      const stateCond = stateId ? (['StateId', '=', stateId] as any) : (['StateId', 'is', null] as any);
+      const byCode = await this.Search(
+        {
+          And: [['CountryId', '=', countryId], stateCond, ['Code', '=', code]],
+        } as any,
+        { fields: ['Id'] as any, limit: 2 } as any
+      );
+      const codeConflict = (byCode || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
+      if (codeConflict) fail(_t('City Code must be unique within Country + State', { scope: 'service/models/city' }));
+    }
 
     values.Name = name;
     values.Code = code;

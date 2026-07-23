@@ -455,15 +455,17 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if v, ok := options["indexed"].(bool); ok {
 		hints.Indexed = toBoolPtr(v)
 	}
-	if hints.Indexed == nil {
-		switch raw := options["index"].(type) {
-		case bool:
+	switch raw := options["index"].(type) {
+	case bool:
+		if hints.Indexed == nil {
 			hints.Indexed = toBoolPtr(raw)
-		case string:
-			trimmed := strings.TrimSpace(raw)
-			if trimmed != "" {
+		}
+	case string:
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" {
+			hints.Index = toStringPtr(trimmed)
+			if hints.Indexed == nil {
 				hints.Indexed = toBoolPtr(true)
-				hints.Index = toStringPtr(trimmed)
 			}
 		}
 	}
@@ -490,6 +492,11 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		if trimmed != "" {
 			hints.UniqueIndex = toStringPtr(trimmed)
 		}
+	}
+	translate := false
+	if v, ok := options["translate"].(bool); ok && v {
+		translate = true
+		spec.Structural.Translate = toBoolPtr(true)
 	}
 	switch raw := options["default"].(type) {
 	case string:
@@ -542,6 +549,10 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 
 	columnType := resolveColumnType(fieldType)
+	if translate {
+		// Logical type stays char/varchar/text; physical storage is JSON/JSONB lang map.
+		columnType = "jsonobject"
+	}
 	spec.Structural.ColumnType = columnType
 
 	spec.Migration = meta.IrFieldMigrationDecision{
@@ -549,6 +560,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		ShouldCreateColumn: true,
 		ResolvedColumnType: columnType,
 		ReasonCode:         "FIELD_DEFAULT",
+	}
+	if translate {
+		spec.Migration.ReasonCode = "TRANSLATE_LANG_MAP"
 	}
 
 	switch {
@@ -626,6 +640,38 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			Severity: "error",
 			Message:  "related.store=false field cannot declare inverse handler",
 		})
+	}
+	if translate {
+		if fieldType != "char" && fieldType != "varchar" && fieldType != "text" {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_TRANSLATE_FIELD_TYPE",
+				Severity: "error",
+				Message:  "translate is only supported on char/varchar/text fields",
+			})
+		}
+		uniqueOn := hints.Unique != nil && *hints.Unique
+		uniqueIndexOn := (hints.UniqueIndexEnabled != nil && *hints.UniqueIndexEnabled) ||
+			(hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "")
+		if uniqueOn || uniqueIndexOn {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_TRANSLATE_UNIQUE",
+				Severity: "error",
+				Message:  "translate cannot be combined with unique/uniqueIndex",
+			})
+		}
+		indexKind := ""
+		if hints.Index != nil {
+			indexKind = strings.TrimSpace(*hints.Index)
+		}
+		btreeIndexed := hints.Indexed != nil && *hints.Indexed && !strings.EqualFold(indexKind, "trigram")
+		namedNonTrigram := indexKind != "" && !strings.EqualFold(indexKind, "trigram")
+		if btreeIndexed || namedNonTrigram {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_TRANSLATE_INDEX",
+				Severity: "error",
+				Message:  "translate only supports index: 'trigram' (or omit index)",
+			})
+		}
 	}
 
 	return spec, nil

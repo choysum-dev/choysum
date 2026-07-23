@@ -5,10 +5,11 @@ import Currency from '@/base/service/models/currency';
 import Company from '@/base/service/models/company';
 import ExchangeRate from '@/base/service/models/exchange_rate';
 import { ChoysumError } from '@/core/service/error';
-import { withContext as withModelContext } from '@/core/service/api/context';
+import { withContext as withModelContext, withContext } from '@/core/service/api/context';
 import { resolveValidationSummary } from '@/core/service/api/validation';
+import { MetadataStorage } from '@/core/service/api/metadata';
 
-import { expectBaseInvalidArgument, uid } from './_helpers';
+import { expectBaseInvalidArgument, uid, currencyCode3 } from './_helpers';
 import { expectBaseNotFound } from './_helpers';
 
 async function expectRepoValidationFailed(mode: 'create' | 'update', fn: () => Promise<void>): Promise<void> {
@@ -243,4 +244,40 @@ test('base.currency: Convert returns NotFound when CompanyId does not exist', as
       ToCurrencyId: String((to as any).Id),
     } as any);
   });
+});
+
+test('base.currency: Name translate metadata is enabled', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Currency).fields.get('Name');
+  expect(field?.translate).toBe(true);
+  expect(field?.type).toBe('varchar');
+  expect(field?.column?.size).toBeUndefined();
+  expect(field?.column?.index).toBe('trigram');
+  expect(field?.storageHints?.size).toBe(100);
+});
+
+test('base.currency: Name bilingual write/read unwraps by lang', async () => {
+  const code = currencyCode3();
+  const enName = uid('CurrencyEn');
+  const zhName = uid('CurrencyZh');
+
+  const created = await Currency.Create(
+    {
+      Name: { en_US: enName, zh_CN: zhName } as any,
+      Code: code,
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id', 'Name', 'Code'] as any
+  );
+  expect(String((created as any).Name)).toBe(enName);
+
+  const id = String((created as any).Id);
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () => Currency.Browse(id, ['Id', 'Name'] as any));
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
+
+  const hit = await withContext({ lang: 'zh_CN' }, () =>
+    Currency.Search(['Name', 'ilike', zhName] as any, { fields: ['Id', 'Code'], limit: 5 } as any)
+  );
+  expect(hit?.some((r: any) => String(r.Code) === String((created as any).Code))).toBe(true);
 });

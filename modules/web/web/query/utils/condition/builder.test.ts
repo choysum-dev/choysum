@@ -24,6 +24,20 @@ describe('deriveKeywordFieldsFromMeta', () => {
     expect(fields).not.toContain('Name');
   });
 
+  it('skips virtualSql fields such as DisplayName from type fallback', () => {
+    const fieldsMeta = {
+      Name: { type: 'varchar' },
+      DisplayName: { type: 'varchar', storageKind: 'virtualSql' },
+      Code: { type: 'varchar' },
+    };
+
+    const fields = deriveKeywordFieldsFromMeta(fieldsMeta, { textTypes: ['char', 'varchar'] });
+
+    expect(fields).toContain('Name');
+    expect(fields).toContain('Code');
+    expect(fields).not.toContain('DisplayName');
+  });
+
   it('falls back to derived searchable fields when preferred fields are filtered out', () => {
     const fieldsMeta = {
       Name: { type: 'Char' },

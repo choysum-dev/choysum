@@ -4,6 +4,9 @@
 import type { ModelMetadata } from '../../metadata';
 import { hasRepositorySqlComputeExpression } from './sql_compute_expression';
 import type { ObjectRecord } from '../../../../utils/types';
+import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
+import type { DialectName } from '../repository_dialect';
+import type { RepositoryPredicateBuilder } from './predicate_builder_adapter';
 
 export type RepositoryOrderSpec = {
   field: string;
@@ -20,6 +23,7 @@ type RepositoryOrderBuilder = ObjectRecord;
 type RepositoryOrderDeps = {
   resolvePathField: (builder: RepositoryOrderBuilder, field: string) => unknown;
   resolveSelectField: (builder: RepositoryOrderBuilder, field: string, fieldMeta: unknown) => unknown;
+  getDialect?: () => string;
 };
 
 type OrderByInputLike = {
@@ -94,6 +98,16 @@ export function applyOrderByToQuery<T>(
 
     if (hasRepositorySqlComputeExpression(targetMeta, field)) {
       qb = orderable.orderBy((inner: unknown) => deps.resolveSelectField(inner as RepositoryOrderBuilder, field, fieldMeta), order);
+      continue;
+    }
+
+    if ((fieldMeta as { translate?: boolean }).translate) {
+      const dialect = String(deps.getDialect?.() || 'postgres') as DialectName;
+      qb = orderable.orderBy(
+        (inner: unknown) =>
+          buildTranslatedFieldUnwrapExpr(dialect, inner as RepositoryPredicateBuilder, `${targetTable}.${field}`),
+        order
+      );
       continue;
     }
 

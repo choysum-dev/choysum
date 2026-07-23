@@ -19,6 +19,49 @@ function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
   }
 }
 
+test('repository select context unwraps translated scalar fields for $sql.field', () => {
+  class DemoModel {
+    sqlDisplayName() {
+      return (this as any).$sql.field(DemoModel as any, 'Name');
+    }
+  }
+
+  const demoMeta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }],
+      ['Code', { type: 'varchar', column: { name: 'Code' } }],
+      ['DisplayName', {}],
+    ]),
+    sqlComputeHandlers: new Map([['DisplayName', { field: 'DisplayName', method: 'sqlDisplayName' }]]),
+  } as any;
+
+  const builder = {
+    ref(value: string) {
+      return `ref:${value}`;
+    },
+    fn: {},
+  };
+
+  const db = {
+    selectFrom(table: string) {
+      return { table };
+    },
+  };
+
+  withFakeMetadata(new Map([[DemoModel, demoMeta]]), () => {
+    const ctx = makeSelectCtx(db as any, () => 'postgres', builder as any, 'demo_table', demoMeta);
+    // Non-translate stays a plain column ref.
+    expect(ctx.field(DemoModel as any, 'Code') as any).toBe('ref:demo_table.Code');
+    // Translate Name (and DisplayName SqlCompute that aliases it) must not be a bare jsonb ref.
+    const nameExpr = ctx.field(DemoModel as any, 'Name') as any;
+    expect(nameExpr).not.toBe('ref:demo_table.Name');
+    const displayExpr = ctx.field(DemoModel as any, 'DisplayName') as any;
+    expect(displayExpr).not.toBe('ref:demo_table.Name');
+  });
+});
+
 test('repository select context resolves scalar/select fields and path existence from metadata', () => {
   class DemoModel {
     sqlDisplayName() {

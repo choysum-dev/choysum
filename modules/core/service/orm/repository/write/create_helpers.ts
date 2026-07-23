@@ -18,6 +18,7 @@ import {
   validateRepositoryMutationPayload,
 } from './mutation_payload_helpers';
 import { _t } from '@/core/service/i18n_binder';
+import { applyTranslatedFieldsForWrite } from '../projection/translated_field_codec';
 
 export type RepositoryCreateWriteAuthzDeps = {
   meta: ModelMetadata;
@@ -26,6 +27,7 @@ export type RepositoryCreateWriteAuthzDeps = {
 };
 
 export type RepositoryCreateWritePrepareDeps = {
+  meta: ModelMetadata;
   generateId: () => string;
   applyDefaultCompanyIdOnCreate: (entity: Entity) => Entity;
 } & RepositoryMutationPayloadGuardDepsLike<Entity> &
@@ -73,5 +75,8 @@ export async function prepareRepositoryCreateEntities(params: RepositoryCreateWr
     );
   }
 
-  return encodeRepositoryMutationPayloads(params, preparedEntities);
+  const entitiesForEncode = preparedEntities.map(entity =>
+    applyTranslatedFieldsForWrite(params.meta, entity, { mode: 'create' })
+  );
+  return encodeRepositoryMutationPayloads(params, entitiesForEncode);
 }

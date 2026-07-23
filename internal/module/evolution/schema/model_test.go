@@ -576,6 +576,98 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 		}
 	})
 
+	t.Run("translate field uses jsonobject without size or unique", func(t *testing.T) {
+		field := &meta.IrField{Name: "Name"}
+		trueVal := true
+		size := 100
+		spec := &meta.IrFieldResolvedSpec{
+			FieldName: "Name",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "Name",
+				FieldType: "varchar",
+				Translate: &trueVal,
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Size:   &size,
+					Unique: &trueVal,
+					Index:  strPtr("trigram"),
+				},
+				ColumnType: "jsonobject",
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "jsonobject",
+				ReasonCode:         "TRANSLATE_LANG_MAP",
+			},
+		}
+		if err := field.SetResolvedSpec(spec); err != nil {
+			t.Fatalf("SetResolvedSpec error = %v", err)
+		}
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(translate) error = %v", err)
+		}
+		if metaMap == nil || metaMap["type"] != "jsonobject" {
+			t.Fatalf("expected type=jsonobject, got %#v", metaMap)
+		}
+		if _, ok := metaMap["size"]; ok {
+			t.Fatalf("translate column must not carry size, got %#v", metaMap)
+		}
+		if _, ok := metaMap["unique"]; ok {
+			t.Fatalf("translate column must not carry unique, got %#v", metaMap)
+		}
+		if _, ok := metaMap["index"]; ok {
+			t.Fatalf("translate column must not carry GORM index tag, got %#v", metaMap)
+		}
+		if metaMap["trigram"] != true {
+			t.Fatalf("expected trigram=true marker for index:'trigram', got %#v", metaMap)
+		}
+
+		dialect := "postgres"
+		typeTag := buildColumnTypeTag(dialect, "jsonobject", metaMap)
+		if typeTag != "type:jsonb" {
+			t.Fatalf("expected postgres jsonb tag, got %q", typeTag)
+		}
+
+		btree := "btree"
+		nonTrigram := &meta.IrField{Name: "Title"}
+		nonTrigramSpec := &meta.IrFieldResolvedSpec{
+			FieldName: "Title",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "Title",
+				FieldType: "varchar",
+				Translate: &trueVal,
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Size:  &size,
+					Index: &btree,
+				},
+				ColumnType: "jsonobject",
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "jsonobject",
+				ReasonCode:         "TRANSLATE_LANG_MAP",
+			},
+		}
+		if err := nonTrigram.SetResolvedSpec(nonTrigramSpec); err != nil {
+			t.Fatalf("SetResolvedSpec(non-trigram) error = %v", err)
+		}
+		metaMap2, err := migrator.getResolvedFieldColumnMeta(nonTrigram)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(non-trigram) error = %v", err)
+		}
+		if metaMap2["type"] != "jsonobject" {
+			t.Fatalf("expected jsonobject for non-trigram translate, got %#v", metaMap2)
+		}
+		if _, ok := metaMap2["trigram"]; ok {
+			t.Fatalf("btree index must not set trigram marker, got %#v", metaMap2)
+		}
+		if _, ok := metaMap2["index"]; ok {
+			t.Fatalf("translate column must still strip GORM index tag, got %#v", metaMap2)
+		}
+	})
+
 	t.Run("isStorageBlobCarrierModel covers all document carriers", func(t *testing.T) {
 		carriers := []struct {
 			app   string

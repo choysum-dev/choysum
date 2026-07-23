@@ -4,7 +4,7 @@
 import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
+import { fail, normalizeOptionalRefId, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeRequiredText, toDateOrUndefined } from './_normalization_bridge';
 
 /**
  * Company-scoped commercial identifier row attached to a partner.
@@ -89,7 +89,8 @@ export default class PartnerIdentifier extends BaseModel {
   @Field({
     type: 'varchar',
     size: 120,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Issued By', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
   })
   IssuedBy?: string;
@@ -113,6 +114,8 @@ export default class PartnerIdentifier extends BaseModel {
   /** Internal notes. */
   @Field({
     type: 'text',
+    translate: true,
+    index: 'trigram',
     string: _lt('Notes', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
   })
   Notes?: string;
@@ -177,8 +180,8 @@ export default class PartnerIdentifier extends BaseModel {
     values.IdentifierType = normalizeOptionalText(values.IdentifierType, { lower: true });
     values.Value = normalizeOptionalText(values.Value, { upper: true });
     values.CountryId = normalizeOptionalRefId(values.CountryId);
-    values.IssuedBy = normalizeOptionalText(values.IssuedBy);
-    values.Notes = normalizeOptionalText(values.Notes);
+    values.IssuedBy = normalizeOptionalTranslatedText(values.IssuedBy);
+    values.Notes = normalizeOptionalTranslatedText(values.Notes);
 
     values.ValidFrom = toDateOrUndefined(values.ValidFrom, 'ValidFrom');
     values.ValidTo = toDateOrUndefined(values.ValidTo, 'ValidTo');
@@ -186,6 +189,7 @@ export default class PartnerIdentifier extends BaseModel {
     // The draft proxy already provides current-record values through its
     // get chain.  Fall back to a persisted Browse only when a required
     // field is still missing and was not explicitly provided.
+    // Create may already have a pre-assigned Id with no row yet — skip Browse then.
     if (
       (values.PartnerId == null ||
         values.CompanyId == null ||
@@ -193,14 +197,21 @@ export default class PartnerIdentifier extends BaseModel {
         (values.Value == null && !valueProvided)) &&
       currentId
     ) {
-      const persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
-      if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
-      if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
-      if (values.IdentifierType == null && !identifierTypeProvided) {
-        values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
+      let persisted: any;
+      try {
+        persisted = await this.Browse(currentId, ['PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any);
+      } catch {
+        persisted = null;
       }
-      if (values.Value == null && !valueProvided) {
-        values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+      if (persisted) {
+        if (values.PartnerId == null) values.PartnerId = normalizeOptionalRefId((persisted as any)?.PartnerId);
+        if (values.CompanyId == null) values.CompanyId = normalizeOptionalRefId((persisted as any)?.CompanyId);
+        if (values.IdentifierType == null && !identifierTypeProvided) {
+          values.IdentifierType = normalizeOptionalText((persisted as any)?.IdentifierType, { lower: true });
+        }
+        if (values.Value == null && !valueProvided) {
+          values.Value = normalizeOptionalText((persisted as any)?.Value, { upper: true });
+        }
       }
     }
 

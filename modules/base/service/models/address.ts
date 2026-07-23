@@ -15,6 +15,8 @@ export default class Address extends BaseModel {
   @Field({
     type: 'varchar',
     size: 120,
+    translate: true,
+    index: 'trigram',
     string: _lt('Label', { scope: 'base.model.Address.fields' }),
   })
   Label?: string;

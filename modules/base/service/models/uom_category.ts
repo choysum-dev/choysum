@@ -12,7 +12,8 @@ export default class UoMCategory extends BaseModel {
     type: 'varchar',
     size: 100,
     notNull: true,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.UoMCategory.fields' }),
   })
   Name: string;

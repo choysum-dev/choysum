@@ -48,8 +48,9 @@ export default class Role extends BaseModel {
   @Field({
     type: 'varchar',
     size: 100,
-    unique: true,
     notNull: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'auth.model.Role.fields' }),
   })
   Name: string;
@@ -72,7 +73,8 @@ export default class Role extends BaseModel {
   @Field({
     type: 'varchar',
     size: 255,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Description', { scope: 'auth.model.Role.fields' }),
   })
   Description: string;

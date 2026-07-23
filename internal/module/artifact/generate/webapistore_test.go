@@ -82,6 +82,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if metadata.RunAs == nil || *metadata.RunAs != "system" || metadata.ShouldCreateColumn == nil || !*metadata.ShouldCreateColumn {
 		t.Fatalf("expected migration/runAs fields, got %#v", metadata)
 	}
+	if metadata.Translate != nil {
+		t.Fatalf("non-translate field must omit Translate, got %#v", metadata.Translate)
+	}
 
 	relationFields, importModels := analyzeRelationFields(testApp().Models[1])
 	if len(relationFields) != 2 {
@@ -286,5 +289,68 @@ func TestWebApiStoreGenerate_WorkspaceTargetsRequireDefaultChoysumPath(t *testin
 	_, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}}).generate(context.Background(), testApp())
 	if err == nil || !strings.Contains(err.Error(), "resolve workspace generated api targets") {
 		t.Fatalf("expected workspace target resolution error, got %v", err)
+	}
+}
+
+func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
+	trueVal := true
+	size := 200
+	field := &meta.IrField{Name: "Name", FieldType: "varchar"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Translate: &trueVal,
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Size: &size,
+			},
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	metadata := convertFieldToMetadata(field)
+	if metadata.Translate == nil || !*metadata.Translate {
+		t.Fatalf("expected Translate=true, got %#v", metadata.Translate)
+	}
+	if metadata.Size == nil || *metadata.Size != 200 {
+		t.Fatalf("expected Size from storage hints, got %#v", metadata.Size)
+	}
+
+	falseVal := false
+	field2 := &meta.IrField{Name: "Code", FieldType: "varchar", Size: 40}
+	spec2 := &meta.IrFieldResolvedSpec{
+		FieldName: "Code",
+		Structural: meta.IrFieldStructuralSpec{
+			Translate: &falseVal,
+		},
+	}
+	if err := field2.SetResolvedSpec(spec2); err != nil {
+		t.Fatalf("SetResolvedSpec false: %v", err)
+	}
+	metadata2 := convertFieldToMetadata(field2)
+	if metadata2.Translate != nil {
+		t.Fatalf("translate:false must omit Translate flag, got %#v", metadata2.Translate)
+	}
+
+	field3 := &meta.IrField{Name: "Title", FieldType: "varchar", Size: 80}
+	zeroSize := 0
+	spec3 := &meta.IrFieldResolvedSpec{
+		FieldName: "Title",
+		Structural: meta.IrFieldStructuralSpec{
+			Translate: &trueVal,
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Size: &zeroSize,
+			},
+		},
+	}
+	if err := field3.SetResolvedSpec(spec3); err != nil {
+		t.Fatalf("SetResolvedSpec zero size: %v", err)
+	}
+	metadata3 := convertFieldToMetadata(field3)
+	if metadata3.Translate == nil || !*metadata3.Translate {
+		t.Fatalf("expected Translate=true for field3, got %#v", metadata3.Translate)
+	}
+	if metadata3.Size == nil || *metadata3.Size != 80 {
+		t.Fatalf("existing Size must win over zero storage hint, got %#v", metadata3.Size)
 	}
 }

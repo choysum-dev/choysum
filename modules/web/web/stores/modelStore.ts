@@ -44,6 +44,8 @@ export type WebFieldMetadata = {
   selection?: readonly SelectionItem[];
   /** Present for dynamic selection fields (P3); static may omit or be 'static'. */
   selectionKind?: 'static' | 'dynamic';
+  /** Data-i18n: field values stored as lang maps (see data-i18n-design). */
+  translate?: boolean;
   relationModel?: string;
   relationFilter?: string;
   relationModelParentField?: string;
@@ -140,6 +142,8 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   DeleteById: ClientModelService<typeof BaseModel.DeleteById<TModel>>;
   Onchange: ClientModelService<typeof BaseModel.Onchange<TModel>>;
   FieldsGet: ClientModelService<typeof BaseModel.FieldsGet>;
+  GetFieldTranslations: ClientModelService<typeof BaseModel.GetFieldTranslations>;
+  UpdateFieldTranslations: ClientModelService<typeof BaseModel.UpdateFieldTranslations>;
 
   /**
    * Fetch (or reuse cached) FieldsGet presentation overlay for the active terminology lang.

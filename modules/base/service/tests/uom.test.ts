@@ -5,6 +5,8 @@ import UoM from '@/base/service/models/uom';
 import UoMCategory from '@/base/service/models/uom_category';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
+import { MetadataStorage } from '@/core/service/api/metadata';
+import { withContext } from '@/core/service/api/context';
 
 import { uid } from './_helpers';
 
@@ -169,35 +171,47 @@ test('base.uom: non-reference update still enforces positive Factor', async () =
   });
 });
 
-test('base.uom: Name must be unique within CategoryId', async () => {
+test('base.uom: Name is translate and may repeat within CategoryId', async () => {
+  const nameField = MetadataStorage.instance.getModelMetadata(UoM).fields.get('Name');
+  expect(nameField?.translate).toBe(true);
+  expect(nameField?.column?.index).toBe('trigram');
+  expect(nameField?.column?.uniqueIndex).toBeFalsy();
+
   const categoryA = await createCategory();
   const categoryB = await createCategory();
 
   const sharedName = `SameName_${uid('uomname')}`;
+  const enName = uid('UomEn');
+  const zhName = uid('UomZh');
 
-  await UoM.Create(
+  const created = await UoM.Create(
     {
-      Name: sharedName,
+      Name: { en_US: enName, zh_CN: zhName } as any,
       CategoryId: categoryA,
       IsReference: true,
       Factor: '1',
       IsActive: true,
     } as any,
+    ['Id', 'Name'] as any
+  );
+  expect(String((created as any).Name)).toBe(enName);
+
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () =>
+    UoM.Browse(String((created as any).Id), ['Id', 'Name'] as any)
+  );
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
+
+  // Same Name in the same category is allowed after translate migration
+  await UoM.Create(
+    {
+      Name: sharedName,
+      CategoryId: categoryA,
+      IsReference: false,
+      Factor: '2',
+      IsActive: true,
+    } as any,
     ['Id'] as any
   );
-
-  await expectRepoValidationFailed('create', async () => {
-    await UoM.Create(
-      {
-        Name: sharedName,
-        CategoryId: categoryA,
-        IsReference: false,
-        Factor: '2',
-        IsActive: true,
-      } as any,
-      ['Id'] as any
-    );
-  });
 
   // Same Name in a different category is allowed
   await UoM.Create(
@@ -212,7 +226,7 @@ test('base.uom: Name must be unique within CategoryId', async () => {
   );
 });
 
-test('base.uom: UpdateById rejects Name conflict within CategoryId', async () => {
+test('base.uom: UpdateById allows renaming to an existing Name within CategoryId', async () => {
   const categoryId = await createCategory();
   const nameA = `NameA_${uid('uoma')}`;
   const nameB = `NameB_${uid('uomb')}`;
@@ -239,15 +253,17 @@ test('base.uom: UpdateById rejects Name conflict within CategoryId', async () =>
     ['Id'] as any
   );
 
-  await expectRepoValidationFailed('update', async () => {
-    await UoM.UpdateById(
-      String((secondary as any).Id),
-      {
-        Name: nameA,
-      } as any,
-      ['Id'] as any
-    );
-  });
+  const updated = await UoM.UpdateById(
+    String((secondary as any).Id),
+    {
+      Name: nameA,
+      CategoryId: categoryId,
+      IsReference: false,
+      Factor: '2',
+    } as any,
+    ['Id', 'Name'] as any
+  );
+  expect(String((updated as any).Name)).toBe(nameA);
 });
 
 test('base.uom: Batch update cannot change Name or CategoryId', async () => {

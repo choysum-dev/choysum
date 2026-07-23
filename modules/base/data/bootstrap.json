@@ -2,42 +2,13 @@
   "records": [
     {
       "module": "base",
-      "external_id": "currency_cny",
-      "model": "base.Currency",
-      "values": {
-        "Name": "Chinese Yuan",
-        "Code": "CNY",
-        "Symbol": "¥",
-        "DecimalDigits": 2,
-        "Rounding": "0.01",
-        "IsActive": true
-      }
-    },
-    {
-      "module": "base",
-      "external_id": "language_en_us",
-      "model": "base.Language",
-      "values": {
-        "Name": "English (US)",
-        "Code": "en_US",
-        "IsActive": true,
-        "Direction": "ltr",
-        "DecimalSeparator": ".",
-        "ThousandSeparator": ",",
-        "Grouping": "[3,0]",
-        "DateFormat": "MM/DD/YYYY",
-        "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
-        "CurrencySymbolPosition": "before",
-        "CurrencySymbolSpacing": false
-      }
-    },
-    {
-      "module": "base",
       "external_id": "language_zh_cn",
       "model": "base.Language",
       "values": {
-        "Name": "Chinese (Simplified)",
+        "Name": {
+          "en_US": "Chinese (Simplified)",
+          "zh_CN": "简体中文"
+        },
         "Code": "zh_CN",
         "IsActive": true,
         "Direction": "ltr",
@@ -53,10 +24,51 @@
     },
     {
       "module": "base",
+      "external_id": "language_en_us",
+      "model": "base.Language",
+      "values": {
+        "Name": {
+          "en_US": "English (US)",
+          "zh_CN": "英语（美国）"
+        },
+        "Code": "en_US",
+        "IsActive": true,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "MM/DD/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": 0,
+        "CurrencySymbolPosition": "before",
+        "CurrencySymbolSpacing": false
+      }
+    },
+    {
+      "module": "base",
+      "external_id": "currency_cny",
+      "model": "base.Currency",
+      "values": {
+        "Name": {
+          "en_US": "Chinese Yuan",
+          "zh_CN": "人民币"
+        },
+        "Code": "CNY",
+        "Symbol": "¥",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": true
+      }
+    },
+    {
+      "module": "base",
       "external_id": "company_main",
       "model": "base.Company",
       "values": {
-        "Name": "Main Company",
+        "Name": {
+          "en_US": "Main Company",
+          "zh_CN": "主公司"
+        },
         "Code": "MAIN",
         "Timezone": "Asia/Shanghai",
         "CurrencyId": { "ref": "base.currency_cny" },

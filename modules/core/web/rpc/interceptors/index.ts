@@ -13,9 +13,12 @@ export { createCSRFInterceptor } from './csrf';
 export { createLifecycleInterceptor } from './lifecycle';
 
 export function buildWebInterceptors(additionalInterceptors: Interceptor[] = []): Interceptor[] {
-  const interceptors = [createCSRFInterceptor(), createAuthInterceptor(), createContextInterceptor(), createLifecycleInterceptor()].filter(
-    (interceptor): interceptor is Interceptor => Boolean(interceptor)
-  );
+  const interceptors = [
+    createCSRFInterceptor(),
+    createAuthInterceptor(),
+    createContextInterceptor(),
+    createLifecycleInterceptor(),
+  ].filter((interceptor): interceptor is Interceptor => Boolean(interceptor));
 
   return [...interceptors, ...additionalInterceptors];
 }

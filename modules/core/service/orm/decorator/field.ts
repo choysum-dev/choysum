@@ -54,6 +54,8 @@ type FieldDecoratorOptionBag = {
   checkConstraint?: unknown;
   default?: unknown;
   round?: unknown;
+  /** Data i18n: store per-language values as a JSON/JSONB lang map. */
+  translate?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
@@ -110,6 +112,29 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
     let normalizedColumn: ObjectRecord | undefined;
 
     const isRelation = relationTypes.has(type);
+
+    if (optionBag.translate !== undefined && typeof optionBag.translate !== 'boolean') {
+      throw new Error(`@Field(${name}) translate must be a boolean`);
+    }
+    const translate = optionBag.translate === true;
+    if (translate) {
+      if (type !== 'char' && type !== 'varchar' && type !== 'text') {
+        throw new Error(`@Field(${name}) translate is only supported on char/varchar/text fields`);
+      }
+      const uniqueIndexOn =
+        optionBag.uniqueIndex === true ||
+        (typeof optionBag.uniqueIndex === 'string' && optionBag.uniqueIndex.trim().length > 0);
+      if (optionBag.unique === true || uniqueIndexOn) {
+        throw new Error(`@Field(${name}) translate cannot be combined with unique/uniqueIndex`);
+      }
+      // Translate fields only accept optional index: 'trigram' (data-i18n-design §7.1); never btree.
+      if (optionBag.indexed === true) {
+        throw new Error(`@Field(${name}) translate cannot use indexed/index btree; use index: 'trigram' or omit`);
+      }
+      if (optionBag.index !== undefined && optionBag.index !== 'trigram') {
+        throw new Error(`@Field(${name}) translate only supports index: 'trigram' (or omit index)`);
+      }
+    }
 
     const hasFlatStorageHints =
       optionBag.required !== undefined ||
@@ -228,7 +253,8 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       normalizedColumn = {};
       if (normalizedStorageHints?.required === true) normalizedColumn.notNull = true;
       if (normalizedStorageHints?.indexed === true) normalizedColumn.index = true;
-      if (normalizedStorageHints?.size != null) normalizedColumn.size = normalizedStorageHints.size;
+      // translate: size is a per-lang value limit only (D14); do not set physical varchar(n).
+      if (normalizedStorageHints?.size != null && !translate) normalizedColumn.size = normalizedStorageHints.size;
       if (normalizedStorageHints?.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
       if (normalizedStorageHints?.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
 
@@ -419,6 +445,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     if (normalizedRelated) meta.related = normalizedRelated;
     if (normalizedStorageHints) meta.storageHints = normalizedStorageHints;
+    if (translate) meta.translate = true;
 
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;

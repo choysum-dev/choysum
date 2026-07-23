@@ -3,7 +3,7 @@
 
 import { convertCondition } from '..';
 import { MetadataStorage } from '../../../metadata/storage';
-import { getReadonlyCtx } from '../../../../runtime/context';
+import { getReadonlyCtx, withContext } from '../../../../runtime/context';
 
 function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
   const storage = MetadataStorage.instance as any;
@@ -270,6 +270,193 @@ test('repository condition compiler maps ilike to lower-like on non-postgres dia
   expect(result.op).toBe('like');
   expect(result.rhs).toBe('%abc%');
   expect(result.lhs).toEqual({ fn: 'lower', args: ['ref:demo_table.Name'] });
+});
+
+test('repository condition compiler unwraps translated fields for search predicates', () => {
+  class DemoModel {}
+
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }]]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom() {
+      throw new Error('not used');
+    },
+  };
+
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'sqlite', meta, eb, ['Name', 'ilike', '%艾%'] as any, 'demo_table')
+  ) as any;
+
+  expect(result.op).toBe('like');
+  expect(result.rhs).toBe('%艾%');
+  // LHS must be an unwrap expression (not a bare column ref), so JSON structure is not matched.
+  expect(result.lhs).not.toBe('Name');
+  expect(result.lhs).not.toEqual('ref:demo_table.Name');
+  // Non-postgres ilike wraps the unwrap expr with lower(...).
+  expect(result.lhs?.fn).toBe('lower');
+  expect(Array.isArray(result.lhs?.args) && result.lhs.args.length === 1).toBe(true);
+  expect(result.lhs.args[0]).not.toEqual('ref:demo_table.Name');
+});
+
+test('repository condition compiler uses postgres unwrap without lower for translated ilike', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }]]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(result.op).toBe('ilike');
+  expect(result.lhs?.fn).not.toBe('lower');
+  expect(result.lhs).not.toEqual('ref:demo_table.Name');
+});
+
+test('repository condition compiler skips trigram prefilter for not ilike on translated fields', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'not ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(result.kind).toBeUndefined();
+  expect(result.op).toBe('not ilike');
+});
+
+test('repository condition compiler ANDs trigram prefilter for translated equality', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', '=', 'hello'] as any, 'demo_table')
+  ) as any;
+  expect(result.kind).toBe('and');
+  expect(result.parts?.length).toBe(2);
+});
+
+test('repository condition compiler ANDs trigram prefilter for translated like and in', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const likeResult = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'like', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(likeResult.kind).toBe('and');
+  expect(likeResult.parts?.[0]?.op).toBe('like');
+
+  const inResult = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'in', ['hello']] as any, 'demo_table')
+  ) as any;
+  expect(inResult.kind).toBe('and');
+  expect(inResult.parts?.[0]?.op).toBe('like');
+
+  const mysqlEq = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'mysql', meta, eb, ['Name', '=', 'hello'] as any, 'demo_table')
+  ) as any;
+  expect(mysqlEq.kind).toBeUndefined();
+  expect(mysqlEq.op).toBe('=');
+});
+
+test('repository condition compiler ANDs trigram prefilter for translate+trigram on postgres', () => {
+  class DemoModel {}
+
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom() {
+      throw new Error('not used');
+    },
+  };
+
+  const withPrefilter = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(withPrefilter.kind).toBe('and');
+  expect(withPrefilter.parts?.length).toBe(2);
+  expect(withPrefilter.parts[0].op).toBe('ilike');
+  expect(withPrefilter.parts[0].rhs).toBe('%abc%');
+  expect(withPrefilter.parts[1].op).toBe('ilike');
+  expect(withPrefilter.parts[1].rhs).toBe('%abc%');
+
+  // Short patterns skip prefilter (L0 unwrap only).
+  const shortOnly = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'ilike', '%ab%'] as any, 'demo_table')
+  ) as any;
+  expect(shortOnly.kind).toBeUndefined();
+  expect(shortOnly.op).toBe('ilike');
+
+  // Without trigram metadata, stay on unwrap-only path.
+  const noTrigramMeta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }]]),
+  } as any;
+  const noPrefilter = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', noTrigramMeta, eb, ['Name', 'ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(noPrefilter.kind).toBeUndefined();
+  expect(noPrefilter.op).toBe('ilike');
+});
+
+test('repository condition compiler uses postgresql dialect alias for trigram prefilter', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgresql', meta, eb, ['Name', '=', 'hello'] as any, 'demo_table')
+  ) as any;
+  expect(result.kind).toBe('and');
+
+  const eqIlike = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', '=ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(eqIlike.kind).toBe('and');
+  expect(eqIlike.parts?.[0]?.op).toBe('=ilike');
 });
 
 test('repository condition compiler contains on non-json field warns and keeps predicate conversion', () => {

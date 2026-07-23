@@ -36,7 +36,8 @@ export default class Sequence extends BaseModel {
     type: 'varchar',
     size: 100,
     notNull: true,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.Sequence.fields' }),
   })
   Name: string;

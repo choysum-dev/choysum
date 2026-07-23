@@ -48,6 +48,7 @@ export const {{.Model.Name}}FieldsMetadata = {
     {{- if $field.Round}}round: '{{$field.Round}}',{{- end}}
     {{- if $field.IsReadonly}}isReadonly: {{$field.IsReadonly}},{{- end}}
     {{- if $field.Indexed}}indexed: {{$field.Indexed}},{{- end}}
+    {{- if $field.Translate}}translate: {{$field.Translate}},{{- end}}
     {{- if $field.RelationInverseField}}relationInverseField: '{{$field.RelationInverseField}}',{{- end}}
     {{- if $field.RelationJoinModel}}relationJoinModel: '{{$field.RelationJoinModel}}',{{- end}}
     {{- if $field.RelationJoinField}}relationJoinField: '{{$field.RelationJoinField}}',{{- end}}

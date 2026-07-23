@@ -3,18 +3,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount } from '@vue/test-utils';
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createTermReference } from '@/core/service/i18n';
 import type { UseField } from '@/web/web/composables/useField';
 import OFieldBase from './OFieldBase.vue';
 
-function makeBinding(meta?: { string?: string; stringText?: ReturnType<typeof createTermReference> }): UseField {
+function makeBinding(
+  meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean },
+  opts?: { recordId?: string | null; isEditMode?: boolean },
+): UseField {
   const value = ref('x');
-  const record = ref({ Id: '1' });
+  const recordId = opts && 'recordId' in opts ? opts.recordId : '1';
+  const record = ref(recordId ? { Id: recordId } : {});
   return {
-    env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+    env: {
+      isForm: true,
+      isEditMode: opts?.isEditMode ?? true,
+      viewMode: opts?.isEditMode === false ? 'readonly' : 'edit',
+      fieldPrefix: null,
+    },
     prop: 'AccessTokenId',
     meta: meta as any,
     fieldRef: () => value as any,
@@ -40,6 +49,11 @@ const fieldBaseStubs = {
   },
   // Inline error icon; Element Plus is not registered in this unit suite.
   'el-icon': true,
+  'el-tooltip': { template: '<div class="tooltip-stub"><slot /></div>' },
+  'el-button': {
+    template: '<button class="btn-stub" v-bind="$attrs"><slot /></button>',
+  },
+  OFieldTranslationsDialog: true,
 };
 
 describe('OFieldBase label resolution', () => {
@@ -135,5 +149,240 @@ describe('OFieldBase label resolution', () => {
     expect(ensureFieldsGet).toHaveBeenCalled();
     expect(wrapper.find('.edit-slot').exists()).toBe(false);
     expect(wrapper.find('.display-slot').exists()).toBe(true);
+  });
+});
+
+describe('OFieldBase translate action', () => {
+  it('shows translate icon in form edit when meta.translate and record Id exist', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    const btn = wrapper.find('.o-field-base__translate-btn');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('aria-label')).toContain('Translate');
+  });
+
+  it('hides translate icon when meta.translate is missing', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+
+  it('hides translate icon when record has no Id', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }, { recordId: null }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+
+  it('hides translate icon when not in edit mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+
+  it('opens translation dialog and applies saved value to the field binding', async () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    binding.prop = 'PartnerId.Name';
+    binding.meta = { string: 'Name', translate: true, size: 80 } as any;
+    const value = binding.fieldRef() as { value: string };
+    value.value = 'old';
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: {
+            name: 'OFieldTranslationsDialog',
+            props: ['modelValue', 'fieldName', 'maxLength', 'draftValue'],
+            emits: ['update:modelValue', 'saved'],
+            template:
+              '<div class="dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', \'新值\')" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.dialog-stub').attributes('data-open')).toBe('false');
+    await wrapper.find('.o-field-base__translate-btn').trigger('click');
+    await nextTick();
+    const dialog = wrapper.find('.dialog-stub');
+    expect(dialog.attributes('data-open')).toBe('true');
+    expect(dialog.attributes('data-field')).toBe('Name');
+    expect(dialog.attributes('data-max')).toBe('80');
+    expect(dialog.attributes('data-draft')).toBe('old');
+    await dialog.find('.emit-saved').trigger('click');
+    expect(value.value).toBe('新值');
+  });
+
+  it('shows translate in preserveModeSlot edit wrap and applies null saved value', async () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    binding.meta = { string: 'Name', translate: true, size: 0 } as any;
+    const value = binding.fieldRef() as { value: string | null };
+    value.value = 'draft';
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+        preserveModeSlot: true,
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: {
+            name: 'OFieldTranslationsDialog',
+            props: ['modelValue', 'maxLength', 'draftValue'],
+            emits: ['update:modelValue', 'saved'],
+            template:
+              '<div class="dialog-stub" :data-open="modelValue" :data-max="String(maxLength)" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', null)" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(true);
+    expect(wrapper.find('.dialog-stub').attributes('data-max')).toBe('undefined');
+    await wrapper.find('.o-field-base__translate-btn').trigger('click');
+    await nextTick();
+    await wrapper.find('.emit-saved').trigger('click');
+    expect(value.value).toBeNull();
+  });
+
+  it('honors FieldsGet translate overlay and falls back to Translate field aria', async () => {
+    const binding = makeBinding({ string: '' });
+    binding.prop = 'Name';
+    binding.meta = { string: '', translate: false } as any;
+    binding.store = {
+      getFieldMeta: (name: string) =>
+        name === 'Name'
+          ? ({ type: 'varchar', typeAnnotation: 'string', id: '1', string: '', translate: true, size: 12.5 } as any)
+          : undefined,
+      getFieldsGetTranslatedString: () => undefined,
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: true,
+        },
+      },
+    });
+
+    const btn = wrapper.find('.o-field-base__translate-btn');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('aria-label')).toMatch(/Translate/);
+  });
+
+  it('swallows translation draft write failures when fieldRef assignment throws', async () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    binding.meta = { string: 'Name', translate: true } as any;
+    const boom = {
+      get value() {
+        return 'old';
+      },
+      set value(_v: unknown) {
+        throw new Error('assign fail');
+      },
+    };
+    binding.fieldRef = () => boom as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: {
+            name: 'OFieldTranslationsDialog',
+            props: ['modelValue'],
+            emits: ['saved'],
+            template:
+              '<div class="dialog-stub" :data-open="modelValue"><button class="emit-saved" @click="$emit(\'saved\', \'x\')" /></div>',
+          },
+        },
+      },
+    });
+
+    await wrapper.find('.o-field-base__translate-btn').trigger('click');
+    await nextTick();
+    await expect(wrapper.find('.emit-saved').trigger('click')).resolves.toBeUndefined();
+  });
+
+  it('hides translate action outside form mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OVColumn: {
+            template: '<div class="ov-column"><slot :row="{ Id: 1 }" :$index="0" /></div>',
+          },
+        },
+      },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
   });
 });
