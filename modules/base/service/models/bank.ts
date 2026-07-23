@@ -14,7 +14,8 @@ export default class Bank extends BaseModel {
     type: 'varchar',
     size: 120,
     notNull: true,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.Bank.fields' }),
   })
   Name: string;
