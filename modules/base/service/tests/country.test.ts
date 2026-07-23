@@ -6,6 +6,8 @@ import { ChoysumError } from '@/core/service/error';
 import { ValidationPipelineError } from '@/core/service/api/constraint';
 import { resolveValidationSummary } from '@/core/service/api/validation';
 import { getTestRepository } from '@/core/service/testing';
+import { MetadataStorage } from '@/core/service/api/metadata';
+import { withContext } from '@/core/service/api/context';
 
 import { countryCode8, uid } from './_helpers';
 
@@ -298,4 +300,46 @@ test('base.country: postgres real fk violation is normalized to sql_fk_violation
   const summary = resolveValidationSummary(oe);
   expect(summary.sqlCode).toBe('sql_fk_violation');
   expect(summary.issues.some(item => item.scope === 'sql' && item.code === 'sql_fk_violation')).toBe(true);
+});
+
+test('base.country: Name translate metadata is enabled', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Country).fields.get('Name');
+  expect(field?.translate).toBe(true);
+  expect(field?.type).toBe('varchar');
+  expect(field?.column?.size).toBeUndefined();
+  expect(field?.column?.index).toBe('trigram');
+  expect(field?.storageHints?.size).toBe(100);
+});
+
+test('base.country: Name bilingual write/read unwraps by lang', async () => {
+  const code = countryCode8();
+  const enName = uid('CountryEn');
+  const zhName = uid('CountryZh');
+
+  const created = await Country.Create(
+    {
+      Name: { en_US: enName, zh_CN: zhName } as any,
+      Code: code,
+      ZipRequired: true,
+      StateRequired: false,
+      IsActive: true,
+    } as any,
+    ['Id', 'Name', 'Code'] as any
+  );
+  expect(String((created as any).Name)).toBe(enName);
+
+  const id = String((created as any).Id);
+  const enBrowse = await withContext({ lang: 'en_US' }, () => Country.Browse(id, ['Id', 'Name'] as any));
+  expect(String((enBrowse as any).Name)).toBe(enName);
+
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () => Country.Browse(id, ['Id', 'Name'] as any));
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
+
+  const fallbackBrowse = await withContext({ lang: 'fr_FR' }, () => Country.Browse(id, ['Id', 'Name'] as any));
+  expect(String((fallbackBrowse as any).Name)).toBe(enName);
+
+  const hit = await withContext({ lang: 'zh_CN' }, () =>
+    Country.Search(['Name', 'ilike', zhName] as any, { fields: ['Id', 'Name', 'Code'], limit: 5 } as any)
+  );
+  expect(hit?.some((r: any) => String(r.Code) === code)).toBe(true);
 });
