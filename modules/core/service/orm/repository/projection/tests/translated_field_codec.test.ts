@@ -4,8 +4,10 @@
 import { withContext } from '../../../../runtime/context';
 import {
   TRANSLATED_BASE_LANG,
+  applyFieldTranslationsPatch,
   applyTranslatedFieldsForWrite,
   decodeTranslatedFieldValue,
+  deleteLangKey,
   mergeTranslatedWrite,
   unwrapTranslatedValue,
 } from '../translated_field_codec';
@@ -143,4 +145,49 @@ test('row codec encode/decode translated fields with unwrap and prefetch_langs',
   );
   expect(prefetched).toEqual({ en_US: 'Hello', zh_CN: '你好' });
   expect(TRANSLATED_BASE_LANG).toBe('en_US');
+});
+
+test('deleteLangKey and applyFieldTranslationsPatch honor D12', () => {
+  expect(deleteLangKey({ en_US: 'A', zh_CN: '甲' }, 'zh_CN', 'Name')).toEqual({ en_US: 'A' });
+  expect(() => deleteLangKey({ en_US: 'A' }, 'en_US', 'Name')).toThrow(/cannot delete base language/);
+
+  expect(
+    applyFieldTranslationsPatch({
+      fieldName: 'Name',
+      currentMap: { en_US: 'Hello', zh_CN: '你好', fr_FR: 'Bonjour' },
+      translations: { zh_CN: '您好', fr_FR: false, de_DE: '' },
+    })
+  ).toEqual({ en_US: 'Hello', zh_CN: '您好', de_DE: '' });
+
+  expect(() =>
+    applyFieldTranslationsPatch({
+      fieldName: 'Name',
+      currentMap: { en_US: 'Hello' },
+      translations: { en_US: false },
+    })
+  ).toThrow(/cannot delete base language/);
+});
+
+test('mergeTranslatedWrite replace mode overwrites the whole map', () => {
+  expect(
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: { en_US: 'Only' },
+      lang: 'en_US',
+      currentMap: { en_US: 'Old', zh_CN: '旧' },
+      mode: 'update',
+      replace: true,
+    })
+  ).toEqual({ en_US: 'Only' });
+
+  const meta = {
+    fields: new Map<string, any>([['Name', { type: 'varchar', translate: true, storageHints: { size: 100 } }]]),
+  } as any;
+  const replaced = withContext({ translated_write_replace: true }, () =>
+    applyTranslatedFieldsForWrite(meta, { Name: { en_US: 'New' } } as any, {
+      mode: 'update',
+      current: { Name: JSON.stringify({ en_US: 'Old', zh_CN: '旧' }) },
+    })
+  );
+  expect(replaced).toEqual({ Name: { en_US: 'New' } });
 });

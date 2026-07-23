@@ -62,6 +62,11 @@ import { deleteModels, deleteModelById } from './model_delete_service_facade';
 import { createModel, createManyModels } from './model_create_service_facade';
 import { updateModels, updateModelById } from './model_update_service_facade';
 import { fieldsGetModels, type FieldsGetFieldMeta } from './model_fields_get_facade';
+import {
+  getModelFieldTranslations,
+  updateModelFieldTranslations,
+  type FieldTranslationsMap,
+} from './model_field_translations';
 import { currentBridgeFrame } from '../../runtime/compute/bridge';
 
 // Delegated implementation.
@@ -416,6 +421,32 @@ class BaseModel {
     attributes?: string[]
   ): Promise<Record<string, FieldsGetFieldMeta>> {
     return await fieldsGetModels(this as unknown as RuntimeModelCtor<T>, fields, attributes);
+  }
+
+  /**
+   * Returns the stored language map for a translated field (data i18n).
+   * Optional `langs` filters to the requested keys that exist.
+   */
+  static async GetFieldTranslations<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    id: string,
+    fieldName: string,
+    langs?: string[]
+  ): Promise<FieldTranslationsMap> {
+    return await getModelFieldTranslations(this as unknown as RuntimeModelCtor<T>, id, fieldName, langs);
+  }
+
+  /**
+   * Patches translated field values by language key.
+   * `string` writes the key; `false` deletes it; base `en_US` cannot be deleted.
+   */
+  static async UpdateFieldTranslations<T extends BaseModel>(
+    this: BaseModelCtor<T>,
+    id: string,
+    fieldName: string,
+    translations: Record<string, string | false>
+  ): Promise<boolean> {
+    return await updateModelFieldTranslations(this as unknown as RuntimeModelCtor<T>, id, fieldName, translations);
   }
 
   /**

@@ -245,6 +245,52 @@ test('base.language: Name bilingual write/read unwraps by lang', async () => {
   expect(row?.Name).toBe(`${zhName}_upd`);
 });
 
+test('base.language: Get/UpdateFieldTranslations maintain lang map', async () => {
+  const code = `f_${companyCode8()}`.slice(0, 16);
+  const created = await Language.Create(
+    {
+      Name: { en_US: 'Alpha', zh_CN: '阿尔法' } as any,
+      Code: code,
+      Direction: 'ltr' as any,
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+  const id = String((created as any).Id);
+
+  const all = await Language.GetFieldTranslations(id, 'Name');
+  expect(all).toEqual({ en_US: 'Alpha', zh_CN: '阿尔法' });
+  expect(await Language.GetFieldTranslations(id, 'Name', ['zh_CN'])).toEqual({ zh_CN: '阿尔法' });
+
+  await Language.UpdateFieldTranslations(id, 'Name', {
+    zh_CN: '甲',
+    fr_FR: 'AlphaFR',
+  });
+  expect(await Language.GetFieldTranslations(id, 'Name')).toEqual({
+    en_US: 'Alpha',
+    zh_CN: '甲',
+    fr_FR: 'AlphaFR',
+  });
+
+  await Language.UpdateFieldTranslations(id, 'Name', { fr_FR: false, de_DE: '' });
+  expect(await Language.GetFieldTranslations(id, 'Name')).toEqual({
+    en_US: 'Alpha',
+    zh_CN: '甲',
+    de_DE: '',
+  });
+
+  let baseDeleteErr: unknown;
+  try {
+    await Language.UpdateFieldTranslations(id, 'Name', { en_US: false });
+  } catch (err) {
+    baseDeleteErr = err;
+  }
+  expect(String((baseDeleteErr as Error)?.message || baseDeleteErr)).toMatch(/cannot delete base language|en_US/);
+
+  const zh = await withContext({ lang: 'zh_CN' }, () => Language.Browse(id, ['Name'] as any));
+  expect(String((zh as any).Name)).toBe('甲');
+});
+
 test('base.language: partial IsActive=false still blocks deactivating en_US', async () => {
   const enRows = await Language.Search(['Code', '=', 'en_US'] as any, { fields: ['Id', 'Code', 'IsActive'], limit: 1 } as any);
   expect(enRows?.length).toBe(1);

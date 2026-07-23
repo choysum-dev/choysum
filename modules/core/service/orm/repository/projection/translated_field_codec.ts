@@ -142,11 +142,63 @@ function normalizeIncomingLangMap(fieldName: string, raw: Record<string, unknown
   return out;
 }
 
+/** When true, object writes replace the whole lang map instead of merging keys. */
+export function getTranslatedWriteReplace(): boolean {
+  const raw = getCtxValue('translated_write_replace') ?? getCtxValue('translatedWriteReplace');
+  return raw === true;
+}
+
+/**
+ * Delete one language key from a stored map. Base language `en_US` cannot be deleted (D12).
+ * Internal helper — not a public Model API.
+ */
+export function deleteLangKey(map: Record<string, string>, lang: string, fieldName: string): Record<string, string> {
+  const key = assertTranslatedLangKey(lang, fieldName);
+  if (key === TRANSLATED_BASE_LANG) {
+    throw new Error(
+      `Translated field "${fieldName}" cannot delete base language key ${TRANSLATED_BASE_LANG}`
+    );
+  }
+  if (!hasOwn(map, key)) return { ...map };
+  const out = { ...map };
+  delete out[key];
+  return out;
+}
+
+/**
+ * Apply Get/UpdateFieldTranslations patch: string writes a key; `false` deletes a key (not en_US).
+ */
+export function applyFieldTranslationsPatch(args: {
+  fieldName: string;
+  currentMap: Record<string, string> | null;
+  translations: Record<string, string | false>;
+  size?: number;
+}): Record<string, string> {
+  const { fieldName, size } = args;
+  if (!args.translations || typeof args.translations !== 'object' || Array.isArray(args.translations)) {
+    throw new Error(`Translated field "${fieldName}" translations must be an object map`);
+  }
+  let out: Record<string, string> = { ...(args.currentMap || {}) };
+  for (const [rawKey, rawVal] of Object.entries(args.translations)) {
+    const lang = assertTranslatedLangKey(rawKey, fieldName);
+    if (rawVal === false) {
+      out = deleteLangKey(out, lang, fieldName);
+      continue;
+    }
+    if (typeof rawVal !== 'string') {
+      throw new Error(`Translated field "${fieldName}" lang map value for "${lang}" must be a string or false`);
+    }
+    assertValueSize(fieldName, rawVal, size);
+    out[lang] = rawVal;
+  }
+  return out;
+}
+
 /**
  * Merge a write value into the current lang map.
  * - null → whole-column clear (caller stores null)
  * - '' / string → set current lang key
- * - object → merge keys
+ * - object → merge keys (or replace when replace=true / ctx translated_write_replace)
  * - create mode: also write en_US when missing
  */
 export function mergeTranslatedWrite(args: {
@@ -156,9 +208,11 @@ export function mergeTranslatedWrite(args: {
   currentMap: Record<string, string> | null;
   mode: TranslatedWriteMode;
   size?: number;
+  replace?: boolean;
 }): Record<string, string> | null {
   const { fieldName, value, mode, size } = args;
   const lang = assertTranslatedLangKey(args.lang, fieldName);
+  const replace = args.replace === true;
 
   if (value === null) {
     return null;
@@ -166,6 +220,9 @@ export function mergeTranslatedWrite(args: {
 
   if (isTranslatedLangMap(value)) {
     const incoming = normalizeIncomingLangMap(fieldName, value, size);
+    if (replace) {
+      return incoming;
+    }
     const merged: Record<string, string> = { ...(args.currentMap || {}), ...incoming };
     if (mode === 'create' && !hasOwn(merged, TRANSLATED_BASE_LANG)) {
       // Prefer explicit en_US from incoming; else seed from current write lang value.
@@ -206,10 +263,11 @@ export function fieldTranslateSize(fm: FieldMetadata | undefined): number | unde
 export function applyTranslatedFieldsForWrite(
   meta: ModelMetadata,
   input: Entity,
-  opts: { mode: TranslatedWriteMode; lang?: string; current?: ObjectRecord | null }
+  opts: { mode: TranslatedWriteMode; lang?: string; current?: ObjectRecord | null; replace?: boolean }
 ): Entity {
   if (!input || typeof input !== 'object') return input;
   const lang = opts.lang ?? resolveTranslatedFieldLang();
+  const replace = opts.replace === true || getTranslatedWriteReplace();
   const out: UnknownRecord = { ...(input as UnknownRecord) };
   let changed = false;
 
@@ -220,7 +278,7 @@ export function applyTranslatedFieldsForWrite(
     if (raw === undefined) return;
 
     const currentStored = opts.current ? opts.current[name] : undefined;
-    const currentMap = opts.mode === 'update' ? parseTranslatedStoredMap(currentStored) : null;
+    const currentMap = opts.mode === 'update' && !replace ? parseTranslatedStoredMap(currentStored) : null;
     const merged = mergeTranslatedWrite({
       fieldName: name,
       value: raw,
@@ -228,6 +286,7 @@ export function applyTranslatedFieldsForWrite(
       currentMap,
       mode: opts.mode,
       size: fieldTranslateSize(fm),
+      replace,
     });
     out[name] = merged;
     changed = true;
