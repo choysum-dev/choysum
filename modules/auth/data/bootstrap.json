@@ -7,7 +7,10 @@
       "values": {
         "Name": "Base User",
         "Code": "base.user",
-        "Description": "Minimal baseline role for newly registered users",
+        "Description": {
+          "en_US": "Minimal baseline role for newly registered users",
+          "zh_CN": "新注册用户的最小基线角色"
+        },
         "IsActive": true,
         "IsSystem": true
       }
@@ -19,7 +22,10 @@
       "values": {
         "Name": "System Admin",
         "Code": "sys.admin",
-        "Description": "Break-glass role with global RPC access",
+        "Description": {
+          "en_US": "Break-glass role with global RPC access",
+          "zh_CN": "拥有全局 RPC 访问权限的应急角色"
+        },
         "IsActive": true,
         "IsSystem": true
       }
@@ -31,7 +37,10 @@
       "values": {
         "Name": "Terminology Editor",
         "Code": "terminology.editor",
-        "Description": "Edit terminology translations via SearchTerms/UpdateTerm",
+        "Description": {
+          "en_US": "Edit terminology translations via SearchTerms/UpdateTerm",
+          "zh_CN": "可通过 SearchTerms/UpdateTerm 编辑术语翻译"
+        },
         "IsActive": true,
         "IsSystem": true
       }
