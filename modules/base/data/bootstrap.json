@@ -2,19 +2,6 @@
   "records": [
     {
       "module": "base",
-      "external_id": "currency_cny",
-      "model": "base.Currency",
-      "values": {
-        "Name": "Chinese Yuan",
-        "Code": "CNY",
-        "Symbol": "¥",
-        "DecimalDigits": 2,
-        "Rounding": "0.01",
-        "IsActive": true
-      }
-    },
-    {
-      "module": "base",
       "external_id": "language_zh_cn",
       "model": "base.Language",
       "values": {
@@ -55,6 +42,22 @@
         "FirstDayOfWeek": 0,
         "CurrencySymbolPosition": "before",
         "CurrencySymbolSpacing": false
+      }
+    },
+    {
+      "module": "base",
+      "external_id": "currency_cny",
+      "model": "base.Currency",
+      "values": {
+        "Name": {
+          "en_US": "Chinese Yuan",
+          "zh_CN": "人民币"
+        },
+        "Code": "CNY",
+        "Symbol": "¥",
+        "DecimalDigits": 2,
+        "Rounding": "0.01",
+        "IsActive": true
       }
     },
     {

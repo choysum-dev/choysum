@@ -35,8 +35,15 @@ describe('base language merge seeds and wiring (P0)', () => {
     });
 
     // zh_CN is seeded before en_US so Name lang-map keys can reference Language.Code.
+    // Languages precede Currency so bilingual Currency.Name can use zh_CN.
     const order = data.records.map(r => r.external_id);
     expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
+    expect(order.indexOf('language_en_us')).toBeLessThan(order.indexOf('currency_cny'));
+
+    expect(byId.currency_cny?.values.Name).toEqual({
+      en_US: 'Chinese Yuan',
+      zh_CN: '人民币',
+    });
 
     expect(byId.company_main?.values.LanguageId).toEqual({ ref: 'base.language_zh_cn' });
     expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
