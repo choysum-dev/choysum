@@ -44,6 +44,7 @@ import { computed, ref } from 'vue';
 import { ElButton, ElDialog, ElForm, ElFormItem, ElInput, ElMessage } from 'element-plus';
 import { createTranslate } from '@/web/web/i18n';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 
 defineOptions({ name: 'OFieldTranslationsDialog' });
@@ -63,6 +64,10 @@ const props = defineProps<{
   fieldName: string;
   fieldLabel?: string;
   maxLength?: number;
+  /** Unsaved form value for the current UI language; applied on open. */
+  draftValue?: string | null;
+  /** Optional lang override (e.g. zh_CN); defaults to i18n terminologyLang. */
+  draftLang?: string;
 }>();
 
 const emit = defineEmits<{
@@ -92,6 +97,29 @@ const rows = ref<TranslationRow[]>([]);
 function formatLanguageLabel(name: unknown, code: string): string {
   const display = String(name ?? '').trim();
   return display || code;
+}
+
+function resolveDraftLang(): string {
+  const fromProp = String(props.draftLang || '').trim();
+  if (fromProp) return fromProp;
+  try {
+    return String(useI18nStore().terminologyLang || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Overlay the form draft onto the current UI language row only.
+ * Keep `initial` as the server value so Save still detects the draft as dirty.
+ */
+function applyDraftValue(byCode: Map<string, TranslationRow>) {
+  if (props.draftValue === undefined) return;
+  const lang = resolveDraftLang();
+  if (!lang) return;
+  const row = byCode.get(lang);
+  if (!row) return;
+  row.value = props.draftValue == null ? '' : String(props.draftValue);
 }
 
 async function loadRows() {
@@ -129,6 +157,8 @@ async function loadRows() {
         existed,
       });
     }
+
+    applyDraftValue(byCode);
 
     const ordered = Array.from(byCode.values());
     ordered.sort((a, b) => {

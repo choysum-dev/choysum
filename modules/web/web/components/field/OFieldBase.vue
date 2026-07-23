@@ -119,6 +119,7 @@ SPDX-License-Identifier: Apache-2.0
       :field-name="leafFieldName"
       :field-label="resolvedLabel"
       :max-length="translationMaxLength"
+      :draft-value="translationDraftValue"
       @saved="onTranslationsSaved"
     />
   </el-form-item>
@@ -391,6 +392,17 @@ const translationMaxLength = computed(() => {
 const translateAriaLabel = computed(() => {
   const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
   return label ? _t('Translate: %s', label) : _t('Translate field');
+});
+
+/** Current form draft (current UI lang unwrap); seeded into the translations dialog on open. */
+const translationDraftValue = computed(() => {
+  try {
+    const fieldRef = valueForm() as WritableComputedRef<View> | undefined;
+    const v = fieldRef?.value;
+    return v == null ? '' : String(v);
+  } catch {
+    return '';
+  }
 });
 
 function onTranslationsSaved(nextValue: string | null) {

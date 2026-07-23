@@ -147,4 +147,67 @@ describe('OFieldTranslationsDialog', () => {
     expect(UpdateFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name', { zh_CN: false });
     expect(wrapper.emitted('saved')?.[0]?.[0]).toBe('Hello');
   });
+
+  it('seeds the current-lang row from draftValue on open and saves it as dirty', async () => {
+    const UpdateFieldTranslations = vi.fn(async () => true);
+    const Browse = vi.fn(async () => ({ Name: '英语（美国）111' }));
+    const GetFieldTranslations = vi.fn(async () => ({
+      en_US: 'English (US)',
+      zh_CN: '英语（美国）',
+    }));
+
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+        fieldLabel: 'Name',
+        draftValue: '英语（美国）111',
+        draftLang: 'zh_CN',
+      },
+      global: {
+        stubs: {
+          'el-dialog': {
+            props: ['modelValue'],
+            template: '<div class="dialog"><slot /><slot name="footer" /></div>',
+            emits: ['opened', 'closed', 'update:modelValue'],
+            mounted() {
+              this.$emit('opened');
+            },
+          },
+          'el-form': { template: '<form><slot /></form>' },
+          'el-form-item': { props: ['label'], template: '<div class="item" :data-label="label"><slot /></div>' },
+          'el-input': {
+            props: ['modelValue'],
+            emits: ['update:modelValue'],
+            template:
+              '<input class="input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+          },
+          'el-button': {
+            props: ['loading', 'type'],
+            template: '<button class="btn" @click="$emit(\'click\')"><slot /></button>',
+          },
+        },
+      },
+    });
+
+    await nextTick();
+    await Promise.resolve();
+    await nextTick();
+
+    const inputs = wrapper.findAll('.input');
+    expect(inputs[0]!.element).toMatchObject({ value: 'English (US)' });
+    expect(inputs[1]!.element).toMatchObject({ value: '英语（美国）111' });
+
+    const buttons = wrapper.findAll('.btn');
+    const saveBtn = buttons[buttons.length - 1]!;
+    await saveBtn.trigger('click');
+    await nextTick();
+    await Promise.resolve();
+
+    expect(UpdateFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name', {
+      zh_CN: '英语（美国）111',
+    });
+  });
 });
