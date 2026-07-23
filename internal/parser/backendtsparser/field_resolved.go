@@ -455,15 +455,17 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	if v, ok := options["indexed"].(bool); ok {
 		hints.Indexed = toBoolPtr(v)
 	}
-	if hints.Indexed == nil {
-		switch raw := options["index"].(type) {
-		case bool:
+	switch raw := options["index"].(type) {
+	case bool:
+		if hints.Indexed == nil {
 			hints.Indexed = toBoolPtr(raw)
-		case string:
-			trimmed := strings.TrimSpace(raw)
-			if trimmed != "" {
+		}
+	case string:
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" {
+			hints.Index = toStringPtr(trimmed)
+			if hints.Indexed == nil {
 				hints.Indexed = toBoolPtr(true)
-				hints.Index = toStringPtr(trimmed)
 			}
 		}
 	}
@@ -655,6 +657,19 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 				Code:     "CONFLICT_TRANSLATE_UNIQUE",
 				Severity: "error",
 				Message:  "translate cannot be combined with unique/uniqueIndex",
+			})
+		}
+		indexKind := ""
+		if hints.Index != nil {
+			indexKind = strings.TrimSpace(*hints.Index)
+		}
+		btreeIndexed := hints.Indexed != nil && *hints.Indexed && !strings.EqualFold(indexKind, "trigram")
+		namedNonTrigram := indexKind != "" && !strings.EqualFold(indexKind, "trigram")
+		if btreeIndexed || namedNonTrigram {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_TRANSLATE_INDEX",
+				Severity: "error",
+				Message:  "translate only supports index: 'trigram' (or omit index)",
 			})
 		}
 	}

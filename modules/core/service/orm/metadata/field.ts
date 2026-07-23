@@ -98,6 +98,7 @@ type FlatCommonOptions = {
   /**
    * Data i18n: store per-language values as a JSON/JSONB `{ lang: value }` map.
    * Only valid on char/varchar/text; mutually exclusive with unique/uniqueIndex.
+   * Optional search acceleration: `index: 'trigram'` (Postgres GIN; see data-i18n-design §7.1).
    * See `.dev/docs/infra/i18n/data-i18n-design.md`.
    */
   translate?: boolean;

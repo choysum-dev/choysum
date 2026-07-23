@@ -661,7 +661,7 @@ test('Field decorator auto-fills scalar column defaults and skips DisplayName', 
 
 test('Field decorator accepts translate on char/varchar/text and keeps size logical-only', () => {
   class TranslateModel extends BaseModel {
-    @Field({ type: 'varchar', size: 100, translate: true, indexed: true } as any)
+    @Field({ type: 'varchar', size: 100, translate: true, index: 'trigram' } as any)
     Name!: string;
 
     @Field({ type: 'text', translate: true } as any)
@@ -672,7 +672,7 @@ test('Field decorator accepts translate on char/varchar/text and keeps size logi
   expect(nameMeta?.translate).toBe(true);
   expect(nameMeta?.storageHints?.size).toBe(100);
   expect(nameMeta?.column?.size).toBeUndefined();
-  expect(nameMeta?.column?.index).toBe(true);
+  expect(nameMeta?.column?.index).toBe('trigram');
   expect(fields.get('Description')?.translate).toBe(true);
 });
 
@@ -692,6 +692,32 @@ test('Field decorator rejects translate with unique or uniqueIndex', () => {
     }
     return BadUniqueIndexTranslate;
   }).toThrow('translate cannot be combined with unique/uniqueIndex');
+});
+
+test('Field decorator rejects translate with non-trigram index', () => {
+  expect(() => {
+    class BadBtreeTranslate extends BaseModel {
+      @Field({ type: 'varchar', translate: true, index: true } as any)
+      Name!: string;
+    }
+    return BadBtreeTranslate;
+  }).toThrow(/index: 'trigram'/);
+
+  expect(() => {
+    class BadNamedIndexTranslate extends BaseModel {
+      @Field({ type: 'varchar', translate: true, index: 'idx_name' } as any)
+      Name!: string;
+    }
+    return BadNamedIndexTranslate;
+  }).toThrow(/index: 'trigram'/);
+
+  expect(() => {
+    class BadIndexedTranslate extends BaseModel {
+      @Field({ type: 'varchar', translate: true, indexed: true } as any)
+      Name!: string;
+    }
+    return BadIndexedTranslate;
+  }).toThrow(/index: 'trigram'/);
 });
 
 test('Field decorator rejects translate on non-text field types', () => {

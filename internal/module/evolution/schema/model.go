@@ -135,11 +135,18 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 	}
 
 	// Data i18n: JSON/JSONB lang map; size is per-lang limit only; never unique btree (D14·D15).
+	// Trigram GIN is applied separately (ensureTranslatedTrigramIndex); never emit GORM btree tags.
 	if resolved.Structural.Translate != nil && *resolved.Structural.Translate {
 		metaMap["type"] = "jsonobject"
 		delete(metaMap, "size")
 		delete(metaMap, "unique")
 		delete(metaMap, "uniqueIndex")
+		delete(metaMap, "index")
+		if hints := resolved.Structural.StorageHints; hints != nil && hints.Index != nil {
+			if strings.EqualFold(strings.TrimSpace(*hints.Index), translatedTrigramIndexKind) {
+				metaMap["trigram"] = true
+			}
+		}
 	}
 
 	// Keep compatibility defaults for reference and relation-like scalar carriers.
@@ -276,6 +283,11 @@ func (m *modelMigrator) migrateTableSchema(models []*meta.IrModel) error {
 		// Apply CHECK constraints (GORM won't create them from tags).
 		if err := m.applyTableCheckConstraints(tableName, model); err != nil {
 			return fmt.Errorf("migrate table %s check constraints: %w", tableName, err)
+		}
+
+		// Optional PG full-language trigram GIN for translate fields (skipped without pg_trgm).
+		if err := m.applyTableTranslatedTrigramIndexes(tableName, model); err != nil {
+			return fmt.Errorf("migrate table %s translated trigram indexes: %w", tableName, err)
 		}
 	}
 	return nil

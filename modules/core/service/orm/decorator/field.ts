@@ -127,6 +127,13 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       if (optionBag.unique === true || uniqueIndexOn) {
         throw new Error(`@Field(${name}) translate cannot be combined with unique/uniqueIndex`);
       }
+      // Translate fields only accept optional index: 'trigram' (data-i18n-design §7.1); never btree.
+      if (optionBag.indexed === true) {
+        throw new Error(`@Field(${name}) translate cannot use indexed/index btree; use index: 'trigram' or omit`);
+      }
+      if (optionBag.index !== undefined && optionBag.index !== 'trigram') {
+        throw new Error(`@Field(${name}) translate only supports index: 'trigram' (or omit index)`);
+      }
     }
 
     const hasFlatStorageHints =

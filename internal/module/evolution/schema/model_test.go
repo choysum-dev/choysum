@@ -589,7 +589,7 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 				StorageHints: &meta.IrFieldStructuralStorageHints{
 					Size:   &size,
 					Unique: &trueVal,
-					Index:  strPtr("idx_name"),
+					Index:  strPtr("trigram"),
 				},
 				ColumnType: "jsonobject",
 			},
@@ -616,8 +616,11 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 		if _, ok := metaMap["unique"]; ok {
 			t.Fatalf("translate column must not carry unique, got %#v", metaMap)
 		}
-		if metaMap["index"] != "idx_name" {
-			t.Fatalf("expected non-unique index preserved, got %#v", metaMap)
+		if _, ok := metaMap["index"]; ok {
+			t.Fatalf("translate column must not carry GORM index tag, got %#v", metaMap)
+		}
+		if metaMap["trigram"] != true {
+			t.Fatalf("expected trigram=true marker for index:'trigram', got %#v", metaMap)
 		}
 
 		dialect := "postgres"
