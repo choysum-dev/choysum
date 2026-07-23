@@ -61,6 +61,10 @@ export function deriveKeywordFieldsFromMeta(fieldsMeta?: Record<string, any>, op
     const derived = Object.keys(md).filter(k => {
       const searchable = md[k]?.searchable;
       if (typeof searchable === 'boolean') return searchable;
+      // Virtual SQL fields (e.g. DisplayName) often alias translated columns; searching them
+      // duplicates Name and historically produced `jsonb ~~` when unwrap was missing.
+      const storageKind = String(md[k]?.storageKind || '').toLowerCase();
+      if (storageKind === 'virtualsql' || storageKind === 'virtual') return false;
       const t = String(md[k]?.type || '').toLowerCase();
       return allowed.has(t);
     });
@@ -149,7 +153,8 @@ export function filtersToQuery(
   const hasExplicitKeywordFields = Array.isArray(keywordFields) && keywordFields.length > 0;
   const kwExpr = buildKeywordCondition(keyword, keywordFields, {
     fieldsMeta,
-    operator: 'like',
+    // Prefer ilike so translated-field unwrap + trigram prefilter match backend search tests.
+    operator: 'ilike',
     normalizeLike: true,
     fallbackTextTypes: ['char', 'varchar'],
     includeIdInFallback: false,

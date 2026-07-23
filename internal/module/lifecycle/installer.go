@@ -305,7 +305,7 @@ func disableLegacyModuleIndexDailySchedule(runtimeScope scope.Scope) error {
 	if !db.Migrator().HasTable((&task.Schedule{}).TableName()) {
 		return nil
 	}
-	return db.Where("name = ?", "meta.module_index.daily_sync").Delete(&task.Schedule{}).Error
+	return task.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Delete(&task.Schedule{}).Error
 }
 
 func ensureDocumentAttachmentGCSchedule(runtimeScope scope.Scope) error {
@@ -322,14 +322,14 @@ func ensureDocumentAttachmentGCSchedule(runtimeScope scope.Scope) error {
 	)
 	payload := datatypes.JSON(mustJSON(map[string]any{}))
 	var existing task.Schedule
-	res := db.Where("name = ?", scheduleName).Take(&existing)
+	res := task.WhereScheduleNameEq(db, scheduleName).Take(&existing)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			now := time.Now().UTC()
 			return db.Create(&task.Schedule{
 				Id:                xid.New().String(),
 				Active:            true,
-				Name:              scheduleName,
+				Name:              task.EncodeTranslatedScheduleName(scheduleName),
 				TargetApp:         targetApp,
 				FullMethod:        fullMethod,
 				PayloadTemplate:   payload,

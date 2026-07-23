@@ -10,15 +10,16 @@ import { createApiRuntime, initializeApiRuntime, useApiState } from './runtime';
 
 describe('client service/runtime split', () => {
   it('does not bind a lifecycle provider on module import alone', () => {
-    setLifecycleProvider(undefined as any);
+    setLifecycleProvider(null);
 
-    expect(createLifecycleInterceptor()).toBeUndefined();
+    // Interceptor is always installed; provider is resolved lazily per request.
+    expect(typeof createLifecycleInterceptor()).toBe('function');
   });
 
   it('lazily initializes the default runtime when api state is requested', () => {
-    setLifecycleProvider(undefined as any);
+    setLifecycleProvider(null);
 
-    expect(createLifecycleInterceptor()).toBeUndefined();
+    expect(typeof createLifecycleInterceptor()).toBe('function');
 
     const state = useApiState();
 
@@ -27,7 +28,7 @@ describe('client service/runtime split', () => {
   });
 
   it('supports explicit runtime binding and service state scoping', async () => {
-    setLifecycleProvider(undefined as any);
+    setLifecycleProvider(null);
 
     const runtime = createApiRuntime('scoped');
     const service = {
@@ -36,7 +37,7 @@ describe('client service/runtime split', () => {
 
     const api = webApiService('demo.Service', service, runtime);
 
-    expect(createLifecycleInterceptor()).toBeUndefined();
+    expect(typeof createLifecycleInterceptor()).toBe('function');
     expect(api.loading).toBe(runtime.state.loading);
     expect(api.errors).toBe(runtime.state.errors);
     expect(api.getMethodStateKey('Fetch')).toBe('demo.Service.Fetch');
@@ -50,7 +51,7 @@ describe('client service/runtime split', () => {
   });
 
   it('uses default runtime when no runtime is provided', () => {
-    setLifecycleProvider(undefined as any);
+    setLifecycleProvider(null);
 
     const service = {
       Ping: async () => 'pong',

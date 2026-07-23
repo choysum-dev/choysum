@@ -241,6 +241,13 @@ test('base.language: Name bilingual write/read unwraps by lang', async () => {
   );
   expect(hit?.some((r: any) => String(r.Code) === code)).toBe(true);
 
+  // UI keyword search historically compiled DisplayName SqlCompute → bare Name jsonb LIKE.
+  const hitDisplayName = await Language.Search(['DisplayName', 'like', `%${enName}%`] as any, {
+    fields: ['Id', 'Code'],
+    limit: 5,
+  } as any);
+  expect(hitDisplayName?.some((r: any) => String(r.Code) === code)).toBe(true);
+
   const active = await withContext({ lang: 'zh_CN' }, () => Language.GetActiveLanguages());
   const row = active.find(r => r.Code === code);
   expect(row?.Name).toBe(`${zhName}_upd`);

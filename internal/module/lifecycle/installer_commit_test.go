@@ -176,7 +176,7 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 	if err := installer.commitInstall(nil, false); err != nil {
 		t.Fatalf("meta commitInstall: %v", err)
 	}
-	if err := db.Where("name = ?", "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
+	if err := internaltask.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
 		t.Fatal("expected legacy schedule deleted")
 	}
 
@@ -187,11 +187,14 @@ func TestCommitInstallMetaAndDocumentSchedules(t *testing.T) {
 		t.Fatalf("document commitInstall: %v", err)
 	}
 	var gc internaltask.Schedule
-	if err := db.Where("name = ?", "document.attachment.gc").Take(&gc).Error; err != nil {
+	if err := internaltask.WhereScheduleNameEq(db, "document.attachment.gc").Take(&gc).Error; err != nil {
 		t.Fatalf("expected GC schedule: %v", err)
 	}
 	if !gc.Active || gc.CronExpr != "*/5 * * * *" {
 		t.Fatalf("gc schedule = %+v", gc)
+	}
+	if internaltask.DecodeTranslatedScheduleName(gc.Name) != "document.attachment.gc" {
+		t.Fatalf("expected translated schedule name, got %q", gc.Name)
 	}
 
 	// Update existing GC schedule path.
@@ -213,7 +216,7 @@ func TestEnsureDocumentAttachmentGCScheduleDirect(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int64
-	if err := db.Model(&internaltask.Schedule{}).Where("name = ?", "document.attachment.gc").Count(&count).Error; err != nil {
+	if err := internaltask.WhereScheduleNameEq(db.Model(&internaltask.Schedule{}), "document.attachment.gc").Count(&count).Error; err != nil {
 		t.Fatal(err)
 	}
 	if count != 1 {

@@ -55,11 +55,45 @@ func TestDisableLegacyModuleIndexDailyScheduleDeletesLegacyEntry(t *testing.T) {
 		t.Fatalf("disableLegacyModuleIndexDailySchedule() error = %v", err)
 	}
 
-	if err := db.Where("name = ?", "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
+	if err := internaltask.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
 		t.Fatal("expected legacy schedule to be deleted")
 	}
-	if err := db.Where("name = ?", "document.attachment.gc").Take(&internaltask.Schedule{}).Error; err != nil {
+	if err := internaltask.WhereScheduleNameEq(db, "document.attachment.gc").Take(&internaltask.Schedule{}).Error; err != nil {
 		t.Fatalf("expected non-legacy schedule to remain, got %v", err)
+	}
+}
+
+func TestDisableLegacyModuleIndexDailyScheduleDeletesTranslatedEntry(t *testing.T) {
+	db := newModuleIndexSyncDB(t)
+	if err := db.AutoMigrate(&internaltask.Schedule{}); err != nil {
+		t.Fatalf("auto migrate task schedule: %v", err)
+	}
+
+	now := time.Now().UTC()
+	legacy := internaltask.Schedule{
+		Id:                "sch_legacy_i18n",
+		Active:            true,
+		Name:              internaltask.EncodeTranslatedScheduleName("meta.module_index.daily_sync"),
+		TargetApp:         "meta",
+		FullMethod:        "meta.IrModuleIndex/Sync",
+		SchedulerUserId:   "admin",
+		TriggeredByUserId: "admin",
+		CronExpr:          "0 0 * * *",
+		Timezone:          "UTC",
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := db.Create(&legacy).Error; err != nil {
+		t.Fatalf("seed translated legacy schedule: %v", err)
+	}
+
+	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	if err := disableLegacyModuleIndexDailySchedule(runtimeScope); err != nil {
+		t.Fatalf("disableLegacyModuleIndexDailySchedule() error = %v", err)
+	}
+
+	if err := internaltask.WhereScheduleNameEq(db, "meta.module_index.daily_sync").Take(&internaltask.Schedule{}).Error; err == nil {
+		t.Fatal("expected translated legacy schedule to be deleted")
 	}
 }
 

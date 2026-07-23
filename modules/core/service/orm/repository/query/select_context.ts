@@ -8,6 +8,7 @@ import type { SelectCtx, SelectExpressionAtom, SelectExpressionValue, SelectSubq
 import type { DialectName } from '../repository_dialect';
 import type { ExpressionBuilder } from '../types';
 import { hasRepositorySqlComputeExpression, isRepositorySelectableScalarField, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
+import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
 import type { ObjectRecord } from '../../../../utils/types';
 
 export interface DbLike {
@@ -111,7 +112,14 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
         return resolved;
       });
     } else if (finalFieldMeta.column) {
-      subquery = subquery.select(`${finalTable}.${finalField}`);
+      // Translate fields store lang maps; path expressions must unwrap to text for LIKE/order/display.
+      if (finalFieldMeta.translate) {
+        subquery = subquery.select((subBuilder: unknown) =>
+          buildTranslatedFieldUnwrapExpr(getDialect() as DialectName, subBuilder as any, `${finalTable}.${finalField}`)
+        );
+      } else {
+        subquery = subquery.select(`${finalTable}.${finalField}`);
+      }
     } else {
       throw new Error(`field(${finalMeta.type.name}.${finalField}) has neither sql compute handler nor column`);
     }
@@ -143,7 +151,14 @@ export function makeSelectCtx(db: DbLike, getDialect: () => string, builder: unk
         return resolved as SelectExpressionValue;
       }
 
-      if (fieldMeta.column) return refBuilder.ref(`${table}.${fieldName}`);
+      if (fieldMeta.column) {
+        // Data-i18n: `$sql.field('Name')` (e.g. DisplayName SqlCompute) must unwrap jsonb lang maps
+        // so keyword `like`/`ilike` predicates do not become `jsonb ~~ text`.
+        if (fieldMeta.translate) {
+          return buildTranslatedFieldUnwrapExpr(getDialect() as DialectName, expressionBuilder as any, `${table}.${fieldName}`) as SelectExpressionValue;
+        }
+        return refBuilder.ref(`${table}.${fieldName}`);
+      }
       throw new Error(`field(${model.name}.${fieldName}) has neither sql compute handler nor column`);
     }
 

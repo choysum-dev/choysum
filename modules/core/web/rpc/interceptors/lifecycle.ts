@@ -12,13 +12,13 @@ function buildTraceparent(traceId: string, spanId: string, sampled = true): stri
   return `00-${traceId}-${spanId}-${sampled ? '01' : '00'}`;
 }
 
-export function createLifecycleInterceptor(): Interceptor | undefined {
-  const lifecycleProvider = getLifecycleProvider();
-  if (!lifecycleProvider) {
-    return undefined;
-  }
-
+/**
+ * Request lifecycle hooks + traceparent.
+ * Resolve the provider per request so early client creation still works later.
+ */
+export function createLifecycleInterceptor(): Interceptor {
   return next => async req => {
+    const lifecycleProvider = getLifecycleProvider();
     const serviceName = req.service.typeName || req.service.constructor.name || 'unknown';
     const methodName = req.method.name;
     const args = req.stream ? [req.message] : [req.message];
@@ -28,6 +28,10 @@ export function createLifecycleInterceptor(): Interceptor | undefined {
     req.header.set('traceparent', buildTraceparent(traceId, spanId, true));
 
     const context: RpcRequestContext = { serviceName, methodName, traceId, spanId, args };
+
+    if (!lifecycleProvider) {
+      return next(req);
+    }
 
     try {
       lifecycleProvider.onStart?.(context);

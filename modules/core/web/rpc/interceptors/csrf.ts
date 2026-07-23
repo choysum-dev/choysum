@@ -4,13 +4,17 @@
 import type { Interceptor } from '@connectrpc/connect';
 import { getCSRFProvider } from '../providers';
 
-export function createCSRFInterceptor(): Interceptor | undefined {
-  const csrfProvider = getCSRFProvider();
-  if (!csrfProvider) {
-    return undefined;
-  }
-
+/**
+ * Attach CSRF header when a provider is registered.
+ * Resolve the provider per request so early client creation still works later.
+ */
+export function createCSRFInterceptor(): Interceptor {
   return next => async req => {
+    const csrfProvider = getCSRFProvider();
+    if (!csrfProvider) {
+      return next(req);
+    }
+
     const token = await csrfProvider.getCSRFToken();
     if (token) {
       req.header.set('X-XSRF-TOKEN', token);
