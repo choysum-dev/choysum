@@ -83,3 +83,49 @@ test('partner_commercial: Notes bilingual write/read unwraps by lang', async () 
     expect(String((zhBrowse as any).Notes)).toBe(zhNotes);
   });
 });
+
+test('partner_commercial: IssuedBy bilingual write/read unwraps by lang', async () => {
+  const companyId = await ensureCompanyId();
+  const partnerCode = uid('PI').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20).toUpperCase() || 'PICODE';
+
+  await withCompanyScope(companyId, async () => {
+    const partner = await Partner.Create(
+      {
+        Name: uid('PartnerForIssuedBy'),
+        Code: partnerCode,
+        CompanyId: companyId,
+        IsActive: true,
+        IsCompany: true,
+      } as any,
+      ['Id'] as any
+    );
+
+    const enIssued = uid('IssuedEn');
+    const zhIssued = uid('IssuedZh');
+    const created = await PartnerIdentifier.Create(
+      {
+        PartnerId: String((partner as any).Id),
+        CompanyId: companyId,
+        IdentifierType: 'tax_id',
+        Value: uid('IVAL').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20).toUpperCase() || 'IVAL1',
+        IssuedBy: { en_US: enIssued, zh_CN: zhIssued } as any,
+        IsActive: true,
+      } as any,
+      ['Id', 'IssuedBy'] as any
+    );
+    expect(String((created as any).IssuedBy)).toBe(enIssued);
+
+    const zhBrowse = await withContext(
+      { lang: 'zh_CN', activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
+      () => PartnerIdentifier.Browse(String((created as any).Id), ['Id', 'IssuedBy'] as any)
+    );
+    expect(String((zhBrowse as any).IssuedBy)).toBe(zhIssued);
+
+    const updated = await PartnerIdentifier.UpdateById(
+      String((created as any).Id),
+      { IssuedBy: { en_US: `${enIssued}_u`, zh_CN: `${zhIssued}_u` } } as any,
+      ['Id', 'IssuedBy'] as any
+    );
+    expect(String((updated as any).IssuedBy)).toBe(`${enIssued}_u`);
+  });
+});

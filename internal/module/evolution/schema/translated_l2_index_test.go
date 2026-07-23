@@ -187,3 +187,77 @@ func TestApplyTableTranslatedL2IndexesRequiresTrigramOptIn(t *testing.T) {
 		t.Fatal("expected L2 after trigram opt-in")
 	}
 }
+
+func TestEnsureTranslatedL2IndexesEmptyNamesAndUnsupportedDialect(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:l2_empty?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := ensureTranslatedL2Indexes(db, "sqlite", "", "Name"); err != nil {
+		t.Fatalf("empty table: %v", err)
+	}
+	if err := ensureTranslatedL2Indexes(db, "sqlite", "base_language", "  "); err != nil {
+		t.Fatalf("empty column: %v", err)
+	}
+	if err := ensureTranslatedL2Indexes(db, "sqlserver", "base_language", "Name"); err != nil {
+		t.Fatalf("sqlserver skip: %v", err)
+	}
+	if err := ensureTranslatedL2Indexes(db, "postgresql", "base_language", "Name"); err != nil {
+		t.Fatalf("postgresql skip: %v", err)
+	}
+}
+
+func TestEnsureTranslatedL2IndexesWrapsExecError(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:l2_mysql_err?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE base_language (id text primary key, name text)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	err = ensureTranslatedL2Indexes(db, "mysql", "base_language", "Name")
+	if err == nil {
+		t.Fatal("expected mysql DDL to fail on sqlite")
+	}
+	if !strings.Contains(err.Error(), "ensure translated L2 index") {
+		t.Fatalf("expected wrapped L2 error, got %v", err)
+	}
+}
+
+func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:l2_apply_err?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	db.Dialector = dialectorWithName{Dialector: db.Dialector, name: "mysql"}
+	if err := db.Exec(`CREATE TABLE base_language (id text primary key, name text)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+
+	trueVal := true
+	trigram := "trigram"
+	field := &meta.IrField{Name: "Name"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Translate: &trueVal,
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Index: &trigram,
+			},
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+
+	runtime := &schemaTestScope{
+		ctx:     context.Background(),
+		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "mysql"}, Server: config.NewDefaultServerConfig(), Log: config.NewDefaultLogConfig()},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	m := &modelMigrator{runtimeScope: runtime}
+	if err := m.applyTableTranslatedL2Indexes("base_language", &meta.IrModel{Fields: []*meta.IrField{field}}); err == nil {
+		t.Fatal("expected apply to surface mysql ensure error")
+	}
+}

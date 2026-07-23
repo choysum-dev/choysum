@@ -252,4 +252,115 @@ describe('OFieldBase translate action', () => {
     await dialog.find('.emit-saved').trigger('click');
     expect(value.value).toBe('新值');
   });
+
+  it('shows translate in preserveModeSlot edit wrap and applies null saved value', async () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    binding.meta = { string: 'Name', translate: true, size: 0 } as any;
+    const value = binding.fieldRef() as { value: string | null };
+    value.value = 'draft';
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+        preserveModeSlot: true,
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: {
+            name: 'OFieldTranslationsDialog',
+            props: ['modelValue', 'maxLength', 'draftValue'],
+            emits: ['update:modelValue', 'saved'],
+            template:
+              '<div class="dialog-stub" :data-open="modelValue" :data-max="String(maxLength)" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', null)" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(true);
+    expect(wrapper.find('.dialog-stub').attributes('data-max')).toBe('undefined');
+    await wrapper.find('.o-field-base__translate-btn').trigger('click');
+    await nextTick();
+    await wrapper.find('.emit-saved').trigger('click');
+    expect(value.value).toBeNull();
+  });
+
+  it('honors FieldsGet translate overlay and falls back to Translate field aria', async () => {
+    const binding = makeBinding({ string: '' });
+    binding.prop = 'Name';
+    binding.meta = { string: '', translate: false } as any;
+    binding.store = {
+      getFieldMeta: (name: string) =>
+        name === 'Name'
+          ? ({ type: 'varchar', typeAnnotation: 'string', id: '1', string: '', translate: true, size: 12.5 } as any)
+          : undefined,
+      getFieldsGetTranslatedString: () => undefined,
+    } as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: true,
+        },
+      },
+    });
+
+    const btn = wrapper.find('.o-field-base__translate-btn');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('aria-label')).toMatch(/Translate/);
+  });
+
+  it('swallows translation draft write failures when fieldRef assignment throws', async () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    binding.meta = { string: 'Name', translate: true } as any;
+    const boom = {
+      get value() {
+        return 'old';
+      },
+      set value(_v: unknown) {
+        throw new Error('assign fail');
+      },
+    };
+    binding.fieldRef = () => boom as any;
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: {
+            name: 'OFieldTranslationsDialog',
+            props: ['modelValue'],
+            emits: ['saved'],
+            template:
+              '<div class="dialog-stub" :data-open="modelValue"><button class="emit-saved" @click="$emit(\'saved\', \'x\')" /></div>',
+          },
+        },
+      },
+    });
+
+    await wrapper.find('.o-field-base__translate-btn').trigger('click');
+    await nextTick();
+    await expect(wrapper.find('.emit-saved').trigger('click')).resolves.toBeUndefined();
+  });
 });

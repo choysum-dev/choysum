@@ -229,4 +229,16 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 	if err != nil || !ok {
 		t.Fatalf("known language code: %v %v", ok, err)
 	}
+
+	emptyTableModel := &meta.IrModel{Name: "Language", Application: "base", Path: "/tmp", ModelTable: ""}
+	if err := db.Where("application = ? AND name = ?", "base", "Language").Delete(&meta.IrModel{}).Error; err != nil {
+		t.Fatalf("delete language model: %v", err)
+	}
+	if err := db.Create(emptyTableModel).Error; err != nil {
+		t.Fatalf("create empty ModelTable language: %v", err)
+	}
+	ok, err = l.languageCodeExists(db, "zh_CN")
+	if err != nil || ok {
+		t.Fatalf("empty ModelTable must skip lookup: %v %v", ok, err)
+	}
 }

@@ -17,6 +17,10 @@ const { languageResponses } = vi.hoisted(() => ({
   },
 }));
 
+const { i18nStoreState } = vi.hoisted(() => ({
+  i18nStoreState: { terminologyLang: '' as string, throwOnAccess: false },
+}));
+
 vi.mock('@/web/web/stores/registry', () => ({
   createStoreByModel: (model: string) => {
     if (model === 'base.Language') {
@@ -25,6 +29,13 @@ vi.mock('@/web/web/stores/registry', () => ({
       };
     }
     return {};
+  },
+}));
+
+vi.mock('@/web/web/stores/i18nStore', () => ({
+  useI18nStore: () => {
+    if (i18nStoreState.throwOnAccess) throw new Error('no pinia');
+    return { terminologyLang: i18nStoreState.terminologyLang };
   },
 }));
 
@@ -39,7 +50,8 @@ vi.mock('element-plus', async () => {
 const dialogStubs = {
   'el-dialog': {
     props: ['modelValue', 'title'],
-    template: '<div class="dialog" :data-title="title"><slot /><slot name="footer" /></div>',
+    template:
+      '<div class="dialog" :data-title="title"><button class="emit-closed" type="button" @click="$emit(\'closed\')" /><slot /><slot name="footer" /></div>',
     emits: ['opened', 'closed', 'update:modelValue'],
     mounted() {
       this.$emit('opened');
@@ -315,5 +327,114 @@ describe('OFieldTranslationsDialog', () => {
     await flushOpen();
     expect(ElMessage.error).toHaveBeenCalled();
     expect(wrapper.emitted('update:modelValue')?.some(args => args[0] === false)).toBeFalsy();
+  });
+
+  it('resolves draftLang from i18n store when prop is omitted', async () => {
+    i18nStoreState.terminologyLang = 'zh_CN';
+    i18nStoreState.throwOnAccess = false;
+    languageResponses.langs = [
+      { Code: 'en_US', Name: 'English (US)' },
+      { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
+    ];
+    const GetFieldTranslations = vi.fn(async () => ({
+      en_US: 'English (US)',
+      zh_CN: '英语（美国）',
+    }));
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+        draftValue: '草稿中文',
+      },
+      global: { stubs: dialogStubs },
+    });
+    await flushOpen();
+    expect(wrapper.findAll('.input')[1]!.element).toMatchObject({ value: '草稿中文' });
+  });
+
+  it('skips draft overlay when i18n store is unavailable and draftLang is empty', async () => {
+    i18nStoreState.throwOnAccess = true;
+    i18nStoreState.terminologyLang = '';
+    languageResponses.langs = [
+      { Code: 'en_US', Name: 'English (US)' },
+      { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
+    ];
+    const GetFieldTranslations = vi.fn(async () => ({
+      en_US: 'Hello',
+      zh_CN: '你好',
+    }));
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+        draftValue: 'ignored-draft',
+      },
+      global: { stubs: dialogStubs },
+    });
+    await flushOpen();
+    expect(wrapper.findAll('.input')[0]!.element).toMatchObject({ value: 'Hello' });
+    expect(wrapper.findAll('.input')[1]!.element).toMatchObject({ value: '你好' });
+  });
+
+  it('skips blank language codes, clears draft with null, emits closed, and shows base hint', async () => {
+    i18nStoreState.throwOnAccess = false;
+    i18nStoreState.terminologyLang = '';
+    languageResponses.langs = [
+      { Code: '', Name: 'blank' },
+      { Code: 'en_US', Name: 'English (US)' },
+      { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
+    ];
+    const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations: vi.fn(), Browse: vi.fn() } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+        draftLang: 'zh_CN',
+        draftValue: null,
+      },
+      global: { stubs: dialogStubs },
+    });
+    await flushOpen();
+    expect(wrapper.findAll('.input')).toHaveLength(2);
+    expect(wrapper.findAll('.input')[1]!.element).toMatchObject({ value: '' });
+    expect(wrapper.text()).toContain('Base language');
+    await wrapper.find('.emit-closed').trigger('click');
+    expect(wrapper.emitted('closed')).toBeTruthy();
+  });
+
+  it('treats non-object translation maps as empty and still saves new langs', async () => {
+    languageResponses.langs = [
+      { Code: 'en_US', Name: 'English (US)' },
+      { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
+    ];
+    const UpdateFieldTranslations = vi.fn(async () => true);
+    const Browse = vi.fn(async () => ({ Name: 'Hello' }));
+    const GetFieldTranslations = vi.fn(async () => null as any);
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+      },
+      global: { stubs: dialogStubs },
+    });
+    await flushOpen();
+    await wrapper.findAll('.input')[0]!.setValue('Hello');
+    await wrapper.findAll('.input')[1]!.setValue('你好');
+    const buttons = wrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(UpdateFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name', {
+      en_US: 'Hello',
+      zh_CN: '你好',
+    });
+    expect(wrapper.emitted('saved')?.[0]?.[0]).toBe('Hello');
   });
 });
