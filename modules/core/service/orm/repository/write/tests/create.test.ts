@@ -133,7 +133,7 @@ test('repository create executor composes authz prepare runtime and post-write h
   const calls: Array<Record<string, any>> = [];
   const ids = await executeRepositoryCreate(
     {
-      meta: { fullModelName: 'demo.Model' } as any,
+      meta: { fullModelName: 'demo.Model', fields: new Map() } as any,
       async getRecordRuleEnvelope(op) {
         calls.push({ method: 'recordRuleEnvelope', op });
         return { kind: 'condition', condition: ['Id', '!=', null] } as any;
@@ -217,7 +217,7 @@ test('repository create executor invokes persist recompute hook after post-write
 
   const ids = await executeRepositoryCreate(
     {
-      meta: { fullModelName: 'demo.Model' } as any,
+      meta: { fullModelName: 'demo.Model', fields: new Map() } as any,
       async getRecordRuleEnvelope() {
         return { kind: 'condition', condition: ['Id', '!=', null] } as any;
       },

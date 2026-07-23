@@ -24,6 +24,7 @@ import {
   type RepositoryMutationWriteTargetDeps,
 } from './mutation_write_helpers';
 import type { ObjectRecord } from '../../../../utils/types';
+import { withContext } from '../../../runtime/context/scope';
 
 type RepositorySelectBuilderLike = RepositoryRefBuilderLike<string>;
 
@@ -94,7 +95,8 @@ export async function loadRepositoryUpdateValidationCurrentRows(
   const rows = (await params.execute<Entity>(query as unknown as RepositoryQueryLike<Entity>)) || [];
   const result = new Map<string, ObjectRecord>();
   for (const row of rows) {
-    const decoded = params.decodeFromDb(row) as ObjectRecord;
+    // Prefetch lang maps so translate-field updates can merge without wiping sibling languages.
+    const decoded = withContext({ prefetch_langs: true }, () => params.decodeFromDb(row)) as ObjectRecord;
     const id = String(decoded.Id || '').trim();
     if (id) {
       result.set(id, decoded);

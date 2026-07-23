@@ -118,6 +118,7 @@ test('repository create write helpers prepare entities with generated ids, defau
   const calls: Array<Record<string, any>> = [];
   const entities = await prepareRepositoryCreateEntities(
     {
+      meta: { fields: new Map() } as any,
       async assertFieldRuleWriteAllowed(payload) {
         calls.push({ method: 'fieldRule', payload });
       },
@@ -161,6 +162,7 @@ test('repository create write helpers return empty prepared entities for empty i
   const calls: Array<Record<string, any>> = [];
   const entities = await prepareRepositoryCreateEntities(
     {
+      meta: { fields: new Map() } as any,
       async assertFieldRuleWriteAllowed(payload) {
         calls.push({ method: 'fieldRule', payload });
       },
@@ -191,6 +193,7 @@ test('repository create write helpers treat undefined input as empty payload lis
   const calls: Array<Record<string, any>> = [];
   const entities = await prepareRepositoryCreateEntities(
     {
+      meta: { fields: new Map() } as any,
       async assertFieldRuleWriteAllowed(payload) {
         calls.push({ method: 'fieldRule', payload });
       },

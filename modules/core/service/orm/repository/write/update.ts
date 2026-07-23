@@ -31,6 +31,8 @@ import {
   type RepositoryUpdateWriteTargetDeps,
 } from './update_helpers';
 import type { ObjectRecord } from '../../../../utils/types';
+import { applyTranslatedFieldsForWrite, payloadHasTranslatedFieldWrite } from '../projection/translated_field_codec';
+
 type RepositoryUpdateDbLike = RepositoryUpdateTableDbLike<unknown, ObjectRecord, string>;
 
 export type RepositoryUpdateWriteRuntimeDeps = {
@@ -113,7 +115,19 @@ export async function prepareRepositoryUpdateSanitizedPayload(
     targetIds.map(id => currentRows.get(id))
   );
 
-  return encodeRepositoryMutationPayloads(params, [preparedVals])[0] as Entity;
+  if (payloadHasTranslatedFieldWrite(params.meta, preparedVals) && targetIds.length > 1) {
+    throw new Error(
+      'Updating translated fields on multiple rows in one call is not supported yet; update one record at a time'
+    );
+  }
+
+  const current = targetIds.length === 1 ? currentRows.get(targetIds[0]) : undefined;
+  const valsForEncode = applyTranslatedFieldsForWrite(params.meta, preparedVals, {
+    mode: 'update',
+    current: current ?? null,
+  });
+
+  return encodeRepositoryMutationPayloads(params, [valsForEncode])[0] as Entity;
 }
 
 export async function prepareRepositoryUpdatePayload(
