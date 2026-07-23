@@ -69,8 +69,9 @@ export default class Schedule extends BaseModel {
   @Field({
     type: 'varchar',
     size: 200,
-    index: true,
     notNull: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'task.model.Schedule.fields' }),
   })
   Name: string;
