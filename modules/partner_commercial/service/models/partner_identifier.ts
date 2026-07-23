@@ -89,7 +89,8 @@ export default class PartnerIdentifier extends BaseModel {
   @Field({
     type: 'varchar',
     size: 120,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Issued By', { scope: 'partner_commercial.model.PartnerIdentifier.fields' }),
   })
   IssuedBy?: string;
@@ -179,7 +180,7 @@ export default class PartnerIdentifier extends BaseModel {
     values.IdentifierType = normalizeOptionalText(values.IdentifierType, { lower: true });
     values.Value = normalizeOptionalText(values.Value, { upper: true });
     values.CountryId = normalizeOptionalRefId(values.CountryId);
-    values.IssuedBy = normalizeOptionalText(values.IssuedBy);
+    values.IssuedBy = normalizeOptionalTranslatedText(values.IssuedBy);
     values.Notes = normalizeOptionalTranslatedText(values.Notes);
 
     values.ValidFrom = toDateOrUndefined(values.ValidFrom, 'ValidFrom');

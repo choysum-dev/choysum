@@ -89,7 +89,8 @@ export default class PartnerContact extends BaseModel {
   @Field({
     type: 'varchar',
     size: 80,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Department', { scope: 'partner.model.PartnerContact.fields' }),
   })
   Department?: string;
@@ -232,7 +233,7 @@ export default class PartnerContact extends BaseModel {
     values.Phone = normalizeOptionalText(values.Phone);
     values.Mobile = normalizeOptionalText(values.Mobile);
     values.Title = normalizeOptionalTranslatedText(values.Title);
-    values.Department = normalizeOptionalText(values.Department);
+    values.Department = normalizeOptionalTranslatedText(values.Department);
     values.ContactRole = normalizeOptionalText(values.ContactRole, { lower: true });
     values.AddressId = normalizeRefId(values.AddressId);
     values.AddressType = this.normalizeAddressType(values.AddressType);

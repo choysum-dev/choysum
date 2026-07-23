@@ -11,6 +11,40 @@ function uid(prefix: string): string {
   return `${prefix}_${u}`;
 }
 
+function ensureRequestContext(): any {
+  const root: any = (globalThis as any).$choysum;
+  if (!root) {
+    throw new Error('missing global $choysum; role translate tests must run under the QuickJS-first harness');
+  }
+  if (!root.request) root.request = {};
+  if (!root.request.context) root.request.context = {};
+  const jsCtx = root.request.context;
+  if (!jsCtx.ctx) jsCtx.ctx = {};
+  if (!jsCtx.req) jsCtx.req = {};
+  return jsCtx;
+}
+
+/** Bypass record-rule default-deny so Role fixtures can be created in unit tests. */
+function allowRoleWrites(): void {
+  const jsCtx = ensureRequestContext();
+  jsCtx.req = {
+    ...(jsCtx.req || {}),
+    depth: 0,
+    fieldRuleMode: 'skip',
+    recordRuleMode: 'allowlist',
+    recordRuleAllow: [
+      'auth.Role:read',
+      'auth.Role:write',
+      'auth.Role:create',
+      'auth.Role:delete',
+      'Role:read',
+      'Role:write',
+      'Role:create',
+      'Role:delete',
+    ],
+  };
+}
+
 test('auth.role: Description translate metadata is enabled', () => {
   const field = MetadataStorage.instance.getModelMetadata(Role).fields.get('Description');
   expect(field?.translate).toBe(true);
@@ -20,28 +54,44 @@ test('auth.role: Description translate metadata is enabled', () => {
   expect(field?.storageHints?.size).toBe(255);
 });
 
-test('auth.role: Description bilingual write/read unwraps by lang', async () => {
+test('auth.role: Name translate metadata is enabled (no unique)', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Role).fields.get('Name');
+  expect(field?.translate).toBe(true);
+  expect(field?.column?.unique).toBeFalsy();
+  expect(field?.column?.index).toBe('trigram');
+  expect(field?.storageHints?.size).toBe(100);
+});
+
+test('auth.role: Name/Description bilingual write/read unwraps by lang', async () => {
+  allowRoleWrites();
+
   const code = `t_${uid('role').replace(/[^a-zA-Z0-9._]/g, '').slice(0, 40)}`.slice(0, 50);
+  const enName = uid('RoleNameEn');
+  const zhName = uid('RoleNameZh');
   const enDesc = uid('RoleDescEn');
   const zhDesc = uid('RoleDescZh');
 
   const created = await Role.Create(
     {
-      Name: uid('RoleName'),
+      Name: { en_US: enName, zh_CN: zhName } as any,
       Code: code,
       Description: { en_US: enDesc, zh_CN: zhDesc } as any,
       IsActive: true,
     } as any,
-    ['Id', 'Description', 'Code'] as any
+    ['Id', 'Name', 'Description', 'Code'] as any
   );
+  expect(String((created as any).Name)).toBe(enName);
   expect(String((created as any).Description)).toBe(enDesc);
 
   const id = String((created as any).Id);
-  const zhBrowse = await withContext({ lang: 'zh_CN' }, () => Role.Browse(id, ['Id', 'Description'] as any));
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () =>
+    Role.Browse(id, ['Id', 'Name', 'Description'] as any)
+  );
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
   expect(String((zhBrowse as any).Description)).toBe(zhDesc);
 
   const hit = await withContext({ lang: 'zh_CN' }, () =>
-    Role.Search(['Description', 'ilike', zhDesc] as any, { fields: ['Id', 'Code'], limit: 5 } as any)
+    Role.Search(['Name', 'ilike', zhName] as any, { fields: ['Id', 'Code'], limit: 5 } as any)
   );
   expect(hit?.some((r: any) => String(r.Code) === code)).toBe(true);
 });

@@ -79,3 +79,30 @@ export function mapNormalizationToBase<T>(fn: () => T, mapMessage: (err: Normali
 export function normalizeNullableString(value: any): string | null {
   return normalizeNullableStringCore(value);
 }
+
+function isLangMap(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Normalize a required translated field: string or `{ lang: string }` map.
+ */
+export function normalizeRequiredTranslatedText(
+  value: unknown,
+  fieldName: string
+): string | Record<string, string> {
+  if (isLangMap(value)) {
+    const out: Record<string, string> = {};
+    for (const [lang, raw] of Object.entries(value)) {
+      const key = String(lang || '').trim();
+      if (!key) continue;
+      const normalized = normalizeNullableString(raw);
+      out[key] = normalized == null ? '' : normalized;
+    }
+    if (!Object.values(out).some(v => String(v || '').trim())) {
+      fail(_t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName));
+    }
+    return out;
+  }
+  return normalizeName(value);
+}

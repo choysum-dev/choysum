@@ -5,6 +5,8 @@ import Company from '@/base/service/models/company';
 import Currency from '@/base/service/models/currency';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
+import { MetadataStorage } from '@/core/service/api/metadata';
+import { withContext } from '@/core/service/api/context';
 
 import { companyCode8, currencyCode3, uid } from './_helpers';
 
@@ -157,7 +159,12 @@ test('base.company: ParentId update rejects self and descendant cycle', async ()
   });
 });
 
-test('base.company: enforces global uniqueness for Code and Name', async () => {
+test('base.company: enforces global uniqueness for Code (Name may repeat)', async () => {
+  const nameField = MetadataStorage.instance.getModelMetadata(Company).fields.get('Name');
+  expect(nameField?.translate).toBe(true);
+  expect(nameField?.column?.unique).toBeFalsy();
+  expect(nameField?.column?.index).toBe('trigram');
+
   const currency = await Currency.Create(
     {
       Name: uid('CurrencyUniq'),
@@ -169,9 +176,11 @@ test('base.company: enforces global uniqueness for Code and Name', async () => {
     ['Id'] as any
   );
 
+  const enName = uid('UniqCompanyName');
+  const zhName = uid('UniqCompanyZh');
   const base = await Company.Create(
     {
-      Name: uid('UniqCompanyName'),
+      Name: { en_US: enName, zh_CN: zhName } as any,
       Code: companyCode8(),
       Timezone: 'UTC',
       CurrencyId: currency.Id,
@@ -179,6 +188,12 @@ test('base.company: enforces global uniqueness for Code and Name', async () => {
     } as any,
     ['Id', 'Name', 'Code'] as any
   );
+  expect(String((base as any).Name)).toBe(enName);
+
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () =>
+    Company.Browse(String((base as any).Id), ['Id', 'Name'] as any)
+  );
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
 
   await expectRepoValidationFailed('create', async () => {
     await Company.Create(
@@ -193,16 +208,16 @@ test('base.company: enforces global uniqueness for Code and Name', async () => {
     );
   });
 
-  await expectRepoValidationFailed('create', async () => {
-    await Company.Create(
-      {
-        Name: (base as any).Name,
-        Code: companyCode8(),
-        Timezone: 'UTC',
-        CurrencyId: currency.Id,
-        IsActive: true,
-      } as any,
-      ['Id'] as any
-    );
-  });
+  // Duplicate Name with a different Code is allowed after D21 translate migration
+  const dupName = await Company.Create(
+    {
+      Name: enName,
+      Code: companyCode8(),
+      Timezone: 'UTC',
+      CurrencyId: currency.Id,
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+  expect(Boolean((dupName as any).Id)).toBe(true);
 });

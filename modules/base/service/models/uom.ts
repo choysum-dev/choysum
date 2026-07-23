@@ -6,7 +6,7 @@ import { Constraint } from '@/core/service/api/constraint';
 import { toPositiveDecimal } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
 import UoMCategory from './uom_category';
-import { fail, mapNormalizationToBase, normalizeName, requireRefId } from './_normalizers';
+import { fail, mapNormalizationToBase, normalizeRequiredTranslatedText, requireRefId } from './_normalizers';
 
 @Model('UoM')
 export default class UoM extends BaseModel {
@@ -14,8 +14,8 @@ export default class UoM extends BaseModel {
     type: 'varchar',
     size: 100,
     notNull: true,
-    index: true,
-    uniqueIndex: 'uidx_base_uom_category_name',
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.UoM.fields' }),
   })
   Name: string;
@@ -32,7 +32,6 @@ export default class UoM extends BaseModel {
     relation: { targetModel: () => UoMCategory },
     notNull: true,
     index: true,
-    uniqueIndex: 'uidx_base_uom_category_name',
     string: _lt('Category', { scope: 'base.model.UoM.fields' }),
   })
   CategoryId: UoMCategory;
@@ -71,20 +70,6 @@ export default class UoM extends BaseModel {
   })
   IsActive: boolean;
 
-  private static async ensureNameUnique(categoryId: string, name: string, currentId?: string): Promise<void> {
-    const hits = await this.Search(
-      {
-        And: [
-          ['CategoryId', '=', categoryId],
-          ['Name', '=', name],
-        ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
-    );
-    const conflict = (hits || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (conflict) fail(_t('UoM Name must be unique within Category', { scope: 'service/models/uom' }));
-  }
-
   private static async ensureCategoryReferenceInvariant(categoryId: string, isReference: boolean, currentId?: string): Promise<void> {
     const refs = await this.Search(
       {
@@ -110,7 +95,7 @@ export default class UoM extends BaseModel {
   }
 
   private static async validateEntity(values: Record<string, any>, currentId?: string): Promise<void> {
-    const name = normalizeName(values.Name);
+    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
     const categoryId = requireRefId(values.CategoryId, 'CategoryId');
 
     const isRef = values.IsReference === true;
@@ -143,7 +128,6 @@ export default class UoM extends BaseModel {
     values.IsReference = isRef;
     values.Factor = factor.toString();
 
-    await this.ensureNameUnique(categoryId, name, currentId);
     await this.ensureCategoryReferenceInvariant(categoryId, isRef, currentId);
   }
 

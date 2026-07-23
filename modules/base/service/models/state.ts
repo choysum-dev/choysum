@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { _t, _lt } from '../i18n';
 import Country from './country';
-import { fail, normalizeCodeOptional, normalizeName, requireRefId } from './_normalizers';
+import { fail, normalizeCodeOptional, normalizeRequiredTranslatedText, requireRefId } from './_normalizers';
 
 @Model('State')
 export default class State extends BaseModel {
@@ -13,8 +13,8 @@ export default class State extends BaseModel {
     type: 'varchar',
     size: 100,
     notNull: true,
-    index: true,
-    uniqueIndex: 'uidx_base_state_country_name',
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.State.fields' }),
   })
   Name: string;
@@ -33,7 +33,7 @@ export default class State extends BaseModel {
     relation: { targetModel: () => Country },
     notNull: true,
     index: true,
-    uniqueIndex: 'uidx_base_state_country_name uidx_base_state_country_code',
+    uniqueIndex: 'uidx_base_state_country_code',
     string: _lt('Country', { scope: 'base.model.State.fields' }),
   })
   CountryId: Country;
@@ -49,20 +49,8 @@ export default class State extends BaseModel {
 
   private static async ensureUniqueness(values: Record<string, any>, currentId?: string): Promise<void> {
     const countryId = requireRefId(values.CountryId, 'CountryId');
-    const name = normalizeName(values.Name);
+    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
     const code = normalizeCodeOptional(values.Code);
-
-    const byName = await this.Search(
-      {
-        And: [
-          ['CountryId', '=', countryId],
-          ['Name', '=', name],
-        ],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
-    );
-    const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) fail(_t('State Name must be unique within Country', { scope: 'service/models/state' }));
 
     if (code) {
       const byCode = await this.Search(

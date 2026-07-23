@@ -65,7 +65,10 @@
       "external_id": "company_main",
       "model": "base.Company",
       "values": {
-        "Name": "Main Company",
+        "Name": {
+          "en_US": "Main Company",
+          "zh_CN": "主公司"
+        },
         "Code": "MAIN",
         "Timezone": "Asia/Shanghai",
         "CurrencyId": { "ref": "base.currency_cny" },

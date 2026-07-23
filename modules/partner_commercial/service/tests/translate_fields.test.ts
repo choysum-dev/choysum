@@ -37,10 +37,12 @@ function withCompanyScope<T>(companyId: string, fn: () => Promise<T> | T): Promi
   return withContext({ activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any, fn);
 }
 
-test('partner_commercial: PartnerIdentifier.Notes expose translate metadata', () => {
-  const field = MetadataStorage.instance.getModelMetadata(PartnerIdentifier).fields.get('Notes');
-  expect(field?.translate).toBe(true);
-  expect(field?.column?.index).toBe('trigram');
+test('partner_commercial: PartnerIdentifier.Notes/IssuedBy expose translate metadata', () => {
+  const meta = MetadataStorage.instance.getModelMetadata(PartnerIdentifier);
+  expect(meta.fields.get('Notes')?.translate).toBe(true);
+  expect(meta.fields.get('Notes')?.column?.index).toBe('trigram');
+  expect(meta.fields.get('IssuedBy')?.translate).toBe(true);
+  expect(meta.fields.get('IssuedBy')?.column?.index).toBe('trigram');
 });
 
 test('partner_commercial: Notes bilingual write/read unwraps by lang', async () => {

@@ -11,15 +11,16 @@ import Address from './address';
 import Country from './country';
 import Currency from './currency';
 import Language from './language';
-import { fail, mapNormalizationToBase } from './_normalizers';
+import { fail, mapNormalizationToBase, normalizeRequiredTranslatedText } from './_normalizers';
 
 @Model('Company', { parentField: 'ParentId' })
 export default class Company extends BaseModel {
   @Field({
     type: 'varchar',
     size: 100,
-    unique: true,
     notNull: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Name', { scope: 'base.model.Company.fields' }),
   })
   Name: string;
@@ -101,17 +102,8 @@ export default class Company extends BaseModel {
   }
 
   private static async ensureUnique(values: Record<string, any>, currentId?: string): Promise<void> {
-    const name = this.normalizeRequiredText(values.Name, 'Name');
+    const name = normalizeRequiredTranslatedText(values.Name, 'Name');
     const code = this.normalizeRequiredText(values.Code, 'Code');
-
-    const byName = await this.Search(
-      {
-        And: [['Name', '=', name]],
-      } as any,
-      { fields: ['Id'] as any, limit: 2 } as any
-    );
-    const nameConflict = (byName || []).some((item: any) => String(item?.Id || '') !== String(currentId || ''));
-    if (nameConflict) fail(_t('Company Name must be unique', { scope: 'service/models/company' }));
 
     const byCode = await this.Search(
       {

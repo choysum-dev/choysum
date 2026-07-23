@@ -6,7 +6,10 @@
       "model": "base.Company",
       "noupdate": true,
       "values": {
-        "Name": "Demo Company",
+        "Name": {
+          "en_US": "Demo Company",
+          "zh_CN": "演示公司"
+        },
         "Code": "DEMO"
       }
     }

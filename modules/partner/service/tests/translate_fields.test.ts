@@ -47,6 +47,8 @@ test('partner: Name/Notes and PartnerContact Title/Notes expose translate metada
   const contactMeta = MetadataStorage.instance.getModelMetadata(PartnerContact);
   expect(contactMeta.fields.get('Title')?.translate).toBe(true);
   expect(contactMeta.fields.get('Title')?.column?.index).toBe('trigram');
+  expect(contactMeta.fields.get('Department')?.translate).toBe(true);
+  expect(contactMeta.fields.get('Department')?.column?.index).toBe('trigram');
   expect(contactMeta.fields.get('Notes')?.translate).toBe(true);
   expect(contactMeta.fields.get('Notes')?.column?.index).toBe('trigram');
   expect(contactMeta.fields.get('Name')?.translate).toBeFalsy();
