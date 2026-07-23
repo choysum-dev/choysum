@@ -74,6 +74,7 @@ export function isTranslatedLangMap(value: unknown): value is Record<string, unk
 export function parseTranslatedStoredMap(value: unknown): Record<string, string> | null {
   if (value == null) return null;
   const parsed = parseJsonObjectLike(value);
+  if (typeof parsed === 'string') return { [TRANSLATED_BASE_LANG]: parsed };
   if (!isTranslatedLangMap(parsed)) return null;
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(parsed)) {

@@ -126,6 +126,13 @@ test('row codec encode/decode translated fields with unwrap and prefetch_langs',
   const decodedZh = withContext({ lang: 'zh_CN' }, () => decodeFromDb(meta, encoded as any));
   expect((decodedZh as any).Name).toBe('你好');
 
+  const decodedLegacy = withContext({ lang: 'zh_CN' }, () =>
+    decodeFromDb(meta, {
+      Name: 'Legacy name',
+    } as any)
+  );
+  expect((decodedLegacy as any).Name).toBe('Legacy name');
+
   const decodedEn = withContext({ lang: 'en_US' }, () =>
     decodeFromDb(meta, {
       Name: JSON.stringify({ en_US: 'Hello', zh_CN: '' }),
