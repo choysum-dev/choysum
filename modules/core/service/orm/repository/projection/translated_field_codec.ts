@@ -23,7 +23,6 @@ function maybeJsonFast(str: string): boolean {
 }
 
 function parseJsonObjectLike(v: unknown): unknown {
-  if (v == null) return {};
   if (typeof v === 'string') {
     const s = v.trim();
     if (!s) return {};
@@ -34,7 +33,8 @@ function parseJsonObjectLike(v: unknown): unknown {
       return s;
     }
   }
-  if (typeof v === 'object') return v;
+  // Exclude null: typeof null === 'object' in JS.
+  if (v !== null && typeof v === 'object') return v;
   return v;
 }
 
