@@ -1179,7 +1179,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 		noUpdate = *rec.NoUpdate
 	}
 
-	columns, err := l.resolveAndMapValues(tx, filePath, recordIndex, rec, rec.Values)
+	columns, err := l.resolveAndMapValues(tx, filePath, recordIndex, rec, model, rec.Values)
 	if err != nil {
 		return err
 	}
@@ -1227,7 +1227,7 @@ func (l *Loader) applyRecord(tx *gorm.DB, filePath string, recordIndex int, rec 
 	return nil
 }
 
-func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex int, rec record, values map[string]any) (map[string]any, error) {
+func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex int, rec record, model *meta.IrModel, values map[string]any) (map[string]any, error) {
 	out := make(map[string]any, len(values))
 	keys := make([]string, 0, len(values))
 	for k := range values {
@@ -1256,6 +1256,11 @@ func (l *Loader) resolveAndMapValues(tx *gorm.DB, filePath string, recordIndex i
 			if err != nil {
 				return nil, err
 			}
+		}
+
+		resolved, err = l.normalizeTranslatedSeedValue(tx, filePath, recordIndex, rec, model, fieldName, resolved, values)
+		if err != nil {
+			return nil, err
 		}
 
 		// NOTE: We insert via tx.Table(tableName).Create(map[string]any), which bypasses

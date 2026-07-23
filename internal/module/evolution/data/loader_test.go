@@ -1023,7 +1023,7 @@ func TestResolveAndMapValues_SkipsSystemFieldsAndNormalizes(t *testing.T) {
 		t.Fatalf("seed ir_model_data: %v", err)
 	}
 
-	columns, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+	columns, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
 		"Id":        "ignored",
 		"CreatedAt": "ignored",
 		"GroupID":   map[string]any{"ref": "auth.group_admin"},
@@ -1046,7 +1046,7 @@ func TestResolveAndMapValues_SkipsSystemFieldsAndNormalizes(t *testing.T) {
 		t.Fatalf("expected normalized tags JSON, got %#v", columns["tags"])
 	}
 
-	_, err = l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+	_, err = l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
 		"Bad": map[string]any{"fn": func() {}},
 	})
 	var le *LoadError
@@ -2364,7 +2364,7 @@ func TestResolveValue_ManyToOneSearchRequiresUnique(t *testing.T) {
 	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
 
 	// ManyToOne (default) with >1 results → error.
-	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
 		"GroupID": map[string]any{
 			"search": map[string]any{
 				"model":  "auth.User",
@@ -2384,7 +2384,7 @@ func TestResolveValue_ManyToOneSearchRequiresUnique(t *testing.T) {
 	}
 
 	// ManyToOne with exactly 1 result → returns the single string.
-	cols, err := l.resolveAndMapValues(db, "/tmp/data.json", 1, rec, map[string]any{
+	cols, err := l.resolveAndMapValues(db, "/tmp/data.json", 1, rec, nil, map[string]any{
 		"GroupID": map[string]any{
 			"search": map[string]any{
 				"model":  "auth.User",
@@ -2407,7 +2407,7 @@ func TestResolveValue_ManyToOneSearchNotFound(t *testing.T) {
 	rec := record{Module: "auth", ExternalID: "u", Model: "auth.User"}
 
 	// ManyToOne (default) with 0 results → error.
-	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 5, rec, map[string]any{
+	_, err := l.resolveAndMapValues(db, "/tmp/data.json", 5, rec, nil, map[string]any{
 		"GroupID": map[string]any{
 			"search": map[string]any{
 				"model":  "auth.User",
@@ -2459,7 +2459,7 @@ func TestResolveValue_SearchLimitOneRequiresStableOrder(t *testing.T) {
 	}
 
 	// First cardinality (limit=1 + orderBy) returns the first result.
-	cols, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+	cols, err := l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
 		"UserID": map[string]any{
 			"search": map[string]any{
 				"model":   "auth.User",
@@ -2476,7 +2476,7 @@ func TestResolveValue_SearchLimitOneRequiresStableOrder(t *testing.T) {
 	}
 
 	// First cardinality with 0 results → error.
-	_, err = l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, map[string]any{
+	_, err = l.resolveAndMapValues(db, "/tmp/data.json", 0, rec, nil, map[string]any{
 		"UserID": map[string]any{
 			"search": map[string]any{
 				"model":   "auth.User",
@@ -2511,7 +2511,7 @@ func TestResolveValue_SearchCardinalityErrorIncludesLocation(t *testing.T) {
 	}
 
 	// ManyToOne search that hits 2 rows → error with full location info.
-	_, err := l.resolveAndMapValues(db, "/tmp/mods/auth/data.json", 7, rec, map[string]any{
+	_, err := l.resolveAndMapValues(db, "/tmp/mods/auth/data.json", 7, rec, nil, map[string]any{
 		"RoleID": map[string]any{
 			"search": map[string]any{
 				"model":  "auth.User",
