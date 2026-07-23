@@ -79,7 +79,7 @@ export async function getModelFieldTranslations<T extends BaseModel>(
   const row = await withContext({ prefetch_langs: true }, () =>
     browseModel(ModelCtor, recordId, [name] as never)
   );
-  const map = asTranslationsMap((row as Record<string, unknown>)[name]);
+  const map = asTranslationsMap((row as unknown as Record<string, unknown>)[name]);
   return filterLangs(map, langs);
 }
 

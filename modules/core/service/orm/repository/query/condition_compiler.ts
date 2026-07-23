@@ -22,7 +22,6 @@ import {
 import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import { rewriteSearchCondition } from '../../../runtime/compute/search_rewrite';
 import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
-import type { DialectName } from '../repository_dialect';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;

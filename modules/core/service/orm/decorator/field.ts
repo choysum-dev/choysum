@@ -54,6 +54,8 @@ type FieldDecoratorOptionBag = {
   checkConstraint?: unknown;
   default?: unknown;
   round?: unknown;
+  /** Data i18n: store per-language values as a JSON/JSONB lang map. */
+  translate?: unknown;
 };
 
 function normalizeFieldString(name: string, value: unknown): { string?: string; stringText?: TermReference } {
