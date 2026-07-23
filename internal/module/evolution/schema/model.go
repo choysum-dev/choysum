@@ -289,6 +289,11 @@ func (m *modelMigrator) migrateTableSchema(models []*meta.IrModel) error {
 		if err := m.applyTableTranslatedTrigramIndexes(tableName, model); err != nil {
 			return fmt.Errorf("migrate table %s translated trigram indexes: %w", tableName, err)
 		}
+
+		// Non-PG L2: fixed en_US + zh_CN expression indexes (D17; skipped on postgres).
+		if err := m.applyTableTranslatedL2Indexes(tableName, model); err != nil {
+			return fmt.Errorf("migrate table %s translated L2 indexes: %w", tableName, err)
+		}
 	}
 	return nil
 }
