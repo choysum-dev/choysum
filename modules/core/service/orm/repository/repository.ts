@@ -1093,6 +1093,7 @@ export class Repository {
 
   private applyOrderByToQuery<T>(query: T, targetMeta: ModelMetadata, targetTable: string, orderList: Array<{ field: string; order: 'asc' | 'desc' }>): T {
     return applyOrderByToQueryExternal(query, targetMeta, targetTable, orderList, {
+      getDialect: () => this.getDialect(),
       resolvePathField: (builder, field) => {
         const ctx = this.makeSelectCtx(builder, targetTable, targetMeta);
         const fieldResolver = (ctx as { field?: (model: unknown, path: string) => unknown }).field;

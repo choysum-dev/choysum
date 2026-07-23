@@ -212,6 +212,7 @@ export function buildRelationJsonSelect(
     const metaOrder = normalizeOrderBy(targetMeta.orderBy);
     const effectiveOrder = resolveEffectiveOrder(relationOrder, metaOrder, targetMeta);
     sub = applyOrderByToQuery(sub, targetMeta, targetRef, effectiveOrder, {
+      getDialect,
       resolvePathField(builder, field) {
         const ctx = makeSelectCtx(db, getDialect, builder, targetRef, targetMeta);
         return ctx.field(toModelCtor(targetMeta), field);
@@ -251,6 +252,7 @@ export function buildRelationJsonSelect(
     const metaOrder = normalizeOrderBy(targetMeta.orderBy);
     const effectiveOrder = resolveEffectiveOrder(relationOrder, metaOrder, targetMeta);
     sub = applyOrderByToQuery(sub, targetMeta, targetRef, effectiveOrder, {
+      getDialect,
       resolvePathField(builder, field) {
         const ctx = makeSelectCtx(db, getDialect, builder, targetRef, targetMeta);
         return ctx.field(toModelCtor(targetMeta), field);

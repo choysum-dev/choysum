@@ -3,7 +3,7 @@
 
 import { convertCondition } from '..';
 import { MetadataStorage } from '../../../metadata/storage';
-import { getReadonlyCtx } from '../../../../runtime/context';
+import { getReadonlyCtx, withContext } from '../../../../runtime/context';
 
 function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => T): T {
   const storage = MetadataStorage.instance as any;
@@ -270,6 +270,37 @@ test('repository condition compiler maps ilike to lower-like on non-postgres dia
   expect(result.op).toBe('like');
   expect(result.rhs).toBe('%abc%');
   expect(result.lhs).toEqual({ fn: 'lower', args: ['ref:demo_table.Name'] });
+});
+
+test('repository condition compiler unwraps translated fields for search predicates', () => {
+  class DemoModel {}
+
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }]]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom() {
+      throw new Error('not used');
+    },
+  };
+
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'sqlite', meta, eb, ['Name', 'ilike', '%艾%'] as any, 'demo_table')
+  ) as any;
+
+  expect(result.op).toBe('like');
+  expect(result.rhs).toBe('%艾%');
+  // LHS must be an unwrap expression (not a bare column ref), so JSON structure is not matched.
+  expect(result.lhs).not.toBe('Name');
+  expect(result.lhs).not.toEqual('ref:demo_table.Name');
+  // Non-postgres ilike wraps the unwrap expr with lower(...).
+  expect(result.lhs?.fn).toBe('lower');
+  expect(Array.isArray(result.lhs?.args) && result.lhs.args.length === 1).toBe(true);
+  expect(result.lhs.args[0]).not.toEqual('ref:demo_table.Name');
 });
 
 test('repository condition compiler contains on non-json field warns and keeps predicate conversion', () => {

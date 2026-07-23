@@ -21,6 +21,8 @@ import {
 } from './predicate_builder_adapter';
 import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import { rewriteSearchCondition } from '../../../runtime/compute/search_rewrite';
+import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
+import type { DialectName } from '../repository_dialect';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;
@@ -135,6 +137,8 @@ export function convertCondition(
                 throw new Error(`field sql compute handler is missing: ${modelLabel}.${fieldName}`);
               }
               lhsExpr = resolved;
+            } else if (meta.fields.get(fieldName)?.translate) {
+              lhsExpr = buildTranslatedFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
             } else {
               lhsExpr = repositoryPredicateRef(eb, `${selfTable}.${fieldName}`);
             }
@@ -319,6 +323,13 @@ export function convertCondition(
           }
           const right = wrapByMeta(fieldMeta, effectiveOp, effectiveRhs);
           return repositoryPredicateCall(eb, expr, effectiveOp, right);
+        }
+
+        if (fieldMeta?.translate) {
+          const dialect = String(getDialect() || 'postgres') as DialectName;
+          const unwrap = buildTranslatedFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
+          const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
+          return repositoryPredicateCall(eb, unwrap, effectiveOp, right);
         }
 
         const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
