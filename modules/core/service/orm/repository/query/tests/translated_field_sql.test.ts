@@ -20,27 +20,45 @@ test('buildTranslatedFieldUnwrapExpr builds dialect-specific unwrap expressions'
 
   const pgBase = buildTranslatedFieldUnwrapExpr('postgres', eb, 't.Name', 'en_US') as any;
   expect(typeof pgBase.toOperationNode).toBe('function');
+  const pgBaseNode = JSON.stringify(pgBase.toOperationNode());
+  expect(pgBaseNode.includes('COALESCE')).toBe(false);
 
   const pgOther = buildTranslatedFieldUnwrapExpr('postgresql', eb, 't.Name', 'zh_CN') as any;
   expect(typeof pgOther.toOperationNode).toBe('function');
+  expect(JSON.stringify(pgOther.toOperationNode()).includes('COALESCE')).toBe(true);
 
   const mysql = buildTranslatedFieldUnwrapExpr('mysql', eb, 't.Name', 'zh_CN') as any;
   expect(typeof mysql.toOperationNode).toBe('function');
+  expect(JSON.stringify(mysql.toOperationNode()).includes('COALESCE')).toBe(true);
 
   const mariadb = buildTranslatedFieldUnwrapExpr('mariadb', eb, 't.Name', 'en_US') as any;
   expect(typeof mariadb.toOperationNode).toBe('function');
+  expect(JSON.stringify(mariadb.toOperationNode()).includes('COALESCE')).toBe(false);
 
   const sqlite = buildTranslatedFieldUnwrapExpr('sqlite', eb, 't.Name', 'zh_CN') as any;
   expect(typeof sqlite.toOperationNode).toBe('function');
+  expect(JSON.stringify(sqlite.toOperationNode()).includes('COALESCE')).toBe(true);
+
+  const sqliteBase = buildTranslatedFieldUnwrapExpr('sqlite', eb, 't.Name', 'en_US') as any;
+  expect(JSON.stringify(sqliteBase.toOperationNode()).includes('COALESCE')).toBe(false);
 
   const mssql = buildTranslatedFieldUnwrapExpr('mssql', eb, 't.Name', 'zh_CN') as any;
   expect(typeof mssql.toOperationNode).toBe('function');
+  expect(JSON.stringify(mssql.toOperationNode()).includes('COALESCE')).toBe(true);
 
   const sqlserver = buildTranslatedFieldUnwrapExpr('sqlserver', eb, 't.Name', 'en_US') as any;
   expect(typeof sqlserver.toOperationNode).toBe('function');
+  expect(JSON.stringify(sqlserver.toOperationNode()).includes('COALESCE')).toBe(false);
 
   const fallback = buildTranslatedFieldUnwrapExpr('oracle' as any, eb, 't.Name', 'zh_CN') as any;
   expect(typeof fallback.toOperationNode).toBe('function');
+  expect(JSON.stringify(fallback.toOperationNode()).includes('COALESCE')).toBe(true);
+
+  const emptyDialect = buildTranslatedFieldUnwrapExpr('', eb, 't.Name', 'zh_CN') as any;
+  expect(typeof emptyDialect.toOperationNode).toBe('function');
+
+  const emptyLang = buildTranslatedFieldUnwrapExpr('postgres', eb, 't.Name', '   ') as any;
+  expect(JSON.stringify(emptyLang.toOperationNode()).includes('COALESCE')).toBe(false);
 
   const escaped = buildTranslatedFieldUnwrapExpr('postgres', eb, 't.Name', "O'Brien") as any;
   expect(typeof escaped.toOperationNode).toBe('function');

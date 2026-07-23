@@ -12,6 +12,7 @@ import {
   encodeTranslatedMapForDb,
   fieldTranslateSize,
   getPrefetchLangs,
+  getTranslatedWriteReplace,
   mergeTranslatedWrite,
   parseTranslatedStoredMap,
   payloadHasTranslatedFieldWrite,
@@ -285,4 +286,59 @@ test('mergeTranslatedWrite rejects false/null map values and seeds en_US on crea
       translations: null as any,
     })
   ).toThrow(/must be an object map/);
+});
+
+test('applyTranslatedFieldsForWrite merges update current maps and passes through untouched payloads', () => {
+  const meta = {
+    fields: new Map<string, any>([
+      ['Name', { type: 'varchar', translate: true, storageHints: { size: 100 } }],
+      ['Code', { type: 'varchar' }],
+    ]),
+  } as any;
+
+  const input = { Code: 'x' } as any;
+  expect(applyTranslatedFieldsForWrite(meta, input, { mode: 'update' })).toBe(input);
+
+  const merged = withContext({ lang: 'zh_CN' }, () =>
+    applyTranslatedFieldsForWrite(
+      meta,
+      { Name: '新' } as any,
+      {
+        mode: 'update',
+        current: { Name: JSON.stringify({ en_US: 'Old', zh_CN: '旧' }) },
+      }
+    )
+  );
+  expect(merged).toEqual({ Name: { en_US: 'Old', zh_CN: '新' } });
+
+  expect(
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: 42,
+      lang: 'en_US',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ en_US: '42' });
+  expect(
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: true,
+      lang: 'zh_CN',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ zh_CN: 'true', en_US: 'true' });
+
+  expect(deleteLangKey({ en_US: 'A' }, 'fr_FR', 'Name')).toEqual({ en_US: 'A' });
+  expect(() =>
+    applyFieldTranslationsPatch({
+      fieldName: 'Name',
+      currentMap: { en_US: 'Hello' },
+      translations: { zh_CN: 1 as any },
+    })
+  ).toThrow(/must be a string or false/);
+
+  expect(payloadHasTranslatedFieldWrite(meta, null as any)).toBe(false);
+  expect(withContext({ translatedWriteReplace: true }, () => getTranslatedWriteReplace())).toBe(true);
 });

@@ -137,6 +137,73 @@ test('repository update sanitized payload prepare validates current rows and ret
   ]);
 });
 
+test('repository update sanitized payload rejects bulk translated field writes', async () => {
+  let err: unknown;
+  try {
+    await prepareRepositoryUpdateSanitizedPayload(
+      {
+        meta: {
+          fields: new Map([['Name', { translate: true, column: { name: 'Name' } }]]),
+        } as any,
+        table: 'demo_table',
+        db: {
+          selectFrom() {
+            return {
+              select() {
+                return {
+                  where() {
+                    return { kind: 'q' };
+                  },
+                };
+              },
+            };
+          },
+        },
+        getScalarFields() {
+          return [];
+        },
+        makeSelectCtx() {
+          return {};
+        },
+        aliasSelection(selection, alias) {
+          return { selection, alias };
+        },
+        applySoftLayer(condition) {
+          return condition;
+        },
+        isEmptyCondition() {
+          return false;
+        },
+        convertCondition() {
+          return true;
+        },
+        async execute() {
+          return [
+            { Id: 'row_1', Name: '{"en_US":"A"}' },
+            { Id: 'row_2', Name: '{"en_US":"B"}' },
+          ] as any;
+        },
+        decodeFromDb(row) {
+          return row;
+        },
+        async assertFieldRuleWriteAllowed() {},
+        applyDefaultCompanyIdOnUpdate(vals) {
+          return vals as any;
+        },
+        async validateFields() {},
+        encodeForDb(input) {
+          return input as any;
+        },
+      },
+      { Name: 'bulk' } as any,
+      ['row_1', 'row_2']
+    );
+  } catch (e) {
+    err = e;
+  }
+  expect(String((err as Error)?.message || err)).toMatch(/one record at a time/);
+});
+
 test('repository update payload prepare resolves targets validates current rows and returns sanitized payload', async () => {
   const calls: Array<Record<string, any>> = [];
   const currentRowsQuery = { kind: 'current-rows-query' };

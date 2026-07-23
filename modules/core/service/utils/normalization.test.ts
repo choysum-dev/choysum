@@ -757,3 +757,14 @@ test('normalizeNonNegativeInt and normalizeSequenceInt validate integers', () =>
     expect((err as NormalizationError).code).toBe('invalid_integer');
   }
 });
+
+test('normalizeOptionalTranslatedText skips blank langs and applies case options', () => {
+  expect(
+    normalizeOptionalTranslatedText(
+      { '': 'skip', en_US: 'abc', zh_CN: undefined, fr_FR: 'x' },
+      { upper: true }
+    )
+  ).toEqual({ en_US: 'ABC', fr_FR: 'X' });
+  expect(translatedTextHasValue(42)).toBe(false);
+  expect(translatedTextHasValue({ en_US: 1 as any })).toBe(false);
+});

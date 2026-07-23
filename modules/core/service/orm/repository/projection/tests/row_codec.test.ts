@@ -248,3 +248,21 @@ test('repository row codec skips owner binary/image writes but keeps storage blo
     PreviewData: 'preview-bytes',
   });
 });
+
+test('repository row codec encodeForDb translate field null, JSON passthrough, and rejection paths', () => {
+  const meta = {
+    fields: new Map<string, any>([['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }]]),
+  } as any;
+
+  expect(encodeForDb(meta, { Name: null } as any)).toEqual({ Name: null });
+
+  const json = '{"en_US":"Hi"}';
+  expect(encodeForDb(meta, { Name: json } as any)).toEqual({ Name: json });
+
+  expect(encodeForDb(meta, { Name: { en_US: 'Hello', zh_CN: '你好' } } as any)).toEqual({
+    Name: JSON.stringify({ en_US: 'Hello', zh_CN: '你好' }),
+  });
+
+  expect(() => encodeForDb(meta, { Name: 'plain' } as any)).toThrow(/must be prepared as a lang map/);
+  expect(() => encodeForDb(meta, { Name: 123 } as any)).toThrow(/expects a lang map object or null/);
+});

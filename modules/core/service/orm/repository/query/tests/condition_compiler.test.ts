@@ -356,6 +356,37 @@ test('repository condition compiler ANDs trigram prefilter for translated equali
   expect(result.parts?.length).toBe(2);
 });
 
+test('repository condition compiler ANDs trigram prefilter for translated like and in', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const likeResult = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'like', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(likeResult.kind).toBe('and');
+  expect(likeResult.parts?.[0]?.op).toBe('like');
+
+  const inResult = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'in', ['hello']] as any, 'demo_table')
+  ) as any;
+  expect(inResult.kind).toBe('and');
+  expect(inResult.parts?.[0]?.op).toBe('like');
+
+  const mysqlEq = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'mysql', meta, eb, ['Name', '=', 'hello'] as any, 'demo_table')
+  ) as any;
+  expect(mysqlEq.kind).toBeUndefined();
+  expect(mysqlEq.op).toBe('=');
+});
+
 test('repository condition compiler ANDs trigram prefilter for translate+trigram on postgres', () => {
   class DemoModel {}
 
