@@ -4,11 +4,19 @@
 package task
 
 import (
+	"strings"
 	"testing"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
+
+type dialectorWithName struct {
+	gorm.Dialector
+	name string
+}
+
+func (d dialectorWithName) Name() string { return d.name }
 
 func TestEncodeDecodeTranslatedScheduleName(t *testing.T) {
 	encoded := EncodeTranslatedScheduleName("document.attachment.gc")
@@ -20,6 +28,24 @@ func TestEncodeDecodeTranslatedScheduleName(t *testing.T) {
 	}
 	if got := DecodeTranslatedScheduleName("plain"); got != "plain" {
 		t.Fatalf("decode legacy: got %q", got)
+	}
+	if got := EncodeTranslatedScheduleName("  spaced  "); got != `{"en_US":"spaced"}` {
+		t.Fatalf("encode trim: %s", got)
+	}
+	if got := DecodeTranslatedScheduleName(""); got != "" {
+		t.Fatalf("empty: %q", got)
+	}
+	if got := DecodeTranslatedScheduleName(`{"zh_CN":"中文"}`); got != "中文" {
+		t.Fatalf("zh fallback: %q", got)
+	}
+	if got := DecodeTranslatedScheduleName(`{"en_US":"","fr_FR":"Fr"}`); got != "Fr" {
+		t.Fatalf("first non-empty: %q", got)
+	}
+	if got := DecodeTranslatedScheduleName(`{"en_US":"","zh_CN":""}`); got != `{"en_US":"","zh_CN":""}` {
+		t.Fatalf("all empty returns raw: %q", got)
+	}
+	if got := DecodeTranslatedScheduleName("{not-json"); got != "{not-json" {
+		t.Fatalf("invalid json: %q", got)
 	}
 }
 
@@ -52,5 +78,29 @@ func TestWhereScheduleNameEqMatchesLegacyAndTranslated(t *testing.T) {
 	}
 	if translated.Id != "2" {
 		t.Fatalf("expected id 2, got %s", translated.Id)
+	}
+}
+
+func TestWhereScheduleNameEqNilAndPostgresSQL(t *testing.T) {
+	if got := WhereScheduleNameEq(nil, "x"); got != nil {
+		t.Fatal("nil db must return nil")
+	}
+
+	db, err := gorm.Open(sqlite.Open("file:schedule_name_pg?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	db.Dialector = dialectorWithName{Dialector: db.Dialector, name: "postgres"}
+	if got := db.Dialector.Name(); got != "postgres" {
+		t.Fatalf("expected postgres dialector name, got %s", got)
+	}
+	tx := WhereScheduleNameEq(db.Session(&gorm.Session{DryRun: true}).Table("task_schedule"), "document.attachment.gc")
+	stmt := tx.Find(&struct{}{}).Statement
+	sql := stmt.SQL.String()
+	if !strings.Contains(sql, "name->>'en_US'") {
+		t.Fatalf("expected postgres unwrap clause, got %s", sql)
+	}
+	if !strings.Contains(sql, "to_jsonb") {
+		t.Fatalf("expected to_jsonb legacy clause, got %s", sql)
 	}
 }

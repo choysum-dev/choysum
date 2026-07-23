@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount } from '@vue/test-utils';
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createTermReference } from '@/core/service/i18n';
@@ -210,5 +210,46 @@ describe('OFieldBase translate action', () => {
       global: { stubs: fieldBaseStubs },
     });
     expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+
+  it('opens translation dialog and applies saved value to the field binding', async () => {
+    const binding = makeBinding({ string: 'Name', translate: true });
+    binding.prop = 'PartnerId.Name';
+    binding.meta = { string: 'Name', translate: true, size: 80 } as any;
+    const value = binding.fieldRef() as { value: string };
+    value.value = 'old';
+
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding,
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OFieldTranslationsDialog: {
+            name: 'OFieldTranslationsDialog',
+            props: ['modelValue', 'fieldName', 'maxLength', 'draftValue'],
+            emits: ['update:modelValue', 'saved'],
+            template:
+              '<div class="dialog-stub" :data-open="modelValue" :data-field="fieldName" :data-max="maxLength" :data-draft="draftValue"><button class="emit-saved" @click="$emit(\'saved\', \'新值\')" /></div>',
+          },
+        },
+      },
+    });
+
+    expect(wrapper.find('.dialog-stub').attributes('data-open')).toBe('false');
+    await wrapper.find('.o-field-base__translate-btn').trigger('click');
+    await nextTick();
+    const dialog = wrapper.find('.dialog-stub');
+    expect(dialog.attributes('data-open')).toBe('true');
+    expect(dialog.attributes('data-field')).toBe('Name');
+    expect(dialog.attributes('data-max')).toBe('80');
+    expect(dialog.attributes('data-draft')).toBe('old');
+    await dialog.find('.emit-saved').trigger('click');
+    expect(value.value).toBe('新值');
   });
 });

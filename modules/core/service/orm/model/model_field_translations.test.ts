@@ -4,6 +4,7 @@
 import { Field, Model } from '../decorator';
 import { RepositoryFactory } from '../repository/repository_factory';
 import BaseModel from './model';
+import { UpdateOperations } from './model_update';
 import {
   getModelFieldTranslations,
   updateModelFieldTranslations,
@@ -69,6 +70,63 @@ test('field translations helpers reject non-translate fields and en_US:false', a
       baseDeleteErr = err;
     }
     expect(String((baseDeleteErr as Error)?.message || baseDeleteErr)).toMatch(/cannot delete base language/);
+  } finally {
+    RepositoryFactory.getRepository = original;
+  }
+});
+
+test('updateModelFieldTranslations writes patched map and rejects empty ids', async () => {
+  const originalRepo = RepositoryFactory.getRepository;
+  const originalUpdate = UpdateOperations.UpdateById;
+  let written: { id: string; values: any } | undefined;
+  try {
+    RepositoryFactory.getRepository = (() => ({
+      async search() {
+        return [{ Id: 'w1', Name: { en_US: 'Hello', zh_CN: '你好' } }];
+      },
+    })) as any;
+    UpdateOperations.UpdateById = (async (_ctor: any, id: string, values: any) => {
+      written = { id, values };
+      return values;
+    }) as any;
+
+    const ok = await updateModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', { zh_CN: '新' });
+    expect(ok).toBe(true);
+    expect(written?.id).toBe('w1');
+    expect(written?.values?.Name).toEqual({ en_US: 'Hello', zh_CN: '新' });
+
+    let emptyIdErr: unknown;
+    try {
+      await getModelFieldTranslations(FieldTranslationsWidget as any, '', 'Name');
+    } catch (err) {
+      emptyIdErr = err;
+    }
+    expect(String((emptyIdErr as Error)?.message || emptyIdErr)).toMatch(/non-empty id/);
+
+    let emptyFieldErr: unknown;
+    try {
+      await getModelFieldTranslations(FieldTranslationsWidget as any, 'w1', '  ');
+    } catch (err) {
+      emptyFieldErr = err;
+    }
+    expect(String((emptyFieldErr as Error)?.message || emptyFieldErr)).toMatch(/non-empty fieldName/);
+  } finally {
+    RepositoryFactory.getRepository = originalRepo;
+    UpdateOperations.UpdateById = originalUpdate;
+  }
+});
+
+test('getModelFieldTranslations parses stored JSON strings and empty lang filters', async () => {
+  const original = RepositoryFactory.getRepository;
+  try {
+    RepositoryFactory.getRepository = (() => ({
+      async search() {
+        return [{ Id: 'w1', Name: '{"en_US":"Hello","zh_CN":"你好"}' }];
+      },
+    })) as any;
+
+    const all = await getModelFieldTranslations(FieldTranslationsWidget as any, 'w1', 'Name', []);
+    expect(all).toEqual({ en_US: 'Hello', zh_CN: '你好' });
   } finally {
     RepositoryFactory.getRepository = original;
   }

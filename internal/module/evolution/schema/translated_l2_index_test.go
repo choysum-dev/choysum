@@ -54,11 +54,38 @@ func TestCreateTranslatedL2IndexSQL(t *testing.T) {
 		t.Fatalf("unexpected mysql SQL: %s", mysqlSQL)
 	}
 
+	mariadbSQL, ok := createTranslatedL2IndexSQL("mariadb", "base_language", "name", "idx_base_language_name_en_us", "en_US")
+	if !ok {
+		t.Fatal("expected mariadb SQL")
+	}
+	if !strings.Contains(mariadbSQL, "JSON_UNQUOTE") {
+		t.Fatalf("unexpected mariadb SQL: %s", mariadbSQL)
+	}
+
 	if _, ok := createTranslatedL2IndexSQL("postgres", "base_language", "name", "idx_x", "en_US"); ok {
 		t.Fatal("postgres must not emit L2 DDL")
 	}
 	if _, ok := createTranslatedL2IndexSQL("sqlserver", "base_language", "name", "idx_x", "en_US"); ok {
 		t.Fatal("sqlserver L2 is deferred (no expression index without computed columns)")
+	}
+	if _, ok := createTranslatedL2IndexSQL("sqlite", "", "name", "idx_x", "en_US"); ok {
+		t.Fatal("empty table must not emit SQL")
+	}
+	if _, ok := createTranslatedL2IndexSQL("unknown", "base_language", "name", "idx_x", "en_US"); ok {
+		t.Fatal("unknown dialect must not emit SQL")
+	}
+}
+
+func TestEnsureTranslatedL2IndexesGuards(t *testing.T) {
+	if err := ensureTranslatedL2Indexes(nil, "sqlite", "base_language", "Name"); err != nil {
+		t.Fatalf("nil db: %v", err)
+	}
+	db, err := gorm.Open(sqlite.Open("file:l2_guards?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := ensureTranslatedL2Indexes(db, "unknown", "base_language", "Name"); err != nil {
+		t.Fatalf("unknown dialect: %v", err)
 	}
 }
 

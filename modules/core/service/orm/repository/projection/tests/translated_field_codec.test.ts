@@ -6,9 +6,15 @@ import {
   TRANSLATED_BASE_LANG,
   applyFieldTranslationsPatch,
   applyTranslatedFieldsForWrite,
+  assertTranslatedLangKey,
   decodeTranslatedFieldValue,
   deleteLangKey,
+  encodeTranslatedMapForDb,
+  fieldTranslateSize,
+  getPrefetchLangs,
   mergeTranslatedWrite,
+  parseTranslatedStoredMap,
+  payloadHasTranslatedFieldWrite,
   unwrapTranslatedValue,
 } from '../translated_field_codec';
 import { decodeFromDb, encodeForDb } from '../row_codec';
@@ -197,4 +203,86 @@ test('mergeTranslatedWrite replace mode overwrites the whole map', () => {
     })
   );
   expect(replaced).toEqual({ Name: { en_US: 'New' } });
+});
+
+test('parseTranslatedStoredMap and decode helpers cover legacy and typed values', () => {
+  expect(parseTranslatedStoredMap(null)).toBeNull();
+  expect(parseTranslatedStoredMap('Legacy plain')).toEqual({ en_US: 'Legacy plain' });
+  expect(parseTranslatedStoredMap('{"zh_CN":null,"en_US":1,"flag":true}')).toEqual({
+    zh_CN: '',
+    en_US: '1',
+    flag: 'true',
+  });
+  expect(parseTranslatedStoredMap('{not-json')).toEqual({ en_US: '{not-json' });
+  expect(parseTranslatedStoredMap(['x'])).toBeNull();
+
+  expect(decodeTranslatedFieldValue('{"en_US":"Hello","zh_CN":"你好"}', { lang: 'zh_CN' })).toBe('你好');
+  expect(decodeTranslatedFieldValue('{"en_US":"Hello"}', { prefetchLangs: true })).toEqual({ en_US: 'Hello' });
+
+  expect(() => assertTranslatedLangKey('', 'Name')).toThrow(/non-empty language code/);
+  expect(encodeTranslatedMapForDb(null)).toBeNull();
+  expect(JSON.parse(String(encodeTranslatedMapForDb({ en_US: 'A' })))).toEqual({ en_US: 'A' });
+  expect(fieldTranslateSize({ storageHints: { size: 0 } } as any)).toBeUndefined();
+  expect(fieldTranslateSize({ storageHints: { size: 12 } } as any)).toBe(12);
+
+  const meta = {
+    fields: new Map<string, any>([
+      ['Name', { translate: true }],
+      ['Code', { translate: false }],
+    ]),
+  } as any;
+  expect(payloadHasTranslatedFieldWrite(meta, {} as any)).toBe(false);
+  expect(payloadHasTranslatedFieldWrite(meta, { Code: 'x' } as any)).toBe(false);
+  expect(payloadHasTranslatedFieldWrite(meta, { Name: 'x' } as any)).toBe(true);
+  expect(withContext({ prefetchLangs: true }, () => getPrefetchLangs())).toBe(true);
+});
+
+test('mergeTranslatedWrite rejects false/null map values and seeds en_US on create', () => {
+  expect(() =>
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: { zh_CN: false },
+      lang: 'zh_CN',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toThrow(/does not accept false/);
+
+  expect(() =>
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: { zh_CN: null },
+      lang: 'zh_CN',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toThrow(/must be a string/);
+
+  expect(
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: { fr_FR: 'Bonjour' },
+      lang: 'fr_FR',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ fr_FR: 'Bonjour', en_US: 'Bonjour' });
+
+  expect(() =>
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: ['bad'] as any,
+      lang: 'en_US',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toThrow(/expects string, lang map object, or null/);
+
+  expect(() =>
+    applyFieldTranslationsPatch({
+      fieldName: 'Name',
+      currentMap: { en_US: 'Hello' },
+      translations: null as any,
+    })
+  ).toThrow(/must be an object map/);
 });
