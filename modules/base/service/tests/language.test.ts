@@ -198,6 +198,7 @@ test('base.language: Name translate metadata is enabled', () => {
   expect(field?.translate).toBe(true);
   expect(field?.type).toBe('varchar');
   expect(field?.column?.size).toBeUndefined();
+  expect(field?.column?.index).toBe('trigram');
   expect(field?.storageHints?.size).toBe(100);
 });
 
