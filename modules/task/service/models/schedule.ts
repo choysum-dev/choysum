@@ -36,7 +36,7 @@ type ListSchedulesParams = {
 function buildScheduleCondition(params: ListSchedulesParams): QueryCondition<Schedule> | [] {
   const and: any[] = [];
   if (typeof params.active === 'boolean') and.push(['Active', '=', params.active]);
-  if (params.name) and.push(['Name', 'contains', params.name]);
+  if (params.name) and.push(['Name', 'ilike', `%${params.name}%`]);
   if (params.targetApp) and.push(['TargetApp', '=', params.targetApp]);
   if (params.fullMethod) and.push(['FullMethod', '=', params.fullMethod]);
   if (params.cronExpr) and.push(['CronExpr', '=', params.cronExpr]);

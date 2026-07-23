@@ -64,7 +64,7 @@ func WhereScheduleNameEq(db *gorm.DB, name string) *gorm.DB {
 	switch dialect {
 	case "postgres", "postgresql":
 		// Avoid `name = <plain string>` on jsonb columns (SQLSTATE 22P02).
-		return db.Where(`(name->>'en_US' = ? OR name = ?::jsonb)`, name, encoded)
+		return db.Where(`(name->>'en_US' = ? OR name = ?::jsonb OR name = to_jsonb(?::text))`, name, encoded, name)
 	default:
 		// TEXT/JSON dialects: match legacy plain string or exact lang-map document.
 		// Do not call json_extract on plain strings (SQLite returns malformed JSON).
