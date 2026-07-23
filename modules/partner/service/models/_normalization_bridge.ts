@@ -56,6 +56,68 @@ export function normalizeRequiredText(value: unknown, fieldName: string): string
   );
 }
 
+function isLangMap(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Normalize a required translated field: string or `{ lang: string }` map.
+ * Empty maps / all-empty values fail the same as a missing scalar.
+ * Per-lang empty strings are allowed (data-i18n D12).
+ */
+export function normalizeRequiredTranslatedText(
+  value: unknown,
+  fieldName: string
+): string | Record<string, string> {
+  if (isLangMap(value)) {
+    const out: Record<string, string> = {};
+    for (const [lang, raw] of Object.entries(value)) {
+      const key = String(lang || '').trim();
+      if (!key) continue;
+      const normalized = normalizeOptionalText(raw);
+      out[key] = normalized === undefined || normalized === null ? '' : normalized;
+    }
+    if (!Object.values(out).some(v => String(v || '').trim())) {
+      fail(_t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName));
+    }
+    return out;
+  }
+  return normalizeRequiredText(value, fieldName);
+}
+
+/**
+ * Normalize an optional translated field: string, null, or lang map.
+ */
+export function normalizeOptionalTranslatedText(
+  value: unknown,
+  opts?: { upper?: boolean; lower?: boolean }
+): string | null | undefined | Record<string, string> {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (isLangMap(value)) {
+    const out: Record<string, string> = {};
+    for (const [lang, raw] of Object.entries(value)) {
+      const key = String(lang || '').trim();
+      if (!key) continue;
+      const normalized = normalizeOptionalText(raw, opts);
+      if (normalized === undefined) continue;
+      out[key] = normalized === null ? '' : normalized;
+    }
+    return out;
+  }
+  return normalizeOptionalText(value, opts);
+}
+
+/** True when a scalar or lang-map translated value has any non-empty text. */
+export function translatedTextHasValue(value: unknown): boolean {
+  if (value == null) return false;
+  if (typeof value === 'string') return !!value.trim();
+  if (isLangMap(value)) {
+    return Object.values(value).some(v => typeof v === 'string' && !!v.trim());
+  }
+  return false;
+}
+
 /**
  * Normalize a non-negative integer field.
  *

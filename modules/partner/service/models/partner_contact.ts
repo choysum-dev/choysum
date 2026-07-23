@@ -5,7 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId } from '@/core/service/utils/normalization';
 import { _t, _lt } from '../i18n';
-import { fail, normalizeOptionalText, normalizeSequenceInt } from './_normalization_bridge';
+import { fail, normalizeOptionalText, normalizeOptionalTranslatedText, normalizeSequenceInt, translatedTextHasValue } from './_normalization_bridge';
 import Partner from './partner';
 
 /**
@@ -79,7 +79,8 @@ export default class PartnerContact extends BaseModel {
   @Field({
     type: 'varchar',
     size: 80,
-    index: true,
+    translate: true,
+    index: 'trigram',
     string: _lt('Title', { scope: 'partner.model.PartnerContact.fields' }),
   })
   Title?: string;
@@ -162,6 +163,8 @@ export default class PartnerContact extends BaseModel {
   /** Internal notes. */
   @Field({
     type: 'text',
+    translate: true,
+    index: 'trigram',
     string: _lt('Notes', { scope: 'partner.model.PartnerContact.fields' }),
   })
   Notes?: string;
@@ -205,7 +208,7 @@ export default class PartnerContact extends BaseModel {
 
   /** Ensures a contact row carries at least one identifying or reachable value. */
   private static ensureRowHasValue(values: Record<string, any>): void {
-    const hasName = !!String(values.Name || '').trim();
+    const hasName = translatedTextHasValue(values.Name);
     const hasAddress = !!normalizeRefId(values.AddressId);
     const hasEmail = !!String(values.Email || '').trim();
     const hasPhone = !!String(values.Phone || '').trim();
@@ -228,7 +231,7 @@ export default class PartnerContact extends BaseModel {
     values.Email = normalizeOptionalText(values.Email, { lower: true });
     values.Phone = normalizeOptionalText(values.Phone);
     values.Mobile = normalizeOptionalText(values.Mobile);
-    values.Title = normalizeOptionalText(values.Title);
+    values.Title = normalizeOptionalTranslatedText(values.Title);
     values.Department = normalizeOptionalText(values.Department);
     values.ContactRole = normalizeOptionalText(values.ContactRole, { lower: true });
     values.AddressId = normalizeRefId(values.AddressId);
@@ -237,6 +240,7 @@ export default class PartnerContact extends BaseModel {
 
     // During updates the draft proxy may return raw IDs for unsubmitted ref
     // fields, so load the persisted row once as a definitive fallback.
+    // Create may already have a pre-assigned Id with no row yet — skip Browse then.
     if (
       (values.PartnerId == null ||
         values.CompanyId == null ||
@@ -244,13 +248,20 @@ export default class PartnerContact extends BaseModel {
         (values.AddressId == null && !addressIdProvided)) &&
       currentId
     ) {
-      const persisted = await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }] as any);
-      if (values.PartnerId == null) {
-        values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
+      let persisted: any;
+      try {
+        persisted = await this.Browse(currentId, ['CompanyId', 'AddressId', 'AddressType', { PartnerId: ['Id'] }] as any);
+      } catch {
+        persisted = null;
       }
-      if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
-      if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
-      if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
+      if (persisted) {
+        if (values.PartnerId == null) {
+          values.PartnerId = normalizeRefId((persisted as any)?.PartnerId);
+        }
+        if (values.CompanyId == null) values.CompanyId = normalizeRefId((persisted as any)?.CompanyId);
+        if (values.AddressId == null && !addressIdProvided) values.AddressId = normalizeRefId((persisted as any)?.AddressId);
+        if (values.AddressType == null && !addressTypeProvided) values.AddressType = this.normalizeAddressType((persisted as any)?.AddressType);
+      }
     }
 
     const sequence = normalizeSequenceInt(values.Sequence);
