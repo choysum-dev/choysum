@@ -16,6 +16,7 @@ import {
   mergeTranslatedWrite,
   parseTranslatedStoredMap,
   payloadHasTranslatedFieldWrite,
+  resolveTranslatedFieldLang,
   unwrapTranslatedValue,
 } from '../translated_field_codec';
 import { decodeFromDb, encodeForDb } from '../row_codec';
@@ -341,4 +342,31 @@ test('applyTranslatedFieldsForWrite merges update current maps and passes throug
 
   expect(payloadHasTranslatedFieldWrite(meta, null as any)).toBe(false);
   expect(withContext({ translatedWriteReplace: true }, () => getTranslatedWriteReplace())).toBe(true);
+});
+
+test('resolveTranslatedFieldLang and parse edge cases', () => {
+  expect(withContext({ lang: 'zh_CN' }, () => resolveTranslatedFieldLang())).toBe('zh_CN');
+  expect(resolveTranslatedFieldLang()).toBe(TRANSLATED_BASE_LANG);
+  expect(parseTranslatedStoredMap('   ')).toEqual({});
+  expect(unwrapTranslatedValue({ zh_CN: null }, 'zh_CN')).toBe('');
+  expect(applyTranslatedFieldsForWrite({ fields: new Map() } as any, null as any, { mode: 'create' })).toBeNull();
+
+  expect(() =>
+    applyFieldTranslationsPatch({
+      fieldName: 'Name',
+      currentMap: { en_US: 'Hi' },
+      translations: { zh_CN: 'abcd' },
+      size: 3,
+    })
+  ).toThrow(/exceeds size=/);
+
+  expect(
+    mergeTranslatedWrite({
+      fieldName: 'Name',
+      value: { fr_FR: 'Bonjour', en_US: 'Hello' },
+      lang: 'fr_FR',
+      currentMap: null,
+      mode: 'create',
+    })
+  ).toEqual({ fr_FR: 'Bonjour', en_US: 'Hello' });
 });

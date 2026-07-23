@@ -129,3 +129,69 @@ test('partner_commercial: IssuedBy bilingual write/read unwraps by lang', async 
     expect(String((updated as any).IssuedBy)).toBe(`${enIssued}_u`);
   });
 });
+
+test('partner_commercial: UpdateById with Notes-only backfills via Browse', async () => {
+  const companyId = await ensureCompanyId();
+  const partnerCode = uid('PB').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20).toUpperCase() || 'PBCODE';
+
+  await withCompanyScope(companyId, async () => {
+    const partner = await Partner.Create(
+      {
+        Name: uid('PartnerBrowseFallback'),
+        Code: partnerCode,
+        CompanyId: companyId,
+        IsActive: true,
+        IsCompany: true,
+      } as any,
+      ['Id'] as any
+    );
+
+    const created = await PartnerIdentifier.Create(
+      {
+        PartnerId: String((partner as any).Id),
+        CompanyId: companyId,
+        IdentifierType: 'tax_id',
+        Value: uid('BVAL').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20).toUpperCase() || 'BVAL1',
+        Notes: { en_US: 'before', zh_CN: '之前' } as any,
+        IsActive: true,
+      } as any,
+      ['Id', 'Notes'] as any
+    );
+
+    const updated = await PartnerIdentifier.UpdateById(
+      String((created as any).Id),
+      { Notes: { en_US: 'after', zh_CN: '之后' } } as any,
+      ['Id', 'Notes', 'PartnerId', 'CompanyId', 'IdentifierType', 'Value'] as any
+    );
+    expect(String((updated as any).Notes)).toBe('after');
+    expect(String((updated as any).PartnerId)).toBe(String((partner as any).Id));
+    expect(String((updated as any).CompanyId)).toBe(companyId);
+    expect(String((updated as any).IdentifierType)).toBe('tax_id');
+  });
+});
+
+test('partner_commercial: validateEntity Browse catch skips persisted backfill', async () => {
+  const companyId = await ensureCompanyId();
+  const originalBrowse = (PartnerIdentifier as any).Browse;
+  (PartnerIdentifier as any).Browse = async () => {
+    throw new Error('missing row');
+  };
+  try {
+    let err: unknown;
+    try {
+      await (PartnerIdentifier as any).validateEntity(
+        {
+          CompanyId: companyId,
+          IdentifierType: 'tax_id',
+          Value: 'CATCH1',
+        },
+        'missing-id'
+      );
+    } catch (e) {
+      err = e;
+    }
+    expect(String((err as any)?.message || err)).toMatch(/PartnerId is required/);
+  } finally {
+    (PartnerIdentifier as any).Browse = originalBrowse;
+  }
+});

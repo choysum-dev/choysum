@@ -242,3 +242,63 @@ func TestNormalizeTranslatedSeedValue_AdditionalBranches(t *testing.T) {
 		t.Fatalf("empty ModelTable must skip lookup: %v %v", ok, err)
 	}
 }
+
+func TestLookupIrFieldAndLanguageCodeExistsDBErrors(t *testing.T) {
+	l, db := newTestLoader(t)
+
+	modelID := xid.New().String()
+	model := &meta.IrModel{}
+	model.Id.String = modelID
+	model.Id.Valid = true
+	model.Application = "demo"
+	model.Name = "Item"
+	model.ModelTable = "demo_item"
+	if err := db.Create(model).Error; err != nil {
+		t.Fatalf("create model: %v", err)
+	}
+
+	langModel := &meta.IrModel{}
+	langModel.Id.String = xid.New().String()
+	langModel.Id.Valid = true
+	langModel.Application = "base"
+	langModel.Name = "Language"
+	langModel.ModelTable = "base_language_db_err"
+	if err := db.Create(langModel).Error; err != nil {
+		t.Fatalf("create Language model: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE base_language_db_err (id text primary key, code text)`).Error; err != nil {
+		t.Fatalf("create language table: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("sql DB: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close sql DB: %v", err)
+	}
+
+	field, err := l.lookupIrField(db, model, "Name")
+	if err == nil || field != nil {
+		t.Fatalf("expected lookupIrField DB error, got %#v %v", field, err)
+	}
+
+	ok, err := l.languageCodeExists(db, "de_DE")
+	if err == nil || ok {
+		t.Fatalf("expected languageCodeExists DB error, got %v %v", ok, err)
+	}
+
+	rec := record{Module: "demo", ExternalID: "item_1", Model: "demo.Item"}
+	err = l.assertSeedLanguageCode(db, "/tmp/data.json", 0, rec, "values.Name", "de_DE", "")
+	var le *LoadError
+	if !errors.As(err, &le) || le.Kind != LoadErrorKindDB {
+		t.Fatalf("expected assertSeedLanguageCode DB LoadError, got %#v", err)
+	}
+
+	_, err = l.normalizeTranslatedSeedValue(db, "/tmp/data.json", 0, rec, model, "Name", map[string]any{
+		"en_US": "Hello",
+	}, nil)
+	if !errors.As(err, &le) || le.Kind != LoadErrorKindDB {
+		t.Fatalf("expected DB LoadError from closed connection, got %#v", err)
+	}
+}

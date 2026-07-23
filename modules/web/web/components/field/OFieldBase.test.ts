@@ -363,4 +363,26 @@ describe('OFieldBase translate action', () => {
     await nextTick();
     await expect(wrapper.find('.emit-saved').trigger('click')).resolves.toBeUndefined();
   });
+
+  it('hides translate action outside form mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }),
+        renderMode: 'table',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: {
+        stubs: {
+          ...fieldBaseStubs,
+          OVColumn: {
+            template: '<div class="ov-column"><slot :row="{ Id: 1 }" :$index="0" /></div>',
+          },
+        },
+      },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
 });

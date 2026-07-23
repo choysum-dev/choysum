@@ -261,3 +261,53 @@ func TestApplyTableTranslatedL2IndexesPropagatesEnsureError(t *testing.T) {
 		t.Fatal("expected apply to surface mysql ensure error")
 	}
 }
+
+func TestMigrateTableSchemaWrapsTranslatedL2IndexError(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:l2_migrate_wrap?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	db.Dialector = dialectorWithName{Dialector: db.Dialector, name: "mysql"}
+
+	trueVal := true
+	trigram := "trigram"
+	field := &meta.IrField{Name: "Name"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:       "Name",
+			FieldType:  "varchar",
+			Translate:  &trueVal,
+			ColumnType: "jsonobject",
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Index: &trigram,
+			},
+		},
+		Migration: meta.IrFieldMigrationDecision{
+			StorageKind:        "physical",
+			ShouldCreateColumn: true,
+			ResolvedColumnType: "jsonobject",
+			ReasonCode:         "TRANSLATE_LANG_MAP",
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	model := &meta.IrModel{
+		Name:       "Language",
+		Path:       "base/language.ts",
+		ModelTable: "base_language_l2_wrap",
+		Fields:     []*meta.IrField{field},
+	}
+	runtime := &schemaTestScope{
+		ctx:     context.Background(),
+		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "mysql"}, Server: config.NewDefaultServerConfig(), Log: config.NewDefaultLogConfig()},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	m := &modelMigrator{runtimeScope: runtime}
+	err = m.migrateTableSchema([]*meta.IrModel{model})
+	if err == nil || !strings.Contains(err.Error(), "translated L2 indexes") {
+		t.Fatalf("expected wrapped L2 migrate error, got %v", err)
+	}
+}

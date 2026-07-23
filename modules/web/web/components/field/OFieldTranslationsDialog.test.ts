@@ -437,4 +437,30 @@ describe('OFieldTranslationsDialog', () => {
     });
     expect(wrapper.emitted('saved')?.[0]?.[0]).toBe('Hello');
   });
+
+  it('emits saved null when Browse omits the field', async () => {
+    languageResponses.langs = [
+      { Code: 'en_US', Name: 'English (US)' },
+      { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
+    ];
+    const UpdateFieldTranslations = vi.fn(async () => true);
+    const Browse = vi.fn(async () => ({}));
+    const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello' }));
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+      },
+      global: { stubs: dialogStubs },
+    });
+    await flushOpen();
+    await wrapper.findAll('.input')[0]!.setValue('Hello!');
+    const buttons = wrapper.findAll('.btn');
+    await buttons[buttons.length - 1]!.trigger('click');
+    await flushOpen();
+    expect(wrapper.emitted('saved')?.[0]?.[0]).toBeNull();
+  });
 });
+

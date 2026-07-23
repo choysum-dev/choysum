@@ -628,6 +628,44 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 		if typeTag != "type:jsonb" {
 			t.Fatalf("expected postgres jsonb tag, got %q", typeTag)
 		}
+
+		btree := "btree"
+		nonTrigram := &meta.IrField{Name: "Title"}
+		nonTrigramSpec := &meta.IrFieldResolvedSpec{
+			FieldName: "Title",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "Title",
+				FieldType: "varchar",
+				Translate: &trueVal,
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Size:  &size,
+					Index: &btree,
+				},
+				ColumnType: "jsonobject",
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "jsonobject",
+				ReasonCode:         "TRANSLATE_LANG_MAP",
+			},
+		}
+		if err := nonTrigram.SetResolvedSpec(nonTrigramSpec); err != nil {
+			t.Fatalf("SetResolvedSpec(non-trigram) error = %v", err)
+		}
+		metaMap2, err := migrator.getResolvedFieldColumnMeta(nonTrigram)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(non-trigram) error = %v", err)
+		}
+		if metaMap2["type"] != "jsonobject" {
+			t.Fatalf("expected jsonobject for non-trigram translate, got %#v", metaMap2)
+		}
+		if _, ok := metaMap2["trigram"]; ok {
+			t.Fatalf("btree index must not set trigram marker, got %#v", metaMap2)
+		}
+		if _, ok := metaMap2["index"]; ok {
+			t.Fatalf("translate column must still strip GORM index tag, got %#v", metaMap2)
+		}
 	})
 
 	t.Run("isStorageBlobCarrierModel covers all document carriers", func(t *testing.T) {

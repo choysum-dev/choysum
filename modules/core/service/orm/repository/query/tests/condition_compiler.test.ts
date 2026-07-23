@@ -435,6 +435,30 @@ test('repository condition compiler ANDs trigram prefilter for translate+trigram
   expect(noPrefilter.op).toBe('ilike');
 });
 
+test('repository condition compiler uses postgresql dialect alias for trigram prefilter', () => {
+  class DemoModel {}
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+  const eb = createExpressionBuilder();
+  const db = { selectFrom() { throw new Error('not used'); } };
+
+  const result = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgresql', meta, eb, ['Name', '=', 'hello'] as any, 'demo_table')
+  ) as any;
+  expect(result.kind).toBe('and');
+
+  const eqIlike = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', '=ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(eqIlike.kind).toBe('and');
+  expect(eqIlike.parts?.[0]?.op).toBe('=ilike');
+});
+
 test('repository condition compiler contains on non-json field warns and keeps predicate conversion', () => {
   class DemoModel {}
 

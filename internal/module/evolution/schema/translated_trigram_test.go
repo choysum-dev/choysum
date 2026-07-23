@@ -324,3 +324,94 @@ func TestApplyTableTranslatedTrigramIndexesPostgresPath(t *testing.T) {
 		t.Fatal("expected apply to surface ensure DDL error")
 	}
 }
+
+func TestIsTranslatedTrigramFieldCorruptSpec(t *testing.T) {
+	field := &meta.IrField{Name: "Name", ResolvedSpec: "not-json"}
+	if isTranslatedTrigramField(field) {
+		t.Fatal("corrupt ResolvedSpec must not be treated as trigram field")
+	}
+}
+
+func TestApplyTableTranslatedTrigramIndexesSkipsWithoutPgTrgm(t *testing.T) {
+	db := openPostgresNamedSQLite(t, "file:trigram_pg_skip_ext?mode=memory&cache=shared")
+	if err := db.Exec(`CREATE TABLE base_language (id text primary key, name text)`).Error; err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	trueVal := true
+	trigram := "trigram"
+	field := &meta.IrField{Name: "Name"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Translate: &trueVal,
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Index: &trigram,
+			},
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	runtime := &schemaTestScope{
+		ctx:     context.Background(),
+		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "postgres"}, Server: config.NewDefaultServerConfig(), Log: config.NewDefaultLogConfig()},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	m := &modelMigrator{runtimeScope: runtime}
+	if err := m.applyTableTranslatedTrigramIndexes("base_language", &meta.IrModel{Fields: []*meta.IrField{field}}); err != nil {
+		t.Fatalf("missing pg_trgm must be non-fatal: %v", err)
+	}
+}
+
+func TestMigrateTableSchemaWrapsTranslatedTrigramIndexError(t *testing.T) {
+	db := openPostgresNamedSQLite(t, "file:trigram_migrate_wrap?mode=memory&cache=shared")
+	if err := db.Exec(`CREATE TABLE pg_extension (extname text)`).Error; err != nil {
+		t.Fatalf("create pg_extension: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO pg_extension (extname) VALUES ('pg_trgm')`).Error; err != nil {
+		t.Fatalf("insert pg_trgm: %v", err)
+	}
+
+	trueVal := true
+	trigram := "trigram"
+	field := &meta.IrField{Name: "Name"}
+	spec := &meta.IrFieldResolvedSpec{
+		FieldName: "Name",
+		Structural: meta.IrFieldStructuralSpec{
+			Name:       "Name",
+			FieldType:  "varchar",
+			Translate:  &trueVal,
+			ColumnType: "jsonobject",
+			StorageHints: &meta.IrFieldStructuralStorageHints{
+				Index: &trigram,
+			},
+		},
+		Migration: meta.IrFieldMigrationDecision{
+			StorageKind:        "physical",
+			ShouldCreateColumn: true,
+			ResolvedColumnType: "jsonobject",
+			ReasonCode:         "TRANSLATE_LANG_MAP",
+		},
+	}
+	if err := field.SetResolvedSpec(spec); err != nil {
+		t.Fatalf("SetResolvedSpec: %v", err)
+	}
+	model := &meta.IrModel{
+		Name:       "Language",
+		Path:       "base/language.ts",
+		ModelTable: "base_language_trgm_wrap",
+		Fields:     []*meta.IrField{field},
+	}
+	runtime := &schemaTestScope{
+		ctx:     context.Background(),
+		cfg:     &config.Config{Db: &config.DbConfig{Dialect: "postgres"}, Server: config.NewDefaultServerConfig(), Log: config.NewDefaultLogConfig()},
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	m := &modelMigrator{runtimeScope: runtime}
+	err := m.migrateTableSchema([]*meta.IrModel{model})
+	if err == nil || !strings.Contains(err.Error(), "translated trigram indexes") {
+		t.Fatalf("expected wrapped trigram migrate error, got %v", err)
+	}
+}

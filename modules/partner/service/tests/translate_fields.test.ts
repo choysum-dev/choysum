@@ -142,5 +142,31 @@ test('partner_contact: Title bilingual write/read unwraps by lang', async () => 
     );
     expect(String((zhBrowse as any).Title)).toBe(zhTitle);
     expect(String((zhBrowse as any).Notes)).toBe('备注');
+
+    const enDept = uid('DeptEn');
+    const zhDept = uid('DeptZh');
+    const withDept = await PartnerContact.Create(
+      {
+        PartnerId: String((partner as any).Id),
+        CompanyId: companyId,
+        Name: uid('ContactDept'),
+        Department: { en_US: enDept, zh_CN: zhDept } as any,
+        IsActive: true,
+      } as any,
+      ['Id', 'Department'] as any
+    );
+    expect(String((withDept as any).Department)).toBe(enDept);
+    const zhDeptBrowse = await withContext(
+      { lang: 'zh_CN', activeCompanyId: companyId, enabledCompanyIds: [companyId] } as any,
+      () => PartnerContact.Browse(String((withDept as any).Id), ['Id', 'Department'] as any)
+    );
+    expect(String((zhDeptBrowse as any).Department)).toBe(zhDept);
+
+    const patched = await PartnerContact.UpdateById(
+      String((withDept as any).Id),
+      { Title: { en_US: 'Mgr', zh_CN: '经理' } } as any,
+      ['Id', 'Title'] as any
+    );
+    expect(String((patched as any).Title)).toBe('Mgr');
   });
 });

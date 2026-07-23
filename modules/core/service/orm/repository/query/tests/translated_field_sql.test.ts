@@ -82,3 +82,10 @@ test('buildTranslatedTrigramPrefilterLhs and resolveTranslatedTrigramPrefilterPa
   expect(resolveTranslatedTrigramPrefilterPattern('in', [123 as any])).toBeNull();
   expect(resolveTranslatedTrigramPrefilterPattern('contains', 'abc')).toBeNull();
 });
+
+test('buildTranslatedFieldUnwrapExpr defaults to en_US without lang context', () => {
+  const eb = createExpressionBuilder();
+  const expr = buildTranslatedFieldUnwrapExpr('sqlite', eb, 'demo.Name') as any;
+  expect(typeof expr.toOperationNode).toBe('function');
+  expect(JSON.stringify(expr.toOperationNode()).includes('COALESCE')).toBe(false);
+});
