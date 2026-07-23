@@ -8,6 +8,7 @@ import {
   mapNormalizationToPartnerCommercial,
   normalizeOptionalRefId,
   normalizeOptionalText,
+  normalizeOptionalTranslatedText,
   normalizeRequiredText,
   toDateOrUndefined,
 } from '@/partner_commercial/service/models/_normalization_bridge';
@@ -208,4 +209,10 @@ test('partner_commercial._normalization_bridge: toDateOrUndefined throws for NaN
   }
   expect(err instanceof ChoysumError).toBe(true);
   expect((err as ChoysumError).message).toBe('ValidTo must be a valid datetime');
+});
+
+test('partner_commercial._normalization_bridge: normalizeOptionalTranslatedText accepts lang maps', () => {
+  expect(normalizeOptionalTranslatedText(undefined)).toBeUndefined();
+  expect(normalizeOptionalTranslatedText({ en_US: ' A ', zh_CN: '  ' })).toEqual({ en_US: 'A', zh_CN: '' });
+  expect(normalizeOptionalTranslatedText(' Solo ')).toBe('Solo');
 });

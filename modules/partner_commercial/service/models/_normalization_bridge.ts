@@ -67,6 +67,33 @@ export function normalizeOptionalText(value: unknown, opts?: { lower?: boolean; 
   return base === undefined ? null : base;
 }
 
+function isLangMap(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Normalize an optional translated field: string, null, or lang map.
+ */
+export function normalizeOptionalTranslatedText(
+  value: unknown,
+  opts?: { upper?: boolean; lower?: boolean }
+): string | null | undefined | Record<string, string> {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (isLangMap(value)) {
+    const out: Record<string, string> = {};
+    for (const [lang, raw] of Object.entries(value)) {
+      const key = String(lang || '').trim();
+      if (!key) continue;
+      const normalized = normalizeOptionalText(raw, opts);
+      if (normalized === undefined) continue;
+      out[key] = normalized === null ? '' : normalized;
+    }
+    return out;
+  }
+  return normalizeOptionalText(value, opts);
+}
+
 /**
  * Normalize a required text field, rejecting blank values with a
  * partner-commercial-domain InvalidArgument error.
