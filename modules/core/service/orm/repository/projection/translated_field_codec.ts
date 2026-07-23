@@ -33,8 +33,7 @@ function parseJsonObjectLike(v: unknown): unknown {
       return s;
     }
   }
-  // Exclude null: typeof null === 'object' in JS.
-  if (v !== null && typeof v === 'object') return v;
+  // Non-strings (objects, null, primitives) pass through; callers validate lang maps.
   return v;
 }
 
