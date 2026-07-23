@@ -15,29 +15,13 @@
     },
     {
       "module": "base",
-      "external_id": "language_en_us",
-      "model": "base.Language",
-      "values": {
-        "Name": "English (US)",
-        "Code": "en_US",
-        "IsActive": true,
-        "Direction": "ltr",
-        "DecimalSeparator": ".",
-        "ThousandSeparator": ",",
-        "Grouping": "[3,0]",
-        "DateFormat": "MM/DD/YYYY",
-        "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
-        "CurrencySymbolPosition": "before",
-        "CurrencySymbolSpacing": false
-      }
-    },
-    {
-      "module": "base",
       "external_id": "language_zh_cn",
       "model": "base.Language",
       "values": {
-        "Name": "Chinese (Simplified)",
+        "Name": {
+          "en_US": "Chinese (Simplified)",
+          "zh_CN": "简体中文"
+        },
         "Code": "zh_CN",
         "IsActive": true,
         "Direction": "ltr",
@@ -47,6 +31,28 @@
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
         "FirstDayOfWeek": 1,
+        "CurrencySymbolPosition": "before",
+        "CurrencySymbolSpacing": false
+      }
+    },
+    {
+      "module": "base",
+      "external_id": "language_en_us",
+      "model": "base.Language",
+      "values": {
+        "Name": {
+          "en_US": "English (US)",
+          "zh_CN": "英语（美国）"
+        },
+        "Code": "en_US",
+        "IsActive": true,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "MM/DD/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": 0,
         "CurrencySymbolPosition": "before",
         "CurrencySymbolSpacing": false
       }

@@ -46,6 +46,7 @@ export default class Language extends BaseModel {
     size: 100,
     notNull: true,
     index: true,
+    translate: true,
     string: _lt('Name', { scope: 'base.model.Language.fields' }),
   })
   Name: string;

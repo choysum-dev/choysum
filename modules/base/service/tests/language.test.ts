@@ -5,6 +5,7 @@ import Language from '@/base/service/models/language';
 import { ChoysumError } from '@/core/service/error';
 import { resolveValidationSummary } from '@/core/service/api/validation';
 import { MetadataStorage } from '@/core/service/api/metadata';
+import { withContext } from '@/core/service/api/context';
 
 import { companyCode8, uid } from './_helpers';
 
@@ -190,6 +191,58 @@ test('base.language: GetActiveLanguages returns only active rows', async () => {
   expect(rows.every(r => r.Code && r.Name)).toBe(true);
   expect(rows.some(r => r.Code === `i_${suffix}`.slice(0, 16))).toBe(false);
   expect(rows.some(r => r.Code === `a_${suffix}`.slice(0, 16))).toBe(true);
+});
+
+test('base.language: Name translate metadata is enabled', () => {
+  const field = MetadataStorage.instance.getModelMetadata(Language).fields.get('Name');
+  expect(field?.translate).toBe(true);
+  expect(field?.type).toBe('varchar');
+  expect(field?.column?.size).toBeUndefined();
+  expect(field?.storageHints?.size).toBe(100);
+});
+
+test('base.language: Name bilingual write/read unwraps by lang', async () => {
+  const code = `t_${companyCode8()}`.slice(0, 16);
+  const enName = uid('LangEn');
+  const zhName = uid('LangZh');
+
+  const created = await Language.Create(
+    {
+      Name: { en_US: enName, zh_CN: zhName } as any,
+      Code: code,
+      Direction: 'ltr' as any,
+      IsActive: true,
+    } as any,
+    ['Id', 'Name', 'Code'] as any
+  );
+  expect(String((created as any).Name)).toBe(enName);
+
+  const id = String((created as any).Id);
+  const enBrowse = await withContext({ lang: 'en_US' }, () => Language.Browse(id, ['Id', 'Name'] as any));
+  expect(String((enBrowse as any).Name)).toBe(enName);
+
+  const zhBrowse = await withContext({ lang: 'zh_CN' }, () => Language.Browse(id, ['Id', 'Name'] as any));
+  expect(String((zhBrowse as any).Name)).toBe(zhName);
+
+  const fallbackBrowse = await withContext({ lang: 'fr_FR' }, () => Language.Browse(id, ['Id', 'Name'] as any));
+  expect(String((fallbackBrowse as any).Name)).toBe(enName);
+
+  await withContext({ lang: 'zh_CN' }, async () => {
+    await Language.UpdateById(id, { Name: `${zhName}_upd` } as any, ['Id', 'Name'] as any);
+  });
+  const afterZh = await withContext({ lang: 'zh_CN' }, () => Language.Browse(id, ['Id', 'Name'] as any));
+  expect(String((afterZh as any).Name)).toBe(`${zhName}_upd`);
+  const afterEn = await withContext({ lang: 'en_US' }, () => Language.Browse(id, ['Id', 'Name'] as any));
+  expect(String((afterEn as any).Name)).toBe(enName);
+
+  const hit = await withContext({ lang: 'zh_CN' }, () =>
+    Language.Search(['Name', 'ilike', `${zhName}_upd`] as any, { fields: ['Id', 'Name', 'Code'], limit: 5 } as any)
+  );
+  expect(hit?.some((r: any) => String(r.Code) === code)).toBe(true);
+
+  const active = await withContext({ lang: 'zh_CN' }, () => Language.GetActiveLanguages());
+  const row = active.find(r => r.Code === code);
+  expect(row?.Name).toBe(`${zhName}_upd`);
 });
 
 test('base.language: partial IsActive=false still blocks deactivating en_US', async () => {

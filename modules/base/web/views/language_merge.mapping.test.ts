@@ -20,11 +20,23 @@ describe('base language merge seeds and wiring (P0)', () => {
     expect(byId.language_en_us?.model).toBe('base.Language');
     expect(byId.language_en_us?.values.Code).toBe('en_US');
     expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
+    expect(byId.language_en_us?.values.Name).toEqual({
+      en_US: 'English (US)',
+      zh_CN: '英语（美国）',
+    });
 
     expect(byId.language_zh_cn?.model).toBe('base.Language');
     expect(byId.language_zh_cn?.values.Code).toBe('zh_CN');
     expect(byId.language_zh_cn?.values.Grouping).toBe('[3,0]');
     expect(byId.language_zh_cn?.values.DecimalSeparator).toBe('.');
+    expect(byId.language_zh_cn?.values.Name).toEqual({
+      en_US: 'Chinese (Simplified)',
+      zh_CN: '简体中文',
+    });
+
+    // zh_CN is seeded before en_US so Name lang-map keys can reference Language.Code.
+    const order = data.records.map(r => r.external_id);
+    expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
 
     expect(byId.company_main?.values.LanguageId).toEqual({ ref: 'base.language_zh_cn' });
     expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
@@ -50,6 +62,7 @@ describe('base language merge seeds and wiring (P0)', () => {
     expect(language).not.toMatch(/DefaultLocaleId|from ['"].*locale['"]/);
     expect(language).toMatch(/Grouping/);
     expect(language).toMatch(/GetActiveLanguages/);
+    expect(language).toMatch(/translate:\s*true/);
     expect(language).toMatch(/Format\(/);
     expect(language).toMatch(/_language_format/);
   });
