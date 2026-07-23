@@ -75,11 +75,15 @@ describe('OFieldTranslationsDialog', () => {
     await nextTick();
 
     expect(GetFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name');
-    expect(wrapper.findAll('.item').length).toBeGreaterThanOrEqual(2);
+    const labels = wrapper.findAll('.item').map(el => el.attributes('data-label'));
+    expect(labels).toContain('English (US)');
+    expect(labels).toContain('Chinese (Simplified)');
+    expect(labels.some(l => l?.includes('(zh_CN)'))).toBe(false);
 
     const zhInput = wrapper.findAll('.input')[1];
     await zhInput.setValue('您好');
-    const saveBtn = wrapper.findAll('.btn').at(-1)!;
+    const buttons = wrapper.findAll('.btn');
+    const saveBtn = buttons[buttons.length - 1]!;
     await saveBtn.trigger('click');
     await nextTick();
     await Promise.resolve();
@@ -87,5 +91,60 @@ describe('OFieldTranslationsDialog', () => {
     expect(UpdateFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name', { zh_CN: '您好' });
     expect(Browse).toHaveBeenCalled();
     expect(wrapper.emitted('saved')?.[0]?.[0]).toBe('您好');
+  });
+
+  it('clears non-en_US translation with false delete sentinel', async () => {
+    const UpdateFieldTranslations = vi.fn(async () => true);
+    const Browse = vi.fn(async () => ({ Name: 'Hello' }));
+    const GetFieldTranslations = vi.fn(async () => ({ en_US: 'Hello', zh_CN: '你好' }));
+
+    const wrapper = mount(OFieldTranslationsDialog, {
+      props: {
+        modelValue: true,
+        store: { GetFieldTranslations, UpdateFieldTranslations, Browse } as any,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+        fieldLabel: 'Name',
+      },
+      global: {
+        stubs: {
+          'el-dialog': {
+            props: ['modelValue'],
+            template: '<div class="dialog"><slot /><slot name="footer" /></div>',
+            emits: ['opened', 'closed', 'update:modelValue'],
+            mounted() {
+              this.$emit('opened');
+            },
+          },
+          'el-form': { template: '<form><slot /></form>' },
+          'el-form-item': { props: ['label'], template: '<div class="item" :data-label="label"><slot /></div>' },
+          'el-input': {
+            props: ['modelValue'],
+            emits: ['update:modelValue'],
+            template:
+              '<input class="input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+          },
+          'el-button': {
+            props: ['loading', 'type'],
+            template: '<button class="btn" @click="$emit(\'click\')"><slot /></button>',
+          },
+        },
+      },
+    });
+
+    await nextTick();
+    await Promise.resolve();
+    await nextTick();
+
+    const zhInput = wrapper.findAll('.input')[1];
+    await zhInput.setValue('');
+    const buttons = wrapper.findAll('.btn');
+    const saveBtn = buttons[buttons.length - 1]!;
+    await saveBtn.trigger('click');
+    await nextTick();
+    await Promise.resolve();
+
+    expect(UpdateFieldTranslations).toHaveBeenCalledWith('lang-1', 'Name', { zh_CN: false });
+    expect(wrapper.emitted('saved')?.[0]?.[0]).toBe('Hello');
   });
 });

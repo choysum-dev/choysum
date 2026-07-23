@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
     @closed="emit('closed')"
   >
     <div v-loading="loading" class="o-field-translations-dialog__body">
-      <el-form label-position="top" @submit.prevent>
+      <el-form label-position="left" label-width="168px" @submit.prevent>
         <el-form-item v-for="row in rows" :key="row.code" :label="row.label">
           <el-input
             v-model="row.value"
@@ -88,6 +88,12 @@ const loading = ref(false);
 const saving = ref(false);
 const rows = ref<TranslationRow[]>([]);
 
+/** Prefer language display name (Odoo-style); fall back to code. */
+function formatLanguageLabel(name: unknown, code: string): string {
+  const display = String(name ?? '').trim();
+  return display || code;
+}
+
 async function loadRows() {
   loading.value = true;
   try {
@@ -105,7 +111,7 @@ async function loadRows() {
       const existed = Object.prototype.hasOwnProperty.call(current, code);
       byCode.set(code, {
         code,
-        label: `${String(lang?.Name || code)} (${code})`,
+        label: formatLanguageLabel(lang?.Name, code),
         value: existed ? String(current[code] ?? '') : '',
         initial: existed ? String(current[code] ?? '') : '',
         existed,
@@ -117,7 +123,7 @@ async function loadRows() {
       const existed = Object.prototype.hasOwnProperty.call(current, 'en_US');
       byCode.set('en_US', {
         code: 'en_US',
-        label: `English (US) (en_US)`,
+        label: formatLanguageLabel('English (US)', 'en_US'),
         value: existed ? String(current.en_US ?? '') : '',
         initial: existed ? String(current.en_US ?? '') : '',
         existed,
@@ -185,9 +191,25 @@ async function handleSave() {
 .o-field-translations-dialog__body {
   min-height: 120px;
 }
+.o-field-translations-dialog__body :deep(.el-form-item) {
+  margin-bottom: 14px;
+  align-items: flex-start;
+}
+.o-field-translations-dialog__body :deep(.el-form-item__label) {
+  line-height: 32px;
+  color: var(--el-text-color-regular);
+  justify-content: flex-start;
+  text-align: left;
+  padding-right: 12px;
+}
+.o-field-translations-dialog__body :deep(.el-form-item__content) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .o-field-translations-dialog__hint {
   margin-top: 4px;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--el-text-color-secondary);
 }
 </style>

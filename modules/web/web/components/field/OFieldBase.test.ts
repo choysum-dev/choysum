@@ -10,11 +10,20 @@ import { createTermReference } from '@/core/service/i18n';
 import type { UseField } from '@/web/web/composables/useField';
 import OFieldBase from './OFieldBase.vue';
 
-function makeBinding(meta?: { string?: string; stringText?: ReturnType<typeof createTermReference> }): UseField {
+function makeBinding(
+  meta?: { string?: string; stringText?: ReturnType<typeof createTermReference>; translate?: boolean },
+  opts?: { recordId?: string | null; isEditMode?: boolean },
+): UseField {
   const value = ref('x');
-  const record = ref({ Id: '1' });
+  const recordId = opts && 'recordId' in opts ? opts.recordId : '1';
+  const record = ref(recordId ? { Id: recordId } : {});
   return {
-    env: { isForm: true, isEditMode: true, viewMode: 'edit', fieldPrefix: null },
+    env: {
+      isForm: true,
+      isEditMode: opts?.isEditMode ?? true,
+      viewMode: opts?.isEditMode === false ? 'readonly' : 'edit',
+      fieldPrefix: null,
+    },
     prop: 'AccessTokenId',
     meta: meta as any,
     fieldRef: () => value as any,
@@ -40,6 +49,11 @@ const fieldBaseStubs = {
   },
   // Inline error icon; Element Plus is not registered in this unit suite.
   'el-icon': true,
+  'el-tooltip': { template: '<div class="tooltip-stub"><slot /></div>' },
+  'el-button': {
+    template: '<button class="btn-stub" v-bind="$attrs"><slot /></button>',
+  },
+  OFieldTranslationsDialog: true,
 };
 
 describe('OFieldBase label resolution', () => {
@@ -135,5 +149,66 @@ describe('OFieldBase label resolution', () => {
     expect(ensureFieldsGet).toHaveBeenCalled();
     expect(wrapper.find('.edit-slot').exists()).toBe(false);
     expect(wrapper.find('.display-slot').exists()).toBe(true);
+  });
+});
+
+describe('OFieldBase translate action', () => {
+  it('shows translate icon in form edit when meta.translate and record Id exist', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    const btn = wrapper.find('.o-field-base__translate-btn');
+    expect(btn.exists()).toBe(true);
+    expect(btn.attributes('aria-label')).toContain('Translate');
+  });
+
+  it('hides translate icon when meta.translate is missing', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+
+  it('hides translate icon when record has no Id', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }, { recordId: null }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
+  });
+
+  it('hides translate icon when not in edit mode', () => {
+    const wrapper = mount(OFieldBase, {
+      props: {
+        binding: makeBinding({ string: 'Name', translate: true }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h('div', { class: 'display-slot' }, 'display'),
+      },
+      global: { stubs: fieldBaseStubs },
+    });
+    expect(wrapper.find('.o-field-base__translate-btn').exists()).toBe(false);
   });
 });

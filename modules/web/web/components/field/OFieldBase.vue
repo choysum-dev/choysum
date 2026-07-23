@@ -34,16 +34,18 @@ SPDX-License-Identifier: Apache-2.0
             :onchangeRunning="onchangeHandlers.running?.value"
           />
         </div>
-        <el-button
-          v-if="showTranslateAction"
-          class="o-field-base__translate-btn"
-          text
-          type="primary"
-          :aria-label="translateAriaLabel"
-          @click="translationsOpen = true"
-        >
-          {{ translateButtonLabel }}
-        </el-button>
+        <el-tooltip v-if="showTranslateAction" :content="translateAriaLabel" placement="top" :show-after="200">
+          <el-button
+            class="o-field-base__translate-btn"
+            text
+            :aria-label="translateAriaLabel"
+            @click="translationsOpen = true"
+          >
+            <el-icon :size="16">
+              <component :is="TranslateOutlined" />
+            </el-icon>
+          </el-button>
+        </el-tooltip>
       </div>
       <div v-show="!effectiveEditForm">
         <slot
@@ -79,16 +81,18 @@ SPDX-License-Identifier: Apache-2.0
               :onchangeRunning="onchangeHandlers.running?.value"
             />
           </div>
-          <el-button
-            v-if="showTranslateAction"
-            class="o-field-base__translate-btn"
-            text
-            type="primary"
-            :aria-label="translateAriaLabel"
-            @click="translationsOpen = true"
-          >
-            {{ translateButtonLabel }}
-          </el-button>
+          <el-tooltip v-if="showTranslateAction" :content="translateAriaLabel" placement="top" :show-after="200">
+            <el-button
+              class="o-field-base__translate-btn"
+              text
+              :aria-label="translateAriaLabel"
+              @click="translationsOpen = true"
+            >
+              <el-icon :size="16">
+                <component :is="TranslateOutlined" />
+              </el-icon>
+            </el-button>
+          </el-tooltip>
         </div>
       </template>
       <template v-else>
@@ -263,13 +267,14 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, V = unknown, View = V">
 import type { RuleItem } from 'async-validator';
 import type { BaseModel } from '@/core/rpc';
-import { ElButton, ElFormItem, ElTooltip, type FormItemProps } from 'element-plus';
+import { ElButton, ElFormItem, ElIcon, ElTooltip, type FormItemProps } from 'element-plus';
 import OVColumn from '@/web/web/components/vtable/OVColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
 import { computed, inject, onMounted, ref, watch } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { WarningFilled } from '@element-plus/icons-vue';
+import { TranslateOutlined } from '@vicons/material';
 import { createTranslate, getGlobalComposer } from '@/web/web/i18n/translate';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet';
@@ -383,7 +388,6 @@ const translationMaxLength = computed(() => {
   return typeof size === 'number' && Number.isInteger(size) && size > 0 ? size : undefined;
 });
 
-const translateButtonLabel = computed(() => _t('Translate'));
 const translateAriaLabel = computed(() => {
   const label = String(resolvedLabel.value || leafFieldName.value || '').trim();
   return label ? _t('Translate: %s', label) : _t('Translate field');
@@ -702,8 +706,8 @@ defineSlots<{
 
 .o-field-base__edit-wrap {
   display: flex;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
   width: 100%;
 }
 .o-field-base__edit-control {
@@ -712,7 +716,13 @@ defineSlots<{
 }
 .o-field-base__translate-btn {
   flex: 0 0 auto;
-  margin-top: 1px;
-  padding: 0 4px;
+  height: 24px;
+  width: 24px;
+  padding: 0;
+  color: var(--el-text-color-secondary);
+}
+.o-field-base__translate-btn:hover,
+.o-field-base__translate-btn:focus {
+  color: var(--el-color-primary);
 }
 </style>
