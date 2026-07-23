@@ -491,6 +491,11 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			hints.UniqueIndex = toStringPtr(trimmed)
 		}
 	}
+	translate := false
+	if v, ok := options["translate"].(bool); ok && v {
+		translate = true
+		spec.Structural.Translate = toBoolPtr(true)
+	}
 	switch raw := options["default"].(type) {
 	case string:
 		trimmed := strings.TrimSpace(raw)
@@ -542,6 +547,10 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 	}
 
 	columnType := resolveColumnType(fieldType)
+	if translate {
+		// Logical type stays char/varchar/text; physical storage is JSON/JSONB lang map.
+		columnType = "jsonobject"
+	}
 	spec.Structural.ColumnType = columnType
 
 	spec.Migration = meta.IrFieldMigrationDecision{
@@ -549,6 +558,9 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 		ShouldCreateColumn: true,
 		ResolvedColumnType: columnType,
 		ReasonCode:         "FIELD_DEFAULT",
+	}
+	if translate {
+		spec.Migration.ReasonCode = "TRANSLATE_LANG_MAP"
 	}
 
 	switch {
@@ -626,6 +638,25 @@ func buildFieldResolvedSpec(field *meta.IrField, binding *resolvedFieldBehaviorB
 			Severity: "error",
 			Message:  "related.store=false field cannot declare inverse handler",
 		})
+	}
+	if translate {
+		if fieldType != "char" && fieldType != "varchar" && fieldType != "text" {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_TRANSLATE_FIELD_TYPE",
+				Severity: "error",
+				Message:  "translate is only supported on char/varchar/text fields",
+			})
+		}
+		uniqueOn := hints.Unique != nil && *hints.Unique
+		uniqueIndexOn := (hints.UniqueIndexEnabled != nil && *hints.UniqueIndexEnabled) ||
+			(hints.UniqueIndex != nil && strings.TrimSpace(*hints.UniqueIndex) != "")
+		if uniqueOn || uniqueIndexOn {
+			spec.Diagnostics = append(spec.Diagnostics, meta.IrFieldDiagnostic{
+				Code:     "CONFLICT_TRANSLATE_UNIQUE",
+				Severity: "error",
+				Message:  "translate cannot be combined with unique/uniqueIndex",
+			})
+		}
 	}
 
 	return spec, nil

@@ -85,6 +85,8 @@ type IrFieldStructuralSpec struct {
 	StorageHints    *IrFieldStructuralStorageHints `json:"storageHints,omitempty"`
 	ColumnType      string                         `json:"columnType,omitempty"`
 	CheckConstraint string                         `json:"checkConstraint,omitempty"`
+	// Translate marks data-i18n fields stored as JSON/JSONB lang maps (see data-i18n-design.md).
+	Translate *bool `json:"translate,omitempty"`
 }
 
 type IrFieldBehaviorComputeSpec struct {

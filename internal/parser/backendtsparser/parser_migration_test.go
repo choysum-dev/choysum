@@ -1377,6 +1377,99 @@ export default class HintsModel extends BaseModel {
 	}
 }
 
+func TestTsParser_TranslateFieldResolvesToJsonobject(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/translate_field.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('TranslatePilot')
+export default class TranslatePilot extends BaseModel {
+  @Field({ type: 'varchar', size: 100, translate: true, indexed: true })
+  public Name: string
+
+  @Field({ type: 'text', translate: true })
+  public Description: string
+
+  @Field({ type: 'varchar', translate: true, unique: true })
+  public BadUnique: string
+
+  @Field({ type: 'integer', translate: true })
+  public BadType: number
+}
+`
+
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	fieldByName := map[string]*meta.IrField{}
+	for _, f := range r.Model.Fields {
+		fieldByName[f.Name] = f
+	}
+
+	nameSpec, err := fieldByName["Name"].GetResolvedSpec()
+	if err != nil || nameSpec == nil {
+		t.Fatalf("Name resolved spec: err=%v", err)
+	}
+	if nameSpec.Structural.Translate == nil || !*nameSpec.Structural.Translate {
+		t.Fatal("expected Translate=true on Name")
+	}
+	if nameSpec.Structural.FieldType != "varchar" {
+		t.Fatalf("expected logical FieldType=varchar, got %q", nameSpec.Structural.FieldType)
+	}
+	if nameSpec.Migration.ResolvedColumnType != "jsonobject" {
+		t.Fatalf("expected ResolvedColumnType=jsonobject, got %q", nameSpec.Migration.ResolvedColumnType)
+	}
+	if nameSpec.Migration.ReasonCode != "TRANSLATE_LANG_MAP" {
+		t.Fatalf("expected ReasonCode=TRANSLATE_LANG_MAP, got %q", nameSpec.Migration.ReasonCode)
+	}
+	if nameSpec.Structural.StorageHints == nil || nameSpec.Structural.StorageHints.Size == nil || *nameSpec.Structural.StorageHints.Size != 100 {
+		t.Fatalf("expected size hint preserved for logical validation, got %#v", nameSpec.Structural.StorageHints)
+	}
+
+	descSpec, err := fieldByName["Description"].GetResolvedSpec()
+	if err != nil || descSpec == nil {
+		t.Fatalf("Description resolved spec: err=%v", err)
+	}
+	if descSpec.Migration.ResolvedColumnType != "jsonobject" {
+		t.Fatalf("expected text+translate → jsonobject, got %q", descSpec.Migration.ResolvedColumnType)
+	}
+
+	badUnique, err := fieldByName["BadUnique"].GetResolvedSpec()
+	if err != nil || badUnique == nil {
+		t.Fatalf("BadUnique resolved spec: err=%v", err)
+	}
+	foundUniqueConflict := false
+	for _, d := range badUnique.Diagnostics {
+		if d.Code == "CONFLICT_TRANSLATE_UNIQUE" {
+			foundUniqueConflict = true
+			break
+		}
+	}
+	if !foundUniqueConflict {
+		t.Fatalf("expected CONFLICT_TRANSLATE_UNIQUE, got %+v", badUnique.Diagnostics)
+	}
+
+	badType, err := fieldByName["BadType"].GetResolvedSpec()
+	if err != nil || badType == nil {
+		t.Fatalf("BadType resolved spec: err=%v", err)
+	}
+	foundTypeConflict := false
+	for _, d := range badType.Diagnostics {
+		if d.Code == "CONFLICT_TRANSLATE_FIELD_TYPE" {
+			foundTypeConflict = true
+			break
+		}
+	}
+	if !foundTypeConflict {
+		t.Fatalf("expected CONFLICT_TRANSLATE_FIELD_TYPE, got %+v", badType.Diagnostics)
+	}
+}
+
 func TestTsParser_ParseModelResolvedSpecCoversCollectBehaviorBindingsBranches(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.IrModule{Path: "/virtual/modules/test", ApplicationStr: "test"}

@@ -111,6 +111,22 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     const isRelation = relationTypes.has(type);
 
+    if (optionBag.translate !== undefined && typeof optionBag.translate !== 'boolean') {
+      throw new Error(`@Field(${name}) translate must be a boolean`);
+    }
+    const translate = optionBag.translate === true;
+    if (translate) {
+      if (type !== 'char' && type !== 'varchar' && type !== 'text') {
+        throw new Error(`@Field(${name}) translate is only supported on char/varchar/text fields`);
+      }
+      const uniqueIndexOn =
+        optionBag.uniqueIndex === true ||
+        (typeof optionBag.uniqueIndex === 'string' && optionBag.uniqueIndex.trim().length > 0);
+      if (optionBag.unique === true || uniqueIndexOn) {
+        throw new Error(`@Field(${name}) translate cannot be combined with unique/uniqueIndex`);
+      }
+    }
+
     const hasFlatStorageHints =
       optionBag.required !== undefined ||
       optionBag.notNull !== undefined ||
@@ -228,7 +244,8 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
       normalizedColumn = {};
       if (normalizedStorageHints?.required === true) normalizedColumn.notNull = true;
       if (normalizedStorageHints?.indexed === true) normalizedColumn.index = true;
-      if (normalizedStorageHints?.size != null) normalizedColumn.size = normalizedStorageHints.size;
+      // translate: size is a per-lang value limit only (D14); do not set physical varchar(n).
+      if (normalizedStorageHints?.size != null && !translate) normalizedColumn.size = normalizedStorageHints.size;
       if (normalizedStorageHints?.precision != null) normalizedColumn.precision = normalizedStorageHints.precision;
       if (normalizedStorageHints?.scale != null) normalizedColumn.scale = normalizedStorageHints.scale;
 
@@ -419,6 +436,7 @@ export function Field<T extends BaseModel, R extends keyof T = keyof T, TJoin ex
 
     if (normalizedRelated) meta.related = normalizedRelated;
     if (normalizedStorageHints) meta.storageHints = normalizedStorageHints;
+    if (translate) meta.translate = true;
 
     // Write metadata
     const ctor = target.constructor as ModelCtor<BaseModel> & typeof BaseModel;

@@ -134,6 +134,14 @@ func (m *modelMigrator) getResolvedFieldColumnMeta(field *meta.IrField, modelCtx
 		}
 	}
 
+	// Data i18n: JSON/JSONB lang map; size is per-lang limit only; never unique btree (D14·D15).
+	if resolved.Structural.Translate != nil && *resolved.Structural.Translate {
+		metaMap["type"] = "jsonobject"
+		delete(metaMap, "size")
+		delete(metaMap, "unique")
+		delete(metaMap, "uniqueIndex")
+	}
+
 	// Keep compatibility defaults for reference and relation-like scalar carriers.
 	if typeStr == "ManyToOne" || typeStr == "ManyToOneRef" {
 		metaMap["type"] = "char"

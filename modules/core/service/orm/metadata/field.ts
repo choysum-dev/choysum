@@ -95,6 +95,12 @@ type FlatCommonOptions = {
   uniqueIndex?: boolean | string;
   checkConstraint?: string;
   default?: unknown;
+  /**
+   * Data i18n: store per-language values as a JSON/JSONB `{ lang: value }` map.
+   * Only valid on char/varchar/text; mutually exclusive with unique/uniqueIndex.
+   * See `.dev/docs/infra/i18n/data-i18n-design.md`.
+   */
+  translate?: boolean;
 };
 
 type FlatNoRelationOption = { relation?: never };
@@ -450,6 +456,11 @@ export interface FieldMetadata {
   selectionCallable?: (this: unknown) => SelectionItem[];
   related?: FieldRelatedOption;
   storageHints?: FieldStorageHints;
+  /**
+   * Data i18n: physical column is JSON/JSONB lang map (see data-i18n-design.md).
+   * `size` remains a per-lang value limit in storageHints; it is not a varchar column width.
+   */
+  translate?: boolean;
 }
 
 // Decrement tuple (limits max recursion depth to avoid excessive type expansion)

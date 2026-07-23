@@ -576,6 +576,57 @@ func TestModelMigratorResolvedSpecMigrationDecisions(t *testing.T) {
 		}
 	})
 
+	t.Run("translate field uses jsonobject without size or unique", func(t *testing.T) {
+		field := &meta.IrField{Name: "Name"}
+		trueVal := true
+		size := 100
+		spec := &meta.IrFieldResolvedSpec{
+			FieldName: "Name",
+			Structural: meta.IrFieldStructuralSpec{
+				Name:      "Name",
+				FieldType: "varchar",
+				Translate: &trueVal,
+				StorageHints: &meta.IrFieldStructuralStorageHints{
+					Size:   &size,
+					Unique: &trueVal,
+					Index:  strPtr("idx_name"),
+				},
+				ColumnType: "jsonobject",
+			},
+			Migration: meta.IrFieldMigrationDecision{
+				StorageKind:        "physical",
+				ShouldCreateColumn: true,
+				ResolvedColumnType: "jsonobject",
+				ReasonCode:         "TRANSLATE_LANG_MAP",
+			},
+		}
+		if err := field.SetResolvedSpec(spec); err != nil {
+			t.Fatalf("SetResolvedSpec error = %v", err)
+		}
+		metaMap, err := migrator.getResolvedFieldColumnMeta(field)
+		if err != nil {
+			t.Fatalf("getResolvedFieldColumnMeta(translate) error = %v", err)
+		}
+		if metaMap == nil || metaMap["type"] != "jsonobject" {
+			t.Fatalf("expected type=jsonobject, got %#v", metaMap)
+		}
+		if _, ok := metaMap["size"]; ok {
+			t.Fatalf("translate column must not carry size, got %#v", metaMap)
+		}
+		if _, ok := metaMap["unique"]; ok {
+			t.Fatalf("translate column must not carry unique, got %#v", metaMap)
+		}
+		if metaMap["index"] != "idx_name" {
+			t.Fatalf("expected non-unique index preserved, got %#v", metaMap)
+		}
+
+		dialect := "postgres"
+		typeTag := buildColumnTypeTag(dialect, "jsonobject", metaMap)
+		if typeTag != "type:jsonb" {
+			t.Fatalf("expected postgres jsonb tag, got %q", typeTag)
+		}
+	})
+
 	t.Run("isStorageBlobCarrierModel covers all document carriers", func(t *testing.T) {
 		carriers := []struct {
 			app   string
