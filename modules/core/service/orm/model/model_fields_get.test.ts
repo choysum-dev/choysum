@@ -192,6 +192,34 @@ test('FieldsGet marks deny-write fields as isReadonly (T5.2)', async () => {
   }
 });
 
+@Model('FieldsGetTranslateWidget', { application: 'demo' })
+class FieldsGetTranslateWidget extends BaseModel {
+  @Field({ type: 'varchar', size: 100, translate: true, string: 'Name' } as any)
+  Name!: string;
+
+  @Field({ type: 'varchar', size: 40, string: 'Code' })
+  Code!: string;
+}
+
+test('FieldsGet exposes translate for data-i18n fields', async () => {
+  resetTestState();
+  setGlobalRequestContextProvider({ lang: 'en_US' });
+  RepositoryFactory.setRepository(FieldsGetTranslateWidget as any, {
+    getDenyReadFields: async () => ({ denyReadFields: [] }),
+    getDenyWriteFields: async () => ({ denyWriteFields: [] }),
+  } as any);
+
+  try {
+    const out = await FieldsGetTranslateWidget.FieldsGet(['Name', 'Code'], ['type', 'translate', 'size']);
+    expect(out.Name).toEqual({ type: 'varchar', translate: true, size: 100 });
+    expect(out.Code?.type).toBe('varchar');
+    expect(out.Code?.translate).toBeUndefined();
+    expect(out.Code?.size).toBe(40);
+  } finally {
+    resetTestState();
+  }
+});
+
 @Model('FieldsGetDynamicWidget', { application: 'demo' })
 class FieldsGetDynamicWidget extends BaseModel {
   @Field({ type: 'selection', selection: 'StatusOptions' } as any)

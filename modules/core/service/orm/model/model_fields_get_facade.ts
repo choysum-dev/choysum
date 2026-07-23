@@ -195,6 +195,14 @@ function buildFieldMeta(
   if (typeof column?.scale === 'number') meta.scale = column.scale;
   if (column?.index !== undefined && column.index !== false) meta.indexed = true;
 
+  if (field.translate === true) {
+    meta.translate = true;
+  }
+  const hintSize = field.storageHints?.size;
+  if (typeof hintSize === 'number' && Number.isInteger(hintSize) && hintSize > 0 && meta.size == null) {
+    meta.size = hintSize;
+  }
+
   return meta;
 }
 

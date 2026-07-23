@@ -22,6 +22,8 @@ export const FIELD_PRESENTATION_FIELDS_GET_ATTRS = [
   'selectionKind',
   'isReadonly',
   'notNull',
+  'translate',
+  'size',
 ] as const;
 
 export type FieldsGetRpc = (
