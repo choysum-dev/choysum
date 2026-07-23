@@ -303,6 +303,54 @@ test('repository condition compiler unwraps translated fields for search predica
   expect(result.lhs.args[0]).not.toEqual('ref:demo_table.Name');
 });
 
+test('repository condition compiler ANDs trigram prefilter for translate+trigram on postgres', () => {
+  class DemoModel {}
+
+  const meta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([
+      ['Name', { type: 'varchar', translate: true, column: { name: 'Name', index: 'trigram' } }],
+    ]),
+  } as any;
+
+  const eb = createExpressionBuilder();
+  const db = {
+    selectFrom() {
+      throw new Error('not used');
+    },
+  };
+
+  const withPrefilter = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(withPrefilter.kind).toBe('and');
+  expect(withPrefilter.parts?.length).toBe(2);
+  expect(withPrefilter.parts[0].op).toBe('ilike');
+  expect(withPrefilter.parts[0].rhs).toBe('%abc%');
+  expect(withPrefilter.parts[1].op).toBe('ilike');
+  expect(withPrefilter.parts[1].rhs).toBe('%abc%');
+
+  // Short patterns skip prefilter (L0 unwrap only).
+  const shortOnly = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', meta, eb, ['Name', 'ilike', '%ab%'] as any, 'demo_table')
+  ) as any;
+  expect(shortOnly.kind).toBeUndefined();
+  expect(shortOnly.op).toBe('ilike');
+
+  // Without trigram metadata, stay on unwrap-only path.
+  const noTrigramMeta = {
+    type: DemoModel,
+    tableName: () => 'demo_table',
+    fields: new Map([['Name', { type: 'varchar', translate: true, column: { name: 'Name' } }]]),
+  } as any;
+  const noPrefilter = withContext({ lang: 'zh_CN' }, () =>
+    convertCondition(db as any, () => 'postgres', noTrigramMeta, eb, ['Name', 'ilike', '%abc%'] as any, 'demo_table')
+  ) as any;
+  expect(noPrefilter.kind).toBeUndefined();
+  expect(noPrefilter.op).toBe('ilike');
+});
+
 test('repository condition compiler contains on non-json field warns and keeps predicate conversion', () => {
   class DemoModel {}
 

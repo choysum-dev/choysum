@@ -21,11 +21,49 @@ import {
 } from './predicate_builder_adapter';
 import { hasRepositorySqlComputeExpression, resolveRepositorySqlComputeExpression } from './sql_compute_expression';
 import { rewriteSearchCondition } from '../../../runtime/compute/search_rewrite';
-import { buildTranslatedFieldUnwrapExpr } from './translated_field_sql';
+import {
+  buildTranslatedFieldUnwrapExpr,
+  buildTranslatedTrigramPrefilterLhs,
+  fieldHasTranslatedTrigramIndex,
+  resolveTranslatedTrigramPrefilterPattern,
+} from './translated_field_sql';
 
 function supportsContainsFieldType(fieldMeta: FieldMetadata | undefined): boolean {
   const fieldType = fieldMeta?.type;
   return fieldType === 'jsonobject' || fieldType === 'ManyToManyRef';
+}
+
+function isPostgresDialect(dialect: string): boolean {
+  const d = String(dialect || '').toLowerCase();
+  return d === 'postgres' || d === 'postgresql';
+}
+
+/**
+ * Optionally AND a full-language trigram prefilter with the unwrap predicate (S3-2 / §7.1).
+ * Skips when not PG, field lacks index:'trigram', or the pattern is too short.
+ */
+function maybeAndTranslatedTrigramPrefilter(
+  dialect: string,
+  eb: RepositoryPredicateBuilder,
+  selfTable: string,
+  fieldName: string,
+  fieldMeta: FieldMetadata | undefined,
+  op: unknown,
+  rhs: unknown,
+  exactPredicate: RepositoryPredicate
+): RepositoryPredicate {
+  if (!isPostgresDialect(dialect) || !fieldHasTranslatedTrigramIndex(fieldMeta)) {
+    return exactPredicate;
+  }
+  const prefilterPattern = resolveTranslatedTrigramPrefilterPattern(String(op || ''), rhs);
+  if (!prefilterPattern) {
+    return exactPredicate;
+  }
+  const lowerOp = String(op || '').toLowerCase();
+  const prefilterOp = lowerOp === 'in' || lowerOp === '=' || lowerOp === '==' ? 'like' : String(op || '');
+  const lhs = buildTranslatedTrigramPrefilterLhs(eb, `${selfTable}.${fieldName}`);
+  const prefilter = repositoryPredicateCall(eb, lhs, prefilterOp, prefilterPattern);
+  return repositoryPredicateAnd(eb, [prefilter, exactPredicate]);
 }
 
 export function convertCondition(
@@ -147,12 +185,33 @@ export function convertCondition(
         }
 
         const pattern = typeof effectiveRhs === 'string' ? effectiveRhs : String(effectiveRhs ?? '');
+        let exact: RepositoryPredicate;
         if (String(dialect).toLowerCase() === 'postgres') {
-          return repositoryPredicateCall(eb, lhsExpr, effectiveOp, pattern);
+          exact = repositoryPredicateCall(eb, lhsExpr, effectiveOp, pattern);
+        } else {
+          const mapped = lowerOp === 'not ilike' ? 'not like' : 'like';
+          exact = repositoryPredicateCall(eb, lower(lhsExpr as Parameters<typeof lower>[0]), mapped, pattern.toLowerCase());
         }
 
-        const mapped = lowerOp === 'not ilike' ? 'not like' : 'like';
-        return repositoryPredicateCall(eb, lower(lhsExpr as Parameters<typeof lower>[0]), mapped, pattern.toLowerCase());
+        // Trigram prefilter only for positive ilike (not `not ilike`), matching Odoo.
+        if (
+          lowerOp === 'ilike' &&
+          typeof fieldName === 'string' &&
+          selfTable &&
+          !fieldName.includes('.')
+        ) {
+          return maybeAndTranslatedTrigramPrefilter(
+            String(dialect),
+            eb,
+            selfTable,
+            fieldName,
+            meta.fields.get(fieldName),
+            effectiveOp,
+            pattern,
+            exact
+          );
+        }
+        return exact;
       }
 
       if (lowerOp === 'contains') {
@@ -328,7 +387,17 @@ export function convertCondition(
           const dialect = String(getDialect() || 'postgres') as DialectName;
           const unwrap = buildTranslatedFieldUnwrapExpr(dialect, eb, `${selfTable}.${fieldName}`);
           const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
-          return repositoryPredicateCall(eb, unwrap, effectiveOp, right);
+          const exact = repositoryPredicateCall(eb, unwrap, effectiveOp, right);
+          return maybeAndTranslatedTrigramPrefilter(
+            dialect,
+            eb,
+            selfTable,
+            fieldName,
+            fieldMeta,
+            effectiveOp,
+            effectiveRhs,
+            exact
+          );
         }
 
         const right = wrapIfDecimal(fieldName, effectiveOp, effectiveRhs);
