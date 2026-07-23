@@ -1,10 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { raiseDomainError } from '@/core/service/error';
 import { createTranslate } from '@/core/service/i18n';
+import { createDomainNormalizationBridge } from '@/core/service/utils/domain_normalization_bridge';
 import {
-  NormalizationError,
   normalizeCodeOptional as normalizeCodeOptionalCore,
   normalizeCodeRequired as normalizeCodeRequiredCore,
   normalizeName as normalizeNameCore,
@@ -13,13 +12,23 @@ import {
 } from '@/core/service/utils/normalization';
 
 const { _t } = createTranslate('base');
+const bridge = createDomainNormalizationBridge('base', _t);
+const scope = 'service/models/_normalization_bridge';
 
-/**
- * Throw a base-domain InvalidArgument error.
- */
-export function fail(message: string): never {
-  raiseDomainError('base', 'InvalidArgument', message);
-}
+/** Throw a base-domain InvalidArgument error. */
+export const fail = bridge.fail;
+
+/** Map a domain-agnostic normalization failure into base-domain InvalidArgument. */
+export const mapNormalizationToBase = bridge.mapNormalizationError;
+
+/** Normalize a required translated field: string or `{ lang: string }` map. */
+export const normalizeRequiredTranslatedText = bridge.normalizeRequiredTranslatedText;
+
+/** Normalize an optional code field: trim, optionally uppercase. */
+export const normalizeCodeOptional = normalizeCodeOptionalCore;
+
+/** Normalize an optional string field: trim, null/undefined → null, empty → null. */
+export const normalizeNullableString = normalizeNullableStringCore;
 
 /**
  * Normalize a required code field: trim, optionally uppercase, fail if empty.
@@ -27,16 +36,8 @@ export function fail(message: string): never {
 export function normalizeCodeRequired(value: any, opts?: { uppercase?: boolean }): string {
   return mapNormalizationToBase(
     () => normalizeCodeRequiredCore(value, opts),
-    () => _t('Code is required', { scope: 'service/models/_normalization_bridge' })
+    () => _t('Code is required', { scope })
   );
-}
-
-/**
- * Normalize an optional code field: trim, optionally uppercase.
- * Returns undefined for undefined input, null for null/empty input.
- */
-export function normalizeCodeOptional(value: any, opts?: { uppercase?: boolean }): string | null | undefined {
-  return normalizeCodeOptionalCore(value, opts);
 }
 
 /**
@@ -45,7 +46,7 @@ export function normalizeCodeOptional(value: any, opts?: { uppercase?: boolean }
 export function normalizeName(value: any): string {
   return mapNormalizationToBase(
     () => normalizeNameCore(value),
-    () => _t('Name is required', { scope: 'service/models/_normalization_bridge' })
+    () => _t('Name is required', { scope })
   );
 }
 
@@ -55,54 +56,6 @@ export function normalizeName(value: any): string {
 export function requireRefId(value: unknown, fieldName: string): string {
   return mapNormalizationToBase(
     () => requireRefIdCore(value),
-    () => _t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName)
+    () => _t('%s is required', { scope }, fieldName)
   );
-}
-
-/**
- * Map a domain-agnostic normalization failure into base-domain InvalidArgument.
- */
-export function mapNormalizationToBase<T>(fn: () => T, mapMessage: (err: NormalizationError) => string): T {
-  try {
-    return fn();
-  } catch (err) {
-    if (err instanceof NormalizationError) {
-      fail(mapMessage(err));
-    }
-    throw err;
-  }
-}
-
-/**
- * Normalize an optional string field: trim, null/undefined → null, empty → null.
- */
-export function normalizeNullableString(value: any): string | null {
-  return normalizeNullableStringCore(value);
-}
-
-function isLangMap(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-/**
- * Normalize a required translated field: string or `{ lang: string }` map.
- */
-export function normalizeRequiredTranslatedText(
-  value: unknown,
-  fieldName: string
-): string | Record<string, string> {
-  if (isLangMap(value)) {
-    const out: Record<string, string> = {};
-    for (const [lang, raw] of Object.entries(value)) {
-      const key = String(lang || '').trim();
-      if (!key) continue;
-      const normalized = normalizeNullableString(raw);
-      out[key] = normalized == null ? '' : normalized;
-    }
-    if (!Object.values(out).some(v => String(v || '').trim())) {
-      fail(_t('%s is required', { scope: 'service/models/_normalization_bridge' }, fieldName));
-    }
-    return out;
-  }
-  return normalizeName(value);
 }

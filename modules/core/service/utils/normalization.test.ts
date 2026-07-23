@@ -45,6 +45,13 @@ import {
   resolveModelRefId,
   asRecord,
   normalizeOptionalNonNegativeInt,
+  normalizeOptionalText,
+  normalizeOptionalRefId,
+  normalizeOptionalTranslatedText,
+  normalizeRequiredTranslatedText,
+  translatedTextHasValue,
+  normalizeNonNegativeInt,
+  normalizeSequenceInt,
 } from '@/core/service/utils/normalization';
 
 test('normalizeOptionalString returns trimmed string or undefined', () => {
@@ -675,4 +682,78 @@ test('normalizeOptionalNonNegativeInt returns undefined for NaN/Infinity', () =>
   expect(normalizeOptionalNonNegativeInt(Infinity)).toBe(undefined);
   expect(normalizeOptionalNonNegativeInt(-Infinity)).toBe(undefined);
   expect(normalizeOptionalNonNegativeInt('not a number')).toBe(undefined);
+});
+
+// ---------------------------------------------------------------------------
+// optional text / translated helpers (lifted from module bridges)
+// ---------------------------------------------------------------------------
+
+test('normalizeOptionalText preserves undefined/null and clears empty', () => {
+  expect(normalizeOptionalText(undefined)).toBeUndefined();
+  expect(normalizeOptionalText(null)).toBeNull();
+  expect(normalizeOptionalText('')).toBeNull();
+  expect(normalizeOptionalText('   ')).toBeNull();
+  expect(normalizeOptionalText('  abc  ')).toBe('abc');
+  expect(normalizeOptionalText('abc', { upper: true })).toBe('ABC');
+  expect(normalizeOptionalText('ABC', { lower: true })).toBe('abc');
+});
+
+test('normalizeOptionalRefId preserves undefined/null and resolves ids', () => {
+  expect(normalizeOptionalRefId(undefined)).toBeUndefined();
+  expect(normalizeOptionalRefId(null)).toBeNull();
+  expect(normalizeOptionalRefId('  id1  ')).toBe('id1');
+  expect(normalizeOptionalRefId({ Id: '  id2  ' })).toBe('id2');
+  expect(normalizeOptionalRefId('')).toBeNull();
+});
+
+test('normalizeOptionalTranslatedText accepts scalars and lang maps', () => {
+  expect(normalizeOptionalTranslatedText(undefined)).toBeUndefined();
+  expect(normalizeOptionalTranslatedText(null)).toBeNull();
+  expect(normalizeOptionalTranslatedText('  A  ')).toBe('A');
+  expect(normalizeOptionalTranslatedText({ en_US: ' A ', zh_CN: '  ' })).toEqual({ en_US: 'A', zh_CN: '' });
+});
+
+test('normalizeRequiredTranslatedText accepts lang maps and rejects empty maps', () => {
+  expect(normalizeRequiredTranslatedText({ en_US: ' Acme ', zh_CN: '' })).toEqual({
+    en_US: 'Acme',
+    zh_CN: '',
+  });
+  expect(normalizeRequiredTranslatedText(' Solo ')).toBe('Solo');
+  try {
+    normalizeRequiredTranslatedText({ en_US: '  ', zh_CN: '' });
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('required');
+  }
+});
+
+test('translatedTextHasValue detects non-empty scalars and maps', () => {
+  expect(translatedTextHasValue('x')).toBe(true);
+  expect(translatedTextHasValue({ en_US: '', zh_CN: '甲' })).toBe(true);
+  expect(translatedTextHasValue({ en_US: '', zh_CN: '' })).toBe(false);
+  expect(translatedTextHasValue(null)).toBe(false);
+});
+
+test('normalizeNonNegativeInt and normalizeSequenceInt validate integers', () => {
+  expect(normalizeNonNegativeInt(undefined)).toBeUndefined();
+  expect(normalizeNonNegativeInt(null)).toBe(0);
+  expect(normalizeNonNegativeInt(5)).toBe(5);
+  expect(normalizeSequenceInt(undefined)).toBeUndefined();
+  expect(normalizeSequenceInt(null)).toBe(10);
+  expect(normalizeSequenceInt(-3)).toBe(-3);
+  try {
+    normalizeNonNegativeInt(-1);
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_integer');
+  }
+  try {
+    normalizeSequenceInt(2.5);
+    expect(false).toBe(true);
+  } catch (err) {
+    expect(err instanceof NormalizationError).toBe(true);
+    expect((err as NormalizationError).code).toBe('invalid_integer');
+  }
 });
