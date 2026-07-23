@@ -1,0 +1,77 @@
+# AGENTS.md
+
+## Cursor Cloud specific instructions
+
+Choysum is a single product: a Go binary (`choysum`) that embeds a QuickJS
+TypeScript runtime and serves the ERP platform (gRPC + gRPC-Web + Vue web UI)
+from one process. TypeScript/Vue modules under `modules/` are compiled and run
+inside that Go process; Node.js is only used for the dev/test toolchain, not at
+runtime. Tooling versions (Go 1.26.x, Node 22, Python 3) are already installed.
+
+### Build the CLI (required before install/run; artifacts are git-ignored)
+
+The embedded assets (`internal/bootstrap/web/dist`,
+`pkg/jsengine/scripts/vuesfc/dist/index.js`) and the `choysum` binary are all
+git-ignored, so they must exist before you can install modules or run the app.
+Regenerate + build after a fresh checkout or after changing embedded/web code:
+
+```bash
+go generate ./pkg/jsengine/scripts/vuesfc/...   # needs network (esm.sh)
+go generate ./internal/bootstrap/web/...         # needs network (esm.sh); 404 type-fetch warnings are harmless
+go build -o choysum .
+```
+
+The `go generate` steps fetch npm packages from `https://esm.sh`; the first run
+populates a cache under `.choysum/pkg/esm` and later runs can work offline.
+
+### Install modules, then run the server
+
+Modules live in the local `./modules` dir (auto-detected because cwd contains
+`modules/`). Install them before running; install is idempotent:
+
+```bash
+./choysum install core web base auth meta task partner
+./choysum run --config config.yaml   # serves http://localhost:9527 ( / redirects to /web/ )
+```
+
+Gotchas:
+- `server.environment` in config is a **scope factory name**; only `default` is
+  registered. Using `development`/`production` fails with
+  `scope factory not registered`. The built-in default is already `default`, so
+  running with no config works too; `config.yaml` here just enables `hotReload`.
+- Do **not** use `--with-demo` for `base`: its demo record hits
+  `NOT NULL constraint failed: base_company.timezone` and aborts the install.
+  Install without `--with-demo`; the non-demo bootstrap seed (roles + `admin`
+  user + `base.company_main`) is applied regardless.
+- Default DB is embedded SQLite at `.choysum/choysum.sqlite`; no external DB
+  needed. Postgres/MySQL and S3 document storage are optional.
+
+### Auth / first login
+
+The `auth` module seeds a `admin` user and a `base.company_main` company at
+install time (see `modules/auth/data/bootstrap.json`). New users can self-register
+at `/web/register`, which auto-logs in — the simplest way to exercise the stack.
+
+### Lint / test / build
+
+| Scope | Command |
+| --- | --- |
+| Go format (lint) | `go fmt ./...` |
+| Go build | `go build ./...` |
+| Go tests | `go test ./... -count=1` |
+| Module typecheck | `./choysum test typecheck <module>` or `--all` |
+| Module unit (BE+FE) | `./choysum test unit <module>` (`--be` / `--fe` to scope) |
+| Module E2E | `./choysum test e2e <module>` (auth/base/meta/task; needs Playwright browsers) |
+
+Module `test typecheck`/`test unit`/`test e2e` need the root `node_modules` on
+PATH. Populate it (matches CI) and prepend its bin dir:
+
+```bash
+mkdir -p .choysum/tmp
+python3 scripts/ci/compute_root_node_modules_deps.py --modules-path modules \
+  --target-modules-json '[]' --output .choysum/tmp/root-node-modules-deps.txt
+xargs npm install --include=dev --no-package-lock --no-save < .choysum/tmp/root-node-modules-deps.txt
+export PATH="$PWD/node_modules/.bin:$PATH"
+```
+
+For E2E also run `npx playwright install --with-deps chromium` first.
