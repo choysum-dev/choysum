@@ -10,9 +10,9 @@ import { formatUtcIso, userWallDateToUtc, utcToUserWallDate } from '@/web/web/ut
 
 describe('ODatetimeField conversion contract', () => {
   it('toView-equivalent: UTC ISO → user wall Date components', () => {
-    const wall = utcToUserWallDate('2024-11-03T05:00:00.000Z', 'America/New_York');
+    const wall = utcToUserWallDate('2024-11-03T06:00:00.000Z', 'America/New_York');
     expect(wall).not.toBeNull();
-    // Fall-back morning: 01:00 EST
+    // Fall-back morning: 01:00 EST (06:00Z); 05:00Z would still be 01:00 EDT.
     expect(wall!.getFullYear()).toBe(2024);
     expect(wall!.getMonth()).toBe(10);
     expect(wall!.getDate()).toBe(3);
