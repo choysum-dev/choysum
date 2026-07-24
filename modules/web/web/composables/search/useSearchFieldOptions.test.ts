@@ -84,4 +84,27 @@ describe('useSearchFieldOptions', () => {
     expect(resolveSearchFieldLabel(store, '')).toBe('');
     expect(resolveSearchFieldLabel(store, 'Name')).toBe('名称');
   });
+
+  it('covers sort ties, scalar filterables, and metadata-less options', () => {
+    const tied = sortSearchFieldOptions([
+      { prop: 'B', label: 'Beta', id: '1' },
+      { prop: 'A', label: 'Alpha', id: '1' },
+    ]);
+    expect(tied.map(i => i.prop)).toEqual(['A', 'B']);
+
+    expect(isFilterableSearchField('Tags', { type: 'manytomany' } as any)).toBe(false);
+    expect(isFilterableSearchField('Note', { type: 'text' } as any)).toBe(true);
+    expect(isGroupableSearchField('Ok', { type: 'varchar' } as any)).toBe(true);
+
+    const store = {
+      fieldsMetadata: {
+        Bare: {},
+        Typed: { type: 'int', string: 'Typed' },
+      },
+    } as any;
+    const opts = listSearchFieldOptions(store, () => true);
+    expect(opts.find(o => o.prop === 'Bare')?.type).toBeUndefined();
+    expect(opts.find(o => o.prop === 'Typed')?.type).toBe('int');
+    expect(resolveSearchFieldLabel(store, 'Missing')).toBe('Missing');
+  });
 });

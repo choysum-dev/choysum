@@ -71,19 +71,19 @@ describe('OSearchFilterCondition', () => {
           OSelectionField: { template: `<div class="f-selection" />` },
           OManyToOneField: { template: `<div class="f-m2o" />` },
           ODatetimeField: { template: `<div class="f-dt" />` },
-          OCharField: true,
-          OTextField: true,
-          OIntField: true,
-          OBigintField: true,
-          ONumberField: true,
-          ODecimalField: true,
-          OBooleanField: true,
-          ODateField: true,
-          OTimeField: true,
-          OJsonobjectField: true,
-          OManyToOneRefField: true,
-          OBinaryField: true,
-          OImageField: true,
+          OCharField: { template: `<div class="f-char" />` },
+          OTextField: { template: `<div class="f-text" />` },
+          OIntField: { template: `<div class="f-int" />` },
+          OBigintField: { template: `<div class="f-bigint" />` },
+          ONumberField: { template: `<div class="f-number" />` },
+          ODecimalField: { template: `<div class="f-decimal" />` },
+          OBooleanField: { template: `<div class="f-bool" />` },
+          ODateField: { template: `<div class="f-date" />` },
+          OTimeField: { template: `<div class="f-time" />` },
+          OJsonobjectField: { template: `<div class="f-json" />` },
+          OManyToOneRefField: { template: `<div class="f-m2oref" />` },
+          OBinaryField: { template: `<div class="f-bin" />` },
+          OImageField: { template: `<div class="f-img" />` },
         },
       },
     });
@@ -189,5 +189,89 @@ describe('OSearchFilterCondition', () => {
     condition.value = ['', 'a', null];
     await nextTick();
     expect((wrapper.vm as any).multiValues).toEqual(['a']);
+  });
+
+  it('maps every field type to a value editor and placeholder', async () => {
+    const types: Array<[string, string, string]> = [
+      ['Char', 'char', 'f-char'],
+      ['Text', 'text', 'f-text'],
+      ['Int', 'int', 'f-int'],
+      ['Big', 'bigint', 'f-bigint'],
+      ['Num', 'number', 'f-number'],
+      ['Dec', 'decimal', 'f-decimal'],
+      ['Bool', 'boolean', 'f-bool'],
+      ['Date', 'date', 'f-date'],
+      ['Time', 'time', 'f-time'],
+      ['Json', 'jsonobject', 'f-json'],
+      ['Ref', 'manytooneref', 'f-m2oref'],
+      ['Bin', 'binary', 'f-bin'],
+      ['Img', 'image', 'f-img'],
+      ['Unk', 'weird', 'f-varchar'],
+    ];
+    const fieldsMetadata: Record<string, any> = Object.fromEntries(
+      types.map(([prop, type]) => [prop, { type, string: prop, relationModel: type.includes('many') ? 'base.X' : undefined }])
+    );
+    for (const [prop, , cls] of types) {
+      const condition = reactive({ id: 'c1', field: prop, operator: '=', value: null });
+      const { wrapper } = mountRow(condition, {
+        store: {
+          fieldsMetadata,
+          getFieldMeta: undefined,
+        },
+      });
+      await nextTick();
+      expect(wrapper.find(`.${cls}`).exists(), prop).toBe(true);
+      const ph = (wrapper.vm as any).valuePlaceholder;
+      expect(typeof ph).toBe('string');
+      expect(ph.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('applies boolean default value and keeps multi-value arrays intact', async () => {
+    const condition = reactive({ id: 'c1', field: 'Bool', operator: 'is', value: null });
+    const { wrapper, onUpdateCondition } = mountRow(condition, {
+      store: {
+        fieldsMetadata: {
+          Bool: { type: 'boolean', string: 'Bool' },
+          Name: { type: 'varchar', string: 'Name' },
+        },
+      },
+    });
+    await (wrapper.vm as any).onOperatorChange('=');
+    expect(onUpdateCondition.mock.calls.at(-1)![1]).toEqual({ operator: '=', value: false });
+
+    condition.field = 'Name';
+    condition.value = ['a', 'b'];
+    await (wrapper.vm as any).onOperatorChange('in');
+    expect(onUpdateCondition.mock.calls.at(-1)![1]).toEqual({ operator: 'in' });
+
+    await (wrapper.vm as any).onMultiValuesChange('not-array' as any);
+    expect(onUpdateCondition).toHaveBeenCalledWith('c1', { value: [] });
+  });
+
+  it('falls back getFieldMeta via fieldsMetadata and clears relationStore on scalar fields', async () => {
+    const condition = reactive({ id: 'c1', field: 'PartnerId', operator: '=', value: null });
+    const { wrapper, store } = mountRow(condition, {
+      store: {
+        getFieldMeta: undefined,
+        getRelationStore: vi.fn(() => ({ destroy: vi.fn() })),
+      },
+    });
+    await nextTick();
+    expect((wrapper.vm as any).binding.store.getFieldMeta('PartnerId')?.type).toBe('manytoone');
+    expect((wrapper.vm as any).binding.store.getFieldMeta('Missing')).toBeUndefined();
+    condition.field = 'Name';
+    await nextTick();
+    expect((wrapper.vm as any).binding.relationStore).toBeUndefined();
+    expect(store.getRelationStore).toHaveBeenCalled();
+  });
+
+  it('uses tempId as condition identity when present', async () => {
+    const condition = reactive({ id: 'c1', tempId: 'tmp-9', field: 'Name', operator: '=', value: 'x' });
+    const { wrapper, onUpdateCondition, onRemoveCondition } = mountRow(condition);
+    await (wrapper.vm as any).onFieldChange('Status');
+    expect(onUpdateCondition.mock.calls[0][0]).toBe('tmp-9');
+    await wrapper.find('.rm').trigger('click');
+    expect(onRemoveCondition).toHaveBeenCalledWith('tmp-9');
   });
 });

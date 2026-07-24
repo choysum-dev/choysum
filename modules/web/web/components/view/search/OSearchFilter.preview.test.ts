@@ -67,7 +67,7 @@ describe('OSearchFilter preview labels', () => {
   });
 
   it('formats nested Or groups and empty roots', async () => {
-    const store = { fieldsMetadata: { Name: { type: 'varchar' } } } as any;
+    const store = { fieldsMetadata: { Name: { type: 'varchar' }, PartnerId: { type: 'manytoone' } } } as any;
     const draft = {
       root: {
         id: 'g1',
@@ -79,6 +79,7 @@ describe('OSearchFilter preview labels', () => {
             children: [
               { id: 'c1', field: 'Name', operator: 'is not', value: null },
               { id: 'c2', field: 'Name', operator: 'not in', value: 'solo' },
+              { id: 'c3', field: 'PartnerId', operator: '=', value: { Id: 'p1' } },
             ],
           },
         ],
@@ -88,14 +89,18 @@ describe('OSearchFilter preview labels', () => {
       props: {
         store,
         draft,
-        fields: [{ prop: 'Name', label: '名称' }],
+        fields: [
+          { prop: 'Name', label: '名称' },
+          { prop: 'PartnerId', label: '合作伙伴' },
+        ],
       },
       global: { stubs: { OSearchFilterGroup: true, 'el-button': true } },
     });
     const expr = wrapper.find('.expr').text();
     expect(expr).toContain('名称');
+    expect(expr).toContain('合作伙伴');
     expect(expr).toContain('AND');
-    expect(wrapper.find('.label').text()).toContain('2');
+    expect(wrapper.find('.label').text()).toContain('3');
 
     await wrapper.setProps({
       draft: { root: { id: 'empty', logic: 'And', children: [] } },

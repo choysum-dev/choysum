@@ -177,11 +177,14 @@ describe('useSearch actions and helpers', () => {
       ],
     };
     expect(helpers.summarizeFilter(nested)).toContain('Name =');
+    expect(helpers.summarizeFilter(nested, 0)).toBe('(empty)');
     expect(helpers.summarizeFilterFields(nested)).toContain('Name');
+    expect(helpers.summarizeFilterFields(nested, 0)).toBe('Not configured');
     expect(helpers.filterTooltip(nested)).toContain('Name =');
     expect(helpers.fieldLabel('Name')).toBe('Name');
     expect(helpers.summarizeFilter(null as any)).toBe('(empty)');
     expect(helpers.summarizeFilterFields(null as any)).toBe('Not configured');
+    expect(helpers.summarizeFilter({ id: 'e', logic: 'And', children: [] })).toBe('(empty)');
     expect(helpers.buildQuery(nested)).toBeTruthy();
   });
 
@@ -321,5 +324,32 @@ describe('useFilterPresets', () => {
     expect(api.appliedFilterNameSet.value.has('Active')).toBe(true);
     api.toggleDefaultFilter({ name: 'Active', filter: ['Active', '=', true] }, onChange);
     expect(filters.value.some(f => f.name === 'Active')).toBe(false);
+  });
+
+  it('reads store defaultFilters and named filters without query', () => {
+    const filters = ref<ConditionGroup[]>([]);
+    const applyNamedFilter = vi.fn();
+    const store = {
+      state: {
+        queryState: {
+          defaultFilters: [
+            { name: 'FromStore', query: ['A', '=', 1] },
+            { name: '' },
+            {
+              name: 'AsGroup',
+              // no query — falls through toFilters/normalizeFilters
+              logic: 'And',
+              children: [{ id: 'c', field: 'B', operator: '=', value: 2 }],
+            } as any,
+          ],
+        },
+      },
+    };
+    const api = useFilterPresets({ store, filtersRef: filters, applyNamedFilter });
+    expect(api.defaultFilterItems.value.map(i => i.name)).toEqual(['FromStore', 'AsGroup']);
+    const onChange = vi.fn();
+    api.toggleDefaultFilter({ name: 'Missing', filter: [] }, onChange);
+    // Already absent — remove is a no-op; apply still runs for missing names.
+    expect(applyNamedFilter).toHaveBeenCalled();
   });
 });

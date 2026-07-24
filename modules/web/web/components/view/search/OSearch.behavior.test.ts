@@ -194,4 +194,116 @@ describe('OSearch behavior', () => {
     const payload = wrapper.emitted('query-update')!.at(-1)![0] as any;
     expect(payload.appliedGroups?.some((g: any) => g.field === 'Status' || g === 'Status')).toBe(true);
   });
+
+  it('saves a complete edited draft and closes the editor', async () => {
+    const wrapper = mountSearch({
+      currentAppliedFilters: [
+        {
+          id: 'f1',
+          name: 'Named',
+          logic: 'And',
+          children: [{ id: 'c1', field: 'Name', operator: '=', value: 'ok' }],
+        },
+      ],
+    });
+    await flushPromises();
+    await wrapper.find('.o-search__tag').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.filter-editor').exists()).toBe(true);
+    const before = wrapper.emitted('query-update')?.length ?? 0;
+    await wrapper.find('.filter-editor .save').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.filter-editor').exists()).toBe(false);
+    expect((wrapper.emitted('query-update')?.length ?? 0)).toBeGreaterThan(before);
+  });
+
+  it('closes quietly when edited filter disappears before save', async () => {
+    const { ElMessage } = await import('element-plus');
+    (ElMessage.warning as any).mockClear?.();
+    const wrapper = mountSearch({
+      currentAppliedFilters: [
+        {
+          id: 'f-gone',
+          logic: 'And',
+          children: [{ id: 'c1', field: 'Name', operator: '=', value: 'a' }],
+        },
+      ],
+    });
+    await flushPromises();
+    await wrapper.find('.o-search__tag').trigger('click');
+    await nextTick();
+    expect(wrapper.find('.filter-editor').exists()).toBe(true);
+
+    // Parent clears tags while the editor is still open.
+    await wrapper.setProps({ currentAppliedFilters: [] });
+    await flushPromises();
+    await wrapper.find('.filter-editor .save').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('.filter-editor').exists()).toBe(false);
+    expect(ElMessage.warning).not.toHaveBeenCalled();
+  });
+
+  it('opens grouping menu from group tag and toggles applied menu items', async () => {
+    const wrapper = mountSearch({
+      currentAppliedGroups: [{ field: 'Status' }, { field: 'CreatedAt', granularity: 'month' }],
+    });
+    await nextTick();
+    await wrapper.find('.o-search__grouptag').trigger('click');
+    const statusItem = wrapper.findAll('.el-btn').find(b => b.text().includes('Status'));
+    expect(statusItem).toBeTruthy();
+    await statusItem!.trigger('click');
+    expect(wrapper.emitted('query-update')?.length).toBeGreaterThan(0);
+  });
+
+  it('pending-deletes last filter tag via backspace then removes it', async () => {
+    const wrapper = mountSearch({
+      currentAppliedFilters: [
+        {
+          id: 'f1',
+          name: 'One',
+          logic: 'And',
+          children: [{ id: 'c1', field: 'Name', operator: '=', value: 'a' }],
+        },
+      ],
+    });
+    await flushPromises();
+    const input = wrapper.find('input.o-search__input');
+    const el = input.element as HTMLInputElement;
+    Object.defineProperty(el, 'selectionStart', { configurable: true, get: () => 0 });
+    Object.defineProperty(el, 'selectionEnd', { configurable: true, get: () => 0 });
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    await nextTick();
+    expect(wrapper.find('.o-search__tag--pending-delete').exists()).toBe(true);
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    await flushPromises();
+    expect(wrapper.find('.o-search__tag').exists()).toBe(false);
+
+    // Typing clears pending marker when a tag remains.
+    await wrapper.setProps({
+      currentAppliedFilters: [
+        {
+          id: 'f2',
+          name: 'Two',
+          logic: 'And',
+          children: [{ id: 'c2', field: 'Name', operator: '=', value: 'b' }],
+        },
+      ],
+    });
+    await flushPromises();
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+    await nextTick();
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+    await nextTick();
+    expect(wrapper.find('.o-search__tag--pending-delete').exists()).toBe(false);
+  });
+
+  it('focuses the keyword input when the shell is clicked', async () => {
+    const wrapper = mountSearch();
+    const input = wrapper.find('input.o-search__input');
+    const focus = vi.spyOn(input.element as HTMLInputElement, 'focus');
+    await wrapper.find('.o-search__main').trigger('click');
+    expect(focus).toHaveBeenCalled();
+  });
 });

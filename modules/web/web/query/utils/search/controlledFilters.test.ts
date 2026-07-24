@@ -109,4 +109,12 @@ describe('controlledFilters sync', () => {
     expect(decision.apply).toBe(true);
     expect((decision.normalized[0].children[0] as any).field).toBe('Code');
   });
+
+  it('filtersSignature handles empty and non-serializable trees', () => {
+    expect(filtersSignature(null)).toBe('');
+    expect(filtersSignature([])).toBe('');
+    const cyclic: any = g('Name', 'a');
+    (cyclic as any).self = cyclic;
+    expect(filtersSignature([cyclic])).toBe('len:1');
+  });
 });

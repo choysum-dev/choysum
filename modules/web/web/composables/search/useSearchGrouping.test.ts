@@ -135,4 +135,31 @@ describe('useSearchGrouping', () => {
     expect(api.treeProps.value).toBe('value');
     expect(api.temporalComboLabel('CreatedAt', 'month')).toContain('Month');
   });
+
+  it('skips empty group specs and labels unknown plain object fields', () => {
+    const api = useSearchGrouping({
+      store: makeStore(),
+      currentAppliedGroups: () => [null, {}, { field: 'Ghost' }, { field: 'Status' }] as any,
+      onGroupsChange: () => {},
+    });
+    expect(api.currentAppliedGroups.value).toEqual(['Ghost', 'Status']);
+    expect(api.appliedGroupItems.value.find(i => i.field === 'Ghost')?.label).toBe('Ghost');
+    expect(api.appliedGroupItems.value.find(i => i.field === 'Status')?.label).toBe('Status');
+  });
+
+  it('toggles plain group when current list already uses object form', () => {
+    const groups = ref<any[]>([{ field: 'Status' }]);
+    const onGroupsChange = vi.fn((next: any[]) => {
+      groups.value = next;
+    });
+    const api = useSearchGrouping({
+      store: makeStore(),
+      currentAppliedGroups: () => groups.value,
+      onGroupsChange,
+    });
+    api.togglePlainGroupby('Status');
+    expect(groups.value.some((g: any) => g === 'Status' || g?.field === 'Status')).toBe(false);
+    api.setGroupbyLocal(['Status', { field: 'CreatedAt', granularity: 'day' }]);
+    expect(onGroupsChange).toHaveBeenCalled();
+  });
 });
