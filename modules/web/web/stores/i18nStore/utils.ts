@@ -7,6 +7,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { SUPPORTED_LOCALES } from './locales';
 import { DateTimeFormatType, SupportedLocale } from './types';
 import { formatCurrencyFromConfig, formatNumberFromConfig } from './language_format';
+import { formatUtcInTimeZone, getUserTimeZone, parseUtc } from '@/web/web/utils/datetime';
 
 // Enable the relative time plugin.
 dayjs.extend(relativeTime);
@@ -91,6 +92,9 @@ export function updateDocumentDirection(textDirection: string) {
 
 /**
  * Format date and time values.
+ *
+ * - `date` / `time`: no user-timezone conversion (calendar / clock literals).
+ * - `datetime` / `relative`: interpret input as UTC instant and show in user TZ.
  */
 export function formatDateTime(
   date: Date | string | number,
@@ -99,14 +103,22 @@ export function formatDateTime(
     type?: DateTimeFormatType;
     format?: string;
     isLong?: boolean;
+    timeZone?: string;
   }
 ): string {
   const type = options?.type || 'date';
   const isLong = options?.isLong || false;
+  const timeZone = options?.timeZone || getUserTimeZone();
 
   // Select the most appropriate format for the requested type.
   if (type === 'relative') {
-    return (dayjs(date) as DayjsWithRelativeTime).fromNow();
+    const iso =
+      date instanceof Date
+        ? date.toISOString()
+        : typeof date === 'number'
+          ? new Date(date).toISOString()
+          : String(date);
+    return (parseUtc(iso).tz(timeZone) as unknown as DayjsWithRelativeTime).fromNow();
   }
 
   let defaultFormat: string;
@@ -123,7 +135,12 @@ export function formatDateTime(
       defaultFormat = isLong ? config?.longDate || 'YYYY-MM-DD' : config?.shortDate || 'YYYY-MM-DD';
   }
 
-  return dayjs(date).format(options?.format || defaultFormat);
+  const format = options?.format || defaultFormat;
+  if (type === 'datetime') {
+    return formatUtcInTimeZone(date, format, timeZone);
+  }
+
+  return dayjs(date).format(format);
 }
 
 /**

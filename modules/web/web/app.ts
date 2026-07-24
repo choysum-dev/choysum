@@ -23,6 +23,7 @@ import {
   trackComposerMessageRevision,
 } from './i18n';
 import { detectBrowserTimezone, resolveRequestTimezone } from './utils/request_timezone';
+import { setUserTimeZoneResolver } from './utils/datetime';
 import { useAuthStore } from '@/auth/web/stores/auth';
 
 // Import Element Plus.
@@ -57,6 +58,15 @@ function setupApp(app: ChoysumWebApp): void {
   const i18nStore = useI18nStore();
 
   // RequestContext: locale (format) + lang (terminology) + tz (User → browser; server applies D7).
+  setUserTimeZoneResolver(() => {
+    try {
+      const authStore = useAuthStore();
+      return (authStore.currentUser as any)?.Timezone ?? (authStore.identity as any)?.metadata?.timezone;
+    } catch {
+      return null;
+    }
+  });
+
   setGlobalRequestContextProvider(() => {
     let userTz = '';
     try {

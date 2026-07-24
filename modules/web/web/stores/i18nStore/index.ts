@@ -221,6 +221,7 @@ export const useI18nStore = defineStore(
         type?: DateTimeFormatType;
         format?: string;
         isLong?: boolean;
+        timeZone?: string;
       }
     ): string {
       return formatDateTime(date, currentLocale.value.dateTimeFormat, options);

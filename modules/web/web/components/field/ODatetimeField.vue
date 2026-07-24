@@ -44,6 +44,13 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
+import {
+  formatUtcIso,
+  getUserTimeZone,
+  parseUtc,
+  userWallDateToUtc,
+  utcToUserWallDate,
+} from '@/web/web/utils/datetime';
 dayjs.extend(customParseFormat);
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ODatetimeField' });
@@ -114,49 +121,52 @@ function padFractionToSSS(input: string): string {
 }
 
 function parseFlexible(s: string): dayjs.Dayjs | null {
-  let m = dayjs(s, storageFormat.value, true);
+  let m = parseUtc(s, storageFormat.value, true);
   if (m.isValid()) return m;
 
   const padded = padFractionToSSS(s);
   if (padded !== s) {
-    m = dayjs(padded, storageFormat.value, true);
+    m = parseUtc(padded, storageFormat.value, true);
     if (m.isValid()) return m;
   }
 
   const candidates = ['YYYY-MM-DD[T]HH:mm:ssZ', 'YYYY-MM-DD[T]HH:mm:ss.SSSZ', 'YYYY-MM-DD[T]HH:mm:ss[Z]', 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]'];
   for (const f of candidates) {
-    m = dayjs(s, f, true);
+    m = parseUtc(s, f, true);
     if (m.isValid()) return m;
     if (padded !== s) {
-      m = dayjs(padded, f, true);
+      m = parseUtc(padded, f, true);
       if (m.isValid()) return m;
     }
   }
 
-  m = dayjs(s);
+  m = parseUtc(s);
   return m.isValid() ? m : null;
 }
 
 const toView = (raw: any): FieldType => {
   if (raw == null) return null;
-  if (raw instanceof Date) return isNaN(raw.getTime()) ? null : raw;
+  if (raw instanceof Date) {
+    return utcToUserWallDate(raw, getUserTimeZone());
+  }
   if (typeof raw === 'string') {
     const m = parseFlexible(raw);
-    return m ? m.toDate() : null;
+    return m ? utcToUserWallDate(m.toDate(), getUserTimeZone()) : null;
   }
   const d = new Date(raw);
-  return isNaN(d.getTime()) ? null : d;
+  return isNaN(d.getTime()) ? null : utcToUserWallDate(d, getUserTimeZone());
 };
 
 const fromView = (v: FieldType) => {
   if (v == null) return null as any;
-  const m = v instanceof Date ? dayjs(v) : dayjs(new Date(v));
-  if (!m.isValid()) return null as any;
-  return m.format(storageFormat.value) as unknown as V;
+  const utc = userWallDateToUtc(v instanceof Date ? v : new Date(v), getUserTimeZone());
+  if (!utc) return null as any;
+  return (formatUtcIso(utc, storageFormat.value) ?? null) as unknown as V;
 };
 
 const toDisplayText = (v: FieldType) => {
   if (!v) return '';
+  // fieldValue is a user-TZ wall-carrier Date from toView; format local components as-is.
   const m = dayjs(v);
   return m.isValid() ? m.format(displayFormat.value) : '';
 };
