@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="o-search">
-    <div class="o-search__main" ref="searchMainRef" @click="focusInput" @mouseenter="isHovering = true" @mouseleave="isHovering = false">
+    <div class="o-search__main" ref="searchMainRef" @click="focusInput">
       <el-tooltip :content="_t('Search')" placement="top">
         <el-button
           size="small"
@@ -166,7 +166,7 @@ import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import OSearchFilter from './OSearchFilter.vue';
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
-import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect } from 'element-plus';
+import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect, ElMessage } from 'element-plus';
 import { useDebouncedFnCancelable } from '@/web/web/composables/useDebouncedFnCancelable';
 import type { TemporalGranularity, GroupBySpec } from '@/core/service/api/query';
 import type { ConditionGroup, QueryUpdatePayload, NamedFilter } from '@/web/web/query/types';
@@ -254,7 +254,6 @@ const inputName = computed(() => `${(store as any)?.storeId || 'search'}-keyword
 const inputId = computed(() => `${inputName.value}-input`);
 const inputRef = ref<HTMLInputElement | null>(null);
 const searchMainRef = ref<HTMLElement | null>(null);
-const isHovering = ref(false);
 const isFocused = ref(false);
 const pendingDeleteFilterId = ref<string | null>(null);
 const menuVisible = ref(false);
@@ -265,11 +264,11 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
   store,
   filtersRef: filters as any,
   applyNamedFilter,
-  defaultFiltersOverride: computed(() => {
+  defaultFiltersOverride: () => {
     const df = props.defaultFilters as any;
     if (!df) return undefined;
     return Array.isArray(df) ? df : [df];
-  }).value,
+  },
 });
 
 /* Debounced query emission. */
@@ -335,10 +334,7 @@ const availableFields = computed(() => {
 /* Grouping fields and controls built from a reusable composable. */
 type GB = string | { field: string; granularity?: TemporalGranularity };
 const {
-  granularityOptions,
   availableGroupFields,
-  temporalGroupFields,
-  nonTemporalGroupFields,
   groupTreeData,
   DUMMY_ROOT_SUFFIX,
   temporalComboLabel,
@@ -542,13 +538,15 @@ function onEditorCancel() {
 
 async function onSaveDraft() {
   const ok = saveDraft();
-  if (ok) {
-    const p = buildPayload();
-    emit('query-update', p);
-    closeEditor(true);
-    pendingDeleteFilterId.value = null;
-    await nextTick();
+  if (!ok) {
+    ElMessage.warning(_t('Add at least one condition before saving'));
+    return;
   }
+  const p = buildPayload();
+  emit('query-update', p);
+  closeEditor(true);
+  pendingDeleteFilterId.value = null;
+  await nextTick();
 }
 
 function onAddFilterClickAndClose() {
@@ -590,16 +588,26 @@ watch(
   { immediate: true }
 );
 
-// Sync controlled filters into local state with a simple length-based strategy.
+// Sync controlled filters into local state by content signature (not length alone).
+function filtersSignature(list: ConditionGroup[] | undefined | null): string {
+  if (!list || !list.length) return '';
+  try {
+    return JSON.stringify(list);
+  } catch {
+    return `len:${list.length}`;
+  }
+}
+
 watch(
   () => props.currentAppliedFilters,
   next => {
-    if (!next) return;
-    const cur = filters.value || [];
-    if (cur.length === 0 || cur.length !== next.length) {
-      filters.value = normalizeFilters(next as any);
+    if (next == null) return;
+    const normalized = normalizeFilters(next as any);
+    if (filtersSignature(filters.value) !== filtersSignature(normalized)) {
+      filters.value = normalized;
     }
-  }
+  },
+  { deep: true }
 );
 
 // Force one initial sync so route round-trips do not drop filter tags.
@@ -607,17 +615,8 @@ onMounted(() => {
   const cf = props.currentAppliedFilters as any;
   if (Array.isArray(cf) && cf.length > 0) {
     filters.value = normalizeFilters(cf);
-  } else {
   }
 });
-
-// Controlled grouping changes currently affect display only.
-watch(
-  () => props.currentAppliedGroups,
-  () => {
-    // Do not auto-search; keep control explicit at the parent level.
-  }
-);
 </script>
 
 <style scoped lang="scss">

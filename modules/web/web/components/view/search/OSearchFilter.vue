@@ -33,13 +33,14 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, provide } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import OSearchFilterGroup from './OSearchFilterGroup.vue';
 import { valueToPreview } from '@/web/web/query/utils/condition/like';
 import { getOperatorLabel } from '@/web/web/query/utils/filter/operators';
-import { useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
+import { FilterEditorBindingsKey, useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
+import { isGroup } from '@/web/web/query/utils/filter/structures';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearchFilter' });
@@ -73,15 +74,10 @@ const emit = defineEmits<{
   (e: 'save'): void;
 }>();
 
-// Reuse metadata helpers from the shared composable.
-const { metaTypeOf } = useFilterEditorBindings(props.store as any);
-
-function isGroupNode(n: any): n is ConditionGroup {
-  return n && Array.isArray((n as any).children);
-}
-function nodeId(n: any): string | undefined {
-  return (n && (n.tempId || n.id)) as string | undefined;
-}
+// One bindings instance for the whole editor tree (relation-store cache shared by nested groups).
+const bindings = useFilterEditorBindings(props.store as any);
+provide(FilterEditorBindingsKey, bindings);
+const { metaTypeOf } = bindings;
 
 function onSetLogic(logic: 'And' | 'Or', groupId?: string) {
   emit('logic-change', logic, groupId);
@@ -104,10 +100,6 @@ function onUpdateCondition(id: string, patch: Partial<Condition>) {
 
 // Recursive preview and leaf counting using SQL-style formatting.
 const { preview, leafCount } = (() => {
-  function toSqlOp(op: string): string {
-    return /[a-z]/i.test(op) ? op.toUpperCase() : op;
-  }
-
   // Convert many-to-one objects to ids for preview output.
   function toPreviewValue(field: string, raw: any): any {
     const t = metaTypeOf(field);
@@ -119,9 +111,8 @@ const { preview, leafCount } = (() => {
   }
 
   function expGroup(g: ConditionGroup): string {
-    const children: any[] = Array.isArray((g as any).children) ? (g as any).children : [];
-    // Treat non-array children as empty.
-    const inner = children.map(ch => (isGroupNode(ch) ? expGroup(ch as ConditionGroup) : expCond(ch as Condition))).filter(Boolean);
+    const children: any[] = Array.isArray(g.children) ? g.children : [];
+    const inner = children.map(ch => (isGroup(ch) ? expGroup(ch) : expCond(ch as Condition))).filter(Boolean);
     if (inner.length === 0) return _t('(empty)');
     if (inner.length === 1) return inner[0]!;
     const joiner = g.logic === 'Or' ? 'OR' : 'AND';
@@ -130,7 +121,7 @@ const { preview, leafCount } = (() => {
   function expCond(c: Condition): string {
     if (!c.field || !c.operator) return _t('(incomplete)');
     const op = String(c.operator);
-    const label = getOperatorLabel(op); // Use the user-friendly operator label.
+    const label = getOperatorLabel(op);
     const pv = toPreviewValue(c.field, c.value);
     const previewOpts = { fieldType: metaTypeOf(c.field) };
 
@@ -146,10 +137,9 @@ const { preview, leafCount } = (() => {
   }
   function countLeaf(g: ConditionGroup): number {
     let n = 0;
-    const children: any[] = Array.isArray((g as any).children) ? (g as any).children : [];
-    // Treat non-array children as empty.
+    const children: any[] = Array.isArray(g.children) ? g.children : [];
     for (const ch of children) {
-      n += isGroupNode(ch) ? countLeaf(ch as ConditionGroup) : 1;
+      n += isGroup(ch) ? countLeaf(ch) : 1;
     }
     return n;
   }
@@ -167,7 +157,6 @@ const { preview, leafCount } = (() => {
   gap: 16px;
 }
 
-/* Footer preview and actions. */
 .o-search-filter__footer {
   display: flex;
   flex-direction: column;

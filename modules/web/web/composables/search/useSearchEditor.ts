@@ -3,6 +3,7 @@
 
 import { ref } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
+import { createFilter, deepCloneFilter, genId, isGroup } from '@/web/web/query/utils/filter/structures';
 
 export interface UseSearchEditorOptions {
   createGroupId?: () => string;
@@ -10,24 +11,18 @@ export interface UseSearchEditorOptions {
   filters: import('vue').Ref<ConditionGroup[]>;
 }
 
-function defaultGroupId() {
-  return `grp_${Date.now()}_${Math.random()}`;
-}
-function defaultCondId() {
-  return `c_${Date.now()}_${Math.random()}`;
-}
-
 export function useSearchEditor(opts: UseSearchEditorOptions) {
   const { filters } = opts;
-  const createGroupId = opts.createGroupId || defaultGroupId;
-  const createCondId = opts.createCondId || defaultCondId;
+  const createGroupId = opts.createGroupId || genId;
+  const createCondId = opts.createCondId || genId;
 
   const isEditorOpen = ref(false);
   const activeFilterId = ref<string | null>(null);
   const draftFilter = ref<{ baseId?: string; root: ConditionGroup } | null>(null);
 
   function openNewFilter() {
-    const root: ConditionGroup = { id: `draft_root_${Date.now()}`, logic: 'And', children: [] } as any;
+    const root = createFilter('And', []);
+    root.id = createGroupId();
     draftFilter.value = { baseId: undefined, root };
     isEditorOpen.value = true;
     activeFilterId.value = null;
@@ -35,8 +30,9 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   function openEditFilter(id: string) {
     const target = filters.value.find(f => f.id === id);
     if (!target) return;
-    if (!Array.isArray((target as any).children)) return;
-    const cloned: ConditionGroup = JSON.parse(JSON.stringify(target));
+    if (!Array.isArray(target.children)) return;
+    // Preserve ids so Vue keys stay stable while editing.
+    const cloned = deepCloneFilter(target);
     draftFilter.value = { baseId: id, root: cloned };
     activeFilterId.value = id;
     isEditorOpen.value = true;
@@ -55,8 +51,9 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   function addDraftGroup(parentId?: string) {
     if (!draftFilter.value) return;
     const parent = findGroupInDraft(parentId) || draftFilter.value.root;
-    const newGroup: ConditionGroup = { id: createGroupId(), logic: 'And', children: [] } as any;
-    parent.children.push(newGroup as any);
+    const group = createFilter('And', []);
+    group.id = createGroupId();
+    parent.children.push(group);
   }
   function removeDraftGroup(groupId: string) {
     if (!draftFilter.value) return;
@@ -66,8 +63,7 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   function addDraftCondition(parentId?: string) {
     if (!draftFilter.value) return;
     const parent = findGroupInDraft(parentId) || draftFilter.value.root;
-    const cond: Condition = { id: createCondId(), field: '', operator: '=', value: '' };
-    parent.children.push(cond);
+    parent.children.push({ id: createCondId(), field: '', operator: '=', value: '' });
   }
   function updateDraftCondition(tempId: string, patch: Partial<Condition>) {
     if (!draftFilter.value) return;
@@ -107,7 +103,7 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
     while (stack.length) {
       const g = stack.pop()!;
       if (g.id === groupId) return g;
-      for (const ch of g.children) if ((ch as any).children) stack.push(ch as ConditionGroup);
+      for (const ch of g.children) if (isGroup(ch)) stack.push(ch);
     }
     return null;
   }
@@ -118,7 +114,7 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
     while (stack.length) {
       const g = stack.pop()!;
       for (const ch of g.children) {
-        if ((ch as any).children) stack.push(ch as ConditionGroup);
+        if (isGroup(ch)) stack.push(ch);
         else if ((ch as Condition).id === id) return ch as Condition;
       }
     }
@@ -126,9 +122,9 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   }
   function removeNodeById(group: ConditionGroup, id: string) {
     group.children = group.children.filter(ch => {
-      if ((ch as any).children) {
-        if ((ch as ConditionGroup).id === id) return false;
-        removeNodeById(ch as ConditionGroup, id);
+      if (isGroup(ch)) {
+        if (ch.id === id) return false;
+        removeNodeById(ch, id);
         return true;
       }
       return (ch as Condition).id !== id;
@@ -136,11 +132,9 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
   }
 
   return {
-    // state
     isEditorOpen,
     activeFilterId,
     draftFilter,
-    // ops
     openNewFilter,
     openEditFilter,
     closeEditor,

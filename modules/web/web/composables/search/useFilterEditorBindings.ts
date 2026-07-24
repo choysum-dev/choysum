@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, onUnmounted } from 'vue';
+import { inject, onUnmounted, type InjectionKey } from 'vue';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
 import {
@@ -11,6 +11,15 @@ import {
   defaultValueFor as baseDefault,
 } from '@/web/web/query/utils/filter/operators';
 import type { OperatorOption } from '@/web/web/query/utils/filter/operators';
+
+export type FilterEditorBindings = ReturnType<typeof useFilterEditorBindings>;
+
+/** Shared across nested OSearchFilterGroup instances so relation stores are created once. */
+export const FilterEditorBindingsKey: InjectionKey<FilterEditorBindings> = Symbol('FilterEditorBindings');
+
+export function useInjectedFilterEditorBindings(store: WebModelStore<any>): FilterEditorBindings {
+  return inject(FilterEditorBindingsKey, null) ?? useFilterEditorBindings(store);
+}
 
 export function useFilterEditorBindings(store: WebModelStore<any>) {
   function metaTypeOf(field?: string): string {

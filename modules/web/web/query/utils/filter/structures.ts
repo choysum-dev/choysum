@@ -8,8 +8,41 @@ let _id = 0;
 /**
  * Generates a stable local identifier for filter nodes.
  */
-function genId() {
+export function genId() {
   return `f_${Date.now().toString(36)}_${(++_id).toString(36)}`;
+}
+
+/**
+ * Deep-clones a filter group while preserving node identifiers (editor drafts).
+ * Avoids structuredClone so plain filter trees work in all Vitest environments.
+ */
+export function deepCloneFilter(f: ConditionGroup): ConditionGroup {
+  return {
+    id: f.id,
+    logic: f.logic,
+    ...(f.name !== undefined ? { name: f.name } : {}),
+    children: (Array.isArray(f.children) ? f.children : []).map(ch => {
+      if (isGroup(ch)) return deepCloneFilter(ch);
+      const c = ch as Condition;
+      return {
+        id: c.id,
+        field: c.field,
+        operator: c.operator,
+        value: cloneFilterValue(c.value),
+      };
+    }),
+  } as ConditionGroup;
+}
+
+function cloneFilterValue(value: any): any {
+  if (value == null || typeof value !== 'object') return value;
+  if (value instanceof Date) return new Date(value.getTime());
+  if (Array.isArray(value)) return value.map(cloneFilterValue);
+  const out: Record<string, any> = {};
+  for (const key of Object.keys(value)) {
+    out[key] = cloneFilterValue(value[key]);
+  }
+  return out;
 }
 
 /**

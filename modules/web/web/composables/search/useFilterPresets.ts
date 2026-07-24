@@ -1,24 +1,26 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed } from 'vue';
+import { computed, toValue, type MaybeRefOrGetter, type Ref } from 'vue';
 import { toFilters, normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import type { ConditionGroup, NamedFilter } from '@/web/web/query/types';
 
 export function useFilterPresets(params: {
   store: any;
-  filtersRef: import('vue').Ref<ConditionGroup[]>;
+  filtersRef: Ref<ConditionGroup[]>;
   applyNamedFilter: (nf: NamedFilter) => void;
-  defaultFiltersOverride?: NamedFilter[] | NamedFilter;
+  /** Reactive override; prefer a getter/computed so late-arriving presets stay live. */
+  defaultFiltersOverride?: MaybeRefOrGetter<NamedFilter[] | NamedFilter | undefined>;
 }) {
   const { store, filtersRef, applyNamedFilter, defaultFiltersOverride } = params;
 
   type FilterMenuItem = { name: string; filter: any };
   const defaultFilterItems = computed<FilterMenuItem[]>(() => {
-    const src = defaultFiltersOverride
-      ? Array.isArray(defaultFiltersOverride)
-        ? defaultFiltersOverride
-        : [defaultFiltersOverride]
+    const override = toValue(defaultFiltersOverride);
+    const src = override
+      ? Array.isArray(override)
+        ? override
+        : [override]
       : (((store.state as any)?.queryState?.defaultFilters || []) as Array<NamedFilter>);
     const defs = (src || []) as Array<{ name?: string; query?: any }>;
     return defs

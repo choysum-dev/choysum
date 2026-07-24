@@ -4,3 +4,6 @@
 export * from './useSearchState';
 export * from './useSearchEditor';
 export * from './useSearch';
+export * from './useFilterPresets';
+export * from './useGroupingOptions';
+export * from './useFilterEditorBindings';

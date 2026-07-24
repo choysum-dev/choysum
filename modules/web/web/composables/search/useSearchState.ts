@@ -4,7 +4,7 @@
 // Local UI search state decoupled from store.state.queryState.
 // Used for temporary keyword and filter editing inside OSearch-like components.
 // Controllers persist the final keyword and filters back into the shared query state.
-import { ref, computed, reactive } from 'vue';
+import { ref, computed } from 'vue';
 import type { ConditionGroup, NamedFilter } from '@/web/web/query/types';
 import { toFilters, normalizeFilters } from '@/web/web/query/utils/filter/structures';
 
@@ -15,17 +15,12 @@ export interface UseSearchStateOptions {
 }
 
 export function useSearchState(opts: UseSearchStateOptions = {}) {
-  const state = reactive({
-    keyword: opts.initialKeyword || '',
-    keywordFields: opts.keywordFields,
-    filters: normalizeFilters(opts.initialFilters || []) as ConditionGroup[],
-  });
-
-  const keyword = ref(state.keyword);
-  const filters = ref<ConditionGroup[]>(state.filters);
+  const keyword = ref(opts.initialKeyword || '');
+  const filters = ref<ConditionGroup[]>(normalizeFilters(opts.initialFilters || []) as ConditionGroup[]);
+  const keywordFieldsList = ref<string[] | undefined>(opts.keywordFields);
 
   const hasActive = computed(() => !!keyword.value.trim() || filters.value.length > 0);
-  const keywordFields = computed(() => state.keywordFields || []);
+  const keywordFields = computed(() => keywordFieldsList.value || []);
 
   function setKeyword(v: string) {
     keyword.value = v;
