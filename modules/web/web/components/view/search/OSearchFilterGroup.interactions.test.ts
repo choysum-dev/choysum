@@ -54,9 +54,12 @@ describe('OSearchFilterGroup interactions', () => {
           'el-radio-group': {
             props: ['modelValue'],
             emits: ['update:modelValue'],
-            template: `<div class="rg"><button class="to-or" @click="$emit('update:modelValue', 'Or')" /></div>`,
+            template: `<div class="rg"><slot /><button class="to-or" @click="$emit('update:modelValue', 'Or')" /></div>`,
           },
-          'el-radio': true,
+          'el-radio': {
+            props: ['value', 'label'],
+            template: `<div class="radio" :data-value="value ?? label" />`,
+          },
           'el-button': {
             template: `<button class="btn" @click="$emit('click')"><slot /></button>`,
           },
@@ -65,6 +68,9 @@ describe('OSearchFilterGroup interactions', () => {
         },
       },
     });
+
+    // Guard the Element Plus radio binding (`value`, not deprecated `label`).
+    expect(wrapper.findAll('.rg')[0]!.findAll('.radio').map(r => r.attributes('data-value'))).toEqual(['And', 'Or']);
 
     expect(wrapper.findAll('.cond').length).toBeGreaterThan(0);
     expect(wrapper.find('.osf-group--or').exists()).toBe(true);
