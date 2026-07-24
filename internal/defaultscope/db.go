@@ -137,12 +137,16 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 // Missing mysql.time_zone* tables make CONVERT_TZ return NULL and silently corrupt time buckets.
 const mysqlTimezoneTablesMissingMsg = "MySQL timezone tables are missing or incomplete (CONVERT_TZ returned NULL). Load IANA zones (e.g. mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql) before using timezone-aware time buckets."
 
-// checkMySQLTimezoneProbe interprets the CONVERT_TZ(UTC,UTC) IS NOT NULL probe result.
-func checkMySQLTimezoneProbe(convertTzUTCIdentityNotNull sql.NullBool, queryErr error) error {
+// mysqlTimezoneProbeNamedZone is a named IANA id used at connect time.
+// UTC→UTC can succeed with incomplete tz tables; named zones exercise real lookups.
+const mysqlTimezoneProbeNamedZone = "Asia/Shanghai"
+
+// checkMySQLTimezoneProbe interprets the CONVERT_TZ(UTC, named-zone) IS NOT NULL probe result.
+func checkMySQLTimezoneProbe(convertTzNamedZoneNotNull sql.NullBool, queryErr error) error {
 	if queryErr != nil {
 		return fmt.Errorf("MySQL timezone tables probe failed: %w", queryErr)
 	}
-	if !convertTzUTCIdentityNotNull.Valid || !convertTzUTCIdentityNotNull.Bool {
+	if !convertTzNamedZoneNotNull.Valid || !convertTzNamedZoneNotNull.Bool {
 		return errors.New(mysqlTimezoneTablesMissingMsg)
 	}
 	return nil
@@ -150,7 +154,8 @@ func checkMySQLTimezoneProbe(convertTzUTCIdentityNotNull sql.NullBool, queryErr 
 
 func ensureMySQLTimezoneTables(sqlDB *sql.DB) error {
 	var ok sql.NullBool
-	err := sqlDB.QueryRow(`SELECT CONVERT_TZ(UTC_TIMESTAMP(), 'UTC', 'UTC') IS NOT NULL`).Scan(&ok)
+	// Probe a named IANA zone — UTC→UTC alone can pass when named zones are still missing.
+	err := sqlDB.QueryRow(`SELECT CONVERT_TZ(UTC_TIMESTAMP(), 'UTC', '` + mysqlTimezoneProbeNamedZone + `') IS NOT NULL`).Scan(&ok)
 	return checkMySQLTimezoneProbe(ok, err)
 }
 

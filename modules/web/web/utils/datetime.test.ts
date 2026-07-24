@@ -20,6 +20,14 @@ describe('getUserTimeZone', () => {
     setUserTimeZoneResolver(() => 'America/New_York');
     expect(getUserTimeZone()).toBe('America/New_York');
   });
+
+  it('falls back to browser when resolver returns an invalid zone', () => {
+    setUserTimeZoneResolver(() => 'Not/A_Zone');
+    const tz = getUserTimeZone();
+    expect(tz).not.toBe('Not/A_Zone');
+    expect(typeof tz).toBe('string');
+    expect(tz.length).toBeGreaterThan(0);
+  });
 });
 
 describe('utc ↔ user wall', () => {

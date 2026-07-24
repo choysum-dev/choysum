@@ -152,7 +152,7 @@ function applyTimezone(dialect: DialectName, column: unknown, timezone?: string)
     case 'postgres':
       return sql`(${column}) AT TIME ZONE ${tzLit}`;
     case 'mysql': {
-      // Requires mysql.time_zone* tables. Startup probes CONVERT_TZ(UTC,UTC) in
+      // Requires mysql.time_zone* tables. Startup probes CONVERT_TZ(UTC, named zone) in
       // internal/defaultscope (ensureMySQLTimezoneTables); without them CONVERT_TZ
       // returns NULL and would silently corrupt day buckets.
       if (!moment.tz.zone(tz)) {

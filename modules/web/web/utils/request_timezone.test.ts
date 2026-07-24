@@ -15,9 +15,15 @@ describe('resolveRequestTimezone', () => {
     expect(resolveRequestTimezone('   ', 'UTC')).toBe('UTC');
   });
 
-  it('returns empty when both missing', () => {
+  it('falls back to browser when saved timezone is invalid', () => {
+    expect(resolveRequestTimezone('Not/A_Zone', 'Asia/Shanghai')).toBe('Asia/Shanghai');
+    expect(resolveRequestTimezone('Garbage', 'UTC')).toBe('UTC');
+  });
+
+  it('returns empty when both missing or invalid', () => {
     expect(resolveRequestTimezone(null, null)).toBe('');
     expect(resolveRequestTimezone(undefined, '')).toBe('');
+    expect(resolveRequestTimezone('Not/A_Zone', 'Also/Bad')).toBe('');
   });
 });
 

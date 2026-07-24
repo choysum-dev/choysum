@@ -1107,6 +1107,27 @@ test('model read D14 drill inherits UTC day bounds from offset-aware bucket key 
   expect(__buildGroupConditionForTest(dateSpec, '2024-07-02', 'America/New_York')).toEqual(['Date', '=', '2024-07-02']);
 });
 
+test('model read drill maps calendar-label bucket keys through timezone wall clock', () => {
+  // Cross-dialect keys are local YMD encoded at UTC midnight (not true UTC day bounds).
+  const spec = {
+    field: 'OrderedAt',
+    alias: 'OrderedAt__day',
+    isTime: true,
+    granularity: 'day',
+  } as any;
+
+  const fromZ = __buildGroupConditionForTest(spec, '2026-05-18T00:00:00.000Z', 'Asia/Shanghai') as any;
+  expect(fromZ.And[0]).toEqual(['OrderedAt', '>=', '2026-05-17T16:00:00.000Z']);
+  expect(fromZ.And[1]).toEqual(['OrderedAt', '<', '2026-05-18T16:00:00.000Z']);
+
+  const fromDateOnly = __buildGroupConditionForTest(spec, '2026-05-18', 'Asia/Shanghai') as any;
+  expect(fromDateOnly).toEqual(fromZ);
+
+  // Z / offset-less keys must not be treated as true UTC instants by rangeFromGroupedValue.
+  expect(__rangeFromGroupedValueForTest('2026-05-18T00:00:00.000Z', 'day')).toBe(undefined);
+  expect(__rangeFromGroupedValueForTest('2026-05-18', 'day')).toBe(undefined);
+});
+
 test('model read helper fill-gaps/tree-array-format branches cover non-time passthrough and null metrics', () => {
   const passthrough = __fillTemporalGapsForLevelForTest(
     [{ keyAliases: ['Name'], keyValues: ['A'], key: { Name: 'A' }, metrics: {}, count: 1, condition: [], children: [] }] as any,
