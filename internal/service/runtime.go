@@ -231,22 +231,31 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 				if normalized, ok := normalizeIANATimezone(value); ok {
 					baseCtx["tz"] = normalized
 				}
-			} else if value, ok := meta["timezone"].(string); ok {
-				if normalized, ok := normalizeIANATimezone(value); ok {
-					baseCtx["tz"] = normalized
+			}
+			if _, hasTz := baseCtx["tz"]; !hasTz {
+				if value, ok := meta["timezone"].(string); ok {
+					if normalized, ok := normalizeIANATimezone(value); ok {
+						baseCtx["tz"] = normalized
+					}
 				}
 			}
 			if value, ok := meta["companyTimezone"].(string); ok {
 				if normalized, ok := normalizeIANATimezone(value); ok {
 					baseCtx["companyTz"] = normalized
 				}
-			} else if value, ok := meta["companyTz"].(string); ok {
-				if normalized, ok := normalizeIANATimezone(value); ok {
-					baseCtx["companyTz"] = normalized
+			}
+			if _, hasCompanyTz := baseCtx["companyTz"]; !hasCompanyTz {
+				if value, ok := meta["companyTz"].(string); ok {
+					if normalized, ok := normalizeIANATimezone(value); ok {
+						baseCtx["companyTz"] = normalized
+					}
 				}
-			} else if value, ok := meta["activeCompanyTimezone"].(string); ok {
-				if normalized, ok := normalizeIANATimezone(value); ok {
-					baseCtx["companyTz"] = normalized
+			}
+			if _, hasCompanyTz := baseCtx["companyTz"]; !hasCompanyTz {
+				if value, ok := meta["activeCompanyTimezone"].(string); ok {
+					if normalized, ok := normalizeIANATimezone(value); ok {
+						baseCtx["companyTz"] = normalized
+					}
 				}
 			}
 
@@ -417,10 +426,14 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 }
 
 // normalizeIANATimezone trims and validates an IANA timezone id via time.LoadLocation.
-// Empty or invalid values return ok=false.
+// Empty or invalid values return ok=false. "Local" is rejected: LoadLocation accepts it
+// as the host zone, which is not a portable IANA id for ctx.tz / companyTz.
 func normalizeIANATimezone(value string) (string, bool) {
 	normalized := strings.TrimSpace(value)
 	if normalized == "" || len(normalized) > 64 {
+		return "", false
+	}
+	if strings.EqualFold(normalized, "Local") {
 		return "", false
 	}
 	if _, err := time.LoadLocation(normalized); err != nil {

@@ -440,6 +440,43 @@ func TestBuildJsContext_TimezoneFallback(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid preferred meta alias falls through to valid alias", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"tz":                "Not/A_Zone",
+			"timezone":          "Europe/Berlin",
+			"companyTimezone":   "Local",
+			"companyTz":         "Asia/Tokyo",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Europe/Berlin" {
+			t.Fatalf("tz mismatch: got=%v want=Europe/Berlin", got)
+		}
+		if got := ctxMap["companyTz"]; got != "Asia/Tokyo" {
+			t.Fatalf("companyTz mismatch: got=%v want=Asia/Tokyo", got)
+		}
+	})
+
+	t.Run("Local is rejected as IANA timezone", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"timezone":          "Local",
+			"companyTimezone":   "Local",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		// No valid user/company IANA → UTC fallback for display tz.
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+		if got, ok := ctxMap["companyTz"]; ok && got != nil && got != "" {
+			t.Fatalf("companyTz should be empty when only Local is present: got=%v", got)
+		}
+	})
+
 	t.Run("baggage sets clientTz even when user tz wins", func(t *testing.T) {
 		ctx := newCtxWithBaggage(map[string]any{
 			"timezone":          "America/New_York",

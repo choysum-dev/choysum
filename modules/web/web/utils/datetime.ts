@@ -85,6 +85,8 @@ export function utcToUserWallDate(input: Date | string | number | null | undefin
 
 /**
  * Interpret a picker Date's local components as wall clock in `tz` and return a UTC Date.
+ * Ambiguous DST-fold wall times (e.g. 01:30 on America/New_York fall-back) follow dayjs.tz
+ * default occurrence selection — no earlier/later fold flag is available in the FE stack (D21).
  */
 export function userWallDateToUtc(wallLocal: Date | null | undefined, tz: string = getUserTimeZone()): Date | null {
   if (wallLocal == null || Number.isNaN(wallLocal.getTime())) return null;

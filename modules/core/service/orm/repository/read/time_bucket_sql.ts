@@ -16,9 +16,9 @@ function isUtcTimezone(timezone: string): boolean {
 }
 
 /**
- * Resolve a fixed UTC offset (minutes) for zones without DST.
- * Returns null when the zone observes DST.
- * Throws on invalid IANA ids.
+ * Resolve a fixed UTC offset (minutes) when every offset segment in the SQL CASE
+ * window shares one offset. Returns null when the zone changes offset in-window
+ * (DST or historical transitions such as Asia/Shanghai 1990–1991).
  */
 export function resolveFixedUtcOffsetMinutes(timezone: string): number | null {
   const tz = String(timezone || '').trim();
@@ -27,10 +27,13 @@ export function resolveFixedUtcOffsetMinutes(timezone: string): number | null {
   }
   if (isUtcTimezone(tz)) return 0;
 
-  const jan = moment.tz([2024, 0, 1], tz).utcOffset();
-  const jul = moment.tz([2024, 6, 1], tz).utcOffset();
-  if (jan !== jul) return null;
-  return jan;
+  const segments = listZoneOffsetSegments(tz);
+  const first = segments[0]?.utcOffsetMinutes;
+  if (first == null) return null;
+  for (const seg of segments) {
+    if (seg.utcOffsetMinutes !== first) return null;
+  }
+  return first;
 }
 
 export function formatSqliteUtcOffsetModifier(offsetMinutes: number): string {
@@ -114,14 +117,20 @@ function buildSqliteOffsetAdjustedColumn(column: unknown, timezone: string): unk
   }
 
   const segments = listZoneOffsetSegments(timezone);
-  const elseMod = formatSqliteUtcOffsetModifier(segments[segments.length - 1]?.utcOffsetMinutes ?? 0);
-  let acc: unknown = sql`datetime(${column}, ${sql.raw(`'${elseMod}'`)})`;
-  for (let i = segments.length - 2; i >= 0; i--) {
+  const whens: unknown[] = [];
+  for (let i = 0; i < segments.length - 1; i++) {
     const untilIso = moment.utc(segments[i].untilMs).format('YYYY-MM-DD HH:mm:ss');
     const mod = formatSqliteUtcOffsetModifier(segments[i].utcOffsetMinutes);
-    acc = sql`CASE WHEN datetime(${column}) < datetime(${sql.raw(`'${untilIso}'`)}) THEN datetime(${column}, ${sql.raw(`'${mod}'`)}) ELSE ${acc} END`;
+    whens.push(
+      sql`WHEN datetime(${column}) < datetime(${sql.raw(`'${untilIso}'`)}) THEN datetime(${column}, ${sql.raw(`'${mod}'`)})`
+    );
   }
-  return acc;
+  const elseMod = formatSqliteUtcOffsetModifier(segments[segments.length - 1]?.utcOffsetMinutes ?? 0);
+  if (!whens.length) {
+    return sql`datetime(${column}, ${sql.raw(`'${elseMod}'`)})`;
+  }
+  // Flat CASE — nested ELSE CASE exceeds SQLite/MSSQL practical nesting limits for DST histories.
+  return sql`CASE ${sql.join(whens, sql` `)} ELSE datetime(${column}, ${sql.raw(`'${elseMod}'`)}) END`;
 }
 
 function buildMssqlOffsetAdjustedColumn(column: unknown, timezone: string): unknown {
@@ -132,13 +141,19 @@ function buildMssqlOffsetAdjustedColumn(column: unknown, timezone: string): unkn
   }
 
   const segments = listZoneOffsetSegments(timezone);
-  const elseOffset = segments[segments.length - 1]?.utcOffsetMinutes ?? 0;
-  let acc: unknown = sql`DATEADD(minute, ${sql.raw(String(elseOffset))}, ${column})`;
-  for (let i = segments.length - 2; i >= 0; i--) {
+  const whens: unknown[] = [];
+  for (let i = 0; i < segments.length - 1; i++) {
     const untilIso = moment.utc(segments[i].untilMs).format('YYYY-MM-DDTHH:mm:ss');
-    acc = sql`CASE WHEN ${column} < ${sql.raw(`'${untilIso}'`)} THEN DATEADD(minute, ${sql.raw(String(segments[i].utcOffsetMinutes))}, ${column}) ELSE ${acc} END`;
+    whens.push(
+      sql`WHEN ${column} < ${sql.raw(`'${untilIso}'`)} THEN DATEADD(minute, ${sql.raw(String(segments[i].utcOffsetMinutes))}, ${column})`
+    );
   }
-  return acc;
+  const elseOffset = segments[segments.length - 1]?.utcOffsetMinutes ?? 0;
+  if (!whens.length) {
+    return sql`DATEADD(minute, ${sql.raw(String(elseOffset))}, ${column})`;
+  }
+  // Flat CASE — MSSQL rejects nested CASE deeper than 10 levels (Msg 125).
+  return sql`CASE ${sql.join(whens, sql` `)} ELSE DATEADD(minute, ${sql.raw(String(elseOffset))}, ${column}) END`;
 }
 
 function applyTimezone(dialect: DialectName, column: unknown, timezone?: string): unknown {

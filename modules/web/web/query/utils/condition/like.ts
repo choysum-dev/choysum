@@ -57,7 +57,14 @@ export function valueToPreview(op: string, value: any, options?: ValuePreviewOpt
   const fieldType = String(options?.fieldType || '').toLowerCase();
   if (fieldType === 'date' || fieldType === 'time') {
     if (value instanceof Date) {
-      return fieldType === 'date' ? value.toISOString().slice(0, 10) : String(value);
+      if (fieldType === 'date') {
+        // Literal calendar day — use local Y/M/D, not toISOString (east-of-UTC shift).
+        const y = value.getFullYear();
+        const m = String(value.getMonth() + 1).padStart(2, '0');
+        const d = String(value.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+      return String(value);
     }
     return String(value ?? '');
   }

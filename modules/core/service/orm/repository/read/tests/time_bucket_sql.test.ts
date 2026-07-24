@@ -82,14 +82,15 @@ test('repository time bucket sql throws on unsupported granularity and dialect',
 test('repository time bucket sql applies fixed offset on sqlite/mssql for non-DST zones', () => {
   const col = sql.ref('demo.CreatedAt');
 
-  const sqliteExpr = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'Asia/Shanghai'));
-  const mssqlExpr = renderOperationNode(buildTimeBucketExpr('mssql', col, 'day', 'Asia/Shanghai'));
+  // Asia/Dubai is fixed +04 across the CASE window (unlike Asia/Shanghai which had DST in 1990–91).
+  const sqliteExpr = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'Asia/Dubai'));
+  const mssqlExpr = renderOperationNode(buildTimeBucketExpr('mssql', col, 'day', 'Asia/Dubai'));
 
   expect(sqliteExpr.includes('datetime')).toBe(true);
-  expect(sqliteExpr.includes('+08:00')).toBe(true);
+  expect(sqliteExpr.includes('+04:00')).toBe(true);
   expect(sqliteExpr.includes('AT TIME ZONE')).toBe(false);
   expect(mssqlExpr.includes('DATEADD')).toBe(true);
-  expect(mssqlExpr.includes('480')).toBe(true);
+  expect(mssqlExpr.includes('240')).toBe(true);
 });
 
 test('repository time bucket sql rejects invalid IANA on mysql', () => {
@@ -111,8 +112,10 @@ test('repository time bucket sql sqlite UTC timezone leaves column without datet
   expect(without.includes('start of day')).toBe(true);
 });
 
-test('repository time bucket sql resolveFixedUtcOffsetMinutes matches Asia/Shanghai and reports DST as null', () => {
-  expect(resolveFixedUtcOffsetMinutes('Asia/Shanghai')).toBe(480);
+test('repository time bucket sql resolveFixedUtcOffsetMinutes uses in-window segments not a single year snapshot', () => {
+  expect(resolveFixedUtcOffsetMinutes('Asia/Dubai')).toBe(240);
   expect(resolveFixedUtcOffsetMinutes('UTC')).toBe(0);
   expect(resolveFixedUtcOffsetMinutes('America/New_York')).toBe(null);
+  // Shanghai observed DST inside 1990–2040 → must not take the fixed +08 fast path.
+  expect(resolveFixedUtcOffsetMinutes('Asia/Shanghai')).toBe(null);
 });

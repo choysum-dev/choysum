@@ -20,6 +20,12 @@ describe('valueToPreview datetime wall-clock', () => {
     expect(valueToPreview('=', '2024-07-01', { fieldType: 'date', timeZone: 'America/New_York' })).toBe('2024-07-01');
   });
 
+  it('formats Date date-field values from local calendar components', () => {
+    // East-of-UTC: toISOString would shift to previous UTC day.
+    const localMorning = new Date(2024, 6, 1, 8, 0, 0); // 2024-07-01 local
+    expect(valueToPreview('=', localMorning, { fieldType: 'date', timeZone: 'Asia/Shanghai' })).toBe('2024-07-01');
+  });
+
   it('infers datetime from ISO strings when fieldType omitted', () => {
     expect(valueToPreview('=', '2024-06-30T16:00:00.000Z', { timeZone: 'Asia/Shanghai' })).toBe('2024-07-01 00:00:00');
   });

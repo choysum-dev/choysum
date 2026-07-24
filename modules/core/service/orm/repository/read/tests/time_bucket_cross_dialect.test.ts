@@ -37,12 +37,19 @@ test('cross-dialect time bucket sqlite DST SQL emits CASE offset transitions for
   expect(listZoneOffsetSegments('America/New_York').length).toBeGreaterThan(10);
 });
 
-test('cross-dialect time bucket sqlite Shanghai SQL still uses fixed +08:00 without CASE', () => {
+test('cross-dialect time bucket sqlite Dubai SQL still uses fixed +04:00 without CASE', () => {
+  const col = sql.ref('demo.CreatedAt');
+  const rendered = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'Asia/Dubai'));
+  expect(rendered.includes('+04:00')).toBe(true);
+  expect(rendered.includes('CASE WHEN')).toBe(false);
+  expect(resolveFixedUtcOffsetMinutes('Asia/Dubai')).toBe(240);
+});
+
+test('cross-dialect time bucket sqlite Shanghai uses CASE for historical DST in window', () => {
   const col = sql.ref('demo.CreatedAt');
   const rendered = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'Asia/Shanghai'));
-  expect(rendered.includes('+08:00')).toBe(true);
-  expect(rendered.includes('CASE WHEN')).toBe(false);
-  expect(resolveFixedUtcOffsetMinutes('Asia/Shanghai')).toBe(480);
+  expect(rendered.includes('CASE')).toBe(true);
+  expect(resolveFixedUtcOffsetMinutes('Asia/Shanghai')).toBe(null);
 });
 
 test('cross-dialect time bucket mssql DST SQL emits CASE DATEADD transitions', () => {
