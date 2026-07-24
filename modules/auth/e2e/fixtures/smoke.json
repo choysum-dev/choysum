@@ -25,7 +25,8 @@
         "IsActive": true,
         "CompanyId": { "ref": "base.company_main" },
         "CompanyIds": [{ "ref": "base.company_main" }, { "ref": "auth.e2e_company_child" }],
-        "Language": "zh_CN"
+        "Language": "zh_CN",
+        "Timezone": "UTC"
       }
     },
     {
