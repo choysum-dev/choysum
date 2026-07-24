@@ -29,6 +29,13 @@ function createProxyModel<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>
   return createModelProxy<T>(ModelCtor, entity, fields);
 }
 
+/**
+ * Resolve timezone for ReadGroup time buckets only.
+ *
+ * Defaults to `ctx.tz` (display). Explicit `options.timezone` wins (e.g. company
+ * report day buckets). Drill-down should keep UTC interval bounds, not re-bucket.
+ * Does not convert Search/Browse datetime wire values.
+ */
 function resolveReadGroupTimezone<T extends BaseModel>(ModelCtor: ModelReadFacadeCtor<T>, options: { timezone?: string }) {
   const ctx = ModelCtor.ctx as Context & { timezone?: string; tz?: string };
   return options?.timezone ?? ctx?.timezone ?? ctx?.tz;
