@@ -3,7 +3,7 @@
 
 import { ref } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
-import { createFilter, deepCloneFilter, genId, isGroup } from '@/web/web/query/utils/filter/structures';
+import { createFilter, deepCloneFilter, genId, isGroup, normalizeFilters } from '@/web/web/query/utils/filter/structures';
 
 export interface UseSearchEditorOptions {
   createGroupId?: () => string;
@@ -78,15 +78,22 @@ export function useSearchEditor(opts: UseSearchEditorOptions) {
 
   function saveDraft(): boolean {
     if (!draftFilter.value) return false;
-    const root: ConditionGroup = draftFilter.value.root;
-    if (!Array.isArray(root.children) || root.children.length === 0) return false;
+    const normalized = normalizeFilters([draftFilter.value.root]);
+    const root = normalized[0];
+    // Drop incomplete / empty nodes; refuse to persist a filter that would not affect Search.
+    if (!root || !Array.isArray(root.children) || root.children.length === 0) return false;
     if (draftFilter.value.baseId) {
       const i = filters.value.findIndex(f => f.id === draftFilter.value!.baseId);
       if (i >= 0) {
         root.id = draftFilter.value.baseId;
+        // Preserve display name from the draft when editing a named preset tag.
+        if (draftFilter.value.root.name) root.name = draftFilter.value.root.name;
         filters.value.splice(i, 1, root);
+      } else {
+        return false;
       }
     } else {
+      if (draftFilter.value.root.name) root.name = draftFilter.value.root.name;
       filters.value.push(root);
     }
     return true;

@@ -29,6 +29,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <component
       v-if="condition.field && requiresValue(condition.operator)"
+      :key="`${conditionId}-${condition.field}-${condition.operator}`"
       :is="fieldComponent"
       class="w-value"
       :store="store"
@@ -179,6 +180,9 @@ const fieldMeta = computed(() => {
   return {
     ...staticMeta,
     type: (staticMeta.type || t) as any,
+    // Filter value editors must stay writable even when the column is form-readonly
+    // (e.g. DisplayName / computed fields) — otherwise OFieldBase swaps to an empty display slot.
+    isReadonly: false,
   } as Partial<WebFieldMetadata>;
 });
 
@@ -191,7 +195,21 @@ const binding = useStandaloneField({
   record: {},
 }) as any;
 
-binding.store = props.store;
+// Keep ensureFieldsGet for selection/ACL overlays, but never let getFieldMeta re-apply isReadonly.
+binding.store = {
+  get fieldsMetadata() {
+    return (props.store as any)?.fieldsMetadata;
+  },
+  getFieldMeta(name: string) {
+    const raw =
+      typeof (props.store as any)?.getFieldMeta === 'function'
+        ? (props.store as any).getFieldMeta(name)
+        : (props.store as any)?.fieldsMetadata?.[name];
+    return raw ? { ...raw, isReadonly: false } : raw;
+  },
+  ensureFieldsGet: (...args: any[]) => (props.store as any)?.ensureFieldsGet?.(...args),
+  getFieldsGetTranslatedString: (name: string) => (props.store as any)?.getFieldsGetTranslatedString?.(name),
+};
 
 watch(
   () => [props.condition.field, fieldMeta.value] as const,

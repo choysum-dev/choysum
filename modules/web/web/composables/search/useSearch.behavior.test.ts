@@ -80,6 +80,42 @@ describe('useSearchEditor clone/ids', () => {
     (editor.draftFilter.value!.root.children[0] as any).value = 'changed';
     expect((filters.value[0].children[0] as any).value).toBe('a');
   });
+
+  it('rejects save when all conditions are incomplete', () => {
+    const filters = ref<ConditionGroup[]>([]);
+    const editor = useSearchEditor({ filters });
+    editor.openNewFilter();
+    editor.addDraftCondition();
+    expect(editor.saveDraft()).toBe(false);
+    expect(filters.value).toHaveLength(0);
+  });
+
+  it('saves only complete conditions after normalize', () => {
+    const filters = ref<ConditionGroup[]>([]);
+    const editor = useSearchEditor({ filters });
+    editor.openNewFilter();
+    editor.addDraftCondition();
+    editor.addDraftCondition();
+    const [incomplete, complete] = editor.draftFilter.value!.root.children as any[];
+    incomplete.field = '';
+    complete.field = 'Name';
+    complete.operator = '=';
+    complete.value = 'ok';
+    expect(editor.saveDraft()).toBe(true);
+    expect(filters.value).toHaveLength(1);
+    expect(filters.value[0].children).toHaveLength(1);
+    expect((filters.value[0].children[0] as any).field).toBe('Name');
+  });
+
+  it('clears draft when closeEditor(true)', () => {
+    const filters = ref<ConditionGroup[]>([]);
+    const editor = useSearchEditor({ filters });
+    editor.openNewFilter();
+    expect(editor.draftFilter.value).not.toBeNull();
+    editor.closeEditor(true);
+    expect(editor.draftFilter.value).toBeNull();
+    expect(editor.isEditorOpen.value).toBe(false);
+  });
 });
 
 describe('deepCloneFilter', () => {

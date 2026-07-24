@@ -30,7 +30,8 @@ describe('OSearchFilterCondition field resolver mapping', () => {
 
   test('filter value binding reaches model store and forces empty label (T4.4)', () => {
     const s = source();
-    expect(s).toContain('binding.store = props.store');
+    expect(s).toContain('binding.store = {');
+    expect(s).toContain('isReadonly: false');
     expect(s).toContain(':store="store"');
     expect(s).toContain(`:label="''"`);
   });

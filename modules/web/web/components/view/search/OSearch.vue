@@ -138,7 +138,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </div>
 
-    <el-dialog v-model="isEditorOpen" :title="filterEditorTitle" append-to-body destroy-on-close @close="closeEditor()">
+    <el-dialog v-model="isEditorOpen" :title="filterEditorTitle" append-to-body destroy-on-close @close="closeEditor(true)">
       <OSearchFilter
         v-if="draftFilter"
         :store="store"
@@ -539,7 +539,7 @@ function onEditorCancel() {
 async function onSaveDraft() {
   const ok = saveDraft();
   if (!ok) {
-    ElMessage.warning(_t('Add at least one condition before saving'));
+    ElMessage.warning(_t('Add at least one complete condition before saving'));
     return;
   }
   const p = buildPayload();
