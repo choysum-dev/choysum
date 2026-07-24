@@ -176,3 +176,16 @@ test('repository time bucket sql covers empty timezone and year/quarter DST bran
   expect(renderOperationNode(buildTimeBucketExpr('mssql', col, 'quarter', 'America/New_York')).includes('DATEFROMPARTS')).toBe(true);
   expect(renderOperationNode(buildTimeBucketExpr('mysql', col, 'month', 'Asia/Dubai')).includes('CONVERT_TZ')).toBe(true);
 });
+
+test('repository time bucket sql accepts UTC aliases and rejects mssql invalid IANA', () => {
+  const col = sql.ref('demo.CreatedAt');
+  expect(renderOperationNode(buildTimeBucketExpr('mysql', col, 'day', 'Etc/UTC')).includes('CONVERT_TZ')).toBe(true);
+  expect(renderOperationNode(buildTimeBucketExpr('mysql', col, 'day', 'GMT')).includes('CONVERT_TZ')).toBe(true);
+  expect(() => buildTimeBucketExpr('mssql', col, 'day', 'Not/A_Zone')).toThrow(/Invalid IANA/);
+});
+
+test('repository time bucket sql applySqlTimezoneAdjustment returns invalid dates unchanged', () => {
+  const invalid = new Date('invalid');
+  const out = applySqlTimezoneAdjustment(invalid, 'Asia/Shanghai');
+  expect(Number.isNaN(out.getTime())).toBe(true);
+});

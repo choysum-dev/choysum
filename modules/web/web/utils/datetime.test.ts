@@ -23,6 +23,18 @@ describe('getUserTimeZone', () => {
     expect(getUserTimeZone()).toBe('America/New_York');
   });
 
+  it('trims resolver whitespace before validating', () => {
+    setUserTimeZoneResolver(() => '  America/Chicago  ');
+    expect(getUserTimeZone()).toBe('America/Chicago');
+  });
+
+  it('falls back when resolver returns blank', () => {
+    setUserTimeZoneResolver(() => '');
+    const tz = getUserTimeZone();
+    expect(typeof tz).toBe('string');
+    expect(tz.length).toBeGreaterThan(0);
+  });
+
   it('falls back to browser when resolver returns an invalid zone', () => {
     setUserTimeZoneResolver(() => 'Not/A_Zone');
     const tz = getUserTimeZone();
@@ -61,6 +73,7 @@ describe('utc ↔ user wall', () => {
   it('returns null for empty / invalid wall conversions', () => {
     expect(utcToUserWallDate(null, 'UTC')).toBeNull();
     expect(utcToUserWallDate('', 'UTC')).toBeNull();
+    expect(utcToUserWallDate('not-a-date', 'UTC')).toBeNull();
     expect(userWallDateToUtc(null, 'UTC')).toBeNull();
     expect(userWallDateToUtc(new Date('invalid'), 'UTC')).toBeNull();
   });
@@ -73,6 +86,7 @@ describe('utc ↔ user wall', () => {
       '2024-06-30 12:00:00'
     );
     expect(formatUtcInTimeZone(null, 'YYYY-MM-DD', 'UTC')).toBe('');
+    expect(formatUtcInTimeZone('bogus-instant', 'YYYY-MM-DD', 'UTC')).toBe('');
     expect(formatUtcInTimeZone(Date.parse('2024-06-30T16:00:00.000Z'), 'YYYY-MM-DD HH:mm:ss', 'UTC')).toBe(
       '2024-06-30 16:00:00'
     );
@@ -82,6 +96,7 @@ describe('utc ↔ user wall', () => {
     expect(formatUtcIso('2024-07-01T00:00:00.000Z', 'YYYY-MM-DD[T]HH:mm:ss.SSSZ')).toBe('2024-07-01T00:00:00.000Z');
     expect(formatUtcIso(null, 'YYYY-MM-DD[T]HH:mm:ssZ')).toBeNull();
     expect(formatUtcIso('', 'YYYY-MM-DD[T]HH:mm:ssZ')).toBeNull();
+    expect(formatUtcIso('definitely-not-a-date', 'YYYY-MM-DD[T]HH:mm:ssZ')).toBeNull();
   });
 
   it('parseUtc supports strict format parsing', () => {
@@ -106,5 +121,11 @@ describe('utc ↔ user wall', () => {
     expect(start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
     expect(() => dayRange('bad', 'UTC')).toThrow(/Invalid date/);
     expect(() => dayRange(new Date('invalid'), 'UTC')).toThrow(/Invalid date/);
+  });
+
+  it('dayRange treats blank timezone as UTC', () => {
+    const { start, end } = dayRange('2024-07-01', '   ');
+    expect(start.toISOString()).toBe('2024-07-01T00:00:00.000Z');
+    expect(end.toISOString()).toBe('2024-07-02T00:00:00.000Z');
   });
 });

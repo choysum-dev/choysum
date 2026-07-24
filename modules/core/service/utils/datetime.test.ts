@@ -175,6 +175,17 @@ test('dayRange rejects invalid timezone', () => {
   expect(String((error as Error).message)).toContain('Invalid IANA');
 });
 
+test('dayRange rejects calendar strings that fail strict YYYY-MM-DD', () => {
+  let error: unknown;
+  try {
+    dayRange('2024-13-40', 'UTC');
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof Error).toBe(true);
+  expect(String((error as Error).message)).toContain('Invalid date');
+});
+
 test('businessToday with UTC matches fixed clock', () => {
   const now = new Date('2024-07-01T15:30:00.000Z');
   expect(businessToday('UTC', now)).toBe('2024-07-01');
@@ -234,6 +245,27 @@ test('businessToday falls back to UTC when companyTz absent', () => {
   expect(withContext({} as any, () => businessYesterday(undefined, now))).toBe('2024-06-30');
 });
 
+test('businessToday rejects invalid explicit and company timezones', () => {
+  const now = new Date('2024-07-01T15:30:00.000Z');
+  let explicit: unknown;
+  try {
+    businessToday('Not/A_Zone', now);
+  } catch (err) {
+    explicit = err;
+  }
+  expect(explicit instanceof Error).toBe(true);
+  expect(String((explicit as Error).message)).toContain('Invalid IANA');
+
+  let company: unknown;
+  try {
+    withContext({ companyTz: 'Not/A_Zone' } as any, () => businessToday(undefined, now));
+  } catch (err) {
+    company = err;
+  }
+  expect(company instanceof Error).toBe(true);
+  expect(String((company as Error).message)).toContain('company timezone');
+});
+
 test('businessYesterday uses companyTz and explicit override', () => {
   const now = new Date('2024-07-01T16:30:00.000Z'); // Shanghai already Jul 2
   const companyDay = withContext({ companyTz: 'Asia/Shanghai' } as any, () => businessYesterday(undefined, now));
@@ -246,6 +278,10 @@ test('wallClockRangeToUtc rejects invalid walls and accepts compact formats', ()
   const compact = wallClockRangeToUtc('2024-07-01', '2024-07-02', 'Asia/Shanghai');
   expect(compact.start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
   expect(compact.end.toISOString()).toBe('2024-07-01T16:00:00.000Z');
+
+  const withT = wallClockRangeToUtc('2024-07-01T00:00:00', '2024-07-02T00:00:00', 'Asia/Shanghai');
+  expect(withT.start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
+  expect(withT.end.toISOString()).toBe('2024-07-01T16:00:00.000Z');
 
   let error: unknown;
   try {

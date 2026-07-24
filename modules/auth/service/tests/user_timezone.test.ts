@@ -160,3 +160,46 @@ test('auth.User extractUserMetadata includes timezone and tolerates missing comp
   expect(metadata.companyTimezone).toBe(undefined);
   expect(metadata.activeCompanyId).toBe('missing-company-id');
 });
+
+test('auth.User extractUserMetadata reads companyTimezone from MAIN company', async () => {
+  const { createServiceByModel } = await import('@/core/service/rpc');
+  const { withContext: withModelContext } = await import('@/core/service/api/context');
+  type Company = typeof import('@/base/service/models/company').default;
+  const CompanyService = createServiceByModel<Company>('base.Company');
+
+  const root: any = (globalThis as any).$choysum ?? {};
+  if (!root.request) root.request = {};
+  if (!root.request.context) root.request.context = {};
+  const jsCtx = root.request.context;
+  jsCtx.ctx = jsCtx.ctx || {};
+  jsCtx.req = {
+    depth: 0,
+    fieldRuleMode: 'skip',
+    recordRuleMode: 'allowlist',
+    recordRuleAllow: ['base.Company:read', 'Company:read', 'auth.User:read', 'User:read'],
+  };
+  (globalThis as any).$choysum = root;
+
+  const rows = await withModelContext(
+    {} as any,
+    async () =>
+      await (CompanyService as any).Search(['Code', '=', 'MAIN'] as any, {
+        fields: ['Id', 'Timezone'],
+        limit: 1,
+      } as any),
+    { merge: false }
+  );
+  const main = rows?.[0];
+  expect(main?.Id).toBeTruthy();
+
+  const metadata = await User.extractUserMetadata({
+    Id: '',
+    Language: 'en_US',
+    Timezone: 'UTC',
+    CompanyId: main.Id,
+    CompanyIds: [main.Id],
+  } as any);
+
+  expect(metadata.timezone).toBe('UTC');
+  expect(metadata.companyTimezone).toBe(String(main.Timezone || '').trim() || 'Asia/Shanghai');
+});

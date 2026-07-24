@@ -30,4 +30,15 @@ describe('ODatetimeField conversion contract', () => {
     const wall = utcToUserWallDate(iso, 'America/New_York')!;
     expect(userWallDateToUtc(wall, 'America/New_York')!.toISOString()).toBe(iso);
   });
+
+  it('pads short fractional seconds like ODatetimeField.parseFlexible', () => {
+    // Element Plus / loose ISO may emit 1–2 digit millis; storage format expects SSS.
+    const padded = '2024-07-01T12:00:00.1Z'.replace(
+      /(T\d{2}:\d{2}:\d{2}\.)(\d{1,2})(?=(Z|[+-]\d{2}:\d{2})$)/,
+      (_m, p1, frac) => p1 + (frac + '000').slice(0, 3)
+    );
+    expect(padded).toBe('2024-07-01T12:00:00.100Z');
+    const wall = utcToUserWallDate(padded, 'UTC');
+    expect(wall!.getMilliseconds()).toBe(100);
+  });
 });

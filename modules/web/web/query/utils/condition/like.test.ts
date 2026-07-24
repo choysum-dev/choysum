@@ -54,6 +54,33 @@ describe('valueToPreview datetime wall-clock', () => {
   it('infers datetime from ISO strings when fieldType omitted', () => {
     expect(valueToPreview('=', '2024-06-30T16:00:00.000Z', { timeZone: 'Asia/Shanghai' })).toBe('2024-07-01 00:00:00');
   });
+
+  it('keeps non-ISO calendar strings literal without fieldType', () => {
+    expect(valueToPreview('=', '2024-07-01', { timeZone: 'America/New_York' })).toBe('2024-07-01');
+  });
+
+  it('stringifies time string values and wraps like operators', () => {
+    expect(valueToPreview('=', '12:30:00', { fieldType: 'time' })).toBe('12:30:00');
+    expect(valueToPreview('like', '2024-06-30T16:00:00.000Z', { fieldType: 'datetime' })).toBe(
+      '%2024-06-30T16:00:00.000Z%'
+    );
+  });
+
+  it('falls back to literal when datetime wall format yields empty', () => {
+    // ISO-shaped but unparseable → formatUtcInTimeZone returns '' → String(value).
+    expect(valueToPreview('=', '2024-01-01T99:99:99Z', { fieldType: 'datetime', timeZone: 'UTC' })).toBe(
+      '2024-01-01T99:99:99Z'
+    );
+  });
+
+  it('formats datetime arrays recursively for in preview', () => {
+    expect(
+      valueToPreview('in', ['2024-06-30T16:00:00.000Z', '2024-06-30T17:00:00.000Z'], {
+        fieldType: 'datetime',
+        timeZone: 'Asia/Shanghai',
+      })
+    ).toBe('(2024-07-01 00:00:00, 2024-07-01 01:00:00)');
+  });
 });
 
 describe('filtersToQuery datetime wire stays UTC', () => {
