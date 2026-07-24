@@ -73,6 +73,31 @@ describe('controlledFilters sync', () => {
     expect(decision.acknowledged).toBe(true);
   });
 
+  it('ignores delayed clear echo after local created a new filter', () => {
+    // clear → lastEmittedSig '' → user adds a filter before parent echoes []
+    const local = [g('Name', 'new')];
+    const decision = shouldApplyControlledFilters({
+      local,
+      incoming: [],
+      lastEmittedSig: '',
+      awaitingEcho: true,
+    });
+    expect(decision.apply).toBe(false);
+    expect(decision.acknowledged).toBe(true);
+  });
+
+  it('still applies external clear when we never emitted an empty fingerprint', () => {
+    const local = [g('Name', 'a')];
+    const decision = shouldApplyControlledFilters({
+      local,
+      incoming: [],
+      lastEmittedSig: '',
+      awaitingEcho: false,
+    });
+    expect(decision.apply).toBe(true);
+    expect(decision.normalized).toEqual([]);
+  });
+
   it('applies external parent updates that are not our last emit', () => {
     const local = [g('Name', 'a')];
     const incoming = [g('Code', 'z')];

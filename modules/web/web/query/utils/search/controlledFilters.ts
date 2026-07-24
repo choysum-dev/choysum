@@ -39,7 +39,13 @@ export function shouldApplyControlledFilters(opts: {
   }
 
   // Parent echoed our last emit, but the user already changed local filters further.
-  if (opts.lastEmittedSig && nextSig === opts.lastEmittedSig && localSig !== opts.lastEmittedSig) {
+  // Empty lastEmittedSig ('') is a real clear fingerprint — do not treat it as "no emit"
+  // via truthiness; only honor it when we are awaiting that clear's echo (or any non-empty emit).
+  if (
+    nextSig === opts.lastEmittedSig &&
+    localSig !== opts.lastEmittedSig &&
+    (opts.lastEmittedSig !== '' || !!opts.awaitingEcho)
+  ) {
     return { apply: false, normalized, acknowledged: true };
   }
 
