@@ -93,8 +93,6 @@ describe('OSearchFilterCondition', () => {
   it('patches field change with first operator and clears value', async () => {
     const condition = reactive({ id: 'c1', field: 'Name', operator: '=', value: 'x' });
     const { wrapper, onUpdateCondition } = mountRow(condition);
-    const fieldSelect = wrapper.findAll('.el-select')[0]!;
-    // Directly invoke handler through component vm
     await (wrapper.vm as any).onFieldChange('Status');
     expect(onUpdateCondition).toHaveBeenCalled();
     const patch = onUpdateCondition.mock.calls[0][1];
