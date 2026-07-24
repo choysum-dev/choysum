@@ -1082,6 +1082,57 @@ test('model read helper temporal condition falls back to bucket coercion for Dat
   expect(condition.And[1][1]).toBe('<');
 });
 
+test('model read D14 drill inherits UTC day bounds from offset-aware bucket key (scenario #4)', () => {
+  // Product order→voucher models do not exist yet; prove the inherit pattern on ReadGroup
+  // conditions: offset-aware day keys yield identical UTC intervals regardless of timezone arg.
+  const spec = {
+    field: 'OrderedAt',
+    alias: 'OrderedAt__day',
+    isTime: true,
+    granularity: 'day',
+  } as any;
+  const shanghaiDayKey = '2024-07-02T00:00:00+08:00';
+
+  const fromShanghaiArg = __buildGroupConditionForTest(spec, shanghaiDayKey, 'Asia/Shanghai') as any;
+  const fromNewYorkArg = __buildGroupConditionForTest(spec, shanghaiDayKey, 'America/New_York') as any;
+  expect(fromShanghaiArg).toEqual(fromNewYorkArg);
+
+  // Midnight Asia/Shanghai on 2024-07-02 ↔ 2024-07-01T16:00:00Z half-open day.
+  expect(fromShanghaiArg.And[0]).toEqual(['OrderedAt', '>=', '2024-07-01T16:00:00.000Z']);
+  expect(fromShanghaiArg.And[1]).toEqual(['OrderedAt', '<', '2024-07-02T16:00:00.000Z']);
+
+  // Business `date` drill is literal calendar equality — timezone must not rewrite D.
+  const dateSpec = { field: 'Date', alias: 'Date', isTime: false } as any;
+  expect(__buildGroupConditionForTest(dateSpec, '2024-07-02', 'Asia/Shanghai')).toEqual(['Date', '=', '2024-07-02']);
+  expect(__buildGroupConditionForTest(dateSpec, '2024-07-02', 'America/New_York')).toEqual(['Date', '=', '2024-07-02']);
+});
+
+test('model read drill maps calendar-label bucket keys through timezone wall clock', () => {
+  // Cross-dialect keys are local YMD encoded at UTC midnight (not true UTC day bounds).
+  const spec = {
+    field: 'OrderedAt',
+    alias: 'OrderedAt__day',
+    isTime: true,
+    granularity: 'day',
+  } as any;
+
+  const fromZ = __buildGroupConditionForTest(spec, '2026-05-18T00:00:00.000Z', 'Asia/Shanghai') as any;
+  expect(fromZ.And[0]).toEqual(['OrderedAt', '>=', '2026-05-17T16:00:00.000Z']);
+  expect(fromZ.And[1]).toEqual(['OrderedAt', '<', '2026-05-18T16:00:00.000Z']);
+
+  const fromDateOnly = __buildGroupConditionForTest(spec, '2026-05-18', 'Asia/Shanghai') as any;
+  expect(fromDateOnly).toEqual(fromZ);
+
+  // West of UTC: must keep YMD label May 18 (not shift to May 17 via coerce-as-instant).
+  const fromLA = __buildGroupConditionForTest(spec, '2026-05-18T00:00:00.000Z', 'America/Los_Angeles') as any;
+  expect(fromLA.And[0]).toEqual(['OrderedAt', '>=', '2026-05-18T07:00:00.000Z']);
+  expect(fromLA.And[1]).toEqual(['OrderedAt', '<', '2026-05-19T07:00:00.000Z']);
+
+  // Z / offset-less keys must not be treated as true UTC instants by rangeFromGroupedValue.
+  expect(__rangeFromGroupedValueForTest('2026-05-18T00:00:00.000Z', 'day')).toBe(undefined);
+  expect(__rangeFromGroupedValueForTest('2026-05-18', 'day')).toBe(undefined);
+});
+
 test('model read helper fill-gaps/tree-array-format branches cover non-time passthrough and null metrics', () => {
   const passthrough = __fillTemporalGapsForLevelForTest(
     [{ keyAliases: ['Name'], keyValues: ['A'], key: { Name: 'A' }, metrics: {}, count: 1, condition: [], children: [] }] as any,

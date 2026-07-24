@@ -8,11 +8,12 @@ test('repository time bucket runtime aligns utc boundaries for quarter and iso w
   expect(coerceToBucketStart('2026-05-17T18:30:00.000Z', 'week').toISOString()).toBe('2026-05-11T00:00:00.000Z');
 });
 
-test('repository time bucket runtime falls back to utc alignment when Intl is unavailable', () => {
+test('repository time bucket runtime falls back to moment-timezone when Intl is unavailable', () => {
   const originalIntl = (globalThis as any).Intl;
   try {
     delete (globalThis as any).Intl;
-    expect(coerceToBucketStart('2026-05-17T23:30:00.000Z', 'day', 'Asia/Shanghai').toISOString()).toBe('2026-05-17T00:00:00.000Z');
+    // moment-timezone still resolves Asia/Shanghai (D21); 23:30Z → next local day.
+    expect(coerceToBucketStart('2026-05-17T23:30:00.000Z', 'day', 'Asia/Shanghai').toISOString()).toBe('2026-05-18T00:00:00.000Z');
   } finally {
     (globalThis as any).Intl = originalIntl;
   }

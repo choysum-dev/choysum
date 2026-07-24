@@ -18,6 +18,8 @@ import { uniqStrings } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { Constraint } from '@/core/service/api/constraint';
 import Language from '@/base/service/models/language';
+import type Company from '@/base/service/models/company';
+import { createServiceByModel } from '@/core/service/rpc';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from './_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_user_authz_shared';
 import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_user_method_access';
@@ -33,12 +35,14 @@ import {
   ensureCreatedUserIdOrThrow,
   ensureRegistrationIdentityUnique,
   issueLoginTokensAndSession,
+  persistBrowserTimezoneIfEmpty,
   provisionRegisteredUserBaseline,
   refreshTokensWithLatestMetadata,
   revokeLogoutArtifacts,
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_user_lifecycle_auth';
+
 import { buildAclAggregation } from './_user_permission_state_acl';
 import { buildUiPermissionProjection } from './_user_permission_state_ui';
 import { evaluateFieldRules } from './_user_field_rule_eval';
@@ -349,6 +353,16 @@ export default class User extends BaseModel {
         },
       });
 
+      // D20: persist browser IANA when registration left Timezone empty.
+      await persistBrowserTimezoneIfEmpty(
+        { Id: userId, Timezone: (created as any)?.Timezone ?? (userData as any)?.Timezone } as any,
+        {
+          updateTimezone: async (uid, timezone) => {
+            await this.UpdateById(uid, { Timezone: timezone } as any, ['Id'] as any);
+          },
+        }
+      );
+
       return userId;
     } catch (error) {
       throw wrapAuthError(error, {
@@ -371,8 +385,16 @@ export default class User extends BaseModel {
     const user = validateLoginCandidateOrThrow((users || [])[0] as any, usernameOrEmail, password) as any;
 
     try {
+      // D20: first login with empty User.Timezone + baggage clientTz → persist and refresh metadata.
+      const loginUser = await persistBrowserTimezoneIfEmpty(user as any, {
+        updateTimezone: async (uid, timezone) => {
+          await this.UpdateById(uid, { Timezone: timezone } as any);
+        },
+        reloadUser: async uid => (await this.Browse(uid)) as any,
+      });
+
       return await issueLoginTokensAndSession(
-        user as any,
+        loginUser as any,
         {
           extractUserMetadata: async u => await this.extractUserMetadata(u as any),
           updateLastLogin: async (uid: string, timestamp: Date) => {
@@ -398,9 +420,23 @@ export default class User extends BaseModel {
     const permStateVersion = userId ? await this._computePermStateVersion(userId) : 0;
     const companyScope = computeTokenCompanyScope(user as any);
 
+    let companyTimezone: string | undefined;
+    const activeCompanyId = String(companyScope.activeCompanyId || '').trim();
+    if (activeCompanyId) {
+      try {
+        const CompanyService = createServiceByModel<typeof Company>('base.Company');
+        const company = await (CompanyService as any).Browse(activeCompanyId, ['Timezone']);
+        const tz = String(company?.Timezone || '').trim();
+        if (tz && isIanaTimezone(tz)) companyTimezone = tz;
+      } catch {
+        // Company may be unavailable during early bootstrap; leave companyTimezone unset.
+      }
+    }
+
     return {
       language: user.Language,
       timezone: user.Timezone || undefined,
+      companyTimezone,
       allowedCompanyIds: companyScope.allowedCompanyIds,
       activeCompanyId: companyScope.activeCompanyId,
       enabledCompanyIds: companyScope.enabledCompanyIds,

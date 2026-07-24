@@ -48,6 +48,22 @@ describe('language_format (P2)', () => {
     expect(formatDateTime(date, without.dateTimeFormat, { type: 'date' })).toBe('2026-01-02');
   });
 
+  it('datetime uses user timezone; date does not shift calendar day', () => {
+    const config = { shortDate: 'YYYY-MM-DD', shortTime: 'HH:mm:ss' };
+    const utcInstant = '2024-06-30T16:00:00.000Z'; // 2024-07-01 00:00 Shanghai
+
+    expect(
+      formatDateTime(utcInstant, config, { type: 'datetime', timeZone: 'Asia/Shanghai' })
+    ).toBe('2024-07-01 00:00:00');
+    expect(
+      formatDateTime(utcInstant, config, { type: 'datetime', timeZone: 'America/New_York' })
+    ).toBe('2024-06-30 12:00:00');
+
+    // date type stays literal (local dayjs of the Date/string), not re-zoned as a business datetime.
+    const calendar = new Date(2024, 6, 1); // July 1 local
+    expect(formatDateTime(calendar, config, { type: 'date', timeZone: 'America/New_York' })).toBe('2024-07-01');
+  });
+
   it('T2.4: catalog still exposes Element/dayjs package names; missing format falls back safely', () => {
     const zh = SUPPORTED_LOCALES['zh-CN'];
     expect(zh.elementLocaleCode).toBe('zh-cn');

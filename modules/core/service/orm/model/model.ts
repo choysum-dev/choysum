@@ -37,6 +37,7 @@ import {
   getModelCompanyIds,
   getModelLang,
   getModelTimezone,
+  getModelCompanyTimezone,
   getModelUserId,
   withModelContext,
   getInstanceModelContext,
@@ -44,6 +45,7 @@ import {
   getInstanceModelCompanyIds,
   getInstanceModelLang,
   getInstanceModelTimezone,
+  getInstanceModelCompanyTimezone,
   getInstanceModelUserId,
   withInstanceModelContext,
 } from './model_context_facade';
@@ -179,17 +181,38 @@ class BaseModel {
   }
 
   /**
-   * Returns the current request timezone.
+   * Display timezone for the current request (`ctx.tz`).
+   *
+   * Used for UI wall-clock / ReadGroup day buckets — not an automatic
+   * Search/Browse/Create/Update translation layer for datetime wire values (always UTC).
    */
   static get tz(): string | undefined {
     return getModelTimezone();
   }
 
   /**
-   * Returns the current timezone for this model instance.
+   * Display timezone for this model instance (`ctx.tz`).
+   *
+   * Same semantics as {@link BaseModel.tz}: not an ORM datetime codec.
    */
   get tz(): string | undefined {
     return getInstanceModelTimezone(this);
+  }
+
+  /**
+   * Company business timezone (`ctx.companyTz`) for day-boundary helpers.
+   *
+   * Prefer this (or explicit helpers) for posting defaults / period close — not for list wall-clock display.
+   */
+  static get companyTz(): string | undefined {
+    return getModelCompanyTimezone();
+  }
+
+  /**
+   * Company business timezone for this model instance (`ctx.companyTz`).
+   */
+  get companyTz(): string | undefined {
+    return getInstanceModelCompanyTimezone(this);
   }
 
   /**

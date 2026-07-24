@@ -104,15 +104,39 @@ test('model read facade forwards timezone and keeps readGroup results on the pla
     expect(total).toBe(7);
     expect(totalFromCtxTz).toBe(7);
 
+    // Default: options.timezone unset → ctx.timezone (then ctx.tz) for day buckets only.
     expect(readGroupCalls.length).toBe(1);
     expect(readGroupCalls[0]?.options).toEqual({ timezone: 'Asia/Shanghai' });
 
+    // Explicit options.timezone wins over ctx.
     expect(readGroupCountCalls.length).toBe(2);
     expect(readGroupCountCalls[0]?.options).toEqual({ timezone: 'Europe/Paris' });
     expect(readGroupCountCalls[1]?.options).toEqual({ timezone: 'Asia/Shanghai' });
   } finally {
     ReadOperations.ReadGroup = originalReadGroup;
     ReadOperations.ReadGroupCount = originalReadGroupCount;
+  }
+});
+
+test('model read facade ReadGroup defaults to ctx.tz when timezone alias is absent', async () => {
+  class TzOnlyReadGroupModel extends ReadFacadeModel {
+    static get ctx() {
+      return { tz: 'America/New_York' } as any;
+    }
+  }
+
+  const originalReadGroup = ReadOperations.ReadGroup;
+  const calls: any[] = [];
+  try {
+    ReadOperations.ReadGroup = (async (_ModelCtor: any, _groupby: any, _condition: any, options: any) => {
+      calls.push(options);
+      return [] as any;
+    }) as any;
+
+    await readGroupedModels(TzOnlyReadGroupModel as any, ['Status'] as any, [] as any, {} as any);
+    expect(calls[0]).toEqual({ timezone: 'America/New_York' });
+  } finally {
+    ReadOperations.ReadGroup = originalReadGroup;
   }
 });
 

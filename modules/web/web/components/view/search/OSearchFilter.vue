@@ -132,16 +132,17 @@ const { preview, leafCount } = (() => {
     const op = String(c.operator);
     const label = getOperatorLabel(op); // Use the user-friendly operator label.
     const pv = toPreviewValue(c.field, c.value);
+    const previewOpts = { fieldType: metaTypeOf(c.field) };
 
     if (op === 'is' || op === 'is not') {
-      return `${c.field} ${label} ${valueToPreview(c.operator, pv)}`;
+      return `${c.field} ${label} ${valueToPreview(c.operator, pv, previewOpts)}`;
     }
     if (op === 'in' || op === 'not in') {
       const arr = Array.isArray(pv) ? pv : pv == null ? [] : [pv];
-      const list = `(${arr.map(v => valueToPreview('=', v)).join(', ')})`;
+      const list = `(${arr.map(v => valueToPreview('=', v, previewOpts)).join(', ')})`;
       return `${c.field} ${label} ${list}`;
     }
-    return `${c.field} ${label} ${valueToPreview(c.operator, pv)}`;
+    return `${c.field} ${label} ${valueToPreview(c.operator, pv, previewOpts)}`;
   }
   function countLeaf(g: ConditionGroup): number {
     let n = 0;

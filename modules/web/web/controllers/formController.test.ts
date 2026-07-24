@@ -156,7 +156,7 @@ describe('formController attachment protocol', () => {
     setCSRFProvider({
       getCSRFToken: async () => 'csrf-upload',
     });
-    setGlobalRequestContextProvider({ activeCompanyId: 'company_a' });
+    setGlobalRequestContextProvider({ activeCompanyId: 'company_a', tz: 'Asia/Shanghai' });
 
     const resolved = await __resolveAttachmentFieldValueForTest(blob, ctx);
 
@@ -170,5 +170,6 @@ describe('formController attachment protocol', () => {
     expect(headers.get('x-xsrf-token')).toBe('csrf-upload');
     expect(headers.get('authorization')).toBe('Bearer token-upload');
     expect(headers.get('baggage')).toContain('ctx.activecompanyid=company_a');
+    expect(headers.get('baggage')).toContain('ctx.tz=Asia%2FShanghai');
   });
 });

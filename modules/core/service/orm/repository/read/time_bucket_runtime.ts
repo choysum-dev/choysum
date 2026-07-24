@@ -3,23 +3,41 @@
 
 import type { TemporalGranularity } from '../types';
 import { getRuntimeIntlApi } from '@/core/utils/env';
+import moment from 'moment-timezone';
 
 export function coerceToBucketStart(input: Date | string, granularity: TemporalGranularity, timezone?: string): Date {
   const d = input instanceof Date ? new Date(input) : new Date(input);
+  if (Number.isNaN(d.getTime())) return d;
 
   if (!timezone) {
     return coerceUtcBucketStart(d, granularity);
   }
 
+  // Prefer Intl when present (existing tests mock it); else moment-timezone (QuickJS / D21).
   const parts = getZonedParts(d, timezone);
-  if (!parts) {
-    return coerceUtcBucketStart(d, granularity);
+  if (parts) {
+    return bucketFromYmd(parts.year, parts.month, parts.day, parts.weekdayIndexIso, granularity, d);
   }
 
-  const y = parts.year;
-  const m = parts.month;
-  const day = parts.day;
+  if (moment.tz.zone(timezone)) {
+    const wall = moment.utc(d.getTime()).tz(timezone);
+    if (wall.isValid()) {
+      const weekdayIndexIso = wall.isoWeekday() as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+      return bucketFromYmd(wall.year(), wall.month() + 1, wall.date(), weekdayIndexIso, granularity, d);
+    }
+  }
 
+  return coerceUtcBucketStart(d, granularity);
+}
+
+function bucketFromYmd(
+  y: number,
+  m: number,
+  day: number,
+  weekdayIndexIso: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  granularity: TemporalGranularity,
+  fallback: Date
+): Date {
   switch (granularity) {
     case 'year':
       return new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0));
@@ -30,15 +48,14 @@ export function coerceToBucketStart(input: Date | string, granularity: TemporalG
     case 'month':
       return new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
     case 'week': {
-      const wd = parts.weekdayIndexIso;
       const base = new Date(Date.UTC(y, m - 1, day, 0, 0, 0, 0));
-      base.setUTCDate(base.getUTCDate() - (wd - 1));
+      base.setUTCDate(base.getUTCDate() - (weekdayIndexIso - 1));
       return base;
     }
     case 'day':
       return new Date(Date.UTC(y, m - 1, day, 0, 0, 0, 0));
     default:
-      return d;
+      return fallback;
   }
 }
 

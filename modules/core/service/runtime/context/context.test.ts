@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { __deepFreezeForTest, getIdentity, getReqMeta, getUserId } from './source';
-import { getActiveCompanyId, getContextLang, getContextTimezone, getEnabledCompanyIds, getReadonlyCtx, withContext } from './scope';
+import { getActiveCompanyId, getContextLang, getContextTimezone, getContextCompanyTimezone, getContextClientTimezone, getEnabledCompanyIds, getReadonlyCtx, withContext } from './scope';
 
 function withTempChoysum<T>(root: any, fn: () => T): T {
   const globalAny = globalThis as any;
@@ -102,6 +102,41 @@ test('runtime context scope caches frozen request context and resolves normalize
     expect(getEnabledCompanyIds()).toEqual(['C1', 'C2']);
     expect(getContextLang()).toBe('zh-CN');
     expect(getContextTimezone()).toBe('Asia/Shanghai');
+  });
+});
+
+test('runtime context scope resolves companyTz via getContextCompanyTimezone', () => {
+  const root = {
+    request: {
+      context: {
+        ctx: {
+          tz: 'America/New_York',
+          companyTz: ' Asia/Shanghai ',
+        },
+      },
+    },
+  };
+
+  withTempChoysum(root, () => {
+    expect(getContextTimezone()).toBe('America/New_York');
+    expect(getContextCompanyTimezone()).toBe('Asia/Shanghai');
+  });
+});
+
+test('runtime context scope resolves clientTz via getContextClientTimezone', () => {
+  const root = {
+    request: {
+      context: {
+        ctx: {
+          tz: 'UTC',
+          clientTz: ' Europe/Berlin ',
+        },
+      },
+    },
+  };
+
+  withTempChoysum(root, () => {
+    expect(getContextClientTimezone()).toBe('Europe/Berlin');
   });
 });
 

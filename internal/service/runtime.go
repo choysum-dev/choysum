@@ -227,10 +227,36 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 			} else if value, ok := meta["language"].(string); ok && value != "" {
 				baseCtx["lang"] = value
 			}
-			if value, ok := meta["tz"].(string); ok && value != "" {
-				baseCtx["tz"] = value
-			} else if value, ok := meta["timezone"].(string); ok && value != "" {
-				baseCtx["tz"] = value
+			if value, ok := meta["tz"].(string); ok {
+				if normalized, ok := normalizeIANATimezone(value); ok {
+					baseCtx["tz"] = normalized
+				}
+			}
+			if _, hasTz := baseCtx["tz"]; !hasTz {
+				if value, ok := meta["timezone"].(string); ok {
+					if normalized, ok := normalizeIANATimezone(value); ok {
+						baseCtx["tz"] = normalized
+					}
+				}
+			}
+			if value, ok := meta["companyTimezone"].(string); ok {
+				if normalized, ok := normalizeIANATimezone(value); ok {
+					baseCtx["companyTz"] = normalized
+				}
+			}
+			if _, hasCompanyTz := baseCtx["companyTz"]; !hasCompanyTz {
+				if value, ok := meta["companyTz"].(string); ok {
+					if normalized, ok := normalizeIANATimezone(value); ok {
+						baseCtx["companyTz"] = normalized
+					}
+				}
+			}
+			if _, hasCompanyTz := baseCtx["companyTz"]; !hasCompanyTz {
+				if value, ok := meta["activeCompanyTimezone"].(string); ok {
+					if normalized, ok := normalizeIANATimezone(value); ok {
+						baseCtx["companyTz"] = normalized
+					}
+				}
 			}
 
 			toStringSlice := func(value any) []string {
@@ -349,10 +375,24 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 				baseCtx["lang"] = value
 			}
 		case "tz":
-			if len(value) <= 64 {
-				baseCtx["tz"] = value
+			// clientTz always mirrors a valid baggage tz (D20 persist source).
+			// Display tz: baggage only fills when user preference is empty (D6/D7).
+			if normalized, ok := normalizeIANATimezone(value); ok && len(normalized) <= 64 {
+				baseCtx["clientTz"] = normalized
+				if _, hasUserTz := baseCtx["tz"]; !hasUserTz {
+					baseCtx["tz"] = normalized
+				}
 			}
 		}
+	}
+
+	if companyTz, ok := baseCtx["companyTz"].(string); ok && companyTz != "" {
+		if _, hasUserTz := baseCtx["tz"]; !hasUserTz {
+			baseCtx["tz"] = companyTz
+		}
+	}
+	if _, hasTz := baseCtx["tz"]; !hasTz {
+		baseCtx["tz"] = "UTC"
 	}
 
 	if companyID, ok := baseCtx["activeCompanyId"].(string); ok && companyID != "" {
@@ -383,6 +423,23 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 		"identity": identitySnap,
 		"req":      reqMeta,
 	}
+}
+
+// normalizeIANATimezone trims and validates an IANA timezone id via time.LoadLocation.
+// Empty or invalid values return ok=false. "Local" is rejected: LoadLocation accepts it
+// as the host zone, which is not a portable IANA id for ctx.tz / companyTz.
+func normalizeIANATimezone(value string) (string, bool) {
+	normalized := strings.TrimSpace(value)
+	if normalized == "" || len(normalized) > 64 {
+		return "", false
+	}
+	if strings.EqualFold(normalized, "Local") {
+		return "", false
+	}
+	if _, err := time.LoadLocation(normalized); err != nil {
+		return "", false
+	}
+	return normalized, true
 }
 
 func (r invocationRuntime) invokeTargetMethod(ctx context.Context, runtimeScope scope.Scope, jsCtx map[string]interface{}, routing *jsengine.JsExecutionRouting, req *executeJobRequest) (any, error) {

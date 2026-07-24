@@ -38,6 +38,7 @@ import type { ObjectRecord } from '../../../utils/types';
 import type { RuntimeModelCtor } from './types';
 import { createServiceByModel } from '../../rpc';
 import { _t } from '@/core/service/i18n_binder';
+import { isIanaTimezone, wallClockRangeToUtc } from '@/core/service/utils/datetime';
 
 /**
  * Read-related delegated operations.
@@ -723,12 +724,19 @@ function fillTemporalGapsForLevel(
 
 // Build a group condition using either plain equality or a temporal range.
 // moment.parseZone is used so we do not depend on Intl behavior.
+//
+// D14 (drill inherit): when the bucket key carries a non-UTC offset (e.g. +08:00),
+// the UTC [start, end) is derived from that key alone — the timezone argument must
+// not re-bucket. Calendar labels (YYYY-MM-DD / …Z at UTC midnight) are local YMD
+// encodings from coerceToBucketStart; convert via wallClockRangeToUtc with timezone.
+// Downstream Search uses this condition as parentCondition; do not call
+// businessYesterday / re-resolve "yesterday" in another TZ.
 function buildGroupCondition(spec: NormalizedGroupSpec, value: unknown, timezone?: string): BaseQueryCondition {
   if (!spec.isTime || !spec.granularity) {
     return [spec.field, '=', value];
   }
 
-  // 1) When value is an offset-aware ISO string returned by DATE_TRUNC, derive the local [start, end) range using that offset and convert it to UTC.
+  // 1) Offset-aware ISO (non-UTC offset): derive local [start, end) from the key alone.
   const fromIso = rangeFromGroupedValue(value, spec.granularity);
   if (fromIso) {
     return {
@@ -739,12 +747,16 @@ function buildGroupCondition(spec: NormalizedGroupSpec, value: unknown, timezone
     };
   }
 
-  // 2) Fallback: compute bucket boundaries from timezone using the existing alignment helpers, then emit UTC ISO strings.
+  // 2) Fallback: calendar-label / Date keys → align, then wall-clock → UTC Search bounds.
+  // Calendar labels (YYYY-MM-DD / …Z / ±00:00) encode local YMD at UTC midnight — coerce in
+  // UTC only so west-of-UTC zones do not shift the label to the previous civil day before
+  // buildTemporalCondition applies timezone. True instants (Date / epoch) still use timezone.
   const d = toDateIfPossible(value);
   if (!d) {
     return [spec.field, '=', value];
   }
-  const bucketStart = coerceToBucketStart(d, spec.granularity, timezone);
+  const labelKey = typeof value === 'string' && !hasExplicitNonUtcOffset(value);
+  const bucketStart = coerceToBucketStart(d, spec.granularity, labelKey ? undefined : timezone);
   return buildTemporalCondition(spec.field, spec.granularity, bucketStart, timezone);
 }
 
@@ -757,9 +769,21 @@ function toDateIfPossible(value: unknown): Date | undefined {
   return undefined;
 }
 
+/** True when `value` ends with a non-zero ±HH:MM / ±HHMM offset (not Z / ±00:00). */
+function hasExplicitNonUtcOffset(value: string): boolean {
+  const m = String(value)
+    .trim()
+    .match(/([+-])(\d{2}):?(\d{2})$/);
+  if (!m) return false;
+  const minutes = Number(m[2]) * 60 + Number(m[3]);
+  return minutes !== 0;
+}
+
 // Use moment.parseZone to compute [start, end) with the input offset preserved, matching DB date_trunc semantics.
+// Only for keys that carry a real zone offset (e.g. +08:00). Calendar labels (…Z / date-only) fall through.
 function rangeFromGroupedValue(value: unknown, granularity: TemporalGranularity): { start: Date; end: Date } | undefined {
   if (typeof value !== 'string') return undefined;
+  if (!hasExplicitNonUtcOffset(value)) return undefined;
   const m = moment.parseZone(value, moment.ISO_8601, true); // Preserve offsets such as '+08:00'.
   if (!m.isValid()) return undefined;
 
@@ -770,14 +794,25 @@ function rangeFromGroupedValue(value: unknown, granularity: TemporalGranularity)
   return { start: start.toDate(), end: end.toDate() }; // Date instances represent UTC instants.
 }
 
-// Keep this timezone-based bucket-boundary builder for the fallback path.
-function buildTemporalCondition(field: string, granularity: TemporalGranularity, bucketStart: Date, _timezone?: string): BaseQueryCondition {
-  const start = bucketStart;
-  const end = nextBucket(bucketStart, granularity);
+// Convert calendar-label bucketStart (UTC-midnight YMD) to real UTC Search [start, end) in timezone.
+function buildTemporalCondition(field: string, granularity: TemporalGranularity, bucketStart: Date, timezone?: string): BaseQueryCondition {
+  const endLabel = nextBucket(bucketStart, granularity);
+  const tz = String(timezone || '').trim();
+  if (tz && isIanaTimezone(tz)) {
+    const startWall = moment.utc(bucketStart).format('YYYY-MM-DD HH:mm:ss');
+    const endWall = moment.utc(endLabel).format('YYYY-MM-DD HH:mm:ss');
+    const { start, end } = wallClockRangeToUtc(startWall, endWall, tz);
+    return {
+      And: [
+        [field, '>=', start.toISOString()],
+        [field, '<', end.toISOString()],
+      ],
+    };
+  }
   return {
     And: [
-      [field, '>=', start.toISOString()],
-      [field, '<', end.toISOString()],
+      [field, '>=', bucketStart.toISOString()],
+      [field, '<', endLabel.toISOString()],
     ],
   };
 }

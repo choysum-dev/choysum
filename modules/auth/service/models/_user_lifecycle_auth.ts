@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { withContext } from '@/core/service/api/context';
+import { withContext, getContextClientTimezone } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
+import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { newAuthError, AuthErrCode, GrpcCode } from '../error';
 import { _t } from '../i18n';
 import type Company from '@/base/service/models/company';
@@ -20,8 +21,58 @@ export type LoginUserLike = {
   Username: string;
   PasswordHash: string;
   IsActive: boolean;
+  Timezone?: string | null;
   load: (fields: string[]) => Promise<void>;
 };
+
+/**
+ * D20: when User.Timezone is empty, return a valid baggage client IANA to persist.
+ * Never returns a value when the user already has a timezone or clientTz is missing/invalid.
+ */
+export function resolveTimezoneToPersist(
+  userTimezone: string | null | undefined,
+  clientTimezone: string | null | undefined
+): string | undefined {
+  if (String(userTimezone || '').trim()) {
+    return undefined;
+  }
+  const candidate = String(clientTimezone || '').trim();
+  if (!candidate || !isIanaTimezone(candidate)) {
+    return undefined;
+  }
+  return candidate;
+}
+
+/**
+ * Persist browser/client IANA onto User when Timezone is empty (D20).
+ * Returns the user (possibly reloaded) so token metadata sees the new value.
+ */
+export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Timezone?: string | null }>(
+  user: T,
+  deps: {
+    updateTimezone: (userId: string, timezone: string) => Promise<void>;
+    reloadUser?: (userId: string) => Promise<T>;
+    clientTimezone?: string | null;
+  }
+): Promise<T> {
+  const clientTz = deps.clientTimezone !== undefined ? deps.clientTimezone : getContextClientTimezone();
+  const next = resolveTimezoneToPersist(user.Timezone, clientTz);
+  if (!next) {
+    return user;
+  }
+  const userId = String(user.Id || '').trim();
+  if (!userId) {
+    return user;
+  }
+  await withPermissionGraphBypass(async () => {
+    await deps.updateTimezone(userId, next);
+  });
+  if (deps.reloadUser) {
+    return await deps.reloadUser(userId);
+  }
+  (user as any).Timezone = next;
+  return user;
+}
 
 /**
  * Validate registration input and return a hashed password ready for persistence.

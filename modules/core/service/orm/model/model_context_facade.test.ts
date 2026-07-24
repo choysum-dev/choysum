@@ -5,12 +5,14 @@ import { getReadonlyCtx, withContext } from '../../runtime/context';
 import {
   getInstanceModelCompanyId,
   getInstanceModelCompanyIds,
+  getInstanceModelCompanyTimezone,
   getInstanceModelContext,
   getInstanceModelLang,
   getInstanceModelTimezone,
   getInstanceModelUserId,
   getModelCompanyId,
   getModelCompanyIds,
+  getModelCompanyTimezone,
   getModelContext,
   getModelLang,
   getModelTimezone,
@@ -54,6 +56,7 @@ test('model context facade forwards static context accessors to runtime context'
           enabledCompanyIds: ['C1', ' C2 '],
           language: ' en-US ',
           timezone: ' UTC ',
+          companyTz: ' Asia/Shanghai ',
         },
       },
     },
@@ -67,6 +70,7 @@ test('model context facade forwards static context accessors to runtime context'
     expect(getModelCompanyIds()).toEqual(['C1', 'C2']);
     expect(getModelLang()).toBe('en-US');
     expect(getModelTimezone()).toBe('UTC');
+    expect(getModelCompanyTimezone()).toBe('Asia/Shanghai');
     expect(getModelUserId()).toBe('U200');
 
     const nested = await withModelContext({ lang: 'fr' }, async () => {
@@ -89,6 +93,7 @@ test('model context facade reads instance values from constructor statics and de
     companyIds: ['C9', 'C10'],
     lang: 'ja',
     tz: 'Asia/Tokyo',
+    companyTz: 'Asia/Shanghai',
     userId: 'U900',
     withContext(ctx: Record<string, unknown> | (() => Record<string, unknown>), fn: () => string, opts?: { merge?: boolean }) {
       ctorCalls.push({ ctx, opts });
@@ -102,6 +107,7 @@ test('model context facade reads instance values from constructor statics and de
   expect(getInstanceModelCompanyIds(instance)).toEqual(['C9', 'C10']);
   expect(getInstanceModelLang(instance)).toBe('ja');
   expect(getInstanceModelTimezone(instance)).toBe('Asia/Tokyo');
+  expect(getInstanceModelCompanyTimezone(instance)).toBe('Asia/Shanghai');
   expect(getInstanceModelUserId(instance)).toBe('U900');
 
   const source = () => ({ lang: 'ko' });
@@ -111,4 +117,28 @@ test('model context facade reads instance values from constructor statics and de
   expect(ctorCalls.length).toBe(1);
   expect(ctorCalls[0]?.ctx).toBe(source as any);
   expect(ctorCalls[0]?.opts).toEqual({ merge: false });
+});
+
+test('Model.companyTz and Model.tz map display vs company business timezone', async () => {
+  const { default: BaseModel } = await import('./model');
+
+  const root = {
+    request: {
+      context: {
+        ctx: {
+          tz: 'America/New_York',
+          companyTz: 'Asia/Shanghai',
+        },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    expect(BaseModel.tz).toBe('America/New_York');
+    expect(BaseModel.companyTz).toBe('Asia/Shanghai');
+
+    const instance = Object.create(BaseModel.prototype);
+    expect(instance.tz).toBe('America/New_York');
+    expect(instance.companyTz).toBe('Asia/Shanghai');
+  });
 });

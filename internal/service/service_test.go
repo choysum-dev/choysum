@@ -353,6 +353,242 @@ func TestBuildJsContext_IgnoresBaggageCompanyScope(t *testing.T) {
 	}
 }
 
+func TestBuildJsContext_TimezoneFallback(t *testing.T) {
+	newCtxWithBaggage := func(meta map[string]any, tzBaggage string) context.Context {
+		ctx := context.Background()
+		if meta != nil {
+			ctx = auth.ContextWithIdentity(ctx, &testIdentity{userID: "u1", tokenID: "t1", meta: meta})
+		}
+		if tzBaggage != "" {
+			m, err := baggage.NewMember("ctx.tz", tzBaggage)
+			if err != nil {
+				t.Fatalf("new member tz: %v", err)
+			}
+			bag, err := baggage.New(m)
+			if err != nil {
+				t.Fatalf("new baggage: %v", err)
+			}
+			ctx = baggage.ContextWithBaggage(ctx, bag)
+		}
+		return ctx
+	}
+
+	s := &ApplicationService{runtimeScope: &helperScope{ctx: context.Background(), logger: slog.Default()}}
+
+	t.Run("user timezone wins over baggage", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"timezone":          "America/New_York",
+			"companyTimezone":   "Asia/Shanghai",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Europe/Paris")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "America/New_York" {
+			t.Fatalf("tz mismatch: got=%v want=America/New_York", got)
+		}
+		if got := ctxMap["companyTz"]; got != "Asia/Shanghai" {
+			t.Fatalf("companyTz mismatch: got=%v want=Asia/Shanghai", got)
+		}
+	})
+
+	t.Run("empty user uses baggage then company", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "Asia/Tokyo",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Europe/Berlin")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Europe/Berlin" {
+			t.Fatalf("tz mismatch: got=%v want=Europe/Berlin", got)
+		}
+		if got := ctxMap["clientTz"]; got != "Europe/Berlin" {
+			t.Fatalf("clientTz mismatch: got=%v want=Europe/Berlin", got)
+		}
+		if got := ctxMap["companyTz"]; got != "Asia/Tokyo" {
+			t.Fatalf("companyTz mismatch: got=%v want=Asia/Tokyo", got)
+		}
+	})
+
+	t.Run("empty user and baggage falls back to company then UTC", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "Asia/Shanghai",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Asia/Shanghai" {
+			t.Fatalf("tz mismatch: got=%v want=Asia/Shanghai", got)
+		}
+	})
+
+	t.Run("invalid baggage ignored", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "UTC",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Not/A_Zone")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+		if _, ok := ctxMap["clientTz"]; ok {
+			t.Fatalf("clientTz should be absent for invalid baggage")
+		}
+	})
+
+	t.Run("invalid preferred meta alias falls through to valid alias", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"tz":                "Not/A_Zone",
+			"timezone":          "Europe/Berlin",
+			"companyTimezone":   "Local",
+			"companyTz":         "Asia/Tokyo",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Europe/Berlin" {
+			t.Fatalf("tz mismatch: got=%v want=Europe/Berlin", got)
+		}
+		if got := ctxMap["companyTz"]; got != "Asia/Tokyo" {
+			t.Fatalf("companyTz mismatch: got=%v want=Asia/Tokyo", got)
+		}
+	})
+
+	t.Run("Local is rejected as IANA timezone", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"timezone":          "Local",
+			"companyTimezone":   "Local",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		// No valid user/company IANA → UTC fallback for display tz.
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+		if got, ok := ctxMap["companyTz"]; ok && got != nil && got != "" {
+			t.Fatalf("companyTz should be empty when only Local is present: got=%v", got)
+		}
+	})
+
+	t.Run("baggage sets clientTz even when user tz wins", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"timezone":          "America/New_York",
+			"companyTimezone":   "Asia/Shanghai",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Europe/Paris")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "America/New_York" {
+			t.Fatalf("tz mismatch: got=%v want=America/New_York", got)
+		}
+		if got := ctxMap["clientTz"]; got != "Europe/Paris" {
+			t.Fatalf("clientTz mismatch: got=%v want=Europe/Paris", got)
+		}
+	})
+
+	t.Run("no identity defaults to UTC", func(t *testing.T) {
+		jsCtx := s.buildJsContext(context.Background())
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+		if _, ok := ctxMap["clientTz"]; ok {
+			t.Fatalf("clientTz should be absent without baggage")
+		}
+	})
+
+	t.Run("meta tz alias preferred over timezone", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"tz":                "Asia/Tokyo",
+			"timezone":          "America/New_York",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Asia/Tokyo" {
+			t.Fatalf("tz mismatch: got=%v want=Asia/Tokyo", got)
+		}
+	})
+
+	t.Run("activeCompanyTimezone alias fills companyTz", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"activeCompanyTimezone": "Europe/Paris",
+			"activeCompanyId":       "A",
+			"allowedCompanyIds":     []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["companyTz"]; got != "Europe/Paris" {
+			t.Fatalf("companyTz mismatch: got=%v want=Europe/Paris", got)
+		}
+		if got := ctxMap["tz"]; got != "Europe/Paris" {
+			t.Fatalf("tz should fall through to company: got=%v", got)
+		}
+	})
+
+	t.Run("oversized baggage tz is ignored", func(t *testing.T) {
+		long := strings.Repeat("a", 65)
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "UTC",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, long)
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if _, ok := ctxMap["clientTz"]; ok {
+			t.Fatalf("clientTz should be absent for oversized baggage")
+		}
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+	})
+}
+
+func TestNormalizeIANATimezone(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		in    string
+		ok    bool
+		want  string
+	}{
+		{name: "empty", in: "", ok: false},
+		{name: "whitespace", in: "   ", ok: false},
+		{name: "too long", in: strings.Repeat("A", 65), ok: false},
+		{name: "Local", in: "Local", ok: false},
+		{name: "local fold", in: "local", ok: false},
+		{name: "invalid", in: "Not/A_Zone", ok: false},
+		{name: "UTC", in: "UTC", ok: true, want: "UTC"},
+		{name: "trim", in: "  Europe/Berlin  ", ok: true, want: "Europe/Berlin"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, ok := normalizeIANATimezone(tc.in)
+			if ok != tc.ok {
+				t.Fatalf("ok mismatch for %q: got=%v want=%v", tc.in, ok, tc.ok)
+			}
+			if tc.ok && got != tc.want {
+				t.Fatalf("value mismatch for %q: got=%q want=%q", tc.in, got, tc.want)
+			}
+			if !tc.ok && got != "" {
+				t.Fatalf("expected empty value on failure for %q, got %q", tc.in, got)
+			}
+		})
+	}
+}
+
 func TestServiceCodec(t *testing.T) {
 	structMsg, err := structpb.NewStruct(map[string]any{"name": "choysum", "count": 2})
 	if err != nil {

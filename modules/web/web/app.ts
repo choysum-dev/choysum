@@ -22,6 +22,9 @@ import {
   notifyComposerMessagesChanged,
   trackComposerMessageRevision,
 } from './i18n';
+import { detectBrowserTimezone, resolveRequestTimezone } from './utils/request_timezone';
+import { setUserTimeZoneResolver } from './utils/datetime';
+import { useAuthStore } from '@/auth/web/stores/auth';
 
 // Import Element Plus.
 import ElementPlus from 'element-plus';
@@ -54,11 +57,34 @@ function setupApp(app: ChoysumWebApp): void {
   // Initialize the i18n store before creating the i18n instance.
   const i18nStore = useI18nStore();
 
-  // RequestContext: locale (format) + lang (terminology) — D12d.
-  setGlobalRequestContextProvider(() => ({
-    locale: i18nStore.currentLocale.code,
-    lang: i18nStore.terminologyLang,
-  }));
+  // RequestContext: locale (format) + lang (terminology) + tz (User → browser; server applies D7).
+  setUserTimeZoneResolver(() => {
+    try {
+      const authStore = useAuthStore();
+      return (authStore.currentUser as any)?.Timezone ?? (authStore.identity as any)?.metadata?.timezone;
+    } catch {
+      return null;
+    }
+  });
+
+  setGlobalRequestContextProvider(() => {
+    let userTz = '';
+    try {
+      const authStore = useAuthStore();
+      userTz = resolveRequestTimezone(
+        (authStore.currentUser as any)?.Timezone ?? (authStore.identity as any)?.metadata?.timezone,
+        null
+      );
+    } catch {
+      userTz = '';
+    }
+    const tz = resolveRequestTimezone(userTz, detectBrowserTimezone());
+    return {
+      locale: i18nStore.currentLocale.code,
+      lang: i18nStore.terminologyLang,
+      ...(tz ? { tz } : {}),
+    };
+  });
 
   // Internationalization.
   const i18n = createI18n<false, { [key: string]: any }>({
