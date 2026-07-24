@@ -151,9 +151,15 @@ function applyTimezone(dialect: DialectName, column: unknown, timezone?: string)
   switch (dialect) {
     case 'postgres':
       return sql`(${column}) AT TIME ZONE ${tzLit}`;
-    case 'mysql':
-      // Requires mysql timezone tables; CONVERT_TZ returns NULL when tables are missing.
+    case 'mysql': {
+      // Requires mysql.time_zone* tables. Startup probes CONVERT_TZ(UTC,UTC) in
+      // internal/defaultscope (ensureMySQLTimezoneTables); without them CONVERT_TZ
+      // returns NULL and would silently corrupt day buckets.
+      if (!moment.tz.zone(tz)) {
+        throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
+      }
       return sql`CONVERT_TZ(${column}, @@session.time_zone, ${tzLit})`;
+    }
     case 'sqlite': {
       if (isUtcTimezone(tz)) return column;
       if (!moment.tz.zone(tz)) {

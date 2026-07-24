@@ -92,6 +92,11 @@ test('repository time bucket sql applies fixed offset on sqlite/mssql for non-DS
   expect(mssqlExpr.includes('480')).toBe(true);
 });
 
+test('repository time bucket sql rejects invalid IANA on mysql', () => {
+  const col = sql.ref('demo.CreatedAt');
+  expect(() => buildTimeBucketExpr('mysql', col, 'day', "Asia/Shanghai'; DROP")).toThrow(/Invalid IANA/);
+});
+
 test('repository time bucket sql rejects invalid IANA on sqlite', () => {
   const col = sql.ref('demo.CreatedAt');
   expect(() => buildTimeBucketExpr('sqlite', col, 'day', "Asia/Shanghai'; DROP")).toThrow(/Invalid IANA/);
