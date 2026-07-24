@@ -2,20 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, nextTick, ref } from 'vue';
-import type { WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
-import { createTranslate, getGlobalComposer } from '@/web/web/i18n';
-import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
-
-type FieldMeta = Pick<WebFieldMetadata, 'type' | 'string' | 'stringText'> & { relation?: string; id?: string };
-
-function labelForField(store: WebModelStore<any>, prop: string, meta: FieldMeta | undefined): string {
-  return resolveFieldLabel({
-    prop,
-    meta,
-    composer: getGlobalComposer(),
-    fieldsGetTranslatedString: store.getFieldsGetTranslatedString?.(prop),
-  });
-}
+import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createTranslate } from '@/web/web/i18n';
+import { isGroupableSearchField, listSearchFieldOptions } from './useSearchFieldOptions';
 
 export function useGroupingOptions(store: WebModelStore<any>) {
   const { _t } = createTranslate('web', { scope: 'web/composables/search/useGroupingOptions' });
@@ -28,37 +17,12 @@ export function useGroupingOptions(store: WebModelStore<any>) {
     { value: 'day', label: _t('Day') },
   ] as const);
 
-  const allFields = computed(() => {
-    const md = store.fieldsMetadata ?? ({} as Record<string, FieldMeta>);
-    return Object.entries(md).map(([prop, meta]: any) => ({
-      prop,
-      label: labelForField(store, prop, meta),
-      meta,
-    }));
-  });
-
   function isTemporalField(prop?: string) {
     const t = String((store as any)?.fieldsMetadata?.[prop!]?.type || '').toLowerCase();
     return t === 'date' || t === 'datetime' || t === 'time';
   }
 
-  const availableGroupFields = computed(() => {
-    const md = (store as any)?.fieldsMetadata ?? ({} as Record<string, any>);
-    return allFields.value
-      .filter(({ prop, meta }: any) => {
-        const t = String(meta?.type || '').toLowerCase();
-        if (prop === 'DeletedAt') return false;
-        if (t === 'onetomany' || t === 'manytomany' || t === 'jsonobject') return false;
-        return true;
-      })
-      .sort((a, b) => {
-        const idA = String(md[a.prop]?.id ?? '');
-        const idB = String(md[b.prop]?.id ?? '');
-        const cmp = idA.localeCompare(idB, 'en', { sensitivity: 'base' });
-        if (cmp !== 0) return cmp;
-        return a.label.localeCompare(b.label, 'en', { sensitivity: 'base' });
-      });
-  });
+  const availableGroupFields = computed(() => listSearchFieldOptions(store, isGroupableSearchField));
 
   const temporalGroupFields = computed(() => availableGroupFields.value.filter(f => isTemporalField(f.prop)));
   const nonTemporalGroupFields = computed(() => availableGroupFields.value.filter(f => !isTemporalField(f.prop)));
@@ -66,7 +30,6 @@ export function useGroupingOptions(store: WebModelStore<any>) {
   type TreeNode = { id: string; value?: string; label: string; selectable?: boolean; children?: TreeNode[] };
   const DUMMY_ROOT_SUFFIX = '__root';
   const groupTreeData = computed<TreeNode[]>(() => {
-    // Preserve the already-sorted availableGroupFields order while building the tree.
     const nodes: TreeNode[] = [];
     for (const f of availableGroupFields.value) {
       if (isTemporalField(f.prop)) {
@@ -75,7 +38,11 @@ export function useGroupingOptions(store: WebModelStore<any>) {
           value: `d:${f.prop}:${DUMMY_ROOT_SUFFIX}`,
           label: f.label,
           selectable: false,
-          children: granularityOptions.value.map(g => ({ id: `d:${f.prop}:${g.value}`, value: `d:${f.prop}:${g.value}`, label: g.label })),
+          children: granularityOptions.value.map(g => ({
+            id: `d:${f.prop}:${g.value}`,
+            value: `d:${f.prop}:${g.value}`,
+            label: g.label,
+          })),
         });
       } else {
         nodes.push({ id: `f:${f.prop}`, value: `f:${f.prop}`, label: f.label });

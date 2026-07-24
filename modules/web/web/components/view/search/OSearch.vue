@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="o-search">
-    <div class="o-search__main" ref="searchMainRef" @click="focusInput" @mouseenter="isHovering = true" @mouseleave="isHovering = false">
+    <div class="o-search__main" @click="focusInput">
       <el-tooltip :content="_t('Search')" placement="top">
         <el-button
           size="small"
@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
           @click.stop="onTagClick(f.id!)"
           :title="f.name || filterTooltip(f)"
         >
-          {{ f.name || summarizeFilterFields(f, 0) }}
+          {{ f.name || summarizeFilterFields(f, 2) }}
         </el-tag>
       </div>
 
@@ -59,7 +59,6 @@ SPDX-License-Identifier: Apache-2.0
         :id="inputId"
         @keydown.enter.stop.prevent="onEnter"
         @keydown="onInputKeydown"
-        @focus="onInputFocus"
         @blur="onInputBlur"
       />
 
@@ -138,7 +137,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </div>
 
-    <el-dialog v-model="isEditorOpen" :title="filterEditorTitle" append-to-body destroy-on-close @close="closeEditor()">
+    <el-dialog v-model="isEditorOpen" :title="filterEditorTitle" append-to-body destroy-on-close @close="closeEditor(true)">
       <OSearchFilter
         v-if="draftFilter"
         :store="store"
@@ -158,24 +157,25 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
-import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
+import { filtersSignature, shouldApplyControlledFilters } from '@/web/web/query/utils/search/controlledFilters';
 import OSearchFilter from './OSearchFilter.vue';
-import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
-import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect } from 'element-plus';
+import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect, ElMessage } from 'element-plus';
 import { useDebouncedFnCancelable } from '@/web/web/composables/useDebouncedFnCancelable';
-import type { TemporalGranularity, GroupBySpec } from '@/core/service/api/query';
+import type { GroupBySpec } from '@/core/service/api/query';
 import type { ConditionGroup, QueryUpdatePayload, NamedFilter } from '@/web/web/query/types';
-import { parseGbString, formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format';
+import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format';
+import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
-import { useGroupingOptions } from '@/web/web/composables/search/useGroupingOptions';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
-import { createTranslate, getGlobalComposer } from '@/web/web/i18n';
+import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
+import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
+import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
 
@@ -213,13 +213,11 @@ const groupingSummary = computed(() => {
 const groupingTooltip = computed(() => groupingSummary.value);
 
 /* Split useSearch into state, editor, actions, and helper layers. */
-const { state, editor, actions, helpers } = useSearch({});
+const { state, editor, actions, helpers } = useSearch({ attachStore: store as any });
 const keyword = state.keyword;
 const filters = state.filters;
-const hasActive = state.hasActive;
 // Editor layer.
 const isEditorOpen = editor.isEditorOpen;
-const activeFilterId = editor.activeFilterId;
 const draftFilter = editor.draftFilter;
 const filterEditorTitle = computed(() => (draftFilter.value?.baseId ? _t('Edit filter') : _t('New filter')));
 const openNewFilter = editor.openNew;
@@ -236,7 +234,6 @@ const deleteFilter = editor.deleteFilter;
 // Action layer.
 const applyNamedFilter = actions.applyNamedFilter;
 const popLastFilter = actions.popLastFilter;
-const clearAll = actions.clearAll;
 // Helper layer.
 const { summarizeFilter, summarizeFilterFields, filterTooltip } = helpers;
 
@@ -253,9 +250,6 @@ const placeholder = computed(() => props.placeholder || _t('Search...'));
 const inputName = computed(() => `${(store as any)?.storeId || 'search'}-keyword`);
 const inputId = computed(() => `${inputName.value}-input`);
 const inputRef = ref<HTMLInputElement | null>(null);
-const searchMainRef = ref<HTMLElement | null>(null);
-const isHovering = ref(false);
-const isFocused = ref(false);
 const pendingDeleteFilterId = ref<string | null>(null);
 const menuVisible = ref(false);
 
@@ -265,17 +259,33 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
   store,
   filtersRef: filters as any,
   applyNamedFilter,
-  defaultFiltersOverride: computed(() => {
+  defaultFiltersOverride: () => {
     const df = props.defaultFilters as any;
     if (!df) return undefined;
     return Array.isArray(df) ? df : [df];
-  }).value,
+  },
 });
 
 /* Debounced query emission. */
+const lastEmittedFiltersSig = ref('');
+const awaitingFiltersEcho = ref(false);
+function emitQueryUpdate(payload?: QueryUpdatePayload<any>) {
+  const p = payload ?? buildPayload();
+  const nextSig = filtersSignature(
+    normalizeFilters((Array.isArray(p.appliedFilters) ? p.appliedFilters : []) as any)
+  );
+  const parentSig = filtersSignature(
+    normalizeFilters((Array.isArray(props.currentAppliedFilters) ? props.currentAppliedFilters : []) as any)
+  );
+  lastEmittedFiltersSig.value = nextSig;
+  // Only await an echo when filter content diverges from the parent's current snapshot
+  // (keyword/groupby-only emits must not block later external filter updates).
+  if (nextSig !== parentSig) awaitingFiltersEcho.value = true;
+  emit('query-update', p);
+}
+
 const debouncedTrigger = useDebouncedFnCancelable(() => {
-  const payload = buildPayload();
-  emit('query-update', payload);
+  emitQueryUpdate();
 }, 400);
 
 // Prevent emits triggered by syncing keyword from props into local state.
@@ -290,187 +300,32 @@ watch(keyword, () => {
 /* Toggle named filter presets. */
 function onToggleDefaultFilter(it: FilterMenuItem) {
   toggleDefaultFilter(it as any, changed => {
-    if (changed) {
-      const p = buildPayload();
-      emit('query-update', p);
-    }
+    if (changed) emitQueryUpdate();
   });
 }
 
-/* Available fields sorted by WebFieldMetadata.id, then by label (D6 / T4.1). */
-const availableFields = computed(() => {
-  const md = store.fieldsMetadata as Record<string, any>;
-  const composer = getGlobalComposer();
-  const items = Object.entries(md)
-    .filter(([k, m]: any) => {
-      if (k === 'DeletedAt') return false;
-      if (k === 'Id') return true;
-      const view = getFieldMetadataView(m);
-      if (!view.isRelation) return true;
-      const lowerType = String(m?.type ?? '').toLowerCase();
-      return lowerType === 'manytoone' || lowerType === 'manytooneref';
-    })
-    .map(([k, m]: any) => ({
-      prop: k,
-      label: resolveFieldLabel({
-        prop: k,
-        meta: m,
-        composer,
-        fieldsGetTranslatedString: store.getFieldsGetTranslatedString?.(k),
-      }),
-      id: m?.id,
-    })) as Array<{ prop: string; label: string; id?: string }>;
+/* Available filter fields (shared helper; D6 / T4.1). */
+const availableFields = useFilterableSearchFields(store as any);
 
-  items.sort((a, b) => {
-    const idA = a.id ?? '';
-    const idB = b.id ?? '';
-    const cmp = idA.localeCompare(idB, 'en', { sensitivity: 'base' });
-    if (cmp !== 0) return cmp;
-    return a.label.localeCompare(b.label, 'en', { sensitivity: 'base' });
-  });
-
-  return items.map(i => ({ prop: i.prop, label: i.label }));
-});
-
-/* Grouping fields and controls built from a reusable composable. */
-type GB = string | { field: string; granularity?: TemporalGranularity };
+/* Grouping menu/tree controls. */
 const {
-  granularityOptions,
-  availableGroupFields,
-  temporalGroupFields,
-  nonTemporalGroupFields,
+  currentAppliedGroups,
   groupTreeData,
-  DUMMY_ROOT_SUFFIX,
-  temporalComboLabel,
+  appliedGroupItems,
   treeSelectValue,
-  resetTreeSelect,
-} = useGroupingOptions(store as any);
-
-const currentAppliedGroups = computed<GB[]>(() => {
-  const gbArr = props.currentAppliedGroups || [];
-  const out: GB[] = [];
-  for (const g of gbArr) {
-    if (typeof g === 'string') {
-      // Accept legacy string group definitions when the backend still returns them.
-      out.push(g);
-    } else if (g && typeof g === 'object') {
-      const field = (g as any).field ?? (g as any).name ?? (g as any).prop;
-      const granularity = (g as any).granularity ?? (g as any).gran;
-      if (field) out.push(granularity ? { field, granularity } : field);
-    }
-  }
-  return out;
+  treeProps,
+  togglePlainGroupby,
+  toggleTemporalGroupby,
+  onTreeSelectChange,
+} = useSearchGrouping({
+  store: store as any,
+  currentAppliedGroups: () => props.currentAppliedGroups as any,
+  onGroupsChange: (next: SearchGroupByItem[]) => {
+    emitQueryUpdate(buildPayload(next as any));
+  },
 });
-
-function setGroupbyLocal(next: GB[]) {
-  // Keep grouping local here and let the parent decide how to apply it.
-  const normalized = normalizeGroupby(next as any);
-  const p = buildPayload((normalized || []) as unknown as GB[]);
-  emit('query-update', p);
-}
-
-function togglePlainGroupby(field: string) {
-  const list = [...currentAppliedGroups.value];
-  const i = list.findIndex(gb => (typeof gb === 'string' ? gb === field : gb.field === field && !gb.granularity));
-  if (i >= 0) list.splice(i, 1);
-  else list.push(field);
-  setGroupbyLocal(list);
-}
-
-function toggleTemporalGroupby(field: string, gran: TemporalGranularity) {
-  const list = [...currentAppliedGroups.value];
-  const i = list.findIndex(gb => {
-    if (typeof gb === 'string') {
-      const p = parseGbString(gb);
-      return !!p.granularity && p.field === field && p.granularity === gran;
-    }
-    return gb.field === field && (gb.granularity || '') === gran;
-  });
-  if (i >= 0) list.splice(i, 1);
-  else list.push({ field, granularity: gran });
-  setGroupbyLocal(list);
-}
-
-type AppliedGroupItem = {
-  key: string;
-  type: 'plain' | 'temporal';
-  field: string;
-  granularity?: TemporalGranularity;
-  label: string;
-};
-
-const appliedGroupItems = computed<AppliedGroupItem[]>(() => {
-  const items: AppliedGroupItem[] = [];
-  for (const gb of currentAppliedGroups.value) {
-    if (typeof gb === 'string') {
-      const p = parseGbString(gb);
-      if (p.granularity) {
-        items.push({
-          key: `cur:temp:${p.field}:${p.granularity}`,
-          type: 'temporal',
-          field: p.field,
-          granularity: p.granularity,
-          label: temporalComboLabel(p.field, p.granularity),
-        });
-      } else {
-        const meta = availableGroupFields.value.find(f => f.prop === p.field);
-        items.push({
-          key: `cur:plain:${p.field}`,
-          type: 'plain',
-          field: p.field,
-          label: meta?.label || p.field,
-        });
-      }
-    } else {
-      const field = gb.field;
-      const gran = (gb.granularity || '') as TemporalGranularity | '';
-      if (gran) {
-        items.push({
-          key: `cur:temp:${field}:${gran}`,
-          type: 'temporal',
-          field,
-          granularity: gran as TemporalGranularity,
-          label: temporalComboLabel(field, gran as TemporalGranularity),
-        });
-      } else {
-        const meta = availableGroupFields.value.find(f => f.prop === field);
-        items.push({
-          key: `cur:plain:${field}`,
-          type: 'plain',
-          field,
-          label: meta?.label || field,
-        });
-      }
-    }
-  }
-  return items;
-});
-
-/* Grouping tree-select control. */
-const treeProps = { value: 'value', label: 'label', children: 'children', selectable: 'selectable' } as const;
-function onTreeSelectChange(v?: string) {
-  if (!v) return;
-  if (v.endsWith(`:${DUMMY_ROOT_SUFFIX}`)) {
-    resetTreeSelect();
-    return;
-  }
-  if (v.startsWith('f:')) {
-    const field = v.slice(2);
-    togglePlainGroupby(field);
-  } else if (v.startsWith('d:')) {
-    const [, field, gran] = v.split(':');
-    if (field && gran) toggleTemporalGroupby(field, gran as any);
-  }
-  resetTreeSelect();
-}
-
-/* Input behavior. */
-function onInputFocus() {
-  isFocused.value = true;
-}
 
 function onInputBlur() {
-  isFocused.value = false;
   pendingDeleteFilterId.value = null;
 }
 
@@ -486,10 +341,7 @@ function onInputKeydown(e: KeyboardEvent) {
         e.preventDefault();
       } else {
         const removed = popLastFilter(true);
-        if (removed) {
-          const p = buildPayload();
-          emit('query-update', p);
-        }
+        if (removed) emitQueryUpdate();
         pendingDeleteFilterId.value = null;
         e.preventDefault();
       }
@@ -503,15 +355,13 @@ function onInputKeydown(e: KeyboardEvent) {
 
 function onEnter() {
   debouncedTrigger.cancel();
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   pendingDeleteFilterId.value = null;
 }
 
 function onSearchIconClick() {
   debouncedTrigger.cancel();
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   pendingDeleteFilterId.value = null;
 }
 
@@ -526,8 +376,7 @@ function onTagClick(id: string) {
 
 function onTagClose(id: string) {
   deleteFilter(id);
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   if (pendingDeleteFilterId.value === id) pendingDeleteFilterId.value = null;
 }
 
@@ -541,14 +390,23 @@ function onEditorCancel() {
 }
 
 async function onSaveDraft() {
+  const draft = draftFilter.value;
+  if (!draft) return;
+  const editingId = draft.baseId;
   const ok = saveDraft();
-  if (ok) {
-    const p = buildPayload();
-    emit('query-update', p);
-    closeEditor(true);
-    pendingDeleteFilterId.value = null;
-    await nextTick();
+  if (!ok) {
+    // Edited tag disappeared (e.g. cleared while dialog open) — close without the incomplete warning.
+    if (editingId && !(filters.value || []).some(f => f.id === editingId)) {
+      closeEditor(true);
+      return;
+    }
+    ElMessage.warning(_t('Add at least one complete condition before saving'));
+    return;
   }
+  emitQueryUpdate();
+  closeEditor(true);
+  pendingDeleteFilterId.value = null;
+  await nextTick();
 }
 
 function onAddFilterClickAndClose() {
@@ -558,8 +416,7 @@ function onAddFilterClickAndClose() {
 
 function onGroupingClear() {
   // Pass an explicit empty array so buildPayload preserves [].
-  const p = buildPayload([]);
-  emit('query-update', p);
+  emitQueryUpdate(buildPayload([]));
 }
 
 function onEditGroupClick() {
@@ -567,7 +424,7 @@ function onEditGroupClick() {
 }
 
 // Build the normalized payload consumed by parent views such as List and Kanban.
-function buildPayload(overrideAppliedGroups?: Array<GroupBySpec<any>> | GB[]): QueryUpdatePayload<any> {
+function buildPayload(overrideAppliedGroups?: Array<GroupBySpec<any>> | SearchGroupByItem[]): QueryUpdatePayload<any> {
   const kw = keyword.value?.trim() || undefined;
   const conditionGroups: ConditionGroup[] = Array.isArray(filters.value) ? (filters.value as ConditionGroup[]) : [];
   const gbArrSrc = overrideAppliedGroups !== undefined ? overrideAppliedGroups : currentAppliedGroups.value;
@@ -590,33 +447,25 @@ watch(
   { immediate: true }
 );
 
-// Sync controlled filters into local state with a simple length-based strategy.
+// Sync controlled filters into local state by content signature (not length alone).
+// immediate: true hydrates route-restored tags on first frame via the same echo guard.
 watch(
   () => props.currentAppliedFilters,
   next => {
-    if (!next) return;
-    const cur = filters.value || [];
-    if (cur.length === 0 || cur.length !== next.length) {
-      filters.value = normalizeFilters(next as any);
+    if (next == null) return;
+    const decision = shouldApplyControlledFilters({
+      local: filters.value || [],
+      incoming: next as any,
+      lastEmittedSig: lastEmittedFiltersSig.value,
+      awaitingEcho: awaitingFiltersEcho.value,
+    });
+    if (decision.acknowledged) awaitingFiltersEcho.value = false;
+    if (decision.apply) {
+      filters.value = decision.normalized;
+      awaitingFiltersEcho.value = false;
     }
-  }
-);
-
-// Force one initial sync so route round-trips do not drop filter tags.
-onMounted(() => {
-  const cf = props.currentAppliedFilters as any;
-  if (Array.isArray(cf) && cf.length > 0) {
-    filters.value = normalizeFilters(cf);
-  } else {
-  }
-});
-
-// Controlled grouping changes currently affect display only.
-watch(
-  () => props.currentAppliedGroups,
-  () => {
-    // Do not auto-search; keep control explicit at the parent level.
-  }
+  },
+  { deep: true, immediate: true }
 );
 </script>
 

@@ -30,6 +30,26 @@ var (
 	referenceLocationPattern = regexp.MustCompile(`\blocation\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 )
 
+// ensureSynthesizedParentPathTitle attaches the core BaseModel.fields TermReference used by
+// runtime MetadataStorage. Plain "Parent Path" in @Field options does not create stringText
+// during resolve (owner module would also be wrong); OSearch reads static web store metadata
+// only, so codegen must emit module=core stringText or the picker shows the raw prop name.
+func ensureSynthesizedParentPathTitle(spec *meta.IrFieldResolvedSpec) {
+	if spec == nil || spec.FieldName != "ParentPath" {
+		return
+	}
+	title := strings.TrimSpace(spec.Structural.String)
+	if title == "" {
+		title = "Parent Path"
+		spec.Structural.String = title
+	}
+	if spec.Structural.StringText != nil || title != "Parent Path" {
+		return
+	}
+	ref := meta.NewTermReference("core", "core.model.BaseModel.fields", "Parent Path", "literal")
+	spec.Structural.StringText = &ref
+}
+
 func parseFactoryStringOption(options string, pattern *regexp.Regexp) string {
 	match := pattern.FindStringSubmatch(options)
 	if len(match) != 2 {
@@ -224,11 +244,13 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 			}
 		}
 		if !exists {
-			// Equivalent to @Field({ type:'varchar', size: 1000, indexed: true }).
+			// Equivalent to runtime MetadataStorage ParentPath injection:
+			// @Field({ type:'varchar', size:1000, indexed:true, string: _lt('Parent Path', { scope: 'core.model.BaseModel.fields' }) })
 			argObj := map[string]any{
 				"type":    "varchar",
 				"size":    1000,
 				"indexed": true,
+				"string":  "Parent Path",
 			}
 			argBytes, _ := json.Marshal(argObj)
 
@@ -285,6 +307,7 @@ func (p *tsFileParser) parseModel() (*meta.IrModel, *parser.Class, *parser.Prope
 		if resolvedSpec == nil {
 			continue
 		}
+		ensureSynthesizedParentPathTitle(resolvedSpec)
 		if err := field.SetResolvedSpec(resolvedSpec); err != nil {
 			return nil, nil, nil, xfmt.Errorf("failed to persist resolved field %s spec: %w", field.Name, err)
 		}

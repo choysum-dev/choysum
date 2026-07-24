@@ -28,7 +28,7 @@ import type { RuntimeModelCtor } from './types';
 import type { OnchangeDraft, OnchangeResult } from '../../runtime/onchange/types';
 import type { Context } from '../../runtime/context';
 import type { ObjectRecord } from '../../../utils/types';
-import { _t } from '@/core/service/i18n_binder';
+import { _t, _lt } from '@/core/service/i18n_binder';
 import { MetadataStorage, getEffectiveConstraints, getEffectiveOnchange } from '../metadata/storage';
 import type { EffectiveConstraintMeta, EffectiveOnchangeMeta } from '../metadata';
 import {
@@ -334,10 +334,12 @@ class BaseModel {
 
   /**
    * Display label resolved for the record.
+   * Field title uses `_lt` (terminology); not `translate: true` (that is data i18n for stored values).
    */
   @Field({
     type: 'varchar',
     size: 255,
+    string: _lt('Display Name', { scope: 'core.model.BaseModel.fields' }),
   })
   public readonly DisplayName!: string;
 
@@ -355,19 +357,31 @@ class BaseModel {
   /**
    * Timestamp recorded when the record was created.
    */
-  @Field({ type: 'datetime', index: true })
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Created At', { scope: 'core.model.BaseModel.fields' }),
+  })
   public readonly CreatedAt: Date;
 
   /**
    * Timestamp recorded when the record was last updated.
    */
-  @Field({ type: 'datetime', index: true })
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Updated At', { scope: 'core.model.BaseModel.fields' }),
+  })
   public UpdatedAt: Date;
 
   /**
    * Soft-delete timestamp for the record.
    */
-  @Field({ type: 'datetime', index: true })
+  @Field({
+    type: 'datetime',
+    index: true,
+    string: _lt('Deleted At', { scope: 'core.model.BaseModel.fields' }),
+  })
   public DeletedAt: Date;
 
   // The model_runtime layer stores the metadata cache on the constructor static.

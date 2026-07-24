@@ -17,27 +17,27 @@ msgctxt "auth.model.CompanyScopedResource.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/role.ts:108
+#: service/models/role.ts:110
 msgctxt "auth.model.Role.fields"
 msgid "Accessible UI Resources"
 msgstr ""
 
-#: service/models/role.ts:87
+#: service/models/role.ts:89
 msgctxt "auth.model.Role.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/role.ts:98
+#: service/models/role.ts:100
 msgctxt "auth.model.Role.fields"
 msgid "Built-in"
 msgstr ""
 
-#: service/models/role.ts:65
+#: service/models/role.ts:66
 msgctxt "auth.model.Role.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/role.ts:76
+#: service/models/role.ts:78
 msgctxt "auth.model.Role.fields"
 msgid "Description"
 msgstr ""
@@ -47,42 +47,42 @@ msgctxt "auth.model.Role.fields"
 msgid "Display Name"
 msgstr ""
 
-#: service/models/role.ts:183
+#: service/models/role.ts:185
 msgctxt "auth.model.Role.fields"
 msgid "Field Rules"
 msgstr ""
 
-#: service/models/role.ts:153
+#: service/models/role.ts:155
 msgctxt "auth.model.Role.fields"
 msgid "Implied By Roles"
 msgstr ""
 
-#: service/models/role.ts:138
+#: service/models/role.ts:140
 msgctxt "auth.model.Role.fields"
 msgid "Included Roles"
 msgstr ""
 
-#: service/models/role.ts:173
+#: service/models/role.ts:175
 msgctxt "auth.model.Role.fields"
 msgid "Method Accesses"
 msgstr ""
 
-#: service/models/role.ts:53
+#: service/models/role.ts:54
 msgctxt "auth.model.Role.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/role.ts:163
+#: service/models/role.ts:165
 msgctxt "auth.model.Role.fields"
 msgid "Record Rules"
 msgstr ""
 
-#: service/models/role.ts:193
+#: service/models/role.ts:195
 msgctxt "auth.model.Role.fields"
 msgid "UI Resources"
 msgstr ""
 
-#: service/models/role.ts:123
+#: service/models/role.ts:125
 msgctxt "auth.model.Role.fields"
 msgid "Users"
 msgstr ""
@@ -344,92 +344,92 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/user.ts:219
+#: service/models/user.ts:223
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user.ts:230
+#: service/models/user.ts:234
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/user.ts:143
+#: service/models/user.ts:147
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr ""
 
-#: service/models/user.ts:209
+#: service/models/user.ts:213
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user.ts:72
+#: service/models/user.ts:76
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/user.ts:105
+#: service/models/user.ts:109
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr ""
 
-#: service/models/user.ts:126
+#: service/models/user.ts:130
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr ""
 
-#: service/models/user.ts:153
+#: service/models/user.ts:157
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user.ts:240
+#: service/models/user.ts:244
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
 
-#: service/models/user.ts:116
+#: service/models/user.ts:120
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user.ts:94
+#: service/models/user.ts:98
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr ""
 
-#: service/models/user.ts:83
+#: service/models/user.ts:87
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/user.ts:174
+#: service/models/user.ts:178
 msgctxt "auth.model.User.fields"
 msgid "Preferences"
 msgstr ""
 
-#: service/models/user.ts:275
+#: service/models/user.ts:279
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user.ts:250
+#: service/models/user.ts:254
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
 
-#: service/models/user.ts:164
+#: service/models/user.ts:168
 msgctxt "auth.model.User.fields"
-msgid "Timezone"
+msgid "Time Zone"
 msgstr ""
 
-#: service/models/user.ts:260
+#: service/models/user.ts:264
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
 
-#: service/models/user.ts:61
+#: service/models/user.ts:65
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
@@ -454,60 +454,60 @@ msgctxt "service/models/_user_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:189
-#: service/models/_user_lifecycle_auth.ts:279
+#: service/models/_user_lifecycle_auth.ts:240
+#: service/models/_user_lifecycle_auth.ts:330
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Account is disabled"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:72
+#: service/models/_user_lifecycle_auth.ts:123
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:265
-#: service/models/_user_lifecycle_auth.ts:299
+#: service/models/_user_lifecycle_auth.ts:316
+#: service/models/_user_lifecycle_auth.ts:350
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:110
+#: service/models/_user_lifecycle_auth.ts:161
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:135
+#: service/models/_user_lifecycle_auth.ts:186
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:273
+#: service/models/_user_lifecycle_auth.ts:324
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User not found"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:173
-#: service/models/_user_lifecycle_auth.ts:180
+#: service/models/_user_lifecycle_auth.ts:224
+#: service/models/_user_lifecycle_auth.ts:231
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:88
+#: service/models/_user_lifecycle_auth.ts:139
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:33
+#: service/models/_user_lifecycle_auth.ts:84
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:60
+#: service/models/_user_lifecycle_auth.ts:111
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/_user_lifecycle_auth.ts:53
+#: service/models/_user_lifecycle_auth.ts:104
 msgctxt "service/models/_user_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
@@ -567,92 +567,92 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user.ts:866
+#: service/models/user.ts:902
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user.ts:293
+#: service/models/user.ts:297
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user.ts:847
+#: service/models/user.ts:883
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user.ts:322
+#: service/models/user.ts:326
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user.ts:604
+#: service/models/user.ts:640
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user.ts:831
+#: service/models/user.ts:867
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user.ts:839
+#: service/models/user.ts:875
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user.ts:576
+#: service/models/user.ts:612
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user.ts:593
+#: service/models/user.ts:629
 msgctxt "service/models/user"
 msgid "Token is required"
 msgstr ""
 
-#: service/models/user.ts:424
+#: service/models/user.ts:460
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user.ts:443
+#: service/models/user.ts:479
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user.ts:460
+#: service/models/user.ts:496
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user.ts:511
+#: service/models/user.ts:547
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user.ts:526
+#: service/models/user.ts:562
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user.ts:495
+#: service/models/user.ts:531
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user.ts:479
+#: service/models/user.ts:515
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user.ts:387
+#: service/models/user.ts:409
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user.ts:356
+#: service/models/user.ts:370
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
@@ -662,7 +662,7 @@ msgctxt "web/components/layout/OHeader"
 msgid "Log In"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:24
+#: web/components/layout/OHeader.vue:19
 msgctxt "web/components/layout/OHeader"
 msgid "Log Out"
 msgstr ""
@@ -677,12 +677,12 @@ msgctxt "web/components/layout/OHeader"
 msgid "Notifications"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:18
+#: web/components/layout/OHeader.vue:17
 msgctxt "web/components/layout/OHeader"
 msgid "Profile"
 msgstr ""
 
-#: web/components/layout/OHeader.vue:21
+#: web/components/layout/OHeader.vue:18
 msgctxt "web/components/layout/OHeader"
 msgid "Settings"
 msgstr ""
@@ -692,7 +692,7 @@ msgctxt "web/components/layout/OHeader"
 msgid "User menu"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:25
+#: web/components/layout/OSwitchCompany.vue:29
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Apply"
 msgstr ""
@@ -702,7 +702,13 @@ msgctxt "web/components/layout/OSwitchCompany"
 msgid "Available Companies"
 msgstr ""
 
-#: web/components/layout/OSwitchCompany.vue:135
+#: web/components/layout/OSwitchCompany.vue:278
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Available companies must include the current company"
+msgstr ""
+
+#: web/components/layout/OSwitchCompany.vue:243
+#: web/components/layout/OSwitchCompany.vue:248
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Company"
 msgstr ""
@@ -710,6 +716,21 @@ msgstr ""
 #: web/components/layout/OSwitchCompany.vue:11
 msgctxt "web/components/layout/OSwitchCompany"
 msgid "Current Company"
+msgstr ""
+
+#: web/components/layout/OSwitchCompany.vue:283
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "No changes to apply"
+msgstr ""
+
+#: web/components/layout/OSwitchCompany.vue:281
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Only one company is available; nothing to apply"
+msgstr ""
+
+#: web/components/layout/OSwitchCompany.vue:276
+msgctxt "web/components/layout/OSwitchCompany"
+msgid "Select a current company"
 msgstr ""
 
 #: web/components/layout/OSwitchCompany.vue:18

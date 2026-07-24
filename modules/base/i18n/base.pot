@@ -7,82 +7,82 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/models/address.ts:25
+#: service/models/address.ts:27
 msgctxt "base.model.Address.fields"
 msgid "Address Line 1"
 msgstr ""
 
-#: service/models/address.ts:32
+#: service/models/address.ts:34
 msgctxt "base.model.Address.fields"
 msgid "Address Line 2"
 msgstr ""
 
-#: service/models/address.ts:64
+#: service/models/address.ts:66
 msgctxt "base.model.Address.fields"
 msgid "City"
 msgstr ""
 
-#: service/models/address.ts:48
+#: service/models/address.ts:50
 msgctxt "base.model.Address.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/address.ts:18
+#: service/models/address.ts:20
 msgctxt "base.model.Address.fields"
 msgid "Label"
 msgstr ""
 
-#: service/models/address.ts:56
+#: service/models/address.ts:58
 msgctxt "base.model.Address.fields"
 msgid "State/Province"
 msgstr ""
 
-#: service/models/address.ts:39
+#: service/models/address.ts:41
 msgctxt "base.model.Address.fields"
 msgid "ZIP"
 msgstr ""
 
-#: service/models/bank.ts:51
+#: service/models/bank.ts:52
 msgctxt "base.model.Bank.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/bank.ts:59
+#: service/models/bank.ts:60
 msgctxt "base.model.Bank.fields"
 msgid "Address"
 msgstr ""
 
-#: service/models/bank.ts:42
+#: service/models/bank.ts:43
 msgctxt "base.model.Bank.fields"
 msgid "BIC"
 msgstr ""
 
-#: service/models/bank.ts:26
+#: service/models/bank.ts:27
 msgctxt "base.model.Bank.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/bank.ts:34
+#: service/models/bank.ts:35
 msgctxt "base.model.Bank.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/bank.ts:18
+#: service/models/bank.ts:19
 msgctxt "base.model.Bank.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/city.ts:56
+#: service/models/city.ts:57
 msgctxt "base.model.City.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/city.ts:28
+#: service/models/city.ts:29
 msgctxt "base.model.City.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/city.ts:38
+#: service/models/city.ts:39
 msgctxt "base.model.City.fields"
 msgid "Country"
 msgstr ""
@@ -92,262 +92,262 @@ msgctxt "base.model.City.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/city.ts:47
+#: service/models/city.ts:48
 msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr ""
 
-#: service/models/company.ts:68
+#: service/models/company.ts:69
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/company.ts:92
+#: service/models/company.ts:93
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr ""
 
-#: service/models/company.ts:59
+#: service/models/company.ts:60
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr ""
 
-#: service/models/company.ts:33
+#: service/models/company.ts:34
 msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/company.ts:84
+#: service/models/company.ts:85
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/company.ts:76
+#: service/models/company.ts:77
 msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/company.ts:23
+#: service/models/company.ts:24
 msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/company.ts:41
+#: service/models/company.ts:42
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr ""
 
-#: service/models/company.ts:50
+#: service/models/company.ts:51
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr ""
 
-#: service/models/country.ts:73
+#: service/models/country.ts:74
 msgctxt "base.model.Country.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/country.ts:48
+#: service/models/country.ts:49
 msgctxt "base.model.Country.fields"
 msgid "Address Format"
 msgstr ""
 
-#: service/models/country.ts:27
+#: service/models/country.ts:28
 msgctxt "base.model.Country.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/country.ts:42
+#: service/models/country.ts:43
 msgctxt "base.model.Country.fields"
 msgid "Default Currency"
 msgstr ""
 
-#: service/models/country.ts:34
+#: service/models/country.ts:35
 msgctxt "base.model.Country.fields"
 msgid "Dialing Code"
 msgstr ""
 
-#: service/models/country.ts:17
+#: service/models/country.ts:18
 msgctxt "base.model.Country.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/country.ts:64
+#: service/models/country.ts:65
 msgctxt "base.model.Country.fields"
 msgid "State/Province Required"
 msgstr ""
 
-#: service/models/country.ts:56
+#: service/models/country.ts:57
 msgctxt "base.model.Country.fields"
 msgid "ZIP Required"
 msgstr ""
 
-#: service/models/currency.ts:83
+#: service/models/currency.ts:84
 msgctxt "base.model.Currency.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/currency.ts:50
+#: service/models/currency.ts:51
 msgctxt "base.model.Currency.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/currency.ts:65
+#: service/models/currency.ts:66
 msgctxt "base.model.Currency.fields"
 msgid "Decimal Digits"
 msgstr ""
 
-#: service/models/currency.ts:40
+#: service/models/currency.ts:41
 msgctxt "base.model.Currency.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/currency.ts:74
+#: service/models/currency.ts:75
 msgctxt "base.model.Currency.fields"
 msgid "Rounding Precision"
 msgstr ""
 
-#: service/models/currency.ts:57
+#: service/models/currency.ts:58
 msgctxt "base.model.Currency.fields"
 msgid "Symbol"
 msgstr ""
 
-#: service/models/exchange_rate.ts:28
+#: service/models/exchange_rate.ts:29
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/exchange_rate.ts:20
+#: service/models/exchange_rate.ts:21
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Currency"
 msgstr ""
 
-#: service/models/exchange_rate.ts:47
+#: service/models/exchange_rate.ts:53
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Date"
 msgstr ""
 
-#: service/models/exchange_rate.ts:56
+#: service/models/exchange_rate.ts:62
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Exchange Rate"
 msgstr ""
 
-#: service/models/language.ts:68
+#: service/models/language.ts:69
 msgctxt "base.model.Language.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/language.ts:129
+#: service/models/language.ts:130
 msgctxt "base.model.Language.fields"
 msgid "After amount"
 msgstr ""
 
-#: service/models/language.ts:128
+#: service/models/language.ts:129
 msgctxt "base.model.Language.fields"
 msgid "Before amount"
 msgstr ""
 
-#: service/models/language.ts:59
+#: service/models/language.ts:60
 msgctxt "base.model.Language.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/language.ts:133
+#: service/models/language.ts:134
 msgctxt "base.model.Language.fields"
 msgid "Currency Symbol Position"
 msgstr ""
 
-#: service/models/language.ts:108
+#: service/models/language.ts:109
 msgctxt "base.model.Language.fields"
 msgid "Date Format"
 msgstr ""
 
-#: service/models/language.ts:86
+#: service/models/language.ts:87
 msgctxt "base.model.Language.fields"
 msgid "Decimal Separator"
 msgstr ""
 
-#: service/models/language.ts:79
+#: service/models/language.ts:80
 msgctxt "base.model.Language.fields"
 msgid "Direction"
 msgstr ""
 
-#: service/models/language.ts:121
+#: service/models/language.ts:122
 msgctxt "base.model.Language.fields"
 msgid "First Day of Week"
 msgstr ""
 
-#: service/models/language.ts:101
+#: service/models/language.ts:102
 msgctxt "base.model.Language.fields"
 msgid "Grouping"
 msgstr ""
 
-#: service/models/language.ts:75
+#: service/models/language.ts:76
 msgctxt "base.model.Language.fields"
 msgid "Left to right"
 msgstr ""
 
-#: service/models/language.ts:49
+#: service/models/language.ts:50
 msgctxt "base.model.Language.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/language.ts:76
+#: service/models/language.ts:77
 msgctxt "base.model.Language.fields"
 msgid "Right to left"
 msgstr ""
 
-#: service/models/language.ts:140
+#: service/models/language.ts:141
 msgctxt "base.model.Language.fields"
 msgid "Symbol Spacing"
 msgstr ""
 
-#: service/models/language.ts:93
+#: service/models/language.ts:94
 msgctxt "base.model.Language.fields"
 msgid "Thousands Separator"
 msgstr ""
 
-#: service/models/language.ts:115
+#: service/models/language.ts:116
 msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr ""
 
-#: service/models/sequence.ts:107
+#: service/models/sequence.ts:108
 msgctxt "base.model.Sequence.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/sequence.ts:50
+#: service/models/sequence.ts:51
 msgctxt "base.model.Sequence.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/sequence.ts:58
+#: service/models/sequence.ts:59
 msgctxt "base.model.Sequence.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/sequence.ts:40
+#: service/models/sequence.ts:41
 msgctxt "base.model.Sequence.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/sequence.ts:98
+#: service/models/sequence.ts:99
 msgctxt "base.model.Sequence.fields"
 msgid "Next Number"
 msgstr ""
 
-#: service/models/sequence.ts:90
+#: service/models/sequence.ts:91
 msgctxt "base.model.Sequence.fields"
 msgid "Padding Length"
 msgstr ""
 
-#: service/models/sequence.ts:75
+#: service/models/sequence.ts:76
 msgctxt "base.model.Sequence.fields"
 msgid "Prefix"
 msgstr ""
 
-#: service/models/sequence.ts:82
+#: service/models/sequence.ts:83
 msgctxt "base.model.Sequence.fields"
 msgid "Suffix"
 msgstr ""
@@ -427,17 +427,17 @@ msgctxt "base.model.State.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/uom.ts:70
+#: service/models/uom.ts:69
 msgctxt "base.model.UoM.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/uom.ts:36
+#: service/models/uom.ts:35
 msgctxt "base.model.UoM.fields"
 msgid "Category"
 msgstr ""
 
-#: service/models/uom.ts:53
+#: service/models/uom.ts:52
 msgctxt "base.model.UoM.fields"
 msgid "Conversion Factor"
 msgstr ""
@@ -447,12 +447,12 @@ msgctxt "base.model.UoM.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/uom.ts:44
+#: service/models/uom.ts:43
 msgctxt "base.model.UoM.fields"
 msgid "Reference Unit"
 msgstr ""
 
-#: service/models/uom.ts:61
+#: service/models/uom.ts:60
 msgctxt "base.model.UoM.fields"
 msgid "Rounding"
 msgstr ""
@@ -462,17 +462,17 @@ msgctxt "base.model.UoM.fields"
 msgid "Symbol"
 msgstr ""
 
-#: service/models/uom_category.ts:34
+#: service/models/uom_category.ts:35
 msgctxt "base.model.UoMCategory.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/uom_category.ts:25
+#: service/models/uom_category.ts:26
 msgctxt "base.model.UoMCategory.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/uom_category.ts:16
+#: service/models/uom_category.ts:17
 msgctxt "base.model.UoMCategory.fields"
 msgid "Name"
 msgstr ""
@@ -524,19 +524,19 @@ msgctxt "service/models/_currency_convert"
 msgid "Target currency %s not found"
 msgstr ""
 
-#: service/models/_normalization_bridge.ts:58
-msgctxt "service/models/_normalization_bridge"
-msgid "%s is required"
-msgstr ""
-
-#: service/models/_normalization_bridge.ts:30
-msgctxt "service/models/_normalization_bridge"
+#: service/models/_normalization_bridge.ts:39
+msgctxt "service/models/_normalization_bridge@normalizeCodeRequired"
 msgid "Code is required"
 msgstr ""
 
-#: service/models/_normalization_bridge.ts:48
-msgctxt "service/models/_normalization_bridge"
+#: service/models/_normalization_bridge.ts:49
+msgctxt "service/models/_normalization_bridge@normalizeName"
 msgid "Name is required"
+msgstr ""
+
+#: service/models/_normalization_bridge.ts:59
+msgctxt "service/models/_normalization_bridge@requireRefId"
+msgid "%s is required"
 msgstr ""
 
 #: service/models/_option_normalizers.ts:30
@@ -625,178 +625,173 @@ msgctxt "service/models/_sequence_next"
 msgid "Sequence not found for Code=%s"
 msgstr ""
 
-#: service/models/address.ts:112
+#: service/models/address.ts:114
 msgctxt "service/models/address"
 msgid "City not found"
 msgstr ""
 
-#: service/models/address.ts:114
+#: service/models/address.ts:116
 msgctxt "service/models/address"
 msgid "City.CountryId must equal Address.CountryId"
 msgstr ""
 
-#: service/models/address.ts:117
+#: service/models/address.ts:119
 msgctxt "service/models/address"
 msgid "City.StateId must equal Address.StateId"
 msgstr ""
 
-#: service/models/address.ts:89
+#: service/models/address.ts:91
 msgctxt "service/models/address"
 msgid "Country not found"
 msgstr ""
 
-#: service/models/address.ts:102
+#: service/models/address.ts:104
 msgctxt "service/models/address"
 msgid "State not found"
 msgstr ""
 
-#: service/models/address.ts:104
+#: service/models/address.ts:106
 msgctxt "service/models/address"
 msgid "State.CountryId must equal Address.CountryId"
 msgstr ""
 
-#: service/models/address.ts:92
+#: service/models/address.ts:94
 msgctxt "service/models/address"
 msgid "StateId is required for this country"
 msgstr ""
 
-#: service/models/address.ts:96
+#: service/models/address.ts:98
 msgctxt "service/models/address"
 msgid "Zip is required for this country"
 msgstr ""
 
-#: service/models/city.ts:84
+#: service/models/city.ts:86
 msgctxt "service/models/city"
-msgid "City Name must be unique within Country + State"
-msgstr ""
-
-#: service/models/city.ts:65
-msgctxt "service/models/city"
-msgid "State not found"
+msgid "City Code must be unique within Country + State"
 msgstr ""
 
 #: service/models/city.ts:66
 msgctxt "service/models/city"
+msgid "State not found"
+msgstr ""
+
+#: service/models/city.ts:67
+msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr ""
 
-#: service/models/company.ts:99
+#: service/models/company.ts:100
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr ""
 
-#: service/models/company.ts:123
+#: service/models/company.ts:115
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr ""
 
-#: service/models/company.ts:114
-msgctxt "service/models/company"
-msgid "Company Name must be unique"
-msgstr ""
-
-#: service/models/company.ts:132
+#: service/models/company.ts:124
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr ""
 
-#: service/models/company.ts:143
+#: service/models/company.ts:135
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/company.ts:166
+#: service/models/company.ts:158
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr ""
 
-#: service/models/company.ts:153
+#: service/models/company.ts:145
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr ""
 
-#: service/models/company.ts:140
+#: service/models/company.ts:132
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr ""
 
-#: service/models/country.ts:88
+#: service/models/country.ts:89
 msgctxt "service/models/country"
 msgid "AddressFormat contains unsupported token: %s"
 msgstr ""
 
-#: service/models/currency.ts:94
+#: service/models/currency.ts:95
 msgctxt "service/models/currency"
 msgid "DecimalDigits is required"
 msgstr ""
 
-#: service/models/currency.ts:95
+#: service/models/currency.ts:96
 msgctxt "service/models/currency"
 msgid "DecimalDigits must be a non-negative integer"
 msgstr ""
 
-#: service/models/currency.ts:102
+#: service/models/currency.ts:103
 msgctxt "service/models/currency"
 msgid "Rounding must be a valid decimal"
 msgstr ""
 
-#: service/models/currency.ts:101
+#: service/models/currency.ts:102
 msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr ""
 
-#: service/models/exchange_rate.ts:63
-#: service/models/exchange_rate.ts:71
+#: service/models/exchange_rate.ts:69
+#: service/models/exchange_rate.ts:77
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
 msgstr ""
 
-#: service/models/exchange_rate.ts:70
+#: service/models/exchange_rate.ts:76
 msgctxt "service/models/exchange_rate"
 msgid "Date is required"
 msgstr ""
 
-#: service/models/exchange_rate.ts:72
+#: service/models/exchange_rate.ts:78
 msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr ""
 
-#: service/models/exchange_rate.ts:99
+#: service/models/exchange_rate.ts:105
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr ""
 
-#: service/models/exchange_rate.ts:109
+#: service/models/exchange_rate.ts:115
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr ""
 
-#: service/models/exchange_rate.ts:108
+#: service/models/exchange_rate.ts:114
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr ""
 
-#: service/models/language.ts:246
+#: service/models/language.ts:247
 msgctxt "service/models/language"
 msgid "At least one language must stay active"
 msgstr ""
 
-#: service/models/language.ts:189
+#: service/models/language.ts:190
 msgctxt "service/models/language"
 msgid "Code or LanguageId is required"
 msgstr ""
 
-#: service/models/language.ts:259
+#: service/models/language.ts:261
 msgctxt "service/models/language"
 msgid "Language code cannot be changed"
 msgstr ""
 
-#: service/models/language.ts:210
+#: service/models/language.ts:211
 msgctxt "service/models/language"
 msgid "Language not found"
 msgstr ""
 
-#: service/models/language.ts:262
+#: service/models/language.ts:264
 msgctxt "service/models/language"
 msgid "The root language en_US cannot be deactivated"
 msgstr ""
@@ -831,54 +826,44 @@ msgctxt "service/models/sequence_idempotency"
 msgid "SequenceId is required"
 msgstr ""
 
-#: service/models/state.ts:78
+#: service/models/state.ts:66
 msgctxt "service/models/state"
 msgid "State Code must be unique within Country"
 msgstr ""
 
-#: service/models/state.ts:65
-msgctxt "service/models/state"
-msgid "State Name must be unique within Country"
-msgstr ""
-
-#: service/models/uom.ts:102
+#: service/models/uom.ts:87
 msgctxt "service/models/uom"
 msgid "Each UoM category can only have one reference unit"
 msgstr ""
 
-#: service/models/uom.ts:108
+#: service/models/uom.ts:93
 msgctxt "service/models/uom"
 msgid "Each UoM category must have one reference unit"
 msgstr ""
 
-#: service/models/uom.ts:122
+#: service/models/uom.ts:107
 msgctxt "service/models/uom"
 msgid "Factor must be a valid decimal"
 msgstr ""
 
-#: service/models/uom.ts:121
+#: service/models/uom.ts:106
 msgctxt "service/models/uom"
 msgid "Factor must be greater than 0"
 msgstr ""
 
-#: service/models/uom.ts:125
+#: service/models/uom.ts:110
 msgctxt "service/models/uom"
 msgid "Reference UoM must have Factor = 1"
 msgstr ""
 
-#: service/models/uom.ts:134
+#: service/models/uom.ts:119
 msgctxt "service/models/uom"
 msgid "Rounding must be a valid decimal"
 msgstr ""
 
-#: service/models/uom.ts:133
+#: service/models/uom.ts:118
 msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
-msgstr ""
-
-#: service/models/uom.ts:85
-msgctxt "service/models/uom"
-msgid "UoM Name must be unique within Category"
 msgstr ""
 
 #: web/menu/menus.ts:18

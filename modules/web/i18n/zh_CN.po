@@ -81,35 +81,85 @@ msgctxt "web/components/field/ODateField"
 msgid "Invalid date"
 msgstr "日期无效"
 
-#: web/components/field/ODatetimeField.vue:146
+#: web/components/field/ODatetimeField.vue:156
 msgctxt "web/components/field/ODatetimeField"
 msgid "Invalid date time"
 msgstr "日期时间无效"
 
-#: web/components/field/ODecimalField.vue:423
+#: web/components/field/ODecimalField.vue:434
 msgctxt "web/components/field/ODecimalField"
 msgid "Decimal places must not exceed %s"
 msgstr "小数位数不得超过 %s"
 
-#: web/components/field/ODecimalField.vue:422
+#: web/components/field/ODecimalField.vue:433
 msgctxt "web/components/field/ODecimalField"
 msgid "Must be a valid number"
 msgstr "必须是有效数字"
 
-#: web/components/field/ODecimalField.vue:427
+#: web/components/field/ODecimalField.vue:438
 msgctxt "web/components/field/ODecimalField"
 msgid "Must not be greater than %s"
 msgstr "不得大于 %s"
 
-#: web/components/field/ODecimalField.vue:426
+#: web/components/field/ODecimalField.vue:437
 msgctxt "web/components/field/ODecimalField"
 msgid "Must not be less than %s"
 msgstr "不得小于 %s"
 
-#: web/components/field/ODecimalField.vue:425
+#: web/components/field/ODecimalField.vue:436
 msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
+
+#: web/components/field/OFieldBase.vue:127
+msgctxt "web/components/field/OFieldBase"
+msgid "Translate field"
+msgstr "翻译字段"
+
+#: web/components/field/OFieldBase.vue:127
+msgctxt "web/components/field/OFieldBase"
+msgid "Translate: %s"
+msgstr "翻译：%s"
+
+#: web/components/field/OFieldTranslationsDialog.vue:8
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Base language (cannot be deleted)"
+msgstr "基础语言（不可删除）"
+
+#: web/components/field/OFieldTranslationsDialog.vue:15
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/field/OFieldTranslationsDialog.vue:130
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Failed to load translations"
+msgstr "加载翻译失败"
+
+#: web/components/field/OFieldTranslationsDialog.vue:172
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Failed to save translations"
+msgstr "保存翻译失败"
+
+#: web/components/field/OFieldTranslationsDialog.vue:17
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Save translations"
+msgstr "保存翻译"
+
+#: web/components/field/OFieldTranslationsDialog.vue:48
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Translate field"
+msgstr "翻译字段"
+
+#: web/components/field/OFieldTranslationsDialog.vue:48
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Translate: %s"
+msgstr "翻译：%s"
+
+#: web/components/field/OFieldTranslationsDialog.vue:169
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Translations saved"
+msgstr "翻译已保存"
 
 #: web/components/field/OImageField.vue:71
 msgctxt "web/components/field/OImageField"
@@ -276,12 +326,12 @@ msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/OManyToManyRefTagsField.vue:479
+#: web/components/field/OManyToManyRefTagsField.vue:478
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr "relationStore 未解析，无法打开选择器"
 
-#: web/components/field/OManyToManyRefTagsField.vue:475
+#: web/components/field/OManyToManyRefTagsField.vue:474
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr "searchList 未配置，无法打开选择器"
@@ -321,12 +371,12 @@ msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/OManyToManyTagsField.vue:478
+#: web/components/field/OManyToManyTagsField.vue:477
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr "relationStore 未解析，无法打开选择器"
 
-#: web/components/field/OManyToManyTagsField.vue:474
+#: web/components/field/OManyToManyTagsField.vue:473
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr "searchList 未配置，无法打开选择器"
@@ -911,6 +961,11 @@ msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr "搜索…"
 
+#: web/components/view/search/OSearch.vue:229
+msgctxt "web/components/view/search/OSearch"
+msgid "Add at least one complete condition before saving"
+msgstr "保存前请至少添加一条完整条件"
+
 #: web/components/view/search/OSearch.vue:40
 msgctxt "web/components/view/search/OSearch"
 msgid "Custom filter…"
@@ -921,12 +976,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Custom group by"
 msgstr "自定义分组"
 
-#: web/components/view/search/OSearch.vue:29
+#: web/components/view/search/OSearch.vue:30
 msgctxt "web/components/view/search/OSearch"
 msgid "Day"
 msgstr "日"
 
-#: web/components/view/search/OSearch.vue:65
+#: web/components/view/search/OSearch.vue:64
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit filter"
 msgstr "编辑过滤器"
@@ -946,12 +1001,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Group: %s"
 msgstr "分组：%s"
 
-#: web/components/view/search/OSearch.vue:27
+#: web/components/view/search/OSearch.vue:28
 msgctxt "web/components/view/search/OSearch"
 msgid "Month"
 msgstr "月"
 
-#: web/components/view/search/OSearch.vue:65
+#: web/components/view/search/OSearch.vue:64
 msgctxt "web/components/view/search/OSearch"
 msgid "New filter"
 msgstr "新建过滤器"
@@ -966,7 +1021,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Open search menu"
 msgstr "打开搜索菜单"
 
-#: web/components/view/search/OSearch.vue:26
+#: web/components/view/search/OSearch.vue:27
 msgctxt "web/components/view/search/OSearch"
 msgid "Quarter"
 msgstr "季度"
@@ -981,7 +1036,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Search"
 msgstr "搜索"
 
-#: web/components/view/search/OSearch.vue:93
+#: web/components/view/search/OSearch.vue:91
 msgctxt "web/components/view/search/OSearch"
 msgid "Search..."
 msgstr "搜索…"
@@ -991,22 +1046,22 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Select field or date granularity"
 msgstr "选择字段或日期粒度"
 
-#: web/components/view/search/OSearch.vue:28
+#: web/components/view/search/OSearch.vue:29
 msgctxt "web/components/view/search/OSearch"
 msgid "Week"
 msgstr "周"
 
-#: web/components/view/search/OSearch.vue:25
+#: web/components/view/search/OSearch.vue:26
 msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr "年"
 
-#: web/components/view/search/OSearchFilter.vue:91
+#: web/components/view/search/OSearchFilter.vue:82
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "(empty)"
 msgstr "（空）"
 
-#: web/components/view/search/OSearchFilter.vue:97
+#: web/components/view/search/OSearchFilter.vue:88
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "(incomplete)"
 msgstr "（不完整）"
@@ -1026,6 +1081,66 @@ msgctxt "web/components/view/search/OSearchFilter"
 msgid "Save"
 msgstr "保存"
 
+#: web/components/view/search/OSearchFilterCondition.vue:11
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Add values"
+msgstr "添加值"
+
+#: web/components/view/search/OSearchFilterCondition.vue:104
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Enter JSON"
+msgstr "输入 JSON"
+
+#: web/components/view/search/OSearchFilterCondition.vue:3
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Field"
+msgstr "字段"
+
+#: web/components/view/search/OSearchFilterCondition.vue:7
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Operator"
+msgstr "运算符"
+
+#: web/components/view/search/OSearchFilterCondition.vue:106
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Please select..."
+msgstr "请选择…"
+
+#: web/components/view/search/OSearchFilterCondition.vue:16
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Remove"
+msgstr "移除"
+
+#: web/components/view/search/OSearchFilterCondition.vue:14
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select a field"
+msgstr "选择字段"
+
+#: web/components/view/search/OSearchFilterCondition.vue:96
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select a record"
+msgstr "选择记录"
+
+#: web/components/view/search/OSearchFilterCondition.vue:98
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select date"
+msgstr "选择日期"
+
+#: web/components/view/search/OSearchFilterCondition.vue:100
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select date and time"
+msgstr "选择日期和时间"
+
+#: web/components/view/search/OSearchFilterCondition.vue:102
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select time"
+msgstr "选择时间"
+
+#: web/components/view/search/OSearchFilterCondition.vue:108
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Value"
+msgstr "值"
+
 #: web/components/view/search/OSearchFilterGroup.vue:12
 msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Add condition"
@@ -1036,107 +1151,52 @@ msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Add group"
 msgstr "添加分组"
 
-#: web/components/view/search/OSearchFilterGroup.vue:161
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Enter JSON"
-msgstr "输入 JSON"
-
-#: web/components/view/search/OSearchFilterGroup.vue:28
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Field"
-msgstr "字段"
-
 #: web/components/view/search/OSearchFilterGroup.vue:5
 msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Group relation"
 msgstr "分组关系"
-
-#: web/components/view/search/OSearchFilterGroup.vue:39
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Operator"
-msgstr "运算符"
-
-#: web/components/view/search/OSearchFilterGroup.vue:163
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Please select..."
-msgstr "请选择…"
-
-#: web/components/view/search/OSearchFilterGroup.vue:48
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Remove"
-msgstr "移除"
 
 #: web/components/view/search/OSearchFilterGroup.vue:14
 msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Remove group"
 msgstr "移除分组"
 
-#: web/components/view/search/OSearchFilterGroup.vue:46
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select a field"
-msgstr "选择字段"
-
-#: web/components/view/search/OSearchFilterGroup.vue:153
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select a record"
-msgstr "选择记录"
-
-#: web/components/view/search/OSearchFilterGroup.vue:155
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select date"
-msgstr "选择日期"
-
-#: web/components/view/search/OSearchFilterGroup.vue:157
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select date and time"
-msgstr "选择日期和时间"
-
-#: web/components/view/search/OSearchFilterGroup.vue:159
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select time"
-msgstr "选择时间"
-
-#: web/components/view/search/OSearchFilterGroup.vue:165
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Value"
-msgstr "值"
-
 #: web/components/vtable/OVTable.vue:12
 msgctxt "web/components/vtable/OVTable"
 msgid "No data"
 msgstr "暂无数据"
 
-#: web/composables/search/useGroupingOptions.ts:28 web/composables/search/useGroupingOptions.ts:94
+#: web/composables/search/useGroupingOptions.ts:17 web/composables/search/useGroupingOptions.ts:61
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Day"
 msgstr "日"
 
-#: web/composables/search/useGroupingOptions.ts:26 web/composables/search/useGroupingOptions.ts:92
+#: web/composables/search/useGroupingOptions.ts:15 web/composables/search/useGroupingOptions.ts:59
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Month"
 msgstr "月"
 
-#: web/composables/search/useGroupingOptions.ts:25 web/composables/search/useGroupingOptions.ts:91
+#: web/composables/search/useGroupingOptions.ts:14 web/composables/search/useGroupingOptions.ts:58
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Quarter"
 msgstr "季度"
 
-#: web/composables/search/useGroupingOptions.ts:27 web/composables/search/useGroupingOptions.ts:93
+#: web/composables/search/useGroupingOptions.ts:16 web/composables/search/useGroupingOptions.ts:60
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Week"
 msgstr "周"
 
-#: web/composables/search/useGroupingOptions.ts:24 web/composables/search/useGroupingOptions.ts:90
+#: web/composables/search/useGroupingOptions.ts:13 web/composables/search/useGroupingOptions.ts:57
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Year"
 msgstr "年"
 
-#: web/composables/search/useSearch.ts:41 web/composables/search/useSearch.ts:52
+#: web/composables/search/useSearch.ts:54 web/composables/search/useSearch.ts:66
 msgctxt "web/composables/search/useSearch"
 msgid "(empty)"
 msgstr "（空）"
 
-#: web/composables/search/useSearch.ts:55 web/composables/search/useSearch.ts:66
+#: web/composables/search/useSearch.ts:69 web/composables/search/useSearch.ts:80
 msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr "未配置"
@@ -1335,3 +1395,4 @@ msgstr "详情"
 msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
+

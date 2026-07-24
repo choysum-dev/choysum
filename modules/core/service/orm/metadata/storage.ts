@@ -7,6 +7,7 @@ import BaseModel from '../model/model';
 import type { ConstraintMeta, EffectiveConstraintMeta } from './constraint';
 import type { OnchangeHandlerMeta, EffectiveOnchangeMeta } from './model';
 import type { ObjectRecord } from '../../../utils/types';
+import { _lt } from '@/core/service/i18n_binder';
 
 export class MetadataStorage {
   private static _instance: MetadataStorage;
@@ -565,9 +566,12 @@ export class MetadataStorage {
     // Inject ParentPath field metadata, including compute and dependency wiring.
     const pf = result.parentField;
     if (pf && !result.fields.has('ParentPath')) {
+      const parentPathTitle = _lt('Parent Path', { scope: 'core.model.BaseModel.fields' });
       const pathFieldMeta: FieldMetadata = {
         name: 'ParentPath',
         type: 'varchar',
+        string: parentPathTitle.src,
+        stringText: parentPathTitle,
         column: {
           size: 1000,
           index: true,

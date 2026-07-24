@@ -165,7 +165,7 @@ export default class User extends BaseModel {
     type: 'selection',
     selection: () => listIanaTimezoneSelection(),
     size: 64,
-    string: _lt('Timezone', { scope: 'auth.model.User.fields' }),
+    string: _lt('Time Zone', { scope: 'auth.model.User.fields' }),
   })
   Timezone: string | null;
 

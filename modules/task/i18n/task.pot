@@ -182,67 +182,67 @@ msgctxt "task.model.JobExecution.fields"
 msgid "Triggered By User"
 msgstr ""
 
-#: service/models/schedule.ts:63
+#: service/models/schedule.ts:64
 msgctxt "task.model.Schedule.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/schedule.ts:130
+#: service/models/schedule.ts:132
 msgctxt "task.model.Schedule.fields"
 msgid "Cron Expression"
 msgstr ""
 
-#: service/models/schedule.ts:93
+#: service/models/schedule.ts:95
 msgctxt "task.model.Schedule.fields"
 msgid "Full Method"
 msgstr ""
 
-#: service/models/schedule.ts:163
+#: service/models/schedule.ts:166
 msgctxt "task.model.Schedule.fields"
 msgid "Last Run At"
 msgstr ""
 
-#: service/models/schedule.ts:171
+#: service/models/schedule.ts:174
 msgctxt "task.model.Schedule.fields"
 msgid "Last Triggered At"
 msgstr ""
 
-#: service/models/schedule.ts:73
+#: service/models/schedule.ts:75
 msgctxt "task.model.Schedule.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/schedule.ts:155
+#: service/models/schedule.ts:158
 msgctxt "task.model.Schedule.fields"
 msgid "Next Run At"
 msgstr ""
 
-#: service/models/schedule.ts:100
+#: service/models/schedule.ts:102
 msgctxt "task.model.Schedule.fields"
 msgid "Payload Template"
 msgstr ""
 
-#: service/models/schedule.ts:110
+#: service/models/schedule.ts:112
 msgctxt "task.model.Schedule.fields"
 msgid "Scheduler User"
 msgstr ""
 
-#: service/models/schedule.ts:83
+#: service/models/schedule.ts:85
 msgctxt "task.model.Schedule.fields"
 msgid "Target App"
 msgstr ""
 
-#: service/models/schedule.ts:147
+#: service/models/schedule.ts:150
 msgctxt "task.model.Schedule.fields"
 msgid "Timeout Ms"
 msgstr ""
 
-#: service/models/schedule.ts:139
+#: service/models/schedule.ts:142
 msgctxt "task.model.Schedule.fields"
 msgid "Timezone"
 msgstr ""
 
-#: service/models/schedule.ts:120
+#: service/models/schedule.ts:122
 msgctxt "task.model.Schedule.fields"
 msgid "Triggered By User"
 msgstr ""

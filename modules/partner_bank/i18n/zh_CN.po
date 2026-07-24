@@ -131,11 +131,6 @@ msgctxt "service/models/_helpers"
 msgid "AccountType must be one of checking, savings, corporate, other"
 msgstr "AccountType 必须是 checking、savings、corporate 或 other"
 
-#: service/models/_normalization_bridge.ts:62
-msgctxt "service/models/_normalization_bridge"
-msgid "%s is required"
-msgstr "%s 为必填项"
-
 #: service/models/bank_account.ts:268
 msgctxt "service/models/bank_account"
 msgid "AllowInbound and AllowOutbound cannot both be false"
@@ -306,46 +301,3 @@ msgctxt "web/views/PartnerFormView"
 msgid "Yes"
 msgstr "是"
 
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Account Name"
-#~ msgstr "账户名称"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Account Number"
-#~ msgstr "账号"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Account Type"
-#~ msgstr "账户类型"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Allow Inbound"
-#~ msgstr "允许入账"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Allow Outbound"
-#~ msgstr "允许出账"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Bank"
-#~ msgstr "银行"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Default Inbound"
-#~ msgstr "默认入账"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Default Outbound"
-#~ msgstr "默认出账"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "IBAN"
-#~ msgstr "IBAN"
-
-#~ msgctxt "web/views/PartnerBankAccountFormView"
-#~ msgid "Routing Code"
-#~ msgstr "路由码"

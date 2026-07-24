@@ -1,7 +1,32 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/orm/model/model.ts:231
+#: service/orm/model/model.ts:363
+msgctxt "core.model.BaseModel.fields"
+msgid "Created At"
+msgstr "创建时间"
+
+#: service/orm/model/model.ts:383
+msgctxt "core.model.BaseModel.fields"
+msgid "Deleted At"
+msgstr "删除时间"
+
+#: service/orm/model/model.ts:342
+msgctxt "core.model.BaseModel.fields"
+msgid "Display Name"
+msgstr "显示名称"
+
+#: service/orm/metadata/storage.ts:569
+msgctxt "core.model.BaseModel.fields"
+msgid "Parent Path"
+msgstr "父级路径"
+
+#: service/orm/model/model.ts:373
+msgctxt "core.model.BaseModel.fields"
+msgid "Updated At"
+msgstr "更新时间"
+
+#: service/orm/model/model.ts:260
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr "需要当前用户"
@@ -16,7 +41,7 @@ msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr "Id 为 %s 的记录已不存在"
 
-#: service/orm/model/model_read.ts:316
+#: service/orm/model/model_read.ts:317
 msgctxt "service/orm/model/model_read"
 msgid "%s not found"
 msgstr "未找到 %s"
@@ -146,7 +171,7 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr "字段 \"%s\" 必须是满足精度与小数位限制的有效小数"
 
-#: service/orm/repository/write/create_helpers.ts:42
+#: service/orm/repository/write/create_helpers.ts:44
 msgctxt "service/orm/repository/write/create_helpers"
 msgid "record rule denied"
 msgstr "记录规则拒绝"
@@ -186,6 +211,31 @@ msgctxt "service/runtime/validation/engine"
 msgid "validation pipeline failed"
 msgstr "校验流水线失败"
 
+#: service/utils/domain_normalization_bridge.ts:72
+msgctxt "service/utils/domain_normalization_bridge@normalizeNonNegativeInt"
+msgid "%s must be a non-negative integer"
+msgstr "%s 必须是非负整数"
+
+#: service/utils/domain_normalization_bridge.ts:58
+msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredText"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/utils/domain_normalization_bridge.ts:65
+msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredTranslatedText"
+msgid "%s is required"
+msgstr "%s 为必填项"
+
+#: service/utils/domain_normalization_bridge.ts:79
+msgctxt "service/utils/domain_normalization_bridge@normalizeSequenceInt"
+msgid "Sequence must be an integer"
+msgstr "序号必须是整数"
+
+#: service/utils/domain_normalization_bridge.ts:87
+msgctxt "service/utils/domain_normalization_bridge@toDateOrUndefined"
+msgid "%s must be a valid datetime"
+msgstr "%s 必须是有效的日期时间"
+
 #: web/error/ui.ts:15
 msgctxt "web/error/ui"
 msgid "Unexpected error"
@@ -195,4 +245,3 @@ msgstr "意外错误"
 msgctxt "web/rpc/errors"
 msgid "Unknown API error"
 msgstr "未知 API 错误"
-

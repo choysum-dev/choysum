@@ -7,7 +7,32 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: service/orm/model/model.ts:231
+#: service/orm/model/model.ts:363
+msgctxt "core.model.BaseModel.fields"
+msgid "Created At"
+msgstr ""
+
+#: service/orm/model/model.ts:383
+msgctxt "core.model.BaseModel.fields"
+msgid "Deleted At"
+msgstr ""
+
+#: service/orm/model/model.ts:342
+msgctxt "core.model.BaseModel.fields"
+msgid "Display Name"
+msgstr ""
+
+#: service/orm/metadata/storage.ts:569
+msgctxt "core.model.BaseModel.fields"
+msgid "Parent Path"
+msgstr ""
+
+#: service/orm/model/model.ts:373
+msgctxt "core.model.BaseModel.fields"
+msgid "Updated At"
+msgstr ""
+
+#: service/orm/model/model.ts:260
 msgctxt "service/orm/model/model"
 msgid "current user is required"
 msgstr ""
@@ -23,7 +48,7 @@ msgctxt "service/orm/model/model_instance"
 msgid "Record with Id %s no longer exists"
 msgstr ""
 
-#: service/orm/model/model_read.ts:316
+#: service/orm/model/model_read.ts:317
 msgctxt "service/orm/model/model_read"
 msgid "%s not found"
 msgstr ""
@@ -156,7 +181,7 @@ msgctxt "service/orm/repository/validation/kernel"
 msgid "Field \"%s\" must be a valid decimal that satisfies the precision and scale limits"
 msgstr ""
 
-#: service/orm/repository/write/create_helpers.ts:42
+#: service/orm/repository/write/create_helpers.ts:44
 msgctxt "service/orm/repository/write/create_helpers"
 msgid "record rule denied"
 msgstr ""
@@ -197,6 +222,31 @@ msgstr ""
 #: service/runtime/validation/engine.ts:94
 msgctxt "service/runtime/validation/engine"
 msgid "validation pipeline failed"
+msgstr ""
+
+#: service/utils/domain_normalization_bridge.ts:72
+msgctxt "service/utils/domain_normalization_bridge@normalizeNonNegativeInt"
+msgid "%s must be a non-negative integer"
+msgstr ""
+
+#: service/utils/domain_normalization_bridge.ts:58
+msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredText"
+msgid "%s is required"
+msgstr ""
+
+#: service/utils/domain_normalization_bridge.ts:65
+msgctxt "service/utils/domain_normalization_bridge@normalizeRequiredTranslatedText"
+msgid "%s is required"
+msgstr ""
+
+#: service/utils/domain_normalization_bridge.ts:79
+msgctxt "service/utils/domain_normalization_bridge@normalizeSequenceInt"
+msgid "Sequence must be an integer"
+msgstr ""
+
+#: service/utils/domain_normalization_bridge.ts:87
+msgctxt "service/utils/domain_normalization_bridge@toDateOrUndefined"
+msgid "%s must be a valid datetime"
 msgstr ""
 
 #: web/error/ui.ts:15

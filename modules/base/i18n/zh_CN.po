@@ -1,82 +1,82 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/address.ts:25
+#: service/models/address.ts:27
 msgctxt "base.model.Address.fields"
 msgid "Address Line 1"
 msgstr "地址行 1"
 
-#: service/models/address.ts:32
+#: service/models/address.ts:34
 msgctxt "base.model.Address.fields"
 msgid "Address Line 2"
 msgstr "地址行 2"
 
-#: service/models/address.ts:64
+#: service/models/address.ts:66
 msgctxt "base.model.Address.fields"
 msgid "City"
 msgstr "城市"
 
-#: service/models/address.ts:48
+#: service/models/address.ts:50
 msgctxt "base.model.Address.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/address.ts:18
+#: service/models/address.ts:20
 msgctxt "base.model.Address.fields"
 msgid "Label"
 msgstr "标签"
 
-#: service/models/address.ts:56
+#: service/models/address.ts:58
 msgctxt "base.model.Address.fields"
 msgid "State/Province"
 msgstr "州/省"
 
-#: service/models/address.ts:39
+#: service/models/address.ts:41
 msgctxt "base.model.Address.fields"
 msgid "ZIP"
 msgstr "邮政编码"
 
-#: service/models/bank.ts:51
+#: service/models/bank.ts:52
 msgctxt "base.model.Bank.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/bank.ts:59
+#: service/models/bank.ts:60
 msgctxt "base.model.Bank.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/bank.ts:42
+#: service/models/bank.ts:43
 msgctxt "base.model.Bank.fields"
 msgid "BIC"
 msgstr "银行识别码（BIC）"
 
-#: service/models/bank.ts:26
+#: service/models/bank.ts:27
 msgctxt "base.model.Bank.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/bank.ts:34
+#: service/models/bank.ts:35
 msgctxt "base.model.Bank.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/bank.ts:18
+#: service/models/bank.ts:19
 msgctxt "base.model.Bank.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/city.ts:56
+#: service/models/city.ts:57
 msgctxt "base.model.City.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/city.ts:28
+#: service/models/city.ts:29
 msgctxt "base.model.City.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/city.ts:38
+#: service/models/city.ts:39
 msgctxt "base.model.City.fields"
 msgid "Country"
 msgstr "国家/地区"
@@ -86,262 +86,262 @@ msgctxt "base.model.City.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/city.ts:47
+#: service/models/city.ts:48
 msgctxt "base.model.City.fields"
 msgid "State/Province"
 msgstr "州/省"
 
-#: service/models/company.ts:68
+#: service/models/company.ts:69
 msgctxt "base.model.Company.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/company.ts:92
+#: service/models/company.ts:93
 msgctxt "base.model.Company.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/company.ts:59
+#: service/models/company.ts:60
 msgctxt "base.model.Company.fields"
 msgid "Base Currency"
 msgstr "本位币"
 
-#: service/models/company.ts:33
+#: service/models/company.ts:34
 msgctxt "base.model.Company.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/company.ts:84
+#: service/models/company.ts:85
 msgctxt "base.model.Company.fields"
 msgid "Country"
 msgstr "国家/地区"
 
-#: service/models/company.ts:76
+#: service/models/company.ts:77
 msgctxt "base.model.Company.fields"
 msgid "Language"
 msgstr "语言"
 
-#: service/models/company.ts:23
+#: service/models/company.ts:24
 msgctxt "base.model.Company.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/company.ts:41
+#: service/models/company.ts:42
 msgctxt "base.model.Company.fields"
 msgid "Parent Company"
 msgstr "上级公司"
 
-#: service/models/company.ts:50
+#: service/models/company.ts:51
 msgctxt "base.model.Company.fields"
 msgid "Time Zone"
 msgstr "时区"
 
-#: service/models/country.ts:73
+#: service/models/country.ts:74
 msgctxt "base.model.Country.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/country.ts:48
+#: service/models/country.ts:49
 msgctxt "base.model.Country.fields"
 msgid "Address Format"
 msgstr "地址格式"
 
-#: service/models/country.ts:27
+#: service/models/country.ts:28
 msgctxt "base.model.Country.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/country.ts:42
+#: service/models/country.ts:43
 msgctxt "base.model.Country.fields"
 msgid "Default Currency"
 msgstr "默认币种"
 
-#: service/models/country.ts:34
+#: service/models/country.ts:35
 msgctxt "base.model.Country.fields"
 msgid "Dialing Code"
 msgstr "国际区号"
 
-#: service/models/country.ts:17
+#: service/models/country.ts:18
 msgctxt "base.model.Country.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/country.ts:64
+#: service/models/country.ts:65
 msgctxt "base.model.Country.fields"
 msgid "State/Province Required"
 msgstr "州/省必填"
 
-#: service/models/country.ts:56
+#: service/models/country.ts:57
 msgctxt "base.model.Country.fields"
 msgid "ZIP Required"
 msgstr "邮政编码必填"
 
-#: service/models/currency.ts:83
+#: service/models/currency.ts:84
 msgctxt "base.model.Currency.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/currency.ts:50
+#: service/models/currency.ts:51
 msgctxt "base.model.Currency.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/currency.ts:65
+#: service/models/currency.ts:66
 msgctxt "base.model.Currency.fields"
 msgid "Decimal Digits"
 msgstr "小数位数"
 
-#: service/models/currency.ts:40
+#: service/models/currency.ts:41
 msgctxt "base.model.Currency.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/currency.ts:74
+#: service/models/currency.ts:75
 msgctxt "base.model.Currency.fields"
 msgid "Rounding Precision"
 msgstr "舍入精度"
 
-#: service/models/currency.ts:57
+#: service/models/currency.ts:58
 msgctxt "base.model.Currency.fields"
 msgid "Symbol"
 msgstr "符号"
 
-#: service/models/exchange_rate.ts:28
+#: service/models/exchange_rate.ts:29
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/exchange_rate.ts:20
+#: service/models/exchange_rate.ts:21
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Currency"
 msgstr "币种"
 
-#: service/models/exchange_rate.ts:47
+#: service/models/exchange_rate.ts:53
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Date"
 msgstr "日期"
 
-#: service/models/exchange_rate.ts:56
+#: service/models/exchange_rate.ts:62
 msgctxt "base.model.ExchangeRate.fields"
 msgid "Exchange Rate"
 msgstr "汇率"
 
-#: service/models/language.ts:68
+#: service/models/language.ts:69
 msgctxt "base.model.Language.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/language.ts:129
+#: service/models/language.ts:130
 msgctxt "base.model.Language.fields"
 msgid "After amount"
 msgstr "金额后"
 
-#: service/models/language.ts:128
+#: service/models/language.ts:129
 msgctxt "base.model.Language.fields"
 msgid "Before amount"
 msgstr "金额前"
 
-#: service/models/language.ts:59
+#: service/models/language.ts:60
 msgctxt "base.model.Language.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/language.ts:133
+#: service/models/language.ts:134
 msgctxt "base.model.Language.fields"
 msgid "Currency Symbol Position"
 msgstr "货币符号位置"
 
-#: service/models/language.ts:108
+#: service/models/language.ts:109
 msgctxt "base.model.Language.fields"
 msgid "Date Format"
 msgstr "日期格式"
 
-#: service/models/language.ts:86
+#: service/models/language.ts:87
 msgctxt "base.model.Language.fields"
 msgid "Decimal Separator"
 msgstr "小数分隔符"
 
-#: service/models/language.ts:79
+#: service/models/language.ts:80
 msgctxt "base.model.Language.fields"
 msgid "Direction"
 msgstr "文字方向"
 
-#: service/models/language.ts:121
+#: service/models/language.ts:122
 msgctxt "base.model.Language.fields"
 msgid "First Day of Week"
 msgstr "每周第一天"
 
-#: service/models/language.ts:101
+#: service/models/language.ts:102
 msgctxt "base.model.Language.fields"
 msgid "Grouping"
 msgstr "分组"
 
-#: service/models/language.ts:75
+#: service/models/language.ts:76
 msgctxt "base.model.Language.fields"
 msgid "Left to right"
 msgstr "从左到右"
 
-#: service/models/language.ts:49
+#: service/models/language.ts:50
 msgctxt "base.model.Language.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/language.ts:76
+#: service/models/language.ts:77
 msgctxt "base.model.Language.fields"
 msgid "Right to left"
 msgstr "从右到左"
 
-#: service/models/language.ts:140
+#: service/models/language.ts:141
 msgctxt "base.model.Language.fields"
 msgid "Symbol Spacing"
 msgstr "符号间距"
 
-#: service/models/language.ts:93
+#: service/models/language.ts:94
 msgctxt "base.model.Language.fields"
 msgid "Thousands Separator"
 msgstr "千位分隔符"
 
-#: service/models/language.ts:115
+#: service/models/language.ts:116
 msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr "时间格式"
 
-#: service/models/sequence.ts:107
+#: service/models/sequence.ts:108
 msgctxt "base.model.Sequence.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/sequence.ts:50
+#: service/models/sequence.ts:51
 msgctxt "base.model.Sequence.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/sequence.ts:58
+#: service/models/sequence.ts:59
 msgctxt "base.model.Sequence.fields"
 msgid "Company"
 msgstr "公司"
 
-#: service/models/sequence.ts:40
+#: service/models/sequence.ts:41
 msgctxt "base.model.Sequence.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/sequence.ts:98
+#: service/models/sequence.ts:99
 msgctxt "base.model.Sequence.fields"
 msgid "Next Number"
 msgstr "下一个编号"
 
-#: service/models/sequence.ts:90
+#: service/models/sequence.ts:91
 msgctxt "base.model.Sequence.fields"
 msgid "Padding Length"
 msgstr "补零长度"
 
-#: service/models/sequence.ts:75
+#: service/models/sequence.ts:76
 msgctxt "base.model.Sequence.fields"
 msgid "Prefix"
 msgstr "前缀"
 
-#: service/models/sequence.ts:82
+#: service/models/sequence.ts:83
 msgctxt "base.model.Sequence.fields"
 msgid "Suffix"
 msgstr "后缀"
@@ -421,17 +421,17 @@ msgctxt "base.model.State.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/uom.ts:70
+#: service/models/uom.ts:69
 msgctxt "base.model.UoM.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/uom.ts:36
+#: service/models/uom.ts:35
 msgctxt "base.model.UoM.fields"
 msgid "Category"
 msgstr "类别"
 
-#: service/models/uom.ts:53
+#: service/models/uom.ts:52
 msgctxt "base.model.UoM.fields"
 msgid "Conversion Factor"
 msgstr "换算系数"
@@ -441,12 +441,12 @@ msgctxt "base.model.UoM.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/uom.ts:44
+#: service/models/uom.ts:43
 msgctxt "base.model.UoM.fields"
 msgid "Reference Unit"
 msgstr "基准单位"
 
-#: service/models/uom.ts:61
+#: service/models/uom.ts:60
 msgctxt "base.model.UoM.fields"
 msgid "Rounding"
 msgstr "舍入精度"
@@ -456,17 +456,17 @@ msgctxt "base.model.UoM.fields"
 msgid "Symbol"
 msgstr "符号"
 
-#: service/models/uom_category.ts:34
+#: service/models/uom_category.ts:35
 msgctxt "base.model.UoMCategory.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/uom_category.ts:25
+#: service/models/uom_category.ts:26
 msgctxt "base.model.UoMCategory.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/uom_category.ts:16
+#: service/models/uom_category.ts:17
 msgctxt "base.model.UoMCategory.fields"
 msgid "Name"
 msgstr "名称"
@@ -516,20 +516,20 @@ msgctxt "service/models/_currency_convert"
 msgid "Target currency %s not found"
 msgstr "未找到目标币种 %s"
 
-#: service/models/_normalization_bridge.ts:58
-msgctxt "service/models/_normalization_bridge"
-msgid "%s is required"
-msgstr "%s 为必填项"
-
-#: service/models/_normalization_bridge.ts:30
-msgctxt "service/models/_normalization_bridge"
+#: service/models/_normalization_bridge.ts:39
+msgctxt "service/models/_normalization_bridge@normalizeCodeRequired"
 msgid "Code is required"
 msgstr "编码为必填项"
 
-#: service/models/_normalization_bridge.ts:48
-msgctxt "service/models/_normalization_bridge"
+#: service/models/_normalization_bridge.ts:49
+msgctxt "service/models/_normalization_bridge@normalizeName"
 msgid "Name is required"
 msgstr "名称为必填项"
+
+#: service/models/_normalization_bridge.ts:59
+msgctxt "service/models/_normalization_bridge@requireRefId"
+msgid "%s is required"
+msgstr "%s 为必填项"
 
 #: service/models/_option_normalizers.ts:30
 msgctxt "service/models/_option_normalizers"
@@ -616,177 +616,172 @@ msgctxt "service/models/_sequence_next"
 msgid "Sequence not found for Code=%s"
 msgstr "未找到 Code=%s 的序列"
 
-#: service/models/address.ts:112
+#: service/models/address.ts:114
 msgctxt "service/models/address"
 msgid "City not found"
 msgstr "未找到城市"
 
-#: service/models/address.ts:114
+#: service/models/address.ts:116
 msgctxt "service/models/address"
 msgid "City.CountryId must equal Address.CountryId"
 msgstr "City.CountryId 必须与 Address.CountryId 相同"
 
-#: service/models/address.ts:117
+#: service/models/address.ts:119
 msgctxt "service/models/address"
 msgid "City.StateId must equal Address.StateId"
 msgstr "City.StateId 必须与 Address.StateId 相同"
 
-#: service/models/address.ts:89
+#: service/models/address.ts:91
 msgctxt "service/models/address"
 msgid "Country not found"
 msgstr "未找到国家/地区"
 
-#: service/models/address.ts:102
+#: service/models/address.ts:104
 msgctxt "service/models/address"
 msgid "State not found"
 msgstr "未找到州/省"
 
-#: service/models/address.ts:104
+#: service/models/address.ts:106
 msgctxt "service/models/address"
 msgid "State.CountryId must equal Address.CountryId"
 msgstr "State.CountryId 必须与 Address.CountryId 相同"
 
-#: service/models/address.ts:92
+#: service/models/address.ts:94
 msgctxt "service/models/address"
 msgid "StateId is required for this country"
 msgstr "此国家/地区要求填写 StateId"
 
-#: service/models/address.ts:96
+#: service/models/address.ts:98
 msgctxt "service/models/address"
 msgid "Zip is required for this country"
 msgstr "此国家/地区要求填写邮政编码"
 
-#: service/models/city.ts:84
+#: service/models/city.ts:86
 msgctxt "service/models/city"
-msgid "City Name must be unique within Country + State"
-msgstr "城市名称在同一国家/地区和州/省内必须唯一"
+msgid "City Code must be unique within Country + State"
+msgstr "城市编码在同一国家/地区与州/省下必须唯一"
 
-#: service/models/city.ts:65
+#: service/models/city.ts:66
 msgctxt "service/models/city"
 msgid "State not found"
 msgstr "未找到州/省"
 
-#: service/models/city.ts:66
+#: service/models/city.ts:67
 msgctxt "service/models/city"
 msgid "State.CountryId must equal City.CountryId"
 msgstr "State.CountryId 必须与 City.CountryId 相同"
 
-#: service/models/company.ts:99
+#: service/models/company.ts:100
 msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/company.ts:123
+#: service/models/company.ts:115
 msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/company.ts:114
-msgctxt "service/models/company"
-msgid "Company Name must be unique"
-msgstr "公司名称必须唯一"
-
-#: service/models/company.ts:132
+#: service/models/company.ts:124
 msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/company.ts:143
+#: service/models/company.ts:135
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/company.ts:166
+#: service/models/company.ts:158
 msgctxt "service/models/company"
 msgid "ParentId cannot be a descendant of the company"
 msgstr "ParentId 不能是该公司的下级公司"
 
-#: service/models/company.ts:153
+#: service/models/company.ts:145
 msgctxt "service/models/company"
 msgid "ParentId cannot be self"
 msgstr "ParentId 不能指向自身"
 
-#: service/models/company.ts:140
+#: service/models/company.ts:132
 msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
 
-#: service/models/country.ts:88
+#: service/models/country.ts:89
 msgctxt "service/models/country"
 msgid "AddressFormat contains unsupported token: %s"
 msgstr "AddressFormat 包含不支持的标记：%s"
 
-#: service/models/currency.ts:94
+#: service/models/currency.ts:95
 msgctxt "service/models/currency"
 msgid "DecimalDigits is required"
 msgstr "DecimalDigits 为必填项"
 
-#: service/models/currency.ts:95
+#: service/models/currency.ts:96
 msgctxt "service/models/currency"
 msgid "DecimalDigits must be a non-negative integer"
 msgstr "DecimalDigits 必须为非负整数"
 
-#: service/models/currency.ts:102
+#: service/models/currency.ts:103
 msgctxt "service/models/currency"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/currency.ts:101
+#: service/models/currency.ts:102
 msgctxt "service/models/currency"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
 
-#: service/models/exchange_rate.ts:63 service/models/exchange_rate.ts:71
+#: service/models/exchange_rate.ts:69 service/models/exchange_rate.ts:77
 msgctxt "service/models/exchange_rate"
 msgid "Date is invalid"
 msgstr "日期无效"
 
-#: service/models/exchange_rate.ts:70
+#: service/models/exchange_rate.ts:76
 msgctxt "service/models/exchange_rate"
 msgid "Date is required"
 msgstr "日期为必填项"
 
-#: service/models/exchange_rate.ts:72
+#: service/models/exchange_rate.ts:78
 msgctxt "service/models/exchange_rate"
 msgid "Date must be YYYY-MM-DD"
 msgstr "日期格式必须为 YYYY-MM-DD"
 
-#: service/models/exchange_rate.ts:99
+#: service/models/exchange_rate.ts:105
 msgctxt "service/models/exchange_rate"
 msgid "ExchangeRate must be unique for CompanyId + CurrencyId + Date"
 msgstr "ExchangeRate 在相同 CompanyId、CurrencyId 和 Date 下必须唯一"
 
-#: service/models/exchange_rate.ts:109
+#: service/models/exchange_rate.ts:115
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be a valid decimal"
 msgstr "Rate 必须为有效的小数"
 
-#: service/models/exchange_rate.ts:108
+#: service/models/exchange_rate.ts:114
 msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
 
-#: service/models/language.ts:246
+#: service/models/language.ts:247
 msgctxt "service/models/language"
 msgid "At least one language must stay active"
 msgstr "至少需要保留一门启用的语言"
 
-#: service/models/language.ts:189
+#: service/models/language.ts:190
 msgctxt "service/models/language"
 msgid "Code or LanguageId is required"
 msgstr "必须提供 Code 或 LanguageId"
 
-#: service/models/language.ts:259
+#: service/models/language.ts:261
 msgctxt "service/models/language"
 msgid "Language code cannot be changed"
 msgstr "语言代码不可修改"
 
-#: service/models/language.ts:210
+#: service/models/language.ts:211
 msgctxt "service/models/language"
 msgid "Language not found"
 msgstr "未找到语言"
 
-#: service/models/language.ts:262
+#: service/models/language.ts:264
 msgctxt "service/models/language"
 msgid "The root language en_US cannot be deactivated"
 msgstr "根语言 en_US 不可停用"
@@ -821,55 +816,45 @@ msgctxt "service/models/sequence_idempotency"
 msgid "SequenceId is required"
 msgstr "SequenceId 为必填项"
 
-#: service/models/state.ts:78
+#: service/models/state.ts:66
 msgctxt "service/models/state"
 msgid "State Code must be unique within Country"
 msgstr "州/省编码在同一国家/地区内必须唯一"
 
-#: service/models/state.ts:65
-msgctxt "service/models/state"
-msgid "State Name must be unique within Country"
-msgstr "州/省名称在同一国家/地区内必须唯一"
-
-#: service/models/uom.ts:102
+#: service/models/uom.ts:87
 msgctxt "service/models/uom"
 msgid "Each UoM category can only have one reference unit"
 msgstr "每个计量单位类别只能有一个基准单位"
 
-#: service/models/uom.ts:108
+#: service/models/uom.ts:93
 msgctxt "service/models/uom"
 msgid "Each UoM category must have one reference unit"
 msgstr "每个计量单位类别必须有一个基准单位"
 
-#: service/models/uom.ts:122
+#: service/models/uom.ts:107
 msgctxt "service/models/uom"
 msgid "Factor must be a valid decimal"
 msgstr "Factor 必须为有效的小数"
 
-#: service/models/uom.ts:121
+#: service/models/uom.ts:106
 msgctxt "service/models/uom"
 msgid "Factor must be greater than 0"
 msgstr "Factor 必须大于 0"
 
-#: service/models/uom.ts:125
+#: service/models/uom.ts:110
 msgctxt "service/models/uom"
 msgid "Reference UoM must have Factor = 1"
 msgstr "基准计量单位的 Factor 必须等于 1"
 
-#: service/models/uom.ts:134
+#: service/models/uom.ts:119
 msgctxt "service/models/uom"
 msgid "Rounding must be a valid decimal"
 msgstr "Rounding 必须为有效的小数"
 
-#: service/models/uom.ts:133
+#: service/models/uom.ts:118
 msgctxt "service/models/uom"
 msgid "Rounding must be greater than 0"
 msgstr "Rounding 必须大于 0"
-
-#: service/models/uom.ts:85
-msgctxt "service/models/uom"
-msgid "UoM Name must be unique within Category"
-msgstr "计量单位名称在同一类别内必须唯一"
 
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
@@ -2010,3 +1995,4 @@ msgstr "编辑计量单位"
 msgctxt "web/views/UoMListView"
 msgid "Unit of Measure"
 msgstr "计量单位"
+

@@ -138,11 +138,6 @@ msgctxt "service/models/_helpers"
 msgid "AccountType must be one of checking, savings, corporate, other"
 msgstr ""
 
-#: service/models/_normalization_bridge.ts:62
-msgctxt "service/models/_normalization_bridge"
-msgid "%s is required"
-msgstr ""
-
 #: service/models/bank_account.ts:268
 msgctxt "service/models/bank_account"
 msgid "AllowInbound and AllowOutbound cannot both be false"

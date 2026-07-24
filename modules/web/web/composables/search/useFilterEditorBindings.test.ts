@@ -53,4 +53,71 @@ describe('useFilterEditorBindings static meta (T4.2)', () => {
     expect(src).not.toMatch(/\bensureFieldsGet\b/);
     expect(src).not.toMatch(/\bFieldsGet\b/);
   });
+
+  it('adds child_of/parent_of for tree Id and tree manytoone', () => {
+    const store = {
+      storeId: 's1',
+      fieldsMetadata: {
+        Id: { type: 'char' },
+        ParentPath: { type: 'varchar' },
+        ParentId: {
+          type: 'manytoone',
+          relationModel: 'base.Company',
+          relationModelParentField: 'ParentId',
+        },
+        PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
+        TagIds: { type: 'manytooneref', relationModel: 'base.Tag' },
+      },
+    } as any;
+    const api = runInSetup(() => useFilterEditorBindings(store));
+    expect(api.isTreeModel()).toBe(true);
+    expect(api.metaTypeOf('')).toBe('');
+    expect(api.relationModelOf('ParentId')).toBe('base.Company');
+    expect(api.isTreeManyToOne('ParentId')).toBe(true);
+    expect(api.isTreeManyToOne('PartnerId')).toBe(false);
+    expect(api.isMultiValueOperator('in')).toBe(true);
+    expect(api.isMultiValueOperator('=')).toBe(false);
+
+    const idOps = api.getOperatorOptionsForField('Id').map(o => o.value);
+    expect(idOps).toEqual(expect.arrayContaining(['child_of', 'parent_of']));
+    const parentOps = api.getOperatorOptionsForField('ParentId').map(o => o.value);
+    expect(parentOps).toEqual(expect.arrayContaining(['child_of', 'parent_of']));
+    // Base catalog always lists child_of/parent_of; tree enrichment is for Id / tree m2o only.
+    const partnerOps = api.getOperatorOptionsForField('PartnerId').map(o => o.value);
+    expect(partnerOps).toEqual(expect.arrayContaining(['=', 'in']));
+    expect(api.getOperatorOptionsForField().length).toBeGreaterThan(0);
+    expect(api.isNullOperator('is')).toBe(true);
+    expect(api.requiresValue('=')).toBe(true);
+  });
+
+  it('caches relation stores from getRelationStore and destroys on unmount', () => {
+    const destroy = vi.fn();
+    const rel = { destroy };
+    const store = {
+      storeId: 's2',
+      fieldsMetadata: {
+        PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
+      },
+      getRelationStore: vi.fn(() => rel),
+    } as any;
+
+    let api!: ReturnType<typeof useFilterEditorBindings>;
+    const app = createApp(
+      defineComponent({
+        setup() {
+          api = useFilterEditorBindings(store);
+          return () => h('div');
+        },
+      })
+    );
+    app.mount(document.createElement('div'));
+    const a = api.relationStoreOf('PartnerId');
+    const b = api.relationStoreOf('PartnerId');
+    expect(a).toBe(rel);
+    expect(b).toBe(rel);
+    expect(store.getRelationStore).toHaveBeenCalledTimes(1);
+    expect(api.relationStoreOf()).toBeUndefined();
+    app.unmount();
+    expect(destroy).toHaveBeenCalled();
+  });
 });

@@ -39,6 +39,19 @@ describe('resolveFieldLabel (D6)', () => {
     ).toBe('访问令牌 ID');
   });
 
+  it('ignores FieldsGet msgid echo and translates via stringText (selection ensure path)', () => {
+    expect(
+      resolveFieldLabel({
+        prop: 'Timezone',
+        meta: { string: 'Time Zone', stringText: createTermReference('base', 'Time Zone', { scope: 'base.model.Company.fields' }) },
+        fieldsGetTranslatedString: 'Time Zone',
+        composer: {
+          t: (_key: string, fallback: string) => (fallback === 'Time Zone' ? '时区' : fallback),
+        },
+      })
+    ).toBe('时区');
+  });
+
   it('translates via stringText when composer is available', () => {
     expect(
       resolveFieldLabel({
