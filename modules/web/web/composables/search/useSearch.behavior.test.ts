@@ -42,13 +42,13 @@ describe('useSearch summarizeFilter', () => {
         children: [{ id: 'c0', field: 'Name', operator: '=', value: 'x' }],
       },
     ]);
-    const api = useSearch({
+    const { state } = useSearch({
       dynamicInitialFilters: true,
       initialFilters: initial,
     });
-    expect(api.filters.value).toHaveLength(1);
+    expect(state.filters.value).toHaveLength(1);
 
-    api.filters.value = [];
+    state.filters.value = [];
     initial.value = [
       {
         id: 'g1',
@@ -57,8 +57,8 @@ describe('useSearch summarizeFilter', () => {
       },
     ];
     await nextTick();
-    expect(api.filters.value).toHaveLength(1);
-    expect((api.filters.value[0].children[0] as any).field).toBe('Code');
+    expect(state.filters.value).toHaveLength(1);
+    expect((state.filters.value[0].children[0] as any).field).toBe('Code');
   });
 });
 

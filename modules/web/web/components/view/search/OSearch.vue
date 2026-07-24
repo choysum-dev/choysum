@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div class="o-search">
-    <div class="o-search__main" ref="searchMainRef" @click="focusInput">
+    <div class="o-search__main" @click="focusInput">
       <el-tooltip :content="_t('Search')" placement="top">
         <el-button
           size="small"
@@ -59,7 +59,6 @@ SPDX-License-Identifier: Apache-2.0
         :id="inputId"
         @keydown.enter.stop.prevent="onEnter"
         @keydown="onInputKeydown"
-        @focus="onInputFocus"
         @blur="onInputBlur"
       />
 
@@ -161,22 +160,22 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
-import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
+import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import { filtersSignature, shouldApplyControlledFilters } from '@/web/web/query/utils/search/controlledFilters';
 import OSearchFilter from './OSearchFilter.vue';
-import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect, ElMessage } from 'element-plus';
 import { useDebouncedFnCancelable } from '@/web/web/composables/useDebouncedFnCancelable';
-import type { TemporalGranularity, GroupBySpec } from '@/core/service/api/query';
+import type { GroupBySpec } from '@/core/service/api/query';
 import type { ConditionGroup, QueryUpdatePayload, NamedFilter } from '@/web/web/query/types';
-import { parseGbString, formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format';
+import { formatGroupItemForDisplay } from '@/web/web/query/utils/grouping/format';
+import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildQueryUpdatePayload } from '@/web/web/query/utils/search/payload';
-import { useGroupingOptions } from '@/web/web/composables/search/useGroupingOptions';
 import { useFilterPresets } from '@/web/web/composables/search/useFilterPresets';
-import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
-import { createTranslate, getGlobalComposer } from '@/web/web/i18n';
+import { useFilterableSearchFields } from '@/web/web/composables/search/useSearchFieldOptions';
+import { useSearchGrouping, type SearchGroupByItem } from '@/web/web/composables/search/useSearchGrouping';
+import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/OSearch' });
 
@@ -214,13 +213,11 @@ const groupingSummary = computed(() => {
 const groupingTooltip = computed(() => groupingSummary.value);
 
 /* Split useSearch into state, editor, actions, and helper layers. */
-const { state, editor, actions, helpers } = useSearch({});
+const { state, editor, actions, helpers } = useSearch({ attachStore: store as any });
 const keyword = state.keyword;
 const filters = state.filters;
-const hasActive = state.hasActive;
 // Editor layer.
 const isEditorOpen = editor.isEditorOpen;
-const activeFilterId = editor.activeFilterId;
 const draftFilter = editor.draftFilter;
 const filterEditorTitle = computed(() => (draftFilter.value?.baseId ? _t('Edit filter') : _t('New filter')));
 const openNewFilter = editor.openNew;
@@ -237,7 +234,6 @@ const deleteFilter = editor.deleteFilter;
 // Action layer.
 const applyNamedFilter = actions.applyNamedFilter;
 const popLastFilter = actions.popLastFilter;
-const clearAll = actions.clearAll;
 // Helper layer.
 const { summarizeFilter, summarizeFilterFields, filterTooltip } = helpers;
 
@@ -254,8 +250,6 @@ const placeholder = computed(() => props.placeholder || _t('Search...'));
 const inputName = computed(() => `${(store as any)?.storeId || 'search'}-keyword`);
 const inputId = computed(() => `${inputName.value}-input`);
 const inputRef = ref<HTMLInputElement | null>(null);
-const searchMainRef = ref<HTMLElement | null>(null);
-const isFocused = ref(false);
 const pendingDeleteFilterId = ref<string | null>(null);
 const menuVisible = ref(false);
 
@@ -302,176 +296,28 @@ function onToggleDefaultFilter(it: FilterMenuItem) {
   });
 }
 
-/* Available fields sorted by WebFieldMetadata.id, then by label (D6 / T4.1). */
-const availableFields = computed(() => {
-  const md = store.fieldsMetadata as Record<string, any>;
-  const composer = getGlobalComposer();
-  const items = Object.entries(md)
-    .filter(([k, m]: any) => {
-      if (k === 'DeletedAt') return false;
-      if (k === 'Id') return true;
-      const view = getFieldMetadataView(m);
-      if (!view.isRelation) return true;
-      const lowerType = String(m?.type ?? '').toLowerCase();
-      return lowerType === 'manytoone' || lowerType === 'manytooneref';
-    })
-    .map(([k, m]: any) => ({
-      prop: k,
-      label: resolveFieldLabel({
-        prop: k,
-        meta: m,
-        composer,
-        fieldsGetTranslatedString: store.getFieldsGetTranslatedString?.(k),
-      }),
-      id: m?.id,
-    })) as Array<{ prop: string; label: string; id?: string }>;
+/* Available filter fields (shared helper; D6 / T4.1). */
+const availableFields = useFilterableSearchFields(store as any);
 
-  items.sort((a, b) => {
-    const idA = a.id ?? '';
-    const idB = b.id ?? '';
-    const cmp = idA.localeCompare(idB, 'en', { sensitivity: 'base' });
-    if (cmp !== 0) return cmp;
-    return a.label.localeCompare(b.label, 'en', { sensitivity: 'base' });
-  });
-
-  return items.map(i => ({ prop: i.prop, label: i.label }));
-});
-
-/* Grouping fields and controls built from a reusable composable. */
-type GB = string | { field: string; granularity?: TemporalGranularity };
+/* Grouping menu/tree controls. */
 const {
-  availableGroupFields,
+  currentAppliedGroups,
   groupTreeData,
-  DUMMY_ROOT_SUFFIX,
-  temporalComboLabel,
+  appliedGroupItems,
   treeSelectValue,
-  resetTreeSelect,
-} = useGroupingOptions(store as any);
-
-const currentAppliedGroups = computed<GB[]>(() => {
-  const gbArr = props.currentAppliedGroups || [];
-  const out: GB[] = [];
-  for (const g of gbArr) {
-    if (typeof g === 'string') {
-      // Accept legacy string group definitions when the backend still returns them.
-      out.push(g);
-    } else if (g && typeof g === 'object') {
-      const field = (g as any).field ?? (g as any).name ?? (g as any).prop;
-      const granularity = (g as any).granularity ?? (g as any).gran;
-      if (field) out.push(granularity ? { field, granularity } : field);
-    }
-  }
-  return out;
+  treeProps,
+  togglePlainGroupby,
+  toggleTemporalGroupby,
+  onTreeSelectChange,
+} = useSearchGrouping({
+  store: store as any,
+  currentAppliedGroups: () => props.currentAppliedGroups as any,
+  onGroupsChange: (next: SearchGroupByItem[]) => {
+    emitQueryUpdate(buildPayload(next as any));
+  },
 });
-
-function setGroupbyLocal(next: GB[]) {
-  // Keep grouping local here and let the parent decide how to apply it.
-  const normalized = normalizeGroupby(next as any);
-  emitQueryUpdate(buildPayload((normalized || []) as unknown as GB[]));
-}
-
-function togglePlainGroupby(field: string) {
-  const list = [...currentAppliedGroups.value];
-  const i = list.findIndex(gb => (typeof gb === 'string' ? gb === field : gb.field === field && !gb.granularity));
-  if (i >= 0) list.splice(i, 1);
-  else list.push(field);
-  setGroupbyLocal(list);
-}
-
-function toggleTemporalGroupby(field: string, gran: TemporalGranularity) {
-  const list = [...currentAppliedGroups.value];
-  const i = list.findIndex(gb => {
-    if (typeof gb === 'string') {
-      const p = parseGbString(gb);
-      return !!p.granularity && p.field === field && p.granularity === gran;
-    }
-    return gb.field === field && (gb.granularity || '') === gran;
-  });
-  if (i >= 0) list.splice(i, 1);
-  else list.push({ field, granularity: gran });
-  setGroupbyLocal(list);
-}
-
-type AppliedGroupItem = {
-  key: string;
-  type: 'plain' | 'temporal';
-  field: string;
-  granularity?: TemporalGranularity;
-  label: string;
-};
-
-const appliedGroupItems = computed<AppliedGroupItem[]>(() => {
-  const items: AppliedGroupItem[] = [];
-  for (const gb of currentAppliedGroups.value) {
-    if (typeof gb === 'string') {
-      const p = parseGbString(gb);
-      if (p.granularity) {
-        items.push({
-          key: `cur:temp:${p.field}:${p.granularity}`,
-          type: 'temporal',
-          field: p.field,
-          granularity: p.granularity,
-          label: temporalComboLabel(p.field, p.granularity),
-        });
-      } else {
-        const meta = availableGroupFields.value.find(f => f.prop === p.field);
-        items.push({
-          key: `cur:plain:${p.field}`,
-          type: 'plain',
-          field: p.field,
-          label: meta?.label || p.field,
-        });
-      }
-    } else {
-      const field = gb.field;
-      const gran = (gb.granularity || '') as TemporalGranularity | '';
-      if (gran) {
-        items.push({
-          key: `cur:temp:${field}:${gran}`,
-          type: 'temporal',
-          field,
-          granularity: gran as TemporalGranularity,
-          label: temporalComboLabel(field, gran as TemporalGranularity),
-        });
-      } else {
-        const meta = availableGroupFields.value.find(f => f.prop === field);
-        items.push({
-          key: `cur:plain:${field}`,
-          type: 'plain',
-          field,
-          label: meta?.label || field,
-        });
-      }
-    }
-  }
-  return items;
-});
-
-/* Grouping tree-select control. */
-const treeProps = { value: 'value', label: 'label', children: 'children', selectable: 'selectable' } as const;
-function onTreeSelectChange(v?: string) {
-  if (!v) return;
-  if (v.endsWith(`:${DUMMY_ROOT_SUFFIX}`)) {
-    resetTreeSelect();
-    return;
-  }
-  if (v.startsWith('f:')) {
-    const field = v.slice(2);
-    togglePlainGroupby(field);
-  } else if (v.startsWith('d:')) {
-    const [, field, gran] = v.split(':');
-    if (field && gran) toggleTemporalGroupby(field, gran as any);
-  }
-  resetTreeSelect();
-}
-
-/* Input behavior. */
-function onInputFocus() {
-  isFocused.value = true;
-}
 
 function onInputBlur() {
-  isFocused.value = false;
   pendingDeleteFilterId.value = null;
 }
 
@@ -562,7 +408,7 @@ function onEditGroupClick() {
 }
 
 // Build the normalized payload consumed by parent views such as List and Kanban.
-function buildPayload(overrideAppliedGroups?: Array<GroupBySpec<any>> | GB[]): QueryUpdatePayload<any> {
+function buildPayload(overrideAppliedGroups?: Array<GroupBySpec<any>> | SearchGroupByItem[]): QueryUpdatePayload<any> {
   const kw = keyword.value?.trim() || undefined;
   const conditionGroups: ConditionGroup[] = Array.isArray(filters.value) ? (filters.value as ConditionGroup[]) : [];
   const gbArrSrc = overrideAppliedGroups !== undefined ? overrideAppliedGroups : currentAppliedGroups.value;

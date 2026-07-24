@@ -7,3 +7,5 @@ export * from './useSearch';
 export * from './useFilterPresets';
 export * from './useGroupingOptions';
 export * from './useFilterEditorBindings';
+export * from './useSearchFieldOptions';
+export * from './useSearchGrouping';

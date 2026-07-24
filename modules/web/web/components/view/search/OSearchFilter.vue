@@ -121,19 +121,20 @@ const { preview, leafCount } = (() => {
   function expCond(c: Condition): string {
     if (!c.field || !c.operator) return _t('(incomplete)');
     const op = String(c.operator);
+    const fieldLabel = props.fields.find(f => f.prop === c.field)?.label || c.field;
     const label = getOperatorLabel(op);
     const pv = toPreviewValue(c.field, c.value);
     const previewOpts = { fieldType: metaTypeOf(c.field) };
 
     if (op === 'is' || op === 'is not') {
-      return `${c.field} ${label} ${valueToPreview(c.operator, pv, previewOpts)}`;
+      return `${fieldLabel} ${label} ${valueToPreview(c.operator, pv, previewOpts)}`;
     }
     if (op === 'in' || op === 'not in') {
       const arr = Array.isArray(pv) ? pv : pv == null ? [] : [pv];
       const list = `(${arr.map(v => valueToPreview('=', v, previewOpts)).join(', ')})`;
-      return `${c.field} ${label} ${list}`;
+      return `${fieldLabel} ${label} ${list}`;
     }
-    return `${c.field} ${label} ${valueToPreview(c.operator, pv, previewOpts)}`;
+    return `${fieldLabel} ${label} ${valueToPreview(c.operator, pv, previewOpts)}`;
   }
   function countLeaf(g: ConditionGroup): number {
     let n = 0;

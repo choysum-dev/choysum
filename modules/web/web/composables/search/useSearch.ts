@@ -10,6 +10,7 @@ import { isGroup } from '@/web/web/query/utils/filter/structures';
 import { createTranslate } from '@/web/web/i18n';
 import { useSearchState, type UseSearchStateOptions } from './useSearchState';
 import { useSearchEditor } from './useSearchEditor';
+import { resolveSearchFieldLabel } from './useSearchFieldOptions';
 
 const { _t } = createTranslate('web', { scope: 'web/composables/search/useSearch' });
 
@@ -45,6 +46,10 @@ export function useSearch(opts: UseSearchOptions = {}) {
     );
   }
 
+  function fieldLabel(prop: string): string {
+    return resolveSearchFieldLabel(opts.attachStore, prop);
+  }
+
   function summarizeFilter(f: ConditionGroup, maxDepth = 2): string {
     if (!f) return _t('(empty)');
     const parts: string[] = [];
@@ -54,7 +59,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
         if (maxDepth > 0) parts.push(summarizeFilter(ch, maxDepth - 1));
       } else {
         const c = ch as { field?: string; operator?: string };
-        if (c.field && c.operator) parts.push(`${c.field} ${c.operator}`);
+        if (c.field && c.operator) parts.push(`${fieldLabel(c.field)} ${c.operator}`);
       }
     }
     const joiner = f.logic === 'Or' ? ' OR ' : ' AND ';
@@ -69,7 +74,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
         if (maxDepth > 0) fields.push(summarizeFilterFields(ch, maxDepth - 1));
       } else {
         const c = ch as { field?: string };
-        if (c.field) fields.push(c.field);
+        if (c.field) fields.push(fieldLabel(c.field));
       }
     }
     return fields.join(', ') || _t('Not configured');
@@ -116,7 +121,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
     trigger();
   }
 
-  const api = {
+  return {
     state: {
       keyword: state.keyword,
       filters: state.filters,
@@ -150,39 +155,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
       summarizeFilterFields,
       filterTooltip,
       buildQuery,
+      fieldLabel,
     },
-  };
-
-  // Flat aliases for older call sites (prefer state / editor / actions / helpers).
-  return {
-    ...api,
-    keyword: state.keyword,
-    filters: state.filters,
-    keywordFields: state.keywordFields,
-    hasActive: state.hasActive,
-    applyNamedFilter,
-    clearAll,
-    isEditorOpen: editor.isEditorOpen,
-    activeFilterId: editor.activeFilterId,
-    draftFilter: editor.draftFilter,
-    openNewFilter: editor.openNewFilter,
-    openEditFilter: editor.openEditFilter,
-    closeEditor: editor.closeEditor,
-    setDraftLogic: editor.setDraftLogic,
-    addDraftGroup: editor.addDraftGroup,
-    removeDraftGroup: editor.removeDraftGroup,
-    addDraftCondition: editor.addDraftCondition,
-    updateDraftCondition: editor.updateDraftCondition,
-    removeDraftCondition: editor.removeDraftCondition,
-    saveDraft: editor.saveDraft,
-    deleteFilter: editor.deleteFilter,
-    saveDraftAndSearch: editor.saveDraft,
-    deleteFilterAndSearch: editor.deleteFilter,
-    triggerSearch: trigger,
-    handleBackspaceDeleteLastFilter: popLastFilter,
-    _nodeToExpr: buildQuery,
-    summarizeFilter,
-    summarizeFilterFields,
-    filterTooltip,
   } as const;
 }
