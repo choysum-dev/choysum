@@ -52,4 +52,17 @@ describe('utc ↔ user wall', () => {
   it('formatUtcIso keeps Z storage', () => {
     expect(formatUtcIso('2024-07-01T00:00:00.000Z', 'YYYY-MM-DD[T]HH:mm:ss.SSSZ')).toBe('2024-07-01T00:00:00.000Z');
   });
+
+  it('dayRange matches Asia/Shanghai half-open UTC bounds', async () => {
+    const { dayRange } = await import('./datetime');
+    const { start, end } = dayRange('2024-07-01', 'Asia/Shanghai');
+    expect(start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
+    expect(end.toISOString()).toBe('2024-07-01T16:00:00.000Z');
+  });
+
+  it('dayRange handles America/New_York spring-forward 23h day', async () => {
+    const { dayRange } = await import('./datetime');
+    const { start, end } = dayRange('2024-03-10', 'America/New_York');
+    expect(end.getTime() - start.getTime()).toBe(23 * 60 * 60 * 1000);
+  });
 });

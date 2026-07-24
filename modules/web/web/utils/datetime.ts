@@ -26,7 +26,7 @@ type TzDayjs = Dayjs & {
 type DayjsTzFactory = {
   (date?: ConfigType, format?: string, strict?: boolean): TzDayjs;
   utc: (date?: ConfigType, format?: string, strict?: boolean) => TzDayjs;
-  tz: (date: ConfigType, format: string, timezone: string) => TzDayjs;
+  tz: ((date: ConfigType, timezone: string) => TzDayjs) & ((date: ConfigType, format: string, timezone: string) => TzDayjs);
   extend: typeof dayjs.extend;
 };
 
@@ -136,6 +136,44 @@ export function formatUtcIso(input: Date | string | number | null | undefined, f
 export function parseUtc(input: string, format?: string, strict?: boolean): TzDayjs {
   if (format) return tzDayjs.utc(input, format, strict);
   return tzDayjs.utc(input);
+}
+
+function addCalendarDay(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return next.toISOString().slice(0, 10);
+}
+
+/**
+ * Half-open UTC range for calendar day `D` in `tz`: `[D 00:00, D+1 00:00)`.
+ * Call before building Search conditions; DST-safe via dayjs timezone.
+ */
+export function dayRange(date: string | Date, tz: string = getUserTimeZone()): { start: Date; end: Date } {
+  const zone = String(tz || '').trim() || 'UTC';
+  let day: string;
+  if (date instanceof Date) {
+    if (Number.isNaN(date.getTime())) {
+      throw new Error('Invalid date');
+    }
+    day = asUtcDayjs(date).tz(zone).format('YYYY-MM-DD');
+  } else {
+    day = String(date ?? '')
+      .trim()
+      .slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+      throw new Error(`Invalid date: ${String(date ?? '')}`);
+    }
+  }
+  // Keep wall midnight explicit; advance by calendar day (not +24h) for DST.
+  const startLocal = tzDayjs.tz(`${day} 00:00:00`, zone) as TzDayjs;
+  const endLocal = tzDayjs.tz(`${addCalendarDay(day)} 00:00:00`, zone) as TzDayjs;
+  if (!startLocal.isValid() || !endLocal.isValid()) {
+    throw new Error(`Invalid date: ${day}`);
+  }
+  return {
+    start: startLocal.utc().toDate(),
+    end: endLocal.utc().toDate(),
+  };
 }
 
 export { tzDayjs as hubDayjs };
