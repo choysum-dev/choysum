@@ -723,6 +723,11 @@ function fillTemporalGapsForLevel(
 
 // Build a group condition using either plain equality or a temporal range.
 // moment.parseZone is used so we do not depend on Intl behavior.
+//
+// D14 (drill inherit): when the bucket key is already an offset-aware ISO string
+// from DATE_TRUNC, the UTC [start, end) is derived from that key alone — the
+// timezone argument must not re-bucket. Downstream Search uses this condition as
+// parentCondition; do not call businessYesterday / re-resolve "yesterday" in another TZ.
 function buildGroupCondition(spec: NormalizedGroupSpec, value: unknown, timezone?: string): BaseQueryCondition {
   if (!spec.isTime || !spec.granularity) {
     return [spec.field, '=', value];

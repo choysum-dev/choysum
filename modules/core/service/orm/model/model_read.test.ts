@@ -1082,6 +1082,31 @@ test('model read helper temporal condition falls back to bucket coercion for Dat
   expect(condition.And[1][1]).toBe('<');
 });
 
+test('model read D14 drill inherits UTC day bounds from offset-aware bucket key (scenario #4)', () => {
+  // Product order→voucher models do not exist yet; prove the inherit pattern on ReadGroup
+  // conditions: offset-aware day keys yield identical UTC intervals regardless of timezone arg.
+  const spec = {
+    field: 'OrderedAt',
+    alias: 'OrderedAt__day',
+    isTime: true,
+    granularity: 'day',
+  } as any;
+  const shanghaiDayKey = '2024-07-02T00:00:00+08:00';
+
+  const fromShanghaiArg = __buildGroupConditionForTest(spec, shanghaiDayKey, 'Asia/Shanghai') as any;
+  const fromNewYorkArg = __buildGroupConditionForTest(spec, shanghaiDayKey, 'America/New_York') as any;
+  expect(fromShanghaiArg).toEqual(fromNewYorkArg);
+
+  // Midnight Asia/Shanghai on 2024-07-02 ↔ 2024-07-01T16:00:00Z half-open day.
+  expect(fromShanghaiArg.And[0]).toEqual(['OrderedAt', '>=', '2024-07-01T16:00:00.000Z']);
+  expect(fromShanghaiArg.And[1]).toEqual(['OrderedAt', '<', '2024-07-02T16:00:00.000Z']);
+
+  // Business `date` drill is literal calendar equality — timezone must not rewrite D.
+  const dateSpec = { field: 'Date', alias: 'Date', isTime: false } as any;
+  expect(__buildGroupConditionForTest(dateSpec, '2024-07-02', 'Asia/Shanghai')).toEqual(['Date', '=', '2024-07-02']);
+  expect(__buildGroupConditionForTest(dateSpec, '2024-07-02', 'America/New_York')).toEqual(['Date', '=', '2024-07-02']);
+});
+
 test('model read helper fill-gaps/tree-array-format branches cover non-time passthrough and null metrics', () => {
   const passthrough = __fillTemporalGapsForLevelForTest(
     [{ keyAliases: ['Name'], keyValues: ['A'], key: { Name: 'A' }, metrics: {}, count: 1, condition: [], children: [] }] as any,
