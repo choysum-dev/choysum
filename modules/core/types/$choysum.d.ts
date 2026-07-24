@@ -62,6 +62,8 @@ type JsBusinessContext = Readonly<{
   tz?: string;
   /** Active company IANA timezone; business-day authority only. */
   companyTz?: string;
+  /** Client baggage timezone (`ctx.tz`); unset when baggage omitted/invalid. */
+  clientTz?: string;
   activeCompanyId?: string;
   enabledCompanyIds?: string[];
   [key: string]: unknown;

@@ -366,9 +366,11 @@ func (r invocationRuntime) buildJsContext(ctx context.Context) map[string]interf
 				baseCtx["lang"] = value
 			}
 		case "tz":
+			// clientTz always mirrors a valid baggage tz (D20 persist source).
 			// Display tz: baggage only fills when user preference is empty (D6/D7).
-			if _, hasUserTz := baseCtx["tz"]; !hasUserTz {
-				if normalized, ok := normalizeIANATimezone(value); ok && len(normalized) <= 64 {
+			if normalized, ok := normalizeIANATimezone(value); ok && len(normalized) <= 64 {
+				baseCtx["clientTz"] = normalized
+				if _, hasUserTz := baseCtx["tz"]; !hasUserTz {
 					baseCtx["tz"] = normalized
 				}
 			}

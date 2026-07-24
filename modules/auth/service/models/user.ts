@@ -35,12 +35,14 @@ import {
   ensureCreatedUserIdOrThrow,
   ensureRegistrationIdentityUnique,
   issueLoginTokensAndSession,
+  persistBrowserTimezoneIfEmpty,
   provisionRegisteredUserBaseline,
   refreshTokensWithLatestMetadata,
   revokeLogoutArtifacts,
   validateAndHashRegistrationInput,
   validateLoginCandidateOrThrow,
 } from './_user_lifecycle_auth';
+
 import { buildAclAggregation } from './_user_permission_state_acl';
 import { buildUiPermissionProjection } from './_user_permission_state_ui';
 import { evaluateFieldRules } from './_user_field_rule_eval';
@@ -351,6 +353,16 @@ export default class User extends BaseModel {
         },
       });
 
+      // D20: persist browser IANA when registration left Timezone empty.
+      await persistBrowserTimezoneIfEmpty(
+        { Id: userId, Timezone: (created as any)?.Timezone ?? (userData as any)?.Timezone } as any,
+        {
+          updateTimezone: async (uid, timezone) => {
+            await this.UpdateById(uid, { Timezone: timezone } as any, ['Id'] as any);
+          },
+        }
+      );
+
       return userId;
     } catch (error) {
       throw wrapAuthError(error, {
@@ -373,8 +385,16 @@ export default class User extends BaseModel {
     const user = validateLoginCandidateOrThrow((users || [])[0] as any, usernameOrEmail, password) as any;
 
     try {
+      // D20: first login with empty User.Timezone + baggage clientTz → persist and refresh metadata.
+      const loginUser = await persistBrowserTimezoneIfEmpty(user as any, {
+        updateTimezone: async (uid, timezone) => {
+          await this.UpdateById(uid, { Timezone: timezone } as any);
+        },
+        reloadUser: async uid => (await this.Browse(uid)) as any,
+      });
+
       return await issueLoginTokensAndSession(
-        user as any,
+        loginUser as any,
         {
           extractUserMetadata: async u => await this.extractUserMetadata(u as any),
           updateLastLogin: async (uid: string, timestamp: Date) => {

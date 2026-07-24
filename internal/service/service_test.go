@@ -403,6 +403,9 @@ func TestBuildJsContext_TimezoneFallback(t *testing.T) {
 		if got := ctxMap["tz"]; got != "Europe/Berlin" {
 			t.Fatalf("tz mismatch: got=%v want=Europe/Berlin", got)
 		}
+		if got := ctxMap["clientTz"]; got != "Europe/Berlin" {
+			t.Fatalf("clientTz mismatch: got=%v want=Europe/Berlin", got)
+		}
 		if got := ctxMap["companyTz"]; got != "Asia/Tokyo" {
 			t.Fatalf("companyTz mismatch: got=%v want=Asia/Tokyo", got)
 		}
@@ -432,6 +435,26 @@ func TestBuildJsContext_TimezoneFallback(t *testing.T) {
 		if got := ctxMap["tz"]; got != "UTC" {
 			t.Fatalf("tz mismatch: got=%v want=UTC", got)
 		}
+		if _, ok := ctxMap["clientTz"]; ok {
+			t.Fatalf("clientTz should be absent for invalid baggage")
+		}
+	})
+
+	t.Run("baggage sets clientTz even when user tz wins", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"timezone":          "America/New_York",
+			"companyTimezone":   "Asia/Shanghai",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Europe/Paris")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "America/New_York" {
+			t.Fatalf("tz mismatch: got=%v want=America/New_York", got)
+		}
+		if got := ctxMap["clientTz"]; got != "Europe/Paris" {
+			t.Fatalf("clientTz mismatch: got=%v want=Europe/Paris", got)
+		}
 	})
 
 	t.Run("no identity defaults to UTC", func(t *testing.T) {
@@ -439,6 +462,9 @@ func TestBuildJsContext_TimezoneFallback(t *testing.T) {
 		ctxMap := jsCtx["ctx"].(map[string]any)
 		if got := ctxMap["tz"]; got != "UTC" {
 			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+		if _, ok := ctxMap["clientTz"]; ok {
+			t.Fatalf("clientTz should be absent without baggage")
 		}
 	})
 }

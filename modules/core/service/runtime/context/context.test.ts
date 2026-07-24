@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { __deepFreezeForTest, getIdentity, getReqMeta, getUserId } from './source';
-import { getActiveCompanyId, getContextLang, getContextTimezone, getContextCompanyTimezone, getEnabledCompanyIds, getReadonlyCtx, withContext } from './scope';
+import { getActiveCompanyId, getContextLang, getContextTimezone, getContextCompanyTimezone, getContextClientTimezone, getEnabledCompanyIds, getReadonlyCtx, withContext } from './scope';
 
 function withTempChoysum<T>(root: any, fn: () => T): T {
   const globalAny = globalThis as any;
@@ -120,6 +120,23 @@ test('runtime context scope resolves companyTz via getContextCompanyTimezone', (
   withTempChoysum(root, () => {
     expect(getContextTimezone()).toBe('America/New_York');
     expect(getContextCompanyTimezone()).toBe('Asia/Shanghai');
+  });
+});
+
+test('runtime context scope resolves clientTz via getContextClientTimezone', () => {
+  const root = {
+    request: {
+      context: {
+        ctx: {
+          tz: 'UTC',
+          clientTz: ' Europe/Berlin ',
+        },
+      },
+    },
+  };
+
+  withTempChoysum(root, () => {
+    expect(getContextClientTimezone()).toBe('Europe/Berlin');
   });
 });
 

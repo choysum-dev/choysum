@@ -123,6 +123,14 @@ export function getContextCompanyTimezone(): string | undefined {
 }
 
 /**
+ * Returns the client-supplied timezone from RPC baggage (`ctx.tz` → `clientTz`).
+ * Distinct from resolved display `tz` (which may fall back to company / UTC).
+ */
+export function getContextClientTimezone(): string | undefined {
+  return normalizeContextString(getCtxValue('clientTz') ?? getCtxValue('ClientTz'));
+}
+
+/**
  * Runs a function with a temporary business-context override.
  */
 export function withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {

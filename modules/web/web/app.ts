@@ -54,11 +54,20 @@ function setupApp(app: ChoysumWebApp): void {
   // Initialize the i18n store before creating the i18n instance.
   const i18nStore = useI18nStore();
 
-  // RequestContext: locale (format) + lang (terminology) — D12d.
-  setGlobalRequestContextProvider(() => ({
-    locale: i18nStore.currentLocale.code,
-    lang: i18nStore.terminologyLang,
-  }));
+  // RequestContext: locale (format) + lang (terminology) + tz (browser IANA for empty-user fallback / D20).
+  setGlobalRequestContextProvider(() => {
+    let tz = '';
+    try {
+      tz = String(Intl.DateTimeFormat().resolvedOptions().timeZone || '').trim();
+    } catch {
+      tz = '';
+    }
+    return {
+      locale: i18nStore.currentLocale.code,
+      lang: i18nStore.terminologyLang,
+      ...(tz ? { tz } : {}),
+    };
+  });
 
   // Internationalization.
   const i18n = createI18n<false, { [key: string]: any }>({

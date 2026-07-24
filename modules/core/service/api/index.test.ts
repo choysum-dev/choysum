@@ -22,6 +22,7 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'formatScope',
     'getActiveCompanyId',
     'getContextCompanyTimezone',
+    'getContextClientTimezone',
     'getContextLang',
     'getContextTimezone',
     'getCtxValue',

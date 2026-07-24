@@ -3,7 +3,7 @@
 
 /**
  * Pure helpers for Preferences dialog defaults when User fields are empty.
- * Browser inference is a suggestion only — never silently persisted.
+ * Dialog open does not silently persist browser TZ; login/register may (D20).
  */
 
 export function detectBrowserTimezone(): string | null {

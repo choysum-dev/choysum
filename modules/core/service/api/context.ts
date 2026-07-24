@@ -7,6 +7,7 @@ export {
   getContextLang,
   getContextTimezone,
   getContextCompanyTimezone,
+  getContextClientTimezone,
   getCurrentReq,
   getCtxValue,
   getEnabledCompanyIds,
