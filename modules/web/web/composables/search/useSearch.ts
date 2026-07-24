@@ -6,7 +6,7 @@ import { toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
-import { isGroup } from '@/web/web/query/utils/filter/structures';
+import { deepCloneFilter, isGroup, normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import { createTranslate } from '@/web/web/i18n';
 import { useSearchState, type UseSearchStateOptions } from './useSearchState';
 import { useSearchEditor } from './useSearchEditor';
@@ -39,7 +39,8 @@ export function useSearch(opts: UseSearchOptions = {}) {
       initial => {
         const list = initial as ConditionGroup[] | undefined;
         if (list && list.length && state.filters.value.length === 0) {
-          state.filters.value = list.slice();
+          // Deep-clone + normalize so local filters do not share nested nodes with the caller source.
+          state.filters.value = normalizeFilters(list.map(deepCloneFilter));
         }
       },
       { immediate: true, deep: true }

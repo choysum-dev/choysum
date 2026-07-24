@@ -49,16 +49,19 @@ describe('useSearch summarizeFilter', () => {
     expect(state.filters.value).toHaveLength(1);
 
     state.filters.value = [];
-    initial.value = [
-      {
-        id: 'g1',
-        logic: 'And',
-        children: [{ id: 'c1', field: 'Code', operator: '=', value: 'y' }],
-      },
-    ];
+    const nextSource: ConditionGroup = {
+      id: 'g1',
+      logic: 'And',
+      children: [{ id: 'c1', field: 'Code', operator: '=', value: { nested: 'y' } }],
+    };
+    initial.value = [nextSource];
     await nextTick();
     expect(state.filters.value).toHaveLength(1);
+    expect(state.filters.value[0]).not.toBe(nextSource);
+    expect(state.filters.value[0].children[0]).not.toBe(nextSource.children[0]);
     expect((state.filters.value[0].children[0] as any).field).toBe('Code');
+    (state.filters.value[0].children[0] as any).value.nested = 'mutated';
+    expect((nextSource.children[0] as any).value.nested).toBe('y');
   });
 });
 
