@@ -2,20 +2,70 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { sql } from 'kysely';
+import moment from 'moment-timezone';
 import type { DialectName } from '../repository_dialect';
 import type { TemporalGranularity } from '../types';
 
+function isUtcTimezone(timezone: string): boolean {
+  const normalized = timezone.trim().toUpperCase();
+  return normalized === 'UTC' || normalized === 'ETC/UTC' || normalized === 'GMT' || normalized === 'Z';
+}
+
+/**
+ * Resolve a fixed UTC offset (minutes) for dialects without native IANA/DST SQL.
+ * Returns null when the zone observes DST (caller should leave UTC storage buckets).
+ * Throws on invalid IANA ids.
+ */
+export function resolveFixedUtcOffsetMinutes(timezone: string): number | null {
+  const tz = String(timezone || '').trim();
+  if (!tz || !moment.tz.zone(tz)) {
+    throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
+  }
+  if (isUtcTimezone(tz)) return 0;
+
+  const jan = moment.tz([2024, 0, 1], tz).utcOffset();
+  const jul = moment.tz([2024, 6, 1], tz).utcOffset();
+  if (jan !== jul) {
+    // SQLite/MSSQL cannot apply DST transitions in SQL; keep UTC buckets (same as legacy ignore).
+    return null;
+  }
+  return jan;
+}
+
+function formatSqliteUtcOffsetModifier(offsetMinutes: number): string {
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMinutes);
+  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+  const mm = String(abs % 60).padStart(2, '0');
+  return `${sign}${hh}:${mm}`;
+}
+
 function applyTimezone(dialect: DialectName, column: unknown, timezone?: string): unknown {
   if (!timezone) return column;
-  const tzLit = sql.raw(`'${String(timezone).replace(/'/g, "''")}'`);
+  const tz = String(timezone).trim();
+  if (!tz) return column;
+
+  const tzLit = sql.raw(`'${tz.replace(/'/g, "''")}'`);
 
   switch (dialect) {
     case 'postgres':
       return sql`(${column}) AT TIME ZONE ${tzLit}`;
     case 'mysql':
+      // Requires mysql timezone tables; CONVERT_TZ returns NULL when tables are missing.
       return sql`CONVERT_TZ(${column}, @@session.time_zone, ${tzLit})`;
-    case 'sqlite':
-    case 'mssql':
+    case 'sqlite': {
+      if (isUtcTimezone(tz)) return column;
+      const offset = resolveFixedUtcOffsetMinutes(tz);
+      if (offset == null || offset === 0) return column;
+      const modLit = sql.raw(`'${formatSqliteUtcOffsetModifier(offset)}'`);
+      return sql`datetime(${column}, ${modLit})`;
+    }
+    case 'mssql': {
+      if (isUtcTimezone(tz)) return column;
+      const offset = resolveFixedUtcOffsetMinutes(tz);
+      if (offset == null || offset === 0) return column;
+      return sql`DATEADD(minute, ${sql.raw(String(offset))}, ${column})`;
+    }
     default:
       return column;
   }

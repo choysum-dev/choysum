@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { sql } from 'kysely';
-import { buildTimeBucketExpr } from '../time_bucket_sql';
+import { buildTimeBucketExpr, resolveFixedUtcOffsetMinutes } from '../time_bucket_sql';
 
 function renderOperationNode(expr: any): string {
   return JSON.stringify((expr as any).toOperationNode());
@@ -79,14 +79,45 @@ test('repository time bucket sql throws on unsupported granularity and dialect',
   expect(() => buildTimeBucketExpr('oracle' as any, col, 'day')).toThrow('Unsupported dialect: oracle');
 });
 
-test('repository time bucket sql keeps sqlite and mssql expressions unchanged when timezone is provided', () => {
+test('repository time bucket sql applies fixed offset on sqlite/mssql for non-DST zones', () => {
   const col = sql.ref('demo.CreatedAt');
 
-  const sqliteExpr = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', "Asia/Shanghai'; DROP"));
+  const sqliteExpr = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'Asia/Shanghai'));
   const mssqlExpr = renderOperationNode(buildTimeBucketExpr('mssql', col, 'day', 'Asia/Shanghai'));
 
-  expect(sqliteExpr.includes('CONVERT_TZ')).toBe(false);
+  expect(sqliteExpr.includes('datetime')).toBe(true);
+  expect(sqliteExpr.includes('+08:00')).toBe(true);
   expect(sqliteExpr.includes('AT TIME ZONE')).toBe(false);
-  expect(mssqlExpr.includes('CONVERT_TZ')).toBe(false);
-  expect(mssqlExpr.includes('AT TIME ZONE')).toBe(false);
+  expect(mssqlExpr.includes('DATEADD')).toBe(true);
+  expect(mssqlExpr.includes('480')).toBe(true);
+});
+
+test('repository time bucket sql rejects invalid IANA and leaves DST zones on sqlite/mssql as UTC buckets', () => {
+  const col = sql.ref('demo.CreatedAt');
+  expect(() => buildTimeBucketExpr('sqlite', col, 'day', "Asia/Shanghai'; DROP")).toThrow(/Invalid IANA/);
+
+  const sqliteDst = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'America/New_York'));
+  const mssqlDst = renderOperationNode(buildTimeBucketExpr('mssql', col, 'day', 'America/New_York'));
+  // DST zones cannot be applied in SQLite/MSSQL SQL — keep storage/UTC day (legacy).
+  expect(sqliteDst.includes('+08:00')).toBe(false);
+  expect(sqliteDst.includes('+05:00')).toBe(false);
+  expect(sqliteDst.includes('+04:00')).toBe(false);
+  expect(sqliteDst.includes('start of day')).toBe(true);
+  expect(mssqlDst.includes('DATEADD(minute')).toBe(false);
+  expect(mssqlDst.includes('CAST')).toBe(true);
+});
+
+test('repository time bucket sql sqlite UTC timezone leaves column without datetime offset', () => {
+  const col = sql.ref('demo.CreatedAt');
+  const withUtc = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', 'UTC'));
+  const without = renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day'));
+  expect(withUtc.includes('+08:00')).toBe(false);
+  expect(withUtc.includes('start of day')).toBe(true);
+  expect(without.includes('start of day')).toBe(true);
+});
+
+test('resolveFixedUtcOffsetMinutes matches Asia/Shanghai and reports DST as null', () => {
+  expect(resolveFixedUtcOffsetMinutes('Asia/Shanghai')).toBe(480);
+  expect(resolveFixedUtcOffsetMinutes('UTC')).toBe(0);
+  expect(resolveFixedUtcOffsetMinutes('America/New_York')).toBe(null);
 });
