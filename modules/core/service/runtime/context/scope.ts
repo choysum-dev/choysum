@@ -114,6 +114,15 @@ export function getContextTimezone(): string | undefined {
 }
 
 /**
+ * Returns the active company timezone from context (business day authority).
+ */
+export function getContextCompanyTimezone(): string | undefined {
+  return normalizeContextString(
+    getCtxValue('companyTz') ?? getCtxValue('companyTimezone') ?? getCtxValue('CompanyTimezone') ?? getCtxValue('CompanyTz')
+  );
+}
+
+/**
  * Runs a function with a temporary business-context override.
  */
 export function withContext<R>(ctx: Partial<Context> | (() => Partial<Context>), fn: () => R, opts?: { merge?: boolean }): R {

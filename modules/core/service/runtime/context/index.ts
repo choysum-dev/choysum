@@ -12,4 +12,4 @@ export {
   withBypassDepths,
   memoizeInReqState,
 } from './request';
-export { getReadonlyCtx, getCtxValue, getActiveCompanyId, getEnabledCompanyIds, getContextLang, getContextTimezone, withContext } from './scope';
+export { getReadonlyCtx, getCtxValue, getActiveCompanyId, getEnabledCompanyIds, getContextLang, getContextTimezone, getContextCompanyTimezone, withContext } from './scope';

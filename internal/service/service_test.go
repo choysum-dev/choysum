@@ -353,6 +353,96 @@ func TestBuildJsContext_IgnoresBaggageCompanyScope(t *testing.T) {
 	}
 }
 
+func TestBuildJsContext_TimezoneFallback(t *testing.T) {
+	newCtxWithBaggage := func(meta map[string]any, tzBaggage string) context.Context {
+		ctx := context.Background()
+		if meta != nil {
+			ctx = auth.ContextWithIdentity(ctx, &testIdentity{userID: "u1", tokenID: "t1", meta: meta})
+		}
+		if tzBaggage != "" {
+			m, err := baggage.NewMember("ctx.tz", tzBaggage)
+			if err != nil {
+				t.Fatalf("new member tz: %v", err)
+			}
+			bag, err := baggage.New(m)
+			if err != nil {
+				t.Fatalf("new baggage: %v", err)
+			}
+			ctx = baggage.ContextWithBaggage(ctx, bag)
+		}
+		return ctx
+	}
+
+	s := &ApplicationService{runtimeScope: &helperScope{ctx: context.Background(), logger: slog.Default()}}
+
+	t.Run("user timezone wins over baggage", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"timezone":          "America/New_York",
+			"companyTimezone":   "Asia/Shanghai",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Europe/Paris")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "America/New_York" {
+			t.Fatalf("tz mismatch: got=%v want=America/New_York", got)
+		}
+		if got := ctxMap["companyTz"]; got != "Asia/Shanghai" {
+			t.Fatalf("companyTz mismatch: got=%v want=Asia/Shanghai", got)
+		}
+	})
+
+	t.Run("empty user uses baggage then company", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "Asia/Tokyo",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Europe/Berlin")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Europe/Berlin" {
+			t.Fatalf("tz mismatch: got=%v want=Europe/Berlin", got)
+		}
+		if got := ctxMap["companyTz"]; got != "Asia/Tokyo" {
+			t.Fatalf("companyTz mismatch: got=%v want=Asia/Tokyo", got)
+		}
+	})
+
+	t.Run("empty user and baggage falls back to company then UTC", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "Asia/Shanghai",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "Asia/Shanghai" {
+			t.Fatalf("tz mismatch: got=%v want=Asia/Shanghai", got)
+		}
+	})
+
+	t.Run("invalid baggage ignored", func(t *testing.T) {
+		ctx := newCtxWithBaggage(map[string]any{
+			"companyTimezone":   "UTC",
+			"activeCompanyId":   "A",
+			"allowedCompanyIds": []string{"A"},
+		}, "Not/A_Zone")
+		jsCtx := s.buildJsContext(ctx)
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+	})
+
+	t.Run("no identity defaults to UTC", func(t *testing.T) {
+		jsCtx := s.buildJsContext(context.Background())
+		ctxMap := jsCtx["ctx"].(map[string]any)
+		if got := ctxMap["tz"]; got != "UTC" {
+			t.Fatalf("tz mismatch: got=%v want=UTC", got)
+		}
+	})
+}
+
 func TestServiceCodec(t *testing.T) {
 	structMsg, err := structpb.NewStruct(map[string]any{"name": "choysum", "count": 2})
 	if err != nil {

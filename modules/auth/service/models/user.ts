@@ -18,6 +18,8 @@ import { uniqStrings } from '@/core/service/utils/normalization';
 import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/datetime';
 import { Constraint } from '@/core/service/api/constraint';
 import Language from '@/base/service/models/language';
+import type Company from '@/base/service/models/company';
+import { createServiceByModel } from '@/core/service/rpc';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from './_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_user_authz_shared';
 import { evaluateRoleMethodAccess, evaluateUiDerivedMethodDecision, resolveMethodAccessMeta } from './_user_method_access';
@@ -398,9 +400,23 @@ export default class User extends BaseModel {
     const permStateVersion = userId ? await this._computePermStateVersion(userId) : 0;
     const companyScope = computeTokenCompanyScope(user as any);
 
+    let companyTimezone: string | undefined;
+    const activeCompanyId = String(companyScope.activeCompanyId || '').trim();
+    if (activeCompanyId) {
+      try {
+        const CompanyService = createServiceByModel<typeof Company>('base.Company');
+        const company = await (CompanyService as any).Browse(activeCompanyId, ['Timezone']);
+        const tz = String(company?.Timezone || '').trim();
+        if (tz && isIanaTimezone(tz)) companyTimezone = tz;
+      } catch {
+        // Company may be unavailable during early bootstrap; leave companyTimezone unset.
+      }
+    }
+
     return {
       language: user.Language,
       timezone: user.Timezone || undefined,
+      companyTimezone,
       allowedCompanyIds: companyScope.allowedCompanyIds,
       activeCompanyId: companyScope.activeCompanyId,
       enabledCompanyIds: companyScope.enabledCompanyIds,

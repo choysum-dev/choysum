@@ -8,6 +8,7 @@ export {
   getActiveCompanyId,
   getContextLang,
   getContextTimezone,
+  getContextCompanyTimezone,
   getCtxValue,
   getEnabledCompanyIds,
   getIdentity,

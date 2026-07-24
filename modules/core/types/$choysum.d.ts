@@ -20,6 +20,9 @@ interface TokenMetadata {
   language?: string; // Language preference, mapped to ctx.lang by default.
   timezone?: string; // Timezone preference, mapped to ctx.tz by default.
 
+  // Active company IANA timezone, mapped to ctx.companyTz (business day authority).
+  companyTimezone?: string;
+
   // Authorization scope used to derive identity.allowedCompanyIds.
   allowedCompanyIds?: string[];
 
@@ -55,7 +58,10 @@ interface TokenIdentity {
  */
 type JsBusinessContext = Readonly<{
   lang?: string;
+  /** Display timezone (user → empty browser baggage → company → UTC). */
   tz?: string;
+  /** Active company IANA timezone; business-day authority only. */
+  companyTz?: string;
   activeCompanyId?: string;
   enabledCompanyIds?: string[];
   [key: string]: unknown;
