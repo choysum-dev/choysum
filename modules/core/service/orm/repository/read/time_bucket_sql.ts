@@ -74,8 +74,17 @@ export function listZoneOffsetSegments(
 
   for (let i = 0; i < zone.untils.length; i++) {
     const untilRaw = zone.untils[i];
-    const untilMs = untilRaw === Infinity ? Number.POSITIVE_INFINITY : untilRaw;
-    const prevMs = i === 0 ? Number.NEGATIVE_INFINITY : zone.untils[i - 1];
+    // moment-timezone marks open-ended segments with null (and sometimes Infinity).
+    // `null <= number` coerces to `0 <= number` and would skip the active segment.
+    const untilMs =
+      untilRaw == null || untilRaw === Infinity ? Number.POSITIVE_INFINITY : untilRaw;
+    const prevRaw = i === 0 ? undefined : zone.untils[i - 1];
+    const prevMs =
+      i === 0
+        ? Number.NEGATIVE_INFINITY
+        : prevRaw == null || prevRaw === Infinity
+          ? Number.POSITIVE_INFINITY
+          : prevRaw;
     if (untilMs <= fromMs) continue;
     if (prevMs >= toMs) break;
     // moment-timezone zone.offsets use Date#getTimezoneOffset sign (west positive).

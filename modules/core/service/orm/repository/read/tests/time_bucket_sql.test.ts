@@ -137,6 +137,25 @@ test('repository time bucket sql lists zone segments and formats sqlite modifier
   expect(formatSqliteUtcOffsetModifier(0)).toBe('+00:00');
 });
 
+test('repository time bucket sql keeps open-ended zone segments (null/Infinity until)', () => {
+  const toYear = 2035;
+  const segments = listZoneOffsetSegments('America/New_York', 2020, toYear);
+  expect(segments.length).toBeGreaterThan(1);
+  // Open-ended last until must be capped to the window end, not dropped via null<=fromMs.
+  expect(segments[segments.length - 1].untilMs).toBe(Date.UTC(toYear, 0, 1) + 1);
+
+  const winterMs = Date.UTC(2030, 0, 15);
+  let winterOffset = segments[segments.length - 1].utcOffsetMinutes;
+  for (const seg of segments) {
+    if (winterMs < seg.untilMs) {
+      winterOffset = seg.utcOffsetMinutes;
+      break;
+    }
+  }
+  // America/New_York mid-January → EST (UTC−5).
+  expect(winterOffset).toBe(-300);
+});
+
 test('repository time bucket sql applySqlTimezoneAdjustment matches fixed and DST offsets', () => {
   const shanghai = applySqlTimezoneAdjustment('2026-05-17T23:30:00.000Z', 'Asia/Shanghai');
   // +08:00 → local wall 2026-05-18 07:30 as naive UTC label
