@@ -2,7 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { detectBrowserTimezone, resolveRequestTimezone } from './request_timezone';
+import { detectBrowserTimezone, isIanaTimezone, resolveRequestTimezone } from './request_timezone';
+
+describe('isIanaTimezone', () => {
+  it('accepts known zones and rejects empty/invalid', () => {
+    expect(isIanaTimezone('UTC')).toBe(true);
+    expect(isIanaTimezone('Asia/Shanghai')).toBe(true);
+    expect(isIanaTimezone('')).toBe(false);
+    expect(isIanaTimezone(null)).toBe(false);
+    expect(isIanaTimezone('Not/A_Zone')).toBe(false);
+    expect(isIanaTimezone('Local')).toBe(false);
+  });
+});
 
 describe('resolveRequestTimezone', () => {
   it('prefers saved User.Timezone over browser', () => {
@@ -33,5 +44,18 @@ describe('detectBrowserTimezone', () => {
     expect(typeof tz).toBe('string');
     // Environment may be UTC or host zone; just ensure it does not throw.
     expect(tz.length).toBeGreaterThan(0);
+  });
+
+  it('returns empty string when Intl resolution throws', () => {
+    const original = Intl.DateTimeFormat;
+    // @ts-expect-error test double
+    Intl.DateTimeFormat = function () {
+      throw new Error('intl unavailable');
+    };
+    try {
+      expect(detectBrowserTimezone()).toBe('');
+    } finally {
+      Intl.DateTimeFormat = original;
+    }
   });
 });

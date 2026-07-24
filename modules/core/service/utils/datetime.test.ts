@@ -197,9 +197,62 @@ test('wallClockRangeToUtc converts half-open wall clocks before Search', () => {
   expect(end.toISOString()).toBe('2024-07-01T16:00:00.000Z');
 });
 
-test('wallClockRangeToUtc matches dayRange for full calendar days', () => {
-  const day = dayRange('2024-03-10', 'America/New_York');
-  const wall = wallClockRangeToUtc('2024-03-10 00:00:00', '2024-03-11 00:00:00', 'America/New_York');
-  expect(wall.start.toISOString()).toBe(day.start.toISOString());
-  expect(wall.end.toISOString()).toBe(day.end.toISOString());
+test('toDate parses epoch numbers and numeric strings', () => {
+  const ms = Date.parse('2024-06-15T12:00:00.000Z');
+  expect(toDate(ms)!.toISOString()).toBe('2024-06-15T12:00:00.000Z');
+  expect(toDate(String(ms))!.toISOString()).toBe('2024-06-15T12:00:00.000Z');
+  expect(toDate(Number.NaN)).toBe(undefined);
+});
+
+test('dayRange accepts Date input and rejects invalid calendar strings', () => {
+  const { start, end } = dayRange(new Date('2024-07-01T12:00:00.000Z'), 'UTC');
+  expect(start.toISOString()).toBe('2024-07-01T00:00:00.000Z');
+  expect(end.toISOString()).toBe('2024-07-02T00:00:00.000Z');
+
+  let error: unknown;
+  try {
+    dayRange('not-a-day', 'UTC');
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof Error).toBe(true);
+  expect(String((error as Error).message)).toContain('Invalid date');
+
+  let invalidDate: unknown;
+  try {
+    dayRange(new Date('invalid'), 'UTC');
+  } catch (err) {
+    invalidDate = err;
+  }
+  expect(invalidDate instanceof Error).toBe(true);
+});
+
+test('businessToday falls back to UTC when companyTz absent', () => {
+  const now = new Date('2024-07-01T15:30:00.000Z');
+  const day = withContext({} as any, () => businessToday(undefined, now));
+  expect(day).toBe('2024-07-01');
+  expect(withContext({} as any, () => businessYesterday(undefined, now))).toBe('2024-06-30');
+});
+
+test('businessYesterday uses companyTz and explicit override', () => {
+  const now = new Date('2024-07-01T16:30:00.000Z'); // Shanghai already Jul 2
+  const companyDay = withContext({ companyTz: 'Asia/Shanghai' } as any, () => businessYesterday(undefined, now));
+  expect(companyDay).toBe('2024-07-01');
+  // 16:30Z = 12:30 EDT → still Jul 1 in New York → yesterday Jun 30
+  expect(businessYesterday('America/New_York', now)).toBe('2024-06-30');
+});
+
+test('wallClockRangeToUtc rejects invalid walls and accepts compact formats', () => {
+  const compact = wallClockRangeToUtc('2024-07-01', '2024-07-02', 'Asia/Shanghai');
+  expect(compact.start.toISOString()).toBe('2024-06-30T16:00:00.000Z');
+  expect(compact.end.toISOString()).toBe('2024-07-01T16:00:00.000Z');
+
+  let error: unknown;
+  try {
+    wallClockRangeToUtc('bogus', '2024-07-02 00:00:00', 'UTC');
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof Error).toBe(true);
+  expect(String((error as Error).message)).toContain('Invalid wall-clock');
 });

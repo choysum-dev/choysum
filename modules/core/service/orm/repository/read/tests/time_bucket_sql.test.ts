@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { sql } from 'kysely';
-import { buildTimeBucketExpr, resolveFixedUtcOffsetMinutes } from '../time_bucket_sql';
+import { buildTimeBucketExpr, resolveFixedUtcOffsetMinutes, listZoneOffsetSegments, formatSqliteUtcOffsetModifier, applySqlTimezoneAdjustment } from '../time_bucket_sql';
 
 function renderOperationNode(expr: any): string {
   return JSON.stringify((expr as any).toOperationNode());
@@ -125,4 +125,35 @@ test('repository time bucket sql resolveFixedUtcOffsetMinutes uses in-window seg
   expect(resolveFixedUtcOffsetMinutes('America/New_York')).toBe(null);
   // Shanghai observed DST inside 1990–2040 → must not take the fixed +08 fast path.
   expect(resolveFixedUtcOffsetMinutes('Asia/Shanghai')).toBe(null);
+});
+
+test('repository time bucket sql lists zone segments and formats sqlite modifiers', () => {
+  const segments = listZoneOffsetSegments('America/New_York');
+  expect(segments.length).toBeGreaterThan(10);
+  expect(segments.every(s => typeof s.untilMs === 'number' && typeof s.utcOffsetMinutes === 'number')).toBe(true);
+
+  expect(formatSqliteUtcOffsetModifier(480)).toBe('+08:00');
+  expect(formatSqliteUtcOffsetModifier(-300)).toBe('-05:00');
+  expect(formatSqliteUtcOffsetModifier(0)).toBe('+00:00');
+});
+
+test('repository time bucket sql applySqlTimezoneAdjustment matches fixed and DST offsets', () => {
+  const shanghai = applySqlTimezoneAdjustment('2026-05-17T23:30:00.000Z', 'Asia/Shanghai');
+  // +08:00 → local wall 2026-05-18 07:30 as naive UTC label
+  expect(shanghai.toISOString()).toBe('2026-05-18T07:30:00.000Z');
+
+  const utc = applySqlTimezoneAdjustment('2026-05-17T23:30:00.000Z', 'UTC');
+  expect(utc.toISOString()).toBe('2026-05-17T23:30:00.000Z');
+
+  // After NY spring-forward 2024-03-10 07:00Z → EDT (-4)
+  const ny = applySqlTimezoneAdjustment('2024-03-10T08:00:00.000Z', 'America/New_York');
+  expect(ny.toISOString()).toBe('2024-03-10T04:00:00.000Z');
+});
+
+test('repository time bucket sql covers empty timezone and year/quarter DST branches', () => {
+  const col = sql.ref('demo.CreatedAt');
+  expect(renderOperationNode(buildTimeBucketExpr('sqlite', col, 'day', '   ')).includes('start of day')).toBe(true);
+  expect(renderOperationNode(buildTimeBucketExpr('postgres', col, 'year', 'America/New_York')).includes('DATE_TRUNC')).toBe(true);
+  expect(renderOperationNode(buildTimeBucketExpr('mssql', col, 'quarter', 'America/New_York')).includes('DATEFROMPARTS')).toBe(true);
+  expect(renderOperationNode(buildTimeBucketExpr('mysql', col, 'month', 'Asia/Dubai')).includes('CONVERT_TZ')).toBe(true);
 });

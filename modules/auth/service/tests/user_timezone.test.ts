@@ -122,3 +122,41 @@ test('persistBrowserTimezoneIfEmpty ignores invalid clientTz', async () => {
   expect(updates).toEqual([]);
   expect(user.Timezone).toBe(null);
 });
+
+test('persistBrowserTimezoneIfEmpty mutates user when reloadUser omitted', async () => {
+  const user = { Id: 'U4', Timezone: null as string | null };
+  const next = await persistBrowserTimezoneIfEmpty(user, {
+    clientTimezone: 'Europe/Berlin',
+    updateTimezone: async () => {},
+  });
+  expect(next.Timezone).toBe('Europe/Berlin');
+  expect(user.Timezone).toBe('Europe/Berlin');
+});
+
+test('persistBrowserTimezoneIfEmpty no-ops when user id missing', async () => {
+  const updates: string[] = [];
+  const user = { Id: '', Timezone: null as string | null };
+  const next = await persistBrowserTimezoneIfEmpty(user, {
+    clientTimezone: 'UTC',
+    updateTimezone: async uid => {
+      updates.push(uid);
+    },
+  });
+  expect(updates).toEqual([]);
+  expect(next).toBe(user);
+});
+
+test('auth.User extractUserMetadata includes timezone and tolerates missing company', async () => {
+  const metadata = await User.extractUserMetadata({
+    Id: '',
+    Language: 'en_US',
+    Timezone: 'America/New_York',
+    CompanyId: 'missing-company-id',
+    CompanyIds: ['missing-company-id'],
+  } as any);
+
+  expect(metadata.timezone).toBe('America/New_York');
+  // Browse fails for missing company → leave companyTimezone unset (catch path).
+  expect(metadata.companyTimezone).toBe(undefined);
+  expect(metadata.activeCompanyId).toBe('missing-company-id');
+});

@@ -26,6 +26,31 @@ describe('valueToPreview datetime wall-clock', () => {
     expect(valueToPreview('=', localMorning, { fieldType: 'date', timeZone: 'Asia/Shanghai' })).toBe('2024-07-01');
   });
 
+  it('stringifies time Date values and arrays', () => {
+    const t = new Date(2024, 0, 1, 12, 30, 0);
+    expect(valueToPreview('=', t, { fieldType: 'time' })).toBe(String(t));
+    expect(valueToPreview('in', ['a', 'b'], { fieldType: 'date' })).toBe('(a, b)');
+  });
+
+  it('formats datetime Date values and custom display formats', () => {
+    const d = new Date('2024-06-30T16:00:00.000Z');
+    expect(valueToPreview('=', d, { fieldType: 'datetime', timeZone: 'Asia/Shanghai' })).toBe('2024-07-01 00:00:00');
+    expect(
+      valueToPreview('=', '2024-06-30T16:00:00.000Z', {
+        fieldType: 'datetime',
+        timeZone: 'UTC',
+        displayFormat: 'YYYY-MM-DD',
+      })
+    ).toBe('2024-06-30');
+  });
+
+  it('falls back to ISO for bare Date values without fieldType', () => {
+    const d = new Date('2024-06-30T16:00:00.000Z');
+    // Looks like datetime via ISO inference when string; Date without fieldType uses toISOString fallback
+    // only when formatUtcInTimeZone path does not apply — Date triggers looksLikeUtcDatetime.
+    expect(valueToPreview('=', d, { timeZone: 'UTC' })).toBe('2024-06-30 16:00:00');
+  });
+
   it('infers datetime from ISO strings when fieldType omitted', () => {
     expect(valueToPreview('=', '2024-06-30T16:00:00.000Z', { timeZone: 'Asia/Shanghai' })).toBe('2024-07-01 00:00:00');
   });
