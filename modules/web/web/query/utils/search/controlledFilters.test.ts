@@ -33,6 +33,44 @@ describe('controlledFilters sync', () => {
       lastEmittedSig,
     });
     expect(decision.apply).toBe(false);
+    expect(decision.acknowledged).toBe(true);
+  });
+
+  it('ignores lagging parent snapshots while awaiting echo of a newer emit', () => {
+    const older = [g('Name', 'a')];
+    const newer = [g('Name', 'b')];
+    const lastEmittedSig = filtersSignature(newer);
+    const decision = shouldApplyControlledFilters({
+      local: newer,
+      incoming: older,
+      lastEmittedSig,
+      awaitingEcho: true,
+    });
+    expect(decision.apply).toBe(false);
+    expect(decision.acknowledged).toBe(false);
+  });
+
+  it('ignores lagging empty parent while awaiting echo of a clear', () => {
+    const older = [g('Name', 'a')];
+    const decision = shouldApplyControlledFilters({
+      local: [],
+      incoming: older,
+      lastEmittedSig: '',
+      awaitingEcho: true,
+    });
+    expect(decision.apply).toBe(false);
+    expect(decision.acknowledged).toBe(false);
+  });
+
+  it('acknowledges empty echo after clearing filters', () => {
+    const decision = shouldApplyControlledFilters({
+      local: [],
+      incoming: [],
+      lastEmittedSig: '',
+      awaitingEcho: true,
+    });
+    expect(decision.apply).toBe(false);
+    expect(decision.acknowledged).toBe(true);
   });
 
   it('applies external parent updates that are not our last emit', () => {

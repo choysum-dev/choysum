@@ -16,25 +16,38 @@ export function filtersSignature(list: ConditionGroup[] | undefined | null): str
 
 /**
  * Decide whether props.currentAppliedFilters should overwrite local filter tags.
- * Skips no-ops and stale echoes of our last emit while local has already moved ahead.
+ * Skips no-ops, stale echoes of our last emit while local has moved ahead, and
+ * lagging parent snapshots while we are still awaiting acknowledgment of that emit.
  */
 export function shouldApplyControlledFilters(opts: {
   local: ConditionGroup[];
   incoming: ConditionGroup[] | undefined | null;
   lastEmittedSig: string;
-}): { apply: boolean; normalized: ConditionGroup[] } {
+  awaitingEcho?: boolean;
+}): { apply: boolean; normalized: ConditionGroup[]; acknowledged: boolean } {
   const normalized = normalizeFilters((opts.incoming || []) as any);
   const nextSig = filtersSignature(normalized);
   const localSig = filtersSignature(opts.local);
 
   if (nextSig === localSig) {
-    return { apply: false, normalized };
+    // Parent caught up to local (including an empty-filter echo).
+    return {
+      apply: false,
+      normalized,
+      acknowledged: !!opts.awaitingEcho && nextSig === opts.lastEmittedSig,
+    };
   }
 
   // Parent echoed our last emit, but the user already changed local filters further.
   if (opts.lastEmittedSig && nextSig === opts.lastEmittedSig && localSig !== opts.lastEmittedSig) {
-    return { apply: false, normalized };
+    return { apply: false, normalized, acknowledged: true };
   }
 
-  return { apply: true, normalized };
+  // Still waiting for parent to acknowledge our last emit — ignore lagging snapshots
+  // (older or empty) that would otherwise clobber the filters we just emitted.
+  if (opts.awaitingEcho && nextSig !== opts.lastEmittedSig) {
+    return { apply: false, normalized, acknowledged: false };
+  }
+
+  return { apply: true, normalized, acknowledged: false };
 }

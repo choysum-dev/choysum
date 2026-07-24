@@ -157,7 +157,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { Search as SearchIcon, ArrowDown, Check } from '@element-plus/icons-vue';
 import type { BaseModel } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
@@ -268,11 +268,19 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
 
 /* Debounced query emission. */
 const lastEmittedFiltersSig = ref('');
+const awaitingFiltersEcho = ref(false);
 function emitQueryUpdate(payload?: QueryUpdatePayload<any>) {
   const p = payload ?? buildPayload();
-  lastEmittedFiltersSig.value = filtersSignature(
+  const nextSig = filtersSignature(
     normalizeFilters((Array.isArray(p.appliedFilters) ? p.appliedFilters : []) as any)
   );
+  const parentSig = filtersSignature(
+    normalizeFilters((Array.isArray(props.currentAppliedFilters) ? props.currentAppliedFilters : []) as any)
+  );
+  lastEmittedFiltersSig.value = nextSig;
+  // Only await an echo when filter content diverges from the parent's current snapshot
+  // (keyword/groupby-only emits must not block later external filter updates).
+  if (nextSig !== parentSig) awaitingFiltersEcho.value = true;
   emit('query-update', p);
 }
 
@@ -382,8 +390,16 @@ function onEditorCancel() {
 }
 
 async function onSaveDraft() {
+  const draft = draftFilter.value;
+  if (!draft) return;
+  const editingId = draft.baseId;
   const ok = saveDraft();
   if (!ok) {
+    // Edited tag disappeared (e.g. cleared while dialog open) — close without the incomplete warning.
+    if (editingId && !(filters.value || []).some(f => f.id === editingId)) {
+      closeEditor(true);
+      return;
+    }
     ElMessage.warning(_t('Add at least one complete condition before saving'));
     return;
   }
@@ -432,7 +448,7 @@ watch(
 );
 
 // Sync controlled filters into local state by content signature (not length alone).
-// Ignore stale echoes of our last emit while local filters have already moved ahead.
+// immediate: true hydrates route-restored tags on first frame via the same echo guard.
 watch(
   () => props.currentAppliedFilters,
   next => {
@@ -441,19 +457,16 @@ watch(
       local: filters.value || [],
       incoming: next as any,
       lastEmittedSig: lastEmittedFiltersSig.value,
+      awaitingEcho: awaitingFiltersEcho.value,
     });
-    if (decision.apply) filters.value = decision.normalized;
+    if (decision.acknowledged) awaitingFiltersEcho.value = false;
+    if (decision.apply) {
+      filters.value = decision.normalized;
+      awaitingFiltersEcho.value = false;
+    }
   },
-  { deep: true }
+  { deep: true, immediate: true }
 );
-
-// Force one initial sync so route round-trips do not drop filter tags.
-onMounted(() => {
-  const cf = props.currentAppliedFilters as any;
-  if (Array.isArray(cf) && cf.length > 0) {
-    filters.value = normalizeFilters(cf);
-  }
-});
 </script>
 
 <style scoped lang="scss">
