@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import moment from 'moment-timezone';
+import { getContextCompanyTimezone } from '../runtime/context/scope';
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -88,4 +89,100 @@ export function parseTimezoneOffsetMinutes(tz?: string): number | undefined {
   if (Number.isNaN(hours) || Number.isNaN(minutes)) return undefined;
   if (hours > 14 || minutes >= 60) return undefined;
   return sign * (hours * 60 + minutes);
+}
+
+// ---------------------------------------------------------------------------
+// Day boundaries / business calendar (moment-timezone)
+// ---------------------------------------------------------------------------
+
+function requireIanaTimezone(tz: string | undefined, label = 'timezone'): string {
+  const normalized = String(tz ?? '').trim();
+  if (!isIanaTimezone(normalized)) {
+    throw new Error(`Invalid IANA ${label}: ${String(tz ?? '')}`);
+  }
+  return normalized;
+}
+
+function resolveCalendarDay(date: string | Date, tz: string): string {
+  if (date instanceof Date) {
+    if (Number.isNaN(date.getTime())) {
+      throw new Error('Invalid date');
+    }
+    return moment.tz(date, tz).format('YYYY-MM-DD');
+  }
+  const day = String(date ?? '')
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !moment(day, 'YYYY-MM-DD', true).isValid()) {
+    throw new Error(`Invalid date: ${String(date ?? '')}`);
+  }
+  return day;
+}
+
+/**
+ * Half-open UTC range for calendar day `D` in `tz`: `[D 00:00, D+1 00:00)`.
+ *
+ * DST-safe via moment-timezone (23h / 25h days). Does not rewrite Search — call before filtering.
+ */
+export function dayRange(date: string | Date, tz: string): { start: Date; end: Date } {
+  const zone = requireIanaTimezone(tz);
+  const day = resolveCalendarDay(date, zone);
+  const startLocal = moment.tz(`${day} 00:00:00`, 'YYYY-MM-DD HH:mm:ss', true, zone);
+  if (!startLocal.isValid()) {
+    throw new Error(`Invalid date: ${day}`);
+  }
+  const endLocal = startLocal.clone().add(1, 'day');
+  return {
+    start: startLocal.clone().utc().toDate(),
+    end: endLocal.clone().utc().toDate(),
+  };
+}
+
+function resolveBusinessTimezone(tz?: string): string {
+  if (tz !== undefined && tz !== null && String(tz).trim() !== '') {
+    return requireIanaTimezone(tz);
+  }
+  const companyTz = getContextCompanyTimezone();
+  if (companyTz) {
+    return requireIanaTimezone(companyTz, 'company timezone');
+  }
+  return 'UTC';
+}
+
+/**
+ * Company (or explicit) calendar day for `now` as `YYYY-MM-DD`.
+ * Defaults to `getContextCompanyTimezone()`, then `UTC`.
+ */
+export function businessToday(tz?: string, now: Date = new Date()): string {
+  const zone = resolveBusinessTimezone(tz);
+  return moment.tz(now, zone).format('YYYY-MM-DD');
+}
+
+/**
+ * Previous company (or explicit) calendar day for `now` as `YYYY-MM-DD`.
+ */
+export function businessYesterday(tz?: string, now: Date = new Date()): string {
+  const zone = resolveBusinessTimezone(tz);
+  return moment.tz(now, zone).subtract(1, 'day').format('YYYY-MM-DD');
+}
+
+const WALL_CLOCK_FORMATS = ['YYYY-MM-DD HH:mm:ss', 'YYYY-MM-DDTHH:mm:ss', 'YYYY-MM-DD HH:mm', 'YYYY-MM-DDTHH:mm', 'YYYY-MM-DD'];
+
+/**
+ * Convert offset-free wall-clock start/end in `tz` to UTC `Date` bounds for Search filters.
+ *
+ * Prefer half-open `[start, end)` at the call site (e.g. next-day 00:00 as `endWall`).
+ * Does not mutate Search — convert before building conditions.
+ */
+export function wallClockRangeToUtc(startWall: string, endWall: string, tz: string): { start: Date; end: Date } {
+  const zone = requireIanaTimezone(tz);
+  const startLocal = moment.tz(String(startWall ?? '').trim(), WALL_CLOCK_FORMATS, true, zone);
+  const endLocal = moment.tz(String(endWall ?? '').trim(), WALL_CLOCK_FORMATS, true, zone);
+  if (!startLocal.isValid() || !endLocal.isValid()) {
+    throw new Error(`Invalid wall-clock range: ${String(startWall)} .. ${String(endWall)}`);
+  }
+  return {
+    start: startLocal.clone().utc().toDate(),
+    end: endLocal.clone().utc().toDate(),
+  };
 }
