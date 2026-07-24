@@ -6,14 +6,18 @@ import moment from 'moment-timezone';
 import type { DialectName } from '../repository_dialect';
 import type { TemporalGranularity } from '../types';
 
+/** Keep DST CASE expressions bounded (IANA histories can be huge). */
+const SQLITE_TZ_CASE_FROM_YEAR = 1990;
+const SQLITE_TZ_CASE_TO_YEAR = 2040;
+
 function isUtcTimezone(timezone: string): boolean {
   const normalized = timezone.trim().toUpperCase();
   return normalized === 'UTC' || normalized === 'ETC/UTC' || normalized === 'GMT' || normalized === 'Z';
 }
 
 /**
- * Resolve a fixed UTC offset (minutes) for dialects without native IANA/DST SQL.
- * Returns null when the zone observes DST (caller should leave UTC storage buckets).
+ * Resolve a fixed UTC offset (minutes) for zones without DST.
+ * Returns null when the zone observes DST.
  * Throws on invalid IANA ids.
  */
 export function resolveFixedUtcOffsetMinutes(timezone: string): number | null {
@@ -25,19 +29,116 @@ export function resolveFixedUtcOffsetMinutes(timezone: string): number | null {
 
   const jan = moment.tz([2024, 0, 1], tz).utcOffset();
   const jul = moment.tz([2024, 6, 1], tz).utcOffset();
-  if (jan !== jul) {
-    // SQLite/MSSQL cannot apply DST transitions in SQL; keep UTC buckets (same as legacy ignore).
-    return null;
-  }
+  if (jan !== jul) return null;
   return jan;
 }
 
-function formatSqliteUtcOffsetModifier(offsetMinutes: number): string {
+export function formatSqliteUtcOffsetModifier(offsetMinutes: number): string {
   const sign = offsetMinutes >= 0 ? '+' : '-';
   const abs = Math.abs(offsetMinutes);
   const hh = String(Math.floor(abs / 60)).padStart(2, '0');
   const mm = String(abs % 60).padStart(2, '0');
   return `${sign}${hh}:${mm}`;
+}
+
+/**
+ * Zone offset segments for SQL CASE generation.
+ * `utcOffsetMinutes` matches `moment#utcOffset()` (e.g. EST = -300).
+ * Segment covers `[prevUntilMs, untilMs)`.
+ */
+export type ZoneOffsetSegment = {
+  untilMs: number;
+  utcOffsetMinutes: number;
+};
+
+export function listZoneOffsetSegments(
+  timezone: string,
+  fromYear = SQLITE_TZ_CASE_FROM_YEAR,
+  toYear = SQLITE_TZ_CASE_TO_YEAR
+): ZoneOffsetSegment[] {
+  const tz = String(timezone || '').trim();
+  const zone = moment.tz.zone(tz);
+  if (!zone) {
+    throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
+  }
+  if (isUtcTimezone(tz)) {
+    return [{ untilMs: Number.POSITIVE_INFINITY, utcOffsetMinutes: 0 }];
+  }
+
+  const fromMs = Date.UTC(fromYear, 0, 1);
+  const toMs = Date.UTC(toYear, 0, 1);
+  const segments: ZoneOffsetSegment[] = [];
+
+  for (let i = 0; i < zone.untils.length; i++) {
+    const untilRaw = zone.untils[i];
+    const untilMs = untilRaw === Infinity ? Number.POSITIVE_INFINITY : untilRaw;
+    const prevMs = i === 0 ? Number.NEGATIVE_INFINITY : zone.untils[i - 1];
+    if (untilMs <= fromMs) continue;
+    if (prevMs >= toMs) break;
+    // moment-timezone zone.offsets use Date#getTimezoneOffset sign (west positive).
+    const utcOffsetMinutes = -zone.offsets[i];
+    segments.push({
+      untilMs: untilMs === Number.POSITIVE_INFINITY ? toMs + 1 : Math.min(untilMs, toMs + 1),
+      utcOffsetMinutes,
+    });
+    if (untilMs > toMs) break;
+  }
+
+  if (!segments.length) {
+    segments.push({ untilMs: toMs + 1, utcOffsetMinutes: moment.tz(fromMs, tz).utcOffset() });
+  }
+  return segments;
+}
+
+/**
+ * Apply the same UTC→wall adjustment SQLite/MSSQL SQL would apply (for fixture parity).
+ */
+export function applySqlTimezoneAdjustment(instant: Date | string, timezone: string): Date {
+  const d = instant instanceof Date ? new Date(instant) : new Date(instant);
+  if (Number.isNaN(d.getTime())) return d;
+  const tz = String(timezone || '').trim();
+  if (!tz || isUtcTimezone(tz)) return d;
+
+  const fixed = resolveFixedUtcOffsetMinutes(tz);
+  const offsetMinutes = fixed != null ? fixed : moment.utc(d.getTime()).tz(tz).utcOffset();
+  // datetime(col, '+08:00') adds the offset to the stored UTC wall → local wall as naive UTC label.
+  return new Date(d.getTime() + offsetMinutes * 60_000);
+}
+
+function buildSqliteOffsetAdjustedColumn(column: unknown, timezone: string): unknown {
+  const fixed = resolveFixedUtcOffsetMinutes(timezone);
+  if (fixed != null) {
+    if (fixed === 0) return column;
+    const modLit = sql.raw(`'${formatSqliteUtcOffsetModifier(fixed)}'`);
+    return sql`datetime(${column}, ${modLit})`;
+  }
+
+  const segments = listZoneOffsetSegments(timezone);
+  const elseMod = formatSqliteUtcOffsetModifier(segments[segments.length - 1]?.utcOffsetMinutes ?? 0);
+  let acc: unknown = sql`datetime(${column}, ${sql.raw(`'${elseMod}'`)})`;
+  for (let i = segments.length - 2; i >= 0; i--) {
+    const untilIso = moment.utc(segments[i].untilMs).format('YYYY-MM-DD HH:mm:ss');
+    const mod = formatSqliteUtcOffsetModifier(segments[i].utcOffsetMinutes);
+    acc = sql`CASE WHEN datetime(${column}) < datetime(${sql.raw(`'${untilIso}'`)}) THEN datetime(${column}, ${sql.raw(`'${mod}'`)}) ELSE ${acc} END`;
+  }
+  return acc;
+}
+
+function buildMssqlOffsetAdjustedColumn(column: unknown, timezone: string): unknown {
+  const fixed = resolveFixedUtcOffsetMinutes(timezone);
+  if (fixed != null) {
+    if (fixed === 0) return column;
+    return sql`DATEADD(minute, ${sql.raw(String(fixed))}, ${column})`;
+  }
+
+  const segments = listZoneOffsetSegments(timezone);
+  const elseOffset = segments[segments.length - 1]?.utcOffsetMinutes ?? 0;
+  let acc: unknown = sql`DATEADD(minute, ${sql.raw(String(elseOffset))}, ${column})`;
+  for (let i = segments.length - 2; i >= 0; i--) {
+    const untilIso = moment.utc(segments[i].untilMs).format('YYYY-MM-DDTHH:mm:ss');
+    acc = sql`CASE WHEN ${column} < ${sql.raw(`'${untilIso}'`)} THEN DATEADD(minute, ${sql.raw(String(segments[i].utcOffsetMinutes))}, ${column}) ELSE ${acc} END`;
+  }
+  return acc;
 }
 
 function applyTimezone(dialect: DialectName, column: unknown, timezone?: string): unknown {
@@ -55,16 +156,17 @@ function applyTimezone(dialect: DialectName, column: unknown, timezone?: string)
       return sql`CONVERT_TZ(${column}, @@session.time_zone, ${tzLit})`;
     case 'sqlite': {
       if (isUtcTimezone(tz)) return column;
-      const offset = resolveFixedUtcOffsetMinutes(tz);
-      if (offset == null || offset === 0) return column;
-      const modLit = sql.raw(`'${formatSqliteUtcOffsetModifier(offset)}'`);
-      return sql`datetime(${column}, ${modLit})`;
+      if (!moment.tz.zone(tz)) {
+        throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
+      }
+      return buildSqliteOffsetAdjustedColumn(column, tz);
     }
     case 'mssql': {
       if (isUtcTimezone(tz)) return column;
-      const offset = resolveFixedUtcOffsetMinutes(tz);
-      if (offset == null || offset === 0) return column;
-      return sql`DATEADD(minute, ${sql.raw(String(offset))}, ${column})`;
+      if (!moment.tz.zone(tz)) {
+        throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
+      }
+      return buildMssqlOffsetAdjustedColumn(column, tz);
     }
     default:
       return column;
