@@ -1,122 +1,122 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nLanguage: zh_CN\n"
 
-#: service/models/partner.ts:68
+#: service/models/partner.ts:69
 msgctxt "partner.model.Partner.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/partner.ts:46
+#: service/models/partner.ts:47
 msgctxt "partner.model.Partner.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/partner.ts:58
+#: service/models/partner.ts:59
 msgctxt "partner.model.Partner.fields"
 msgid "Company"
 msgstr "所属公司"
 
-#: service/models/partner.ts:172
+#: service/models/partner.ts:173
 msgctxt "partner.model.Partner.fields"
 msgid "Contacts and Addresses"
 msgstr "联系人与地址"
 
-#: service/models/partner.ts:128
+#: service/models/partner.ts:129
 msgctxt "partner.model.Partner.fields"
 msgid "Country"
 msgstr "国家"
 
-#: service/models/partner.ts:88
+#: service/models/partner.ts:89
 msgctxt "partner.model.Partner.fields"
 msgid "Customer Rank"
 msgstr "客户等级"
 
-#: service/models/partner.ts:197
+#: service/models/partner.ts:198
 msgctxt "partner.model.Partner.fields"
 msgid "Default Billing Address"
 msgstr "默认开票地址"
 
-#: service/models/partner.ts:181
+#: service/models/partner.ts:182
 msgctxt "partner.model.Partner.fields"
 msgid "Default Contact"
 msgstr "默认联系人"
 
-#: service/models/partner.ts:118
+#: service/models/partner.ts:119
 msgctxt "partner.model.Partner.fields"
 msgid "Default Currency"
 msgstr "默认币种"
 
-#: service/models/partner.ts:108
+#: service/models/partner.ts:109
 msgctxt "partner.model.Partner.fields"
 msgid "Default Language"
 msgstr "默认语言"
 
-#: service/models/partner.ts:213
+#: service/models/partner.ts:214
 msgctxt "partner.model.Partner.fields"
 msgid "Default Shipping Address"
 msgstr "默认收货地址"
 
-#: service/models/partner.ts:146
+#: service/models/partner.ts:147
 msgctxt "partner.model.Partner.fields"
 msgid "Email"
 msgstr "邮箱"
 
-#: service/models/partner.ts:137
+#: service/models/partner.ts:138
 msgctxt "partner.model.Partner.fields"
 msgid "External Reference"
 msgstr "外部参考"
 
-#: service/models/partner.ts:164
+#: service/models/partner.ts:165
 msgctxt "partner.model.Partner.fields"
 msgid "Mobile"
 msgstr "手机"
 
-#: service/models/partner.ts:35
+#: service/models/partner.ts:36
 msgctxt "partner.model.Partner.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/partner.ts:237
+#: service/models/partner.ts:240
 msgctxt "partner.model.Partner.fields"
 msgid "Notes"
 msgstr "备注"
 
-#: service/models/partner.ts:78
+#: service/models/partner.ts:79
 msgctxt "partner.model.Partner.fields"
 msgid "Organization"
 msgstr "组织主体"
 
-#: service/models/partner.ts:155
+#: service/models/partner.ts:156
 msgctxt "partner.model.Partner.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/partner.ts:230
+#: service/models/partner.ts:231
 msgctxt "partner.model.Partner.fields"
 msgid "Sequence"
 msgstr "排序"
 
-#: service/models/partner.ts:98
+#: service/models/partner.ts:99
 msgctxt "partner.model.Partner.fields"
 msgid "Supplier Rank"
 msgstr "供应商等级"
 
-#: service/models/partner_contact.ts:140
+#: service/models/partner_contact.ts:142
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/partner_contact.ts:111
+#: service/models/partner_contact.ts:113
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Address"
 msgstr "地址"
 
-#: service/models/partner_contact.ts:120
+#: service/models/partner_contact.ts:122
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Address Type"
 msgstr "地址类型"
 
-#: service/models/partner_contact.ts:158
+#: service/models/partner_contact.ts:160
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Attention To"
 msgstr "收件人"
@@ -126,12 +126,12 @@ msgctxt "partner.model.PartnerContact.fields"
 msgid "Company"
 msgstr "所属公司"
 
-#: service/models/partner_contact.ts:130
+#: service/models/partner_contact.ts:132
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Default"
 msgstr "默认"
 
-#: service/models/partner_contact.ts:92
+#: service/models/partner_contact.ts:94
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Department"
 msgstr "部门"
@@ -151,7 +151,7 @@ msgctxt "partner.model.PartnerContact.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/partner_contact.ts:165
+#: service/models/partner_contact.ts:169
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Notes"
 msgstr "备注"
@@ -166,67 +166,52 @@ msgctxt "partner.model.PartnerContact.fields"
 msgid "Phone"
 msgstr "电话"
 
-#: service/models/partner_contact.ts:101
+#: service/models/partner_contact.ts:103
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Role"
 msgstr "角色"
 
-#: service/models/partner_contact.ts:150
+#: service/models/partner_contact.ts:152
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Sequence"
 msgstr "排序"
 
-#: service/models/partner_contact.ts:83
+#: service/models/partner_contact.ts:84
 msgctxt "partner.model.PartnerContact.fields"
 msgid "Title"
 msgstr "称谓"
 
-#: service/models/_normalization_bridge.ts:55
-msgctxt "service/models/_normalization_bridge"
-msgid "%s is required"
-msgstr "%s 为必填项"
-
-#: service/models/_normalization_bridge.ts:69 service/models/_normalization_bridge.ts:73
-msgctxt "service/models/_normalization_bridge"
-msgid "%s must be a non-negative integer"
-msgstr "%s 必须为非负整数"
-
-#: service/models/_normalization_bridge.ts:90 service/models/_normalization_bridge.ts:94
-msgctxt "service/models/_normalization_bridge"
-msgid "Sequence must be an integer"
-msgstr "Sequence 必须为整数"
-
-#: service/models/partner.ts:285
+#: service/models/partner.ts:288
 msgctxt "service/models/partner"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
 
-#: service/models/partner.ts:297
+#: service/models/partner.ts:300
 msgctxt "service/models/partner"
 msgid "Partner Code must be unique within the company"
 msgstr "伙伴编码在同一公司内必须唯一"
 
-#: service/models/partner_contact.ts:174
+#: service/models/partner_contact.ts:178
 msgctxt "service/models/partner_contact"
 msgid "AddressType must be one of billing, shipping, office, registered, other"
 msgstr "AddressType 必须是 billing、shipping、office、registered 或 other"
 
-#: service/models/partner_contact.ts:260
+#: service/models/partner_contact.ts:272
 msgctxt "service/models/partner_contact"
 msgid "CompanyId is required"
 msgstr "CompanyId 为必填项"
 
-#: service/models/partner_contact.ts:202
+#: service/models/partner_contact.ts:206
 msgctxt "service/models/partner_contact"
 msgid "Only one default %s contact is allowed for the same partner"
 msgstr "同一伙伴下每个 %s 类型只能有一个默认联系人"
 
-#: service/models/partner_contact.ts:214
+#: service/models/partner_contact.ts:218
 msgctxt "service/models/partner_contact"
 msgid "PartnerContact requires at least Name, AddressId, Email, Phone, or Mobile"
 msgstr "联系人至少需要填写 Name、AddressId、Email、Phone 或 Mobile 之一"
 
-#: service/models/partner_contact.ts:186 service/models/partner_contact.ts:259
+#: service/models/partner_contact.ts:190 service/models/partner_contact.ts:271
 msgctxt "service/models/partner_contact"
 msgid "PartnerId is required"
 msgstr "PartnerId 为必填项"
@@ -496,138 +481,3 @@ msgctxt "web/views/PartnerListView"
 msgid "Partner"
 msgstr "伙伴"
 
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Address"
-#~ msgstr "地址"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Address Type"
-#~ msgstr "地址类型"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Default"
-#~ msgstr "默认"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Email"
-#~ msgstr "邮箱"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Mobile"
-#~ msgstr "手机"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Name"
-#~ msgstr "名称"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Phone"
-#~ msgstr "电话"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Role"
-#~ msgstr "角色"
-
-#~ msgctxt "web/views/PartnerContactFormView"
-#~ msgid "Sequence"
-#~ msgstr "排序"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Code"
-#~ msgstr "编码"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Company"
-#~ msgstr "所属公司"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Country"
-#~ msgstr "国家"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Created At"
-#~ msgstr "创建时间"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Customer Rank"
-#~ msgstr "客户等级"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Default Billing Address"
-#~ msgstr "默认开票地址"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Default Contact"
-#~ msgstr "默认联系人"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Default Currency"
-#~ msgstr "默认币种"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Default Language"
-#~ msgstr "默认语言"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Default Shipping Address"
-#~ msgstr "默认收货地址"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "External Reference"
-#~ msgstr "外部参考"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Mobile"
-#~ msgstr "手机"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Name"
-#~ msgstr "名称"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Organization"
-#~ msgstr "组织主体"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Supplier Rank"
-#~ msgstr "供应商等级"
-
-#~ msgctxt "web/views/PartnerFormView"
-#~ msgid "Updated At"
-#~ msgstr "更新时间"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Active"
-#~ msgstr "启用"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Code"
-#~ msgstr "编码"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Company"
-#~ msgstr "所属公司"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Customer Rank"
-#~ msgstr "客户等级"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Name"
-#~ msgstr "名称"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Supplier Rank"
-#~ msgstr "供应商等级"
-
-#~ msgctxt "web/views/PartnerListView"
-#~ msgid "Updated At"
-#~ msgstr "更新时间"

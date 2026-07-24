@@ -6,7 +6,7 @@
  *
  * Priority:
  * 1. props.label when provided (including '' to force empty)
- * 2. FieldsGet translated string for current lang (when overlay present)
+ * 2. FieldsGet translated string for current lang (when overlay present and not a msgid echo)
  * 3. translateTerm(composer, stringText, string)
  * 4. meta.string (msgid)
  * 5. prop leaf name
@@ -40,6 +40,12 @@ function leafPropName(prop: string | null | undefined): string {
   return segs[segs.length - 1] || raw;
 }
 
+function metaMsgid(meta: FieldLabelMeta | null | undefined): string {
+  const fromRef = typeof meta?.stringText?.src === 'string' ? meta.stringText.src.trim() : '';
+  if (fromRef) return fromRef;
+  return typeof meta?.string === 'string' ? meta.string.trim() : '';
+}
+
 export function resolveFieldLabel(options: ResolveFieldLabelOptions): string {
   if (options.label != null) {
     return String(options.label);
@@ -47,7 +53,13 @@ export function resolveFieldLabel(options: ResolveFieldLabelOptions): string {
 
   const fromFieldsGet = typeof options.fieldsGetTranslatedString === 'string' ? options.fieldsGetTranslatedString.trim() : '';
   if (fromFieldsGet) {
-    return fromFieldsGet;
+    const msgid = metaMsgid(options.meta);
+    // BE `_t` miss / wrong request lang often echoes the English msgid into FieldsGet.string.
+    // That must not block FE Gateway translateTerm(stringText) (e.g. OSelectionField always ensures FieldsGet).
+    const isMsgidEcho = !!options.meta?.stringText && !!msgid && fromFieldsGet === msgid;
+    if (!isMsgidEcho) {
+      return fromFieldsGet;
+    }
   }
 
   const meta = options.meta;

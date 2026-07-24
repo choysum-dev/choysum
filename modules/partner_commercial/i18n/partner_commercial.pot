@@ -27,12 +27,12 @@ msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Country"
 msgstr ""
 
-#: service/models/partner_identifier.ts:93
+#: service/models/partner_identifier.ts:94
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Issued By"
 msgstr ""
 
-#: service/models/partner_identifier.ts:116
+#: service/models/partner_identifier.ts:119
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Notes"
 msgstr ""
@@ -52,12 +52,12 @@ msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Type"
 msgstr ""
 
-#: service/models/partner_identifier.ts:101
+#: service/models/partner_identifier.ts:102
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Valid From"
 msgstr ""
 
-#: service/models/partner_identifier.ts:109
+#: service/models/partner_identifier.ts:110
 msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Valid To"
 msgstr ""
@@ -67,39 +67,29 @@ msgctxt "partner_commercial.model.PartnerIdentifier.fields"
 msgid "Value"
 msgstr ""
 
-#: service/models/_normalization_bridge.ts:84
-msgctxt "service/models/_normalization_bridge"
-msgid "%s is required"
-msgstr ""
-
-#: service/models/_normalization_bridge.ts:98
-msgctxt "service/models/_normalization_bridge"
-msgid "%s must be a valid datetime"
-msgstr ""
-
-#: service/models/partner_identifier.ts:208
+#: service/models/partner_identifier.ts:219
 msgctxt "service/models/partner_identifier"
 msgid "CompanyId is required"
 msgstr ""
 
-#: service/models/partner_identifier.ts:165
+#: service/models/partner_identifier.ts:168
 msgctxt "service/models/partner_identifier"
 msgid "Only one primary identifier is allowed per PartnerId + IdentifierType"
 msgstr ""
 
-#: service/models/partner_identifier.ts:139
+#: service/models/partner_identifier.ts:142
 msgctxt "service/models/partner_identifier"
 msgid "PartnerId + IdentifierType + Value must be unique"
 msgstr ""
 
-#: service/models/partner_identifier.ts:126
-#: service/models/partner_identifier.ts:152
-#: service/models/partner_identifier.ts:207
+#: service/models/partner_identifier.ts:129
+#: service/models/partner_identifier.ts:155
+#: service/models/partner_identifier.ts:218
 msgctxt "service/models/partner_identifier"
 msgid "PartnerId is required"
 msgstr ""
 
-#: service/models/partner_identifier.ts:214
+#: service/models/partner_identifier.ts:225
 msgctxt "service/models/partner_identifier"
 msgid "ValidFrom must be less than or equal to ValidTo"
 msgstr ""

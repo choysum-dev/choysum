@@ -87,34 +87,84 @@ msgctxt "web/components/field/ODateField"
 msgid "Invalid date"
 msgstr ""
 
-#: web/components/field/ODatetimeField.vue:146
+#: web/components/field/ODatetimeField.vue:156
 msgctxt "web/components/field/ODatetimeField"
 msgid "Invalid date time"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:423
+#: web/components/field/ODecimalField.vue:434
 msgctxt "web/components/field/ODecimalField"
 msgid "Decimal places must not exceed %s"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:422
+#: web/components/field/ODecimalField.vue:433
 msgctxt "web/components/field/ODecimalField"
 msgid "Must be a valid number"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:427
+#: web/components/field/ODecimalField.vue:438
 msgctxt "web/components/field/ODecimalField"
 msgid "Must not be greater than %s"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:426
+#: web/components/field/ODecimalField.vue:437
 msgctxt "web/components/field/ODecimalField"
 msgid "Must not be less than %s"
 msgstr ""
 
-#: web/components/field/ODecimalField.vue:425
+#: web/components/field/ODecimalField.vue:436
 msgctxt "web/components/field/ODecimalField"
 msgid "Total digits must not exceed %s"
+msgstr ""
+
+#: web/components/field/OFieldBase.vue:127
+msgctxt "web/components/field/OFieldBase"
+msgid "Translate field"
+msgstr ""
+
+#: web/components/field/OFieldBase.vue:127
+msgctxt "web/components/field/OFieldBase"
+msgid "Translate: %s"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:8
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Base language (cannot be deleted)"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:15
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:130
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Failed to load translations"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:172
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Failed to save translations"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:17
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Save translations"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:48
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Translate field"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:48
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Translate: %s"
+msgstr ""
+
+#: web/components/field/OFieldTranslationsDialog.vue:169
+msgctxt "web/components/field/OFieldTranslationsDialog"
+msgid "Translations saved"
 msgstr ""
 
 #: web/components/field/OImageField.vue:71
@@ -291,12 +341,12 @@ msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:479
+#: web/components/field/OManyToManyRefTagsField.vue:478
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyRefTagsField.vue:475
+#: web/components/field/OManyToManyRefTagsField.vue:474
 msgctxt "web/components/field/OManyToManyRefTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
@@ -336,12 +386,12 @@ msgctxt "web/components/field/OManyToManyTagsField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:478
+#: web/components/field/OManyToManyTagsField.vue:477
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "relationStore is unresolved; cannot open picker"
 msgstr ""
 
-#: web/components/field/OManyToManyTagsField.vue:474
+#: web/components/field/OManyToManyTagsField.vue:473
 msgctxt "web/components/field/OManyToManyTagsField"
 msgid "searchList is not configured; cannot open picker"
 msgstr ""
@@ -935,6 +985,11 @@ msgctxt "web/components/view/OSearchView"
 msgid "Search..."
 msgstr ""
 
+#: web/components/view/search/OSearch.vue:229
+msgctxt "web/components/view/search/OSearch"
+msgid "Add at least one complete condition before saving"
+msgstr ""
+
 #: web/components/view/search/OSearch.vue:40
 msgctxt "web/components/view/search/OSearch"
 msgid "Custom filter…"
@@ -945,12 +1000,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Custom group by"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:29
+#: web/components/view/search/OSearch.vue:30
 msgctxt "web/components/view/search/OSearch"
 msgid "Day"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:65
+#: web/components/view/search/OSearch.vue:64
 msgctxt "web/components/view/search/OSearch"
 msgid "Edit filter"
 msgstr ""
@@ -970,12 +1025,12 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Group: %s"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:27
+#: web/components/view/search/OSearch.vue:28
 msgctxt "web/components/view/search/OSearch"
 msgid "Month"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:65
+#: web/components/view/search/OSearch.vue:64
 msgctxt "web/components/view/search/OSearch"
 msgid "New filter"
 msgstr ""
@@ -990,7 +1045,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Open search menu"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:26
+#: web/components/view/search/OSearch.vue:27
 msgctxt "web/components/view/search/OSearch"
 msgid "Quarter"
 msgstr ""
@@ -1005,7 +1060,7 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Search"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:93
+#: web/components/view/search/OSearch.vue:91
 msgctxt "web/components/view/search/OSearch"
 msgid "Search..."
 msgstr ""
@@ -1015,22 +1070,22 @@ msgctxt "web/components/view/search/OSearch"
 msgid "Select field or date granularity"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:28
+#: web/components/view/search/OSearch.vue:29
 msgctxt "web/components/view/search/OSearch"
 msgid "Week"
 msgstr ""
 
-#: web/components/view/search/OSearch.vue:25
+#: web/components/view/search/OSearch.vue:26
 msgctxt "web/components/view/search/OSearch"
 msgid "Year"
 msgstr ""
 
-#: web/components/view/search/OSearchFilter.vue:91
+#: web/components/view/search/OSearchFilter.vue:82
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "(empty)"
 msgstr ""
 
-#: web/components/view/search/OSearchFilter.vue:97
+#: web/components/view/search/OSearchFilter.vue:88
 msgctxt "web/components/view/search/OSearchFilter"
 msgid "(incomplete)"
 msgstr ""
@@ -1050,6 +1105,66 @@ msgctxt "web/components/view/search/OSearchFilter"
 msgid "Save"
 msgstr ""
 
+#: web/components/view/search/OSearchFilterCondition.vue:11
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Add values"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:104
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Enter JSON"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:3
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Field"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:7
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Operator"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:106
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Please select..."
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:16
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Remove"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:14
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select a field"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:96
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select a record"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:98
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select date"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:100
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select date and time"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:102
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Select time"
+msgstr ""
+
+#: web/components/view/search/OSearchFilterCondition.vue:108
+msgctxt "web/components/view/search/OSearchFilterCondition"
+msgid "Value"
+msgstr ""
+
 #: web/components/view/search/OSearchFilterGroup.vue:12
 msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Add condition"
@@ -1060,34 +1175,9 @@ msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Add group"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterGroup.vue:161
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Enter JSON"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:28
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Field"
-msgstr ""
-
 #: web/components/view/search/OSearchFilterGroup.vue:5
 msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Group relation"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:39
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Operator"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:163
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Please select..."
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:48
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Remove"
 msgstr ""
 
 #: web/components/view/search/OSearchFilterGroup.vue:14
@@ -1095,79 +1185,49 @@ msgctxt "web/components/view/search/OSearchFilterGroup"
 msgid "Remove group"
 msgstr ""
 
-#: web/components/view/search/OSearchFilterGroup.vue:46
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select a field"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:153
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select a record"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:155
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select date"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:157
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select date and time"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:159
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Select time"
-msgstr ""
-
-#: web/components/view/search/OSearchFilterGroup.vue:165
-msgctxt "web/components/view/search/OSearchFilterGroup"
-msgid "Value"
-msgstr ""
-
 #: web/components/vtable/OVTable.vue:12
 msgctxt "web/components/vtable/OVTable"
 msgid "No data"
 msgstr ""
 
-#: web/composables/search/useGroupingOptions.ts:28
-#: web/composables/search/useGroupingOptions.ts:94
+#: web/composables/search/useGroupingOptions.ts:17
+#: web/composables/search/useGroupingOptions.ts:61
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Day"
 msgstr ""
 
-#: web/composables/search/useGroupingOptions.ts:26
-#: web/composables/search/useGroupingOptions.ts:92
+#: web/composables/search/useGroupingOptions.ts:15
+#: web/composables/search/useGroupingOptions.ts:59
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Month"
 msgstr ""
 
-#: web/composables/search/useGroupingOptions.ts:25
-#: web/composables/search/useGroupingOptions.ts:91
+#: web/composables/search/useGroupingOptions.ts:14
+#: web/composables/search/useGroupingOptions.ts:58
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Quarter"
 msgstr ""
 
-#: web/composables/search/useGroupingOptions.ts:27
-#: web/composables/search/useGroupingOptions.ts:93
+#: web/composables/search/useGroupingOptions.ts:16
+#: web/composables/search/useGroupingOptions.ts:60
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Week"
 msgstr ""
 
-#: web/composables/search/useGroupingOptions.ts:24
-#: web/composables/search/useGroupingOptions.ts:90
+#: web/composables/search/useGroupingOptions.ts:13
+#: web/composables/search/useGroupingOptions.ts:57
 msgctxt "web/composables/search/useGroupingOptions"
 msgid "Year"
 msgstr ""
 
-#: web/composables/search/useSearch.ts:41
-#: web/composables/search/useSearch.ts:52
+#: web/composables/search/useSearch.ts:54
+#: web/composables/search/useSearch.ts:66
 msgctxt "web/composables/search/useSearch"
 msgid "(empty)"
 msgstr ""
 
-#: web/composables/search/useSearch.ts:55
-#: web/composables/search/useSearch.ts:66
+#: web/composables/search/useSearch.ts:69
+#: web/composables/search/useSearch.ts:80
 msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr ""

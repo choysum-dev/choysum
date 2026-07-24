@@ -176,67 +176,67 @@ msgctxt "task.model.JobExecution.fields"
 msgid "Triggered By User"
 msgstr "触发用户"
 
-#: service/models/schedule.ts:63
+#: service/models/schedule.ts:64
 msgctxt "task.model.Schedule.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/schedule.ts:130
+#: service/models/schedule.ts:132
 msgctxt "task.model.Schedule.fields"
 msgid "Cron Expression"
 msgstr "Cron 表达式"
 
-#: service/models/schedule.ts:93
+#: service/models/schedule.ts:95
 msgctxt "task.model.Schedule.fields"
 msgid "Full Method"
 msgstr "完整方法"
 
-#: service/models/schedule.ts:163
+#: service/models/schedule.ts:166
 msgctxt "task.model.Schedule.fields"
 msgid "Last Run At"
 msgstr "上次运行时间"
 
-#: service/models/schedule.ts:171
+#: service/models/schedule.ts:174
 msgctxt "task.model.Schedule.fields"
 msgid "Last Triggered At"
 msgstr "上次触发时间"
 
-#: service/models/schedule.ts:73
+#: service/models/schedule.ts:75
 msgctxt "task.model.Schedule.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/schedule.ts:155
+#: service/models/schedule.ts:158
 msgctxt "task.model.Schedule.fields"
 msgid "Next Run At"
 msgstr "下次运行时间"
 
-#: service/models/schedule.ts:100
+#: service/models/schedule.ts:102
 msgctxt "task.model.Schedule.fields"
 msgid "Payload Template"
 msgstr "载荷模板"
 
-#: service/models/schedule.ts:110
+#: service/models/schedule.ts:112
 msgctxt "task.model.Schedule.fields"
 msgid "Scheduler User"
 msgstr "调度用户"
 
-#: service/models/schedule.ts:83
+#: service/models/schedule.ts:85
 msgctxt "task.model.Schedule.fields"
 msgid "Target App"
 msgstr "目标应用"
 
-#: service/models/schedule.ts:147
+#: service/models/schedule.ts:150
 msgctxt "task.model.Schedule.fields"
 msgid "Timeout Ms"
 msgstr "超时(毫秒)"
 
-#: service/models/schedule.ts:139
+#: service/models/schedule.ts:142
 msgctxt "task.model.Schedule.fields"
 msgid "Timezone"
 msgstr "时区"
 
-#: service/models/schedule.ts:120
+#: service/models/schedule.ts:122
 msgctxt "task.model.Schedule.fields"
 msgid "Triggered By User"
 msgstr "触发用户"
