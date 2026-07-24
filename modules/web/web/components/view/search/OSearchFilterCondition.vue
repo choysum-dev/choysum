@@ -27,8 +27,21 @@ SPDX-License-Identifier: Apache-2.0
       <el-option v-for="op in operatorOptions" :key="op.value" :label="op.label" :value="op.value" />
     </el-select>
 
+    <el-select
+      v-if="condition.field && isMultiValueOperator(condition.operator) && !isRelationValueField"
+      class="w-value"
+      multiple
+      filterable
+      allow-create
+      default-first-option
+      collapse-tags
+      collapse-tags-tooltip
+      :model-value="multiValues"
+      :placeholder="_t('Add values')"
+      @update:model-value="onMultiValuesChange"
+    />
     <component
-      v-if="condition.field && requiresValue(condition.operator)"
+      v-else-if="condition.field && requiresValue(condition.operator)"
       :key="`${conditionId}-${condition.field}-${condition.operator}`"
       :is="fieldComponent"
       class="w-value"
@@ -68,6 +81,7 @@ import OTimeField from '@/web/web/components/field/OTimeField.vue';
 import ODatetimeField from '@/web/web/components/field/ODatetimeField.vue';
 import OJsonobjectField from '@/web/web/components/field/OJsonobjectField.vue';
 import OManyToOneField from '@/web/web/components/field/OManyToOneField.vue';
+import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';
 import OBinaryField from '@/web/web/components/field/OBinaryField.vue';
 import OImageField from '@/web/web/components/field/OImageField.vue';
 import OSelectionField from '@/web/web/components/field/OSelectionField.vue';
@@ -86,7 +100,7 @@ const props = defineProps<{
   onRemoveCondition: (id: string) => void;
 }>();
 
-const { metaTypeOf, relationStoreOf, getOperatorOptionsForField, isNullOperator, requiresValue, defaultValueFor } =
+const { metaTypeOf, relationStoreOf, getOperatorOptionsForField, isNullOperator, requiresValue, defaultValueFor, isMultiValueOperator } =
   useInjectedFilterEditorBindings(props.store);
 
 const conditionId = computed(() => props.condition.tempId || props.condition.id);
@@ -94,6 +108,7 @@ const conditionId = computed(() => props.condition.tempId || props.condition.id)
 const operatorOptions = computed(() => getOperatorOptionsForField(props.condition.field));
 
 const fieldType = computed(() => metaTypeOf(props.condition.field || ''));
+const isRelationValueField = computed(() => fieldType.value === 'manytoone' || fieldType.value === 'manytooneref');
 
 const fieldComponent = computed(() => {
   switch (fieldType.value) {
@@ -123,6 +138,8 @@ const fieldComponent = computed(() => {
       return OJsonobjectField;
     case 'manytoone':
       return OManyToOneField;
+    case 'manytooneref':
+      return OManyToOneRefField;
     case 'binary':
       return OBinaryField;
     case 'image':
@@ -137,6 +154,7 @@ const fieldComponent = computed(() => {
 const valuePlaceholder = computed(() => {
   switch (fieldType.value) {
     case 'manytoone':
+    case 'manytooneref':
       return _t('Select a record');
     case 'date':
       return _t('Select date');
@@ -154,7 +172,7 @@ const valuePlaceholder = computed(() => {
 });
 
 const extraProps = computed(() => {
-  if (fieldType.value !== 'manytoone') return {};
+  if (fieldType.value !== 'manytoone' && fieldType.value !== 'manytooneref') return {};
   return {
     toView: (raw: any) => {
       if (raw == null) return null;
@@ -167,6 +185,17 @@ const extraProps = computed(() => {
     },
   };
 });
+
+const multiValues = computed(() => {
+  const v = props.condition.value;
+  if (Array.isArray(v)) return v.map(x => String(x ?? '')).filter(Boolean);
+  if (v == null || v === '') return [] as string[];
+  return [String(v)];
+});
+
+function onMultiValuesChange(next: string[]) {
+  props.onUpdateCondition(conditionId.value, { value: Array.isArray(next) ? next : [] });
+}
 
 const valueRef = computed({
   get: () => props.condition.value,
@@ -216,7 +245,10 @@ watch(
   ([fieldName, meta]) => {
     binding.meta = meta;
     binding.prop = fieldName || 'value';
-    binding.relationStore = metaTypeOf(fieldName) === 'manytoone' ? relationStoreOf(fieldName) : undefined;
+    binding.relationStore =
+      metaTypeOf(fieldName) === 'manytoone' || metaTypeOf(fieldName) === 'manytooneref'
+        ? relationStoreOf(fieldName)
+        : undefined;
   },
   { immediate: true }
 );
@@ -231,6 +263,11 @@ function onOperatorChange(op: string) {
   const patch: Partial<CondLike> = { operator: op };
   if (isNullOperator(op)) {
     patch.value = null;
+  } else if (isMultiValueOperator(op)) {
+    const cur = props.condition.value;
+    if (!Array.isArray(cur)) {
+      patch.value = cur == null || cur === '' ? [] : [cur];
+    }
   } else if (requiresValue(op) && (props.condition.value === undefined || props.condition.value === null)) {
     const dv = defaultValueFor(metaTypeOf(props.condition.field || ''));
     if (dv !== undefined) patch.value = dv;

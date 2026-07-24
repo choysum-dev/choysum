@@ -108,15 +108,20 @@ export function useFilterEditorBindings(store: WebModelStore<any>) {
       return base;
     }
     const t = metaTypeOf(field);
-    if (t === 'manytoone') {
+    if (t === 'manytoone' || t === 'manytooneref') {
       const base = baseGetOperatorOptions('manytoone');
-      if (isTreeManyToOne(field)) {
+      if (t === 'manytoone' && isTreeManyToOne(field)) {
         const vals = new Set(base.map(o => o.value));
         for (const v of ['child_of', 'parent_of']) if (!vals.has(v)) base.push({ value: v, label: v } as any);
       }
       return base;
     }
     return baseGetOperatorOptions(t);
+  }
+
+  function isMultiValueOperator(op?: string): boolean {
+    const o = String(op || '').toLowerCase();
+    return o === 'in' || o === 'not in';
   }
 
   return {
@@ -129,5 +134,6 @@ export function useFilterEditorBindings(store: WebModelStore<any>) {
     isNullOperator: (op?: string) => baseIsNull(op),
     requiresValue: (op?: string) => baseRequires(op),
     defaultValueFor: (t?: string) => baseDefault(t),
+    isMultiValueOperator,
   } as const;
 }

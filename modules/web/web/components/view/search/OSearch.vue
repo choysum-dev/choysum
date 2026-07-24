@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
           @click.stop="onTagClick(f.id!)"
           :title="f.name || filterTooltip(f)"
         >
-          {{ f.name || summarizeFilterFields(f, 0) }}
+          {{ f.name || summarizeFilterFields(f, 2) }}
         </el-tag>
       </div>
 
@@ -164,6 +164,7 @@ import type { BaseModel } from '@/core/rpc';
 import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
 import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
+import { filtersSignature, shouldApplyControlledFilters } from '@/web/web/query/utils/search/controlledFilters';
 import OSearchFilter from './OSearchFilter.vue';
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { ElButton, ElTag, ElTooltip, ElDialog, ElDivider, ElIcon, ElPopover, ElTreeSelect, ElMessage } from 'element-plus';
@@ -272,9 +273,17 @@ const { defaultFilterItems, appliedFilterNameSet, toggleDefaultFilter } = useFil
 });
 
 /* Debounced query emission. */
+const lastEmittedFiltersSig = ref('');
+function emitQueryUpdate(payload?: QueryUpdatePayload<any>) {
+  const p = payload ?? buildPayload();
+  lastEmittedFiltersSig.value = filtersSignature(
+    normalizeFilters((Array.isArray(p.appliedFilters) ? p.appliedFilters : []) as any)
+  );
+  emit('query-update', p);
+}
+
 const debouncedTrigger = useDebouncedFnCancelable(() => {
-  const payload = buildPayload();
-  emit('query-update', payload);
+  emitQueryUpdate();
 }, 400);
 
 // Prevent emits triggered by syncing keyword from props into local state.
@@ -289,10 +298,7 @@ watch(keyword, () => {
 /* Toggle named filter presets. */
 function onToggleDefaultFilter(it: FilterMenuItem) {
   toggleDefaultFilter(it as any, changed => {
-    if (changed) {
-      const p = buildPayload();
-      emit('query-update', p);
-    }
+    if (changed) emitQueryUpdate();
   });
 }
 
@@ -361,8 +367,7 @@ const currentAppliedGroups = computed<GB[]>(() => {
 function setGroupbyLocal(next: GB[]) {
   // Keep grouping local here and let the parent decide how to apply it.
   const normalized = normalizeGroupby(next as any);
-  const p = buildPayload((normalized || []) as unknown as GB[]);
-  emit('query-update', p);
+  emitQueryUpdate(buildPayload((normalized || []) as unknown as GB[]));
 }
 
 function togglePlainGroupby(field: string) {
@@ -482,10 +487,7 @@ function onInputKeydown(e: KeyboardEvent) {
         e.preventDefault();
       } else {
         const removed = popLastFilter(true);
-        if (removed) {
-          const p = buildPayload();
-          emit('query-update', p);
-        }
+        if (removed) emitQueryUpdate();
         pendingDeleteFilterId.value = null;
         e.preventDefault();
       }
@@ -499,15 +501,13 @@ function onInputKeydown(e: KeyboardEvent) {
 
 function onEnter() {
   debouncedTrigger.cancel();
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   pendingDeleteFilterId.value = null;
 }
 
 function onSearchIconClick() {
   debouncedTrigger.cancel();
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   pendingDeleteFilterId.value = null;
 }
 
@@ -522,8 +522,7 @@ function onTagClick(id: string) {
 
 function onTagClose(id: string) {
   deleteFilter(id);
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   if (pendingDeleteFilterId.value === id) pendingDeleteFilterId.value = null;
 }
 
@@ -542,8 +541,7 @@ async function onSaveDraft() {
     ElMessage.warning(_t('Add at least one complete condition before saving'));
     return;
   }
-  const p = buildPayload();
-  emit('query-update', p);
+  emitQueryUpdate();
   closeEditor(true);
   pendingDeleteFilterId.value = null;
   await nextTick();
@@ -556,8 +554,7 @@ function onAddFilterClickAndClose() {
 
 function onGroupingClear() {
   // Pass an explicit empty array so buildPayload preserves [].
-  const p = buildPayload([]);
-  emit('query-update', p);
+  emitQueryUpdate(buildPayload([]));
 }
 
 function onEditGroupClick() {
@@ -589,23 +586,17 @@ watch(
 );
 
 // Sync controlled filters into local state by content signature (not length alone).
-function filtersSignature(list: ConditionGroup[] | undefined | null): string {
-  if (!list || !list.length) return '';
-  try {
-    return JSON.stringify(list);
-  } catch {
-    return `len:${list.length}`;
-  }
-}
-
+// Ignore stale echoes of our last emit while local filters have already moved ahead.
 watch(
   () => props.currentAppliedFilters,
   next => {
     if (next == null) return;
-    const normalized = normalizeFilters(next as any);
-    if (filtersSignature(filters.value) !== filtersSignature(normalized)) {
-      filters.value = normalized;
-    }
+    const decision = shouldApplyControlledFilters({
+      local: filters.value || [],
+      incoming: next as any,
+      lastEmittedSig: lastEmittedFiltersSig.value,
+    });
+    if (decision.apply) filters.value = decision.normalized;
   },
   { deep: true }
 );

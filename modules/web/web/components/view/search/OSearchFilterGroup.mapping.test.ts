@@ -28,11 +28,24 @@ describe('OSearchFilterCondition field resolver mapping', () => {
     expect(s).toContain('return OSelectionField;');
   });
 
+  test('maps manytooneref metadata type to OManyToOneRefField', () => {
+    const s = source();
+    expect(s).toContain("import OManyToOneRefField from '@/web/web/components/field/OManyToOneRefField.vue';");
+    expect(s).toContain("case 'manytooneref':");
+    expect(s).toContain('return OManyToOneRefField;');
+  });
+
   test('filter value binding reaches model store and forces empty label (T4.4)', () => {
     const s = source();
     expect(s).toContain('binding.store = {');
     expect(s).toContain('isReadonly: false');
     expect(s).toContain(':store="store"');
     expect(s).toContain(`:label="''"`);
+  });
+
+  test('scalar in/not in uses multi-value select', () => {
+    const s = source();
+    expect(s).toContain('isMultiValueOperator(condition.operator)');
+    expect(s).toContain('allow-create');
   });
 });
