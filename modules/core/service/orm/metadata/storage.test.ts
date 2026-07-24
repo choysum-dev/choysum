@@ -158,6 +158,9 @@ test('metadata storage injects ParentPath compute and checks cycle guard', () =>
   const parentPath = meta.fields.get('ParentPath') as any;
 
   expect(Boolean(parentPath)).toBe(true);
+  expect(parentPath?.string).toBe('Parent Path');
+  expect(parentPath?.stringText?.src).toBe('Parent Path');
+  expect(parentPath?.stringText?.scope).toBe('core.model.BaseModel.fields');
   expect(parentPath?.column?.compute?.deps).toEqual(['Id', 'ParentId', 'ParentId.ParentPath']);
 
   const expr = parentPath?.column?.compute?.expr;

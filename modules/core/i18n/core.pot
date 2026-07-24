@@ -22,6 +22,11 @@ msgctxt "core.model.BaseModel.fields"
 msgid "Display Name"
 msgstr ""
 
+#: service/orm/metadata/storage.ts:569
+msgctxt "core.model.BaseModel.fields"
+msgid "Parent Path"
+msgstr ""
+
 #: service/orm/model/model.ts:373
 msgctxt "core.model.BaseModel.fields"
 msgid "Updated At"
