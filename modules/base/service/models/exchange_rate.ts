@@ -4,6 +4,7 @@
 import { BaseModel, Decimal, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { normalizeRefId, normalizeDateString, toPositiveDecimal } from '@/core/service/utils/normalization';
+import { businessToday } from '@/core/service/utils/datetime';
 import { _t, _lt } from '../i18n';
 import Company from './company';
 import Currency from './currency';
@@ -39,11 +40,16 @@ export default class ExchangeRate extends BaseModel {
   })
   CompanyScopeKey: string;
 
+  /**
+   * Business calendar day for this rate (company timezone via businessToday; see multi-timezone-design §4.2 / §8).
+   * Not a UTC instant — UI must not rezone this `date` field.
+   */
   @Field({
     type: 'date',
     notNull: true,
     index: true,
     uniqueIndex: 'uidx_base_exchange_rate_scope_currency_date',
+    default: () => businessToday(),
     string: _lt('Date', { scope: 'base.model.ExchangeRate.fields' }),
   })
   Date: any;
@@ -109,6 +115,10 @@ export default class ExchangeRate extends BaseModel {
           : _t('Rate must be a valid decimal', { scope: 'service/models/exchange_rate' })
     );
     values.CompanyScopeKey = normalizeRefId(values.CompanyId) || '__GLOBAL__';
+    if (values.Date == null || values.Date === '') {
+      // Default posting/business day uses companyTz, independent of user display tz.
+      values.Date = businessToday();
+    }
     values.Date = this.dateKey(values.Date);
     await this.ensureUniqueTuple(values, currentId);
   }

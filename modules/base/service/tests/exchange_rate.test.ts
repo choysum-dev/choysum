@@ -130,3 +130,67 @@ test('base.exchange_rate: validates DateString and positive Rate', async () => {
     { merge: false }
   );
 });
+
+test('base.exchange_rate: Date defaults to businessToday(companyTz) independent of user tz', async () => {
+  const companyCurrency = await Currency.Create(
+    {
+      Name: uid('BizDayCurrency'),
+      Code: currencyCode3(),
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  const rateCurrency = await Currency.Create(
+    {
+      Name: uid('BizDayRateCurrency'),
+      Code: currencyCode3(),
+      DecimalDigits: 2,
+      Rounding: '0.01',
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  const company = await Company.Create(
+    {
+      Name: uid('BizDayCompany'),
+      Code: companyCode8(),
+      Timezone: 'Asia/Shanghai',
+      CurrencyId: (companyCurrency as any).Id,
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  // 2024-07-01 16:30Z is still 2024-07-01 in New York, but 2024-07-02 00:30 in Shanghai.
+  const fixedNow = new Date('2024-07-01T16:30:00.000Z');
+  const { businessToday } = await import('@/core/service/utils/datetime');
+
+  await withModelContext(
+    {
+      activeCompanyId: String((company as any).Id),
+      enabledCompanyIds: [String((company as any).Id)],
+      companyTz: 'Asia/Shanghai',
+      tz: 'America/New_York',
+    } as any,
+    async () => {
+      expect(businessToday(undefined, fixedNow)).toBe('2024-07-02');
+      expect(businessToday('America/New_York', fixedNow)).toBe('2024-07-01');
+
+      const created = await ExchangeRate.Create(
+        {
+          CompanyId: (company as any).Id,
+          CurrencyId: (rateCurrency as any).Id,
+          Date: businessToday(undefined, fixedNow),
+          Rate: '1.01',
+        } as any,
+        ['Id', 'Date'] as any
+      );
+      expect(String((created as any).Date).slice(0, 10)).toBe('2024-07-02');
+    },
+    { merge: false }
+  );
+});
