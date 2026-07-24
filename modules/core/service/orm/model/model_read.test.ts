@@ -1123,6 +1123,11 @@ test('model read drill maps calendar-label bucket keys through timezone wall clo
   const fromDateOnly = __buildGroupConditionForTest(spec, '2026-05-18', 'Asia/Shanghai') as any;
   expect(fromDateOnly).toEqual(fromZ);
 
+  // West of UTC: must keep YMD label May 18 (not shift to May 17 via coerce-as-instant).
+  const fromLA = __buildGroupConditionForTest(spec, '2026-05-18T00:00:00.000Z', 'America/Los_Angeles') as any;
+  expect(fromLA.And[0]).toEqual(['OrderedAt', '>=', '2026-05-18T07:00:00.000Z']);
+  expect(fromLA.And[1]).toEqual(['OrderedAt', '<', '2026-05-19T07:00:00.000Z']);
+
   // Z / offset-less keys must not be treated as true UTC instants by rangeFromGroupedValue.
   expect(__rangeFromGroupedValueForTest('2026-05-18T00:00:00.000Z', 'day')).toBe(undefined);
   expect(__rangeFromGroupedValueForTest('2026-05-18', 'day')).toBe(undefined);

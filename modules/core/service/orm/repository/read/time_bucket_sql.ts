@@ -164,13 +164,18 @@ function applyTimezone(dialect: DialectName, column: unknown, timezone?: string)
   const tzLit = sql.raw(`'${tz.replace(/'/g, "''")}'`);
 
   switch (dialect) {
-    case 'postgres':
+    case 'postgres': {
+      // Align with other dialects: reject unknown IANA early (UTC aliases allowed).
+      if (!isUtcTimezone(tz) && !moment.tz.zone(tz)) {
+        throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
+      }
       return sql`(${column}) AT TIME ZONE ${tzLit}`;
+    }
     case 'mysql': {
       // Requires mysql.time_zone* tables. Startup probes CONVERT_TZ(UTC, named zone) in
       // internal/defaultscope (ensureMySQLTimezoneTables); without them CONVERT_TZ
       // returns NULL and would silently corrupt day buckets.
-      if (!moment.tz.zone(tz)) {
+      if (!isUtcTimezone(tz) && !moment.tz.zone(tz)) {
         throw new Error(`Invalid IANA timezone for time bucketing: ${timezone}`);
       }
       return sql`CONVERT_TZ(${column}, @@session.time_zone, ${tzLit})`;

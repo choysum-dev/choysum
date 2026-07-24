@@ -748,11 +748,15 @@ function buildGroupCondition(spec: NormalizedGroupSpec, value: unknown, timezone
   }
 
   // 2) Fallback: calendar-label / Date keys → align, then wall-clock → UTC Search bounds.
+  // Calendar labels (YYYY-MM-DD / …Z / ±00:00) encode local YMD at UTC midnight — coerce in
+  // UTC only so west-of-UTC zones do not shift the label to the previous civil day before
+  // buildTemporalCondition applies timezone. True instants (Date / epoch) still use timezone.
   const d = toDateIfPossible(value);
   if (!d) {
     return [spec.field, '=', value];
   }
-  const bucketStart = coerceToBucketStart(d, spec.granularity, timezone);
+  const labelKey = typeof value === 'string' && !hasExplicitNonUtcOffset(value);
+  const bucketStart = coerceToBucketStart(d, spec.granularity, labelKey ? undefined : timezone);
   return buildTemporalCondition(spec.field, spec.granularity, bucketStart, timezone);
 }
 

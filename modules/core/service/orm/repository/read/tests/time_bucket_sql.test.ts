@@ -98,6 +98,13 @@ test('repository time bucket sql rejects invalid IANA on mysql', () => {
   expect(() => buildTimeBucketExpr('mysql', col, 'day', "Asia/Shanghai'; DROP")).toThrow(/Invalid IANA/);
 });
 
+test('repository time bucket sql rejects invalid IANA on postgres', () => {
+  const col = sql.ref('demo.CreatedAt');
+  expect(() => buildTimeBucketExpr('postgres', col, 'day', 'Not/A_Zone')).toThrow(/Invalid IANA/);
+  // UTC aliases must still be accepted (moment.tz.zone('UTC') is null).
+  expect(() => buildTimeBucketExpr('postgres', col, 'day', 'UTC')).not.toThrow();
+});
+
 test('repository time bucket sql rejects invalid IANA on sqlite', () => {
   const col = sql.ref('demo.CreatedAt');
   expect(() => buildTimeBucketExpr('sqlite', col, 'day', "Asia/Shanghai'; DROP")).toThrow(/Invalid IANA/);
