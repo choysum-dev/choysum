@@ -9,8 +9,8 @@ SPDX-License-Identifier: Apache-2.0
       <div class="osf-group__relation">
         <span class="osf-group__relation-label">{{ _t('Group relation') }}</span>
         <el-radio-group size="small" :model-value="group.logic" @update:model-value="onLogicChange">
-          <el-radio label="And">AND</el-radio>
-          <el-radio label="Or">OR</el-radio>
+          <el-radio value="And">AND</el-radio>
+          <el-radio value="Or">OR</el-radio>
         </el-radio-group>
       </div>
       <div class="osf-group__ops">
