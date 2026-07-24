@@ -22,6 +22,8 @@ import {
   notifyComposerMessagesChanged,
   trackComposerMessageRevision,
 } from './i18n';
+import { detectBrowserTimezone, resolveRequestTimezone } from './utils/request_timezone';
+import { useAuthStore } from '@/auth/web/stores/auth';
 
 // Import Element Plus.
 import ElementPlus from 'element-plus';
@@ -54,14 +56,19 @@ function setupApp(app: ChoysumWebApp): void {
   // Initialize the i18n store before creating the i18n instance.
   const i18nStore = useI18nStore();
 
-  // RequestContext: locale (format) + lang (terminology) + tz (browser IANA for empty-user fallback / D20).
+  // RequestContext: locale (format) + lang (terminology) + tz (User → browser; server applies D7).
   setGlobalRequestContextProvider(() => {
-    let tz = '';
+    let userTz = '';
     try {
-      tz = String(Intl.DateTimeFormat().resolvedOptions().timeZone || '').trim();
+      const authStore = useAuthStore();
+      userTz = resolveRequestTimezone(
+        (authStore.currentUser as any)?.Timezone ?? (authStore.identity as any)?.metadata?.timezone,
+        null
+      );
     } catch {
-      tz = '';
+      userTz = '';
     }
+    const tz = resolveRequestTimezone(userTz, detectBrowserTimezone());
     return {
       locale: i18nStore.currentLocale.code,
       lang: i18nStore.terminologyLang,
