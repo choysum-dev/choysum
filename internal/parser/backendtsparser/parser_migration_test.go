@@ -176,6 +176,14 @@ export default class Department extends BaseModel {
 	if parentPath.Decorators[0].ModuleSpecPath != filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, "core", "service", "orm", "decorator", "field") {
 		t.Fatalf("unexpected ParentPath decorator module: %+v", parentPath.Decorators[0])
 	}
+	if parentPath.FieldString != "Parent Path" {
+		t.Fatalf("expected ParentPath FieldString %q, got %q", "Parent Path", parentPath.FieldString)
+	}
+	if !strings.Contains(parentPath.StringText, `"module":"core"`) ||
+		!strings.Contains(parentPath.StringText, `"scope":"core.model.BaseModel.fields"`) ||
+		!strings.Contains(parentPath.StringText, `"src":"Parent Path"`) {
+		t.Fatalf("expected ParentPath StringText core BaseModel.fields TermReference, got %s", parentPath.StringText)
+	}
 	if _, exists := fieldByName["InternalCode"]; exists {
 		t.Fatalf("expected private static field to be filtered out, got %+v", r.Model.Fields)
 	}
