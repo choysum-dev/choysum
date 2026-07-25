@@ -89,6 +89,7 @@ export default class AttachmentUploadSession extends BaseModel {
     notNull: true,
     index: true,
     uniqueIndex: 'uidx_document_upload_business_request',
+    copy: false,
     string: _lt('Business Request', { scope: 'document.model.AttachmentUploadSession.fields' }),
   })
   BusinessRequestId: string;

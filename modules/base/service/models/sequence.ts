@@ -96,6 +96,7 @@ export default class Sequence extends BaseModel {
     type: 'bigint',
     notNull: true,
     default: () => 1,
+    copy: false,
     string: _lt('Next Number', { scope: 'base.model.Sequence.fields' }),
   })
   NextNumber: bigint;
