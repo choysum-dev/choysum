@@ -105,3 +105,27 @@ test('search rewrite auto-resolves virtual related field to related.path when @S
     domain: ['PartnerId.Name', 'ilike', 'ALICE'],
   });
 });
+
+test('search rewrite rejects async @Search handlers on the sync query path', () => {
+  class AsyncSearchModel extends BaseModel {
+    @Field({ type: 'varchar', size: 64 })
+    Name?: string;
+
+    @Field({ type: 'varchar', size: 64 })
+    override DisplayName!: string;
+
+    @Search<AsyncSearchModel>('DisplayName')
+    searchDisplayName() {
+      return Promise.resolve({ domain: ['Name', '=', 'x'] }) as any;
+    }
+  }
+
+  const meta = MetadataStorage.instance.getModelMetadata(AsyncSearchModel as any);
+  let message = '';
+  try {
+    rewriteSearchCondition(meta, 'DisplayName', '=', 'x', 'postgres');
+  } catch (error) {
+    message = String((error as Error).message || error);
+  }
+  expect(message).toContain('returned a Promise');
+});

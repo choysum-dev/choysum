@@ -301,12 +301,88 @@ test('withUser overrides getUserId nested and restores; withContext({ userId }) 
 
 test('withUser rejects empty userId and works on process stack without jsCtx', () => {
   expect(() => withUser('  ', () => undefined)).toThrow('non-empty userId');
+  expect(() => withUser(null as any, () => undefined)).toThrow('non-empty userId');
 
   withTempChoysum(undefined, () => {
     expect(getUserId()).toBe(undefined);
     const value = withUser('U-PROC', () => getUserId());
     expect(value).toBe('U-PROC');
     expect(getUserId()).toBe(undefined);
+
+    expect(() =>
+      withUser('U-THROW', () => {
+        throw new Error('process-boom');
+      })
+    ).toThrow('process-boom');
+    expect(getUserId()).toBe(undefined);
+  });
+});
+
+test('withUser supports async process stack and coerces non-string userId', async () => {
+  await withTempChoysum(undefined, async () => {
+    const asyncValue = await withUser(42 as any, async () => {
+      expect(getUserId()).toBe('42');
+      await Promise.resolve();
+      return getUserId();
+    });
+    expect(asyncValue).toBe('42');
+    expect(getUserId()).toBe(undefined);
+  });
+});
+
+test('withUser request stack restores on sync throw and accepts legacy string entries', () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  withTempChoysum(root, () => {
+    expect(() =>
+      withUser('U-FAIL', () => {
+        throw new Error('req-boom');
+      })
+    ).toThrow('req-boom');
+    expect(getUserId()).toBe('U-ROOT');
+
+    const key = Symbol.for('choysum.userid.override');
+    const jsCtx = (globalThis as any).$choysum.request.context;
+    jsCtx[key] = ['U-LEGACY', { userId: '' }, { userId: 'U-OBJ' }];
+    expect(getUserId()).toBe('U-OBJ');
+    jsCtx[key] = ['U-LEGACY'];
+    expect(getUserId()).toBe('U-LEGACY');
+    delete jsCtx[key];
+    expect(getUserId()).toBe('U-ROOT');
+  });
+});
+
+test('withUser concurrent siblings restore by entry identity out of order', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    let releaseSlow: (() => void) | undefined;
+    const slowGate = new Promise<void>(resolve => {
+      releaseSlow = resolve;
+    });
+
+    const slow = withUser('U-SLOW', async () => {
+      await slowGate;
+      return getUserId();
+    });
+
+    const fast = withUser('U-FAST', async () => getUserId());
+    expect(await fast).toBe('U-FAST');
+    releaseSlow?.();
+    expect(await slow).toBe('U-SLOW');
+    expect(getUserId()).toBe('U-ROOT');
   });
 });
 

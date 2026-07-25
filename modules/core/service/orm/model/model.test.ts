@@ -139,6 +139,40 @@ test('model context accessors are available on static and instance surfaces', ()
   expect(typeof instance.sudo).toBe('function');
 });
 
+test('model withUser and sudo static/instance wrappers invoke context facades', () => {
+  const globalAny = globalThis as any;
+  const hadPrev = Object.prototype.hasOwnProperty.call(globalAny, '$choysum');
+  const prev = globalAny.$choysum;
+  globalAny.$choysum = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+        req: {},
+      },
+    },
+  };
+
+  try {
+    const instance = makeInstance({ Id: 'SUDO-1', Name: 'sudo' });
+
+    const staticUser = ModelSurfaceHarness.withUser('U-STATIC', () => ModelSurfaceHarness.userId);
+    expect(staticUser).toBe('U-STATIC');
+
+    const instanceUser = instance.withUser('U-INSTANCE', () => instance.userId);
+    expect(instanceUser).toBe('U-INSTANCE');
+    expect(ModelSurfaceHarness.userId).toBe('U-ROOT');
+
+    const staticSudo = ModelSurfaceHarness.sudo(() => 'static-sudo');
+    expect(staticSudo).toBe('static-sudo');
+
+    const instanceSudo = instance.sudo(() => 'instance-sudo');
+    expect(instanceSudo).toBe('instance-sudo');
+  } finally {
+    if (hadPrev) globalAny.$choysum = prev;
+    else delete globalAny.$choysum;
+  }
+});
+
 test('model DisplayName compute handler covers Name/Username/Id fallback branches', () => {
   const meta = MetadataStorage.instance.getModelMetadata(ModelSurfaceHarness as any);
   const displayNameMeta = meta.fields.get('DisplayName') as any;

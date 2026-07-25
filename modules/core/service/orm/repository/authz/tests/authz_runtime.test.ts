@@ -158,9 +158,41 @@ test('authz runtime bypass wrappers run without req state and return callback re
   try {
     expect(await withRepositoryRecordRuleBypass(async () => 'rr-ok')).toBe('rr-ok');
     expect(await withRepositoryFieldRuleBypass(async () => 'fr-ok')).toBe('fr-ok');
+    expect(withRepositoryAuthzRuleBypass(() => 'authz-ok')).toBe('authz-ok');
+    expect(withRepositoryRecordRuleBypass(() => 'rr-sync')).toBe('rr-sync');
+    expect(withRepositoryFieldRuleBypass(() => 'fr-sync')).toBe('fr-sync');
   } finally {
     if (previous !== undefined) (globalThis as Record<string, unknown>).$choysum = previous;
   }
+});
+
+test('authz runtime bypass restore runs on sync throw', async () => {
+  await withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {},
+        },
+      },
+    },
+    async () => {
+      expect(() =>
+        withRepositoryAuthzRuleBypass(() => {
+          expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+          throw new Error('bypass-boom');
+        })
+      ).toThrow('bypass-boom');
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+
+      expect(() =>
+        withRepositoryRecordRuleBypass(() => {
+          throw new Error('rr-boom');
+        })
+      ).toThrow('rr-boom');
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+    }
+  );
 });
 
 test('authz runtime combined RR+FR bypass is sync-friendly and nested', () => {
