@@ -270,6 +270,30 @@ func TestWebApiStoreGenerateEmptyApp(t *testing.T) {
 	}
 }
 
+func TestWebApiStoreGenerate_NilContext(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	seedAbstractBaseModel(t, runtimeScope, nil)
+	webStoreDir := t.TempDir()
+	results, err := (&webApiStoreGenerator{runtimeScope: runtimeScope, module: &meta.IrModule{ApplicationStr: "crm"}, modulesWebDir: webStoreDir}).generate(nil, &meta.IrApplication{
+		Name: "crm",
+		Models: []*meta.IrModel{{
+			Name: "Partner",
+			Path: "@/crm/service/models/partner.ts",
+			Services: []*meta.IrService{{
+				Name:                  "CreatePartner",
+				AccessibilityModifier: "public",
+				IsStatic:              true,
+			}},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("generate(nil ctx) error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("unexpected results: %#v", results)
+	}
+}
+
 func TestWebApiStoreGenerate_UsesWorkspaceGeneratedTargets(t *testing.T) {
 	runtimeScope := newGeneratorScope(t)
 	seedAbstractBaseModel(t, runtimeScope, nil)
@@ -432,6 +456,46 @@ func TestResolveBaseServiceNames_RequiresAbstract(t *testing.T) {
 	_, err := resolveBaseServiceNames(runtimeScope)
 	if err == nil || !strings.Contains(err.Error(), "BaseModel not found") {
 		t.Fatalf("expected abstract BaseModel not found error, got %v", err)
+	}
+}
+
+func TestResolveBaseServiceNamesAtPath_EmptyPath(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	_, err := resolveBaseServiceNamesAtPath(runtimeScope, "  ")
+	if err == nil || !strings.Contains(err.Error(), "base model module path is empty") {
+		t.Fatalf("expected empty path error, got %v", err)
+	}
+}
+
+func TestResolveBaseServiceNames_LoadError(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	seedGeneratorMetaTables(t, runtimeScope)
+	sqlDB, err := runtimeScope.db.DB()
+	if err != nil {
+		t.Fatalf("db: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close db: %v", err)
+	}
+
+	_, err = resolveBaseServiceNames(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "load abstract BaseModel by path") {
+		t.Fatalf("expected load error, got %v", err)
+	}
+}
+
+func TestConventionalBaseServiceNames_SkipsNilAndNonConventional(t *testing.T) {
+	names := conventionalBaseServiceNames([]*meta.IrService{
+		nil,
+		{Name: "helper", AccessibilityModifier: "public", IsStatic: true},
+		{Name: "Search", AccessibilityModifier: "public", IsStatic: true},
+		{Name: "Browse", AccessibilityModifier: "private", IsStatic: true},
+	})
+	if !names["Search"] {
+		t.Fatalf("expected Search, got %#v", names)
+	}
+	if names["helper"] || names["Browse"] || len(names) != 1 {
+		t.Fatalf("unexpected names: %#v", names)
 	}
 }
 

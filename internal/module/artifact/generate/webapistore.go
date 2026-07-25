@@ -333,6 +333,10 @@ func analyzeRelationFields(model *meta.IrModel) ([]RelationFieldInfo, []string) 
 // Do not maintain a parallel hardcoded name list here.
 func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) {
 	path, _ := meta.BaseModelModuleSpec(runtimeScope)
+	return resolveBaseServiceNamesAtPath(runtimeScope, path)
+}
+
+func resolveBaseServiceNamesAtPath(runtimeScope scope.Scope, path string) (map[string]bool, error) {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return nil, xfmt.Errorf("base model module path is empty")
@@ -356,8 +360,16 @@ func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) 
 		return nil, xfmt.Errorf("load abstract BaseModel by path %s: %w", pathWithExt, result.Error)
 	}
 
+	names := conventionalBaseServiceNames(model.Services)
+	if len(names) == 0 {
+		return nil, xfmt.Errorf("abstract BaseModel at path %s has no conventional services", model.Path)
+	}
+	return names, nil
+}
+
+func conventionalBaseServiceNames(services []*meta.IrService) map[string]bool {
 	names := make(map[string]bool)
-	for _, svc := range model.Services {
+	for _, svc := range services {
 		if svc == nil {
 			continue
 		}
@@ -366,10 +378,7 @@ func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) 
 		}
 		names[svc.Name] = true
 	}
-	if len(names) == 0 {
-		return nil, xfmt.Errorf("abstract BaseModel at path %s has no conventional services", model.Path)
-	}
-	return names, nil
+	return names
 }
 
 func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplication) ([]*module.GeneratorResult, error) {
