@@ -11,9 +11,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/choysum-dev/choysum/internal/esbplugins"
 	"github.com/choysum-dev/choysum/internal/esbplugins/backendplugin"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/parser/backendtsparser"
@@ -82,6 +85,50 @@ func seedGeneratorMetaTables(t *testing.T, runtimeScope *generatorTestScope) {
 		&meta.IrTypeParameter{},
 	); err != nil {
 		t.Fatalf("migrate generator meta tables: %v", err)
+	}
+}
+
+// seedAbstractBaseModel inserts an abstract BaseModel IrModel at BaseModelModuleSpec path
+// with conventional services. Pass nil for the default name set; pass a non-nil empty
+// slice to seed BaseModel with no services.
+func seedAbstractBaseModel(t *testing.T, runtimeScope *generatorTestScope, names []string) {
+	t.Helper()
+	seedGeneratorMetaTables(t, runtimeScope)
+
+	path, _ := meta.BaseModelModuleSpec(runtimeScope)
+	path = esbplugins.NormalizePath(path)
+	if !strings.HasSuffix(path, ".ts") {
+		path = path + ".ts"
+	}
+	if names == nil {
+		names = []string{
+			"Browse", "BrowseMany", "Search", "NameSearch", "Copy", "Count",
+			"Create", "CreateMany", "Update", "UpdateById", "Delete", "DeleteById",
+			"DefaultGet", "FieldsGet", "GetFieldTranslations", "UpdateFieldTranslations",
+			"Onchange", "ReadGroup", "ReadGroupCount",
+		}
+	}
+
+	model := &meta.IrModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "abstract-base-model", Valid: true}},
+		Name:      "BaseModel",
+		Path:      path,
+		Abstract:  true,
+	}
+	if err := runtimeScope.db.Create(model).Error; err != nil {
+		t.Fatalf("create abstract BaseModel: %v", err)
+	}
+	for i, name := range names {
+		svc := &meta.IrService{
+			BaseModel:             meta.BaseModel{Id: sql.NullString{String: "base-svc-" + strconv.Itoa(i), Valid: true}},
+			Name:                  name,
+			AccessibilityModifier: "public",
+			IsStatic:              true,
+			ModelId:               model.Id,
+		}
+		if err := runtimeScope.db.Create(svc).Error; err != nil {
+			t.Fatalf("create BaseModel service %s: %v", name, err)
+		}
 	}
 }
 
@@ -467,6 +514,7 @@ func TestGeneratorEntryPoints(t *testing.T) {
 	t.Run("GenerateCtx runs full success pipeline", func(t *testing.T) {
 		runtimeScope := newGeneratorScope(t)
 		_, mod := seedGeneratorAppFixture(t, runtimeScope)
+		seedAbstractBaseModel(t, runtimeScope, nil)
 		protoDir := t.TempDir()
 		webDir := t.TempDir()
 		serviceDir := t.TempDir()

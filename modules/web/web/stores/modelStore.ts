@@ -123,7 +123,10 @@ export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
   getContext: () => Record<string, string>;
   withContext: <T>(ctx: Record<string, string>, fn: () => Promise<T>) => Promise<T>;
 
-  // Base services, optionally populated by generated templates.
+  // Base ORM RPCs shared by generated XxxStore (Go IsBaseService filters these names).
+  // When adding a BaseModel public static async PascalCase method for the FE base surface,
+  // declare it here; webapistore resolves names from BaseModel meta — do not maintain a
+  // parallel name list in webapistore.go.
   DefaultGet: ClientModelService<typeof BaseModel.DefaultGet<TModel>>;
   Create: ClientModelService<typeof BaseModel.Create<TModel>>;
   CreateMany: ClientModelService<typeof BaseModel.CreateMany<TModel>>;
