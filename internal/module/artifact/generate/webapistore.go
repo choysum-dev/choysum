@@ -346,7 +346,7 @@ func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) 
 		Preload("Services", func(db *gorm.DB) *gorm.DB {
 			return db.Order("id ASC")
 		}).
-		Where("path = ? OR path = ?", pathNoExt, pathWithExt).
+		Where("(path = ? OR path = ?) AND abstract = ?", pathNoExt, pathWithExt, true).
 		Order("id DESC").
 		Take(&model)
 	if result.Error != nil {

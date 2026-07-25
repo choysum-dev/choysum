@@ -400,6 +400,41 @@ func TestResolveBaseServiceNames_RejectsNonConventionalOnly(t *testing.T) {
 	}
 }
 
+func TestResolveBaseServiceNames_RequiresAbstract(t *testing.T) {
+	runtimeScope := newGeneratorScope(t)
+	seedGeneratorMetaTables(t, runtimeScope)
+
+	path, _ := meta.BaseModelModuleSpec(runtimeScope)
+	path = esbplugins.NormalizePath(path)
+	if !strings.HasSuffix(path, ".ts") {
+		path = path + ".ts"
+	}
+	model := &meta.IrModel{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "concrete-at-base-path", Valid: true}},
+		Name:      "BaseModel",
+		Path:      path,
+		Abstract:  false,
+	}
+	if err := runtimeScope.db.Create(model).Error; err != nil {
+		t.Fatalf("create non-abstract model: %v", err)
+	}
+	svc := &meta.IrService{
+		BaseModel:             meta.BaseModel{Id: sql.NullString{String: "svc-search", Valid: true}},
+		Name:                  "Search",
+		AccessibilityModifier: "public",
+		IsStatic:              true,
+		ModelId:               model.Id,
+	}
+	if err := runtimeScope.db.Create(svc).Error; err != nil {
+		t.Fatalf("create Search service: %v", err)
+	}
+
+	_, err := resolveBaseServiceNames(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "BaseModel not found") {
+		t.Fatalf("expected abstract BaseModel not found error, got %v", err)
+	}
+}
+
 func TestConvertFieldToMetadata_TranslateContract(t *testing.T) {
 	trueVal := true
 	size := 200
