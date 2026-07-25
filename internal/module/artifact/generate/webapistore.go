@@ -8,18 +8,21 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/choysum-dev/choysum/internal/esbplugins"
 	module "github.com/choysum-dev/choysum/internal/module/artifact/result"
 	"github.com/choysum-dev/choysum/internal/module/artifact/staging"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/ettle/strcase"
 	xfmt "golang.org/x/exp/errors/fmt"
+	"gorm.io/gorm"
 )
 
 //go:embed webapistore.ts.tpl
@@ -324,6 +327,51 @@ func analyzeRelationFields(model *meta.IrModel) ([]RelationFieldInfo, []string) 
 	return relationFields, importModels
 }
 
+// resolveBaseServiceNames loads conventional service names from the abstract BaseModel
+// IrModel (by BaseModelModuleSpec path). These names are filtered out of generated
+// XxxStore interfaces because they are already declared on the hand-written WebModelStore.
+// Do not maintain a parallel hardcoded name list here.
+func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) {
+	path, _ := meta.BaseModelModuleSpec(runtimeScope)
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil, xfmt.Errorf("base model module path is empty")
+	}
+	path = esbplugins.NormalizePath(path)
+	pathNoExt := strings.TrimSuffix(path, ".ts")
+	pathWithExt := pathNoExt + ".ts"
+
+	var model meta.IrModel
+	result := runtimeScope.Session().
+		Preload("Services", func(db *gorm.DB) *gorm.DB {
+			return db.Order("id ASC")
+		}).
+		Where("path = ? OR path = ?", pathNoExt, pathWithExt).
+		Order("id DESC").
+		Take(&model)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, xfmt.Errorf("abstract BaseModel not found at path %s (or %s)", pathNoExt, pathWithExt)
+		}
+		return nil, xfmt.Errorf("load abstract BaseModel by path %s: %w", pathWithExt, result.Error)
+	}
+
+	names := make(map[string]bool)
+	for _, svc := range model.Services {
+		if svc == nil {
+			continue
+		}
+		if !meta.IsConventionalModelService(svc.AccessibilityModifier, svc.IsStatic, svc.Name) {
+			continue
+		}
+		names[svc.Name] = true
+	}
+	if len(names) == 0 {
+		return nil, xfmt.Errorf("abstract BaseModel at path %s has no conventional services", model.Path)
+	}
+	return names, nil
+}
+
 func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplication) ([]*module.GeneratorResult, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -334,35 +382,9 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 		return nil, nil
 	}
 
-	// Preload BaseModel service names so the template can filter base CRUD services.
-	baseServiceNames := map[string]bool{
-		"Browse":                   true,
-		"BrowseMany":               true,
-		"Search":                   true,
-		"NameSearch":               true,
-		"Copy":                     true,
-		"Count":                    true,
-		"Create":                   true,
-		"CreateMany":               true,
-		"Update":                   true,
-		"UpdateById":               true,
-		"Delete":                   true,
-		"DeleteById":               true,
-		"DefaultGet":               true,
-		"FieldsGet":                true,
-		"GetFieldTranslations":     true,
-		"UpdateFieldTranslations":  true,
-		"Onchange":                 true,
-		"ReadGroup":                true,
-		"ReadGroupCount":           true,
-	}
-	for _, m := range app.Models {
-		if m.Name == "BaseModel" {
-			for _, svc := range m.Services {
-				baseServiceNames[svc.Name] = true
-			}
-			break
-		}
+	baseServiceNames, err := resolveBaseServiceNames(g.runtimeScope)
+	if err != nil {
+		return nil, err
 	}
 
 	funcMap := template.FuncMap{
@@ -373,7 +395,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.IrApplica
 			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
-		// Check whether the service name comes from BaseModel.
+		// True when name is a BaseModel conventional service (already on WebModelStore).
 		"IsBaseService": func(name string) bool {
 			return baseServiceNames[name]
 		},
