@@ -4,7 +4,6 @@
 import BaseModel from '../model/model';
 import type { ExpressionWrapper, ExpressionBuilder, Expression } from 'kysely';
 import Decimal, { DecimalRound } from '@/core/utils/decimal';
-import type { ComputeRunAs } from './compute';
 import type { TermReference } from '../../i18n';
 
 type ObjectRecord = Record<string, unknown>;
@@ -398,7 +397,6 @@ export interface ColumnComputeSpec<T extends BaseModel = BaseModel, R = unknown>
   deps: Array<ComputeDep<T>>;
   store?: boolean;
   searchable?: boolean;
-  runAs?: ComputeRunAs;
   inverse?: string;
   search?: string;
 }

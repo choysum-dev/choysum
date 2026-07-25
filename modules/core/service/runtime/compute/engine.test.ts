@@ -6,7 +6,6 @@ import { MetadataStorage } from '../../orm/metadata/storage';
 import BaseModel from '../../orm/model/model';
 import { ComputeEngine } from './engine';
 import Decimal from '@/core/utils/decimal';
-import { getReadonlyCtx } from '../context';
 
 async function withFakeMetadata<T>(metas: Map<Function, any>, fn: () => Promise<T> | T): Promise<T> {
   const storage = MetadataStorage.instance as any;
@@ -313,11 +312,9 @@ test('compute engine persist only recomputes persisted compute fields', async ()
   expect(changed.has('VirtualValue')).toBe(false);
 });
 
-test('compute engine executes runAs=sudo compute expression with marker and writes audit entry', async () => {
+test('compute engine executes compute expression without runAs wrapper', async () => {
   const entity: any = { Trigger: 1, SecureValue: '' };
   const changed = new Set<string>(['Trigger']);
-
-  delete (globalThis as any).__choysumComputeAudit;
 
   await ComputeEngine.recompute(
     {
@@ -330,12 +327,8 @@ test('compute engine executes runAs=sudo compute expression with marker and writ
             type: 'varchar',
             column: {
               compute: {
-                expr: () => {
-                  const ctx = getReadonlyCtx() as any;
-                  return String(ctx.__computeRunAs || 'none');
-                },
+                expr: () => 'ok',
                 deps: ['Trigger'],
-                runAs: 'sudo',
               },
             },
           },
@@ -354,13 +347,7 @@ test('compute engine executes runAs=sudo compute expression with marker and writ
     'persist'
   );
 
-  expect(entity.SecureValue).toBe('sudo');
-  const hits = ((globalThis as any).__choysumComputeAudit?.runAsHits || []) as any[];
-  expect(hits.length).toBe(1);
-  expect(hits[0]?.phase).toBe('expr');
-  expect(hits[0]?.runAs).toBe('sudo');
-  expect(hits[0]?.field).toBe('SecureValue');
-  expect(hits[0]?.mode).toBe('persist');
+  expect(entity.SecureValue).toBe('ok');
 });
 
 test('compute engine returns early when graph or changed set is empty', async () => {

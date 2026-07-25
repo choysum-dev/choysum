@@ -60,7 +60,6 @@ export type {
 } from './model';
 export type { ValueType, ParamMetadata, ServiceMetadata } from './service';
 export type {
-  ComputeRunAs,
   ComputeOperator,
   ComputeSearchDomain,
   ComputeDeps,

@@ -93,7 +93,6 @@ export class MetadataStorage {
       deps,
       store: typeof record.store === 'boolean' ? record.store : (existing?.store ?? true),
       searchable: typeof record.searchable === 'boolean' ? record.searchable : existing?.searchable,
-      runAs: record.runAs === 'user' || record.runAs === 'sudo' ? record.runAs : existing?.runAs,
     };
   }
 

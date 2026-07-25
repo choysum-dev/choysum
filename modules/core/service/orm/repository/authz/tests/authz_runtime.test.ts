@@ -16,6 +16,7 @@ import {
   isRepositoryTopLevelGrpcCall,
   withRepositoryFieldRuleBypass,
   withRepositoryRecordRuleBypass,
+  withRepositoryAuthzRuleBypass,
   withRepositoryValidationBypass,
 } from '..';
 
@@ -160,6 +161,33 @@ test('authz runtime bypass wrappers run without req state and return callback re
   } finally {
     if (previous !== undefined) (globalThis as Record<string, unknown>).$choysum = previous;
   }
+});
+
+test('authz runtime combined RR+FR bypass is sync-friendly and nested', () => {
+  return withPatchedChoysum(
+    {
+      request: {
+        context: {
+          req: {},
+        },
+      },
+    },
+    async () => {
+      const syncValue = withRepositoryAuthzRuleBypass(() => {
+        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+        return 'sync-ok';
+      });
+      expect(syncValue).toBe('sync-ok');
+      expect(getRepositoryRecordRuleBypassDepth()).toBe(0);
+
+      await withRepositoryAuthzRuleBypass(async () => {
+        expect(getRepositoryRecordRuleBypassDepth()).toBe(1);
+        expect(getRepositoryFieldRuleBypassDepth()).toBe(1);
+      });
+      expect(getRepositoryFieldRuleBypassDepth()).toBe(0);
+    }
+  );
 });
 
 test('authz runtime field bypass nested depth restores previous value', async () => {

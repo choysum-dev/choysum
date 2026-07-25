@@ -37,6 +37,7 @@ test('core/service/api entrypoint export surface stays limited to stable cross-m
     'resolveValidationSummary',
     'withContext',
     'withI18nScope',
+    'withUser',
   ]);
 });
 

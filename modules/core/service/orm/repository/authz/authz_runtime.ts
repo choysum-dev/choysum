@@ -154,20 +154,41 @@ export function getRepositoryRecordRuleBypassDepth(): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-export async function withRepositoryRecordRuleBypass<T>(fn: () => Promise<T>): Promise<T> {
+function restoreBypassDepth(state: RepositoryReqServiceState, key: 'recordRuleBypassDepth' | 'fieldRuleBypassDepth', previousDepth: number): void {
+  if (previousDepth > 0) state[key] = previousDepth;
+  else delete state[key];
+}
+
+function isPromiseLike<T = unknown>(value: unknown): value is Promise<T> {
+  return !!value && typeof (value as { then?: unknown }).then === 'function';
+}
+
+function runWithBypassRestore<T>(fn: () => T, restore: () => void): T {
+  try {
+    const result = fn();
+    if (isPromiseLike(result)) {
+      return Promise.resolve(result).finally(restore) as unknown as T;
+    }
+    restore();
+    return result;
+  } catch (error) {
+    restore();
+    throw error;
+  }
+}
+
+/**
+ * Increments RecordRule bypass depth for the duration of `fn`.
+ * Sync and async `fn` are both supported (aligned with withContext / Model.sudo).
+ */
+export function withRepositoryRecordRuleBypass<T>(fn: () => T): T {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
-  if (!state) return await fn();
+  if (!state) return fn();
 
   const previousDepth = getRepositoryRecordRuleBypassDepth();
   state.recordRuleBypassDepth = previousDepth + 1;
-  try {
-    return await fn();
-  } finally {
-    const nextDepth = previousDepth;
-    if (nextDepth > 0) state.recordRuleBypassDepth = nextDepth;
-    else delete state.recordRuleBypassDepth;
-  }
+  return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'recordRuleBypassDepth', previousDepth));
 }
 
 export function getRepositoryFieldRuleBypassDepth(): number {
@@ -177,20 +198,38 @@ export function getRepositoryFieldRuleBypassDepth(): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-export async function withRepositoryFieldRuleBypass<T>(fn: () => Promise<T>): Promise<T> {
+/**
+ * Increments FieldRule bypass depth for the duration of `fn`.
+ * Sync and async `fn` are both supported (aligned with withContext / Model.sudo).
+ */
+export function withRepositoryFieldRuleBypass<T>(fn: () => T): T {
   const req = getRepositoryCurrentReq();
   const state = getOrInitRepositoryReqServiceState(req);
-  if (!state) return await fn();
+  if (!state) return fn();
 
   const previousDepth = getRepositoryFieldRuleBypassDepth();
   state.fieldRuleBypassDepth = previousDepth + 1;
-  try {
-    return await fn();
-  } finally {
-    const nextDepth = previousDepth;
-    if (nextDepth > 0) state.fieldRuleBypassDepth = nextDepth;
-    else delete state.fieldRuleBypassDepth;
-  }
+  return runWithBypassRestore(fn, () => restoreBypassDepth(state, 'fieldRuleBypassDepth', previousDepth));
+}
+
+/**
+ * Elevates for the duration of `fn` by bypassing both RecordRule and FieldRule.
+ * Company scope remains in effect. Sync and async `fn` are both supported.
+ */
+export function withRepositoryAuthzRuleBypass<T>(fn: () => T): T {
+  const req = getRepositoryCurrentReq();
+  const state = getOrInitRepositoryReqServiceState(req);
+  if (!state) return fn();
+
+  const previousRecordDepth = getRepositoryRecordRuleBypassDepth();
+  const previousFieldDepth = getRepositoryFieldRuleBypassDepth();
+  state.recordRuleBypassDepth = previousRecordDepth + 1;
+  state.fieldRuleBypassDepth = previousFieldDepth + 1;
+
+  return runWithBypassRestore(fn, () => {
+    restoreBypassDepth(state, 'recordRuleBypassDepth', previousRecordDepth);
+    restoreBypassDepth(state, 'fieldRuleBypassDepth', previousFieldDepth);
+  });
 }
 
 export function getRepositoryValidationBypassState(): RepositoryReqServiceState {

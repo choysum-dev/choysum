@@ -7,7 +7,6 @@ import { MetadataStorage } from '../../orm/metadata';
 import type BaseModel from '../../orm/model/model';
 import Decimal, { decimalEqual, isDecimal, normalizeDecimalByMeta } from '@/core/utils/decimal';
 import { getRuntimeRepository } from '../runtime_repository_facade';
-import { withComputeRunAsExecution } from './runas';
 import { createEntityBackedModelInstance, resolveInstanceHandler } from './handler_runtime';
 import { asObjectRecord, hasOwnKey } from '../../../utils/object';
 import type { UnknownRecord } from '../../../utils/types';
@@ -80,7 +79,6 @@ function ensureSyncBridgeResult(value: unknown, label: string): unknown {
 
 type RuntimeComputeExecution = {
   store: boolean;
-  runAs: 'user' | 'sudo';
   execute: (modelInstance: BaseModel) => unknown;
 };
 
@@ -90,7 +88,6 @@ function resolveRuntimeComputeExecution(meta: ModelMetadata, field: string): Run
     const method = resolveInstanceHandler(meta, field, computeHandler.method, '@Compute');
     return {
       store: computeHandler.store !== false,
-      runAs: computeHandler.runAs === 'sudo' ? 'sudo' : 'user',
       execute: modelInstance => method.call(modelInstance),
     };
   }
@@ -103,7 +100,6 @@ function resolveRuntimeComputeExecution(meta: ModelMetadata, field: string): Run
   if (typeof expr === 'function') {
     return {
       store: computeSpec?.store !== false,
-      runAs: computeSpec?.runAs === 'sudo' ? 'sudo' : 'user',
       execute: modelInstance => (expr as (self: unknown) => unknown).call(modelInstance, modelInstance),
     };
   }
@@ -218,7 +214,7 @@ export class ComputeEngine {
       const runtimeCompute = resolveRuntimeComputeExecution(meta, field);
       if (!runtimeCompute || runtimeCompute.store !== false) continue;
 
-      let newVal = withComputeRunAsExecution(meta, field, runtimeCompute.runAs, 'expr', () => runtimeCompute.execute(wrapped), 'read');
+      let newVal = runtimeCompute.execute(wrapped);
       newVal = ensureSyncBridgeResult(newVal, `@Compute(${field})`);
 
       const currentFieldValue = entity[field];
@@ -286,7 +282,7 @@ export class ComputeEngine {
       const fieldMeta = meta.fields.get(f);
       try {
         const oldVal = entity[f];
-        const result = await withComputeRunAsExecution(meta, f, runtimeCompute.runAs, 'expr', () => runtimeCompute.execute(wrapped), mode);
+        const result = await runtimeCompute.execute(wrapped);
 
         let newVal = entity[f];
         if (newVal === oldVal && result !== undefined) {

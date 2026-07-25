@@ -1,7 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { __deepFreezeForTest, getIdentity, getReqMeta, getUserId } from './source';
+import { __deepFreezeForTest, getIdentity, getReqMeta } from './source';
+import { getUserId, withUser } from './user';
 import { getActiveCompanyId, getContextLang, getContextTimezone, getContextCompanyTimezone, getContextClientTimezone, getEnabledCompanyIds, getReadonlyCtx, withContext } from './scope';
 
 function withTempChoysum<T>(root: any, fn: () => T): T {
@@ -264,4 +265,47 @@ test('runtime context source deep-freeze helper handles primitive, frozen and du
   expect(Object.isFrozen(out.left)).toBe(true);
   expect(Object.isFrozen(out.right)).toBe(true);
   expect(Object.isFrozen(out.left.leaf)).toBe(true);
+});
+
+test('withUser overrides getUserId nested and restores; withContext({ userId }) does not', async () => {
+  const root = {
+    request: {
+      context: {
+        identity: { userId: 'U-ROOT' },
+        ctx: { lang: 'en' },
+      },
+    },
+  };
+
+  await withTempChoysum(root, async () => {
+    expect(getUserId()).toBe('U-ROOT');
+
+    withContext({ userId: 'U-FAKE' } as any, () => {
+      expect(getUserId()).toBe('U-ROOT');
+    });
+
+    const nested = withUser('U-A', () => {
+      expect(getUserId()).toBe('U-A');
+      return withUser('U-B', () => getUserId());
+    });
+    expect(nested).toBe('U-B');
+    expect(getUserId()).toBe('U-ROOT');
+
+    await withUser('U-ASYNC', async () => {
+      expect(getUserId()).toBe('U-ASYNC');
+      return Promise.resolve();
+    });
+    expect(getUserId()).toBe('U-ROOT');
+  });
+});
+
+test('withUser rejects empty userId and works on process stack without jsCtx', () => {
+  expect(() => withUser('  ', () => undefined)).toThrow('non-empty userId');
+
+  withTempChoysum(undefined, () => {
+    expect(getUserId()).toBe(undefined);
+    const value = withUser('U-PROC', () => getUserId());
+    expect(value).toBe('U-PROC');
+    expect(getUserId()).toBe(undefined);
+  });
 });

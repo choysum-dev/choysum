@@ -132,6 +132,11 @@ test('model context accessors are available on static and instance surfaces', ()
   const instanceWithContext = instance.withContext({ lang: 'zh-CN' } as any, () => 'ok', { merge: true });
   expect(staticWithContext).toBe('ok');
   expect(instanceWithContext).toBe('ok');
+
+  expect(typeof ModelSurfaceHarness.withUser).toBe('function');
+  expect(typeof ModelSurfaceHarness.sudo).toBe('function');
+  expect(typeof instance.withUser).toBe('function');
+  expect(typeof instance.sudo).toBe('function');
 });
 
 test('model DisplayName compute handler covers Name/Username/Id fallback branches', () => {

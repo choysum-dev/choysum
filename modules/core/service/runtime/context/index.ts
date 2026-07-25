@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export type { Context } from './source';
-export { getIdentity, getReqMeta, getUserId } from './source';
+export { getIdentity, getReqMeta } from './source';
+export { getUserId, withUser } from './user';
 export {
   getJsCtxAndReq,
   getCurrentReq,

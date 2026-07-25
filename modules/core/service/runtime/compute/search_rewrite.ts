@@ -4,7 +4,6 @@
 import type { DialectName } from '../../orm/repository/repository_dialect';
 import type { BaseQueryCondition } from '../../orm/repository/types';
 import type { ModelMetadata } from '../../orm/metadata/model';
-import { withComputeRunAsExecution } from './runas';
 import { withBridgeFrame } from './bridge';
 import { createEntityBackedModelInstance, resolveInstanceHandler } from './handler_runtime';
 import { asObjectRecord } from '../../../utils/object';
@@ -29,7 +28,7 @@ export function rewriteSearchCondition(
   op: unknown,
   value: unknown,
   dialect: DialectName,
-  mode = 'query'
+  _mode = 'query'
 ): SearchRewriteResolved | undefined {
   if (!fieldName || fieldName.includes('.')) return;
 
@@ -66,8 +65,6 @@ export function rewriteSearchCondition(
 
     throw new Error(`SEARCH_HANDLER_REQUIRED: virtual field ${modelLabel}.${fieldName} requires an explicit @Search handler`);
   }
-
-  const runAs = computeHandler?.runAs === 'sudo' || legacyCompute?.runAs === 'sudo' ? 'sudo' : 'user';
 
   const executeWithBridge = () => {
     if (fromExplicitSearchDecorator) {
@@ -108,11 +105,10 @@ export function rewriteSearchCondition(
       op,
       value,
       dialect: String(dialect || 'postgres') as DialectName,
-      runAs,
     });
   };
 
-  const raw = withComputeRunAsExecution(meta, fieldName, runAs, 'search', executeWithBridge, mode);
+  const raw = executeWithBridge();
   if (isPromiseLike(raw)) {
     throw new Error(
       `compute.search handler returned a Promise, but the current query compilation path only supports synchronous handlers: ${modelLabel}.${fieldName}`
