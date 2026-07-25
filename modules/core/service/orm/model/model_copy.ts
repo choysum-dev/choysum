@@ -203,8 +203,7 @@ export function buildCopyValues(
     }
 
     if (field.type === 'ManyToOne') {
-      const v = copyScalarOrManyToOneValue(raw);
-      if (v !== undefined) out[fieldName] = v;
+      out[fieldName] = copyScalarOrManyToOneValue(raw);
       continue;
     }
 
