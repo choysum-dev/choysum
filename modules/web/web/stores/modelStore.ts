@@ -28,7 +28,6 @@ export type WebFieldMetadata = {
   relatedPath?: string;
   relatedStore?: boolean;
   searchable?: boolean;
-  runAs?: string;
   notNull?: boolean;
   size?: number;
   precision?: number;
@@ -73,7 +72,6 @@ export function getFieldMetadataView(meta: WebFieldMetadata | undefined) {
   const resolvedColumnType = meta?.resolvedColumnType;
   const reasonCode = meta?.reasonCode;
   const relatedStore = typeof meta?.relatedStore === 'boolean' ? meta.relatedStore : undefined;
-  const runAs = meta?.runAs;
 
   return {
     relationModel,
@@ -85,7 +83,6 @@ export function getFieldMetadataView(meta: WebFieldMetadata | undefined) {
     resolvedColumnType,
     reasonCode,
     searchable,
-    runAs,
     isRelation: isRelationFieldType(type),
   } as const;
 }

@@ -235,7 +235,7 @@ export default class Demo extends BaseModel {
   @Field({ type: 'varchar', related: { path: 'PartnerId.Name', store: true, deps: ['PartnerId', 'PartnerId.Name'] } })
   public PartnerName: string
 
-  @Compute<Demo>('PartnerName', { deps: ['Name'], store: false, searchable: true, runAs: 'sudo' })
+  @Compute<Demo>('PartnerName', { deps: ['Name'], store: false, searchable: true })
   computePartnerName() {
     return this.Name
   }
@@ -289,9 +289,6 @@ export default class Demo extends BaseModel {
 	}
 	if partnerSpec.Migration.ShouldCreateColumn != false || partnerSpec.Migration.ReasonCode != "COMPUTE_STORE_FALSE" {
 		t.Fatalf("unexpected PartnerName migration decision: %+v", partnerSpec.Migration)
-	}
-	if partnerSpec.Resolved.RunAs.Value == nil || *partnerSpec.Resolved.RunAs.Value != "sudo" {
-		t.Fatalf("unexpected PartnerName runAs resolution: %+v", partnerSpec.Resolved.RunAs)
 	}
 }
 

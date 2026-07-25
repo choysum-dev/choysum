@@ -22,7 +22,6 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	selectionJSON := `[{"value":"allow","label":"Allow","labelText":{"key":"` + referenceKey + `","module":"demo","scope":"demo.status.allow","src":"Allow","kind":"literal"}}]`
 	round := "HALF_UP"
 	searchable := true
-	runAs := "system"
 	field := &meta.IrField{
 		BaseModel:                meta.BaseModel{Id: sql.NullString{String: "field-1", Valid: true}},
 		Name:                     "Amount",
@@ -54,12 +53,11 @@ func TestWebApiStoreGenerate(t *testing.T) {
 			Related: &meta.IrFieldRelatedSpec{Path: "CurrencyId.Symbol", Store: true},
 		},
 		Behavior: meta.IrFieldBehaviorSpec{
-			Compute: &meta.IrFieldBehaviorComputeSpec{Method: "ComputeAmount", Deps: []string{"CurrencyId"}, Store: true, RunAs: "user"},
+			Compute: &meta.IrFieldBehaviorComputeSpec{Method: "ComputeAmount", Deps: []string{"CurrencyId"}, Store: true},
 		},
 		Migration: meta.IrFieldMigrationDecision{StorageKind: "column", ShouldCreateColumn: true, ResolvedColumnType: "NUMERIC(12,4)", ReasonCode: "LEGACY_COLUMN"},
 	}
 	resolvedSpec.Resolved.Searchable = meta.IrResolvedValue[*bool]{Value: &searchable, Source: "decorator"}
-	resolvedSpec.Resolved.RunAs = meta.IrResolvedValue[*string]{Value: &runAs, Source: "decorator"}
 	if err := field.SetResolvedSpec(resolvedSpec); err != nil {
 		t.Fatalf("set resolved spec: %v", err)
 	}
@@ -79,8 +77,8 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if metadata.RelatedPath == nil || *metadata.RelatedPath != "CurrencyId.Symbol" || metadata.Searchable == nil || !*metadata.Searchable {
 		t.Fatalf("expected related/searchable fields, got %#v", metadata)
 	}
-	if metadata.RunAs == nil || *metadata.RunAs != "system" || metadata.ShouldCreateColumn == nil || !*metadata.ShouldCreateColumn {
-		t.Fatalf("expected migration/runAs fields, got %#v", metadata)
+	if metadata.ShouldCreateColumn == nil || !*metadata.ShouldCreateColumn {
+		t.Fatalf("expected ShouldCreateColumn=true, got %#v", metadata)
 	}
 	if metadata.Translate != nil {
 		t.Fatalf("non-translate field must omit Translate, got %#v", metadata.Translate)

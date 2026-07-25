@@ -42,7 +42,6 @@ type FieldMetadata struct {
 	RelatedPath              *string `json:"relatedPath,omitempty"`
 	RelatedStore             *bool   `json:"relatedStore,omitempty"`
 	Searchable               *bool   `json:"searchable,omitempty"`
-	RunAs                    *string `json:"runAs,omitempty"`
 	RelationModel            *string `json:"relationModel,omitempty"`
 	RelationFilter           *string `json:"relationFilter,omitempty"`
 	RelationModelParentField *string `json:"relationModelParentField,omitempty"`
@@ -121,12 +120,6 @@ func applyResolvedFieldContract(metadata *FieldMetadata, field *meta.IrField) {
 	} else if resolved.Behavior.Search != nil {
 		searchable := true
 		metadata.Searchable = &searchable
-	}
-
-	if resolved.Resolved.RunAs.Value != nil {
-		metadata.RunAs = toStringPtr(*resolved.Resolved.RunAs.Value)
-	} else if resolved.Behavior.Compute != nil {
-		metadata.RunAs = toStringPtr(resolved.Behavior.Compute.RunAs)
 	}
 
 	if resolved.Structural.Translate != nil && *resolved.Structural.Translate {

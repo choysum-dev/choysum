@@ -94,7 +94,6 @@ type IrFieldBehaviorComputeSpec struct {
 	Deps       []string `json:"deps"`
 	Store      bool     `json:"store"`
 	Searchable *bool    `json:"searchable,omitempty"`
-	RunAs      string   `json:"runAs,omitempty"`
 }
 
 type IrFieldBehaviorSqlComputeSpec struct {
@@ -132,9 +131,8 @@ type IrFieldResolvedSpec struct {
 	Structural IrFieldStructuralSpec `json:"structural"`
 	Behavior   IrFieldBehaviorSpec   `json:"behavior"`
 	Resolved   struct {
-		Store      IrResolvedValue[bool]    `json:"store"`
-		Searchable IrResolvedValue[*bool]   `json:"searchable"`
-		RunAs      IrResolvedValue[*string] `json:"runAs"`
+		Store      IrResolvedValue[bool]  `json:"store"`
+		Searchable IrResolvedValue[*bool] `json:"searchable"`
 	} `json:"resolved"`
 	Migration   IrFieldMigrationDecision `json:"migration"`
 	Diagnostics []IrFieldDiagnostic      `json:"diagnostics,omitempty"`
